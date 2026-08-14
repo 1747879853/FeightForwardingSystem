@@ -2,20 +2,21 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-13
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 这一页是业务联系单的全生命周期工作台。销售在这里录入意向业务的单据信息、干系人、箱型箱量、要做哪些服务、报价多少，然后提交审核；审核人在同一页做通过或驳回；通过后系统生成海运出口单，页面出现第二个 Tab，可以直接在里面编辑那张海运出口。
+**白话解释：** 这一页是业务联系单的全生命周期工作台。销售在这里录入意向业务的单据信息、干系人、箱型箱量、要做哪些服务、报价多少，然后提交审核；也可上传单证走 TextIn AI 识别预填表单后再核对提交。审核人在同一页做通过或驳回；通过后系统生成海运出口单，页面出现第二个 Tab，可以直接在里面编辑那张海运出口。
 
 `/pre-order/add`（新建）与 `/pre-order/:id/edit`（编辑/查看）复用 `editor.vue`。表单控件不按状态禁用；仅「录入 / 驳回」显示「保存」「提交审核」，待审核/通过只保留审核相关按钮。历史 `/detail` 路由重定向到 `/edit`。
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含**订舱代理**、起运港/目的港，按设计稿 CSS `order` 排位：首行末项为订舱代理）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含**订舱代理**、起运港/目的港，按设计稿 CSS `order` 排位：首行末项为订舱代理）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
+- **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」后隐藏保存/提交按钮。
@@ -109,10 +110,13 @@ last_updated: 2026-08-13
 
 > [!IMPORTANT] **[卡点 10：服务项对比标记]** 状态为「通过」后，详情返回的服务项带 `compareStatus`：`1` 显示绿色「海运出口新增」，`2` 显示红色「海运出口删除」。其中 `compareStatus = 1` 的记录由后端以 `id = 0` 追加，回显时必须过滤掉，否则会把海运出口侧新增的服务项误写回业务联系单。
 
+> [!IMPORTANT] **[卡点 13：AI 识别是预填不是定稿]** 调用 `ExtractPreOrderToAddDtoAsync` 后只覆盖有值字段；匹配不到的 id（空 Guid / `ctnCodeId=0`）不报错，需用户补录。`bizType` 必须走 form/query。OCR 有误差，务必核对后再保存/提交。同文件二次上传可能走缓存（`isFromCache`）。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feature` | 可保存态增加「AI识别」：上传单证调用 TextIn 抽取并回填 `PreOrderAddDto` 可用字段；未匹配箱型保留识别原文提示补选 | `extractPreOrderToAddDto` + `use-pre-order-ai-recognize`；回填后由 `afterApply` 注入 selectedItems，避免冲掉港口/委托单位 onChange。详见 `changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md` |
 | 2026-08-13 | `Perf`/`Fix` | 打开编辑页不再逐个下拉回拉详情：付费方式/运输条款/包装/品名/船公司/干系人（含头像）/费用代码/箱型 TEU 全部用详情已返回的外键对象回显 | 新增 `modules/detail-selected-items.ts` 按各 biz-select 的 `mapItemToOption` 口径拼项；名称为空时返回 `[]` 保留组件兜底，回显项补 `enable: true` 避免被判禁用；干系人行新增 `user` 字段须在 `buildSubmitPayload` 解构剔除；详情 `feeCode` 直接当 `feeCodeSnapshot`。详见 `changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md` |
 | 2026-08-13 | `Feature` | 主表新增「订舱代理」`bookingAgentId`（`ClientSelect` / `industryCategory=o`）；详情回显；费用结算对象类别 o 可自动带出；审核通过由后端写入海出 | 字段挂基础 schema 首行末项；`bindBookingAgentLinkage` 与委托单位同套路；列表接口不回 `bookingAgent` 对象故列表暂不展示列。详见 `changelogs/change-log-2026-08-13-pre-order-booking-agent.md` |
 | 2026-08-12 | `Fix` | 主表选起运/目的港时同步写入隐藏 `PortForm` 并自动带出港口备注，保存不再丢备注 | 港口分区改 `hidden` 保留表单实例；勿用 `v-if="false"`。详见 `changelogs/change-log-2026-08-12-pre-order-basic-port-remark-sync.md` |

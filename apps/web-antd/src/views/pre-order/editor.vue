@@ -52,6 +52,7 @@ import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
   hasValidUserId,
   toPortObjectSelectedItems,
+  toPortSelectedItems,
   toSelectedItems,
 } from '#/views/sea-export-admin/basic-info-form/sea-export-detail-mapper';
 import {
@@ -62,6 +63,8 @@ import {
 } from '#/views/sea-export-admin/data';
 import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 
+import AiExtractUploadModal from './ai-extract-upload-modal.vue';
+import { pickExtractedLabel, resolveCitationKeys } from './ai-extract-utils';
 import {
   PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
@@ -88,6 +91,7 @@ import {
   syncPreOrderUserRows,
 } from './modules/user-defaults';
 import UserTable from './modules/user-table.vue';
+import { usePreOrderAiRecognize } from './use-pre-order-ai-recognize';
 
 defineOptions({ name: 'PreOrderEditor' });
 
@@ -634,6 +638,237 @@ function bindPartySettlementLinkage() {
 let rowSeed = 0;
 const nextRowKey = (prefix: string) =>
   `${prefix}-${Date.now()}-${(rowSeed += 1)}`;
+
+/**
+ * AI 回填后：注入 selectedItems（保留 onChange）、同步服务项/干系人/费用计量。
+ * 空值不覆盖现有表单（规范化阶段已过滤）。
+ */
+async function applyAiExtractAfterFill(ctx: {
+  formValues: Record<string, unknown>;
+  extractedSchema?: Record<string, unknown>;
+}) {
+  const values = ctx.formValues;
+  const schema = ctx.extractedSchema ?? {};
+  const clientLabel = pickExtractedLabel(
+    schema,
+    resolveCitationKeys('clientId'),
+  );
+  const carrierLabel = pickExtractedLabel(
+    schema,
+    resolveCitationKeys('carrierId'),
+  );
+  const codeFrtLabel = pickExtractedLabel(
+    schema,
+    resolveCitationKeys('codeFrtId'),
+  );
+  const codeServiceLabel = pickExtractedLabel(
+    schema,
+    resolveCitationKeys('codeServiceId'),
+  );
+  const codePackageLabel = pickExtractedLabel(
+    schema,
+    resolveCitationKeys('codePackageId'),
+  );
+
+  if (values.clientId != null) {
+    bindClientUserLinkage(toSelectedItems(values.clientId, clientLabel));
+  }
+
+  const basicSchemaUpdates: Array<{
+    fieldName: string;
+    componentProps: Record<string, unknown>;
+  }> = [];
+  if (values.carrierId != null) {
+    basicSchemaUpdates.push({
+      fieldName: 'carrierId',
+      componentProps: {
+        selectedItems: toCarrierSelectedItems(values.carrierId as any, {
+          cnShortName: carrierLabel || undefined,
+        }),
+      },
+    });
+  }
+  if (values.codeFrtId != null) {
+    basicSchemaUpdates.push({
+      fieldName: 'codeFrtId',
+      componentProps: {
+        selectedItems: toCodeNamedSelectedItems(values.codeFrtId, {
+          cnName: codeFrtLabel || undefined,
+          enName: codeFrtLabel || undefined,
+        }),
+      },
+    });
+  }
+  if (values.codeServiceId != null) {
+    basicSchemaUpdates.push({
+      fieldName: 'codeServiceId',
+      componentProps: {
+        selectedItems: toCodeNamedSelectedItems(values.codeServiceId, {
+          enName: codeServiceLabel || undefined,
+          cnName: codeServiceLabel || undefined,
+        }),
+      },
+    });
+  }
+  if (values.polId != null) {
+    basicSchemaUpdates.push({
+      fieldName: 'polId',
+      componentProps: {
+        ...buildPortSelectProps('polId', handleBasicPortChange),
+        selectedItems: toPortSelectedItems(
+          values.polId,
+          pickExtractedLabel(schema, ['起运港名称']),
+          pickExtractedLabel(schema, ['起运港代码']),
+        ),
+      },
+    });
+  }
+  if (values.podId != null) {
+    basicSchemaUpdates.push({
+      fieldName: 'podId',
+      componentProps: {
+        ...buildPortSelectProps('podId', handleBasicPortChange),
+        selectedItems: toPortSelectedItems(
+          values.podId,
+          pickExtractedLabel(schema, ['目的港名称']),
+          pickExtractedLabel(schema, ['目的港代码']),
+        ),
+      },
+    });
+  }
+  if (basicSchemaUpdates.length > 0) {
+    basicFormApi.updateSchema(basicSchemaUpdates);
+  }
+
+  const portSelectProps = (fieldName: string, selectedItems: unknown[]) => ({
+    ...buildPortSelectProps(fieldName, handlePortSelectChange),
+    selectedItems,
+  });
+  const portSchemaUpdates: Array<{
+    fieldName: string;
+    componentProps: Record<string, unknown>;
+  }> = [];
+  if (values.receivePortId != null) {
+    portSchemaUpdates.push({
+      fieldName: 'receivePortId',
+      componentProps: portSelectProps(
+        'receivePortId',
+        toPortSelectedItems(
+          values.receivePortId,
+          pickExtractedLabel(schema, ['收货地名称']),
+          pickExtractedLabel(schema, ['收货地代码']),
+        ),
+      ),
+    });
+  }
+  if (values.polId != null) {
+    portSchemaUpdates.push({
+      fieldName: 'polId',
+      componentProps: portSelectProps(
+        'polId',
+        toPortSelectedItems(
+          values.polId,
+          pickExtractedLabel(schema, ['起运港名称']),
+          pickExtractedLabel(schema, ['起运港代码']),
+        ),
+      ),
+    });
+  }
+  if (values.podId != null) {
+    portSchemaUpdates.push({
+      fieldName: 'podId',
+      componentProps: portSelectProps(
+        'podId',
+        toPortSelectedItems(
+          values.podId,
+          pickExtractedLabel(schema, ['目的港名称']),
+          pickExtractedLabel(schema, ['目的港代码']),
+        ),
+      ),
+    });
+  }
+  if (values.deliverPortId != null) {
+    portSchemaUpdates.push({
+      fieldName: 'deliverPortId',
+      componentProps: portSelectProps(
+        'deliverPortId',
+        toPortSelectedItems(
+          values.deliverPortId,
+          pickExtractedLabel(schema, ['交货地名称']),
+          pickExtractedLabel(schema, ['交货港代码']),
+        ),
+      ),
+    });
+  }
+  if (portSchemaUpdates.length > 0) {
+    portFormApi.updateSchema(portSchemaUpdates);
+    applyTransitPortTabSchema();
+  }
+
+  if (values.codePackageId != null) {
+    cargoFormApi.updateSchema([
+      {
+        fieldName: 'codePackageId',
+        componentProps: {
+          selectedItems: toCodePackageSelectedItems(values.codePackageId, {
+            name: codePackageLabel || undefined,
+          }),
+        },
+      },
+    ]);
+  }
+
+  if (values.clientId != null) {
+    currentClientId.value = String(values.clientId);
+    if (clientLabel) {
+      currentClientName.value = clientLabel;
+      rememberPartyName(currentClientId.value, clientLabel);
+    }
+    await applyClientDefaultUsersByClientId(values.clientId);
+  }
+  if (values.polId != null) {
+    currentPolId.value = values.polId as number | string;
+  }
+  if (values.kgs != null || values.cbm != null) {
+    feeCargo.value = {
+      kgs:
+        values.kgs == null ? feeCargo.value.kgs : (values.kgs as null | number),
+      cbm:
+        values.cbm == null ? feeCargo.value.cbm : (values.cbm as null | number),
+    };
+  }
+  if (
+    values.shipperContent ||
+    values.consigneeContent ||
+    values.notifierContent
+  ) {
+    partyExpanded.value = true;
+  }
+}
+
+const { aiRecognizing, recognizeAiFile } = usePreOrderAiRecognize({
+  formApis: {
+    basic: basicFormApi,
+    party: partyFormApi,
+    port: portFormApi,
+    cargoTypeInline: cargoTypeInlineFormApi,
+    cargo: cargoFormApi,
+  },
+  ctns,
+  getBizType: () => headerBizType.value,
+  afterApply: applyAiExtractAfterFill,
+  createCtnRowKey: () => nextRowKey('ctn'),
+});
+
+const aiExtractModalOpen = ref(false);
+const handleAiRecognize = () => {
+  if (aiRecognizing.value) return;
+  aiExtractModalOpen.value = true;
+};
+const handleAiExtractFile = async (file: File) => {
+  const ok = await recognizeAiFile(file);
+  if (ok) aiExtractModalOpen.value = false;
+};
 
 /** 详情 attachmentGroup → 本地可编辑结构（保留 url/文件名供展示） */
 function mapAttachmentGroupFromDetail(
@@ -1337,6 +1572,19 @@ const getContentTabStyle = (isActive: boolean) =>
                       <Button
                         v-if="canSave"
                         size="small"
+                        class="flex items-center justify-center"
+                        :loading="aiRecognizing"
+                        @click="handleAiRecognize"
+                      >
+                        <IconifyIcon
+                          icon="mdi:robot-outline"
+                          class="mr-1 inline-block size-3.5 align-middle"
+                        />
+                        <span class="align-middle">AI识别</span>
+                      </Button>
+                      <Button
+                        v-if="canSave"
+                        size="small"
                         @click="attachmentVisible = true"
                       >
                         上传附件
@@ -1686,6 +1934,11 @@ const getContentTabStyle = (isActive: boolean) =>
       :success="auditSuccess"
       :users="users"
       @confirm="handleAuditConfirm"
+    />
+    <AiExtractUploadModal
+      v-model:open="aiExtractModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiExtractFile"
     />
   </Page>
 </template>

@@ -223,6 +223,11 @@ watch(
               :selected-items="ctnSelectedItems(asRow(record))"
               :disabled="props.readonly"
               size="small"
+              :placeholder="
+                !asRow(record).ctnCodeId && asRow(record).ctnCodeName
+                  ? asRow(record).ctnCodeName
+                  : $t('ui.placeholder.select')
+              "
               @change="
                 (v: any, option: any) =>
                   handleCtnChange(asRow(record), v, option)
