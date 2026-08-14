@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-14 海运 3D 地球看板仅 hhyy 打包可见](./changelogs/change-log-2026-08-14-sea-freight-globe-hhyy-only.md)
 - [2026-08-14 海运进口对接 TextIn 智能抽取](./changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md)
 - [2026-08-14 业务联系单对接 TextIn 智能抽取](./changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md)
 - [2026-08-14 集装箱信息新增柜型字段](./changelogs/change-log-2026-08-14-ctn-code-cabinet-type.md)

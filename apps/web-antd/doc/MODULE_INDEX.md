@@ -4,7 +4,7 @@
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`。 | [登录页](./modules/_core/login.md) | 2026-08-14 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
 | dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-08-10 |
-| dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
+| dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为 `/analytics`。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-08-14 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-07-12 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；账期删除大数 ID 原样透传。 | [客户编辑](./modules/clients/id-edit.md) | 2026-07-12 |

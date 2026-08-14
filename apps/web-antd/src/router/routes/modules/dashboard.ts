@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
+import { isHhyyBrand } from '#/utils/brand-assets';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -27,7 +28,11 @@ const routes: RouteRecordRaw[] = [
       authority: abpPageAuthority('Admin.Workbench'),
     },
   },
-  {
+];
+
+/** 海运 3D 地球看板仅浩瀚远洋（hhyy）打包可见 */
+if (isHhyyBrand) {
+  routes.push({
     name: 'Dashboard',
     path: '/dashboard',
     meta: {
@@ -47,7 +52,7 @@ const routes: RouteRecordRaw[] = [
         },
       },
     ],
-  },
-];
+  });
+}
 
 export default routes;

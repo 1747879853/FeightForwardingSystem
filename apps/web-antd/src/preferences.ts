@@ -1,6 +1,6 @@
 import { defineOverridesPreferences } from '@vben/preferences';
 
-import { brandLogo } from '#/utils/brand-assets';
+import { brandLogo, isHhyyBrand } from '#/utils/brand-assets';
 
 /**
  * @description 项目配置文件
@@ -14,6 +14,10 @@ export const overridesPreferences = defineOverridesPreferences({
     name: import.meta.env.VITE_APP_TITLE,
     layout: 'header-sidebar-nav',
     preferencesButtonPosition: 'auto',
+    // 仅 hhyy 将 3D 地球看板作为默认首页；其他品牌走分析页
+    defaultHomePath: isHhyyBrand
+      ? '/dashboard/sea-freight-globe'
+      : '/analytics',
   },
   theme: {
     mode: 'light',
