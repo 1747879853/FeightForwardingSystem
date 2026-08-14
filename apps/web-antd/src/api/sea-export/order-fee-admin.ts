@@ -61,6 +61,14 @@ export namespace OrderFeeAdminApi {
     defaultRate?: number;
   }
 
+  /** 对账单简要信息 */
+  export interface StatementSimpleDto {
+    /** 对账 id */
+    id: string;
+    /** 对账单号 */
+    statementNum: string;
+  }
+
   /**
    * 字段说明（2026-08-09更新）：
    * - noTaxUnitPrice/noTaxAmount: 前端传入，后端直接存储并返回（不再后端计算）
@@ -294,16 +302,18 @@ export namespace OrderFeeAdminApi {
     /** 不含税金额（后端直接返回数据库存储值） */
     noTaxAmount: number;
 
-    /** 客户对账 id，为空代表未参与对账 */
-    statementId?: string | null;
+    /**
+     * 费用所属对账单集合（多次对账支持）
+     * 未对账时为空数组 []
+     */
+    statements?: StatementSimpleDto[];
 
-    /** 对账单简要信息；statementId 为空时为 null */
-    statement?: {
-      /** 对账 id */
-      id: string;
-      /** 对账单号 */
-      statementNum: string;
-    } | null;
+    /**
+     * 是否已对账
+     * 该费用只要存在于任意一张对账单即为 true
+     * 等价于 statements.length > 0，两者不会矛盾，取其一判断即可
+     */
+    isStatemented?: boolean;
 
     /** 是否已删除 */
     isDeleted: boolean;
@@ -396,93 +406,156 @@ export namespace OrderFeeAdminApi {
 
   // ==================== 批量引入费用相关DTO ====================
 
-  /** 查询海运出口费用输入参数 */
-  export interface SeaExportFeeQueryInputDto {
+  /** 业务类型枚举 */
+  export enum BizType {
+    /** 海运出口 */
+    SeaExport = 0,
+    /** 海运进口 */
+    SeaImport = 1,
+    /** 空运出口 */
+    AirExport = 2,
+  }
+
+  /** 查询业务订单费用输入参数（原 SeaExportFeeQueryInputDto，现支持全业务类型） */
+  export interface TransportOrderFeeQueryInputDto {
+    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口。一次只查一种业务类型 */
+    bizType: BizType;
     /** 委托单位id（TransportOrder.ClientId） */
     clientId?: string;
-    /** 订舱代理id（SeaExport.BookingAgentId） */
+    /** 订舱代理id（SeaExport.BookingAgentId / AirExport.BookingAgentId）。海运进口时传了不生效 */
     bookingAgentId?: string;
-    /** 船公司id（SeaExport.CarrierId） */
+    /** 船公司id（SeaExport.CarrierId / SeaImport.CarrierId）。空运出口时传了不生效 */
     carrierId?: number;
-    /** 起运港id（SeaExport.POLId） */
-    pOLId?: number;
-    /** 目的港id（SeaExport.PODId） */
-    pODId?: number;
+    /** 起运港id。bizType=0/1 传海港id，bizType=2 传空港id */
+    polId?: number;
+    /** 目的港id。同上 */
+    podId?: number;
     /** 编号，模糊匹配 委托编号(CommissionNum) + 主提单号(MblNum) */
     keyword?: string;
     /** 费用收付类型，用于过滤费用（0=收 1=付） */
     paySide?: number;
   }
 
-  /** 海运出口业务信息子对象 */
-  export interface SeaExportFeeTransportOrderDto {
-    /** 委托编号 */
-    commissionNum?: string;
-    /** 主提单号 */
-    mblNum?: string;
-    /** 委托单位对象（2026-07-29更新：由 clientName 改为 client 对象） */
-    client?: ClientSimpleDto;
-    /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
-    totalCtn?: string;
+  /** 空港简单信息 */
+  export interface AirPortSimpleDto {
+    id?: number;
+    iataCode?: string | null;
+    enName?: string | null;
+    cnName?: string | null;
   }
 
-  /** 海运出口费用项 */
-  export interface SeaExportFeeItemDto {
-    /** 费用id（引入时作为来源费用id） */
-    id: string;
-    /** 收付类型 */
-    paySide: number;
-    /** 费用代码对象（2026-07-29更新：由 feeCodeName 改为 feeCode 对象） */
-    feeCode?: FeeCodeSimpleDto;
-    /** 结算对象类别（行业类别） */
-    industryCategory: number;
-    /** 结算对象对象（2026-07-29更新：由 settlementName 改为 settlement 对象，可空） */
-    settlement?: ClientSimpleDto;
-    /** 币别对象（2026-07-29更新：由 currencyCode 改为 currency 对象） */
-    currency?: CurrencySimpleDto;
-    /** 汇率 */
-    exchangeRate: number;
-    /** 含税单价 */
-    unitPrice: number;
-    /** 金额 */
-    amount: number;
-    /** 单位 */
-    unit: string;
-    /** 数量 */
-    quantity: number;
-    /** 税率(%) */
-    taxRate: number;
-    /** 不含税单价 */
-    noTaxUnitPrice: number;
-    /** 不含税金额 */
-    noTaxAmount: number;
-    /** 是否允许开票 */
-    invoiceBlocked: boolean;
-    /** 是否机密 */
-    isConfidential: boolean;
-    /** 备注 */
-    remark?: string;
+  /** 航线简单信息 */
+  export interface LaneSimpleDto {
+    id?: number;
+    name?: string | null;
   }
 
-  /** 海运出口费用列表项 */
-  export interface SeaExportFeeListDto {
-    /** 海运出口id（即 TransportOrder.Id） */
+  /** 国家简单信息 */
+  export interface CountrySimpleDto {
+    id?: number;
+    name?: string | null;
+    code?: string | null;
+  }
+
+  /** 港口代码简单信息（更新以包含更多字段） */
+  export interface PortCodeSimpleDto {
+    id?: number;
+    portName?: string | null;
+    cnName?: string | null;
+    ediCode?: string | null;
+    lane?: LaneSimpleDto | null;
+    country?: CountrySimpleDto | null;
+  }
+
+  /** 海运出口业务详情子对象 */
+  export interface SeaExportBizInfoDto {
+    /** 与业务id相同 */
     id: string;
-    /** 起运港对象（2026-07-29更新：由 pOLName 改为 pol 对象） */
-    pol?: PortCodeSimpleDto;
-    /** 目的港对象（2026-07-29更新：由 pODName 改为 pod 对象） */
-    pod?: PortCodeSimpleDto;
-    /** 船公司对象（2026-07-29更新：由 carrierName 改为 carrier 对象） */
-    carrier?: CarrierSimpleDto;
     /** 船名 */
     vessel?: string;
     /** 航次 */
     innerVoyno?: string;
-    /** 业务信息子对象 */
-    transportOrder?: SeaExportFeeTransportOrderDto;
+    /** 起运港（海港） */
+    pol?: PortCodeSimpleDto;
+    /** 目的港（海港） */
+    pod?: PortCodeSimpleDto;
+    /** 船公司 */
+    carrier?: CarrierSimpleDto;
+    /** 订舱代理 */
+    bookingAgent?: ClientSimpleDto;
+  }
+
+  /** 海运进口业务详情子对象 */
+  export interface SeaImportBizInfoDto {
+    /** 与业务id相同 */
+    id: string;
+    /** 船名 */
+    vessel?: string;
+    /** 航次 */
+    innerVoyno?: string;
+    /** 起运港（海港） */
+    pol?: PortCodeSimpleDto;
+    /** 目的港（海港） */
+    pod?: PortCodeSimpleDto;
+    /** 船公司 */
+    carrier?: CarrierSimpleDto;
+    /** 海运进口没有 bookingAgent */
+  }
+
+  /** 空运出口业务详情子对象 */
+  export interface AirExportBizInfoDto {
+    /** 与业务id相同 */
+    id: string;
+    /** 航班 */
+    flightNo?: string;
+    /** 起运地（空港） */
+    pol?: AirPortSimpleDto;
+    /** 中转地（空港，单个） */
+    pot?: AirPortSimpleDto;
+    /** 目的地（空港） */
+    pod?: AirPortSimpleDto;
+    /** 订舱代理 */
+    bookingAgent?: ClientSimpleDto;
+    /** 空运出口没有 carrier / vessel / innerVoyno */
+  }
+
+  /** 业务订单基础信息子对象 */
+  export interface TransportOrderBaseInfoDto {
+    /** 业务id */
+    id: string;
+    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口 */
+    bizType: BizType;
+    /** 委托编号 */
+    commissionNum?: string;
+    /** 主提单号 */
+    mblNum?: string;
+    /** 委托单位对象 */
+    client?: ClientSimpleDto;
+    /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
+    totalCtn?: string;
+    /** 海运出口详情（仅 bizType=0 时有值） */
+    seaExport?: SeaExportBizInfoDto | null;
+    /** 海运进口详情（仅 bizType=1 时有值） */
+    seaImport?: SeaImportBizInfoDto | null;
+    /** 空运出口详情（仅 bizType=2 时有值） */
+    airExport?: AirExportBizInfoDto | null;
+  }
+
+  /** 业务订单费用列表项（原 SeaExportFeeListDto，现支持全业务类型） */
+  export interface TransportOrderFeeListDto {
+    /** 业务id */
+    id: string;
+    /** 业务订单基础信息 */
+    transportOrder: TransportOrderBaseInfoDto;
     /** 符合条件的费用列表 */
     orderFees: SeaExportFeeItemDto[];
   }
+
+  /** @deprecated 请使用 TransportOrderFeeQueryInputDto */
+  export type SeaExportFeeQueryInputDto = TransportOrderFeeQueryInputDto;
+
+  /** @deprecated 请使用 TransportOrderFeeListDto */
+  export type SeaExportFeeListDto = TransportOrderFeeListDto;
 
   /** 批量引入费用输入参数 */
   export interface ImportOrderFeesToTransportOrderInputDto {
@@ -593,15 +666,18 @@ export const generateOppositeOrderFees = (
   );
 };
 
-/** 查询海运出口费用 */
-export const getSeaExportFees = (
-  params: OrderFeeAdminApi.SeaExportFeeQueryInputDto,
+/** 查询业务订单费用（原 getSeaExportFees，现支持全业务类型） */
+export const getTransportOrderFees = (
+  params: OrderFeeAdminApi.TransportOrderFeeQueryInputDto,
 ) => {
-  return requestClient.get<OrderFeeAdminApi.SeaExportFeeListDto[]>(
-    `${API_PREFIX}/GetSeaExportFeesAsync`,
+  return requestClient.get<OrderFeeAdminApi.TransportOrderFeeListDto[]>(
+    `${API_PREFIX}/GetTransportOrderFeesAsync`,
     { params },
   );
 };
+
+/** @deprecated 请使用 getTransportOrderFees */
+export const getSeaExportFees = getTransportOrderFees;
 
 /** 为某条业务批量引入费用 */
 export const importOrderFeesToTransportOrder = (

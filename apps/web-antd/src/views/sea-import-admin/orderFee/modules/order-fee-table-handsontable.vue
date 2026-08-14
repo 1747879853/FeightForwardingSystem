@@ -353,6 +353,7 @@ const openBatchImportModal = async () => {
     carrierId: orderDetail.carrierId,
     polId: orderDetail.polId,
     podId: orderDetail.podId,
+    bizType: 1, // 海运进口固定为 1
   });
 
   batchImportModalRef.value?.modalApi.open();

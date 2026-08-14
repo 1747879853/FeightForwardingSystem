@@ -15,6 +15,7 @@ import {
   message,
   Pagination,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
@@ -203,14 +204,20 @@ const feeInnerColumnsForAddFee = [
     dataIndex: 'settlementStatus',
     key: 'settlementStatus',
     width: 100,
-    customRender: ({ record }: any) => {
-      const statusMap: Record<number, string> = {
-        0: '未结算',
-        1: '部分结算',
-        2: '已结算',
-      };
-      return statusMap[record.settlementStatus] || '-';
-    },
+    // customRender: ({ record }: any) => {
+    //   const statusMap: Record<number, string> = {
+    //     0: '未结算',
+    //     1: '部分结算',
+    //     2: '已结算',
+    //   };
+    //   return statusMap[record.settlementStatus] || '-';
+    // },
+  },
+  {
+    title: '对账信息',
+    dataIndex: 'isStatemented',
+    key: 'isStatemented',
+    width: 150,
   },
   {
     title: '备注',
@@ -287,7 +294,7 @@ async function fetchData(formValues?: Record<string, any>) {
   const feeCodeIds = values.FeeCodeIds;
   const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
 
-  // 处理操作和销售的多选ID，取第一个作为主要筛选条件（后端可能需要调整支持多选）
+  // 处理操作、销售和客服的多选ID，直接传递数组
   const operatorIds =
     Array.isArray(values.OperatorIds) && values.OperatorIds.length > 0
       ? values.OperatorIds
@@ -295,6 +302,11 @@ async function fetchData(formValues?: Record<string, any>) {
   const saleIds =
     Array.isArray(values.SaleIds) && values.SaleIds.length > 0
       ? values.SaleIds
+      : undefined;
+  const customerServiceIds =
+    Array.isArray(values.CustomerServiceIds) &&
+    values.CustomerServiceIds.length > 0
+      ? values.CustomerServiceIds
       : undefined;
 
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
@@ -315,9 +327,15 @@ async function fetchData(formValues?: Record<string, any>) {
     BizType: values.BizType,
     OperatorIds: operatorIds,
     SaleIds: saleIds,
+    CustomerServiceIds: customerServiceIds,
     SettlementStatus:
       values.SettlementStatus !== null && values.SettlementStatus !== undefined
         ? values.SettlementStatus
+        : undefined,
+    includeStatemented:
+      values.includeStatemented !== undefined &&
+      values.includeStatemented !== null
+        ? values.includeStatemented
         : undefined,
     PageIndex: currentPage.value,
     PageSize: pageSize.value,
@@ -735,8 +753,53 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.key === 'feeStatus'">
             {{ getFeeStatusLabel(feeRecord.feeStatus) }}
           </template>
-          <template v-else-if="column.key === 'settlementStatus'">
-            {{ getSettlementStatusLabel(feeRecord.settlementStatus) }}
+          <template v-else-if="column.key === 'isStatemented'">
+            <!-- 未对账时显示"否" -->
+            <span
+              v-if="
+                !feeRecord.isStatemented ||
+                !feeRecord.statements ||
+                feeRecord.statements.length === 0
+              "
+            >
+              否
+            </span>
+            <!-- 已对账时显示对账单详细信息，鼠标悬停显示完整信息 -->
+            <Tooltip v-else placement="topLeft">
+              <template #title>
+                <div style="max-width: 300px">
+                  <div
+                    v-for="(stmt, index) in feeRecord.statements"
+                    :key="index"
+                    :style="{
+                      marginBottom: '8px',
+                      paddingBottom: '8px',
+                      borderBottom:
+                        Number(index) < feeRecord.statements.length - 1
+                          ? '1px solid #f0f0f0'
+                          : 'none',
+                    }"
+                  >
+                    <div>
+                      <strong>对账单号：</strong>{{ stmt.statementNum }}
+                    </div>
+                    <div v-if="stmt.creationTime">
+                      <strong>对账月份：</strong
+                      >{{ dayjs(stmt.creationTime).format('YYYY-MM') }}
+                    </div>
+                    <div v-if="stmt.creatorUserName">
+                      <strong>对账人：</strong>{{ stmt.creatorUserName }}
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <span class="cursor-pointer">
+                {{ feeRecord.statements[0].statementNum }}
+                <span v-if="feeRecord.statements.length > 1"
+                  >等{{ feeRecord.statements.length }}条</span
+                >
+              </span>
+            </Tooltip>
           </template>
           <template v-else-if="column.key === 'settlementName'">
             {{ feeRecord.settlement?.name ?? '' }}

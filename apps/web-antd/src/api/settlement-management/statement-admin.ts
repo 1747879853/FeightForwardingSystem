@@ -106,6 +106,16 @@ export namespace StatementAdminApi {
     enName?: string;
   }
 
+  /** 对账单简要信息（用于费用 DTO 中的 statements 数组） */
+  export interface StatementSimpleDto {
+    id: string;
+    statementNum: string;
+    /** 对账时间，即该对账单的创建时间 */
+    creationTime?: string;
+    /** 对账人昵称，即该对账单的创建人；历史数据缺创建人时为 null */
+    creatorUserName?: string | null;
+  }
+
   /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
     currencyId: number;
@@ -312,15 +322,26 @@ export namespace StatementAdminApi {
     POLId?: number;
     PODId?: number;
     OrgId?: number;
-    SaleId?: number;
-    OperatorId?: number;
-    CustomerServiceId?: number;
-    // 新增：多选操作和销售ID（后端需要支持）
-    OperatorIds?: number[];
+    // 新增：多选销售、操作、客服ID（原单选字段 saleId/operatorId/customerServiceId 已废弃）
     SaleIds?: number[];
+    OperatorIds?: number[];
+    CustomerServiceIds?: number[];
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
+
+    /**
+     * 是否包含已对账费用
+     * 不传/false：只返回从未对账过的费用
+     * true：把已在其他对账单里的费用也返回，用于多次对账
+     */
+    includeStatemented?: boolean;
+
+    /**
+     * 给已有对账单加费用时传，用于排除本对账单已包含的费用
+     * 新建对账单时不传
+     */
+    statementId?: string;
   }
 }
 

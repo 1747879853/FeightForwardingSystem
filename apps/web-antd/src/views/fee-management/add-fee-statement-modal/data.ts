@@ -216,6 +216,17 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'UserSelect',
+      fieldName: 'CustomerServiceIds',
+      label: '客服',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        mode: 'multiple',
+        maxTagCount: 2,
+      },
+    },
+    {
       component: 'Select',
       fieldName: 'SettlementStatus',
       label: '是否结算',
@@ -224,6 +235,20 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
         options: SettlementStatusOptions,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'includeStatemented',
+      label: '是否对账',
+      defaultValue: false,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: [
+          { label: '未对账', value: false },
+          { label: '已对账', value: true },
+        ],
       },
     },
   ];

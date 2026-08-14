@@ -6,7 +6,7 @@ import { Button, message, Modal, Space, Table, Input } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { useVbenModal } from '@vben/common-ui';
 import {
-  getSeaExportFees,
+  getTransportOrderFees,
   importOrderFeesToTransportOrder,
 } from '#/api/sea-export/order-fee-admin';
 import {
@@ -28,16 +28,18 @@ const [modal, modalApi] = useVbenModal({
         carrierId?: number;
         polId?: number;
         podId?: number;
+        bizType?: number; // 新增：业务类型
       };
 
       if (data) {
         currentTransportOrderId.value = data.transportOrderId;
         currentPaySide.value = data.paySide;
+        currentBizType.value = data.bizType ?? 0; // 默认为海运出口
 
         // 设置默认检索条件
         searchForm.value.carrierId = data.carrierId;
-        searchForm.value.pOLId = data.polId;
-        searchForm.value.pODId = data.podId;
+        searchForm.value.polId = data.polId;
+        searchForm.value.podId = data.podId;
 
         // 自动执行搜索，使用默认条件查询业务列表
         await handleSearch();
@@ -54,56 +56,121 @@ const [modal, modalApi] = useVbenModal({
   },
 });
 
-// 当前业务ID和收付类型
+// 当前业务ID、收付类型和业务类型
 const currentTransportOrderId = ref<string>('');
 const currentPaySide = ref<number>(0);
+const currentBizType = ref<number>(0); // 0=海运出口, 1=海运进口, 2=空运出口
 
-// 搜索表单
-const searchForm = ref<OrderFeeAdminApi.SeaExportFeeQueryInputDto>({
+// 业务列表表格列定义
+const bizColumns = computed(() => [
+  {
+    title: '委托编号',
+    key: 'commissionNum',
+    width: 150,
+  },
+  {
+    title: '主提单号',
+    key: 'mblNum',
+    width: 150,
+  },
+  {
+    title: '委托单位',
+    key: 'clientName',
+    width: 200,
+  },
+  {
+    title: '港口/航线',
+    key: 'polPod',
+    width: 200,
+  },
+  {
+    title: '船名/航次/航班',
+    key: 'vesselVoyno',
+    width: 200,
+  },
+]);
+
+// 费用列表表格列定义
+const feeColumns = computed(() => [
+  {
+    title: '费用名称',
+    dataIndex: ['feeCode', 'cnName'],
+    key: 'feeCodeName',
+    width: 120,
+  },
+  {
+    title: '结算对象',
+    dataIndex: ['settlement', 'name'],
+    key: 'settlementName',
+    width: 150,
+  },
+  {
+    title: '币别',
+    dataIndex: ['currency', 'cnName'],
+    key: 'currencyName',
+    width: 80,
+  },
+  {
+    title: '金额',
+    dataIndex: 'amount',
+    key: 'amount',
+    width: 100,
+  },
+  {
+    title: '备注',
+    dataIndex: 'remark',
+    key: 'remark',
+    width: 200,
+  },
+]);
+
+// 搜索表单（使用新的 TransportOrderFeeQueryInputDto）
+const searchForm = ref<OrderFeeAdminApi.TransportOrderFeeQueryInputDto>({
+  bizType: 0, // 默认为海运出口，将在 onOpenChange 中根据实际 bizType 更新
   clientId: undefined,
   carrierId: undefined,
   bookingAgentId: undefined,
-  pOLId: undefined,
-  pODId: undefined,
+  polId: undefined,
+  podId: undefined,
   keyword: '',
   paySide: undefined,
 });
 
-// 海运出口列表数据
-const seaExportList = ref<OrderFeeAdminApi.SeaExportFeeListDto[]>([]);
-const selectedSeaExport = ref<OrderFeeAdminApi.SeaExportFeeListDto | null>(
-  null,
-);
+// 业务列表数据（使用新的 TransportOrderFeeListDto）
+const transportOrderList = ref<OrderFeeAdminApi.TransportOrderFeeListDto[]>([]);
+const selectedTransportOrder =
+  ref<OrderFeeAdminApi.TransportOrderFeeListDto | null>(null);
 const selectedFeeIds = ref<string[]>([]);
 const loading = ref(false);
 
-// 搜索海运出口
+// 搜索业务订单
 const handleSearch = async () => {
   loading.value = true;
   try {
-    const params: OrderFeeAdminApi.SeaExportFeeQueryInputDto = {
+    const params: OrderFeeAdminApi.TransportOrderFeeQueryInputDto = {
       ...searchForm.value,
+      bizType: currentBizType.value, // 使用当前业务类型
       paySide: currentPaySide.value, // 强制使用当前收付类型
     };
 
-    const res = await getSeaExportFees(params);
-    seaExportList.value = res || [];
+    const res = await getTransportOrderFees(params);
+    transportOrderList.value = res || [];
 
     // 清空之前的选择
-    selectedSeaExport.value = null;
+    selectedTransportOrder.value = null;
     selectedFeeIds.value = [];
 
     // 如果查询结果不为空，自动选中第一条并加载其费用
-    if (seaExportList.value.length > 0) {
-      selectedSeaExport.value = seaExportList.value[0] || null;
+    if (transportOrderList.value.length > 0) {
+      selectedTransportOrder.value = transportOrderList.value[0] || null;
       console.log(
         '✅ [handleSearch] 自动选中第一条业务:',
-        selectedSeaExport.value,
+        selectedTransportOrder.value,
       );
     }
 
     message.success({
-      content: `查询到 ${seaExportList.value.length} 条符合条件的业务`,
+      content: `查询到 ${transportOrderList.value.length} 条符合条件的业务`,
       key: 'search_msg',
     });
   } catch (error) {
@@ -117,22 +184,22 @@ const handleSearch = async () => {
   }
 };
 
-// 选择海运出口（单选）
-const handleSelectSeaExport = (
-  record: OrderFeeAdminApi.SeaExportFeeListDto,
+// 选择业务订单（单选）
+const handleSelectTransportOrder = (
+  record: OrderFeeAdminApi.TransportOrderFeeListDto,
 ) => {
-  console.log('👆 [handleSelectSeaExport] 点击业务:', record);
+  console.log('👆 [handleSelectTransportOrder] 点击业务:', record);
   console.log(
-    '📋 [handleSelectSeaExport] 该业务的费用数量:',
+    '📋 [handleSelectTransportOrder] 该业务的费用数量:',
     record.orderFees?.length || 0,
   );
 
-  selectedSeaExport.value = record;
+  selectedTransportOrder.value = record;
   selectedFeeIds.value = []; // 清空已选费用
 
   console.log(
-    '✅ [handleSelectSeaExport] 已选中业务，selectedSeaExport:',
-    selectedSeaExport.value,
+    '✅ [handleSelectTransportOrder] 已选中业务，selectedTransportOrder:',
+    selectedTransportOrder.value,
   );
 };
 
@@ -159,7 +226,7 @@ const isFeeSelected = (feeId: string) => {
 
 // 导入费用
 const handleImport = async () => {
-  if (!selectedSeaExport.value) {
+  if (!selectedTransportOrder.value) {
     message.warning('请先选择一笔业务');
     return;
   }
@@ -201,11 +268,12 @@ const handleImport = async () => {
 // 重置搜索条件（不刷新数据）
 const handleReset = () => {
   searchForm.value = {
+    bizType: currentBizType.value, // 保持业务类型不变
     clientId: undefined,
     carrierId: undefined,
     bookingAgentId: undefined,
-    pOLId: undefined,
-    pODId: undefined,
+    polId: undefined,
+    podId: undefined,
     keyword: '',
     paySide: undefined,
   };
@@ -214,16 +282,17 @@ const handleReset = () => {
 // 重置状态
 const resetState = () => {
   searchForm.value = {
+    bizType: currentBizType.value, // 保持业务类型不变
     clientId: undefined,
     carrierId: undefined,
     bookingAgentId: undefined,
-    pOLId: undefined,
-    pODId: undefined,
+    polId: undefined,
+    podId: undefined,
     keyword: '',
     paySide: undefined,
   };
-  seaExportList.value = [];
-  selectedSeaExport.value = null;
+  transportOrderList.value = [];
+  selectedTransportOrder.value = null;
   selectedFeeIds.value = [];
 };
 
@@ -276,23 +345,44 @@ defineExpose({
 
           <div class="form-item">
             <span class="label">{{ $t('seaExport.export.polId') }}:</span>
+            <!-- 根据 bizType 切换港口选择器数据源 -->
             <PortSelect
-              v-model="searchForm.pOLId"
+              v-if="currentBizType.value !== 2"
+              v-model="searchForm.polId"
               placeholder="请选择起运港"
               style="width: 200px"
               allow-clear
               label-key="portName"
+            />
+            <!-- 空运出口使用空港选择器 (假设存在 AirPortSelect 或 PortSelect 支持 type) -->
+            <!-- 由于目前 PortSelect 可能只支持海港，这里暂时复用，实际需根据项目组件情况调整 -->
+            <PortSelect
+              v-else
+              v-model="searchForm.polId"
+              placeholder="请选择起运空港"
+              style="width: 200px"
+              allow-clear
+              label-key="iataCode"
             />
           </div>
 
           <div class="form-item">
             <span class="label">{{ $t('seaExport.export.podId') }}:</span>
             <PortSelect
-              v-model="searchForm.pODId"
+              v-if="currentBizType.value !== 2"
+              v-model="searchForm.podId"
               placeholder="请选择目的港"
               style="width: 200px"
               allow-clear
               label-key="portName"
+            />
+            <PortSelect
+              v-else
+              v-model="searchForm.podId"
+              placeholder="请选择目的空港"
+              style="width: 200px"
+              allow-clear
+              label-key="iataCode"
             />
           </div>
 
@@ -309,126 +399,82 @@ defineExpose({
           <Button type="primary" @click="handleSearch" :loading="loading">
             查询
           </Button>
-          <Button @click="handleReset"> 重置 </Button>
+          <Button type="primary" @click="handleSearch" :loading="loading">
+            {{ $t('common.search') }}
+          </Button>
+          <Button @click="handleReset">
+            {{ $t('common.reset') }}
+          </Button>
         </Space>
       </div>
 
-      <!-- 海运出口列表 -->
-      <div class="sea-export-section">
-        <h3 class="section-title">
-          海运出口业务列表 <span class="hint-text">（点击行选择）</span>
-        </h3>
+      <!-- 业务列表 -->
+      <div class="table-section">
         <Table
-          :dataSource="seaExportList"
-          :columns="[
-            {
-              title: '委托编号',
-              dataIndex: ['transportOrder', 'commissionNum'],
-              key: 'commissionNum',
-              width: 100,
-              ellipsis: true,
-            },
-            {
-              title: '主提单号',
-              dataIndex: ['transportOrder', 'mblNum'],
-              key: 'mblNum',
-              width: 160,
-              ellipsis: true,
-            },
-            {
-              title: '委托单位',
-              key: 'clientName',
-              width: 150,
-              ellipsis: true,
-              customRender: ({ record }) => {
-                return record.transportOrder?.client?.name || '--';
-              },
-            },
-            {
-              title: '订舱代理',
-              key: 'bookingAgentName',
-              width: 150,
-              ellipsis: true,
-              customRender: ({ record }) => {
-                return record.bookingAgent?.name || '--';
-              },
-            },
-            {
-              title: '船公司',
-              key: 'carrierName',
-              width: 170,
-              ellipsis: true,
-              customRender: ({ record }) => {
-                return record.carrier?.cnName || record.carrier?.enName || '--';
-              },
-            },
-            {
-              title: '起运港',
-              key: 'polName',
-              width: 130,
-              ellipsis: true,
-              customRender: ({ record }) => {
-                return record.pol?.portName || record.pol?.cnName || '--';
-              },
-            },
-            {
-              title: '目的港',
-              key: 'podName',
-              width: 130,
-              ellipsis: true,
-              customRender: ({ record }) => {
-                return record.pod?.portName || record.pod?.cnName || '--';
-              },
-            },
-            {
-              title: '船名',
-              dataIndex: 'vessel',
-              key: 'vessel',
-              width: 120,
-              ellipsis: true,
-            },
-            {
-              title: '航次',
-              dataIndex: 'innerVoyno',
-              key: 'innerVoyno',
-              width: 110,
-              ellipsis: true,
-            },
-            {
-              title: '箱型箱量',
-              dataIndex: ['transportOrder', 'totalCtn'],
-              key: 'totalCtn',
-              width: 150,
-              ellipsis: true,
-            },
-          ]"
-          :rowKey="(record) => record.id"
+          :data-source="transportOrderList"
+          :columns="bizColumns"
           :pagination="false"
-          :scroll="{ x: 1200, y: 300 }"
-          :rowClassName="
+          :scroll="{ y: 300 }"
+          row-key="id"
+          :row-class-name="
             (record) =>
-              selectedSeaExport?.id === record.id ? 'selected-row' : ''
+              record.id === selectedTransportOrder?.id ? 'selected-row' : ''
           "
-          :customRow="
-            (record) => ({
-              onClick: () => handleSelectSeaExport(record),
-            })
-          "
-          size="small"
-        />
+          @click="handleSelectTransportOrder"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'commissionNum'">
+              {{ record.transportOrder?.commissionNum }}
+            </template>
+            <template v-else-if="column.key === 'mblNum'">
+              {{ record.transportOrder?.mblNum }}
+            </template>
+            <template v-else-if="column.key === 'clientName'">
+              {{ record.transportOrder?.client?.name }}
+            </template>
+            <template v-else-if="column.key === 'polPod'">
+              <!-- 根据 bizType 读取不同字段 -->
+              <template v-if="record.transportOrder?.bizType === 0">
+                {{ record.transportOrder.seaExport?.pol?.cnName }} -
+                {{ record.transportOrder.seaExport?.pod?.cnName }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 1">
+                {{ record.transportOrder.seaImport?.pol?.cnName }} -
+                {{ record.transportOrder.seaImport?.pod?.cnName }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 2">
+                {{ record.transportOrder.airExport?.pol?.iataCode }} -
+                {{ record.transportOrder.airExport?.pod?.iataCode }}
+              </template>
+            </template>
+            <template v-else-if="column.key === 'vesselVoyno'">
+              <template v-if="record.transportOrder?.bizType === 0">
+                {{ record.transportOrder.seaExport?.vessel }}
+                {{ record.transportOrder.seaExport?.innerVoyno }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 1">
+                {{ record.transportOrder.seaImport?.vessel }}
+                {{ record.transportOrder.seaImport?.innerVoyno }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 2">
+                {{ record.transportOrder.airExport?.flightNo }}
+              </template>
+            </template>
+          </template>
+        </Table>
       </div>
 
       <!-- 费用列表 -->
-      <div class="fee-section" v-if="selectedSeaExport">
+      <div class="fee-section" v-if="selectedTransportOrder">
         <div class="fee-header">
           <h3 class="section-title">
             费用列表
 
             <span
               class="mbl-info"
-              v-if="selectedSeaExport.transportOrder?.mblNum"
+              v-if="selectedTransportOrder.transportOrder?.mblNum"
             >
-              - 主提单号: {{ selectedSeaExport.transportOrder.mblNum }}
+              - 主提单号: {{ selectedTransportOrder.transportOrder.mblNum }}
             </span>
           </h3>
           <!-- <Button
@@ -442,7 +488,7 @@ defineExpose({
         </div>
 
         <Table
-          :dataSource="selectedSeaExport.orderFees"
+          :dataSource="selectedTransportOrder.orderFees"
           :row-selection="{
             selectedRowKeys: selectedFeeIds,
             onChange: handleFeeSelectionChange,

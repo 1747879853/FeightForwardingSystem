@@ -305,6 +305,7 @@ const openBatchImportModal = async () => {
       carrierId: orderDetail?.carrierId,
       polId: orderDetail?.polId,
       podId: orderDetail?.podId,
+      bizType: 0, // 海运出口固定为 0
     });
 
     console.log('✅ [openBatchImportModal] 已设置弹窗数据，准备打开弹窗');

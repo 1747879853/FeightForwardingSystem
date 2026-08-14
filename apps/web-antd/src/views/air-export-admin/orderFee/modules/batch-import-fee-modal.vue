@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
-import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, ref, watch } from 'vue';
 import { Button, message, Modal, Space, Table, Input } from 'ant-design-vue';
 import { $t } from '#/locales';
@@ -8,7 +8,7 @@ import { useVbenModal } from '@vben/common-ui';
 import {
   getTransportOrderFees,
   importOrderFeesToTransportOrder,
-} from '#/api/sea-import/order-fee-admin';
+} from '#/api/sea-export/order-fee-admin';
 import {
   CarrierSelect,
   PortSelect,
@@ -30,11 +30,11 @@ const [modal, modalApi] = useVbenModal({
         podId?: number;
         bizType?: number; // 新增：业务类型
       };
-
+      console.log('🚀 [handleOpen] 传入的参数:', data);
       if (data) {
         currentTransportOrderId.value = data.transportOrderId;
         currentPaySide.value = data.paySide;
-        currentBizType.value = data.bizType ?? 1; // 默认为海运进口
+        currentBizType.value = data.bizType ?? 0; // 默认为海运出口
 
         // 设置默认检索条件
         searchForm.value.carrierId = data.carrierId;
@@ -59,7 +59,7 @@ const [modal, modalApi] = useVbenModal({
 // 当前业务ID、收付类型和业务类型
 const currentTransportOrderId = ref<string>('');
 const currentPaySide = ref<number>(0);
-const currentBizType = ref<number>(1); // 0=海运出口, 1=海运进口, 2=空运出口
+const currentBizType = ref<number>(0); // 0=海运出口, 1=海运进口, 2=空运出口
 
 // 业务列表表格列定义
 const bizColumns = computed(() => [
@@ -84,7 +84,7 @@ const bizColumns = computed(() => [
     width: 200,
   },
   {
-    title: '船名/航次',
+    title: '船名/航次/航班',
     key: 'vesselVoyno',
     width: 200,
   },
@@ -126,10 +126,10 @@ const feeColumns = computed(() => [
 
 // 搜索表单（使用新的 TransportOrderFeeQueryInputDto）
 const searchForm = ref<OrderFeeAdminApi.TransportOrderFeeQueryInputDto>({
-  bizType: 1, // 默认为海运进口
+  bizType: 0, // 默认为海运出口，将在 onOpenChange 中根据实际 bizType 更新
   clientId: undefined,
   carrierId: undefined,
-  bookingAgentId: undefined, // 海运进口不生效
+  bookingAgentId: undefined,
   polId: undefined,
   podId: undefined,
   keyword: '',
@@ -268,12 +268,12 @@ const handleImport = async () => {
 // 重置搜索条件（不刷新数据）
 const handleReset = () => {
   searchForm.value = {
-    bizType: 1,
+    bizType: currentBizType.value, // 保持业务类型不变
     clientId: undefined,
     carrierId: undefined,
     bookingAgentId: undefined,
     polId: undefined,
-    pODId: undefined,
+    podId: undefined,
     keyword: '',
     paySide: undefined,
   };
@@ -282,12 +282,12 @@ const handleReset = () => {
 // 重置状态
 const resetState = () => {
   searchForm.value = {
-    bizType: 1,
+    bizType: currentBizType.value, // 保持业务类型不变
     clientId: undefined,
     carrierId: undefined,
     bookingAgentId: undefined,
-    pOLId: undefined,
-    pODId: undefined,
+    polId: undefined,
+    podId: undefined,
     keyword: '',
     paySide: undefined,
   };
@@ -304,7 +304,7 @@ defineExpose({
 
 <template>
   <modal
-    :title="$t('seaImport.import.orderFee.batchImportFee')"
+    :title="$t('seaExport.export.orderFee.batchImportFee')"
     class="h-[1150px] w-[1600px]"
     :bodyStyle="{ padding: '24px' }"
     @confirm="handleImport"
@@ -313,8 +313,19 @@ defineExpose({
       <!-- 搜索区域 -->
       <div class="search-section">
         <Space size="middle" class="search-form">
-          <div class="form-item">
-            <span class="label">{{ $t('seaImport.import.carrierId') }}:</span>
+          <!-- 根据 bizType 动态显示/隐藏控件 -->
+          <div v-if="currentBizType !== 1" class="form-item">
+            <span class="label">订舱代理:</span>
+            <ClientSelect
+              v-model="searchForm.bookingAgentId"
+              placeholder="请选择订舱代理"
+              style="width: 200px"
+              allow-clear
+            />
+          </div>
+
+          <div v-if="currentBizType !== 2" class="form-item">
+            <span class="label">{{ $t('seaExport.export.carrierId') }}:</span>
             <CarrierSelect
               v-model="searchForm.carrierId"
               placeholder="请选择船公司"
@@ -333,36 +344,46 @@ defineExpose({
             />
           </div>
 
-          <!-- 海运进口没有订舱代理，隐藏该控件 -->
-          <div v-if="false" class="form-item">
-            <span class="label">订舱代理:</span>
-            <ClientSelect
-              v-model="searchForm.bookingAgentId"
-              placeholder="请选择订舱代理"
-              style="width: 200px"
-              allow-clear
-            />
-          </div>
-
           <div class="form-item">
-            <span class="label">{{ $t('seaImport.import.polId') }}:</span>
+            <span class="label">{{ $t('seaExport.export.polId') }}:</span>
+            <!-- 根据 bizType 切换港口选择器数据源 -->
             <PortSelect
+              v-if="currentBizType !== 2"
               v-model="searchForm.polId"
               placeholder="请选择起运港"
               style="width: 200px"
               allow-clear
               label-key="portName"
             />
+            <!-- 空运出口使用空港选择器 (假设存在 AirPortSelect 或 PortSelect 支持 type) -->
+            <!-- 由于目前 PortSelect 可能只支持海港，这里暂时复用，实际需根据项目组件情况调整 -->
+            <PortSelect
+              v-else
+              v-model="searchForm.polId"
+              placeholder="请选择起运空港"
+              style="width: 200px"
+              allow-clear
+              label-key="iataCode"
+            />
           </div>
 
           <div class="form-item">
-            <span class="label">{{ $t('seaImport.import.podId') }}:</span>
+            <span class="label">{{ $t('seaExport.export.podId') }}:</span>
             <PortSelect
+              v-if="currentBizType !== 2"
               v-model="searchForm.podId"
               placeholder="请选择目的港"
               style="width: 200px"
               allow-clear
               label-key="portName"
+            />
+            <PortSelect
+              v-else
+              v-model="searchForm.podId"
+              placeholder="请选择目的空港"
+              style="width: 200px"
+              allow-clear
+              label-key="iataCode"
             />
           </div>
 
@@ -411,25 +432,31 @@ defineExpose({
             </template>
             <template v-else-if="column.key === 'polPod'">
               <!-- 根据 bizType 读取不同字段 -->
-              <template v-if="record.transportOrder?.bizType === 1">
+              <template v-if="record.transportOrder?.bizType === 0">
+                {{ record.transportOrder.seaExport?.pol?.cnName }} -
+                {{ record.transportOrder.seaExport?.pod?.cnName }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 1">
                 {{ record.transportOrder.seaImport?.pol?.cnName }} -
                 {{ record.transportOrder.seaImport?.pod?.cnName }}
               </template>
+              <template v-else-if="record.transportOrder?.bizType === 2">
+                {{ record.transportOrder.airExport?.pol?.iataCode }} -
+                {{ record.transportOrder.airExport?.pod?.iataCode }}
+              </template>
             </template>
             <template v-else-if="column.key === 'vesselVoyno'">
-              <template v-if="record.transportOrder?.bizType === 1">
+              <template v-if="record.transportOrder?.bizType === 0">
+                {{ record.transportOrder.seaExport?.vessel }}
+                {{ record.transportOrder.seaExport?.innerVoyno }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 1">
                 {{ record.transportOrder.seaImport?.vessel }}
                 {{ record.transportOrder.seaImport?.innerVoyno }}
               </template>
-            </template>
-            <template v-else-if="column.key === 'statementNum'">
-              <template
-                v-if="!record.statements || record.statements.length === 0"
-                >--</template
-              >
-              <template v-else>{{
-                record.statements.map((s) => s.statementNum).join(', ')
-              }}</template>
+              <template v-else-if="record.transportOrder?.bizType === 2">
+                {{ record.transportOrder.airExport?.flightNo }}
+              </template>
             </template>
           </template>
         </Table>
@@ -437,40 +464,30 @@ defineExpose({
 
       <!-- 费用列表 -->
       <div v-if="selectedTransportOrder" class="fee-section">
-        <div class="fee-header">
-          <h3 class="section-title">
-            费用列表
-            <span
-              class="mbl-info"
-              v-if="selectedTransportOrder.transportOrder?.mblNum"
-            >
-              - 主提单号: {{ selectedTransportOrder.transportOrder.mblNum }}
-            </span>
-          </h3>
-          <div>选中费用 ({{ selectedFeeIds.length }})</div>
-        </div>
+        <h3>费用明细 ({{ selectedTransportOrder.orderFees?.length || 0 }})</h3>
         <Table
           :data-source="selectedTransportOrder.orderFees"
+          :columns="feeColumns"
           :row-selection="{
             selectedRowKeys: selectedFeeIds,
             onChange: handleFeeSelectionChange,
           }"
-          :columns="feeColumns"
           :pagination="false"
-          :scroll="{ y: 350 }"
+          :scroll="{ y: 300 }"
           row-key="id"
-        />
+        >
+          <!-- 费用列渲染逻辑保持不变，因为 orderFees 结构未变 -->
+        </Table>
       </div>
     </div>
   </modal>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .batch-import-container {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  // max-height: 900px;
   padding: 4px;
   overflow-y: auto;
 }
@@ -515,7 +532,7 @@ defineExpose({
   }
 }
 
-.sea-import-section,
+.sea-export-section,
 .fee-section {
   .section-title {
     padding-left: 12px;
@@ -560,14 +577,14 @@ defineExpose({
   }
 }
 
-.selected-row {
+:deep(.selected-row) {
   cursor: pointer;
-  background-color: #e6f7ff;
+  background-color: #e6f7ff !important;
   transition: all 0.3s ease;
-}
 
-.selected-row:hover {
-  background-color: #bae7ff;
+  &:hover {
+    background-color: #bae7ff !important;
+  }
 }
 
 :deep(.selected-fee-row) {
@@ -609,7 +626,6 @@ defineExpose({
     border-bottom: 1px solid #f0f0f0;
   }
 
-  // 小尺寸表格的行高优化
   &.ant-table-small {
     .ant-table-thead > tr > th {
       padding: 6px 8px !important;
@@ -628,7 +644,6 @@ defineExpose({
     }
   }
 
-  // 复选框列样式优化
   .ant-table-selection-column {
     width: 50px !important;
     min-width: 50px !important;
