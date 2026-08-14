@@ -253,6 +253,10 @@ export namespace PreOrderAdminApi {
     codePackageId?: number | null;
     kgs?: number | null;
     cbm?: number | null;
+    /** 销售昵称集合（列表/详情由 PreOrderUser 汇总，无销售时为空数组） */
+    saleNames?: string[];
+    /** 操作昵称集合（列表/详情由 PreOrderUser 汇总，审核通过前可能为空） */
+    operatorNames?: string[];
     creatorUserName?: string | null;
     creationTime?: string | null;
     creatorUserId?: number | null;
@@ -392,7 +396,13 @@ export namespace PreOrderAdminApi {
     PODId?: number;
     ETDStart?: string;
     ETDEnd?: string;
-    CreatorUserId?: number;
+    CreatorUserId?: number | string;
+    /** 销售用户 id 集合（多选，命中任一即可；匹配 PreOrderUser.UserId） */
+    SaleIds?: Array<number | string>;
+    /** 操作用户 id 集合（多选，命中任一即可；匹配 PreOrderUser.UserId） */
+    OperatorIds?: Array<number | string>;
+    /** 备注模糊匹配 */
+    Remark?: string;
     OrgId?: number;
     /** 仅返回船公司未填写记录（与 CarrierId 互斥） */
     CarrierIdEmpty?: boolean;

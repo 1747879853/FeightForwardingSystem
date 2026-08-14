@@ -116,13 +116,21 @@ const grouping = useListGrouping({
   },
 });
 
+const normalizeMultiIds = (value: unknown) =>
+  Array.isArray(value) && value.length > 0 ? value : undefined;
+
 const normalizeQuery = (formValues: Record<string, unknown>) => {
   const range = Array.isArray(formValues.ETDRange) ? formValues.ETDRange : [];
+  const remark =
+    typeof formValues.Remark === 'string' ? formValues.Remark.trim() : '';
   const baseParams = {
     ...formValues,
     ETDStart: toIsoString(range[0]),
     ETDEnd: toIsoString(range[1]),
     ETDRange: undefined,
+    SaleIds: normalizeMultiIds(formValues.SaleIds),
+    OperatorIds: normalizeMultiIds(formValues.OperatorIds),
+    Remark: remark || undefined,
   };
   return grouping.decorateListParams(baseParams);
 };

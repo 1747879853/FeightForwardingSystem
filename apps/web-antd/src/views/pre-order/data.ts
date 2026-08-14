@@ -1,6 +1,9 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
-import { PreOrderStatus } from '#/api/pre-order/pre-order-admin';
+import {
+  PreOrderAdminApi,
+  PreOrderStatus,
+} from '#/api/pre-order/pre-order-admin';
 import { createClientSelectSchema } from '#/views/client/base/data';
 
 /** 列配置持久化 key */
@@ -74,9 +77,42 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'UserSelect',
+      fieldName: 'SaleIds',
+      label: '销售',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        mode: 'multiple',
+        maxTagCount: 2,
+        userAttribute: PreOrderAdminApi.UserAttribute.Sale,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'OperatorIds',
+      label: '操作',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        mode: 'multiple',
+        maxTagCount: 2,
+        userAttribute: PreOrderAdminApi.UserAttribute.Operation,
+      },
+    },
+    {
+      component: 'UserSelect',
       fieldName: 'CreatorUserId',
       label: '创建人',
       componentProps: { allowClear: true, class: 'w-full' },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Remark',
+      label: '备注',
+      componentProps: {
+        placeholder: '备注关键字',
+        allowClear: true,
+      },
     },
   ];
 }
@@ -136,6 +172,28 @@ export function buildColumns(): Array<Record<string, any>> {
       title: '货好时间',
       minWidth: 120,
       formatter: 'formatDate',
+    },
+    {
+      field: 'saleNames',
+      title: '销售',
+      minWidth: 100,
+      showOverflow: true,
+      formatter: ({ cellValue }) =>
+        Array.isArray(cellValue) ? cellValue.join('、') : (cellValue ?? ''),
+    },
+    {
+      field: 'operatorNames',
+      title: '操作',
+      minWidth: 100,
+      showOverflow: true,
+      formatter: ({ cellValue }) =>
+        Array.isArray(cellValue) ? cellValue.join('、') : (cellValue ?? ''),
+    },
+    {
+      field: 'remark',
+      title: '备注',
+      minWidth: 160,
+      showOverflow: true,
     },
     { field: 'creatorUserName', title: '创建人', minWidth: 100 },
     {

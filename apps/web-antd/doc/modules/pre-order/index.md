@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-12
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,7 +11,8 @@ last_updated: 2026-08-12
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **检索：** 支持关键字（业务编号 / 主提单号）、状态、委托单位、起运港、目的港、开船日期区间、创建人。搜索表单默认收起，改动即查询。
+- **检索：** 支持关键字（业务编号 / 主提单号）、状态、委托单位、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
+- **列表列：** 除业务主字段外，展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。
 - **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
@@ -37,6 +38,8 @@ last_updated: 2026-08-12
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
 | **起运港 / 目的港** | 航段两端 | **港口**<br/>`PortSelect` | 起运港决定服务项候选池；可作为分组维度 | 筛选项非必填 |
 | **开船日期** | ETD | `ETDStart` / `ETDEnd` | 前端把区间拆成两个 ISO 时间参数 | 筛选项非必填 |
+| **销售 / 操作** | 干系人昵称 | 列表字段 `saleNames`/`operatorNames`；筛选 `SaleIds`/`OperatorIds`（用户 id，多选命中任一） | 下拉 `UserSelect` 分别带 `userAttribute=Sale/Operation`；销售与操作条件之间为 AND | 筛选项非必填；无干系人时列为空 |
+| **备注** | 主表备注 | 列表字段 `remark`；筛选 `Remark` 模糊匹配 | 空串不传参 | 筛选项非必填 |
 | **分组字段（GroupField）** | 分组统计维度 | `GetGroupedListAsync` 入参；`PreOrderGroupField`：3 委托单位 / 4 船公司 / 5 起运港 / 6 目的港 / 11 业务类型 | 启用后对应搜索项禁用；点击 Tab 追加 `paramKey` | 同时只能启用一个 |
 | **未填写筛选（\*Empty）** | 仅返回某可空字段为空的记录 | `CarrierIdEmpty` / `POLIdEmpty` / `PODIdEmpty` | 点击 id 为 null 的「未填写」分组项时追加 | 与同名 id 参数互斥 |
 
@@ -52,6 +55,7 @@ last_updated: 2026-08-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Fix` | 列表增加销售/操作/备注列，并支持按销售、操作、备注筛选（TAPD #1000794） | 对齐后端 `saleNames`/`operatorNames` 与 `SaleIds`/`OperatorIds`/`Remark`；筛选交互参考结算拉费用弹窗。详见 `changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md` |
 | 2026-08-12 | `Fix` | 列表委托单位筛选补齐 `industryCategory: 'p'` | 与新建页、海出列表对齐；空类别时通用客户接口不下发。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-02 | `Feature` | 侧边栏从「操作管理」子项提升为一级菜单「业务联系单」 | 路由迁至独立模块 `router/routes/modules/pre-order.ts`，`order: 194`、`hideChildrenInMenu: true`；页面 path 不变 |
 | 2026-07-31 | `Feature` | 列表接入分组统计：委托单位/船公司/起运港/目的港/业务类型；船公司 Tab 可展示 Logo | 复用 `#/components/list-grouping`，对接 `GetGroupedListAsync`；持久化 `group_config_PreOrderList` |
