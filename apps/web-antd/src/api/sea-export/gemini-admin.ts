@@ -55,19 +55,25 @@ export interface GeminiSeFreiPriceDto {
 
 /**
  * Gemini AI识别运价（批量新建）
- * 上传运价报价文件（PDF/图片/Excel等），调用gemini-3.5-flash模型识别运价数据
- * @param file 运价报价文件（支持 pdf/png/jpg/jpeg/webp/heic/heif/gif/bmp/txt/xlsx/xls）
+ * 上传运价报价文件或直接传入报价文字，调用gemini-3.5-flash模型识别运价数据
+ * @param file 运价报价文件（支持 pdf/png/jpg/jpeg/webp/heic/heif/gif/bmp/txt/xlsx/xls），可选
+ * @param text 待解析的报价文字内容，可选。与 file 二选一，传了 text 则忽略 file
  * @returns AI识别的运价列表
  */
-export function extractSeFreiPriceByGemini(file: File) {
+export function extractSeFreiPriceByGemini(file?: File, text?: string) {
   const formData = new FormData();
-  formData.append('file', file);
+  if (text) {
+    formData.append('text', text);
+  }
+  if (file) {
+    formData.append('file', file);
+  }
 
   return requestClient.post<GeminiSeFreiPriceDto[]>(
     '/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync',
     formData,
     {
-      timeout: 100_000,
+      timeout: 180_000, // 后端超时 180 秒
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -128,6 +134,7 @@ export function extractBillData(file: File) {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 180_000, // 增加超时时间以匹配后端配置
     },
   );
 }
@@ -150,7 +157,7 @@ export function extractBillDataBy31FlashLite(file: File) {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 120000, // ✅ 单独这个接口 2 分钟
+      timeout: 180_000, // 统一超时时间
     },
   );
 }

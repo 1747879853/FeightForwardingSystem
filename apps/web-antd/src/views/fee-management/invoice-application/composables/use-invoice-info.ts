@@ -1,7 +1,10 @@
 import { message } from 'ant-design-vue';
 import type { Ref } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
+import {
+  getClientInvoiceInfoList,
+  type ClientInvoiceInfoAdminApi,
+} from '#/api/sea-export/clinet-invoice-admin';
 
 /**
  * 发票信息相关逻辑（客户、银行、税率等）
@@ -28,7 +31,10 @@ export function useInvoiceInfo(
       console.log('✅ 客户开票信息加载成功，数量:', list.length);
 
       // ✅ 修改：如果已有选中的开票信息，保持不变；否则选择默认或第一项
-      if (!selectedClientInvoiceInfo.value || !selectedClientInvoiceInfo.value.id) {
+      if (
+        !selectedClientInvoiceInfo.value ||
+        !selectedClientInvoiceInfo.value.id
+      ) {
         // 选择默认的开票信息，如果没有默认则选择第一项
         const defaultInfo = list.find((item) => item.isDefault);
         selectedClientInvoiceInfo.value =
@@ -38,12 +44,17 @@ export function useInvoiceInfo(
           id: selectedClientInvoiceInfo.value?.id,
           header: selectedClientInvoiceInfo.value?.header,
           isDefault: selectedClientInvoiceInfo.value?.isDefault,
-          banks: selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
+          banks:
+            selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
         });
-        
+
         // ✅ 新增：自动填充客户开票要求（仅当开票要求字段为空时）
-        if (selectedClientInvoiceInfo.value && (!formData.value.require || formData.value.require.trim() === '')) {
-          formData.value.require = selectedClientInvoiceInfo.value.require || '';
+        if (
+          selectedClientInvoiceInfo.value &&
+          (!formData.value.require || formData.value.require.trim() === '')
+        ) {
+          formData.value.require =
+            selectedClientInvoiceInfo.value.require || '';
         }
       } else {
         console.log('📋 保持已选中的客户开票信息:', {
@@ -53,25 +64,35 @@ export function useInvoiceInfo(
       }
 
       // ✅ 修改：如果购买方名称（header）未赋值，自动使用选中的开票信息
-      if (!formData.value.clientInvoiceBankId && selectedClientInvoiceInfo.value) {
+      if (
+        !formData.value.clientInvoiceBankId &&
+        selectedClientInvoiceInfo.value
+      ) {
         // 根据币别选择银行
         console.log(
           '🔄 准备根据币别更新客户银行, currencyId:',
           formData.value.currencyId,
         );
         updateClientBankByCurrency();
-        
+
         // ✅ 新增：如果银行ID仍未赋值且有可用银行，自动选择第一个匹配的银行
-        if (!formData.value.clientInvoiceBankId && filteredClientBanks.value.length > 0) {
-          formData.value.clientInvoiceBankId = filteredClientBanks.value[0].value;
+        if (
+          !formData.value.clientInvoiceBankId &&
+          filteredClientBanks.value.length > 0
+        ) {
+          formData.value.clientInvoiceBankId =
+            filteredClientBanks.value[0].value;
           console.log('✅ 自动选择第一个客户银行:', {
             id: formData.value.clientInvoiceBankId,
             bankName: filteredClientBanks.value[0].bankName,
             bankAccount: filteredClientBanks.value[0].bankAccount,
           });
         }
-        
-        console.log('✅ 客户银行ID已设置为:', formData.value.clientInvoiceBankId);
+
+        console.log(
+          '✅ 客户银行ID已设置为:',
+          formData.value.clientInvoiceBankId,
+        );
       }
     } catch (error) {
       console.error('❌ 加载客户开票信息失败:', error);
@@ -130,7 +151,7 @@ export function useInvoiceInfo(
       const firstMatchedBank = orgBankAccounts.value.find(
         (b: any) => b.currencyId === currencyId,
       );
-      
+
       if (firstMatchedBank) {
         formData.value.orgBankAccountId = firstMatchedBank.id;
         console.log('✅ 自动选择第一个销售方银行:', {
@@ -147,6 +168,51 @@ export function useInvoiceInfo(
   }
 
   /**
+   * 处理新组件的选择变化（带搜索和快捷录入）
+   */
+  function handleClientInvoiceInfoChange(
+    value: string,
+    info: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null,
+  ) {
+    if (!value || !info) {
+      selectedClientInvoiceInfo.value = undefined;
+      formData.value.clientInvoiceBankId = '';
+      return;
+    }
+
+    console.log('✅ 新组件选中开票信息:', {
+      id: info.id,
+      header: info.header,
+      taxNum: info.taxNum,
+    });
+
+    selectedClientInvoiceInfo.value = info;
+
+    // 自动填充开票要求（仅当为空时）
+    if (
+      info.require &&
+      (!formData.value.require || formData.value.require.trim() === '')
+    ) {
+      formData.value.require = info.require;
+    }
+
+    // 根据币别选择银行
+    updateClientBankByCurrency();
+
+    // 如果银行ID仍未赋值且有可用银行，自动选择第一个匹配的银行
+    if (
+      !formData.value.clientInvoiceBankId &&
+      filteredClientBanks.value.length > 0
+    ) {
+      formData.value.clientInvoiceBankId = filteredClientBanks.value[0].value;
+      console.log('✅ 自动选择第一个客户银行:', {
+        id: formData.value.clientInvoiceBankId,
+        bankName: filteredClientBanks.value[0].bankName,
+      });
+    }
+  }
+
+  /**
    * 处理发票抬头变化
    */
   function handleClientInvoiceHeaderChange(headerId: any) {
@@ -159,7 +225,7 @@ export function useInvoiceInfo(
     if (selectedInfo) {
       selectedClientInvoiceInfo.value = selectedInfo;
       updateClientBankByCurrency();
-      
+
       // ✅ 新增：自动填充客户开票要求（仅当开票要求字段为空时）
       if (!formData.value.require || formData.value.require.trim() === '') {
         formData.value.require = selectedInfo.require || '';
@@ -245,6 +311,7 @@ export function useInvoiceInfo(
     loadClientInvoiceInfo,
     updateClientBankByCurrency,
     updateOrgBankByCurrency,
+    handleClientInvoiceInfoChange,
     handleClientInvoiceHeaderChange,
     handleClientBankChange,
     filteredClientBanks,
