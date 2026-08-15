@@ -81,12 +81,12 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       minWidth: 180,
       fixed: 'left',
     },
-    {
-      field: 'status',
-      title: '结算状态',
-      width: 100,
-      slots: { default: 'status' },
-    },
+    // {
+    //   field: 'status',
+    //   title: '结算状态',
+    //   width: 100,
+    //   slots: { default: 'status' },
+    // },
     {
       field: 'settlementTime',
       title: '结算时间',
@@ -115,6 +115,7 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       field: 'currencyCode',
       title: '结算币别',
       width: 100,
+      formatter: ({ row }) => row.currency?.code || '-',
     },
     {
       field: 'totalSettledPrice',

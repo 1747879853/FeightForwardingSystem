@@ -358,6 +358,39 @@ const [Modal, modalApi] = useVbenModal({
       if (data.id) {
         editId.value = data.id;
         isEdit.value = true;
+
+        // 先根据 settlementType 更新字段显示状态
+        if (data.settlementType === 1) {
+          paymentFormApi.updateSchema([
+            { fieldName: 'months', hide: false },
+            { fieldName: 'settlementDay', hide: false },
+            { fieldName: 'days', hide: true },
+          ]);
+        } else if (data.settlementType === 2) {
+          paymentFormApi.updateSchema([
+            { fieldName: 'months', hide: true },
+            { fieldName: 'settlementDay', hide: true },
+            { fieldName: 'days', hide: false },
+          ]);
+        } else {
+          paymentFormApi.updateSchema([
+            { fieldName: 'months', hide: true },
+            { fieldName: 'settlementDay', hide: true },
+            { fieldName: 'days', hide: true },
+          ]);
+        }
+
+        // 处理 permanent 字段对 expiringTime 的影响
+        if (data.permanent) {
+          paymentFormApi.updateSchema([
+            { fieldName: 'expiringTime', disabled: true },
+          ]);
+        } else {
+          paymentFormApi.updateSchema([
+            { fieldName: 'expiringTime', disabled: false },
+          ]);
+        }
+
         const formData = {
           contractNo: data.contractNo,
           dateType: data.dateType ?? 0,

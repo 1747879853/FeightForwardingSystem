@@ -285,9 +285,13 @@ const columns = [
                   <span class="text-gray-600">邮箱：</span>
                   <span>{{ selectedCompanyDetail.email || '-' }}</span>
                 </div>
-                <div class="col-span-2">
+                <div>
                   <span class="text-gray-600">官网：</span>
                   <span>{{ selectedCompanyDetail.website || '-' }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-600">英文名：</span>
+                  <span>{{ selectedCompanyDetail.raw?.entNameEn || '-' }}</span>
                 </div>
               </div>
             </div>

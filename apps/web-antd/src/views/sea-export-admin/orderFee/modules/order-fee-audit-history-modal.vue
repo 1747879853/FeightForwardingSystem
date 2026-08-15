@@ -51,27 +51,16 @@ watch(isOpen, (isOpenValue) => {
     console.log('所有审核任务数量:', allTasks.length);
     console.log('所有审核任务详情:', allTasks);
 
-    // 过滤出有审核时间的记录（即已完成的审核操作）
-    const auditedTasks = allTasks.filter((task) => {
-      const hasAuditTime = !!task.auditTime;
-      const statusText =
-        task.taskStatus === 2
-          ? '通过'
-          : task.taskStatus === 1
-            ? '驳回'
-            : '其他';
-      console.log(
-        `任务审核信息 - 状态: ${statusText}, 审核人: ${task.auditUserName}, 时间: ${task.auditTime}`,
-      );
-      return hasAuditTime;
-    });
+    // 不再过滤，显示所有任务（包括待审核、已通过、已驳回）
+    // 这样用户在未审核完成之前也能查看本次申请修改的原值及修改值
+    const displayTasks = allTasks;
 
-    console.log('有审核时间的任务数量:', auditedTasks.length);
+    console.log('显示的任务数量:', displayTasks.length);
 
-    // 按审核时间倒序排列（最新的在前）
-    auditTasks.value = auditedTasks.sort((a, b) => {
-      const timeA = dayjs(a.auditTime).valueOf();
-      const timeB = dayjs(b.auditTime).valueOf();
+    // 按审核时间倒序排列（最新的在前），没有审核时间的排在最后
+    auditTasks.value = displayTasks.sort((a, b) => {
+      const timeA = a.auditTime ? dayjs(a.auditTime).valueOf() : 0;
+      const timeB = b.auditTime ? dayjs(b.auditTime).valueOf() : 0;
       return timeB - timeA;
     });
 
@@ -473,35 +462,58 @@ defineExpose({
               <div class="remark-content">{{ task.remark }}</div>
             </div>
 
-            <!-- 第四行：修改记录表格（仅费用修改类型显示） -->
+            <!-- 第四行：修改记录对比（仅费用修改类型显示） -->
             <div
               v-if="task.taskType === 1 && task.originalInfo && task.info"
               class="modify-record-section"
             >
-              <div class="modify-record-title">
-                <i class="i-carbon-compare" />
-                {{ $t('auditApproval.task.originalInfo') }} vs
-                {{ $t('auditApproval.task.info') }}
+              <!-- 标题区域 -->
+              <div class="modify-record-header">
+                <div class="header-left">
+                  <i class="i-carbon-compare header-icon" />
+                  <span class="header-title">费用修改详情</span>
+                </div>
+                <div class="header-badges">
+                  <span class="badge badge-before">
+                    <i class="i-carbon-arrow-left" />
+                    修改前
+                  </span>
+                  <i class="i-carbon-arrow-right arrow-icon" />
+                  <span class="badge badge-after">
+                    修改后
+                    <i class="i-carbon-arrow-right" />
+                  </span>
+                </div>
               </div>
-              <Table
-                :columns="getModifyColumns()"
-                :data-source="
-                  parseAndCompareFields(task.originalInfo, task.info)
-                "
-                :pagination="false"
-                size="small"
-                bordered
-                class="modify-record-table"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'before'">
-                    <span class="before-value">{{ record.before }}</span>
+
+              <!-- 对比表格 -->
+              <div class="table-wrapper">
+                <Table
+                  :columns="getModifyColumns()"
+                  :data-source="
+                    parseAndCompareFields(task.originalInfo, task.info)
+                  "
+                  :pagination="false"
+                  size="middle"
+                  bordered
+                  class="modify-record-table"
+                >
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.key === 'before'">
+                      <div class="cell-before">
+                        <i class="i-carbon-subtract cell-icon" />
+                        <span class="cell-value">{{ record.before }}</span>
+                      </div>
+                    </template>
+                    <template v-else-if="column.key === 'after'">
+                      <div class="cell-after">
+                        <i class="i-carbon-add cell-icon" />
+                        <span class="cell-value">{{ record.after }}</span>
+                      </div>
+                    </template>
                   </template>
-                  <template v-else-if="column.key === 'after'">
-                    <span class="after-value">{{ record.after }}</span>
-                  </template>
-                </template>
-              </Table>
+                </Table>
+              </div>
             </div>
           </div>
         </TimelineItem>
@@ -511,6 +523,29 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
+// 动画效果
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes slide-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(3px);
+  }
+}
+
 .audit-history-container {
   max-height: 600px;
   padding: 16px 10px;
@@ -636,46 +671,161 @@ defineExpose({
 }
 
 .modify-record-section {
-  padding: 12px;
-  margin-top: 8px;
-  background-color: #f5f5f5;
+  margin-top: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
   border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
 
-.modify-record-title {
+.modify-record-header {
   display: flex;
-  gap: 6px;
   align-items: center;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #595959;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-bottom: 2px solid #bae7ff;
 
-  i {
-    font-size: 16px;
-    color: #1890ff;
+  .header-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .header-icon {
+      font-size: 18px;
+      color: #1890ff;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #262626;
+      letter-spacing: 0.5px;
+    }
   }
+
+  .header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .badge {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+      transition: all 0.3s ease;
+
+      &:hover {
+        box-shadow: 0 3px 6px rgb(0 0 0 / 15%);
+        transform: translateY(-1px);
+      }
+
+      &.badge-before {
+        background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
+
+        i {
+          font-size: 12px;
+        }
+      }
+
+      &.badge-after {
+        background: linear-gradient(135deg, #73d13d 0%, #52c41a 100%);
+
+        i {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .arrow-icon {
+      font-size: 16px;
+      color: #1890ff;
+      animation: slide-right 1.5s ease-in-out infinite;
+    }
+  }
+}
+
+.table-wrapper {
+  width: 100%;
+  padding: 12px;
+  background-color: #fff;
 }
 
 .modify-record-table {
   :deep(.ant-table) {
-    font-size: 12px;
+    font-size: 13px;
+    border-radius: 6px;
   }
 
   :deep(.ant-table-thead > tr > th) {
-    font-weight: 600;
-    background-color: #fafafa;
+    padding: 12px 8px;
+    font-weight: 700;
+    color: #262626;
+    background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+    border-bottom: 2px solid #d9d9d9;
   }
 
-  .before-value {
-    color: #ff4d4f;
-    text-decoration: line-through;
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 10px 8px;
+    transition: all 0.3s ease;
   }
 
-  .after-value {
-    font-weight: 500;
-    color: #52c41a;
+  :deep(.ant-table-tbody > tr:hover > td) {
+    background-color: #f5f5f5;
+  }
+
+  .cell-before {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+    border-left: 3px solid #ff4d4f;
+    border-radius: 4px;
+
+    .cell-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+      color: #ff4d4f;
+    }
+
+    .cell-value {
+      font-size: 13px;
+      font-weight: 500;
+      color: #cf1322;
+      word-break: break-all;
+    }
+  }
+
+  .cell-after {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+    border-left: 3px solid #52c41a;
+    border-radius: 4px;
+
+    .cell-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+      color: #52c41a;
+    }
+
+    .cell-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #389e0d;
+      word-break: break-all;
+    }
   }
 }
 </style>

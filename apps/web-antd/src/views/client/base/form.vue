@@ -373,9 +373,12 @@ const handleRiskbirdImport = async (
     }
 
     // 7. 英文名称 -> enName
-    if (detail.enName || detail.enterpriseNameEng) {
-      updateData.enName = detail.enName || detail.enterpriseNameEng;
-      console.log('导入英文名称:', detail.enName || detail.enterpriseNameEng);
+    if (detail.raw?.entNameEn || detail.enterpriseNameEng) {
+      updateData.enName = detail.raw?.entNameEn || detail.enterpriseNameEng;
+      console.log(
+        '导入英文名称:',
+        detail.raw?.entNameEn || detail.enterpriseNameEng,
+      );
     }
 
     // 8. 电话 -> phone（新字段：phone）
@@ -822,11 +825,16 @@ const handleSubmit = async () => {
     let businessValid = true;
     let clientValid = true;
     let supplierValid = true;
+    let baseValidationError = null;
+    let businessValidationError = null;
+    let clientValidationError = null;
+    let supplierValidationError = null;
 
     try {
       await baseFormApi.validate();
     } catch (error) {
       baseValid = false;
+      baseValidationError = error;
       console.warn('基础表单验证失败:', error);
     }
 
@@ -834,6 +842,7 @@ const handleSubmit = async () => {
       await businessFormApi.validate();
     } catch (error) {
       businessValid = false;
+      businessValidationError = error;
       console.warn('业务表单验证失败:', error);
     }
 
@@ -842,6 +851,7 @@ const handleSubmit = async () => {
         await clientFormApi.validate();
       } catch (error) {
         clientValid = false;
+        clientValidationError = error;
         console.warn('客户表单验证失败:', error);
       }
     }
@@ -851,11 +861,41 @@ const handleSubmit = async () => {
         await supplierFormApi.validate();
       } catch (error) {
         supplierValid = false;
+        supplierValidationError = error;
         console.warn('供应商表单验证失败:', error);
       }
     }
 
-    if (!baseValid || !businessValid) {
+    // 【新增】如果基础表单验证失败，获取具体字段并弹窗提示
+    if (!baseValid) {
+      const baseValues = await baseFormApi.getValues();
+      const missingFields = [];
+
+      if (!baseValues.name || baseValues.name.trim() === '') {
+        missingFields.push('客户简称');
+      }
+      if (!baseValues.fullName || baseValues.fullName.trim() === '') {
+        missingFields.push('客户全称');
+      }
+      if (!baseValues.code || baseValues.code.trim() === '') {
+        missingFields.push('客户代码');
+      }
+
+      if (missingFields.length > 0) {
+        Modal.warning({
+          title: '提示',
+          content: `请填写以下必填字段：${missingFields.join('、')}`,
+          okText: '确定',
+        });
+        return;
+      }
+
+      // 如果是其他字段验证失败，给出通用提示
+      message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+      return;
+    }
+
+    if (!businessValid) {
       message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
       return;
     }
@@ -884,6 +924,38 @@ const handleSubmit = async () => {
         return;
       }
       console.log('✅ 客户性质已选择:', clientValuesCheck.clientType);
+    }
+
+    // 【新增】校验客户属性和供应商属性的必填规则
+    // 规则1：勾选【客户类型】→ 必须至少勾选 1 项客户属性才允许保存
+    // 规则2：勾选【供应商类型】→ 必须至少勾选 1 项供应商属性才允许保存
+    // 规则3：若客户、供应商两类同时勾选，则客户属性、供应商属性两边都至少要选一项，才可保存
+
+    const hasCustomerType = isClient.value;
+    const hasSupplierType = isSupplier.value;
+    const hasCustomerAttributes =
+      customerType.value && customerType.value.length > 0;
+    const hasSupplierAttributes =
+      supplierType.value && supplierType.value.length > 0;
+
+    // 如果勾选了客户类型，但未选择任何客户属性
+    if (hasCustomerType && !hasCustomerAttributes) {
+      Modal.warning({
+        title: '提示',
+        content: '已勾选客户类型，请至少选择一项客户属性（行业类别）',
+        okText: '确定',
+      });
+      return;
+    }
+
+    // 如果勾选了供应商类型，但未选择任何供应商属性
+    if (hasSupplierType && !hasSupplierAttributes) {
+      Modal.warning({
+        title: '提示',
+        content: '已勾选供应商类型，请至少选择一项供应商属性（行业类别）',
+        okText: '确定',
+      });
+      return;
     }
 
     // 如果是供应商类型，校验供应商表单
@@ -1096,11 +1168,11 @@ const handleSubmit = async () => {
       // 新增模式提交数据
       const addData: ClientAdminApi.ClientAddDto = {
         // 基本信息
-        name: baseValues.name.trim(),
+        name: baseValues.name,
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName.trim(),
+        fullName: baseValues.fullName,
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
