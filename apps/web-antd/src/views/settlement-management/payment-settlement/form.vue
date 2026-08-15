@@ -654,8 +654,9 @@ async function loadEditData() {
 
     attachments.value = (detail.attachments ?? []).map((a: any) => ({
       attachmentId: a.attachmentId,
-      url: a.attachmentPath || '',
-      fileName: a.friendlyFileName || '',
+      url: a.url || a.attachmentPath || '',
+      fileName: a.friendlyFileName || a.attachmentName || '',
+      friendlyFileName: a.friendlyFileName || a.attachmentName || '',
     }));
 
     console.log('✅ 附件加载完成');
@@ -809,13 +810,6 @@ async function loadClientBankOptions() {
     console.error('加载结算银行选项失败:', error);
   }
 }
-
-
-
-
-
-
-
 
 /** 监听结算对象变化，更新名称并清空银行信息 */
 watch(settlementId, async (newVal) => {
@@ -1204,8 +1198,7 @@ onMounted(() => {
                   :precision="2"
                   style="flex: 1"
                 />
-                <span
-                  style="font-size: 12px; color: #999; white-space: nowrap"
+                <span style="font-size: 12px; color: #999; white-space: nowrap"
                   >RMB</span
                 >
               </div>
