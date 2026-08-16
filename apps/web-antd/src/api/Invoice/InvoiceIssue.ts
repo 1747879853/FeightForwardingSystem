@@ -235,12 +235,122 @@ export namespace InvoiceIssueApi {
     orgBankAccount: OrgBankAccountSimpleDto;
     /** 发票汇率 */
     invoiceExchangeRate?: number;
+
+    // ========== 接口开票组 ==========
+    /** 诺诺开票状态 */
+    issueStatus?: number;
+    /** 提交给诺诺的订单号 */
+    issueOrderNo?: string;
+    /** 诺诺发票流水号 */
+    issueSerialNum?: string;
+    /** 提交开票请求的时间 */
+    issueRequestTime?: string;
+    /** 开票失败原因 */
+    issueFailCause?: string;
+    /** 发票代码。电票为空，只有纸票有值 */
+    invoiceCode?: string;
+
+    // ========== 冲红组 ==========
+    /** 红冲状态 */
+    redStatus?: number;
+    /** 是否只能查询（冲红中或已冲红） */
+    redLocked?: boolean;
+    /** ✅ 编辑锁定：为 true 时，只能查询，禁止编辑、删除等操作 */
+    editLocked?: boolean;
+    /** 冲红原因 */
+    redReason?: number;
+    /** 红字确认单申请号 */
+    redBillId?: string;
+    /** 红字确认单编号 */
+    redBillNo?: string;
+    /** 红字确认单uuid（内部标识，一般不展示） */
+    redBillUuid?: string;
+    /** 红票订单号 */
+    redOrderNo?: string;
+    /** 红票开票流水号 */
+    redSerialNum?: string;
+    /** 红票发票号码 */
+    redInvoiceNo?: string;
+    /** 红票发票代码（纸票才有） */
+    redInvoiceCode?: string;
+    /** 红票开票时间 */
+    redInvoiceTime?: string;
+    /** 发起冲红申请的时间 */
+    redApplyTime?: string;
+    /** 发起冲红申请的人 */
+    redApplyUserId?: number;
+    /** 发起冲红申请的人昵称 */
+    redApplyUserName?: string;
+    /** 冲红失败/确认单作废原因 */
+    redFailCause?: string;
+
+    // ========== 附件 ==========
+    /** 发票版式文件附件 */
+    attachments?: AttachmentItemDto[];
+
     /** 关联开票申请明细 */
     invoiceIssueItems: InvoiceIssueItemDto[];
     /** 发票开出商品明细 */
     invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlDto[];
     /** ✅ 对应的开票申请列表（字段与 GetSubmittedApplicationListAsync 出参完全相同） */
     invoiceIssueApplications?: InvoiceIssueApplicationDto[] | null;
+  }
+
+  /** 附件项DTO */
+  export interface AttachmentItemDto {
+    url: string;
+    friendlyFileName: string;
+    mediaType?: string;
+    [key: string]: any;
+  }
+
+  /** 调用诺诺开票入参 */
+  export interface InvoiceIssueIdInputDto {
+    id: string;
+  }
+
+  /** 调用诺诺开票出参 / 查询开票结果出参 */
+  export interface InvoiceIssueStateDto {
+    id: string;
+    /** 开票方式。**本接口成功后恒为 `0`（接口开票）** */
+    invoiceIssueType?: number;
+    issueStatus: number;
+    isFinal: boolean;
+    issueOrderNo?: string;
+    issueSerialNum?: string;
+    issueFailCause?: string;
+    invoiceNo?: string;
+    invoiceCode?: string;
+    invoiceIssueTime?: string;
+    // ✅ 新增：冲红相关状态字段
+    redStatus?: number;
+    redLocked?: boolean;
+    editLocked?: boolean;
+  }
+
+  /** 申请冲红入参 */
+  export interface InvoiceIssueApplyRedDto {
+    id: string;
+    redReason: number;
+  }
+
+  /** 申请冲红出参 / 查询冲红结果出参 */
+  export interface InvoiceIssueRedStateDto {
+    id: string;
+    redStatus: number;
+    redStatusText: string;
+    isFinal: boolean;
+    redLocked: boolean;
+    redReason?: number;
+    redBillId?: string;
+    redBillNo?: string;
+    redOrderNo?: string;
+    redSerialNum?: string;
+    redInvoiceNo?: string;
+    redInvoiceCode?: string;
+    redInvoiceTime?: string;
+    redFailCause?: string;
+    invoiceNo?: string;
   }
 
   /** 发票开出列表项DTO */
@@ -278,6 +388,58 @@ export namespace InvoiceIssueApi {
     itemCount: number;
     /** 商品明细金额合计 */
     totalAmount: number;
+
+    // ========== 接口开票组（新增/补齐） ==========
+    /** 诺诺开票状态 */
+    issueStatus?: number;
+    /** 提交给诺诺的订单号 */
+    issueOrderNo?: string;
+    /** 诺诺发票流水号 */
+    issueSerialNum?: string;
+    /** 提交开票请求的时间 */
+    issueRequestTime?: string;
+    /** 开票失败原因 */
+    issueFailCause?: string;
+    /** 发票代码。电票为空，只有纸票有值 */
+    invoiceCode?: string;
+
+    // ========== 冲红组（新增/补齐） ==========
+    /** 红冲状态 */
+    redStatus?: number;
+    /** 是否只能查询（冲红中或已冲红） */
+    redLocked?: boolean;
+    /** ✅ 编辑锁定：为 true 时，只能查询，禁止编辑、删除等操作 */
+    editLocked?: boolean;
+    /** 冲红原因 */
+    redReason?: number;
+    /** 红字确认单申请号 */
+    redBillId?: string;
+    /** 红字确认单编号 */
+    redBillNo?: string;
+    /** 红字确认单uuid（内部标识，一般不展示） */
+    redBillUuid?: string;
+    /** 红票订单号 */
+    redOrderNo?: string;
+    /** 红票开票流水号 */
+    redSerialNum?: string;
+    /** 红票发票号码 */
+    redInvoiceNo?: string;
+    /** 红票发票代码（纸票才有） */
+    redInvoiceCode?: string;
+    /** 红票开票时间 */
+    redInvoiceTime?: string;
+    /** 发起冲红申请的时间 */
+    redApplyTime?: string;
+    /** 发起冲红申请的人 */
+    redApplyUserId?: number;
+    /** 发起冲红申请的人昵称 */
+    redApplyUserName?: string;
+    /** 冲红失败/确认单作废原因 */
+    redFailCause?: string;
+
+    // ========== 附件（新增） ==========
+    /** 发票版式文件附件 */
+    attachments?: AttachmentItemDto[];
   }
 
   /** 分页列表响应 */
@@ -636,6 +798,28 @@ async function getInvoiceIssueDetail(id: string) {
 }
 
 /**
+ * 调用诺诺开票
+ * @param id 发票开出ID
+ */
+async function issueByInterface(id: string) {
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueStateDto>(
+    '/services/app/InvoiceIssueAdmin/IssueByInterfaceAsync',
+    { id },
+  );
+}
+
+/**
+ * 查询诺诺开票结果
+ * @param id 发票开出ID
+ */
+async function queryIssueResult(id: string) {
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueStateDto>(
+    '/services/app/InvoiceIssueAdmin/QueryIssueResultAsync',
+    { id },
+  );
+}
+
+/**
  * 获取发票开出发票分页列表
  * @param params 查询参数
  */
@@ -671,6 +855,28 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
     items: response.items || [],
     totalCount: response.totalCount || 0,
   };
+}
+
+/**
+ * 申请发票冲红
+ * @param data 冲红参数
+ */
+async function applyRedAsync(data: InvoiceIssueApi.InvoiceIssueApplyRedDto) {
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueRedStateDto>(
+    '/services/app/InvoiceIssueAdmin/ApplyRedAsync',
+    data,
+  );
+}
+
+/**
+ * 查询冲红结果
+ * @param id 发票开出ID
+ */
+async function queryRedResult(id: string) {
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueRedStateDto>(
+    '/services/app/InvoiceIssueAdmin/QueryRedResultAsync',
+    { id },
+  );
 }
 
 /**
@@ -751,4 +957,8 @@ export {
   getInvoiceIssueDetail,
   getInvoiceIssuePagedList,
   getSubmittedApplicationList,
+  issueByInterface, // ✅ 新增导出
+  queryIssueResult, // ✅ 新增导出
+  applyRedAsync, // ✅ 新增导出
+  queryRedResult, // ✅ 新增导出
 };

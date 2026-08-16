@@ -18,12 +18,19 @@ import {
   Space,
   Spin,
   Table,
+  Modal,
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
 import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
 import { Select } from 'ant-design-vue';
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+import {
+  issueByInterface,
+  applyRedAsync,
+  getInvoiceIssueDetail,
+} from '#/api/Invoice/InvoiceIssue';
+import { buildAttachmentUrl } from '#/utils';
 
 // 导入组合函数
 import { useFormData } from './composables/use-form-data';
@@ -70,6 +77,22 @@ const {
   getAddedAppIdsArray,
   flattenTreeData,
 } = useFormData();
+
+// ✅ 新增：发票开票状态管理（包含 editLocked）
+const invoiceStatus = ref<{
+  issueStatus?: number;
+  redLocked?: boolean;
+  redStatus?: number;
+  editLocked?: boolean;
+}>({
+  issueStatus: undefined,
+  redLocked: false,
+  redStatus: undefined,
+  editLocked: false,
+});
+
+// ✅ 新增：附件列表
+const attachments = ref<InvoiceIssueApi.AttachmentItemDto[]>([]);
 
 // ✅ 新增：计算发票抬头名称（从 clientInvoiceInfoList 中查找）
 const headerNameForDrawer = computed(() => {
@@ -197,6 +220,8 @@ const { loadDetail, loadDetailWithoutGoods } = useLoadDetail(
   updateOrgBankByCurrency,
   fixedHeaderId, // ✅ 新增：传入 fixedHeaderId
   fixedCurrencyId, // ✅ 新增：传入 fixedCurrencyId
+  invoiceStatus, // ✅ 新增：传入 invoiceStatus，用于在加载详情时同步更新状态
+  attachments, // ✅ 新增：传入 attachments，用于在加载详情时同步更新附件列表
 );
 
 // ==================== UI 状态 ====================
@@ -217,9 +242,120 @@ const { submitLoading, handleSubmit, handleCancel } = useSubmit(
   isEdit,
 );
 
+// ✅ 新增：冲红弹窗相关状态
+const redModalVisible = ref(false);
+const redReason = ref<number>(1);
+
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
   feeSelectionDrawerRef.value?.handleOpenFeeDrawer();
+}
+
+/** ✅ 新增：刷新发票状态 */
+async function refreshInvoiceStatus() {
+  if (!editId.value) return;
+  try {
+    // 直接从详情接口获取最新状态（不再调用 queryIssueResult）
+    const detail = await getInvoiceIssueDetail(editId.value);
+    invoiceStatus.value = {
+      issueStatus: detail.issueStatus,
+      redLocked: detail.redLocked || false,
+      redStatus: detail.redStatus,
+      editLocked: detail.editLocked,
+    };
+    // 同步到 formData
+    formData.value.editLocked = detail.editLocked;
+
+    // ✅ 新增：更新附件列表
+    attachments.value = detail.attachments || [];
+  } catch (error) {
+    console.error('❌ 获取发票状态失败:', error);
+  }
+}
+
+/** ✅ 新增：税局开票 / 发票冲红 */
+async function handleTaxAction() {
+  if (!editId.value) {
+    message.warning('请先保存发票以获取ID');
+    return;
+  }
+
+  const isIssued = invoiceStatus.value.issueStatus === 2; // 开票完成
+  const isRedLocked = invoiceStatus.value.redLocked;
+  const isEditLocked = invoiceStatus.value.editLocked;
+
+  // 如果处于编辑锁定状态，且不是“开票完成”状态下的冲红操作，则禁止
+  if (isEditLocked && !isIssued) {
+    message.warning('该发票开出已锁定，只能查询，不能执行此操作');
+    return;
+  }
+
+  // 如果是因为冲红被锁，禁止所有操作
+  if (isRedLocked) {
+    message.warning('该发票正在冲红中或已冲红，无法执行此操作');
+    return;
+  }
+
+  if (isIssued) {
+    // 打开冲红弹窗
+    redReason.value = 1; // 重置默认原因
+    redModalVisible.value = true;
+  } else {
+    // 税局开票逻辑
+    Modal.confirm({
+      title: '确认开票',
+      content: `确定要对发票发起税局开票吗？`,
+      onOk: async () => {
+        try {
+          loading.value = true;
+          await issueByInterface(editId.value!);
+          message.success('开票请求已提交，请稍后刷新查看结果');
+          await refreshInvoiceStatus(); // 只刷新状态
+          await loadDetailWithoutGoods(); // 刷新基础数据
+        } catch (error) {
+          console.error('❌ 开票失败:', error);
+        } finally {
+          loading.value = false;
+        }
+      },
+    });
+  }
+}
+
+/** ✅ 新增：确认冲红 */
+async function handleConfirmRed() {
+  try {
+    loading.value = true;
+    await applyRedAsync({
+      id: editId.value!,
+      redReason: redReason.value,
+    });
+    message.success('冲红申请已提交');
+    redModalVisible.value = false;
+    await refreshInvoiceStatus(); // 只刷新状态
+    await loadDetailWithoutGoods(); // 刷新基础数据
+  } catch (error) {
+    console.error('❌ 冲红失败:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+/** ✅ 新增：刷新开票/冲红进度 */
+async function handleRefreshProgress() {
+  if (!editId.value) return;
+
+  try {
+    loading.value = true;
+    // 直接通过详情接口获取最新状态，不再调用 queryIssueResult 或 queryRedResult
+    await refreshInvoiceStatus(); // 刷新本地状态
+    await loadDetailWithoutGoods(); // 刷新页面数据
+    message.success('进度已刷新');
+  } catch (error) {
+    console.error('❌ 刷新进度失败:', error);
+  } finally {
+    loading.value = false;
+  }
 }
 
 /** 打开查看发票明细弹窗 */
@@ -228,17 +364,37 @@ function handleOpenInvoiceDetailModal() {
   invoiceDetailModalVisible.value = true;
 }
 
+/** ✅ 新增：查看附件 */
+function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
+  if (item.url) {
+    const url = buildAttachmentUrl(item.url);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    message.warning('附件链接不存在');
+  }
+}
+
+/** ✅ 新增：下载附件 */
+function downloadAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
+  if (item.url) {
+    const url = buildAttachmentUrl(item.url);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = item.friendlyFileName || 'attachment';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    message.warning('附件链接不存在');
+  }
+}
+
 /** 处理发票明细删除后的刷新 */
 async function handleInvoiceDetailRefresh() {
   console.log('🔄 发票明细已删除，重新加载数据...');
   if (editId.value) {
-    // ✅ 关键修复：删除后只重新加载 applicationGroupsData，不重新加载 goodsDetails
-    // 因为商品明细已经在 InvoiceDetailModal 中通过 regenerateGoodsDetails 重新生成并通过事件更新了
-    console.log(
-      '⚠️ 注意：商品明细已通过 update-goods-details 事件更新，不需要重新加载',
-    );
-
-    // 只重新加载表单基础数据和申请组数据
+    await refreshInvoiceStatus(); // 确保状态也是最新的
     await loadDetailWithoutGoods();
     message.success('数据已刷新');
   }
@@ -301,7 +457,9 @@ onMounted(() => {
   loadCodeInvoiceList();
 
   if (isEdit.value) {
-    loadDetail();
+    loadDetail().then(() => {
+      refreshInvoiceStatus(); // 加载完详情后，立即获取一次状态
+    });
   } else {
     // 新建时自动弹出费用选择抽屉
     nextTick(() => {
@@ -316,7 +474,46 @@ onMounted(() => {
     <!-- 顶部操作按钮 -->
     <div style="margin-bottom: 16px; text-align: right">
       <Space>
-        <Button type="primary" :loading="submitLoading" @click="handleSubmit">
+        <!-- ✅ 互斥显示的按钮：税局开票 / 发票冲红 -->
+        <Button
+          v-if="invoiceStatus.issueStatus !== 2"
+          type="primary"
+          @click="handleTaxAction"
+          :disabled="
+            !editId || invoiceStatus.editLocked || invoiceStatus.redLocked
+          "
+        >
+          <template #icon>
+            <IconifyIcon icon="ant-design:printer-outlined" />
+          </template>
+          税局开票
+        </Button>
+
+        <Button
+          v-else
+          danger
+          @click="handleTaxAction"
+          :disabled="!editId || invoiceStatus.redLocked"
+        >
+          <template #icon>
+            <IconifyIcon icon="ant-design:undo-outlined" />
+          </template>
+          发票冲红
+        </Button>
+
+        <Button @click="handleRefreshProgress" :disabled="!editId">
+          <template #icon>
+            <IconifyIcon icon="ant-design:sync-outlined" />
+          </template>
+          刷新进度
+        </Button>
+
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmit"
+          :disabled="invoiceStatus.editLocked"
+        >
           {{ isEdit ? '保存' : '创建' }}
         </Button>
         <Button @click="handleCancel">关闭</Button>
@@ -340,6 +537,7 @@ onMounted(() => {
                     v-model="formData.orgId"
                     placeholder="请选择归属组织"
                     style="width: 100%"
+                    :disabled="invoiceStatus.editLocked"
                   />
                 </Form.Item>
 
@@ -396,6 +594,7 @@ onMounted(() => {
                     ]"
                     style="width: 100%"
                     placeholder="请选择开票方式"
+                    :disabled="invoiceStatus.editLocked"
                   />
                 </Form.Item>
 
@@ -403,29 +602,53 @@ onMounted(() => {
                   <Input.TextArea
                     v-model:value="formData.require"
                     placeholder="请输入其他备注信息..."
-                    :rows="3"
+                    :rows="4"
+                    :disabled="invoiceStatus.editLocked"
                   />
                 </Form.Item>
 
-                <!-- <Form.Item>
-                  <Button
-                    type="primary"
-                    block
-                    @click="handleOpenFeeDrawer"
-                    :disabled="fixedHeaderId && fixedCurrencyId ? false : false"
+                <!-- 附件显示区域 -->
+                <div v-if="attachments && attachments.length > 0" class="mt-8">
+                  <div
+                    style="margin-bottom: 8px; font-weight: 500; color: #262626"
                   >
-                    从开票申请导入费用
-                  </Button>
-                </Form.Item>
-
-                <Form.Item v-if="applicationGroupsData.length > 0">
-                  <Button block @click="handleOpenInvoiceDetailModal">
-                    <template #icon>
-                      <IconifyIcon icon="ant-design:eye-outlined" />
-                    </template>
-                    查看发票明细 ({{ applicationGroupsData.length }})
-                  </Button>
-                </Form.Item> -->
+                    发票附件 ({{ attachments.length }})
+                  </div>
+                  <div class="attachment-list">
+                    <div
+                      v-for="(item, index) in attachments"
+                      :key="index"
+                      class="attachment-item"
+                    >
+                      <span
+                        class="attachment-name"
+                        :title="item.friendlyFileName"
+                      >
+                        {{ item.friendlyFileName }}
+                      </span>
+                      <div class="attachment-actions">
+                        <a-button
+                          type="link"
+                          size="small"
+                          class="attachment-btn"
+                          @click="viewAttachment(item)"
+                        >
+                          <IconifyIcon icon="ant-design:eye-outlined" />
+                          查看
+                        </a-button>
+                        <a-button
+                          type="link"
+                          size="small"
+                          class="attachment-btn"
+                          @click="downloadAttachment(item)"
+                        >
+                          <IconifyIcon icon="ant-design:download-outlined" />
+                          下载
+                        </a-button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </Form>
             </Card>
           </div>
@@ -435,7 +658,10 @@ onMounted(() => {
             <Card>
               <template #title>
                 <div style="width: 100%; text-align: center">
-                  <Dropdown :trigger="['click']">
+                  <Dropdown
+                    :trigger="['click']"
+                    :disabled="invoiceStatus.editLocked"
+                  >
                     <span
                       style="
                         display: inline-flex;
@@ -470,6 +696,7 @@ onMounted(() => {
                     v-model:value="formData.invoiceNo"
                     placeholder="自动生成/手动输入"
                     style="width: 200px; text-align: right"
+                    :disabled="invoiceStatus.editLocked"
                   />
                 </div>
               </template>
@@ -519,7 +746,9 @@ onMounted(() => {
                           style="flex: 1"
                           size="small"
                           placeholder="请选择发票抬头"
-                          :disabled="!!fixedHeaderId"
+                          :disabled="
+                            !!fixedHeaderId || invoiceStatus.editLocked
+                          "
                           @change="handleClientInvoiceHeaderChange"
                         />
                       </div>
@@ -576,6 +805,7 @@ onMounted(() => {
                           style="flex: 1"
                           size="small"
                           placeholder="请选择银行"
+                          :disabled="invoiceStatus.editLocked"
                           @change="handleClientBankChange"
                         />
                       </div>
@@ -676,6 +906,7 @@ onMounted(() => {
                           style="flex: 1"
                           size="small"
                           placeholder="请选择银行"
+                          :disabled="invoiceStatus.editLocked"
                         />
                       </div>
                     </div>
@@ -701,13 +932,18 @@ onMounted(() => {
                     type="primary"
                     size="small"
                     @click="handleOpenFeeDrawer"
+                    :disabled="invoiceStatus.editLocked"
                   >
                     <template #icon
                       ><IconifyIcon icon="ant-design:import-outlined"
                     /></template>
                     导入发票
                   </Button>
-                  <Button size="small" @click="handleOpenInvoiceDetailModal">
+                  <Button
+                    size="small"
+                    @click="handleOpenInvoiceDetailModal"
+                    :disabled="invoiceStatus.editLocked"
+                  >
                     <template #icon
                       ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
@@ -811,6 +1047,7 @@ onMounted(() => {
                           type="link"
                           @click="handleAddGoodsRow(index)"
                           style="padding: 5px; font-size: 18px; color: #52c41a"
+                          :disabled="invoiceStatus.editLocked"
                         >
                           <IconifyIcon icon="ant-design:plus-circle-outlined" />
                         </Button>
@@ -818,7 +1055,9 @@ onMounted(() => {
                           type="link"
                           danger
                           @click="handleDeleteGoodsRow(index)"
-                          :disabled="goodsDetails.length <= 1"
+                          :disabled="
+                            goodsDetails.length <= 1 || invoiceStatus.editLocked
+                          "
                           style="padding: 5px; font-size: 18px"
                         >
                           <IconifyIcon
@@ -839,6 +1078,7 @@ onMounted(() => {
                         style="width: 100%"
                         size="small"
                         placeholder="请选择"
+                        :disabled="invoiceStatus.editLocked"
                         @change="() => handleGoodsNameChange(record, index)"
                       />
                     </template>
@@ -846,6 +1086,7 @@ onMounted(() => {
                       <Input
                         v-model:value="record.specification"
                         size="small"
+                        :disabled="invoiceStatus.editLocked"
                       />
                     </template>
                     <template v-else-if="column.key === 'unit'">
@@ -854,6 +1095,7 @@ onMounted(() => {
                         :options="[{ label: '票', value: '票' }]"
                         style="width: 100%"
                         size="small"
+                        :disabled="invoiceStatus.editLocked"
                       />
                     </template>
                     <template v-else-if="column.key === 'quantity'">
@@ -863,6 +1105,7 @@ onMounted(() => {
                         :precision="2"
                         style="width: 100%"
                         size="small"
+                        :disabled="invoiceStatus.editLocked"
                         @change="() => handleQuantityOrPriceChange(record)"
                       />
                     </template>
@@ -873,6 +1116,7 @@ onMounted(() => {
                         :precision="2"
                         style="width: 100%"
                         size="small"
+                        :disabled="invoiceStatus.editLocked"
                         @change="() => handleQuantityOrPriceChange(record)"
                       />
                     </template>
@@ -883,6 +1127,7 @@ onMounted(() => {
                         :precision="2"
                         style="width: 100%"
                         size="small"
+                        :disabled="invoiceStatus.editLocked"
                         @change="() => handleAmountChange(record)"
                       />
                     </template>
@@ -897,6 +1142,7 @@ onMounted(() => {
                         size="small"
                         placeholder="选择税率"
                         allow-clear
+                        :disabled="invoiceStatus.editLocked"
                         @change="() => handleTaxRateChange(record)"
                       />
                     </template>
@@ -988,6 +1234,7 @@ onMounted(() => {
                           <Button
                             size="small"
                             @click="handleOpenSelectRemarkTemplateModal"
+                            :disabled="invoiceStatus.editLocked"
                           >
                             <template #icon
                               ><IconifyIcon
@@ -998,6 +1245,7 @@ onMounted(() => {
                           <Button
                             size="small"
                             @click="handleOpenRemarkTemplateModal"
+                            :disabled="invoiceStatus.editLocked"
                           >
                             <template #icon
                               ><IconifyIcon icon="ant-design:setting-outlined"
@@ -1010,6 +1258,7 @@ onMounted(() => {
                         v-model:value="formData.remark"
                         placeholder="请输入备注"
                         :rows="6"
+                        :disabled="invoiceStatus.editLocked"
                       />
                     </div>
                   </div>
@@ -1064,5 +1313,97 @@ onMounted(() => {
       @refresh="handleInvoiceDetailRefresh"
       @update-goods-details="handleUpdateGoodsDetails"
     />
+
+    <!-- ✅ 新增：冲红确认弹窗 -->
+    <Modal
+      v-model:open="redModalVisible"
+      title="确认冲红"
+      @ok="handleConfirmRed"
+      @cancel="redModalVisible = false"
+    >
+      <div>
+        <p>被冲红发票号：{{ formData.invoiceNo }}</p>
+        <div style="margin-top: 16px">
+          <span>冲红原因：</span>
+          <Select
+            v-model:value="redReason"
+            style="width: 100%; margin-top: 8px"
+          >
+            <Select.Option :value="1">销货退回</Select.Option>
+            <Select.Option :value="2">开票有误</Select.Option>
+            <Select.Option :value="3">服务中止</Select.Option>
+            <Select.Option :value="4">销售折让</Select.Option>
+          </Select>
+        </div>
+      </div>
+    </Modal>
   </Page>
 </template>
+
+<style scoped>
+/* 附件列表样式 */
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background-color: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.attachment-item:hover {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+}
+
+.attachment-name {
+  flex: 1;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #262626;
+  white-space: nowrap;
+}
+
+.attachment-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.attachment-btn {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 0 4px;
+  margin: 0;
+  color: #1677ff;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.attachment-btn :deep(.anticon) {
+  font-size: 14px;
+}
+
+.attachment-btn:hover {
+  color: #4096ff;
+  cursor: pointer;
+  background-color: rgb(22 119 255 / 10%);
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+</style>

@@ -407,6 +407,9 @@ export namespace ExpenseSubmissionAdminApi {
 
     /** 任务创建人 - 也就是任务提交人 */
     creatorUserName?: string | null;
+
+    /** 创建时间 */
+    creationTime?: string;
   }
 
   export interface OrderFeeAndTaskDto extends OrderFeeAdminApi.OrderFeeDto {

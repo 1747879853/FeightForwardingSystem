@@ -259,7 +259,9 @@ const handleModifyTask = (
     (item) => item.task?.taskType !== feeConstants.taskTypeMap.feeModify,
   );
   let modifyData = orderFeeTasks?.filter(
-    (item) => item.task?.taskType === feeConstants.taskTypeMap.feeModify,
+    (item) =>
+      item.task?.taskType === feeConstants.taskTypeMap.feeModify &&
+      item.task?.taskStatus === 0,
   );
 
   modifyData.map((item: any) => {

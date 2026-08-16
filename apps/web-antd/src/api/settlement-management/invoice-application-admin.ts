@@ -402,6 +402,15 @@ export namespace InvoiceApplicationAdminApi {
     feeGroups: InvoiceApplicationFeeGroupDetailDto[];
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlOutputDto[];
     invoiceExchangeRate?: number;
+    /**
+     * ✅ 新增：发票附件列表
+     * **这条开票申请所挂那张发票开出下的发票文件**
+     * - 开票申请自己没有附件，这里是后端从发票开出那边取过来的
+     * - 不分组，拉平成一个数组
+     * - 申请还没挂发票开出（未开票）时为空
+     * - 冲红完成后挂靠会被解除，附件也随之消失
+     */
+    attachments?: AttachmentItemDto[];
   }
 
   /** 开票申请列表查询参数 */
@@ -447,6 +456,14 @@ export namespace InvoiceApplicationAdminApi {
     invoiceExchangeRate?: number;
     commissionNums?: string;
     mblNums?: string;
+    /**
+     * ✅ 新增：发票附件列表
+     * **这条开票申请所挂那张发票开出下的发票文件**
+     * - 结构与详情完全一致
+     * - 申请还没挂发票开出（未开票）时为空
+     * - 冲红完成后挂靠会被解除，附件也随之消失
+     */
+    attachments?: AttachmentItemDto[];
   }
 
   /** 审核开票申请DTO */
@@ -464,6 +481,14 @@ export namespace InvoiceApplicationAdminApi {
   export interface InvoiceApplicationAddByStatementDto {
     /** 对账单ID */
     statementId: string;
+  }
+
+  /** 附件项DTO（与发票开出模块保持一致） */
+  export interface AttachmentItemDto {
+    url: string;
+    friendlyFileName: string;
+    mediaType?: string;
+    [key: string]: any;
   }
 
   // ==================== API方法 ====================
