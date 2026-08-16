@@ -23,6 +23,8 @@ import {
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
 import { resubscribeAirWaybillTracking } from '#/api/tracking/feituo-tracking-admin';
 import {
+  getTrackingDataStatusColor,
+  getTrackingDataStatusLabel,
   hasAirTrackingMapConfig,
   resolveAirTrackingViewState,
   useVendorTrackingMap,
@@ -62,6 +64,13 @@ const viewState = computed(() =>
     isFeituoSubscribeSuccess: isSubscribeSuccess.value,
     feituoTracking: summary.value,
   }),
+);
+
+const dataStatusLabel = computed(() =>
+  getTrackingDataStatusLabel(summary.value?.status),
+);
+const dataStatusColor = computed(() =>
+  getTrackingDataStatusColor(summary.value?.status),
 );
 
 const currentNodeText = computed(() => {
@@ -216,8 +225,8 @@ const handleResubscribe = () => {
   <div class="air-tracking-panel bg-white">
     <div class="mb-3 flex items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
-        <Tag v-if="summary?.status" color="processing">{{
-          summary.status
+        <Tag v-if="dataStatusLabel" :color="dataStatusColor">{{
+          dataStatusLabel
         }}</Tag>
         <span
           v-if="summary?.updateTime"

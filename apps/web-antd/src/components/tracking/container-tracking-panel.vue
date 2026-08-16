@@ -29,6 +29,10 @@ import { $t } from '#/locales';
 import { sanitizeVendorText } from '#/utils/vendor-text';
 
 import { resolveContainerTrackingViewState } from './container-tracking';
+import {
+  getTrackingDataStatusColor,
+  getTrackingDataStatusLabel,
+} from './data-status';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 
 /**
@@ -102,6 +106,13 @@ const subscribeNo = computed(
     result.value?.billNo?.trim() ||
     result.value?.containerNo?.trim() ||
     '--',
+);
+
+const dataStatusLabel = computed(() =>
+  getTrackingDataStatusLabel(summary.value?.statusCategory),
+);
+const dataStatusColor = computed(() =>
+  getTrackingDataStatusColor(summary.value?.statusCategory),
 );
 
 const currentNodeText = computed(() => {
@@ -314,8 +325,8 @@ const handleRefresh = async () => {
   <div class="container-tracking-panel bg-white">
     <div class="mb-3 flex items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
-        <Tag v-if="summary?.statusCategory" color="processing">
-          {{ summary.statusCategory }}
+        <Tag v-if="dataStatusLabel" :color="dataStatusColor">
+          {{ dataStatusLabel }}
         </Tag>
         <span
           v-if="summary?.updateTime"
@@ -423,7 +434,7 @@ const handleRefresh = async () => {
             {{ subscribeNo }}
           </DescriptionsItem>
           <DescriptionsItem :label="$t('tracking.detail.dataStatus')">
-            {{ summary?.statusDescription || '--' }}
+            {{ dataStatusLabel || '--' }}
           </DescriptionsItem>
           <DescriptionsItem :label="$t('tracking.detail.currentNode')">
             {{ currentNodeText }}

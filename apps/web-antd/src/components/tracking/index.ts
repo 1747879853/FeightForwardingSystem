@@ -33,6 +33,10 @@ export {
   resolveContainerOrderLabel,
   resolveContainerTrackingViewState,
 } from './container-tracking';
+export {
+  getTrackingDataStatusColor,
+  getTrackingDataStatusLabel,
+} from './data-status';
 export { default as ContainerTrackingPanel } from './container-tracking-panel.vue';
 export { default as TrackingWarningIcon } from './tracking-warning-icon.vue';
 export type {

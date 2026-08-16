@@ -101,6 +101,8 @@ last_updated: 2026-08-16
 
 > [!NOTE] **11. 云当空运前端代码已成孤儿。** `views/air-export-admin/use-yundang-air-*.ts` 与 `modules/yundang-air-*.vue` 不再被任何入口引用（按约定保留代码、只摘入口），确认稳定后可单独提交删除。
 
+> [!NOTE] **12. 整票数据状态码不要直出。** 服务商 `statusCategory`/`status` 为 `PROCESS`/`COMPLETE`，用户侧统一映射为「进行中 / 已完成」（见 `components/tracking/data-status.ts`）；详情「数据状态」也用同一映射，勿再展示英文 `statusDescription`。
+
 # 4. 影响面自检
 
 - 触及文件 `vue-tsc` 零错误（仓库存量报错与本次无关）；

@@ -19,6 +19,10 @@ import { sanitizeVendorText } from '#/utils/vendor-text';
 import type { AirTrackingOpenPayload } from './air-tracking';
 import { resolveAirTrackingViewState } from './air-tracking';
 import { hasAirTrackingMapConfig } from './build-air-tracking-map-src';
+import {
+  getTrackingDataStatusColor,
+  getTrackingDataStatusLabel,
+} from './data-status';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 
 /**
@@ -46,6 +50,13 @@ const modalTitle = computed(() => {
     ? $t('tracking.detail.titleWithOrder', [label])
     : $t('tracking.detail.title');
 });
+
+const dataStatusLabel = computed(() =>
+  getTrackingDataStatusLabel(summary.value?.status),
+);
+const dataStatusColor = computed(() =>
+  getTrackingDataStatusColor(summary.value?.status),
+);
 
 const currentNodeText = computed(() => {
   const description = summary.value?.currentDescription?.trim();
@@ -164,8 +175,8 @@ const [Modal, modalApi] = useVbenModal({
 
       <div class="mb-3 flex items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
-          <Tag v-if="summary?.status" color="processing">
-            {{ summary.status }}
+          <Tag v-if="dataStatusLabel" :color="dataStatusColor">
+            {{ dataStatusLabel }}
           </Tag>
           <span
             v-if="summary?.updateTime"

@@ -16,7 +16,9 @@
     "notSubscribed": "Not subscribed",
     "subscribeFailed": "Subscribe failed",
     "waitingData": "Loading data",
-    "estimatedSuffix": " (estimated)"
+    "estimatedSuffix": " (estimated)",
+    "process": "In progress",
+    "complete": "Completed"
   },
   "warning": {
     "iconLabel": "Tracking alert",

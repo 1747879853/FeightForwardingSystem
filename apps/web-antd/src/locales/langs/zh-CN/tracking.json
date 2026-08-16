@@ -16,7 +16,9 @@
     "notSubscribed": "未订阅",
     "subscribeFailed": "订阅失败",
     "waitingData": "数据获取中",
-    "estimatedSuffix": "（预计）"
+    "estimatedSuffix": "（预计）",
+    "process": "进行中",
+    "complete": "已完成"
   },
   "warning": {
     "iconLabel": "运踪异常预警",
