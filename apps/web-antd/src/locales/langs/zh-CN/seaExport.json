@@ -936,7 +936,7 @@
     "subscribe": "运踪订阅",
     "resubscribe": "重新订阅",
     "subscribeRulesTitle": "运踪订阅规则",
-    "subscribeRules": "船公司：业务须已关联船公司，且船公司至少维护了一个可用代码（优先用主代码）\n订阅单号：整柜须填写主提单号；拼箱主票/分票须至少有一个箱号",
+    "subscribeRules": "运踪订阅的两项校验：\n1. 船公司：必须录入船公司\n2. 订阅单号规则：\n①整柜 (FCL)：必须录入主提单号\n②拼箱 (LCL)：至少要有一个箱号",
     "alreadySubscribed": "该单号已成功订阅，无需重复订阅",
     "batchHint": "已选超过 {0} 票，后端将自动分批提交",
     "subscribing": "运踪订阅中…",

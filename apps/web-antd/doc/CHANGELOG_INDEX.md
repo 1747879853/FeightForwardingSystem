@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 海运出口运踪订阅规则提示改为两项校验](./changelogs/change-log-2026-08-16-sea-export-subscribe-rules-copy.md)
 - [2026-08-16 海运进出口对接飞驼码头船舶计划同步](./changelogs/change-log-2026-08-16-terminal-schedule-sync.md)
 - [2026-08-16 新增港口拥堵分析独立查询页](./changelogs/change-log-2026-08-16-port-congestion-analysis.md)
 - [2026-08-16 商品信息维护规格型号子表与货物类型](./changelogs/change-log-2026-08-16-code-goods-specs-models.md)
