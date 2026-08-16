@@ -96,6 +96,15 @@
     "direct": "Direct",
     "transit": "Transit"
   },
+  "timeline": {
+    "title": "Tracking events",
+    "empty": "No tracking event yet",
+    "state": {
+      "completed": "Actual",
+      "current": "Current",
+      "estimated": "Estimated"
+    }
+  },
   "map": {
     "title": "Cargo tracking",
     "referenceNo": "Reference no",

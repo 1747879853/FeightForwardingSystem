@@ -33,6 +33,8 @@ import {
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
 } from './data-status';
+import { buildContainerTimelineNodes } from './timeline-nodes';
+import TrackingTimeline from './tracking-timeline.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 
 /**
@@ -201,6 +203,9 @@ const containerColumns = computed(() => [
 ]);
 
 const containerRows = computed(() => result.value?.containers ?? []);
+
+/** 整票时间轴：各箱节点合并去重后按时间升序 */
+const timelineNodes = computed(() => buildContainerTimelineNodes(result.value));
 
 const warningColumns = computed(() => [
   {
@@ -467,6 +472,11 @@ const handleRefresh = async () => {
             {{ summary?.bookingTotalContainers || '--' }}
           </DescriptionsItem>
         </Descriptions>
+
+        <div class="mb-1 mt-4 text-sm font-medium">
+          {{ $t('tracking.timeline.title') }}
+        </div>
+        <TrackingTimeline :nodes="timelineNodes" class="mb-4" />
 
         <Table
           v-if="containerRows.length > 0"

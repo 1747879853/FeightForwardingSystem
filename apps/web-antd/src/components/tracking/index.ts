@@ -37,6 +37,15 @@ export {
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
 } from './data-status';
+export type {
+  TrackingTimelineNode,
+  TrackingTimelineState,
+} from './timeline-nodes';
+export {
+  buildAirTimelineNodes,
+  buildContainerTimelineNodes,
+} from './timeline-nodes';
+export { default as TrackingTimeline } from './tracking-timeline.vue';
 export { default as ContainerTrackingPanel } from './container-tracking-panel.vue';
 export { default as TrackingWarningIcon } from './tracking-warning-icon.vue';
 export type {

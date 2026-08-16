@@ -58,6 +58,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 列表运踪弹窗新增「轨迹节点」时间轴（合并五类事件，区分实际/预计/当前）。 | 列表不下发 `feituoTrackingDetail`，弹窗打开后按 Id 补一次业务单详情取事件；该请求失败只是没有时间轴，不影响摘要展示。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：空运仅空出改用新服务商运踪（含 sjtd），订阅走 `SubscribeAirWaybillAsync`（主运单号数字须 11 位、`trackingLoaded=false` 非失败）；空运摘要不含轨迹链接故地图由前端按 env 拼 URL；空进不做；用户侧不出现服务商名。见 [运踪能力品牌分流](../shared/feituo-tracking-brand-split.md)。 |
 | 2026-08-16 | `Feature` | 列表运踪整体切换到新服务商：「运踪订阅」按钮与「运踪状态」列改走新服务商，状态列点击打开新的运踪详情弹窗；主运单号前新增异常预警黄色叹号（悬停显示原因与条数） | 订阅 `FeituoAdmin/SubscribeAirWaybillAsync`；状态与叹号读列表下发的 `feituoTracking` 摘要，`currentEventClassifier=EST` 时文案加「（预计）」后缀区分预计节点；状态列字段名沿用 `yundangTrackStatus` 以保住用户已存的列配置；云当空运前端代码保留但已无入口引用 |
 | 2026-08-09 | `Fix` | 搜索区移除航班/起运地/中转地/目的地/订舱代理「未填写」开关；此前已移除明细区间筛选。 | 删除 `createEmptySwitchSchema`；分组 `emptyParamKey` 保留。详见 `changelogs/change-log-2026-08-09-air-export-list-search-switch-and-ctn-range.md`。 |

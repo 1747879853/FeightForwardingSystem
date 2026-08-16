@@ -134,6 +134,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-16 | `Feature` | 非 sjtd 品牌的「运踪」Tab 新增「轨迹节点」时间轴：整票合并各箱节点，区分实际/预计/当前；顶栏状态标签改为「进行中 / 已完成」。 | 节点取运踪快照 `containers[].status[]`（同一节点在多箱重复，按代码+时间+地点+描述去重），共享 `timeline-nodes.ts` + `tracking-timeline.vue`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Feature` | 「运踪」Tab 与基础信息单票订阅按钮按打包品牌分流：sjtd 保持原运踪面板与订阅；其他品牌换成新服务商面板（摘要、全量异常预警明细、轨迹地图、刷新运踪）与新服务商订阅。 | Tab 内容改为 `components/tracking/container-tracking-panel.vue`（`load-detail` 模式自取详情以拿全量预警，另读本地快照补箱清单与轨迹页链接），与列表运踪弹窗共用同一面板；开关取 `utils/tracking-brand.ts`。「刷新运踪」走订阅接口（服务商订阅与查询同一接口，重复调用等同刷新快照）。详见 `changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md`。 |
 | 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择；选委托单位仍自动带出，允许再改。 | 见 `changelogs/change-log-2026-08-16-sea-export-code-source-select.md`。 |
 | 2026-08-16 | `Feature` | 船名/航次右侧新增「码头船舶」按钮（仅编辑态）：命中唯一一条直接回填并刷新单据，多条时弹窗单选后再同步。 | 共享 `src/components/terminal-schedule/`（composable + 单选弹窗）与海进复用；`applied` 才刷新，`needSelect` 时后端一字未写。顺带把 `vessel` 的 `componentProps` 工厂从 schema 初始化与 `applyServiceLockedFields` 两处收敛为 `buildVesselComponentProps`。详见 `changelogs/change-log-2026-08-16-terminal-schedule-sync.md`。 |

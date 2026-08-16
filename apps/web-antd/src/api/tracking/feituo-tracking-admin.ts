@@ -350,6 +350,106 @@ export namespace FeituoTrackingAdminApi {
     items: AirSubscribeItemResultDto[];
   }
 
+  // ==================== 航空货运跟踪：完整数据（仅详情） ====================
+
+  export interface AirCarrierDto {
+    carrierName?: string;
+    carrierNameEn?: string;
+    carrierCode?: string;
+    carrierPrefix?: string;
+    /** 航司官网跟踪地址，对外分享页禁止出现 */
+    carrierUrl?: string;
+    /** 1 支持 / 0 不支持 */
+    isSupported?: null | number;
+  }
+
+  export interface AirCargoDto {
+    pieces?: null | number;
+    weight?: null | number;
+    volume?: string;
+  }
+
+  export interface AirLocationDto {
+    timezone?: string;
+    lat?: null | number;
+    lon?: null | number;
+    tz?: string;
+    /** 发生地 IATA 三字码 */
+    locationCode?: string;
+    locationName?: string;
+    locationCity?: string;
+  }
+
+  export interface AirLocationDetailDto {
+    /** 首次预计到达 */
+    sta?: string;
+    eta?: string;
+    ata?: string;
+  }
+
+  export interface AirShipmentLocationDto {
+    location?: null | AirLocationDto;
+    locationCategory?: string;
+    detail?: null | AirLocationDetailDto;
+  }
+
+  /** 运输说明（装/卸货地点；事件内嵌的 transportCall 里 events 恒为空） */
+  export interface AirTransportCallDto {
+    flight?: string;
+    events?: AirEventDto[];
+    location?: null | AirLocationDto;
+  }
+
+  export interface AirShipmentTransportDto {
+    loadTransportCall?: null | AirTransportCallDto;
+    dischargeTransportCall?: null | AirTransportCallDto;
+    flight?: string;
+    cargo?: null | AirCargoDto;
+  }
+
+  /** 事件（单证 / 运输 / 货物动态 / 装卸货地共用同一结构，只有末尾分类字段按来源取其一） */
+  export interface AirEventDto {
+    eventCategory?: string;
+    /** ACT 实际 / EST 预计 */
+    eventClassifier?: string;
+    /** 发生时间（服务商原样字符串 yyyy-MM-dd HH:mm:ss） */
+    eventTime?: string;
+    description?: string;
+    transportCall?: null | AirTransportCallDto;
+    cargo?: null | AirCargoDto;
+    /** 数据来源：空值为航司，AIS 为飞机定位 */
+    origin?: string;
+    eventCode?: string;
+    shipmentDoctype?: string;
+    shipmentEventCategory?: string;
+    /** DEP 离开 / ARRI 到达 */
+    transportEventCategory?: string;
+    equipmentEventCategory?: string;
+  }
+
+  /** 空运运踪完整数据（仅业务单详情下发，列表恒为 null） */
+  export interface AirDataDto {
+    /** 订阅号（11 位航司单号） */
+    businessNumber?: string;
+    carrier?: null | AirCarrierDto;
+    cargo?: null | AirCargoDto;
+    shipmentLocations?: AirShipmentLocationDto[];
+    shipmentTransports?: AirShipmentTransportDto[];
+    /** 单证事件 */
+    shipmentEvents?: AirEventDto[];
+    /** 运输事件 */
+    transportEvents?: AirEventDto[];
+    /** 货物动态 */
+    equipmentEvents?: AirEventDto[];
+    warnings?: AirTrackingWarningDto[];
+    updateTime?: string;
+    /** COMPLETE 完成 / PROCESS 进行中 */
+    status?: string;
+    /** true 直达 / false 中转 */
+    direct?: null | boolean;
+    eventCategory?: string;
+  }
+
   /** 空运运踪摘要，随空运出口列表与详情下发 */
   export interface AirTrackingSummaryDto {
     // -- 订阅状态 --

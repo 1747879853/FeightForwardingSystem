@@ -502,7 +502,7 @@ export namespace AirExportAdminApi {
     /** 运踪摘要（列表 + 详情）；未订阅时为 null */
     feituoTracking?: FeituoTrackingAdminApi.AirTrackingSummaryDto | null;
     /** 运踪完整轨迹；仅详情，列表恒为 null */
-    feituoTrackingDetail?: null | Record<string, unknown>;
+    feituoTrackingDetail?: FeituoTrackingAdminApi.AirDataDto | null;
     /** 异常预警明细；仅详情，列表恒为 null */
     feituoTrackingWarnings?:
       | FeituoTrackingAdminApi.AirTrackingWarningDto[]

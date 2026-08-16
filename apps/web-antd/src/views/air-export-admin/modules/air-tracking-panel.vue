@@ -23,10 +23,12 @@ import {
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
 import { resubscribeAirWaybillTracking } from '#/api/tracking/feituo-tracking-admin';
 import {
+  buildAirTimelineNodes,
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
   hasAirTrackingMapConfig,
   resolveAirTrackingViewState,
+  TrackingTimeline,
   useVendorTrackingMap,
 } from '#/components/tracking';
 import { $t } from '#/locales';
@@ -51,6 +53,8 @@ const isSubscribed = ref(false);
 const isSubscribeSuccess = ref(false);
 const summary = ref<FeituoTrackingAdminApi.AirTrackingSummaryDto | null>(null);
 const warnings = ref<FeituoTrackingAdminApi.AirTrackingWarningDto[]>([]);
+/** 完整轨迹（含五类事件），时间轴数据源 */
+const trackingDetail = ref<FeituoTrackingAdminApi.AirDataDto | null>(null);
 
 const { hasAccessByCodes } = useAccess();
 const canResubscribe = computed(() =>
@@ -64,6 +68,10 @@ const viewState = computed(() =>
     isFeituoSubscribeSuccess: isSubscribeSuccess.value,
     feituoTracking: summary.value,
   }),
+);
+
+const timelineNodes = computed(() =>
+  buildAirTimelineNodes(trackingDetail.value),
 );
 
 const dataStatusLabel = computed(() =>
@@ -171,6 +179,7 @@ async function fetchDetail() {
     isSubscribeSuccess.value = Boolean(detail.isFeituoSubscribeSuccess);
     summary.value = detail.feituoTracking ?? null;
     warnings.value = detail.feituoTrackingWarnings ?? [];
+    trackingDetail.value = detail.feituoTrackingDetail ?? null;
   } catch (error) {
     loadError.value = sanitizeVendorText(
       error instanceof Error ? error.message : $t('tracking.detail.loadFailed'),
@@ -331,6 +340,11 @@ const handleResubscribe = () => {
             {{ summary?.destinationAta || '--' }}
           </DescriptionsItem>
         </Descriptions>
+
+        <div class="mb-1 text-sm font-medium">
+          {{ $t('tracking.timeline.title') }}
+        </div>
+        <TrackingTimeline :nodes="timelineNodes" class="mb-4" />
 
         <div class="mb-2 text-sm font-medium">
           {{ $t('tracking.detail.warningTitle', [warningRows.length]) }}

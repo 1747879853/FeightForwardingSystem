@@ -189,6 +189,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 | 品牌分流开关 | `src/utils/tracking-brand.ts` |
 | 服务商文案清洗 | `src/utils/vendor-text.ts` → `sanitizeVendorText` |
 | 共享运踪能力 | `src/components/tracking/`（预警叹号、状态文案/颜色、订阅 composable、运踪面板与弹窗、空运地图拼装） |
+| 轨迹节点时间轴 | `components/tracking/timeline-nodes.ts`（海运整票合并 / 空运五类事件合并）+ `tracking-timeline.vue` |
 | 轨迹地图弹窗 | `components/tracking/vendor-tracking-map-modal.vue` + `use-vendor-tracking-map.ts`（全局单例，挂在 `app.vue`） |
 | 地图地址与分享令牌 | `components/tracking/vendor-map-src.ts`（`resolveVendorMapSrc` / `withMapLang` / `encodeVendorMapToken`） |
 | 免登录分享页 | 路由 `router/routes/external/cargo-tracking.ts` + 页面 `views/tracking-map/vendor-page.vue` |
@@ -211,6 +212,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 运踪信息新增「轨迹节点」时间轴：海运按整票合并各箱节点，空运合并单证/运输/货物动态/装卸货地五类事件，实际、预计与当前节点分色展示 | 节点数据接口早已下发（海运 `containers[].status[]`、空运详情 `feituoTrackingDetail`），此前未渲染。新增 `timeline-nodes.ts`（去重 + 字符串时间排序 + 三态标记）与 `tracking-timeline.vue`；空运顺带把 `feituoTrackingDetail` 从 `Record<string, unknown>` 换成 `AirDataDto` 强类型。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md` |
 | 2026-08-16 | `Fix` | 运踪详情顶栏与「数据状态」不再直出 `PROCESS`/`COMPLETE` 英文码，改为「进行中 / 已完成」（英文界面 In progress / Completed） | 服务商字段 `statusCategory`（海运）/`status`（空运）是分类码，`statusDescription` 多为英文描述；统一走 `components/tracking/data-status.ts` + i18n，未知码原样回退 |
 | 2026-08-16 | `Feature` | 新服务商轨迹地图对齐云当能力：登录后走全局地图弹窗（品牌 Logo + 中英切换 + 新窗口打开 + 复制免登录分享链接），并新增免登录分享页 `/cargo-tracking/air`（按单号拼装）与 `/cargo-tracking/ocean`（按令牌还原链接） | 原来地图是各面板内嵌 iframe，无语言与分享能力；现抽出 `vendor-map-src.ts`（`resolveVendorMapSrc` / `withMapLang` / 令牌编解码）+ 全局单例 `use-vendor-tracking-map.ts` + 弹窗，三处入口（海运面板、空运弹窗、空运 Tab）统一改为 `open()`。空运分享页零接口依赖；海运因缺少客户端拼接契约，改用「编码后的密文短链令牌」放进分享 URL，白标到链接与 UI 层，严格合规仍需后端匿名接口 |
 | 2026-08-16 | `Fix` | 补齐海运出口分流覆盖面：编辑页运踪 Tab 与表单单票订阅按钮也按品牌分流，非 sjtd 不再落回旧运踪与旧轨迹地图 | 首版只改列表，造成两套并存。海运运踪内容抽成共用面板 `container-tracking-panel.vue`（列表弹窗 + 编辑页 Tab），Tab 侧用 `load-detail` 取全量预警；另外确认：旧地图那串 `#/containerTracking?companyCode=…&hideSearch=…&token=…` 是服务商 SPA 对我们 `#/Map?companyid=…&referenceno=…` 的内部改写，仓库里并无这些参数名 |

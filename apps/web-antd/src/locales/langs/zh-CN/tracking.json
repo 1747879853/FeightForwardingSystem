@@ -96,6 +96,15 @@
     "direct": "直达",
     "transit": "中转"
   },
+  "timeline": {
+    "title": "轨迹节点",
+    "empty": "暂无轨迹节点",
+    "state": {
+      "completed": "已发生",
+      "current": "当前",
+      "estimated": "预计"
+    }
+  },
   "map": {
     "title": "货物轨迹",
     "referenceNo": "单号",

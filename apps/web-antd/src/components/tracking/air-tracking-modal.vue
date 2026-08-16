@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
+
 import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
@@ -10,9 +12,11 @@ import {
   Descriptions,
   DescriptionsItem,
   Empty,
+  Spin,
   Tag,
 } from 'ant-design-vue';
 
+import { getAirExportDetail } from '#/api/air-export/air-export-admin';
 import { $t } from '#/locales';
 import { sanitizeVendorText } from '#/utils/vendor-text';
 
@@ -23,17 +27,25 @@ import {
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
 } from './data-status';
+import { buildAirTimelineNodes } from './timeline-nodes';
+import TrackingTimeline from './tracking-timeline.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 
 /**
  * 空运运踪详情弹窗。
  *
- * 数据全部来自列表/详情下发的运踪摘要（空运没有独立的轨迹查询接口）；
- * 轨迹地图走全局地图弹窗（可切换语言、复制免登录分享链接）。
+ * 摘要来自列表行（空运没有独立的轨迹查询接口）；轨迹节点只在详情里下发，
+ * 因此打开弹窗时再补一次业务单详情。轨迹地图走全局地图弹窗（可切换语言、复制免登录分享链接）。
  */
 const payload = ref<AirTrackingOpenPayload | null>(null);
+const timelineLoading = ref(false);
+const trackingDetail = ref<FeituoTrackingAdminApi.AirDataDto | null>(null);
 
 const summary = computed(() => payload.value?.summary ?? null);
+
+const timelineNodes = computed(() =>
+  buildAirTimelineNodes(trackingDetail.value),
+);
 
 const viewState = computed(() =>
   resolveAirTrackingViewState({
@@ -135,15 +147,34 @@ const handleViewMap = () => {
   });
 };
 
+/** 轨迹节点仅详情下发；取不到时只是没有时间轴，不影响摘要展示 */
+async function fetchTimeline() {
+  const airExportId = payload.value?.airExportId;
+  if (!airExportId || !payload.value?.isSubscribed) {
+    return;
+  }
+  timelineLoading.value = true;
+  try {
+    const detail = await getAirExportDetail(airExportId);
+    trackingDetail.value = detail.feituoTrackingDetail ?? null;
+  } catch {
+    trackingDetail.value = null;
+  } finally {
+    timelineLoading.value = false;
+  }
+}
+
 const [Modal, modalApi] = useVbenModal({
   showConfirmButton: false,
   cancelText: $t('tracking.detail.close'),
   onOpenChange(isOpen) {
+    trackingDetail.value = null;
     if (!isOpen) {
       payload.value = null;
       return;
     }
     payload.value = modalApi.getData<AirTrackingOpenPayload>() ?? null;
+    void fetchTimeline();
   },
 });
 </script>
@@ -266,6 +297,13 @@ const [Modal, modalApi] = useVbenModal({
           }}
         </DescriptionsItem>
       </Descriptions>
+
+      <div class="mb-1 mt-4 text-sm font-medium">
+        {{ $t('tracking.timeline.title') }}
+      </div>
+      <Spin :spinning="timelineLoading">
+        <TrackingTimeline :nodes="timelineNodes" />
+      </Spin>
     </template>
   </Modal>
 </template>

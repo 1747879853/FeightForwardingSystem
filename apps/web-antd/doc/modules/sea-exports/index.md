@@ -102,6 +102,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 非 sjtd 品牌的运踪详情弹窗新增「轨迹节点」时间轴（整票合并各箱节点，区分实际/预计/当前）。 | 节点来自弹窗已请求的运踪快照 `containers[].status[]`，无新增请求；sjtd 仍走原运踪弹窗。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Fix` | 运踪订阅问号提示改为面向客户的两项校验：必须录入船公司；整柜须主提单号，拼箱至少一个箱号。 | 见 `changelogs/change-log-2026-08-16-sea-export-subscribe-rules-copy.md`。 |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：仅 sjtd 海出保留现有运踪；其他品牌海出改用新服务商运踪，分享须白标、用户侧不出现服务商名；列表运踪摘要已含预警字段可直接做主提单号前黄叹号。见 [运踪能力品牌分流](../shared/feituo-tracking-brand-split.md)。 |
 | 2026-08-16 | `Fix` | 补齐分流覆盖面：编辑页「运踪」Tab 与基础信息表单的单票订阅按钮也按品牌分流，非 sjtd 不再落回旧运踪（此前从列表进是新服务商、进编辑页又变旧运踪，且会打开旧服务商轨迹地图） | 首版只改了 `list.vue`，`editor.vue` 的 Tab 与 `basic-info-form/form.vue` 的按钮仍无条件用云当；现统一用 `isVendorOceanExportTracking` 判断。海运运踪内容抽成 `components/tracking/container-tracking-panel.vue`，列表弹窗与编辑页 Tab 共用（Tab 用 `load-detail` 模式多取一次详情以拿全量预警）；面板新增「刷新运踪」（重复订阅等同刷新快照，一票仍只保留一条订阅记录） |
