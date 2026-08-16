@@ -6,7 +6,7 @@ import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-adm
 import { Tag, Timeline, TimelineItem, Table } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getTaskStatusOptions } from '#/views/sea-export-admin/orderFee/data.ts';
+import { getTaskStatusOptions } from '#/views/sea-export-admin/orderFee/data.js';
 
 // 模态框
 const [Modal, modalApi] = useVbenModal({
@@ -25,34 +25,46 @@ const isOpen = modalApi.useStore((state) => state.isOpen);
 watch(isOpen, (isOpenValue) => {
   if (isOpenValue) {
     const feeData = modalApi.getData<any>();
-    console.log('auditTasks - feeData:', feeData);
+    console.log('审核历史 - 原始数据:', feeData);
 
     if (!feeData) {
       auditTasks.value = [];
       return;
     }
 
-    const tasks: ExpenseSubmissionAdminApi.TaskItemDto[] = [];
+    const allTasks: ExpenseSubmissionAdminApi.TaskItemDto[] = [];
 
-    // 收集所有类型的审核任务
+    // 收集所有类型的审核任务（每次审核操作都是一条独立记录）
     if (feeData.submitOrderFeeTasks?.length) {
-      tasks.push(...feeData.submitOrderFeeTasks);
+      console.log('提交费用审核任务:', feeData.submitOrderFeeTasks);
+      allTasks.push(...feeData.submitOrderFeeTasks);
     }
     if (feeData.modifyOrderFeeTasks?.length) {
-      tasks.push(...feeData.modifyOrderFeeTasks);
+      console.log('修改费用审核任务:', feeData.modifyOrderFeeTasks);
+      allTasks.push(...feeData.modifyOrderFeeTasks);
     }
     if (feeData.deleteOrderFeeTasks?.length) {
-      tasks.push(...feeData.deleteOrderFeeTasks);
+      console.log('删除费用审核任务:', feeData.deleteOrderFeeTasks);
+      allTasks.push(...feeData.deleteOrderFeeTasks);
     }
 
-    // 根据auditTime倒序排列
-    auditTasks.value = tasks
-      .filter((task) => task.auditTime) // 只保留有审核时间的记录
-      .sort((a, b) => {
-        const timeA = dayjs(a.auditTime).valueOf();
-        const timeB = dayjs(b.auditTime).valueOf();
-        return timeB - timeA; // 倒序
-      });
+    console.log('所有审核任务数量:', allTasks.length);
+    console.log('所有审核任务详情:', allTasks);
+
+    // 不再过滤，显示所有任务（包括待审核、已通过、已驳回）
+    // 这样用户在未审核完成之前也能查看本次申请修改的原值及修改值
+    const displayTasks = allTasks;
+
+    console.log('显示的任务数量:', displayTasks.length);
+
+    // 按审核时间倒序排列（最新的在前），没有审核时间的排在最后
+    auditTasks.value = displayTasks.sort((a, b) => {
+      const timeA = a.auditTime ? dayjs(a.auditTime).valueOf() : 0;
+      const timeB = b.auditTime ? dayjs(b.auditTime).valueOf() : 0;
+      return timeB - timeA;
+    });
+
+    console.log('最终显示的审核历史记录:', auditTasks.value);
   } else {
     // 关闭时清空数据
     auditTasks.value = [];
@@ -118,6 +130,12 @@ const parseAndCompareFields = (
       'deletionTime',
       'creatorUserName', // 创建人用户名
       'dataEntryMethod', // 数据录入方式
+      'InvoiceBlocked',
+      'settledPrice',
+      'thisSettledPrice',
+      'taxRate',
+      'statements',
+      'isStatemented',
 
       // 状态字段
       'feeStatus', // 费用状态
@@ -288,11 +306,25 @@ const parseAndCompareFields = (
       const normalizedKey = normalizeFieldName(key);
 
       // 使用辅助函数获取值，尝试多种可能的字段名
-      const before = getFieldValue(original, normalizedKey);
-      const after = getFieldValue(modified, normalizedKey);
+      let before = getFieldValue(original, normalizedKey);
+      let after = getFieldValue(modified, normalizedKey);
 
       // 如果值不同，则记录变化
       if (JSON.stringify(before) !== JSON.stringify(after)) {
+        before =
+          JSON.stringify(before) === 'true'
+            ? '是'
+            : JSON.stringify(before) === 'false'
+              ? '否'
+              : before;
+        after =
+          JSON.stringify(after) === 'true'
+            ? '是'
+            : JSON.stringify(after) === 'false'
+              ? '否'
+              : after;
+        before = before === null ? '-' : before;
+        after = after === null ? '-' : after;
         changes.push({
           field: normalizedKey,
           label: fieldLabels[normalizedKey] || normalizedKey, // 统一使用中文标签
@@ -363,23 +395,38 @@ defineExpose({
           <div class="audit-item">
             <!-- 第一行：核心信息 -->
             <div class="audit-header">
-              <span class="audit-user">{{ task.auditUserName || '-' }}</span>
-              <span class="audit-time">
+              <!-- 操作人员 -->
+              <span
+                class="audit-user"
+                :title="`审核人: ${task.auditUserName || '-'}`"
+              >
+                <i class="i-carbon-user" />
+                审核人: {{ task.auditUserName || '-' }}
+              </span>
+
+              <!-- 审核时间 -->
+              <span
+                class="audit-time"
+                :title="`审核时间: ${task.auditTime ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
+              >
+                <i class="i-carbon-calendar" />
                 {{
                   task.auditTime
                     ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss')
                     : '-'
                 }}
               </span>
-              <span v-if="task.creatorUserName" class="audit-modifier">
-                {{ task.creatorUserName }}
-              </span>
+
+              <!-- 任务类型标签 -->
               <Tag
                 v-if="getTaskTypeTag(task.taskType)"
                 :color="getTaskTypeTag(task.taskType)?.color"
+                class="task-type-tag"
               >
                 {{ getTaskTypeTag(task.taskType)?.text }}
               </Tag>
+
+              <!-- 审核状态标签（通过/驳回） -->
               <Tag
                 :color="
                   task.taskStatus === 1
@@ -388,42 +435,85 @@ defineExpose({
                       ? 'success'
                       : 'default'
                 "
+                class="task-status-tag"
               >
+                <i
+                  :class="
+                    task.taskStatus === 2
+                      ? 'i-carbon-checkmark'
+                      : task.taskStatus === 1
+                        ? 'i-carbon-close'
+                        : ''
+                  "
+                />
                 {{ getTaskStatusText(task.taskStatus) }}
               </Tag>
             </div>
-            <!-- 第二行：审核意见 -->
-            <div v-if="task.remark" class="audit-remark">
-              {{ task.remark }}
+
+            <!-- 第二行：提交人信息（如果有） -->
+            <div v-if="task.creatorUserName" class="audit-submitter">
+              <span class="submitter-label">提交人:</span>
+              <span class="submitter-name">{{ task.creatorUserName }}</span>
             </div>
-            <!-- 第三行：修改记录表格（仅费用修改类型显示） -->
+
+            <!-- 第三行：审核意见 -->
+            <div v-if="task.remark" class="audit-remark">
+              <div class="remark-label">审核意见:</div>
+              <div class="remark-content">{{ task.remark }}</div>
+            </div>
+
+            <!-- 第四行：修改记录对比（仅费用修改类型显示） -->
             <div
               v-if="task.taskType === 1 && task.originalInfo && task.info"
               class="modify-record-section"
             >
-              <div class="modify-record-title">
-                {{ $t('auditApproval.task.originalInfo') }} vs
-                {{ $t('auditApproval.task.info') }}
+              <!-- 标题区域 -->
+              <div class="modify-record-header">
+                <div class="header-left">
+                  <i class="i-carbon-compare header-icon" />
+                  <span class="header-title">费用修改详情</span>
+                </div>
+                <div class="header-badges">
+                  <span class="badge badge-before">
+                    <i class="i-carbon-arrow-left" />
+                    修改前
+                  </span>
+                  <i class="i-carbon-arrow-right arrow-icon" />
+                  <span class="badge badge-after">
+                    修改后
+                    <i class="i-carbon-arrow-right" />
+                  </span>
+                </div>
               </div>
-              <Table
-                :columns="getModifyColumns()"
-                :data-source="
-                  parseAndCompareFields(task.originalInfo, task.info)
-                "
-                :pagination="false"
-                size="small"
-                bordered
-                class="modify-record-table"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'before'">
-                    <span class="before-value">{{ record.before }}</span>
+
+              <!-- 对比表格 -->
+              <div class="table-wrapper">
+                <Table
+                  :columns="getModifyColumns()"
+                  :data-source="
+                    parseAndCompareFields(task.originalInfo, task.info)
+                  "
+                  :pagination="false"
+                  size="middle"
+                  bordered
+                  class="modify-record-table"
+                >
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.key === 'before'">
+                      <div class="cell-before">
+                        <i class="i-carbon-subtract cell-icon" />
+                        <span class="cell-value">{{ record.before }}</span>
+                      </div>
+                    </template>
+                    <template v-else-if="column.key === 'after'">
+                      <div class="cell-after">
+                        <i class="i-carbon-add cell-icon" />
+                        <span class="cell-value">{{ record.after }}</span>
+                      </div>
+                    </template>
                   </template>
-                  <template v-else-if="column.key === 'after'">
-                    <span class="after-value">{{ record.after }}</span>
-                  </template>
-                </template>
-              </Table>
+                </Table>
+              </div>
             </div>
           </div>
         </TimelineItem>
@@ -433,6 +523,29 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
+// 动画效果
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes slide-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(3px);
+  }
+}
+
 .audit-history-container {
   max-height: 600px;
   padding: 16px 10px;
@@ -461,7 +574,13 @@ defineExpose({
 .audit-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .audit-header {
@@ -471,64 +590,242 @@ defineExpose({
   align-items: center;
 
   .audit-user {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
     font-size: 14px;
     font-weight: 600;
     color: #262626;
+
+    i {
+      font-size: 16px;
+      color: #1890ff;
+    }
   }
 
   .audit-time {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
     font-size: 13px;
+    color: #8c8c8c;
+
+    i {
+      font-size: 14px;
+      color: #595959;
+    }
+  }
+
+  .task-type-tag {
+    margin: 0;
+  }
+
+  .task-status-tag {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    margin: 0;
+
+    i {
+      font-size: 14px;
+    }
+  }
+}
+
+.audit-submitter {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: #595959;
+
+  .submitter-label {
     color: #8c8c8c;
   }
 
-  .audit-modifier {
-    font-size: 13px;
-    color: #595959;
+  .submitter-name {
+    font-weight: 500;
+    color: #262626;
   }
 }
 
 .audit-remark {
-  padding: 8px 12px;
+  padding: 10px 12px;
   margin-top: 4px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: #595959;
   background-color: #fafafa;
+  border-left: 3px solid #1890ff;
   border-radius: 4px;
+
+  .remark-label {
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #8c8c8c;
+  }
+
+  .remark-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #595959;
+  }
 }
 
 .modify-record-section {
-  padding: 12px;
   margin-top: 12px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
 
-.modify-record-title {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #595959;
+.modify-record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-bottom: 2px solid #bae7ff;
+
+  .header-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .header-icon {
+      font-size: 18px;
+      color: #1890ff;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #262626;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  .header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .badge {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+      transition: all 0.3s ease;
+
+      &:hover {
+        box-shadow: 0 3px 6px rgb(0 0 0 / 15%);
+        transform: translateY(-1px);
+      }
+
+      &.badge-before {
+        background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
+
+        i {
+          font-size: 12px;
+        }
+      }
+
+      &.badge-after {
+        background: linear-gradient(135deg, #73d13d 0%, #52c41a 100%);
+
+        i {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .arrow-icon {
+      font-size: 16px;
+      color: #1890ff;
+      animation: slide-right 1.5s ease-in-out infinite;
+    }
+  }
+}
+
+.table-wrapper {
+  width: 100%;
+  padding: 12px;
+  background-color: #fff;
 }
 
 .modify-record-table {
   :deep(.ant-table) {
-    font-size: 12px;
+    font-size: 13px;
+    border-radius: 6px;
   }
 
   :deep(.ant-table-thead > tr > th) {
-    font-weight: 600;
-    background-color: #fafafa;
+    padding: 12px 8px;
+    font-weight: 700;
+    color: #262626;
+    background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+    border-bottom: 2px solid #d9d9d9;
   }
 
-  .before-value {
-    color: #ff4d4f;
-    text-decoration: line-through;
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 10px 8px;
+    transition: all 0.3s ease;
   }
 
-  .after-value {
-    font-weight: 500;
-    color: #52c41a;
+  :deep(.ant-table-tbody > tr:hover > td) {
+    background-color: #f5f5f5;
+  }
+
+  .cell-before {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+    border-left: 3px solid #ff4d4f;
+    border-radius: 4px;
+
+    .cell-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+      color: #ff4d4f;
+    }
+
+    .cell-value {
+      font-size: 13px;
+      font-weight: 500;
+      color: #cf1322;
+      word-break: break-all;
+    }
+  }
+
+  .cell-after {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+    border-left: 3px solid #52c41a;
+    border-radius: 4px;
+
+    .cell-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+      color: #52c41a;
+    }
+
+    .cell-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #389e0d;
+      word-break: break-all;
+    }
   }
 }
 </style>

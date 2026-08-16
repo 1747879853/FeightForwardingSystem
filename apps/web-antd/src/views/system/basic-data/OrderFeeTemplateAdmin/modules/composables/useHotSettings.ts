@@ -48,6 +48,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 120,
+      minWidth: 120, // ✅ 新增：设置最小宽度，防止显示不全
       renderer: function (
         this: any,
         instance: any,
@@ -121,6 +122,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 150,
+      minWidth: 150, // ✅ 新增：设置最小宽度，防止显示不全
       renderer: function (
         this: any,
         instance: any,
@@ -216,6 +218,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 100,
+      minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
       renderer: function (
         this: any,
         instance: any,
@@ -434,6 +437,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 200,
+      minWidth: 200, // ✅ 新增：设置最小宽度，防止显示不全
       renderer: function (
         this: any,
         instance: any,
@@ -476,7 +480,8 @@ export function useHotSettings(
               // 只显示"-"后面的字符串（客户名称）
               if (label && typeof label === 'string') {
                 const parts = label.split('-');
-                displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
+                displayName =
+                  parts.length > 1 ? parts.slice(1).join('-') : label;
               } else {
                 displayName = label || '';
               }
@@ -516,6 +521,7 @@ export function useHotSettings(
       type: 'dropdown',
       source: dropdownSources.currencyList.value.map((item: any) => item.label),
       width: 100,
+      minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
       strict: true,
       // ✅ 新增：自定义renderer，确保正确显示Label而不是ID
       renderer: function (
@@ -577,6 +583,7 @@ export function useHotSettings(
         culture: 'en-US',
       },
       width: 100,
+      minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
     },
     {
       data: 'noTaxUnitPrice',
@@ -631,6 +638,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 100,
+      minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
       renderer: function (
         this: any,
         instance: any,
@@ -659,18 +667,21 @@ export function useHotSettings(
         culture: 'en-US',
       },
       width: 80,
+      minWidth: 80, // ✅ 新增：设置最小宽度，防止显示不全
     },
     {
       data: 'sortId',
       title: '排序',
       type: 'numeric',
       width: 80,
+      minWidth: 80, // ✅ 新增：设置最小宽度，防止显示不全
     },
     {
       data: 'remark',
       title: '备注',
       type: 'text',
-      width: 150,
+      width: 140,
+      minWidth: 140, // ✅ 新增：设置最小宽度，防止显示不全
     },
   ]);
 
@@ -690,6 +701,10 @@ export function useHotSettings(
 
     // ✅ 关键修复：启用多选模式，支持框选和Ctrl+点击多选
     selectionMode: 'multiple' as const,
+
+    // ✅ 修复滚动条导致的错行问题：使用 fixedRowsTop 和 fixedColumnsLeft
+    fixedRowsTop: 0, // 固定表头
+    fixedColumnsLeft: 0, // 固定左侧序号列（如果使用 rowHeaders）
 
     // 单元格编辑前的回调
     afterBeginEditing(row: number, col: number) {

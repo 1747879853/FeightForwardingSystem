@@ -176,7 +176,7 @@ const useOrderFeeDetailColumns = () => {
       field: 'feeCodeId',
       width: 120,
       formatter: ({ row }: any) => {
-        return row.feeCode?.cnName || '--';
+        return row.feeCode?.cnNameStr || row.feeCode?.cnName || '--';
       },
     },
     {
@@ -184,7 +184,7 @@ const useOrderFeeDetailColumns = () => {
       field: 'settlementId',
       width: 120,
       formatter: ({ row }: any) => {
-        return row.settlement?.name || '--';
+        return row.settlement?.nameStr || row.settlement?.name || '--';
       },
     },
     {
@@ -193,7 +193,7 @@ const useOrderFeeDetailColumns = () => {
       width: 70,
       align: 'center',
       formatter: ({ row }: any) => {
-        return row.currency?.code || '--';
+        return row.currency?.codeStr || row.currency?.code || '--';
       },
     },
     {
@@ -201,24 +201,36 @@ const useOrderFeeDetailColumns = () => {
       field: 'unitPriceStr',
       width: 100,
       align: 'right',
+      formatter: ({ row }: any) => {
+        return row.unitPriceMod || row.unitPriceStr || '--';
+      },
     },
     {
       title: $t('seaExport.export.orderFee.amount'),
       field: 'amountStr',
       width: 100,
       align: 'right',
+      formatter: ({ row }: any) => {
+        return row.amountMod || row.amountStr || '--';
+      },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       field: 'noTaxUnitPriceStr',
       width: 110,
       align: 'right',
+      formatter: ({ row }: any) => {
+        return row.noTaxUnitPriceMod || row.noTaxUnitPriceStr || '--';
+      },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxAmount'),
       field: 'noTaxAmountStr',
       width: 110,
       align: 'right',
+      formatter: ({ row }: any) => {
+        return row.noTaxAmountMod || row.noTaxAmountStr || '--';
+      },
     },
     {
       title: $t('seaExport.export.orderFee.remark'),
@@ -254,10 +266,25 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (item[key] !== info[key] && key !== 'combinedFeeStatus') {
-        item[key] = `${item[key]} => [${info[key]}]`;
+      if (key === 'feeCode') {
+        if (item.feeCode?.cnName !== info.feeCode?.cnName)
+          item.feeCode.cnNameStr = `${item.feeCode?.cnName} => [${info.feeCode?.cnName}]`;
+      } else if (key === 'settlement') {
+        if (item.settlement?.name !== info.settlement?.name)
+          item.settlement.nameStr = `${item.settlement?.name} => [${info.settlement?.name}]`;
+      } else if (key === 'currency') {
+        if (item.currency?.code !== info.currency?.code)
+          item.currency.codeStr = `${item.currency?.code} => [${info.currency?.code}]`;
+      } else if (
+        item[key] !== info[key] &&
+        key !== 'combinedFeeStatus' &&
+        key !== 'creatorUserName' &&
+        key !== 'creationTime'
+      ) {
+        item[`${key}Mod`] = `${item[key]} => [${info[key]}]`;
       }
     });
+    console.log('item', item);
     return {
       ...item,
     };

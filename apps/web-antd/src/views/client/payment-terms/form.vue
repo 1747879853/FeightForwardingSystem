@@ -108,6 +108,40 @@ watch(
     if (editId.value) {
       // 编辑时加载数据到表单
       console.log('编辑时加载数据到表单', newVal);
+
+      // 先根据 settlementType 更新字段显示状态
+      if (newVal.settlementType === 1) {
+        billFormApi.updateSchema([
+          { fieldName: 'months', hide: false },
+          { fieldName: 'settlementDay', hide: false },
+          { fieldName: 'days', hide: true },
+        ]);
+      } else if (newVal.settlementType === 2) {
+        billFormApi.updateSchema([
+          { fieldName: 'months', hide: true },
+          { fieldName: 'settlementDay', hide: true },
+          { fieldName: 'days', hide: false },
+        ]);
+      } else {
+        billFormApi.updateSchema([
+          { fieldName: 'months', hide: true },
+          { fieldName: 'settlementDay', hide: true },
+          { fieldName: 'days', hide: true },
+        ]);
+      }
+
+      // 处理 permanent 字段对 expiringTime 的影响
+      if (newVal.permanent) {
+        billFormApi.updateSchema([
+          { fieldName: 'expiringTime', disabled: true },
+        ]);
+        billFormApi.setValues({ expiringTime: '' });
+      } else {
+        billFormApi.updateSchema([
+          { fieldName: 'expiringTime', disabled: false },
+        ]);
+      }
+
       billFormApi.setValues({
         contractNo: newVal.contractNo,
         dateType: newVal.dateType ?? 0,
@@ -124,10 +158,15 @@ watch(
         days: newVal.days,
         remark: newVal.remark,
         codeSourceIds:
-          (newVal.cbpCodeSources as any[])?.map((item: any) => item?.codeSourceId) || [],
+          (newVal.cbpCodeSources as any[])?.map(
+            (item: any) => item?.codeSourceId,
+          ) || [],
         organizationUnitIds:
-          (newVal.cbpOrgs as any[])?.map((item: any) => item?.organizationUnitId) || [],
-        userIds: (newVal.cbpUsers as any[])?.map((item: any) => item?.userId) || [],
+          (newVal.cbpOrgs as any[])?.map(
+            (item: any) => item?.organizationUnitId,
+          ) || [],
+        userIds:
+          (newVal.cbpUsers as any[])?.map((item: any) => item?.userId) || [],
       });
     } else {
       // 创建时重置表单
