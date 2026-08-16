@@ -21,7 +21,7 @@ last_updated: 2026-08-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。
+- **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/SyncTerminalScheduleAsync`（只传业务单 Id）。进口侧后端只回填 3 个字段：`ETD` 开船日期、`ATD` 实际开船日期、`InnerVoyno` 航次（航次取飞驼 `ivoyage`）。命中唯一一条即回填并 `loadEditData()` 重拉详情；多条时弹窗单选后带 `key` 再调一次。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，飞驼的码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
@@ -59,6 +59,8 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 两备注字段仍同时挂在 `cargoRemarkFormApi`；件数/包装用 `PkgsPackageInput`，`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
+| 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 折叠用 `v-show` 保留表单实例；新建/编辑共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |
 | 2026-08-16 | `Feature` | 基础信息工具栏补齐「运踪订阅 / 重新订阅」单票入口（仅编辑态 + `Admin.ExternalApi.Use`）。 | 复用列表同一套 `useContainerTrackingSubscribe`（`bizType=1`）；状态读详情 `isFeituoSubscribed` / `isFeituoSubscribeSuccess`；已成功订阅禁用，失败可重订。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md`。 |
 | 2026-08-16 | `Refactor` | 运踪信息 Tab 的异常预警明细改为弹窗查看，且仅在有预警时才出现「异常预警(N)」按钮，不再常驻底部空表。 | 详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md`。 |
 | 2026-08-16 | `Feat` | 多箱票的轨迹节点显示箱号，并可在「整票 / 按箱」间切换查看。 | 同名节点重复多为各箱进度差异或摘车后重新编组；按箱视图每箱一条时间轴。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |

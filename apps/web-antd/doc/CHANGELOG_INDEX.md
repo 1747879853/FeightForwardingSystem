@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-16 海运进口备注改为顶部切换，件数包装同行](./changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md)
+- [2026-08-16 海运进口收发通支持展开折叠（默认展开）](./changelogs/change-log-2026-08-16-sea-import-party-collapse.md)
 - [2026-08-16 海运进口编辑页补齐运踪订阅按钮](./changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md)
 - [2026-08-16 海出/海进/空出列表新增与复制按钮图标对齐](./changelogs/change-log-2026-08-16-list-create-copy-icon-align.md)
 - [2026-08-16 运踪异常预警改为按钮入口 + 弹窗查看](./changelogs/change-log-2026-08-16-tracking-warning-modal.md)

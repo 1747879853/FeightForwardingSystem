@@ -143,6 +143,8 @@ const orderCodeGoodsRows = ref<
 >([]);
 /** 委托单位联系人：暂无独立控件，编辑时原样回传避免被清空 */
 const clientContactId = ref<null | number | string | undefined>();
+/** 收发通区块可折叠，默认展开（对齐业务联系单交互，进口默认展开） */
+const partyExpanded = ref(true);
 
 /** 与委托信息一致：表单控件使用 small 尺寸 */
 function withSmallComponentProps(componentProps: unknown) {
@@ -384,6 +386,12 @@ const cargoMetricsFieldNames = new Set([
   'cbm',
 ]);
 const cargoRemarkFieldNames = new Set(['internalRemark', 'remark']);
+type RemarkTab = 'internalRemark' | 'remark';
+const remarkTab = ref<RemarkTab>('internalRemark');
+const remarkTabItems: Array<{ key: RemarkTab; label: string }> = [
+  { key: 'internalRemark', label: $t('seaImport.import.internalRemark') },
+  { key: 'remark', label: $t('seaImport.import.externalRemark') },
+];
 
 /** 货物类型 + 品名内联在货物卡片标题栏 */
 const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
@@ -414,30 +422,38 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   },
 });
 
-/** 收发通区块下方：内部备注 / 外部备注 */
+/** 货物右栏：内部备注 / 外部备注共用一块，顶部 Tab 切换 */
 const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
   commonConfig: {
+    hideLabel: true,
     labelClass: VERTICAL_FORM_LABEL_CLASS,
   },
   schema: cargoSchema
     .filter((item) => cargoRemarkFieldNames.has(item.fieldName))
     .map((item) => ({
       ...item,
-      label:
-        item.fieldName === 'internalRemark'
-          ? $t('seaImport.import.internalRemark')
-          : '外部备注',
+      component: 'Input',
+      hideLabel: true,
       componentProps: {
-        allowClear: true,
-        rows: 3,
-        style: { minHeight: '72px' },
+        class: 'cargo-remark-input',
+        style: {
+          background: 'transparent',
+          border: 0,
+          borderRadius: 0,
+          boxShadow: 'none',
+          height: '61px',
+          lineHeight: 'normal',
+          minHeight: '61px',
+          outline: 0,
+          padding: '6px 8px 41px',
+        },
       },
-      formItemClass: 'col-span-2 party-remark-field',
+      formItemClass: `col-span-1 cargo-remark-field cargo-remark-field--${item.fieldName}`,
     })),
   showDefaultActions: false,
-  wrapperClass: 'party-remark-wrap grid-cols-6 gap-x-4',
+  wrapperClass: 'cargo-remark-wrap grid-cols-1',
 });
 
 /** 货物信息左栏：唛头 / 货描 */
@@ -460,7 +476,18 @@ const [CargoMainForm, cargoMainFormApi] = useVbenForm({
   wrapperClass: 'cargo-main-wrap form-controls-small grid-cols-5 gap-x-4',
 });
 
-/** 货物信息右栏：件数 / 包装 / 毛重 / 净重 / 体积 */
+const codePackageSelectedItems = ref<any[]>([]);
+
+/** pkgs 用 PkgsPackageInput 合并包装，componentProps 保持函数以回传 codePackageId */
+const buildPkgsComponentProps =
+  () => (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'codePackageId',
+    secondFieldValue: values?.codePackageId,
+    selectedItems: codePackageSelectedItems.value,
+  });
+
+/** 货物信息右栏：件数/包装 / 毛重 / 净重 / 体积 */
 const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
@@ -468,7 +495,13 @@ const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
     labelClass: VERTICAL_FORM_LABEL_CLASS,
   },
   schema: mapSchemaWithSmallSize(
-    cargoSchema.filter((item) => cargoMetricsFieldNames.has(item.fieldName)),
+    cargoSchema
+      .filter((item) => cargoMetricsFieldNames.has(item.fieldName))
+      .map((item) =>
+        item.fieldName === 'pkgs'
+          ? { ...item, componentProps: buildPkgsComponentProps() }
+          : item,
+      ),
   ),
   showDefaultActions: false,
   wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
@@ -884,17 +917,10 @@ const loadEditData = async (): Promise<
         },
       },
     ]);
-    cargoMetricsFormApi.updateSchema([
-      {
-        fieldName: 'codePackageId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            to?.codePackageId,
-            resolveCodePackageName(to),
-          ),
-        },
-      },
-    ]);
+    codePackageSelectedItems.value = toSelectedItems(
+      to?.codePackageId,
+      resolveCodePackageName(to),
+    );
     cargoTypeInlineFormApi.updateSchema([
       {
         fieldName: 'orderCodeGoodss',
@@ -1037,6 +1063,9 @@ const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
   refreshEntrustReadonlyInfo,
   syncBasicInfoHeaderFields,
   recalcDerivedDates,
+  setCodePackageSelectedItems: (items) => {
+    codePackageSelectedItems.value = items;
+  },
 });
 
 const aiExtractModalOpen = ref(false);
@@ -1098,19 +1127,22 @@ const scrollToSection = (key: SectionKey) => {
   emit('sectionChange', key);
 };
 
-/** 唛头 / 货描高度跟右侧件重尺（含体积 CBM）底对齐 */
+/** 唛头 / 货描高度跟件重尺（含体积 CBM）底对齐 */
 const cargoMainLayoutLeftRef = ref<HTMLElement | null>(null);
 const cargoMainLayoutRightRef = ref<HTMLElement | null>(null);
+const cargoMainLayoutRemarkRef = ref<HTMLElement | null>(null);
 let cargoLayoutResizeObserver: null | ResizeObserver = null;
 let lastCargoLayoutSyncHeight = 0;
 let cargoLayoutSyncing = false;
 
-const applyCargoTextareaHeights = (targetHeight: number) => {
-  const leftEl = cargoMainLayoutLeftRef.value;
-  if (!leftEl || targetHeight <= 0) return;
+const applyCargoTextareaHeights = (
+  container: HTMLElement | null,
+  targetHeight: number,
+) => {
+  if (!container || targetHeight <= 0) return;
 
   for (const textarea of Array.from(
-    leftEl.querySelectorAll<HTMLTextAreaElement>('textarea.ant-input'),
+    container.querySelectorAll<HTMLTextAreaElement>('textarea.ant-input'),
   )) {
     const formItem =
       textarea.closest<HTMLElement>('.flex-col') ??
@@ -1145,9 +1177,12 @@ const syncCargoMainLayoutHeight = () => {
 
     leftEl.style.removeProperty('height');
     leftEl.style.minHeight = `${targetHeight}px`;
-
+    const remarkEl = cargoMainLayoutRemarkRef.value;
+    if (remarkEl) {
+      remarkEl.style.minHeight = `${targetHeight}px`;
+    }
     requestAnimationFrame(() => {
-      applyCargoTextareaHeights(targetHeight);
+      applyCargoTextareaHeights(leftEl, targetHeight);
       cargoLayoutSyncing = false;
       if (rightEl && cargoLayoutResizeObserver) {
         cargoLayoutResizeObserver.observe(rightEl);
@@ -1285,8 +1320,8 @@ watch(pageLoading, (loading) => {
                       class="sea-import-save-dropdown"
                       @click="handleSubmit"
                     >
-                      <Save class="mr-1 inline-block size-3.5 align-middle" />
-                      <span class="align-middle">{{ $t('common.save') }}</span>
+                      <Save class="sea-import-save-dropdown__icon" />
+                      <span>{{ $t('common.save') }}</span>
                       <template #overlay>
                         <Menu>
                           <MenuItem
@@ -1309,11 +1344,11 @@ watch(pageLoading, (loading) => {
                       type="primary"
                       size="small"
                       :loading="submitting"
-                      class="flex items-center justify-center"
+                      class="sea-import-save-btn"
                       @click="handleSubmit"
                     >
-                      <Save class="mr-1 inline-block size-3.5 align-middle" />
-                      <span class="align-middle">{{ $t('common.save') }}</span>
+                      <Save class="sea-import-save-dropdown__icon" />
+                      <span>{{ $t('common.save') }}</span>
                     </Button>
                   </Space>
                 </div>
@@ -1408,9 +1443,29 @@ watch(pageLoading, (loading) => {
                 <div
                   class="content-section__body content-section__body--flush-top"
                 >
-                  <PartyInfoForm />
-                  <div class="party-remark-row">
-                    <CargoRemarkForm />
+                  <div
+                    class="sea-import-party-collapse"
+                    role="button"
+                    tabindex="0"
+                    @click="partyExpanded = !partyExpanded"
+                    @keydown.enter.prevent="partyExpanded = !partyExpanded"
+                    @keydown.space.prevent="partyExpanded = !partyExpanded"
+                  >
+                    <span>收发通</span>
+                    <IconifyIcon
+                      icon="mdi:chevron-up"
+                      class="sea-import-party-collapse__chevron"
+                      :class="{
+                        'sea-import-party-collapse__chevron--closed':
+                          !partyExpanded,
+                      }"
+                    />
+                  </div>
+                  <div
+                    v-show="partyExpanded"
+                    class="sea-import-party-collapse__content"
+                  >
+                    <PartyInfoForm />
                   </div>
                 </div>
               </section>
@@ -1518,6 +1573,32 @@ watch(pageLoading, (loading) => {
                     class="cargo-main-layout__right"
                   >
                     <CargoMetricsForm />
+                  </div>
+                  <div
+                    ref="cargoMainLayoutRemarkRef"
+                    class="cargo-main-layout__remark"
+                    :data-remark-tab="remarkTab"
+                  >
+                    <div class="cargo-remark-tabs" role="tablist">
+                      <span
+                        class="cargo-remark-tabs__active-border"
+                        :class="`cargo-remark-tabs__active-border--${remarkTab}`"
+                        aria-hidden="true"
+                      />
+                      <button
+                        v-for="item in remarkTabItems"
+                        :key="item.key"
+                        type="button"
+                        role="tab"
+                        class="cargo-remark-tabs__item"
+                        :class="{ 'is-active': remarkTab === item.key }"
+                        :aria-selected="remarkTab === item.key"
+                        @click="remarkTab = item.key"
+                      >
+                        {{ item.label }}
+                      </button>
+                    </div>
+                    <CargoRemarkForm />
                   </div>
                 </div>
                 <div v-show="showDgFields" class="cargo-extension-section">

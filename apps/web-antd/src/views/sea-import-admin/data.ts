@@ -1671,26 +1671,22 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--goods-des',
     },
     {
-      component: 'InputNumber',
+      component: 'PkgsPackageInput',
       fieldName: 'pkgs',
-      label: $t('seaImport.import.pkgs'),
-      componentProps: {
-        class: 'w-full',
-        min: 0,
-        controls: false,
-        precision: 0,
-      },
+      label: $t('seaImport.import.pkgsPackage'),
+      componentProps: (values: Record<string, any>, formApi: any) => ({
+        formContext: formApi,
+        secondFieldName: 'codePackageId',
+        secondFieldValue: values?.codePackageId,
+      }),
       formItemClass: 'cargo-metrics-item cargo-metrics-item--pkgs',
     },
     {
       component: 'CodePackageSelect',
       fieldName: 'codePackageId',
-      label: $t('seaImport.import.codePackageId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-      formItemClass: 'cargo-metrics-item cargo-metrics-item--code-package',
+      label: '',
+      formItemClass: 'hidden',
+      componentProps: { class: 'hidden' },
     },
     {
       component: 'InputNumber',
@@ -1743,7 +1739,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'remark',
-      label: $t('seaImport.import.remark'),
+      label: $t('seaImport.import.externalRemark'),
       componentProps: {
         allowClear: true,
         rows: 3,

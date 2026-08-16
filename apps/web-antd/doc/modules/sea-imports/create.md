@@ -21,7 +21,7 @@ last_updated: 2026-08-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。
+- **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。收发通为灰色折叠条，点击展开/收起，**默认展开**。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 顶栏「AI识别」弹出拖拽上传区，支持 PDF/图片/Word/Excel/OFD；调用 TextIn `ExtractSeaImportToAddDtoAsync`，回填 `seaImport`（箱子在进口层 `orderCtns`，到港日期→`etd`）；未匹配箱型保留识别原文供补选。
 - **进口作业日期：** 到港日期可改；转站、箱使为只读文本，由到港日期与免箱期推算；免箱期在船期标题旁编辑。
 - **干系人：** 销售角色必填且唯一；右侧卡片式增删角色，与归属组织联动。
@@ -58,6 +58,8 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
+| 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |
 | 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，新建与编辑均可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-14 | `Feat` | 新建/编辑共用表单接入 TextIn AI 识别：上传单证回填新建 Dto；箱子挂 `seaImport.orderCtns`；到港日期写 `etd` 并重算转站/箱使。 | 详见 `changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md`。 |
 | 2026-08-14 | `Feat` | 新建表单：码头改为往来单位下拉；补联运单号、分单号、贸易方式；集装箱规格/型号改为品名下拉。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |

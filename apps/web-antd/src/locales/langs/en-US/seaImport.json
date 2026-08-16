@@ -144,6 +144,7 @@
     "innerVoyno": "Voyage",
     "insuranceId": "Insurance Co.",
     "internalRemark": "Internal Remark",
+    "externalRemark": "External Remark",
     "isBusinessLocking": "Biz Locked",
     "isFeeLocking": "Fee Locked",
     "issueType": "Issue Type",
@@ -294,6 +295,7 @@
       "unSettledAmountLabel": "Unsettled Amount"
     },
     "pkgs": "Pkgs",
+    "pkgsPackage": "Pkgs/Package",
     "pleaseSelectGoods": "Please select goods",
     "pleaseSelectOne": "Please select a record first",
     "pleaseSelectOrderUser": "Please select user",

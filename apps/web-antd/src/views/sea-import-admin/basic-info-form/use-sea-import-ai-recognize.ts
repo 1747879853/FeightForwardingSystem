@@ -52,6 +52,8 @@ export type UseSeaImportAiRecognizeDeps = {
   syncBasicInfoHeaderFields: () => Promise<void> | void;
   /** 回填到港日期后重算转站/箱使 */
   recalcDerivedDates: () => Promise<void> | void;
+  /** 件数/包装合并控件的包装回显项 */
+  setCodePackageSelectedItems?: (items: any[]) => void;
 };
 
 export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
@@ -62,6 +64,7 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     refreshEntrustReadonlyInfo,
     syncBasicInfoHeaderFields,
     recalcDerivedDates,
+    setCodePackageSelectedItems,
   } = deps;
 
   const aiRecognizing = ref(false);
@@ -165,14 +168,12 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
       }),
     ]);
 
-    formApis.cargoMetrics.updateSchema([
-      item('codePackageId', {
-        selectedItems: toSelectedItems(
-          values.codePackageId,
-          pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
-        ),
-      }),
-    ]);
+    setCodePackageSelectedItems?.(
+      toSelectedItems(
+        values.codePackageId,
+        pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
+      ),
+    );
   };
 
   /**
