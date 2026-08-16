@@ -374,6 +374,11 @@ export function useOrderFixedColumns() {
       formatter: 'formatDate' as const,
     },
     {
+      field: 'etd',
+      title: '开船日期',
+      width: 110,
+    },
+    {
       field: 'polName',
       title: '起运港',
       width: 110,

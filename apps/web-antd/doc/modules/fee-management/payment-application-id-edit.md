@@ -72,6 +72,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |
 | 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |
 | 2026-08-14 | `Feature` | 添加费用抽屉搜索增加「业务类型」筛选，并传给 `GetOrderFeeGroupAsync.BizType`。 | 未选不传参数，避免 `undefined` 被当成海运出口 `0`。详见 `changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md`。 |
 | 2026-08-14 | `Fix` | 添加费用抽屉支持海运出口、海运进口、空运出口三类业务的起运港/目的港备注。 | `GetOrderFeeGroupAsync` 港口改按 `bizType` 读取互斥业务简要对象，删除根级港口字段依赖。详见 `changelogs/change-log-2026-08-14-payment-application-fee-group-biz-simple.md`。 |
