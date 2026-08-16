@@ -20,5 +20,36 @@
     "uploader": "Uploaded by",
     "uploadTime": "Uploaded at",
     "unsupported": "Online preview is not supported for this file type. Please download to view."
+  },
+  "terminalSchedule": {
+    "sync": "Terminal Vessel",
+    "syncing": "Syncing terminal vessel...",
+    "title": "Select Terminal Vessel Schedule",
+    "queryTip": "Query: vessel {vessel} · voyage {voyage} · POL {port}",
+    "queryVoyageAll": "All",
+    "multipleTip": "Multiple schedules returned. Please select one and confirm; nothing has been filled yet.",
+    "notFound": "No terminal vessel schedule found. Please check the vessel and voyage on the order.",
+    "pleaseSelect": "Please select a vessel schedule first",
+    "appliedTitle": "Terminal vessel applied",
+    "noFieldFilled": "No field needed updating",
+    "emptyValue": "empty",
+    "callingPorts": "Calling ports",
+    "column": {
+      "status": "Status",
+      "vessel": "Vessel",
+      "voyage": "Voyage",
+      "shipName": "Carrier",
+      "agentName": "Shipping Agent",
+      "terminal": "Terminal",
+      "eta": "Arrival at POL (Est.)",
+      "ata": "Arrival at POL (Act.)",
+      "etd": "ETD",
+      "atd": "ATD",
+      "cyOpen": "CY Open",
+      "cyClosing": "CY Closing",
+      "portCloseDate": "SI Cutoff",
+      "customsCloseDate": "Customs Cutoff",
+      "updateTime": "Updated At"
+    }
   }
 }

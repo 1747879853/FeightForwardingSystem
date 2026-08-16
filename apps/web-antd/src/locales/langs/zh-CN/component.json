@@ -20,5 +20,36 @@
     "uploader": "上传人",
     "uploadTime": "上传时间",
     "unsupported": "该文件类型暂不支持在线预览，请下载后查看"
+  },
+  "terminalSchedule": {
+    "sync": "码头船舶",
+    "syncing": "正在同步码头船舶...",
+    "title": "选择码头船舶计划",
+    "queryTip": "本次查询：船名 {vessel} · 航次 {voyage} · 起运港 {port}",
+    "queryVoyageAll": "全部",
+    "multipleTip": "匹配到多条码头船舶计划，请选择一条后确定；本次尚未回填任何字段。",
+    "notFound": "未查询到码头船舶计划，请核对业务单的船名与航次",
+    "pleaseSelect": "请先选择一条船舶计划",
+    "appliedTitle": "码头船舶已回填",
+    "noFieldFilled": "本次没有需要更新的字段",
+    "emptyValue": "空",
+    "callingPorts": "挂靠港",
+    "column": {
+      "status": "船期状态",
+      "vessel": "船名",
+      "voyage": "航次",
+      "shipName": "船公司",
+      "agentName": "船代",
+      "terminal": "码头",
+      "eta": "抵起运港(计划)",
+      "ata": "抵起运港(实际)",
+      "etd": "计划离港",
+      "atd": "实际离港",
+      "cyOpen": "开港",
+      "cyClosing": "截港",
+      "portCloseDate": "截单",
+      "customsCloseDate": "截关",
+      "updateTime": "更新时间"
+    }
   }
 }

@@ -7,7 +7,9 @@ import { computed } from 'vue';
 
 import { $t } from '@vben/locales';
 
-import { Input } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
+
+import { Button, Input, Tooltip } from 'ant-design-vue';
 
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
@@ -30,6 +32,16 @@ interface Props {
   mainRatio?: number;
   /** 船次（第二字段）flex 伸缩比例，默认 1 */
   secondRatio?: number;
+  /** 是否展示尾部操作按钮（如码头船舶） */
+  actionVisible?: boolean;
+  /** 操作按钮 loading */
+  actionLoading?: boolean;
+  /** 操作按钮禁用 */
+  actionDisabled?: boolean;
+  /** 操作按钮 tooltip 文案 */
+  actionTitle?: string;
+  /** 操作按钮图标 */
+  actionIcon?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -39,10 +51,16 @@ const props = withDefaults(defineProps<Props>(), {
   size: undefined,
   mainRatio: 1,
   secondRatio: 1,
+  actionVisible: false,
+  actionLoading: false,
+  actionDisabled: false,
+  actionTitle: '',
+  actionIcon: 'mdi:ferry',
 });
 
 const emit = defineEmits<{
   'update:value': [value: string];
+  action: [];
 }>();
 
 const vesselValue = computed(() => props.value ?? '');
@@ -78,5 +96,16 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
           )
       "
     />
+    <Tooltip v-if="props.actionVisible" :title="props.actionTitle">
+      <Button
+        :size="props.size"
+        :loading="props.actionLoading"
+        :disabled="props.disabled || props.actionDisabled"
+        class="shrink-0 !px-1.5"
+        @click="emit('action')"
+      >
+        <IconifyIcon :icon="props.actionIcon" class="size-4" />
+      </Button>
+    </Tooltip>
   </div>
 </template>

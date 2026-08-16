@@ -10,7 +10,7 @@
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；账期删除大数 ID 原样透传。 | [客户编辑](./modules/clients/id-edit.md) | 2026-07-12 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；支持多选后运踪批量订阅，并可按权限删除单条勾选委托。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-08-02 |
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存时切标签/跳转弹二次确认；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-08-10 |
-| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定）；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-10 |
+| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定）；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可一键同步飞驼码头船舶并回填开船/截港等日期。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-16 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-14 |
@@ -18,7 +18,7 @@
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口；码头为往来单位筛选，含联运单号/分单号/贸易方式。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-14 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单；码头走往来单位下拉；集装箱规格/型号按品名 id 选择；提交成功后进入编辑工作台。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-14 |
-| sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器；基础信息对齐最新接口（码头对象、规格型号 id、联运/分单/贸易方式）；保存后下发最新详情联动费用/更改单。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-14 |
+| sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器；基础信息对齐最新接口（码头对象、规格型号 id、联运/分单/贸易方式）；保存后下发最新详情联动费用/更改单；船名/航次右侧可一键同步飞驼码头船舶并回填开船日期与航次。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-16 |
 | air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：关键字搜 5 字段、9 维分组统计、复制与删除；支持多选运踪批量订阅与「运踪状态」列。 | [空运出口列表](./modules/air-exports/index.md) | 2026-08-09 |
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地）、货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-05 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；支持重新生成委托编号、复制与运踪订阅；基础信息保存后联动刷新只读费用与收付徽标。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-09 |

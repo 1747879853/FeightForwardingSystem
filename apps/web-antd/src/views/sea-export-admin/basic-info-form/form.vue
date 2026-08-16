@@ -72,6 +72,10 @@ import {
 } from '#/api/sea-export/se-service-task-admin';
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+import {
+  TerminalSchedulePickerModal,
+  useTerminalScheduleSync,
+} from '#/components/terminal-schedule';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
@@ -474,6 +478,42 @@ const applyFrtPrepareByCodeFrt = async (
   await basicInfoFormApi.setFieldValue('prepareAtId', targetPortId);
 };
 
+/** 码头船舶同步：接口会写库，回填成功后必须重新拉详情 */
+const {
+  confirmPick: confirmTerminalSchedule,
+  pickerItems: terminalScheduleItems,
+  pickerOpen: terminalSchedulePickerOpen,
+  queryInfo: terminalScheduleQueryInfo,
+  sync: handleTerminalScheduleSync,
+  syncing: terminalScheduleSyncing,
+} = useTerminalScheduleSync({
+  transportOrderId: editId,
+  onApplied: async () => {
+    await loadEditData();
+  },
+});
+
+/**
+ * vessel 用 VesselVoyageInput 合并组件，componentProps 必须是函数以承载航次动态入参。
+ * schema 初始化与服务锁定回写共用这份工厂，避免两处配置漂移。
+ */
+const buildVesselComponentProps =
+  (extra: { disabled?: boolean } = {}) =>
+  (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'innerVoyno',
+    secondFieldValue: values?.innerVoyno ?? '',
+    size: 'small',
+    mainRatio: 3,
+    secondRatio: 2,
+    disabled: extra.disabled ?? false,
+    actionVisible: isEdit.value,
+    actionLoading: terminalScheduleSyncing.value,
+    actionDisabled: extra.disabled ?? false,
+    actionTitle: $t('component.terminalSchedule.sync'),
+    onAction: handleTerminalScheduleSync,
+  });
+
 /** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
@@ -512,11 +552,17 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
               : item.formItemClass,
         };
       }),
-    ...useShipmentFormSchema().filter((item) =>
-      BASIC_MODULE_EXTRA_FIELD_NAMES.includes(
-        item.fieldName as (typeof BASIC_MODULE_EXTRA_FIELD_NAMES)[number],
+    ...useShipmentFormSchema()
+      .filter((item) =>
+        BASIC_MODULE_EXTRA_FIELD_NAMES.includes(
+          item.fieldName as (typeof BASIC_MODULE_EXTRA_FIELD_NAMES)[number],
+        ),
+      )
+      .map((item) =>
+        item.fieldName === 'vessel'
+          ? { ...item, componentProps: buildVesselComponentProps() }
+          : item,
       ),
-    ),
     ...usePortFormSchema().filter((item) => item.fieldName === 'signingPortId'),
   ]
     .sort((a, b) => {
@@ -679,14 +725,8 @@ const applyServiceLockedFields = () => {
     if (fieldName === 'vessel') {
       return {
         fieldName,
-        componentProps: (values: Record<string, any>, formApi: any) => ({
-          formContext: formApi,
-          secondFieldName: 'innerVoyno',
-          secondFieldValue: values?.innerVoyno ?? '',
-          size: 'small',
+        componentProps: buildVesselComponentProps({
           disabled: lockedFields.has(fieldName),
-          mainRatio: 3,
-          secondRatio: 2,
         }),
       };
     }
@@ -3662,6 +3702,13 @@ defineExpose({
       v-model:open="aiExtractModalOpen"
       :recognizing="aiRecognizing"
       @file="handleAiExtractFile"
+    />
+    <TerminalSchedulePickerModal
+      v-model:open="terminalSchedulePickerOpen"
+      :items="terminalScheduleItems"
+      :loading="terminalScheduleSyncing"
+      :query-info="terminalScheduleQueryInfo"
+      @confirm="confirmTerminalSchedule"
     />
     <ResultModal />
   </component>

@@ -54,6 +54,10 @@ import {
   getSeaImportDetail,
   updateSeaImportCommissionNum,
 } from '#/api/sea-import/sea-import-admin';
+import {
+  TerminalSchedulePickerModal,
+  useTerminalScheduleSync,
+} from '#/components/terminal-schedule';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 
@@ -210,6 +214,33 @@ const BASIC_INFO_FIELD_ORDER_MAP = new Map(
   BASIC_INFO_FIELD_ORDER.map((fieldName, index) => [fieldName, index]),
 );
 
+/** 码头船舶同步：接口会写库，回填成功后必须重新拉详情 */
+const {
+  confirmPick: confirmTerminalSchedule,
+  pickerItems: terminalScheduleItems,
+  pickerOpen: terminalSchedulePickerOpen,
+  queryInfo: terminalScheduleQueryInfo,
+  sync: handleTerminalScheduleSync,
+  syncing: terminalScheduleSyncing,
+} = useTerminalScheduleSync({
+  transportOrderId: editId,
+  onApplied: async () => {
+    await loadEditData();
+  },
+});
+
+/** vessel 用 VesselVoyageInput 合并组件，componentProps 需保持函数以承载航次动态入参 */
+const buildVesselComponentProps =
+  () => (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'innerVoyno',
+    secondFieldValue: values?.innerVoyno ?? '',
+    actionVisible: isEdit.value,
+    actionLoading: terminalScheduleSyncing.value,
+    actionTitle: $t('component.terminalSchedule.sync'),
+    onAction: handleTerminalScheduleSync,
+  });
+
 /** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
@@ -233,9 +264,13 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
           ? 'hidden'
           : item.formItemClass,
       })),
-    ...useShipmentFormSchema().filter((item) =>
-      SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
-    ),
+    ...useShipmentFormSchema()
+      .filter((item) => SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName))
+      .map((item) =>
+        item.fieldName === 'vessel'
+          ? { ...item, componentProps: buildVesselComponentProps() }
+          : item,
+      ),
   ]
     .sort((a, b) => {
       const aIndex = BASIC_INFO_FIELD_ORDER_MAP.get(a.fieldName as any);
@@ -1628,6 +1663,13 @@ watch(pageLoading, (loading) => {
       v-model:open="aiExtractModalOpen"
       :recognizing="aiRecognizing"
       @file="handleAiExtractFile"
+    />
+    <TerminalSchedulePickerModal
+      v-model:open="terminalSchedulePickerOpen"
+      :items="terminalScheduleItems"
+      :loading="terminalScheduleSyncing"
+      :query-info="terminalScheduleQueryInfo"
+      @confirm="confirmTerminalSchedule"
     />
   </component>
 </template>
