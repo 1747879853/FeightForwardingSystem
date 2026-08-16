@@ -22,7 +22,7 @@ last_updated: 2026-08-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **标签容器：** 基础信息 / 应收应付（只读）/ 附件 / 运踪信息四个标签，按委托 ID 记忆上次停留的标签。
-- **基础信息：** 与新建同一组件，回显由详情接口一次性带回，各下拉的 `selectedItems` 直接由详情对象构造，避免逐个再调详情接口。收发通为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件重尺（件数与包装合并为一行）、内外部备注（顶部 Tab 切换，样式对齐海运进口）。航班与订舱代理在「航段信息」标题右侧，订舱代理回显写 header 表单。
+- **基础信息：** 与新建同一组件，回显由详情接口一次性带回，各下拉的 `selectedItems` 直接由详情对象构造，避免逐个再调详情接口。收发通为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件重尺（件数与包装合并为一行）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）。航班与订舱代理在「航段信息」标题右侧，订舱代理回显写 header 表单。
 - **运踪订阅：** 基础信息工具栏「运踪订阅/重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。
 - **重新生成委托编号：** 按最新编号规则重新生成，**原编号不可恢复**，操作前二次确认。
 - **复制本票：** 保存按钮下拉菜单里提供，先检查未保存修改。
@@ -47,7 +47,7 @@ last_updated: 2026-08-16
 | **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
 | **录入方式** | 手动录入 / 业务联系单导入 / 复制。 | `transportOrder.inputType` | **触发/依赖：** 复制来的票显示「复制」标签。 | 只读。 |
 | **会计期间 / 应结日期** | 由后端按起飞日期与账期规则算出。 | `transportOrder.accountDate` / `settlementDate` | **触发/依赖：** 随起飞日期变化，保存后回显。 | 只读。 |
-| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选，最长 1024。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选，最长 1024。 |
 | **业务锁定** | 是否锁定业务信息。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 无 schema 字段，用独立状态承载并随保存回传。 | 可编辑。 |
 | **费用列表** | 该票全部费用。 | `transportOrder.orderFees`（详情接口） | **触发/依赖：** 标签上的「收 - 付」条数由它算出。 | 只读。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
@@ -69,6 +69,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 件数与包装合并为一行，交互对齐海运进口。 | `PkgsPackageInput`；`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-air-export-pkgs-package-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为灰色折叠条（默认展开）；内部/外部备注挪到货物区件重尺右侧，顶部 Tab 切换，样式对齐海运进口。 | 折叠与 Tab 均用 `v-show` / CSS 隐藏，勿 `v-if`。详见 `changelogs/change-log-2026-08-16-air-export-party-collapse-remark-tabs.md`。 |
 | 2026-08-16 | `Refactor` | 航班与订舱代理从航段流程条下方挪到「航段信息」标题右侧。 | 见 `changelogs/change-log-2026-08-16-air-export-leg-header-fields.md`。 |

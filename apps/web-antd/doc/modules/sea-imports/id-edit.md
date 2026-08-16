@@ -21,7 +21,7 @@ last_updated: 2026-08-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换）；件数与包装合并为一个控件，交互对齐船名/航次。
+- **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/SyncTerminalScheduleAsync`（只传业务单 Id）。进口侧后端只回填 3 个字段：`ETD` 开船日期、`ATD` 实际开船日期、`InnerVoyno` 航次（航次取飞驼 `ivoyage`）。命中唯一一条即回填并 `loadEditData()` 重拉详情；多条时弹窗单选后带 `key` 再调一次。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，飞驼的码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
@@ -47,6 +47,7 @@ last_updated: 2026-08-16
 | **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `src/views/sea-import-admin/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。 | 销售必须且仅一人；销售与操作必须选择人员。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -59,6 +60,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 两备注字段仍同时挂在 `cargoRemarkFormApi`；件数/包装用 `PkgsPackageInput`，`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 折叠用 `v-show` 保留表单实例；新建/编辑共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |
 | 2026-08-16 | `Feature` | 基础信息工具栏补齐「运踪订阅 / 重新订阅」单票入口（仅编辑态 + `Admin.ExternalApi.Use`）。 | 复用列表同一套 `useContainerTrackingSubscribe`（`bizType=1`）；状态读详情 `isFeituoSubscribed` / `isFeituoSubscribeSuccess`；已成功订阅禁用，失败可重订。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md`。 |

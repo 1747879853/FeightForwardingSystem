@@ -459,7 +459,7 @@
   overflow: visible !important;
 }
 
-.cargo-remark-wrap :deep(.cargo-remark-field input.ant-input) {
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input) {
   box-sizing: border-box !important;
   display: block;
   width: 100%;
@@ -477,8 +477,51 @@
   box-shadow: none !important;
 }
 
-.cargo-remark-wrap :deep(.cargo-remark-field input.ant-input:hover),
-.cargo-remark-wrap :deep(.cargo-remark-field input.ant-input:focus) {
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input:hover),
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input:focus) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0 !important;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field .flex-auto),
+:deep(.cargo-remark-wrap .cargo-remark-field .flex-auto > .relative.flex),
+:deep(.cargo-remark-wrap .cargo-remark-field .ant-input-textarea) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input) {
+  box-sizing: border-box !important;
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 6px 8px !important;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  line-height: normal !important;
+  color: #252a31;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  resize: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input:hover),
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input:focus) {
   border: 0 !important;
   box-shadow: none !important;
 }

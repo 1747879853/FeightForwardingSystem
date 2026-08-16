@@ -436,10 +436,11 @@ const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
     .filter((item) => cargoRemarkFieldNames.has(item.fieldName))
     .map((item) => ({
       ...item,
-      component: 'Input',
+      component: 'Textarea',
       hideLabel: true,
       componentProps: {
-        class: 'cargo-remark-input',
+        class: 'cargo-remark-textarea',
+        rows: 3,
         style: {
           background: 'transparent',
           border: 0,
@@ -449,7 +450,8 @@ const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
           lineHeight: 'normal',
           minHeight: '61px',
           outline: 0,
-          padding: '6px 8px 41px',
+          padding: '6px 8px',
+          resize: 'none',
         },
       },
       formItemClass: `col-span-1 cargo-remark-field cargo-remark-field--${item.fieldName}`,

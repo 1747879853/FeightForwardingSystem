@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 空出/海进货物备注改为多行输入](./changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md)
 - [2026-08-16 海运出口收发通折叠，备注改到货物区 Tab](./changelogs/change-log-2026-08-16-sea-export-party-collapse-remark-tabs.md)
 - [2026-08-16 空运出口件数与包装合并为一行](./changelogs/change-log-2026-08-16-air-export-pkgs-package-row.md)
 - [2026-08-16 空运出口收发通折叠，备注改到货物区 Tab](./changelogs/change-log-2026-08-16-air-export-party-collapse-remark-tabs.md)

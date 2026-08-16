@@ -21,7 +21,7 @@ last_updated: 2026-08-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。收发通为灰色折叠条，点击展开/收起，**默认展开**。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换）；件数与包装合并为一个控件，交互对齐船名/航次。
+- **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。收发通为灰色折叠条，点击展开/收起，**默认展开**。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 顶栏「AI识别」弹出拖拽上传区，支持 PDF/图片/Word/Excel/OFD；调用 TextIn `ExtractSeaImportToAddDtoAsync`，回填 `seaImport`（箱子在进口层 `orderCtns`，到港日期→`etd`）；未匹配箱型保留识别原文供补选。
 - **进口作业日期：** 到港日期可改；转站、箱使为只读文本，由到港日期与免箱期推算；免箱期在船期标题旁编辑。
 - **干系人：** 销售角色必填且唯一；右侧卡片式增删角色，与归属组织联动。
@@ -46,6 +46,7 @@ last_updated: 2026-08-16
 | **联运单号 / 分单号** | 一票一号字段。 | 文本 | 复制时后端清空。 | 上限 32。 |
 | **贸易方式** | 前端自定义枚举。 | `getTradeModeOptions()` | 后端只存整数。 | 不校验取值。 |
 | **集装箱规格/型号** | 品名子表 id。 | 品名详情 `codeGoodsSpecs` / `codeGoodsModels` | 先选品名；切换品名清空这两列。 | 未选品名或 id 不属于该品名会被后端拦下。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **干系人** | 订单协同角色。 | `use-order-users.ts` | 右侧面板；销售必填且唯一。 | 保存前校验销售与必填角色人员。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -58,6 +59,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |
 | 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，新建与编辑均可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
