@@ -68,6 +68,8 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-16 | `Refactor` | 「运踪信息」Tab 的异常预警明细改为弹窗查看，且仅在有预警时才出现「异常预警(N)」按钮，不再常驻底部空表。 | 详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md`。 |
+| 2026-08-16 | `Fix` | 轨迹节点时间轴不再显示已作废的预计记录（`DEP` 预计不再排在实际离港前面、`ARR(AIS)` 推算到达不再与实际到达并列）。 | 同事件已有实际、或预计已被最新实际进度超越即丢弃；同类型多条实际（如两次 `MAN` 预配）保留。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Feature` | 「运踪信息」Tab 新增「轨迹节点」时间轴：合并单证/运输/货物动态/装卸货地五类事件，区分实际、预计与当前节点；顶栏状态标签改为「进行中 / 已完成」。 | 事件取详情已下发的 `feituoTrackingDetail`（本次由 `Record<string, unknown>` 换成 `AirDataDto` 强类型），共享 `timeline-nodes.ts` + `tracking-timeline.vue`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，编辑态也可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-16 | `Feature` | 「运踪信息」Tab 换成新服务商运踪面板：展示订阅状态、当前节点（预计节点带后缀）、起降与 ETA/ATA、全量异常预警明细，并支持「查看轨迹地图」与「重新订阅」；基础信息工具栏的单票订阅也切到新服务商。 | 新面板 `modules/air-tracking-panel.vue` 的数据全部来自空运出口详情下发的 `feituoTracking` / `feituoTrackingWarnings`，不轮询、不直接请求服务商；重新订阅走 `FeituoAdmin/ResubscribeAirWaybillAsync` 并二次确认（消耗配额）；轨迹地图由前端按 env 拼装，env 缺项时入口自动隐藏；后端文案统一经 `sanitizeVendorText` 清洗后展示。详见 `changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md`。 |

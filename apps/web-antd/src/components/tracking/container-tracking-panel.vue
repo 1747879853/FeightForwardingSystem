@@ -14,9 +14,11 @@ import {
   DescriptionsItem,
   Empty,
   message,
+  Segmented,
   Spin,
   Table,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
@@ -33,8 +35,12 @@ import {
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
 } from './data-status';
-import { buildContainerTimelineNodes } from './timeline-nodes';
+import {
+  buildContainerTimelineGroups,
+  buildContainerTimelineNodes,
+} from './timeline-nodes';
 import TrackingTimeline from './tracking-timeline.vue';
+import TrackingWarningModal from './tracking-warning-modal.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 
 /**
@@ -68,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const loading = ref(false);
 const refreshing = ref(false);
+const warningModalOpen = ref(false);
 const loadError = ref('');
 const tracking = ref<FeituoTrackingAdminApi.ContainerTrackingDto | null>(null);
 /** `loadDetail` 模式下从详情接口取回的摘要、预警与订阅状态 */
@@ -206,38 +213,17 @@ const containerRows = computed(() => result.value?.containers ?? []);
 
 /** 整票时间轴：各箱节点合并去重后按时间升序 */
 const timelineNodes = computed(() => buildContainerTimelineNodes(result.value));
-
-const warningColumns = computed(() => [
-  {
-    dataIndex: 'eventTime',
-    title: $t('tracking.detail.eventTime'),
-    width: 160,
-  },
-  {
-    dataIndex: 'eventCategory',
-    title: $t('tracking.detail.warningCategory'),
-    width: 110,
-  },
-  {
-    dataIndex: 'equipmentCode',
-    title: $t('tracking.detail.containerNo'),
-    width: 140,
-  },
-  {
-    dataIndex: 'description',
-    title: $t('tracking.detail.warningDescription'),
-    minWidth: 260,
-  },
-]);
-
-const warningRows = computed(() =>
-  warnings.value.map((item, index) => ({
-    ...item,
-    key: `${item.eventCode ?? ''}-${item.eventTime ?? ''}-${index}`,
-    description: sanitizeVendorText(item.description) || '--',
-    equipmentCode: item.equipmentCode || '--',
-  })),
+/** 按箱时间轴：多箱票排查单箱进度用 */
+const timelineGroups = computed(() =>
+  buildContainerTimelineGroups(result.value),
 );
+/** 只有多箱票才需要切换视角 */
+const canSwitchTimelineView = computed(() => timelineGroups.value.length > 1);
+const timelineView = ref<'byContainer' | 'merged'>('merged');
+const timelineViewOptions = computed(() => [
+  { label: $t('tracking.timeline.viewMerged'), value: 'merged' },
+  { label: $t('tracking.timeline.viewByContainer'), value: 'byContainer' },
+]);
 
 async function fetchModuleDetail() {
   if (!props.loadDetail || !props.orderId) {
@@ -341,6 +327,18 @@ const handleRefresh = async () => {
         </span>
       </div>
       <div class="flex items-center gap-2">
+        <!-- 无预警不显示入口；列表场景拿不到全量明细，warnings 恒空也就不会出现 -->
+        <Button
+          v-if="warnings.length > 0"
+          danger
+          size="small"
+          @click="warningModalOpen = true"
+        >
+          <template #icon>
+            <IconifyIcon class="mr-1 inline-block" icon="ph:warning" />
+          </template>
+          {{ $t('tracking.detail.warningEntry') }} ({{ warnings.length }})
+        </Button>
         <Button
           v-if="mapUrl || mapShortUrl"
           ghost
@@ -412,9 +410,9 @@ const handleRefresh = async () => {
           "
         />
 
-        <!-- 列表场景只有最近一条预警；编辑页场景下方有全量明细表，这里不重复提示 -->
+        <!-- 列表场景只有最近一条预警；编辑页场景走「异常预警」按钮看全量明细，这里不重复提示 -->
         <Alert
-          v-if="summary?.hasWarning && warningRows.length === 0"
+          v-if="summary?.hasWarning && warnings.length === 0"
           type="warning"
           show-icon
           class="mb-4"
@@ -473,10 +471,39 @@ const handleRefresh = async () => {
           </DescriptionsItem>
         </Descriptions>
 
-        <div class="mb-1 mt-4 text-sm font-medium">
-          {{ $t('tracking.timeline.title') }}
+        <div class="mb-1 mt-4 flex items-center justify-between gap-3">
+          <span class="text-sm font-medium">
+            {{ $t('tracking.timeline.title') }}
+          </span>
+          <Tooltip
+            v-if="canSwitchTimelineView"
+            :title="$t('tracking.timeline.viewHint')"
+          >
+            <Segmented
+              v-model:value="timelineView"
+              :options="timelineViewOptions"
+              size="small"
+            />
+          </Tooltip>
         </div>
-        <TrackingTimeline :nodes="timelineNodes" class="mb-4" />
+        <template
+          v-if="canSwitchTimelineView && timelineView === 'byContainer'"
+        >
+          <div
+            v-for="group in timelineGroups"
+            :key="group.containerNo"
+            class="mb-2"
+          >
+            <div class="text-xs text-[rgba(0,0,0,0.45)]">
+              {{ group.containerNo
+              }}<template v-if="group.containerType">
+                / {{ group.containerType }}</template
+              >
+            </div>
+            <TrackingTimeline :nodes="group.nodes" />
+          </div>
+        </template>
+        <TrackingTimeline v-else :nodes="timelineNodes" class="mb-4" />
 
         <Table
           v-if="containerRows.length > 0"
@@ -496,36 +523,13 @@ const handleRefresh = async () => {
             </template>
           </template>
         </Table>
-
-        <template v-if="loadDetail">
-          <div class="mb-2 mt-4 text-sm font-medium">
-            {{ $t('tracking.detail.warningTitle', [warningRows.length]) }}
-          </div>
-          <Table
-            v-if="warningRows.length > 0"
-            :columns="warningColumns"
-            :data-source="warningRows"
-            :pagination="false"
-            :scroll="{ y: 240 }"
-            row-key="key"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.dataIndex === 'description'">
-                <span class="whitespace-pre-line">{{
-                  record.description
-                }}</span>
-              </template>
-            </template>
-          </Table>
-          <Empty
-            v-else
-            :description="$t('tracking.detail.warningEmpty')"
-            :image="undefined"
-            class="!my-2"
-          />
-        </template>
       </template>
     </Spin>
+
+    <TrackingWarningModal
+      v-model:open="warningModalOpen"
+      kind="ocean"
+      :ocean-warnings="warnings"
+    />
   </div>
 </template>

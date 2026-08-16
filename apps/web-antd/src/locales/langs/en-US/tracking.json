@@ -73,6 +73,7 @@
     "rolledTitle": "Rolled container exists",
     "rolledContainers": "Rolled containers: {0}",
     "warningTitle": "Tracking alerts ({0})",
+    "warningEntry": "Tracking alerts",
     "warningEmpty": "No tracking alert",
     "warningCategory": "Category",
     "warningDescription": "Description",
@@ -99,6 +100,9 @@
   "timeline": {
     "title": "Tracking events",
     "empty": "No tracking event yet",
+    "viewMerged": "Shipment",
+    "viewByContainer": "By container",
+    "viewHint": "Containers may progress differently; switch to per-container view to locate one",
     "state": {
       "completed": "Actual",
       "current": "Current",

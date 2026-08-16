@@ -212,6 +212,9 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Refactor` | 异常预警明细不再常驻页面底部，改为**仅在有预警时**出现「异常预警(N)」按钮，点击弹窗看明细 | 绝大多数票无预警，常驻「共 0 条」空态白占版面。新增共享 `tracking-warning-modal.vue`（按 `kind` 切海运箱号列 / 空运发生地列），两个面板各自的列定义与行映射收敛到弹窗；按钮条件统一为 `warnings.length > 0`，列表场景与未订阅票的 `warnings` 本就是空数组，无需额外判断。详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md` |
+| 2026-08-16 | `Feature` | 海运多箱票的轨迹节点带上箱号，并新增「整票 / 按箱」视图切换 | 整票合并后同名节点仍会真实重复（各箱进度不同、或箱被摘车后重新编组，如出现 `Excluded from train` 后的第二次离站/到站）。带箱号让重复自解释，按箱视图 `buildContainerTimelineGroups` 每箱一条时间轴；单箱票不显示箱号与切换 |
+| 2026-08-16 | `Fix` | 时间轴不再显示已作废的预计记录（如实际离港 02:04 前面还挂着计划离港 00:00） | 服务商对同一事件同时给预计与实际两条，按时间排序会把预计排到实际前面。新增 `dropSupersededEstimates`：同事件已有实际、或预计时间已被最新实际超越（含无时间）即丢弃；同类型多条实际（如两次货物预配）保留。空运事件分类分散在四个来源字段，需逐个回退取值 |
 | 2026-08-16 | `Feature` | 运踪信息新增「轨迹节点」时间轴：海运按整票合并各箱节点，空运合并单证/运输/货物动态/装卸货地五类事件，实际、预计与当前节点分色展示 | 节点数据接口早已下发（海运 `containers[].status[]`、空运详情 `feituoTrackingDetail`），此前未渲染。新增 `timeline-nodes.ts`（去重 + 字符串时间排序 + 三态标记）与 `tracking-timeline.vue`；空运顺带把 `feituoTrackingDetail` 从 `Record<string, unknown>` 换成 `AirDataDto` 强类型。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md` |
 | 2026-08-16 | `Fix` | 运踪详情顶栏与「数据状态」不再直出 `PROCESS`/`COMPLETE` 英文码，改为「进行中 / 已完成」（英文界面 In progress / Completed） | 服务商字段 `statusCategory`（海运）/`status`（空运）是分类码，`statusDescription` 多为英文描述；统一走 `components/tracking/data-status.ts` + i18n，未知码原样回退 |
 | 2026-08-16 | `Feature` | 新服务商轨迹地图对齐云当能力：登录后走全局地图弹窗（品牌 Logo + 中英切换 + 新窗口打开 + 复制免登录分享链接），并新增免登录分享页 `/cargo-tracking/air`（按单号拼装）与 `/cargo-tracking/ocean`（按令牌还原链接） | 原来地图是各面板内嵌 iframe，无语言与分享能力；现抽出 `vendor-map-src.ts`（`resolveVendorMapSrc` / `withMapLang` / 令牌编解码）+ 全局单例 `use-vendor-tracking-map.ts` + 弹窗，三处入口（海运面板、空运弹窗、空运 Tab）统一改为 `open()`。空运分享页零接口依赖；海运因缺少客户端拼接契约，改用「编码后的密文短链令牌」放进分享 URL，白标到链接与 UI 层，严格合规仍需后端匿名接口 |

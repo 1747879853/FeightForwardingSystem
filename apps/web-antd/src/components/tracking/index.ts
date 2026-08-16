@@ -38,14 +38,17 @@ export {
   getTrackingDataStatusLabel,
 } from './data-status';
 export type {
+  ContainerTimelineGroup,
   TrackingTimelineNode,
   TrackingTimelineState,
 } from './timeline-nodes';
 export {
   buildAirTimelineNodes,
+  buildContainerTimelineGroups,
   buildContainerTimelineNodes,
 } from './timeline-nodes';
 export { default as TrackingTimeline } from './tracking-timeline.vue';
+export { default as TrackingWarningModal } from './tracking-warning-modal.vue';
 export { default as ContainerTrackingPanel } from './container-tracking-panel.vue';
 export { default as TrackingWarningIcon } from './tracking-warning-icon.vue';
 export type {

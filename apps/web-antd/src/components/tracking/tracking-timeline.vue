@@ -72,6 +72,12 @@ const STATE_VISUALS: Record<
         <div v-if="node.vehicle" class="track-timeline-card__place">
           {{ node.vehicle }}
         </div>
+        <div
+          v-if="node.containerNos?.length"
+          class="track-timeline-card__containers"
+        >
+          {{ node.containerNos.join('、') }}
+        </div>
         <div v-if="node.time" class="track-timeline-card__time">
           {{ node.time }}
         </div>
@@ -204,6 +210,14 @@ const STATE_VISUALS: Record<
   font-size: 13px;
   line-height: 1.5;
   color: rgb(60 60 67 / 60%);
+}
+
+.track-timeline-card__containers {
+  margin-bottom: 1px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgb(60 60 67 / 45%);
+  word-break: break-all;
 }
 
 .track-timeline-card__time {

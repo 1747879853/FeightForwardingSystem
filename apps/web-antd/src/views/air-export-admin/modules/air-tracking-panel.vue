@@ -16,7 +16,6 @@ import {
   message,
   Modal,
   Spin,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
@@ -29,6 +28,7 @@ import {
   hasAirTrackingMapConfig,
   resolveAirTrackingViewState,
   TrackingTimeline,
+  TrackingWarningModal,
   useVendorTrackingMap,
 } from '#/components/tracking';
 import { $t } from '#/locales';
@@ -49,6 +49,7 @@ const props = defineProps<Props>();
 const loading = ref(false);
 const loadError = ref('');
 const resubscribing = ref(false);
+const warningModalOpen = ref(false);
 const isSubscribed = ref(false);
 const isSubscribeSuccess = ref(false);
 const summary = ref<FeituoTrackingAdminApi.AirTrackingSummaryDto | null>(null);
@@ -133,39 +134,6 @@ const handleViewMap = () => {
   });
 };
 
-const warningColumns = computed(() => [
-  {
-    dataIndex: 'eventTime',
-    title: $t('tracking.detail.eventTime'),
-    width: 160,
-  },
-  {
-    dataIndex: 'eventCategory',
-    title: $t('tracking.detail.warningCategory'),
-    width: 120,
-  },
-  {
-    dataIndex: 'locationName',
-    title: $t('tracking.detail.eventPlace'),
-    width: 180,
-    ellipsis: true,
-  },
-  {
-    dataIndex: 'description',
-    title: $t('tracking.detail.warningDescription'),
-    minWidth: 280,
-  },
-]);
-
-const warningRows = computed(() =>
-  warnings.value.map((item, index) => ({
-    ...item,
-    key: `${item.eventCode ?? ''}-${item.eventTime ?? ''}-${index}`,
-    description: sanitizeVendorText(item.description) || '--',
-    locationName: item.locationName || item.locationCode || '--',
-  })),
-);
-
 async function fetchDetail() {
   const airExportId = props.airExportId;
   if (!airExportId) {
@@ -245,6 +213,18 @@ const handleResubscribe = () => {
         </span>
       </div>
       <div class="flex items-center gap-2">
+        <!-- 无预警不显示入口 -->
+        <Button
+          v-if="warnings.length > 0"
+          danger
+          size="small"
+          @click="warningModalOpen = true"
+        >
+          <template #icon>
+            <IconifyIcon class="mr-1 inline-block" icon="ph:warning" />
+          </template>
+          {{ $t('tracking.detail.warningEntry') }} ({{ warnings.length }})
+        </Button>
         <Button
           v-if="canViewMap"
           ghost
@@ -345,32 +325,13 @@ const handleResubscribe = () => {
           {{ $t('tracking.timeline.title') }}
         </div>
         <TrackingTimeline :nodes="timelineNodes" class="mb-4" />
-
-        <div class="mb-2 text-sm font-medium">
-          {{ $t('tracking.detail.warningTitle', [warningRows.length]) }}
-        </div>
-        <Table
-          v-if="warningRows.length > 0"
-          :columns="warningColumns"
-          :data-source="warningRows"
-          :pagination="false"
-          :scroll="{ y: 260 }"
-          row-key="key"
-          size="small"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.dataIndex === 'description'">
-              <span class="whitespace-pre-line">{{ record.description }}</span>
-            </template>
-          </template>
-        </Table>
-        <Empty
-          v-else
-          :description="$t('tracking.detail.warningEmpty')"
-          :image="undefined"
-          class="!my-2"
-        />
       </template>
     </Spin>
+
+    <TrackingWarningModal
+      v-model:open="warningModalOpen"
+      kind="air"
+      :air-warnings="warnings"
+    />
   </div>
 </template>

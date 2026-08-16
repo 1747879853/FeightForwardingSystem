@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 运踪异常预警改为按钮入口 + 弹窗查看](./changelogs/change-log-2026-08-16-tracking-warning-modal.md)
 - [2026-08-16 运踪信息新增轨迹节点时间轴](./changelogs/change-log-2026-08-16-tracking-timeline.md)
 - [2026-08-16 海运进口/空运出口业务来源改为可下拉二次修改](./changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md)
 - [2026-08-16 运踪按品牌分流接入新服务商并新增列表预警叹号](./changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md)

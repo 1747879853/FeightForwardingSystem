@@ -73,6 +73,7 @@
     "rolledTitle": "存在甩柜",
     "rolledContainers": "甩柜箱号：{0}",
     "warningTitle": "异常预警（共 {0} 条）",
+    "warningEntry": "异常预警",
     "warningEmpty": "暂无异常预警",
     "warningCategory": "预警类型",
     "warningDescription": "预警说明",
@@ -99,6 +100,9 @@
   "timeline": {
     "title": "轨迹节点",
     "empty": "暂无轨迹节点",
+    "viewMerged": "整票",
+    "viewByContainer": "按箱",
+    "viewHint": "多箱票各箱进度可能不同，按箱查看可定位到具体箱号",
     "state": {
       "completed": "已发生",
       "current": "当前",
