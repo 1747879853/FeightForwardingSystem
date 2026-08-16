@@ -36,6 +36,8 @@ const modelValue = defineModel<PreOrderAdminApi.AttachmentGroupInputDto[]>({
 
 const loading = ref(false);
 const uploadingTypeId = ref<null | number>(null);
+/** 当前拖拽悬停的附件类型 id（含 null=未分类） */
+const dragOverTypeId = ref<null | number | undefined>(undefined);
 const attachmentTypes = ref<AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]>(
   [],
 );
@@ -80,6 +82,51 @@ function updateGroup(
   modelValue.value = [...otherGroups, { attachmentDtlTypeId: typeId, items }];
 }
 
+/** 从 model 读最新分组文件，避免多文件拖入时用过期 group.items 覆盖 */
+function getGroupItems(typeId: null | number) {
+  return (
+    (modelValue.value ?? []).find(
+      (group) => (group.attachmentDtlTypeId ?? null) === typeId,
+    )?.items ?? []
+  );
+}
+
+function isDragOver(typeId: null | number) {
+  return dragOverTypeId.value !== undefined && dragOverTypeId.value === typeId;
+}
+
+function onDragEnter(group: AttachmentGroupView, event: DragEvent) {
+  if (!canEditLocally.value) return;
+  if (!event.dataTransfer?.types?.includes('Files')) return;
+  dragOverTypeId.value = group.attachmentDtlTypeId;
+}
+
+function onDragOver(group: AttachmentGroupView, event: DragEvent) {
+  if (!canEditLocally.value) return;
+  if (!event.dataTransfer?.types?.includes('Files')) return;
+  event.dataTransfer.dropEffect = 'copy';
+  dragOverTypeId.value = group.attachmentDtlTypeId;
+}
+
+function onDragLeave(group: AttachmentGroupView, event: DragEvent) {
+  const current = event.currentTarget as HTMLElement | null;
+  const related = event.relatedTarget as Node | null;
+  if (current && related && current.contains(related)) return;
+  if (isDragOver(group.attachmentDtlTypeId)) {
+    dragOverTypeId.value = undefined;
+  }
+}
+
+async function onDrop(group: AttachmentGroupView, event: DragEvent) {
+  dragOverTypeId.value = undefined;
+  if (!canEditLocally.value) return;
+  const files = Array.from(event.dataTransfer?.files ?? []);
+  if (files.length === 0) return;
+  for (const file of files) {
+    await handleUpload(file as unknown as UploadFile, group);
+  }
+}
+
 async function loadAttachmentTypes() {
   loading.value = true;
   try {
@@ -109,15 +156,16 @@ async function handleUpload(file: UploadFile, group: AttachmentGroupView) {
     const uploaded = (await uploadFile(formData))[0];
     if (!uploaded) throw new Error('Upload returned no file.');
     const attachment = mapResultToAttachment(uploaded);
+    const currentItems = getGroupItems(group.attachmentDtlTypeId);
     const item: PreOrderAdminApi.AttachmentItemInputDto = {
       attachmentId: attachment.attachmentId,
       attachmentDtlTypeId: group.attachmentDtlTypeId,
       clientVisible: false,
-      displayOrder: group.items.length,
+      displayOrder: currentItems.length,
       friendlyFileName: attachment.friendlyFileName || attachment.fileName,
       url: attachment.url,
     };
-    updateGroup(group.attachmentDtlTypeId, [...group.items, item]);
+    updateGroup(group.attachmentDtlTypeId, [...currentItems, item]);
   } catch (error: any) {
     message.error(error?.message || '上传失败');
   } finally {
@@ -157,6 +205,14 @@ onMounted(loadAttachmentTypes);
         v-for="group in groups"
         :key="groupKey(group.attachmentDtlTypeId)"
         class="attachment-group"
+        :class="{
+          'attachment-group--drag-over': isDragOver(group.attachmentDtlTypeId),
+          'attachment-group--droppable': canEditLocally,
+        }"
+        @dragenter.prevent="onDragEnter(group, $event)"
+        @dragover.prevent="onDragOver(group, $event)"
+        @dragleave="onDragLeave(group, $event)"
+        @drop.prevent="onDrop(group, $event)"
       >
         <header class="attachment-group__header">
           <span class="attachment-group__title">{{ group.name }}</span>
@@ -208,7 +264,9 @@ onMounted(loadAttachmentTypes);
             </Button>
           </div>
         </div>
-        <div v-else class="attachment-group__empty">暂无文件</div>
+        <div v-else class="attachment-group__empty">
+          {{ canEditLocally ? '点击或拖拽上传' : '暂无文件' }}
+        </div>
       </section>
     </div>
   </Spin>
@@ -237,6 +295,19 @@ onMounted(loadAttachmentTypes);
   background: #fff;
   border: 1px solid #e5e9ef;
   border-radius: 8px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.attachment-group--droppable {
+  cursor: default;
+}
+
+.attachment-group--drag-over {
+  background: #f0f9ff;
+  border-color: #3b82f6;
+  border-style: dashed;
 }
 
 .attachment-group__header {

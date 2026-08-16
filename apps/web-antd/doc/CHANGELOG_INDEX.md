@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 业务联系单附件分组支持拖拽上传](./changelogs/change-log-2026-08-16-pre-order-attachment-drag-upload.md)
 - [2026-08-16 付费申请添加费用抽屉增加开船日期列](./changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md)
 - [2026-08-16 付费申请费用明细去掉可申请金额列](./changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md)
 - [2026-08-16 海运出口运踪订阅规则提示改为两项校验](./changelogs/change-log-2026-08-16-sea-export-subscribe-rules-copy.md)

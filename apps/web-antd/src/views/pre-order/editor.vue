@@ -1582,12 +1582,8 @@ const getContentTabStyle = (isActive: boolean) =>
                         />
                         <span class="align-middle">AI识别</span>
                       </Button>
-                      <Button
-                        v-if="canSave"
-                        size="small"
-                        @click="attachmentVisible = true"
-                      >
-                        上传附件
+                      <Button size="small" @click="attachmentVisible = true">
+                        {{ isEdit ? '查看附件' : '上传附件' }}
                       </Button>
                       <Button
                         v-if="isEdit"
@@ -1921,7 +1917,7 @@ const getContentTabStyle = (isActive: boolean) =>
 
     <Modal
       v-model:open="attachmentVisible"
-      title="上传附件"
+      :title="isEdit ? '查看附件' : '上传附件'"
       width="960px"
       :footer="null"
       destroy-on-close

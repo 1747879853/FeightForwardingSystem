@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-14
+last_updated: 2026-08-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -82,7 +82,7 @@ last_updated: 2026-08-14
 | **费用.禁开票** | 是否禁开发票 | Checkbox | **默认：** false；费用代码 `isInvoiceProhibit` 可带出；**设计稿表格列隐藏** | —— |
 | **费用.机密** | 是否机密 | Checkbox | **默认：** false；费用代码 `isConfidential` 可带出；**设计稿表格列隐藏** | —— |
 | **费用.备注** | 行备注 | 手填 | **设计稿表格列隐藏**，提交仍带出 | 最长 4096 |
-| **附件分组** | 按附件详细类型分组的文件列表 | **上传** `Upload/UploadFile` + **类型** `AttachmentDtlType/GetListByModuleTypesAsync`（`ModuleTypeId=160050`）；详情 `attachmentGroup` | **提交流程：** 先上传拿 `attachmentId`，再随 `AddAsync`/`EditAsync` 的 `attachmentGroup` 全量提交（编辑先删后建） | `attachmentId<=0` 忽略；录入/驳回可增删，待审核/通过只读 |
+| **附件分组** | 按附件详细类型分组的文件列表 | **上传** `Upload/UploadFile` + **类型** `AttachmentDtlType/GetListByModuleTypesAsync`（`ModuleTypeId=160050`）；详情 `attachmentGroup` | **提交流程：** 先上传拿 `attachmentId`，再随 `AddAsync`/`EditAsync` 的 `attachmentGroup` 全量提交（编辑先删后建）；录入/驳回可点按钮或拖文件到分组卡片 | `attachmentId<=0` 忽略；录入/驳回可增删，待审核/通过只读 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -116,6 +116,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 附件分组支持把文件拖到卡片上直接上传；顶栏新建为「上传附件」，编辑为「查看附件」（待审核/通过也能打开只读查看）。 | 对齐付费申请卡片级 drop zone。详见 `changelogs/change-log-2026-08-16-pre-order-attachment-drag-upload.md` |
 | 2026-08-14 | `Feature` | 可保存态增加「AI识别」：上传单证调用 TextIn 抽取并回填 `PreOrderAddDto` 可用字段；未匹配箱型保留识别原文提示补选 | `extractPreOrderToAddDto` + `use-pre-order-ai-recognize`；回填后由 `afterApply` 注入 selectedItems，避免冲掉港口/委托单位 onChange。详见 `changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md` |
 | 2026-08-13 | `Perf`/`Fix` | 打开编辑页不再逐个下拉回拉详情：付费方式/运输条款/包装/品名/船公司/干系人（含头像）/费用代码/箱型 TEU 全部用详情已返回的外键对象回显 | 新增 `modules/detail-selected-items.ts` 按各 biz-select 的 `mapItemToOption` 口径拼项；名称为空时返回 `[]` 保留组件兜底，回显项补 `enable: true` 避免被判禁用；干系人行新增 `user` 字段须在 `buildSubmitPayload` 解构剔除；详情 `feeCode` 直接当 `feeCodeSnapshot`。详见 `changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md` |
 | 2026-08-13 | `Feature` | 主表新增「订舱代理」`bookingAgentId`（`ClientSelect` / `industryCategory=o`）；详情回显；费用结算对象类别 o 可自动带出；审核通过由后端写入海出 | 字段挂基础 schema 首行末项；`bindBookingAgentLinkage` 与委托单位同套路；列表接口不回 `bookingAgent` 对象故列表暂不展示列。详见 `changelogs/change-log-2026-08-13-pre-order-booking-agent.md` |
