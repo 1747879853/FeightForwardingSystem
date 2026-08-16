@@ -49,6 +49,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 运踪详情弹窗新增「轨迹节点」时间轴（整票合并各箱节点，区分实际/预计/当前）。 | 节点来自弹窗已请求的运踪快照 `containers[].status[]`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：全品牌海进走新服务商运踪（订阅 `SubscribeContainerAsync` 的 `bizType=1`、列表/详情已下发运踪与预警字段、地图用后端加密轨迹链接）；用户侧不出现服务商名。见 [运踪能力品牌分流](../shared/feituo-tracking-brand-split.md)。 |
 | 2026-08-16 | `Feature` | 列表新增「运踪订阅」按钮（批量，权限 `Admin.ExternalApi.Use`）、「运踪状态」列（点击打开运踪详情，权限 `Admin.ExternalApi.Get`），主提单号前新增异常预警黄色叹号（悬停显示最近一条原因与条数） | 订阅走 `FeituoAdmin/SubscribeContainerAsync`（`bizType=1`、入参 `orderIds`）；状态列与叹号全部读列表已下发的 `feituoTracking` 摘要，无额外请求；运踪弹窗额外调 `GetContainerTrackingAsync` 补箱清单与轨迹页链接。共享实现见 `src/components/tracking/`，后端文案经 `sanitizeVendorText` 清洗后展示 |

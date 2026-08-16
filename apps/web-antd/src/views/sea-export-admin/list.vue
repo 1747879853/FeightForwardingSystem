@@ -590,7 +590,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </Button>
         <Button
           v-access:code="perm.add"
-          class="mr-2"
+          class="mr-2 inline-flex items-center gap-1"
           :loading="copying"
           @click="handleCopy"
         >
@@ -601,7 +601,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </Button>
         <Button
           v-access:code="perm.add"
-          class="mr-2"
+          class="mr-2 inline-flex items-center gap-1"
           type="primary"
           @click="handleCreate"
         >
