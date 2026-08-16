@@ -1928,9 +1928,6 @@ void handleSubmitAndNew;
                   <template v-else-if="column.key === 'settledAmount'">
                     {{ formatAmount(record.settledAmount) }}
                   </template>
-                  <template v-else-if="column.key === 'unRqstPaymentAmount'">
-                    {{ formatAmount(record.unRqstPaymentAmount) }}
-                  </template>
                   <template v-else-if="column.key === 'appliedAmount'">
                     <span class="fee-applied-amount-value">{{
                       formatAmount(record.appliedAmount)

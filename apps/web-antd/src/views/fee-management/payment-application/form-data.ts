@@ -467,13 +467,6 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         align: 'right' as const,
       },
       {
-        title: t('unSettledAmountLabel'),
-        dataIndex: 'unRqstPaymentAmount',
-        key: 'unRqstPaymentAmount',
-        width: 110,
-        align: 'right' as const,
-      },
-      {
         title: t('applicationRate'),
         dataIndex: 'rate',
         key: 'rate',
@@ -518,13 +511,6 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
       dataIndex: 'settledAmount',
       key: 'settledAmount',
       width: 100,
-      align: 'right' as const,
-    },
-    {
-      title: t('unSettledAmountLabel'),
-      dataIndex: 'unRqstPaymentAmount',
-      key: 'unRqstPaymentAmount',
-      width: 110,
       align: 'right' as const,
     },
     {

@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-14
+last_updated: 2026-08-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,7 @@ last_updated: 2026-08-14
 | **申请金额** | 结算币别卡片展示的申请净额（原「付款金额」）。 | **原币：** `summarizeByCurrency`（付 − 收）<br/>**固定币别：** `calcAppliedConvertedTotal`（各行申请金额折币之和） | **触发/依赖：** 随费用明细增删、申请汇率变化。 | 收为负向；明细提交仍为正数 `appliedAmount`。 |
 | **申请金额折币** | 费用明细内层列：本次申请金额 × 申请汇率。 | 前端 `calcAppliedAmountConverted(appliedAmount, rate)` | **触发/依赖：** 仅指定结算币别时展示。 | 四舍五入两位小数；已替换旧「申请折币」（原费用金额 × 汇率）。 |
 | **已核销金额** | 费用明细：该费用已核销累计。 | 费用 `settledAmount`；列文案 `settledAmountLabel` | **触发/依赖：** 只读。 | 与结算币别「已核销」同字段族，展示粒度不同（行 vs 币别）。 |
-| **可申请金额** | 费用明细/添加费用抽屉：还能申请付款的原币余额。 | `unRqstPaymentAmount`；列文案 `unSettledAmountLabel` | **触发/依赖：** 抽屉「本次申请」默认与上限均取此值。 | 本次申请必须 >0 且 ≤ 可申请金额。 |
+| **可申请金额** | 仅添加费用抽屉展示：还能申请付款的原币余额。页内费用明细已去掉此列。 | `unRqstPaymentAmount`；列文案 `unSettledAmountLabel` | **触发/依赖：** 抽屉「本次申请」默认与上限均取此值。 | 本次申请必须 >0 且 ≤ 可申请金额。 |
 | **本次申请** | 添加费用抽屉可编辑列；确认后写入明细 `appliedAmount`。 | 用户输入 / 默认 `unRqstPaymentAmount` | **触发/依赖：** 编辑模式确认即 `PayAppItemAddAsync`。 | 原「本次结算」文案已废弃。 |
 | **已核销** | 结算币别卡片：支付币别已核销量。 | 详情 `currencyGroup[].settledAmount` | **触发/依赖：** 原币按费用币别 id；固定币别按结算币别 id；新建为 0。 | 只读展示。 |
 | **申请主体** | 付款对象与业务归属。 | `payment-application-admin.ts` | **触发/依赖：** 影响审核和后续结算。 | 不能为空。 |
@@ -63,6 +63,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |
 | 2026-08-14 | `Feature` | 添加费用抽屉搜索增加「业务类型」筛选，并传给 `GetOrderFeeGroupAsync.BizType`。 | 未选不传参数，避免 `undefined` 被当成海运出口 `0`。详见 `changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md`。 |
 | 2026-08-14 | `Fix` | 添加费用抽屉支持海运出口、海运进口、空运出口三类业务的起运港/目的港备注。 | `GetOrderFeeGroupAsync` 港口改按 `bizType` 读取互斥业务简要对象，删除根级港口字段依赖。详见 `changelogs/change-log-2026-08-14-payment-application-fee-group-biz-simple.md`。 |
 | 2026-08-11 | `Feature` | 附件分组卡片支持拖拽上传（可多文件），空态提示「点击或拖拽上传」。 | `attachment-groups.vue` 卡片级 drop zone；`getGroupItems` 防多文件覆盖。详见 `changelogs/change-log-2026-08-11-payment-application-attachment-drag-upload.md`。 |
