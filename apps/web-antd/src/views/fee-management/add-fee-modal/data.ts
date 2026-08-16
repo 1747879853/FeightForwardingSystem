@@ -1,6 +1,8 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
+import dayjs from 'dayjs';
+
 import { $t } from '#/locales';
 
 interface BusinessPortRemarkSource {
@@ -468,6 +470,12 @@ export function calcCurrencySummary(
     .reduce((sum, f) => sum + (f.unRqstPaymentAmount ?? 0), 0);
 }
 
+/** 开船日期只展示年月日 */
+export function formatEtdDate(val: string | undefined | null): string {
+  if (!val) return '';
+  return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM-DD') : '';
+}
+
 /** 将订单数据转为表格行（含动态币别字段） */
 export function buildOrderRow(
   order: PaymentApplicationAdminApi.PayAppFeeGroupDto,
@@ -477,6 +485,7 @@ export function buildOrderRow(
     order.settlementId ?? order.orderFees?.[0]?.settlementId ?? '';
   const row: Record<string, any> = {
     ...order,
+    etd: formatEtdDate(order.etd),
     groupKey: buildFeeGroupKey(order.id, settlementId),
     // 接口仅回 client 对象，列 field 仍是 clientName
     clientName: order.client?.name ?? '',

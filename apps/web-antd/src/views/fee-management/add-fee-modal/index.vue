@@ -31,6 +31,7 @@ import {
   buildDynamicCurrencyColumns,
   buildFeeGroupKey,
   buildOrderRow,
+  formatEtdDate,
   collectCurrencies,
   type CurrencyInfo,
   type FeeRowData,
@@ -871,11 +872,6 @@ function formatMonth(val: string | undefined | null): string {
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
 
-function formatDate(val: string | undefined | null): string {
-  if (!val) return '';
-  return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM-DD') : '';
-}
-
 function getUserRoleCellText(value: unknown): string {
   if (value == null || value === '') return '';
   return String(value);
@@ -1038,8 +1034,14 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.field === 'accountDate'">
             {{ formatMonth(record.accountDate) }}
           </template>
-          <template v-else-if="column.field === 'etd'">
-            {{ formatDate(record.etd) }}
+          <template
+            v-else-if="
+              column.field === 'etd' ||
+              column.dataIndex === 'etd' ||
+              column.key === 'etd'
+            "
+          >
+            {{ formatEtdDate(record.etd) }}
           </template>
           <template v-else-if="isUserRoleColumnField(column.field)">
             <Tooltip
