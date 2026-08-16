@@ -183,6 +183,7 @@
       "name": "Goods Info",
       "code": "Code",
       "goodsName": "Name",
+      "cargoId": "Cargo Type",
       "goodNo": "Material No.",
       "enName": "English Name",
       "description": "Description",
@@ -192,7 +193,18 @@
       "sortId": "Sort Order",
       "remark": "Remark",
       "keyword": "Keyword",
-      "creationTime": "Creation Time"
+      "creationTime": "Creation Time",
+      "spec": "Spec",
+      "model": "Model",
+      "specs": "Specifications",
+      "models": "Models",
+      "addSpec": "Add Spec",
+      "addModel": "Add Model",
+      "subName": "Name",
+      "subTableTip": "Edit submits the full list: remove a row to delete it. Specs/models referenced by import containers cannot be deleted.",
+      "subRowNameRequired": "Row {1}: {0} name is required",
+      "subRowNameMaxLength": "Row {1}: {0} name cannot exceed 128 characters",
+      "subRowNameDuplicated": "{0} name [{1}] is duplicated"
     },
     "codePackage": {
       "title": "Package Type",

@@ -7,6 +7,14 @@ import type { CodeGoodsAdminApi } from '#/api/system/base-data/code-goods-admin'
 import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
+/** 与业务单 CargoType 一致：0 普通货 / 1 冻柜 / 2 危险品 / 3 超限箱 */
+const getCargoTypeOptions = () => [
+  { value: 0, label: $t('seaImport.import.cargoTypeOptions.normal') },
+  { value: 1, label: $t('seaImport.import.cargoTypeOptions.refrigerated') },
+  { value: 2, label: $t('seaImport.import.cargoTypeOptions.dangerous') },
+  { value: 3, label: $t('seaImport.import.cargoTypeOptions.outOfGauge') },
+];
+
 /**
  * 获取表格搜索表单的字段配置
  */
@@ -19,6 +27,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'CargoId',
+      label: $t('system.basicData.codeGoods.cargoId'),
+      componentProps: {
+        allowClear: true,
+        options: getCargoTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        style: { width: '100%' },
       },
     },
   ];
@@ -34,15 +53,15 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'code',
       label: $t('system.basicData.codeGoods.code'),
       componentProps: {
-        maxLength: 50,
+        maxLength: 128,
       },
       rules: z
         .string()
         .max(
-          50,
+          128,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.code'),
-            50,
+            128,
           ]),
         )
         .optional(),
@@ -52,7 +71,7 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'name',
       label: $t('system.basicData.codeGoods.goodsName'),
       componentProps: {
-        maxLength: 100,
+        maxLength: 128,
       },
       rules: z
         .string()
@@ -62,27 +81,45 @@ export function useFormSchema(): VbenFormSchema[] {
           ]),
         })
         .max(
-          100,
+          128,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.goodsName'),
-            100,
+            128,
           ]),
         ),
+    },
+    {
+      component: 'Select',
+      fieldName: 'cargoId',
+      label: $t('system.basicData.codeGoods.cargoId'),
+      componentProps: {
+        options: getCargoTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        style: { width: '100%' },
+      },
+      rules: z.number({
+        required_error: $t('ui.formRules.selectRequired', [
+          $t('system.basicData.codeGoods.cargoId'),
+        ]),
+        invalid_type_error: $t('ui.formRules.selectRequired', [
+          $t('system.basicData.codeGoods.cargoId'),
+        ]),
+      }),
     },
     {
       component: 'Input',
       fieldName: 'goodNo',
       label: $t('system.basicData.codeGoods.goodNo'),
       componentProps: {
-        maxLength: 50,
+        maxLength: 128,
       },
       rules: z
         .string()
         .max(
-          50,
+          128,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.goodNo'),
-            50,
+            128,
           ]),
         )
         .optional(),
@@ -92,15 +129,15 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'enName',
       label: $t('system.basicData.codeGoods.enName'),
       componentProps: {
-        maxLength: 100,
+        maxLength: 128,
       },
       rules: z
         .string()
         .max(
-          100,
+          128,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.enName'),
-            100,
+            128,
           ]),
         )
         .optional(),
@@ -110,15 +147,15 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'hsCode',
       label: $t('system.basicData.codeGoods.hsCode'),
       componentProps: {
-        maxLength: 50,
+        maxLength: 64,
       },
       rules: z
         .string()
         .max(
-          50,
+          64,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.hsCode'),
-            50,
+            64,
           ]),
         )
         .optional(),
@@ -128,7 +165,7 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'ruleUnit',
       label: $t('system.basicData.codeGoods.ruleUnit'),
       componentProps: {
-        maxLength: 50,
+        maxLength: 64,
       },
     },
     {
@@ -152,16 +189,16 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'description',
       label: $t('system.basicData.codeGoods.description'),
       componentProps: {
-        maxLength: 500,
+        maxLength: 256,
         rows: 3,
       },
       rules: z
         .string()
         .max(
-          500,
+          256,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.description'),
-            500,
+            256,
           ]),
         )
         .optional(),
@@ -171,16 +208,16 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'remark',
       label: $t('system.basicData.codeGoods.remark'),
       componentProps: {
-        maxLength: 500,
+        maxLength: 1024,
         rows: 3,
       },
       rules: z
         .string()
         .max(
-          500,
+          1024,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeGoods.remark'),
-            500,
+            1024,
           ]),
         )
         .optional(),
@@ -194,6 +231,10 @@ export function useFormSchema(): VbenFormSchema[] {
 export function useColumns(
   onActionClick?: OnActionClickFn<CodeGoodsAdminApi.CodeGoodsDto>,
 ): VxeTableGridOptions<CodeGoodsAdminApi.CodeGoodsDto>['columns'] {
+  const cargoTypeLabelMap = new Map(
+    getCargoTypeOptions().map((item) => [item.value, item.label]),
+  );
+
   return [
     {
       field: 'code',
@@ -204,6 +245,13 @@ export function useColumns(
       field: 'name',
       title: $t('system.basicData.codeGoods.goodsName'),
       minWidth: 150,
+    },
+    {
+      field: 'cargoId',
+      title: $t('system.basicData.codeGoods.cargoId'),
+      minWidth: 100,
+      formatter: ({ cellValue }) =>
+        cargoTypeLabelMap.get(cellValue as number) ?? cellValue ?? '',
     },
     {
       field: 'goodNo',

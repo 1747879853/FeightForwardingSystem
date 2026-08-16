@@ -183,6 +183,7 @@
       "name": "商品信息",
       "code": "编码",
       "goodsName": "名称",
+      "cargoId": "货物类型",
       "goodNo": "物料号",
       "enName": "英文名称",
       "description": "商品描述",
@@ -192,7 +193,18 @@
       "sortId": "排序",
       "remark": "备注",
       "keyword": "关键字",
-      "creationTime": "创建时间"
+      "creationTime": "创建时间",
+      "spec": "规格",
+      "model": "型号",
+      "specs": "规格明细",
+      "models": "型号明细",
+      "addSpec": "添加规格",
+      "addModel": "添加型号",
+      "subName": "名称",
+      "subTableTip": "编辑提交为全量覆盖：删除的行直接去掉即可；已被业务单箱表引用的规格/型号无法删除。",
+      "subRowNameRequired": "第{1}行{0}名称不能为空",
+      "subRowNameMaxLength": "第{1}行{0}名称不能超过128个字符",
+      "subRowNameDuplicated": "{0}名称【{1}】重复"
     },
     "codePackage": {
       "title": "包装类型",
