@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-16 海运进出口对接飞驼码头船舶计划同步](./changelogs/change-log-2026-08-16-terminal-schedule-sync.md)
+- [2026-08-16 新增港口拥堵分析独立查询页](./changelogs/change-log-2026-08-16-port-congestion-analysis.md)
 - [2026-08-16 商品信息维护规格型号子表与货物类型](./changelogs/change-log-2026-08-16-code-goods-specs-models.md)
 - [2026-08-14 业务联系单列表增加销售操作备注列与筛选](./changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md)
 - [2026-08-14 海运 3D 地球看板仅 hhyy 打包可见](./changelogs/change-log-2026-08-14-sea-freight-globe-hhyy-only.md)
