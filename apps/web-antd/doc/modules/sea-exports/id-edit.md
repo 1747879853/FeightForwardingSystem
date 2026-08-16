@@ -134,6 +134,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择；选委托单位仍自动带出，允许再改。 | 见 `changelogs/change-log-2026-08-16-sea-export-code-source-select.md`。 |
 | 2026-08-16 | `Feature` | 船名/航次右侧新增「码头船舶」按钮（仅编辑态）：命中唯一一条直接回填并刷新单据，多条时弹窗单选后再同步。 | 共享 `src/components/terminal-schedule/`（composable + 单选弹窗）与海进复用；`applied` 才刷新，`needSelect` 时后端一字未写。顺带把 `vessel` 的 `componentProps` 工厂从 schema 初始化与 `applyServiceLockedFields` 两处收敛为 `buildVesselComponentProps`。详见 `changelogs/change-log-2026-08-16-terminal-schedule-sync.md`。 |
 | 2026-08-10 | `Fix` | 头部业务来源改为固定宽只读文案，消除带出/回显时布局抖动。 | 回填改读 `codeSource.cnName`（不再用已删除的 `codeSourceName`）。详见 `changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md`。 |
 | 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | 新建/编辑共用 `use-sea-export-submit`；`UserOrgSelect` 一次写入。详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |
