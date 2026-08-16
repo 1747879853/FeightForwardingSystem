@@ -763,7 +763,9 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
     {
       field: 'transportOrder.mblNum',
       title: $t('seaExport.export.mblNum'),
-      minWidth: 140,
+      minWidth: 160,
+      // 走新服务商运踪的品牌，有异常预警时在单号前展示黄色叹号（悬停看原因）
+      slots: { default: 'mblNum' },
     },
     {
       field: 'transportOrder.contractNum',

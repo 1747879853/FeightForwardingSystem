@@ -1,8 +1,8 @@
----
+﻿---
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -67,6 +67,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-16 | `Feature` | 「运踪信息」Tab 换成新服务商运踪面板：展示订阅状态、当前节点（预计节点带后缀）、起降与 ETA/ATA、全量异常预警明细，并支持「查看轨迹地图」与「重新订阅」；基础信息工具栏的单票订阅也切到新服务商。 | 新面板 `modules/air-tracking-panel.vue` 的数据全部来自空运出口详情下发的 `feituoTracking` / `feituoTrackingWarnings`，不轮询、不直接请求服务商；重新订阅走 `FeituoAdmin/ResubscribeAirWaybillAsync` 并二次确认（消耗配额）；轨迹地图由前端按 env 拼装，env 缺项时入口自动隐藏；后端文案统一经 `sanitizeVendorText` 清洗后展示。详见 `changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md`。 |
 | 2026-08-09 | `Refactor` | 只读费用列表的费用名称/币别/结算对象列改读嵌套对象。 | `AirExportAdminApi.OrderFeeDto` 对象化；`dataIndex` 改数组路径，`sumByCurrency` 取 `item.currency?.cnName?.trim() |  | item.currency?.code?.trim()`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Refactor` | 「运踪信息」Tab 与工具栏订阅的接口地址迁移到合并后的云当服务，页面行为无变化。 | `GetAirPushInfoAsync` / `BatchSubscribeAirBillAsync` 前缀由 `YundangAirAdmin` 改为 `YundangAdmin`。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-08-08 | `Feature` | 基础信息工具栏运踪订阅/重新订阅；新增「运踪信息」Tab（里程碑/航段/状态轨迹）。 | 标签从三个扩为四个；面板复用 `GetAirPushInfoAsync`；详见 `changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md`。 |

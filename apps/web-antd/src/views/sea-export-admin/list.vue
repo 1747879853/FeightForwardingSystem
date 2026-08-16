@@ -25,16 +25,31 @@ import {
   getSeaExportGroupedList,
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import {
   GroupingSettings,
   GroupingTabs,
   useListGrouping,
 } from '#/components/list-grouping';
+import {
+  buildContainerTrackingPayload,
+  buildContainerWarningProps,
+  getContainerTrackingStatusColor,
+  getContainerTrackingStatusLabel,
+  resolveContainerOrderLabel,
+  TrackingWarningIcon,
+  useContainerTrackingDetail,
+  useContainerTrackingSubscribe,
+} from '#/components/tracking';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import {
+  isLegacyOceanExportTracking,
+  isVendorOceanExportTracking,
+} from '#/utils/tracking-brand';
 
 import {
   getSeaExportBusinessStatusMeta,
@@ -65,6 +80,19 @@ const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useSeaExportCopy();
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 const { TrackingModal, openTracking } = useYundangOceanTrack();
+/**
+ * 海运出口按品牌分流：sjtd 继续用已上线的运踪，其他品牌走新服务商。
+ * 两套入口互斥，避免同一列表出现两个「运踪订阅」。
+ */
+const {
+  ResultModal: VendorResultModal,
+  subscribe: vendorSubscribe,
+  subscribing: vendorSubscribing,
+} = useContainerTrackingSubscribe(
+  FeituoTrackingAdminApi.TrackingBizType.SeaExport,
+);
+const { TrackingModal: VendorTrackingModal, openTracking: openVendorTracking } =
+  useContainerTrackingDetail();
 const { hasAccessByCodes } = useAccess();
 const canViewYundangTracking = computed(() =>
   hasAccessByCodes([externalApiGetCode]),
@@ -451,6 +479,31 @@ const handleOpenYundangTracking = (row: SeaExportAdminApi.SeaExportDto) => {
   });
 };
 
+const handleVendorSubscribe = async () => {
+  const rows = getCheckboxRecords();
+  await vendorSubscribe(
+    rows.map((row) => ({
+      id: String(row.id),
+      orderLabel: resolveContainerOrderLabel(row),
+    })),
+  );
+  if (rows.length > 0) {
+    gridApi.query();
+  }
+};
+
+const handleOpenVendorTracking = (row: SeaExportAdminApi.SeaExportDto) => {
+  if (!canViewYundangTracking.value) {
+    return;
+  }
+  openVendorTracking(
+    buildContainerTrackingPayload(
+      row,
+      FeituoTrackingAdminApi.TrackingBizType.SeaExport,
+    ),
+  );
+};
+
 /** 「业务状态」列：计算最新服务进度文案 + 对应状态色（与详情页服务项目一致） */
 const resolveBusinessStatus = (row: SeaExportAdminApi.SeaExportDto) => {
   const meta = getSeaExportBusinessStatusMeta(row, serviceTypeLabelMap.value);
@@ -486,6 +539,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
       </template>
       <template #toolbar-tools>
         <span
+          v-if="isLegacyOceanExportTracking"
           v-access:code="externalApiUseCode"
           class="mr-2 inline-flex items-center gap-1"
         >
@@ -502,6 +556,27 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
               icon="ant-design:question-circle-outlined"
               class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
               :aria-label="$t('seaExport.yundang.subscribeRulesTitle')"
+            />
+          </Tooltip>
+        </span>
+        <span
+          v-else
+          v-access:code="externalApiUseCode"
+          class="mr-2 inline-flex items-center gap-1"
+        >
+          <Button :loading="vendorSubscribing" @click="handleVendorSubscribe">
+            {{ $t('tracking.subscribe') }}
+          </Button>
+          <Tooltip>
+            <template #title>
+              <div class="whitespace-pre-line text-left">
+                {{ $t('tracking.subscribeRules.seaExport') }}
+              </div>
+            </template>
+            <IconifyIcon
+              icon="ant-design:question-circle-outlined"
+              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+              :aria-label="$t('tracking.subscribeRulesTitle')"
             />
           </Tooltip>
         </span>
@@ -573,18 +648,41 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           {{ resolveBusinessStatus(row).text }}
         </span>
       </template>
-      <template #yundangTrackStatus="{ row }">
-        <Tag
-          v-if="canViewYundangTracking"
-          class="cursor-pointer"
-          :color="getYundangTrackStatusColor(buildYundangTrackRow(row))"
-          @click.stop="handleOpenYundangTracking(row)"
-        >
-          {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
-        </Tag>
-        <span v-else class="text-[rgba(0,0,0,0.65)]">
-          {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
+      <template #mblNum="{ row }">
+        <span class="inline-flex min-w-0 items-center">
+          <TrackingWarningIcon v-bind="buildContainerWarningProps(row)" />
+          <span class="truncate">{{
+            row?.transportOrder?.mblNum || '--'
+          }}</span>
         </span>
+      </template>
+      <template #yundangTrackStatus="{ row }">
+        <template v-if="isVendorOceanExportTracking">
+          <Tag
+            v-if="canViewYundangTracking"
+            class="cursor-pointer"
+            :color="getContainerTrackingStatusColor(row)"
+            @click.stop="handleOpenVendorTracking(row)"
+          >
+            {{ getContainerTrackingStatusLabel(row) }}
+          </Tag>
+          <span v-else class="text-[rgba(0,0,0,0.65)]">
+            {{ getContainerTrackingStatusLabel(row) }}
+          </span>
+        </template>
+        <template v-else>
+          <Tag
+            v-if="canViewYundangTracking"
+            class="cursor-pointer"
+            :color="getYundangTrackStatusColor(buildYundangTrackRow(row))"
+            @click.stop="handleOpenYundangTracking(row)"
+          >
+            {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
+          </Tag>
+          <span v-else class="text-[rgba(0,0,0,0.65)]">
+            {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
+          </span>
+        </template>
       </template>
       <template #carrierWithLogo="{ row }">
         <span class="inline-flex items-center gap-1">
@@ -598,8 +696,14 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </span>
       </template>
     </Grid>
-    <ResultModal />
-    <TrackingModal />
+    <template v-if="isLegacyOceanExportTracking">
+      <ResultModal />
+      <TrackingModal />
+    </template>
+    <template v-else>
+      <VendorResultModal />
+      <VendorTrackingModal />
+    </template>
   </Page>
 </template>
 

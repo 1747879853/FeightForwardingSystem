@@ -2,6 +2,7 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { UserAttribute } from '#/api/system/user-admin';
+import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 
 import { requestClient } from '#/api/request';
@@ -593,6 +594,18 @@ export namespace SeaExportAdminApi {
     yundangTrackStatus?: string;
     /** 运单当前海运节点（列表展示运踪状态文案取 stateDescCN） */
     yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
+    /** 是否已发起集装箱运踪订阅（新服务商） */
+    isFeituoSubscribed?: boolean;
+    /** 运踪订阅是否成功（新服务商） */
+    isFeituoSubscribeSuccess?: boolean;
+    /** 运踪摘要（列表 + 详情）；未订阅时为 null */
+    feituoTracking?: FeituoTrackingAdminApi.ContainerTrackingSummaryDto | null;
+    /** 运踪完整跟踪数据；仅详情，列表恒为 null */
+    feituoTrackingDetail?: FeituoTrackingAdminApi.ContainerDataDto | null;
+    /** 异常预警明细（按收到时间倒序）；仅详情，列表恒为 null */
+    feituoTrackingWarnings?:
+      | FeituoTrackingAdminApi.ContainerTrackingWarningDto[]
+      | null;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;

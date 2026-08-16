@@ -2,15 +2,23 @@
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { nextTick, onActivated, onMounted } from 'vue';
+import { computed, nextTick, onActivated, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
+import {
+  Copy,
+  IconifyIcon,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Plus,
+} from '@vben/icons';
+
+import { useAccess } from '@vben/access';
 
 import dayjs from 'dayjs';
 
-import { Button, message, Modal } from 'ant-design-vue';
+import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -18,11 +26,22 @@ import {
   getSeaImportGroupedList,
   getSeaImportPagedList,
 } from '#/api/sea-import/sea-import-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import {
   GroupingSettings,
   GroupingTabs,
   useListGrouping,
 } from '#/components/list-grouping';
+import {
+  buildContainerTrackingPayload,
+  buildContainerWarningProps,
+  getContainerTrackingStatusColor,
+  getContainerTrackingStatusLabel,
+  resolveContainerOrderLabel,
+  TrackingWarningIcon,
+  useContainerTrackingDetail,
+  useContainerTrackingSubscribe,
+} from '#/components/tracking';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
@@ -37,7 +56,16 @@ import {
 import { useSeaImportCopy } from './use-sea-import-copy';
 
 const perm = createAbpPermission('Admin.SeaImport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
+const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useSeaImportCopy();
+const { hasAccessByCodes } = useAccess();
+/** 海运进口全品牌走新服务商运踪 */
+const { ResultModal, subscribe, subscribing } = useContainerTrackingSubscribe(
+  FeituoTrackingAdminApi.TrackingBizType.SeaImport,
+);
+const { TrackingModal, openTracking } = useContainerTrackingDetail();
+const canViewTracking = computed(() => hasAccessByCodes([externalApiGetCode]));
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -361,6 +389,31 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
+const handleSubscribeTracking = async () => {
+  const rows = getCheckboxRecords();
+  await subscribe(
+    rows.map((row) => ({
+      id: String(row.id),
+      orderLabel: resolveContainerOrderLabel(row),
+    })),
+  );
+  if (rows.length > 0) {
+    handleRefresh();
+  }
+};
+
+const handleOpenTracking = (row: SeaImportAdminApi.SeaImportDto) => {
+  if (!canViewTracking.value) {
+    return;
+  }
+  openTracking(
+    buildContainerTrackingPayload(
+      row,
+      FeituoTrackingAdminApi.TrackingBizType.SeaImport,
+    ),
+  );
+};
+
 const handleDelete = () => {
   const row = requireExactlyOneRow();
   if (!row) {
@@ -426,6 +479,26 @@ useRefreshListOnFormReturn('SeaImportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
+        <span
+          v-access:code="externalApiUseCode"
+          class="mr-2 inline-flex items-center gap-1"
+        >
+          <Button :loading="subscribing" @click="handleSubscribeTracking">
+            {{ $t('tracking.subscribe') }}
+          </Button>
+          <Tooltip>
+            <template #title>
+              <div class="whitespace-pre-line text-left">
+                {{ $t('tracking.subscribeRules.seaImport') }}
+              </div>
+            </template>
+            <IconifyIcon
+              icon="ant-design:question-circle-outlined"
+              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+              :aria-label="$t('tracking.subscribeRulesTitle')"
+            />
+          </Tooltip>
+        </span>
         <Button
           v-access:code="perm.delete"
           class="mr-2"
@@ -487,7 +560,30 @@ useRefreshListOnFormReturn('SeaImportList', handleRefresh);
           <span>{{ row?.carrier?.code || '--' }}</span>
         </span>
       </template>
+      <template #mblNum="{ row }">
+        <span class="inline-flex min-w-0 items-center">
+          <TrackingWarningIcon v-bind="buildContainerWarningProps(row)" />
+          <span class="truncate">{{
+            row?.transportOrder?.mblNum || '--'
+          }}</span>
+        </span>
+      </template>
+      <template #feituoTrackStatus="{ row }">
+        <Tag
+          v-if="canViewTracking"
+          class="cursor-pointer"
+          :color="getContainerTrackingStatusColor(row)"
+          @click.stop="handleOpenTracking(row)"
+        >
+          {{ getContainerTrackingStatusLabel(row) }}
+        </Tag>
+        <span v-else class="text-[rgba(0,0,0,0.65)]">
+          {{ getContainerTrackingStatusLabel(row) }}
+        </span>
+      </template>
     </Grid>
+    <ResultModal />
+    <TrackingModal />
   </Page>
 </template>
 

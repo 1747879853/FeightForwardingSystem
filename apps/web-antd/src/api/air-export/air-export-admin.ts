@@ -12,6 +12,7 @@
  *   `etd` / `atd` / `eta`，空运没有 `flightDate` 之类的字段。
  */
 import type { UserAttribute } from '#/api/system/user-admin';
+import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import type { YundangAirAdminApi } from '#/api/yundang/yundang-air-admin';
 
 import { requestClient } from '#/api/request';
@@ -494,6 +495,18 @@ export namespace AirExportAdminApi {
     isYundangSubscribeSuccess?: boolean;
     /** 运单当前空运节点（最后一个有实际时间的节点；无推送或无实际节点为 null） */
     yundangAirShipmentNode?: null | YundangAirAdminApi.YundangAirShipmentNodeInfoDto;
+    /** 是否已发起航空货运运踪订阅（新服务商） */
+    isFeituoSubscribed?: boolean;
+    /** 运踪订阅是否成功（新服务商） */
+    isFeituoSubscribeSuccess?: boolean;
+    /** 运踪摘要（列表 + 详情）；未订阅时为 null */
+    feituoTracking?: FeituoTrackingAdminApi.AirTrackingSummaryDto | null;
+    /** 运踪完整轨迹；仅详情，列表恒为 null */
+    feituoTrackingDetail?: null | Record<string, unknown>;
+    /** 异常预警明细；仅详情，列表恒为 null */
+    feituoTrackingWarnings?:
+      | FeituoTrackingAdminApi.AirTrackingWarningDto[]
+      | null;
     /** 货物明细，按 sortId 升序；无明细时 [] */
     airExportOrderCtns?: AirExportOrderCtnDto[];
     transportOrder?: TransportOrderDto;

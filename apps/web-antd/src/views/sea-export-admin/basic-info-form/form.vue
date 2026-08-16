@@ -145,6 +145,12 @@ import {
   getYundangSubscribeStatus,
   useYundangOceanSubscribe,
 } from '../use-yundang-ocean-subscribe';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
+import { useContainerTrackingSubscribe } from '#/components/tracking';
+import {
+  isLegacyOceanExportTracking,
+  isVendorOceanExportTracking,
+} from '#/utils/tracking-brand';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
@@ -1887,6 +1893,8 @@ const loadEditData = async (): Promise<
     transportOrderId.value = detail.transportOrder?.id;
     yundangSubscribed.value = detail.isYundangSubscribed ?? false;
     yundangSubscribeSuccess.value = detail.isYundangSubscribeSuccess ?? false;
+    vendorSubscribed.value = detail.isFeituoSubscribed ?? false;
+    vendorSubscribeSuccess.value = detail.isFeituoSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     const to = detail.transportOrder;
 
@@ -2333,6 +2341,23 @@ useUnsavedGuard({
 
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
+/**
+ * 运踪按品牌分流：sjtd 用上方已上线的运踪，其他品牌走新服务商。
+ * 两套入口互斥渲染，避免同一表单出现两个订阅按钮。
+ */
+const {
+  ResultModal: VendorResultModal,
+  subscribe: vendorSubscribe,
+  subscribing: vendorSubscribing,
+} = useContainerTrackingSubscribe(
+  FeituoTrackingAdminApi.TrackingBizType.SeaExport,
+);
+const vendorSubscribed = ref(false);
+const vendorSubscribeSuccess = ref(false);
+const vendorSubscribeDisabled = computed(
+  () => vendorSubscribed.value && vendorSubscribeSuccess.value,
+);
+
 /** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
 const yundangSubscribed = ref(false);
 const yundangSubscribeSuccess = ref(false);
@@ -2395,6 +2420,22 @@ const handleYundangSubscribe = async () => {
       commissionNum: entrustReadonlyInfo.value.commissionNum,
       mblNum: tabMblNum.value,
       bookingNum: String(basicValues.bookingNum ?? ''),
+    },
+  ]);
+  await loadEditData();
+};
+
+const handleVendorSubscribe = async () => {
+  if (!isEdit.value || !editId.value || vendorSubscribeDisabled.value) {
+    return;
+  }
+  await vendorSubscribe([
+    {
+      id: editId.value,
+      orderLabel:
+        entrustReadonlyInfo.value.commissionNum ||
+        tabMblNum.value ||
+        editId.value,
     },
   ]);
   await loadEditData();
@@ -3016,6 +3057,48 @@ defineExpose({
                     </Button>
                     <template v-if="isEdit">
                       <span
+                        v-if="isVendorOceanExportTracking"
+                        v-access:code="externalApiUseCode"
+                        class="inline-flex items-center gap-1"
+                      >
+                        <Tooltip
+                          :title="
+                            vendorSubscribeDisabled
+                              ? $t('tracking.alreadySubscribed')
+                              : ''
+                          "
+                        >
+                          <Button
+                            size="small"
+                            class="flex items-center justify-center"
+                            :loading="vendorSubscribing"
+                            :disabled="vendorSubscribeDisabled"
+                            @click="handleVendorSubscribe"
+                          >
+                            <IconifyIcon
+                              icon="mdi:radar"
+                              class="mr-1 inline-block size-3.5 align-middle"
+                            />
+                            <span class="align-middle">
+                              {{ $t('tracking.subscribe') }}
+                            </span>
+                          </Button>
+                        </Tooltip>
+                        <Tooltip>
+                          <template #title>
+                            <div class="whitespace-pre-line text-left">
+                              {{ $t('tracking.subscribeRules.seaExport') }}
+                            </div>
+                          </template>
+                          <IconifyIcon
+                            icon="ant-design:question-circle-outlined"
+                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+                            :aria-label="$t('tracking.subscribeRulesTitle')"
+                          />
+                        </Tooltip>
+                      </span>
+                      <span
+                        v-else
                         v-access:code="externalApiUseCode"
                         class="inline-flex items-center gap-1"
                       >
@@ -3698,7 +3781,8 @@ defineExpose({
       :query-info="terminalScheduleQueryInfo"
       @confirm="confirmTerminalSchedule"
     />
-    <ResultModal />
+    <ResultModal v-if="isLegacyOceanExportTracking" />
+    <VendorResultModal v-else />
   </component>
 </template>
 

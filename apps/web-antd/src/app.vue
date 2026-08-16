@@ -11,6 +11,7 @@ import { App, ConfigProvider, theme } from 'ant-design-vue';
 import { JhtMascot } from '#/components/jht-mascot';
 import { shouldShowJhtMascot as resolveJhtMascotVisibility } from '#/components/jht-mascot/jht-mascot-state';
 import { PrintFormatModal } from '#/components/print-format';
+import { VendorTrackingMapModal } from '#/components/tracking';
 import { TrackingMapModal } from '#/components/tracking-map';
 import { WorkflowTimelineModal } from '#/components/workflow-timeline';
 import { antdLocale } from '#/locales';
@@ -59,6 +60,7 @@ const tokenTheme = computed(() => {
       <PrintFormatModal />
       <WorkflowTimelineModal />
       <TrackingMapModal />
+      <VendorTrackingMapModal />
       <JhtMascot v-if="shouldShowJhtMascot" />
     </App>
   </ConfigProvider>

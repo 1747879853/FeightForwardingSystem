@@ -845,8 +845,10 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
     {
       field: 'transportOrder.mblNum',
       title: $t('airExport.export.mblNum'),
-      minWidth: 140,
+      minWidth: 160,
       showOverflow: true,
+      // 有运踪异常预警时，在单号前展示黄色叹号（悬停看原因）
+      slots: { default: 'mblNum' },
     },
     {
       field: 'flightNo',
@@ -1173,9 +1175,10 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       },
     },
     {
+      // 字段名沿用历史值，避免用户已保存的列配置失效；内容取新服务商运踪摘要
       field: 'yundangTrackStatus',
-      title: $t('airExport.yundang.trackStatusColumn'),
-      minWidth: 120,
+      title: $t('tracking.trackStatusColumn'),
+      minWidth: 130,
       sortable: false,
       slots: { default: 'yundangTrackStatus' },
     },

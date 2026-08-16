@@ -7,6 +7,8 @@ import { useRoute } from 'vue-router';
 import { Page } from '@vben/common-ui';
 
 import { getOrderFeePagedList } from '#/api/sea-import/order-fee-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
+import { ContainerTrackingPanel } from '#/components/tracking';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -17,7 +19,7 @@ import changeOrder from './changeOrder/index.vue';
 import orderFee from './orderFee/index.vue';
 
 type SectionKey = 'basic' | 'cargo' | 'party' | 'port' | 'shipment';
-type TabKey = 'attachments' | 'basic' | 'changeOrder' | 'fee';
+type TabKey = 'attachments' | 'basic' | 'changeOrder' | 'fee' | 'tracking';
 type FormExpose = {
   isFormDirty: () => boolean | Promise<boolean>;
   scrollToSection: (key: SectionKey) => void;
@@ -28,6 +30,7 @@ const VALID_TAB_KEYS: readonly TabKey[] = [
   'fee',
   'changeOrder',
   'attachments',
+  'tracking',
 ] as const;
 
 const TAB_STORAGE_KEY_PREFIX = 'sea-import-edit-active-tab';
@@ -105,6 +108,7 @@ const tabs = computed<
   { key: 'fee', label: feeName.value },
   { key: 'changeOrder', label: '更改单' },
   { key: 'attachments', label: $t('seaImport.import.attachments.tabTitle') },
+  { key: 'tracking', label: $t('tracking.trackingInfo') },
 ]);
 
 const setFeeNumber = (recCount: number, payCount: number) => {
@@ -210,6 +214,16 @@ const getContentTabStyle = (isActive: boolean) =>
           <KeepAlive include="SeaImportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
+          <div
+            v-if="activeTab === 'tracking'"
+            class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
+          >
+            <ContainerTrackingPanel
+              :biz-type="FeituoTrackingAdminApi.TrackingBizType.SeaImport"
+              load-detail
+              :order-id="editId"
+            />
+          </div>
           <KeepAlive include="SeaImportAdminForm">
             <Form
               v-if="activeTab === 'basic'"

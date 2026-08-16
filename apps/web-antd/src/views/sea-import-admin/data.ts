@@ -766,8 +766,17 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
     {
       field: 'transportOrder.mblNum',
       title: $t('seaImport.import.mblNum'),
-      minWidth: 140,
+      minWidth: 160,
       showOverflow: true,
+      // 有运踪异常预警时，在单号前展示黄色叹号（悬停看原因）
+      slots: { default: 'mblNum' },
+    },
+    {
+      field: 'feituoTrackStatus',
+      title: $t('tracking.trackStatusColumn'),
+      minWidth: 130,
+      sortable: false,
+      slots: { default: 'feituoTrackStatus' },
     },
     {
       field: 'hblNum',

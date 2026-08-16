@@ -13,7 +13,7 @@ import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 import attachments from './attachments/index.vue';
 import Form from './basic-info-form/form.vue';
-import YundangAirTrackingPanel from './modules/yundang-air-tracking-panel.vue';
+import AirTrackingPanel from './modules/air-tracking-panel.vue';
 import orderFee from './orderFee/index.vue';
 
 type SectionKey = 'basic' | 'cargo' | 'date' | 'leg' | 'party';
@@ -106,7 +106,7 @@ const tabs = computed<
   },
   { key: 'fee', label: feeName.value },
   { key: 'attachments', label: $t('airExport.export.attachments.tabTitle') },
-  { key: 'tracking', label: $t('airExport.yundang.trackingInfo') },
+  { key: 'tracking', label: $t('tracking.trackingInfo') },
 ]);
 
 /** 由详情计算费用 Tab 徽标上的收 - 付计数 */
@@ -213,10 +213,7 @@ const getContentTabStyle = (isActive: boolean) =>
             v-if="activeTab === 'tracking'"
             class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
           >
-            <YundangAirTrackingPanel
-              :air-export-id="editId"
-              resolve-state-from-subscription
-            />
+            <AirTrackingPanel :air-export-id="editId" />
           </div>
           <KeepAlive include="AirExportAdminForm">
             <Form

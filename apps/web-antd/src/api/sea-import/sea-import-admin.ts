@@ -8,6 +8,7 @@
  * - 界面上的「到港日期」对应 `transportOrder.etd`；`eta` / `atd` / `goodsCompleteTime` 进口不使用。
  */
 import type { UserAttribute } from '#/api/system/user-admin';
+import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -574,16 +575,18 @@ export namespace SeaImportAdminApi {
     payFeeStatus?: null | number;
     /** 应收方向组合费用状态 */
     receiveFeeStatus?: null | number;
-    /** 是否已发起飞驼集装箱跟踪订阅 */
+    /** 是否已发起集装箱运踪订阅 */
     isFeituoSubscribed?: boolean;
-    /** 飞驼订阅是否成功 */
+    /** 运踪订阅是否成功 */
     isFeituoSubscribeSuccess?: boolean;
-    /** 飞驼运踪摘要（列表/详情）；明细字段以后端为准 */
-    feituoTracking?: null | Record<string, unknown>;
-    /** 飞驼完整跟踪数据；仅详情，列表恒为 null */
-    feituoTrackingDetail?: null | Record<string, unknown>;
-    /** 飞驼预警明细；仅详情，列表恒为 null */
-    feituoTrackingWarnings?: null | unknown[];
+    /** 运踪摘要（列表 + 详情）；未订阅时为 null */
+    feituoTracking?: FeituoTrackingAdminApi.ContainerTrackingSummaryDto | null;
+    /** 运踪完整跟踪数据；仅详情，列表恒为 null */
+    feituoTrackingDetail?: FeituoTrackingAdminApi.ContainerDataDto | null;
+    /** 异常预警明细（按收到时间倒序）；仅详情，列表恒为 null */
+    feituoTrackingWarnings?:
+      | FeituoTrackingAdminApi.ContainerTrackingWarningDto[]
+      | null;
     orderCtns?: OrderCtnDto[];
     /** 列表接口恒为 null */
     attachmentGroup?: AttachmentGroupDto[] | null;

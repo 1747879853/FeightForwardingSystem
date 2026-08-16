@@ -66,10 +66,7 @@ import {
 } from '../data';
 import AirExportOrderCtnTable from '../modules/air-export-order-ctn-table.vue';
 import { useAirExportCopy } from '../use-air-export-copy';
-import {
-  getYundangAirSubscribeStatus,
-  useYundangAirSubscribe,
-} from '../use-yundang-air-subscribe';
+import { useAirTrackingSubscribe } from '#/components/tracking';
 import {
   calcBubbleRatio,
   flattenDetail,
@@ -576,8 +573,8 @@ const loadEditData = async (): Promise<
     const detail = await getAirExportDetail(editId.value);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
-    yundangSubscribed.value = detail.isYundangSubscribed ?? false;
-    yundangSubscribeSuccess.value = detail.isYundangSubscribeSuccess ?? false;
+    trackingSubscribed.value = detail.isFeituoSubscribed ?? false;
+    trackingSubscribeSuccess.value = detail.isFeituoSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.airExportOrderCtns);
@@ -778,37 +775,33 @@ const handleCopyAirExport = async () => {
   });
 };
 
-const { ResultModal, subscribe, subscribing } = useYundangAirSubscribe();
+const { ResultModal, subscribe, subscribing } = useAirTrackingSubscribe();
 
 /** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
-const yundangSubscribed = ref(false);
-const yundangSubscribeSuccess = ref(false);
-const yundangSubscribeStatus = computed(() =>
-  getYundangAirSubscribeStatus({
-    isYundangSubscribed: yundangSubscribed.value,
-    isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
-  }),
+const trackingSubscribed = ref(false);
+const trackingSubscribeSuccess = ref(false);
+/** 已成功订阅的票不再重复订阅（需要强制重订走运踪 Tab 的「重新订阅」） */
+const trackingSubscribeDisabled = computed(
+  () => trackingSubscribed.value && trackingSubscribeSuccess.value,
 );
-/** 已成功订阅的同单号禁止重复批量订阅 */
-const yundangSubscribeDisabled = computed(
-  () => yundangSubscribeStatus.value === 'success',
-);
-const yundangSubscribeButtonText = computed(() =>
-  yundangSubscribeStatus.value === 'failed'
-    ? $t('airExport.yundang.resubscribe')
-    : $t('airExport.yundang.subscribe'),
+const trackingSubscribeButtonText = computed(() =>
+  trackingSubscribed.value && !trackingSubscribeSuccess.value
+    ? $t('tracking.detail.resubscribe')
+    : $t('tracking.subscribe'),
 );
 
-const handleYundangSubscribe = async () => {
-  if (!isEdit.value || !editId.value || yundangSubscribeDisabled.value) {
+const handleSubscribeTracking = async () => {
+  if (!isEdit.value || !editId.value || trackingSubscribeDisabled.value) {
     return;
   }
   const basicValues = await basicInfoFormApi.getValues();
   await subscribe([
     {
       id: editId.value,
-      commissionNum: entrustReadonlyInfo.value.commissionNum,
-      mblNum: String(basicValues.mblNum ?? ''),
+      orderLabel:
+        entrustReadonlyInfo.value.commissionNum ||
+        String(basicValues.mblNum ?? '') ||
+        editId.value,
     },
   ]);
   await loadEditData();
@@ -984,8 +977,8 @@ watch(pageLoading, (loading) => {
                       >
                         <Tooltip
                           :title="
-                            yundangSubscribeDisabled
-                              ? $t('airExport.yundang.alreadySubscribed')
+                            trackingSubscribeDisabled
+                              ? $t('tracking.alreadySubscribed')
                               : ''
                           "
                         >
@@ -993,30 +986,28 @@ watch(pageLoading, (loading) => {
                             size="small"
                             class="flex items-center justify-center"
                             :loading="subscribing"
-                            :disabled="yundangSubscribeDisabled"
-                            @click="handleYundangSubscribe"
+                            :disabled="trackingSubscribeDisabled"
+                            @click="handleSubscribeTracking"
                           >
                             <IconifyIcon
                               icon="mdi:radar"
                               class="mr-1 inline-block size-3.5 align-middle"
                             />
                             <span class="align-middle">{{
-                              yundangSubscribeButtonText
+                              trackingSubscribeButtonText
                             }}</span>
                           </Button>
                         </Tooltip>
                         <Tooltip>
                           <template #title>
                             <div class="whitespace-pre-line text-left">
-                              {{ $t('airExport.yundang.subscribeRules') }}
+                              {{ $t('tracking.subscribeRules.airExport') }}
                             </div>
                           </template>
                           <IconifyIcon
                             icon="ant-design:question-circle-outlined"
                             class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-                            :aria-label="
-                              $t('airExport.yundang.subscribeRulesTitle')
-                            "
+                            :aria-label="$t('tracking.subscribeRulesTitle')"
                           />
                         </Tooltip>
                       </span>

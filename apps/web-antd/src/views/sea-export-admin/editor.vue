@@ -12,10 +12,13 @@ import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
+import { ContainerTrackingPanel } from '#/components/tracking';
 import { clearOrderDetailCache } from '#/views/sea-export-admin/orderFee/modules/composables/useOrderFeeLinkage';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
+import { isVendorOceanExportTracking } from '#/utils/tracking-brand';
 
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 
@@ -305,7 +308,15 @@ const getContentTabStyle = (isActive: boolean) =>
             v-if="activeTab === 'tracking'"
             class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
           >
+            <!-- 运踪按品牌分流：sjtd 保留已上线的运踪，其他品牌走新服务商 -->
+            <ContainerTrackingPanel
+              v-if="isVendorOceanExportTracking"
+              :biz-type="FeituoTrackingAdminApi.TrackingBizType.SeaExport"
+              load-detail
+              :order-id="editId"
+            />
             <YundangTrackingPanel
+              v-else
               :sea-export-id="editId"
               resolve-state-from-subscription
             />

@@ -31,6 +31,16 @@ import {
   GroupingTabs,
   useListGrouping,
 } from '#/components/list-grouping';
+import {
+  buildAirTrackingPayload,
+  buildAirWarningProps,
+  getAirTrackingStatusColor,
+  getAirTrackingStatusLabel,
+  resolveAirTrackingOrderLabel,
+  TrackingWarningIcon,
+  useAirTrackingDetail,
+  useAirTrackingSubscribe,
+} from '#/components/tracking';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { createPagedListQuery } from '#/utils';
@@ -43,28 +53,16 @@ import {
   useGridFormSchema,
 } from './data';
 import { useAirExportCopy } from './use-air-export-copy';
-import {
-  buildAirExportSubscribeRow,
-  useYundangAirSubscribe,
-} from './use-yundang-air-subscribe';
-import {
-  buildYundangAirTrackRow,
-  getYundangAirTrackStatusColor,
-  getYundangAirTrackStatusLabel,
-  resolveAirOrderLabel,
-  useYundangAirTrack,
-} from './use-yundang-air-track';
 
 const perm = createAbpPermission('Admin.AirExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
 const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useAirExportCopy();
-const { ResultModal, subscribe, subscribing } = useYundangAirSubscribe();
-const { TrackingModal, openTracking } = useYundangAirTrack();
+/** 空运出口全品牌走新服务商运踪 */
+const { ResultModal, subscribe, subscribing } = useAirTrackingSubscribe();
+const { TrackingModal, openTracking } = useAirTrackingDetail();
 const { hasAccessByCodes } = useAccess();
-const canViewYundangTracking = computed(() =>
-  hasAccessByCodes([externalApiGetCode]),
-);
+const canViewTracking = computed(() => hasAccessByCodes([externalApiGetCode]));
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -413,22 +411,24 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-const handleYundangSubscribe = async () => {
+const handleSubscribeTracking = async () => {
   const rows = getCheckboxRecords();
-  await subscribe(rows.map((row) => buildAirExportSubscribeRow(row)));
+  await subscribe(
+    rows.map((row) => ({
+      id: String(row.id),
+      orderLabel: resolveAirTrackingOrderLabel(row),
+    })),
+  );
   if (rows.length > 0) {
     gridApi.query();
   }
 };
 
-const handleOpenYundangTracking = (row: AirExportAdminApi.AirExportDto) => {
-  const trackRow = buildYundangAirTrackRow(row);
-  openTracking({
-    airExportId: trackRow.id,
-    orderLabel: resolveAirOrderLabel(trackRow),
-    isYundangSubscribed: trackRow.isYundangSubscribed,
-    isYundangSubscribeSuccess: trackRow.isYundangSubscribeSuccess,
-  });
+const handleOpenTracking = (row: AirExportAdminApi.AirExportDto) => {
+  if (!canViewTracking.value) {
+    return;
+  }
+  openTracking(buildAirTrackingPayload(row));
 };
 
 const handleDelete = () => {
@@ -506,19 +506,19 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
           v-access:code="externalApiUseCode"
           class="mr-2 inline-flex items-center gap-1"
         >
-          <Button :loading="subscribing" @click="handleYundangSubscribe">
-            {{ $t('airExport.yundang.subscribe') }}
+          <Button :loading="subscribing" @click="handleSubscribeTracking">
+            {{ $t('tracking.subscribe') }}
           </Button>
           <Tooltip>
             <template #title>
               <div class="whitespace-pre-line text-left">
-                {{ $t('airExport.yundang.subscribeRules') }}
+                {{ $t('tracking.subscribeRules.airExport') }}
               </div>
             </template>
             <IconifyIcon
               icon="ant-design:question-circle-outlined"
               class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-              :aria-label="$t('airExport.yundang.subscribeRulesTitle')"
+              :aria-label="$t('tracking.subscribeRulesTitle')"
             />
           </Tooltip>
         </span>
@@ -572,17 +572,26 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
         />
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
+      <template #mblNum="{ row }">
+        <span class="inline-flex min-w-0 items-center">
+          <TrackingWarningIcon v-bind="buildAirWarningProps(row)" />
+          <span class="truncate">{{
+            row?.transportOrder?.mblNum || '--'
+          }}</span>
+        </span>
+      </template>
+      <!-- 列字段名沿用 yundangTrackStatus，避免用户已保存的列配置失效；内容已切换为新服务商运踪 -->
       <template #yundangTrackStatus="{ row }">
         <Tag
-          v-if="canViewYundangTracking"
+          v-if="canViewTracking"
           class="cursor-pointer"
-          :color="getYundangAirTrackStatusColor(buildYundangAirTrackRow(row))"
-          @click.stop="handleOpenYundangTracking(row)"
+          :color="getAirTrackingStatusColor(row)"
+          @click.stop="handleOpenTracking(row)"
         >
-          {{ getYundangAirTrackStatusLabel(buildYundangAirTrackRow(row)) }}
+          {{ getAirTrackingStatusLabel(row) }}
         </Tag>
         <span v-else class="text-[rgba(0,0,0,0.65)]">
-          {{ getYundangAirTrackStatusLabel(buildYundangAirTrackRow(row)) }}
+          {{ getAirTrackingStatusLabel(row) }}
         </span>
       </template>
     </Grid>

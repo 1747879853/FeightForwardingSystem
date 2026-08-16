@@ -2,7 +2,7 @@
 title: 货物轨迹独立静态页
 module: 共享能力
 author: 自动生成
-last_updated: 2026-08-11
+last_updated: 2026-08-16
 route: /tracking-map/:mblNo?
 ---
 
@@ -46,6 +46,7 @@ route: /tracking-map/:mblNo?
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Parsing` | 无 | 需求确认：其他品牌海出分享须白标（本系统独立页内嵌后端加密链接，不直出服务商 URL，页面文案不出现服务商名）；sjtd 海出分享维持现状。见 [运踪能力品牌分流](./feituo-tracking-brand-split.md)。 |
 | 2026-08-11 | `Feature` | 品牌列表补充龙山（longshan），页头 Logo 随新打包环境切换 | `brand-assets.ts` 注册 longshan 素材；详见 `changelogs/change-log-2026-08-11-longshan-brand-pack.md` |
 | 2026-07-13 | `Feature` | 新增可分享的货物轨迹独立静态页（免登录、URL 传订阅号、iframe 内嵌、页头品牌 logo）。 | 启用 external 路由 + `ignoreAccess`；抽 `buildTrackingMapSrc` 供弹窗与静态页复用；logo 用 brand-assets 随品牌切换。已用 chrome-devtools 实测带号渲染与空态。 |
 | 2026-07-14 | `Feature` | 支持英文分享链接：`?lang=en` 时地图以英文渲染，便于分享给看英文的客户。 | 从 `route.query.lang` 解析语言传入 `buildTrackingMapSrc(referenceNo, lang)`；`en` 生效其余默认中文。 |
