@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 海运进口编辑页补齐运踪订阅按钮](./changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md)
 - [2026-08-16 海出/海进/空出列表新增与复制按钮图标对齐](./changelogs/change-log-2026-08-16-list-create-copy-icon-align.md)
 - [2026-08-16 运踪异常预警改为按钮入口 + 弹窗查看](./changelogs/change-log-2026-08-16-tracking-warning-modal.md)
 - [2026-08-16 运踪信息新增轨迹节点时间轴](./changelogs/change-log-2026-08-16-tracking-timeline.md)

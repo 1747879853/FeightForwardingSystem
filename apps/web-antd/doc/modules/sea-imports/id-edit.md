@@ -16,7 +16,7 @@ last_updated: 2026-08-16
 | 页面路由 | `/sea-imports/:id/edit` |
 | 路由名称 | `SeaImportEdit` |
 | 页面组件 | `src/views/sea-import-admin/editor.vue` |
-| 权限口径 | `Admin.SeaImport` |
+| 权限口径 | `Admin.SeaImport`；运踪订阅 `Admin.ExternalApi.Use` |
 | 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/sea-import-admin/editor.vue`<br/>`src/views/sea-import-admin/basic-info-form/form.vue`<br/>`src/views/sea-import-admin/orderFee/`<br/>`src/views/sea-import-admin/changeOrder/`<br/>`src/views/sea-import-admin/attachments/` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -29,12 +29,14 @@ last_updated: 2026-08-16
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
 - **委托编号：** 编辑态可一键重新生成。
 - **复制：** 保存下拉支持复制整单（可选复制费用）。
+- **运踪订阅：** 基础信息工具栏「运踪订阅 / 重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。与列表共用 `useContainerTrackingSubscribe`（`bizType=1`）。
 
 # 3. 状态流转说明 (Status Transitions)
 
-| 当前状态 | 触发人/动作  | 目标状态 | 状态说明                           |
-| :------- | :----------- | :------- | :--------------------------------- |
+| 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
+| :-- | :-- | :-- | :-- |
 | 页面初始 | 用户进入路由 | 页面可用 | 由动态路由与权限守卫完成组件挂载。 |
+| 编辑中 | 用户点运踪订阅 | 订阅成功/失败 | 走集装箱批量订阅接口（单票）；成功后禁用按钮；失败可「重新订阅」。 |
 
 # 4. 核心字段说明 (Field Definitions)
 
@@ -45,15 +47,19 @@ last_updated: 2026-08-16
 | **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `src/views/sea-import-admin/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。 | 销售必须且仅一人；销售与操作必须选择人员。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
+| **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：海运进口编辑工作台一致性]** 编辑工作台跨多个子模块，最关键的卡点是锁费、业务锁定、审核中费用和子模块上下文一致性。
 
+> [!IMPORTANT] **[卡点 2：运踪订阅读库不读表单草稿]** 未保存的主提单号/箱号变更不会进入当次订阅；用户可见层不出现服务商名称。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 基础信息工具栏补齐「运踪订阅 / 重新订阅」单票入口（仅编辑态 + `Admin.ExternalApi.Use`）。 | 复用列表同一套 `useContainerTrackingSubscribe`（`bizType=1`）；状态读详情 `isFeituoSubscribed` / `isFeituoSubscribeSuccess`；已成功订阅禁用，失败可重订。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md`。 |
 | 2026-08-16 | `Refactor` | 运踪信息 Tab 的异常预警明细改为弹窗查看，且仅在有预警时才出现「异常预警(N)」按钮，不再常驻底部空表。 | 详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md`。 |
 | 2026-08-16 | `Feat` | 多箱票的轨迹节点显示箱号，并可在「整票 / 按箱」间切换查看。 | 同名节点重复多为各箱进度差异或摘车后重新编组；按箱视图每箱一条时间轴。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Feat` | 运踪信息 Tab 新增「轨迹节点」时间轴：整票合并各箱节点，区分实际/预计/当前。 | 节点取运踪快照 `containers[].status[]`，共享 `timeline-nodes.ts` + `tracking-timeline.vue`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |

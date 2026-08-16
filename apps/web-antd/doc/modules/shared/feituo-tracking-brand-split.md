@@ -212,6 +212,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 海运进口编辑页基础信息工具栏补齐单票「运踪订阅」按钮，与列表、海出/空出编辑页对齐 | 首版只做了列表订阅与编辑页运踪 Tab，漏了表单入口。复用 `useContainerTrackingSubscribe(SeaImport)`，权限 `Admin.ExternalApi.Use`。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md` |
 | 2026-08-16 | `Refactor` | 异常预警明细不再常驻页面底部，改为**仅在有预警时**出现「异常预警(N)」按钮，点击弹窗看明细 | 绝大多数票无预警，常驻「共 0 条」空态白占版面。新增共享 `tracking-warning-modal.vue`（按 `kind` 切海运箱号列 / 空运发生地列），两个面板各自的列定义与行映射收敛到弹窗；按钮条件统一为 `warnings.length > 0`，列表场景与未订阅票的 `warnings` 本就是空数组，无需额外判断。详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md` |
 | 2026-08-16 | `Feature` | 海运多箱票的轨迹节点带上箱号，并新增「整票 / 按箱」视图切换 | 整票合并后同名节点仍会真实重复（各箱进度不同、或箱被摘车后重新编组，如出现 `Excluded from train` 后的第二次离站/到站）。带箱号让重复自解释，按箱视图 `buildContainerTimelineGroups` 每箱一条时间轴；单箱票不显示箱号与切换 |
 | 2026-08-16 | `Fix` | 时间轴不再显示已作废的预计记录（如实际离港 02:04 前面还挂着计划离港 00:00） | 服务商对同一事件同时给预计与实际两条，按时间排序会把预计排到实际前面。新增 `dropSupersededEstimates`：同事件已有实际、或预计时间已被最新实际超越（含无时间）即丢弃；同类型多条实际（如两次货物预配）保留。空运事件分类分散在四个来源字段，需逐个回退取值 |

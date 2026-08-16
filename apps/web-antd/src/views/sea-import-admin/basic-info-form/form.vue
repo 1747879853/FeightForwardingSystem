@@ -54,10 +54,12 @@ import {
   getSeaImportDetail,
   updateSeaImportCommissionNum,
 } from '#/api/sea-import/sea-import-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import {
   TerminalSchedulePickerModal,
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
+import { useContainerTrackingSubscribe } from '#/components/tracking';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 
@@ -113,6 +115,7 @@ const router = useRouter();
 const userStore = useUserStore();
 const { closeTabByKey } = useTabs();
 const perm = createAbpPermission('Admin.SeaImport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
 
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
@@ -757,6 +760,8 @@ const loadEditData = async (): Promise<
     const detail = await getSeaImportDetail(editId.value);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
+    trackingSubscribed.value = detail.isFeituoSubscribed ?? false;
+    trackingSubscribeSuccess.value = detail.isFeituoSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.orderCtns);
@@ -979,6 +984,41 @@ const { copying: copyingSeaImport, copyFrom } = useSeaImportCopy({
   checkDirty: isFormDirty,
 });
 
+/** 海运进口全品牌走新服务商运踪；仅编辑态可单票订阅 */
+const { ResultModal, subscribe, subscribing } = useContainerTrackingSubscribe(
+  FeituoTrackingAdminApi.TrackingBizType.SeaImport,
+);
+
+/** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
+const trackingSubscribed = ref(false);
+const trackingSubscribeSuccess = ref(false);
+/** 已成功订阅的票不再重复订阅（需要强制重订走运踪 Tab） */
+const trackingSubscribeDisabled = computed(
+  () => trackingSubscribed.value && trackingSubscribeSuccess.value,
+);
+const trackingSubscribeButtonText = computed(() =>
+  trackingSubscribed.value && !trackingSubscribeSuccess.value
+    ? $t('tracking.detail.resubscribe')
+    : $t('tracking.subscribe'),
+);
+
+const handleSubscribeTracking = async () => {
+  if (!isEdit.value || !editId.value || trackingSubscribeDisabled.value) {
+    return;
+  }
+  const basicValues = await basicInfoFormApi.getValues();
+  await subscribe([
+    {
+      id: editId.value,
+      orderLabel:
+        entrustReadonlyInfo.value.commissionNum ||
+        String(basicValues.mblNum ?? '') ||
+        editId.value,
+    },
+  ]);
+  await loadEditData();
+};
+
 const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
   formApis: {
     party: partyInfoFormApi,
@@ -1194,6 +1234,48 @@ watch(pageLoading, (loading) => {
                       />
                       <span class="align-middle">AI识别</span>
                     </Button>
+                    <template v-if="isEdit">
+                      <span
+                        v-access:code="externalApiUseCode"
+                        class="inline-flex items-center gap-1"
+                      >
+                        <Tooltip
+                          :title="
+                            trackingSubscribeDisabled
+                              ? $t('tracking.alreadySubscribed')
+                              : ''
+                          "
+                        >
+                          <Button
+                            size="small"
+                            class="flex items-center justify-center"
+                            :loading="subscribing"
+                            :disabled="trackingSubscribeDisabled"
+                            @click="handleSubscribeTracking"
+                          >
+                            <IconifyIcon
+                              icon="mdi:radar"
+                              class="mr-1 inline-block size-3.5 align-middle"
+                            />
+                            <span class="align-middle">{{
+                              trackingSubscribeButtonText
+                            }}</span>
+                          </Button>
+                        </Tooltip>
+                        <Tooltip>
+                          <template #title>
+                            <div class="whitespace-pre-line text-left">
+                              {{ $t('tracking.subscribeRules.seaImport') }}
+                            </div>
+                          </template>
+                          <IconifyIcon
+                            icon="ant-design:question-circle-outlined"
+                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+                            :aria-label="$t('tracking.subscribeRulesTitle')"
+                          />
+                        </Tooltip>
+                      </span>
+                    </template>
                     <DropdownButton
                       v-if="isEdit"
                       type="primary"
@@ -1672,6 +1754,7 @@ watch(pageLoading, (loading) => {
       :query-info="terminalScheduleQueryInfo"
       @confirm="confirmTerminalSchedule"
     />
+    <ResultModal />
   </component>
 </template>
 
