@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-16 海运进口/空运出口业务来源改为可下拉二次修改](./changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md)
 - [2026-08-16 运踪按品牌分流接入新服务商并新增列表预警叹号](./changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md)
 - [2026-08-16 海运出口业务来源改为可下拉选择](./changelogs/change-log-2026-08-16-sea-export-code-source-select.md)
 - [2026-08-16 业务联系单附件分组支持拖拽上传](./changelogs/change-log-2026-08-16-pre-order-attachment-drag-upload.md)

@@ -450,9 +450,6 @@ const headerOrgId = ref<null | number | undefined>();
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
 const headerCodeSourceId = ref<number | undefined>();
 const headerCodeSourceSelectedItems = ref<any[]>([]);
-const showCodeSourceEmptyDash = computed(
-  () => isEdit.value && headerCodeSourceId.value == null,
-);
 
 /** 归属组织写入序号：防止与 UserOrgSelect autoDefault 异步 setFieldValue 乱序 */
 let headerOrgWriteSeq = 0;
@@ -476,6 +473,16 @@ const handleHeaderOrgChange = async (value: null | number | undefined) => {
       headerOrgId.value ?? undefined,
     );
   }
+};
+
+const handleHeaderCodeSourceChange = async (value: unknown) => {
+  const next =
+    value === undefined || value === null || value === '' ? undefined : value;
+  headerCodeSourceId.value = next as number | undefined;
+  if (next == null) {
+    headerCodeSourceSelectedItems.value = [];
+  }
+  await basicInfoFormApi.setFieldValue('codeSourceId', next);
 };
 
 const {
@@ -1134,20 +1141,14 @@ watch(pageLoading, (loading) => {
                       <span class="basic-info-header__label">
                         {{ $t('airExport.export.codeSourceId') }}
                       </span>
-                      <span
-                        v-if="showCodeSourceEmptyDash"
-                        class="basic-info-header__value"
-                      >
-                        -
-                      </span>
                       <CodeSourceSelect
-                        v-else
                         :model-value="headerCodeSourceId"
                         :selected-items="headerCodeSourceSelectedItems"
-                        disabled
+                        allow-clear
                         size="small"
                         class="basic-info-header__select basic-info-header__select--source"
                         :placeholder="$t('ui.placeholder.select')"
+                        @update:model-value="handleHeaderCodeSourceChange"
                       />
                     </div>
                   </div>

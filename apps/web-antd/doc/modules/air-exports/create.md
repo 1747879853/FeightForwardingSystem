@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-05
+last_updated: 2026-08-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -40,6 +40,7 @@ last_updated: 2026-08-05
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
+| **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 头部选择写回隐藏字段 `codeSourceId`；**不**随委托单位自动带出（与海出不同）。 | 可选，允许清空。 |
 | **委托单位** | 委托方客户主体。 | `ClientSelect`（行业类别 `p`） | **触发/依赖：** 影响账期与后续费用链路。 | **必填**，否则后端报「委托单位不存在」。 |
 | **归属组织** | 数据归属组织。 | `UserOrgSelect`（按销售取直属组织） | **触发/依赖：** 切换销售会清空已选组织并重载列表。 | **必填**，且必须是该销售的**直属**组织，父组织不算。 |
 | **干系人-销售** | 该票销售。 | `UserSelect`（`UserAttribute=16`） | **触发/依赖：** 决定归属组织候选范围。 | **有且只能有一个**，0 个和 2 个都报同一句。 |
@@ -63,4 +64,5 @@ last_updated: 2026-08-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，新建与编辑均可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-05 | `Feature` | 新建空运出口录入表单：五个分区、干系人面板、危险品/冻柜联动、货物明细可编辑表格与四个派生值计算。 | 四个派生值集中在 `air-export-detail-mapper.ts` 内的纯函数（`calcCtnCbm` / `calcVolumeWeight` / `calcChargeWeight` / `calcBubbleRatio`），表格与表单共用；DTO 组装保持 `airExportOrderCtns` 挂在空运出口层而非 `transportOrder`；业务锁定无 schema 字段，用独立 ref 承载以免编辑保存时被清空。 |

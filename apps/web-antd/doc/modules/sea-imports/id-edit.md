@@ -41,6 +41,7 @@ last_updated: 2026-08-16
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **委托 ID** | 编辑页上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载详情、费用、更改单等子资源。 | 必须是有效 GUID。 |
+| **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
 | **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `src/views/sea-import-admin/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。 | 销售必须且仅一人；销售与操作必须选择人员。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
@@ -53,6 +54,8 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 运踪信息 Tab 顶栏状态标签由英文码改为「进行中 / 已完成」 | 映射逻辑在共享 `data-status.ts`，与海出/空出详情一致 |
+| 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，编辑态也可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-16 | `Feat` | 新增「运踪信息」Tab（第 5 个标签）：展示订阅状态、当前节点、关键时间、订舱箱量、甩柜提示、集装箱清单与全量异常预警明细，并支持「查看轨迹地图」（可切中英文、复制免登录分享链接）与「刷新运踪」。 | 复用共享面板 `components/tracking/container-tracking-panel.vue`（`biz-type=1`、`load-detail` 模式：详情接口取摘要与全量预警，另读本地快照补箱清单与轨迹页链接），与海运出口编辑页、列表运踪弹窗同一套实现；Tab 记忆沿用 `sessionStorage` 白名单，已加入 `tracking`。详见 `changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md`。 |
 | 2026-08-16 | `Feat` | 船名/航次右侧新增「码头船舶」按钮（仅编辑态）：命中唯一一条直接回填 `ETD`/`ATD`/`InnerVoyno` 并刷新单据，多条时弹窗单选后再同步。 | 与海出共享 `src/components/terminal-schedule/`；`applied` 才刷新，`needSelect` 时后端一字未写。详见 `changelogs/change-log-2026-08-16-terminal-schedule-sync.md`。 |
 | 2026-08-14 | `Feat` | 基础信息 Tab 接入 TextIn AI 识别（与新建共用）。 | 详见 `changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md`。 |

@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-14
+last_updated: 2026-08-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -37,6 +37,7 @@ last_updated: 2026-08-14
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
+| **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 头部选择写回隐藏字段 `codeSourceId`；**不**随委托单位自动带出（与海出不同）。 | 可选，允许清空。 |
 | **到港日期 (`etd`)** | 界面「到港日期」，落库 `transportOrder.etd`。 | `data.ts` / 详情扁平化 | **触发：** 重算转站日期、箱使日期。 | 可手选。 |
 | **转站/箱使日期** | 推算结果，只读文本。 | 到港 +9 天；到港 + 免箱期 −1 | **触发/依赖：** 到港、免箱期变化时写入 `YYYY-MM-DD`。 | 不可手改。 |
 | **原产国** | 整票属性。 | `CountrySelect` | 放在基础信息「运输条款」之后。 | 可选。 |
@@ -57,6 +58,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，新建与编辑均可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-14 | `Feat` | 新建/编辑共用表单接入 TextIn AI 识别：上传单证回填新建 Dto；箱子挂 `seaImport.orderCtns`；到港日期写 `etd` 并重算转站/箱使。 | 详见 `changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md`。 |
 | 2026-08-14 | `Feat` | 新建表单：码头改为往来单位下拉；补联运单号、分单号、贸易方式；集装箱规格/型号改为品名下拉。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-08 | `Fix` | 新建表单去掉订舱编号字段。 | 与编辑页同源 Schema；详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |

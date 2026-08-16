@@ -44,6 +44,7 @@ last_updated: 2026-08-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
+| **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
 | **录入方式** | 手动录入 / 业务联系单导入 / 复制。 | `transportOrder.inputType` | **触发/依赖：** 复制来的票显示「复制」标签。 | 只读。 |
 | **会计期间 / 应结日期** | 由后端按起飞日期与账期规则算出。 | `transportOrder.accountDate` / `settlementDate` | **触发/依赖：** 随起飞日期变化，保存后回显。 | 只读。 |
 | **业务锁定** | 是否锁定业务信息。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 无 schema 字段，用独立状态承载并随保存回传。 | 可编辑。 |
@@ -67,6 +68,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择，编辑态也可再改或清空。 | 见 `changelogs/change-log-2026-08-16-sea-import-air-export-code-source-select.md`。 |
 | 2026-08-16 | `Feature` | 「运踪信息」Tab 换成新服务商运踪面板：展示订阅状态、当前节点（预计节点带后缀）、起降与 ETA/ATA、全量异常预警明细，并支持「查看轨迹地图」与「重新订阅」；基础信息工具栏的单票订阅也切到新服务商。 | 新面板 `modules/air-tracking-panel.vue` 的数据全部来自空运出口详情下发的 `feituoTracking` / `feituoTrackingWarnings`，不轮询、不直接请求服务商；重新订阅走 `FeituoAdmin/ResubscribeAirWaybillAsync` 并二次确认（消耗配额）；轨迹地图由前端按 env 拼装，env 缺项时入口自动隐藏；后端文案统一经 `sanitizeVendorText` 清洗后展示。详见 `changelogs/change-log-2026-08-16-tracking-vendor-brand-split.md`。 |
 | 2026-08-09 | `Refactor` | 只读费用列表的费用名称/币别/结算对象列改读嵌套对象。 | `AirExportAdminApi.OrderFeeDto` 对象化；`dataIndex` 改数组路径，`sumByCurrency` 取 `item.currency?.cnName?.trim() |  | item.currency?.code?.trim()`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Refactor` | 「运踪信息」Tab 与工具栏订阅的接口地址迁移到合并后的云当服务，页面行为无变化。 | `GetAirPushInfoAsync` / `BatchSubscribeAirBillAsync` 前缀由 `YundangAirAdmin` 改为 `YundangAdmin`。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
