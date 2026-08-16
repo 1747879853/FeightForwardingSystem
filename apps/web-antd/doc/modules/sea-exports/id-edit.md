@@ -110,7 +110,7 @@ last_updated: 2026-08-16
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
-| **内部备注 / 外部备注** | 收发通下方备注；内部仅内部可见，外部可对外展示。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -134,6 +134,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-16 | `Feature` | 收发通改为灰色折叠条（默认展开）；内部/外部备注挪到货物区件重尺右侧，顶部 Tab 切换。 | 折叠与 Tab 均用 `v-show` / CSS 隐藏。详见 `changelogs/change-log-2026-08-16-sea-export-party-collapse-remark-tabs.md`。 |
 | 2026-08-16 | `Refactor` | 非 sjtd 品牌「运踪」Tab 的异常预警明细改为弹窗查看，且仅在有预警时才出现「异常预警(N)」按钮，不再常驻底部空表。 | 详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md`。 |
 | 2026-08-16 | `Feature` | 多箱票的轨迹节点显示箱号，并可在「整票 / 按箱」间切换查看。 | 同名节点重复多为各箱进度差异或摘车后重新编组；按箱视图每箱一条时间轴。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Feature` | 非 sjtd 品牌的「运踪」Tab 新增「轨迹节点」时间轴：整票合并各箱节点，区分实际/预计/当前；顶栏状态标签改为「进行中 / 已完成」。 | 节点取运踪快照 `containers[].status[]`（同一节点在多箱重复，按代码+时间+地点+描述去重），共享 `timeline-nodes.ts` + `tracking-timeline.vue`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |

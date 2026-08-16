@@ -65,6 +65,8 @@
     "deliveryWarehouseDate": "Delivery Warehouse Date",
     "pkgs": "Packages",
     "upperPKGS": "Packages In Words",
+    "noPkgs": "No. of Pkgs",
+    "pkgsPackage": "Pkgs/Package",
     "codePackageId": "Package Type",
     "kgs": "Gross Weight (KGS)",
     "cbm": "Volume (CBM)",
@@ -76,6 +78,7 @@
     "orderCodeGoodss": "Commodity",
     "pleaseSelectGoods": "Please select commodity",
     "internalRemark": "Internal Remark",
+    "externalRemark": "External Remark",
     "remark": "Remark",
     "cargoTypeOptions": {
       "normal": "General",

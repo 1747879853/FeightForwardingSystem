@@ -105,6 +105,7 @@
     "cargoId": "货物类型",
     "tradeTermsType": "贸易条款",
     "internalRemark": "内部备注",
+    "externalRemark": "外部备注",
     "marks": "唛头",
     "noPkgs": "件数包装",
     "goodsDes": "货物描述",

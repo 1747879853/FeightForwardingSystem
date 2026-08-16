@@ -335,38 +335,197 @@
   width: 168px;
 }
 
-.party-remark-row {
-  margin-top: 12px;
+.cargo-remark-tabs {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  gap: 16px;
+  align-items: flex-start;
+  height: 18px;
+  padding-left: 8px;
 }
 
-.party-remark-wrap :deep(.party-remark-field) {
+.cargo-remark-tabs__item {
+  position: relative;
+  z-index: 1;
+  padding: 4px 0 0;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 10px;
+  color: #8c95a3;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.cargo-remark-tabs__item:hover {
+  color: #252a31;
+}
+
+.cargo-remark-tabs__item.is-active {
+  color: #006ce6;
+}
+
+.cargo-main-layout__remark[data-remark-tab='internalRemark']
+  :deep(.cargo-remark-field--remark),
+.cargo-main-layout__remark[data-remark-tab='remark']
+  :deep(.cargo-remark-field--internalRemark) {
+  display: none;
+}
+
+.cargo-main-layout__remark::before {
+  position: absolute;
+  inset: 17px 0 0;
+  z-index: 0;
+  pointer-events: none;
+  content: '';
+  background: #fcfdfe;
+  border: 1px solid #e4e8ef;
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+.cargo-main-layout__remark::after {
+  position: absolute;
+  top: 17px;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+}
+
+.cargo-main-layout__remark[data-remark-tab='internalRemark']::after {
+  background: linear-gradient(to right, transparent 0 56px, #e4e8ef 56px 100%);
+}
+
+.cargo-main-layout__remark[data-remark-tab='remark']::after {
+  background: linear-gradient(
+    to right,
+    #e4e8ef 0 56px,
+    transparent 56px 112px,
+    #e4e8ef 112px 100%
+  );
+}
+
+.cargo-remark-tabs__active-border {
+  position: absolute;
+  top: 0;
+  left: 56px;
+  z-index: 0;
+  box-sizing: border-box;
+  width: 56px;
+  height: 18px;
+  background: #fcfdfe;
+  border: 1px solid #e4e8ef;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+.cargo-remark-tabs__active-border--internalRemark {
+  left: 0;
+}
+
+:deep(.cargo-remark-wrap) {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+}
+
+.cargo-remark-wrap :deep(.cargo-remark-field) {
+  flex: 1;
+  min-height: 0;
   padding-bottom: 0 !important;
   overflow: visible;
 }
 
-.party-remark-wrap :deep(.party-remark-field > label) {
-  flex-shrink: 0;
-  margin-bottom: 4px;
-  line-height: 1.2;
+.cargo-remark-wrap :deep(.cargo-remark-field > label) {
+  display: none;
 }
 
-/* Vben 内层 flex-auto + items-center 会把 textarea 垂直居中并裁切 */
-.party-remark-wrap :deep(.party-remark-field .flex-auto) {
+.cargo-remark-wrap :deep(.cargo-remark-field .flex-auto) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
   overflow: visible !important;
 }
 
-.party-remark-wrap :deep(.party-remark-field .flex-auto > .relative.flex) {
-  display: block;
+.cargo-remark-wrap :deep(.cargo-remark-field .flex-auto > .relative.flex) {
+  display: flex;
+  flex: 1;
   width: 100%;
+  min-height: 0;
   overflow: visible !important;
 }
 
-.party-remark-wrap :deep(.party-remark-field textarea.ant-input) {
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input) {
+  box-sizing: border-box !important;
   display: block;
   width: 100%;
-  min-height: 72px;
-  line-height: 1.5715;
-  resize: vertical;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 6px 8px !important;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  line-height: normal !important;
+  color: #252a31;
+  outline: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input:hover),
+.cargo-remark-wrap :deep(.cargo-remark-field textarea.ant-input:focus) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* CargoRemarkForm 由子组件渲染：使用完整 deep 选择器，覆盖 Textarea 本身的默认边框与定高。 */
+:deep(.cargo-remark-wrap .cargo-remark-field) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0 !important;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field .flex-auto),
+:deep(.cargo-remark-wrap .cargo-remark-field .flex-auto > .relative.flex),
+:deep(.cargo-remark-wrap .cargo-remark-field .ant-input-textarea) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input) {
+  box-sizing: border-box !important;
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 6px 8px !important;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 10px;
+  line-height: normal !important;
+  color: #252a31;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  resize: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input:hover),
+:deep(.cargo-remark-wrap .cargo-remark-field textarea.ant-input:focus) {
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .content-section__header--cargo {
@@ -410,8 +569,30 @@
 }
 
 .cargo-main-layout__right {
-  flex: 1 1 120px;
-  min-width: 120px;
+  flex: 1.4 1 280px;
+  min-width: 280px;
+}
+
+.cargo-main-layout__remark {
+  position: relative;
+  display: flex;
+  flex: 0 0 320px;
+  flex-direction: column;
+  width: 320px;
+  min-width: 320px;
+  min-height: 79px;
+  overflow: visible;
+}
+
+.cargo-main-layout__remark :deep(form.cargo-remark-wrap) {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+}
+
+.cargo-main-layout__remark > * {
+  position: relative;
+  z-index: 1;
 }
 
 .cargo-main-layout__left :deep(form) {
@@ -494,12 +675,60 @@
   resize: vertical;
 }
 
-.cargo-metrics-wrap :deep(.relative.flex) {
+.cargo-metrics-wrap :deep(.cargo-metrics-item) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   padding-bottom: 4px;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item > label) {
+  flex-shrink: 0;
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item > .flex-auto) {
+  min-width: 0;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item--pkgs > .flex-auto),
+.cargo-metrics-wrap :deep(.cargo-metrics-item--pkgs > .flex-auto > .relative),
+.cargo-metrics-wrap
+  :deep(.cargo-metrics-item--pkgs > .flex-auto > .relative > *) {
+  width: 100%;
 }
 
 .cargo-metrics-wrap :deep(.cargo-metrics-item--cbm) {
   padding-bottom: 0;
+}
+
+.sea-export-party-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 24px;
+  color: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  user-select: none;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.sea-export-party-collapse__chevron {
+  margin-left: 4px;
+  transition: transform 0.2s ease;
+}
+
+.sea-export-party-collapse__chevron--closed {
+  transform: rotate(180deg);
+}
+
+.sea-export-party-collapse__content {
+  padding-top: 12px;
 }
 
 .content-section__body {

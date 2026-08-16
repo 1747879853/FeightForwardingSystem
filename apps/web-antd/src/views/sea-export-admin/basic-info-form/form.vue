@@ -197,6 +197,7 @@ const editId = computed<string | undefined>(() => {
 const isEdit = computed(() => !!editId.value);
 
 const pageLoading = ref(false);
+const partyExpanded = ref(true);
 const printing = ref(false);
 const { openPrint } = usePrintFormat();
 const transportOrderId = ref<number | undefined>();
@@ -236,6 +237,7 @@ function mapSchemaWithSmallSize<T extends { componentProps?: unknown }>(
 
 /** 垂直布局表单 label：与基础信息区块一致 */
 const VERTICAL_FORM_LABEL_CLASS = 'leading-[1em] mb-0';
+const METRICS_FORM_LABEL_CLASS = 'leading-[24px] mb-0 shrink-0';
 
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
@@ -1440,36 +1442,49 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
 const cargoMainFieldNames = new Set(['marks', 'goodsDes']);
 const cargoMetricsFieldNames = new Set(['pkgs', 'codePackageId', 'kgs', 'cbm']);
 const cargoRemarkFieldNames = ['internalRemark', 'remark'] as const;
-const cargoRemarkSchema = cargoSchema
-  .filter((item) =>
-    (cargoRemarkFieldNames as readonly string[]).includes(item.fieldName),
-  )
-  .map((item) => ({
-    ...item,
-    label:
-      item.fieldName === 'internalRemark'
-        ? $t('seaExport.export.internalRemark')
-        : item.fieldName === 'remark'
-          ? '外部备注'
-          : item.label,
-    componentProps: {
-      allowClear: true,
-      rows: 3,
-      style: { minHeight: '72px' },
-    },
-    formItemClass: 'col-span-2 party-remark-field',
-  }));
+type RemarkTab = 'internalRemark' | 'remark';
+const remarkTab = ref<RemarkTab>('internalRemark');
+const remarkTabItems: Array<{ key: RemarkTab; label: string }> = [
+  { key: 'internalRemark', label: $t('seaExport.export.internalRemark') },
+  { key: 'remark', label: $t('seaExport.export.externalRemark') },
+];
 
-/** 收发通区块：内部备注 / 外部备注 */
+/** 货物右栏：内部备注 / 外部备注共用一块，顶部 Tab 切换。 */
 const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
   commonConfig: {
+    hideLabel: true,
     labelClass: VERTICAL_FORM_LABEL_CLASS,
   },
-  schema: cargoRemarkSchema,
+  schema: cargoSchema
+    .filter((item) =>
+      (cargoRemarkFieldNames as readonly string[]).includes(item.fieldName),
+    )
+    .map((item) => ({
+      ...item,
+      component: 'Textarea',
+      hideLabel: true,
+      componentProps: {
+        class: 'cargo-remark-textarea',
+        rows: 3,
+        style: {
+          background: 'transparent',
+          border: 0,
+          borderRadius: 0,
+          boxShadow: 'none',
+          height: '61px',
+          lineHeight: 'normal',
+          minHeight: '61px',
+          outline: 0,
+          padding: '6px 8px',
+          resize: 'none',
+        },
+      },
+      formItemClass: `col-span-1 cargo-remark-field cargo-remark-field--${item.fieldName}`,
+    })),
   showDefaultActions: false,
-  wrapperClass: 'party-remark-wrap grid-cols-6 gap-x-4',
+  wrapperClass: 'cargo-remark-wrap grid-cols-1',
 });
 const [CargoMainForm, cargoMainFormApi] = useVbenForm({
   layout: 'vertical',
@@ -1495,6 +1510,15 @@ const orderCodePackage = ref<{
   id?: number | string;
   name?: string;
 }>({});
+const codePackageSelectedItems = ref<any[]>([]);
+
+const buildPkgsComponentProps =
+  () => (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'codePackageId',
+    secondFieldValue: values?.codePackageId,
+    selectedItems: codePackageSelectedItems.value,
+  });
 
 const syncOrderCodePackage = (
   id: number | string | undefined,
@@ -1519,41 +1543,37 @@ const resolveCodePackageLabel = (option: any): string | undefined => {
 
 /** 中间表单：货物信息 — 件数 / 包装 / 毛重 / 体积 */
 const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
-  layout: 'vertical',
+  layout: 'horizontal',
   compact: true,
   commonConfig: {
-    labelClass: VERTICAL_FORM_LABEL_CLASS,
+    labelWidth: 84,
+    labelClass: METRICS_FORM_LABEL_CLASS,
   },
   schema: cargoSchema
     .filter((item) => cargoMetricsFieldNames.has(item.fieldName))
     .map((item) => {
       const baseProps = withSmallComponentProps(item.componentProps);
-      if (item.fieldName !== 'codePackageId') {
+      if (item.fieldName === 'pkgs') {
         return {
           ...item,
-          componentProps: baseProps,
-          formItemClass: `cargo-metrics-item cargo-metrics-item--${item.fieldName}`,
+          component: 'PkgsPackageInput',
+          label: $t('seaExport.export.noPkgs'),
+          componentProps: buildPkgsComponentProps(),
+          formItemClass: 'cargo-metrics-item cargo-metrics-item--pkgs',
+        };
+      }
+      if (item.fieldName === 'codePackageId') {
+        return {
+          ...item,
+          hideLabel: true,
+          componentProps: { class: 'hidden' },
+          formItemClass: 'hidden',
         };
       }
       return {
         ...item,
-        componentProps:
-          typeof baseProps === 'function'
-            ? (...args: any[]) => ({
-                ...(baseProps as (...inner: any[]) => Record<string, any>)(
-                  ...args,
-                ),
-                onChange: (value: any, option: any) => {
-                  syncOrderCodePackage(value, resolveCodePackageLabel(option));
-                },
-              })
-            : {
-                ...(baseProps as Record<string, any>),
-                onChange: (value: any, option: any) => {
-                  syncOrderCodePackage(value, resolveCodePackageLabel(option));
-                },
-              },
-        formItemClass: 'cargo-metrics-item cargo-metrics-item--code-package',
+        componentProps: baseProps,
+        formItemClass: `cargo-metrics-item cargo-metrics-item--${item.fieldName}`,
       };
     }),
   showDefaultActions: false,
@@ -2153,21 +2173,10 @@ const loadEditData = async (): Promise<
         },
       },
     ]);
-    cargoMetricsFormApi.updateSchema([
-      {
-        fieldName: 'codePackageId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            formValues.codePackageId,
-            (to as any)?.codePackageName,
-          ),
-          size: 'small',
-          onChange: (value: any, option: any) => {
-            syncOrderCodePackage(value, resolveCodePackageLabel(option));
-          },
-        },
-      },
-    ]);
+    codePackageSelectedItems.value = toSelectedItems(
+      formValues.codePackageId,
+      (to as any)?.codePackageName,
+    );
     syncOrderCodePackage(
       formValues.codePackageId,
       (to as any)?.codePackageName,
@@ -2569,6 +2578,7 @@ const handlePrint = async () => {
 
 const cargoMainLayoutLeftRef = ref<HTMLElement | null>(null);
 const cargoMainLayoutRightRef = ref<HTMLElement | null>(null);
+const cargoMainLayoutRemarkRef = ref<HTMLElement | null>(null);
 let cargoLayoutResizeObserver: ResizeObserver | null = null;
 let lastCargoLayoutSyncHeight = 0;
 let cargoLayoutSyncing = false;
@@ -2613,6 +2623,10 @@ const syncCargoMainLayoutHeight = () => {
 
     leftEl.style.removeProperty('height');
     leftEl.style.minHeight = `${targetHeight}px`;
+    const remarkEl = cargoMainLayoutRemarkRef.value;
+    if (remarkEl) {
+      remarkEl.style.minHeight = `${targetHeight}px`;
+    }
 
     requestAnimationFrame(() => {
       applyCargoTextareaHeights(targetHeight);
@@ -3306,64 +3320,84 @@ defineExpose({
                 <div
                   class="content-section__body content-section__body--flush-top"
                 >
-                  <PartyInfoForm />
-                  <div class="party-remark-row">
-                    <CargoRemarkForm />
+                  <div
+                    class="sea-export-party-collapse"
+                    role="button"
+                    tabindex="0"
+                    @click="partyExpanded = !partyExpanded"
+                    @keydown.enter.prevent="partyExpanded = !partyExpanded"
+                    @keydown.space.prevent="partyExpanded = !partyExpanded"
+                  >
+                    <span>收发通</span>
+                    <IconifyIcon
+                      icon="mdi:chevron-up"
+                      class="sea-export-party-collapse__chevron"
+                      :class="{
+                        'sea-export-party-collapse__chevron--closed':
+                          !partyExpanded,
+                      }"
+                    />
                   </div>
-                  <Teleport
-                    v-if="consigneePartyLabelTarget"
-                    :to="consigneePartyLabelTarget"
+                  <div
+                    v-show="partyExpanded"
+                    class="sea-export-party-collapse__content"
                   >
-                    <button
-                      type="button"
-                      class="party-copy-btn"
-                      @click.stop="copyConsigneeToNotifier"
-                    >
-                      复制到通知人
-                    </button>
-                  </Teleport>
-                  <Teleport
-                    v-if="notifierPartyLabelTarget"
-                    :to="notifierPartyLabelTarget"
-                  >
-                    <span
-                      class="transit-port-inline-switch transit-port-inline-switch--in-label"
+                    <PartyInfoForm />
+                    <Teleport
+                      v-if="consigneePartyLabelTarget"
+                      :to="consigneePartyLabelTarget"
                     >
                       <button
                         type="button"
-                        class="transit-port-tabs__item"
-                        :class="{
-                          'transit-port-tabs__item--active':
-                            notifierPartyTab === 'notifier',
-                        }"
-                        @click.stop="switchNotifierPartyTab('notifier')"
+                        class="party-copy-btn"
+                        @click.stop="copyConsigneeToNotifier"
                       >
-                        {{ $t('seaExport.export.notifierId') }}
+                        复制到通知人
                       </button>
-                      <button
-                        type="button"
-                        class="transit-port-tabs__item"
-                        :class="{
-                          'transit-port-tabs__item--active':
-                            notifierPartyTab === 'secondNotifier',
-                        }"
-                        @click.stop="switchNotifierPartyTab('secondNotifier')"
+                    </Teleport>
+                    <Teleport
+                      v-if="notifierPartyLabelTarget"
+                      :to="notifierPartyLabelTarget"
+                    >
+                      <span
+                        class="transit-port-inline-switch transit-port-inline-switch--in-label"
                       >
-                        {{ $t('seaExport.export.secondNotifierId') }}
-                      </button>
-                      <button
-                        type="button"
-                        class="transit-port-tabs__item"
-                        :class="{
-                          'transit-port-tabs__item--active':
-                            notifierPartyTab === 'podAgent',
-                        }"
-                        @click.stop="switchNotifierPartyTab('podAgent')"
-                      >
-                        {{ $t('seaExport.export.overseasAgent') }}
-                      </button>
-                    </span>
-                  </Teleport>
+                        <button
+                          type="button"
+                          class="transit-port-tabs__item"
+                          :class="{
+                            'transit-port-tabs__item--active':
+                              notifierPartyTab === 'notifier',
+                          }"
+                          @click.stop="switchNotifierPartyTab('notifier')"
+                        >
+                          {{ $t('seaExport.export.notifierId') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="transit-port-tabs__item"
+                          :class="{
+                            'transit-port-tabs__item--active':
+                              notifierPartyTab === 'secondNotifier',
+                          }"
+                          @click.stop="switchNotifierPartyTab('secondNotifier')"
+                        >
+                          {{ $t('seaExport.export.secondNotifierId') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="transit-port-tabs__item"
+                          :class="{
+                            'transit-port-tabs__item--active':
+                              notifierPartyTab === 'podAgent',
+                          }"
+                          @click.stop="switchNotifierPartyTab('podAgent')"
+                        >
+                          {{ $t('seaExport.export.overseasAgent') }}
+                        </button>
+                      </span>
+                    </Teleport>
+                  </div>
                 </div>
               </section>
 
@@ -3503,6 +3537,32 @@ defineExpose({
                     class="cargo-main-layout__right"
                   >
                     <CargoMetricsForm />
+                  </div>
+                  <div
+                    ref="cargoMainLayoutRemarkRef"
+                    class="cargo-main-layout__remark"
+                    :data-remark-tab="remarkTab"
+                  >
+                    <div class="cargo-remark-tabs" role="tablist">
+                      <span
+                        class="cargo-remark-tabs__active-border"
+                        :class="`cargo-remark-tabs__active-border--${remarkTab}`"
+                        aria-hidden="true"
+                      />
+                      <button
+                        v-for="item in remarkTabItems"
+                        :key="item.key"
+                        type="button"
+                        role="tab"
+                        class="cargo-remark-tabs__item"
+                        :class="{ 'is-active': remarkTab === item.key }"
+                        :aria-selected="remarkTab === item.key"
+                        @click="remarkTab = item.key"
+                      >
+                        {{ item.label }}
+                      </button>
+                    </div>
+                    <CargoRemarkForm />
                   </div>
                 </div>
                 <div v-show="showDgFields" class="cargo-extension-section">

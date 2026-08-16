@@ -1468,8 +1468,15 @@ function buildAirPortSelectProps(
   };
 }
 
+/** 航段标题栏内联字段：航班、订舱代理 */
+export const AIR_LEG_HEADER_FIELD_NAMES = [
+  'flightNo',
+  'bookingAgentId',
+] as const;
+
 /**
  * 航段信息 schema：起运地 → 中转地 → 目的地（各带备注），外加航班与订舱代理。
+ * 航班与订舱代理由表单放到「航段信息」标题右侧，不占航段栅格。
  * 空运只有一个中转地，且不带出国家、城市、时区与航线。
  */
 export function useAirLegFormSchema(
@@ -1528,7 +1535,8 @@ export function useAirLegFormSchema(
         maxlength: 64,
         placeholder: $t('ui.placeholder.input'),
       },
-      formItemClass: 'port-flow-extra port-flow-extra--flight',
+      formItemClass:
+        'flight-info-header__item flight-info-header__item--flight',
     },
     {
       ...createClientSelectSchema({
@@ -1536,7 +1544,8 @@ export function useAirLegFormSchema(
         industryCategory: 'o',
         label: $t('airExport.export.bookingAgentId'),
       }),
-      formItemClass: 'port-flow-extra port-flow-extra--booking-agent',
+      formItemClass:
+        'flight-info-header__item flight-info-header__item--booking-agent',
     },
   ];
 }
@@ -1574,26 +1583,22 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--goods-des',
     },
     {
-      component: 'InputNumber',
+      component: 'PkgsPackageInput',
       fieldName: 'pkgs',
-      label: $t('airExport.export.pkgs'),
-      componentProps: {
-        class: 'w-full',
-        min: 0,
-        controls: false,
-        precision: 0,
-      },
+      label: $t('airExport.export.pkgsPackage'),
+      componentProps: (values: Record<string, any>, formApi: any) => ({
+        formContext: formApi,
+        secondFieldName: 'codePackageId',
+        secondFieldValue: values?.codePackageId,
+      }),
       formItemClass: 'cargo-metrics-item cargo-metrics-item--pkgs',
     },
     {
       component: 'CodePackageSelect',
       fieldName: 'codePackageId',
-      label: $t('airExport.export.codePackageId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-      formItemClass: 'cargo-metrics-item cargo-metrics-item--code-package',
+      label: '',
+      formItemClass: 'hidden',
+      componentProps: { class: 'hidden' },
     },
     {
       component: 'InputNumber',

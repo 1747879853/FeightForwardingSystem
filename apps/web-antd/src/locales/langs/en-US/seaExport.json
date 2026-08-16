@@ -313,6 +313,7 @@
     "innerVoyno": "Voyage",
     "insuranceId": "Insurance Co.",
     "internalRemark": "Internal Remark",
+    "externalRemark": "External Remark",
     "isBusinessLocking": "Biz Locked",
     "isFeeLocking": "Fee Locked",
     "issueType": "Issue Type",

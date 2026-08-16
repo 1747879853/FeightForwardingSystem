@@ -173,6 +173,8 @@ function mapSchemaWithSmallSize<T extends { componentProps?: unknown }>(
 
 /** 垂直布局表单 label：与基础信息区块一致 */
 const VERTICAL_FORM_LABEL_CLASS = 'leading-[1em] mb-0';
+/** 件重尺水平 label：件数/包装、毛重KGS 等与输入框同一行 */
+const METRICS_FORM_LABEL_CLASS = 'leading-[24px] mb-0 shrink-0';
 
 /** 只读信息挪到基础信息区块头部展示，不占表单栅格 */
 const BASIC_INFO_HEADER_READONLY_FIELD_NAMES = [
@@ -489,10 +491,11 @@ const buildPkgsComponentProps =
 
 /** 货物信息右栏：件数/包装 / 毛重 / 净重 / 体积 */
 const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
-  layout: 'vertical',
+  layout: 'horizontal',
   compact: true,
   commonConfig: {
-    labelClass: VERTICAL_FORM_LABEL_CLASS,
+    labelWidth: 84,
+    labelClass: METRICS_FORM_LABEL_CLASS,
   },
   schema: mapSchemaWithSmallSize(
     cargoSchema

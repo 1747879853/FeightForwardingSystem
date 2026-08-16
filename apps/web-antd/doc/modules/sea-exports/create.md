@@ -81,6 +81,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-16 | `Feature` | 收发通改为灰色折叠条（默认展开）；内部/外部备注挪到货物区件重尺右侧，顶部 Tab 切换。 | 折叠与 Tab 均用 `v-show` / CSS 隐藏。详见 `changelogs/change-log-2026-08-16-sea-export-party-collapse-remark-tabs.md`。 |
 | 2026-08-16 | `Fix` | 头部业务来源改为可下拉选择；选委托单位仍自动带出，允许再改。 | 见 `changelogs/change-log-2026-08-16-sea-export-code-source-select.md`。 |
 | 2026-08-10 | `Fix` | 头部业务来源改为固定宽只读文案，消除带出/回显时布局抖动。 | 去掉 `CodeSourceSelect` 与「-」互切；回填读 `codeSource.cnName`。详见 `changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md`。 |
 | 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | `collectInvalidFieldLabels`；`UserOrgSelect` 换人一次写入；详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |

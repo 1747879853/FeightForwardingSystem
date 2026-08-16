@@ -73,6 +73,7 @@
     "pkgs": "件数",
     "upperPKGS": "件数大写",
     "noPkgs": "件数包装",
+    "pkgsPackage": "件数/包装",
     "codePackageId": "包装",
     "kgs": "毛重KGS",
     "cbm": "体积CBM",
@@ -84,6 +85,7 @@
     "orderCodeGoodss": "品名",
     "pleaseSelectGoods": "请选择品名",
     "internalRemark": "内部备注",
+    "externalRemark": "外部备注",
     "remark": "备注",
     "cargoTypeOptions": {
       "normal": "普通货",

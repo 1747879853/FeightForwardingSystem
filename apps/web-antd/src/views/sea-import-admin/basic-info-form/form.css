@@ -524,8 +524,8 @@
 }
 
 .cargo-main-layout__right {
-  flex: 1.2 1 220px;
-  min-width: 220px;
+  flex: 1.4 1 280px;
+  min-width: 280px;
 }
 
 .cargo-main-layout__remark {
@@ -630,8 +630,21 @@
   resize: vertical;
 }
 
-.cargo-metrics-wrap :deep(.relative.flex) {
+.cargo-metrics-wrap :deep(.cargo-metrics-item) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   padding-bottom: 4px;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item > label) {
+  flex-shrink: 0;
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item > .flex-auto) {
+  min-width: 0;
 }
 
 .cargo-metrics-wrap :deep(.cargo-metrics-item--cbm) {

@@ -13,6 +13,10 @@
 
 ## 2026-08
 
+- [2026-08-16 海运出口收发通折叠，备注改到货物区 Tab](./changelogs/change-log-2026-08-16-sea-export-party-collapse-remark-tabs.md)
+- [2026-08-16 空运出口件数与包装合并为一行](./changelogs/change-log-2026-08-16-air-export-pkgs-package-row.md)
+- [2026-08-16 空运出口收发通折叠，备注改到货物区 Tab](./changelogs/change-log-2026-08-16-air-export-party-collapse-remark-tabs.md)
+- [2026-08-16 空运出口航班与订舱代理移到航段标题右侧](./changelogs/change-log-2026-08-16-air-export-leg-header-fields.md)
 - [2026-08-16 海运进口备注改为顶部切换，件数包装同行](./changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md)
 - [2026-08-16 海运进口收发通支持展开折叠（默认展开）](./changelogs/change-log-2026-08-16-sea-import-party-collapse.md)
 - [2026-08-16 海运进口编辑页补齐运踪订阅按钮](./changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md)
