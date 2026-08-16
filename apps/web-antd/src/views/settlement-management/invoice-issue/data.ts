@@ -34,7 +34,7 @@ const getInvoiceTypeLabel = (type: string | undefined | null): string => {
 };
 
 /**
- * 获取诺诺开票状态中文标签
+ * 获取开票状态中文标签
  */
 const getIssueStatusLabel = (status: number | undefined | null): string => {
   if (status === undefined || status === null) return '-';
@@ -175,7 +175,7 @@ export const columns: VxeTableGridOptions['columns'] = [
     formatter: ({ cellValue }) => formatDateTime(cellValue),
   },
   {
-    title: '诺诺开票状态',
+    title: '开票状态',
     field: 'issueStatus',
     width: 120,
     align: 'center',
@@ -189,7 +189,7 @@ export const columns: VxeTableGridOptions['columns'] = [
     showOverflow: true,
   },
   {
-    title: '诺诺发票流水号',
+    title: '发票流水号',
     field: 'issueSerialNum',
     width: 180,
     align: 'left',
@@ -374,7 +374,7 @@ export const searchFormSchema = [
       clearable: true,
       options: [
         {
-          label: '诺诺接口开票',
+          label: '接口开票',
           value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
         },
         {

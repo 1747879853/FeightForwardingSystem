@@ -584,7 +584,7 @@ onMounted(() => {
                     v-model:value="formData.invoiceIssueType"
                     :options="[
                       {
-                        label: '诺诺接口开票',
+                        label: '接口开票',
                         value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
                       },
                       {

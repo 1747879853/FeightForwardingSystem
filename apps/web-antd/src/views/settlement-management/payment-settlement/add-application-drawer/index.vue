@@ -881,13 +881,19 @@ const innerColumns = [
           {{ record.auditUserNickName || '-' }}
         </template>
         <template v-else-if="column.key === 'pay'">
-          {{ formatAmountWithConversion(record, 'pay') }}
+          <span class="reconciliation-amount pay-amount">
+            {{ formatAmountWithConversion(record, 'pay') }}
+          </span>
         </template>
         <template v-else-if="column.key === 'receive'">
-          {{ formatAmountWithConversion(record, 'receive') }}
+          <span class="reconciliation-amount receive-amount">
+            {{ formatAmountWithConversion(record, 'receive') }}
+          </span>
         </template>
         <template v-else-if="column.key === 'totalUnSettled'">
-          {{ formatAmountWithConversion(record, 'totalUnSettled') }}
+          <span class="reconciliation-amount unsettled-amount">
+            {{ formatAmountWithConversion(record, 'totalUnSettled') }}
+          </span>
         </template>
         <template v-else-if="column.key === 'settledPrice'">
           <InputNumber
@@ -897,6 +903,7 @@ const innerColumns = [
             :precision="2"
             placeholder="请输入"
             style="width: 100%"
+            class="reconciliation-input"
             :disabled="
               !selectedRowKeys.includes(record.rowKey) ||
               (record.settleableUpperLimit === 0 &&
@@ -1020,5 +1027,44 @@ const innerColumns = [
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* 对账信息列醒目样式 */
+.reconciliation-amount {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+/* 应付金额 - 蓝色 */
+.pay-amount {
+  color: #1890ff;
+  background-color: #e6f7ff;
+}
+
+/* 应收金额 - 绿色 */
+.receive-amount {
+  color: #52c41a;
+  background-color: #f6ffed;
+}
+
+/* 未结算费用 - 橙色 */
+.unsettled-amount {
+  color: #fa8c16;
+  background-color: #fff7e6;
+}
+
+/* 本次结算金额输入框醒目样式 */
+.reconciliation-input :deep(.ant-input-number) {
+  font-weight: 600;
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 10%);
+}
+
+.reconciliation-input :deep(.ant-input-number-input) {
+  font-weight: 600;
+  color: #000;
 }
 </style>
