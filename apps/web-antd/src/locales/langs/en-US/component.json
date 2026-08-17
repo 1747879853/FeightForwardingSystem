@@ -11,7 +11,10 @@
     "maxCountReached": "Maximum file count reached",
     "allowedTypes": "Allowed types",
     "maxSize": "Max size",
-    "maxCount": "Max count"
+    "maxCount": "Max count",
+    "dragTip": "Click or drag files here to upload",
+    "dragHint": "Multiple files supported",
+    "uploadedFiles": "Uploaded Files"
   },
   "filePreview": {
     "title": "File Preview",

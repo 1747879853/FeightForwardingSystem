@@ -48,6 +48,8 @@ export namespace PaymentSettlementAdminApi {
     attachmentName?: string;
     /** 附件路径 */
     attachmentPath?: string;
+    /** 附件URL（兼容新接口） */
+    url?: string;
   }
 
   /** 新增付费结算参数DTO */
@@ -733,6 +735,8 @@ export namespace PaymentSettlementAdminApi {
     paymentApplicationCurrencies: PaymentSettlementPayAppCurrencyDto[];
     totalSettledPrice: number;
     attachments: AttachmentItemDto[];
+    /** 本结算单关联的所有付费申请的附件 */
+    paymentApplicationAttachments: AttachmentItemDto[];
   }
 }
 

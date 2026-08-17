@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 import { $t } from '#/locales';
 
@@ -43,6 +44,7 @@ import {
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import { getOrgBankAccountList } from '#/api/system/organization-unit';
+import { buildAttachmentUrl } from '#/utils';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
 import ApplicationItemsTable from './application-items-table.vue'; // ✅ 新增：申请明细表格子组件
@@ -83,6 +85,10 @@ const clientBankAccount = ref('');
 const transactionFee = ref<number | undefined>(undefined);
 const remark = ref('');
 const attachments = ref<Attachment[]>([]);
+// 付费申请附件列表（只读展示）
+const paymentApplicationAttachments = ref<
+  PaymentSettlementAdminApi.AttachmentItemDto[]
+>([]);
 
 // 我司银行选项（根据申请明细中的费用所属公司动态加载）
 interface OrgBankOption {
@@ -659,6 +665,10 @@ async function loadEditData() {
       friendlyFileName: a.friendlyFileName || a.attachmentName || '',
     }));
 
+    // 加载付费申请附件（只读展示）
+    paymentApplicationAttachments.value =
+      detail.paymentApplicationAttachments || [];
+
     console.log('✅ 附件加载完成');
 
     // 先加载银行选项，再赋值选中值（确保选项存在后才能正确回显）
@@ -808,6 +818,45 @@ async function loadClientBankOptions() {
     clientBankOptions.value = allBanks;
   } catch (error) {
     console.error('加载结算银行选项失败:', error);
+  }
+}
+
+/** 预览付费申请附件 */
+function handlePreviewAttachment(
+  item: PaymentSettlementAdminApi.AttachmentItemDto,
+) {
+  if (item.url) {
+    const fullUrl = buildAttachmentUrl(item.url);
+    // 简单判断是否为图片，实际项目中可以使用更完善的判断逻辑
+    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(
+      item.friendlyFileName || '',
+    );
+
+    if (isImage) {
+      window.open(fullUrl, '_blank');
+    } else {
+      window.open(fullUrl, '_blank');
+    }
+  } else {
+    message.warning('附件链接不存在');
+  }
+}
+
+/** 下载付费申请附件 */
+function handleDownloadAttachment(
+  item: PaymentSettlementAdminApi.AttachmentItemDto,
+) {
+  if (item.url) {
+    const fullUrl = buildAttachmentUrl(item.url);
+    const link = document.createElement('a');
+    link.href = fullUrl;
+    link.download = item.friendlyFileName || 'download';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    message.warning('附件链接不存在');
   }
 }
 
@@ -1231,24 +1280,64 @@ onMounted(() => {
             </div>
           </template>
 
-          <FileUploadInput
-            v-model="attachments"
-            module-type-id="160011"
-            :max-count="10"
-          />
+          <div style="margin-bottom: 12px">
+            <div style="margin-bottom: 8px; font-weight: 500; color: #333">
+              结算单附件
+            </div>
+            <FileUploadInput
+              v-model="attachments"
+              module-type-id="160011"
+              :max-count="10"
+              drag
+            />
+          </div>
 
-          <div
-            style="
-              padding: 8px;
-              margin-top: 12px;
-              font-size: 12px;
-              color: #999;
-              text-align: center;
-              background: #f5f7fa;
-              border-radius: 4px;
-            "
-          >
-            最大大小: 20MB | 最多数量: 10
+          <div v-if="paymentApplicationAttachments.length > 0">
+            <div style="margin-bottom: 8px; font-weight: 500; color: #333">
+              付费申请附件
+            </div>
+            <div
+              v-for="(item, index) in paymentApplicationAttachments"
+              :key="index"
+              style="
+                display: flex;
+                align-items: center;
+                padding: 6px 10px;
+                margin-bottom: 4px;
+                background: #fafafa;
+                border: 1px solid #f0f0f0;
+                border-radius: 4px;
+                transition: all 0.2s;
+              "
+            >
+              <IconifyIcon
+                icon="ant-design:file-outlined"
+                class="size-4"
+                style="margin-right: 8px; color: #8c8c8c"
+              />
+              <span
+                class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm"
+                :title="item.friendlyFileName"
+              >
+                {{ item.friendlyFileName }}
+              </span>
+              <Space size="small">
+                <Button
+                  type="link"
+                  size="small"
+                  @click="handlePreviewAttachment(item)"
+                >
+                  预览
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  @click="handleDownloadAttachment(item)"
+                >
+                  下载
+                </Button>
+              </Space>
+            </div>
           </div>
         </Card>
       </div>
