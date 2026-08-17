@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-16
+last_updated: 2026-08-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,7 +14,7 @@ last_updated: 2026-08-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含**订舱代理**、起运港/目的港，按设计稿 CSS `order` 排位：首行末项为订舱代理）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表 6 列顺序对齐业务稿：首行委托单位 / 主提单号 / 货好时间 / 开船日期 / 船公司 / 付款方式，次行起运地 / 目的地 / 贸易条款·运输条款（合并双下拉占一列） / 备注（占剩余三列）；稿中没有的**订舱代理**排在备注后末行。其下为 **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
@@ -49,12 +49,13 @@ last_updated: 2026-08-16
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 用详情 `carrier`（`cnShortName`/`code`，注意**不是** `name`）+ 根节点 `carrierLogo` 拼 `selectedItems`，与海运出口一致展示 Logo；不再回拉船公司详情 | 非必填 |
-| **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 主表首行末项（`pre-order-basic-field--6`，船公司后）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
-| **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 主表字段顺序由 `pre-order-basic-field--N` 控制；空值统一显示「请选择」 | 非必填 |
+| **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 业务稿无此字段，排在主表末行（`pre-order-basic-field--11`，备注后）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
+| **付款方式** | 运费支付方式（原「付费方式」展示名） | `CodeFrtSelect`（`codeFrtId`） | **展示：** 主表首行末项（`pre-order-basic-field--6`）；空值显示「请选择」 | 非必填 |
+| **贸易条款 / 运输条款** | 贸易责任与运输条款 | 贸易条款字典 + `CodeServiceSelect`，视觉合并为 `ServiceTradeTermsInput` | **展示：** 主表次行占一列（两下拉挤在同一格）；左运输条款、右贸易条款；`tradeTermsType` 隐藏载体仍提交。回显 `codeServiceId` 时必须整段替换 `componentProps` 函数，勿只传 `selectedItems` | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
-| **起运港** | POL | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 与目的港一同进入主表次行；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
-| **目的港** | POD | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行；**触发：** 同上同步 `PortForm` 并自动带出 `podRemark`；完整港口流转（收货地/中转/交货地）分区 `hidden` 暂隐但仍由 `PortForm` 回填提交 | 非必填 |
+| **起运地** | POL（表单标签为「起运地」，列表筛选仍称起运港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
+| **目的地** | POD（表单标签为「目的地」，列表筛选仍称目的港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行（`pre-order-basic-field--8`）；**触发：** 同上同步 `PortForm` 并自动带出 `podRemark`；完整港口流转（收货地/中转/交货地）分区 `hidden` 暂隐但仍由 `PortForm` 回填提交 | 非必填 |
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交<br/>**字段名：** 与海出一致为 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`（勿写成 `pot1Id`）；关联对象仍为 `pot1`/`pot2`<br/>**回显：** 详情对象经 `toPortObjectSelectedItems` 注入 `selectedItems` | 非必填 |
 | **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖；字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
@@ -116,6 +117,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Style` | 主表字段顺序对齐业务稿：首行末项改为付款方式；次行起运地/目的地/贸易条款·运输条款（合并双下拉占一列）/备注（占剩余三列）；订舱代理因稿中没有排到末行 | `ServiceTradeTermsInput` 的 `componentProps` 必须是函数，回显时整段替换；条款勿再设 `col-span-2`。详见 `changelogs/change-log-2026-08-17-pre-order-basic-field-order.md` |
 | 2026-08-16 | `Fix` | 附件分组支持把文件拖到卡片上直接上传；顶栏新建为「上传附件」，编辑为「查看附件」（待审核/通过也能打开只读查看）。 | 对齐付费申请卡片级 drop zone。详见 `changelogs/change-log-2026-08-16-pre-order-attachment-drag-upload.md` |
 | 2026-08-14 | `Feature` | 可保存态增加「AI识别」：上传单证调用 TextIn 抽取并回填 `PreOrderAddDto` 可用字段；未匹配箱型保留识别原文提示补选 | `extractPreOrderToAddDto` + `use-pre-order-ai-recognize`；回填后由 `afterApply` 注入 selectedItems，避免冲掉港口/委托单位 onChange。详见 `changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md` |
 | 2026-08-13 | `Perf`/`Fix` | 打开编辑页不再逐个下拉回拉详情：付费方式/运输条款/包装/品名/船公司/干系人（含头像）/费用代码/箱型 TEU 全部用详情已返回的外键对象回显 | 新增 `modules/detail-selected-items.ts` 按各 biz-select 的 `mapItemToOption` 口径拼项；名称为空时返回 `[]` 保留组件兜底，回显项补 `enable: true` 避免被判禁用；干系人行新增 `user` 字段须在 `buildSubmitPayload` 解构剔除；详情 `feeCode` 直接当 `feeCodeSnapshot`。详见 `changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md` |

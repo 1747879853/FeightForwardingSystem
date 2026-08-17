@@ -66,6 +66,7 @@ import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import { pickExtractedLabel, resolveCitationKeys } from './ai-extract-utils';
 import {
+  buildPreOrderServiceTradeTermsProps,
   PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
   usePreOrderCargoSchema,
@@ -676,7 +677,7 @@ async function applyAiExtractAfterFill(ctx: {
 
   const basicSchemaUpdates: Array<{
     fieldName: string;
-    componentProps: Record<string, unknown>;
+    componentProps: any;
   }> = [];
   if (values.carrierId != null) {
     basicSchemaUpdates.push({
@@ -702,12 +703,12 @@ async function applyAiExtractAfterFill(ctx: {
   if (values.codeServiceId != null) {
     basicSchemaUpdates.push({
       fieldName: 'codeServiceId',
-      componentProps: {
-        selectedItems: toCodeNamedSelectedItems(values.codeServiceId, {
+      componentProps: buildPreOrderServiceTradeTermsProps(
+        toCodeNamedSelectedItems(values.codeServiceId, {
           enName: codeServiceLabel || undefined,
           cnName: codeServiceLabel || undefined,
         }),
-      },
+      ),
     });
   }
   if (values.polId != null) {
@@ -979,12 +980,9 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     },
     {
       fieldName: 'codeServiceId',
-      componentProps: {
-        selectedItems: toCodeNamedSelectedItems(
-          dto.codeServiceId,
-          dto.codeService,
-        ),
-      },
+      componentProps: buildPreOrderServiceTradeTermsProps(
+        toCodeNamedSelectedItems(dto.codeServiceId, dto.codeService),
+      ),
     },
   ]);
   partyFormApi.updateSchema([
@@ -2105,7 +2103,7 @@ const getContentTabStyle = (isActive: boolean) =>
   padding-top: 12px;
 }
 
-/* 主表按设计稿固定为：第一行 6 项（末项为订舱代理），第二行付费方式起运港目的港条款备注。 */
+/* 主表对齐业务稿：首行 6 项末项为付款方式；次行起运地/目的地/条款/备注；订舱代理在末行。 */
 .pre-order-basic-page :deep(.pre-order-basic-field--1) {
   order: 1;
 }
@@ -2148,9 +2146,5 @@ const getContentTabStyle = (isActive: boolean) =>
 
 .pre-order-basic-page :deep(.pre-order-basic-field--11) {
   order: 11;
-}
-
-.pre-order-basic-page :deep(.pre-order-basic-field--12) {
-  order: 12;
 }
 </style>

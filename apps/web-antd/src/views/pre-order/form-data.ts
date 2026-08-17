@@ -28,9 +28,30 @@ export const PAY_SIDE_OPTIONS = [
   { label: '应付', value: 1 },
 ];
 
+/** 运输条款/贸易条款合并控件：回显 selectedItems 时须整段替换函数，勿只传静态对象。 */
+export function buildPreOrderServiceTradeTermsProps(selectedItems?: unknown[]) {
+  return (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'tradeTermsType',
+    secondFieldValue: values?.tradeTermsType ?? undefined,
+    serviceProps: {
+      allowClear: true,
+      class: 'w-full',
+      ...(selectedItems ? { selectedItems } : {}),
+    },
+    tradeTermsOptions: getTradeTermsTypeOptions(),
+    tradeTermsProps: {
+      allowClear: true,
+      placeholder: $t('ui.placeholder.select'),
+    },
+  });
+}
+
 /**
  * 基础信息（业务/单据属性）。
  * 业务编号/状态/归属组织/业务类型/装运方式对齐海运出口展示在分区标题栏 meta 区，不进表单。
+ * 可见顺序对齐业务稿：首行委托单位→主提单号→货好时间→开船日期→船公司→付款方式；
+ * 次行起运地→目的地→贸易条款/运输条款→备注。稿中没有的订舱代理放到末行。
  */
 export function usePreOrderBasicSchema(): VbenFormSchema[] {
   return [
@@ -72,36 +93,11 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       label: '船公司',
       componentProps: { allowClear: true, class: 'w-full' },
     },
-    createClientSelectSchema({
-      fieldName: 'bookingAgentId',
-      formItemClass: 'pre-order-basic-field--6',
-      industryCategory: 'o',
-      label: '订舱代理',
-    }),
-    {
-      component: 'CodeServiceSelect',
-      fieldName: 'codeServiceId',
-      formItemClass: 'pre-order-basic-field--10',
-      label: '运输条款',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
-    {
-      component: 'Select',
-      fieldName: 'tradeTermsType',
-      formItemClass: 'pre-order-basic-field--11',
-      label: '贸易条款',
-      componentProps: {
-        allowClear: true,
-        options: getTradeTermsTypeOptions(),
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
-    },
     {
       component: 'CodeFrtSelect',
       fieldName: 'codeFrtId',
-      formItemClass: 'pre-order-basic-field--7',
-      label: '付费方式',
+      formItemClass: 'pre-order-basic-field--6',
+      label: '付款方式',
       componentProps: {
         allowClear: true,
         class: 'w-full',
@@ -111,25 +107,50 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'PortSelect',
       fieldName: 'polId',
-      formItemClass: 'pre-order-basic-field--8',
-      label: '起运港',
+      formItemClass: 'pre-order-basic-field--7',
+      label: '起运地',
       rules: 'selectRequired',
       componentProps: buildPortSelectProps('polId'),
     },
     {
       component: 'PortSelect',
       fieldName: 'podId',
-      formItemClass: 'pre-order-basic-field--9',
-      label: '目的港',
+      formItemClass: 'pre-order-basic-field--8',
+      label: '目的地',
       componentProps: buildPortSelectProps('podId'),
+    },
+    {
+      component: 'ServiceTradeTermsInput',
+      fieldName: 'codeServiceId',
+      formItemClass: 'pre-order-basic-field--9',
+      label: '贸易条款/运输条款',
+      componentProps: buildPreOrderServiceTradeTermsProps(),
+    },
+    {
+      component: 'Select',
+      fieldName: 'tradeTermsType',
+      label: '贸易条款',
+      formItemClass: 'hidden',
+      componentProps: {
+        allowClear: true,
+        options: getTradeTermsTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
     },
     {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
-      formItemClass: 'col-span-2 pre-order-basic-field--12',
+      formItemClass: 'col-span-3 pre-order-basic-field--10',
       componentProps: { rows: 1, maxlength: 1024 },
     },
+    createClientSelectSchema({
+      fieldName: 'bookingAgentId',
+      formItemClass: 'pre-order-basic-field--11',
+      industryCategory: 'o',
+      label: '订舱代理',
+    }),
   ];
 }
 

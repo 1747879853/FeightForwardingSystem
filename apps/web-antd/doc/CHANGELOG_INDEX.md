@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-17 业务联系单基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-pre-order-basic-field-order.md)
 - [2026-08-17 海运出口基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-sea-export-basic-info-field-order.md)
 - [2026-08-17 空运出口空港选中回显三字码、备注回填英文名](./changelogs/change-log-2026-08-17-air-export-airport-code-remark.md)
 - [2026-08-16 空出/海进货物备注改为多行输入](./changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md)
