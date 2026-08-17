@@ -274,6 +274,7 @@ const BASIC_INFO_MERGED_ENTRUST_FIELD_NAMES = [
   'codeFrtId',
   'codeServiceId',
 ] as const;
+/** 基础信息 6 列栅格顺序（对照业务稿；头部只读/下拉不在此列） */
 const BASIC_INFO_FIELD_ORDER = [
   'clientId',
   'carrierId',
@@ -281,11 +282,11 @@ const BASIC_INFO_FIELD_ORDER = [
   'shipAgentId',
   'bookingAgentId',
   'teamId',
-  'custBrokerId',
-  'warehouseId',
-  'insuranceId',
   'bookingNum',
   'mblNum',
+  'insuranceId',
+  'custBrokerId',
+  'warehouseId',
   'yardId',
   'codeIssueTypeId',
   'signingPortId',
@@ -294,6 +295,7 @@ const BASIC_INFO_FIELD_ORDER = [
   'codeFrtId',
   'codeServiceId',
   'tradeTermsType',
+  'contractNum',
 ] as const;
 const BASIC_INFO_FIELD_ORDER_MAP = new Map(
   BASIC_INFO_FIELD_ORDER.map((fieldName, index) => [fieldName, index]),
