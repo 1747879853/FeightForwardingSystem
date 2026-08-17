@@ -899,7 +899,7 @@ onMounted(() => {
       <div
         style="
           display: grid;
-          grid-template-columns: 880px 1fr 280px;
+          grid-template-columns: 50em 1fr 20em;
           gap: 16px;
           margin-bottom: 16px;
         "

@@ -619,20 +619,20 @@ const outerColumns = [
     title: '结算对象',
     dataIndex: 'clientName',
     key: 'clientName',
-    width: 130,
+    width: 110,
     ellipsis: true,
   },
   {
     title: '支付要求',
     dataIndex: 'require',
     key: 'require',
-    width: 150,
+    width: 110,
     ellipsis: true,
   },
   {
     title: '申请币别',
     key: 'currencyCode',
-    width: 100,
+    width: 90,
   },
   // {
   //   title: '原币币别',
@@ -644,7 +644,7 @@ const outerColumns = [
     title: '申请人',
     dataIndex: 'auditUserNickName',
     key: 'auditUserNickName',
-    width: 120,
+    width: 100,
     ellipsis: true,
   },
   {
@@ -762,7 +762,7 @@ const innerColumns = [
   <Drawer
     v-model:open="visible"
     title="选择付费申请"
-    width="65%"
+    width="80%"
     :footer-style="{ textAlign: 'right' }"
   >
     <div style="margin-bottom: 16px">
@@ -806,9 +806,9 @@ const innerColumns = [
     <NestedDataTable
       :columns="outerColumns"
       :data-source="dataSource"
-      fill-height
       :inner-columns="innerColumns"
       inner-data-key="orderFees"
+      :max-height="700"
       inner-row-key="id"
       row-key="rowKey"
       :loading="loading"
