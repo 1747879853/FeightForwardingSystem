@@ -405,11 +405,10 @@ const handleRiskbirdImport = async (
 
     // 11. 名称 -> name
     if (detail.name) {
-      updateData.name = detail.name;
+      //updateData.name = detail.name;
       updateData.fullName = detail.name; // 同步更新全称
       console.log('导入名称:', detail.name);
     }
-
     console.log('准备更新的字段:', updateData);
 
     // 更新基础信息表单
@@ -880,6 +879,9 @@ const handleSubmit = async () => {
       if (!baseValues.code || baseValues.code.trim() === '') {
         missingFields.push('客户代码');
       }
+      if (!baseValues.orgId) {
+        missingFields.push('所属公司');
+      }
 
       if (missingFields.length > 0) {
         Modal.warning({
@@ -892,6 +894,17 @@ const handleSubmit = async () => {
 
       // 如果是其他字段验证失败，给出通用提示
       message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+      return;
+    }
+
+    // 【新增】即使基础表单验证通过，也要确保所属公司字段已填写
+    const baseValuesAfterValidation = await baseFormApi.getValues();
+    if (!baseValuesAfterValidation.orgId) {
+      Modal.warning({
+        title: '提示',
+        content: '请填写必填字段：所属公司',
+        okText: '确定',
+      });
       return;
     }
 

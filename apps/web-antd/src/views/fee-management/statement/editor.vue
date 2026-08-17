@@ -496,18 +496,18 @@ function getBizTypeInfo(order: any): { polName?: string; podName?: string } {
   // bizType: 0=海运出口, 1=海运进口, 2=空运出口
   if (bizType === 0 && order.seaExport) {
     return {
-      polName: order.seaExport.pol?.cnName ?? order.seaExport.pol?.portName,
-      podName: order.seaExport.pod?.cnName ?? order.seaExport.pod?.portName,
+      polName: order.seaExport.polRemark ?? order.seaExport.polRemark,
+      podName: order.seaExport.podRemark ?? order.seaExport.podRemark,
     };
   } else if (bizType === 1 && order.seaImport) {
     return {
-      polName: order.seaImport.pol?.cnName ?? order.seaImport.pol?.portName,
-      podName: order.seaImport.pod?.cnName ?? order.seaImport.pod?.portName,
+      polName: order.seaImport.polRemark ?? order.seaImport.polRemark,
+      podName: order.seaImport.podRemark ?? order.seaImport.podRemark,
     };
   } else if (bizType === 2 && order.airExport) {
     return {
-      polName: order.airExport.pol?.cnName ?? order.airExport.pol?.iataCode,
-      podName: order.airExport.pod?.cnName ?? order.airExport.pod?.iataCode,
+      polName: order.airExport.polRemark ?? order.airExport.polRemark,
+      podName: order.airExport.podRemark ?? order.airExport.podRemark,
     };
   }
 
@@ -1627,7 +1627,7 @@ function formatMonth(val: string | undefined | null): string {
 
 .left-column {
   flex-shrink: 0;
-  width: 720px;
+  width: 40em;
 }
 
 .center-column {

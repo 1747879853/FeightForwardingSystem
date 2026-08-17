@@ -708,10 +708,10 @@ defineExpose({ open: openDrawer });
             {{ getBizTypeLabel(record.bizType) }}
           </template>
           <template v-else-if="column.field === 'polName'">
-            {{ record.seaExport?.pol?.portName || '-' }}
+            {{ record.seaExport?.polRemark || record.seaImport?.polRemark }}
           </template>
           <template v-else-if="column.field === 'podName'">
-            {{ record.seaExport?.pod?.portName || '-' }}
+            {{ record.seaExport?.podRemark || record.seaImport?.podRemark }}
           </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
@@ -754,17 +754,18 @@ defineExpose({ open: openDrawer });
             {{ getFeeStatusLabel(feeRecord.feeStatus) }}
           </template>
           <template v-else-if="column.key === 'isStatemented'">
-            <!-- 未对账时显示"否" -->
-            <span
+            <!-- 未对账时显示红色Tag -->
+            <Tag
               v-if="
                 !feeRecord.isStatemented ||
                 !feeRecord.statements ||
                 feeRecord.statements.length === 0
               "
+              color="red"
             >
-              否
-            </span>
-            <!-- 已对账时显示对账单详细信息，鼠标悬停显示完整信息 -->
+              未对账
+            </Tag>
+            <!-- 已对账时显示绿色Tag，鼠标悬停显示完整信息 -->
             <Tooltip v-else placement="topLeft">
               <template #title>
                 <div style="max-width: 300px">
@@ -793,12 +794,12 @@ defineExpose({ open: openDrawer });
                   </div>
                 </div>
               </template>
-              <span class="cursor-pointer">
-                {{ feeRecord.statements[0].statementNum }}
-                <span v-if="feeRecord.statements.length > 1"
-                  >等{{ feeRecord.statements.length }}条</span
-                >
-              </span>
+              <Tag color="green">
+                已对账
+                <span v-if="feeRecord.statements.length > 1">
+                  ({{ feeRecord.statements.length }}条)
+                </span>
+              </Tag>
             </Tooltip>
           </template>
           <template v-else-if="column.key === 'settlementName'">
