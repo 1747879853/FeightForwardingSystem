@@ -14,7 +14,7 @@ module: brand-pack
 - 根目录新增 `pnpm deploy:antd:longshan`
 - `publish-config.example.json` 增加 `longshan` 占位项
 - 本地 `publish-config.local.json`（Git 忽略）写入：服务器 `175.178.101.30`、站点 `longshan-web`、用户 `IISUSER`
-- 批量发布顺序：`jht → jiayue → sjtd → longshan → demo`
+- 本地全量发布（`deploy:antd:all`）已改为按品牌独立 `dist-<品牌>` 并行，不含 hhyy
 
 # 避坑指南
 

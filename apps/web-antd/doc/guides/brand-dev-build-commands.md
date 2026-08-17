@@ -58,7 +58,7 @@ pnpm deploy:antd:demo
 | 参数 | 说明 |
 | --- | --- |
 | `-InstallDeps` | 构建前执行 `pnpm install --frozen-lockfile` |
-| `-SkipBuild` | 跳过构建，重新打包并发布现有 `dist` |
+| `-SkipBuild` | 跳过构建，重新打包并发布现有 `dist-<环境>` |
 | `-WhatIfOnly` | 只执行 MSDeploy 发布预览，不修改服务器 |
 | `-SkipConnectivityCheck` | 跳过 8172 端口检查 |
 | `-Force` | 跳过正式发布前输入环境名的二次确认，适合受控自动化 |
@@ -69,7 +69,9 @@ pnpm deploy:antd:demo
 .\scripts\publish-web.ps1 -Environment longshan -SkipBuild -WhatIfOnly
 ```
 
-脚本会校验 `dist/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
+脚本会校验 `dist-<环境>/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
+
+`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌并行构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy。**不包含 hhyy**（仍由 GitHub Actions 使用默认 `dist` 自动发布）。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
 
 ## 环境文件
 
@@ -142,6 +144,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Feature` | 本地全量发布改为按品牌独立 `dist-<品牌>` 并行打包与 MSDeploy；hhyy 仍走 GitHub Actions | `publish-all-web.ps1` 共享 prebuild 后按 `-ThrottleLimit` 并行；`--outDir` 才隔离 public，未传参时默认 `dist` 不变 |
 | 2026-08-17 | `Feature` | 龙山接入 `publish-web.ps1` / `deploy:antd:longshan`，目标 `175.178.101.30` / `longshan-web` | 凭据仅写本地 `publish-config.local.json`；批量发布顺序增加 longshan |
 | 2026-08-11 | `Feature` | 新增龙山（longshan）独立开发与打包命令，后端 175.178.101.30:86；登录背景视频用 `longshan.mp4` | 新增 `.env.longshan`、`build:longshan`/`dev:longshan`；`brand-assets.ts` 与 `vite.config.mts` 注册 `longshan` 素材目录；视频 OSS Key=`longshan.mp4` |
 | 2026-07-30 | `Bugfix` | jiayue/demo 登录页背景视频改为与 jht 共用 `jht-login-back.mp4` | 原 `login-back.mp4` OSS 返回 404；demo 的 `VITE_APP_BRAND=jiayue`，改 jiayue 映射即可同时修好 demo |

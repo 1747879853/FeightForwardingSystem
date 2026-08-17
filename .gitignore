@@ -1,6 +1,7 @@
 node_modules
 .DS_Store
 dist
+dist-*
 dist-ssr
 dist.zip
 dist.tar
@@ -16,6 +17,7 @@ coverage
 .cache
 .turbo
 .temp
+.brand-public
 dev-dist
 .stylelintcache
 yarn.lock

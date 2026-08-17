@@ -16,6 +16,16 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# powershell.exe -File + Start-Process often reports exit 0 after `throw`.
+# Always write a result file and force a non-zero process exit on failure.
+$resultPath = ''
+trap {
+  if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
+    Set-Content -LiteralPath $resultPath -Value 'FAILED' -Encoding ascii
+  }
+  exit 1
+}
+
 # Windows PowerShell 5.1 evaluates parameter default expressions before
 # $PSScriptRoot is populated, so script-relative defaults must be resolved here.
 if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
@@ -110,12 +120,17 @@ function Select-Environment {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$distPath = Join-Path $repoRoot 'apps\web-antd\dist'
 $defaultMsDeployPath = 'C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe'
 
 if ([string]::IsNullOrWhiteSpace($Environment)) {
   $Environment = Select-Environment
 }
+
+# Isolated per-brand dist so deploy:antd:all can build in parallel.
+# GitHub hhyy still uses the default apps/web-antd/dist (no --outDir).
+$distPath = Join-Path $repoRoot "apps\web-antd\dist-$Environment"
+$viteOutDir = "dist-$Environment"
+$viteCacheDir = "node_modules/.vite-$Environment"
 
 if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
   $examplePath = Join-Path $PSScriptRoot 'publish-config.example.json'
@@ -170,6 +185,11 @@ $releaseDirectory = Join-Path $repoRoot "output\releases\$Environment"
 $packagePath = Join-Path $releaseDirectory "web-antd-$Environment-$timestamp.zip"
 $brandEnvPath = Join-Path $repoRoot "apps\web-antd\.env.$Environment"
 $appConfigPath = Join-Path $distPath '_app.config.js'
+$resultPath = Join-Path $releaseDirectory 'publish.result'
+if (-not (Test-Path -LiteralPath $releaseDirectory)) {
+  New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+}
+Set-Content -LiteralPath $resultPath -Value 'RUNNING' -Encoding ascii
 
 Push-Location $repoRoot
 try {
@@ -178,6 +198,7 @@ try {
   Write-Host "Repository : $repoRoot"
   Write-Host "IIS site   : $siteName"
   Write-Host "Endpoint   : $endpoint"
+  Write-Host "Dist       : $distPath"
 
   if (-not $SkipBuild) {
     if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
@@ -207,12 +228,19 @@ try {
     Write-Host "=== Build web-antd ($Environment) ==="
     $staleArchivePath = Join-Path $repoRoot 'apps\web-antd\dist.zip'
     if (Test-Path -LiteralPath $staleArchivePath -PathType Leaf) {
-      Write-Host "Remove stale disabled VITE_ARCHIVER output: $staleArchivePath"
-      Remove-Item -LiteralPath $staleArchivePath -Force
+      try {
+        Remove-Item -LiteralPath $staleArchivePath -Force -ErrorAction Stop
+        Write-Host "Remove stale disabled VITE_ARCHIVER output: $staleArchivePath"
+      } catch {
+        Write-Warning "Skip locked dist.zip: $($_.Exception.Message)"
+      }
     }
 
     # build-only:<env> preserves npm_lifecycle_script so the custom environment
-    # loader sees --mode, but it has no matching prebuild lifecycle to rerun.
+    # loader sees --mode. Isolated outDir/cacheDir are passed via env because
+    # pnpm extra CLI args were forwarded as a literal "--" and vite ignored them.
+    $env:WEB_ANTD_OUT_DIR = $viteOutDir
+    $env:WEB_ANTD_CACHE_DIR = $viteCacheDir
     Invoke-ExternalCommand 'pnpm' @(
       '--filter'
       '@vben/web-antd'
@@ -220,7 +248,7 @@ try {
       "build-only:$Environment"
     )
   } else {
-    Write-Warning "Build skipped. Existing dist will be treated as '$Environment'."
+    Write-Warning "Build skipped. Existing dist-$Environment will be treated as '$Environment'."
   }
 
   if (-not (Test-Path -LiteralPath (Join-Path $distPath 'index.html') -PathType Leaf)) {
@@ -275,6 +303,7 @@ try {
 
   if ($PackageOnly) {
     Write-Host 'Package completed. IIS was not changed.'
+    Set-Content -LiteralPath $resultPath -Value 'SUCCESS' -Encoding ascii
     return
   }
 
@@ -312,6 +341,7 @@ try {
     Write-Host '=== Deployment preview (WhatIf only) ==='
     Invoke-ExternalCommand $msDeployPath ($deployArguments + '-whatif')
     Write-Host 'WhatIf completed. IIS was not changed.'
+    Set-Content -LiteralPath $resultPath -Value 'SUCCESS' -Encoding ascii
     return
   }
 
@@ -325,6 +355,7 @@ try {
   Write-Host '=== Deploy to IIS ==='
   Invoke-ExternalCommand $msDeployPath $deployArguments
   Write-Host "Deployment completed: $Environment -> $siteName"
+  Set-Content -LiteralPath $resultPath -Value 'SUCCESS' -Encoding ascii
 } finally {
   Pop-Location
 }

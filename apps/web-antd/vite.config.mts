@@ -1,4 +1,11 @@
-import { copyFileSync, existsSync, readFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,12 +95,38 @@ function resolveApiTarget(mode: string) {
   return 'http://118.190.1.4:82';
 }
 
-function createSyncLoadingLogoPlugin(mode: string) {
+function resolveCliArg(name: string) {
+  const prefix = `--${name}=`;
+  const args = process.argv;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === `--${name}` && args[i + 1]) {
+      return args[i + 1];
+    }
+    if (arg.startsWith(prefix)) {
+      return arg.slice(prefix.length);
+    }
+  }
+  return '';
+}
+
+function prepareIsolatedPublicDir(mode: string) {
+  const isolatedPublicDir = join(appRoot, '.brand-public', mode);
+  rmSync(isolatedPublicDir, { recursive: true, force: true });
+  mkdirSync(isolatedPublicDir, { recursive: true });
+  const sharedPublicDir = join(appRoot, 'public');
+  if (existsSync(sharedPublicDir)) {
+    cpSync(sharedPublicDir, isolatedPublicDir, { recursive: true });
+  }
+  return isolatedPublicDir;
+}
+
+function createSyncLoadingLogoPlugin(mode: string, publicRoot: string) {
   const appBrand = resolveAppBrand(mode);
   const brandImgDir = resolveBrandImgDir(mode);
   const { filePath: loadingLogoSrc, mime: loadingLogoMime } =
     resolveLoadingLogoSrc(brandImgDir);
-  const loadingLogoDest = join(appRoot, 'public/logo-text.png');
+  const loadingLogoDest = join(publicRoot, 'logo-text.png');
   const loadingLogoDataUri = `data:${loadingLogoMime};base64,${readFileSync(loadingLogoSrc).toString('base64')}`;
 
   /** 首屏 loading：同步 public 副本，并将 HTML 内 logo 内联为 data URI，避免首帧请求未完成 */
@@ -103,11 +136,11 @@ function createSyncLoadingLogoPlugin(mode: string) {
       copyFileSync(loadingLogoSrc, loadingLogoDest);
       const brandFavicon = resolveFaviconSrc(brandImgDir);
       if (brandFavicon) {
-        copyFileSync(brandFavicon, join(appRoot, 'public/favicon.png'));
+        copyFileSync(brandFavicon, join(publicRoot, 'favicon.png'));
       }
       const sidebarLogo = resolveSidebarLogoSrc(brandImgDir);
       if (sidebarLogo) {
-        copyFileSync(sidebarLogo.filePath, join(appRoot, 'public', sidebarLogo.dest));
+        copyFileSync(sidebarLogo.filePath, join(publicRoot, sidebarLogo.dest));
       }
     },
     transformIndexHtml: {
@@ -129,11 +162,24 @@ function createSyncLoadingLogoPlugin(mode: string) {
 export default defineConfig(async (config) => {
   const mode = config?.mode ?? 'development';
   const apiTarget = resolveApiTarget(mode);
+  // Local publish sets WEB_ANTD_OUT_DIR=dist-<brand> so parallel builds do not
+  // share apps/web-antd/dist or mutate the shared public/ folder. GitHub
+  // hhyy/jht workflows omit the env and keep writing to dist + public/.
+  const isolatedOutDir =
+    process.env.WEB_ANTD_OUT_DIR?.trim() || resolveCliArg('outDir');
+  const isolatedCacheDir =
+    process.env.WEB_ANTD_CACHE_DIR?.trim() || resolveCliArg('cacheDir');
+  const publicRoot = isolatedOutDir
+    ? prepareIsolatedPublicDir(mode)
+    : join(appRoot, 'public');
 
   return {
     application: {},
     vite: {
-      plugins: [createSyncLoadingLogoPlugin(mode)],
+      publicDir: publicRoot,
+      ...(isolatedCacheDir ? { cacheDir: isolatedCacheDir } : {}),
+      ...(isolatedOutDir ? { build: { outDir: isolatedOutDir } } : {}),
+      plugins: [createSyncLoadingLogoPlugin(mode, publicRoot)],
       // build: {
       //   minify: 'terser', // 明确指定使用 terser
       //   terserOptions: {
