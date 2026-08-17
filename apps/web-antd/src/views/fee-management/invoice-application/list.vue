@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
+import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 
 import { ref } from 'vue';
 import dayjs from 'dayjs';
@@ -7,20 +8,150 @@ import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space, Input } from 'ant-design-vue';
+import {
+  Button,
+  message,
+  Modal,
+  Space,
+  Input,
+  Descriptions,
+  Empty,
+  Tag,
+} from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { buildAttachmentUrl } from '#/utils';
 
-import { useColumns, useGridFormSchema } from './data';
+import {
+  useColumns,
+  useGridFormSchema,
+  invoiceApplicationStatusOptions,
+} from './data';
+import InvoiceDetailModal from '#/views/settlement-management/invoice-issue/invoice-detail-modal.vue';
 
 const router = useRouter();
 const actionLoading = ref(false);
 const rejectReasonVisible = ref(false);
 const currentRejectId = ref<string>('');
 const rejectReasonValue = ref<string>('');
+
+// ✅ 新增：发票详情弹窗相关状态
+const invoiceDetailModalVisible = ref(false);
+const currentInvoiceAttachments = ref<InvoiceIssueApi.AttachmentItemDto[]>([]);
+const currentInvoiceInfo = ref<any>(null);
+
+/** ✅ 新增：打开发票详情弹窗 */
+async function handleViewInvoice(
+  row: InvoiceApplicationApi.InvoiceApplicationListDto,
+) {
+  // 检查是否有发票号（有发票号说明已经开票）
+  if (!row.invoiceNo) {
+    message.warning('该申请尚未开具发票');
+    return;
+  }
+
+  try {
+    // 获取开票申请的详情
+    const detail = await InvoiceApplicationApi.detailAsync(row.id);
+
+    // 构建发票信息对象（用于弹窗显示）
+    currentInvoiceInfo.value = {
+      invoiceNo: detail.invoiceNo,
+      applicationNo: detail.applicationNo,
+      settlementName: detail.settlement?.name,
+      currencyCode: detail.currency?.code,
+      invoiceType: detail.invoiceType,
+      applyTime: detail.applyTime,
+      invoiceExchangeRate: detail.invoiceExchangeRate,
+    };
+
+    // 注意：InvoiceApplicationDetailDto 没有 attachments 字段
+    // 如果需要显示附件，应该从发票开出（InvoiceIssue）接口获取
+    // 这里暂时设置为空数组
+    currentInvoiceAttachments.value = [];
+
+    // 打开弹窗
+    invoiceDetailModalVisible.value = true;
+  } catch (error) {
+    console.error('获取申请详情失败:', error);
+    message.error('获取申请详情失败');
+  }
+}
+
+/** ✅ 新增：格式化日期时间 */
+function formatDateTime(value?: string) {
+  if (!value) return '-';
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : '-';
+}
+
+/** ✅ 新增：获取发票类型标签 */
+function getInvoiceTypeLabel(type?: string) {
+  if (!type) return '-';
+  const typeMap: Record<string, string> = {
+    p: '普通发票(电票)',
+    c: '普通发票(纸票)',
+    s: '专用发票',
+  };
+  return typeMap[type] || type;
+}
+
+/** ✅ 新增：查看附件 */
+function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
+  if (item.url) {
+    window.open(buildAttachmentUrl(item.url), '_blank', 'noopener,noreferrer');
+  } else {
+    message.warning('附件链接不存在');
+  }
+}
+
+/** ✅ 新增：下载附件 */
+function downloadAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
+  if (item.url) {
+    const url = buildAttachmentUrl(item.url);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = item.friendlyFileName || 'attachment';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    message.warning('附件链接不存在');
+  }
+}
+
+/** ✅ 新增：获取状态标签颜色 */
+function getStatusColor(
+  status?: InvoiceApplicationApi.InvoiceApplicationStatus,
+) {
+  if (status === undefined || status === null) return 'default';
+
+  // 根据开票申请状态返回对应的颜色
+  const statusColorMap: Record<number, string> = {
+    [InvoiceApplicationApi.InvoiceApplicationStatus.Entering]: 'default', // 录入中 - 灰色
+    [InvoiceApplicationApi.InvoiceApplicationStatus.Auditing]: 'processing', // 审核中 - 蓝色
+    [InvoiceApplicationApi.InvoiceApplicationStatus.Rejected]: 'error', // 已驳回 - 红色
+    [InvoiceApplicationApi.InvoiceApplicationStatus.Invoiced]: 'success', // 已开票 - 绿色
+  };
+
+  return statusColorMap[status] || 'default';
+}
+
+/** ✅ 新增：获取状态标签文本 */
+function getStatusLabel(
+  status?: InvoiceApplicationApi.InvoiceApplicationStatus,
+) {
+  if (status === undefined || status === null) return '-';
+
+  const options = invoiceApplicationStatusOptions();
+  const option = options.find((item) => item.value === status);
+  return option?.label || String(status);
+}
 
 // 从命名空间中解构 API 函数
 const {
@@ -418,6 +549,22 @@ function handleBatchWithdraw() {
           </Button>
         </Space>
       </template>
+
+      <!-- ✅ 新增：状态列插槽，支持点击查看发票 -->
+      <template #status="{ row }">
+        <span
+          v-if="row.invoiceNo"
+          class="invoice-status-link"
+          @click.stop="handleViewInvoice(row)"
+        >
+          <Tag :color="getStatusColor(row.status)">
+            {{ getStatusLabel(row.status) }}
+          </Tag>
+        </span>
+        <Tag v-else :color="getStatusColor(row.status)">
+          {{ getStatusLabel(row.status) }}
+        </Tag>
+      </template>
     </Grid>
 
     <!-- 驳回原因对话框 -->
@@ -436,5 +583,189 @@ function handleBatchWithdraw() {
         show-count
       />
     </Modal>
+
+    <!-- ✅ 新增：发票详情弹窗 -->
+    <Modal
+      v-model:open="invoiceDetailModalVisible"
+      title="发票信息及附件"
+      width="800px"
+      :footer="null"
+    >
+      <div v-if="currentInvoiceInfo" class="invoice-detail-container">
+        <!-- 发票基本信息 -->
+        <div class="section-title">发票信息</div>
+        <Descriptions bordered :column="2" size="small" class="mb-4">
+          <Descriptions.Item label="申请单号">
+            {{ currentInvoiceInfo.applicationNo || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="发票号码">
+            {{ currentInvoiceInfo.invoiceNo || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="结算对象">
+            {{ currentInvoiceInfo.settlementName || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="币别">
+            {{ currentInvoiceInfo.currencyCode || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="发票类型">
+            {{ getInvoiceTypeLabel(currentInvoiceInfo.invoiceType) }}
+          </Descriptions.Item>
+          <Descriptions.Item label="开票汇率">
+            {{ currentInvoiceInfo.invoiceExchangeRate || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="申请时间">
+            {{ formatDateTime(currentInvoiceInfo.applyTime) }}
+          </Descriptions.Item>
+        </Descriptions>
+
+        <!-- 附件列表 -->
+        <div
+          v-if="
+            currentInvoiceAttachments && currentInvoiceAttachments.length > 0
+          "
+        >
+          <div class="section-title">
+            发票附件 ({{ currentInvoiceAttachments.length }})
+          </div>
+          <div class="attachment-list">
+            <div
+              v-for="(item, index) in currentInvoiceAttachments"
+              :key="index"
+              class="attachment-item"
+            >
+              <span class="attachment-name" :title="item.friendlyFileName">
+                {{ item.friendlyFileName }}
+              </span>
+              <div class="attachment-actions">
+                <a-button
+                  type="link"
+                  size="small"
+                  class="attachment-btn"
+                  @click="viewAttachment(item)"
+                >
+                  <IconifyIcon icon="ant-design:eye-outlined" />
+                  查看
+                </a-button>
+                <a-button
+                  type="link"
+                  size="small"
+                  class="attachment-btn"
+                  @click="downloadAttachment(item)"
+                >
+                  <IconifyIcon icon="ant-design:download-outlined" />
+                  下载
+                </a-button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Empty
+          v-else
+          description="暂无附件"
+          :image="Empty.PRESENTED_IMAGE_SIMPLE"
+        />
+      </div>
+    </Modal>
   </Page>
 </template>
+
+<style scoped>
+/* 发票详情容器 */
+.invoice-detail-container {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.section-title {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+/* 附件列表样式 */
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background-color: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.attachment-item:hover {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+}
+
+.attachment-name {
+  flex: 1;
+  margin-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #262626;
+  white-space: nowrap;
+}
+
+.attachment-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.attachment-btn {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 0 4px;
+  margin: 0;
+  color: #1677ff;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.attachment-btn :deep(.anticon) {
+  font-size: 14px;
+}
+
+.attachment-btn:hover {
+  color: #4096ff;
+  cursor: pointer;
+  background-color: rgb(22 119 255 / 10%);
+}
+
+/* 查看发票按钮样式 */
+.view-invoice-btn {
+  color: #1677ff;
+}
+
+.view-invoice-btn:hover {
+  color: #4096ff;
+}
+
+/* 状态链接样式 */
+.invoice-status-link {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.invoice-status-link:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+</style>

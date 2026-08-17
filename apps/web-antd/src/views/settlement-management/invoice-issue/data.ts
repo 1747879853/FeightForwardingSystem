@@ -23,14 +23,54 @@ const formatDateTime = (value: string | undefined | null): string => {
  */
 const getInvoiceTypeLabel = (type: string | undefined | null): string => {
   if (!type) return '-';
-  
+
   const typeMap: Record<string, string> = {
-    'p': '普通发票(电票)',
-    'c': '普通发票(纸票)',
-    's': '专用发票',
+    p: '普通发票(电票)',
+    c: '普通发票(纸票)',
+    s: '专用发票',
   };
-  
+
   return typeMap[type] || type;
+};
+
+/**
+ * 获取开票状态中文标签
+ */
+const getIssueStatusLabel = (status: number | undefined | null): string => {
+  if (status === undefined || status === null) return '-';
+
+  const statusMap: Record<number, string> = {
+    0: '待开票',
+    1: '开票中',
+    2: '开票完成',
+    3: '开票失败',
+  };
+
+  return statusMap[status] || String(status);
+};
+
+/**
+ * 获取红冲状态中文标签
+ */
+const getRedStatusLabel = (status: number | undefined | null): string => {
+  if (status === undefined || status === null) return '-';
+
+  const statusMap: Record<number, string> = {
+    0: '未冲红',
+    15: '申请中',
+    99: '冲红完成',
+    16: '冲红失败',
+  };
+
+  return statusMap[status] || String(status);
+};
+
+/**
+ * 格式化锁定状态显示
+ */
+const getLockedLabel = (locked: boolean | undefined | null): string => {
+  if (locked) return '是';
+  return '否';
 };
 
 /**
@@ -135,6 +175,144 @@ export const columns: VxeTableGridOptions['columns'] = [
     formatter: ({ cellValue }) => formatDateTime(cellValue),
   },
   {
+    title: '开票状态',
+    field: 'issueStatus',
+    width: 120,
+    align: 'center',
+    slots: { default: 'issueStatus' },
+  },
+  {
+    title: '提交订单号',
+    field: 'issueOrderNo',
+    width: 180,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '发票流水号',
+    field: 'issueSerialNum',
+    width: 180,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '提交开票时间',
+    field: 'issueRequestTime',
+    width: 160,
+    align: 'left',
+    formatter: ({ cellValue }) => formatDateTime(cellValue),
+  },
+  {
+    title: '发票代码',
+    field: 'invoiceCode',
+    width: 150,
+    align: 'left',
+  },
+  {
+    title: '开票失败原因',
+    field: 'issueFailCause',
+    minWidth: 150,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '红冲状态',
+    field: 'redStatus',
+    width: 120,
+    align: 'center',
+    slots: { default: 'redStatus' },
+  },
+  {
+    title: '冲红原因',
+    field: 'redReason',
+    width: 120,
+    align: 'center',
+    formatter: ({ cellValue }) => {
+      if (cellValue === undefined || cellValue === null) return '-';
+      const reasonMap: Record<number, string> = {
+        1: '销货退回',
+        2: '开票有误',
+        3: '服务中止',
+        4: '销售折让',
+      };
+      return reasonMap[cellValue] || String(cellValue);
+    },
+  },
+  {
+    title: '红字确认单号',
+    field: 'redBillNo',
+    width: 180,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '红票订单号',
+    field: 'redOrderNo',
+    width: 180,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '红票流水号',
+    field: 'redSerialNum',
+    width: 180,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '红票发票号码',
+    field: 'redInvoiceNo',
+    width: 150,
+    align: 'left',
+  },
+  {
+    title: '红票发票代码',
+    field: 'redInvoiceCode',
+    width: 150,
+    align: 'left',
+  },
+  {
+    title: '红票开票时间',
+    field: 'redInvoiceTime',
+    width: 160,
+    align: 'left',
+    formatter: ({ cellValue }) => formatDateTime(cellValue),
+  },
+  {
+    title: '发起冲红时间',
+    field: 'redApplyTime',
+    width: 160,
+    align: 'left',
+    formatter: ({ cellValue }) => formatDateTime(cellValue),
+  },
+  {
+    title: '发起人',
+    field: 'redApplyUserName',
+    width: 120,
+    align: 'left',
+  },
+  {
+    title: '冲红失败原因',
+    field: 'redFailCause',
+    minWidth: 150,
+    align: 'left',
+    showOverflow: true,
+  },
+  {
+    title: '编辑锁定',
+    field: 'editLocked',
+    width: 100,
+    align: 'center',
+    slots: { default: 'editLocked' },
+  },
+  {
+    title: '冲红锁定',
+    field: 'redLocked',
+    width: 100,
+    align: 'center',
+    slots: { default: 'redLocked' },
+  },
+  {
     title: '备注',
     field: 'remark',
     minWidth: 150,
@@ -196,7 +374,7 @@ export const searchFormSchema = [
       clearable: true,
       options: [
         {
-          label: '诺诺接口开票',
+          label: '接口开票',
           value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
         },
         {
@@ -232,7 +410,7 @@ export const searchFormSchema = [
     fieldName: 'invoiceIssueTimeStart',
     label: '开票时间起',
     component: 'DatePicker',
-     clearable: true,
+    clearable: true,
     componentProps: {
       placeholder: '请选择开始日期',
       format: 'YYYY-MM-DD',
@@ -243,7 +421,7 @@ export const searchFormSchema = [
     fieldName: 'invoiceIssueTimeEnd',
     label: '开票时间止',
     component: 'DatePicker',
-     clearable: true,
+    clearable: true,
     componentProps: {
       placeholder: '请选择结束日期',
       format: 'YYYY-MM-DD',

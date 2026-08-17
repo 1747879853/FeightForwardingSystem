@@ -19,6 +19,8 @@ export function useLoadDetail(
   updateOrgBankByCurrency: () => void,
   fixedHeaderId: any, // ✅ 新增：发票抬头ID
   fixedCurrencyId: any, // ✅ 新增：发票币别ID
+  invoiceStatus?: any, // ✅ 新增：发票状态（可选）
+  attachments?: any, // ✅ 新增：附件列表（可选）
 ) {
   /**
    * 加载详情数据
@@ -28,6 +30,21 @@ export function useLoadDetail(
 
     try {
       const detail = await getInvoiceIssueDetail(editId.value);
+
+      // ✅ 更新发票状态（如果传入了 invoiceStatus）
+      if (invoiceStatus) {
+        invoiceStatus.value = {
+          issueStatus: detail.issueStatus,
+          redLocked: detail.redLocked || false,
+          redStatus: detail.redStatus,
+          editLocked: detail.editLocked,
+        };
+      }
+
+      // ✅ 更新附件列表（如果传入了 attachments）
+      if (attachments) {
+        attachments.value = detail.attachments || [];
+      }
 
       formData.value = {
         id: detail.id,
@@ -42,6 +59,7 @@ export function useLoadDetail(
         remark: detail.remark,
         orgBankAccountId: detail.orgBankAccountId,
         clientInvoiceBankId: detail.clientInvoiceBankId,
+        editLocked: detail.editLocked, // ✅ 新增：编辑锁定状态
         invoiceIssueItems:
           detail.invoiceIssueItems?.map((item: any) => ({
             invoiceApplicationId: item.invoiceApplicationId,
@@ -122,6 +140,21 @@ export function useLoadDetail(
     try {
       const detail = await getInvoiceIssueDetail(editId.value);
 
+      // ✅ 更新发票状态（如果传入了 invoiceStatus）
+      if (invoiceStatus) {
+        invoiceStatus.value = {
+          issueStatus: detail.issueStatus,
+          redLocked: detail.redLocked || false,
+          redStatus: detail.redStatus,
+          editLocked: detail.editLocked,
+        };
+      }
+
+      // ✅ 更新附件列表（如果传入了 attachments）
+      if (attachments) {
+        attachments.value = detail.attachments || [];
+      }
+
       // 只更新基础字段和 invoiceIssueItems，不更新 goodsDetails
       formData.value = {
         ...formData.value, // 保留现有的 goodsDetails
@@ -137,6 +170,7 @@ export function useLoadDetail(
         remark: detail.remark,
         orgBankAccountId: detail.orgBankAccountId,
         clientInvoiceBankId: detail.clientInvoiceBankId,
+        editLocked: detail.editLocked, // ✅ 新增：编辑锁定状态
         invoiceIssueItems:
           detail.invoiceIssueItems?.map((item: any) => ({
             invoiceApplicationId: item.invoiceApplicationId,

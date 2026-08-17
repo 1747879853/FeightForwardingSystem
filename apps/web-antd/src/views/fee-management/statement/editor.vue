@@ -496,18 +496,18 @@ function getBizTypeInfo(order: any): { polName?: string; podName?: string } {
   // bizType: 0=海运出口, 1=海运进口, 2=空运出口
   if (bizType === 0 && order.seaExport) {
     return {
-      polName: order.seaExport.pol?.cnName ?? order.seaExport.pol?.portName,
-      podName: order.seaExport.pod?.cnName ?? order.seaExport.pod?.portName,
+      polName: order.seaExport.polRemark ?? order.seaExport.polRemark,
+      podName: order.seaExport.podRemark ?? order.seaExport.podRemark,
     };
   } else if (bizType === 1 && order.seaImport) {
     return {
-      polName: order.seaImport.pol?.cnName ?? order.seaImport.pol?.portName,
-      podName: order.seaImport.pod?.cnName ?? order.seaImport.pod?.portName,
+      polName: order.seaImport.polRemark ?? order.seaImport.polRemark,
+      podName: order.seaImport.podRemark ?? order.seaImport.podRemark,
     };
   } else if (bizType === 2 && order.airExport) {
     return {
-      polName: order.airExport.pol?.cnName ?? order.airExport.pol?.iataCode,
-      podName: order.airExport.pod?.cnName ?? order.airExport.pod?.iataCode,
+      polName: order.airExport.polRemark ?? order.airExport.polRemark,
+      podName: order.airExport.podRemark ?? order.airExport.podRemark,
     };
   }
 
@@ -1361,6 +1361,67 @@ function formatMonth(val: string | undefined | null): string {
                   <template v-else-if="column.key === 'accountDate'">
                     {{ formatMonth(record.accountDate) }}
                   </template>
+                  <!-- 对账信息列醒目显示 -->
+                  <template
+                    v-else-if="
+                      column.key &&
+                      column.key.includes('currency_') &&
+                      column.key.includes('_receive')
+                    "
+                  >
+                    <span class="reconciliation-amount receive-amount">
+                      {{
+                        formatAmount(
+                          column.dataIndex ? record[column.dataIndex] : 0,
+                        )
+                      }}
+                    </span>
+                  </template>
+                  <template
+                    v-else-if="
+                      column.key &&
+                      column.key.includes('currency_') &&
+                      column.key.includes('_pay')
+                    "
+                  >
+                    <span class="reconciliation-amount pay-amount">
+                      {{
+                        formatAmount(
+                          column.dataIndex ? record[column.dataIndex] : 0,
+                        )
+                      }}
+                    </span>
+                  </template>
+                  <template
+                    v-else-if="
+                      column.key &&
+                      column.key.includes('currency_') &&
+                      column.key.includes('_un_receive')
+                    "
+                  >
+                    <span class="reconciliation-amount un-receive-amount">
+                      {{
+                        formatAmount(
+                          column.dataIndex ? record[column.dataIndex] : 0,
+                        )
+                      }}
+                    </span>
+                  </template>
+                  <template
+                    v-else-if="
+                      column.key &&
+                      column.key.includes('currency_') &&
+                      column.key.includes('_un_pay')
+                    "
+                  >
+                    <span class="reconciliation-amount un-pay-amount">
+                      {{
+                        formatAmount(
+                          column.dataIndex ? record[column.dataIndex] : 0,
+                        )
+                      }}
+                    </span>
+                  </template>
                   <template v-else>
                     {{ column.dataIndex ? record[column.dataIndex] : '' }}
                   </template>
@@ -1566,7 +1627,7 @@ function formatMonth(val: string | undefined | null): string {
 
 .left-column {
   flex-shrink: 0;
-  width: 720px;
+  width: 40em;
 }
 
 .center-column {
@@ -1845,6 +1906,39 @@ function formatMonth(val: string | undefined | null): string {
 
 .expand-toggle--expanded {
   transform: rotate(90deg);
+}
+
+/* 对账信息列醒目样式 */
+.reconciliation-amount {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+/* 应收金额 - 绿色 */
+.receive-amount {
+  color: #52c41a;
+  background-color: #f6ffed;
+}
+
+/* 应付金额 - 蓝色 */
+.pay-amount {
+  color: #1890ff;
+  background-color: #e6f7ff;
+}
+
+/* 未收金额 - 橙色 */
+.un-receive-amount {
+  color: #fa8c16;
+  background-color: #fff7e6;
+}
+
+/* 未付金额 - 红色 */
+.un-pay-amount {
+  color: #ff4d4f;
+  background-color: #fff1f0;
 }
 
 .fee-footer {

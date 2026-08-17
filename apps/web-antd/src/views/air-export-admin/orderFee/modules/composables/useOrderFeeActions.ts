@@ -408,7 +408,7 @@ export function useOrderFeeActions(
     let ModifyOrderFeeDto = {
       remark: data.remark || data.updatedData?.modifyRemark || '',
       TransportOrderId: dataContext.editId.value,
-      orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
+      orderFees: [...(list ?? [])],
     };
     console.log(ModifyOrderFeeDto);
     modifyOrderFee(ModifyOrderFeeDto).then(() => {

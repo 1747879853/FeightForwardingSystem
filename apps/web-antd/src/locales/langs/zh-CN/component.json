@@ -11,7 +11,10 @@
     "maxCountReached": "已达到最大文件数量",
     "allowedTypes": "支持格式",
     "maxSize": "最大大小",
-    "maxCount": "最多数量"
+    "maxCount": "最多数量",
+    "dragTip": "点击或拖拽文件到此区域上传",
+    "dragHint": "支持多文件上传",
+    "uploadedFiles": "已上传文件"
   },
   "filePreview": {
     "title": "文件预览",

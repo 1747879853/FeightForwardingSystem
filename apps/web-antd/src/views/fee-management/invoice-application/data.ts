@@ -164,6 +164,7 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
         name: 'CellTag',
         options: invoiceApplicationStatusOptions(),
       },
+      slots: { default: 'status' },
     },
     {
       field: 'totalAppliedAmount',

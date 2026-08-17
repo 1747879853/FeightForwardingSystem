@@ -18,6 +18,36 @@ const [Modal, modalApi] = useVbenModal({
 // 审核任务列表 - 使用 ref 而非 computed
 const auditTasks = ref<ExpenseSubmissionAdminApi.TaskItemDto[]>([]);
 
+// 当前费用数据（用于待审核的修改任务对比）
+const currentFeeData = ref<any>(null);
+
+// 获取指定任务之前的上一条修改任务的 info
+const getPreviousModifyTaskInfo = (
+  currentTask: ExpenseSubmissionAdminApi.TaskItemDto,
+): string | null => {
+  if (!currentTask.auditTime) {
+    return null; // 待审核任务没有上一条
+  }
+
+  // 找到所有在当前任务之前完成的修改任务（taskType === 1）
+  const previousModifyTasks = auditTasks.value.filter(
+    (task) =>
+      task.taskType === 1 &&
+      task.auditTime &&
+      dayjs(task.auditTime).valueOf() < dayjs(currentTask.auditTime).valueOf(),
+  );
+
+  // 按审核时间倒序排列，取第一个（最近的）
+  if (previousModifyTasks.length > 0) {
+    previousModifyTasks.sort(
+      (a, b) => dayjs(b.auditTime).valueOf() - dayjs(a.auditTime).valueOf(),
+    );
+    return previousModifyTasks[0].info || null;
+  }
+
+  return null;
+};
+
 // 使用 useStore 监听模态框状态变化
 const isOpen = modalApi.useStore((state) => state.isOpen);
 
@@ -29,8 +59,12 @@ watch(isOpen, (isOpenValue) => {
 
     if (!feeData) {
       auditTasks.value = [];
+      currentFeeData.value = null;
       return;
     }
+
+    // 保存当前费用数据，用于待审核修改任务的对比
+    currentFeeData.value = feeData;
 
     const allTasks: ExpenseSubmissionAdminApi.TaskItemDto[] = [];
 
@@ -57,17 +91,37 @@ watch(isOpen, (isOpenValue) => {
 
     console.log('显示的任务数量:', displayTasks.length);
 
-    // 按审核时间倒序排列（最新的在前），没有审核时间的排在最后
+    // 排序逻辑：
+    // 1. 有审核时间的按审核时间倒序（最新的在前）
+    // 2. 没有审核时间的（待审核）排在最前面，并按创建时间倒序
     auditTasks.value = displayTasks.sort((a, b) => {
-      const timeA = a.auditTime ? dayjs(a.auditTime).valueOf() : 0;
-      const timeB = b.auditTime ? dayjs(b.auditTime).valueOf() : 0;
-      return timeB - timeA;
+      const hasAuditTimeA = !!a.auditTime;
+      const hasAuditTimeB = !!b.auditTime;
+
+      // 如果一个有审核时间，一个没有
+      if (hasAuditTimeA !== hasAuditTimeB) {
+        // 没有审核时间的（待审核）排在前面
+        return hasAuditTimeA ? 1 : -1;
+      }
+
+      // 如果都有审核时间，按审核时间倒序
+      if (hasAuditTimeA && hasAuditTimeB) {
+        const timeA = dayjs(a.auditTime).valueOf();
+        const timeB = dayjs(b.auditTime).valueOf();
+        return timeB - timeA;
+      }
+
+      // 如果都没有审核时间，按创建时间倒序（最新的在前）
+      const createTimeA = a.creationTime ? dayjs(a.creationTime).valueOf() : 0;
+      const createTimeB = b.creationTime ? dayjs(b.creationTime).valueOf() : 0;
+      return createTimeB - createTimeA;
     });
 
     console.log('最终显示的审核历史记录:', auditTasks.value);
   } else {
     // 关闭时清空数据
     auditTasks.value = [];
+    currentFeeData.value = null;
   }
 });
 
@@ -102,249 +156,316 @@ const getTaskStatusText = (taskStatus?: number) => {
 const parseAndCompareFields = (
   originalInfo: string | null | undefined,
   info: string | null | undefined,
+  currentFeeData?: any, // 当前费用数据，用于待审核的修改任务
+  previousTaskInfo?: string | null, // 上一条任务的 info，用于驳回任务
 ) => {
-  if (!originalInfo || !info) {
-    console.warn('费用修改记录数据不完整:', { originalInfo, info });
+  let original: any;
+  let modified: any;
+
+  // 场景1：驳回任务（taskStatus === 1），使用上一条修改任务的 info 作为"修改前"
+  if (previousTaskInfo && info) {
+    console.log('=== 驳回任务 - 使用上一条任务的 info 作为修改前 ===');
+    try {
+      original = JSON.parse(previousTaskInfo);
+      modified = JSON.parse(info);
+    } catch (error) {
+      console.error('解析驳回任务数据失败:', error);
+      return [];
+    }
+  }
+  // 场景2：待审核的修改任务（没有 originalInfo 和 auditTime）
+  else if (currentFeeData && !originalInfo && info) {
+    console.log('=== 待审核修改任务 - 使用当前费用作为修改前 ===');
+    original = currentFeeData;
+    try {
+      modified = JSON.parse(info);
+    } catch (error) {
+      console.error('解析修改后数据失败:', error);
+      return [];
+    }
+  }
+  // 场景3：正常的已审核修改任务
+  else if (originalInfo && info) {
+    console.log('=== 正常修改任务 - 使用 originalInfo 和 info ===');
+    try {
+      original = JSON.parse(originalInfo);
+      modified = JSON.parse(info);
+    } catch (error) {
+      console.error('解析修改记录失败:', error);
+      return [];
+    }
+  }
+  // 场景4：数据不完整
+  else {
+    console.warn('费用修改记录数据不完整:', {
+      originalInfo,
+      info,
+      currentFeeData,
+      previousTaskInfo,
+    });
     return [];
   }
 
-  try {
-    const original = JSON.parse(originalInfo);
-    const modified = JSON.parse(info);
+  console.log('=== 费用字段对比调试 ===');
+  console.log('修改前数据 (original):', original);
+  console.log('修改后数据 (modified):', modified);
 
-    console.log('=== 费用字段对比调试 ===');
-    console.log('修改前数据 (original):', original);
-    console.log('修改后数据 (modified):', modified);
+  // 需要对比的字段列表（排除一些不需要展示的字段）
+  const excludeFields = [
+    // 系统字段
+    'id',
+    'transportOrderId',
+    'creationTime',
+    'lastModificationTime',
+    'creatorUserId',
+    'lastModifierUserId',
+    'isDeleted',
+    'deleterUserId',
+    'deletionTime',
+    'creatorUserName', // 创建人用户名
+    'dataEntryMethod', // 数据录入方式
+    'InvoiceBlocked',
+    'settledPrice',
+    'thisSettledPrice',
+    'taxRate',
+    'statements',
+    'isStatemented',
 
-    // 需要对比的字段列表（排除一些不需要展示的字段）
-    const excludeFields = [
-      // 系统字段
-      'id',
-      'transportOrderId',
-      'creationTime',
-      'lastModificationTime',
-      'creatorUserId',
-      'lastModifierUserId',
-      'isDeleted',
-      'deleterUserId',
-      'deletionTime',
-      'creatorUserName', // 创建人用户名
-      'dataEntryMethod', // 数据录入方式
-      'InvoiceBlocked',
-      'settledPrice',
-      'thisSettledPrice',
-      'taxRate',
-      'statements',
-      'isStatemented',
+    // 状态字段
+    'feeStatus', // 费用状态
+    'settlementStatus', // 结算状态
+    'invoiceStatus', // 开票状态
 
-      // 状态字段
-      'feeStatus', // 费用状态
-      'settlementStatus', // 结算状态
-      'invoiceStatus', // 开票状态
+    // ID类字段（包括各种大小写变体）
+    'feeCodeId',
+    'FeeCodeId',
+    'FEECODEID',
+    'currencyId',
+    'CurrencyId',
+    'CURRENCYID',
 
-      // ID类字段（包括各种大小写变体）
-      'feeCodeId',
-      'FeeCodeId',
-      'FEECODEID',
-      'currencyId',
-      'CurrencyId',
-      'CURRENCYID',
+    // 金额相关字段
+    'invoicedAmount', // 已开票金额
+    'orderInvoiceAmount', // 发票申请金额
+    'settledAmount', // 已结算金额
+    'thisSettledAmount', // 本结算金额
+    'rqstPaymentAmount', // 付费申请金额
+    'unRqstPaymentAmount', // 未申请金额
+    'unSettledAmount', // 未结算金额
+    'unInvoicedAmount', // 未开票金额
 
-      // 金额相关字段
-      'invoicedAmount', // 已开票金额
-      'orderInvoiceAmount', // 发票申请金额
-      'settledAmount', // 已结算金额
-      'thisSettledAmount', // 本结算金额
-      'rqstPaymentAmount', // 付费申请金额
-      'unRqstPaymentAmount', // 未申请金额
-      'unSettledAmount', // 未结算金额
-      'unInvoicedAmount', // 未开票金额
+    'amount',
+    'unitPrice',
+    'noTaxAmount',
+    'noTaxUnitPrice',
+    'IsConfidential', // 是否机密
+    'quantity',
+    'Unit',
+    'UnitPrice',
+    'statementId',
+    'settlementCode',
+    'statement',
+    'combinedFeeStatus',
 
-      'amount',
-      'unitPrice',
-      'noTaxAmount',
-      'noTaxUnitPrice',
-      'IsConfidential', // 是否机密
-      'quantity',
-      'Unit',
-      'UnitPrice',
-      'statementId',
-      'settlementCode',
-      'statement',
-      'combinedFeeStatus',
+    'Settlement',
+    'FeeCode',
+    'feeCodeId',
+    'Currency',
+    'localCurrencyId',
+    'localCurrency',
+    'currencyId',
+    'SettlementId',
 
-      'Settlement',
-      'FeeCode',
-      'feeCode',
-      'Currency',
-      'localCurrencyId',
-      'localCurrency',
-      'currency',
-      'settlement',
+    // 其他字段（包括各种大小写变体）
+    'localCurrencyCode', // 本位币代码
+    'Remark',
+    'ExchangeRate',
+    'CurrencyCode',
+    'FeeCodeCode',
+    'invoices',
 
-      // 其他字段（包括各种大小写变体）
-      'localCurrencyCode', // 本位币代码
-      'Remark',
-      'ExchangeRate',
-      'CurrencyCode',
-      'FeeCodeCode',
+    'industryCategory',
+    'IndustryCategory',
+    'INDUSTRYCATEGORY',
 
-      'industryCategory',
-      'IndustryCategory',
-      'INDUSTRYCATEGORY',
+    // 关联对象和数组字段
+    'transportOrder', // 运输订单
+    'submitOrderFeeTasks', // 提交费用任务
+    'modifyOrderFeeTasks', // 修改费用任务
+    'deleteOrderFeeTasks', // 删除费用任务
+    'userId', // 用户ID
+    'orgId', // 归属组织ID
+    'orgs', // 组织串
 
-      // 关联对象和数组字段
-      'transportOrder', // 运输订单
-      'submitOrderFeeTasks', // 提交费用任务
-      'modifyOrderFeeTasks', // 修改费用任务
-      'deleteOrderFeeTasks', // 删除费用任务
-      'userId', // 用户ID
-      'orgId', // 归属组织ID
-      'orgs', // 组织串
-    ];
+    'settlementId',
+    'taskStatus',
+    'ModificationCount',
+    '_settlementName',
+    'rowKey',
+    'feeCodeId_value',
+    'industryCategory_value',
+    'currencyid_value',
+    'unit_value',
+    'settlementId_value',
+    'feeCodeId_label_converted',
+    '__settlementName',
+    '_rowKey',
+    'currencyId_value',
+    'industryCategory_label_converted',
+    'currencyId_label_converted',
+    'unit_label_converted',
+    'settlementId_label_converted',
+  ];
 
-    const changes: Array<{
-      field: string;
-      label: string;
-      before: any;
-      after: any;
-    }> = [];
+  const changes: Array<{
+    field: string;
+    label: string;
+    before: any;
+    after: any;
+  }> = [];
 
-    // 字段映射（英文字段名 -> 中文标签）
-    const fieldLabels: Record<string, string> = {
-      paySide: '收付类型',
-      feeStatus: '费用状态',
-      invoiceStatus: '开票状态',
-      settlementStatus: '结算状态',
-      feeCodeId: '费用代码ID',
-      feeCodeName: '费用名称',
-      industryCategory: '行业类别',
-      industryCategories: '行业类别字母',
-      settlementId: '结算对象ID',
-      settlementName: '结算对象名称',
-      currencyId: '币别ID',
-      currencyName: '币别名称',
-      exchangeRate: '汇率',
-      UnitPrice: '含税单价',
-      Amount: '金额',
-      unit: '单位',
-      Quantity: '数量',
-      TaxRate: '税率',
-      NoTaxUnitPrice: '不含税单价',
-      NoTaxAmount: '不含税金额',
-      RqstPaymentAmount: '付费申请金额',
-      InvoicedAmount: '已开票金额',
-      OrderInvoiceAmount: '发票申请金额',
-      SettledAmount: '已结算金额',
-      unRqstPaymentAmount: '未申请金额',
-      unSettledAmount: '未结算金额',
-      unInvoicedAmount: '未开票金额',
-      invoiceBlocked: '不允许开票',
-      isConfidential: '是否机密',
-      dataEntryMethod: '数据录入方式',
-      remark: '备注',
-      localCurrencyCode: '本位币代码',
-      feeCodeCode: '费用代码编码',
-      currencyCode: '币别代码',
-    };
+  // 字段映射（英文字段名 -> 中文标签）
+  const fieldLabels: Record<string, string> = {
+    paySide: '收付类型',
+    feeStatus: '费用状态',
+    invoiceStatus: '开票状态',
+    settlementStatus: '结算状态',
+    feeCode: '费用代码',
+    feeCodeName: '费用名称',
+    industryCategory: '行业类别',
+    industryCategories: '行业类别字母',
+    settlement: '结算对象',
+    settlementName: '结算对象名称',
+    currency: '币别',
+    currencyName: '币别名称',
+    exchangeRate: '汇率',
+    UnitPrice: '含税单价',
+    Amount: '金额',
+    unit: '单位',
+    Quantity: '数量',
+    TaxRate: '税率',
+    NoTaxUnitPrice: '不含税单价',
+    NoTaxAmount: '不含税金额',
+    RqstPaymentAmount: '付费申请金额',
+    InvoicedAmount: '已开票金额',
+    OrderInvoiceAmount: '发票申请金额',
+    SettledAmount: '已结算金额',
+    unRqstPaymentAmount: '未申请金额',
+    unSettledAmount: '未结算金额',
+    unInvoicedAmount: '未开票金额',
+    invoiceBlocked: '不允许开票',
+    isConfidential: '是否机密',
+    dataEntryMethod: '数据录入方式',
+    remark: '备注',
+    localCurrencyCode: '本位币代码',
+    feeCodeCode: '费用代码编码',
+    currencyCode: '币别代码',
+  };
 
-    // 创建反向映射（中文标签 -> 英文字段名），用于统一字段名
-    const reverseFieldLabels: Record<string, string> = {};
-    Object.entries(fieldLabels).forEach(([engKey, cnLabel]) => {
-      reverseFieldLabels[cnLabel] = engKey;
-    });
+  // 创建反向映射（中文标签 -> 英文字段名），用于统一字段名
+  const reverseFieldLabels: Record<string, string> = {};
+  Object.entries(fieldLabels).forEach(([engKey, cnLabel]) => {
+    reverseFieldLabels[cnLabel] = engKey;
+  });
 
-    // 标准化字段名的函数：将中文字段名转换为英文字段名
-    const normalizeFieldName = (fieldName: string): string => {
-      // 如果已经是英文字段名，直接返回
-      if (fieldLabels[fieldName]) {
-        return fieldName;
-      }
-      // 如果是中文字段名，转换为英文字段名
-      if (reverseFieldLabels[fieldName]) {
-        return reverseFieldLabels[fieldName];
-      }
-      // 否则返回原字段名
+  // 标准化字段名的函数：将中文字段名转换为英文字段名
+  const normalizeFieldName = (fieldName: string): string => {
+    // 如果已经是英文字段名，直接返回
+    if (fieldLabels[fieldName]) {
       return fieldName;
-    };
+    }
+    // 如果是中文字段名，转换为英文字段名
+    if (reverseFieldLabels[fieldName]) {
+      return reverseFieldLabels[fieldName];
+    }
+    // 否则返回原字段名
+    return fieldName;
+  };
 
-    // 获取字段值的辅助函数：尝试多种可能的字段名
-    const getFieldValue = (data: any, normalizedKey: string): any => {
-      // 1. 先尝试使用标准化后的英文字段名
-      if (normalizedKey in data) {
-        return data[normalizedKey];
+  // 获取字段值的辅助函数：尝试多种可能的字段名
+  const getFieldValue = (data: any, normalizedKey: string): any => {
+    // 1. 先尝试使用标准化后的英文字段名
+    if (normalizedKey in data) {
+      return data[normalizedKey];
+    }
+
+    // 2. 尝试使用原始大小写变体（如 SettlementName, settlementName）
+    for (const key of Object.keys(data)) {
+      if (key.toLowerCase() === normalizedKey.toLowerCase()) {
+        return data[key];
       }
+    }
 
-      // 2. 尝试使用原始大小写变体（如 SettlementName, settlementName）
-      for (const key of Object.keys(data)) {
-        if (key.toLowerCase() === normalizedKey.toLowerCase()) {
-          return data[key];
-        }
+    // 3. 尝试使用中文字段名
+    const cnLabel = fieldLabels[normalizedKey];
+    if (cnLabel && cnLabel in data) {
+      return data[cnLabel];
+    }
+
+    // 4. 返回 undefined
+    return undefined;
+  };
+
+  // 合并所有需要检查的字段（包括修改前和修改后的所有字段）
+  const allFields = new Set([
+    ...Object.keys(original).filter((key) => !excludeFields.includes(key)),
+    ...Object.keys(modified).filter((key) => !excludeFields.includes(key)),
+  ]);
+
+  console.log('需要对比的所有字段:', Array.from(allFields));
+
+  // 遍历所有字段，找出变化的
+  allFields.forEach((key) => {
+    // 标准化字段名，确保中英文都能正确匹配
+    const normalizedKey = normalizeFieldName(key);
+
+    // 使用辅助函数获取值，尝试多种可能的字段名
+    let before = getFieldValue(original, normalizedKey);
+    let after = getFieldValue(modified, normalizedKey);
+
+    // 如果值不同，则记录变化
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      before =
+        JSON.stringify(before) === 'true'
+          ? '是'
+          : JSON.stringify(before) === 'false'
+            ? '否'
+            : before;
+      after =
+        JSON.stringify(after) === 'true'
+          ? '是'
+          : JSON.stringify(after) === 'false'
+            ? '否'
+            : after;
+      before = before === null ? '-' : before;
+      after = after === null ? '-' : after;
+
+      if (normalizedKey === 'feeCode') {
+        before = before.CnName ?? before.cnName;
+        after = after.cnName;
       }
-
-      // 3. 尝试使用中文字段名
-      const cnLabel = fieldLabels[normalizedKey];
-      if (cnLabel && cnLabel in data) {
-        return data[cnLabel];
+      if (normalizedKey === 'currency') {
+        before = before.Code ?? before.code;
+        after = after.code;
       }
-
-      // 4. 返回 undefined
-      return undefined;
-    };
-
-    // 合并所有需要检查的字段（包括修改前和修改后的所有字段）
-    const allFields = new Set([
-      ...Object.keys(original).filter((key) => !excludeFields.includes(key)),
-      ...Object.keys(modified).filter((key) => !excludeFields.includes(key)),
-    ]);
-
-    console.log('需要对比的所有字段:', Array.from(allFields));
-
-    // 遍历所有字段，找出变化的
-    allFields.forEach((key) => {
-      // 标准化字段名，确保中英文都能正确匹配
-      const normalizedKey = normalizeFieldName(key);
-
-      // 使用辅助函数获取值，尝试多种可能的字段名
-      let before = getFieldValue(original, normalizedKey);
-      let after = getFieldValue(modified, normalizedKey);
-
-      // 如果值不同，则记录变化
-      if (JSON.stringify(before) !== JSON.stringify(after)) {
-        before =
-          JSON.stringify(before) === 'true'
-            ? '是'
-            : JSON.stringify(before) === 'false'
-              ? '否'
-              : before;
-        after =
-          JSON.stringify(after) === 'true'
-            ? '是'
-            : JSON.stringify(after) === 'false'
-              ? '否'
-              : after;
-        before = before === null ? '-' : before;
-        after = after === null ? '-' : after;
-        changes.push({
-          field: normalizedKey,
-          label: fieldLabels[normalizedKey] || normalizedKey, // 统一使用中文标签
-          before: before ?? '-',
-          after: after ?? '-',
-        });
+      if (normalizedKey === 'settlement') {
+        before = before.Name || before.name;
+        after = after.name;
       }
-    });
+      changes.push({
+        field: normalizedKey,
+        label: fieldLabels[normalizedKey] || normalizedKey, // 统一使用中文标签
+        before: before ?? '-',
+        after: after ?? '-',
+      });
+    }
+  });
 
-    console.log('检测到的字段变化数量:', changes.length);
-    console.log('变化的字段详情:', changes);
-    console.log('========================');
+  console.log('检测到的字段变化数量:', changes.length);
+  console.log('变化的字段详情:', changes);
+  console.log('========================');
 
-    return changes;
-  } catch (error) {
-    console.error('解析修改记录失败:', error);
-    console.error('原始数据:', originalInfo);
-    console.error('修改数据:', info);
-    return [];
-  }
+  return changes;
 };
 
 // 获取修改记录的表格列定义
@@ -390,7 +511,14 @@ defineExpose({
           :color="getTaskTypeTag(task.taskType)?.color || 'gray'"
         >
           <template #dot>
-            <div class="timeline-dot" />
+            <div
+              class="timeline-dot"
+              :class="{
+                'status-rejected': task.taskStatus === 1,
+                'status-approved': task.taskStatus === 2,
+                'status-pending': !task.auditTime,
+              }"
+            />
           </template>
           <div class="audit-item">
             <!-- 第一行：核心信息 -->
@@ -410,6 +538,7 @@ defineExpose({
                 :title="`审核时间: ${task.auditTime ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
               >
                 <i class="i-carbon-calendar" />
+                审核时间:
                 {{
                   task.auditTime
                     ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss')
@@ -450,10 +579,27 @@ defineExpose({
               </Tag>
             </div>
 
-            <!-- 第二行：提交人信息（如果有） -->
-            <div v-if="task.creatorUserName" class="audit-submitter">
-              <span class="submitter-label">提交人:</span>
-              <span class="submitter-name">{{ task.creatorUserName }}</span>
+            <!-- 第二行：创建时间和提交人信息 -->
+            <div class="audit-meta-info">
+              <!-- 创建时间 -->
+              <span
+                class="meta-item create-time"
+                :title="`创建时间: ${task.creationTime ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
+              >
+                <i class="i-carbon-time" />
+                创建时间:
+                {{
+                  task.creationTime
+                    ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss')
+                    : '-'
+                }}
+              </span>
+
+              <!-- 提交人 -->
+              <span v-if="task.creatorUserName" class="meta-item submitter">
+                <i class="i-carbon-user-avatar" />
+                提交人: {{ task.creatorUserName }}
+              </span>
             </div>
 
             <!-- 第三行：审核意见 -->
@@ -462,9 +608,9 @@ defineExpose({
               <div class="remark-content">{{ task.remark }}</div>
             </div>
 
-            <!-- 第四行：修改记录对比（仅费用修改类型显示） -->
+            <!-- 第四行：修改记录对比（费用修改类型显示） -->
             <div
-              v-if="task.taskType === 1 && task.originalInfo && task.info"
+              v-if="task.taskType === 1 && task.info"
               class="modify-record-section"
             >
               <!-- 标题区域 -->
@@ -472,6 +618,9 @@ defineExpose({
                 <div class="header-left">
                   <i class="i-carbon-compare header-icon" />
                   <span class="header-title">费用修改详情</span>
+                  <Tag v-if="!task.auditTime" color="warning" class="ml-2">
+                    待审核
+                  </Tag>
                 </div>
                 <div class="header-badges">
                   <span class="badge badge-before">
@@ -491,7 +640,14 @@ defineExpose({
                 <Table
                   :columns="getModifyColumns()"
                   :data-source="
-                    parseAndCompareFields(task.originalInfo, task.info)
+                    parseAndCompareFields(
+                      task.originalInfo,
+                      task.info,
+                      !task.auditTime ? currentFeeData : null,
+                      task.taskStatus === 1
+                        ? getPreviousModifyTaskInfo(task)
+                        : null,
+                    )
                   "
                   :pagination="false"
                   size="middle"
@@ -569,6 +725,25 @@ defineExpose({
   height: 12px;
   background-color: currentcolor;
   border-radius: 50%;
+  transition: all 0.3s ease;
+
+  // 审核驳回 - 红色
+  &.status-rejected {
+    background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
+    box-shadow: 0 0 0 2px rgb(255 77 79 / 20%);
+  }
+
+  // 审核通过 - 绿色
+  &.status-approved {
+    background: linear-gradient(135deg, #73d13d 0%, #52c41a 100%);
+    box-shadow: 0 0 0 2px rgb(82 196 26 / 20%);
+  }
+
+  // 待审核 - 橙色
+  &.status-pending {
+    background: linear-gradient(135deg, #ffc53d 0%, #faad14 100%);
+    box-shadow: 0 0 0 2px rgb(250 173 20 / 20%);
+  }
 }
 
 .audit-item {
@@ -614,6 +789,14 @@ defineExpose({
       font-size: 14px;
       color: #595959;
     }
+
+    &.audit-create-time {
+      color: #595959;
+
+      i {
+        color: #faad14;
+      }
+    }
   }
 
   .task-type-tag {
@@ -646,6 +829,39 @@ defineExpose({
   .submitter-name {
     font-weight: 500;
     color: #262626;
+  }
+}
+
+// 元信息行（创建时间和提交人）
+.audit-meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 0;
+
+  .meta-item {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 13px;
+    color: #595959;
+
+    i {
+      font-size: 14px;
+    }
+
+    &.create-time {
+      i {
+        color: #faad14;
+      }
+    }
+
+    &.submitter {
+      i {
+        color: #1890ff;
+      }
+    }
   }
 }
 

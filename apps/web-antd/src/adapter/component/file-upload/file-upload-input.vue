@@ -20,6 +20,7 @@ import {
   Spin,
   Tooltip,
   Upload,
+  UploadDragger,
 } from 'ant-design-vue';
 
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
@@ -58,6 +59,8 @@ interface Props {
   maxSizeMB?: number;
   /** 绑定值 */
   modelValue?: Attachment[];
+  /** 是否启用拖拽上传 */
+  drag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -69,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
   maxCount: Number.POSITIVE_INFINITY,
   maxSizeMB: 20,
   modelValue: undefined,
+  drag: false,
 });
 
 const emit = defineEmits<{
@@ -105,7 +109,7 @@ const fileList = computed<UploadProps['fileList']>(() =>
       : undefined;
     return {
       uid: String(attachment.attachmentId),
-      name: attachment.fileName || attachment.friendlyFileName,
+      name: (attachment.fileName || attachment.friendlyFileName) ?? '',
       status: 'done' as const,
       url: fullUrl,
       thumbUrl: fullUrl,
@@ -206,10 +210,15 @@ const handleBeforeUpload = async (
 
     // 接口返回的是数组，取第一个结果
     if (resultList && resultList.length > 0) {
-      const attachment = mapResultToAttachment(resultList[0]);
-      innerValue.value.push(attachment);
-      emitUpdate();
-      message.success($t('component.fileUpload.uploadSuccess'));
+      const resultItem = resultList[0];
+      if (resultItem) {
+        const attachment = mapResultToAttachment(resultItem);
+        innerValue.value.push(attachment);
+        emitUpdate();
+        message.success($t('component.fileUpload.uploadSuccess'));
+      } else {
+        message.error($t('component.fileUpload.uploadFailed'));
+      }
     } else {
       message.error($t('component.fileUpload.uploadFailed'));
     }
@@ -278,6 +287,162 @@ const handleChange = (info: UploadChangeParam) => {
   }
 };
 
+/** 处理拖拽区域的文件放置 */
+const handleDrop = async (e: DragEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (props.disabled || isMaxCount.value) {
+    return;
+  }
+
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+
+  // 逐个处理文件
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file) {
+      // 检查是否达到最大数量
+      if (innerValue.value.length >= props.maxCount) {
+        message.warning(
+          $t('component.fileUpload.maxCountExceeded', [props.maxCount]),
+        );
+        break;
+      }
+
+      // 验证文件类型
+      if (!isAllowedType(file)) {
+        message.error($t('component.fileUpload.typeNotAllowed'));
+        continue;
+      }
+
+      // 验证文件大小
+      if (!isAllowedSize(file)) {
+        message.error(
+          $t('component.fileUpload.sizeExceeded', [props.maxSizeMB]),
+        );
+        continue;
+      }
+
+      // 开始上传
+      const uid = `${Date.now()}-${i}`;
+      uploadingUids.value.add(uid);
+
+      try {
+        const formData = new FormData();
+        formData.append(props.fieldName, file);
+
+        const resultList = await uploadFile(formData);
+
+        // 接口返回的是数组，取第一个结果
+        if (resultList && resultList.length > 0) {
+          const resultItem = resultList[0];
+          if (resultItem) {
+            const attachment = mapResultToAttachment(resultItem);
+            innerValue.value.push(attachment);
+            emitUpdate();
+            message.success($t('component.fileUpload.uploadSuccess'));
+          } else {
+            message.error($t('component.fileUpload.uploadFailed'));
+          }
+        } else {
+          message.error($t('component.fileUpload.uploadFailed'));
+        }
+      } catch (error: any) {
+        console.error('Upload failed:', error);
+        message.error($t('component.fileUpload.uploadFailed'));
+      } finally {
+        uploadingUids.value.delete(uid);
+      }
+    }
+  }
+};
+
+/** 处理文件选择（通过点击） */
+const handleFileSelect = async (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const files = target.files;
+  if (!files || files.length === 0) return;
+
+  if (props.disabled || isMaxCount.value) {
+    return;
+  }
+
+  // 逐个处理文件
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file) {
+      // 检查是否达到最大数量
+      if (innerValue.value.length >= props.maxCount) {
+        message.warning(
+          $t('component.fileUpload.maxCountExceeded', [props.maxCount]),
+        );
+        break;
+      }
+
+      // 验证文件类型
+      if (!isAllowedType(file)) {
+        message.error($t('component.fileUpload.typeNotAllowed'));
+        continue;
+      }
+
+      // 验证文件大小
+      if (!isAllowedSize(file)) {
+        message.error(
+          $t('component.fileUpload.sizeExceeded', [props.maxSizeMB]),
+        );
+        continue;
+      }
+
+      // 开始上传
+      const uid = `${Date.now()}-${i}`;
+      uploadingUids.value.add(uid);
+
+      try {
+        const formData = new FormData();
+        formData.append(props.fieldName, file);
+
+        const resultList = await uploadFile(formData);
+
+        // 接口返回的是数组，取第一个结果
+        if (resultList && resultList.length > 0) {
+          const resultItem = resultList[0];
+          if (resultItem) {
+            const attachment = mapResultToAttachment(resultItem);
+            innerValue.value.push(attachment);
+            emitUpdate();
+            message.success($t('component.fileUpload.uploadSuccess'));
+          } else {
+            message.error($t('component.fileUpload.uploadFailed'));
+          }
+        } else {
+          message.error($t('component.fileUpload.uploadFailed'));
+        }
+      } catch (error: any) {
+        console.error('Upload failed:', error);
+        message.error($t('component.fileUpload.uploadFailed'));
+      } finally {
+        uploadingUids.value.delete(uid);
+      }
+    }
+  }
+
+  // 清空input，允许重复选择同一文件
+  target.value = '';
+};
+
+/** 触发文件选择 */
+const triggerFileSelect = () => {
+  if (props.disabled || isMaxCount.value) {
+    return;
+  }
+  fileInput.value?.click();
+};
+
+/** 文件输入引用 */
+const fileInput = ref<HTMLInputElement>();
+
 /** 暴露方法 */
 defineExpose({
   /** 获取当前附件列表 */
@@ -295,7 +460,44 @@ defineExpose({
     class="file-upload-input"
     :class="{ 'file-upload-input--card': isPictureCard }"
   >
+    <!-- 拖拽上传模式 -->
+    <template v-if="drag && !disabled">
+      <div
+        class="upload-dragger"
+        :class="{ 'upload-dragger-disabled': isUploading || isMaxCount }"
+        @dragover.prevent
+        @dragenter.prevent
+        @drop="handleDrop"
+        @click="triggerFileSelect"
+      >
+        <input
+          ref="fileInput"
+          type="file"
+          multiple
+          :accept="allowedTypes.join(',')"
+          style="display: none"
+          @change="handleFileSelect"
+        />
+        <p class="upload-dragger-icon">
+          <IconifyIcon
+            icon="mdi:cloud-upload-outline"
+            class="text-4xl text-blue-500"
+          />
+        </p>
+        <p class="upload-dragger-text">
+          {{
+            $t('component.fileUpload.dragTip') || '点击或拖拽文件到此区域上传'
+          }}
+        </p>
+        <p class="upload-dragger-hint">
+          {{ $t('component.fileUpload.dragHint') || '支持多文件上传' }}
+        </p>
+      </div>
+    </template>
+
+    <!-- 传统按钮上传模式 -->
     <Upload
+      v-else
       :file-list="fileList"
       :list-type="listType"
       :disabled="disabled"
@@ -308,6 +510,7 @@ defineExpose({
       @change="handleChange"
       @remove="handleRemove"
       @preview="handlePreview"
+      v-bind="$attrs"
     >
       <div
         v-if="isPictureCard && !isMaxCount && !disabled"
@@ -348,7 +551,56 @@ defineExpose({
         }}
       </Button>
     </Upload>
-    <div v-if="!disabled" class="mt-1 text-xs text-gray-400">
+
+    <!-- 已上传文件列表 -->
+    <div v-if="innerValue.length > 0" class="mt-4">
+      <div class="mb-2 text-sm font-medium text-gray-700">
+        {{ $t('component.fileUpload.uploadedFiles') || '已上传文件' }} ({{
+          innerValue.length
+        }})
+      </div>
+      <div class="max-h-20 overflow-y-auto rounded border border-gray-200 p-2">
+        <div
+          v-for="(file, index) in innerValue"
+          :key="file.attachmentId"
+          class="flex items-center justify-between rounded px-2 py-1.5 hover:bg-gray-50"
+        >
+          <div class="flex min-w-0 flex-1 items-center gap-2">
+            <IconifyIcon
+              :icon="
+                file.fileName?.match(/\.(pdf|doc|docx)$/i)
+                  ? 'mdi:file-document-outline'
+                  : file.fileName?.match(/\.(xls|xlsx)$/i)
+                    ? 'mdi:file-excel-outline'
+                    : isImageFile(file.fileName)
+                      ? 'mdi:file-image-outline'
+                      : 'mdi:file-outline'
+              "
+              class="flex-shrink-0 text-gray-400"
+            />
+            <span
+              class="truncate text-sm"
+              :title="file.friendlyFileName || file.fileName"
+            >
+              {{ file.friendlyFileName || file.fileName }}
+            </span>
+          </div>
+          <Button
+            v-if="!disabled"
+            type="text"
+            danger
+            size="small"
+            @click="
+              handleRemove({ uid: String(file.attachmentId) } as UploadFile)
+            "
+          >
+            <IconifyIcon icon="mdi:close" class="size-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="!disabled && !drag" class="mt-1 text-xs text-gray-400">
       <span v-if="allowedTypes.length > 0">
         {{ $t('component.fileUpload.allowedTypes') }}:
         {{ allowedTypes.join(', ') }}
@@ -372,14 +624,14 @@ defineExpose({
         <Image
           :src="previewImageUrl"
           :preview="false"
-          style="max-width: 100%; max-height: 70vh; object-fit: contain"
+          style="max-width: 100%; max-height: 60vh; object-fit: contain"
         />
       </div>
     </Modal>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .file-upload-input {
   width: 100%;
 }
@@ -387,7 +639,7 @@ defineExpose({
 .file-upload-input--card :deep(.ant-upload-select-picture-card),
 .file-upload-input--card :deep(.ant-upload-list-item-container) {
   width: 104px;
-  height: 104px;
+  height: 84px;
   margin-block: 0 8px;
   margin-inline: 0 8px;
 }
@@ -398,5 +650,42 @@ defineExpose({
   align-items: center;
   justify-content: center;
   color: #8c8c8c;
+}
+
+.upload-dragger {
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  background-color: #fafafa;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  transition: all 0.3s;
+
+  &:hover {
+    background-color: #f0f9ff;
+    border-color: #40a9ff;
+  }
+
+  &-disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.upload-dragger-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.upload-dragger-text {
+  margin-bottom: 8px;
+  font-size: 16px;
+  color: rgb(0 0 0 / 85%);
+}
+
+.upload-dragger-hint {
+  font-size: 14px;
+  color: rgb(0 0 0 / 45%);
 }
 </style>

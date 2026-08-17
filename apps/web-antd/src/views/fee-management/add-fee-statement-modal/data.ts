@@ -320,7 +320,7 @@ export function useOrderFixedColumns() {
       ellipsis: true,
       customRender: ({ record }: any) => {
         // 优先从 seaExport.pol.portName 获取，其次从 polName 获取
-        return record.seaExport?.pol?.portName || record.polName || '-';
+        return record.seaExport?.pol?.polRemark || record.polName || '-';
       },
     },
     {
@@ -330,7 +330,7 @@ export function useOrderFixedColumns() {
       ellipsis: true,
       customRender: ({ record }: any) => {
         // 优先从 seaExport.pod.portName 获取，其次从 podName 获取
-        return record.seaExport?.pod?.portName || record.podName || '-';
+        return record.seaExport?.pod?.podRemark || record.podName || '-';
       },
     },
   ];
