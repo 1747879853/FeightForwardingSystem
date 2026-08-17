@@ -21,7 +21,7 @@ interface Props {
   /**
    * 选中后输入框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
    * 或特殊值 `'iataEnName'`（`三字码/英文名称`，默认）、
-   * `'iataCnName'`（`三字码/中文名称`，空运业务用）
+   * `'iataCnName'`（`三字码/中文名称`）
    */
   labelKey?: string | string[];
   /** 每页数量，默认 20 */
@@ -86,7 +86,6 @@ const resolveLabel = (
     return iataCode && enName ? `${iataCode}/${enName}` : fallback;
   }
 
-  // 空运出口的空港一律展示成「三字码/中文名」，缺一项时只展示有的那一项
   if (labelKey === 'iataCnName') {
     if (iataCode && cnName) return `${iataCode}/${cnName}`;
     return iataCode || cnName || fallback;

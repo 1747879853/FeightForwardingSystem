@@ -99,15 +99,20 @@ const DATE_ONLY_PICKER_PROPS = {
   format: 'YYYY-MM-DD',
 };
 
-/** 空港展示：三字码/中文名，缺一项时只展示有的那一项，不留孤立斜杠 */
+/** 列表空港列：三字码/英文名，缺一项时只展示有的那一项，不留孤立斜杠 */
 export const formatAirPortLabel = (
   port?: AirExportAdminApi.AirPortSimpleDto | null,
 ) => {
   const iataCode = (port?.iataCode ?? '').trim();
-  const cnName = (port?.cnName ?? '').trim();
-  if (iataCode && cnName) return `${iataCode}/${cnName}`;
-  return iataCode || cnName || '';
+  const enName = (port?.enName ?? '').trim();
+  if (iataCode && enName) return `${iataCode}/${enName}`;
+  return iataCode || enName || '';
 };
+
+/** 选中空港后备注回填英文名 */
+export const formatAirPortRemark = (
+  port?: AirExportAdminApi.AirPortSimpleDto | null,
+) => (port?.enName ?? '').trim();
 
 /** 危险品扩展字段名（表单顶层拍平） */
 export const DG_FIELD_NAMES = [
@@ -358,7 +363,7 @@ const sumCtnField = (
 
 const airPortSelectProps = {
   allowClear: true,
-  labelKey: 'iataCnName',
+  labelKey: 'iataCode',
   placeholder: $t('ui.placeholder.select'),
 };
 
@@ -1457,7 +1462,7 @@ function buildAirPortSelectProps(
 ) {
   return {
     allowClear: true,
-    labelKey: 'iataCnName',
+    labelKey: 'iataCode',
     placeholder: $t('ui.placeholder.select'),
     ...(onAirPortChange
       ? {

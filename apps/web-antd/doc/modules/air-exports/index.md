@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -41,7 +41,7 @@ last_updated: 2026-08-16
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **委托编号** | 空运委托的业务识别号。 | `transportOrder.commissionNum` | **触发/依赖：** 贯穿列表、编辑与费用。 | 不填由后端按 `AirExport.CommissionNum` 规则生成。 |
-| **起运地 / 中转地 / 目的地** | 空运三段航段。 | `pol` / `pot` / `pod` 对象（`App_AirPorts`） | **触发/依赖：** 展示为「三字码/中文名」，不带出国家、城市、时区。 | 都不必填。 |
+| **起运地 / 中转地 / 目的地** | 空运三段航段。 | `pol` / `pot` / `pod` 对象（`App_AirPorts`） | **触发/依赖：** 列表列展示为「三字码/英文名」；筛选下拉选中后只回显三字码。 | 都不必填。 |
 | **体积重合计 / 计费重合计** | 整票的体积重、计费重。 | 由 `airExportOrderCtns` 各行相加 | **触发/依赖：** 后端不返回票级合计字段，界面自行汇总。 | 无。 |
 | **应收状态 / 应付状态** | 组合费用状态。 | `receiveFeeStatus` / `payFeeStatus` | **触发/依赖：** 无该方向费用时为 `null`。 | 只读。 |
 | **运踪状态** | 订阅与推送四态展示。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` / `yundangAirShipmentNode` | **触发/依赖：** 有查看权限可点开运踪详情。 | 只读；订阅权限与编辑权限独立。 |
@@ -58,6 +58,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Fix` | 筛选空港选中后只回显三字码；列表列改为「三字码/英文名」。 | 搜索区 `labelKey=iataCode`；列走 `formatAirPortLabel`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 列表运踪弹窗新增「轨迹节点」时间轴（合并五类事件，区分实际/预计/当前）。 | 列表不下发 `feituoTrackingDetail`，弹窗打开后按 Id 补一次业务单详情取事件；该请求失败只是没有时间轴，不影响摘要展示。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：空运仅空出改用新服务商运踪（含 sjtd），订阅走 `SubscribeAirWaybillAsync`（主运单号数字须 11 位、`trackingLoaded=false` 非失败）；空运摘要不含轨迹链接故地图由前端按 env 拼 URL；空进不做；用户侧不出现服务商名。见 [运踪能力品牌分流](../shared/feituo-tracking-brand-split.md)。 |

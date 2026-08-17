@@ -54,7 +54,7 @@ import {
   CARGO_TYPE,
   createEmptyDgValues,
   createEmptyReeferValues,
-  formatAirPortLabel,
+  formatAirPortRemark,
   getInputTypeOptions,
   pickAirPortSelectOption,
   useAirLegFormSchema,
@@ -234,7 +234,7 @@ const [DateForm, dateFormApi] = useVbenForm({
   wrapperClass: 'shipment-flow-wrap form-controls-small grid-cols-6 gap-x-8',
 });
 
-/** 选中空港后回填备注为「三字码/中文名」，用户仍可手改 */
+/** 选中空港后回填备注为英文名称，用户仍可手改 */
 const syncAirPortRemark = async (fieldName: string, option: unknown) => {
   const remarkField =
     fieldName === 'polId'
@@ -242,7 +242,7 @@ const syncAirPortRemark = async (fieldName: string, option: unknown) => {
       : fieldName === 'potId'
         ? 'potRemark'
         : 'podRemark';
-  const remark = formatAirPortLabel(pickAirPortSelectOption(option)?.raw);
+  const remark = formatAirPortRemark(pickAirPortSelectOption(option)?.raw);
   await airLegFormApi.setValues({ [remarkField]: remark });
 };
 

@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-16
 
 - **基础信息：** 委托编号/会计期间/应结日期只读；归属组织与业务来源内联在区块头部；委托单位必填。
 - **相关方：** 发货人、收货人、通知人及各自内容；收发通为灰色折叠条，点击展开/收起，**默认展开**（`v-show` 不销毁表单）。右侧独立面板维护干系人。
-- **航段信息：** 起运地 → 中转地 → 目的地三段，各带备注；选中空港后备注自动回填「三字码/中文名」，可手改；航班与订舱代理内联在「航段信息」标题右侧。
+- **航段信息：** 起运地 → 中转地 → 目的地三段，各带备注；选中空港后输入框回显三字码，备注自动回填英文名称，可手改；航班与订舱代理内联在「航段信息」标题右侧。
 - **日期信息：** 货好时间 → 送仓日期 → 报关日期 → 起飞日期 → 实际起飞日期 → 预抵日期。
 - **货物信息：** 从左到右为唛头货描、件重尺（含泡比）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一行（`PkgsPackageInput`，比例 1:3）；货物类型切换危险品区/冻柜区（超限箱不展示任何扩展区）；毛重或体积变化时重算泡比。
 - **货物明细：** 可增删行、上下移动，体积/体积重/计费重自动带出且允许手改。
@@ -67,6 +67,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Fix` | 选中空港后输入框只回显三字码，备注回填英文名称。 | `labelKey=iataCode`；备注走 `formatAirPortRemark`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 件数与包装合并为一行，交互对齐海运进口。 | `PkgsPackageInput`；`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-air-export-pkgs-package-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为灰色折叠条（默认展开）；内部/外部备注挪到货物区件重尺右侧，顶部 Tab 切换，样式对齐海运进口。 | 折叠与 Tab 均用 `v-show` / CSS 隐藏，勿 `v-if`。详见 `changelogs/change-log-2026-08-16-air-export-party-collapse-remark-tabs.md`。 |
