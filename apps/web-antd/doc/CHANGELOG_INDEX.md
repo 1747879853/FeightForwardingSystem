@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-17 码头船舶改为查询后人工引入并保存](./changelogs/change-log-2026-08-17-terminal-schedule-query-import.md)
 - [2026-08-17 业务联系单基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-pre-order-basic-field-order.md)
 - [2026-08-17 海运出口基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-sea-export-basic-info-field-order.md)
 - [2026-08-17 空运出口空港选中回显三字码、备注回填英文名](./changelogs/change-log-2026-08-17-air-export-airport-code-remark.md)

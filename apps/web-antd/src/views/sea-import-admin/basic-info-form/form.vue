@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+import type { TerminalScheduleItem } from '#/components/terminal-schedule';
 
 import {
   computed,
@@ -57,6 +58,7 @@ import {
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import {
   TerminalSchedulePickerModal,
+  buildTerminalScheduleFormPatch,
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
 import { useContainerTrackingSubscribe } from '#/components/tracking';
@@ -221,20 +223,20 @@ const BASIC_INFO_FIELD_ORDER_MAP = new Map(
   BASIC_INFO_FIELD_ORDER.map((fieldName, index) => [fieldName, index]),
 );
 
-/** 码头船舶同步：接口会写库，回填成功后必须重新拉详情 */
+/** 码头船舶：纯查询；有可引入数据才弹窗，确定后由前端回填并走原有保存 */
+const terminalScheduleApplying = ref(false);
 const {
-  confirmPick: confirmTerminalSchedule,
   pickerItems: terminalScheduleItems,
   pickerOpen: terminalSchedulePickerOpen,
   queryInfo: terminalScheduleQueryInfo,
   sync: handleTerminalScheduleSync,
-  syncing: terminalScheduleSyncing,
+  syncing: terminalScheduleQuerying,
 } = useTerminalScheduleSync({
   transportOrderId: editId,
-  onApplied: async () => {
-    await loadEditData();
-  },
 });
+const terminalScheduleSyncing = computed(
+  () => terminalScheduleQuerying.value || terminalScheduleApplying.value,
+);
 
 /** vessel 用 VesselVoyageInput 合并组件，componentProps 需保持函数以承载航次动态入参 */
 const buildVesselComponentProps =
@@ -1010,6 +1012,23 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     getCurrentTabKey: () => route.fullPath,
     router,
   });
+
+const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
+  terminalSchedulePickerOpen.value = false;
+  terminalScheduleApplying.value = true;
+  try {
+    const patch = buildTerminalScheduleFormPatch(
+      item,
+      terminalScheduleQueryInfo.value.bizType,
+    );
+    if (patch.innerVoyno) {
+      await basicInfoFormApi.setFieldValue('innerVoyno', patch.innerVoyno);
+    }
+    await handleSubmit();
+  } finally {
+    terminalScheduleApplying.value = false;
+  }
+};
 
 const { copying: copyingSeaImport, copyFrom } = useSeaImportCopy({
   checkDirty: isFormDirty,

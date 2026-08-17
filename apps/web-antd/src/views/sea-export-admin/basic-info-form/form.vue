@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { TerminalScheduleItem } from '#/components/terminal-schedule';
 
 import dayjs from 'dayjs';
 import {
@@ -78,6 +79,7 @@ import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import {
   TerminalSchedulePickerModal,
+  buildTerminalScheduleFormPatch,
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -86,6 +88,7 @@ import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
+  toDayjs,
   toPortObjectSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
@@ -492,20 +495,20 @@ const applyFrtPrepareByCodeFrt = async (
   await basicInfoFormApi.setFieldValue('prepareAtId', targetPortId);
 };
 
-/** 码头船舶同步：接口会写库，回填成功后必须重新拉详情 */
+/** 码头船舶：纯查询；有可引入数据才弹窗，确定后由前端回填并走原有保存 */
+const terminalScheduleApplying = ref(false);
 const {
-  confirmPick: confirmTerminalSchedule,
   pickerItems: terminalScheduleItems,
   pickerOpen: terminalSchedulePickerOpen,
   queryInfo: terminalScheduleQueryInfo,
   sync: handleTerminalScheduleSync,
-  syncing: terminalScheduleSyncing,
+  syncing: terminalScheduleQuerying,
 } = useTerminalScheduleSync({
   transportOrderId: editId,
-  onApplied: async () => {
-    await loadEditData();
-  },
 });
+const terminalScheduleSyncing = computed(
+  () => terminalScheduleQuerying.value || terminalScheduleApplying.value,
+);
 
 /**
  * vessel 用 VesselVoyageInput 合并组件，componentProps 必须是函数以承载航次动态入参。
@@ -2337,6 +2340,37 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     getCurrentTabKey: () => route.fullPath,
     router,
   });
+
+const applyTerminalSchedulePatch = async (item: TerminalScheduleItem) => {
+  const patch = buildTerminalScheduleFormPatch(
+    item,
+    terminalScheduleQueryInfo.value.bizType,
+  );
+  if (patch.innerVoyno) {
+    await basicInfoFormApi.setFieldValue('innerVoyno', patch.innerVoyno);
+  }
+  const dateFields = [
+    ['atd', patch.atd],
+    ['closeVgmTime', patch.closeVgmTime],
+    ['closeDocTime', patch.closeDocTime],
+    ['closeManifestTime', patch.closeManifestTime],
+  ] as const;
+  for (const [field, raw] of dateFields) {
+    const value = toDayjs(raw);
+    if (value) await shipmentFormApi.setFieldValue(field, value);
+  }
+};
+
+const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
+  terminalSchedulePickerOpen.value = false;
+  terminalScheduleApplying.value = true;
+  try {
+    await applyTerminalSchedulePatch(item);
+    await handleSubmit();
+  } finally {
+    terminalScheduleApplying.value = false;
+  }
+};
 
 const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
   useSeaExportCopy({

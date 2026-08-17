@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-16
 
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
-- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/SyncTerminalScheduleAsync`（只传业务单 Id）。进口侧后端只回填 3 个字段：`ETD` 开船日期、`ATD` 实际开船日期、`InnerVoyno` 航次（航次取飞驼 `ivoyage`）。命中唯一一条即回填并 `loadEditData()` 重拉详情；多条时弹窗单选后带 `key` 再调一次。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，飞驼的码头船舶计划以国内港区为主。
+- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填航次（`ivoyage` → `innerVoyno`）并走原有编辑保存；进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
@@ -60,6 +60,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Feature` | 「码头船舶」改为查询接口：有可引入数据才弹窗，确定引入后回填航次并自动保存；无数据只提示。 | 与海出共用 `QueryTerminalScheduleAsync`；进口仅映射 `ivoyage` → `innerVoyno`。详见 `changelogs/change-log-2026-08-17-terminal-schedule-query-import.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 两备注字段仍同时挂在 `cargoRemarkFormApi`；件数/包装用 `PkgsPackageInput`，`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 折叠用 `v-show` 保留表单实例；新建/编辑共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |

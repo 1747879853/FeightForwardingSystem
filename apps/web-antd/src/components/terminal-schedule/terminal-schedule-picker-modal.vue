@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { FeituoTerminalScheduleAdminApi } from '#/api/schedule/feituo-terminal-schedule-admin';
-
 import type { TerminalScheduleQueryInfo } from './use-terminal-schedule-sync';
 
 import { computed, ref, watch } from 'vue';
@@ -9,11 +7,15 @@ import { Alert, message, Modal, Table, Tag } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 
-type ScheduleItem = FeituoTerminalScheduleAdminApi.TerminalScheduleItemDto;
+import {
+  type TerminalScheduleItem,
+  type TerminalSchedulePickerRow,
+  TERMINAL_SCHEDULE_BIZ_TYPE,
+} from './use-terminal-schedule-sync';
 
 interface Props {
   open: boolean;
-  items: ScheduleItem[];
+  items: TerminalSchedulePickerRow[];
   loading?: boolean;
   queryInfo?: TerminalScheduleQueryInfo;
 }
@@ -25,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  confirm: [selectedKey: string];
+  confirm: [item: TerminalScheduleItem];
 }>();
 
 const selectedKey = ref<string>();
@@ -43,20 +45,22 @@ function formatTime(value: unknown): string {
 }
 
 const TIME_COLUMN_KEYS = new Set([
-  'ata',
   'atd',
   'cyClosing',
   'cyOpen',
-  'eta',
+  'customsCloseDate',
   'etd',
-  'updateTime',
+  'portCloseDate',
 ]);
 
 function isTimeColumn(key: unknown): boolean {
   return TIME_COLUMN_KEYS.has(String(key));
 }
 
-function getTimeCellText(record: ScheduleItem, dataIndex: unknown): string {
+function getTimeCellText(
+  record: TerminalScheduleItem,
+  dataIndex: unknown,
+): string {
   return formatTime((record as Record<string, unknown>)[String(dataIndex)]);
 }
 
@@ -68,7 +72,9 @@ const STATUS_COLORS: Record<string, string> = {
   预报: 'blue',
 };
 
-const isImport = computed(() => props.queryInfo?.isExport === 'I');
+const isImport = computed(
+  () => props.queryInfo?.bizType === TERMINAL_SCHEDULE_BIZ_TYPE.SeaImport,
+);
 
 /** 船期状态仅上海港返回，全为空时不展示该列 */
 const hasStatus = computed(() =>
@@ -87,13 +93,7 @@ const columns = computed(() => {
       title: t('vessel'),
       width: 170,
     },
-    { dataIndex: 'evoyage', key: 'voyage', title: t('voyage'), width: 100 },
-    {
-      dataIndex: 'shipName',
-      key: 'shipName',
-      title: t('shipName'),
-      width: 100,
-    },
+    { dataIndex: 'evoyage', key: 'voyage', title: t('voyage'), width: 110 },
     { dataIndex: 'terminal', key: 'terminal', title: t('terminal'), width: 86 },
     { dataIndex: 'etd', key: 'etd', title: t('etd'), width: 126 },
     { dataIndex: 'atd', key: 'atd', title: t('atd'), width: 126 },
@@ -104,11 +104,16 @@ const columns = computed(() => {
       title: t('cyClosing'),
       width: 126,
     },
-    { dataIndex: 'eta', key: 'eta', title: t('eta'), width: 126 },
     {
-      dataIndex: 'updateTime',
-      key: 'updateTime',
-      title: t('updateTime'),
+      dataIndex: 'portCloseDate',
+      key: 'portCloseDate',
+      title: t('portCloseDate'),
+      width: 126,
+    },
+    {
+      dataIndex: 'customsCloseDate',
+      key: 'customsCloseDate',
+      title: t('customsCloseDate'),
       width: 126,
     },
   ];
@@ -124,30 +129,40 @@ const queryTip = computed(() =>
   }),
 );
 
-function getVoyage(record: ScheduleItem): string {
+function getVoyage(record: TerminalScheduleItem): string {
   return (isImport.value ? record.ivoyage : record.evoyage) || '-';
 }
 
-function getCallingPorts(record: ScheduleItem): string[] {
+function getCallingPorts(record: TerminalScheduleItem): string[] {
   return (record.portsCn || record.portsEn || '')
     .split('+')
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
-function selectRow(record: ScheduleItem) {
-  selectedKey.value = record.key;
+function getRecordKey(record: TerminalSchedulePickerRow): string {
+  return record._rowKey;
+}
+
+function selectRow(record: TerminalSchedulePickerRow) {
+  selectedKey.value = record._rowKey;
+}
+
+function resolveSelectedItem(): TerminalScheduleItem | undefined {
+  if (!selectedKey.value) return undefined;
+  return props.items.find((item) => item._rowKey === selectedKey.value);
 }
 
 function handleConfirm() {
-  if (!selectedKey.value) {
+  const selected = resolveSelectedItem();
+  if (!selected) {
     message.warning($t('component.terminalSchedule.pleaseSelect'));
     return;
   }
-  emit('confirm', selectedKey.value);
+  emit('confirm', selected);
 }
 
-function selectAndConfirm(record: ScheduleItem) {
+function selectAndConfirm(record: TerminalSchedulePickerRow) {
   selectRow(record);
   handleConfirm();
 }
@@ -162,7 +177,8 @@ function handleCancel() {
     :open="props.open"
     :title="$t('component.terminalSchedule.title')"
     :confirm-loading="props.loading"
-    width="1180px"
+    :ok-text="$t('component.terminalSchedule.confirmImport')"
+    width="1280px"
     destroy-on-close
     :mask-closable="false"
     @cancel="handleCancel"
@@ -180,22 +196,20 @@ function handleCancel() {
       :data-source="props.items"
       :loading="props.loading"
       :pagination="false"
-      :row-key="(record: ScheduleItem) => record.key ?? ''"
-      :scroll="{ x: 1240, y: 420 }"
+      :row-key="getRecordKey"
+      :scroll="{ x: 1360, y: 420 }"
       :row-selection="{
         type: 'radio',
         selectedRowKeys: selectedKey ? [selectedKey] : [],
         onSelect: selectRow,
       }"
       :custom-row="
-        (record: ScheduleItem) => ({
+        (record) => ({
           onClick: () => selectRow(record),
           onDblclick: () => selectAndConfirm(record),
         })
       "
-      :row-expandable="
-        (record: ScheduleItem) => getCallingPorts(record).length > 0
-      "
+      :row-expandable="(record) => getCallingPorts(record).length > 0"
       size="small"
       bordered
     >
