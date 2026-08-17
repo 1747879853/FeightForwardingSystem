@@ -13,7 +13,7 @@ if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
 }
 
 $publishScriptPath = Join-Path $PSScriptRoot 'publish-web.ps1'
-$environments = @('jht', 'jiayue', 'sjtd', 'demo')
+$environments = @('jht', 'jiayue', 'sjtd', 'longshan', 'demo')
 
 if (-not (Test-Path -LiteralPath $publishScriptPath -PathType Leaf)) {
   throw "Publish script was not found: $publishScriptPath"

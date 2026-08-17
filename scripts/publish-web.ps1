@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('jht', 'jiayue', 'sjtd', 'demo')]
+  [ValidateSet('jht', 'jiayue', 'sjtd', 'longshan', 'demo')]
   [string]$Environment,
   [string]$ConfigPath = '',
   [switch]$InstallDeps,
@@ -91,16 +91,19 @@ function Select-Environment {
   Write-Host '  1. jht'
   Write-Host '  2. jiayue'
   Write-Host '  3. sjtd'
-  Write-Host '  4. demo'
-  $selection = Read-Host 'Enter 1-4 or environment name'
+  Write-Host '  4. longshan'
+  Write-Host '  5. demo'
+  $selection = Read-Host 'Enter 1-5 or environment name'
   switch ($selection.ToLowerInvariant()) {
     '1' { return 'jht' }
     '2' { return 'jiayue' }
     '3' { return 'sjtd' }
-    '4' { return 'demo' }
+    '4' { return 'longshan' }
+    '5' { return 'demo' }
     'jht' { return 'jht' }
     'jiayue' { return 'jiayue' }
     'sjtd' { return 'sjtd' }
+    'longshan' { return 'longshan' }
     'demo' { return 'demo' }
     default { throw "Unsupported environment: $selection" }
   }

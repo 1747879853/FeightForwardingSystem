@@ -16,7 +16,7 @@ module: brand-pack
 - `src/utils/brand-assets.ts` 与 `vite.config.mts` 注册 `src/assets/img/longshan/` 品牌素材
 - 登录页背景视频 OSS：`https://oss.jiayuebetter.com/longshan.mp4`
 - 本地调试可用 `pnpm dev:longshan` 或 `pnpm dev:antd:longshan`
-- 暂不接入 `publish-web.ps1` / `deploy:antd:*` 自动发布，仅保留开发与打包
+- （已于 2026-08-17 接入）见 `change-log-2026-08-17-longshan-msdeploy-publish.md`
 
 # 避坑指南
 

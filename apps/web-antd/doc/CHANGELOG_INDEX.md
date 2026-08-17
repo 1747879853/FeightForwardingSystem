@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-17 龙山接入本地 MSDeploy 自动发布](./changelogs/change-log-2026-08-17-longshan-msdeploy-publish.md)
 - [2026-08-17 码头船舶改为查询后人工引入并保存](./changelogs/change-log-2026-08-17-terminal-schedule-query-import.md)
 - [2026-08-17 业务联系单基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-pre-order-basic-field-order.md)
 - [2026-08-17 海运出口基础信息字段顺序对齐业务稿](./changelogs/change-log-2026-08-17-sea-export-basic-info-field-order.md)

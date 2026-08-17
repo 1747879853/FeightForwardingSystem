@@ -66,6 +66,7 @@
     "deploy:antd:demo": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment demo",
     "deploy:antd:jiayue": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment jiayue",
     "deploy:antd:jht": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment jht",
+    "deploy:antd:longshan": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment longshan",
     "deploy:antd:sjtd": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment sjtd",
     "format": "vsh lint --format",
     "lint": "vsh lint",

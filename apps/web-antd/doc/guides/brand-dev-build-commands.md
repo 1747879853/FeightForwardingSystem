@@ -39,19 +39,19 @@
 
 提交信息含 `[skip ci]` 时，两路部署均跳过。
 
-### 本地打包并发布津海通
+### 本地打包并发布（publish-web）
 
-Windows 本机安装 MSDeploy 3.x 后，可从仓库根目录执行与 jht Workflow 一致的构建、打包、WhatIf 预览和 IIS 同步：
+Windows 本机安装 MSDeploy 3.x 后，在 `scripts\publish-config.local.json`（Git 忽略）填写各品牌 IIS 参数，然后：
 
 ```powershell
-$env:IIS_JHT_SERVER_IP = '服务器 IP'
-$env:IIS_JHT_SITE_NAME = 'IIS 站点或应用路径'
-$env:IIS_JHT_USER = 'Web Deploy 用户'
-$env:IIS_JHT_PWD = 'Web Deploy 密码'
 pnpm deploy:antd:jht
+pnpm deploy:antd:jiayue
+pnpm deploy:antd:sjtd
+pnpm deploy:antd:longshan
+pnpm deploy:antd:demo
 ```
 
-若不设置 `IIS_JHT_PWD`，脚本会以安全输入框提示密码。GitHub Actions Secrets 无法下载到本机，以上变量仅作用于当前 PowerShell 会话，不要把生产凭据写入仓库。
+龙山目标（与 `龙山.pubxml` 一致）：服务器 `175.178.101.30`，站点 `longshan-web`；密码也可设环境变量 `IIS_LONGSHAN_PWD`（优先于配置文件）。
 
 常用参数：
 
@@ -61,17 +61,15 @@ pnpm deploy:antd:jht
 | `-SkipBuild` | 跳过构建，重新打包并发布现有 `dist` |
 | `-WhatIfOnly` | 只执行 MSDeploy 发布预览，不修改服务器 |
 | `-SkipConnectivityCheck` | 跳过 8172 端口检查 |
-| `-Force` | 跳过正式发布前输入 `jht` 的二次确认，适合受控自动化 |
-| `-Endpoint <URL>` | 覆盖默认的 `https://IP:8172/msdeploy.axd?site=站点名` |
-| `-MsDeployPath <路径>` | 指定非默认安装位置的 `msdeploy.exe` |
+| `-Force` | 跳过正式发布前输入环境名的二次确认，适合受控自动化 |
 
 示例：只预览已有产物：
 
 ```powershell
-.\scripts\deploy-jht.ps1 -SkipBuild -WhatIfOnly
+.\scripts\publish-web.ps1 -Environment longshan -SkipBuild -WhatIfOnly
 ```
 
-脚本会校验 `dist/_app.config.js` 中的 API 与 `.env.jht` 一致，避免把读取了 `.env.production` 的混合品牌产物发布到 jht 站点；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。
+脚本会校验 `dist/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
 
 ## 环境文件
 
@@ -144,6 +142,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-17 | `Feature` | 龙山接入 `publish-web.ps1` / `deploy:antd:longshan`，目标 `175.178.101.30` / `longshan-web` | 凭据仅写本地 `publish-config.local.json`；批量发布顺序增加 longshan |
 | 2026-08-11 | `Feature` | 新增龙山（longshan）独立开发与打包命令，后端 175.178.101.30:86；登录背景视频用 `longshan.mp4` | 新增 `.env.longshan`、`build:longshan`/`dev:longshan`；`brand-assets.ts` 与 `vite.config.mts` 注册 `longshan` 素材目录；视频 OSS Key=`longshan.mp4` |
 | 2026-07-30 | `Bugfix` | jiayue/demo 登录页背景视频改为与 jht 共用 `jht-login-back.mp4` | 原 `login-back.mp4` OSS 返回 404；demo 的 `VITE_APP_BRAND=jiayue`，改 jiayue 映射即可同时修好 demo |
 | 2026-07-25 | `Feature` | 新增演示环境（demo）开发与打包命令，后端 43.138.14.122:86 | 新增 `.env.demo`，`VITE_APP_BRAND=jiayue` 复用佳越 Logo 与素材，无需改 `brand-assets.ts` / `vite.config.mts`；独立 `VITE_APP_NAMESPACE=vben-web-antd-demo` 隔离缓存 |
