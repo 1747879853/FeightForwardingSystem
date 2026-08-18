@@ -412,7 +412,7 @@ async function handleOpenFeeDetailModal() {
             if (f.id === `parent_${orderId}`) return true;
             return false;
           });
-
+          console.log('parentFee', parentFee);
           if (parentFee) {
             const parentNode: any = {
               id: parentFee.id,
@@ -423,10 +423,12 @@ async function handleOpenFeeDetailModal() {
               commissionNum: parentFee.transportOrder.commissionNum,
               mblNum: parentFee.transportOrder.mblNum || '-',
               bookingNum: parentFee.transportOrder.bookingNum || '-',
-              clientName: parentFee.transportOrder.clientName,
-              bizType: '-',
+              clientName: parentFee.transportOrder.client?.name ?? '-',
+              bizType: parentFee.transportOrder.bizType,
               carrier:
-                parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
+                parentFee.transportOrder?.seaExport?.carrier?.cnName ??
+                parentFee.transportOrder?.seaImport?.carrier?.cnName ??
+                '-',
               company: parentFee.transportOrder.orgs?.at(0)?.name || '-',
               feeDetails: [] as any[],
             };
@@ -559,118 +561,139 @@ onMounted(() => {
 
 <template>
   <Page auto-content-height>
-    <div style="margin-bottom: 16px; text-align: right">
-      <Space>
-        <Button
-          type="primary"
-          :loading="submitLoading"
-          @click="handleSubmit"
-          v-if="!isReadOnly"
-        >
-          {{ isEdit ? '保存' : '创建' }}
-        </Button>
-        <Button
-          v-if="
-            isEdit &&
-            formData.status ===
-              InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
+    <Card>
+      <template #title>
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
           "
-          type="default"
-          :loading="submitLoading"
-          @click="handleWithdraw"
         >
-          撤回
-        </Button>
-        <Button
-          type="primary"
-          :loading="submitLoading"
-          @click="handleDirectSubmit"
-          v-if="!isReadOnly"
-        >
-          提交
-        </Button>
-        <!-- <Button @click="handleCancel">{{
-          isReadOnly ? '关闭' : '关闭'
-        }}</Button> -->
-      </Space>
-    </div>
+          <span>{{ isEdit ? '编辑开票申请' : '新建开票申请' }}</span>
+          <Space>
+            <Button
+              type="primary"
+              :loading="submitLoading"
+              @click="handleSubmit"
+              v-if="!isReadOnly"
+            >
+              {{ isEdit ? '保存' : '创建' }}
+            </Button>
+            <Button
+              v-if="
+                isEdit &&
+                formData.status ===
+                  InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
+              "
+              type="default"
+              :loading="submitLoading"
+              @click="handleWithdraw"
+            >
+              撤回
+            </Button>
+            <Button
+              type="primary"
+              :loading="submitLoading"
+              @click="handleDirectSubmit"
+              v-if="!isReadOnly"
+            >
+              提交
+            </Button>
+          </Space>
+        </div>
+      </template>
 
-    <Card :title="isEdit ? '编辑开票申请' : '新建开票申请'">
       <Spin :spinning="loading">
         <!-- UI内容保持不变，只是更简洁 -->
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
-          <div style="flex-shrink: 0; width: 400px">
-            <Card title="基础配置" size="small">
-              <Form
-                :model="formData"
-                layout="vertical"
-                :label-col="{ span: 8 }"
-                :wrapper-col="{ span: 16 }"
-              >
-                <!-- ✅ 新增：申请单号和结算对象 -->
-                <Form.Item label="申请单号">
-                  <span>{{ formData.applicationNo || '自动生成' }}</span>
-                </Form.Item>
-                <Form.Item label="结算对象">
-                  <Input
-                    :value="settlementObjectName"
-                    disabled
-                    placeholder="从费用中自动获取"
-                  />
-                </Form.Item>
-                <Form.Item label="归属组织" required>
-                  <MyOrgSelect
-                    v-model="formData.orgId"
-                    placeholder="请选择归属组织"
-                    style="width: 100%"
-                  />
-                </Form.Item>
-                <!-- <Form.Item label="开票公司">
-                  <Input
-                    :value="applicantCompanyName"
-                    disabled
-                    placeholder="根据归属组织自动获取"
-                  />
-                </Form.Item> -->
-                <Form.Item label="开票申请人">
-                  <Input :value="applicantName" disabled />
-                </Form.Item>
-                <Form.Item label="开票申请日期">
-                  <Input :value="applicationDate" disabled />
-                </Form.Item>
-                <Form.Item label="发票币别" required>
-                  <CurrencySelect
-                    v-model:value="formData.currencyId"
-                    placeholder="从费用中自动获取"
-                    style="width: 100%"
-                    disabled
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="发票汇率"
-                  v-if="formData.currencyId && formData.currencyId !== 1"
+          <div
+            style="
+              display: flex;
+              flex-shrink: 0;
+              flex-direction: column;
+              width: 400px;
+            "
+          >
+            <Card
+              title="基础配置"
+              size="small"
+              style="display: flex; flex: 1; flex-direction: column"
+            >
+              <template #default>
+                <Form
+                  :model="formData"
+                  layout="vertical"
+                  :label-col="{ span: 8 }"
+                  :wrapper-col="{ span: 22 }"
+                  style="display: flex; flex: 1; flex-direction: column"
                 >
-                  <InputNumber
-                    v-model:value="invoiceExchangeRate"
-                    disabled
-                    :precision="4"
-                    style="width: 100%"
-                  />
-                </Form.Item>
-                <Form.Item label="客户开票要求">
-                  <Input.TextArea
-                    v-model:value="formData.require"
-                    placeholder="请输入客户的特殊开票要求..."
-                    :rows="3"
-                    :disabled="isReadOnly"
-                  />
-                </Form.Item>
-              </Form>
+                  <!-- ✅ 新增：申请单号和结算对象 -->
+                  <Form.Item label="申请单号">
+                    <span>{{ formData.applicationNo || '自动生成' }}</span>
+                  </Form.Item>
+                  <Form.Item label="结算对象">
+                    <Input
+                      :value="settlementObjectName"
+                      disabled
+                      placeholder="从费用中自动获取"
+                    />
+                  </Form.Item>
+                  <Form.Item label="归属组织" required>
+                    <MyOrgSelect
+                      v-model="formData.orgId"
+                      placeholder="请选择归属组织"
+                      style="width: 100%"
+                    />
+                  </Form.Item>
+                  <!-- <Form.Item label="开票公司">
+                    <Input
+                      :value="applicantCompanyName"
+                      disabled
+                      placeholder="根据归属组织自动获取"
+                    />
+                  </Form.Item> -->
+                  <Form.Item label="开票申请人">
+                    <Input :value="applicantName" disabled />
+                  </Form.Item>
+                  <Form.Item label="开票申请日期">
+                    <Input :value="applicationDate" disabled />
+                  </Form.Item>
+                  <Form.Item label="发票币别" required>
+                    <CurrencySelect
+                      v-model:value="formData.currencyId"
+                      placeholder="从费用中自动获取"
+                      style="width: 100%"
+                      disabled
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="发票汇率"
+                    v-if="formData.currencyId && formData.currencyId !== 1"
+                  >
+                    <InputNumber
+                      v-model:value="invoiceExchangeRate"
+                      disabled
+                      :precision="4"
+                      style="width: 100%"
+                    />
+                  </Form.Item>
+                  <Form.Item label="客户开票要求">
+                    <Input.TextArea
+                      v-model:value="formData.require"
+                      placeholder="请输入客户的特殊开票要求..."
+                      :rows="3"
+                      :disabled="isReadOnly"
+                    />
+                  </Form.Item>
+                </Form>
+              </template>
             </Card>
           </div>
 
-          <!-- 右侧发票区域（保持原有UI结构） -->
+          <!-- 右侧发票区域（保持原有UI结构，不做任何修改） -->
           <div style="flex: 1; min-width: 0">
             <Card>
               <template #title>
@@ -716,7 +739,7 @@ onMounted(() => {
                 <div
                   style="
                     flex: 1;
-                    height: 180px;
+                    height: 150px;
                     overflow: hidden;
                     border: 1px solid #c41e3a;
                     border-radius: 4px;
@@ -764,7 +787,7 @@ onMounted(() => {
                 <div
                   style="
                     flex: 1;
-                    height: 180px;
+                    height: 150px;
                     overflow: hidden;
                     border: 1px solid #c41e3a;
                     border-radius: 4px;
@@ -922,7 +945,7 @@ onMounted(() => {
               <!-- 商品明细表格 -->
               <div
                 style="
-                  height: 300px;
+                  height: 260px;
                   overflow-y: auto;
                   border-right: 1px solid #c41e3a;
                   border-bottom: none;
@@ -1131,7 +1154,7 @@ onMounted(() => {
               <!-- 合计行 -->
               <div
                 style="
-                  padding: 12px;
+                  padding: 8px;
                   background: rgb(196 30 58 / 5%);
                   border-top: 2px solid #c41e3a;
                   border-right: 1px solid #c41e3a;
@@ -1241,42 +1264,42 @@ onMounted(() => {
           </div>
         </div>
       </Spin>
+
+      <!-- 子组件 -->
+      <FeeSelectionDrawer
+        ref="feeSelectionDrawerRef"
+        v-model:visible="drawerVisible"
+        :settlement-id="formData.settlementId"
+        :currency-id="formData.currencyId"
+        :invoice-application-id="editId"
+        :added-fee-ids="getAddedFeeIdsArray()"
+        @save="handleFeeSelectionSave"
+      />
+
+      <FeeDetailModal
+        v-model:visible="feeDetailModalVisible"
+        :loading="feeDetailModalLoading"
+        :fee-details="selectedFeeDetails"
+        :invoice-application-id="editId"
+        :invoice-exchange-rate="invoiceExchangeRate"
+        @refresh="handleFeeDetailRefresh"
+      />
+
+      <RemarkTemplateModal
+        ref="remarkTemplateModalRef"
+        v-model:visible="remarkTemplateModalVisible"
+        @use-template="handleUseTemplate"
+      />
+
+      <SelectRemarkTemplateModal
+        v-model:visible="selectRemarkTemplateModalVisible"
+        :settlement-id="formData.orgId"
+        :currency-id="formData.currencyId"
+        :currency-code="selectedCurrencyCode"
+        :fee-details="formData.invoiceApplicationItems"
+        :template-data="remarkTemplateData"
+        @use-template="handleUseTemplate"
+      />
     </Card>
-
-    <!-- 子组件 -->
-    <FeeSelectionDrawer
-      ref="feeSelectionDrawerRef"
-      v-model:visible="drawerVisible"
-      :settlement-id="formData.settlementId"
-      :currency-id="formData.currencyId"
-      :invoice-application-id="editId"
-      :added-fee-ids="getAddedFeeIdsArray()"
-      @save="handleFeeSelectionSave"
-    />
-
-    <FeeDetailModal
-      v-model:visible="feeDetailModalVisible"
-      :loading="feeDetailModalLoading"
-      :fee-details="selectedFeeDetails"
-      :invoice-application-id="editId"
-      :invoice-exchange-rate="invoiceExchangeRate"
-      @refresh="handleFeeDetailRefresh"
-    />
-
-    <RemarkTemplateModal
-      ref="remarkTemplateModalRef"
-      v-model:visible="remarkTemplateModalVisible"
-      @use-template="handleUseTemplate"
-    />
-
-    <SelectRemarkTemplateModal
-      v-model:visible="selectRemarkTemplateModalVisible"
-      :settlement-id="formData.orgId"
-      :currency-id="formData.currencyId"
-      :currency-code="selectedCurrencyCode"
-      :fee-details="formData.invoiceApplicationItems"
-      :template-data="remarkTemplateData"
-      @use-template="handleUseTemplate"
-    />
   </Page>
 </template>

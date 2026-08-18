@@ -530,7 +530,7 @@ onMounted(() => {
                 :model="formData"
                 layout="vertical"
                 :label-col="{ span: 8 }"
-                :wrapper-col="{ span: 16 }"
+                :wrapper-col="{ span: 22 }"
               >
                 <Form.Item label="归属组织" required>
                   <MyOrgSelect
@@ -955,7 +955,7 @@ onMounted(() => {
               <!-- 商品明细表格 -->
               <div
                 style="
-                  height: 300px;
+                  height: 240px;
                   overflow-y: auto;
                   border-right: 1px solid #c41e3a;
                   border-bottom: none;
