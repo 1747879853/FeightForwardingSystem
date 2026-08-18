@@ -49,6 +49,7 @@ export function useHotSettings(
       visibleRows: 10,
       width: 120,
       minWidth: 120, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       renderer: function (
         this: any,
         instance: any,
@@ -123,6 +124,7 @@ export function useHotSettings(
       visibleRows: 10,
       width: 150,
       minWidth: 150, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       renderer: function (
         this: any,
         instance: any,
@@ -189,7 +191,7 @@ export function useHotSettings(
       title: '费用代码_value',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed',
+      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
       readOnly: true,
       visible: false,
     },
@@ -219,6 +221,7 @@ export function useHotSettings(
       visibleRows: 10,
       width: 100,
       minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       renderer: function (
         this: any,
         instance: any,
@@ -265,7 +268,7 @@ export function useHotSettings(
       title: '行业类别_value',
       type: 'text',
       width: 1,
-      className: 'htDimmed',
+      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
       readOnly: true,
       visible: false,
     },
@@ -438,6 +441,7 @@ export function useHotSettings(
       visibleRows: 10,
       width: 200,
       minWidth: 200, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       renderer: function (
         this: any,
         instance: any,
@@ -511,7 +515,7 @@ export function useHotSettings(
       title: '结算对象_value',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed',
+      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
       readOnly: true,
       visible: false,
     },
@@ -522,6 +526,7 @@ export function useHotSettings(
       source: dropdownSources.currencyList.value.map((item: any) => item.label),
       width: 100,
       minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       strict: true,
       // ✅ 新增：自定义renderer，确保正确显示Label而不是ID
       renderer: function (
@@ -570,7 +575,7 @@ export function useHotSettings(
       title: '币别_value',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed',
+      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
       readOnly: true,
       visible: false,
     },
@@ -584,6 +589,7 @@ export function useHotSettings(
       },
       width: 100,
       minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htRight', // ✅ 确保数值列右对齐
     },
     {
       data: 'noTaxUnitPrice',
@@ -595,6 +601,7 @@ export function useHotSettings(
       },
       width: 100,
       readOnly: true, // ✅ 关键修复：设置为只读，用户不能手动编辑
+      className: 'htRight', // ✅ 确保数值列右对齐
     },
     {
       data: 'unit',
@@ -639,6 +646,7 @@ export function useHotSettings(
       visibleRows: 10,
       width: 100,
       minWidth: 100, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
       renderer: function (
         this: any,
         instance: any,
@@ -668,6 +676,7 @@ export function useHotSettings(
       },
       width: 80,
       minWidth: 80, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htRight', // ✅ 确保数值列右对齐
     },
     {
       data: 'sortId',
@@ -675,6 +684,7 @@ export function useHotSettings(
       type: 'numeric',
       width: 80,
       minWidth: 80, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htRight', // ✅ 确保数值列右对齐
     },
     {
       data: 'remark',
@@ -682,6 +692,7 @@ export function useHotSettings(
       type: 'text',
       width: 140,
       minWidth: 140, // ✅ 新增：设置最小宽度，防止显示不全
+      className: 'htLeft', // ✅ 新增：普通列左对齐
     },
   ]);
 

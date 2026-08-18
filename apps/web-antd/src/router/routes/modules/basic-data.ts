@@ -276,6 +276,18 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import('#/views/system/basic-data/OrderFeeTemplateAdmin/list.vue'),
       },
+      {
+        path: '/basic-data/order-fee-template/edit',
+        name: 'BasicDataOrderFeeTemplateEdit',
+        meta: {
+          title: $t('system.basicData.orderFeeTemplate.editTitle'),
+          hideInMenu: true,
+          keepAlive: true,
+          authority: abpPageAuthority('Admin.OrderFeeTemplate'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/OrderFeeTemplateAdmin/edit.vue'),
+      },
     ],
   },
 ];

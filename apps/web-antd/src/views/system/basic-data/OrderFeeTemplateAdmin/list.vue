@@ -3,8 +3,9 @@ import type { OnActionClickParams } from '#/adapter/vxe-table';
 import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-template-admin';
 
 import { nextTick, ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { Page, useVbenModal } from '@vben/common-ui';
+import { Page } from '@vben/common-ui';
 import { Plus, Trash2, ChevronLeft, ChevronRight } from '@vben/icons';
 
 import { Button, message, Modal, Tag } from 'ant-design-vue';
@@ -32,7 +33,6 @@ import {
   useColumns,
   useGridFormSchema,
 } from './data';
-import Form from './modules/form.vue';
 
 // 创建权限对象
 const perm = createAbpPermission('Admin.OrderFeeTemplate');
@@ -110,7 +110,7 @@ async function loadDropdownData() {
           label: label || item.cnName || item.enName || item.code || '',
           value: Number(item.id),
           currencyId: item.currencyId ? Number(item.currencyId) : undefined,
-          unit: item.defaultUnitName || undefined,
+          unit: item.defaultUnitName ?? undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
           defaultCreditName: item.defaultCreditName || undefined, //默认应付的行业类别 ,值为 "a" 这种类型
@@ -230,11 +230,8 @@ function initUserPermissions() {
   console.log('[功能权限] 当前用户的功能权限:', userFunctionPermissions.value);
 }
 
-// 表单弹窗
-const [FormModal, formModalApi] = useVbenModal({
-  connectedComponent: Form,
-  destroyOnClose: true,
-});
+// 路由器
+const router = useRouter();
 
 /**
  * 操作按钮点击事件
@@ -258,12 +255,11 @@ function onCreate() {
     message.warning('您没有新建权限');
     return;
   }
-  formModalApi
-    .setData({
-      mode: 'create',
-      dropdownData: dropdownData.value,
-    })
-    .open();
+  // 改为路由跳转
+  router.push({
+    path: '/basic-data/order-fee-template/edit',
+    query: { mode: 'create' },
+  });
 }
 
 /**
@@ -274,13 +270,14 @@ function onEdit(row: OrderFeeTemplateAdminApi.OrderFeeTemplateListDto) {
     message.warning('您没有编辑权限');
     return;
   }
-  formModalApi
-    .setData({
+  // 改为路由跳转
+  router.push({
+    path: '/basic-data/order-fee-template/edit',
+    query: {
       mode: 'edit',
       id: row.id,
-      dropdownData: dropdownData.value,
-    })
-    .open();
+    },
+  });
 }
 
 /**
@@ -819,7 +816,7 @@ onUnmounted(() => {
       </template>
     </Grid>
 
-    <FormModal />
+    <!-- 移除了 FormModal 组件 -->
   </Page>
 </template>
 

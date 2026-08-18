@@ -545,7 +545,11 @@ export function useTableConditionColumns<
 
 // ==================== 字段权限表单和表格配置 ====================
 
-export function usePropPermissionFormSchema(): VbenFormSchema[] {
+export function usePropPermissionFormSchema(options?: {
+  frightModule?: FrightModule;
+}): VbenFormSchema[] {
+  const fieldOptions = getTablePermissionFieldOptions(options?.frightModule);
+
   return [
     {
       component: 'Select',
@@ -561,9 +565,11 @@ export function usePropPermissionFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       componentProps: {
-        options: FreightRateLabelOptions,
+        options: fieldOptions,
         placeholder: '请选择需要屏蔽的字段名称',
         style: { minWidth: '200px' },
+        showSearch: true,
+        optionFilterProp: 'label',
       },
       fieldName: 'propName',
       label: $t('system.permission.propName'),

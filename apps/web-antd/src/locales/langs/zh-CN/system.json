@@ -498,7 +498,8 @@
       "remark": "备注",
       "keyword": "关键字",
       "creationTime": "创建时间",
-      "operation": "操作"
+      "operation": "操作",
+      "editTitle": "编辑自动费用模板"
     }
   },
   "user": {

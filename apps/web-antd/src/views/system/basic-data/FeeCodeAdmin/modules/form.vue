@@ -15,10 +15,16 @@ import {
 } from '#/api/system/base-data/fee-code-admin';
 import { $t } from '#/locales';
 
+// ✅ 新增：导入数据刷新store
+import { useDataRefreshStore } from '#/store/modules/data-refresh';
+
 import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
 const formData = ref<FeeCodeAdminApi.FeeCodeDto>();
+
+// ✅ 新增：获取数据刷新store
+const dataRefreshStore = useDataRefreshStore();
 
 const getTitle = computed(() => {
   return formData.value?.id
@@ -98,7 +104,12 @@ const [Drawer, drawerApi] = useVbenDrawer({
           remark: values.remark,
         });
       }
+
       message.success($t('ui.actionMessage.operationSuccess'));
+
+      // ✅ 新增：触发费用代码刷新信号
+      dataRefreshStore.triggerFeeCodeRefresh();
+
       drawerApi.close();
       emit('success');
     } finally {
