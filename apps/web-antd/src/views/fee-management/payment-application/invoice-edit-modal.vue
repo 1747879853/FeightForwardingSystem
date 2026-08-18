@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
 import { computed, ref, watch } from 'vue';
@@ -96,6 +97,20 @@ function onInvoiceProcessChange(value: number) {
     invoiceNo.value = '';
     invoiceDate.value = undefined;
   }
+}
+
+/** 识别结果仅预填弹窗表单，点确定才走 EditInvoiceAsync */
+function applyExtractedInvoice(result: GeminiInvoiceDto) {
+  const nextNo = result.invoiceNo?.trim() || '';
+  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
+  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
+  if (!nextNo && !nextDate) {
+    message.warning('未能识别出发票号和开票日期，请手动填写');
+    return;
+  }
+  if (nextNo) invoiceNo.value = nextNo;
+  if (nextDate) invoiceDate.value = nextDate;
+  message.success('已填入识别结果，请核对后保存');
 }
 
 async function loadDetail(id: string) {
@@ -218,6 +233,7 @@ async function handleOk() {
             v-if="open && applicationId"
             v-model="attachmentGroup"
             :application-id="applicationId"
+            @extracted="applyExtractedInvoice"
           />
         </div>
       </div>

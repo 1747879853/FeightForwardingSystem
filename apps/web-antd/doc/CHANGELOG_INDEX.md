@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-19 付费申请发票附件支持 Gemini 识别回填](./changelogs/change-log-2026-08-19-payment-application-invoice-extract.md)
 - [2026-08-19 UserSelect 全量缓存与干系人按公司过滤](./changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md)
 - [2026-08-18 空运出口对接 TextIn 智能抽取](./changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md)
 - [2026-08-18 用户设置列表固定当前人、编辑按 name 匹配](./changelogs/change-log-2026-08-18-user-setting-admin-current-user.md)

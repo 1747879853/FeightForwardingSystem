@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-08-16
 - **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeCodeSelect` → `FeeCodeAdmin/GetPagedListAsync`，按 `feeCodeId`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。费用名/币别会裁剪组内 `children`（`filterOrderGroups`），只显示命中费用并重算外层申请合计。筛选栏勿用 `<label>` 包裹可搜索 Select，以免抢焦点清空远程搜索词。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。**固定结算币别**时，结算币别卡片只展示一行固定支付币别，申请金额为费用明细「申请金额折币」按付 − 收合计。
 - **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。**新建抽屉确认自动 `AddAsync` 时**须按即将写入的费用行（`nextRows`）解析币别并补默认银行再提交，不可读当时仍为空的 `feeDetailRows`，否则跳转编辑后银行空白。
-- **发票附件分组：** 右侧附件区按附件明细类型分组上传；支持点击右上角按钮或**拖拽文件到对应类型卡片**；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。关联结算附件不在本页维护。
+- **发票附件分组：** 右侧附件区按附件明细类型分组上传；支持点击右上角按钮或**拖拽文件到对应类型卡片**；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。名称含「发票」或 `invoice` 的分组可点「识别发票」预填发票号/开票日期，不自动保存。关联结算附件不在本页维护。
 - **提交保存：** 保存成功后跳转对应编辑页，并带 `query.fromCreate=1`，供编辑页延迟拉取审核流程。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -64,6 +64,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 发票附件增加识别按钮，调用 Gemini 回填发票号与开票日期，不自动保存。 | 与编辑页共用 `attachment-groups.vue`；详见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |
 | 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |
 | 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |
 | 2026-08-14 | `Feature` | 添加费用抽屉搜索增加「业务类型」筛选，并传给 `GetOrderFeeGroupAsync.BizType`。 | 未选不传参数，避免 `undefined` 被当成海运出口 `0`。详见 `changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md`。 |

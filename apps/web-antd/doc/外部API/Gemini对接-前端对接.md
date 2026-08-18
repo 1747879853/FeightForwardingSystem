@@ -2,7 +2,7 @@
 title: Gemini 对接 - 前端对接
 module: 外部Api对接 / Gemini
 author: 系统
-last_updated: 2026-08-13
+last_updated: 2026-08-19
 ---
 
 # 1. 说明
@@ -14,6 +14,8 @@ last_updated: 2026-08-13
 > 后端架构说明见：`Gemini对接-外网服务器拆分-2026-07-25.md`、`Gemini模块总逻辑文档.md`
 >
 > **2026-08-13 更新：** 海运报价解析新增可选文字入参 `text`，前端可让用户"上传文件"或"直接粘贴文字"二选一，原有文件上传调用**不受影响、无需改动**。详见「3.2」与 `Gemini对接-报价解析支持文字输入-2026-08-13.md`。
+>
+> **2026-08-19 更新：** 新增发票识别 `ExtractInvoiceAsync`。付费申请发票附件可传 `attachmentId` 识别发票号与开票日期并预填表单。详见「6」。
 
 # 2. 接口清单
 
@@ -22,8 +24,9 @@ last_updated: 2026-08-13
 | `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件**或直接传报价文字**，解析为多行价格数据并回填港口/币别/箱型Id | 见「3」 |
 | `ExtractBillDataAsync` | 上传提单PDF，提取提单字段（gemini-3.5-flash） | 见「4」 |
 | `ExtractBillDataBy31FlashLiteAsync` | 上传提单PDF，提取提单字段（gemini-3.1-flash-lite，效果对比用） | 见「5」 |
+| `ExtractInvoiceAsync` | 上传发票文件或传已有 `attachmentId`，识别发票号码与开票日期 | 见「6」 |
 
-**三个接口的公共约定：**
+**公共约定：**
 
 | 项目 | 内容 |
 | :-- | :-- |
@@ -178,3 +181,20 @@ await axios.post(
 ## 5.2 说明
 
 该接口用于与「4. 提单数据提取」做**效果与速度对比**（使用 `gemini-3.1-flash-lite`、思考等级 medium），提示词与提取字段和正式接口不同，**不建议直接用于生产页面**。
+
+---
+
+# 6. 发票识别 (ExtractInvoiceAsync)
+
+付费申请编辑页、新增页与列表「维护发票信息」弹窗已对接：发票附件旁点识别，传 `attachmentId`（`FormData`，超时 180 秒），回填 `invoiceNo` / `invoiceDate` 到表单，**不自动保存**。
+
+前端封装：`extractInvoice`（`src/api/sea-export/gemini-admin.ts`）。
+
+| 项目 | 内容 |
+| :-- | :-- |
+| 方法 | `POST` |
+| 地址 | `/api/services/app/GeminiAdmin/ExtractInvoiceAsync` |
+| 请求 | `multipart/form-data` 字段 `attachmentId`，或第一个上传文件（二选一；JSON 体不支持） |
+| 返回 | `{ invoiceNo, invoiceDate }`，识别不到为 `null`，接口仍成功 |
+
+详见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。

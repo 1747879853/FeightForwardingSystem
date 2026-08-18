@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-08-16
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
-- **发票附件：** 任意状态本地增删，支持点击上传或**拖拽到附件类型卡片**；保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
+- **发票附件：** 任意状态本地增删，支持点击上传或**拖拽到附件类型卡片**；保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。名称含「发票」或 `invoice` 的分组，文件旁有「识别发票」按钮：传 `attachmentId` 调 `ExtractInvoiceAsync`，把发票号/开票日期预填到表单，**不自动保存**。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
@@ -58,6 +58,8 @@ last_updated: 2026-08-16
 
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
+| **发票号 / 开票日期** | 发票信息；识别结果仅预填。 | 手填，或 `GeminiAdmin/ExtractInvoiceAsync` 回填 `invoiceNo` / `invoiceDate` | **触发/依赖：** 发票附件点识别后写入；`null` 不覆盖已填值；不开票时字段禁用。 | 识别后须用户点「保存」才落库。 |
+
 | **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -68,10 +70,13 @@ last_updated: 2026-08-16
 
 > [!IMPORTANT] **[卡点 3：提交/撤销后审核流时序]** 提交或撤销提交后后端审核流可能尚未更新；须在详情刷新后通过递增 key 重挂载 `WorkflowTimeline` 并延迟 2s 再拉，避免读到旧流程。
 
+> [!IMPORTANT] **[卡点 4：发票识别不落库]** 点「识别发票」只回填 `invoiceNo`/`invoiceDate`；未点页面「保存」则刷新后丢失。识别超时须 180 秒，勿用默认 20 秒。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 发票附件增加识别按钮，调用 Gemini 回填发票号与开票日期，不自动保存。 | 见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |
 | 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |
 | 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |
 | 2026-08-14 | `Feature` | 添加费用抽屉搜索增加「业务类型」筛选，并传给 `GetOrderFeeGroupAsync.BizType`。 | 未选不传参数，避免 `undefined` 被当成海运出口 `0`。详见 `changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md`。 |

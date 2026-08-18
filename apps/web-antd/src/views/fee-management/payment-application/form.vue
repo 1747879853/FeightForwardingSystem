@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAppApi } from '#/api/common/client';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
+import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SelectedFeeItem } from '../add-fee-modal/data';
 import type { CurrencySummary, FeeDetailRow, OrderGroupRow } from './form-data';
@@ -191,6 +192,20 @@ function onInvoiceProcessChange(value: number) {
     invoiceNo.value = '';
     invoiceDate.value = undefined;
   }
+}
+
+/** 识别结果仅预填表单，不自动保存 */
+function applyExtractedInvoice(result: GeminiInvoiceDto) {
+  const nextNo = result.invoiceNo?.trim() || '';
+  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
+  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
+  if (!nextNo && !nextDate) {
+    message.warning('未能识别出发票号和开票日期，请手动填写');
+    return;
+  }
+  if (nextNo) invoiceNo.value = nextNo;
+  if (nextDate) invoiceDate.value = nextDate;
+  message.success('已填入识别结果，请核对后保存');
 }
 const attachmentGroup = ref<
   PaymentApplicationAdminApi.AttachmentGroupInputDto[]
@@ -1700,6 +1715,7 @@ void handleSubmitAndNew;
                   <AttachmentGroups
                     v-model="attachmentGroup"
                     :application-id="editId"
+                    @extracted="applyExtractedInvoice"
                   />
                 </div>
                 <div

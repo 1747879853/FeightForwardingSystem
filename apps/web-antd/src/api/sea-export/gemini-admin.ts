@@ -161,3 +161,37 @@ export function extractBillDataBy31FlashLite(file: File) {
     },
   );
 }
+
+// ==================== 发票识别 ====================
+
+/**
+ * 发票识别结果
+ * 字段识别不到时为 null，前端仅作预填，需用户核对后再保存
+ */
+export interface GeminiInvoiceDto {
+  /** 发票号码（保留原文中的字母与数字；识别不到为 null） */
+  invoiceNo?: null | string;
+  /** 开票日期（ISO 8601，如 2026-08-15T00:00:00；识别不到为 null） */
+  invoiceDate?: null | string;
+}
+
+/**
+ * Gemini 发票识别
+ * 传已上传附件 Id，后端直接读服务器磁盘文件，不发 HTTP 自请求
+ * @param attachmentId 附件表主键（大数 ID 原样透传，勿 Number()）
+ */
+export function extractInvoice(attachmentId: number | string) {
+  const formData = new FormData();
+  formData.append('attachmentId', String(attachmentId));
+
+  return requestClient.post<GeminiInvoiceDto>(
+    '/services/app/GeminiAdmin/ExtractInvoiceAsync',
+    formData,
+    {
+      timeout: 180_000,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { UploadFile } from 'ant-design-vue';
+import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 
@@ -7,10 +8,11 @@ import { computed, onMounted, ref } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
-import { Button, Empty, Spin, Upload, message } from 'ant-design-vue';
+import { Button, Empty, Spin, Tooltip, Upload, message } from 'ant-design-vue';
 
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
+import { extractInvoice } from '#/api/sea-export/gemini-admin';
 import { addPaymentApplicationAttachments } from '#/api/settlement-management/payment-application-admin';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { $t } from '#/locales';
@@ -44,8 +46,14 @@ const modelValue = defineModel<
   PaymentApplicationAdminApi.AttachmentGroupInputDto[]
 >({ default: () => [] });
 
+const emit = defineEmits<{
+  extracted: [result: GeminiInvoiceDto];
+}>();
+
 const loading = ref(false);
 const uploadingTypeId = ref<null | number>(null);
+/** 正在识别发票的附件 Id（string 比较，避免大数精度问题） */
+const extractingAttachmentId = ref<null | string>(null);
 /** 当前拖拽悬停的附件类型 id（含 null=未分类） */
 const dragOverTypeId = ref<null | number | undefined>(undefined);
 const attachmentTypes = ref<AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]>(
@@ -222,6 +230,40 @@ function openAttachment(
   if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
 }
 
+function isInvoiceGroup(group: AttachmentGroupView) {
+  return /发票|invoice/i.test(group.name ?? '');
+}
+
+function isExtracting(
+  item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto,
+) {
+  return (
+    item.attachmentId != null &&
+    extractingAttachmentId.value === String(item.attachmentId)
+  );
+}
+
+/** 调 Gemini 识别发票，结果交给父级回填表单，不落库 */
+async function recognizeInvoice(
+  item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto,
+) {
+  if (item.attachmentId == null) {
+    message.warning('附件尚未就绪，无法识别');
+    return;
+  }
+  extractingAttachmentId.value = String(item.attachmentId);
+  const hideLoading = message.loading('正在识别发票，请稍候...', 0);
+  try {
+    const result = await extractInvoice(item.attachmentId);
+    emit('extracted', result ?? {});
+  } catch {
+    // UserFriendlyException 由全局拦截器展示
+  } finally {
+    hideLoading();
+    extractingAttachmentId.value = null;
+  }
+}
+
 onMounted(loadAttachmentTypes);
 </script>
 
@@ -284,6 +326,21 @@ onMounted(loadAttachmentTypes);
               />
               <span class="attachment-file__text">{{ getFileName(item) }}</span>
             </button>
+            <Tooltip v-if="isInvoiceGroup(group)" title="识别发票">
+              <span class="attachment-file__recognize-wrap">
+                <Button
+                  type="text"
+                  size="small"
+                  class="attachment-file__recognize"
+                  :loading="isExtracting(item)"
+                  :disabled="extractingAttachmentId != null"
+                  aria-label="识别发票"
+                  @click="recognizeInvoice(item)"
+                >
+                  <IconifyIcon icon="mdi:text-recognition" />
+                </Button>
+              </span>
+            </Tooltip>
             <Button
               v-if="canEditLocally"
               type="text"
@@ -411,6 +468,12 @@ onMounted(loadAttachmentTypes);
   white-space: nowrap;
 }
 
+.attachment-file__recognize-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.attachment-file__recognize,
 .attachment-file__remove {
   display: inline-flex;
   flex-shrink: 0;
@@ -424,11 +487,17 @@ onMounted(loadAttachmentTypes);
   color: #94a3b8;
 }
 
+.attachment-file__recognize :deep(.anticon),
+.attachment-file__recognize :deep(svg),
 .attachment-file__remove :deep(.anticon),
 .attachment-file__remove :deep(svg) {
   display: block;
   font-size: 16px;
   line-height: 1;
+}
+
+.attachment-file__recognize:hover {
+  color: #2563eb;
 }
 
 .attachment-file__remove:hover {
