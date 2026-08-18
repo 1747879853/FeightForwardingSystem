@@ -1,17 +1,21 @@
 <script lang="ts" setup>
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, toRef, useAttrs, watch } from 'vue';
 
-import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
+
+import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
-import { getUser, getUserSimplePagedList } from '#/api/system/user-admin';
+import { getUserListByIds } from '#/api/system/user-admin';
 
-import { usePagedSelect } from './use-paged-select';
+import { userSimpleListCache } from './cache/user-simple-cache';
+import { useCachedSelect } from './use-cached-select';
 import type { OptionItem } from './use-paged-select';
+
+defineOptions({ inheritAttrs: false });
 
 interface Props {
   /** label 字段名，默认 'nickName'，可用值：'userName' | 'nickName' */
@@ -22,7 +26,12 @@ interface Props {
   useRichOptionLabel?: boolean;
   /** 用户属性（位掩码），用于筛选用户 */
   userAttribute?: number;
-  /** 每页数量，默认 20 */
+  /**
+   * 按公司过滤候选（与 UserSimpleDto.companyIds 求交）。
+   * 不传则不过滤公司。已选人始终 pin，不受过滤影响。
+   */
+  companyIds?: Array<number | string>;
+  /** 兼容旧调用，全量缓存后不再分页 */
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
@@ -35,10 +44,11 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   labelKey: 'nickName',
   optionLabelProp: undefined,
+  useRichOptionLabel: false,
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
-  useRichOptionLabel: false,
+  companyIds: undefined,
   valueKey: 'id',
 });
 
@@ -46,20 +56,24 @@ const emit = defineEmits<{
   'update:modelValue': [value: any];
 }>();
 
+const attrs = useAttrs();
 const modelValue = defineModel<any>();
 
-// 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
 const userAttributeRef = toRef(props, 'userAttribute');
-// 将用户数据转换为 Option
+const companyIdsRef = toRef(props, 'companyIds');
+
+const bindProps = computed(() =>
+  objectOmit(attrs, ['value', 'onUpdate:value', 'onUpdate:modelValue']),
+);
+
 const mapUserToOption = (user: SystemUserAdminApi.UserSimpleDto) => {
-  const nickName = user.nickName?.trim();
-  //const userName = user.userName?.trim() || String(user.id);
-  let label = nickName;
+  const rawLabel = (user as any)[props.labelKey];
+  const nickName =
+    (typeof rawLabel === 'string' ? rawLabel.trim() : '') ||
+    user.nickName?.trim();
   const option: OptionItem = {
-    // 回显用的 selectedItems 可能只有 id/nickName，缺 isActive 时不应禁用
-    //disabled: user.isActive === false,
-    label,
+    label: nickName,
     value: (user as any)[props.valueKey],
   };
 
@@ -70,48 +84,58 @@ const mapUserToOption = (user: SystemUserAdminApi.UserSimpleDto) => {
   return option;
 };
 
-// 适配器函数：将 FetchPageParams 转换为 UserSimplePagedQueryDto
-const fetchUserSimplePagedList = async (params: any) => {
-  return getUserSimplePagedList({
-    keyWords: params.KeyWords,
-    userAttribute: params.userAttribute,
-    pageIndex: params.PageIndex,
-    pageSize: params.PageSize,
-  });
+const matchesUserAttribute = (user: SystemUserAdminApi.UserSimpleDto) => {
+  const mask = userAttributeRef.value;
+  if (mask == null || mask === 0) return true;
+  const attr = user.userAttribute;
+  if (attr == null) return true;
+  return (Number(attr) & mask) === mask;
 };
 
-const extraParamsRef = computed(() => ({
-  userAttribute: userAttributeRef.value,
-}));
+const matchesCompany = (user: SystemUserAdminApi.UserSimpleDto) => {
+  const filterIds = companyIdsRef.value;
+  if (!filterIds?.length) return true;
+  const userCompanyIds = user.companyIds;
+  if (!userCompanyIds?.length) return false;
+  const filterSet = new Set(filterIds.map(String));
+  return userCompanyIds.some((id) => filterSet.has(String(id)));
+};
 
-// 使用分页选择组合式函数
+const matchesKeyword = (
+  user: SystemUserAdminApi.UserSimpleDto,
+  query: string,
+) => {
+  const haystacks = [user.nickName, user.enName, user.employeeID];
+  return haystacks.some((text) =>
+    String(text ?? '')
+      .toLowerCase()
+      .includes(query),
+  );
+};
+
 const {
-  api,
   handleDropdownVisibleChange,
-  handlePopupScroll,
   handleSearch,
+  loading,
   mergeSelectedItems,
-  params,
+  options,
   pinSelectedFromOptions,
   searchValue,
-} = usePagedSelect({
-  extraParamsRef,
-  fetchPage: fetchUserSimplePagedList,
+  findCachedOption,
+} = useCachedSelect({
+  cache: userSimpleListCache,
   mapItemToOption: mapUserToOption,
-  pageSize: props.pageSize,
-  queryKey: ['user'],
+  matchesItem: (user) => matchesUserAttribute(user) && matchesCompany(user),
+  matchesKeyword,
   selectedItemsRef,
   selectedValuesRef: modelValue,
-  valueKey: props.valueKey,
 });
 
-// 计算 placeholder
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-const apiComponentRef = ref();
-const loadedSelectedIds = ref(new Set<string>());
+const loadedSelectedIds = new Set<string>();
 
 const parseIdToSafeString = (value: unknown): string | null => {
   if (value === undefined || value === null || value === '') return null;
@@ -119,10 +143,22 @@ const parseIdToSafeString = (value: unknown): string | null => {
 };
 
 const handleChange = (value: any) => {
-  const options = apiComponentRef.value?.getOptions?.() ?? [];
-  pinSelectedFromOptions(value, options);
+  pinSelectedFromOptions(value, options.value);
   modelValue.value = value;
   emit('update:modelValue', value);
+};
+
+const toSimpleFromCacheOrDetail = (
+  idStr: string,
+  detail?: { id?: number | string; nickName?: string },
+): SystemUserAdminApi.UserSimpleDto | undefined => {
+  const cached = userSimpleListCache.findById(idStr);
+  if (cached) return cached;
+  if (!detail?.nickName) return undefined;
+  return {
+    id: detail.id as number,
+    nickName: detail.nickName.trim(),
+  };
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
@@ -133,35 +169,42 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     const idStr = parseIdToSafeString(value);
     if (idStr === null) continue;
 
-    const options = apiComponentRef.value?.getOptions?.() ?? [];
-    const hasOption = options.some(
-      (option: OptionItem) => String(option.value) === idStr,
-    );
-    if (hasOption) {
-      loadedSelectedIds.value.add(idStr);
+    if (options.value.some((option) => String(option.value) === idStr)) {
+      loadedSelectedIds.add(idStr);
       continue;
     }
+    if (findCachedOption(idStr)) {
+      const cached = userSimpleListCache.findById(idStr);
+      if (cached) mergeSelectedItems([cached]);
+      loadedSelectedIds.add(idStr);
+      continue;
+    }
+    if (loadedSelectedIds.has(idStr)) continue;
 
-    if (loadedSelectedIds.value.has(idStr)) continue;
-
-    loadedSelectedIds.value.add(idStr);
+    loadedSelectedIds.add(idStr);
     try {
-      const detail = await getUser(Number(idStr), { silent: true });
-      mergeSelectedItems([detail]);
+      const cached = userSimpleListCache.findById(idStr);
+      if (cached) {
+        mergeSelectedItems([cached]);
+        continue;
+      }
+      const [detail] = await getUserListByIds([value as number], {
+        silent: true,
+      });
+      const simple = toSimpleFromCacheOrDetail(idStr, detail);
+      if (simple) mergeSelectedItems([simple]);
     } catch {
-      loadedSelectedIds.value.delete(idStr);
+      loadedSelectedIds.delete(idStr);
     }
   }
 };
 
 watch(
   selectedItemsRef,
-  (items) => {
-    for (const item of items) {
+  (list) => {
+    for (const item of list) {
       const idStr = parseIdToSafeString((item as any)[props.valueKey]);
-      if (idStr !== null) {
-        loadedSelectedIds.value.add(idStr);
-      }
+      if (idStr !== null) loadedSelectedIds.add(idStr);
     }
   },
   { immediate: true },
@@ -175,41 +218,39 @@ watch(
   { immediate: true },
 );
 
-// 暴露方法
+watch(
+  () => userSimpleListCache.items.value,
+  () => {
+    void ensureSelectedLoaded(modelValue.value);
+  },
+);
+
 defineExpose({
-  /** 获取 ApiComponent 实例 */
-  getApiComponentRef: () => apiComponentRef.value,
-  /** 获取当前 options */
-  getOptions: () => apiComponentRef.value?.getOptions?.() || [],
-  /** 获取当前值 */
+  getApiComponentRef: () => undefined,
+  getOptions: () => options.value,
   getValue: () => modelValue.value,
 });
 </script>
 
 <template>
-  <ApiComponent
-    ref="apiComponentRef"
-    :component="Select"
-    :api="api"
-    :params="params"
-    :model-value="modelValue"
+  <Select
+    v-bind="bindProps"
+    :value="modelValue"
+    :options="options"
     :placeholder="computedPlaceholder"
     :option-label-prop="optionLabelProp"
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
-    loading-slot="suffixIcon"
-    model-prop-name="value"
+    :loading="loading"
     :search-value="searchValue"
-    @update:model-value="handleChange"
+    class="biz-select w-full"
+    @update:value="handleChange"
     @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
-    @popup-scroll="handlePopupScroll"
-    v-bind="$attrs"
-    class="biz-select w-full"
   >
     <template v-for="(_, name) in $slots" :key="name" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}"></slot>
     </template>
-  </ApiComponent>
+  </Select>
 </template>

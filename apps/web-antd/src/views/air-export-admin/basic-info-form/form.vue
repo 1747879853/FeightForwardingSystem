@@ -48,6 +48,8 @@ import {
 } from '#/api/air-export/air-export-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { useAllUserOrg } from '#/composables/use-all-user-org';
+import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
 
 import {
   AIR_LEG_HEADER_FIELD_NAMES,
@@ -580,6 +582,13 @@ const {
   partyInfoFormApi,
   currentUserId,
 });
+
+const { allUserOrgMap, loadAllUserOrganizations } = useAllUserOrg();
+const orderUserCompanyIds = computed(() => {
+  void allUserOrgMap.value;
+  return resolveOrderUserCompanyIds(headerOrgId.value, salesUserId.value);
+});
+void loadAllUserOrganizations();
 
 /**
  * 换销售后清空回显兜底项；归属组织的清空/默认带出由 UserOrgSelect
@@ -1557,6 +1566,7 @@ watch(pageLoading, (loading) => {
                       :key="row._rowKey"
                       :model-value="row.userId"
                       :user-attribute="row.userAttribute"
+                      :company-ids="orderUserCompanyIds"
                       label-key="nickName"
                       :selected-items="getOrderUserSelectedItems(row)"
                       :placeholder="

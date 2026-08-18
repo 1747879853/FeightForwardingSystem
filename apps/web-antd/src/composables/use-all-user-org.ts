@@ -49,10 +49,41 @@ async function loadAllUserOrganizations(force = false): Promise<void> {
 
 /** 读取某用户的组织路径列表（未加载或不存在时返回空数组） */
 function getUserOrganizations(
-  userId?: null | number,
+  userId?: null | number | string,
 ): MyUserOrganizationPathDto[] {
-  if (userId === undefined || userId === null) return [];
-  return allUserOrgMap.value.get(userId) ?? [];
+  if (userId === undefined || userId === null || userId === '') return [];
+  const map = allUserOrgMap.value;
+  const direct = map.get(userId as number);
+  if (direct) return direct;
+  const key = String(userId);
+  for (const [id, orgs] of map) {
+    if (String(id) === key) return orgs;
+  }
+  return [];
+}
+
+/** 组织路径上的公司节点：第一个 isCompany，否则取路径首个节点 */
+export function pickCompanyNodeFromPath(
+  path: SystemOrganizationUnitApi.OrganizationUnitDto[] | undefined,
+): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
+  if (!path?.length) return undefined;
+  return path.find((node) => node.isCompany) ?? path[0];
+}
+
+/**
+ * 用户是否属于给定公司（任一组织路径上的公司节点命中即可）。
+ * org map 未加载或不含该用户时返回 false。
+ */
+export function userBelongsToCompanyIds(
+  userId?: null | number | string,
+  companyIds?: Array<number | string> | null,
+): boolean {
+  if (!companyIds?.length) return true;
+  const idSet = new Set(companyIds.map(String));
+  return getUserOrganizations(userId).some((item) => {
+    const companyId = pickCompanyNodeFromPath(item.oneOrganizationPath)?.id;
+    return companyId != null && idSet.has(String(companyId));
+  });
 }
 
 /** 取一条组织路径中的「直属组织」节点（路径末端，即用户直接挂靠的组织） */
@@ -113,7 +144,7 @@ export function getUserOrgOptions(userId?: null | number): UserOrgOption[] {
 
 /** 某用户的默认组织 id（对应用户 DefaultOrgId），用于表单默认值 */
 export function getUserDefaultOrgId(
-  userId?: null | number,
+  userId?: null | number | string,
 ): number | undefined {
   const orgs = getUserOrganizations(userId);
   const target = orgs.find((o) => o.default) ?? orgs[0];
@@ -122,12 +153,13 @@ export function getUserDefaultOrgId(
 
 /** 取某用户某直属组织所在的完整组织路径（从顶到底） */
 export function getUserOrgPath(
-  userId?: null | number,
-  orgId?: null | number,
+  userId?: null | number | string,
+  orgId?: null | number | string,
 ): SystemOrganizationUnitApi.OrganizationUnitDto[] {
-  if (orgId === undefined || orgId === null) return [];
+  if (orgId === undefined || orgId === null || orgId === '') return [];
+  const orgKey = String(orgId);
   const found = getUserOrganizations(userId).find(
-    (o) => pickDirectOrgNode(o.oneOrganizationPath)?.id === orgId,
+    (o) => String(pickDirectOrgNode(o.oneOrganizationPath)?.id) === orgKey,
   );
   return found?.oneOrganizationPath ?? [];
 }
@@ -138,12 +170,12 @@ export function getUserOrgPath(
  * 不传 orgId 时使用该用户默认组织。
  */
 export function getUserOrgCompanyNode(
-  userId?: null | number,
-  orgId?: null | number,
+  userId?: null | number | string,
+  orgId?: null | number | string,
 ): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
   const targetOrgId = orgId ?? getUserDefaultOrgId(userId);
   const path = getUserOrgPath(userId, targetOrgId);
-  return path.find((n) => n.isCompany) ?? path[0];
+  return pickCompanyNodeFromPath(path);
 }
 
 /** 组合式入口：暴露加载方法与响应式加载状态 */
@@ -155,6 +187,8 @@ export function useAllUserOrg() {
     getUserOrgOptions,
     getUserOrgPath,
     loadAllUserOrganizations,
+    pickCompanyNodeFromPath,
+    userBelongsToCompanyIds,
     loaded,
     loading,
   };

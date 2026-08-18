@@ -80,7 +80,9 @@ GET /api/services/app/User/GetUserSimplePagedListAsync?keyWords=张三&pageIndex
       "enName": "Zhang San",
       "employeeID": "EMP001",
       "avatar": "/images/avatar.png",
-      "organization": "操作部"
+      "organization": "操作部",
+      "userAttribute": 16,
+      "companyIds": [6]
     }
   ]
 }
@@ -97,14 +99,16 @@ GET /api/services/app/User/GetUserSimplePagedListAsync?keyWords=张三&pageIndex
 
 ### 出参列表项字段说明（`UserSimpleDto`）
 
-| 字段         | JSON Key       | 类型     | 说明                           |
-| :----------- | :------------- | :------- | :----------------------------- |
-| Id           | `id`           | `long`   | 用户主键 id                    |
-| NickName     | `nickName`     | `string` | 昵称（真实姓名，用于页面展示） |
-| EnName       | `enName`       | `string` | 英文名                         |
-| EmployeeID   | `employeeID`   | `string` | 工号                           |
-| Avatar       | `avatar`       | `string` | 头像 URL                       |
-| Organization | `organization` | `string` | 所属部门名称                   |
+| 字段 | JSON Key | 类型 | 说明 |
+| :-- | :-- | :-- | :-- |
+| Id | `id` | `long` | 用户主键 id |
+| NickName | `nickName` | `string` | 昵称（真实姓名，用于页面展示） |
+| EnName | `enName` | `string` | 英文名 |
+| EmployeeID | `employeeID` | `string` | 工号 |
+| Avatar | `avatar` | `string` | 头像 URL |
+| Organization | `organization` | `string` | 所属部门名称 |
+| UserAttribute | `userAttribute` | `long` | 用户属性位掩码（与 `UserAttribute` 枚举一致）；前端全量缓存后按位筛选角色。后端未返回时前端不按角色过滤 |
+| CompanyIds | `companyIds` | `long[]` | 用户所属公司 id 列表；`UserSelect` 传入 `companyIds` 时与此项求交过滤 |
 
 > **注意**：`UserSimpleDto` 未继承审计字段，**不返回** `creatorUserName`、`lastModifierUserName`、`creationTime` 等创建/修改人信息；亦不返回用户名、手机号、邮箱、性别、是否激活等字段。
 
@@ -114,9 +118,10 @@ GET /api/services/app/User/GetUserSimplePagedListAsync?keyWords=张三&pageIndex
 2. **仅返回审核已通过且已激活的用户**（`Status == 已通过` 且 `IsActive == true`），待审核、未通过、未激活用户不会出现在结果中。
 3. `keyWords` 为空时不按关键字过滤；有值时仅匹配 `NickName`、`UserName`、`EnName`、`EmployeeID` 四个字段，不匹配邮箱、手机号等字段。
 4. 列表查询使用 `ProjectTo<UserSimpleDto>` 投影，SQL 仅查询 `UserSimpleDto` 映射字段，不加载用户表全部字段。
-5. `userAttribute` 使用位掩码精确匹配：`(user.UserAttribute & input.UserAttribute) == input.UserAttribute`。
+5. `userAttribute` 使用位掩码精确匹配：`(user.UserAttribute & input.UserAttribute) == input.UserAttribute`。查询入参的 `userAttribute` 仍可服务端过滤；`UserSelect` 全量缓存时不传该入参，改为用返回体中的 `userAttribute` 在前端按同样位掩码筛选。
 6. `organization` 通过 `UserManager.GetOrganizationNames` 批量填充，无部门时为 `null`。
 7. 相比 `UserAdmin/GetUserPagedListAsync`，本接口**不返回**角色列表、审核状态、邮箱密码等管理字段。
+8. 前端 `UserSelect` 会以 `pageSize=1000` 翻页拼全量并写入静默缓存（成功才覆盖旧缓存）；关键词、角色、公司范围均在前端过滤。公司过滤用返回体 `companyIds` 与组件入参求交，不再查组织路径。
 
 ---
 

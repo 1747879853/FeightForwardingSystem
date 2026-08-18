@@ -29,7 +29,7 @@
 | `UserOrgSelect` | 指定用户所属组织选择（如按所选销售取其组织） | `#/composables/use-all-user-org`（`UserAdmin/GetAllUserOrganizationsAsync`） |
 | `PortSelect` | 港口编码选择 | `#/api/system/base-data/port-code-admin` |
 | `RoleSelect` | 系统角色选择 | `#/api/system/role` |
-| `UserSelect` | 系统用户选择 | `#/api/system/user-admin` |
+| `UserSelect` | 系统用户选择（全量缓存 + 前端筛选） | `#/api/system/user-admin`（`User/GetUserSimplePagedListAsync`） |
 
 ## ClientSelect 扩展参数
 
@@ -135,9 +135,25 @@
 
 如需在脚本中按 userId 直接取组织，可复用组合式 `useAllUserOrg`：`getUserOrgOptions(userId)`、`getUserDefaultOrgId(userId)`、`getUserOrgPath(userId, orgId)`、`getUserOrgCompanyNode(userId, orgId)`（后者含公司节点本位币与 `orgBankAccounts`）。
 
+## UserSelect 扩展参数
+
+`UserSelect` 默认走全量简易用户缓存（`createBizSelectCache` / `userSimpleListCache`）：`ensure()` 时有旧列表立刻用，同时后台静默拉 `GetUserSimplePagedListAsync`（`pageSize=1000` 翻页拼齐），成功才覆盖；失败保留旧缓存。无缓存时才等待首拉。搜索、`userAttribute`、`companyIds` 均在前端过滤，不再打分页接口。直绑 `Select`，避免 `ApiComponent` 刷新时清空 options 把已选人显示成 id。
+
+| 参数 | 类型 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `userAttribute` | `number` | — | 角色位掩码；`UserSimpleDto.userAttribute` 未返回时不按角色筛 |
+| `companyIds` | `Array<number \| string>` | — | 与 `UserSimpleDto.companyIds` 求交过滤候选；不传不过滤。已选人始终 pin 回显昵称 |
+| `selectedItems` | `UserSimpleDto[]` | `[]` | 编辑/默认带回显 |
+| `labelKey` | `string` | `'nickName'` | 展示字段 |
+
+海出 / 海进 / 空出干系人传入 `companyIds`：未选归属组织时为当前登录用户各公司；选了组织后为该销售组织所属公司。客户默认干系人不因过滤被清空。
+
+后续其它 biz-select 可复用 `createBizSelectCache({ name, fetchAll })`。登出时 `clearAllBizSelectCaches()` 清内存与 localStorage。
+
 ## 工具函数
 
 - `usePagedSelect`：分页选择逻辑封装，提供远程搜索、滚动加载、选中项合并等通用能力。
+- `useCachedSelect` / `createBizSelectCache`：全量列表缓存 + 前端筛选；`UserSelect` 已接入。
 
 ## usePagedSelect 已选项与搜索（2026-08-05）
 
@@ -169,7 +185,6 @@
 - `LaneSelect`
 - `ExchangeRateSelect`
 - `RoleSelect`
-- `UserSelect`
 - `CodeFrtSelect`
 - `CodeGoodsSelect`
 - `CodeInvoiceSelect`

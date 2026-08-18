@@ -10,6 +10,7 @@ import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 import { notification } from 'ant-design-vue';
 import { defineStore } from 'pinia';
 
+import { clearAllBizSelectCaches } from '#/adapter/component/biz-select/cache/create-biz-select-cache';
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
@@ -148,6 +149,8 @@ export const useAuthStore = defineStore('auth', () => {
         isLogoutTokenExpired = true;
       }
     }
+    // 须在 resetAllStores 前清理，以便按当前用户 scope 删掉 localStorage
+    clearAllBizSelectCaches();
     resetAllStores();
     tableConfigStore.$reset();
     accessStore.setLoginExpired(false);

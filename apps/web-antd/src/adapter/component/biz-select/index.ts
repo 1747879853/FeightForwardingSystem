@@ -31,6 +31,13 @@ export { default as UserCompanySelect } from './user-company-select.vue';
 export { default as UnitSelect } from './unit-select.vue';
 export { default as IndustryCategorySelect } from './industry-category-select.vue';
 export { usePagedSelect } from './use-paged-select';
+export { useCachedSelect } from './use-cached-select';
+export {
+  clearAllBizSelectCaches,
+  createBizSelectCache,
+  userSimpleListCache,
+} from './cache';
+export type { BizSelectCache, CreateBizSelectCacheOptions } from './cache';
 export type {
   FetchPageParams,
   OptionItem,

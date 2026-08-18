@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-08-16
 - **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。收发通为灰色折叠条，点击展开/收起，**默认展开**。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 顶栏「AI识别」弹出拖拽上传区，支持 PDF/图片/Word/Excel/OFD；调用 TextIn `ExtractSeaImportToAddDtoAsync`，回填 `seaImport`（箱子在进口层 `orderCtns`，到港日期→`etd`）；未匹配箱型保留识别原文供补选。
 - **进口作业日期：** 到港日期可改；转站、箱使为只读文本，由到港日期与免箱期推算；免箱期在船期标题旁编辑。
-- **干系人：** 销售角色必填且唯一；右侧卡片式增删角色，与归属组织联动。
+- **干系人：** 销售角色必填且唯一；右侧卡片式增删角色。`UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回的人不受过滤限制、始终显示昵称。
 - **提交创建：** 校验通过后调用新增接口，成功跳转编辑页。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -59,6 +59,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为可折叠条（对齐业务联系单），默认展开。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-08-16-sea-import-party-collapse.md`。 |

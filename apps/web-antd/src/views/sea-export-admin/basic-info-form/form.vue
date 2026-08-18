@@ -65,7 +65,11 @@ import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
-import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import {
+  formatOrgPathLabel,
+  useAllUserOrg,
+} from '#/composables/use-all-user-org';
+import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
@@ -1726,6 +1730,14 @@ const {
   polServiceConfigLoaded,
   latestAvailableServiceTypes,
 });
+
+const { allUserOrgMap, loadAllUserOrganizations } = useAllUserOrg();
+const orderUserCompanyIds = computed(() => {
+  void allUserOrgMap.value;
+  return resolveOrderUserCompanyIds(headerOrgId.value, salesUserId.value);
+});
+void loadAllUserOrganizations();
+
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 const sectionRefs = {
   basic: ref<HTMLElement | null>(null),
@@ -3760,6 +3772,7 @@ defineExpose({
                       :key="row._rowKey"
                       :model-value="row.userId"
                       :user-attribute="row.userAttribute"
+                      :company-ids="orderUserCompanyIds"
                       label-key="nickName"
                       :selected-items="getOrderUserSelectedItems(row)"
                       :placeholder="

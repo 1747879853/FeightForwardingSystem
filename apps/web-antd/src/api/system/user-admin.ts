@@ -52,6 +52,13 @@ export namespace SystemUserAdminApi {
     employeeID?: string;
     avatar?: string;
     organization?: string;
+    /**
+     * 用户属性位掩码（与 UserAttribute 一致）。
+     * 全量缓存后由前端按位筛选；后端未返回时前端不按角色过滤。
+     */
+    userAttribute?: number;
+    /** 用户所属公司 id 列表，用于干系人下拉按公司过滤 */
+    companyIds?: Array<number | string>;
   }
 
   /** 用户角色DTO */
@@ -128,7 +135,7 @@ export namespace SystemUserAdminApi {
 
   /** 按 id 批量获取用户查询参数（空 ids 语义为返回全部用户，前端务必显式传 ids） */
   export interface UserListByIdsQueryDto {
-    ids?: number[];
+    ids?: Array<number | string>;
   }
 
   /**
@@ -673,7 +680,8 @@ async function getAllUserOrganizations(): Promise<
 
 /**
  * 获取用户简易分页列表
- * @description 仅需登录，返回精简字段，适合下拉搜索选人。仅返回审核已通过且已激活的用户
+ * @description 仅需登录，返回精简字段，适合下拉搜索选人。仅返回审核已通过且已激活的用户。
+ * UserSelect 全量缓存会以 pageSize=1000 翻页拼齐，再在前端按角色/关键词/公司筛选。
  * @param params 查询参数
  */
 async function getUserSimplePagedList(
@@ -710,10 +718,14 @@ type GetUserListByIdsOptions = {
  * @param ids 用户 id 列表
  */
 async function getUserListByIds(
-  ids: number[],
+  ids: Array<number | string>,
   options?: GetUserListByIdsOptions,
 ): Promise<SystemUserAdminApi.UserInfoDto[]> {
-  const uniqueIds = [...new Set(ids.filter((id) => id > 0))];
+  const uniqueIds = [
+    ...new Set(
+      ids.filter((id) => id !== undefined && id !== null && String(id) !== ''),
+    ),
+  ];
   if (!uniqueIds.length) return [];
 
   return requestClient.get<SystemUserAdminApi.UserInfoDto[]>(

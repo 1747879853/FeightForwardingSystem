@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-17
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,7 @@ last_updated: 2026-08-17
 | :-- | :-- | :-- | :-- | :-- |
 | **委托 ID** | 编辑页上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载详情、费用、更改单等子资源。 | 必须是有效 GUID。 |
 | **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
-| **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `src/views/sea-import-admin/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。 | 销售必须且仅一人；销售与操作必须选择人员。 |
+| **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `basic-info-form/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。`UserSelect` 按当前用户各公司或所选销售组织所属公司过滤候选；已选/客户默认干系人 pin 昵称。 | 销售必须且仅一人；销售与操作必须选择人员。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
@@ -60,6 +60,7 @@ last_updated: 2026-08-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与海出/空出共用 `UserSelect` 缓存层。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-17 | `Feature` | 「码头船舶」改为查询接口：有可引入数据才弹窗，确定引入后回填航次并自动保存；无数据只提示。 | 与海出共用 `QueryTerminalScheduleAsync`；进口仅映射 `ivoyage` → `innerVoyno`。详见 `changelogs/change-log-2026-08-17-terminal-schedule-query-import.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 内部/外部备注改为顶部 Tab 切换，并放到货物区件数/包装右侧一列；件数与包装合并为同一控件（对齐船名/航次）。 | 两备注字段仍同时挂在 `cargoRemarkFormApi`；件数/包装用 `PkgsPackageInput`，`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-sea-import-remark-tabs-pkgs-row.md`。 |

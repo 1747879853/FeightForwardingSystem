@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-18
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -45,7 +45,7 @@ last_updated: 2026-08-18
 | **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 头部选择写回隐藏字段 `codeSourceId`；**不**随委托单位自动带出（与海出不同）。 | 可选，允许清空。 |
 | **委托单位** | 委托方客户主体。 | `ClientSelect`（行业类别 `p`） | **触发/依赖：** 影响账期与后续费用链路。 | **必填**，否则后端报「委托单位不存在」。 |
 | **归属组织** | 数据归属组织。 | `UserOrgSelect`（按销售取直属组织） | **触发/依赖：** 切换销售会清空已选组织并重载列表。 | **必填**，且必须是该销售的**直属**组织，父组织不算。 |
-| **干系人-销售** | 该票销售。 | `UserSelect`（`UserAttribute=16`） | **触发/依赖：** 决定归属组织候选范围。 | **有且只能有一个**，0 个和 2 个都报同一句。 |
+| **干系人-销售** | 该票销售。 | `UserSelect`（`UserAttribute=16`） | **触发/依赖：** 决定归属组织候选范围。干系人下拉按当前用户各公司或所选组织所属公司过滤。 | **有且只能有一个**，0 个和 2 个都报同一句。 |
 | **航班** | 航班号自由文本。 | `AirExport.flightNo` | **触发/依赖：** 内联在航段标题右侧，不占港口栅格。 | 不必填。 |
 | **订舱代理** | 国内订舱代理往来单位。 | `ClientSelect`（行业类别 `o`） | **触发/依赖：** 与航班同处标题栏；详情回填走 header 表单 `selectedItems`。 | 不必填。 |
 | **起飞日期 ETD** | 航班起飞日期。 | `transportOrder.etd` | **触发/依赖：** 驱动后端计算会计期间与应结日期。 | 不必填；为空时会计期间按当前时间算。 |
@@ -72,6 +72,7 @@ last_updated: 2026-08-18
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-18 | `Feature` | 新建/编辑基础信息顶栏增加 AI 识别，上传单证后预填表单。 | 走 `TextInAdmin/ExtractAirExportToAddDtoAsync`；空港回显 `AirPort`；货物明细写 `airExportOrderCtns`。详见 `changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md`。 |
 | 2026-08-17 | `Fix` | 选中空港后输入框只回显三字码，备注回填英文名称。 | `labelKey=iataCode`；备注走 `formatAirPortRemark`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |

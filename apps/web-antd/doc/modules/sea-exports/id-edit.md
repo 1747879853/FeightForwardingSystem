@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-17
+last_updated: 2026-08-19
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -36,7 +36,7 @@ last_updated: 2026-08-17
   - **编辑改起运港 / 改委托单位**：按新 `polId(+clientId)` 的 `checked` **重写勾选**（客户排除项默认不勾、可手动勾回），并**丢弃任务进度**，流水线回到「新建态」仅展示服务项、不显示待处理/已完成任务，直至保存成功后 `loadEditData` 恢复真实任务态。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护：按 `ServiceType` 枚举项 `extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
-- **干系人角色约束：** 可选角色由「系统管理 → 枚举管理」的 `SeaExportUserAttribute` 枚举维护（子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否进页面即展示；子项顺序即面板顺序），前端不再写死 6 项。**销售、操作为固定角色**：无论枚举是否配置都展示、标签带红色必填标识、不可删除且必须已选人（销售必须且只能有一人）；枚举漏配时二者兜底补在最前。勾了 `extra1` 的角色进页面即渲染，**编辑态订单未保存该角色时也会补一张空卡**（保存时无人员会被过滤，不写库）；未勾 `extra1` 的角色（如海外客服）只在详情已有人员或手动「添加角色」后出现。枚举拉取失败/未配置时，面板只剩销售与操作，这是预期兜底。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
+- **干系人角色约束：** 可选角色由「系统管理 → 枚举管理」的 `SeaExportUserAttribute` 枚举维护（子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否进页面即展示；子项顺序即面板顺序），前端不再写死 6 项。**销售、操作为固定角色**：无论枚举是否配置都展示、标签带红色必填标识、不可删除且必须已选人（销售必须且只能有一人）；枚举漏配时二者兜底补在最前。勾了 `extra1` 的角色进页面即渲染，**编辑态订单未保存该角色时也会补一张空卡**（保存时无人员会被过滤，不写库）；未勾 `extra1` 的角色（如海外客服）只在详情已有人员或手动「添加角色」后出现。枚举拉取失败/未配置时，面板只剩销售与操作，这是预期兜底。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。干系人 `UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户所属各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回与编辑回填的已选人不受过滤限制、始终显示昵称。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。港口字段已对象化（`pol`/`pod`/`pot1`/`pot2`/`receivePort`/`deliverPort`/`prepareAt`/`signingPort`），编辑回填用 `toPortObjectSelectedItems` 整对象注入；航线/国家取自目的港 `pod.lane` / `pod.country`。
 - **船期与付费联动：** 船期截关节点展示顺序为截单 → 截港 → 截关（字段仍为 `closeDocTime` / `closeVgmTime` / `closeManifestTime`）；保存时校验上述日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
@@ -134,6 +134,7 @@ last_updated: 2026-08-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | `UserSelect` 直绑 Select + `createBizSelectCache`；`company-ids` 由 `resolveOrderUserCompanyIds` 计算。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-17 | `Feature` | 「码头船舶」改为查询接口：有可引入数据才弹窗，确定引入后回填实际开船/航次/截港/截单/截关并自动保存；无数据只提示。 | 接口从 `SyncTerminalScheduleAsync` 换成 `QueryTerminalScheduleAsync`，后端不再写库；不填 `etd`/`eta`/`ata`。共享 composable 与海进复用。详见 `changelogs/change-log-2026-08-17-terminal-schedule-query-import.md`。 |
 | 2026-08-17 | `Style` | 基础信息 6 列顺序改为：订舱编号/主提单号/保险公司/报关行/仓库/场站为第二行，合同号排在运输条款之后。 | 只改 `BASIC_INFO_FIELD_ORDER`；schema 与提交映射不变。详见 `changelogs/change-log-2026-08-17-sea-export-basic-info-field-order.md`。 |
 | 2026-08-16 | `Feature` | 收发通改为灰色折叠条（默认展开）；内部/外部备注挪到货物区件重尺右侧，顶部 Tab 切换。 | 折叠与 Tab 均用 `v-show` / CSS 隐藏。详见 `changelogs/change-log-2026-08-16-sea-export-party-collapse-remark-tabs.md`。 |

@@ -3,7 +3,12 @@ import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { useUserStore } from '@vben/stores';
 
-import { formatOrgPathLabel, formatCompanyPathLabel } from './use-all-user-org';
+import {
+  formatCompanyPathLabel,
+  formatOrgPathLabel,
+  getUserOrgCompanyNode,
+  pickCompanyNodeFromPath,
+} from './use-all-user-org';
 
 export interface MyOrgOption {
   isDefault: boolean;
@@ -92,5 +97,40 @@ export function getMyOrgCompanyNode(
 ): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
   const targetOrgId = orgId ?? getMyDefaultOrgId();
   const path = getMyOrgPath(targetOrgId);
-  return path.find((n) => n.isCompany) ?? path[0];
+  return pickCompanyNodeFromPath(path);
+}
+
+/** 当前登录用户所属的全部公司 id（按组织路径 isCompany 节点去重） */
+export function getMyCompanyIds(): Array<number | string> {
+  const ids: Array<number | string> = [];
+  const seen = new Set<string>();
+  for (const item of getMyOrganizations()) {
+    const node = pickCompanyNodeFromPath(item.oneOrganizationPath);
+    if (node?.id == null) continue;
+    const key = String(node.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ids.push(node.id);
+  }
+  return ids;
+}
+
+/**
+ * 干系人 UserSelect 的公司过滤范围：
+ * 已选归属组织时取该销售组织所属公司；否则取当前登录用户的全部公司。
+ */
+export function resolveOrderUserCompanyIds(
+  headerOrgId?: null | number | string,
+  salesUserId?: null | number | string,
+): Array<number | string> {
+  if (
+    headerOrgId != null &&
+    headerOrgId !== '' &&
+    salesUserId != null &&
+    salesUserId !== ''
+  ) {
+    const company = getUserOrgCompanyNode(salesUserId, headerOrgId);
+    if (company?.id != null) return [company.id];
+  }
+  return getMyCompanyIds();
 }
