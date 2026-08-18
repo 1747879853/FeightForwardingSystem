@@ -2,7 +2,7 @@
 title: vxe 列表列配置持久化
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-18
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,7 +18,11 @@ last_updated: 2026-08-02
 
 # 3. 配置协议
 
-存储键：`table_config_${tableId}`（`UserSetting` 接口）
+存储键：`table_config_${tableId}`（`UserSettingAdmin` 接口）
+
+- **列表：** `GetPagedListAsync` 固定只返回当前登录人配置，前端不再传 `CreatorUserId`。
+- **编辑：** `EditAsync` 按 `name` 匹配当前人记录，请求体只传 `name` + `setting`，不传 `id`。
+- **删除：** `DeleteAsync` 仍按 `id`。
 
 ```json
 {
@@ -97,6 +101,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-18 | Feature | 用户设置列表固定查当前人；编辑按 name 匹配，不再传 id | `GetPagedListAsync` 去掉 `CreatorUserId`；`EditAsync` 只传 `name`/`setting`。store 本地缓存仍留列表返回的 id，删除继续按 id。见 `change-log-2026-08-18-user-setting-admin-current-user.md` |
 | 2026-08-02 | Fix | 列定义调整、旧格式或异种配置不再导致表格列大面积（甚至全部）消失 | 三处改动：①列键改为与下标无关的 `field:xxx`，旧键留在 `_columnLegacyKey` 供读取存量配置；②`applyColumnConfig` 中配置认不出的列回退默认可见，并加「应用后无可见列」兜底，返回 `invalid`/`recovered`；③抽出 `healColumnConfig`，远端与本地兜底共用自愈判断，`hasHealed` 防止自愈后被本地配置盖回。见 `change-log-2026-08-02-vxe-column-persist-hide-all-guard.md` |
 | 2026-07-12 | Fix | 工具栏等与列无关的重算不再重置用户列设置（显隐/顺序/列宽） | 根因：`toolbarOptions` 调用插槽渲染读取分组 Tab 响应式状态 → `options` 重算生成新 `columns` 引用 → vxe `reloadColumn`。修复：`getBoundColumnsSignature` 稳定 `columns` 引用，签名变化才下发 |
 | 2026-07-12 | Style | vxe-grid 全局选中行（checkbox/radio/current）背景改为主题色 15% 透明 | 变量定义于 `packages/effects/plugins/src/vxe-table/style.css` `:root .vxe-grid`；与 antd Table 全局规则（`packages/styles/src/antd/index.css`）并列维护 |

@@ -2,8 +2,6 @@ import type { UserSettingAdminApi } from '#/api/system/user-setting-admin';
 
 import { ref } from 'vue';
 
-import { useUserStore } from '@vben/stores';
-
 import {
   addUserSetting,
   deleteUserSetting,
@@ -21,7 +19,6 @@ const TABLE_CONFIG_PAGE_SIZE = 999;
 type UserSettingItem = UserSettingAdminApi.UserSettingDto;
 
 export const useTableConfigStore = defineStore('table-config', () => {
-  const userStore = useUserStore();
   const tableConfigMap = ref<Record<string, UserSettingItem>>({});
   const searchFormConfigMap = ref<Record<string, UserSettingItem>>({});
   const groupConfigMap = ref<Record<string, UserSettingItem>>({});
@@ -142,9 +139,7 @@ export const useTableConfigStore = defineStore('table-config', () => {
       return await loadingPromise.value;
     }
     loadingPromise.value = (async () => {
-      const creatorUserId = userStore.userInfo?.userId;
       const firstPage = await getUserSettingPagedList({
-        CreatorUserId: creatorUserId,
         Keyword: TABLE_CONFIG_KEYWORD,
         PageIndex: 1,
         PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -152,7 +147,6 @@ export const useTableConfigStore = defineStore('table-config', () => {
       let items = [...(firstPage.items ?? [])];
       if ((firstPage.totalCount ?? 0) > TABLE_CONFIG_PAGE_SIZE) {
         const secondPage = await getUserSettingPagedList({
-          CreatorUserId: creatorUserId,
           Keyword: TABLE_CONFIG_KEYWORD,
           PageIndex: 2,
           PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -175,9 +169,7 @@ export const useTableConfigStore = defineStore('table-config', () => {
       return await searchFormLoadingPromise.value;
     }
     searchFormLoadingPromise.value = (async () => {
-      const creatorUserId = userStore.userInfo?.userId;
       const firstPage = await getUserSettingPagedList({
-        CreatorUserId: creatorUserId,
         Keyword: SEARCH_FORM_CONFIG_KEYWORD,
         PageIndex: 1,
         PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -185,7 +177,6 @@ export const useTableConfigStore = defineStore('table-config', () => {
       let items = [...(firstPage.items ?? [])];
       if ((firstPage.totalCount ?? 0) > TABLE_CONFIG_PAGE_SIZE) {
         const secondPage = await getUserSettingPagedList({
-          CreatorUserId: creatorUserId,
           Keyword: SEARCH_FORM_CONFIG_KEYWORD,
           PageIndex: 2,
           PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -208,9 +199,7 @@ export const useTableConfigStore = defineStore('table-config', () => {
       return await groupLoadingPromise.value;
     }
     groupLoadingPromise.value = (async () => {
-      const creatorUserId = userStore.userInfo?.userId;
       const firstPage = await getUserSettingPagedList({
-        CreatorUserId: creatorUserId,
         Keyword: GROUP_CONFIG_KEYWORD,
         PageIndex: 1,
         PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -218,7 +207,6 @@ export const useTableConfigStore = defineStore('table-config', () => {
       let items = [...(firstPage.items ?? [])];
       if ((firstPage.totalCount ?? 0) > TABLE_CONFIG_PAGE_SIZE) {
         const secondPage = await getUserSettingPagedList({
-          CreatorUserId: creatorUserId,
           Keyword: GROUP_CONFIG_KEYWORD,
           PageIndex: 2,
           PageSize: TABLE_CONFIG_PAGE_SIZE,
@@ -262,7 +250,10 @@ export const useTableConfigStore = defineStore('table-config', () => {
     name: string;
     setting: string;
   }) {
-    await editUserSetting(payload);
+    await editUserSetting({
+      name: payload.name,
+      setting: payload.setting,
+    });
     upsertTableConfig(payload);
     upsertSearchFormConfig(payload);
   }
@@ -287,7 +278,10 @@ export const useTableConfigStore = defineStore('table-config', () => {
     name: string;
     setting: string;
   }) {
-    await editUserSetting(payload);
+    await editUserSetting({
+      name: payload.name,
+      setting: payload.setting,
+    });
     upsertSearchFormConfig(payload);
     upsertTableConfig(payload);
   }
@@ -303,7 +297,10 @@ export const useTableConfigStore = defineStore('table-config', () => {
     name: string;
     setting: string;
   }) {
-    await editUserSetting(payload);
+    await editUserSetting({
+      name: payload.name,
+      setting: payload.setting,
+    });
     upsertGroupConfig(payload);
   }
 

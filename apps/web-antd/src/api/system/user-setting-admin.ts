@@ -14,7 +14,6 @@ export namespace UserSettingAdminApi {
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
-    CreatorUserId?: number | string;
   }
 
   export interface PagedListOfUserSettingDto {
@@ -27,9 +26,8 @@ export namespace UserSettingAdminApi {
     setting: string;
   }
 
-  export interface EditUserSettingDto extends AddUserSettingDto {
-    id: number;
-  }
+  /** 后端按 name 匹配当前用户记录，无需传 id */
+  export type EditUserSettingDto = AddUserSettingDto;
 }
 
 const API_PREFIX = '/services/app/UserSettingAdmin';

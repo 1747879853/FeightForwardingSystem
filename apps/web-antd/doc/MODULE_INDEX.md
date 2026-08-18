@@ -81,5 +81,5 @@
 | shared | `/cargo-tracking/air`、`/cargo-tracking/ocean` | 共享能力 / 运踪 | 新服务商货物轨迹独立静态页：免登录、可分享给外部客户；空运按航司单号前端拼装地址，海运按编码令牌还原轨迹链接；页头品牌 logo 随 VITE_APP_BRAND 切换，支持 `?lang=en`。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-16 |
 | shared | （运踪品牌分流） | 共享能力 / 运踪 | 按品牌×业务线分流：sjtd 海出保留现有运踪，其余海进/空出/非 sjtd 海出走新服务商；含接口清单、列表预警字段、白标分享、地图 URL 来源与用户侧去品牌化要求。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-16 |
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-06-21 |
-| shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-02 |
+| shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
 | shared | （全站页面级表单） | 共享能力 | 未保存内容离开拦截：`useUnsavedGuard({ isDirty })` + 全局 `beforeEach`，切标签/菜单跳转/后退/关闭当前标签时二次确认；首个接入方为海运出口新建与编辑工作台。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-07-14 |
