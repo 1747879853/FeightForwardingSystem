@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-17
+last_updated: 2026-08-18
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,7 +17,7 @@ last_updated: 2026-08-17
 | 路由名称 | `AirExportCreate` |
 | 页面组件 | `src/views/air-export-admin/basic-info-form/form.vue` |
 | 权限口径 | `Admin.AirExport`（新增 `Admin.AirExport.Create`） |
-| 关键源码 | `src/views/air-export-admin/basic-info-form/use-air-export-submit.ts`<br/>`src/views/air-export-admin/basic-info-form/air-export-detail-mapper.ts`<br/>`src/views/air-export-admin/modules/air-export-order-ctn-table.vue`<br/>`src/views/air-export-admin/data.ts` |
+| 关键源码 | `src/views/air-export-admin/basic-info-form/use-air-export-submit.ts`<br/>`src/views/air-export-admin/basic-info-form/air-export-detail-mapper.ts`<br/>`src/views/air-export-admin/modules/air-export-order-ctn-table.vue`<br/>`src/views/air-export-admin/data.ts`<br/>`src/views/air-export-admin/basic-info-form/use-air-export-ai-recognize.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -28,12 +28,14 @@ last_updated: 2026-08-17
 - **货物信息：** 从左到右为唛头货描、件重尺（含泡比）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一行（`PkgsPackageInput`，比例 1:3）；货物类型切换危险品区/冻柜区（超限箱不展示任何扩展区）；毛重或体积变化时重算泡比。
 - **货物明细：** 可增删行、上下移动，体积/体积重/计费重自动带出且允许手改。
 - **保存：** 校验通过后新建并跳转编辑页，同时刷新列表与工作台。
+- **AI识别：** 顶栏上传空运单证（PDF/图片/Office/OFD），调用 `TextInAdmin/ExtractAirExportToAddDtoAsync` 预填表单；空港走机场下拉；货物明细写入 `airExportOrderCtns`；用户校对后再点保存走 `AirExportAdmin/AddAsync`。
 
 # 3. 状态流转说明 (Status Transitions)
 
 | 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
 | :-- | :-- | :-- | :-- |
 | 空白表单 | 用户填写并保存 | 编辑页 | 保存成功后重置脏检查基线再跳转，避免触发未保存拦截。 |
+| 空白/已填表单 | 用户 AI 识别单证 | 预填后可改 | 只覆盖识别到的非空字段；保存仍走 `AddAsync`。 |
 | 表单有改动 | 用户离开路由 | 二次确认 | 由 `useUnsavedGuard` + DTO 快照比对判定。 |
 
 # 4. 核心字段说明 (Field Definitions)
@@ -51,7 +53,8 @@ last_updated: 2026-08-17
 | **泡比** | 整票毛重 ÷ 整票体积。 | 前端计算，存 `bubbleRatio` | **触发/依赖：** 毛重或体积变化时重算。 | 体积为空或 0 时**留空（null）**，不要存 0。 |
 | **明细-体积(单件)** | 长 × 宽 × 高 ÷ 1000000。 | 前端计算 | **触发/依赖：** 长/宽/高任一变化即重算，并向下传导。 | 任一为空则留空，6 位小数。 |
 | **明细-体积重(整行)** | 单件体积 × 167 × 件数。 | 前端计算 | **触发/依赖：** 体积或件数变化即重算，并向下传导计费重。 | 体积或件数为空则留空。 |
-| **明细-计费重(整行)** | max(体积重, 单件重量 × 件数) 后按 0.5 千克向上进位。 | 前端计算 | **触发/依赖：** 体积重、重量、件数任一变化即重算。 | 两者都算不出则留空。 |
+| **明细-计费重(整行)** | max(体积重, 单件重量 × 件数) 后按 0.5 千克向上进位。 | 前端计算；AI 识别时以后端已算值为准 | **触发/依赖：** 体积重、重量、件数任一变化即重算。识别整表回填时不立刻重跑公式。 | 两者都算不出则留空。 |
+| **AI识别** | 上传单证预填新建表单，结果可改，不是终值。 | `TextInAdmin/ExtractAirExportToAddDtoAsync` | **触发/依赖：** 回填 `airExport`；空港匹配 `AirPort`；航司原文仅在 `extract.extractedSchema["航空公司"]`。 | 匹配不到 id 不报错；空 Guid 委托单位必填拦截；须补销售恰好 1 个与 `orgId`。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -63,10 +66,13 @@ last_updated: 2026-08-17
 
 > [!IMPORTANT] **[卡点 4：子表全量提交]** 货物明细、商品、干系人做全量比对，漏传的行会被删除。
 
+> [!IMPORTANT] **[卡点 5：AI 识别只是预填]** 空港必须用机场下拉回显；货物明细不要写进 `transportOrder.orderCtns`；识别后须用户校对再保存。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-18 | `Feature` | 新建/编辑基础信息顶栏增加 AI 识别，上传单证后预填表单。 | 走 `TextInAdmin/ExtractAirExportToAddDtoAsync`；空港回显 `AirPort`；货物明细写 `airExportOrderCtns`。详见 `changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md`。 |
 | 2026-08-17 | `Fix` | 选中空港后输入框只回显三字码，备注回填英文名称。 | `labelKey=iataCode`；备注走 `formatAirPortRemark`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |
 | 2026-08-16 | `Feature` | 件数与包装合并为一行，交互对齐海运进口。 | `PkgsPackageInput`；`codePackageId` 隐藏落库。详见 `changelogs/change-log-2026-08-16-air-export-pkgs-package-row.md`。 |

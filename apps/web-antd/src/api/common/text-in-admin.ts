@@ -1,3 +1,4 @@
+import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
@@ -72,6 +73,11 @@ export namespace TextInAdminApi {
     preOrder?: PreOrderExtractFormDto;
     extract?: TextInExtractResultDto;
   }
+
+  export interface AirExportExtractAddDto {
+    airExport?: AirExportAdminApi.AirExportAddDto;
+    extract?: TextInExtractResultDto;
+  }
 }
 
 const TEXT_IN_EXTRACT_REQUEST_OPTIONS = {
@@ -120,6 +126,20 @@ export const extractPreOrderToAddDto = (file: File, bizType?: number) => {
   }
   return requestClient.post<TextInAdminApi.PreOrderExtractAddDto>(
     '/services/app/TextInAdmin/ExtractPreOrderToAddDtoAsync',
+    formData,
+    TEXT_IN_EXTRACT_REQUEST_OPTIONS,
+  );
+};
+
+/**
+ * TextIn 空运出口智能抽取并转换为新建 Dto（含名称→id 匹配）。
+ * 空港匹配 AirPort；货物明细在 airExport.airExportOrderCtns；支持同文件缓存。
+ */
+export const extractAirExportToAddDto = (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return requestClient.post<TextInAdminApi.AirExportExtractAddDto>(
+    '/services/app/TextInAdmin/ExtractAirExportToAddDtoAsync',
     formData,
     TEXT_IN_EXTRACT_REQUEST_OPTIONS,
   );

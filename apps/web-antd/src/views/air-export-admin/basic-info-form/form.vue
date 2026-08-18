@@ -68,6 +68,7 @@ import {
 import AirExportOrderCtnTable from '../modules/air-export-order-ctn-table.vue';
 import { useAirExportCopy } from '../use-air-export-copy';
 import { useAirTrackingSubscribe } from '#/components/tracking';
+import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import {
   calcBubbleRatio,
   flattenDetail,
@@ -75,6 +76,7 @@ import {
   toAirPortSelectedItems,
   toSelectedItems,
 } from './air-export-detail-mapper';
+import { useAirExportAiRecognize } from './use-air-export-ai-recognize';
 import { useAirExportSubmit } from './use-air-export-submit';
 import { useOrderUsers } from './use-order-users';
 
@@ -845,6 +847,40 @@ const { copying: copyingAirExport, copyFrom } = useAirExportCopy({
   checkDirty: isFormDirty,
 });
 
+const { aiRecognizing, recognizeAiFile } = useAirExportAiRecognize({
+  formApis: {
+    party: partyInfoFormApi,
+    basic: basicInfoFormApi,
+    date: dateFormApi,
+    airLeg: airLegFormApi,
+    airLegHeader: airLegHeaderFormApi,
+    cargoTypeInline: cargoTypeInlineFormApi,
+    cargoMain: cargoMainFormApi,
+    cargoMetrics: cargoMetricsFormApi,
+    cargoRemark: cargoRemarkFormApi,
+    cargoDg: cargoDgFormApi,
+    cargoReefer: cargoReeferFormApi,
+  },
+  orderCtns,
+  syncBasicInfoHeaderFields,
+  setCodePackageSelectedItems: (items) => {
+    codePackageSelectedItems.value = items;
+  },
+  onAirPortChange: (fieldName, _value, option) => {
+    void syncAirPortRemark(fieldName, option);
+  },
+});
+
+const aiExtractModalOpen = ref(false);
+const handleAiRecognize = () => {
+  if (aiRecognizing.value) return;
+  aiExtractModalOpen.value = true;
+};
+const handleAiExtractFile = async (file: File) => {
+  const ok = await recognizeAiFile(file);
+  if (ok) aiExtractModalOpen.value = false;
+};
+
 const handleCopyAirExport = async () => {
   if (!editId.value) return;
   await copyFrom({
@@ -1055,6 +1091,18 @@ watch(pageLoading, (loading) => {
                 <div class="content-section__actions">
                   <div class="content-section__actions-left"></div>
                   <Space class="content-section__actions-right">
+                    <Button
+                      size="small"
+                      class="flex items-center justify-center"
+                      :loading="aiRecognizing"
+                      @click="handleAiRecognize"
+                    >
+                      <IconifyIcon
+                        icon="mdi:robot-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">AI识别</span>
+                    </Button>
                     <template v-if="isEdit">
                       <span
                         v-access:code="externalApiUseCode"
@@ -1575,6 +1623,11 @@ watch(pageLoading, (loading) => {
         </Radio>
       </Radio.Group>
     </Modal>
+    <AiExtractUploadModal
+      v-model:open="aiExtractModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiExtractFile"
+    />
     <ResultModal />
   </component>
 </template>

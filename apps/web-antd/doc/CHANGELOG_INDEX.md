@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-18 空运出口对接 TextIn 智能抽取](./changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md)
 - [2026-08-18 用户设置列表固定当前人、编辑按 name 匹配](./changelogs/change-log-2026-08-18-user-setting-admin-current-user.md)
 - [2026-08-18 公司组织支持维护开票应用凭据](./changelogs/change-log-2026-08-18-dept-company-invoice-app.md)
 - [2026-08-17 本地全量发布改为按品牌独立 dist 并行](./changelogs/change-log-2026-08-17-parallel-brand-publish.md)
