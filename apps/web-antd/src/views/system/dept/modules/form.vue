@@ -88,6 +88,8 @@ function mapDtoToFormValues(
     unifiedSocialCreditCode: data.unifiedSocialCreditCode ?? undefined,
     invoiceAddress: data.invoiceAddress ?? undefined,
     invoiceTel: data.invoiceTel ?? undefined,
+    invoiceAppKey: data.invoiceAppKey ?? undefined,
+    invoiceAppSecret: data.invoiceAppSecret ?? undefined,
     logo: mapLogoFormValue(data.logo),
   };
 }
@@ -108,6 +110,9 @@ function collectSubmitData(values: Record<string, any>) {
     unifiedSocialCreditCode: values.unifiedSocialCreditCode || null,
     invoiceAddress: values.invoiceAddress || null,
     invoiceTel: values.invoiceTel || null,
+    // 开票凭据全量覆盖：不传/传 null 会清空库值；部门不维护
+    invoiceAppKey: isCompany ? values.invoiceAppKey || null : null,
+    invoiceAppSecret: isCompany ? values.invoiceAppSecret || null : null,
     // 仅公司提交 logo；部门或清空时传 null，避免残留旧附件
     logo: isCompany ? buildLogoPayload(values.logo) : null,
   };

@@ -667,6 +667,16 @@ loadTree();
                   >
                     {{ selectedOrgDetail.invoiceAddress || '-' }}
                   </DescriptionsItem>
+                  <DescriptionsItem :label="$t('system.dept.invoiceAppKey')">
+                    {{ selectedOrgDetail.invoiceAppKey || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem :label="$t('system.dept.invoiceAppSecret')">
+                    {{
+                      selectedOrgDetail.invoiceAppSecret
+                        ? $t('system.dept.invoiceAppConfigured')
+                        : $t('system.dept.invoiceAppNotConfigured')
+                    }}
+                  </DescriptionsItem>
                 </template>
               </Descriptions>
             </TabPane>

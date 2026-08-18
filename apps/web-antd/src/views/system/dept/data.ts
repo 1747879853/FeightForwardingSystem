@@ -160,6 +160,35 @@ export function useSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Input',
+      componentProps: {
+        maxLength: 128,
+        placeholder: $t('system.dept.invoiceAppKeyPlaceholder'),
+      },
+      fieldName: 'invoiceAppKey',
+      label: $t('system.dept.invoiceAppKey'),
+      help: $t('system.dept.invoiceAppKeyHelp'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
+    {
+      component: 'InputPassword',
+      componentProps: {
+        autocomplete: 'new-password',
+        maxLength: 128,
+        placeholder: $t('system.dept.invoiceAppSecretPlaceholder'),
+      },
+      fieldName: 'invoiceAppSecret',
+      label: $t('system.dept.invoiceAppSecret'),
+      help: $t('system.dept.invoiceAppSecretHelp'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
+    {
       component: 'FileUploadInput',
       fieldName: 'logo',
       label: $t('system.dept.logo'),

@@ -61,6 +61,10 @@ export namespace SystemOrganizationUnitApi {
     unifiedSocialCreditCode?: string | null;
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
+    /** 开票应用 appKey。仅获取单个组织 / 新建 / 更新返回，列表恒为 null */
+    invoiceAppKey?: string | null;
+    /** 开票应用 appSecret（机密）。返回范围同上 */
+    invoiceAppSecret?: string | null;
     orgBankAccounts?: OrgBankAccountDto[] | null;
     /** 公司 Logo（附件模块 OrganizationUnitLogo） */
     logo?: AttachmentItemDto | null;
@@ -114,6 +118,8 @@ export namespace SystemOrganizationUnitApi {
     unifiedSocialCreditCode?: string | null;
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
+    invoiceAppKey?: string | null;
+    invoiceAppSecret?: string | null;
     /** 公司 Logo；无值传 null 可清空 */
     logo?: AttachmentItemForItemInputDto | null;
   }
@@ -135,6 +141,8 @@ export namespace SystemOrganizationUnitApi {
     unifiedSocialCreditCode?: string | null;
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
+    invoiceAppKey?: string | null;
+    invoiceAppSecret?: string | null;
     /** 公司 Logo；无值传 null 可清空 */
     logo?: AttachmentItemForItemInputDto | null;
   }

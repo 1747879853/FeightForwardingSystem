@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-18 公司组织支持维护开票应用凭据](./changelogs/change-log-2026-08-18-dept-company-invoice-app.md)
 - [2026-08-17 本地全量发布改为按品牌独立 dist 并行](./changelogs/change-log-2026-08-17-parallel-brand-publish.md)
 - [2026-08-17 龙山接入本地 MSDeploy 自动发布](./changelogs/change-log-2026-08-17-longshan-msdeploy-publish.md)
 - [2026-08-17 码头船舶改为查询后人工引入并保存](./changelogs/change-log-2026-08-17-terminal-schedule-query-import.md)
