@@ -3,6 +3,14 @@ import type { Ref } from 'vue';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
+// ✅ 修改：只导入ensureExchangeRateCache函数
+import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
+// ✅ 新增：导入汇率API
+import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+// ✅ 新增：导入客户开票信息API
+import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
+// ✅ 新增：导入备注模板 API
+import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 
 /**
  * 费用选择抽屉保存处理逻辑
@@ -22,6 +30,7 @@ export function useFeeSelectionSave(
   updateOrgBankByCurrency: () => void,
   flattenTreeData: (data: any[]) => any[], // ✅ 新增：扁平化树形数据函数
   loadDefaultRemarkTemplate?: () => Promise<void>,
+  orgBankAccounts?: Ref<any[]>, // ✅ 新增：销售方银行账号列表，用于替换占位符
   onCreated?: (ids: string[]) => void, // ✅ 修改：接收多个开票申请ID数组
   onRefresh?: () => Promise<void>, // ✅ 新增：刷新数据的回调
 ) {
@@ -293,6 +302,233 @@ export function useFeeSelectionSave(
             continue;
           }
 
+          // ✅ 修复：为当前币别获取对应的发票汇率（必须在计算金额和替换占位符之前获取）
+          let currentCurrencyExchangeRate = 1.0;
+          if (currencyId !== 1) {
+            try {
+              // 获取当前币别的有效发票汇率
+              const exchangeRateList = await getExchangeRatePagedList({
+                CurrencyId: currencyId,
+                PageIndex: 1,
+                PageSize: 10,
+              });
+
+              // 筛选启用且在有效期内的汇率记录
+              const now = new Date();
+              const validRates = (exchangeRateList?.items || []).filter(
+                (rate) => {
+                  if (!rate.enable) return false;
+                  const startDate = rate.startDate
+                    ? new Date(rate.startDate)
+                    : null;
+                  const endDate = rate.endDate ? new Date(rate.endDate) : null;
+                  if (startDate && now < startDate) return false;
+                  if (endDate && now > endDate) return false;
+                  return true;
+                },
+              );
+
+              // 按sortId降序、id降序排序，取第一条
+              if (validRates.length > 0) {
+                validRates.sort((a, b) => {
+                  const aSortId = a.sortId ?? 0;
+                  const bSortId = b.sortId ?? 0;
+                  if (bSortId !== aSortId) {
+                    return bSortId - aSortId;
+                  }
+                  return String(b.id) > String(a.id) ? -1 : 1;
+                });
+
+                const bestRate = validRates[0];
+                if (bestRate && bestRate.invoiceValue !== undefined) {
+                  currentCurrencyExchangeRate = bestRate.invoiceValue;
+                  console.log(
+                    '✅ 获取币别',
+                    currencyCode,
+                    '的发票汇率:',
+                    currentCurrencyExchangeRate,
+                  );
+                } else {
+                  console.warn(
+                    '⚠️ 币别',
+                    currencyCode,
+                    '的汇率记录中没有invoiceValue，使用默认汇率 1.0',
+                  );
+                  currentCurrencyExchangeRate = 1.0;
+                }
+              } else {
+                console.warn(
+                  '⚠️ 未找到币别',
+                  currencyCode,
+                  '的有效发票汇率，使用默认汇率 1.0',
+                );
+                currentCurrencyExchangeRate = 1.0;
+              }
+            } catch (error) {
+              console.error('获取币别汇率失败:', error);
+              currentCurrencyExchangeRate = 1.0;
+            }
+          }
+
+          // ✅ 新增：为当前币别获取对应的默认银行账户（必须在备注模板替换逻辑之前执行）
+          let clientInvoiceBankIdForCurrency: string | undefined = undefined;
+          let clientBankNameForCurrency: string = '';
+          let clientBankAccountForCurrency: string = '';
+
+          if (settlementId && currencyId) {
+            try {
+              const clientInvoiceInfoList = await getClientInvoiceInfoList({
+                ClientId: settlementId,
+              });
+
+              // 找到默认的开票信息
+              const defaultInvoiceInfo = clientInvoiceInfoList?.find(
+                (info) => info.isDefault,
+              );
+
+              if (defaultInvoiceInfo && defaultInvoiceInfo.clientInvoiceBanks) {
+                // 找到对应币别的默认银行账户
+                const defaultBank =
+                  defaultInvoiceInfo.clientInvoiceBanks
+                    .filter((bank) => bank.currencyId === currencyId)
+                    .find((bank) => bank.isDefault) ||
+                  defaultInvoiceInfo.clientInvoiceBanks.filter(
+                    (bank) => bank.currencyId === currencyId,
+                  )[0];
+
+                if (defaultBank) {
+                  clientInvoiceBankIdForCurrency = defaultBank.id;
+                  clientBankNameForCurrency = defaultBank.bankName || '';
+                  clientBankAccountForCurrency = defaultBank.bankAccount || '';
+                  console.log(
+                    '✅ 为币别',
+                    currencyCode,
+                    '找到默认银行账户:',
+                    defaultBank.bankName,
+                  );
+                }
+              }
+            } catch (error) {
+              console.warn('获取客户开票信息失败，使用全局银行账户:', error);
+              // 如果获取失败，回退到全局设置
+              clientInvoiceBankIdForCurrency =
+                formData.value.clientInvoiceBankId || undefined;
+            }
+          }
+
+          // ✅ 新增：获取当前币别的默认备注模板并替换占位符
+          let currencyRemark = '';
+          try {
+            const orgId = formData.value.orgId || getMyDefaultOrgId() || 0;
+            if (orgId && currencyId) {
+              const templates =
+                await InvoiceRemarkTemplateApi.getPagedListAsync({
+                  pageIndex: 1,
+                  pageSize: 100,
+                  orgId: orgId,
+                  currencyId: currencyId,
+                });
+
+              const defaultTemplate = templates.items?.find((t) => t.default);
+              if (defaultTemplate) {
+                let templateContent = defaultTemplate.template || '';
+
+                // ✅ 核心逻辑：收集当前币别下的真实数据用于替换占位符
+                // 1. 收集委托编号和主提单号
+                const commissionNums = new Set<string>();
+                const mblNums = new Set<string>();
+                fees.forEach((fee: any) => {
+                  if (fee.transportOrder?.commissionNum) {
+                    commissionNums.add(fee.transportOrder.commissionNum);
+                  }
+                  if (fee.transportOrder?.mblNum) {
+                    mblNums.add(fee.transportOrder.mblNum);
+                  }
+                });
+
+                // 2. 计算金额（原币和人民币）
+                let totalOriginalAmount = 0;
+                let totalRmbAmount = 0;
+                fees.forEach((fee: any) => {
+                  const appliedAmount =
+                    fee.appliedAmount ||
+                    fee.orderFee.remainingInvoiceAmount ||
+                    0;
+                  totalOriginalAmount += appliedAmount;
+                  // 使用当前循环中已经获取到的 currentCurrencyExchangeRate
+                  if (currencyId !== 1) {
+                    totalRmbAmount +=
+                      appliedAmount * currentCurrencyExchangeRate;
+                  } else {
+                    totalRmbAmount += appliedAmount;
+                  }
+                });
+
+                // 3. 获取银行信息（直接使用上面循环开头获取到的变量）
+                let orgBankName = '';
+                let orgBankAccount = '';
+
+                // 销方银行：优先查找与当前币别匹配的归属组织银行账户
+                if (orgBankAccounts?.value) {
+                  // 尝试找到与当前币别一致的销方银行账户
+                  const matchedOrgBank = orgBankAccounts.value.find(
+                    (b) => b.currencyId === currencyId,
+                  );
+
+                  // 如果找到了匹配的，或者用户在全局选择了某个账户（且该账户属于当前币别），则使用
+                  if (matchedOrgBank) {
+                    orgBankName = matchedOrgBank.bankName;
+                    orgBankAccount = matchedOrgBank.bankAccount;
+                  } else if (formData.value.orgBankAccountId) {
+                    // 如果没有匹配币别的，但有全局选择，检查全局选择的是否有效
+                    const selectedOrgBank = orgBankAccounts.value.find(
+                      (b) => b.id === formData.value.orgBankAccountId,
+                    );
+                    if (selectedOrgBank) {
+                      orgBankName = selectedOrgBank.bankName;
+                      orgBankAccount = selectedOrgBank.bankAccount;
+                    }
+                  }
+                }
+
+                // 4. 执行占位符替换
+                const replacements: Record<string, string> = {
+                  '<委托编号>': Array.from(commissionNums).join('、'),
+                  '<主提单号>': Array.from(mblNums).join('、'),
+                  '[折算汇率]': String(currentCurrencyExchangeRate),
+                  '[外币金额(总计)]': totalOriginalAmount.toFixed(2),
+                  '[人民币金额(总计)]': totalRmbAmount.toFixed(2),
+                  '[购方银行]': clientBankNameForCurrency,
+                  '[购方账号]': clientBankAccountForCurrency,
+                  '[销方银行]': orgBankName,
+                  '[销方账号]': orgBankAccount,
+                };
+
+                for (const [placeholder, value] of Object.entries(
+                  replacements,
+                )) {
+                  const regex = new RegExp(
+                    placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                    'g',
+                  );
+                  templateContent = templateContent.replace(regex, value);
+                }
+
+                currencyRemark = templateContent;
+                console.log(
+                  `✅ 为币别 ${currencyCode} 加载并替换了默认备注模板`,
+                );
+              } else {
+                currencyRemark = formData.value.remark || '';
+              }
+            } else {
+              currencyRemark = formData.value.remark || '';
+            }
+          } catch (error) {
+            console.warn('获取或处理默认备注模板失败:', error);
+            currencyRemark = formData.value.remark || '';
+          }
+
           // 查找该币别的默认发票商品编码
           const defaultCodeInvoice = codeInvoiceList.value.find(
             (item) => item.isDefault && item.currency?.code === currencyCode,
@@ -321,9 +557,9 @@ export function useFeeSelectionSave(
             const feeCurrencyId = fee.orderFee.currencyId;
 
             if (feeCurrencyId !== 1) {
-              // 外币转人民币
+              // 外币转人民币 - 使用当前币别的发票汇率
               const convertedAmount =
-                appliedAmount * (invoiceExchangeRate.value || 1);
+                appliedAmount * currentCurrencyExchangeRate;
               totalRmbAmount += convertedAmount;
             } else {
               // 人民币直接累加
@@ -369,8 +605,7 @@ export function useFeeSelectionSave(
               currencyId: currencyId,
               invoiceType: formData.value.invoiceType, // ✅ 传递发票类型
               orgBankAccountId: formData.value.orgBankAccountId || undefined, // ✅ 传递销售方银行ID
-              clientInvoiceBankId:
-                formData.value.clientInvoiceBankId || undefined, // ✅ 传递购买方银行ID
+              clientInvoiceBankId: clientInvoiceBankIdForCurrency, // ✅ 使用币别对应的银行账户
               invoiceApplicationItems: fees.map((fee: any) => ({
                 orderFeeId: fee.orderFee.id,
                 appliedAmount:
@@ -378,6 +613,7 @@ export function useFeeSelectionSave(
                 remark: '',
               })),
               invoiceApplicationGoodsDtls: invoiceApplicationGoodsDtls, // ✅ 传递商品明细
+              remark: currencyRemark, // ✅ 设置当前币别的备注（来自默认模板或全局输入）
             };
 
           currencyGroups.push(currencyGroup);
@@ -412,15 +648,13 @@ export function useFeeSelectionSave(
             settlementId: settlementId,
             orgId: formData.value.orgId || getMyDefaultOrgId() || 0,
             require: formData.value.require, // ✅ 传递开票要求
-            remark: formData.value.remark, // ✅ 传递备注（可能已被默认模板填充）
-            currencyGroups,
+            currencyGroups, // ✅ currencyGroups 内部已经包含了各自的 remark
           };
 
         console.log('📤 新增开票申请完整数据:', {
           settlementId: addData.settlementId,
           orgId: addData.orgId,
           require: addData.require,
-          remark: addData.remark,
           currencyGroups: currencyGroups.map((g) => ({
             currencyId: g.currencyId,
             invoiceType: g.invoiceType,
@@ -428,6 +662,7 @@ export function useFeeSelectionSave(
             clientInvoiceBankId: g.clientInvoiceBankId,
             itemCount: g.invoiceApplicationItems.length,
             goodsCount: g.invoiceApplicationGoodsDtls?.length || 0,
+            remark: g.remark, // ✅ 打印每个币别的备注信息
           })),
         });
 

@@ -1,10 +1,14 @@
 <script lang="ts" setup>
-import { ref, watch, shallowRef, nextTick } from 'vue';
+import { ref, watch, shallowRef, nextTick, onMounted } from 'vue';
 import Handsontable from 'handsontable';
 import { useDropdownSources } from './composables/useDropdownSources';
 import { useFieldLinkage } from './composables/useFieldLinkage';
 import { useHotSettings } from './composables/useHotSettings';
 import { getClientGroupedByIndustryCategory } from '#/api/common/client';
+// ✅ 新增：导入API和store
+import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
+import { useDataRefreshStore } from '#/store/modules/data-refresh';
+
 import {
   getIndustryCategoryOptions,
   getServiceTypeOptions,
@@ -32,6 +36,58 @@ const localAllClientsByIndustry = ref<
 // ✅ 新增：服务项下拉选项（使用静态数据）
 const serviceTypeOptions = ref<Array<{ label: string; value: number }>>(
   getServiceTypeOptions(),
+);
+
+// ✅ 新增：数据刷新store
+const dataRefreshStore = useDataRefreshStore();
+
+// ✅ 新增：重新加载费用代码数据的函数
+async function reloadFeeCodeData() {
+  try {
+    console.log('🔄 [OrderFeeTemplateTable] 开始重新加载费用代码数据...');
+
+    const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    if (feeCodeData && Array.isArray(feeCodeData)) {
+      dropdownSources.feeCodeList.value = feeCodeData.map((item: any) => {
+        const surLabel = item.cnName || item.enName || '';
+        const label = item.code ? `${item.code}-${surLabel}` : surLabel;
+        return {
+          label: label || item.cnName || item.enName || item.code || '',
+          value: Number(item.id),
+          currencyId: item.currencyId ? Number(item.currencyId) : undefined,
+          unit: item.defaultUnitName || undefined,
+          taxRate:
+            item.taxRate !== undefined ? Number(item.taxRate) : undefined,
+          defaultCreditName: item.defaultCreditName || undefined,
+          defaultDebitName: item.defaultDebitName || undefined,
+        };
+      });
+      console.log(
+        `✅ [OrderFeeTemplateTable] 费用代码重新加载完成，共 ${dropdownSources.feeCodeList.value.length} 条`,
+      );
+
+      // ✅ 重新加载箱型代码数据
+      await loadCtnCodeData();
+
+      // ✅ 重新渲染表格以更新下拉选项
+      if (hotInstance.value && !hotInstance.value.isDestroyed) {
+        hotInstance.value.render();
+      }
+    }
+  } catch (error) {
+    console.error(
+      '❌ [OrderFeeTemplateTable] 重新加载费用代码数据失败:',
+      error,
+    );
+  }
+}
+
+// ✅ 监听费用代码刷新信号
+watch(
+  () => dataRefreshStore.feeCodeRefreshSignal,
+  () => {
+    reloadFeeCodeData();
+  },
 );
 
 // ✅ 关键修改：如果父组件传入了客户缓存，则使用父组件的数据
@@ -385,6 +441,18 @@ watch(
   { deep: true },
 );
 
+// ✅ 新增：监听箱型代码列表变化，重新渲染
+watch(
+  () => dropdownSources.ctnCodeList.value,
+  () => {
+    // ✅ 关键修复：检查实例是否仍然有效
+    if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      hotInstance.value.render();
+    }
+  },
+  { deep: true },
+);
+
 // ==================== 生命周期 ====================
 
 // 组件挂载后初始化 Handsontable
@@ -568,6 +636,27 @@ defineExpose({
   hotInstance,
   selectedRows, // ✅ 暴露选中的行
 });
+
+// ✅ 新增：加载箱型代码数据
+async function loadCtnCodeData() {
+  try {
+    console.log('🔄 [OrderFeeTemplateTable] 开始加载箱型代码数据...');
+    await dropdownSources.loadCtnCodeList();
+    console.log('✅ [OrderFeeTemplateTable] 箱型代码数据加载完成');
+
+    // ✅ 重新渲染表格以更新单位下拉选项
+    if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      hotInstance.value.render();
+    }
+  } catch (error) {
+    console.error('❌ [OrderFeeTemplateTable] 加载箱型代码数据失败:', error);
+  }
+}
+
+// ✅ 在组件挂载时加载箱型代码
+onMounted(() => {
+  loadCtnCodeData();
+});
 </script>
 
 <template>
@@ -589,10 +678,19 @@ defineExpose({
         max-height: 30px !important;
         padding-top: 0 !important;
         padding-bottom: 0 !important;
-        // ✅ 关键修复：添加行高和高度限制，防止内容影响行高
+        // ✅ 关键修复：移除 text-align: center，让各列使用自己的对齐方式
         line-height: 3px !important;
         vertical-align: middle !important;
-        text-align: center !important;
+      }
+
+      // ✅ 普通列左对齐
+      :deep(.htLeft) {
+        text-align: left !important;
+      }
+
+      // ✅ 数值列右对齐
+      :deep(.htRight) {
+        text-align: right !important;
       }
 
       // ✅ 确保span元素不会影响行高

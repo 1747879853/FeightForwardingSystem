@@ -415,14 +415,6 @@ watch(
   (newVal) => {
     console.log(' FeeDetailModal 接收到数据:', newVal);
     console.log('📊 父节点数量:', newVal.length);
-    newVal.forEach((detail, index) => {
-      console.log(`📊 父节点 ${index + 1}:`, {
-        id: detail.id,
-        commissionNum: detail.commissionNum,
-        childrenCount: detail.feeDetails?.length || 0, // ✅ 更新为 feeDetails
-      });
-    });
-
     // 数据变化时重新应用筛选
     filteredFeeDetails.value = [...newVal];
 
@@ -435,7 +427,7 @@ watch(
 /** 获取业务类型选项 */
 function getBizTypeLabel(value: string | number): string {
   const option = getBizTypeOptions().find((o: any) => o.value === value);
-  return option ? option.label : '-';
+  return option ? option.label : '3';
 }
 
 /** 将原币金额转换为人民币 */
@@ -460,6 +452,12 @@ const outerColumns = [
     align: 'center' as const,
   },
   {
+    title: '业务类型',
+    dataIndex: 'bizType',
+    key: 'bizType',
+    width: 100,
+  },
+  {
     title: '委托编号',
     dataIndex: 'commissionNum',
     key: 'commissionNum',
@@ -470,41 +468,36 @@ const outerColumns = [
     title: '主提单号',
     dataIndex: 'mblNum',
     key: 'mblNum',
-    width: 140,
+    width: 130,
     ellipsis: true,
   },
   {
     title: '订舱编号',
     dataIndex: 'bookingNum',
     key: 'bookingNum',
-    width: 140,
+    width: 130,
     ellipsis: true,
   },
   {
     title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
-    width: 180,
+    width: 140,
     ellipsis: true,
   },
-  {
-    title: '业务类型',
-    dataIndex: 'bizType',
-    key: 'bizType',
-    width: 100,
-  },
+
   {
     title: '船公司',
     dataIndex: 'carrier',
     key: 'carrier',
-    width: 120,
+    width: 170,
     ellipsis: true,
   },
   {
     title: '所属公司',
     dataIndex: 'company',
     key: 'company',
-    width: 150,
+    width: 140,
     ellipsis: true,
   },
 ];

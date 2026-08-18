@@ -134,6 +134,7 @@ async function loadInvoiceDetail() {
   loading.value = true;
   try {
     const detail = await getInvoiceIssueDetail(props.invoiceIssueId);
+    console.log('✅ 发票详情数据加载成功:', detail);
     invoiceDetailData.value = detail;
 
     // ✅ 将 invoiceIssueApplications 转换为与抽屉相同的数据结构
@@ -181,7 +182,7 @@ function transformToTreeData(applications: any[]): any[] {
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
           hblNum: '-', // 分提单号（需要从其他地方获取）
-          clientName: item.orderFee?.transportOrder?.clientName || '-', // 委托单位
+          clientName: item.orderFee?.transportOrder?.client.name || '-', // 委托单位
           etd: (() => {
             const etdValue = item.orderFee?.transportOrder?.etd;
             if (!etdValue) return '-';
@@ -241,11 +242,11 @@ function transformToTreeData(applications: any[]): any[] {
       rowKey: String(app.id), // NestedDataTable 需要的 rowKey
       parentId: null,
       // 一级字段
-      companyName: app.companyName || '-',
+      companyName: app.company.displayName || '-',
       orgId: app.orgId,
       applicationNo: app.applicationNo || '-',
       header: app.clientInvoiceInfo?.header || '-',
-      currencyCode: app.currencyCode || '-',
+      currencyCode: app.currency.code || '-',
       remark: app.remark || '-',
       applyUserName: app.applyUserName || '-',
       applyTime: formattedApplyTime,
@@ -710,8 +711,8 @@ const parentColumns = [
     title: '所属公司',
     dataIndex: 'companyName',
     key: 'companyName',
-    minWidth: 100,
-    width: 100,
+    minWidth: 120,
+    width: 120,
     ellipsis: true,
   },
   {
@@ -740,15 +741,15 @@ const parentColumns = [
     title: '备注',
     dataIndex: 'remark',
     key: 'remark',
-    width: 80,
+    width: 180,
     ellipsis: true,
   },
   {
     title: '申请人',
     dataIndex: 'applyUserName',
     key: 'applyUserName',
-    minWidth: 70,
-    width: 70,
+    minWidth: 80,
+    width: 80,
     ellipsis: true,
   },
   {
@@ -969,6 +970,70 @@ defineExpose({
 .expand-toggle--expanded {
   transform: rotate(90deg);
 }
+
+/* 统计信息样式 */
+.statistics-container {
+  padding: 0;
+  margin-top: 16px;
+}
+
+.statistics-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 38px;
+  max-height: 48px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+}
+
+.stats-icon {
+  font-size: 16px;
+  color: #1890ff;
+}
+
+.statistics-title {
+  margin-right: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.statistic-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 30px;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.statistic-item.primary {
+  border-left: 2px solid #1890ff;
+}
+
+.statistic-item.success {
+  border-left: 2px solid #52c41a;
+}
+
+.statistic-label {
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.statistic-value {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #212529;
+}
 </style>
 
 <template>
@@ -1025,7 +1090,7 @@ defineExpose({
               </template>
               删除选中 ({{ selectedRowKeys.length }})
             </Button>
-            <Button
+            <!-- <Button
               type="primary"
               @click="handleTaxAction"
               :disabled="invoiceDetailData?.redLocked"
@@ -1048,7 +1113,7 @@ defineExpose({
                 <IconifyIcon icon="ant-design:sync-outlined" />
               </template>
               刷新进度
-            </Button>
+            </Button> -->
           </Space>
         </div>
       </div>
@@ -1160,25 +1225,29 @@ defineExpose({
       <!-- 底部统计信息 -->
       <div
         v-if="filteredData && filteredData.length > 0"
-        style="
-          padding: 12px;
-          margin-top: 16px;
-          background: rgb(24 144 255 / 5%);
-          border-radius: 4px;
-        "
+        class="statistics-container"
       >
-        <Space :size="24">
-          <span style="font-weight: bold; color: #1890ff">统计信息</span>
-          <span>发票数量: {{ filteredData.length }}</span>
-          <span>
-            开票总金额:
-            {{
-              filteredData
-                .reduce((sum, item) => sum + (item.invoiceAmount || 0), 0)
-                .toFixed(2)
-            }}
-          </span>
-        </Space>
+        <div class="statistics-card">
+          <IconifyIcon
+            icon="ant-design:bar-chart-outlined"
+            class="stats-icon"
+          />
+          <span class="statistics-title">统计信息：</span>
+          <div class="statistic-item primary">
+            <span class="statistic-label">发票数量</span>
+            <span class="statistic-value">{{ filteredData.length }}</span>
+          </div>
+          <div class="statistic-item success">
+            <span class="statistic-label">开票总金额</span>
+            <span class="statistic-value">
+              {{
+                filteredData
+                  .reduce((sum, item) => sum + (item.invoiceAmount || 0), 0)
+                  .toFixed(2)
+              }}
+            </span>
+          </div>
+        </div>
       </div>
     </Spin>
   </Modal>

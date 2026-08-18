@@ -277,6 +277,7 @@ export namespace InvoiceApplicationAdminApi {
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[];
     orgBankAccountId?: string;
     clientInvoiceBankId?: string;
+    remark?: string;
   }
 
   /** 批量新增开票申请DTO */
@@ -285,7 +286,6 @@ export namespace InvoiceApplicationAdminApi {
     /** 归属组织id */
     orgId: number;
     require?: string;
-    remark?: string;
     currencyGroups: InvoiceApplicationCurrencyGroupDto[];
   }
 

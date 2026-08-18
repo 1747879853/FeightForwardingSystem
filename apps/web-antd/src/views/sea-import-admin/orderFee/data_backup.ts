@@ -297,7 +297,11 @@ export const getBillTypeOptions = () => [
 // --------------------------------------------------------
 // 业务类型
 // --------------------------------------------------------
-export const getBizTypeOptions = () => [{ value: 0, label: '海运出口' }];
+export const getBizTypeOptions = () => [
+  { value: 0, label: '海运出口' },
+  { value: 1, label: '海运进口' },
+  { value: 2, label: '空运出口' },
+];
 
 // --------------------------------------------------------
 // 编号生成类型

@@ -6,6 +6,7 @@ import type {
   VxeTableGridOptions,
 } from '#/adapter/vxe-table';
 import type { SystemPermissionApi } from '#/api/system/permission';
+import { FrightModule } from '#/api/system/permission';
 
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -38,6 +39,7 @@ const props = defineProps<{
 // ==================== 响应式状态 ====================
 
 const editingId = ref<number>();
+const selectedModule = ref<FrightModule>();
 
 // ==================== 计算属性 ====================
 
@@ -64,14 +66,19 @@ function handleActionClick(
   }
 }
 
-const fetchPropPermissionList = (params: Record<string, any>) => {
+const fetchPropPermissionList = async (params: Record<string, any>) => {
   if (!props.roleId && !props.userId) {
     return Promise.resolve({ items: [], total: 0 });
   }
-  return getPropPermissionList({
+  const result = await getPropPermissionList({
     ...params,
     ...currentTargetParams.value,
   });
+  // 转换 totalCount 为 total 以符合 createPagedListQuery 的期望格式
+  return {
+    items: result.items,
+    total: result.totalCount,
+  };
 };
 
 const [Grid, gridApi] =
@@ -102,8 +109,14 @@ const [Grid, gridApi] =
 // ==================== 表单配置 ====================
 
 const [Form, formApi] = useVbenForm({
-  schema: usePropPermissionFormSchema(),
+  schema: usePropPermissionFormSchema({ frightModule: selectedModule.value }),
   showDefaultActions: false,
+  // 监听表单值变化，更新选中的模块
+  handleValuesChange(values, fieldsChanged) {
+    if (values.frightModule !== undefined) {
+      selectedModule.value = values.frightModule;
+    }
+  },
 });
 
 // ==================== Drawer配置 ====================
@@ -146,12 +159,14 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
       if (data && data.id) {
         editingId.value = data.id;
+        selectedModule.value = data.frightModule;
         formApi.setValues({
           frightModule: data.frightModule,
           propName: data.propName,
         });
       } else {
         editingId.value = undefined;
+        selectedModule.value = undefined;
       }
     }
   },
@@ -194,6 +209,19 @@ watch(
   },
   { immediate: true },
 );
+
+// 监听模块变化，更新表单schema
+watch(selectedModule, (newModule) => {
+  formApi.updateSchema([
+    {
+      fieldName: 'propName',
+      componentProps: {
+        options: usePropPermissionFormSchema({ frightModule: newModule })[1]
+          .componentProps.options,
+      },
+    },
+  ]);
+});
 </script>
 
 <template>
