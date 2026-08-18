@@ -4,7 +4,10 @@ import { useRouter } from 'vue-router';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 // ✅ 新增：导入刷新标记工具函数
-import { markListShouldRefresh, returnToListWithRefresh } from '#/utils/list-refresh-flag';
+import {
+  markListShouldRefresh,
+  returnToListWithRefresh,
+} from '#/utils/list-refresh-flag';
 
 /**
  * 提交和保存相关逻辑
@@ -72,7 +75,6 @@ export function useSubmit(
       settlementId: formData.value.settlementId!,
       orgId: formData.value.orgId!,
       require: formData.value.require,
-      remark: formData.value.remark,
       currencyGroups: [
         {
           currencyId: formData.value.currencyId || 1,
@@ -82,6 +84,7 @@ export function useSubmit(
             formData.value.invoiceApplicationGoodsDtls || [],
           orgBankAccountId: formData.value.orgBankAccountId,
           clientInvoiceBankId: formData.value.clientInvoiceBankId,
+          remark: formData.value.remark, // ✅ 备注下移到币别分组中
         },
       ],
     };

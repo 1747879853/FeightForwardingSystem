@@ -307,6 +307,8 @@ export namespace InvoiceApplicationApi {
     orgBankAccountId?: string;
     /** 客户银行ID，不传则取对应币别的默认开票银行 */
     clientInvoiceBankId?: string;
+    /** 备注 */
+    remark?: string;
   }
 
   /** 开票申请批量添加DTO */
@@ -317,8 +319,6 @@ export namespace InvoiceApplicationApi {
     orgId: number;
     /** 开票要求 */
     require?: string;
-    /** 备注 */
-    remark?: string;
     /** 按币别分组的子表数据，每组生成一个InvoiceApplication */
     currencyGroups: InvoiceApplicationCurrencyGroupDto[];
   }

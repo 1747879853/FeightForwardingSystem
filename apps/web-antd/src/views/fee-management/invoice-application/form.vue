@@ -182,6 +182,7 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   updateOrgBankByCurrency,
   flattenTreeData, // ✅ 传递扁平化树形数据函数
   loadDefaultRemarkTemplate, // ✅ 传递默认备注模板加载函数
+  orgBankAccounts, // ✅ 传递销售方银行账号列表，用于替换占位符
   (ids: string[]) => {
     // ✅ 新增开票申请成功后的回调 - 打开所有开票申请的tab页
     console.log('✅ 开票申请创建成功，IDs:', ids);
