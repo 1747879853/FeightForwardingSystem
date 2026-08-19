@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-17
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,8 +54,8 @@ last_updated: 2026-08-17
 | **贸易条款 / 运输条款** | 贸易责任与运输条款 | 贸易条款字典 + `CodeServiceSelect`，视觉合并为 `ServiceTradeTermsInput` | **展示：** 主表次行占一列（两下拉挤在同一格）；左运输条款、右贸易条款；`tradeTermsType` 隐藏载体仍提交。回显 `codeServiceId` 时必须整段替换 `componentProps` 函数，勿只传 `selectedItems` | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
-| **起运地** | POL（表单标签为「起运地」，列表筛选仍称起运港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
-| **目的地** | POD（表单标签为「目的地」，列表筛选仍称目的港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行（`pre-order-basic-field--8`）；**触发：** 同上同步 `PortForm` 并自动带出 `podRemark`；完整港口流转（收货地/中转/交货地）分区 `hidden` 暂隐但仍由 `PortForm` 回填提交 | 非必填 |
+| **起运地** | POL（表单标签为「起运地」，列表筛选仍称起运港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；选中态为 `港口英文名-中文名`（如 QINGDAO-青岛），与海出 EDI 不同；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
+| **目的地** | POD（表单标签为「目的地」，列表筛选仍称目的港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行（`pre-order-basic-field--8`）；选中态同样为 `英文名-中文名`；**触发：** 同上同步 `PortForm` 并自动带出 `podRemark`；完整港口流转（收货地/中转/交货地）分区 `hidden` 暂隐但仍由 `PortForm` 回填提交 | 非必填 |
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交<br/>**字段名：** 与海出一致为 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`（勿写成 `pot1Id`）；关联对象仍为 `pot1`/`pot2`<br/>**回显：** 详情对象经 `toPortObjectSelectedItems` 注入 `selectedItems` | 非必填 |
 | **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖；字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
@@ -117,6 +117,7 @@ last_updated: 2026-08-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 港口选中态改为「英文名-中文名」（如 QINGDAO-青岛），对齐长泽；海运出口仍显示 EDI。 | `PortSelect` 新增 `labelKey: 'portNameCnName'`；业务联系单经 `buildPreOrderPortSelectProps` 覆盖，不改共用的 `buildPortSelectProps`。详见 `changelogs/change-log-2026-08-19-pre-order-port-name-cn-label.md`。 |
 | 2026-08-17 | `Style` | 主表字段顺序对齐业务稿：首行末项改为付款方式；次行起运地/目的地/贸易条款·运输条款（合并双下拉占一列）/备注（占剩余三列）；订舱代理因稿中没有排到末行 | `ServiceTradeTermsInput` 的 `componentProps` 必须是函数，回显时整段替换；条款勿再设 `col-span-2`。详见 `changelogs/change-log-2026-08-17-pre-order-basic-field-order.md` |
 | 2026-08-16 | `Fix` | 附件分组支持把文件拖到卡片上直接上传；顶栏新建为「上传附件」，编辑为「查看附件」（待审核/通过也能打开只读查看）。 | 对齐付费申请卡片级 drop zone。详见 `changelogs/change-log-2026-08-16-pre-order-attachment-drag-upload.md` |
 | 2026-08-14 | `Feature` | 可保存态增加「AI识别」：上传单证调用 TextIn 抽取并回填 `PreOrderAddDto` 可用字段；未匹配箱型保留识别原文提示补选 | `extractPreOrderToAddDto` + `use-pre-order-ai-recognize`；回填后由 `afterApply` 注入 selectedItems，避免冲掉港口/委托单位 onChange。详见 `changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md` |

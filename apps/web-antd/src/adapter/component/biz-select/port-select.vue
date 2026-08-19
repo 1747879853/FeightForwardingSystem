@@ -18,7 +18,8 @@ import { usePagedSelect } from './use-paged-select';
 interface Props {
   /**
    * 选中后下拉框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
-   * 或特殊值 `'ediPortCountry'`（`EDI码/港口英文名,国家英文名`）。
+   * 或特殊值 `'ediPortCountry'`（`EDI码/港口英文名,国家英文名`）、
+   * `'portNameCnName'`（`港口英文名-中文名`，如 QINGDAO-青岛）。
    * selectedItems 回显时尽量包含数组中的字段（缺字段则跳过，有 id 时会 lazy load 详情补全）。
    */
   labelKey?: string | string[];
@@ -68,11 +69,23 @@ const getNestedValue = (obj: unknown, path: string): string => {
  * 选中回显文案。
  * - 普通字段 / 字段数组：按字段取值，多字段以 `, ` 拼接
  * - `'ediPortCountry'`：`EDI码/港口英文名,国家英文名`（如 CNTAO/QINGDAO,CHINA）
+ * - `'portNameCnName'`：`港口英文名-中文名`（如 QINGDAO-青岛）
  */
 const resolveLabelKey = (
   port: PortCodeAdminApi.PortCodeDto,
   labelKey: string | string[],
 ): string => {
+  if (labelKey === 'portNameCnName') {
+    const portName = (port.portName ?? '').toString().trim();
+    const cnName = (port.cnName ?? '').toString().trim();
+    if (portName && cnName) return `${portName}-${cnName}`;
+    return (
+      portName ||
+      cnName ||
+      (port.ediCode ?? '').toString().trim() ||
+      String((port as Record<string, unknown>).id ?? '')
+    );
+  }
   if (labelKey === 'ediPortCountry') {
     const ediCode = (port.ediCode ?? '').toString().trim();
     const portName = (port.portName ?? '').toString().trim();

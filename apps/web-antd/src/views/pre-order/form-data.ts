@@ -9,6 +9,19 @@ import {
   getTradeTermsTypeOptions,
 } from '#/views/sea-export-admin/data';
 
+/** 业务联系单港口选中态：英文名-中文名（对齐长泽，不改海出 EDI） */
+const PRE_ORDER_PORT_LABEL_KEY = 'portNameCnName';
+
+export function buildPreOrderPortSelectProps(
+  fieldName: string,
+  onPortChange?: PortFormSchemaOptions['onPortChange'],
+) {
+  return {
+    ...buildPortSelectProps(fieldName, onPortChange),
+    labelKey: PRE_ORDER_PORT_LABEL_KEY,
+  };
+}
+
 /** 干系人属性（与后端 UserAttribute 一致） */
 export const USER_ATTRIBUTE = {
   Operation: 1,
@@ -110,14 +123,14 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       formItemClass: 'pre-order-basic-field--7',
       label: '起运地',
       rules: 'selectRequired',
-      componentProps: buildPortSelectProps('polId'),
+      componentProps: buildPreOrderPortSelectProps('polId'),
     },
     {
       component: 'PortSelect',
       fieldName: 'podId',
       formItemClass: 'pre-order-basic-field--8',
       label: '目的地',
-      componentProps: buildPortSelectProps('podId'),
+      componentProps: buildPreOrderPortSelectProps('podId'),
     },
     {
       component: 'ServiceTradeTermsInput',
@@ -188,7 +201,10 @@ export function usePreOrderPortSchema(
       component: 'PortSelect',
       fieldName: 'receivePortId',
       label: $t('seaExport.export.receivePortId'),
-      componentProps: buildPortSelectProps('receivePortId', onPortChange),
+      componentProps: buildPreOrderPortSelectProps(
+        'receivePortId',
+        onPortChange,
+      ),
       formItemClass: 'port-flow-item port-flow-pos--receive',
     },
     {
@@ -196,14 +212,14 @@ export function usePreOrderPortSchema(
       fieldName: 'polId',
       label: $t('seaExport.export.polId'),
       rules: 'selectRequired',
-      componentProps: buildPortSelectProps('polId', onPortChange),
+      componentProps: buildPreOrderPortSelectProps('polId', onPortChange),
       formItemClass: 'port-flow-item port-flow-pos--pol',
     },
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
       label: '',
-      componentProps: buildPortSelectProps('poT1Id', onPortChange),
+      componentProps: buildPreOrderPortSelectProps('poT1Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-pos--transit',
     },
@@ -211,7 +227,7 @@ export function usePreOrderPortSchema(
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: '',
-      componentProps: buildPortSelectProps('poT2Id', onPortChange),
+      componentProps: buildPreOrderPortSelectProps('poT2Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
     },
@@ -219,14 +235,17 @@ export function usePreOrderPortSchema(
       component: 'PortSelect',
       fieldName: 'podId',
       label: $t('seaExport.export.podId'),
-      componentProps: buildPortSelectProps('podId', onPortChange),
+      componentProps: buildPreOrderPortSelectProps('podId', onPortChange),
       formItemClass: 'port-flow-item port-flow-pos--pod',
     },
     {
       component: 'PortSelect',
       fieldName: 'deliverPortId',
       label: $t('seaExport.export.deliverPortId'),
-      componentProps: buildPortSelectProps('deliverPortId', onPortChange),
+      componentProps: buildPreOrderPortSelectProps(
+        'deliverPortId',
+        onPortChange,
+      ),
       formItemClass:
         'port-flow-item port-flow-item--last port-flow-pos--deliver',
     },

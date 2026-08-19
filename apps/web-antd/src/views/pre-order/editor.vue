@@ -56,7 +56,6 @@ import {
   toSelectedItems,
 } from '#/views/sea-export-admin/basic-info-form/sea-export-detail-mapper';
 import {
-  buildPortSelectProps,
   formatSeaExportPortRemark,
   getBlTypeOptions,
   pickPortSelectOption,
@@ -66,6 +65,7 @@ import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import { pickExtractedLabel, resolveCitationKeys } from './ai-extract-utils';
 import {
+  buildPreOrderPortSelectProps,
   buildPreOrderServiceTradeTermsProps,
   PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
@@ -370,13 +370,13 @@ function bindBasicPortLinkage() {
     {
       fieldName: 'polId',
       componentProps: {
-        ...buildPortSelectProps('polId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('polId', handleBasicPortChange),
       },
     },
     {
       fieldName: 'podId',
       componentProps: {
-        ...buildPortSelectProps('podId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('podId', handleBasicPortChange),
       },
     },
   ]);
@@ -715,7 +715,7 @@ async function applyAiExtractAfterFill(ctx: {
     basicSchemaUpdates.push({
       fieldName: 'polId',
       componentProps: {
-        ...buildPortSelectProps('polId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('polId', handleBasicPortChange),
         selectedItems: toPortSelectedItems(
           values.polId,
           pickExtractedLabel(schema, ['起运港名称']),
@@ -728,7 +728,7 @@ async function applyAiExtractAfterFill(ctx: {
     basicSchemaUpdates.push({
       fieldName: 'podId',
       componentProps: {
-        ...buildPortSelectProps('podId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('podId', handleBasicPortChange),
         selectedItems: toPortSelectedItems(
           values.podId,
           pickExtractedLabel(schema, ['目的港名称']),
@@ -742,7 +742,7 @@ async function applyAiExtractAfterFill(ctx: {
   }
 
   const portSelectProps = (fieldName: string, selectedItems: unknown[]) => ({
-    ...buildPortSelectProps(fieldName, handlePortSelectChange),
+    ...buildPreOrderPortSelectProps(fieldName, handlePortSelectChange),
     selectedItems,
   });
   const portSchemaUpdates: Array<{
@@ -951,14 +951,14 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     {
       fieldName: 'polId',
       componentProps: {
-        ...buildPortSelectProps('polId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('polId', handleBasicPortChange),
         selectedItems: toPortObjectSelectedItems(dto.pol, dto.polId),
       },
     },
     {
       fieldName: 'podId',
       componentProps: {
-        ...buildPortSelectProps('podId', handleBasicPortChange),
+        ...buildPreOrderPortSelectProps('podId', handleBasicPortChange),
         selectedItems: toPortObjectSelectedItems(dto.pod, dto.podId),
       },
     },
@@ -1016,7 +1016,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   // 港口 Id 字段名与海出一致为 poT1Id/poT2Id（勿写成 pot1Id，详情 JSON 读不到）
   // selectedItems 与 onChange 同次 updateSchema，避免冲掉选港备注联动
   const portSelectProps = (fieldName: string, selectedItems: unknown[]) => ({
-    ...buildPortSelectProps(fieldName, handlePortSelectChange),
+    ...buildPreOrderPortSelectProps(fieldName, handlePortSelectChange),
     selectedItems,
   });
   portFormApi.updateSchema([

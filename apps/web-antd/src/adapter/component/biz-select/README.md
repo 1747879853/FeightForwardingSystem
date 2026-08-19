@@ -83,6 +83,14 @@
 <AirPortSelect v-model="form.polId" :country-id="form.countryId" />
 ```
 
+## PortSelect 选中态 `labelKey`
+
+默认选中回显为 `portName, country.countryEnName`。常用特殊值：
+
+- `'ediCode'`：只显示 EDI（海运出口）
+- `'ediPortCountry'`：`EDI码/港口英文名,国家英文名`
+- `'portNameCnName'`：`港口英文名-中文名`（业务联系单，如 QINGDAO-青岛）
+
 ## AreaLeafCascader（推荐用于只存末级 areaId 场景）
 
 `AreaLeafCascader` 内部使用 `AreaCascader`，但对外 `v-model` 为**最后一级地区 code**（`string`）。  
