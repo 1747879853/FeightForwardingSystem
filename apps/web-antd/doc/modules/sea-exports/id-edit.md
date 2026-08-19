@@ -136,6 +136,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-19 | `Fix` | 业务联系单引入的费用，「录入方式」不再显示数字 6，改为「业务联系单引入」。 | Handsontable 该列为 `type:text`，值被写成 `"6"`；`getDataEntryMethodLabel` 改为数值比较。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |
 | 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`；无权限时整页只读，复制仍可用。 | 以当次 `DetailAsync` 为准。见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Fix` | 服务项悬浮仅缺附件时显示「去上传」；已传齐不再出现。点完成只提示缺的类型。 | 对照 `GetAttachmentsAsync` 已传类型；KeepAlive 回来会刷新。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |

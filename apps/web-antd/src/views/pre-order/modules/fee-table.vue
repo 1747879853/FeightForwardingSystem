@@ -38,7 +38,11 @@ import {
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { PAY_SIDE_OPTIONS } from '../form-data';
-import { coercePreOrderFeeUnit, PRE_ORDER_GENERIC_UNITS } from './fee-unit';
+import {
+  coercePreOrderFeeUnit,
+  PRE_ORDER_GENERIC_UNITS,
+  summarizePreOrderFeesByCurrency,
+} from './fee-unit';
 
 export interface PreOrderFeeRow extends PreOrderAdminApi.PreOrderFeeDto {
   rowKey: string;
@@ -111,6 +115,8 @@ const modelValue = defineModel<PreOrderFeeRow[]>({ default: () => [] });
 const selectedRowKeys = ref<string[]>([]);
 /** 新增费用行默认币别：USD 的 id */
 const defaultUsdCurrencyId = ref<null | number | string>(null);
+/** 默认 USD 快照，生成费用行时写入 currency，小计才能显示代码而不是 id */
+const defaultUsdCurrency = ref<PreOrderFeeRow['currency']>(null);
 
 const dataSource = computed({
   get: () => modelValue.value ?? [],
@@ -477,6 +483,13 @@ onMounted(async () => {
     const usd = res?.items?.find((item) => item.code?.toUpperCase() === 'USD');
     if (usd?.id != null) {
       defaultUsdCurrencyId.value = usd.id;
+      defaultUsdCurrency.value = {
+        id: usd.id,
+        code: usd.code,
+        cnName: usd.cnName,
+        enName: usd.enName,
+        name: usd.cnName || usd.code,
+      };
     }
   } catch {
     // 币别列表失败时不加默认，避免脏 id
@@ -490,6 +503,9 @@ watch(defaultUsdCurrencyId, async (id) => {
   for (const row of dataSource.value) {
     if (row.currencyId == null) {
       row.currencyId = id as number;
+      if (!row.currency && defaultUsdCurrency.value) {
+        row.currency = defaultUsdCurrency.value;
+      }
       await applyExchangeRate(row);
       changed = true;
     }
@@ -592,11 +608,35 @@ async function handleIndustryCategoryChange(
 async function handleCurrencyChange(
   row: PreOrderFeeRow,
   currencyId: null | number | string | undefined,
+  option?: {
+    raw?: {
+      cnName?: string;
+      code?: string;
+      enName?: string;
+      id?: number | string;
+    };
+  } | null,
 ) {
   row.currencyId =
     currencyId == null || currencyId === ''
       ? undefined
       : (currencyId as number);
+  if (row.currencyId == null) {
+    row.currency = undefined;
+  } else if (option?.raw) {
+    row.currency = {
+      id: option.raw.id ?? row.currencyId,
+      code: option.raw.code,
+      cnName: option.raw.cnName,
+      enName: option.raw.enName,
+      name: option.raw.cnName || option.raw.code,
+    };
+  } else if (
+    defaultUsdCurrency.value &&
+    String(row.currencyId) === String(defaultUsdCurrencyId.value)
+  ) {
+    row.currency = defaultUsdCurrency.value;
+  }
   await applyExchangeRate(row);
   touchDataSource();
 }
@@ -640,6 +680,12 @@ async function handleFeeCodeChange(
 
     if (detail.currencyId != null && detail.currencyId !== '') {
       row.currencyId = detail.currencyId as number;
+      if (
+        defaultUsdCurrency.value &&
+        String(row.currencyId) === String(defaultUsdCurrencyId.value)
+      ) {
+        row.currency = defaultUsdCurrency.value;
+      }
       await applyExchangeRate(row);
     }
 
@@ -691,6 +737,7 @@ async function handleAdd() {
     rowKey: createRowKey(),
     paySide: 0,
     currencyId: defaultUsdCurrencyId.value ?? undefined,
+    currency: defaultUsdCurrency.value ?? undefined,
     unit: '票',
     taxRate: 0,
     invoiceBlocked: false,
@@ -804,6 +851,12 @@ async function generateOceanFreightFees() {
       currencyId: (feeCode.currencyId ??
         defaultUsdCurrencyId.value ??
         undefined) as PreOrderFeeRow['currencyId'],
+      currency:
+        defaultUsdCurrency.value &&
+        String(feeCode.currencyId ?? defaultUsdCurrencyId.value) ===
+          String(defaultUsdCurrencyId.value)
+          ? defaultUsdCurrency.value
+          : undefined,
       unit: group.name,
       quantity: group.count,
       unitPrice: group.price ?? 0,
@@ -902,16 +955,19 @@ const visibleColumns = columns.filter(
     ].includes(dataIndex),
 );
 
-const totals = computed(() => {
-  let receive = 0;
-  let pay = 0;
-  for (const row of dataSource.value) {
-    const amount = Number(row.amount ?? 0);
-    if (Number(row.paySide) === 1) pay += amount;
-    else receive += amount;
-  }
-  return { receive: round(receive, 2), pay: round(pay, 2) };
-});
+const currencyTotals = computed(() =>
+  summarizePreOrderFeesByCurrency(dataSource.value),
+);
+
+function formatSideTotals(
+  items: { currency: string; pay: number; receive: number }[],
+  side: 'pay' | 'receive',
+) {
+  const parts = items
+    .filter((item) => item[side] !== 0)
+    .map((item) => `${item.currency} ${item[side].toFixed(2)}`);
+  return parts.length === 0 ? '0.00' : parts.join(' / ');
+}
 </script>
 
 <template>
@@ -1030,8 +1086,9 @@ const totals = computed(() => {
             :disabled="props.readonly"
             size="small"
             :selected-items="currencySelectedItems(asRow(record))"
-            @update:model-value="
-              (v: any) => handleCurrencyChange(asRow(record), v)
+            @change="
+              (v: any, option: any) =>
+                handleCurrencyChange(asRow(record), v, option)
             "
           />
         </template>
@@ -1146,8 +1203,8 @@ const totals = computed(() => {
       </template>
     </Table>
     <div class="mt-2 flex justify-end gap-6 text-sm">
-      <span>应收合计：{{ totals.receive.toFixed(2) }}</span>
-      <span>应付合计：{{ totals.pay.toFixed(2) }}</span>
+      <span>应收合计：{{ formatSideTotals(currencyTotals, 'receive') }}</span>
+      <span>应付合计：{{ formatSideTotals(currencyTotals, 'pay') }}</span>
     </div>
   </div>
 </template>

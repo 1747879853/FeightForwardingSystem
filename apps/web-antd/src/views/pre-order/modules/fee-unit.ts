@@ -56,7 +56,7 @@ export function coercePreOrderFeeUnit(
 
 type PreOrderFeeCheckRow = Pick<
   PreOrderAdminApi.PreOrderFeeDto,
-  'currencyId' | 'feeCodeId' | 'paySide' | 'quantity' | 'unit'
+  'currencyId' | 'feeCodeId' | 'paySide' | 'quantity' | 'settlementId' | 'unit'
 >;
 
 export interface PreOrderFeeCheckResult {
@@ -68,7 +68,7 @@ export interface PreOrderFeeCheckResult {
 
 /**
  * 审核通过时后端只取 `feeCodeId + currencyId + paySide` 三者齐全的行（缺一即静默丢弃），
- * 并按 `unit` 重算数量与金额。单位限通用四项或本单箱型名。
+ * 无结算对象的行会生成到海出却无法提交；单位限通用四项或本单箱型名。
  */
 export function checkPreOrderFees(
   rows: PreOrderFeeCheckRow[],
@@ -85,6 +85,9 @@ export function checkPreOrderFees(
     if (row.paySide == null) errors.push(`${label}：未选择收付类型`);
     if (row.feeCodeId == null) errors.push(`${label}：未选择费用代码`);
     if (row.currencyId == null) errors.push(`${label}：未选择币别`);
+    if (row.settlementId == null || String(row.settlementId).trim() === '') {
+      errors.push(`${label}：未选择结算对象`);
+    }
     const unit = coercePreOrderFeeUnit(row.unit, ctnNames);
     if (unit === '' || !knownUnits.has(unit)) {
       errors.push(
@@ -96,4 +99,51 @@ export function checkPreOrderFees(
     }
   });
   return { errors, warnings };
+}
+
+const roundMoney = (value: number) => Math.round(value * 100) / 100;
+
+export interface PreOrderFeeCurrencyTotal {
+  currency: string;
+  pay: number;
+  receive: number;
+}
+
+type PreOrderFeeAmountRow = Pick<
+  PreOrderAdminApi.PreOrderFeeDto,
+  'amount' | 'currency' | 'currencyId' | 'paySide'
+>;
+
+function currencyLabelOf(row: PreOrderFeeAmountRow) {
+  const named = row.currency;
+  const fromObject =
+    named?.code || named?.cnName || named?.enName || named?.name;
+  if (fromObject) return String(fromObject);
+  if (row.currencyId != null && String(row.currencyId) !== '') {
+    return String(row.currencyId);
+  }
+  return '未知';
+}
+
+/**
+ * 费用小计按币别拆开：USD 与 CNY 不能加在一起。
+ * 收付分别累计，金额为 0 的侧在展示时再过滤。
+ */
+export function summarizePreOrderFeesByCurrency(
+  rows: PreOrderFeeAmountRow[],
+): PreOrderFeeCurrencyTotal[] {
+  const map = new Map<string, PreOrderFeeCurrencyTotal>();
+  for (const row of rows) {
+    const currency = currencyLabelOf(row);
+    const hit = map.get(currency) ?? { currency, pay: 0, receive: 0 };
+    const amount = Number(row.amount ?? 0);
+    if (Number(row.paySide) === 1) hit.pay += amount;
+    else hit.receive += amount;
+    map.set(currency, hit);
+  }
+  return [...map.values()].map((item) => ({
+    currency: item.currency,
+    pay: roundMoney(item.pay),
+    receive: roundMoney(item.receive),
+  }));
 }

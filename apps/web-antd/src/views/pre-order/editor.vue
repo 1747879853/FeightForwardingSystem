@@ -1353,8 +1353,8 @@ function validateCtns(): boolean {
 }
 
 /**
- * 费用行体检：审核通过时后端只转换三要素齐全的行，并按单位重算数量金额，
- * `strict` 用于提交审核前硬拦截，保存草稿时只提示。
+ * 费用行体检：提交审核前硬拦截缺收付/费用代码/币别/结算对象、或单位不可识别的行；
+ * 保存草稿时只提示。`strict` 为 true 时有错误则阻断。
  */
 function validateFees(strict: boolean): boolean {
   const { errors, warnings } = checkPreOrderFees(

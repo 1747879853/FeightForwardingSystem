@@ -98,9 +98,18 @@ export const getFeeStatusLabel = (feeStatus: any): string => {
  * 根据数据录入方式值获取显示标签
  */
 export const getDataEntryMethodLabel = (dataEntryMethod: any): string => {
-  if (dataEntryMethod === undefined || dataEntryMethod === null) return '';
+  if (
+    dataEntryMethod === undefined ||
+    dataEntryMethod === null ||
+    dataEntryMethod === ''
+  ) {
+    return '';
+  }
+  const numeric = Number(dataEntryMethod);
   const option = getDataEntryMethodOptions().find(
-    (opt) => opt.value === dataEntryMethod,
+    (opt) =>
+      opt.value === dataEntryMethod ||
+      (!Number.isNaN(numeric) && Number(opt.value) === numeric),
   );
   return option?.label || String(dataEntryMethod);
 };
