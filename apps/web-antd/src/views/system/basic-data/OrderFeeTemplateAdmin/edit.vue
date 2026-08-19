@@ -590,9 +590,16 @@ async function handleSubmit() {
         remark: formValues.remark,
         orderFeeTemplateItems: feeItems.value,
       };
-      await addOrderFeeTemplate(dto);
+      const newTemplateId = await addOrderFeeTemplate(dto);
       message.success('新建成功');
-      router.push({ path: '/basic-data/order-fee-template' });
+      // 新建成功后跳转到编辑页面
+      router.replace({
+        path: '/basic-data/order-fee-template/edit',
+        query: {
+          mode: 'edit',
+          id: newTemplateId,
+        },
+      });
     } else {
       // 编辑
       const dto: OrderFeeTemplateAdminApi.OrderFeeTemplateEditDto = {
