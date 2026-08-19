@@ -7,6 +7,7 @@ import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
 import { createClientSelectSchema } from '../client/base/data';
+import { applySeaExportListDefaultColumns } from './list-column-defaults';
 import { getSeaExportFeeStatusOptions } from './orderFee/data';
 
 const USER_ATTRIBUTE = {
@@ -748,7 +749,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 列表列配置（无操作列，第一列为 checkbox 多选列）
  */
 export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
-  return [
+  return applySeaExportListDefaultColumns([
     {
       type: 'checkbox',
       width: 48,
@@ -1188,7 +1189,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       minWidth: 160,
       formatter: 'formatDateTime',
     },
-  ];
+  ]);
 }
 
 /**

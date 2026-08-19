@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-19 海运出口台账默认列改为 UserSetting 同款 JSON](./changelogs/change-log-2026-08-19-sea-export-list-default-columns.md)
 - [2026-08-19 业务联系单港口选中态改为英文名-中文名](./changelogs/change-log-2026-08-19-pre-order-port-name-cn-label.md)
 - [2026-08-19 包装下拉改为全量缓存，删除后即时失效](./changelogs/change-log-2026-08-19-code-package-select-full-cache.md)
 - [2026-08-19 删除空的对账单附件上传组件](./changelogs/change-log-2026-08-19-remove-empty-statement-attachment-upload.md)

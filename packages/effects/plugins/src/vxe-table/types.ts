@@ -41,7 +41,7 @@ export interface SettingPersistOptions {
   tableId?: string;
   load?: (params: {
     keyword: string;
-  }) => Promise<null | { id: number; setting: string }>;
+  }) => Promise<null | { id?: number; setting: string }>;
   add?: (params: { name: string; setting: string }) => Promise<number>;
   edit?: (params: {
     id: number;

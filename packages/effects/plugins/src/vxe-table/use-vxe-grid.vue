@@ -964,8 +964,9 @@ function buildResetDefaultColumns(columns: any[]) {
   const resetColumns = cloneDeep(columns);
   const leafColumns = getLeafColumns(resetColumns);
   leafColumns.forEach((column) => {
-    column.visible = true;
-    column.fixed = undefined;
+    column.visible = column[columnDefaultVisibleField] !== false;
+    const defaultFixed = normalizeFixedValue(column[columnDefaultFixedField]);
+    column.fixed = defaultFixed || undefined;
     const defaultWidth = resolveNumericWidth(column[columnDefaultWidthField]);
     if (defaultWidth !== undefined) {
       column.width = defaultWidth;

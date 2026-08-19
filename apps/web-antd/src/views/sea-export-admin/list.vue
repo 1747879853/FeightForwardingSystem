@@ -61,6 +61,7 @@ import {
   useColumns,
   useGridFormSchema,
 } from './data';
+import { stringifySeaExportListDefaultColumnSetting } from './list-column-defaults';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
@@ -363,6 +364,17 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       export: false,
       refresh: { code: 'query' },
       zoom: true,
+    },
+  },
+  columnPersist: {
+    load: async ({ keyword }) => {
+      await tableConfigStore.loadTableConfigsOnce();
+      const hit = tableConfigStore.getTableConfigByName(keyword);
+      if (hit?.setting) {
+        return { id: hit.id, setting: hit.setting };
+      }
+      // 无用户配置：套代码默认 JSON，不带 id，避免写成用户设置
+      return { setting: stringifySeaExportListDefaultColumnSetting() };
     },
   },
 });
