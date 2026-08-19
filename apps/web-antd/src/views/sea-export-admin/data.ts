@@ -865,6 +865,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.laneName'),
       minWidth: 120,
       showOverflow: true,
+      formatter: ({ row }) => row.pod?.lane?.laneName ?? '',
     },
     {
       field: 'transportOrder.codeSourceName',

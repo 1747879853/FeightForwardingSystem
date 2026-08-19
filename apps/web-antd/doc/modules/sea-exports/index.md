@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -60,6 +60,7 @@ last_updated: 2026-08-16
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
 | **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
+| **航线** | 目的港所属航线名称。 | 列 `laneName`；展示 `pod.lane.laneName` | **触发/依赖：** 列表 DTO 无顶层 `laneName`，单元格用 `formatter` 读目的港对象；列头排序仍走 `fieldMap` 的 `POD.Lane.LaneName`。 | 目的港无航线时为空。 |
 | **船名 / 航次** | 船期检索字段。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
 | **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示 `carrierLogo` + `carrier?.code`（英文简称）；订舱代理/场站/委托单位等走对象字段 `bookingAgent?.name`、`yard?.name`、`transportOrder.client?.name`（列 `field`/`fieldMap` 仍保留旧键名以便排序与列持久化）。 | 需选择有效基础资料或客户资料；对象为空显示 `--`。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
@@ -102,6 +103,7 @@ last_updated: 2026-08-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 列表「航线」列改为展示目的港航线名称，不再空白。 | DTO 无顶层 `laneName`，与进口列表一致用 `formatter` 读嵌套对象；出口取 `pod.lane`，进口取 `pol.lane`。见 `changelogs/change-log-2026-08-19-sea-export-list-lane-name.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 非 sjtd 品牌的运踪详情弹窗新增「轨迹节点」时间轴（整票合并各箱节点，区分实际/预计/当前）。 | 节点来自弹窗已请求的运踪快照 `containers[].status[]`，无新增请求；sjtd 仍走原运踪弹窗。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Fix` | 运踪订阅问号提示改为面向客户的两项校验：必须录入船公司；整柜须主提单号，拼箱至少一个箱号。 | 见 `changelogs/change-log-2026-08-16-sea-export-subscribe-rules-copy.md`。 |
