@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onActivated, ref, shallowRef, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useRoute, useRouter } from 'vue-router';
 import Form from './basic-info-form/form.vue';
@@ -21,6 +21,7 @@ import { buildBrandStorageKey } from '#/utils/brand-storage';
 import { isVendorOceanExportTracking } from '#/utils/tracking-brand';
 
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
+import { consumeSeaExportEditPendingTab } from './sea-export-edit-tab';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
@@ -70,7 +71,7 @@ function readStoredTab(id: string | undefined): TabKey | null {
   return null;
 }
 
-/** 工作台「去上传」等深链：`?tab=attachments` 优先于会话记忆 */
+/** 工作台「前往上传」等深链：pending / `?tab=attachments` 优先于会话记忆 */
 function resolveTabFromQuery(): TabKey | null {
   const raw = route.query.tab;
   const tab = Array.isArray(raw) ? raw[0] : raw;
@@ -78,8 +79,15 @@ function resolveTabFromQuery(): TabKey | null {
   return null;
 }
 
-function resolveActiveTab(id: string | undefined): TabKey {
-  return resolveTabFromQuery() ?? readStoredTab(id) ?? 'basic';
+function applyForcedTab(id: string | undefined): boolean {
+  const pendingRaw = consumeSeaExportEditPendingTab(id);
+  const pending = pendingRaw && isValidTabKey(pendingRaw) ? pendingRaw : null;
+  const fromQuery = resolveTabFromQuery();
+  const tab = pending ?? fromQuery;
+  if (!tab) return false;
+  activeTab.value = tab;
+  writeStoredTab(id, tab);
+  return true;
 }
 
 function writeStoredTab(id: string | undefined, tab: TabKey) {
@@ -163,13 +171,15 @@ async function syncTabTitleFromOrder(id: string | undefined) {
   }
 }
 
-/** 按委托 ID 记忆当前 Tab；路由 `tab` 查询参数优先（工作台完成缺附件跳转） */
-const activeTab = ref<TabKey>(resolveActiveTab(editId.value));
+/** 按委托 ID 记忆当前 Tab；pending / 路由 `tab` 查询参数优先（工作台完成缺附件跳转） */
+const activeTab = ref<TabKey>('basic');
 
 watch(
   editId,
   (id) => {
-    activeTab.value = resolveActiveTab(id);
+    if (!applyForcedTab(id)) {
+      activeTab.value = readStoredTab(id) ?? 'basic';
+    }
     void syncTabTitleFromOrder(id);
   },
   { immediate: true },
@@ -181,12 +191,17 @@ watch(
     const tab = resolveTabFromQuery();
     if (!tab) return;
     activeTab.value = tab;
+    writeStoredTab(editId.value, tab);
     const restQuery = { ...route.query };
     delete restQuery.tab;
     void router.replace({ query: restQuery });
   },
   { immediate: true },
 );
+
+onActivated(() => {
+  applyForcedTab(editId.value);
+});
 
 watch(activeTab, (tab) => {
   writeStoredTab(editId.value, tab);

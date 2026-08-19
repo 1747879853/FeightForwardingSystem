@@ -1288,21 +1288,27 @@
   word-break: break-all;
 }
 
-.chevron-step-tooltip__info-row--link {
-  padding: 4px 0;
-  cursor: pointer;
-}
-
-.chevron-step-tooltip__info-row--link:hover .chevron-step-tooltip__info-value,
-.chevron-step-tooltip__info-row--link:hover .chevron-step-tooltip__go-upload {
-  color: #1677ff;
-}
-
 .chevron-step-tooltip__go-upload {
-  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  margin-left: 8px;
+  font-family: inherit;
+  font-size: 12px;
   font-weight: 600;
-  color: #1677ff;
+  line-height: 20px;
+  color: #c2410c;
   white-space: nowrap;
+  cursor: pointer;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 4px;
+}
+
+.chevron-step-tooltip__go-upload:hover {
+  color: #9a3412;
+  background: #ffedd5;
+  border-color: #fb923c;
 }
 
 .chevron-step-tooltip__permission-hint {

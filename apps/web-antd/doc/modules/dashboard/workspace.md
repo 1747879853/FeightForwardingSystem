@@ -48,7 +48,7 @@ last_updated: 2026-08-19
 - **行选中：** 海运出口服务业务列表**仅点击 checkbox 才选中**，单击行不切换选中；双击行仍进入编辑。
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
-  - 单条/批量完成：`CompleteAsync`（批量为逐条调用）；点完成先按当前服务项配置预检本票附件，缺则提示并跳到对应海出编辑页附件 Tab（`?tab=attachments`，批量打开第一条缺附件的票）；已传齐才弹出确认框，框内「完成前需上传」可点「去上传」。后端仍报缺附件时也会跳转
+  - 单条/批量完成：`CompleteAsync`（批量为逐条调用）；点完成先按当前服务项配置预检本票附件。缺则弹出「请先上传附件」，点「前往上传」后再跳到对应海出编辑页附件 Tab（pending Tab + `?tab=attachments`，批量打开第一条缺附件的票）；点取消留在工作台。已传齐才弹出「确认完成」。后端仍报缺附件时同样先弹窗，前往上传后再跳转
 - **业务列表行跳转：**
   - 单击委托单号或双击整行：进入对应业务编辑/详情（海运出口编辑页、应收应付费用详情、付费申请编辑页）
 - **保留 mock 区域：**
@@ -82,13 +82,13 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 2：批量完成是逐条调用]** `CompleteAsync` 为单条接口。批量完成必须逐条提交，并注意失败场景下的提示和刷新时机。
 
-> [!IMPORTANT] **[卡点 3：完成缺附件必须深链编辑页附件 Tab]** 工作台没有附件面板，缺附件时要 `router.push` 到 `SeaExportEdit` 并带 `query.tab=attachments`。编辑页 Tab 有 sessionStorage 记忆，若不让 query 覆盖记忆，会停在上次的「基础信息」。批量时只打开第一条缺附件的票。
+> [!IMPORTANT] **[卡点 3：完成缺附件必须先弹窗再深链附件 Tab]** 工作台没有附件面板。缺附件时先 `Modal.confirm`，用户点「前往上传」后才打开 `SeaExportEdit`。仅靠 `?tab=attachments` 不够：页签 key 默认含 query，进页后 `replace` 掉 query 会重挂并读回「基础信息」。要同时写 pending Tab、给路由 `fullPathKey: false`，并让 pending/query 覆盖 sessionStorage 记忆。批量时只打开第一条缺附件的票。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-19 | `Fix` | 完成任务缺附件会跳到对应海出编辑页附件 Tab；确认框「去上传」可点。 | 预检 `GetAttachmentsAsync`；深链 `?tab=attachments` 覆盖编辑页 Tab 记忆。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
+| 2026-08-19 | `Fix` | 完成任务缺附件先弹窗，点「前往上传」后再打开海出编辑页附件 Tab。 | pending Tab + `?tab=attachments` + `fullPathKey: false`，避免页签重挂回落到基础信息。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-19 | `Feature` | 完成任务确认框按当前服务项配置提示必传附件类型。 | 名称对照 `AttachmentDtlType/GetListAsync`；工作台列表不含 requireValues，读配置详情。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-11 | `Fix` | 龙山打包环境工作台隐藏「紧急处理任务」「异常业务」 | 与 jht 共用 `hideWorkbenchMockSidePanels = isJhtBrand \|\| isLongshanBrand`。详见 `changelogs/change-log-2026-08-11-longshan-hide-workbench-mock-panels.md` |
 | 2026-08-10 | `Refactor` | 工作台航线/付费任务/预报任务改读港口与结算币别对象。 | `pol/pod.portName`、`currency.code`、`settlement.name`、`preOrder.client.name`；服务列签单方式读 `codeIssueType.billType`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |

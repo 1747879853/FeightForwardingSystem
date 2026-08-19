@@ -9,6 +9,7 @@ import {
   defineComponent,
   h,
   nextTick,
+  onActivated,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -737,6 +738,7 @@ const attachmentDtlTypeList = ref<
   AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]
 >([]);
 let attachmentDtlTypeListLoaded = false;
+const uploadedAttachmentTypeIds = ref<Set<string>>(new Set());
 const ensureAttachmentDtlTypes = async () => {
   if (attachmentDtlTypeListLoaded) return;
   try {
@@ -745,6 +747,19 @@ const ensureAttachmentDtlTypes = async () => {
     attachmentDtlTypeList.value = [];
   } finally {
     attachmentDtlTypeListLoaded = true;
+  }
+};
+const refreshUploadedAttachmentTypeIds = async () => {
+  const seaExportId = editId.value;
+  if (!seaExportId) {
+    uploadedAttachmentTypeIds.value = new Set();
+    return;
+  }
+  try {
+    const groups = (await getSeaExportAttachments(seaExportId)) ?? [];
+    uploadedAttachmentTypeIds.value = collectUploadedAttachmentTypeIds(groups);
+  } catch {
+    uploadedAttachmentTypeIds.value = new Set();
   }
 };
 const collectAccumulatedRequiredAttachmentTypeIds = (
@@ -780,7 +795,11 @@ const getRequiredAttachmentHint = (serviceType: number) => {
   );
   const ids = collectRequiredAttachmentTypeIds(matched?.seServiceRequires);
   if (!ids.length) return '';
-  return formatRequiredAttachmentNames(ids, attachmentDtlTypeList.value);
+  const missingIds = ids.filter(
+    (id) => !uploadedAttachmentTypeIds.value.has(id),
+  );
+  if (!missingIds.length) return '';
+  return formatRequiredAttachmentNames(missingIds, attachmentDtlTypeList.value);
 };
 const suppressServiceTooltips = ref(false);
 const goToAttachmentsTab = () => {
@@ -796,6 +815,7 @@ const maybeLoadAttachmentTypesForServiceConfigs = async (
   );
   if (need) {
     await ensureAttachmentDtlTypes();
+    await refreshUploadedAttachmentTypeIds();
   }
 };
 const updateServiceTypeRequiredProps = () => {
@@ -1121,14 +1141,10 @@ const getMissingRequiredAttachmentHint = async (serviceType: number) => {
   const seaExportId = editId.value;
   if (!seaExportId) return '';
   await ensureAttachmentDtlTypes();
-  let groups: SeaExportAdminApi.AttachmentGroupDto[] = [];
-  try {
-    groups = (await getSeaExportAttachments(seaExportId)) ?? [];
-  } catch {
-    return '';
-  }
-  const uploaded = collectUploadedAttachmentTypeIds(groups);
-  const missingIds = requiredIds.filter((id) => !uploaded.has(id));
+  await refreshUploadedAttachmentTypeIds();
+  const missingIds = requiredIds.filter(
+    (id) => !uploadedAttachmentTypeIds.value.has(id),
+  );
   if (!missingIds.length) return '';
   return formatRequiredAttachmentNames(missingIds, attachmentDtlTypeList.value);
 };
@@ -1165,8 +1181,7 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     node.serviceType,
   );
   if (missingAttachments) {
-    message.warning(`请先到附件页上传：${missingAttachments}，再完成服务`);
-    goToAttachmentsTab();
+    message.warning(`请先上传必填附件：${missingAttachments}，再完成服务`);
     return;
   }
   completingServiceType.value = node.serviceType;
@@ -2406,6 +2421,7 @@ const loadEditData = async (): Promise<
     await whenOrderUserRolesReady();
     await nextTick();
     await syncFormSnapshot();
+    void refreshUploadedAttachmentTypeIds();
     return detail;
   } finally {
     suppressServiceTypeLinkage.value = false;
@@ -2879,6 +2895,11 @@ onMounted(() => {
   window.addEventListener('resize', syncCargoMainLayoutHeight);
 });
 
+onActivated(() => {
+  if (!isEdit.value) return;
+  void refreshUploadedAttachmentTypeIds();
+});
+
 onBeforeUnmount(() => {
   window.removeEventListener('resize', syncCargoMainLayoutHeight);
   cargoLayoutResizeObserver?.disconnect();
@@ -2939,7 +2960,10 @@ defineExpose({
                     >
                       <div
                         class="service-pipeline-body"
-                        @mouseenter="suppressServiceTooltips = false"
+                        @mouseenter="
+                          suppressServiceTooltips = false;
+                          void refreshUploadedAttachmentTypeIds();
+                        "
                       >
                         <div class="service-pipeline service-pipeline--inline">
                           <template v-if="showServiceItemContent">
@@ -3100,9 +3124,7 @@ defineExpose({
                                               node.serviceType,
                                             )
                                           "
-                                          class="chevron-step-tooltip__info-row chevron-step-tooltip__info-row--link"
-                                          role="button"
-                                          @click.stop="goToAttachmentsTab"
+                                          class="chevron-step-tooltip__info-row"
                                         >
                                           <span
                                             class="chevron-step-tooltip__info-label"
@@ -3117,11 +3139,13 @@ defineExpose({
                                                 node.serviceType,
                                               )
                                             }}
-                                            <span
+                                            <button
+                                              type="button"
                                               class="chevron-step-tooltip__go-upload"
+                                              @click.stop="goToAttachmentsTab"
                                             >
                                               去上传
-                                            </span>
+                                            </button>
                                           </span>
                                         </div>
                                         <div

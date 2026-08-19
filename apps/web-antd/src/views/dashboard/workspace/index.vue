@@ -11,7 +11,6 @@ import dayjs from 'dayjs';
 import {
   computed,
   defineAsyncComponent,
-  h,
   onMounted,
   reactive,
   ref,
@@ -47,6 +46,7 @@ import {
   collectUploadedAttachmentTypeIds,
   formatRequiredAttachmentNames,
 } from '#/views/sea-export-admin/basic-info-form/service-type-nodes';
+import { setSeaExportEditPendingTab } from '#/views/sea-export-admin/sea-export-edit-tab';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
@@ -369,15 +369,6 @@ const ensureAttachmentDtlTypes = async () => {
     attachmentDtlTypeListLoaded = true;
   }
 };
-const getActiveRequiredAttachmentHint = async () => {
-  const ids = collectRequiredAttachmentTypeIds(
-    activeConfigItem.value?.seServiceRequires,
-  );
-  if (!ids.length) return '';
-  await ensureAttachmentDtlTypes();
-  return formatRequiredAttachmentNames(ids, attachmentDtlTypeList.value);
-};
-
 function getSelectedBusinessRows(ids: string[]): BusinessRow[] {
   const idSet = new Set(ids);
   return displayBusinessRows.value.filter((row) => idSet.has(row.id));
@@ -394,6 +385,7 @@ function getAbpErrorMessage(error: unknown): string {
 
 function openSeaExportAttachments(seaExportId: string) {
   if (!seaExportId) return;
+  setSeaExportEditPendingTab(seaExportId, 'attachments');
   void router.push({
     name: 'SeaExportEdit',
     params: { id: seaExportId },
@@ -981,6 +973,18 @@ async function submitTransfer() {
   }
 }
 
+function confirmGoUploadAttachments(content: string, seaExportId: string) {
+  Modal.confirm({
+    title: '请先上传附件',
+    content,
+    okText: '前往上传',
+    cancelText: '取消',
+    onOk() {
+      openSeaExportAttachments(seaExportId);
+    },
+  });
+}
+
 async function handleComplete(ids: string[]) {
   if (!ids.length) {
     message.warning('请先选择要完成的任务');
@@ -999,34 +1003,16 @@ async function handleComplete(ids: string[]) {
       requiredIds,
     );
     if (missingTarget) {
-      message.warning(`请先到附件页上传：${missingTarget.hint}，再完成服务`);
-      openSeaExportAttachments(missingTarget.seaExportId);
+      confirmGoUploadAttachments(
+        `请先到附件页上传：${missingTarget.hint}，再完成服务`,
+        missingTarget.seaExportId,
+      );
       return;
     }
   }
-  const attachmentHint = await getActiveRequiredAttachmentHint();
-  const modal = Modal.confirm({
+  Modal.confirm({
     title: '确认完成',
-    content:
-      attachmentHint && firstSeaExportId
-        ? h('div', [
-            h('div', `确定完成选中的 ${ids.length} 条任务吗？`),
-            h(
-              'a',
-              {
-                style:
-                  'display:inline-block;margin-top:8px;color:#1677ff;cursor:pointer',
-                onClick: (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  modal.destroy();
-                  openSeaExportAttachments(firstSeaExportId);
-                },
-              },
-              `完成前需上传：${attachmentHint}（去上传）`,
-            ),
-          ])
-        : `确定完成选中的 ${ids.length} 条任务吗？`,
+    content: `确定完成选中的 ${ids.length} 条任务吗？`,
     async onOk() {
       try {
         await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
@@ -1038,7 +1024,11 @@ async function handleComplete(ids: string[]) {
         await loadWorkbench();
       } catch (error) {
         if (getAbpErrorMessage(error).includes('附件') && firstSeaExportId) {
-          openSeaExportAttachments(firstSeaExportId);
+          confirmGoUploadAttachments(
+            '请先到附件页上传后再完成服务',
+            firstSeaExportId,
+          );
+          return;
         }
         throw error;
       }

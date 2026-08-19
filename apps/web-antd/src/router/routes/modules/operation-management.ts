@@ -59,6 +59,8 @@ const routes: RouteRecordRaw[] = [
               title: $t('seaExport.export.title'),
               hideInMenu: true,
               activePath: '/sea-exports',
+              /** query.tab 不参与页签 key，避免进页后改 query 导致整页重挂、回落到基础信息 */
+              fullPathKey: false,
               authority: abpPageAuthority('Admin.SeaExport'),
             },
             component: () => import('#/views/sea-export-admin/editor.vue'),
