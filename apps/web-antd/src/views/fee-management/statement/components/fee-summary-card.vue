@@ -66,6 +66,39 @@ const currencySummaries = computed<CurrencySummaryCard[]>(() => {
   }));
 });
 
+// 计算原币折算合计（人民币）
+const totalSummary = computed(() => {
+  let totalReceivableRMB = 0;
+  let totalPayRMB = 0;
+  let totalUnReceivableRMB = 0;
+  let totalUnPayRMB = 0;
+
+  for (const fee of props.feeDetails) {
+    const exchangeRate = fee.exchangeRate || 1;
+    const amountRMB = (fee.amount || 0) * exchangeRate;
+    const unSettledAmountRMB = (fee.unSettledAmount || 0) * exchangeRate;
+
+    if (fee.paySide === 0) {
+      // 应收
+      totalReceivableRMB += amountRMB;
+      totalUnReceivableRMB += unSettledAmountRMB;
+    } else if (fee.paySide === 1) {
+      // 应付
+      totalPayRMB += amountRMB;
+      totalUnPayRMB += unSettledAmountRMB;
+    }
+  }
+
+  return {
+    receivableAmount: totalReceivableRMB,
+    payAmount: totalPayRMB,
+    totalAmount: totalReceivableRMB - totalPayRMB,
+    receivableUnSettledAmount: totalUnReceivableRMB,
+    payUnSettledAmount: totalUnPayRMB,
+    unsettledTotal: totalUnReceivableRMB - totalUnPayRMB,
+  };
+});
+
 // 格式化金额
 function formatAmount(amount: number): string {
   return amount.toFixed(2);
@@ -92,6 +125,50 @@ function getCurrencyLabel(currencyId: number): string {
   </div>
 
   <div v-else class="fee-summary-container">
+    <!-- 原币折算合计卡片 -->
+    <div class="currency-card total-card">
+      <!-- 币别标题 -->
+      <div class="currency-header total-header">
+        <span class="currency-code">原币折算合计</span>
+      </div>
+
+      <!-- 第一行：应收、应付（蓝色系） -->
+      <div class="amount-row blue-row">
+        <div class="amount-item">
+          <div class="amount-value">
+            {{ getCurrencySymbol(1)
+            }}{{ formatAmount(totalSummary.receivableAmount) }}
+          </div>
+          <div class="amount-label">应收</div>
+        </div>
+        <div class="amount-item">
+          <div class="amount-value">
+            {{ getCurrencySymbol(1) }}{{ formatAmount(totalSummary.payAmount) }}
+          </div>
+          <div class="amount-label">应付</div>
+        </div>
+      </div>
+
+      <!-- 第二行：未收、未付（橙色系） -->
+      <div class="amount-row orange-row">
+        <div class="amount-item">
+          <div class="amount-value">
+            {{ getCurrencySymbol(1)
+            }}{{ formatAmount(totalSummary.receivableUnSettledAmount) }}
+          </div>
+          <div class="amount-label">未收</div>
+        </div>
+        <div class="amount-item">
+          <div class="amount-value">
+            {{ getCurrencySymbol(1)
+            }}{{ formatAmount(totalSummary.payUnSettledAmount) }}
+          </div>
+          <div class="amount-label">未付</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 各币别卡片 -->
     <div
       v-for="summary in currencySummaries"
       :key="summary.currencyId"
@@ -104,10 +181,9 @@ function getCurrencyLabel(currencyId: number): string {
         }}</span>
       </div>
 
-      <!-- 第一行：应收、应付、合计（蓝色系） -->
+      <!-- 第一行：应收、应付（蓝色系） -->
       <div class="amount-row blue-row">
         <div class="amount-item">
-          <img :src="reciveIcon" alt="应收" class="icon" />
           <div class="amount-value">
             {{ getCurrencySymbol(summary.currencyId)
             }}{{ formatAmount(summary.receivableAmount) }}
@@ -115,27 +191,17 @@ function getCurrencyLabel(currencyId: number): string {
           <div class="amount-label">应收</div>
         </div>
         <div class="amount-item">
-          <img :src="payIcon" alt="应付" class="icon" />
           <div class="amount-value">
             {{ getCurrencySymbol(summary.currencyId)
             }}{{ formatAmount(summary.payAmount) }}
           </div>
           <div class="amount-label">应付</div>
         </div>
-        <div class="amount-item">
-          <img :src="allIcon" alt="合计" class="icon" />
-          <div class="amount-value">
-            {{ getCurrencySymbol(summary.currencyId)
-            }}{{ formatAmount(summary.totalAmount) }}
-          </div>
-          <div class="amount-label">合计</div>
-        </div>
       </div>
 
-      <!-- 第二行：未收、未付、合计（橙色系） -->
+      <!-- 第二行：未收、未付（橙色系） -->
       <div class="amount-row orange-row">
         <div class="amount-item">
-          <img :src="reciveIcon" alt="未收" class="icon" />
           <div class="amount-value">
             {{ getCurrencySymbol(summary.currencyId)
             }}{{ formatAmount(summary.receivableUnSettledAmount) }}
@@ -143,20 +209,11 @@ function getCurrencyLabel(currencyId: number): string {
           <div class="amount-label">未收</div>
         </div>
         <div class="amount-item">
-          <img :src="payIcon" alt="未付" class="icon" />
           <div class="amount-value">
             {{ getCurrencySymbol(summary.currencyId)
             }}{{ formatAmount(summary.payUnSettledAmount) }}
           </div>
           <div class="amount-label">未付</div>
-        </div>
-        <div class="amount-item">
-          <img :src="allIcon" alt="合计" class="icon" />
-          <div class="amount-value">
-            {{ getCurrencySymbol(summary.currencyId)
-            }}{{ formatAmount(summary.unsettledTotal) }}
-          </div>
-          <div class="amount-label">合计</div>
         </div>
       </div>
     </div>
@@ -164,84 +221,65 @@ function getCurrencyLabel(currencyId: number): string {
 </template>
 
 <style scoped lang="scss">
+
+
 /* 响应式设计 */
-@media (max-width: 1400px) {
-  .fee-summary-container {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 1200px) {
-  .currency-card {
-    min-width: 260px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .currency-card {
-    min-width: 240px;
-    padding: 16px;
-  }
-
-  .currency-code {
-    font-size: 20px;
-  }
-
-  .amount-value {
-    font-size: 16px;
-  }
-}
-
 @media (max-width: 768px) {
+  .fee-summary-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 5px;
+  }
+
   .currency-card {
     width: 100%;
-    height: auto;
-    min-height: 232px;
-  }
-
-  .amount-row {
-    flex-direction: column;
-    gap: 16px;
+    min-width: auto;
   }
 }
 
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
+.total-card {
+  //background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  //border: 2px solid #007bff;
+  //box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
 }
 
+.total-header {
+  font-weight: bold;
+  //background-color: #007bff;
+  color: white;
+}
+
+/* 费用汇总容器 - 横向排列 */
 .fee-summary-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 10px;
-  //padding: 8px 0;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 10px 5px;
 }
 
 .currency-card {
-  flex-shrink: 0;
-  width: inherit;
-  min-width: 18rem;
-  height: 13rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
   padding: 10px;
-  background: linear-gradient(135deg, #e6f4ff 0%, #f0f7ff 100%);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-  transition: all 0.3s ease;
-
-  // &:hover {
-  //   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  //   transform: translateY(-2px);
-  // }
+  margin: 0; /* 移除margin，使用gap控制间距 */
+  background: linear-gradient(
+    180deg,
+    rgb(220 238 255 / 80%) 0%,
+    rgb(220 238 255 / 40%) 52.1%
+  );
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .currency-header {
-  //margin-bottom: 12px;
   padding-bottom: 1px;
-  //border-bottom: 2px solid rgba(24, 144, 255, 0.1);
+  margin-bottom: 12px;
+  border-bottom: 2px solid rgb(24 144 255 / 10%);
 }
 
 .currency-code {
@@ -255,7 +293,7 @@ function getCurrencyLabel(currencyId: number): string {
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  padding: 5px;
+  padding: 12px 5px;
   margin-bottom: 1rem;
   background: rgb(255 255 255 / 80%);
   border-radius: 8px;
@@ -277,7 +315,7 @@ function getCurrencyLabel(currencyId: number): string {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
   align-items: center;
   text-align: center;
 }
@@ -291,16 +329,16 @@ function getCurrencyLabel(currencyId: number): string {
 
 .amount-value {
   font-family: 'MiSans Latin';
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 12px;
-  color: #262626;
+  line-height: 16px;
+  color: #3d3d3d;
   letter-spacing: 0;
   white-space: nowrap;
 }
 
 .amount-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.3px;
 }
@@ -312,4 +350,6 @@ function getCurrencyLabel(currencyId: number): string {
 .orange-row .amount-label {
   color: #fa8c16;
 }
+
+/* 原币折算合计卡片样式 */
 </style>
