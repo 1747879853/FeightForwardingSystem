@@ -238,7 +238,7 @@ const displayList = computed(() => {
         value = formValues.value?.deliverPortRemark || '--';
         break;
       case 'codeSourceName':
-        value = to.value?.codeSourceName || '--';
+        value = to.value?.codeSource?.cnName || '--';
         break;
       case 'commissionNum':
         value = to.value?.commissionNum || '--';

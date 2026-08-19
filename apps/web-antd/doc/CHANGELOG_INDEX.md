@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-19 空运出口业务来源改为读 codeSource.cnName](./changelogs/change-log-2026-08-19-air-export-code-source-cn-name.md)
 - [2026-08-19 海运出口台账补日期列并修复对象化名称展示](./changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md)
 - [2026-08-19 海运出口台账航线列改为读目的港对象](./changelogs/change-log-2026-08-19-sea-export-list-lane-name.md)
 - [2026-08-19 付费申请发票附件支持 Gemini 识别回填](./changelogs/change-log-2026-08-19-payment-application-invoice-extract.md)

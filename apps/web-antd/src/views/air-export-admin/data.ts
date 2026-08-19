@@ -813,6 +813,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
  */
 export const AIR_EXPORT_SORT_FIELD_MAP: Record<string, string> = {
   'transportOrder.clientName': 'TransportOrder.Client.Name',
+  'transportOrder.codeSource.cnName': 'TransportOrder.CodeSource.CnName',
   'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
   'transportOrder.codeServiceName': 'TransportOrder.CodeService.CnName',
   bookingAgentName: 'BookingAgent.Name',
@@ -921,14 +922,11 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       showOverflow: true,
     },
     {
-      field: 'transportOrder.codeSourceName',
+      field: 'transportOrder.codeSource.cnName',
       title: $t('airExport.export.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeSource?.cnName ||
-        row.transportOrder?.codeSourceName ||
-        '',
+      formatter: ({ row }) => row.transportOrder?.codeSource?.cnName ?? '',
     },
     {
       field: 'transportOrder.codeServiceName',
