@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -76,6 +76,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-20 | `Fix` | 指定结算币别添加费用时，汇率弹窗改为「1 单位 =」双向折算，并预填当天有效应付汇率。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md`。 |
 | 2026-08-19 | `Feature` | 发票附件增加识别按钮，调用 Gemini 回填发票号与开票日期，不自动保存。 | 见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |
 | 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |
 | 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |

@@ -26,8 +26,8 @@
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-19 |
-| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；添加费用抽屉可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-19 |
-| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；添加费用抽屉可筛业务类型并按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-19 |
+| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；指定结算币别添加费用时汇率弹窗双向折算并预填有效应付汇率；添加费用抽屉可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-20 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；指定结算币别添加费用时汇率弹窗双向折算并预填有效应付汇率；添加费用抽屉可筛业务类型并按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-20 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-08-19 |
@@ -52,7 +52,7 @@
 | basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-05-16 |
 | basic-data | `/basic-data/fee-name` | 基础资料 | 维护费用名称字典，是费用录入和费用代码的基础。 | [费用名称](./modules/basic-data/fee-name.md) | 2026-05-16 |
 | basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细；默认币别大数 ID 字符串透传。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-07-12 |
-| settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础；币别大数 ID 字符串透传。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-07-12 |
+| settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础；币别大数 ID 字符串透传；生效按日历日含结束日当天。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-08-20 |
 | basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段；国家/航线大数 ID 字符串透传；`PortSelect` 精简回显可拉详情补全；列表默认按国家中文名排序并对齐后端可排字段。 | [港口代码](./modules/basic-data/port-code.md) | 2026-08-12 |
 | basic-data | `/basic-data/air-port` | 基础资料 | 维护空运机场资料（IATA 三字码、ICAO 码、城市、时区），支撑空运起运/目的机场字段；提供 `AirPortSelect` 业务下拉，国家大数 ID 字符串透传。 | [空运港口](./modules/basic-data/air-port.md) | 2026-08-05 |

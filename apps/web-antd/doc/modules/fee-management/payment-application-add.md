@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-08-19
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。费用匹配支持「匹配 / 排除」：`FeeCodeIds` / `ExceptFeeCodeIds` 以 `paramsSerializer: 'repeat'` 传给 `GetOrderFeeGroupAsync`；排除模式须先选费用名称。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段；起运港/目的港按 `bizType` 从 `seaExport`、`seaImport`、`airExport` 简要对象读取港口备注。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；**业务行父级全选仅作用于可选费用**，组内全部已添加时父级 Checkbox 禁用；支持 **收付类型**（默认「付」）与 **业务类型**（`BizType`：海出/海进/空出，可清空）筛选。「费用明细」右侧展示已选笔数与按币别本次申请净额合计（付 − 收）；勾选写入 `selectedFeeCache`，**翻页保留勾选与合计**，确认添加也读缓存（搜索条件变化仍清空）。**付费申请场景**抽屉启用 `enableInvoiceProcess`，须在抽屉内选定「发票方式」后才可确认费用并创建申请；未选时顶部 toast 提示，下拉标红但不插入行内错误文案。抽屉与页内费用明细表（`NestedDataTable`）均支持表头拖拽调列宽。
+- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。费用匹配支持「匹配 / 排除」：`FeeCodeIds` / `ExceptFeeCodeIds` 以 `paramsSerializer: 'repeat'` 传给 `GetOrderFeeGroupAsync`；排除模式须先选费用名称。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段；起运港/目的港按 `bizType` 从 `seaExport`、`seaImport`、`airExport` 简要对象读取港口备注。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；**业务行父级全选仅作用于可选费用**，组内全部已添加时父级 Checkbox 禁用；支持 **收付类型**（默认「付」）与 **业务类型**（`BizType`：海出/海进/空出，可清空）筛选。「费用明细」右侧展示已选笔数与按币别本次申请净额合计（付 − 收）；勾选写入 `selectedFeeCache`，**翻页保留勾选与合计**，确认添加也读缓存（搜索条件变化仍清空）。**付费申请场景**抽屉启用 `enableInvoiceProcess`，须在抽屉内选定「发票方式」后才可确认费用并创建申请；未选时顶部 toast 提示，下拉标红但不插入行内错误文案。**指定结算币别**且所选费用原币与结算币别不同时，确认添加会弹出「币别汇率折算」：按「1 单位 =」双向填写，改一侧另一侧取倒数；预填取汇率资料当天有效应付 `crValue`，无有效记录则留空。抽屉与页内费用明细表（`NestedDataTable`）均支持表头拖拽调列宽。
 - **页面布局：** 按 Figma 重排为顶栏申请号/操作、申请人信息、费用合计与银行、费用明细与工作流分区；费用明细改用 `NestedDataTable`（`fillHeight`，外层订单组 + 内层费用行，可展开，卡片固定高度 650px）；「+ 添加费用」为 primary 醒目按钮。
 - **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeCodeSelect` → `FeeCodeAdmin/GetPagedListAsync`，按 `feeCodeId`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。费用名/币别会裁剪组内 `children`（`filterOrderGroups`），只显示命中费用并重算外层申请合计。筛选栏勿用 `<label>` 包裹可搜索 Select，以免抢焦点清空远程搜索词。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。**固定结算币别**时，结算币别卡片只展示一行固定支付币别，申请金额为费用明细「申请金额折币」按付 − 收合计。
@@ -51,6 +51,7 @@ last_updated: 2026-08-19
 | **申请主体** | 付款对象与业务归属。 | `payment-application-admin.ts` | **触发/依赖：** 影响审核和后续结算。 | 不能为空。 |
 | **结算银行** | 费用合计每个币别绑定的收款银行账户。 | **客户开票信息**<br/>`ClientInvoiceInfoAdmin/GetListAsync` | **触发/依赖：** 选项随结算对象与币别筛选；结算对象变更清空重载；默认选中该币别 `isDefault` 账户。 | **必填项**，原币结算每种费用币别各一条、指定币别结算仅结算币别一条；银行须属当前结算对象且主数据含开户行/账号/SWIFT。 |
 | **发票方式** | 先票后付 / 先付后票 / 不开票。 | 表单 `invoiceProcess`；添加费用抽屉 `enableInvoiceProcess` | **触发/依赖：** 抽屉确认时回写外层；新建确认费用与保存/提交前校验；未选时 toast + 控件标红。 | **必填项**（新建创建申请前必须选定）。 |
+| **申请汇率** | 指定结算币别时，1 原币兑多少结算币。 | 弹窗预填：`ExchangeRateAdmin/GetPagedListAsync` 有效应付 `crValue`；可手改 | **触发/依赖：** 添加费用确认时弹出「币别汇率折算」；写入费用 `exchangeRate`/`rate`。 | 必须 >0；无有效汇率时不预填，须手填。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -64,6 +65,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-20 | `Fix` | 指定结算币别添加费用时，汇率弹窗改为「1 单位 =」双向折算，并预填当天有效应付汇率。 | 详见 `changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md`。 |
 | 2026-08-19 | `Feature` | 发票附件增加识别按钮，调用 Gemini 回填发票号与开票日期，不自动保存。 | 与编辑页共用 `attachment-groups.vue`；详见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |
 | 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |
 | 2026-08-16 | `Fix` | 页内费用明细去掉「可申请金额」列（原币/指定币别均去掉）；添加费用抽屉仍保留该列与上限校验。 | 见 `changelogs/change-log-2026-08-16-payment-application-remove-available-amount-col.md`。 |

@@ -15,22 +15,40 @@ const rateCache = shallowRef(
 let loaded = false;
 let inflight: null | Promise<void> = null;
 
-function toTime(value?: null | string) {
-  if (!value) return undefined;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? undefined : time;
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-/** 生效条件：已启用 且 当前时间落在有效期内（起止为空视为不限） */
-function isEffective(
-  rate: ExchangeRateAdminApi.ExchangeRateDto,
-  now: number,
+/** 汇率资料起止为日期（YYYY-MM-DD），按本地日历日比较，结束日当天全天有效 */
+function toDateKey(value?: null | string): string | undefined {
+  if (!value) return undefined;
+  const isoDay = value.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDay)) return isoDay;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return formatLocalDate(date);
+}
+
+/**
+ * 生效条件：已启用，且今天落在 startDate～endDate（含起止当天；起止为空视为不限）。
+ * 不用时刻比较，避免 `YYYY-MM-DD` 被解析成 UTC 0 点后结束日上午就过期。
+ */
+export function isExchangeRateEffective(
+  rate: Pick<
+    ExchangeRateAdminApi.ExchangeRateDto,
+    'enable' | 'endDate' | 'startDate'
+  >,
+  now = Date.now(),
 ): boolean {
   if (!rate.enable) return false;
-  const start = toTime(rate.startDate);
-  const end = toTime(rate.endDate);
-  if (start !== undefined && now < start) return false;
-  if (end !== undefined && now > end) return false;
+  const today = formatLocalDate(new Date(now));
+  const start = toDateKey(rate.startDate);
+  const end = toDateKey(rate.endDate);
+  if (start && today < start) return false;
+  if (end && today > end) return false;
   return true;
 }
 
@@ -63,7 +81,7 @@ async function loadCache() {
     const now = Date.now();
     const next = new Map<string, ExchangeRateAdminApi.ExchangeRateDto>();
     for (const rate of res?.items ?? []) {
-      if (!isEffective(rate, now)) continue;
+      if (!isExchangeRateEffective(rate, now)) continue;
       const key = String(rate.currencyId ?? '');
       if (key === '') continue;
       const current = next.get(key);
@@ -90,7 +108,7 @@ export function ensureExchangeRateCache(forceRefresh = false): Promise<void> {
 
 /**
  * 读取已加载缓存中的生效汇率：应收取 drValue、应付取 crValue。
- * 缓存未就绪或该币别未维护汇率时返回 undefined。
+ * 缓存未就绪、该币别未维护、或记录已不在有效期内时返回 undefined。
  */
 export function peekExchangeRate(
   currencyId?: null | number | string,
@@ -99,7 +117,7 @@ export function peekExchangeRate(
   const key = String(currencyId ?? '');
   if (key === '') return undefined;
   const rate = rateCache.value.get(key);
-  if (!rate) return undefined;
+  if (!rate || !isExchangeRateEffective(rate)) return undefined;
   const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
   return value ?? undefined;
 }
