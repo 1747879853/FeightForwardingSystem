@@ -780,6 +780,36 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       formatter: 'formatDate',
     },
     {
+      field: 'transportOrder.goodsCompleteTime',
+      title: $t('seaExport.export.goodsCompleteTime'),
+      minWidth: 120,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'transportOrder.atd',
+      title: $t('seaExport.export.atd'),
+      minWidth: 120,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'transportOrder.eta',
+      title: $t('seaExport.export.eta'),
+      minWidth: 120,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'closeVgmTime',
+      title: $t('seaExport.export.closeVgmTime'),
+      minWidth: 120,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'closingTime',
+      title: $t('seaExport.export.closingTime'),
+      minWidth: 120,
+      formatter: 'formatDate',
+    },
+    {
       field: 'transportOrder.clientName',
       title: $t('seaExport.export.clientId'),
       minWidth: 150,
@@ -872,12 +902,20 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeSource?.cnName ||
+        row.transportOrder?.codeSourceName ||
+        '',
     },
     {
       field: 'transportOrder.codeFrtName',
       title: $t('seaExport.export.codeFrtId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeFrt?.cnName ||
+        row.transportOrder?.codeFrtName ||
+        '',
     },
     {
       field: 'transportOrder.totalCtn',
@@ -1004,6 +1042,10 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codePackage?.name ||
+        row.transportOrder?.codePackageName ||
+        '',
     },
     {
       field: 'transportOrder.kgs',
@@ -1044,6 +1086,8 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.issueType'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.codeIssueType?.billType || row.codeIssueTypeName || '',
     },
     {
       field: 'closeDocTime',

@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-17
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -58,6 +58,7 @@ last_updated: 2026-08-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 列表业务来源、运输条款、包装改为读嵌套对象，不再空白。 | 与海出台账同类：`codeSource.cnName` / `codeService.cnName` / `codePackage.name`。见 `changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md`。 |
 | 2026-08-17 | `Fix` | 筛选空港选中后只回显三字码；列表列改为「三字码/英文名」。 | 搜索区 `labelKey=iataCode`；列走 `formatAirPortLabel`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 列表运踪弹窗新增「轨迹节点」时间轴（合并五类事件，区分实际/预计/当前）。 | 列表不下发 `feituoTrackingDetail`，弹窗打开后按 Id 补一次业务单详情取事件；该请求失败只是没有时间轴，不影响摘要展示。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |

@@ -925,12 +925,20 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       title: $t('airExport.export.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeSource?.cnName ||
+        row.transportOrder?.codeSourceName ||
+        '',
     },
     {
       field: 'transportOrder.codeServiceName',
       title: $t('airExport.export.codeServiceId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeService?.cnName ||
+        row.transportOrder?.codeServiceName ||
+        '',
     },
     {
       field: 'transportOrder.pkgs',
@@ -943,6 +951,10 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codePackage?.name ||
+        row.transportOrder?.codePackageName ||
+        '',
     },
     {
       field: 'transportOrder.kgs',
