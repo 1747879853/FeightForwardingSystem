@@ -2,7 +2,7 @@ import { requestClient } from '#/api/request';
 
 export namespace AttachmentDtlTypeApi {
   export interface AttachmentDtlTypeSimpleDto {
-    id: number;
+    id: number | string;
     name?: string | null;
     sortId?: number;
   }

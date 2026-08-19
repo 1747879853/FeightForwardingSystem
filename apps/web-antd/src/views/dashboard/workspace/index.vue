@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
@@ -10,6 +11,7 @@ import dayjs from 'dayjs';
 import {
   computed,
   defineAsyncComponent,
+  h,
   onMounted,
   reactive,
   ref,
@@ -26,6 +28,7 @@ import {
   TaskStatus as PaymentTaskStatus,
 } from '#/api/audit-approval/payment-review-admin';
 import { getPreOrderTaskList } from '#/api/pre-order/pre-order-admin';
+import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
 import {
   completeSeServiceTask,
   getSeServiceTaskWorkbenchCount,
@@ -36,8 +39,14 @@ import {
   getSeServiceConfigDetail,
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
+import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
 import { isJhtBrand, isLongshanBrand } from '#/utils/brand-assets';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import {
+  collectRequiredAttachmentTypeIds,
+  collectUploadedAttachmentTypeIds,
+  formatRequiredAttachmentNames,
+} from '#/views/sea-export-admin/basic-info-form/service-type-nodes';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
@@ -345,6 +354,86 @@ const seaExportDynamicColumns = computed(() => {
   }));
   return buildDynamicColumns(shows, seaExportPropLabelMap.value);
 });
+
+const attachmentDtlTypeList = ref<
+  AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]
+>([]);
+let attachmentDtlTypeListLoaded = false;
+const ensureAttachmentDtlTypes = async () => {
+  if (attachmentDtlTypeListLoaded) return;
+  try {
+    attachmentDtlTypeList.value = await getAttachmentDtlTypeList();
+  } catch {
+    attachmentDtlTypeList.value = [];
+  } finally {
+    attachmentDtlTypeListLoaded = true;
+  }
+};
+const getActiveRequiredAttachmentHint = async () => {
+  const ids = collectRequiredAttachmentTypeIds(
+    activeConfigItem.value?.seServiceRequires,
+  );
+  if (!ids.length) return '';
+  await ensureAttachmentDtlTypes();
+  return formatRequiredAttachmentNames(ids, attachmentDtlTypeList.value);
+};
+
+function getSelectedBusinessRows(ids: string[]): BusinessRow[] {
+  const idSet = new Set(ids);
+  return displayBusinessRows.value.filter((row) => idSet.has(row.id));
+}
+
+function getAbpErrorMessage(error: unknown): string {
+  const axiosError = error as {
+    message?: string;
+    response?: { data?: { error?: { details?: string; message?: string } } };
+  };
+  const abp = axiosError.response?.data?.error;
+  return abp?.message || abp?.details || axiosError.message || '';
+}
+
+function openSeaExportAttachments(seaExportId: string) {
+  if (!seaExportId) return;
+  void router.push({
+    name: 'SeaExportEdit',
+    params: { id: seaExportId },
+    query: { tab: 'attachments' },
+  });
+}
+
+const getMissingRequiredAttachmentHint = async (
+  seaExportId: string,
+  requiredIds: string[],
+) => {
+  let groups: Awaited<ReturnType<typeof getSeaExportAttachments>> = [];
+  try {
+    groups = (await getSeaExportAttachments(seaExportId)) ?? [];
+  } catch {
+    return '';
+  }
+  const uploaded = collectUploadedAttachmentTypeIds(groups);
+  const missingIds = requiredIds.filter((id) => !uploaded.has(id));
+  if (!missingIds.length) return '';
+  return formatRequiredAttachmentNames(missingIds, attachmentDtlTypeList.value);
+};
+
+const findFirstMissingAttachmentTarget = async (
+  seaExportIds: string[],
+  requiredIds: string[],
+) => {
+  await ensureAttachmentDtlTypes();
+  const seen = new Set<string>();
+  for (const seaExportId of seaExportIds) {
+    if (!seaExportId || seen.has(seaExportId)) continue;
+    seen.add(seaExportId);
+    const hint = await getMissingRequiredAttachmentHint(
+      seaExportId,
+      requiredIds,
+    );
+    if (hint) return { hint, seaExportId };
+  }
+  return null;
+};
 
 function mapWorkbenchItemToBusinessRow(
   task: SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto,
@@ -892,22 +981,67 @@ async function submitTransfer() {
   }
 }
 
-function handleComplete(ids: string[]) {
+async function handleComplete(ids: string[]) {
   if (!ids.length) {
     message.warning('请先选择要完成的任务');
     return;
   }
-  Modal.confirm({
+  const selectedRows = getSelectedBusinessRows(ids);
+  const firstSeaExportId = selectedRows.find(
+    (row) => row.seaExportId,
+  )?.seaExportId;
+  const requiredIds = collectRequiredAttachmentTypeIds(
+    activeConfigItem.value?.seServiceRequires,
+  );
+  if (requiredIds.length) {
+    const missingTarget = await findFirstMissingAttachmentTarget(
+      selectedRows.map((row) => row.seaExportId),
+      requiredIds,
+    );
+    if (missingTarget) {
+      message.warning(`请先到附件页上传：${missingTarget.hint}，再完成服务`);
+      openSeaExportAttachments(missingTarget.seaExportId);
+      return;
+    }
+  }
+  const attachmentHint = await getActiveRequiredAttachmentHint();
+  const modal = Modal.confirm({
     title: '确认完成',
-    content: `确定完成选中的 ${ids.length} 条任务吗？`,
+    content:
+      attachmentHint && firstSeaExportId
+        ? h('div', [
+            h('div', `确定完成选中的 ${ids.length} 条任务吗？`),
+            h(
+              'a',
+              {
+                style:
+                  'display:inline-block;margin-top:8px;color:#1677ff;cursor:pointer',
+                onClick: (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  modal.destroy();
+                  openSeaExportAttachments(firstSeaExportId);
+                },
+              },
+              `完成前需上传：${attachmentHint}（去上传）`,
+            ),
+          ])
+        : `确定完成选中的 ${ids.length} 条任务吗？`,
     async onOk() {
-      await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
-      message.success('任务已完成');
-      if (isSeaExportTab.value) {
-        await refreshSeaExportAfterAction();
-        return;
+      try {
+        await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
+        message.success('任务已完成');
+        if (isSeaExportTab.value) {
+          await refreshSeaExportAfterAction();
+          return;
+        }
+        await loadWorkbench();
+      } catch (error) {
+        if (getAbpErrorMessage(error).includes('附件') && firstSeaExportId) {
+          openSeaExportAttachments(firstSeaExportId);
+        }
+        throw error;
       }
-      await loadWorkbench();
     },
   });
 }

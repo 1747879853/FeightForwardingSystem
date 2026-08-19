@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { Page } from '@vben/common-ui';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import Form from './basic-info-form/form.vue';
 import orderFee from './orderFee/index.vue';
 import SeparateBill from './modules/separate-bill.vue';
@@ -70,6 +70,18 @@ function readStoredTab(id: string | undefined): TabKey | null {
   return null;
 }
 
+/** 工作台「去上传」等深链：`?tab=attachments` 优先于会话记忆 */
+function resolveTabFromQuery(): TabKey | null {
+  const raw = route.query.tab;
+  const tab = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof tab === 'string' && isValidTabKey(tab)) return tab;
+  return null;
+}
+
+function resolveActiveTab(id: string | undefined): TabKey {
+  return resolveTabFromQuery() ?? readStoredTab(id) ?? 'basic';
+}
+
 function writeStoredTab(id: string | undefined, tab: TabKey) {
   if (!id) return;
   try {
@@ -81,6 +93,7 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 
 const formRef = ref<FormExpose | null>(null);
 const route = useRoute();
+const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
@@ -150,14 +163,27 @@ async function syncTabTitleFromOrder(id: string | undefined) {
   }
 }
 
-/** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
-const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
+/** 按委托 ID 记忆当前 Tab；路由 `tab` 查询参数优先（工作台完成缺附件跳转） */
+const activeTab = ref<TabKey>(resolveActiveTab(editId.value));
 
 watch(
   editId,
   (id) => {
-    activeTab.value = readStoredTab(id) ?? 'basic';
+    activeTab.value = resolveActiveTab(id);
     void syncTabTitleFromOrder(id);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => route.query.tab,
+  () => {
+    const tab = resolveTabFromQuery();
+    if (!tab) return;
+    activeTab.value = tab;
+    const restQuery = { ...route.query };
+    delete restQuery.tab;
+    void router.replace({ query: restQuery });
   },
   { immediate: true },
 );
@@ -221,6 +247,11 @@ const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   nextTick(() => {
     formRef.value?.scrollToSection(tab.sectionKey as SectionKey);
   });
+};
+
+const onSwitchTab = (tab: string) => {
+  if (!isValidTabKey(tab)) return;
+  activeTab.value = tab;
 };
 
 // 编辑工作台未保存拦截：无论当前停留在哪个内部标签，离开路由时都基于基础信息表单的脏状态二次确认
@@ -329,6 +360,7 @@ const getContentTabStyle = (isActive: boolean) =>
               embedded
               :disable-tab-title="props.disableTabTitle"
               @saved="onFormSaved"
+              @switch-tab="onSwitchTab"
             />
           </KeepAlive>
         </div>

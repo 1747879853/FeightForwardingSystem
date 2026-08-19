@@ -142,6 +142,134 @@ export const parseDetailServiceTypes = (
   return { savedSet, savedSortIdMap, taskMap };
 };
 
+/** 完成时必填扩展枚举：附件类型。具体附件类型 id 写在 requireValues */
+export const ATTACHMENT_DTL_TYPE_PROP_ENUM = 10001;
+/** ≥ 该值均为扩展类型，只能出现在 seServiceRequires */
+export const SEA_EXPORT_PROP_EXTENDED_MIN = 10001;
+
+type SeServicePropItemLike = {
+  seaExportPropEnum?: number;
+  requireValues?: string | null;
+};
+
+/** 兼容旧 int[] 与新对象数组，取出 seaExportPropEnum */
+export const toSeaExportPropEnum = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (value && typeof value === 'object' && 'seaExportPropEnum' in value) {
+    const parsed = Number(
+      (value as { seaExportPropEnum?: unknown }).seaExportPropEnum,
+    );
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+/** 解析 `"1|2|3"`，按字符串保留 id，避免大整数精度丢失；不要用 includes('1') */
+export const parseRequireIds = (requireValues?: null | string): string[] => {
+  if (!requireValues) return [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const part of requireValues.split('|')) {
+    const id = part.trim();
+    if (!id || id === '0' || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+};
+
+export const toRequireValues = (
+  ids?: Array<number | string> | null,
+): string | null => {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of ids ?? []) {
+    const id = String(raw).trim();
+    if (!id || id === '0' || seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+  }
+  return unique.length ? unique.join('|') : null;
+};
+
+export const collectRequiredAttachmentTypeIds = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    const propEnum = toSeaExportPropEnum(item);
+    if (propEnum !== ATTACHMENT_DTL_TYPE_PROP_ENUM) continue;
+    const requireValues =
+      item && typeof item === 'object'
+        ? (item as SeServicePropItemLike).requireValues
+        : null;
+    for (const id of parseRequireIds(requireValues)) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+};
+
+export const formatRequiredAttachmentNames = (
+  ids: Array<number | string>,
+  types: Array<{
+    id?: number | string;
+    name?: string | null;
+    sortId?: number;
+  }>,
+): string => {
+  const typeMap = new Map(
+    types.map((item) => [String(item.id), item] as const),
+  );
+  return [...ids]
+    .sort((left, right) => {
+      const leftSort =
+        typeMap.get(String(left))?.sortId ?? Number.MAX_SAFE_INTEGER;
+      const rightSort =
+        typeMap.get(String(right))?.sortId ?? Number.MAX_SAFE_INTEGER;
+      return Number(leftSort) - Number(rightSort);
+    })
+    .map((id) => {
+      const name = typeMap.get(String(id))?.name?.trim();
+      return name || `未知类型(${id})`;
+    })
+    .join('、');
+};
+
+export const collectUploadedAttachmentTypeIds = (
+  groups: Array<{
+    attachmentDtlTypeId?: number | string | null;
+    attachmentDtlType?: { id?: number | string } | null;
+    items?: Array<{ attachmentDtlTypeId?: number | string | null }> | null;
+  }>,
+): Set<string> => {
+  const ids = new Set<string>();
+  for (const group of groups) {
+    const groupItems = group.items ?? [];
+    if (groupItems.length === 0) continue;
+    const typeId =
+      group.attachmentDtlTypeId ?? group.attachmentDtlType?.id ?? null;
+    if (typeId != null && String(typeId) !== '') {
+      ids.add(String(typeId));
+    }
+    for (const item of groupItems) {
+      if (item.attachmentDtlTypeId == null || item.attachmentDtlTypeId === '') {
+        continue;
+      }
+      ids.add(String(item.attachmentDtlTypeId));
+    }
+  }
+  return ids;
+};
+
 /** SeaExportPropEnum → 字段名（必填/锁定字段映射一致） */
 export const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
   1: 'carrierId',
@@ -187,13 +315,20 @@ export const SERVICE_LOCKABLE_FIELD_NAMES = [
   ...new Set(Object.values(SERVICE_REQUIRE_PROP_TO_FIELD_NAME)),
 ];
 
+/** 取出完成时必填的普通字段枚举；跳过 ≥10001 的扩展类型（如附件类型） */
 export const normalizeRequiredProps = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
   return [
     ...new Set(
       value
-        .map((item) => Number(item))
-        .filter((item) => Number.isFinite(item) && item > 0),
+        .map((item) => toSeaExportPropEnum(item))
+        .filter(
+          (item): item is number =>
+            item != null &&
+            Number.isFinite(item) &&
+            item > 0 &&
+            item < SEA_EXPORT_PROP_EXTENDED_MIN,
+        ),
     ),
   ];
 };

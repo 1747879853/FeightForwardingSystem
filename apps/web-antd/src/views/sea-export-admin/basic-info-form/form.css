@@ -1288,6 +1288,23 @@
   word-break: break-all;
 }
 
+.chevron-step-tooltip__info-row--link {
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.chevron-step-tooltip__info-row--link:hover .chevron-step-tooltip__info-value,
+.chevron-step-tooltip__info-row--link:hover .chevron-step-tooltip__go-upload {
+  color: #1677ff;
+}
+
+.chevron-step-tooltip__go-upload {
+  margin-left: 6px;
+  font-weight: 600;
+  color: #1677ff;
+  white-space: nowrap;
+}
+
 .chevron-step-tooltip__permission-hint {
   display: flex;
   gap: 6px;

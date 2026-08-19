@@ -99,15 +99,22 @@ export namespace SeaExportAdminApi {
     enName?: null | string;
   }
 
+  /** 服务项展示/锁定/必填字段项；与港口配置 SeServicePropItemDto 同结构 */
+  export interface SeServicePropItemDto {
+    seaExportPropEnum: number;
+    /** 扩展类型的具体值；附件类型(10001)为 `"1|2"`，普通字段为 null */
+    requireValues?: string | null;
+  }
+
   export interface ServiceTypeByPolDto {
     serviceType: number;
     sortId: number;
     checked: boolean;
     /** 服务项责任角色（位标志，与港口服务项配置 userAttribute 一致） */
     userAttribute?: number;
-    seServiceShows?: number[];
-    seServiceLocks?: number[];
-    seServiceRequires?: number[];
+    seServiceShows?: SeServicePropItemDto[];
+    seServiceLocks?: SeServicePropItemDto[];
+    seServiceRequires?: SeServicePropItemDto[];
   }
 
   export interface GetServiceTypesByPolParams {

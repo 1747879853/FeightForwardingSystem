@@ -12,6 +12,8 @@ export namespace SeServiceConfigAdminApi {
   export interface SeaExportPropRefDto {
     id?: string;
     seaExportPropEnum: number;
+    /** 扩展类型的具体值；附件类型(10001)为 `"1|2"`，普通字段为 null */
+    requireValues?: string | null;
   }
 
   /** 必填费用-新增输入；paySide：0=应收，1=应付 */

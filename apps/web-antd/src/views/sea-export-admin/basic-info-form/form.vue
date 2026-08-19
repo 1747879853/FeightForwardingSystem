@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { TerminalScheduleItem } from '#/components/terminal-schedule';
 
@@ -72,6 +73,7 @@ import {
 import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
 import {
   getServiceTypesByPOL,
+  getSeaExportAttachments,
   getSeaExportDetail,
   updateSeaExportCommissionNum,
 } from '#/api/sea-export/sea-export-admin';
@@ -79,6 +81,7 @@ import {
   cancelCompleteSeServiceTask,
   completeSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
+import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import {
@@ -128,6 +131,9 @@ import type {
 import {
   buildServiceRequiredPropsByType,
   buildServiceTypeNodes,
+  collectRequiredAttachmentTypeIds,
+  collectUploadedAttachmentTypeIds,
+  formatRequiredAttachmentNames,
   formatServiceTaskCompletionTime,
   formatServiceTaskUsersText,
   getRequiredFieldLabelByProp,
@@ -135,6 +141,7 @@ import {
   groupServiceTypeNodesBySortId,
   hasServiceTaskHandlerRestriction,
   isRequiredFieldFilled,
+  normalizeRequiredProps,
   parseDetailServiceTypes,
   SERVICE_LOCKABLE_FIELD_NAMES,
   SERVICE_REQUIRE_PROP_TO_FIELD_NAME,
@@ -186,6 +193,7 @@ const props = withDefaults(
 /** 编辑保存成功：上抛最新详情 DTO，供编辑工作台联动费用/更改单等 Tab */
 const emit = defineEmits<{
   saved: [detail: SeaExportAdminApi.SeaExportDto];
+  'switch-tab': [tab: 'attachments'];
 }>();
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
@@ -389,6 +397,7 @@ const applyServiceTypeStateForEditInitial = (
   updateServiceTypeRequiredProps();
   polServiceConfigLoaded.value = true;
   applyServiceLockedFields();
+  void maybeLoadAttachmentTypesForServiceConfigs(polNodes);
 };
 const getCheckedServiceTypes = () =>
   serviceTypeNodes.value
@@ -724,6 +733,71 @@ const latestAvailableServiceTypes = ref<
 >([]);
 const completingServiceType = ref<number>();
 const cancellingServiceType = ref<number>();
+const attachmentDtlTypeList = ref<
+  AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]
+>([]);
+let attachmentDtlTypeListLoaded = false;
+const ensureAttachmentDtlTypes = async () => {
+  if (attachmentDtlTypeListLoaded) return;
+  try {
+    attachmentDtlTypeList.value = await getAttachmentDtlTypeList();
+  } catch {
+    attachmentDtlTypeList.value = [];
+  } finally {
+    attachmentDtlTypeListLoaded = true;
+  }
+};
+const collectAccumulatedRequiredAttachmentTypeIds = (
+  serviceType: number,
+): string[] => {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const configMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  latestAvailableServiceTypes.value.forEach((item) => {
+    const type = Number(item.serviceType);
+    if (!Number.isFinite(type)) return;
+    configMap.set(type, item);
+  });
+  serviceTypeNodes.value.forEach((node) => {
+    const shouldInclude =
+      node.serviceType === serviceType ||
+      node.taskStatus === SERVICE_TASK_STATUS_PROCESSED;
+    if (!shouldInclude) return;
+    const matched = configMap.get(node.serviceType);
+    for (const id of collectRequiredAttachmentTypeIds(
+      matched?.seServiceRequires,
+    )) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+  });
+  return ids;
+};
+const getRequiredAttachmentHint = (serviceType: number) => {
+  const matched = latestAvailableServiceTypes.value.find(
+    (item) => Number(item.serviceType) === serviceType,
+  );
+  const ids = collectRequiredAttachmentTypeIds(matched?.seServiceRequires);
+  if (!ids.length) return '';
+  return formatRequiredAttachmentNames(ids, attachmentDtlTypeList.value);
+};
+const suppressServiceTooltips = ref(false);
+const goToAttachmentsTab = () => {
+  suppressServiceTooltips.value = true;
+  emit('switch-tab', 'attachments');
+};
+const maybeLoadAttachmentTypesForServiceConfigs = async (
+  availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const need = (availableServiceTypes ?? []).some(
+    (item) =>
+      collectRequiredAttachmentTypeIds(item.seServiceRequires).length > 0,
+  );
+  if (need) {
+    await ensureAttachmentDtlTypes();
+  }
+};
 const updateServiceTypeRequiredProps = () => {
   const checkedSet = new Set(getCheckedServiceTypes());
   serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
@@ -743,9 +817,11 @@ const getServiceLockedFieldNames = (): Set<string> => {
   });
   serviceTypeNodes.value.forEach((node) => {
     if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) return;
-    const locks = configMap.get(node.serviceType)?.seServiceLocks ?? [];
+    const locks = normalizeRequiredProps(
+      configMap.get(node.serviceType)?.seServiceLocks,
+    );
     locks.forEach((propEnum) => {
-      const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[Number(propEnum)];
+      const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
       if (fieldName) lockedFields.add(fieldName);
     });
   });
@@ -1039,6 +1115,23 @@ const getMissingRequiredLabelsForServiceType = async (serviceType: number) => {
   });
   return missingLabels;
 };
+const getMissingRequiredAttachmentHint = async (serviceType: number) => {
+  const requiredIds = collectAccumulatedRequiredAttachmentTypeIds(serviceType);
+  if (!requiredIds.length) return '';
+  const seaExportId = editId.value;
+  if (!seaExportId) return '';
+  await ensureAttachmentDtlTypes();
+  let groups: SeaExportAdminApi.AttachmentGroupDto[] = [];
+  try {
+    groups = (await getSeaExportAttachments(seaExportId)) ?? [];
+  } catch {
+    return '';
+  }
+  const uploaded = collectUploadedAttachmentTypeIds(groups);
+  const missingIds = requiredIds.filter((id) => !uploaded.has(id));
+  if (!missingIds.length) return '';
+  return formatRequiredAttachmentNames(missingIds, attachmentDtlTypeList.value);
+};
 const handleCompleteServiceType = async (node: ServiceTypeNode) => {
   if (!isEdit.value) return;
   if (completingServiceType.value != null) return;
@@ -1068,13 +1161,21 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     message.warning(`请先填写：${missingLabels.join('、')}，再完成服务`);
     return;
   }
+  const missingAttachments = await getMissingRequiredAttachmentHint(
+    node.serviceType,
+  );
+  if (missingAttachments) {
+    message.warning(`请先到附件页上传：${missingAttachments}，再完成服务`);
+    goToAttachmentsTab();
+    return;
+  }
   completingServiceType.value = node.serviceType;
   try {
     await completeSeServiceTask({ id: taskId });
     message.success(`${node.label}已完成`);
     await loadEditData();
   } catch {
-    message.error('完成服务失败，请稍后重试');
+    // UserFriendlyException 由全局拦截器展示
   } finally {
     completingServiceType.value = undefined;
   }
@@ -1202,6 +1303,7 @@ const applyServiceTypeStateByPol = (
     new Set(getCheckedServiceTypes()),
   );
   polServiceConfigLoaded.value = true;
+  void maybeLoadAttachmentTypesForServiceConfigs(availableServiceTypes);
 };
 const extractServiceTypesByPolResult = (
   payload: unknown,
@@ -2835,7 +2937,10 @@ defineExpose({
                       :spinning="serviceTypeSyncLoading"
                       class="service-pipeline-spin service-pipeline-spin--inline"
                     >
-                      <div class="service-pipeline-body">
+                      <div
+                        class="service-pipeline-body"
+                        @mouseenter="suppressServiceTooltips = false"
+                      >
                         <div class="service-pipeline service-pipeline--inline">
                           <template v-if="showServiceItemContent">
                             <div
@@ -2858,6 +2963,11 @@ defineExpose({
                                     v-if="shouldShowServiceNodeTooltip(node)"
                                     placement="top"
                                     :overlay-class-name="'chevron-step-tooltip'"
+                                    v-bind="
+                                      suppressServiceTooltips
+                                        ? { open: false }
+                                        : {}
+                                    "
                                   >
                                     <template #title>
                                       <div
@@ -2981,6 +3091,37 @@ defineExpose({
                                                 ? '您不是完成人，暂无操作权限'
                                                 : '您不是当前处理人，暂无操作权限'
                                             }}
+                                          </span>
+                                        </div>
+                                        <div
+                                          v-if="
+                                            canCompleteServiceTypeNode(node) &&
+                                            getRequiredAttachmentHint(
+                                              node.serviceType,
+                                            )
+                                          "
+                                          class="chevron-step-tooltip__info-row chevron-step-tooltip__info-row--link"
+                                          role="button"
+                                          @click.stop="goToAttachmentsTab"
+                                        >
+                                          <span
+                                            class="chevron-step-tooltip__info-label"
+                                          >
+                                            完成前需上传
+                                          </span>
+                                          <span
+                                            class="chevron-step-tooltip__info-value"
+                                          >
+                                            {{
+                                              getRequiredAttachmentHint(
+                                                node.serviceType,
+                                              )
+                                            }}
+                                            <span
+                                              class="chevron-step-tooltip__go-upload"
+                                            >
+                                              去上传
+                                            </span>
                                           </span>
                                         </div>
                                         <div

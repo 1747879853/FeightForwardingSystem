@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
 import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
@@ -27,8 +28,9 @@ import {
 } from '#/api/system/base-data/se-service-config-admin';
 import { getItemsByName } from '#/api/system/enum-admin';
 import { UserAttribute } from '#/api/system/user-admin';
-import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
+import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import { $t } from '#/locales';
@@ -39,8 +41,14 @@ import {
   getSeaExportOrderUserRoleOptions,
   parseSeaExportUserAttribute,
 } from '#/views/system/user/data';
+import {
+  ATTACHMENT_DTL_TYPE_PROP_ENUM,
+  parseRequireIds,
+  toRequireValues,
+} from '#/views/sea-export-admin/basic-info-form/service-type-nodes';
 
 type SelectOption = { label: string; value: number };
+type AttachmentTypeOption = { label: string; value: string };
 type EnumItem = { enable: boolean; displayName?: string; value: number };
 type AttributeServiceSummaryRow = {
   attributeLabel: string;
@@ -58,6 +66,7 @@ type PortSelectItem = {
 type PropRefRow = {
   id?: string;
   seaExportPropEnum: number;
+  requireValues?: string | null;
 };
 
 type RequireFeeRow = {
@@ -105,6 +114,7 @@ const selectedPortItems = ref<PortSelectItem[]>([]);
 const serviceTypeOptions = ref<ServiceTypeOption[]>([]);
 const seaExportShowPropOptions = ref<SelectOption[]>([]);
 const seaExportLockRequirePropOptions = ref<SelectOption[]>([]);
+const attachmentDtlTypeOptions = ref<AttachmentTypeOption[]>([]);
 let rowKeySeed = 0;
 const SEA_EXPORT_EXTRA_PROP_BASE = 1000;
 const SEA_EXPORT_PROP_ENUM_NAME = 'SeaExportPropEnum';
@@ -205,6 +215,108 @@ const seaExportShowOptionValueSet = computed(() =>
 const seaExportLockRequireOptionValueSet = computed(() =>
   toOptionValueSet(seaExportLockRequirePropOptions.value),
 );
+const seaExportRequirePropOptions = computed<SelectOption[]>(() => [
+  ...seaExportLockRequirePropOptions.value,
+  {
+    label: $t('system.basicData.seServiceConfig.attachmentDtlType'),
+    value: ATTACHMENT_DTL_TYPE_PROP_ENUM,
+  },
+]);
+const seaExportRequireOptionValueSet = computed(() =>
+  toOptionValueSet(seaExportRequirePropOptions.value),
+);
+
+const hasAttachmentRequire = (row: ItemRow) =>
+  row.seServiceRequires.some(
+    (item) => item.seaExportPropEnum === ATTACHMENT_DTL_TYPE_PROP_ENUM,
+  );
+
+const getRequireAttachmentTypeIds = (row: ItemRow) => {
+  const item = row.seServiceRequires.find(
+    (entry) => entry.seaExportPropEnum === ATTACHMENT_DTL_TYPE_PROP_ENUM,
+  );
+  return parseRequireIds(item?.requireValues);
+};
+
+const getRequireAttachmentTypeOptions = (row: ItemRow) => {
+  const selectedIds = getRequireAttachmentTypeIds(row);
+  const options = [...attachmentDtlTypeOptions.value];
+  const known = new Set(options.map((option) => String(option.value)));
+  for (const id of selectedIds) {
+    if (known.has(id)) continue;
+    options.push({
+      label: $t('system.basicData.seServiceConfig.unknownAttachmentType', [id]),
+      value: id,
+    });
+  }
+  return options;
+};
+
+const updateRequireAttachmentTypeIds = (
+  row: ItemRow,
+  values: (number | string)[],
+) => {
+  const item = row.seServiceRequires.find(
+    (entry) => entry.seaExportPropEnum === ATTACHMENT_DTL_TYPE_PROP_ENUM,
+  );
+  if (!item) return;
+  item.requireValues = toRequireValues(values);
+};
+
+const normalizeRequirePropRows = (
+  items: SeServiceConfigAdminApi.SeaExportPropRefDto[] | undefined,
+): PropRefRow[] => {
+  const fieldRows: PropRefRow[] = [];
+  const attachmentRows: PropRefRow[] = [];
+  for (const sub of items || []) {
+    const seaExportPropEnum = Number(sub.seaExportPropEnum);
+    if (Number.isNaN(seaExportPropEnum)) continue;
+    if (seaExportPropEnum === ATTACHMENT_DTL_TYPE_PROP_ENUM) {
+      attachmentRows.push({
+        id: sub.id,
+        seaExportPropEnum,
+        requireValues: sub.requireValues ?? null,
+      });
+      continue;
+    }
+    if (seaExportPropEnum > SEA_EXPORT_EXTRA_PROP_BASE) continue;
+    fieldRows.push({
+      id: sub.id,
+      seaExportPropEnum,
+      requireValues: sub.requireValues ?? null,
+    });
+  }
+  if (!attachmentRows.length) return fieldRows;
+  const mergedIds = attachmentRows.flatMap((row) =>
+    parseRequireIds(row.requireValues),
+  );
+  fieldRows.push({
+    id: attachmentRows[0]?.id,
+    seaExportPropEnum: ATTACHMENT_DTL_TYPE_PROP_ENUM,
+    requireValues: toRequireValues(mergedIds),
+  });
+  return fieldRows;
+};
+
+const mapRequirePayload = (
+  items: PropRefRow[],
+  includeId: boolean,
+): SeServiceConfigAdminApi.SeaExportPropRefDto[] => {
+  return items.map((item) => {
+    const payload: SeServiceConfigAdminApi.SeaExportPropRefDto = {
+      seaExportPropEnum: Number(item.seaExportPropEnum),
+    };
+    if (includeId && item.id) {
+      payload.id = item.id;
+    }
+    if (item.seaExportPropEnum === ATTACHMENT_DTL_TYPE_PROP_ENUM) {
+      payload.requireValues = toRequireValues(
+        parseRequireIds(item.requireValues),
+      );
+    }
+    return payload;
+  });
+};
 
 const normalizeEnumNumber = (value: number | string | undefined | null) => {
   if (value === undefined || value === null || value === '') {
@@ -231,16 +343,32 @@ const updatePropRefs = (
   field: 'seServiceShows' | 'seServiceLocks' | 'seServiceRequires',
   values: (number | string)[],
 ) => {
-  const normalized = normalizeValues(values).filter((value) => {
-    if (field === 'seServiceShows') {
-      return seaExportShowOptionValueSet.value.has(value);
+  const allowed =
+    field === 'seServiceShows'
+      ? seaExportShowOptionValueSet.value
+      : field === 'seServiceRequires'
+        ? seaExportRequireOptionValueSet.value
+        : seaExportLockRequireOptionValueSet.value;
+  const normalized = normalizeValues(values).filter((value) =>
+    allowed.has(value),
+  );
+  const unique: number[] = [];
+  let hasAttachmentType = false;
+  for (const value of normalized) {
+    if (value === ATTACHMENT_DTL_TYPE_PROP_ENUM) {
+      if (hasAttachmentType) continue;
+      hasAttachmentType = true;
     }
-    return seaExportLockRequireOptionValueSet.value.has(value);
-  });
+    unique.push(value);
+  }
   const existed = getPropMap(row[field]);
-  row[field] = normalized.map((value) => ({
+  row[field] = unique.map((value) => ({
     id: existed.get(value)?.id,
     seaExportPropEnum: value,
+    requireValues:
+      field === 'seServiceRequires' && value === ATTACHMENT_DTL_TYPE_PROP_ENUM
+        ? (existed.get(value)?.requireValues ?? null)
+        : undefined,
   }));
 };
 
@@ -435,6 +563,16 @@ const validateForm = () => {
     return false;
   }
 
+  for (let i = 0; i < itemRows.value.length; i++) {
+    const row = itemRows.value[i];
+    if (!row || !hasAttachmentRequire(row)) continue;
+    if (getRequireAttachmentTypeIds(row).length > 0) continue;
+    message.error(
+      $t('system.basicData.seServiceConfig.requireAttachmentTypesRequired'),
+    );
+    return false;
+  }
+
   return true;
 };
 
@@ -456,9 +594,7 @@ const toPayloadItemsForAdd =
       seServiceLocks: row.seServiceLocks.map((item) => ({
         seaExportPropEnum: Number(item.seaExportPropEnum),
       })),
-      seServiceRequires: row.seServiceRequires.map((item) => ({
-        seaExportPropEnum: Number(item.seaExportPropEnum),
-      })),
+      seServiceRequires: mapRequirePayload(row.seServiceRequires, false),
       seServiceRequireFees: row.requireFee ? buildRequireFeesForAdd(row) : [],
     }));
   };
@@ -484,10 +620,7 @@ const toPayloadItemsForEdit =
         id: item.id,
         seaExportPropEnum: Number(item.seaExportPropEnum),
       })),
-      seServiceRequires: row.seServiceRequires.map((item) => ({
-        id: item.id,
-        seaExportPropEnum: Number(item.seaExportPropEnum),
-      })),
+      seServiceRequires: mapRequirePayload(row.seServiceRequires, true),
       seServiceRequireFees: row.requireFee ? buildRequireFeesForEdit(row) : [],
     }));
   };
@@ -524,7 +657,7 @@ const buildSeaExportPropOptions = (items: EnumItem[]) => {
   const showOptions = buildSelectOptions(
     availableItems.filter((item) => {
       const value = Number(item.value);
-      if (Number.isNaN(value)) {
+      if (Number.isNaN(value) || value >= ATTACHMENT_DTL_TYPE_PROP_ENUM) {
         return false;
       }
       if (value > SEA_EXPORT_EXTRA_PROP_BASE) {
@@ -636,6 +769,32 @@ const loadSeaExportPropOptions = async () => {
   seaExportLockRequirePropOptions.value = lockRequireOptions;
 };
 
+const loadAttachmentDtlTypeOptions = async () => {
+  try {
+    const moduleType = await resolveModuleTypeByLabel(
+      $t('system.permission.moduleSeaExport'),
+    );
+    if (moduleType == null) {
+      attachmentDtlTypeOptions.value = [];
+      return;
+    }
+    const results = await getAttachmentDtlTypesByModuleTypes({
+      moduleTypes: [moduleType],
+    });
+    const list = results[0]?.attachmentDtlTypes ?? [];
+    attachmentDtlTypeOptions.value = list
+      .filter((item) => item?.id != null && String(item.id) !== '')
+      .slice()
+      .sort((a, b) => Number(a.sortId ?? 0) - Number(b.sortId ?? 0))
+      .map((item) => ({
+        label: item.name?.trim() || String(item.id),
+        value: String(item.id),
+      }));
+  } catch {
+    attachmentDtlTypeOptions.value = [];
+  }
+};
+
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     if (!validateForm()) return;
@@ -677,7 +836,11 @@ const [Modal, modalApi] = useVbenModal({
       polPortName?: string;
       polCnName?: string;
     }>();
-    await Promise.all([loadServiceTypeOptions(), loadSeaExportPropOptions()]);
+    await Promise.all([
+      loadServiceTypeOptions(),
+      loadSeaExportPropOptions(),
+      loadAttachmentDtlTypeOptions(),
+    ]);
     if (
       serviceTypeOptions.value.length === 0 &&
       (modalData?.serviceTypeOptions?.length || 0) > 0
@@ -748,10 +911,14 @@ const [Modal, modalApi] = useVbenModal({
             requirePayFeeCodeIds: requireFees
               .filter((fee) => fee.paySide === REQUIRE_FEE_PAY_SIDE_PAY)
               .map((fee) => fee.feeCodeId),
-            seServiceShows: (item.seServiceShows || []).map((sub) => ({
-              id: sub.id,
-              seaExportPropEnum: Number(sub.seaExportPropEnum),
-            })),
+            seServiceShows: (item.seServiceShows || [])
+              .map((sub) => ({
+                id: sub.id,
+                seaExportPropEnum: Number(sub.seaExportPropEnum),
+              }))
+              .filter(
+                (sub) => sub.seaExportPropEnum < ATTACHMENT_DTL_TYPE_PROP_ENUM,
+              ),
             seServiceLocks: (item.seServiceLocks || [])
               .map((sub) => ({
                 id: sub.id,
@@ -760,14 +927,7 @@ const [Modal, modalApi] = useVbenModal({
               .filter(
                 (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
               ),
-            seServiceRequires: (item.seServiceRequires || [])
-              .map((sub) => ({
-                id: sub.id,
-                seaExportPropEnum: Number(sub.seaExportPropEnum),
-              }))
-              .filter(
-                (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
-              ),
+            seServiceRequires: normalizeRequirePropRows(item.seServiceRequires),
           };
         });
       if (itemRows.value.length === 0) {
@@ -1009,7 +1169,7 @@ const [Modal, modalApi] = useVbenModal({
                   mode="tags"
                   :value="getPropValues(row.seServiceRequires)"
                   :allow-clear="true"
-                  :options="seaExportLockRequirePropOptions"
+                  :options="seaExportRequirePropOptions"
                   :placeholder="$t('ui.placeholder.select')"
                   @change="
                     (values) =>
@@ -1022,6 +1182,41 @@ const [Modal, modalApi] = useVbenModal({
                 />
               </FormItem>
             </div>
+
+            <FormItem
+              v-if="hasAttachmentRequire(row)"
+              class="service-item-leading-field mb-3"
+              :label="
+                $t('system.basicData.seServiceConfig.requireAttachmentTypes')
+              "
+              :label-col="itemLeadingLabelCol"
+              :wrapper-col="itemLeadingWrapperCol"
+              required
+            >
+              <Select
+                mode="multiple"
+                :value="getRequireAttachmentTypeIds(row)"
+                :allow-clear="true"
+                :options="getRequireAttachmentTypeOptions(row)"
+                :placeholder="$t('ui.placeholder.select')"
+                option-filter-prop="label"
+                show-search
+                @change="
+                  (values) =>
+                    updateRequireAttachmentTypeIds(
+                      row,
+                      (values || []) as (number | string)[],
+                    )
+                "
+              />
+              <div class="mt-1 text-xs text-gray-500">
+                {{
+                  $t(
+                    'system.basicData.seServiceConfig.requireAttachmentTypesTip',
+                  )
+                }}
+              </div>
+            </FormItem>
 
             <template v-if="row.requireFee">
               <div class="mb-2 grid grid-cols-2 gap-x-4 gap-y-2">
