@@ -58,7 +58,6 @@ import FileUploadInput from '../../../adapter/component/file-upload/file-upload-
 
 import AddFeeDrawer from '../add-fee-statement-modal/index.vue';
 import FeeSummaryCard from './components/fee-summary-card.vue';
-import AttachmentUpload from './components/attachment-upload.vue';
 import {
   calcConvertedTotal,
   formatAmount,
@@ -1069,7 +1068,7 @@ function formatMonth(val: string | undefined | null): string {
         <div class="main-layout">
           <!-- 左侧：基础信息 -->
           <div class="left-column">
-            <Card size="small" class="basic-info-card">
+            <Card size="small" class="basic-info-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
@@ -1197,20 +1196,24 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 右侧：附件上传 -->
           <div class="right-column">
-            <Card size="small" class="attachment-card h-full">
+            <Card size="small" class="attachment-card info-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="text-lg font-semibold">{{
-                    t('attachment')
-                  }}</span>
+                  <span class="text-lg font-semibold">
+                    {{ t('attachment') }}
+                  </span>
                 </div>
               </template>
 
               <div class="divider-line"></div>
-
-              <div class="attachment-area">
-                <AttachmentUpload v-model="attachments" :max-count="20" />
+              <div class="py-2">
+                <FileUploadInput
+                  v-model="attachments"
+                  module-type-id="160011"
+                  :max-count="20"
+                  drag
+                />
               </div>
             </Card>
           </div>
@@ -1520,6 +1523,58 @@ function formatMonth(val: string | undefined | null): string {
   .right-column {
     width: 100%;
   }
+}
+
+/* 信息卡片样式 - 从付费结算页面复制 */
+.info-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+}
+
+/* 标题样式优化 */
+:deep(.info-card .ant-card-head-title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* 输入框和选择器统一样式 */
+:deep(.info-card .ant-input),
+:deep(.info-card .ant-select-selector),
+:deep(.info-card .ant-picker) {
+  border-color: #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+:deep(.info-card .ant-input:focus),
+:deep(.info-card .ant-select-focused .ant-select-selector),
+:deep(.info-card .ant-picker-focused) {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgb(24 144 255 / 10%);
+}
+
+/* 禁用状态样式 */
+:deep(.info-card .ant-input-disabled),
+:deep(.info-card .ant-select-disabled .ant-select-selector) {
+  color: #666;
+  background: #f5f7fa;
+}
+
+/* 标签文字样式 */
+:deep(.info-card label),
+:deep(.info-card div[style*='font-size: 13px']) {
+  font-weight: 500;
+}
+
+/* 附件上传区域样式 */
+:deep(.info-card .file-upload-container) {
+  border-radius: 8px;
 }
 
 .total-amount {
@@ -1857,6 +1912,7 @@ function formatMonth(val: string | undefined | null): string {
   align-items: flex-start;
   justify-content: flex-start;
   min-height: 100px;
+  padding: 4px 0;
 }
 
 .attachment-area :deep(.file-upload-input) {

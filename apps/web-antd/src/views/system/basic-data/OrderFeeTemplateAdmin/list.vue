@@ -255,11 +255,8 @@ function onCreate() {
     message.warning('您没有新建权限');
     return;
   }
-  // 改为路由跳转
-  router.push({
-    path: '/basic-data/order-fee-template/edit',
-    query: { mode: 'create' },
-  });
+
+  router.push('/basic-data/order-fee-template/edit?mode=create');
 }
 
 /**
