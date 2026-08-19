@@ -15,7 +15,7 @@
 | `CodeGoodsSelect` | 货物类型编码选择 | `#/api/system/base-data/code-goods-admin` |
 | `CodeInvoiceSelect` | 发票类型编码选择 | `#/api/system/base-data/code-invoice-admin` |
 | `CodeIssueTypeSelect` | 问题类型编码选择 | `#/api/system/base-data/code-issue-type-admin` |
-| `CodePackageSelect` | 包装类型编码选择 | `#/api/system/base-data/code-package-admin` |
+| `CodePackageSelect` | 包装类型编码选择（全量缓存 + 前端筛选） | `#/api/system/base-data/code-package-admin` |
 | `CodeServiceSelect` | 服务类型编码选择 | `#/api/system/base-data/code-service-admin` |
 | `CodeSourceSelect` | 来源类型编码选择 | `#/api/system/base-data/code-source-admin` |
 | `CountrySelect` | 国家/地区选择 | `#/api/system/base-data/country-code-admin` |
@@ -150,10 +150,14 @@
 
 后续其它 biz-select 可复用 `createBizSelectCache({ name, fetchAll })`。登出时 `clearAllBizSelectCaches()` 清内存与 localStorage。
 
+## CodePackageSelect 全量缓存
+
+`CodePackageSelect` 与 `UserSelect` 同一套缓存：`createBizSelectCache` / `codePackageListCache` + `useCachedSelect`。挂载或打开下拉时 `ensure()`：有旧列表立刻展示，同时后台静默拉 `CodePackageAdmin/GetPagedListAsync`（`pageSize=1000` 翻页拼齐），成功才覆盖；失败保留旧缓存。关键词按名称 / 描述 / EDI / AFR 前端过滤，不再打分页搜索。直绑 `Select`。包装维护页新增、编辑、删除成功后 `ensure({ force: true })`，避免海出等下拉仍能搜到已删包装。
+
 ## 工具函数
 
 - `usePagedSelect`：分页选择逻辑封装，提供远程搜索、滚动加载、选中项合并等通用能力。
-- `useCachedSelect` / `createBizSelectCache`：全量列表缓存 + 前端筛选；`UserSelect` 已接入。
+- `useCachedSelect` / `createBizSelectCache`：全量列表缓存 + 前端筛选；`UserSelect`、`CodePackageSelect` 已接入。
 
 ## usePagedSelect 已选项与搜索（2026-08-05）
 
@@ -189,6 +193,5 @@
 - `CodeGoodsSelect`
 - `CodeInvoiceSelect`
 - `CodeIssueTypeSelect`
-- `CodePackageSelect`
 - `CodeServiceSelect`
 - `CodeSourceSelect`

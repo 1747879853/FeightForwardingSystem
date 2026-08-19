@@ -82,6 +82,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |
 | 2026-08-19 | `Feature` | `GetServiceTypesByPOLAsync` 展示/锁定/必填改为对象数组；必填可含附件类型 `10001`。 | 取值走 `toSeaExportPropEnum`；普通必填仍映射表单字段，`10001` 不参与字段校验。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-17 | `Style` | 基础信息 6 列顺序改为：订舱编号/主提单号/保险公司/报关行/仓库/场站为第二行，合同号排在运输条款之后。 | 只改 `BASIC_INFO_FIELD_ORDER`；schema 与提交映射不变。详见 `changelogs/change-log-2026-08-17-sea-export-basic-info-field-order.md`。 |

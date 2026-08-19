@@ -35,6 +35,7 @@ export { useCachedSelect } from './use-cached-select';
 export {
   clearAllBizSelectCaches,
   createBizSelectCache,
+  codePackageListCache,
   userSimpleListCache,
 } from './cache';
 export type { BizSelectCache, CreateBizSelectCacheOptions } from './cache';

@@ -7,6 +7,7 @@ import { Plus } from '@vben/icons';
 
 import { Button, message } from 'ant-design-vue';
 
+import { codePackageListCache } from '#/adapter/component/biz-select/cache/code-package-cache';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteCodePackage,
@@ -95,6 +96,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CodePackageAdminApi.CodePackageDto>({
 
 const handleRefresh = () => {
   gridApi.query();
+  void codePackageListCache.ensure({ force: true });
 };
 </script>
 

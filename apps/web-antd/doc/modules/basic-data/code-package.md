@@ -2,7 +2,7 @@
 title: 包装代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-05-16
 
 - **列表维护：** 在 `包装代码` 页面查询、创建、编辑和删除基础资料。
 - **弹窗表单：** 多数基础资料通过 `CodePackageAdmin/modules/form.vue` 维护明细。
-- **业务复用：** 基础资料作为业务下拉、字典或校验来源被其他模块引用。
+- **业务复用：** 海出/海进/空出/分单/集装箱等包装下拉共用 `CodePackageSelect`，全量缓存后前端搜索；本页增删改成功会强制刷新缓存。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -41,10 +41,11 @@ last_updated: 2026-05-16
 
 # 5. 核心业务卡点 (Business Blockers)
 
-> [!IMPORTANT] **[卡点 1：包装代码一致性]** 基础资料页面同质性高，但字段变更会影响大量业务下拉，需谨慎维护编码和启用状态。
+> [!IMPORTANT] **[卡点 1：包装代码一致性]** 基础资料页面同质性高，但字段变更会影响大量业务下拉，需谨慎维护编码和启用状态。删除后须刷新 `codePackageListCache`，否则业务下拉在静默刷新完成前仍可能搜到旧项。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 包装下拉改为全量缓存；本页删除/保存后业务单据下拉立刻搜不到已删包装。 | `codePackageListCache` + `useCachedSelect`，与 UserSelect 同构；维护页 `ensure({ force: true })`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/code-package` 对应组件 `src/views/system/basic-data/CodePackageAdmin/list.vue`，权限口径为 Admin.CodePackage / Admin.CodePackage.Get。 |

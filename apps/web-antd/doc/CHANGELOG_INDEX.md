@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-19 包装下拉改为全量缓存，删除后即时失效](./changelogs/change-log-2026-08-19-code-package-select-full-cache.md)
 - [2026-08-19 删除空的对账单附件上传组件](./changelogs/change-log-2026-08-19-remove-empty-statement-attachment-upload.md)
 - [2026-08-19 海出/海进/空出对接 isEditable 行级可编辑](./changelogs/change-log-2026-08-19-ticket-is-editable.md)
 - [2026-08-19 海运出口服务项完成时必填附件类型](./changelogs/change-log-2026-08-19-se-service-require-attachment-types.md)
