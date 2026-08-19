@@ -17,9 +17,10 @@ import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupForReceiveSettlement } from '#/api/settlement-management/receive-settlement-admin';
 import { useAntTableColumnResize } from '#/utils/table-column-resize';
 
-import { formatAmount } from '../form-data';
+import { formatAmount, getPaySideColor, getPaySideLabel } from '../form-data';
 import {
   type AddFeeDrawerProps,
+  buildFeeGroupSearchQuery,
   buildOrderRow,
   orderColumns,
   type SelectedReceiveFee,
@@ -60,13 +61,13 @@ const [SearchForm, searchFormApi] = useVbenForm({
   schema: useAddFeeSearchSchema(),
   showDefaultActions: true,
   actionLayout: 'inline',
-  actionWrapperClass: 'col-start-5 justify-end',
+  actionWrapperClass: 'col-start-4 justify-end',
   actionPosition: 'right',
   resetButtonOptions: { show: false },
   submitButtonOptions: { show: false },
   submitOnChange: false,
   compact: true,
-  wrapperClass: 'grid-cols-5',
+  wrapperClass: 'grid-cols-4',
 });
 
 const tableRows = computed(() =>
@@ -81,6 +82,12 @@ const feeColumns = [
     dataIndex: 'feeCodeName',
     title: '费用名称',
     minWidth: 160,
+  },
+  {
+    dataIndex: 'paySide',
+    key: 'paySide',
+    title: '收付类别',
+    width: 90,
   },
   {
     dataIndex: 'currencyCode',
@@ -124,6 +131,7 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
     searchFormApi.setValues({
       settlementName: props.settlementName || '',
       currencyId: props.currencyId,
+      paySide: 0,
     });
     await fetchData();
   }
@@ -166,8 +174,7 @@ async function fetchData(formValues?: Record<string, any>) {
       receiveSettlementId: drawerProps.value.receiveSettlementId,
       settlementId,
       currencyId,
-      commissionNum: values.commissionNum || undefined,
-      mblNum: values.mblNum || undefined,
+      ...buildFeeGroupSearchQuery(values),
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
     });
@@ -250,6 +257,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         bookingNum: group.transportOrder.bookingNum,
         clientName: group.transportOrder.client?.name,
         feeCodeName: fee.feeCode?.cnName,
+        paySide: fee.paySide,
         currencyCode: fee.currency?.code,
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
@@ -343,11 +351,22 @@ defineExpose({ open: openDrawer });
             bordered
           >
             <template #bodyCell="{ column, record: fee }">
-              <template v-if="column.dataIndex === 'currencyCode'">
-                <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
+              <template v-if="column.dataIndex === 'feeCodeName'">
+                {{ fee.feeCode?.cnName || '-' }}
+              </template>
+              <template v-else-if="column.key === 'paySide'">
+                <Tag :color="getPaySideColor(fee.paySide)">
+                  {{ getPaySideLabel(fee.paySide) }}
+                </Tag>
+              </template>
+              <template v-else-if="column.dataIndex === 'currencyCode'">
+                <Tag v-if="fee.currency?.code">{{ fee.currency.code }}</Tag>
                 <span v-else>-</span>
               </template>
-              <template v-if="column.key === 'settledAmount'">
+              <template v-else-if="column.dataIndex === 'settlementName'">
+                {{ fee.settlement?.name || '-' }}
+              </template>
+              <template v-else-if="column.key === 'settledAmount'">
                 <InputNumber
                   :value="
                     settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0

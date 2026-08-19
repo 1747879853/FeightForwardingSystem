@@ -51,8 +51,18 @@ export namespace ReceiveSettlementAdminApi {
     receiveSettlementId?: string;
     settlementId?: string;
     currencyId?: number;
+    /** 编号：模糊匹配委托编号 / 主提单号 */
+    keyword?: string;
     commissionNum?: string;
     mblNum?: string;
+    /** 委托单位 */
+    clientId?: string;
+    etdStart?: string;
+    etdEnd?: string;
+    saleIds?: Array<number | string>;
+    operatorIds?: Array<number | string>;
+    /** 收付类型：0 应收，1 应付；不传为全部 */
+    paySide?: PaySide;
     pageIndex: number;
     pageSize: number;
     sorting?: string;
@@ -301,7 +311,10 @@ export const getOrderFeeGroupForReceiveSettlement = (
 ) => {
   return requestClient.get<
     ReceiveSettlementAdminApi.PagedList<ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto>
-  >(`${API_ADMIN_PREFIX}/GetOrderFeeGroupAsync`, { params });
+  >(`${API_ADMIN_PREFIX}/GetOrderFeeGroupAsync`, {
+    params,
+    paramsSerializer: 'repeat',
+  });
 };
 
 export const addReceiveSettlement = (

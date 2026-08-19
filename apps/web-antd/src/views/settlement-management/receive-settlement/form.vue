@@ -55,6 +55,8 @@ import {
   formatAmount,
   formatAmountWithCurrency,
   formatDateTime,
+  getPaySideColor,
+  getPaySideLabel,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
   type ReceiveSettlementSelectedFee,
@@ -253,6 +255,12 @@ const columns = [
     minWidth: 150,
   },
   {
+    dataIndex: 'paySide',
+    key: 'paySide',
+    title: '收付类别',
+    width: 90,
+  },
+  {
     dataIndex: 'currencyCode',
     title: '币别',
     width: 90,
@@ -371,6 +379,7 @@ function mapDetailItem(
     bookingNum: order?.bookingNum,
     clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
+    paySide: orderFee?.paySide,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
     remainingAmount: orderFee?.remainingAmount ?? 0,
@@ -403,6 +412,7 @@ function mapForeignItem(
     bookingNum: order?.bookingNum,
     clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
+    paySide: orderFee?.paySide,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
     remainingAmount: orderFee?.remainingAmount,
@@ -423,6 +433,7 @@ function mapSelectedFee(fee: SelectedReceiveFee): SettlementItem {
     bookingNum: fee.bookingNum,
     clientName: fee.clientName,
     feeCodeName: fee.feeCodeName,
+    paySide: fee.paySide,
     currencyCode: fee.currencyCode,
     amount: fee.amount,
     remainingAmount: fee.remainingAmount,
@@ -1020,7 +1031,7 @@ onMounted(() => {
           :row-class-name="itemRowClassName"
           size="small"
           bordered
-          :scroll="{ x: 1460 }"
+          :scroll="{ x: 1550 }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'ownerSettlementNo'">
@@ -1035,6 +1046,11 @@ onMounted(() => {
                     : record._creatorUserName || '-'
                 }}
               </span>
+            </template>
+            <template v-if="column.key === 'paySide'">
+              <Tag :color="getPaySideColor(record.paySide)">
+                {{ getPaySideLabel(record.paySide) }}
+              </Tag>
             </template>
             <template v-if="column.dataIndex === 'currencyCode'">
               <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>

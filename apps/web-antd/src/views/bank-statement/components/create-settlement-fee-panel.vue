@@ -24,13 +24,19 @@ import { NestedDataTable } from '#/components/nested-data-table';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
+  ADD_FEE_SEARCH_DEFAULTS,
+  buildFeeGroupSearchQuery,
   buildOrderRow,
   feeItemColumns,
   orderColumns,
   type SelectedReceiveFee,
   useAddFeeSearchSchema,
 } from '../../settlement-management/receive-settlement/add-fee-drawer/data';
-import { formatAmount } from '../../settlement-management/receive-settlement/form-data';
+import {
+  formatAmount,
+  getPaySideColor,
+  getPaySideLabel,
+} from '../../settlement-management/receive-settlement/form-data';
 
 function useBankStatementFeeSearchSchema() {
   return useAddFeeSearchSchema().map((item) => {
@@ -84,7 +90,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   showDefaultActions: false,
   submitOnChange: false,
   compact: true,
-  wrapperClass: 'grid-cols-2 gap-x-3',
+  wrapperClass: 'grid-cols-3 gap-x-3',
 });
 
 const tableRows = computed(() =>
@@ -133,6 +139,7 @@ async function syncSearchFormFromProps() {
   await searchFormApi.setValues({
     settlementName: props.settlementName || '',
     currencyId: props.currencyId,
+    paySide: ADD_FEE_SEARCH_DEFAULTS.paySide,
   });
 }
 
@@ -141,8 +148,7 @@ async function resetSearchFilters() {
   await searchFormApi.setValues({
     settlementName: props.settlementName || '',
     currencyId: props.currencyId,
-    commissionNum: '',
-    mblNum: '',
+    ...ADD_FEE_SEARCH_DEFAULTS,
   });
 }
 
@@ -164,8 +170,7 @@ async function fetchData(formValues?: Record<string, any>) {
     const result = await getOrderFeeGroupForReceiveSettlement({
       settlementId,
       currencyId,
-      commissionNum: values.commissionNum || undefined,
-      mblNum: values.mblNum || undefined,
+      ...buildFeeGroupSearchQuery(values),
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
     });
@@ -194,10 +199,7 @@ async function handleSearch() {
 async function handleReset() {
   currentPage.value = 1;
   await resetSearchFilters();
-  await fetchData({
-    commissionNum: undefined,
-    mblNum: undefined,
-  });
+  await fetchData();
 }
 
 async function handlePageChange(page: number, size: number) {
@@ -278,6 +280,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         bookingNum: group.transportOrder.bookingNum,
         clientName: group.transportOrder.client?.name,
         feeCodeName: fee.feeCode?.cnName,
+        paySide: fee.paySide,
         currencyCode: fee.currency?.code,
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
@@ -449,6 +452,11 @@ defineExpose({ reload });
         </template>
         <template v-else-if="column.key === 'feeCodeName'">
           {{ fee.feeCode?.cnName || '-' }}
+        </template>
+        <template v-else-if="column.key === 'paySide'">
+          <Tag :color="getPaySideColor(fee.paySide)">
+            {{ getPaySideLabel(fee.paySide) }}
+          </Tag>
         </template>
         <template v-else-if="column.key === 'currencyCode'">
           <Tag v-if="fee.currency?.code">{{ fee.currency.code }}</Tag>

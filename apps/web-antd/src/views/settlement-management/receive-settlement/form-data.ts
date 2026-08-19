@@ -92,6 +92,8 @@ export interface ReceiveSettlementSelectedFee {
   bookingNum?: string;
   clientName?: string;
   feeCodeName?: string;
+  /** 收付类别：0 应收，1 应付 */
+  paySide?: number;
   currencyCode?: string;
   amount: number;
   remainingAmount: number;
