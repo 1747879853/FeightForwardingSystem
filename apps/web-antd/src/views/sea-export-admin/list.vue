@@ -43,7 +43,11 @@ import {
 } from '#/components/tracking';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
-import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
+import {
+  buildAttachmentUrl,
+  createPagedListQuery,
+  isTicketEditable,
+} from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
@@ -282,6 +286,11 @@ const handleRowDblclick = ({
   router.push(`/sea-exports/${row.id}/edit`);
 };
 
+const selectedRows = ref<SeaExportAdminApi.SeaExportDto[]>([]);
+const syncSelectedRows = () => {
+  selectedRows.value = (gridApi.grid as any)?.getCheckboxRecords?.() ?? [];
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -303,6 +312,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,
+    checkboxChange: syncSelectedRows,
+    checkboxAll: syncSelectedRows,
   },
   gridOptions: {
     align: 'left',
@@ -401,6 +412,15 @@ const requireExactlyOneRow = (): SeaExportAdminApi.SeaExportDto | undefined => {
   return rows[0];
 };
 
+/** 未选或未恰好 1 条时保持可点，由点击提示「请先选择一条」；仅在选中票 isEditable=false 时禁用 */
+const canDeleteSelected = computed(() => {
+  if (selectedRows.value.length !== 1) return true;
+  return isTicketEditable(selectedRows.value[0]);
+});
+const deleteDisabledTip = computed(() =>
+  canDeleteSelected.value ? '' : '当前记录没有编辑权限，不能删除',
+);
+
 const handleCreate = () => {
   router.push('/sea-exports/create');
 };
@@ -422,7 +442,7 @@ const handleCopy = () => {
 
 const handleDelete = () => {
   const row = requireExactlyOneRow();
-  if (!row) {
+  if (!row || !isTicketEditable(row)) {
     return;
   }
 
@@ -449,6 +469,7 @@ const handleDelete = () => {
         });
         const grid = gridApi.grid as any;
         grid?.clearCheckboxRow?.();
+        syncSelectedRows();
         handleRefresh();
       } catch {
         hideLoading();
@@ -580,14 +601,13 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
             />
           </Tooltip>
         </span>
-        <Button
-          v-access:code="perm.delete"
-          class="mr-2"
-          danger
-          @click="handleDelete"
-        >
-          {{ $t('common.delete') }}
-        </Button>
+        <Tooltip :title="deleteDisabledTip">
+          <span v-access:code="perm.delete" class="mr-2 inline-flex">
+            <Button danger :disabled="!canDeleteSelected" @click="handleDelete">
+              {{ $t('common.delete') }}
+            </Button>
+          </span>
+        </Tooltip>
         <Button
           v-access:code="perm.add"
           class="mr-2 inline-flex items-center gap-1"

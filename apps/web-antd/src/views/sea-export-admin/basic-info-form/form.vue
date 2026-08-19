@@ -87,6 +87,7 @@ import {
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
@@ -202,6 +203,14 @@ const editId = computed<string | undefined>(() => {
 });
 
 const isEdit = computed(() => !!editId.value);
+
+/** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
+const detailIsEditable = ref(false);
+const canEditOrder = computed(
+  () =>
+    !isEdit.value || (hasAccessByCodes([perm.edit]) && detailIsEditable.value),
+);
+const isOrderReadonly = computed(() => isEdit.value && !canEditOrder.value);
 
 const pageLoading = ref(false);
 const partyExpanded = ref(true);
@@ -910,7 +919,7 @@ const confirmServiceTaskRebuild = () =>
 const applyServiceTypeModalDraftAndSave = async () => {
   applyServiceTypeModalDraft();
   if (isEdit.value) {
-    await handleSubmit();
+    await submitBasicInfo();
   }
 };
 const handleServiceTypeModalConfirm = async () => {
@@ -1633,6 +1642,28 @@ const [CargoReeferForm, cargoReeferFormApi] = useVbenForm({
   wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
 });
 
+const orderFormApis = [
+  partyInfoFormApi,
+  basicInfoFormApi,
+  shipmentFormApi,
+  portFormApi,
+  cargoTypeInlineFormApi,
+  cargoRemarkFormApi,
+  cargoMainFormApi,
+  cargoMetricsFormApi,
+  cargoDgFormApi,
+  cargoReeferFormApi,
+];
+
+const applyOrderReadonlyState = () => {
+  setFormApisDisabled(orderFormApis, isOrderReadonly.value);
+  if (!isOrderReadonly.value && isEdit.value) {
+    applyServiceLockedFields();
+  }
+};
+
+watch(isOrderReadonly, () => applyOrderReadonlyState(), { immediate: true });
+
 watch(currentCargoId, async (nextCargoId, prevCargoId) => {
   if (prevCargoId === CARGO_TYPE.D && nextCargoId !== CARGO_TYPE.D) {
     await cargoDgFormApi.setValues(createEmptyDgValues());
@@ -1910,7 +1941,7 @@ const { aiRecognizing, recognizeAiFile } = useSeaExportAiRecognize({
 
 const aiExtractModalOpen = ref(false);
 const handleAiRecognize = () => {
-  if (aiRecognizing.value) return;
+  if (isOrderReadonly.value || aiRecognizing.value) return;
   aiExtractModalOpen.value = true;
 };
 const handleAiExtractFile = async (file: File) => {
@@ -1923,10 +1954,12 @@ const loadEditData = async (): Promise<
 > => {
   if (!editId.value) return undefined;
 
+  detailIsEditable.value = false;
   suppressServiceTypeLinkage.value = true;
   pageLoading.value = true;
   try {
     const detail = await getSeaExportDetail(editId.value);
+    detailIsEditable.value = isTicketEditable(detail);
     transportOrderId.value = detail.transportOrder?.id;
     yundangSubscribed.value = detail.isYundangSubscribed ?? false;
     yundangSubscribeSuccess.value = detail.isYundangSubscribeSuccess ?? false;
@@ -2353,6 +2386,11 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     router,
   });
 
+const submitBasicInfo = async () => {
+  if (isOrderReadonly.value) return;
+  await handleSubmit();
+};
+
 const applyTerminalSchedulePatch = async (item: TerminalScheduleItem) => {
   const patch = buildTerminalScheduleFormPatch(
     item,
@@ -2378,7 +2416,7 @@ const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
   terminalScheduleApplying.value = true;
   try {
     await applyTerminalSchedulePatch(item);
-    await handleSubmit();
+    await submitBasicInfo();
   } finally {
     terminalScheduleApplying.value = false;
   }
@@ -2438,7 +2476,7 @@ const { loading: yardRealQueryLoading, runQuery: runYardRealQuery } =
   useYardRealQuery({
     editId,
     isFormDirty,
-    onSave: handleSubmit,
+    onSave: submitBasicInfo,
     onReload: async () => {
       if (!editId.value) {
         return;
@@ -2501,7 +2539,11 @@ const handleVendorSubscribe = async () => {
 /** 委托编号由后端按编号规则生成，新建态尚无单据可重新生成 */
 const regeneratingCommissionNum = ref(false);
 const canRegenerateCommissionNum = computed(
-  () => isEdit.value && !!editId.value && hasAccessByCodes([perm.edit]),
+  () =>
+    isEdit.value &&
+    !!editId.value &&
+    hasAccessByCodes([perm.edit]) &&
+    detailIsEditable.value,
 );
 
 const handleRegenerateCommissionNum = async () => {
@@ -2760,7 +2802,10 @@ defineExpose({
 <template>
   <component :is="pageWrapperTag" v-bind="pageWrapperProps">
     <Spin :spinning="pageLoading">
-      <div class="sea-export-form-page">
+      <div
+        class="sea-export-form-page"
+        :class="{ 'is-order-readonly': isOrderReadonly }"
+      >
         <div class="main-layout">
           <!-- 中间主表单 -->
           <div class="center-column">
@@ -3097,6 +3142,7 @@ defineExpose({
                       size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
+                      :disabled="isOrderReadonly"
                       @click="handleAiRecognize"
                     >
                       <IconifyIcon
@@ -3203,14 +3249,39 @@ defineExpose({
                         </Tooltip>
                       </span>
                     </template>
+                    <template v-if="isEdit && isOrderReadonly">
+                      <Button
+                        v-access:code="perm.add"
+                        size="small"
+                        class="flex items-center justify-center"
+                        :loading="copyingSeaExport"
+                        @click="handleCopySeaExport"
+                      >
+                        <Copy class="mr-1 inline-block size-3.5 align-middle" />
+                        <span class="align-middle">{{
+                          $t('seaExport.export.copy')
+                        }}</span>
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        disabled
+                        class="flex items-center justify-center"
+                      >
+                        <Save class="mr-1 inline-block size-3.5 align-middle" />
+                        <span class="align-middle">{{
+                          $t('common.save')
+                        }}</span>
+                      </Button>
+                    </template>
                     <DropdownButton
-                      v-if="isEdit"
+                      v-else-if="isEdit"
                       type="primary"
                       size="small"
                       :loading="submitting"
                       :trigger="['hover']"
                       class="sea-export-save-dropdown"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="mr-1 inline-block size-3.5 align-middle" />
                       <span class="align-middle">{{ $t('common.save') }}</span>
@@ -3237,7 +3308,7 @@ defineExpose({
                       size="small"
                       :loading="submitting"
                       class="flex items-center justify-center"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="mr-1 inline-block size-3.5 align-middle" />
                       <span class="align-middle">{{ $t('common.save') }}</span>
@@ -3302,6 +3373,7 @@ defineExpose({
                         :auto-default="true"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--org"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderOrgChange"
@@ -3318,6 +3390,7 @@ defineExpose({
                         :selected-items="headerCodeSourceSelectedItems"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--source"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderCodeSourceChange"
@@ -3333,6 +3406,7 @@ defineExpose({
                         :value="headerBlType"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select"
                         :options="blTypeOptions"
                         :placeholder="$t('ui.placeholder.select')"
@@ -3349,6 +3423,7 @@ defineExpose({
                         :value="headerBillType"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select"
                         :options="billTypeOptions"
                         :placeholder="$t('ui.placeholder.select')"

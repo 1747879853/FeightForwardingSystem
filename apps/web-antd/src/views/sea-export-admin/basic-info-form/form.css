@@ -764,6 +764,15 @@
   flex-shrink: 0;
 }
 
+.sea-export-form-page.is-order-readonly .center-column,
+.sea-export-form-page.is-order-readonly .right-column {
+  pointer-events: none;
+}
+
+.sea-export-form-page.is-order-readonly .content-section__actions-right {
+  pointer-events: auto;
+}
+
 .right-column {
   display: flex;
   flex-shrink: 0;

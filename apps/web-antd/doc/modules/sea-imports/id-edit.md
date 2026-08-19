@@ -27,8 +27,8 @@ last_updated: 2026-08-19
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
-- **委托编号：** 编辑态可一键重新生成。
-- **复制：** 保存下拉支持复制整单（可选复制费用）。
+- **委托编号：** 编辑态可一键重新生成（需 `Admin.SeaImport.Edit` **且** `detail.isEditable`）。
+- **复制：** 保存下拉支持复制整单（可选复制费用）；`isEditable === false` 时保存禁用，复制仍可用。
 - **运踪订阅：** 基础信息工具栏「运踪订阅 / 重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。与列表共用 `useContainerTrackingSubscribe`（`bizType=1`）。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -56,10 +56,13 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 2：运踪订阅读库不读表单草稿]** 未保存的主提单号/箱号变更不会进入当次订阅；用户可见层不出现服务商名称。
 
+> [!IMPORTANT] **[卡点 3：能看 ≠ 能改]** 详情能打开只说明有查询权限。保存、重新生成委托编号看 `Admin.SeaImport.Edit` ∧ `detail.isEditable`；缺字段按 false。附件增删不看 `isEditable`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与海出/空出共用 `UserSelect` 缓存层。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-17 | `Feature` | 「码头船舶」改为查询接口：有可引入数据才弹窗，确定引入后回填航次并自动保存；无数据只提示。 | 与海出共用 `QueryTerminalScheduleAsync`；进口仅映射 `ivoyage` → `innerVoyno`。详见 `changelogs/change-log-2026-08-17-terminal-schedule-query-import.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |

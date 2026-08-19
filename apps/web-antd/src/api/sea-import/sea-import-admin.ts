@@ -532,6 +532,11 @@ export namespace SeaImportAdminApi {
 
   export interface SeaImportDto {
     id: string;
+    /**
+     * 当前登录用户对本票是否可编辑（只读，挂在票根上）。
+     * `true` 才能改 / 删 / 重新生成委托编号；缺字段按 `false`。
+     */
+    isEditable?: boolean;
     userId?: number;
     orgId?: LongId | null;
     orgs?: OrganizationUnitSimpleDto[];

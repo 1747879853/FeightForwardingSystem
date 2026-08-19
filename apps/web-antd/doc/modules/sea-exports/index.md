@@ -31,7 +31,7 @@ last_updated: 2026-08-19
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
-- **删除委托：** 选中一条后点击顶部「删除」（需 `Admin.SeaExport.Delete` 权限），二次确认后调用 `SeaExportAdmin/DeleteAsync`；删除成功会清理勾选状态并刷新当前列表。接口 ID 按 `number | string` 原样透传，兼容 GUID。
+- **删除委托：** 选中一条后点击顶部「删除」（需 `Admin.SeaExport.Delete` 权限 **且** `row.isEditable === true`），二次确认后调用 `SeaExportAdmin/DeleteAsync`；删除成功会清理勾选状态并刷新当前列表。`isEditable` 为假时按钮禁用（tooltip：当前记录没有编辑权限，不能删除）。复制、双击进详情不看 `isEditable`。接口 ID 按 `number | string` 原样透传，兼容 GUID。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
 - **分组 Tab 船公司 Logo：** 当分组维度为「船公司」时，分组 Tab 在名称前展示对应船司 Logo（与列表船公司列「Logo + 名称」一致）。Logo 来源于 `GetGroupedListAsync` 船公司分组返回的 `logo` 附件；`list.vue` 的 `fetchGroups` 用 `buildAttachmentUrl` 将相对路径解析为完整地址注入通用 `GroupItem.logoUrl`，通用组件 `grouping-tabs.vue` 仅在 `logoUrl` 有值时渲染图片。其他分组维度或「未填写」项无 Logo。
@@ -78,7 +78,7 @@ last_updated: 2026-08-19
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
 | **分组项（GroupItem）** | 某一分组维度下的单个值及其条数。 | 接口返回 `{ id, name, count }` | **触发/依赖：** 点击 Tab 将 `id` 作为列表筛选值（如 `POLId`）；「全部」不追加筛选。 | `id`/`name` 可为 null（可空字段分组）。 |
 | **未填写筛选（\*Empty）** | 仅返回某可空字段为空的记录。 | `GetPagedListAsync` 参数 `CarrierIdEmpty`/`POLIdEmpty`/`PODIdEmpty`/`CodeFrtIdEmpty`/`CodeIssueTypeIdEmpty` | **触发/依赖：** 点击 id 为 null 的「未填写」分组项时由 `emptyParamKey` 追加 `true`。 | 仅传 `true` 生效；与同名 id 参数互斥（后端校验）。 |
-| **内部备注 / 外部备注** | 列表列展示与筛选均走运输单字段。 | 列：`transportOrder.internalRemark`、`transportOrder.remark`；筛：`InternalRemark`、`Remark` | **触发/依赖：** 与编辑页口径一致；勿读海出根级 `SeaExport.remark`。 | 模糊匹配；可清空。 |
+| **是否可编辑（isEditable）** | 当前用户对本票能否改/删/重新生成委托编号。 | 列表/详情票根 `isEditable`；缺字段按 false | **触发/依赖：** 删除按钮：`Delete` 权限 ∧ 该字段；复制与进详情不看它。 | 只读布尔，不会是 null。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -100,10 +100,13 @@ last_updated: 2026-08-19
 >
 > **[卡点 7：搜索持久化重排与折叠测量时序]** `loadSearchFieldConfig()` 在 `onMounted → init()` 中异步重排 schema（长度不变）。若折叠组件只监听 `schema.length`，`keepFormItemIndex` 会停留在重排前的测量结果（例如旧顺序首行含 `col-span-2` 日期范围时测得 `keepIndex=3`），重排后头部变为单列字段则第一行留白。修复后 `expandable.ts` 以「字段顺序 + 显隐」指纹触发重算；排查折叠错位时优先核对 `search_form_config_*` 与首行实际列占用。
 
+> **[卡点 8：能看 ≠ 能改]** 列表/详情根上的 `isEditable` 才是这一票能不能改、删、重新生成委托编号的口径。有查询权限就能进详情，保存仍要 `Admin.SeaExport.Edit` ∧ `isEditable`。缺字段按不可编辑。不要读 `transportOrder.isEditable`。上线后按钮变灰先查编辑口径数据权限，不是前端 bug。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除；复制与进详情不拦。 | 字段在票根，缺省按 false。见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Fix` | 列表补货好/实际开船/预抵/截港/截关五列；业务来源、付费方式、包装、签单方式改为读嵌套对象，不再空白。 | 日期：运输单三项 + 海出根级截港截关，均 `formatDate`。名称列与 #0819 航线同类，`field` 不改。见 `changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md`。 |
 | 2026-08-19 | `Fix` | 列表「航线」列改为展示目的港航线名称，不再空白。 | DTO 无顶层 `laneName`，与进口列表一致用 `formatter` 读嵌套对象；出口取 `pod.lane`，进口取 `pol.lane`。见 `changelogs/change-log-2026-08-19-sea-export-list-lane-name.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |

@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-16
 
 - **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。
 - **分组统计：** 支持列表分组 Tabs。
-- **复制 / 删除：** 工具栏复制（可选复制费用）、批量删除。
+- **复制 / 删除：** 工具栏复制（可选复制费用）、删除。删除需 `Admin.SeaImport.Delete` **且** `row.isEditable === true`；复制与进详情不看 `isEditable`。
 - **进入编辑：** 进入 `/sea-imports/:id/edit`。
 - **进入新建：** 进入 `/sea-imports/create`。
 
@@ -45,10 +45,13 @@ last_updated: 2026-08-16
 
 > [!IMPORTANT] **[卡点 1：海运进口列表一致性]** 列表是业务链路入口，查询条件、表格列和编辑跳转必须与 `data.ts` 中 schema 保持一致。
 
+> [!IMPORTANT] **[卡点 2：能看 ≠ 能改]** 列表删除看 `row.isEditable`；缺字段按不可编辑。复制与双击进详情不拦。不要读 `transportOrder.isEditable`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 运踪详情弹窗新增「轨迹节点」时间轴（整票合并各箱节点，区分实际/预计/当前）。 | 节点来自弹窗已请求的运踪快照 `containers[].status[]`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：全品牌海进走新服务商运踪（订阅 `SubscribeContainerAsync` 的 `bizType=1`、列表/详情已下发运踪与预警字段、地图用后端加密轨迹链接）；用户侧不出现服务商名。见 [运踪能力品牌分流](../shared/feituo-tracking-brand-split.md)。 |

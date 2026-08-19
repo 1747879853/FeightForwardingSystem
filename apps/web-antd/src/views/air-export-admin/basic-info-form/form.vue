@@ -16,6 +16,8 @@ import { useTabs } from '@vben/hooks';
 import { Copy, FileText, IconifyIcon, Package, Save } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
+import { useAccess } from '@vben/access';
+
 import dayjs from 'dayjs';
 
 import {
@@ -48,6 +50,7 @@ import {
 } from '#/api/air-export/air-export-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { useAllUserOrg } from '#/composables/use-all-user-org';
 import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
 
@@ -104,6 +107,7 @@ const userStore = useUserStore();
 const { closeTabByKey } = useTabs();
 const perm = createAbpPermission('Admin.AirExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
+const { hasAccessByCodes } = useAccess();
 
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
@@ -116,6 +120,14 @@ const editId = computed<string | undefined>(() => {
   return resolved ? String(resolved) : undefined;
 });
 const isEdit = computed(() => !!editId.value);
+
+/** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
+const detailIsEditable = ref(false);
+const canEditOrder = computed(
+  () =>
+    !isEdit.value || (hasAccessByCodes([perm.edit]) && detailIsEditable.value),
+);
+const isOrderReadonly = computed(() => isEdit.value && !canEditOrder.value);
 
 const currentUserId = computed<number | undefined>(() => {
   const parsed = Number(userStore.userInfo?.userId);
@@ -468,6 +480,26 @@ const [CargoReeferForm, cargoReeferFormApi] = useVbenForm({
   wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
 });
 
+const orderFormApis = [
+  basicInfoFormApi,
+  partyInfoFormApi,
+  dateFormApi,
+  airLegFormApi,
+  airLegHeaderFormApi,
+  cargoTypeInlineFormApi,
+  cargoRemarkFormApi,
+  cargoMainFormApi,
+  cargoMetricsFormApi,
+  cargoDgFormApi,
+  cargoReeferFormApi,
+];
+
+const applyOrderReadonlyState = () => {
+  setFormApisDisabled(orderFormApis, isOrderReadonly.value);
+};
+
+watch(isOrderReadonly, () => applyOrderReadonlyState(), { immediate: true });
+
 watch(cargoType, async (nextCargoId, prevCargoId) => {
   if (prevCargoId === CARGO_TYPE.D && nextCargoId !== CARGO_TYPE.D) {
     await cargoDgFormApi.setValues(createEmptyDgValues());
@@ -660,9 +692,11 @@ const loadEditData = async (): Promise<
   if (!editId.value) {
     return undefined;
   }
+  detailIsEditable.value = false;
   pageLoading.value = true;
   try {
     const detail = await getAirExportDetail(editId.value);
+    detailIsEditable.value = isTicketEditable(detail);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
     trackingSubscribed.value = detail.isFeituoSubscribed ?? false;
@@ -852,6 +886,11 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     router,
   });
 
+const submitBasicInfo = async () => {
+  if (isOrderReadonly.value) return;
+  await handleSubmit();
+};
+
 const { copying: copyingAirExport, copyFrom } = useAirExportCopy({
   checkDirty: isFormDirty,
 });
@@ -882,7 +921,7 @@ const { aiRecognizing, recognizeAiFile } = useAirExportAiRecognize({
 
 const aiExtractModalOpen = ref(false);
 const handleAiRecognize = () => {
-  if (aiRecognizing.value) return;
+  if (isOrderReadonly.value || aiRecognizing.value) return;
   aiExtractModalOpen.value = true;
 };
 const handleAiExtractFile = async (file: File) => {
@@ -932,7 +971,13 @@ const handleSubscribeTracking = async () => {
 
 /** 编辑态按最新规则重新生成委托编号，原编号不可恢复 */
 const regeneratingCommissionNum = ref(false);
-const canRegenerateCommissionNum = computed(() => isEdit.value);
+const canRegenerateCommissionNum = computed(
+  () =>
+    isEdit.value &&
+    !!editId.value &&
+    hasAccessByCodes([perm.edit]) &&
+    detailIsEditable.value,
+);
 const handleRegenerateCommissionNum = () => {
   if (!canRegenerateCommissionNum.value || regeneratingCommissionNum.value) {
     return;
@@ -1091,7 +1136,10 @@ watch(pageLoading, (loading) => {
 <template>
   <component :is="pageWrapperTag" v-bind="pageWrapperProps">
     <Spin :spinning="pageLoading">
-      <div class="air-export-form-page">
+      <div
+        class="air-export-form-page"
+        :class="{ 'is-order-readonly': isOrderReadonly }"
+      >
         <div class="main-layout">
           <!-- 中间主表单 -->
           <div class="center-column">
@@ -1104,6 +1152,7 @@ watch(pageLoading, (loading) => {
                       size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
+                      :disabled="isOrderReadonly"
                       @click="handleAiRecognize"
                     >
                       <IconifyIcon
@@ -1154,14 +1203,39 @@ watch(pageLoading, (loading) => {
                         </Tooltip>
                       </span>
                     </template>
+                    <template v-if="isEdit && isOrderReadonly">
+                      <Button
+                        v-access:code="perm.add"
+                        size="small"
+                        class="flex items-center justify-center"
+                        :loading="copyingAirExport"
+                        @click="handleCopyAirExport"
+                      >
+                        <Copy class="mr-1 inline-block size-3.5 align-middle" />
+                        <span class="align-middle">
+                          {{ $t('airExport.export.copy') }}
+                        </span>
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        disabled
+                        class="flex items-center justify-center"
+                      >
+                        <Save class="mr-1 inline-block size-3.5 align-middle" />
+                        <span class="align-middle">{{
+                          $t('common.save')
+                        }}</span>
+                      </Button>
+                    </template>
                     <DropdownButton
-                      v-if="isEdit"
+                      v-else-if="isEdit"
                       type="primary"
                       size="small"
                       :loading="submitting"
                       :trigger="['hover']"
                       class="air-export-save-dropdown"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="mr-1 inline-block size-3.5 align-middle" />
                       <span class="align-middle">{{ $t('common.save') }}</span>
@@ -1188,7 +1262,7 @@ watch(pageLoading, (loading) => {
                       size="small"
                       :loading="submitting"
                       class="flex items-center justify-center"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="mr-1 inline-block size-3.5 align-middle" />
                       <span class="align-middle">{{ $t('common.save') }}</span>
@@ -1252,7 +1326,11 @@ watch(pageLoading, (loading) => {
                       <span class="basic-info-header__label">
                         {{ $t('airExport.export.isBusinessLocking') }}
                       </span>
-                      <Switch v-model:checked="businessLocking" size="small" />
+                      <Switch
+                        v-model:checked="businessLocking"
+                        size="small"
+                        :disabled="isOrderReadonly"
+                      />
                     </div>
                     <div
                       class="basic-info-header__item basic-info-header__item--select"
@@ -1265,6 +1343,7 @@ watch(pageLoading, (loading) => {
                         :auto-default="true"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--org"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderOrgChange"
@@ -1281,6 +1360,7 @@ watch(pageLoading, (loading) => {
                         :selected-items="headerCodeSourceSelectedItems"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--source"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderCodeSourceChange"

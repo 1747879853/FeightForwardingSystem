@@ -65,10 +65,13 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 5：运踪订阅读库不读表单草稿]** 未保存的主运单号/航段变更不会进入当次订阅；用户可见层不出现服务商名称。
 
+> [!IMPORTANT] **[卡点 6：能看 ≠ 能改]** 详情能打开只说明有查询权限。保存、重新生成委托编号看 `Admin.AirExport.Edit` ∧ `detail.isEditable`；缺字段按 false。附件增删不看 `isEditable`。业务锁定开关在只读态一并禁用。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与新建页共用 `form.vue`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-18 | `Feature` | 基础信息工具栏增加 AI 识别：上传单证后预填表单。 | 与新建共用 `form.vue`。详见 `changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md`。 |
 | 2026-08-17 | `Fix` | 选中空港后输入框只回显三字码，备注回填英文名称。 | 与新建共用 `form.vue`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |

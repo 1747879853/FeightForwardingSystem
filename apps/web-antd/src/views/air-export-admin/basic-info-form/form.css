@@ -801,6 +801,15 @@
   flex-shrink: 0;
 }
 
+.air-export-form-page.is-order-readonly .center-column,
+.air-export-form-page.is-order-readonly .right-column {
+  pointer-events: none;
+}
+
+.air-export-form-page.is-order-readonly .content-section__actions-right {
+  pointer-events: auto;
+}
+
 .right-column {
   display: flex;
   flex-shrink: 0;

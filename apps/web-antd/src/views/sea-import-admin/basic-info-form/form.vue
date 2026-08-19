@@ -25,6 +25,8 @@ import {
 } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
+import { useAccess } from '@vben/access';
+
 import dayjs from 'dayjs';
 
 import {
@@ -64,6 +66,7 @@ import {
 import { useContainerTrackingSubscribe } from '#/components/tracking';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { useAllUserOrg } from '#/composables/use-all-user-org';
 import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
 
@@ -120,6 +123,7 @@ const userStore = useUserStore();
 const { closeTabByKey } = useTabs();
 const perm = createAbpPermission('Admin.SeaImport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
+const { hasAccessByCodes } = useAccess();
 
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
@@ -132,6 +136,14 @@ const editId = computed<string | undefined>(() => {
   return resolved ? String(resolved) : undefined;
 });
 const isEdit = computed(() => !!editId.value);
+
+/** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
+const detailIsEditable = ref(false);
+const canEditOrder = computed(
+  () =>
+    !isEdit.value || (hasAccessByCodes([perm.edit]) && detailIsEditable.value),
+);
+const isOrderReadonly = computed(() => isEdit.value && !canEditOrder.value);
 
 const currentUserId = computed<number | undefined>(() => {
   const parsed = Number(userStore.userInfo?.userId);
@@ -541,6 +553,25 @@ const [CargoReeferForm, cargoReeferFormApi] = useVbenForm({
   wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
 });
 
+const orderFormApis = [
+  basicInfoFormApi,
+  partyInfoFormApi,
+  shipmentFormApi,
+  portFormApi,
+  cargoTypeInlineFormApi,
+  cargoRemarkFormApi,
+  cargoMainFormApi,
+  cargoMetricsFormApi,
+  cargoDgFormApi,
+  cargoReeferFormApi,
+];
+
+const applyOrderReadonlyState = () => {
+  setFormApisDisabled(orderFormApis, isOrderReadonly.value);
+};
+
+watch(isOrderReadonly, () => applyOrderReadonlyState(), { immediate: true });
+
 watch(cargoType, async (nextCargoId, prevCargoId) => {
   if (prevCargoId === CARGO_TYPE.D && nextCargoId !== CARGO_TYPE.D) {
     await cargoDgFormApi.setValues(createEmptyDgValues());
@@ -803,10 +834,12 @@ const loadEditData = async (): Promise<
   if (!editId.value) {
     return undefined;
   }
+  detailIsEditable.value = false;
   pageLoading.value = true;
   netWeightAutoSyncSuspended.value = true;
   try {
     const detail = await getSeaImportDetail(editId.value);
+    detailIsEditable.value = isTicketEditable(detail);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
     trackingSubscribed.value = detail.isFeituoSubscribed ?? false;
@@ -1022,6 +1055,11 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     router,
   });
 
+const submitBasicInfo = async () => {
+  if (isOrderReadonly.value) return;
+  await handleSubmit();
+};
+
 const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
   terminalSchedulePickerOpen.value = false;
   terminalScheduleApplying.value = true;
@@ -1033,7 +1071,7 @@ const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
     if (patch.innerVoyno) {
       await basicInfoFormApi.setFieldValue('innerVoyno', patch.innerVoyno);
     }
-    await handleSubmit();
+    await submitBasicInfo();
   } finally {
     terminalScheduleApplying.value = false;
   }
@@ -1103,7 +1141,7 @@ const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
 
 const aiExtractModalOpen = ref(false);
 const handleAiRecognize = () => {
-  if (aiRecognizing.value) return;
+  if (isOrderReadonly.value || aiRecognizing.value) return;
   aiExtractModalOpen.value = true;
 };
 const handleAiExtractFile = async (file: File) => {
@@ -1121,7 +1159,13 @@ const handleCopySeaImport = async () => {
 
 /** 编辑态按最新规则重新生成委托编号，原编号不可恢复 */
 const regeneratingCommissionNum = ref(false);
-const canRegenerateCommissionNum = computed(() => isEdit.value);
+const canRegenerateCommissionNum = computed(
+  () =>
+    isEdit.value &&
+    !!editId.value &&
+    hasAccessByCodes([perm.edit]) &&
+    detailIsEditable.value,
+);
 const handleRegenerateCommissionNum = () => {
   if (!canRegenerateCommissionNum.value || regeneratingCommissionNum.value) {
     return;
@@ -1281,7 +1325,10 @@ watch(pageLoading, (loading) => {
 <template>
   <component :is="pageWrapperTag" v-bind="pageWrapperProps">
     <Spin :spinning="pageLoading">
-      <div class="sea-import-form-page">
+      <div
+        class="sea-import-form-page"
+        :class="{ 'is-order-readonly': isOrderReadonly }"
+      >
         <div class="main-layout">
           <!-- 中间主表单 -->
           <div class="center-column">
@@ -1294,6 +1341,7 @@ watch(pageLoading, (loading) => {
                       size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
+                      :disabled="isOrderReadonly"
                       @click="handleAiRecognize"
                     >
                       <IconifyIcon
@@ -1344,14 +1392,37 @@ watch(pageLoading, (loading) => {
                         </Tooltip>
                       </span>
                     </template>
+                    <template v-if="isEdit && isOrderReadonly">
+                      <Button
+                        v-access:code="perm.add"
+                        size="small"
+                        class="flex items-center justify-center"
+                        :loading="copyingSeaImport"
+                        @click="handleCopySeaImport"
+                      >
+                        <Copy class="mr-1 inline-block size-3.5 align-middle" />
+                        <span class="align-middle">
+                          {{ $t('seaImport.import.copy') }}
+                        </span>
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        disabled
+                        class="sea-import-save-btn"
+                      >
+                        <Save class="sea-import-save-dropdown__icon" />
+                        <span>{{ $t('common.save') }}</span>
+                      </Button>
+                    </template>
                     <DropdownButton
-                      v-if="isEdit"
+                      v-else-if="isEdit"
                       type="primary"
                       size="small"
                       :loading="submitting"
                       :trigger="['hover']"
                       class="sea-import-save-dropdown"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="sea-import-save-dropdown__icon" />
                       <span>{{ $t('common.save') }}</span>
@@ -1378,7 +1449,7 @@ watch(pageLoading, (loading) => {
                       size="small"
                       :loading="submitting"
                       class="sea-import-save-btn"
-                      @click="handleSubmit"
+                      @click="submitBasicInfo"
                     >
                       <Save class="sea-import-save-dropdown__icon" />
                       <span>{{ $t('common.save') }}</span>
@@ -1442,6 +1513,7 @@ watch(pageLoading, (loading) => {
                         :auto-default="true"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--org"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderOrgChange"
@@ -1458,6 +1530,7 @@ watch(pageLoading, (loading) => {
                         :selected-items="headerCodeSourceSelectedItems"
                         allow-clear
                         size="small"
+                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--source"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderCodeSourceChange"
@@ -1523,6 +1596,7 @@ watch(pageLoading, (loading) => {
                       :controls="false"
                       :precision="0"
                       size="small"
+                      :disabled="isOrderReadonly"
                       class="shipment-info-header__free-days"
                       :addon-after="$t('seaImport.import.freeDaysUnit')"
                       @update:value="

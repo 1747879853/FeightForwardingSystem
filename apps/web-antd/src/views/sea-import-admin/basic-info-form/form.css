@@ -756,6 +756,15 @@
   flex-shrink: 0;
 }
 
+.sea-import-form-page.is-order-readonly .center-column,
+.sea-import-form-page.is-order-readonly .right-column {
+  pointer-events: none;
+}
+
+.sea-import-form-page.is-order-readonly .content-section__actions-right {
+  pointer-events: auto;
+}
+
 .sea-import-save-btn,
 .sea-import-save-dropdown :deep(.ant-btn) {
   display: inline-flex;
