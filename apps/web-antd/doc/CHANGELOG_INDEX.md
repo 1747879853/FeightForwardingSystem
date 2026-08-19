@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-19 删除空的对账单附件上传组件](./changelogs/change-log-2026-08-19-remove-empty-statement-attachment-upload.md)
 - [2026-08-19 海出/海进/空出对接 isEditable 行级可编辑](./changelogs/change-log-2026-08-19-ticket-is-editable.md)
 - [2026-08-19 海运出口服务项完成时必填附件类型](./changelogs/change-log-2026-08-19-se-service-require-attachment-types.md)
 - [2026-08-19 空运出口业务来源改为读 codeSource.cnName](./changelogs/change-log-2026-08-19-air-export-code-source-cn-name.md)

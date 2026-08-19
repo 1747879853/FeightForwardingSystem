@@ -2,7 +2,7 @@
 title: 对账单列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-08-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -46,5 +46,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-19 | `Fix` | 删除对账单目录下已废弃的空文件 `attachment-upload.vue`，列表页无业务变化。 | 空 `.vue` 会被 `import.meta.glob('../views/**/*.vue')` 扫到，导致品牌构建失败。 |
 | 2026-08-09 | `Refactor` | 列表「客户」列改读对象化后的 `client.name`，接口不再返回 `clientName`/`clientCode`。 | `StatementDto` 删 `clientName`/`clientCode` 新增 `client`（`ClientSimpleDto`），`StatementCurrencyDto` 删 `currencyCode`/`currencyCnName`/`currencyEnName` 新增 `currency`；vxe 列 `field` 改点号路径 `client.name`，删除确认提示同步取 `rows[0]?.client?.name`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/statement` 对应组件 `src/views/fee-management/statement/index.vue`，权限口径为 Admin.Statement / Admin.Statement.Get。 |
