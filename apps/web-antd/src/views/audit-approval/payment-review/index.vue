@@ -46,6 +46,13 @@ function canRejectAfterPass(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
 /** 当前选中行对应的付费申请ID（驱动右侧详情渲染） */
 const selectedPaymentApplicationId = ref<string | undefined>(undefined);
 const tableData = ref<PaymentReviewAdminApi.PayAppTaskItemDto[]>([]);
+
+const selectedSettlementReceivableGroup = computed(
+  () =>
+    tableData.value.find(
+      (row) => row.paymentApplicationId === selectedPaymentApplicationId.value,
+    )?.settlementReceivableGroup ?? [],
+);
 /** 防止重建过程中的重入 */
 let rebuildingAppliedTotal = false;
 
@@ -351,7 +358,10 @@ const showPassRejectConfirm = () => {
 
 <template>
   <Page auto-content-height>
-    <DetailPanel :payment-application-id="selectedPaymentApplicationId">
+    <DetailPanel
+      :payment-application-id="selectedPaymentApplicationId"
+      :settlement-receivable-group="selectedSettlementReceivableGroup"
+    >
       <template #list>
         <Grid :table-title="t('title')">
           <template #toolbar-tools>

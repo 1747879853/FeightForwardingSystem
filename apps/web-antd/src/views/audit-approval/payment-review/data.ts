@@ -102,6 +102,41 @@ function appliedTotalFormatter(currencyId: number) {
   };
 }
 
+function formatUnSettledAmount(val: number): string {
+  return val.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * 结算对象应收未结算展示项（币别 + 原币金额）。
+ * 空数组/缺字段兜底为 []；不要与 `currencyGroup` 申请合计混用。
+ */
+export function formatSettlementReceivableItems(
+  groups:
+    | PaymentReviewAdminApi.SettlementReceivableGroupDto[]
+    | null
+    | undefined,
+): Array<{
+  key: string;
+  currencyCode: string;
+  amountText: string;
+  text: string;
+}> {
+  return (groups ?? []).flatMap((group, index) => {
+    if (group.unSettledAmount == null) return [];
+    const amount = Number(group.unSettledAmount);
+    if (!Number.isFinite(amount)) return [];
+    const code =
+      group.currencyCode?.trim() || group.currency?.code?.trim() || '';
+    const amountText = formatUnSettledAmount(amount);
+    const text = code ? `${code} ${amountText}` : amountText;
+    const key = `${group.currencyId ?? (code || index)}`;
+    return [{ key, currencyCode: code, amountText, text }];
+  });
+}
+
 function buildAppliedTotalAnchorColumn(
   currencies: AppliedTotalCurrency[],
   visible: boolean,

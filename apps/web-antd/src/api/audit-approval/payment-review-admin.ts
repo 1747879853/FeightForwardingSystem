@@ -57,13 +57,18 @@ export namespace PaymentReviewAdminApi {
     payPrice?: number;
   }
 
-  /** 应收结算币别分组 */
+  /**
+   * 结算对象应收未结算（按币别合计）。
+   * 口径：同一结算对象 + 收 + 费用已审核通过 + 仍有未结；已结清币别不出现。
+   * 与本行 `currencyGroup`（本申请申请金额）无关。
+   */
   export interface SettlementReceivableGroupDto {
     currencyId?: number;
-    /** 币别对象（替代 currencyCode） */
+    currencyCode?: string;
+    /** 币别对象（若后端对象化则有值，展示优先 `currencyCode`） */
     currency?: CurrencySimpleDto | null;
-    receiveAmount?: number;
-    receivePrice?: number;
+    /** 该币别应收未结算合计（原币，2 位小数，不乘汇率） */
+    unSettledAmount?: number;
   }
 
   export interface WorkFlowInstanceItemDetailDto {
@@ -101,7 +106,7 @@ export namespace PaymentReviewAdminApi {
     /** 组织串（从最高级组织到该组织） */
     orgs?: OrganizationUnitSimpleDto[];
     currencyGroup?: CurrencyGroupDto[];
-    /** 应收结算币别分组 */
+    /** 结算对象应收未结算（按币别）；无欠款为 `[]` */
     settlementReceivableGroup?: SettlementReceivableGroupDto[];
     totalPayPrice?: number;
     totalReceivePrice?: number;

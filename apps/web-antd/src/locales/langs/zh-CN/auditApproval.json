@@ -63,6 +63,8 @@
     "title": "付费申请审批",
     "applicationNo": "申请单号",
     "settlementName": "结算对象",
+    "settlementReceivableGroup": "应收未结算",
+    "settlementReceivableEmpty": "无欠款",
     "currencyCode": "结算币别",
     "totalPayPrice": "应付总金额",
     "totalReceivePrice": "应收总金额",

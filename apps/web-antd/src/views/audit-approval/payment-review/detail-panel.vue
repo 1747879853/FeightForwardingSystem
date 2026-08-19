@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { FeeDetailRow } from '#/views/fee-management/payment-application/form-data';
 
@@ -32,10 +33,19 @@ import {
   useOrderGroupColumns,
 } from '#/views/fee-management/payment-application/form-data';
 
-const props = defineProps<{ paymentApplicationId?: string }>();
+import { formatSettlementReceivableItems } from './data';
+
+const props = defineProps<{
+  paymentApplicationId?: string;
+  settlementReceivableGroup?: PaymentReviewAdminApi.SettlementReceivableGroupDto[];
+}>();
 
 const t = (key: string, args?: any[]) =>
   $t(`seaExport.export.paymentApplication.${key}`, args as any);
+
+const settlementReceivableItems = computed(() =>
+  formatSettlementReceivableItems(props.settlementReceivableGroup),
+);
 
 const loading = ref(false);
 const loaded = ref(false);
@@ -465,6 +475,36 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
                   </Tooltip>
                 </template>
               </template>
+
+              <div class="receivable-block">
+                <div class="receivable-block__title">
+                  {{
+                    $t('auditApproval.paymentReview.settlementReceivableGroup')
+                  }}
+                </div>
+                <div
+                  v-if="settlementReceivableItems.length === 0"
+                  class="receivable-block__empty"
+                >
+                  {{
+                    $t('auditApproval.paymentReview.settlementReceivableEmpty')
+                  }}
+                </div>
+                <div v-else class="receivable-block__list">
+                  <div
+                    v-for="item in settlementReceivableItems"
+                    :key="item.key"
+                    class="receivable-block__item"
+                  >
+                    <Tag color="orange">
+                      {{ item.currencyCode || '-' }}
+                    </Tag>
+                    <span class="receivable-block__amount">
+                      {{ item.amountText }}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </Card>
 
             <!-- 附件信息（按类型分组） -->
@@ -758,6 +798,52 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
   min-height: 0;
   padding: 10px 12px;
   overflow-y: auto;
+}
+
+.receivable-block {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px dashed #e8eef6;
+}
+
+.receivable-block__title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #595959;
+}
+
+.receivable-block__empty {
+  font-size: 12px;
+  color: #bfbfbf;
+}
+
+.receivable-block__list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #f3e8d8;
+  border-radius: 6px;
+}
+
+.receivable-block__item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  background: #fffaf3;
+  border-bottom: 1px solid #f3e8d8;
+}
+
+.receivable-block__item:last-child {
+  border-bottom: 0;
+}
+
+.receivable-block__amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #d46b08;
+  word-break: keep-all;
 }
 
 .attachment-card {
