@@ -74,7 +74,7 @@ const hotSettings = {
   columns: [] as any[], // 动态设置
   rowHeaders: true,
   colHeaders: true,
-  height: 800, // 恢复为固定高度800
+  height: '100%', // 使用百分比高度，配合 CSS 实现自适应
   width: '100%',
   stretchH: 'all',
   manualColumnResize: true,
@@ -83,8 +83,7 @@ const hotSettings = {
   readOnly: true,
   licenseKey: 'non-commercial-and-evaluation',
   className: 'htCenter htMiddle',
-  rowHeight: 28, // 调整行高为28px，与字体大小13px匹配，确保有足够的垂直空间
-  // 添加自动滚动条配置
+  rowHeight: 28,
   autoWrapRow: false,
   autoWrapCol: false,
   afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
@@ -160,28 +159,69 @@ const hotSettings = {
 /**
  * 更新表格高度
  */
+let resizeObserver: ResizeObserver | null = null;
+
 function updateTableHeight() {
   nextTick(() => {
-    if (containerRef.value && hotTableRef.value?.hotInstance) {
-      const height = containerRef.value.offsetHeight;
-      if (height > 0) {
-        hotTableRef.value.hotInstance.updateSettings({ height });
-      }
+    const container = containerRef.value;
+    const hotInstance = hotTableRef.value?.hotInstance;
+
+    if (!container || !hotInstance) {
+      // 如果实例还没准备好，稍后重试
+      setTimeout(updateTableHeight, 50);
+      return;
     }
+
+    // 1. 获取视口总高度
+    const viewportHeight = window.innerHeight;
+
+    // 2. 获取容器相对于视口的位置
+    const rect = container.getBoundingClientRect();
+
+    // 3. 计算目标高度：视口高度 - 容器顶部距离视口顶部的距离 - 底部缓冲(防止出现垂直滚动条)
+    let targetHeight = viewportHeight - rect.top - 24;
+
+    // 确保高度不小于 200
+    if (targetHeight < 200) {
+      targetHeight = 200;
+    }
+
+    // 4. 更新 Handsontable 高度
+    hotInstance.updateSettings({ height: targetHeight }, false);
   });
+}
+
+function initResizeObserver() {
+  if (!containerRef.value) return;
+
+  // 清理旧的观察者
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+
+  resizeObserver = new ResizeObserver(() => {
+    updateTableHeight();
+  });
+
+  // 观察 body 的变化，因为窗口缩放时容器本身尺寸可能不变但视口变了
+  resizeObserver.observe(document.body);
 }
 
 // 监听窗口大小变化
 window.addEventListener('resize', updateTableHeight);
 
 onMounted(() => {
-  updateTableHeight();
+  // 初始化观察者
+  initResizeObserver();
   // 默认执行一次查询
   handleQuery();
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateTableHeight);
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
 });
 
 // 创建表单
@@ -263,6 +303,11 @@ async function handleQuery(formData?: any) {
 
     originalData.value = [...transformedData];
     applyGrouping(transformedData);
+
+    // 数据加载并渲染后，重新计算表格高度
+    nextTick(() => {
+      updateTableHeight();
+    });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
   } catch (error: any) {
@@ -533,7 +578,7 @@ function buildTreeStructure(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空值';
+    const groupValue = item[currentGroupCol] || '空값';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -594,12 +639,12 @@ function buildTreeStructure(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "值(数量)"
+          // 只有一个唯一值，显示为 "값(数量)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "值1(数量1), 值2(数量2), ..."
+          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -667,7 +712,7 @@ function buildFullExportTree(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空值';
+    const groupValue = item[currentGroupCol] || '空값';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -680,7 +725,7 @@ function buildFullExportTree(
     // 创建聚合后的分组行数据
     const aggregatedRow: any = {};
 
-    // 设置分组列的值
+    // 设置分组列的값
     aggregatedRow[currentGroupCol] = groupName;
 
     // 聚合其他列的数据
@@ -728,12 +773,12 @@ function buildFullExportTree(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "值(数量)"
+          // 只有一个唯一值，显示为 "값(번호)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(数量1), 值2(数量2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -1072,16 +1117,16 @@ function handleExport() {
 </script>
 
 <template>
-  <Page auto-content-height>
+  <Page class="profit-report-page">
     <!-- 查询区域 -->
-    <Card class="mb-3" :bordered="false">
+    <Card class="query-card mb-3" :bordered="false">
       <QueryForm />
     </Card>
 
     <!-- 分组区域 -->
     <div
       class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
-      style="width: 100%; height: 40px"
+      style="flex-shrink: 0; width: 100%; height: 40px"
     >
       <span class="mr-2 text-sm text-gray-600">点击列标题添加分组：</span>
       <div
@@ -1115,7 +1160,7 @@ function handleExport() {
     </div>
 
     <!-- 表格区域 -->
-    <Card class="flex flex-col" :bordered="false">
+    <Card class="table-card" :bordered="false">
       <div ref="containerRef" class="handsontable-container">
         <HotTable ref="hotTableRef" :settings="hotSettings" />
       </div>
@@ -1124,17 +1169,76 @@ function handleExport() {
 </template>
 
 <style scoped lang="scss">
+/* 强制根容器占满高度并移除默认内边距 */
+.profit-report-page {
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+// 覆盖 Page 组件的默认样式
+:deep(.vben-page-wrapper) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+// 覆盖 Page 组件的内容区域
+:deep(.vben-page-wrapper-content) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
 .group-area {
+  flex-shrink: 0;
   min-width: 200px;
+  height: 40px;
+}
+
+.query-card {
+  flex-shrink: 0;
+
+  // 覆盖 Card 组件的默认样式
+  :deep(.ant-card-body) {
+    padding: 16px;
+  }
+}
+
+.table-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+
+  // 覆盖 Card 组件的默认样式
+  :deep(.ant-card-body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+  }
 }
 
 .handsontable-container {
   position: relative;
+  flex: 1;
   width: 100%;
-  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 
   :deep(.handsontable) {
-    height: 100%;
     font-size: 13px;
 
     .htCore {
@@ -1146,7 +1250,6 @@ function handleExport() {
         white-space: nowrap;
       }
 
-      // 数据行可双击样式
       tr:not([data-group-row='true']) td {
         cursor: pointer;
       }
@@ -1159,18 +1262,15 @@ function handleExport() {
       }
     }
 
-    // 分组行样式
     :deep(tr[data-group-row='true']) {
       font-weight: bold;
       background-color: #fafafa29 !important;
     }
 
-    // 详细行样式
     :deep(tr[data-detail-row='true']) {
       background-color: #fafafa29 !important;
     }
 
-    // 合计行样式
     :deep(tr[data-total-row='true']) {
       font-weight: bold !important;
       background-color: #f0f0f0 !important;

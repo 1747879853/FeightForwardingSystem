@@ -74,7 +74,7 @@ const hotSettings = {
   columns: [] as any[], // 动态设置
   rowHeaders: true,
   colHeaders: true,
-  height: 800, // 恢复为固定高度800
+  height: '100%', // 使用百分比高度，配合 CSS 实现自适应
   width: '100%',
   stretchH: 'all',
   manualColumnResize: true,
@@ -160,28 +160,69 @@ const hotSettings = {
 /**
  * 更新表格高度
  */
+let resizeObserver: ResizeObserver | null = null;
+
 function updateTableHeight() {
   nextTick(() => {
-    if (containerRef.value && hotTableRef.value?.hotInstance) {
-      const height = containerRef.value.offsetHeight;
-      if (height > 0) {
-        hotTableRef.value.hotInstance.updateSettings({ height });
-      }
+    const container = containerRef.value;
+    const hotInstance = hotTableRef.value?.hotInstance;
+
+    if (!container || !hotInstance) {
+      // 如果实例还没准备好，稍后重试
+      setTimeout(updateTableHeight, 50);
+      return;
     }
+
+    // 1. 获取视口总高度
+    const viewportHeight = window.innerHeight;
+
+    // 2. 获取容器相对于视口的位置
+    const rect = container.getBoundingClientRect();
+
+    // 3. 计算目标高度：视口高度 - 容器顶部距离视口顶部的距离 - 底部缓冲(防止出现垂直滚动条)
+    let targetHeight = viewportHeight - rect.top - 24;
+
+    // 确保高度不小于 200
+    if (targetHeight < 200) {
+      targetHeight = 200;
+    }
+
+    // 4. 更新 Handsontable 高度
+    hotInstance.updateSettings({ height: targetHeight }, false);
   });
+}
+
+function initResizeObserver() {
+  if (!containerRef.value) return;
+
+  // 清理旧的观察者
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+
+  resizeObserver = new ResizeObserver(() => {
+    updateTableHeight();
+  });
+
+  // 观察 body 的变化，因为窗口缩放时容器本身尺寸可能不变但视口变了
+  resizeObserver.observe(document.body);
 }
 
 // 监听窗口大小变化
 window.addEventListener('resize', updateTableHeight);
 
 onMounted(() => {
-  updateTableHeight();
+  // 初始化观察者
+  initResizeObserver();
   // 默认执行一次查询
   handleQuery();
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateTableHeight);
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
 });
 
 // 创建表单
@@ -257,6 +298,11 @@ async function handleQuery(formData?: any) {
 
     originalData.value = [...transformedData];
     applyGrouping(transformedData);
+
+    // 数据加载并渲染后，重新计算表格高度
+    nextTick(() => {
+      updateTableHeight();
+    });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
   } catch (error: any) {
@@ -514,7 +560,7 @@ function buildTreeStructure(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空值';
+    const groupValue = item[currentGroupCol] || '空값';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -566,7 +612,7 @@ function buildTreeStructure(
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一값，显示为 "값1(数量1), 값2(数量2), ..."
+          // 多个唯一값，显示为 "값1(数量1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -681,12 +727,12 @@ function buildFullExportTree(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(数量)"
+          // 只有一个唯一값，显示为 "값(数量)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一값，显示为 "값1(数量1), 값2(数量2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
