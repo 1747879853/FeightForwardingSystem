@@ -343,15 +343,60 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     (fee) => !existingIds.has(fee.feeId),
   );
 
-  if (isEdit.value && editId.value && newRows.length > 0) {
+  if (newRows.length === 0) {
+    message.warning('所选费用已全部添加');
+    return;
+  }
+
+  if (isEdit.value && editId.value) {
+    // 编辑模式：添加费用后自动保存
+    submitting.value = true;
     try {
       await addStatementFees({
         id: editId.value,
         orderFeeIds: newRows.map((row) => row.feeId),
       });
-    } catch {
-      message.error('添加费用关联失败');
+
+      // 自动保存其他字段
+      await saveEditMode();
+
+      message.success('添加费用并保存成功');
+      markListShouldRefresh('StatementList');
+
+      // 重新加载数据以获取最新状态
+      await loadEditData();
+    } catch (error) {
+      console.error('添加费用或保存失败:', error);
+      message.error('操作失败');
+    } finally {
+      submitting.value = false;
+    }
+  } else if (!isEdit.value && newRows.length > 0) {
+    // 新增模式：添加费用后自动保存并跳转到编辑页面
+    if (!ensureClientSelected()) {
       return;
+    }
+
+    submitting.value = true;
+    try {
+      // 先更新费用明细
+      feeDetailRows.value = [...feeDetailRows.value, ...newRows];
+
+      // 自动保存
+      const newId = await addStatement(buildSubmitData());
+      message.success(t('addSuccess'));
+      markListShouldRefresh('StatementList');
+
+      // 跳转到编辑页面
+      router.replace(`/fee-management/statement/${newId}/edit`);
+      return;
+    } catch (error) {
+      console.error('自动保存失败:', error);
+      message.error('自动保存失败');
+      submitting.value = false;
+      return;
+    } finally {
+      submitting.value = false;
     }
   }
 
@@ -371,24 +416,38 @@ async function handleDeleteSelected() {
   if (toRemove.size === 0) return;
 
   if (isEdit.value && editId.value) {
+    // 编辑模式：删除费用后自动保存
+    submitting.value = true;
     try {
       await removeStatementFees({
         id: editId.value,
         orderFeeIds: [...toRemove],
       });
-      message.success('删除费用关联成功');
-    } catch {
-      message.error('删除费用关联失败');
-      return;
+
+      // 自动保存其他字段
+      await saveEditMode();
+
+      message.success('删除费用并保存成功');
+      markListShouldRefresh('StatementList');
+
+      // 重新加载数据以获取最新状态
+      await loadEditData();
+    } catch (error) {
+      console.error('删除费用或保存失败:', error);
+      message.error('操作失败');
+    } finally {
+      submitting.value = false;
     }
+  } else {
+    // 新增模式：仅从列表中移除
+    feeDetailRows.value = feeDetailRows.value.filter(
+      (r) => !toRemove.has(r.feeId),
+    );
+    originalFeeDetailRows.value = originalFeeDetailRows.value.filter(
+      (r) => !toRemove.has(r.feeId),
+    );
   }
 
-  feeDetailRows.value = feeDetailRows.value.filter(
-    (r) => !toRemove.has(r.feeId),
-  );
-  originalFeeDetailRows.value = originalFeeDetailRows.value.filter(
-    (r) => !toRemove.has(r.feeId),
-  );
   selectedRowKeys.value = [];
 }
 
