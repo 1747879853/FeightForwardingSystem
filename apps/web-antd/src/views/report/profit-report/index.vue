@@ -192,6 +192,8 @@ const [QueryForm, formApi] = useVbenForm({
     labelWidth: 100,
   },
   wrapperClass: 'grid-cols-5', // 修改为每行5个字段
+  showCollapseButton: true,
+  collapsed: true,
   submitButtonOptions: {
     content: '查询',
   },
@@ -1079,7 +1081,7 @@ function handleExport() {
     <!-- 分组区域 -->
     <div
       class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
-      style=" width: 100%;height: 40px"
+      style="width: 100%; height: 40px"
     >
       <span class="mr-2 text-sm text-gray-600">点击列标题添加分组：</span>
       <div
