@@ -7,6 +7,10 @@ import { Empty } from 'ant-design-vue';
 import { buildTrackingMapSrc } from '#/components/tracking-map';
 import { brandLogo, brandLogoText } from '#/utils/brand-assets';
 
+/**
+ * 现有运踪（sjtd 海出）货物轨迹独立静态页。
+ * 订阅号来自路径 `/tracking-map/:mblNo`，页头展示品牌、单号与中性标题。
+ */
 defineOptions({ name: 'TrackingMapPage' });
 
 const route = useRoute();
@@ -38,11 +42,13 @@ const pageText = computed(() =>
   lang.value === 'en'
     ? {
         title: 'Cargo Tracking',
+        referenceNo: 'Reference no',
         empty:
           'No reference number available. Please open the link with a subscription number.',
       }
     : {
         title: '货物轨迹查询',
+        referenceNo: '单号',
         empty: '暂无可查询的订阅号，请通过带订阅号的链接访问',
       },
 );
@@ -63,6 +69,9 @@ const iframeSrc = computed(() =>
           class="tracking-page__logo"
         />
         <span v-else class="tracking-page__company">{{ companyName }}</span>
+        <span v-if="referenceNo" class="tracking-page__ref">
+          {{ pageText.referenceNo }}：<strong>{{ referenceNo }}</strong>
+        </span>
       </div>
       <span class="tracking-page__title">{{ pageText.title }}</span>
     </header>
@@ -121,6 +130,13 @@ const iframeSrc = computed(() =>
   font-size: 18px;
   font-weight: 600;
   color: rgb(0 0 0 / 88%);
+}
+
+.tracking-page__ref {
+  padding-left: 12px;
+  font-size: 13px;
+  color: rgb(60 60 67 / 60%);
+  border-left: 1px solid rgb(60 60 67 / 12%);
 }
 
 .tracking-page__title {

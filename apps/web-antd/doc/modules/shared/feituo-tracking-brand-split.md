@@ -2,7 +2,7 @@
 title: 运踪能力品牌分流（现有运踪 / 新服务商运踪）
 module: 共享能力 / 运踪
 author: auto-doc-sync
-last_updated: 2026-08-16
+last_updated: 2026-08-20
 status: 已实现（空运地图地址待服务商确认）
 ---
 
@@ -138,8 +138,8 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 | 场景 | 约定 |
 | :-- | :-- |
 | **sjtd 海出** | 继续现有 `/tracking-map/:mblNo`，行为不变 |
-| **新服务商空运** | 分享页 `/cargo-tracking/air?no=<航司单号>&lang=`；地址由前端按 env 拼装，免登录页**不调任何业务接口** |
-| **新服务商海运** | 分享页 `/cargo-tracking/ocean?t=<令牌>&lang=`；令牌是把服务商轨迹链接（优先 `iframeShortUrl` 密文短链）编码后的字符串 |
+| **新服务商空运** | 分享页 `/cargo-tracking/air?no=<航司单号>&lang=`；地址由前端按 env 拼装，免登录页**不调任何业务接口**；页头展示品牌 Logo、单号（取 `no`）与「货物轨迹查询」 |
+| **新服务商海运** | 分享页 `/cargo-tracking/ocean?t=<令牌>&no=<单号>&lang=`；令牌是把服务商轨迹链接（优先 `iframeShortUrl` 密文短链）编码后的字符串；`no` 仅用于页头展示，缺省时不显示单号 |
 | **禁止** | 把服务商原始链接直接发给客户；页头/文案/空态出现服务商名称 |
 | **内嵌** | 客户地址栏始终是本系统域名与路径，服务商链接只出现在 iframe 内部 |
 
@@ -212,6 +212,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-20 | `Fix` | 免登录分享页页头补展示单号：新服务商 `/cargo-tracking/*` 与现有运踪 `/tracking-map/:mblNo` 均展示，与登录后地图弹窗一致 | 空运 URL 本就带 `?no=`、旧页路径本就有 `mblNo`，页头却只渲染品牌与标题。海运新服务商令牌解不出可读单号，复制时额外带上弹窗已有的 `referenceNo`。详见 `changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md` |
 | 2026-08-16 | `Fix` | 海运进口编辑页基础信息工具栏补齐单票「运踪订阅」按钮，与列表、海出/空出编辑页对齐 | 首版只做了列表订阅与编辑页运踪 Tab，漏了表单入口。复用 `useContainerTrackingSubscribe(SeaImport)`，权限 `Admin.ExternalApi.Use`。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md` |
 | 2026-08-16 | `Refactor` | 异常预警明细不再常驻页面底部，改为**仅在有预警时**出现「异常预警(N)」按钮，点击弹窗看明细 | 绝大多数票无预警，常驻「共 0 条」空态白占版面。新增共享 `tracking-warning-modal.vue`（按 `kind` 切海运箱号列 / 空运发生地列），两个面板各自的列定义与行映射收敛到弹窗；按钮条件统一为 `warnings.length > 0`，列表场景与未订阅票的 `warnings` 本就是空数组，无需额外判断。详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md` |
 | 2026-08-16 | `Feature` | 海运多箱票的轨迹节点带上箱号，并新增「整票 / 按箱」视图切换 | 整票合并后同名节点仍会真实重复（各箱进度不同、或箱被摘车后重新编组，如出现 `Excluded from train` 后的第二次离站/到站）。带箱号让重复自解释，按箱视图 `buildContainerTimelineGroups` 每箱一条时间轴；单箱票不显示箱号与切换 |

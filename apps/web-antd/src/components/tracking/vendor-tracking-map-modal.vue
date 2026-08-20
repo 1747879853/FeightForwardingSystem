@@ -47,7 +47,7 @@ const iframeSrc = computed(() =>
   resolveVendorMapSrc(payload.value, lang.value),
 );
 
-/** 免登录分享页链接：空运带单号，海运带编码后的轨迹链接令牌 */
+/** 免登录分享页链接：空运带单号；海运带编码令牌，并附带展示用单号 */
 const shareUrl = computed(() => {
   const current = payload.value;
   if (!current) {
@@ -68,6 +68,10 @@ const shareUrl = computed(() => {
       return '';
     }
     query.t = token;
+    const no = current.referenceNo?.trim() ?? '';
+    if (no) {
+      query.no = no;
+    }
   }
   if (lang.value === 'en') {
     query.lang = 'en';

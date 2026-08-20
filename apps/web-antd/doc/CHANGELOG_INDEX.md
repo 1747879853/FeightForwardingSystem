@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-20 运踪分享页页头补展示单号](./changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md)
 - [2026-08-20 付费申请汇率弹窗改为双向折算并预填有效应付汇率](./changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md)
 - [2026-08-19 银行流水按费用选费抽屉补编号检索与收付类别](./changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md)
 - [2026-08-19 业务联系单费用小计按币别拆分并拦截空结算对象](./changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md)

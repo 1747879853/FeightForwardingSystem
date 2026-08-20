@@ -17,7 +17,7 @@ import { brandLogo, brandLogoText } from '#/utils/brand-assets';
  * - 空运：`/cargo-tracking/air?no=<航司单号>`，地址由前端按 env 拼装，无需接口；
  * - 海运：`/cargo-tracking/ocean?t=<令牌>`，令牌是编码后的轨迹链接，免登录页不调业务接口。
  *
- * 页头只出现本系统品牌与中性标题，不展示服务商名称与原始地址。
+ * 页头展示本系统品牌、单号（取 `?no=`）与中性标题，不展示服务商名称与原始地址。
  */
 defineOptions({ name: 'CargoTrackingPage' });
 
@@ -43,22 +43,27 @@ const kind = computed(() => {
 /** 语言来自 query（?lang=en），页内文案不依赖系统语言（免登录访问） */
 const lang = computed(() => (readQuery('lang') === 'en' ? 'en' : 'zh'));
 
+/** 空运分享链接带 `?no=`；海运若一并带了单号也展示，避免客户打开后看不到单号 */
+const referenceNo = computed(() => readQuery('no'));
+
 const pageText = computed(() =>
   lang.value === 'en'
     ? {
         title: 'Cargo Tracking',
+        referenceNo: 'Reference no',
         empty:
           'No tracking information available. Please open the link shared with you.',
       }
     : {
         title: '货物轨迹查询',
+        referenceNo: '单号',
         empty: '暂无可查看的轨迹信息，请通过分享给您的链接访问',
       },
 );
 
 const iframeSrc = computed(() => {
   if (kind.value === 'air') {
-    return buildAirTrackingMapSrc(readQuery('no'), { lang: lang.value });
+    return buildAirTrackingMapSrc(referenceNo.value, { lang: lang.value });
   }
   const url = decodeVendorMapToken(readQuery('t'));
   return url ? withMapLang(url, lang.value) : '';
@@ -77,6 +82,9 @@ const iframeSrc = computed(() => {
         />
         <span v-else class="cargo-tracking-page__company">
           {{ companyName }}
+        </span>
+        <span v-if="referenceNo" class="cargo-tracking-page__ref">
+          {{ pageText.referenceNo }}：<strong>{{ referenceNo }}</strong>
         </span>
       </div>
       <span class="cargo-tracking-page__title">{{ pageText.title }}</span>
@@ -136,6 +144,13 @@ const iframeSrc = computed(() => {
   font-size: 18px;
   font-weight: 600;
   color: rgb(0 0 0 / 88%);
+}
+
+.cargo-tracking-page__ref {
+  padding-left: 12px;
+  font-size: 13px;
+  color: rgb(60 60 67 / 60%);
+  border-left: 1px solid rgb(60 60 67 / 12%);
 }
 
 .cargo-tracking-page__title {
