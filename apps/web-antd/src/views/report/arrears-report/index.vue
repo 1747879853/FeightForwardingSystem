@@ -13,22 +13,22 @@ import { useVbenForm } from '#/adapter/form';
 
 import { Button, Card, message, Tag } from 'ant-design-vue';
 
-import { getProfitReportList } from '#/api/system/report';
+import { getArrearsReportList } from '#/api/system/report';
 
-import { useProfitReportFormSchema, getHotColumns } from './data';
+import { useArrearsReportFormSchema, getHotColumns } from './data';
 
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
 
 defineOptions({
-  name: 'ProfitReport',
+  name: 'ArrearsReport',
 });
 
 const router = useRouter();
 const { hasAccessByCodes } = useAccess();
 
 // 权限检查
-const canView = computed(() => hasAccessByCodes(['Admin.Report.Profit.Get']));
+const canView = computed(() => true); // 临时允许所有用户访问
 
 // Handsontable 引用
 const hotTableRef = ref<any>(null);
@@ -46,7 +46,7 @@ const groupColumns = ref<string[]>([]); // 当前分组的列名数组
 const expandedGroups = ref<Set<string>>(new Set()); // 展开的分组键集合
 
 // 表单配置
-const formSchema = useProfitReportFormSchema();
+const formSchema = useArrearsReportFormSchema();
 
 // Handsontable 列配置
 const hotColumns = getHotColumns();
@@ -63,9 +63,9 @@ const columnTitleMap = hotColumns.reduce(
 // 数值列字段（用于累加和右对齐）
 const numericColumns = new Set([
   'totalReceivable',
-  'totalPayable',
-  'totalProfit',
-  'totalProfitRate',
+  'totalReceived',
+  'totalUnReceived',
+  'overdueDays',
 ]);
 
 // Handsontable 配置
@@ -83,7 +83,8 @@ const hotSettings = {
   readOnly: true,
   licenseKey: 'non-commercial-and-evaluation',
   className: 'htCenter htMiddle',
-  rowHeight: 28,
+  rowHeight: 28, // 调整行高为28px，与字体大小13px匹配，确保有足够的垂直空间
+  // 添加自动滚动条配置
   autoWrapRow: false,
   autoWrapCol: false,
   afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
@@ -275,7 +276,7 @@ function setPortTypeByBizType(queryParams: any) {
  */
 async function handleQuery(formData?: any) {
   if (!canView.value) {
-    message.warning('您没有权限查看利润报表');
+    message.warning('您没有权限查看欠费报表');
     return;
   }
 
@@ -287,17 +288,11 @@ async function handleQuery(formData?: any) {
     // 根据业务类型自动设置港口类型
     const processedValues = setPortTypeByBizType({ ...values });
 
-    const result = await getProfitReportList(
-      processedValues as ReportApi.ProfitReportQueryDto,
+    const result = await getArrearsReportList(
+      processedValues as ReportApi.ArrearsReportQueryDto,
     );
 
     const dataList = result || [];
-
-    // 大数据量测试：将数据复制1000遍
-    // const bigDataList = [];
-    // for (let i = 0; i < 1000; i++) {
-    //   bigDataList.push(...dataList);
-    // }
 
     const transformedData = transformDataForHotTable(dataList);
 
@@ -413,27 +408,28 @@ function safeFormatDate(
 /**
  * 转换数据以适应 Handsontable
  */
-function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
+function transformDataForHotTable(data: ReportApi.ArrearsReportDto[]) {
   return data.map((item) => ({
     commissionNum: item.commissionNum,
     mblNum: item.mblNum,
     bizType: formatBizType(item.bizType),
     client: item.client?.name || '-',
+    settlement: item.settlement?.name || '-',
     pol: item.pol ? item.pol.code : '-',
     pod: item.pod ? item.pod.code : '-',
     vessel: item.vessel || '-',
     innerVoyno: item.innerVoyno || '-',
     ctns: formatCtns(item.ctns),
     bizDate: safeFormatDate(item.bizDate, 'date'),
-    accountDate: safeFormatDate(item.accountDate, 'month'),
+    settlementDate: safeFormatDate(item.settlementDate, 'date'),
+    overdueDays: item.overdueDays || 0,
+    invoiceNos: Array.isArray(item.invoiceNos)
+      ? item.invoiceNos.join(', ')
+      : '-',
     currencies: formatCurrencies(item.currencies),
     totalReceivable: item.totalReceivable?.toFixed(2) || '0.00',
-    totalPayable: item.totalPayable?.toFixed(2) || '0.00',
-    totalProfit: item.totalProfit?.toFixed(2) || '0.00',
-    totalProfitRate:
-      item.totalProfitRate != null
-        ? `${(item.totalProfitRate * 100).toFixed(2)}%`
-        : '-',
+    totalReceived: item.totalReceived?.toFixed(2) || '0.00',
+    totalUnReceived: item.totalUnReceived?.toFixed(2) || '0.00',
     _originalData: item,
   }));
 }
@@ -466,7 +462,7 @@ function formatCurrencies(currencies: any[]) {
   return currencies
     .map(
       (curr) =>
-        `${curr.currency.code}:应收${curr.receivable.toFixed(2)}/应付${curr.payable.toFixed(2)}/利润${curr.profit.toFixed(2)}`,
+        `${curr.currency.code}:应收${curr.receivable.toFixed(2)}/已收${curr.received.toFixed(2)}/欠费${curr.unReceived.toFixed(2)}`,
     )
     .join('; ');
 }
@@ -474,7 +470,7 @@ function formatCurrencies(currencies: any[]) {
 /**
  * 跳转到业务详情 /sea-exports/7897b6b1-039f-4b88-ae51-b419f5a85e8f/edit
  */
-function handleViewDetail(record: ReportApi.ProfitReportDto) {
+function handleViewDetail(record: ReportApi.ArrearsReportDto) {
   if (!record || !record.transportOrderId) {
     message.warning('该记录没有关联的业务订单，无法跳转详情');
     return;
@@ -535,21 +531,7 @@ function calculateTotalRow(): any {
     });
 
     if (hasData) {
-      if (colName === 'totalProfitRate') {
-        // 利润率特殊处理：需要重新计算总利润率
-        const totalReceivableSum = originalDataArray.reduce((acc, item) => {
-          return acc + (parseFloat(item.totalReceivable) || 0);
-        }, 0);
-        const totalPayableSum = originalDataArray.reduce((acc, item) => {
-          return acc + Math.abs(parseFloat(item.totalPayable) || 0);
-        }, 0);
-        totalRow[colName] =
-          totalPayableSum !== 0
-            ? `${(((totalReceivableSum - totalPayableSum) / totalPayableSum) * 100).toFixed(2)}%`
-            : '-';
-      } else {
-        totalRow[colName] = sum.toFixed(2);
-      }
+      totalRow[colName] = sum.toFixed(2);
     } else {
       totalRow[colName] = '0.00';
     }
@@ -609,20 +591,6 @@ function buildTreeStructure(
           sum += numVal;
         });
         aggregatedRow[col] = sum.toFixed(2);
-      } else if (col === 'totalProfitRate') {
-        // 利润率特殊处理：根据总利润和总应付计算
-        const totalProfit = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
-          0,
-        );
-        const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
-          0,
-        );
-        aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};
@@ -644,7 +612,7 @@ function buildTreeStructure(
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(数量1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -725,7 +693,7 @@ function buildFullExportTree(
     // 创建聚合后的分组行数据
     const aggregatedRow: any = {};
 
-    // 设置分组列的값
+    // 设置分组列的值
     aggregatedRow[currentGroupCol] = groupName;
 
     // 聚合其他列的数据
@@ -743,20 +711,6 @@ function buildFullExportTree(
           sum += numVal;
         });
         aggregatedRow[col] = sum.toFixed(2);
-      } else if (col === 'totalProfitRate') {
-        // 利润率特殊处理：根据总利润和总应付计算
-        const totalProfit = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
-          0,
-        );
-        const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
-          0,
-        );
-        aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};
@@ -773,7 +727,7 @@ function buildFullExportTree(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(번호)"
+          // 只有一个唯一값，显示为 "값(数量)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
@@ -1099,14 +1053,14 @@ function handleExport() {
 
     // 创建工作簿
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '利润报表');
+    XLSX.utils.book_append_sheet(wb, ws, '欠费报表');
 
     // 导出Excel文件
     const timestamp =
       new Date().toLocaleDateString('zh-CN').replace(/\//g, '') +
       '_' +
       new Date().toLocaleTimeString('zh-CN').replace(/[:]/g, '');
-    XLSX.writeFile(wb, `利润报表_${timestamp}.xlsx`);
+    XLSX.writeFile(wb, `欠费报表_${timestamp}.xlsx`);
 
     message.success('导出成功');
   } catch (error) {
@@ -1117,16 +1071,16 @@ function handleExport() {
 </script>
 
 <template>
-  <Page class="profit-report-page">
+  <Page auto-content-height>
     <!-- 查询区域 -->
-    <Card class="query-card mb-3" :bordered="false">
+    <Card class="mb-3" :bordered="false">
       <QueryForm />
     </Card>
 
     <!-- 分组区域 -->
     <div
       class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
-      style="flex-shrink: 0; width: 100%; height: 40px"
+      style="width: 100%; height: 40px"
     >
       <span class="mr-2 text-sm text-gray-600">点击列标题添加分组：</span>
       <div
@@ -1160,7 +1114,7 @@ function handleExport() {
     </div>
 
     <!-- 表格区域 -->
-    <Card class="table-card" :bordered="false">
+    <Card class="flex flex-col" :bordered="false">
       <div ref="containerRef" class="handsontable-container">
         <HotTable ref="hotTableRef" :settings="hotSettings" />
       </div>
@@ -1169,76 +1123,17 @@ function handleExport() {
 </template>
 
 <style scoped lang="scss">
-/* 强制根容器占满高度并移除默认内边距 */
-.profit-report-page {
-  display: flex;
-  flex-direction: column;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
-// 覆盖 Page 组件的默认样式
-:deep(.vben-page-wrapper) {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
-// 覆盖 Page 组件的内容区域
-:deep(.vben-page-wrapper-content) {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
 .group-area {
-  flex-shrink: 0;
   min-width: 200px;
-  height: 40px;
-}
-
-.query-card {
-  flex-shrink: 0;
-
-  // 覆盖 Card 组件的默认样式
-  :deep(.ant-card-body) {
-    padding: 16px;
-  }
-}
-
-.table-card {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-
-  // 覆盖 Card 组件的默认样式
-  :deep(.ant-card-body) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-    padding: 0;
-    overflow: hidden;
-  }
 }
 
 .handsontable-container {
   position: relative;
-  flex: 1;
   width: 100%;
-  min-height: 0;
-  overflow: hidden;
+  height: 100%;
 
   :deep(.handsontable) {
+    height: 100%;
     font-size: 13px;
 
     .htCore {
@@ -1250,6 +1145,7 @@ function handleExport() {
         white-space: nowrap;
       }
 
+      // 数据行可双击样式
       tr:not([data-group-row='true']) td {
         cursor: pointer;
       }
@@ -1262,15 +1158,18 @@ function handleExport() {
       }
     }
 
+    // 分组行样式
     :deep(tr[data-group-row='true']) {
       font-weight: bold;
       background-color: #fafafa29 !important;
     }
 
+    // 详细行样式
     :deep(tr[data-detail-row='true']) {
       background-color: #fafafa29 !important;
     }
 
+    // 合计行样式
     :deep(tr[data-total-row='true']) {
       font-weight: bold !important;
       background-color: #f0f0f0 !important;

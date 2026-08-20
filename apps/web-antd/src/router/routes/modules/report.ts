@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
         },
         component: () => import('#/views/report/profit-report/index.vue'),
       },
+      {
+        path: 'arrears-report',
+        name: 'ArrearsReport',
+        meta: {
+          keepAlive: true,
+          title: '欠费报表',
+          // authority: abpPageAuthority('Admin.Report.Arrears.Get'),
+        },
+        component: () => import('#/views/report/arrears-report/index.vue'),
+      },
     ],
   },
 ];

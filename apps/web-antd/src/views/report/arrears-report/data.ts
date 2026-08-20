@@ -41,9 +41,33 @@ export const BL_TYPE_OPTIONS = [
 ];
 
 /**
+ * 收付方选项
+ */
+export const PAY_SIDE_OPTIONS = [
+  { label: '应收', value: 0 },
+  { label: '应付', value: 1 },
+];
+
+/**
+ * 结算状态选项
+ */
+export const SETTLEMENT_STATUS_OPTIONS = [
+  { label: '未结算', value: 0 },
+  { label: '已结算', value: 1 },
+];
+
+/**
+ * 发票状态选项
+ */
+export const INVOICE_STATUS_OPTIONS = [
+  { label: '未开票', value: 0 },
+  { label: '已开票', value: 1 },
+];
+
+/**
  * 查询表单配置
  */
-export function useProfitReportFormSchema(): VbenFormSchema[] {
+export function useArrearsReportFormSchema(): VbenFormSchema[] {
   return [
     {
       fieldName: 'isMergeChangeOrder',
@@ -247,154 +271,56 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
         style: { width: '100%' },
       },
     },
-  ];
-}
-
-/**
- * 表格列配置
- */
-export function useProfitReportColumns() {
-  return [
     {
-      field: 'commissionNum',
-      title: '委托编号',
-      width: 150,
-      fixed: 'left' as const,
-    },
-    {
-      field: 'mblNum',
-      title: '主提单号',
-      width: 150,
-    },
-    {
-      field: 'bizType',
-      title: '业务类型',
-      width: 100,
-      formatter: ({ row }: any) => {
-        const typeMap: Record<number, string> = {
-          0: '海运出口',
-          1: '海运进口',
-          2: '空运出口',
-        };
-        return typeMap[row.bizType] || '-';
+      fieldName: 'paySide',
+      label: '收付方',
+      component: 'Select',
+      componentProps: {
+        options: PAY_SIDE_OPTIONS,
+        allowClear: true,
+        placeholder: '请选择收付方',
+        style: { width: '100%' },
       },
     },
     {
-      field: 'client',
-      title: '委托单位',
-      width: 150,
-      formatter: ({ row }: any) => {
-        return row.client?.name || '-';
+      fieldName: 'settlementStatus',
+      label: '结算状态',
+      component: 'Select',
+      componentProps: {
+        options: SETTLEMENT_STATUS_OPTIONS,
+        allowClear: true,
+        placeholder: '请选择结算状态',
+        style: { width: '100%' },
       },
     },
     {
-      field: 'pol',
-      title: '起运港',
-      width: 120,
-      formatter: ({ row }: any) => {
-        return row.pol ? `${row.pol.cnName}(${row.pol.code})` : '-';
+      fieldName: 'invoiceStatus',
+      label: '发票状态',
+      component: 'Select',
+      componentProps: {
+        options: INVOICE_STATUS_OPTIONS,
+        allowClear: true,
+        placeholder: '请选择发票状态',
+        style: { width: '100%' },
       },
     },
     {
-      field: 'pod',
-      title: '目的港',
-      width: 120,
-      formatter: ({ row }: any) => {
-        return row.pod ? `${row.pod.cnName}(${row.pod.code})` : '-';
+      fieldName: 'isStatemented',
+      label: '是否对账',
+      component: 'Switch',
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
       },
     },
     {
-      field: 'vessel',
-      title: '船名',
-      width: 150,
-    },
-    {
-      field: 'innerVoyno',
-      title: '航次',
-      width: 100,
-    },
-    {
-      field: 'ctns',
-      title: '箱型箱量',
-      width: 150,
-      formatter: ({ row }: any) => {
-        if (!row.ctns || row.ctns.length === 0) return '-';
-        return row.ctns
-          .map((ctn: any) => `${ctn.ctnCode.ctnName}×${ctn.count}`)
-          .join(', ');
+      fieldName: 'feeLocked',
+      label: '费用锁定',
+      component: 'Switch',
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
       },
-    },
-    {
-      field: 'bizDate',
-      title: '业务日期',
-      width: 120,
-    },
-    {
-      field: 'accountDate',
-      title: '会计期间',
-      width: 120,
-      // formatter: ({ row }: any) => {
-      //   return row.accountDate ? dayjs(row.accountDate).format('YYYY-MM') : '-';
-      // },
-    },
-    {
-      field: 'currencies',
-      title: '币别明细',
-      minWidth: 300,
-      formatter: ({ row }: any) => {
-        if (!row.currencies || row.currencies.length === 0) return '-';
-        return row.currencies
-          .map(
-            (curr: any) =>
-              `${curr.currency.code}:应收${curr.receivable.toFixed(2)}/应付${curr.payable.toFixed(2)}/利润${curr.profit.toFixed(2)}`,
-          )
-          .join('; ');
-      },
-    },
-    {
-      field: 'totalReceivable',
-      title: '合计应收(CNY)',
-      width: 140,
-      align: 'right' as const,
-      formatter: ({ row }: any) => {
-        return row.totalReceivable?.toFixed(2) || '0.00';
-      },
-    },
-    {
-      field: 'totalPayable',
-      title: '合计应付(CNY)',
-      width: 140,
-      align: 'right' as const,
-      formatter: ({ row }: any) => {
-        return row.totalPayable?.toFixed(2) || '0.00';
-      },
-    },
-    {
-      field: 'totalProfit',
-      title: '合计利润(CNY)',
-      width: 140,
-      align: 'right' as const,
-      formatter: ({ row }: any) => {
-        return row.totalProfit?.toFixed(2) || '0.00';
-      },
-    },
-    {
-      field: 'totalProfitRate',
-      title: '利润率(%)',
-      width: 120,
-      align: 'right' as const,
-      formatter: ({ row }: any) => {
-        return row.totalProfitRate != null
-          ? (row.totalProfitRate * 100).toFixed(2) + '%'
-          : '-';
-      },
-    },
-    {
-      field: 'action',
-      title: '操作',
-      width: 100,
-      fixed: 'right' as const,
-      slots: { default: 'action' },
     },
   ];
 }
@@ -458,6 +384,11 @@ export function getHotColumns() {
       width: 150,
     },
     {
+      data: 'settlement',
+      title: '结算对象',
+      width: 150,
+    },
+    {
       data: 'pol',
       title: '起运港',
       width: 120,
@@ -513,8 +444,8 @@ export function getHotColumns() {
       },
     },
     {
-      data: 'accountDate',
-      title: '会计期间',
+      data: 'settlementDate',
+      title: '结算日期',
       width: 120,
       renderer: (
         instance: any,
@@ -525,7 +456,30 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = safeFormatDateForRenderer(value, 'month');
+        td.innerHTML = safeFormatDateForRenderer(value, 'date');
+        return td;
+      },
+    },
+    {
+      data: 'overdueDays',
+      title: '逾期天数',
+      width: 100,
+    },
+    {
+      data: 'invoiceNos',
+      title: '发票号',
+      width: 200,
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        // value 是数组
+        td.innerHTML = Array.isArray(value) ? value.join(', ') : '-';
         return td;
       },
     },
@@ -566,8 +520,8 @@ export function getHotColumns() {
       },
     },
     {
-      data: 'totalPayable',
-      title: '合计应付(CNY)',
+      data: 'totalReceived',
+      title: '合计已收(CNY)',
       width: 140,
       className: 'htRight',
       renderer: (
@@ -584,8 +538,8 @@ export function getHotColumns() {
       },
     },
     {
-      data: 'totalProfit',
-      title: '合计利润(CNY)',
+      data: 'totalUnReceived',
+      title: '合计欠费(CNY)',
       width: 140,
       className: 'htRight',
       renderer: (
@@ -598,80 +552,8 @@ export function getHotColumns() {
         cellProperties: any,
       ) => {
         td.innerHTML = (parseFloat(value) || 0).toFixed(2);
-        return td;
-      },
-    },
-    {
-      data: 'totalProfitRate',
-      title: '利润率(%)',
-      width: 120,
-      className: 'htRight',
-      renderer: (
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) => {
-        td.innerHTML =
-          value != null ? (parseFloat(value) * 100).toFixed(2) + '%' : '-';
         return td;
       },
     },
   ];
-}
-
-/**
- * 计算统计汇总
- */
-export function calculateStatistics(data: ReportApi.ProfitReportDto[]) {
-  const stats = {
-    totalReceivable: 0,
-    totalPayable: 0,
-    totalProfit: 0,
-    currencyStats: new Map<
-      string,
-      { receivable: number; payable: number; profit: number }
-    >(),
-  };
-
-  data.forEach((item) => {
-    stats.totalReceivable += item.totalReceivable || 0;
-    stats.totalPayable += item.totalPayable || 0;
-    stats.totalProfit += item.totalProfit || 0;
-
-    // 按币别统计
-    item.currencies?.forEach((currency) => {
-      const code = currency.currency?.code || 'UNKNOWN';
-      if (!stats.currencyStats.has(code)) {
-        stats.currencyStats.set(code, { receivable: 0, payable: 0, profit: 0 });
-      }
-      const stat = stats.currencyStats.get(code)!;
-      stat.receivable += currency.receivable || 0;
-      stat.payable += currency.payable || 0;
-      stat.profit += currency.profit || 0;
-    });
-  });
-
-  return {
-    totalReceivable: stats.totalReceivable.toFixed(2),
-    totalPayable: stats.totalPayable.toFixed(2),
-    totalProfit: stats.totalProfit.toFixed(2),
-    totalProfitRate:
-      stats.totalPayable !== 0
-        ? ((stats.totalProfit / Math.abs(stats.totalPayable)) * 100).toFixed(
-            2,
-          ) + '%'
-        : '-',
-    currencies: Array.from(stats.currencyStats.entries()).map(
-      ([code, stat]) => ({
-        code,
-        receivable: stat.receivable.toFixed(2),
-        payable: stat.payable.toFixed(2),
-        profit: stat.profit.toFixed(2),
-      }),
-    ),
-  };
 }
