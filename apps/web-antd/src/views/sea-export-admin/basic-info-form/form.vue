@@ -102,6 +102,7 @@ import {
   toSelectedItems,
 } from './sea-export-detail-mapper';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
+import BriefingModal from '../modules/briefing-modal.vue';
 import {
   CARGO_TYPE,
   createEmptyDgValues,
@@ -1121,6 +1122,57 @@ const collectCurrentFormValues = async () => {
     ...cargoReeferValues,
   } as Record<string, any>;
 };
+const getBriefingFormData = async () => {
+  try {
+    // 并行获取所有表单的数据
+    const [
+      partyValues,
+      basicValues,
+      shipmentValues,
+      portValues,
+      cargoTypeValues,
+      cargoMainValues,
+      cargoMetricsValues,
+      cargoRemarkValues,
+      cargoDgValues,
+      cargoReeferValues,
+    ] = await Promise.all([
+      partyInfoFormApi.getValues(),
+      basicInfoFormApi.getValues(),
+      shipmentFormApi.getValues(),
+      portFormApi.getValues(),
+      cargoTypeInlineFormApi.getValues(),
+      cargoMainFormApi.getValues(),
+      cargoMetricsFormApi.getValues(),
+      cargoRemarkFormApi.getValues(),
+      cargoDgFormApi.getValues(),
+      cargoReeferFormApi.getValues(),
+    ]);
+
+    // 合并所有表单数据
+    const allValues = {
+      ...partyValues,
+      ...basicValues,
+      ...shipmentValues,
+      ...portValues,
+      ...cargoTypeValues,
+      ...cargoMainValues,
+      ...cargoMetricsValues,
+      ...cargoRemarkValues,
+      ...cargoDgValues,
+      ...cargoReeferValues,
+      // 添加一些额外的只读信息
+      commissionNum: entrustReadonlyInfo.value.commissionNum,
+      accountDate: entrustReadonlyInfo.value.accountDate,
+      settlementDate: entrustReadonlyInfo.value.settlementDate,
+    };
+
+    return allValues;
+  } catch (error) {
+    console.error('获取表单数据失败:', error);
+    return {};
+  }
+};
 const getMissingRequiredLabelsForServiceType = async (serviceType: number) => {
   const requiredProps =
     serviceTypeRequiredPropValues.value.get(serviceType) ?? [];
@@ -2064,6 +2116,35 @@ const handleAiRecognize = () => {
 const handleAiExtractFile = async (file: File) => {
   const ok = await recognizeAiFile(file);
   if (ok) aiExtractModalOpen.value = false;
+};
+
+// 简报相关状态
+const briefingModalOpen = ref(false);
+const briefingFormData = ref<Record<string, any>>({});
+
+const handleOpenBriefing = async () => {
+  if (isOrderReadonly.value) return;
+  // 在打开弹窗前获取最新的表单数据
+  briefingFormData.value = await getBriefingFormData();
+  briefingModalOpen.value = true;
+};
+const handleBriefingConfirm = async (content: string) => {
+  if (!content) {
+    message.warning('简报内容为空');
+    return;
+  }
+
+  // 将内容填充到备注字段或其他合适的地方
+  try {
+    // 这里可以根据实际需求决定将内容填充到哪里
+    // 例如：填充到 remark 字段，或者显示一个提示让用户手动复制
+    await navigator.clipboard.writeText(content);
+    message.success('简报内容已复制到剪贴板');
+  } catch (error) {
+    console.error('复制失败:', error);
+
+    message.error('复制失败，请手动复制');
+  }
 };
 
 const loadEditData = async (): Promise<
@@ -3306,6 +3387,18 @@ defineExpose({
                     <Button
                       size="small"
                       class="flex items-center justify-center"
+                      :disabled="isOrderReadonly"
+                      @click="handleOpenBriefing"
+                    >
+                      <IconifyIcon
+                        icon="mdi:file-document-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">简报</span>
+                    </Button>
+                    <Button
+                      size="small"
+                      class="flex items-center justify-center"
                       :loading="aiRecognizing"
                       :disabled="isOrderReadonly"
                       @click="handleAiRecognize"
@@ -4122,6 +4215,12 @@ defineExpose({
       v-model:open="aiExtractModalOpen"
       :recognizing="aiRecognizing"
       @file="handleAiExtractFile"
+    />
+    <BriefingModal
+      v-model:open="briefingModalOpen"
+      :biz-type="0"
+      :form-data="briefingFormData"
+      @confirm="handleBriefingConfirm"
     />
     <TerminalSchedulePickerModal
       v-model:open="terminalSchedulePickerOpen"
