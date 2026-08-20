@@ -82,7 +82,8 @@
     "pinyin-pro": "^3.28.1",
     "three": "^0.183.2",
     "vue": "catalog:",
-    "vue-router": "catalog:"
+    "vue-router": "catalog:",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/dompurify": "^3.2.0",

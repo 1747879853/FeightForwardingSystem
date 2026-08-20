@@ -215,15 +215,6 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: '请选择起运港',
         style: { width: '100%' },
-        onChange: (value: any, option: any) => {
-          // 自动设置 polIsSeaPort
-          if (option) {
-            const formActions = (window as any).__profitReportFormActions;
-            if (formActions) {
-              formActions.setFieldValue('polIsSeaPort', option.isSeaPort);
-            }
-          }
-        },
       },
     },
     {
@@ -254,27 +245,7 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: '请选择目的港',
         style: { width: '100%' },
-        onChange: (value: any, option: any) => {
-          // 自动设置 podIsSeaPort
-          if (option) {
-            const formActions = (window as any).__profitReportFormActions;
-            if (formActions) {
-              formActions.setFieldValue('podIsSeaPort', option.isSeaPort);
-            }
-          }
-        },
       },
-    },
-    // 隐藏字段：用于存储港口的 IsSeaPort 值
-    {
-      fieldName: 'polIsSeaPort',
-      label: '起运港是否海运港',
-      component: 'Input',
-    },
-    {
-      fieldName: 'podIsSeaPort',
-      label: '目的港是否海运港',
-      component: 'Input',
     },
   ];
 }
@@ -357,17 +328,14 @@ export function useProfitReportColumns() {
       field: 'bizDate',
       title: '业务日期',
       width: 120,
-      formatter: ({ row }: any) => {
-        return row.bizDate ? dayjs(row.bizDate).format('YYYY-MM-DD') : '-';
-      },
     },
     {
       field: 'accountDate',
       title: '会计期间',
       width: 120,
-      formatter: ({ row }: any) => {
-        return row.accountDate ? dayjs(row.accountDate).format('YYYY-MM') : '-';
-      },
+      // formatter: ({ row }: any) => {
+      //   return row.accountDate ? dayjs(row.accountDate).format('YYYY-MM') : '-';
+      // },
     },
     {
       field: 'currencies',
@@ -429,6 +397,39 @@ export function useProfitReportColumns() {
       slots: { default: 'action' },
     },
   ];
+}
+
+/**
+ * 安全的日期格式化函数（用于Handsontable渲染器）
+ */
+function safeFormatDateForRenderer(
+  dateStr: string | undefined | null,
+  format: 'date' | 'month' = 'date',
+): string {
+  if (!dateStr) {
+    return '-';
+  }
+
+  // 尝试解析日期
+  const date = new Date(dateStr);
+
+  // 检查是否为有效日期
+  if (isNaN(date.getTime())) {
+    return '-';
+  }
+
+  try {
+    if (format === 'month') {
+      // 使用标准格式 YYYY-MM，避免末尾多余的斜杠
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${year}/${month}`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  } catch (error) {
+    return '-';
+  }
 }
 
 /**
@@ -507,7 +508,7 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = value ? dayjs(value).format('YYYY-MM-DD') : '-';
+        td.innerHTML = safeFormatDateForRenderer(value, 'date');
         return td;
       },
     },
@@ -524,7 +525,7 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = value ? dayjs(value).format('YYYY-MM') : '-';
+        td.innerHTML = safeFormatDateForRenderer(value, 'month');
         return td;
       },
     },
