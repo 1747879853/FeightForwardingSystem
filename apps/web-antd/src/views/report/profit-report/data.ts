@@ -1,7 +1,8 @@
-import type { VbenFormSchema } from '@vben/common-ui';
 import type { ReportApi } from '#/api/system/report';
 
-import dayjs from 'dayjs';
+import type { VbenFormSchema } from '#/adapter/form';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import SmartPortSelect from './modules/SmartPortSelect.vue';
 
 /**
  * 业务类型选项
@@ -69,28 +70,8 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
     {
       fieldName: 'clientId',
       label: '委托单位',
-      component: 'ApiSelect',
+      component: ClientSelect,
       componentProps: {
-        api: async () => {
-          try {
-            const { getClientPagedList } =
-              await import('#/api/sea-export/client-admin');
-            const result = await getClientPagedList({
-              PageIndex: 1,
-              PageSize: 1000,
-            });
-            return (result.items || []).map((item: any) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          } catch (error) {
-            console.error('加载客户列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
         placeholder: '请选择委托单位',
         style: { width: '100%' },
       },
@@ -160,92 +141,24 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      fieldName: 'orgId',
-      label: '所属组织',
-      component: 'ApiTreeSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getOrganizationUnitTree } =
-              await import('#/api/system/organization-unit');
-            const result = await getOrganizationUnitTree();
-            return result;
-          } catch (error) {
-            console.error('加载组织树失败:', error);
-            return [];
-          }
-        },
-        fieldNames: {
-          label: 'name',
-          value: 'id',
-          children: 'children',
-        },
-        showSearch: true,
-        treeDefaultExpandAll: false,
-        allowClear: true,
-        placeholder: '请选择组织',
-        style: { width: '100%' },
-      },
-    },
-    {
       fieldName: 'polId',
       label: '起运港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择起运港',
         style: { width: '100%' },
-      },
+        bizType: formValues.bizType,
+      }),
     },
     {
       fieldName: 'podId',
       label: '目的港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择目的港',
         style: { width: '100%' },
-      },
+        bizType: formValues.bizType,
+      }),
     },
   ];
 }
@@ -433,19 +346,21 @@ function safeFormatDateForRenderer(
 }
 
 /**
- * 获取 Handsontable 列配置
+ * 获取 Handsontable 列配置（基础列）
  */
-export function getHotColumns() {
+export function getBaseHotColumns() {
   return [
     {
       data: 'commissionNum',
       title: '委托编号',
       width: 150,
+      fixed: 'left' as const, // 固定在左侧
     },
     {
       data: 'mblNum',
       title: '主提单号',
       width: 150,
+      fixed: 'left' as const, // 固定在左侧
     },
     {
       data: 'bizType',
@@ -529,10 +444,24 @@ export function getHotColumns() {
         return td;
       },
     },
-    {
-      data: 'currencies',
-      title: '币别明细',
-      width: 300,
+  ];
+}
+
+/**
+ * 获取币别明细列配置
+ */
+export function getCurrencyColumns(currencyCodes: string[]) {
+  const currencyColumns: any[] = [];
+
+  // 按币别代码排序，确保列顺序一致
+  const sortedCodes = [...currencyCodes].sort();
+
+  sortedCodes.forEach((code) => {
+    currencyColumns.push({
+      data: `${code}_receivable`,
+      title: `${code}应收`,
+      width: 120,
+      className: 'htRight',
       renderer: (
         instance: any,
         td: HTMLTableCellElement,
@@ -542,11 +471,58 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
-        td.innerHTML = value || '-';
+        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
         return td;
       },
-    },
+    });
+
+    currencyColumns.push({
+      data: `${code}_payable`,
+      title: `${code}应付`,
+      width: 120,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        return td;
+      },
+    });
+
+    currencyColumns.push({
+      data: `${code}_profit`,
+      title: `${code}利润`,
+      width: 120,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        return td;
+      },
+    });
+  });
+
+  return currencyColumns;
+}
+
+/**
+ * 获取合计列配置
+ */
+export function getTotalColumns() {
+  return [
     {
       data: 'totalReceivable',
       title: '合计应收(CNY)',
@@ -621,6 +597,13 @@ export function getHotColumns() {
       },
     },
   ];
+}
+
+/**
+ * 获取 Handsontable 列配置（兼容旧版本）
+ */
+export function getHotColumns() {
+  return [...getBaseHotColumns(), ...getTotalColumns()];
 }
 
 /**

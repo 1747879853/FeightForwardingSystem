@@ -11,11 +11,19 @@ import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
 import { useVbenForm } from '#/adapter/form';
 
-import { Button, Card, message, Tag } from 'ant-design-vue';
+import { Button, Card, message, Tag, Dropdown } from 'ant-design-vue';
 
 import { getProfitReportList } from '#/api/system/report';
 
-import { useProfitReportFormSchema, getHotColumns } from './data';
+import {
+  useProfitReportFormSchema,
+  getBaseHotColumns,
+  getCurrencyColumns,
+  getTotalColumns,
+} from './data';
+
+// 导入列配置组件
+import ColumnConfigModal from './modules/ColumnConfigModal.vue';
 
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
@@ -48,113 +56,208 @@ const expandedGroups = ref<Set<string>>(new Set()); // 展开的分组键集合
 // 表单配置
 const formSchema = useProfitReportFormSchema();
 
-// Handsontable 列配置
-const hotColumns = getHotColumns();
+// 存储所有出现的币别代码
+const allCurrencyCodes = ref<Set<string>>(new Set());
+
+// 列配置相关状态
+const columnConfigVisible = ref(false);
+const columnConfigs = ref<any[]>([]);
+const defaultColumnConfigs = ref<any[]>([]);
+
+// Handsontable 基础列配置
+const baseHotColumns = getBaseHotColumns();
+// Handsontable 合计列配置
+const totalHotColumns = getTotalColumns();
+
+// 动态列配置计算属性
+const dynamicHotColumns = computed(() => {
+  return [
+    ...baseHotColumns,
+    ...getCurrencyColumns(Array.from(allCurrencyCodes.value)),
+    ...totalHotColumns,
+  ];
+});
 
 // 获取列标题映射（用于表头显示）
-const columnTitleMap = hotColumns.reduce(
-  (map, col) => {
-    map[col.data] = col.title;
-    return map;
+const columnTitleMap = computed(() => {
+  const columns = dynamicHotColumns.value;
+  return columns.reduce(
+    (map, col) => {
+      map[col.data] = col.title;
+      return map;
+    },
+    {} as Record<string, string>,
+  );
+});
+
+// 更新数值列字段（用于累加和右对齐）
+const numericColumns = computed(() => {
+  const cols = new Set([
+    'totalReceivable',
+    'totalPayable',
+    'totalProfit',
+    'totalProfitRate',
+  ]);
+
+  // 添加所有币别相关的数值列
+  allCurrencyCodes.value.forEach((code) => {
+    cols.add(`${code}_receivable`);
+    cols.add(`${code}_payable`);
+    cols.add(`${code}_profit`);
+  });
+
+  return cols;
+});
+
+// 初始化默认列配置
+function initDefaultColumnConfigs() {
+  const allCols = dynamicHotColumns.value;
+  defaultColumnConfigs.value = allCols.map((col, index) => ({
+    data: col.data,
+    title: col.title,
+    visible: true,
+    fixed: col.fixed || false,
+    order: index,
+  }));
+  columnConfigs.value = [...defaultColumnConfigs.value];
+}
+
+// 应用列配置
+function applyColumnConfig(configs: any[]) {
+  columnConfigs.value = configs;
+
+  // 重新应用分组逻辑以使用新的列配置
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+}
+
+// 重置列配置
+function resetColumnConfig() {
+  initDefaultColumnConfigs();
+  applyColumnConfig([...defaultColumnConfigs.value]);
+}
+
+// 监听动态列变化，更新默认配置
+watch(
+  dynamicHotColumns,
+  () => {
+    initDefaultColumnConfigs();
   },
-  {} as Record<string, string>,
+  { immediate: true },
 );
 
-// 数值列字段（用于累加和右对齐）
-const numericColumns = new Set([
-  'totalReceivable',
-  'totalPayable',
-  'totalProfit',
-  'totalProfitRate',
-]);
+// Handsontable 配置（改为计算属性）
+const hotSettings = computed(() => {
+  // 获取可见列并按order排序
+  const visibleColumns = [...columnConfigs.value]
+    .filter((col) => col.visible)
+    .sort((a, b) => a.order - b.order);
 
-// Handsontable 配置
-const hotSettings = {
-  data: tableData.value,
-  columns: [] as any[], // 动态设置
-  rowHeaders: true,
-  colHeaders: true,
-  height: '100%', // 使用百分比高度，配合 CSS 实现自适应
-  width: '100%',
-  stretchH: 'all',
-  manualColumnResize: true,
-  manualRowResize: true,
-  contextMenu: false,
-  readOnly: true,
-  licenseKey: 'non-commercial-and-evaluation',
-  className: 'htCenter htMiddle',
-  rowHeight: 28,
-  autoWrapRow: false,
-  autoWrapCol: false,
-  afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-    TH.style.backgroundColor = '#1890ff'; // 蓝色背景
-    TH.style.color = '#ffffff'; // 白色文字
-    TH.style.fontWeight = '600';
-    TH.style.textAlign = 'center';
+  // 计算固定列数量
+  const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
+  const rightFixedColumns = visibleColumns.filter(
+    (col) => col.fixed === 'right',
+  );
 
-    // 如果是分组列（第一列且有分组），不添加列分组点击事件
-    if (groupColumns.value.length > 0 && col === 0) {
-      TH.style.cursor = 'default';
-      TH.title = '';
-      return;
-    }
+  const fixedColumnsLeft = leftFixedColumns.length;
+  const fixedColumnsRight = rightFixedColumns.length;
 
-    TH.style.cursor = 'pointer';
-    TH.title = '点击添加到分组';
+  return {
+    data: tableData.value,
+    columns: visibleColumns.map((col) => {
+      const isNumeric = numericColumns.value.has(col.data);
+      return {
+        ...col,
+        className: isNumeric ? 'htRight' : 'htLeft',
+      };
+    }),
+    rowHeaders: true,
+    colHeaders: true,
+    height: '100%', // 使用百分比高度，配合 CSS 实现自适应
+    width: '100%',
+    stretchH: 'all',
+    manualColumnResize: true,
+    manualRowResize: true,
+    contextMenu: false,
+    readOnly: true,
+    licenseKey: 'non-commercial-and-evaluation',
+    className: 'htCenter htMiddle',
+    rowHeight: 28,
+    autoWrapRow: false,
+    autoWrapCol: false,
+    fixedColumnsLeft: fixedColumnsLeft,
+    fixedColumnsRight: fixedColumnsRight,
+    afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
+      TH.style.backgroundColor = '#1890ff'; // 蓝色背景
+      TH.style.color = '#ffffff'; // 白色文字
+      TH.style.fontWeight = '600';
+      TH.style.textAlign = 'center';
 
-    // 添加点击事件监听器
-    const handleClick = () => {
-      // 从当前显示的列配置中获取列数据
-      const currentColumns = currentColumnsRef.value;
-      if (col >= 0 && col < currentColumns.length) {
-        const columnData = currentColumns[col]?.data;
-        // 确保不是分组列的数据字段
-        if (
-          columnData &&
-          columnData !== '_groupDisplay' &&
-          !groupColumns.value.includes(columnData)
-        ) {
-          groupColumns.value.push(columnData);
-          if (originalData.value.length > 0) {
-            applyGrouping([...originalData.value]);
+      // 如果是分组列（第一列且有分组），不添加列分组点击事件
+      if (groupColumns.value.length > 0 && col === 0) {
+        TH.style.cursor = 'default';
+        TH.title = '';
+        return;
+      }
+
+      TH.style.cursor = 'pointer';
+      TH.title = '点击添加到分组';
+
+      // 添加点击事件监听器
+      const handleClick = () => {
+        // 从当前显示的列配置中获取列数据
+        const currentColumns = currentColumnsRef.value;
+        if (col >= 0 && col < currentColumns.length) {
+          const columnData = currentColumns[col]?.data;
+          // 确保不是分组列的数据字段
+          if (
+            columnData &&
+            columnData !== '_groupDisplay' &&
+            !groupColumns.value.includes(columnData)
+          ) {
+            groupColumns.value.push(columnData);
+            if (originalData.value.length > 0) {
+              applyGrouping([...originalData.value]);
+            }
           }
         }
+      };
+
+      TH.onclick = handleClick;
+    },
+    //afterOnCellMouseDown: onAfterOnCellMouseDown,
+    afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
+    // 添加单元格渲染后的事件处理（用于分组列的点击）
+    afterRenderer: (
+      TD: HTMLTableCellElement,
+      row: number,
+      col: number,
+      prop: string,
+      value: any,
+      cellProperties: any,
+    ) => {
+      const rowData = tableData.value[row];
+
+      // 为合计行添加data属性
+      if (rowData?._isTotalRow) {
+        TD.parentElement?.setAttribute('data-total-row', 'true');
+        TD.style.fontWeight = 'bold';
+        return;
       }
-    };
 
-    TH.onclick = handleClick;
-  },
-  //afterOnCellMouseDown: onAfterOnCellMouseDown,
-  afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
-  // 添加单元格渲染后的事件处理（用于分组列的点击）
-  afterRenderer: (
-    TD: HTMLTableCellElement,
-    row: number,
-    col: number,
-    prop: string,
-    value: any,
-    cellProperties: any,
-  ) => {
-    const rowData = tableData.value[row];
-
-    // 为合计行添加data属性
-    if (rowData?._isTotalRow) {
-      TD.parentElement?.setAttribute('data-total-row', 'true');
-      TD.style.fontWeight = 'bold';
-      return;
-    }
-
-    if (col === 0 && groupColumns.value.length > 0) {
-      // 分组列，添加点击事件
-      if (rowData?._isGroupRow) {
-        TD.onclick = () => {
-          toggleGroupExpand(rowData._groupKey);
-        };
-        TD.style.cursor = 'pointer';
+      if (col === 0 && groupColumns.value.length > 0) {
+        // 分组列，添加点击事件
+        if (rowData?._isGroupRow) {
+          TD.onclick = () => {
+            toggleGroupExpand(rowData._groupKey);
+          };
+          TD.style.cursor = 'pointer';
+        }
       }
-    }
-  },
-};
+    },
+  };
+});
 
 /**
  * 更新表格高度
@@ -302,11 +405,23 @@ async function handleQuery(formData?: any) {
     const transformedData = transformDataForHotTable(dataList);
 
     originalData.value = [...transformedData];
+
+    // 更新列配置
+    currentColumnsRef.value = getColumnsWithAlignment();
+    hotSettings.columns = currentColumnsRef.value;
+
     applyGrouping(transformedData);
 
     // 数据加载并渲染后，重新计算表格高度
     nextTick(() => {
       updateTableHeight();
+
+      // 确保Handsontable使用最新的列配置
+      if (hotTableRef.value && hotTableRef.value.hotInstance) {
+        hotTableRef.value.hotInstance.updateSettings({
+          columns: hotSettings.columns,
+        });
+      }
     });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
@@ -411,31 +526,69 @@ function safeFormatDate(
 }
 
 /**
- * 转换数据以适应 Handsontable
+ * 转换数据以适应 Handsontable（支持币别明细拆分）
  */
 function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
-  return data.map((item) => ({
-    commissionNum: item.commissionNum,
-    mblNum: item.mblNum,
-    bizType: formatBizType(item.bizType),
-    client: item.client?.name || '-',
-    pol: item.pol ? item.pol.code : '-',
-    pod: item.pod ? item.pod.code : '-',
-    vessel: item.vessel || '-',
-    innerVoyno: item.innerVoyno || '-',
-    ctns: formatCtns(item.ctns),
-    bizDate: safeFormatDate(item.bizDate, 'date'),
-    accountDate: safeFormatDate(item.accountDate, 'month'),
-    currencies: formatCurrencies(item.currencies),
-    totalReceivable: item.totalReceivable?.toFixed(2) || '0.00',
-    totalPayable: item.totalPayable?.toFixed(2) || '0.00',
-    totalProfit: item.totalProfit?.toFixed(2) || '0.00',
-    totalProfitRate:
-      item.totalProfitRate != null
-        ? `${(item.totalProfitRate * 100).toFixed(2)}%`
-        : '-',
-    _originalData: item,
-  }));
+  // 清空币别代码集合
+  allCurrencyCodes.value = new Set();
+
+  // 收集所有币别代码
+  data.forEach((item) => {
+    if (item.currencies && item.currencies.length > 0) {
+      item.currencies.forEach((curr) => {
+        if (curr.currency?.code) {
+          allCurrencyCodes.value.add(curr.currency.code);
+        }
+      });
+    }
+  });
+
+  const currencyCodes = Array.from(allCurrencyCodes.value).sort();
+
+  return data.map((item) => {
+    const rowData: any = {
+      commissionNum: item.commissionNum,
+      mblNum: item.mblNum,
+      bizType: formatBizType(item.bizType),
+      client: item.client?.name || '-',
+      pol: item.pol ? item.pol.code : '-',
+      pod: item.pod ? item.pod.code : '-',
+      vessel: item.vessel || '-',
+      innerVoyno: item.innerVoyno || '-',
+      ctns: formatCtns(item.ctns),
+      bizDate: safeFormatDate(item.bizDate, 'date'),
+      accountDate: safeFormatDate(item.accountDate, 'month'),
+      totalReceivable: item.totalReceivable?.toFixed(2) || '0.00',
+      totalPayable: item.totalPayable?.toFixed(2) || '0.00',
+      totalProfit: item.totalProfit?.toFixed(2) || '0.00',
+      totalProfitRate:
+        item.totalProfitRate != null
+          ? `${(item.totalProfitRate * 100).toFixed(2)}%`
+          : '-',
+      _originalData: item,
+    };
+
+    // 初始化所有币别字段为空值
+    currencyCodes.forEach((code) => {
+      rowData[`${code}_receivable`] = '0.00';
+      rowData[`${code}_payable`] = '0.00';
+      rowData[`${code}_profit`] = '0.00';
+    });
+
+    // 填充实际的币别数据
+    if (item.currencies && item.currencies.length > 0) {
+      item.currencies.forEach((curr) => {
+        if (curr.currency?.code) {
+          const code = curr.currency.code;
+          rowData[`${code}_receivable`] = (curr.receivable || 0).toFixed(2);
+          rowData[`${code}_payable`] = (curr.payable || 0).toFixed(2);
+          rowData[`${code}_profit`] = (curr.profit || 0).toFixed(2);
+        }
+      });
+    }
+
+    return rowData;
+  });
 }
 
 /**
@@ -505,8 +658,9 @@ function calculateTotalRow(): any {
     _isTotalRow: true, // 标记为合计行
   };
 
-  // 初始化所有字段为空字符串
-  hotColumns.forEach((col) => {
+  // 初始化所有可见字段为空字符串
+  const visibleColumns = columnConfigs.value.filter((col) => col.visible);
+  visibleColumns.forEach((col) => {
     totalRow[col.data] = '';
   });
 
@@ -515,8 +669,8 @@ function calculateTotalRow(): any {
     totalRow._groupDisplay = '合计';
   } else {
     // 无分组时，在第一列显示"合计"
-    if (hotColumns.length > 0) {
-      totalRow[hotColumns[0].data] = '合计';
+    if (visibleColumns.length > 0) {
+      totalRow[visibleColumns[0].data] = '合计';
     }
   }
 
@@ -524,7 +678,13 @@ function calculateTotalRow(): any {
   const originalDataArray = originalData.value;
 
   // 对数值列进行合计
-  numericColumns.forEach((colName) => {
+  numericColumns.value.forEach((colName) => {
+    // 只处理可见的数值列
+    const isVisible = columnConfigs.value.some(
+      (col) => col.data === colName && col.visible,
+    );
+    if (!isVisible) return;
+
     let sum = 0;
     let hasData = false;
 
@@ -595,13 +755,14 @@ function buildTreeStructure(
     aggregatedRow[currentGroupCol] = groupName;
 
     // 聚合其他列的数据
-    hotColumns.forEach((colConfig) => {
+    const visibleColumns = columnConfigs.value.filter((col) => col.visible);
+    visibleColumns.forEach((colConfig) => {
       const col = colConfig.data;
       if (col === currentGroupCol) return; // 分组列已经设置
 
       const values = items.map((item) => item[col]);
 
-      if (numericColumns.has(col)) {
+      if (numericColumns.value.has(col)) {
         // 数值列：累加
         let sum = 0;
         values.forEach((val) => {
@@ -639,12 +800,12 @@ function buildTreeStructure(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(数量)"
+          // 只有一个唯一值，显示为 "값(번호)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -725,17 +886,17 @@ function buildFullExportTree(
     // 创建聚合后的分组行数据
     const aggregatedRow: any = {};
 
-    // 设置分组列的값
+    // 设置分组列的值
     aggregatedRow[currentGroupCol] = groupName;
 
-    // 聚合其他列的数据
-    hotColumns.forEach((colConfig) => {
+    // 聚合其他列的数据（使用所有列，包括隐藏列，用于导出）
+    dynamicHotColumns.value.forEach((colConfig) => {
       const col = colConfig.data;
       if (col === currentGroupCol) return; // 分组列已经设置
 
       const values = items.map((item) => item[col]);
 
-      if (numericColumns.has(col)) {
+      if (numericColumns.value.has(col)) {
         // 数值列：累加
         let sum = 0;
         values.forEach((val) => {
@@ -818,8 +979,8 @@ function buildFullExportTree(
 
 // 获取带对齐样式的列配置
 function getColumnsWithAlignment() {
-  return hotColumns.map((col) => {
-    const isNumeric = numericColumns.has(col.data);
+  return dynamicHotColumns.value.map((col) => {
+    const isNumeric = numericColumns.value.has(col.data);
     return {
       ...col,
       className: isNumeric ? 'htRight' : 'htLeft',
@@ -895,15 +1056,18 @@ function applyGrouping(data: any[]) {
     data.length,
   );
 
+  // 获取可见的列配置
+  const visibleColumnConfigs = columnConfigs.value.filter((col) => col.visible);
+
   let columnsConfig = [];
 
   if (groupColumns.value.length > 0) {
     // 如果有分组，在最前面添加分组列，并过滤掉已用于分组的列
     const groupedColumnSet = new Set(groupColumns.value);
-    const filteredColumns = hotColumns
+    const filteredColumns = visibleColumnConfigs
       .filter((col) => !groupedColumnSet.has(col.data))
       .map((col) => {
-        const isNumeric = numericColumns.has(col.data);
+        const isNumeric = numericColumns.value.has(col.data);
         return {
           ...col,
           className: isNumeric ? 'htRight' : 'htLeft',
@@ -912,13 +1076,18 @@ function applyGrouping(data: any[]) {
 
     columnsConfig = [createGroupColumn(), ...filteredColumns];
   } else {
-    // 无分组时显示所有列
-    columnsConfig = getColumnsWithAlignment();
+    // 无分组时显示所有可见列
+    columnsConfig = visibleColumnConfigs.map((col) => {
+      const isNumeric = numericColumns.value.has(col.data);
+      return {
+        ...col,
+        className: isNumeric ? 'htRight' : 'htLeft',
+      };
+    });
   }
 
   // 保存当前列配置
   currentColumnsRef.value = columnsConfig;
-  hotSettings.columns = columnsConfig;
 
   if (groupColumns.value.length === 0) {
     tableData.value = data.map((item) => ({
@@ -946,10 +1115,7 @@ function applyGrouping(data: any[]) {
     if (hotTableRef.value && hotTableRef.value.hotInstance) {
       try {
         hotTableRef.value.hotInstance.loadData(tableData.value);
-        // 重新设置列配置
-        hotTableRef.value.hotInstance.updateSettings({
-          columns: hotSettings.columns,
-        });
+        // 不再手动更新列配置，由计算属性处理
 
         console.log(
           'Handsontable 更新完成，当前行数:',
@@ -966,7 +1132,10 @@ function applyGrouping(data: any[]) {
 
 // 移除分组列
 function removeGroupColumn(index: number) {
-  groupColumns.value.splice(index, 1);
+  const newGroupColumns = [...groupColumns.value];
+  newGroupColumns.splice(index, 1);
+  groupColumns.value = newGroupColumns;
+
   if (originalData.value.length > 0) {
     applyGrouping([...originalData.value]);
   }
@@ -1147,6 +1316,22 @@ function handleExport() {
           <span class="ml-1 text-xs text-gray-500">{{ index + 1 }}级</span>
         </Tag>
       </div>
+      <!-- 列配置按钮 -->
+      <Dropdown
+        placement="bottomRight"
+        trigger="click"
+        :visible="columnConfigVisible"
+        @visible-change="columnConfigVisible = $event"
+      >
+        <Button size="small" class="ml-2"> 列配置 </Button>
+        <template #overlay>
+          <ColumnConfigModal
+            v-model="columnConfigVisible"
+            :columns="columnConfigs"
+            @save="applyColumnConfig"
+          />
+        </template>
+      </Dropdown>
       <!-- 导出按钮 -->
       <Button
         type="primary"
