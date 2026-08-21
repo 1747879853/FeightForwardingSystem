@@ -183,6 +183,16 @@ const hotSettings = computed(() => {
     stretchH: 'all',
     manualColumnResize: true,
     manualRowResize: true,
+
+    // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
+    manualColumnMove: true,
+
+    // ✅ 启用列排序功能 - 单击升序，再单击降序；按住 Ctrl 多列排序
+    columnSorting: {
+      indicator: true, // 显示排序指示器（箭头图标）
+      sortEmptyCells: false, // 不排序空单元格
+    },
+
     contextMenu: false,
     readOnly: true,
     licenseKey: 'non-commercial-and-evaluation',
@@ -190,8 +200,14 @@ const hotSettings = computed(() => {
     rowHeight: 28,
     autoWrapRow: false,
     autoWrapCol: false,
-    fixedColumnsLeft: fixedColumnsLeft,
-    fixedColumnsRight: fixedColumnsRight,
+
+    // ✅ 方案A：禁用固定列以启用完整的拖拽功能
+    // 原配置（已注释）：
+    // fixedColumnsLeft: fixedColumnsLeft,
+    // fixedColumnsRight: fixedColumnsRight,
+    fixedColumnsLeft: 0, // 禁用左侧固定列
+    fixedColumnsRight: 0, // 禁用右侧固定列
+
     afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
       TH.style.backgroundColor = '#1890ff'; // 蓝色背景
       TH.style.color = '#ffffff'; // 白色文字
@@ -205,30 +221,42 @@ const hotSettings = computed(() => {
         return;
       }
 
+      // 提示用户可以使用左键单击排序，右键直接添加分组
       TH.style.cursor = 'pointer';
-      TH.title = '点击添加到分组';
+      TH.title = '左键单击排序 | 右键直接添加分组';
 
-      // 添加点击事件监听器
-      const handleClick = () => {
+      // 移除自定义的双击事件，让 Handsontable 原生排序功能正常工作
+      TH.ondblclick = null;
+      TH.onclick = null;
+
+      // 添加右键菜单来添加分组（不干扰排序和拖拽）
+      TH.oncontextmenu = (e: MouseEvent) => {
+        e.preventDefault();
+
         // 从当前显示的列配置中获取列数据
         const currentColumns = currentColumnsRef.value;
         if (col >= 0 && col < currentColumns.length) {
           const columnData = currentColumns[col]?.data;
+          const columnTitle = currentColumns[col]?.title || columnData;
+
           // 确保不是分组列的数据字段
           if (
             columnData &&
             columnData !== '_groupDisplay' &&
             !groupColumns.value.includes(columnData)
           ) {
+            // ✅ 直接添加分组，无需确认弹窗
             groupColumns.value.push(columnData);
             if (originalData.value.length > 0) {
               applyGrouping([...originalData.value]);
             }
+            // 可选：显示成功提示
+            message.success(`已将 "${columnTitle}" 添加到分组`);
+          } else if (groupColumns.value.includes(columnData)) {
+            message.info('该列已在分组中，无需重复添加');
           }
         }
       };
-
-      TH.onclick = handleClick;
     },
     //afterOnCellMouseDown: onAfterOnCellMouseDown,
     afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
@@ -805,14 +833,8 @@ function calculateTotalRow(): any {
   // 基于原始数据计算合计（originalData.value 包含所有原始数据）
   const originalDataArray = originalData.value;
 
-  // 对数值列进行合计
+  // ✅ 对所有数值列进行合计（包括隐藏的币别列，确保合计完整）
   numericColumns.value.forEach((colName) => {
-    // 只处理可见的数值列
-    const isVisible = columnConfigs.value.some(
-      (col) => col.data === colName && col.visible,
-    );
-    if (!isVisible) return;
-
     let sum = 0;
     let hasData = false;
 
@@ -836,10 +858,12 @@ function calculateTotalRow(): any {
             ? `${(((totalReceivableSum - totalPayableSum) / totalPayableSum) * 100).toFixed(2)}%`
             : '-';
       } else {
-        totalRow[colName] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        // ✅ 即使值为 0.00 也要显示，不要设为空字符串
+        totalRow[colName] = formattedValue;
       }
     } else {
-      totalRow[colName] = '';
+      totalRow[colName] = '0.00';
     }
   });
 
@@ -1440,7 +1464,7 @@ function handleExport() {
       class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
       style="flex-shrink: 0; width: 100%; height: 40px"
     >
-      <span class="mr-2 text-sm text-gray-600">点击列标题添加分组：</span>
+      <span class="mr-2 text-sm text-gray-600">右键点击列标题添加分组：</span>
       <div
         v-if="groupColumns.length === 0"
         class="flex-1 text-sm text-gray-400"
@@ -1465,7 +1489,7 @@ function handleExport() {
         </Tag>
       </div>
       <!-- 列配置按钮 -->
-      <Dropdown
+      <!-- <Dropdown
         placement="bottomRight"
         trigger="click"
         :visible="columnConfigVisible"
@@ -1479,7 +1503,7 @@ function handleExport() {
             @save="applyColumnConfig"
           />
         </template>
-      </Dropdown>
+      </Dropdown> -->
       <!-- 导出按钮 -->
       <Button
         type="primary"
@@ -1591,7 +1615,8 @@ function handleExport() {
         padding: 6px 4px;
         font-weight: 600;
         vertical-align: middle;
-        cursor: pointer;
+
+        /* 移除固定的 cursor，让 Handsontable 自己控制光标样式以支持拖拽 */
       }
     }
 

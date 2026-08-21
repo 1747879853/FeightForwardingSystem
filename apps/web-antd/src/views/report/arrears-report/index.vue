@@ -77,14 +77,29 @@ const hotSettings = {
   height: '100%', // 使用百分比高度，配合 CSS 实现自适应
   width: '100%',
   stretchH: 'all',
-  manualColumnResize: true,
-  manualRowResize: true,
+
+  // ✅ 关键配置：启用所有必要的功能
+  manualColumnResize: true, // 允许调整列宽
+  manualRowResize: true, // 允许调整行高
+  manualColumnMove: true, // ✅ 允许拖拽移动列
+  manualRowMove: false, // 不允许移动行
+
+  // ✅ 启用列排序功能
+  columnSorting: {
+    indicator: true,
+    sortEmptyCells: false,
+  },
+
+  // ⚠️ 重要：contextMenu 设置为 false 可能影响某些功能
+  // 如果拖拽仍不工作，可以尝试启用 contextMenu
   contextMenu: false,
+
+  // ⚠️ readOnly 可能会影响交互，但通常不影响拖拽
   readOnly: true,
+
   licenseKey: 'non-commercial-and-evaluation',
   className: 'htCenter htMiddle',
-  rowHeight: 28, // 调整行高为28px，与字体大小13px匹配，确保有足够的垂直空间
-  // 添加自动滚动条配置
+  rowHeight: 28,
   autoWrapRow: false,
   autoWrapCol: false,
   afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
@@ -100,11 +115,18 @@ const hotSettings = {
       return;
     }
 
+    // 提示用户可以使用左键单击排序，右键菜单添加分组
     TH.style.cursor = 'pointer';
-    TH.title = '点击添加到分组';
+    TH.title = '左键单击排序 | 右键直接添加分组';
 
-    // 添加点击事件监听器
-    const handleClick = () => {
+    // 移除自定义的双击事件，让 Handsontable 原生排序功能正常工作
+    TH.ondblclick = null;
+    TH.onclick = null;
+
+    // 添加右键菜单来添加分组（不干扰排序和拖拽）
+    TH.oncontextmenu = (e: MouseEvent) => {
+      e.preventDefault();
+
       // 从当前显示的列配置中获取列数据
       const currentColumns = currentColumnsRef.value;
       if (col >= 0 && col < currentColumns.length) {
@@ -115,15 +137,16 @@ const hotSettings = {
           columnData !== '_groupDisplay' &&
           !groupColumns.value.includes(columnData)
         ) {
+          // 直接添加分组，无需确认弹窗
           groupColumns.value.push(columnData);
           if (originalData.value.length > 0) {
             applyGrouping([...originalData.value]);
           }
+        } else {
+          window.alert('该列已在分组中或是分组列，无法重复添加');
         }
       }
     };
-
-    TH.onclick = handleClick;
   },
   //afterOnCellMouseDown: onAfterOnCellMouseDown,
   afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
@@ -612,7 +635,7 @@ function buildTreeStructure(
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一값，显示为 "값1(数量1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -727,7 +750,7 @@ function buildFullExportTree(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一값，显示为 "값(数量)"
+          // 只有一个唯一值，显示为 "값(数量)"
           const value = uniqueValues[0];
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
@@ -1154,7 +1177,6 @@ function handleExport() {
         padding: 6px 4px;
         font-weight: 600;
         vertical-align: middle;
-        cursor: pointer;
       }
     }
 
