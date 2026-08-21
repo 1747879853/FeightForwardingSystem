@@ -162,29 +162,52 @@ const generateContent = () => {
     合同号: getValue('contractNo', 'contractNumber'),
 
     // 单位类
-    委托单位全称: getName(formData.client) || getName(formData.clientId),
+    委托单位全称:
+      formData.clientName ||
+      getName(formData.client) ||
+      getName(formData.clientId) ||
+      formData.clientId,
     订舱代理全称:
-      getName(formData.bookingAgent) || getName(formData.bookingAgentId),
+      formData.bookingAgentName ||
+      getName(formData.bookingAgent) ||
+      getName(formData.bookingAgentId) ||
+      formData.bookingAgentId,
     船公司:
+      formData.carrierName ||
       formData.carrierCode ||
       getName(formData.carrier) ||
-      getName(formData.carrierId),
+      getName(formData.carrierId) ||
+      formData.carrierId,
     场站:
-      formData.yardName || getName(formData.yard) || getName(formData.yardId),
+      formData.yardName ||
+      getName(formData.yard) ||
+      getName(formData.yardId) ||
+      formData.yardId,
     船代:
       formData.shippingAgentName ||
       getName(formData.shippingAgent) ||
-      getName(formData.shippingAgentId),
+      getName(formData.shippingAgentId) ||
+      formData.shippingAgentId,
 
     // 港口类（优先使用备注字段）
     装货港:
-      formData.polRemark || getName(formData.pol) || getName(formData.polId),
+      formData.polRemark ||
+      formData.polName ||
+      getName(formData.pol) ||
+      getName(formData.polId) ||
+      formData.polId,
     目的港:
-      formData.podRemark || getName(formData.pod) || getName(formData.podId),
+      formData.podRemark ||
+      formData.podName ||
+      getName(formData.pod) ||
+      getName(formData.podId) ||
+      formData.podId,
     交货地:
       formData.deliverPortRemark ||
+      formData.deliverPortName ||
       getName(formData.deliverPort) ||
-      getName(formData.deliverPortId),
+      getName(formData.deliverPortId) ||
+      formData.deliverPortId,
 
     // 日期类
     货好时间: formatDate(getValue('cargoReadyDate', 'goodsReadyDate')),
@@ -204,9 +227,21 @@ const generateContent = () => {
     尺码: formData.cbm,
 
     // 收发货人类
-    发货人: getName(formData.shipper) || getName(formData.shipperId),
-    收货人: getName(formData.consignee) || getName(formData.consigneeId),
-    通知人: getName(formData.notifier) || getName(formData.notifierId),
+    发货人:
+      formData.shipperName ||
+      getName(formData.shipper) ||
+      getName(formData.shipperId) ||
+      formData.shipperId,
+    收货人:
+      formData.consigneeName ||
+      getName(formData.consignee) ||
+      getName(formData.consigneeId) ||
+      formData.consigneeId,
+    通知人:
+      formData.notifierName ||
+      getName(formData.notifier) ||
+      getName(formData.notifierId) ||
+      formData.notifierId,
 
     // 货物描述类
     唛头: formData.marks,
@@ -230,7 +265,7 @@ const generateContent = () => {
       ? String(value)
       : match;
   });
-
+  console.log('生成的内容：', formData);
   generatedContent.value = content;
 };
 
@@ -244,6 +279,7 @@ const handleCopy = async () => {
   try {
     await navigator.clipboard.writeText(generatedContent.value);
     message.success('复制成功');
+    modalOpen.value = false; // 复制成功后关闭弹窗
   } catch (error) {
     console.error('复制失败:', error);
     message.error('复制失败');
@@ -259,12 +295,6 @@ const handleSettings = () => {
 const handleConfigModalClose = () => {
   // 重新加载列表
   loadQuickTextList();
-};
-
-// 确认
-const handleConfirm = () => {
-  emit('confirm', generatedContent.value);
-  modalOpen.value = false;
 };
 
 // 取消
@@ -285,18 +315,6 @@ const handleCancel = () => {
       <!-- 模板选择区域 -->
       <div class="briefing-header">
         <div class="briefing-template-selector">
-          <Tooltip title="复制内容">
-            <Button
-              type="text"
-              size="small"
-              class="briefing-action-btn"
-              :disabled="!generatedContent"
-              @click="handleCopy"
-            >
-              <IconifyIcon icon="mdi:content-copy" />
-            </Button>
-          </Tooltip>
-
           <Select
             v-model:value="selectedTemplateId"
             placeholder="选择模板"
@@ -338,7 +356,7 @@ const handleCancel = () => {
       <!-- 底部按钮 -->
       <div class="briefing-footer">
         <Button @click="handleCancel">取消</Button>
-        <Button type="primary" @click="handleConfirm">确认</Button>
+        <Button type="primary" @click="handleCopy">复制</Button>
       </div>
     </div>
 
