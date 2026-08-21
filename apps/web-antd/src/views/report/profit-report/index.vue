@@ -563,8 +563,8 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
       totalProfit: item.totalProfit?.toFixed(2) || '0.00',
       totalProfitRate:
         item.totalProfitRate != null
-          ? `${(item.totalProfitRate * 100).toFixed(2)}%`
-          : '-',
+          ? item.totalProfitRate // 保持小数形式
+          : null,
       _originalData: item,
     };
 
@@ -772,18 +772,17 @@ function buildTreeStructure(
         aggregatedRow[col] = sum.toFixed(2);
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
+        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
         const totalProfit = items.reduce(
           (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
           0,
         );
         const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
+          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
           0,
         );
         aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
+          totalPayable !== 0 ? totalProfit / totalPayable : null;
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};
@@ -906,18 +905,17 @@ function buildFullExportTree(
         aggregatedRow[col] = sum.toFixed(2);
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
+        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
         const totalProfit = items.reduce(
           (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
           0,
         );
         const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
+          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
           0,
         );
         aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
+          totalPayable !== 0 ? totalProfit / totalPayable : null;
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};

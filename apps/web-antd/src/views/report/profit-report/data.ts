@@ -643,11 +643,7 @@ export function calculateStatistics(data: ReportApi.ProfitReportDto[]) {
     totalPayable: stats.totalPayable.toFixed(2),
     totalProfit: stats.totalProfit.toFixed(2),
     totalProfitRate:
-      stats.totalPayable !== 0
-        ? ((stats.totalProfit / Math.abs(stats.totalPayable)) * 100).toFixed(
-            2,
-          ) + '%'
-        : '-',
+      stats.totalPayable !== 0 ? stats.totalProfit / stats.totalPayable : null,
     currencies: Array.from(stats.currencyStats.entries()).map(
       ([code, stat]) => ({
         code,
