@@ -47,16 +47,6 @@ export const BL_TYPE_OPTIONS = [
 export function useProfitReportFormSchema(): VbenFormSchema[] {
   return [
     {
-      fieldName: 'isMergeChangeOrder',
-      label: '合并更改单',
-      component: 'Switch',
-      defaultValue: true,
-      componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
-      },
-    },
-    {
       fieldName: 'bizType',
       label: '业务类型',
       component: 'Select',
@@ -159,6 +149,16 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
         style: { width: '100%' },
         bizType: formValues.bizType,
       }),
+    },
+    {
+      fieldName: 'isMergeChangeOrder',
+      label: '合并更改单',
+      component: 'Switch',
+      defaultValue: true,
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
     },
   ];
 }
@@ -471,7 +471,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     });
@@ -490,7 +491,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     });
@@ -509,7 +511,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     });
@@ -537,7 +540,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },
@@ -555,7 +559,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },
@@ -573,7 +578,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },

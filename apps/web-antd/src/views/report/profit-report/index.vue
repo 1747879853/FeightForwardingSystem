@@ -79,7 +79,7 @@ const dynamicHotColumns = computed(() => {
 });
 
 // 获取列标题映射（用于表头显示）
-const columnTitleMap = computed(() => {
+const columnTitleMap = computed<Record<string, string>>(() => {
   const columns = dynamicHotColumns.value;
   return columns.reduce(
     (map, col) => {
@@ -150,9 +150,13 @@ watch(
 // Handsontable 配置（改为计算属性）
 const hotSettings = computed(() => {
   // 获取可见列并按order排序
-  const visibleColumns = [...columnConfigs.value]
-    .filter((col) => col.visible)
-    .sort((a, b) => a.order - b.order);
+  // 如果有分组，使用currentColumnsRef（包含分组列），否则使用columnConfigs
+  const visibleColumns =
+    groupColumns.value.length > 0
+      ? [...currentColumnsRef.value]
+      : [...columnConfigs.value]
+          .filter((col) => col.visible)
+          .sort((a, b) => a.order - b.order);
 
   // 计算固定列数量
   const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
@@ -263,15 +267,21 @@ const hotSettings = computed(() => {
  * 更新表格高度
  */
 let resizeObserver: ResizeObserver | null = null;
+let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
 
 function updateTableHeight() {
-  nextTick(() => {
+  // 清除之前的定时器，避免重复调用
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+  }
+
+  // 使用 requestAnimationFrame 确保在下一帧执行，避免布局抖动
+  heightUpdateTimer = setTimeout(() => {
     const container = containerRef.value;
     const hotInstance = hotTableRef.value?.hotInstance;
 
     if (!container || !hotInstance) {
-      // 如果实例还没准备好，稍后重试
-      setTimeout(updateTableHeight, 50);
+      heightUpdateTimer = null;
       return;
     }
 
@@ -291,7 +301,9 @@ function updateTableHeight() {
 
     // 4. 更新 Handsontable 高度
     hotInstance.updateSettings({ height: targetHeight }, false);
-  });
+
+    heightUpdateTimer = null;
+  }, 16); // 约1帧的时间（60fps）
 }
 
 function initResizeObserver() {
@@ -303,15 +315,115 @@ function initResizeObserver() {
   }
 
   resizeObserver = new ResizeObserver(() => {
-    updateTableHeight();
+    // 清除之前的定时器
+    if (heightUpdateTimer) {
+      clearTimeout(heightUpdateTimer);
+    }
+    // 使用防抖，避免频繁更新
+    heightUpdateTimer = setTimeout(() => {
+      updateTableHeight();
+    }, 50); // 50ms 防抖
   });
 
-  // 观察 body 的变化，因为窗口缩放时容器本身尺寸可能不变但视口变了
+  // 观察多个元素的变化
+  // 1. 观察 document.body - 窗口缩放时视口变化
   resizeObserver.observe(document.body);
+
+  // 2. 观察 Page 组件的 wrapper - 当查询表单展开/收缩时，整体布局会变化
+  const pageWrapper = document.querySelector('.vben-page-wrapper');
+  if (pageWrapper) {
+    resizeObserver.observe(pageWrapper as Element);
+  }
+
+  // 3. 观察 query-card - 查询表单展开/收缩的直接容器
+  const queryCard = document.querySelector('.query-card');
+  if (queryCard) {
+    resizeObserver.observe(queryCard as Element);
+  }
+
+  // 4. 使用 MutationObserver 监听 DOM 变化，动态添加新的观察对象
+  let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const mutationObserver = new MutationObserver((mutations) => {
+    // 防抖处理：避免频繁调用
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
+    }
+
+    let needUpdate = false;
+
+    mutations.forEach((mutation) => {
+      if (!needUpdate) {
+        // 检查是否有相关节点添加
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            if (node.classList.contains('query-card')) {
+              resizeObserver?.observe(node);
+            }
+            if (
+              node.classList.contains('vben-page-wrapper') ||
+              node.querySelector?.('.vben-page-wrapper')
+            ) {
+              const wrapper = node.classList.contains('vben-page-wrapper')
+                ? node
+                : node.querySelector('.vben-page-wrapper');
+              if (wrapper) {
+                resizeObserver?.observe(wrapper);
+              }
+            }
+          }
+        });
+
+        // 监听属性变化（特别是样式和类名变化）
+        if (
+          mutation.type === 'attributes' &&
+          (mutation.attributeName === 'style' ||
+            mutation.attributeName === 'class')
+        ) {
+          const target = mutation.target as HTMLElement;
+          if (
+            target.classList.contains('query-card') ||
+            target.classList.contains('vben-page-wrapper') ||
+            target.closest('.query-card') ||
+            target.closest('.vben-page-wrapper')
+          ) {
+            needUpdate = true;
+          }
+        }
+      }
+    });
+
+    // 如果需要更新，使用防抖延迟执行
+    if (needUpdate) {
+      updateTimeout = setTimeout(() => {
+        updateTableHeight();
+        updateTimeout = null;
+      }, 100); // 100ms 防抖
+    }
+  });
+
+  // 监听整个文档的变化
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class'],
+  });
+
+  // 保存 mutationObserver 引用以便清理
+  (initResizeObserver as any).mutationObserver = mutationObserver;
 }
 
-// 监听窗口大小变化
-window.addEventListener('resize', updateTableHeight);
+// 监听窗口大小变化（带防抖）
+let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+window.addEventListener('resize', () => {
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
+  resizeTimer = setTimeout(() => {
+    updateTableHeight();
+  }, 100);
+});
 
 onMounted(() => {
   // 初始化观察者
@@ -321,9 +433,28 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  // 移除窗口resize监听器（虽然我们是匿名函数，但还是要清理）
   window.removeEventListener('resize', updateTableHeight);
+
+  // 清理所有定时器
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+    heightUpdateTimer = null;
+  }
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+    resizeTimer = null;
+  }
+
+  // 清理 ResizeObserver
   if (resizeObserver) {
     resizeObserver.disconnect();
+  }
+
+  // 清理 MutationObserver
+  const mutationObserver = (initResizeObserver as any).mutationObserver;
+  if (mutationObserver) {
+    mutationObserver.disconnect();
   }
 });
 
@@ -406,22 +537,11 @@ async function handleQuery(formData?: any) {
 
     originalData.value = [...transformedData];
 
-    // 更新列配置
-    currentColumnsRef.value = getColumnsWithAlignment();
-    hotSettings.columns = currentColumnsRef.value;
-
     applyGrouping(transformedData);
 
     // 数据加载并渲染后，重新计算表格高度
     nextTick(() => {
       updateTableHeight();
-
-      // 确保Handsontable使用最新的列配置
-      if (hotTableRef.value && hotTableRef.value.hotInstance) {
-        hotTableRef.value.hotInstance.updateSettings({
-          columns: hotSettings.columns,
-        });
-      }
     });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
@@ -558,9 +678,9 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
       ctns: formatCtns(item.ctns),
       bizDate: safeFormatDate(item.bizDate, 'date'),
       accountDate: safeFormatDate(item.accountDate, 'month'),
-      totalReceivable: item.totalReceivable?.toFixed(2) || '0.00',
-      totalPayable: item.totalPayable?.toFixed(2) || '0.00',
-      totalProfit: item.totalProfit?.toFixed(2) || '0.00',
+      totalReceivable: item.totalReceivable?.toFixed(2) || '',
+      totalPayable: item.totalPayable?.toFixed(2) || '',
+      totalProfit: item.totalProfit?.toFixed(2) || '',
       totalProfitRate:
         item.totalProfitRate != null
           ? item.totalProfitRate // 保持小数形式
@@ -570,9 +690,9 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
 
     // 初始化所有币别字段为空值
     currencyCodes.forEach((code) => {
-      rowData[`${code}_receivable`] = '0.00';
-      rowData[`${code}_payable`] = '0.00';
-      rowData[`${code}_profit`] = '0.00';
+      rowData[`${code}_receivable`] = '';
+      rowData[`${code}_payable`] = '';
+      rowData[`${code}_profit`] = '';
     });
 
     // 填充实际的币别数据
@@ -580,9 +700,17 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
       item.currencies.forEach((curr) => {
         if (curr.currency?.code) {
           const code = curr.currency.code;
-          rowData[`${code}_receivable`] = (curr.receivable || 0).toFixed(2);
-          rowData[`${code}_payable`] = (curr.payable || 0).toFixed(2);
-          rowData[`${code}_profit`] = (curr.profit || 0).toFixed(2);
+          const receivableValue = (curr.receivable || 0).toFixed(2);
+          rowData[`${code}_receivable`] =
+            receivableValue === '0.00' ? '' : receivableValue;
+          rowData[`${code}_payable`] =
+            (curr.payable || 0).toFixed(2) === '0.00'
+              ? ''
+              : (curr.payable || 0).toFixed(2);
+          rowData[`${code}_profit`] =
+            (curr.profit || 0).toFixed(2) === '0.00'
+              ? ''
+              : (curr.profit || 0).toFixed(2);
         }
       });
     }
@@ -711,7 +839,7 @@ function calculateTotalRow(): any {
         totalRow[colName] = sum.toFixed(2);
       }
     } else {
-      totalRow[colName] = '0.00';
+      totalRow[colName] = '';
     }
   });
 
@@ -738,7 +866,7 @@ function buildTreeStructure(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空값';
+    const groupValue = item[currentGroupCol as string] || '空값';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -752,7 +880,7 @@ function buildTreeStructure(
     const aggregatedRow: any = {};
 
     // 设置分组列的值
-    aggregatedRow[currentGroupCol] = groupName;
+    aggregatedRow[currentGroupCol as string] = groupName;
 
     // 聚合其他列的数据
     const visibleColumns = columnConfigs.value.filter((col) => col.visible);
@@ -769,7 +897,8 @@ function buildTreeStructure(
           const numVal = parseFloat(val) || 0;
           sum += numVal;
         });
-        aggregatedRow[col] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
         // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
@@ -801,12 +930,12 @@ function buildTreeStructure(
         } else if (uniqueValues.length === 1) {
           // 只有一个唯一值，显示为 "값(번호)"
           const value = uniqueValues[0];
-          const count = valueCounts[value];
+          const count = valueCounts[value] || 0;
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
-            return `${value}(${valueCounts[value]})`;
+            return `${value}(${valueCounts[value] || 0})`;
           });
           aggregatedRow[col] = formattedValues.join(', ');
         }
@@ -872,7 +1001,8 @@ function buildFullExportTree(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空값';
+    const groupValue =
+      (currentGroupCol && item[currentGroupCol as string]) || '空값';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -886,7 +1016,7 @@ function buildFullExportTree(
     const aggregatedRow: any = {};
 
     // 设置分组列的值
-    aggregatedRow[currentGroupCol] = groupName;
+    aggregatedRow[currentGroupCol as string] = groupName;
 
     // 聚合其他列的数据（使用所有列，包括隐藏列，用于导出）
     dynamicHotColumns.value.forEach((colConfig) => {
@@ -902,7 +1032,8 @@ function buildFullExportTree(
           const numVal = parseFloat(val) || 0;
           sum += numVal;
         });
-        aggregatedRow[col] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
         // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
@@ -1129,18 +1260,29 @@ function applyGrouping(data: any[]) {
 }
 
 // 移除分组列
-function removeGroupColumn(index: number) {
-  const newGroupColumns = [...groupColumns.value];
-  newGroupColumns.splice(index, 1);
-  groupColumns.value = newGroupColumns;
+function removeGroupColumn(columnName: string) {
+  const index = groupColumns.value.indexOf(columnName);
+  if (index > -1) {
+    const newGroupColumns = [...groupColumns.value];
+    newGroupColumns.splice(index, 1);
+    groupColumns.value = newGroupColumns;
 
-  if (originalData.value.length > 0) {
-    applyGrouping([...originalData.value]);
+    // 清空展开状态，因为分组结构已经改变
+    expandedGroups.value = new Set();
+
+    if (originalData.value.length > 0) {
+      applyGrouping([...originalData.value]);
+    }
   }
 }
 
 // 监听分组变化
 watch(groupColumns, (newVal, oldVal) => {
+  // 如果分组结构发生变化（不是第一次初始化），清空展开状态
+  if (oldVal && oldVal.length > 0 && newVal.length !== oldVal.length) {
+    expandedGroups.value = new Set();
+  }
+
   if (originalData.value.length > 0) {
     applyGrouping([...originalData.value]);
   }
@@ -1163,12 +1305,14 @@ function handleExport() {
     if (groupColumns.value.length > 0) {
       // 有分组的情况 - 使用完整的导出树结构
       const currentColumns = currentColumnsRef.value;
-      headers = currentColumns.map((col) => col.data);
-      headerTitles = currentColumns.map((col) =>
-        col.data === '_groupDisplay'
-          ? '分组'
-          : columnTitleMap[col.data] || col.data,
-      );
+      headers = currentColumns.map((col) => col.data!).filter(Boolean);
+      headerTitles = currentColumns
+        .map((col) =>
+          col.data === '_groupDisplay'
+            ? '分组'
+            : columnTitleMap[col.data!] || col.data!,
+        )
+        .filter(Boolean);
 
       // 构建完整的导出数据（包含所有未展开的数据）
       const fullExportTree = buildFullExportTree(
@@ -1200,7 +1344,7 @@ function handleExport() {
             }
           } else {
             // 普通列
-            exportRow[colData] = row[colData] ?? '';
+            exportRow[colData] = (row as any)[colData] ?? '';
           }
         }
 
@@ -1208,10 +1352,11 @@ function handleExport() {
       }
     } else {
       // 无分组的情况
-      headers = hotColumns.map((col) => col.data);
-      headerTitles = hotColumns.map(
-        (col) => columnTitleMap[col.data] || col.data,
-      );
+      const currentColumns = currentColumnsRef.value;
+      headers = currentColumns.map((col) => col.data!).filter(Boolean);
+      headerTitles = currentColumns
+        .map((col) => columnTitleMap[col.data!] || col.data!)
+        .filter(Boolean);
 
       // 包含合计行
       const totalRow = calculateTotalRow();
@@ -1219,8 +1364,8 @@ function handleExport() {
 
       for (const row of allData) {
         const exportRow: Record<string, any> = {};
-        for (const col of hotColumns) {
-          exportRow[col.data] = row[col.data] ?? '';
+        for (const col of currentColumns) {
+          exportRow[col.data!] = row[col.data!] ?? '';
         }
         exportData.push(exportRow);
       }
@@ -1246,7 +1391,7 @@ function handleExport() {
 
     // 计算列宽（考虑表头和数据内容的最大长度）
     const colWidths = headers.map((header, index) => {
-      const title = headerTitles[index];
+      const title = headerTitles[index] || header;
       let maxWidth = Math.min(50, Math.max(10, title.length + 2)); // 表头长度
 
       // 检查数据内容的最大长度
@@ -1305,9 +1450,14 @@ function handleExport() {
       <div v-else class="flex flex-1 flex-wrap gap-1">
         <Tag
           v-for="(col, index) in groupColumns"
-          :key="index"
+          :key="col"
           closable
-          @close="removeGroupColumn(index)"
+          @close="
+            (e: Event) => {
+              e.preventDefault();
+              removeGroupColumn(col);
+            }
+          "
           class="cursor-pointer"
         >
           {{ columnTitleMap[col] || col }}
@@ -1392,7 +1542,7 @@ function handleExport() {
 
   // 覆盖 Card 组件的默认样式
   :deep(.ant-card-body) {
-    padding: 16px;
+    padding: 16px 10px 0;
   }
 }
 
