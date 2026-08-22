@@ -11,7 +11,15 @@ import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
 import { useVbenForm } from '#/adapter/form';
 
-import { Button, Card, message, Tag, Dropdown } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  message,
+  Tag,
+  Dropdown,
+  Modal,
+  Checkbox,
+} from 'ant-design-vue';
 
 import { getProfitReportList } from '#/api/system/report';
 
@@ -65,6 +73,23 @@ let dragGhostElement: HTMLElement | null = null;
 // ✅ 分组标签拖拽状态
 const draggedGroupIndex = ref<number | null>(null);
 const dragOverGroupIndex = ref<number | null>(null);
+
+// ✅ 新增：拖拽提示显示状态
+const showDragHint = ref(true);
+
+// ✅ 新增：悬停提示状态
+const hoverColumnData = ref<string | null>(null);
+
+// 表单配置
+const formConfig = ref<FormConfig>({
+  groups: [],
+  columns: [],
+});
+
+// ✅ 新增：列选择器相关状态
+const showColumnSelector = ref(false);
+
+const selectedColumnsForGroup = ref<string[]>([]);
 
 // 表单配置
 const formSchema = useProfitReportFormSchema();
@@ -120,6 +145,18 @@ const numericColumns = computed(() => {
   });
 
   return cols;
+});
+
+// 初始化默认列配置
+// ✅ 新增：计算可用于分组的列（排除已在分组中的列）
+const availableGroupColumns = computed(() => {
+  const groupedSet = new Set(groupColumns.value);
+  return dynamicHotColumns.value.filter(
+    (col) =>
+      !groupedSet.has(col.data) &&
+      col.data !== '_groupDisplay' &&
+      !col.data.startsWith('total'), // 排除合计列
+  );
 });
 
 // 初始化默认列配置
@@ -227,10 +264,19 @@ const hotSettings = computed(() => {
       TH.style.fontWeight = '600';
       TH.style.textAlign = 'center';
 
-      // 如果是分组列（第一列且有分组）
-      if (groupColumns.value.length > 0 && col === 0) {
+      // ✅ 如果是分组列或序号列，不显示拖拽手柄
+      const isGroupColumn = groupColumns.value.length > 0 && col === 0;
+      const isRowHeaderColumn = col === -1; // Handsontable 的序号列索引为 -1
+
+      if (isGroupColumn || isRowHeaderColumn) {
         TH.style.cursor = 'default';
         TH.title = '';
+
+        // 确保没有拖拽手柄
+        const existingHandle = TH.querySelector('.drag-handle');
+        if (existingHandle) {
+          existingHandle.remove();
+        }
         return;
       }
 
@@ -242,15 +288,22 @@ const hotSettings = computed(() => {
         dragHandle.innerHTML = '⋮⋮'; // 双竖线图标
         dragHandle.style.cssText = `
           position: absolute;
-          left: 4px;
+          left: 2px;
           top: 50%;
           transform: translateY(-50%);
           cursor: grab;
-          opacity: 0.7;
-          font-size: 12px;
-          padding: 2px 4px;
+          opacity: 0.6;
+          font-size: 14px;
+          padding: 8px 12px;
           z-index: 10;
           user-select: none;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          min-width: 32px;
+          min-height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         `;
 
         // ✅ 关键：使用内联事件处理器，直接绑定到元素上
@@ -259,6 +312,11 @@ const hotSettings = computed(() => {
 
           // 只处理左键
           if (e.button !== 0) return;
+
+          // ✅ 立即提供视觉反馈，让用户知道已响应
+          const handleElement = e.currentTarget as HTMLElement;
+          handleElement.style.opacity = '0.9';
+          handleElement.style.transform = 'translateY(-50%) scale(0.95)';
 
           // ✅ 记录鼠标起始位置
           const startX = e.clientX;
@@ -298,8 +356,9 @@ const hotSettings = computed(() => {
               const deltaX = Math.abs(moveEvent.clientX - startX);
               const deltaY = Math.abs(moveEvent.clientY - startY);
 
+              // ✅ 优化：降低阈值从5px到2px，提高响应速度
               // 如果垂直移动距离大于水平移动距离，则认为是垂直拖动
-              if (deltaY > deltaX && deltaY > 5) {
+              if (deltaY > deltaX && deltaY > 1) {
                 isVerticalDrag = true;
                 hasStartedDrag = true;
                 dragHandled = true; // ✅ 标记已处理
@@ -427,6 +486,9 @@ const hotSettings = computed(() => {
               th.style.opacity = '1';
             }
             if (dragHandle) {
+              // ✅ 恢复拖拽手柄的样式
+              dragHandle.style.opacity = '0.6';
+              dragHandle.style.transform = 'translateY(-50%) scale(1)';
               dragHandle.style.cursor = 'grab';
             }
           };
@@ -1263,7 +1325,7 @@ function buildTreeStructure(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol as string] || '空값';
+    const groupValue = item[currentGroupCol as string] || '空值';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -1399,7 +1461,7 @@ function buildFullExportTree(
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
     const groupValue =
-      (currentGroupCol && item[currentGroupCol as string]) || '空값';
+      (currentGroupCol && item[currentGroupCol as string]) || '空值';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -1670,7 +1732,54 @@ function removeGroupColumn(columnName: string) {
     if (originalData.value.length > 0) {
       applyGrouping([...originalData.value]);
     }
+
+    message.success(
+      `已移除分组 "${columnTitleMap.value[columnName] || columnName}"`,
+    );
   }
+}
+
+// ✅ 新增：清空所有分组
+function clearAllGroups() {
+  if (groupColumns.value.length === 0) return;
+
+  groupColumns.value = [];
+  expandedGroups.value = new Set();
+
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+
+  message.success('已清空所有分组');
+}
+
+// ✅ 新增：处理添加选中的列到分组
+function handleAddSelectedColumns() {
+  if (selectedColumnsForGroup.value.length === 0) {
+    message.warning('请至少选择一个列');
+    return;
+  }
+
+  // 将选中的列添加到分组
+  selectedColumnsForGroup.value.forEach((colData) => {
+    if (!groupColumns.value.includes(colData)) {
+      groupColumns.value.push(colData);
+    }
+  });
+
+  // 清空展开状态
+  expandedGroups.value = new Set();
+
+  // 重新应用分组
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+
+  message.success(`已添加 ${selectedColumnsForGroup.value.length} 个分组`);
+
+  // 关闭弹窗并重置选择
+  showColumnSelector.value = false;
+  selectedColumnsForGroup.value = [];
 }
 
 // 监听分组变化
@@ -1948,66 +2057,224 @@ function handleExport() {
 
     <!-- 分组区域 -->
     <div
-      class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
-      style="flex-shrink: 0; width: 100%; height: 40px"
+      class="group-area mb-2 flex items-center rounded border bg-gradient-to-r from-blue-50 to-indigo-50 px-4 transition-all duration-300"
+      :class="{
+        'border-blue-400 shadow-md': isDraggingColumn,
+        'border-gray-200 hover:border-blue-300': !isDraggingColumn,
+      }"
+      style="flex-shrink: 0; width: 100%; min-height: 48px; padding: 8px 16px"
+      @dragenter.prevent="showDragHint = true"
+      @dragleave.prevent="showDragHint = false"
+      @drop.prevent="showDragHint = false"
     >
-      <span class="mr-2 text-sm text-gray-600">分组</span>
-      <div
-        v-if="groupColumns.length === 0"
-        class="group-area-tags flex-1 text-sm text-gray-400"
-      >
-        拖拽列标题到此处添加分组
-      </div>
-      <div v-else class="group-area-tags flex flex-1 flex-wrap gap-1">
-        <Tag
-          v-for="(col, index) in groupColumns"
-          :key="col"
-          closable
-          draggable="true"
-          @dragstart="handleGroupTagDragStart($event, col, index)"
-          @dragover.prevent="handleGroupTagDragOver($event, index)"
-          @drop="handleGroupTagDrop($event, index)"
-          @dragend="handleGroupTagDragEnd"
-          @close="
-            (e: Event) => {
-              e.preventDefault();
-              removeGroupColumn(col);
-            }
-          "
-          class="cursor-pointer transition-all duration-200"
-          :class="{ 'opacity-50': draggedGroupIndex === index }"
+      <div class="flex w-full items-center gap-2">
+        <!-- 分组标签图标 -->
+        <span class="flex items-center text-sm font-medium text-gray-700">
+          <svg
+            class="mr-1 h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h7"
+            />
+          </svg>
+          分组
+        </span>
+
+        <!-- 空状态提示 - 增强视觉效果 -->
+        <div
+          v-if="groupColumns.length === 0"
+          class="group-area-tags flex flex-1 items-center justify-center rounded border-2 border-dashed border-gray-300 bg-white py-2 text-sm text-gray-500 transition-all duration-300"
+          :class="{
+            'scale-105 border-blue-400 bg-blue-50 text-blue-600':
+              showDragHint && isDraggingColumn,
+            'animate-pulse': showDragHint,
+          }"
         >
-          {{ columnTitleMap[col] || col }}
-          <span class="ml-1 text-xs text-gray-500">{{ index + 1 }}级</span>
-        </Tag>
+          <div class="flex items-center gap-2">
+            <svg
+              v-if="!isDraggingColumn"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+              />
+            </svg>
+            <svg
+              v-else
+              class="h-4 w-4 animate-bounce"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span class="font-medium">
+              {{
+                isDraggingColumn
+                  ? '释放鼠标添加分组'
+                  : '拖动列标题的 ⋮⋮ 图标到此处添加分组'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 分组标签列表 - 增强交互反馈 -->
+        <div v-else class="group-area-tags flex flex-1 flex-wrap gap-2">
+          <Tag
+            v-for="(col, index) in groupColumns"
+            :key="col"
+            closable
+            draggable="true"
+            @dragstart="handleGroupTagDragStart($event, col, index)"
+            @dragover.prevent="handleGroupTagDragOver($event, index)"
+            @drop="handleGroupTagDrop($event, index)"
+            @dragend="handleGroupTagDragEnd"
+            @mouseenter="hoverColumnData = col"
+            @mouseleave="hoverColumnData = null"
+            @close="
+              (e: Event) => {
+                e.preventDefault();
+                removeGroupColumn(col);
+              }
+            "
+            class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md active:cursor-grabbing"
+            :class="{
+              'scale-95 opacity-50': draggedGroupIndex === index,
+              'ring-2 ring-blue-400 ring-offset-2':
+                dragOverGroupIndex === index,
+              'border-blue-600 bg-gradient-to-r from-blue-500 to-indigo-500 text-white':
+                hoverColumnData === col,
+              'border-gray-200 bg-white hover:border-blue-300':
+                hoverColumnData !== col,
+            }"
+            :style="{
+              transform:
+                draggedGroupIndex === index
+                  ? 'scale(0.95)'
+                  : dragOverGroupIndex === index
+                    ? 'scale(1.05)'
+                    : 'scale(1)',
+            }"
+          >
+            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+              <!-- 拖拽手柄图标 -->
+              <svg
+                v-if="hoverColumnData === col || draggedGroupIndex === index"
+                class="h-3 w-3 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 8h16M4 16h16"
+                />
+              </svg>
+              <span class="font-medium">{{ columnTitleMap[col] || col }}</span>
+              <span
+                class="ml-1 flex-shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-xs"
+                :class="{
+                  'text-white/80': hoverColumnData === col,
+                  'text-gray-500': hoverColumnData !== col,
+                }"
+              >
+                {{ index + 1 }}级
+              </span>
+            </span>
+          </Tag>
+        </div>
+
+        <!-- 操作按钮组 -->
+        <div class="flex items-center gap-2">
+          <!-- 清空分组按钮 -->
+          <Button
+            v-if="groupColumns.length > 0"
+            size="small"
+            type="text"
+            danger
+            @click="clearAllGroups"
+            class="text-xs"
+          >
+            清空
+          </Button>
+
+          <!-- 导出按钮 -->
+          <Button
+            type="primary"
+            size="small"
+            @click="handleExport"
+            :disabled="tableData.length === 0"
+          >
+            导出
+          </Button>
+        </div>
       </div>
-      <!-- 列配置按钮 -->
-      <!-- <Dropdown
-        placement="bottomRight"
-        trigger="click"
-        :visible="columnConfigVisible"
-        @visible-change="columnConfigVisible = $event"
-      >
-        <Button size="small" class="ml-2"> 列配置 </Button>
-        <template #overlay>
-          <ColumnConfigModal
-            v-model="columnConfigVisible"
-            :columns="columnConfigs"
-            @save="applyColumnConfig"
-          />
-        </template>
-      </Dropdown> -->
-      <!-- 导出按钮 -->
-      <Button
-        type="primary"
-        size="small"
-        class="ml-2"
-        @click="handleExport"
-        :disabled="tableData.length === 0"
-      >
-        导出
-      </Button>
     </div>
+
+    <!-- 表格区域 -->
+    <div class="w-full">
+      <Table
+        :columns="columns"
+        :data="tableData"
+        :pagination="pagination"
+        :loading="loading"
+        :scroll="{ x: 'max-content' }"
+        @change="handleTableChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'action'">
+            <Button type="link" @click="handleEdit(record)">编辑</Button>
+            <Button type="link" @click="handleDelete(record)">删除</Button>
+          </template>
+        </template>
+      </Table>
+    </div>
+
+    <!-- 列选择器弹窗 -->
+    <Modal
+      v-model:open="showColumnSelector"
+      title="选择分组列"
+      width="600px"
+      @ok="handleAddSelectedColumns"
+    >
+      <div class="max-h-96 overflow-y-auto">
+        <Checkbox.Group
+          v-model:value="selectedColumnsForGroup"
+          class="flex flex-col gap-3"
+        >
+          <Checkbox
+            v-for="col in availableGroupColumns"
+            :key="col.data"
+            :value="col.data"
+            class="rounded border p-2 hover:bg-gray-50"
+          >
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ col.title }}</span>
+              <span class="text-xs text-gray-500">({{ col.data }})</span>
+            </div>
+          </Checkbox>
+        </Checkbox.Group>
+      </div>
+    </Modal>
 
     <!-- 表格区域 -->
     <Card class="table-card" :bordered="false">
@@ -2019,7 +2286,41 @@ function handleExport() {
 </template>
 
 <style scoped lang="scss">
-/* 强制根容器占满高度并移除默认内边距 */
+/* ✅ 新增：拖拽提示动画 */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .profit-report-page {
   display: flex;
   flex-direction: column;
@@ -2051,13 +2352,24 @@ function handleExport() {
 .group-area {
   flex-shrink: 0;
   min-width: 200px;
-  height: 40px;
 
-  // ✅ 分组标签拖拽样式
+  // ✅ 分组标签拖拽样式增强
   :deep(.ant-tag) {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    white-space: nowrap;
     cursor: grab;
     user-select: none;
     transition: all 0.2s ease;
+
+    // 确保关闭按钮和内容在一行
+    .ant-tag-close-icon {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      margin-left: 4px;
+    }
 
     &:active {
       cursor: grabbing;
@@ -2066,6 +2378,12 @@ function handleExport() {
     &.dragging {
       opacity: 0.5;
       transform: scale(0.95);
+    }
+
+    // 添加悬停效果
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+      transform: translateY(-2px);
     }
   }
 }
@@ -2131,13 +2449,16 @@ function handleExport() {
           cursor: grab !important;
 
           &:hover {
-            background-color: rgb(255 255 255 / 20%);
-            border-radius: 3px;
+            background-color: rgb(255 255 255 / 30%);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
             opacity: 1 !important;
+            transform: translateY(-50%) scale(1.05);
           }
 
           &:active {
             cursor: grabbing !important;
+            transform: translateY(-50%) scale(0.95);
           }
         }
       }
@@ -2159,7 +2480,7 @@ function handleExport() {
   }
 }
 
-/* 原生拖拽样式 */
+/* 原生拖拽样式增强 */
 .group-area-tags {
   min-height: 32px;
   padding: 4px;
@@ -2180,4 +2501,32 @@ function handleExport() {
     }
   }
 }
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ✅ 新增：拖拽幽灵元素样式 */
+.column-drag-ghost {
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ✅ 新增：分组区域悬停提示 */
+.drag-hint-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  z-index: 100;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+  background: rgb(0 0 0 / 80%);
+  border-radius: 4px;
+  transform: translateX(-50%);
+  animation: fade-in 0.3s ease-in;
+}
+
+/* 强制根容器占满高度并移除默认内边距 */
 </style>
