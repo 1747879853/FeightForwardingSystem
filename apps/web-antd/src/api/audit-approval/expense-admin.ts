@@ -173,6 +173,12 @@ export namespace ExpenseSubmissionAdminApi {
     seaImport?: SeaImportSimpleDto | null;
     /** 空运出口简易对象（仅 bizType=2 时有值） */
     airExport?: AirExportSimpleDto | null;
+
+    // === 整票结算状态字段（客户对账接口使用） ===
+    /** 应收整票结算状态（按该业务下全部应收费用汇总） */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
+    paySettlementStatus?: number | null;
   }
 
   /** 港口简易对象 */

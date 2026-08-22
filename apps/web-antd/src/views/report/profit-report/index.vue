@@ -15,6 +15,8 @@ import { Button, Card, message, Tag, Dropdown } from 'ant-design-vue';
 
 import { getProfitReportList } from '#/api/system/report';
 
+// ✅ 不再使用 SortableJS，直接使用原生鼠标事件实现拖拽
+
 import {
   useProfitReportFormSchema,
   getBaseHotColumns,
@@ -27,6 +29,8 @@ import ColumnConfigModal from './modules/ColumnConfigModal.vue';
 
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
+
+// ✅ 移除 SortableJS 的 import
 
 defineOptions({
   name: 'ProfitReport',
@@ -52,6 +56,15 @@ const loading = ref(false);
 // 分组相关状态
 const groupColumns = ref<string[]>([]); // 当前分组的列名数组
 const expandedGroups = ref<Set<string>>(new Set()); // 展开的分组键集合
+
+// ✅ 拖拽状态管理
+let isDraggingColumn = false;
+let dragColumnData: { columnData?: string; columnTitle?: string } = {};
+let dragGhostElement: HTMLElement | null = null;
+
+// ✅ 分组标签拖拽状态
+const draggedGroupIndex = ref<number | null>(null);
+const dragOverGroupIndex = ref<number | null>(null);
 
 // 表单配置
 const formSchema = useProfitReportFormSchema();
@@ -187,10 +200,10 @@ const hotSettings = computed(() => {
     // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
     manualColumnMove: true,
 
-    // ✅ 启用列排序功能 - 单击升序，再单击降序；按住 Ctrl 多列排序
+    // ✅ 重新启用列排序功能
     columnSorting: {
-      indicator: true, // 显示排序指示器（箭头图标）
-      sortEmptyCells: false, // 不排序空单元格
+      indicator: true,
+      sortEmptyCells: false,
     },
 
     contextMenu: false,
@@ -209,27 +222,238 @@ const hotSettings = computed(() => {
     fixedColumnsRight: 0, // 禁用右侧固定列
 
     afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-      TH.style.backgroundColor = '#1890ff'; // 蓝色背景
-      TH.style.color = '#ffffff'; // 白色文字
+      TH.style.backgroundColor = '#1890ff';
+      TH.style.color = '#ffffff';
       TH.style.fontWeight = '600';
       TH.style.textAlign = 'center';
 
-      // 如果是分组列（第一列且有分组），不添加列分组点击事件
+      // 如果是分组列（第一列且有分组）
       if (groupColumns.value.length > 0 && col === 0) {
         TH.style.cursor = 'default';
         TH.title = '';
         return;
       }
 
-      // 提示用户可以使用左键单击排序，右键直接添加分组
+      // ✅ 创建拖拽手柄，并使用内联事件处理器
+      let dragHandle = TH.querySelector('.drag-handle') as HTMLElement;
+      if (!dragHandle) {
+        dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮'; // 双竖线图标
+        dragHandle.style.cssText = `
+          position: absolute;
+          left: 4px;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: grab;
+          opacity: 0.7;
+          font-size: 12px;
+          padding: 2px 4px;
+          z-index: 10;
+          user-select: none;
+        `;
+
+        // ✅ 关键：使用内联事件处理器，直接绑定到元素上
+        dragHandle.onmousedown = (e: MouseEvent) => {
+          console.log('✅ 手柄 onmousedown 触发了！');
+
+          // 只处理左键
+          if (e.button !== 0) return;
+
+          // ✅ 记录鼠标起始位置
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let isVerticalDrag = false;
+          let hasStartedDrag = false;
+          let dragHandled = false; // ✅ 标记是否已经处理了拖拽
+
+          // ✅ 关键修复：直接使用 afterGetColHeader 提供的 col 参数
+          const currentColumns = currentColumnsRef.value;
+
+          if (col < 0 || col >= currentColumns.length) {
+            console.warn('列索引超出范围:', col, currentColumns.length);
+            return;
+          }
+
+          const columnData = currentColumns[col]?.data;
+          const columnTitle = currentColumns[col]?.title || columnData;
+
+          console.log(
+            '📌 准备拖拽列索引:',
+            col,
+            '数据:',
+            columnData,
+            '标题:',
+            columnTitle,
+          );
+
+          if (!columnData || columnData === '_groupDisplay') {
+            console.warn('该列不支持分组:', columnData);
+            return;
+          }
+
+          // ✅ 监听 mousemove 来判断拖动方向
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            if (!hasStartedDrag) {
+              const deltaX = Math.abs(moveEvent.clientX - startX);
+              const deltaY = Math.abs(moveEvent.clientY - startY);
+
+              // 如果垂直移动距离大于水平移动距离，则认为是垂直拖动
+              if (deltaY > deltaX && deltaY > 5) {
+                isVerticalDrag = true;
+                hasStartedDrag = true;
+                dragHandled = true; // ✅ 标记已处理
+
+                console.log('🖱️ 开始垂直拖拽列:', columnData, columnTitle);
+
+                isDraggingColumn = true;
+                dragColumnData = { columnData, columnTitle };
+
+                // ✅ 创建拖拽幽灵元素
+                dragGhostElement = document.createElement('div');
+                dragGhostElement.className = 'column-drag-ghost';
+                dragGhostElement.textContent = columnTitle || '';
+                dragGhostElement.style.cssText = `
+                  position: fixed;
+                  left: ${moveEvent.clientX + 10}px;
+                  top: ${moveEvent.clientY + 10}px;
+                  padding: 8px 16px;
+                  background: #1890ff;
+                  color: white;
+                  border-radius: 4px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                  z-index: 9999;
+                  pointer-events: none;
+                  font-size: 13px;
+                  font-weight: 600;
+                  opacity: 0.85;
+                  cursor: grabbing;
+                `;
+                document.body.appendChild(dragGhostElement);
+
+                // ✅ 关键：阻止所有后续事件，避免干扰 Handsontable
+                moveEvent.preventDefault();
+                moveEvent.stopPropagation();
+                moveEvent.stopImmediatePropagation();
+              } else if (deltaX > 5) {
+                // 水平移动，让 Handsontable 处理列移动
+                hasStartedDrag = true;
+                cleanup();
+                removeListeners();
+              }
+            } else if (isVerticalDrag && dragGhostElement) {
+              // 更新幽灵元素位置
+              dragGhostElement.style.left = `${moveEvent.clientX + 10}px`;
+              dragGhostElement.style.top = `${moveEvent.clientY + 10}px`;
+
+              // 检查是否在分组区域上方
+              const groupArea = document.querySelector('.group-area-tags');
+              if (groupArea) {
+                const rect = groupArea.getBoundingClientRect();
+                const isOver =
+                  moveEvent.clientX >= rect.left &&
+                  moveEvent.clientX <= rect.right &&
+                  moveEvent.clientY >= rect.top &&
+                  moveEvent.clientY <= rect.bottom;
+
+                if (isOver) {
+                  groupArea.classList.add('sortable-over');
+                } else {
+                  groupArea.classList.remove('sortable-over');
+                }
+              }
+
+              // ✅ 关键：持续阻止事件
+              moveEvent.preventDefault();
+              moveEvent.stopPropagation();
+              moveEvent.stopImmediatePropagation();
+            }
+          };
+
+          // ✅ 监听 mouseup 来结束拖拽
+          const handleMouseUp = (upEvent: MouseEvent) => {
+            removeListeners();
+
+            if (dragHandled && isDraggingColumn) {
+              console.log('🖱️ 鼠标释放');
+
+              const groupArea = document.querySelector('.group-area-tags');
+              if (groupArea) {
+                groupArea.classList.remove('sortable-over');
+              }
+
+              if (dragColumnData.columnData && groupArea) {
+                const rect = groupArea.getBoundingClientRect();
+                const isOver =
+                  upEvent.clientX >= rect.left &&
+                  upEvent.clientX <= rect.right &&
+                  upEvent.clientY >= rect.top &&
+                  upEvent.clientY <= rect.bottom;
+
+                if (
+                  isOver &&
+                  !groupColumns.value.includes(dragColumnData.columnData)
+                ) {
+                  console.log('✅ 添加到分组:', dragColumnData.columnData);
+
+                  groupColumns.value.push(dragColumnData.columnData);
+
+                  if (originalData.value.length > 0) {
+                    applyGrouping([...originalData.value]);
+                  }
+
+                  message.success(
+                    `已将 "${dragColumnData.columnTitle}" 添加到分组`,
+                  );
+                }
+              }
+
+              if (dragGhostElement) {
+                dragGhostElement.remove();
+                dragGhostElement = null;
+              }
+
+              isDraggingColumn = false;
+              dragColumnData = {};
+              dragHandled = false;
+            }
+
+            cleanup();
+          };
+
+          const cleanup = () => {
+            const th = dragHandle?.closest('th') as HTMLTableCellElement;
+            if (th) {
+              th.style.opacity = '1';
+            }
+            if (dragHandle) {
+              dragHandle.style.cursor = 'grab';
+            }
+          };
+
+          const removeListeners = () => {
+            document.removeEventListener('mousemove', handleMouseMove, true);
+            document.removeEventListener('mouseup', handleMouseUp, true);
+          };
+
+          document.addEventListener('mousemove', handleMouseMove, true);
+          document.addEventListener('mouseup', handleMouseUp, true);
+
+          // ✅ 关键：立即阻止 mousedown 事件的传播，防止 Handsontable 处理
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        };
+
+        TH.style.position = 'relative';
+        TH.appendChild(dragHandle);
+      }
+
+      // 提示用户可以使用排序和拖拽功能
       TH.style.cursor = 'pointer';
-      TH.title = '左键单击排序 | 右键直接添加分组';
+      TH.title = '左键单击排序 | 拖动左侧 ⋮⋮ 图标到分组区 | 右键添加分组';
 
-      // 移除自定义的双击事件，让 Handsontable 原生排序功能正常工作
-      TH.ondblclick = null;
-      TH.onclick = null;
-
-      // 添加右键菜单来添加分组（不干扰排序和拖拽）
+      // 添加右键菜单来添加分组
       TH.oncontextmenu = (e: MouseEvent) => {
         e.preventDefault();
 
@@ -442,6 +666,56 @@ function initResizeObserver() {
   (initResizeObserver as any).mutationObserver = mutationObserver;
 }
 
+/**
+ * 初始化列头拖拽功能（使用内联事件处理器）
+ */
+function initColumnHeaderDrag() {
+  nextTick(() => {
+    const hotInstance = hotTableRef.value?.hotInstance;
+    if (!hotInstance) {
+      console.warn('Handsontable 实例不存在');
+      return;
+    }
+
+    const container = hotInstance.rootElement;
+    if (!container) {
+      console.warn('Handsontable 根元素不存在');
+      return;
+    }
+
+    const columnHeader = container.querySelector('thead');
+    if (!columnHeader) {
+      console.warn('未找到 thead 元素');
+      return;
+    }
+
+    console.log('✅ 开始初始化列头拖拽（智能方向识别）');
+    console.log('✅ Handsontable 列移动已启用，水平拖动可调整列顺序');
+    console.log('✅ 垂直拖动 ⋮⋮ 手柄可添加到分组区域');
+
+    // ✅ 不再需要全局事件监听，所有逻辑都在手柄的 onmousedown 中处理
+
+    (initColumnHeaderDrag as any).cleanup = () => {
+      console.log('✅ 列头拖拽清理完成');
+    };
+  });
+}
+
+/**
+ * 初始化分组区域（只需要添加样式，拖拽接收在 mouseup 中处理）
+ */
+function initGroupAreaDrop() {
+  nextTick(() => {
+    const groupArea = document.querySelector('.group-area-tags');
+    if (!groupArea) {
+      console.warn('未找到分组区域元素');
+      return;
+    }
+
+    console.log('✅ 分组区域已就绪（拖拽接收由全局 mouseup 事件处理）');
+  });
+}
+
 // 监听窗口大小变化（带防抖）
 let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 window.addEventListener('resize', () => {
@@ -456,12 +730,12 @@ window.addEventListener('resize', () => {
 onMounted(() => {
   // 初始化观察者
   initResizeObserver();
-  // 默认执行一次查询
+  // 默认执行一次查询（查询后会初始化拖拽）
   handleQuery();
 });
 
 onUnmounted(() => {
-  // 移除窗口resize监听器（虽然我们是匿名函数，但还是要清理）
+  // 移除窗口resize监听器
   window.removeEventListener('resize', updateTableHeight);
 
   // 清理所有定时器
@@ -484,6 +758,9 @@ onUnmounted(() => {
   if (mutationObserver) {
     mutationObserver.disconnect();
   }
+
+  // 清理拖拽相关资源
+  cleanupSortable();
 });
 
 // 创建表单
@@ -567,9 +844,13 @@ async function handleQuery(formData?: any) {
 
     applyGrouping(transformedData);
 
-    // 数据加载并渲染后，重新计算表格高度
+    // 数据加载并渲染后，重新计算表格高度并初始化拖拽
     nextTick(() => {
       updateTableHeight();
+      // 使用 setTimeout 确保 Handsontable 完全渲染后再初始化拖拽
+      setTimeout(() => {
+        initColumnHeaderDrag();
+      }, 100);
     });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
@@ -1313,6 +1594,120 @@ watch(groupColumns, (newVal, oldVal) => {
 });
 
 /**
+ * 处理分组标签拖拽开始
+ */
+function handleGroupTagDragStart(
+  e: DragEvent,
+  columnData: string,
+  index: number,
+) {
+  console.log('🏷️ 开始拖拽分组标签:', columnData, '索引:', index);
+
+  draggedGroupIndex.value = index;
+
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', columnData);
+    e.dataTransfer.setData('application/index', String(index));
+  }
+
+  // 添加拖拽样式
+  setTimeout(() => {
+    const target = e.target as HTMLElement;
+    if (target) {
+      target.style.opacity = '0.5';
+    }
+  }, 0);
+}
+
+/**
+ * 处理分组标签拖拽经过
+ */
+function handleGroupTagDragOver(e: DragEvent, index: number) {
+  e.preventDefault();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move';
+  }
+  dragOverGroupIndex.value = index;
+}
+
+/**
+ * 处理分组标签放置
+ */
+function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
+  e.preventDefault();
+
+  const dragIndexStr = e.dataTransfer?.getData('application/index');
+  const columnData = e.dataTransfer?.getData('text/plain');
+
+  if (!dragIndexStr || !columnData) return;
+
+  const dragIndex = parseInt(dragIndexStr, 10);
+
+  console.log('🏷️ 放置分组标签:', columnData, '从', dragIndex, '到', dropIndex);
+
+  if (dragIndex === dropIndex) return;
+
+  // 重新排列数组
+  const newGroupColumns = [...groupColumns.value];
+  const [movedItem] = newGroupColumns.splice(dragIndex, 1);
+  newGroupColumns.splice(dropIndex, 0, movedItem!);
+
+  groupColumns.value = newGroupColumns;
+
+  // 清空展开状态
+  expandedGroups.value = new Set();
+
+  // 重新应用分组
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+
+  message.success('分组顺序已调整');
+
+  // 重置状态
+  draggedGroupIndex.value = null;
+  dragOverGroupIndex.value = null;
+}
+
+/**
+ * 处理分组标签拖拽结束
+ */
+function handleGroupTagDragEnd(e: DragEvent) {
+  console.log('🏷️ 分组标签拖拽结束');
+
+  // 重置状态
+  draggedGroupIndex.value = null;
+  dragOverGroupIndex.value = null;
+
+  // 恢复样式
+  const target = e.target as HTMLElement;
+  if (target) {
+    target.style.opacity = '1';
+  }
+}
+
+/**
+ * 清理拖拽相关资源
+ */
+function cleanupSortable() {
+  // 清理全局事件监听器
+  const dragCleanup = (initColumnHeaderDrag as any).cleanup;
+  if (typeof dragCleanup === 'function') {
+    dragCleanup();
+    console.log('✅ 已清理拖拽事件监听器');
+  }
+
+  // 重置状态
+  isDraggingColumn = false;
+  dragColumnData = {};
+  if (dragGhostElement) {
+    dragGhostElement.remove();
+    dragGhostElement = null;
+  }
+}
+
+/**
  * 导出当前显示的数据为Excel
  */
 function handleExport() {
@@ -1464,25 +1859,31 @@ function handleExport() {
       class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
       style="flex-shrink: 0; width: 100%; height: 40px"
     >
-      <span class="mr-2 text-sm text-gray-600">右键点击列标题添加分组：</span>
+      <span class="mr-2 text-sm text-gray-600">分组</span>
       <div
         v-if="groupColumns.length === 0"
-        class="flex-1 text-sm text-gray-400"
+        class="group-area-tags flex-1 text-sm text-gray-400"
       >
-        暂无分组列
+        拖拽列标题到此处添加分组
       </div>
-      <div v-else class="flex flex-1 flex-wrap gap-1">
+      <div v-else class="group-area-tags flex flex-1 flex-wrap gap-1">
         <Tag
           v-for="(col, index) in groupColumns"
           :key="col"
           closable
+          draggable="true"
+          @dragstart="handleGroupTagDragStart($event, col, index)"
+          @dragover.prevent="handleGroupTagDragOver($event, index)"
+          @drop="handleGroupTagDrop($event, index)"
+          @dragend="handleGroupTagDragEnd"
           @close="
             (e: Event) => {
               e.preventDefault();
               removeGroupColumn(col);
             }
           "
-          class="cursor-pointer"
+          class="cursor-pointer transition-all duration-200"
+          :class="{ 'opacity-50': draggedGroupIndex === index }"
         >
           {{ columnTitleMap[col] || col }}
           <span class="ml-1 text-xs text-gray-500">{{ index + 1 }}级</span>
@@ -1559,6 +1960,22 @@ function handleExport() {
   flex-shrink: 0;
   min-width: 200px;
   height: 40px;
+
+  // ✅ 分组标签拖拽样式
+  :deep(.ant-tag) {
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s ease;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+  }
 }
 
 .query-card {
@@ -1615,8 +2032,22 @@ function handleExport() {
         padding: 6px 4px;
         font-weight: 600;
         vertical-align: middle;
+        cursor: pointer; /* 默认指针，表示可点击排序 */
 
-        /* 移除固定的 cursor，让 Handsontable 自己控制光标样式以支持拖拽 */
+        /* 拖拽手柄样式 */
+        .drag-handle {
+          cursor: grab !important;
+
+          &:hover {
+            background-color: rgb(255 255 255 / 20%);
+            border-radius: 3px;
+            opacity: 1 !important;
+          }
+
+          &:active {
+            cursor: grabbing !important;
+          }
+        }
       }
     }
 
@@ -1632,6 +2063,28 @@ function handleExport() {
     :deep(tr[data-total-row='true']) {
       font-weight: bold !important;
       background-color: #f0f0f0 !important;
+    }
+  }
+}
+
+/* 原生拖拽样式 */
+.group-area-tags {
+  min-height: 32px;
+  padding: 4px;
+  transition: all 0.3s;
+
+  /* 当有元素拖拽经过时高亮 */
+  &.sortable-over {
+    background-color: #e6f7ff !important;
+    border: 2px dashed #1890ff !important;
+  }
+
+  :deep(.ant-tag) {
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+      transform: translateY(-2px);
     }
   }
 }

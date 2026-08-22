@@ -77,6 +77,27 @@ export namespace StatementAdminApi {
     /** 结算完毕 */
     Settlemented = 2,
   }
+
+  /** 组合费用状态枚举（原 SeaExportFeeStatus 更名） */
+  export enum CombinedFeeStatus {
+    /** 录入状态 */
+    Entering = 0,
+    /** 待审核 */
+    Auditing = 1,
+    /** 已驳回 */
+    Rejected = 2,
+    /** 审核通过 */
+    Passed = 3,
+    /** 部分结算 */
+    PartialSettlement = 4,
+    /** 已结算 */
+    Settlemented = 5,
+    /** 已开票 */
+    Invoiced = 6,
+    /** 已付款 */
+    Paid = 7,
+  }
+
   /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
     /** 组织id */

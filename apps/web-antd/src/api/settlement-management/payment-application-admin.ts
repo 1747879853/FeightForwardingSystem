@@ -375,13 +375,12 @@ export namespace PaymentApplicationAdminApi {
     orgs?: null | OrganizationUnitSimpleDto[];
     isDeleted: boolean;
     creationTime: string;
-    creatorUserId?: number;
-    /** 发票流程：0=先票后付，1=先付后票，2=不开票 */
-    invoiceProcess?: number | null;
-    invoiceNo?: string | null;
-    invoiceDate?: string | null;
-    /** 关联付费结算简要（含结算附件）；无关联时为空数组 */
-    paymentSettlements?: PaymentSettlementForApplicationSimpleDto[];
+
+    // === 整票结算状态字段（客户对账接口使用） ===
+    /** 应收整票结算状态（按该业务下全部应收费用汇总） */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
+    paySettlementStatus?: number | null;
   }
 
   /** 付费申请列表 DTO（用于付费结算选择列表） */
@@ -590,6 +589,9 @@ export namespace PaymentApplicationAdminApi {
     isDeleted: boolean;
     creationTime: string;
     creatorUserId?: number;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
   }
 
   /** 客户简要 DTO（结算对象） */

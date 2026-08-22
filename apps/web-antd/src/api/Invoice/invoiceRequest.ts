@@ -113,6 +113,13 @@ export namespace InvoiceApplicationApi {
     etd?: string;
     /** 海运出口信息（根据文档，现在挂在此处） */
     seaExport?: SeaExportSimpleDto;
+
+    // === 整票结算状态字段（客户对账接口使用） ===
+    /** 应收整票结算状态（按该业务下全部应收费用汇总） */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
+    paySettlementStatus?: number | null;
+
     [key: string]: any;
   }
 

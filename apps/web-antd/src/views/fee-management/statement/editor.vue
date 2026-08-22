@@ -79,6 +79,90 @@ import { getCurrencyEnumSymbolOptions } from '#/views/sea-export-admin/orderFee/
 const t = (key: string, args?: any[]) =>
   $t(`seaExport.export.statement.${key}`, args as any);
 
+// --- 状态标签和颜色映射函数 ---
+
+function getRecSettlementStatusLabel(
+  recSettlementStatus: number | undefined,
+): string {
+  const statusMap: Record<number, string> = {
+    0: '录入中',
+    1: '待审核',
+    2: '已驳回',
+    3: '审核通过',
+    4: '部分结算',
+    5: '已结算',
+    6: '已开票',
+    7: '已付款',
+  };
+  return statusMap[recSettlementStatus ?? -1] ?? '-';
+}
+
+function getRecSettlementStatusColor(
+  recSettlementStatus: number | undefined,
+): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 录入中 - 灰色
+    1: 'orange', // 待审核 - 橙色
+    2: 'red', // 已驳回 - 红色
+    3: 'blue', // 审核通过 - 蓝色
+    4: 'purple', // 部分结算 - 紫色
+    5: 'green', // 已结算 - 绿色
+    6: 'cyan', // 已开票 - 青色
+    7: 'gold', // 已付款 - 金色
+  };
+  return colorMap[recSettlementStatus ?? -1] ?? 'default';
+}
+
+function getInvoiceStatusLabel(invoiceStatus: number | undefined): string {
+  const statusMap: Record<number, string> = {
+    0: '未开票',
+    1: '部分开票',
+    2: '已开票',
+  };
+  return statusMap[invoiceStatus ?? -1] ?? '-';
+}
+
+function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 未开票 - 灰色
+    1: 'orange', // 部分开票 - 橙色
+    2: 'green', // 已开票 - 绿色
+  };
+  return colorMap[invoiceStatus ?? -1] ?? 'default';
+}
+
+function getCombinedFeeStatusLabel(
+  combinedFeeStatus: number | undefined,
+): string {
+  const statusMap: Record<number, string> = {
+    0: '录入中',
+    1: '待审核',
+    2: '已驳回',
+    3: '审核通过',
+    4: '部分结算',
+    5: '已结算',
+    6: '已开票',
+    7: '已付款',
+  };
+  return statusMap[combinedFeeStatus ?? -1] ?? '-';
+}
+
+function getCombinedFeeStatusColor(
+  combinedFeeStatus: number | undefined,
+): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 录入中 - 灰色
+    1: 'orange', // 待审核 - 橙色
+    2: 'red', // 已驳回 - 红色
+    3: 'blue', // 审核通过 - 蓝色
+    4: 'purple', // 部分结算 - 紫色
+    5: 'green', // 已结算 - 绿色
+    6: 'cyan', // 已开票 - 青色
+    7: 'gold', // 已付款 - 金色
+  };
+  return colorMap[combinedFeeStatus ?? -1] ?? 'default';
+}
+
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
@@ -535,6 +619,16 @@ function mapDetailToFeeRows(
         unSettledAmount: fee?.unSettledAmount ?? 0,
         exchangeRate: fee?.exchangeRate,
         itemRemark: item.remark ?? '',
+        // 新增字段
+        invoiceStatus: fee.invoiceStatus,
+        combinedFeeStatus: fee.combinedFeeStatus,
+        // 保存 transportOrder 信息，用于订单分组行显示应收完结状态
+        transportOrder: order
+          ? {
+              recSettlementStatus: order.recSettlementStatus,
+              paySettlementStatus: order.paySettlementStatus,
+            }
+          : undefined,
       });
     }
   }
@@ -881,7 +975,7 @@ const totalAmount = computed(() => {
     });
     //totalPay += payAmount * item.exchangeRate;
   });
-  console.log(list);
+  // console.log(list);
   return list;
 });
 async function handleSave() {
@@ -1423,6 +1517,21 @@ function formatMonth(val: string | undefined | null): string {
                   <template v-else-if="column.key === 'accountDate'">
                     {{ formatMonth(record.accountDate) }}
                   </template>
+                  <template v-else-if="column.key === 'recSettlementStatus'">
+                    <Tag
+                      :color="
+                        getRecSettlementStatusColor(
+                          record.transportOrder?.recSettlementStatus,
+                        )
+                      "
+                    >
+                      {{
+                        getRecSettlementStatusLabel(
+                          record.transportOrder?.recSettlementStatus,
+                        )
+                      }}
+                    </Tag>
+                  </template>
                   <!-- 对账信息列醒目显示 -->
                   <template
                     v-else-if="
@@ -1534,6 +1643,20 @@ function formatMonth(val: string | undefined | null): string {
                   </template>
                   <template v-else-if="column.key === 'unSettledAmount'">
                     {{ formatAmount(record.amount - record.settledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'invoiceStatus'">
+                    <Tag :color="getInvoiceStatusColor(record.invoiceStatus)">
+                      {{ getInvoiceStatusLabel(record.invoiceStatus) }}
+                    </Tag>
+                  </template>
+                  <template v-else-if="column.key === 'combinedFeeStatus'">
+                    <Tag
+                      :color="
+                        getCombinedFeeStatusColor(record.combinedFeeStatus)
+                      "
+                    >
+                      {{ getCombinedFeeStatusLabel(record.combinedFeeStatus) }}
+                    </Tag>
                   </template>
                   <template v-else>
                     {{ column.dataIndex ? record[column.dataIndex] : '' }}

@@ -565,6 +565,13 @@ export namespace InvoiceIssueApi {
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
     etd?: string;
+
+    // === 整票结算状态字段（客户对账接口使用） ===
+    /** 应收整票结算状态（按该业务下全部应收费用汇总） */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
+    paySettlementStatus?: number | null;
+
     [key: string]: any;
   }
 
@@ -633,6 +640,10 @@ export namespace InvoiceIssueApi {
     transportOrder?: TransportOrderSimpleDto;
     /** 对应的海运出口信息（仅本接口会赋值） */
     seaExport?: SeaExportSimpleDto;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
+
     [key: string]: any;
   }
 

@@ -118,7 +118,7 @@ catalogs:
       specifier: ^6.14.0
       version: 6.14.0
     '@types/sortablejs':
-      specifier: ^1.15.8
+      specifier: 1.15.9
       version: 1.15.9
     '@typescript-eslint/eslint-plugin':
       specifier: ^8.46.4
@@ -388,7 +388,7 @@ catalogs:
       specifier: ^2.0.0
       version: 2.0.0
     sortablejs:
-      specifier: ^1.15.6
+      specifier: 1.15.6
       version: 1.15.6
     stylelint:
       specifier: ^16.21.0
@@ -726,6 +726,9 @@ importers:
       pinyin-pro:
         specifier: ^3.28.1
         version: 3.28.1
+      sortablejs:
+        specifier: 'catalog:'
+        version: 1.15.6
       three:
         specifier: ^0.183.2
         version: 0.183.2
@@ -745,6 +748,9 @@ importers:
       '@types/json-bigint':
         specifier: 'catalog:'
         version: 1.0.4
+      '@types/sortablejs':
+        specifier: 'catalog:'
+        version: 1.15.9
       '@types/three':
         specifier: ^0.183.1
         version: 0.183.1

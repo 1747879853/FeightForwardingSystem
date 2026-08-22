@@ -30,6 +30,15 @@ export interface FeeDetailRow extends SelectedFeeItem {
   customerServiceUserNames?: string;
   /** 备注（行级） */
   itemRemark?: string;
+  /** 开票状态 */
+  invoiceStatus?: number;
+  /** 组合费用状态 */
+  combinedFeeStatus?: number;
+  /** 运输订单信息（用于传递整票结算状态） */
+  transportOrder?: {
+    recSettlementStatus?: number | null;
+    paySettlementStatus?: number | null;
+  };
 }
 
 /** 币别汇总信息 */
@@ -64,6 +73,11 @@ export interface OrderGroupRow {
   customerServiceUserNames: string;
   children: FeeDetailRow[];
   currencySummaries: OrderCurrencyAmount[];
+  /** 运输订单信息（包含整票结算状态） */
+  transportOrder?: {
+    recSettlementStatus?: number | null;
+    paySettlementStatus?: number | null;
+  };
 }
 /** 计算某个订单的某币别的应收/应付合计 */
 export function calcCurrencySummary(
@@ -118,7 +132,11 @@ export function groupFeesByOrder(
         });
       }
     }
-    let row = {
+
+    // 从第一个费用项中获取 transportOrder 信息（如果存在）
+    const transportOrder = (first as any).transportOrder;
+
+    const row: any = {
       key: `order_${transportOrderId}`,
       transportOrderId,
       commissionNum: first.commissionNum ?? '',
@@ -133,6 +151,8 @@ export function groupFeesByOrder(
       customerServiceUserNames: first.customerServiceUserNames ?? '',
       children: items,
       currencySummaries: [...cMap.values()],
+      // 添加 transportOrder 信息
+      transportOrder: transportOrder || undefined,
     };
 
     for (const c of currencies) {
@@ -158,7 +178,7 @@ export function groupFeesByOrder(
       );
     }
     console.log('groupFeesByOrder row', row);
-    return row;
+    return row as OrderGroupRow;
   });
 }
 
@@ -231,6 +251,28 @@ export function useOrderGroupColumns() {
       key: 'customerServiceUserNames',
       width: 80,
     },
+    {
+      title: '应收完结',
+      dataIndex: 'recSettlementStatus',
+      key: 'recSettlementStatus',
+      width: 100,
+      align: 'center' as const,
+      customRender: ({ record }: any) => {
+        const status = record.transportOrder?.recSettlementStatus;
+        if (status === null || status === undefined) return '-';
+        const statusMap: Record<number, string> = {
+          0: '录入中',
+          1: '待审核',
+          2: '已驳回',
+          3: '审核通过',
+          4: '部分结算',
+          5: '已结算',
+          6: '已开票',
+          7: '已付款',
+        };
+        return statusMap[status] ?? '-';
+      },
+    },
   ];
 }
 
@@ -271,6 +313,45 @@ export function useFeeInnerColumns() {
       align: 'center' as const,
       customRender: ({ record }: any) => {
         return record.isStatemented ? '是' : '否';
+      },
+    },
+    {
+      title: '开票状态',
+      dataIndex: 'invoiceStatus',
+      key: 'invoiceStatus',
+      width: 90,
+      align: 'center' as const,
+      customRender: ({ record }: any) => {
+        const status = record.invoiceStatus;
+        if (status === null || status === undefined) return '-';
+        const statusMap: Record<number, string> = {
+          0: '未开票',
+          1: '部分开票',
+          2: '已开票',
+        };
+        return statusMap[status] ?? '-';
+      },
+    },
+    {
+      title: '费用状态',
+      dataIndex: 'combinedFeeStatus',
+      key: 'combinedFeeStatus',
+      width: 110,
+      align: 'center' as const,
+      customRender: ({ record }: any) => {
+        const status = record.combinedFeeStatus;
+        if (status === null || status === undefined) return '-';
+        const statusMap: Record<number, string> = {
+          0: '录入中',
+          1: '待审核',
+          2: '已驳回',
+          3: '审核通过',
+          4: '部分结算',
+          5: '已结算',
+          6: '已开票',
+          7: '已付款',
+        };
+        return statusMap[status] ?? '-';
       },
     },
   ];

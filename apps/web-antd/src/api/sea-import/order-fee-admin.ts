@@ -319,6 +319,9 @@ export namespace OrderFeeAdminApi {
 
     /** 主键 ID */
     id: string;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
   }
 
   /** 分页查询参数 */
