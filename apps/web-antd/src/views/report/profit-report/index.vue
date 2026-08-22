@@ -380,7 +380,7 @@ const hotSettings = computed(() => {
 
               // ✅ 优化：降低阈值从5px到2px，提高响应速度
               // 如果垂直移动距离大于水平移动距离，则认为是垂直拖动
-              if (deltaY > deltaX && deltaY > 0) {
+              if (deltaY > 0) {
                 isVerticalDrag = true;
                 hasStartedDrag = true;
                 dragHandled = true; // ✅ 标记已处理
@@ -416,7 +416,7 @@ const hotSettings = computed(() => {
                 moveEvent.preventDefault();
                 moveEvent.stopPropagation();
                 moveEvent.stopImmediatePropagation();
-              } else if (deltaX > 5) {
+              } else if (deltaX > 1) {
                 // 水平移动，让 Handsontable 处理列移动
                 hasStartedDrag = true;
                 cleanup();
