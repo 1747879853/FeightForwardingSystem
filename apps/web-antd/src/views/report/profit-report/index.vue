@@ -5,6 +5,10 @@ import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { HotTable } from '@handsontable/vue3';
+import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
+
+// ✅ 注册中文语言包
+registerLanguageDictionary(zhCN);
 
 import { Page } from '@vben/common-ui';
 
@@ -182,12 +186,6 @@ function applyColumnConfig(configs: any[]) {
   }
 }
 
-// 重置列配置
-function resetColumnConfig() {
-  initDefaultColumnConfigs();
-  applyColumnConfig([...defaultColumnConfigs.value]);
-}
-
 // 监听动态列变化，更新默认配置
 watch(
   dynamicHotColumns,
@@ -243,7 +241,28 @@ const hotSettings = computed(() => {
       sortEmptyCells: false,
     },
 
-    contextMenu: false,
+    // ✅ 启用右键菜单和列隐藏/显示功能，使用中文标签
+    contextMenu: {
+      items: {
+        hidden_columns_show: {
+          name: '显示隐藏的列',
+        },
+        hidden_columns_hide: {
+          name: '隐藏列',
+        },
+      },
+    },
+
+    // ✅ 配置隐藏列功能
+    hiddenColumns: {
+      columns: [], // 初始时没有隐藏的列
+      indicators: true, // 显示隐藏列指示器（小箭头）
+      copyPasteEnabled: false, // 隐藏列不参与复制粘贴
+    },
+
+    // ✅ 设置语言为中文
+    language: zhCN.languageCode,
+
     readOnly: true,
     licenseKey: 'non-commercial-and-evaluation',
     className: 'htCenter htMiddle',
@@ -513,36 +532,7 @@ const hotSettings = computed(() => {
 
       // 提示用户可以使用排序和拖拽功能
       TH.style.cursor = 'pointer';
-      TH.title = '左键单击排序 | 拖动左侧 ⋮⋮ 图标到分组区 | 右键添加分组';
-
-      // 添加右键菜单来添加分组
-      TH.oncontextmenu = (e: MouseEvent) => {
-        e.preventDefault();
-
-        // 从当前显示的列配置中获取列数据
-        const currentColumns = currentColumnsRef.value;
-        if (col >= 0 && col < currentColumns.length) {
-          const columnData = currentColumns[col]?.data;
-          const columnTitle = currentColumns[col]?.title || columnData;
-
-          // 确保不是分组列的数据字段
-          if (
-            columnData &&
-            columnData !== '_groupDisplay' &&
-            !groupColumns.value.includes(columnData)
-          ) {
-            // ✅ 直接添加分组，无需确认弹窗
-            groupColumns.value.push(columnData);
-            if (originalData.value.length > 0) {
-              applyGrouping([...originalData.value]);
-            }
-            // 可选：显示成功提示
-            message.success(`已将 "${columnTitle}" 添加到分组`);
-          } else if (groupColumns.value.includes(columnData)) {
-            message.info('该列已在分组中，无需重复添加');
-          }
-        }
-      };
+      TH.title = '左键单击排序 | 拖动左侧 ⋮⋮ 图标到分组区 ';
     },
     //afterOnCellMouseDown: onAfterOnCellMouseDown,
     afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
@@ -751,30 +741,9 @@ function initColumnHeaderDrag() {
       return;
     }
 
-    console.log('✅ 开始初始化列头拖拽（智能方向识别）');
-    console.log('✅ Handsontable 列移动已启用，水平拖动可调整列顺序');
-    console.log('✅ 垂直拖动 ⋮⋮ 手柄可添加到分组区域');
-
-    // ✅ 不再需要全局事件监听，所有逻辑都在手柄的 onmousedown 中处理
-
     (initColumnHeaderDrag as any).cleanup = () => {
       console.log('✅ 列头拖拽清理完成');
     };
-  });
-}
-
-/**
- * 初始化分组区域（只需要添加样式，拖拽接收在 mouseup 中处理）
- */
-function initGroupAreaDrop() {
-  nextTick(() => {
-    const groupArea = document.querySelector('.group-area-tags');
-    if (!groupArea) {
-      console.warn('未找到分组区域元素');
-      return;
-    }
-
-    console.log('✅ 分组区域已就绪（拖拽接收由全局 mouseup 事件处理）');
   });
 }
 
@@ -918,7 +887,7 @@ async function handleQuery(formData?: any) {
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
   } catch (error: any) {
     console.error('查询失败:', error);
-    message.error(error?.message || '查询失败，请稍后重试');
+    //message.error(error?.message || '查询失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -937,24 +906,6 @@ async function handleReset() {
   await nextTick();
   if (hotTableRef.value && hotTableRef.value.hotInstance) {
     hotTableRef.value.hotInstance.loadData([]);
-  }
-}
-
-/**
- * 处理表格点击事件
- */
-function onAfterOnCellMouseDown(
-  event: any,
-  coords: any,
-  TD: HTMLTableCellElement,
-) {
-  if (coords.row >= 0 && coords.row < tableData.value.length) {
-    const rowData = tableData.value[coords.row];
-    if (rowData && rowData._isGroupRow) {
-      // 点击分组行，切换展开/折叠
-      toggleGroupExpand(rowData._groupKey);
-    }
-    // 数据行双击跳转在 afterOnCellDblClick 中处理
   }
 }
 
@@ -1197,19 +1148,6 @@ function formatBizType(bizType: number) {
 function formatCtns(ctns: any[]) {
   if (!ctns || ctns.length === 0) return '-';
   return ctns.map((ctn) => `${ctn.ctnCode.ctnName}×${ctn.count}`).join(', ');
-}
-
-/**
- * 格式化币别明细
- */
-function formatCurrencies(currencies: any[]) {
-  if (!currencies || currencies.length === 0) return '-';
-  return currencies
-    .map(
-      (curr) =>
-        `${curr.currency.code}:应收${curr.receivable.toFixed(2)}/应付${curr.payable.toFixed(2)}/利润${curr.profit.toFixed(2)}`,
-    )
-    .join('; ');
 }
 
 /**
@@ -1563,17 +1501,6 @@ function buildFullExportTree(
   });
 
   return result;
-}
-
-// 获取带对齐样式的列配置
-function getColumnsWithAlignment() {
-  return dynamicHotColumns.value.map((col) => {
-    const isNumeric = numericColumns.value.has(col.data);
-    return {
-      ...col,
-      className: isNumeric ? 'htRight' : 'htLeft',
-    };
-  });
 }
 
 // 创建分组列配置
@@ -2228,25 +2155,6 @@ function handleExport() {
           </Button>
         </div>
       </div>
-    </div>
-
-    <!-- 表格区域 -->
-    <div class="w-full">
-      <Table
-        :columns="columns"
-        :data="tableData"
-        :pagination="pagination"
-        :loading="loading"
-        :scroll="{ x: 'max-content' }"
-        @change="handleTableChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'action'">
-            <Button type="link" @click="handleEdit(record)">编辑</Button>
-            <Button type="link" @click="handleDelete(record)">删除</Button>
-          </template>
-        </template>
-      </Table>
     </div>
 
     <!-- 列选择器弹窗 -->
