@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-22 船公司 Logo 改为单图缩略图预览](./changelogs/change-log-2026-08-22-carrier-logo-picture-card.md)
 - [2026-08-22 监装模块前端落地（TAPD #1000122）](./changelogs/change-log-2026-08-22-loading-supervision-frontend.md)
 - [2026-08-20 运踪分享页页头补展示单号](./changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md)
 - [2026-08-20 付费申请汇率弹窗改为双向折算并预填有效应付汇率](./changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md)

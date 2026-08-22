@@ -234,7 +234,7 @@ const handleBeforeUpload = async (
 };
 
 /** 处理文件删除 */
-const handleRemove = (file: UploadFile): boolean => {
+const handleRemove = (file: Pick<UploadFile, 'uid'>): boolean => {
   if (props.disabled) return false;
 
   innerValue.value = innerValue.value.filter(
@@ -244,9 +244,10 @@ const handleRemove = (file: UploadFile): boolean => {
   return true;
 };
 
-/** 判断文件是否为图片类型 */
-const isImageFile = (fileName: string): boolean => {
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+/** 判断文件是否为图片类型（文件名或 URL 扩展名均可） */
+const isImageFile = (fileName?: null | string): boolean => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.split('?')[0]?.toLowerCase() || '';
   return IMAGE_EXTENSIONS.has(ext);
 };
 
@@ -259,12 +260,15 @@ const handlePreview = (file: UploadFile) => {
   if (attachment?.url) {
     const fullUrl = buildAttachmentUrl(attachment.url);
 
-    // 如果是图片类型，使用弹窗预览
-    if (isImageFile(attachment.fileName)) {
+    // picture-card / 图片扩展名：弹窗预览；编辑回显文件名可能没有扩展名
+    if (
+      isPictureCard.value ||
+      isImageFile(attachment.fileName) ||
+      isImageFile(attachment.url)
+    ) {
       previewImageUrl.value = fullUrl;
       previewVisible.value = true;
     } else {
-      // 非图片类型，打开新窗口
       window.open(fullUrl, '_blank');
     }
   } else {
@@ -552,8 +556,8 @@ defineExpose({
       </Button>
     </Upload>
 
-    <!-- 已上传文件列表 -->
-    <div v-if="innerValue.length > 0" class="mt-4">
+    <!-- 已上传文件列表：picture-card 已用缩略图预览，不再重复列文件名 -->
+    <div v-if="innerValue.length > 0 && !isPictureCard" class="mt-4">
       <div class="mb-2 text-sm font-medium text-gray-700">
         {{ $t('component.fileUpload.uploadedFiles') || '已上传文件' }} ({{
           innerValue.length
@@ -561,7 +565,7 @@ defineExpose({
       </div>
       <div class="max-h-20 overflow-y-auto rounded border border-gray-200 p-2">
         <div
-          v-for="(file, index) in innerValue"
+          v-for="file in innerValue"
           :key="file.attachmentId"
           class="flex items-center justify-between rounded px-2 py-1.5 hover:bg-gray-50"
         >
@@ -590,9 +594,7 @@ defineExpose({
             type="text"
             danger
             size="small"
-            @click="
-              handleRemove({ uid: String(file.attachmentId) } as UploadFile)
-            "
+            @click="handleRemove({ uid: String(file.attachmentId) })"
           >
             <IconifyIcon icon="mdi:close" class="size-4" />
           </Button>
@@ -639,9 +641,18 @@ defineExpose({
 .file-upload-input--card :deep(.ant-upload-select-picture-card),
 .file-upload-input--card :deep(.ant-upload-list-item-container) {
   width: 104px;
-  height: 84px;
+  height: 104px;
   margin-block: 0 8px;
   margin-inline: 0 8px;
+}
+
+.file-upload-input--card :deep(.ant-upload-list-item-thumbnail img),
+.file-upload-input--card :deep(.ant-upload-list-item-image) {
+  object-fit: contain;
+}
+
+.file-upload-input--card :deep(.ant-upload-list-item-name) {
+  display: none;
 }
 
 .file-upload-card-trigger {

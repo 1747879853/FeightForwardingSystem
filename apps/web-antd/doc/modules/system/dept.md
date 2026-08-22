@@ -58,6 +58,7 @@ last_updated: 2026-08-18
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-22 | `Fix` | 公司 Logo 上传后只显示缩略图，不再附带文件名列表。 | 与船公司共用 `FileUploadInput` 的 `picture-card`：隐藏自定义文件名列表与 Ant Design 文件名。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |
 | 2026-08-18 | `Feature` | 公司级组织支持维护开票应用 AppKey / AppSecret；详情页密钥不明文展示。 | 更新接口全量覆盖这两个字段；编辑必须走 `GetOrganizationUnitAsync` 回显，不能用列表数据。详见 `changelogs/change-log-2026-08-18-dept-company-invoice-app.md`。 |
 | 2026-08-09 | `Feature` | 公司级组织支持 Logo 上传、编辑回显与详情预览，供打印等场景使用。 | 对齐船公司附件协议：`FileUploadInput` + `logo: { attachmentId, displayOrder }`；详情 URL 用 `buildAttachmentUrl`；部门提交 `logo: null`。详见 `changelogs/change-log-2026-08-09-dept-company-logo-upload.md`。 |
 | 2026-07-23 | `Feature` | 「添加成员」候选用户查询必传 `organizationUnitId`，筛选不在本组织的用户。 | `getUserPagingListForOu` 增加 `OrganizationUnitId` Query；弹窗 `add-member-modal.vue` 打开时带入当前组织 Id。 |

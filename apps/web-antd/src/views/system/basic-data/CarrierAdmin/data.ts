@@ -159,6 +159,7 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.basicData.carrier.logo'),
       componentProps: {
         allowedTypes: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
+        listType: 'picture-card',
         maxCount: 1,
         maxSizeMB: 5,
       },
