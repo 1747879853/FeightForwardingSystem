@@ -975,18 +975,104 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
   const currencyCodes = Array.from(allCurrencyCodes.value).sort();
 
   return data.map((item) => {
+    // 从 transportOrder 中提取业务字段
+    const transportOrder = item.transportOrder;
+
+    // 根据业务类型获取专属字段
+    let seaExport: ReportApi.ReportSeaExportDto | null = null;
+    let seaImport: ReportApi.ReportSeaImportDto | null = null;
+    let airExport: ReportApi.ReportAirExportDto | null = null;
+
+    if (transportOrder) {
+      seaExport = transportOrder.seaExport || null;
+      seaImport = transportOrder.seaImport || null;
+      airExport = transportOrder.airExport || null;
+    }
+
+    // 确定港口信息（根据业务类型）
+    let pol: any = null;
+    let pod: any = null;
+    let polRemark: string = '';
+    let podRemark: string = '';
+    let vessel: string = '';
+    let innerVoyno: string = '';
+    let bookingAgent: any = null;
+    let carrier: any = null;
+    let yard: any = null;
+    let blType: number | null = null;
+
+    if (seaExport) {
+      pol = seaExport.pol;
+      pod = seaExport.pod;
+      polRemark = seaExport.polRemark || '';
+      podRemark = seaExport.podRemark || '';
+      vessel = seaExport.vessel || '';
+      innerVoyno = seaExport.innerVoyno || '';
+      bookingAgent = seaExport.bookingAgent;
+      carrier = seaExport.carrier;
+      yard = seaExport.yard;
+      blType = seaExport.blType;
+    } else if (seaImport) {
+      pol = seaImport.pol;
+      pod = seaImport.pod;
+      polRemark = seaImport.polRemark || '';
+      podRemark = seaImport.podRemark || '';
+      vessel = seaImport.vessel || '';
+      innerVoyno = seaImport.innerVoyno || '';
+      carrier = seaImport.carrier;
+    } else if (airExport) {
+      pol = airExport.pol;
+      pod = airExport.pod;
+      polRemark = airExport.polRemark || '';
+      podRemark = airExport.podRemark || '';
+      bookingAgent = airExport.bookingAgent;
+    }
+
     const rowData: any = {
-      commissionNum: item.commissionNum,
-      mblNum: item.mblNum,
-      bizType: formatBizType(item.bizType),
-      client: item.client?.name || '-',
-      pol: item.pol ? item.pol.code : '-',
-      pod: item.pod ? item.pod.code : '-',
-      vessel: item.vessel || '-',
-      innerVoyno: item.innerVoyno || '-',
-      ctns: formatCtns(item.ctns),
-      bizDate: safeFormatDate(item.bizDate, 'date'),
+      // 行级字段
+      transportOrderId: item.transportOrderId,
+      changeOrderId: item.changeOrderId,
+      isOriginal: item.isOriginal,
       accountDate: safeFormatDate(item.accountDate, 'month'),
+
+      // 业务字段（从 transportOrder 提取）
+      bizType: formatBizType(transportOrder?.bizType ?? 0),
+      client: transportOrder?.client?.name || '-',
+      mblNum: transportOrder?.mblNum || '',
+      commissionNum: transportOrder?.commissionNum || '',
+      bizDate: safeFormatDate(transportOrder?.bizDate, 'date'),
+      settlementDate: safeFormatDate(transportOrder?.settlementDate, 'date'),
+      cargoId: transportOrder?.cargoId,
+      settlementType: transportOrder?.settlementType,
+      pkgs: transportOrder?.pkgs,
+      kgs: transportOrder?.kgs,
+      cbm: transportOrder?.cbm,
+
+      // 干系人
+      sales: (transportOrder?.sales || [])
+        .map((u: any) => u.nickName)
+        .join(', '),
+      operations: (transportOrder?.operations || [])
+        .map((u: any) => u.nickName)
+        .join(', '),
+
+      // 港口和运输信息
+      pol: pol ? pol.code : '-',
+      pod: pod ? pod.code : '-',
+      polRemark,
+      podRemark,
+      vessel,
+      innerVoyno,
+
+      // 船公司（用于显示列）
+      carrier: carrier
+        ? carrier.cnShortName || carrier.cnName || carrier.enName
+        : '-',
+
+      // 箱型箱量
+      ctns: formatCtns(transportOrder?.ctns || []),
+
+      // 金额
       totalReceivable: item.totalReceivable?.toFixed(2) || '',
       totalPayable: item.totalPayable?.toFixed(2) || '',
       totalProfit: item.totalProfit?.toFixed(2) || '',
@@ -994,7 +1080,10 @@ function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
         item.totalProfitRate != null
           ? item.totalProfitRate // 保持小数形式
           : null,
+
+      // 原始数据（用于跳转详情）
       _originalData: item,
+      _isDataRow: true,
     };
 
     // 初始化所有币别字段为空值
@@ -1070,13 +1159,16 @@ function handleViewDetail(record: ReportApi.ProfitReportDto) {
     return;
   }
 
+  // 从 transportOrder 中获取业务类型
+  const bizType = record.transportOrder?.bizType ?? 0;
+
   const bizTypeMap: Record<number, string> = {
     0: 'sea-exports',
     1: 'sea-imports',
     2: 'air-exports',
   };
 
-  const basePath = bizTypeMap[record.bizType];
+  const basePath = bizTypeMap[bizType];
   if (!basePath) {
     message.warning('不支持的业务类型，无法跳转详情');
     return;
@@ -1105,9 +1197,9 @@ function calculateTotalRow(): any {
   if (groupColumns.value.length > 0) {
     totalRow._groupDisplay = '合计';
   } else {
-    // 无分组时，在第一列显示"合计"
+    // 无分组时，在第一列无需显示"合计"
     if (visibleColumns.length > 0) {
-      totalRow[visibleColumns[0].data] = '合计';
+      totalRow[visibleColumns[0].data] = '';
     }
   }
 
@@ -1238,7 +1330,7 @@ function buildTreeStructure(
           const count = valueCounts[value] || 0;
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value] || 0})`;
           });

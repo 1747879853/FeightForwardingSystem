@@ -2,6 +2,8 @@ import type { ReportApi } from '#/api/system/report';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
+import UserSelect from '#/adapter/component/biz-select/user-select.vue';
 import SmartPortSelect from './modules/SmartPortSelect.vue';
 
 /**
@@ -67,25 +69,35 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      fieldName: 'mblNum',
-      label: '主提单号',
+      fieldName: 'keyword',
+      label: '关键词',
       component: 'Input',
       componentProps: {
-        placeholder: '请输入主提单号',
+        placeholder: '主提单号或委托编号',
         allowClear: true,
         style: { width: '100%' },
       },
     },
-    {
-      fieldName: 'commissionNum',
-      label: '委托编号',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入委托编号',
-        allowClear: true,
-        style: { width: '100%' },
-      },
-    },
+    // {
+    //   fieldName: 'mblNum',
+    //   label: '主提单号',
+    //   component: 'Input',
+    //   componentProps: {
+    //     placeholder: '请输入主提单号',
+    //     allowClear: true,
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // {
+    //   fieldName: 'commissionNum',
+    //   label: '委托编号',
+    //   component: 'Input',
+    //   componentProps: {
+    //     placeholder: '请输入委托编号',
+    //     allowClear: true,
+    //     style: { width: '100%' },
+    //   },
+    // },
     {
       fieldName: 'bizDateStart',
       label: '业务日期起',
@@ -131,6 +143,95 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      fieldName: 'isMergeChangeOrder',
+      label: '合并更改单',
+      component: 'Switch',
+      defaultValue: false,
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+    },
+    {
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择订舱代理',
+        style: { width: '100%' },
+        // 可以添加过滤条件只显示订舱代理类型的客户
+      },
+    },
+    {
+      fieldName: 'carrierId',
+      label: '船公司',
+      component: CarrierSelect,
+      componentProps: {
+        placeholder: '请选择船公司',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'saleUserIds',
+      label: '销售',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择销售',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'operationUserIds',
+      label: '操作',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择操作',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'yardId',
+      label: '场站',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择场站',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'blType',
+      label: '装运方式',
+      component: 'Select',
+      componentProps: {
+        options: BL_TYPE_OPTIONS,
+        allowClear: true,
+        placeholder: '请选择装运方式',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'vessel',
+      label: '船名',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入船名',
+        allowClear: true,
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'innerVoyno',
+      label: '航次',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入航次',
+        allowClear: true,
+        style: { width: '100%' },
+      },
+    },
+    {
       fieldName: 'polId',
       label: '起运港',
       component: SmartPortSelect,
@@ -151,13 +252,27 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
       }),
     },
     {
-      fieldName: 'isMergeChangeOrder',
-      label: '合并更改单',
-      component: 'Switch',
-      defaultValue: true,
+      fieldName: 'accountDateStart',
+      label: '会计期间起',
+      component: 'DatePicker',
       componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
+        picker: 'month',
+        placeholder: '请选择开始月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'accountDateEnd',
+      label: '会计期间止',
+      component: 'DatePicker',
+      componentProps: {
+        picker: 'month',
+        placeholder: '请选择结束月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
+        style: { width: '100%' },
       },
     },
   ];
@@ -373,14 +488,29 @@ export function getBaseHotColumns() {
       width: 150,
     },
     {
-      data: 'pol',
-      title: '起运港',
+      data: 'carrier',
+      title: '船公司',
+      width: 150,
+    },
+    {
+      data: 'sales',
+      title: '销售',
       width: 120,
     },
     {
-      data: 'pod',
-      title: '目的港',
+      data: 'operations',
+      title: '操作',
       width: 120,
+    },
+    {
+      data: 'polRemark',
+      title: '起运港备注',
+      width: 150,
+    },
+    {
+      data: 'podRemark',
+      title: '目的港备注',
+      width: 150,
     },
     {
       data: 'vessel',
@@ -390,11 +520,11 @@ export function getBaseHotColumns() {
     {
       data: 'innerVoyno',
       title: '航次',
-      width: 100,
+      width: 120,
     },
     {
       data: 'ctns',
-      title: '箱型箱量',
+      title: '箱型数量',
       width: 150,
       renderer: (
         instance: any,
@@ -405,7 +535,6 @@ export function getBaseHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
         td.innerHTML = value || '-';
         return td;
       },
