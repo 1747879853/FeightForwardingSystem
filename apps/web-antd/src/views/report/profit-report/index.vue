@@ -222,13 +222,16 @@ const hotSettings = computed(() => {
       return {
         ...col,
         className: isNumeric ? 'htRight' : 'htLeft',
+        // ✅ 分组时确保每列都有明确的宽度，防止自适应
+        width: col.width || (groupColumns.value.length > 0 ? 150 : undefined),
       };
     }),
     rowHeaders: true,
     colHeaders: true,
     height: '100%', // 使用百分比高度，配合 CSS 实现自适应
     width: '100%',
-    stretchH: 'all',
+    // ✅ 分组时禁用 stretchH，防止列宽度根据内容自适应
+    stretchH: groupColumns.value.length > 0 ? 'none' : 'all',
     manualColumnResize: true,
     manualRowResize: true,
 
@@ -536,7 +539,7 @@ const hotSettings = computed(() => {
     },
     //afterOnCellMouseDown: onAfterOnCellMouseDown,
     afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
-    // 添加单元格渲染后的事件处理（用于分组列的点击）
+    // 添加单元格渲染后的事件处理（用于分组列的点击和悬浮提示）
     afterRenderer: (
       TD: HTMLTableCellElement,
       row: number,
@@ -552,6 +555,12 @@ const hotSettings = computed(() => {
         TD.parentElement?.setAttribute('data-total-row', 'true');
         TD.style.fontWeight = 'bold';
         return;
+      }
+
+      // ✅ 添加鼠标悬浮提示，显示完整内容
+      const cellValue = TD.textContent || TD.innerText || '';
+      if (cellValue && cellValue !== '-' && cellValue.trim() !== '') {
+        TD.title = cellValue;
       }
 
       if (col === 0 && groupColumns.value.length > 0) {
