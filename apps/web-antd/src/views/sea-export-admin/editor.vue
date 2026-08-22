@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onActivated, ref, shallowRef, watch } from 'vue';
+import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
 import { useRoute, useRouter } from 'vue-router';
 import Form from './basic-info-form/form.vue';
@@ -7,6 +8,7 @@ import orderFee from './orderFee/index.vue';
 import SeparateBill from './modules/separate-bill.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
+import loadingOrder from '#/views/sea-export-admin/loading-order/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
@@ -30,6 +32,7 @@ type TabKey =
   | 'fee'
   | 'attachments'
   | 'dispatch'
+  | 'loadingOrder'
   | 'billInfo'
   | 'tracking'
   | 'issueRecord'
@@ -39,6 +42,11 @@ type FormExpose = {
   scrollToSection: (key: SectionKey) => void;
 };
 
+/** 无监装工单查看权限时整个 Tab 不出现，也不参与记忆恢复 */
+const canViewLoadingOrder = useAccess().hasAccessByCodes([
+  'Admin.SeaExport.LoadingOrder.Get',
+]);
+
 /** 仅含当前可见且有对应面板的 Tab；隐藏 key 不参与记忆恢复，避免空白页 */
 const VALID_TAB_KEYS: readonly TabKey[] = [
   'basic',
@@ -46,6 +54,7 @@ const VALID_TAB_KEYS: readonly TabKey[] = [
   'party',
   'attachments',
   'dispatch',
+  'loadingOrder',
   'billInfo',
   'tracking',
 ] as const;
@@ -53,6 +62,7 @@ const VALID_TAB_KEYS: readonly TabKey[] = [
 const TAB_STORAGE_KEY_PREFIX = 'sea-export-edit-active-tab';
 
 function isValidTabKey(key: string): key is TabKey {
+  if (key === 'loadingOrder' && !canViewLoadingOrder) return false;
   return (VALID_TAB_KEYS as readonly string[]).includes(key);
 }
 
@@ -250,6 +260,14 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   // { key: 'port', label: '单证信息', sectionKey: 'port' },
   { key: 'attachments', label: $t('seaExport.export.attachments.tabTitle') },
   { key: 'dispatch', label: '派车' },
+  ...(canViewLoadingOrder
+    ? [
+        {
+          key: 'loadingOrder' as TabKey,
+          label: $t('seaExport.loadingOrder.tabTitle'),
+        },
+      ]
+    : []),
   { key: 'billInfo', label: '分单' },
   { key: 'tracking', label: $t('seaExport.yundang.trackingInfo') },
   // { key: 'issueRecord', label: '问题记录' },
@@ -343,6 +361,9 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <KeepAlive include="SeaExportDispatch">
             <dispatch v-if="activeTab === 'dispatch'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportLoadingOrder">
+            <loadingOrder v-if="activeTab === 'loadingOrder'" />
           </KeepAlive>
           <KeepAlive include="SeaExportSeparateBill">
             <SeparateBill v-if="activeTab === 'billInfo'" />

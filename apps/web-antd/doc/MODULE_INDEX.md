@@ -12,6 +12,7 @@
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存时切标签/跳转弹二次确认；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-08-19 |
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/航次/截港等并保存。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-19 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
+| sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、提交/撤回；箱型与监装照片只读，师傅端在小程序。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-22 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-14 |
 | pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；各下拉用详情外键对象回显。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-19 |
@@ -40,11 +41,12 @@
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；费用合计卡片展示结算对象应收未结算，列表申请合计按原币/固定币别分口径；通过/驳回走 AuditAsync、审核后驳回走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-08-19 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-07-26 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
-| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-08-22 |
+| basic-data | `/basic-data/loading-requirement` | 基础资料 | 监装要求模板（主表要求名 + 明细子表），供监装工单勾选；列表默认按主表 `SortId` 升序。 | [监装要求](./modules/basic-data/loading-requirement.md) | 2026-08-22 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-goods` | 基础资料 | 维护商品品名及规格/型号子表，支撑委托与海运进口箱表规格型号下拉。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-08-16 |
-| basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段；业务下拉全量缓存，本页增删改后即时刷新。 | [包装代码](./modules/basic-data/code-package.md) | 2026-08-19 |
+| basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段；业务下拉全量缓存，本页增删改后即时刷新；抽屉表单可维护明细包装子表，供监装工单选明细包装。 | [包装代码](./modules/basic-data/code-package.md) | 2026-08-22 |
 | basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-05-16 |
 | basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-08-04 |
 | basic-data | `/basic-data/code-source` | 基础资料 | 维护业务来源代码，支撑客户或委托来源识别。 | [来源代码](./modules/basic-data/code-source.md) | 2026-05-16 |
@@ -60,7 +62,7 @@
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-08-04 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
-| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径；可查看用户最终生效权限。 | [用户管理](./modules/system/user.md) | 2026-07-29 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-08-22 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-07-29 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret。 | [部门管理](./modules/system/dept.md) | 2026-08-18 |

@@ -36,6 +36,7 @@ const USER_ATTRIBUTE_LABEL_KEYS: Record<number, string> = {
   [UserAttribute.Documentation]: 'documentation',
   [UserAttribute.Finance]: 'finance',
   [UserAttribute.HR]: 'hr',
+  [UserAttribute.LoadingSupervision]: 'loadingSupervision',
   [UserAttribute.Operation]: 'operation',
   [UserAttribute.OverseasCustomerService]: 'overseasCustomerService',
   [UserAttribute.Sales]: 'sales',
@@ -60,6 +61,7 @@ const USER_ATTRIBUTE_ROLE_VALUES: number[] = [
   UserAttribute.OverseasCustomerService,
   UserAttribute.HR,
   UserAttribute.ShippingLine,
+  UserAttribute.LoadingSupervision,
 ];
 
 /**

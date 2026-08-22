@@ -33,6 +33,7 @@ export const USER_ATTRIBUTE = {
   OverseasCustomerService: 64,
   HR: 128,
   ShippingLine: 256,
+  LoadingSupervision: 512,
 } as const;
 
 /** 收付类型选项 */

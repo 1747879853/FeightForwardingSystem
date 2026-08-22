@@ -1,6 +1,30 @@
 import { requestClient } from '#/api/request';
 
 export namespace CodePackageAdminApi {
+  /** 新增明细包装参数；sortId 由后端按数组顺序生成，前端不传 */
+  export interface CodePackageItemAddDto {
+    name?: string;
+    remark?: null | string;
+  }
+
+  /** 编辑明细包装参数；id 为 null 表示新增该行 */
+  export interface CodePackageItemEditDto extends CodePackageItemAddDto {
+    id?: null | string;
+  }
+
+  /** 明细包装 */
+  export interface CodePackageItemDto {
+    id: string;
+    codePackageId?: number | string;
+    name?: string;
+    sortId?: number;
+    remark?: null | string;
+    creationTime?: string;
+    creatorUserId?: null | number;
+    lastModificationTime?: null | string;
+    lastModifierUserId?: null | number;
+  }
+
   /** 新增包装类型参数 */
   export interface CodePackageAddDto {
     name?: string;
@@ -10,6 +34,7 @@ export namespace CodePackageAdminApi {
     enable?: boolean;
     sortId?: number;
     remark?: string;
+    codePackageItems?: CodePackageItemAddDto[];
   }
 
   /** 编辑包装类型参数 */
@@ -22,6 +47,8 @@ export namespace CodePackageAdminApi {
     enable?: boolean;
     sortId?: number;
     remark?: string;
+    /** 全量提交：漏传的明细会被后端删除 */
+    codePackageItems?: CodePackageItemEditDto[];
   }
 
   /** 包装类型详情 */
@@ -36,6 +63,10 @@ export namespace CodePackageAdminApi {
     remark?: string;
     creationTime?: string;
     lastModificationTime?: string;
+    creatorUserName?: null | string;
+    lastModifierUserName?: null | string;
+    /** 按 sortId 升序返回，无数据为 [] */
+    codePackageItems?: CodePackageItemDto[] | null;
   }
 
   /** 分页列表响应 */

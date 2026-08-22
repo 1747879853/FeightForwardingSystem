@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-admin';
+import type { LoadingRequirementAdminApi } from '#/api/system/base-data/loading-requirement-admin';
 
 import { computed, ref } from 'vue';
 
@@ -10,20 +10,24 @@ import { Button, Input, message, Table } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
-  addCodePackage,
-  editCodePackage,
-  getCodePackageDetail,
-} from '#/api/system/base-data/code-package-admin';
+  addLoadingRequirement,
+  editLoadingRequirement,
+  getLoadingRequirementDetail,
+} from '#/api/system/base-data/loading-requirement-admin';
 import { $t } from '#/locales';
 
 import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
-const formData = ref<CodePackageAdminApi.CodePackageDto>();
+const formData = ref<LoadingRequirementAdminApi.LoadingRequirementDto>();
 const getTitle = computed(() => {
   return formData.value?.id
-    ? $t('ui.actionTitle.edit', [$t('system.basicData.codePackage.name')])
-    : $t('ui.actionTitle.create', [$t('system.basicData.codePackage.name')]);
+    ? $t('ui.actionTitle.edit', [
+        $t('system.basicData.loadingRequirement.name'),
+      ])
+    : $t('ui.actionTitle.create', [
+        $t('system.basicData.loadingRequirement.name'),
+      ]);
 });
 
 type ItemRow = {
@@ -52,7 +56,7 @@ const createEmptyRow = (): ItemRow => ({
 });
 
 const mapDetailToRows = (
-  items?: CodePackageAdminApi.CodePackageItemDto[] | null,
+  items?: LoadingRequirementAdminApi.LoadingRequirementItemDto[] | null,
 ): ItemRow[] =>
   (items ?? []).map((item, index) => ({
     _key: `row_${item.id || `${++rowKeySeed}_${index}`}`,
@@ -79,7 +83,7 @@ const patchItemRow = (
   );
 };
 
-/** 同包装下名称去空格、大小写不敏感唯一 */
+/** 同一条要求下明细名称去空格、大小写不敏感唯一 */
 const findDuplicateName = (rows: ItemRow[]) => {
   const seen = new Set<string>();
   for (const row of rows) {
@@ -97,19 +101,21 @@ const findDuplicateName = (rows: ItemRow[]) => {
 
 /** 校验并按行顺序生成提交数组；sortId 由后端生成，不传 */
 const collectItems = ():
-  | CodePackageAdminApi.CodePackageItemEditDto[]
+  | LoadingRequirementAdminApi.LoadingRequirementItemEditDto[]
   | null => {
   for (const [index, row] of itemsData.value.entries()) {
     const name = String(row.name ?? '').trim();
     if (!name) {
       message.error(
-        $t('system.basicData.codePackage.itemNameRequired', [index + 1]),
+        $t('system.basicData.loadingRequirement.itemNameRequired', [index + 1]),
       );
       return null;
     }
     if (name.length > 128) {
       message.error(
-        $t('system.basicData.codePackage.itemNameMaxLength', [index + 1]),
+        $t('system.basicData.loadingRequirement.itemNameMaxLength', [
+          index + 1,
+        ]),
       );
       return null;
     }
@@ -118,7 +124,9 @@ const collectItems = ():
   const duplicated = findDuplicateName(itemsData.value);
   if (duplicated) {
     message.error(
-      $t('system.basicData.codePackage.itemNameDuplicated', [duplicated]),
+      $t('system.basicData.loadingRequirement.itemNameDuplicated', [
+        duplicated,
+      ]),
     );
     return null;
   }
@@ -138,35 +146,27 @@ const [Drawer, drawerApi] = useVbenDrawer({
       return;
     }
 
-    const codePackageItems = collectItems();
-    if (!codePackageItems) return;
+    const loadingRequirementItems = collectItems();
+    if (!loadingRequirementItems) return;
 
     drawerApi.lock();
     const values = await formApi.getValues();
 
     try {
       if (formData.value?.id) {
-        await editCodePackage({
+        await editLoadingRequirement({
           id: formData.value.id,
           name: values.name,
-          description: values.description,
-          afrCode: values.afrCode,
-          ediCode: values.ediCode,
-          enable: values.enable,
           sortId: values.sortId,
           remark: values.remark,
-          codePackageItems,
+          loadingRequirementItems,
         });
       } else {
-        await addCodePackage({
+        await addLoadingRequirement({
           name: values.name,
-          description: values.description,
-          afrCode: values.afrCode,
-          ediCode: values.ediCode,
-          enable: values.enable,
           sortId: values.sortId,
           remark: values.remark,
-          codePackageItems: codePackageItems.map(
+          loadingRequirementItems: loadingRequirementItems.map(
             ({ id: _id, ...rest }) => rest,
           ),
         });
@@ -187,18 +187,14 @@ const [Drawer, drawerApi] = useVbenDrawer({
     if (data?.id) {
       drawerApi.lock();
       try {
-        const detail = await getCodePackageDetail(data.id);
+        const detail = await getLoadingRequirementDetail(data.id);
         formData.value = detail;
         formApi.setValues({
           name: detail.name,
-          description: detail.description,
-          afrCode: detail.afrCode,
-          ediCode: detail.ediCode,
-          enable: detail.enable,
           sortId: detail.sortId,
           remark: detail.remark,
         });
-        itemsData.value = mapDetailToRows(detail.codePackageItems);
+        itemsData.value = mapDetailToRows(detail.loadingRequirementItems);
       } finally {
         drawerApi.lock(false);
       }
@@ -218,11 +214,11 @@ const [Drawer, drawerApi] = useVbenDrawer({
     <div class="mx-4 mt-4">
       <div class="mb-2 flex items-center justify-between">
         <span class="text-sm font-medium">
-          {{ $t('system.basicData.codePackage.items') }}
+          {{ $t('system.basicData.loadingRequirement.items') }}
         </span>
         <Button type="dashed" size="small" @click="addItemRow">
           <IconifyIcon icon="mdi:plus" class="mr-1 size-4" />
-          {{ $t('system.basicData.codePackage.addItem') }}
+          {{ $t('system.basicData.loadingRequirement.addItem') }}
         </Button>
       </div>
       <Table
@@ -233,9 +229,9 @@ const [Drawer, drawerApi] = useVbenDrawer({
         bordered
       >
         <Table.Column
-          :title="$t('system.basicData.codePackage.itemName')"
+          :title="$t('system.basicData.loadingRequirement.itemName')"
           key="name"
-          :min-width="200"
+          :min-width="220"
         >
           <template #default="{ record }">
             <Input
@@ -248,7 +244,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           </template>
         </Table.Column>
         <Table.Column
-          :title="$t('system.basicData.codePackage.remark')"
+          :title="$t('system.basicData.loadingRequirement.remark')"
           key="remark"
           :min-width="200"
         >
@@ -281,7 +277,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         </Table.Column>
       </Table>
       <div class="mt-1 text-xs text-gray-400">
-        {{ $t('system.basicData.codePackage.itemTableTip') }}
+        {{ $t('system.basicData.loadingRequirement.itemTableTip') }}
       </div>
     </div>
   </Drawer>

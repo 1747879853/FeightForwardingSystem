@@ -20,9 +20,10 @@ const userAttributeValues = [
   UserAttribute.OverseasCustomerService,
   UserAttribute.HR,
   UserAttribute.ShippingLine,
+  UserAttribute.LoadingSupervision,
 ];
 
-/** 海运出口订单用户角色（与海运出口单据一致，共 6 项） */
+/** 海运出口订单用户角色（与海运出口单据一致） */
 export const seaExportOrderUserAttributeValues = [
   UserAttribute.Sales,
   UserAttribute.Business,
@@ -30,6 +31,7 @@ export const seaExportOrderUserAttributeValues = [
   UserAttribute.CustomerService,
   UserAttribute.Documentation,
   UserAttribute.OverseasCustomerService,
+  UserAttribute.LoadingSupervision,
 ] as const;
 
 /** 海运出口订单用户角色选项 */
@@ -59,10 +61,14 @@ export function getSeaExportOrderUserRoleOptions() {
       label: $t('system.user.userAttributeOptions.overseasCustomerService'),
       value: UserAttribute.OverseasCustomerService,
     },
+    {
+      label: $t('system.user.userAttributeOptions.loadingSupervision'),
+      value: UserAttribute.LoadingSupervision,
+    },
   ];
 }
 
-/** 解析海运出口订单用户角色位标志（仅保留 6 项有效角色） */
+/** 解析海运出口订单用户角色位标志（仅保留可配置为干系人的角色） */
 export function parseSeaExportUserAttribute(
   value: number | undefined,
 ): number[] {
@@ -110,6 +116,10 @@ export function getUserAttributeOptions() {
     {
       label: $t('system.user.userAttributeOptions.shippingLine'),
       value: UserAttribute.ShippingLine,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.loadingSupervision'),
+      value: UserAttribute.LoadingSupervision,
     },
   ];
 }

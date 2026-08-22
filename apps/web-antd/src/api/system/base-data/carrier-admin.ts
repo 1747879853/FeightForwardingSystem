@@ -22,6 +22,32 @@ export namespace CarrierAdminApi {
     creatorUserNickName?: null | string;
   }
 
+  /** 新增堆场参数；sortId 由后端按数组顺序生成，前端不传 */
+  export interface CarrierYardAddDto {
+    name?: string;
+    address?: null | string;
+    remark?: null | string;
+  }
+
+  /** 编辑堆场参数；id 为 null 表示新增该行 */
+  export interface CarrierYardEditDto extends CarrierYardAddDto {
+    id?: null | string;
+  }
+
+  /** 堆场 */
+  export interface CarrierYardDto {
+    id: string;
+    carrierId?: number | string;
+    name?: string;
+    address?: null | string;
+    sortId?: number;
+    remark?: null | string;
+    creationTime?: string;
+    creatorUserId?: null | number;
+    lastModificationTime?: null | string;
+    lastModifierUserId?: null | number;
+  }
+
   /** 新增船公司参数 */
   export interface CarrierAddDto {
     cnName?: string;
@@ -32,6 +58,7 @@ export namespace CarrierAdminApi {
     ediCode?: string;
     remark?: string;
     logo?: AttachmentItemForItemInputDto | null;
+    carrierYards?: CarrierYardAddDto[];
   }
 
   /** 编辑船公司参数 */
@@ -45,6 +72,8 @@ export namespace CarrierAdminApi {
     ediCode?: string;
     remark?: string;
     logo?: AttachmentItemForItemInputDto | null;
+    /** 全量提交：漏传的堆场会被后端删除 */
+    carrierYards?: CarrierYardEditDto[];
   }
 
   /** 船公司详情 */
@@ -60,6 +89,13 @@ export namespace CarrierAdminApi {
     logo?: null | AttachmentItemDto;
     creationTime?: string;
     lastModificationTime?: string;
+    creatorUserName?: null | string;
+    lastModifierUserName?: null | string;
+    /**
+     * 按 sortId 升序返回，无数据为 []。
+     * 海运运价等处内嵌的 carrier 对象里恒为 null，取值需判空。
+     */
+    carrierYards?: CarrierYardDto[] | null;
   }
 
   /** 分页列表响应 */

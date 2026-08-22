@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-11
+last_updated: 2026-08-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -45,7 +45,7 @@ last_updated: 2026-08-11
 | **enable（账号启用）** | 标识账号是否允许登录和使用系统。 | `GET /services/app/UserAdmin/GetPagedListAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户离职（`isActive=false`）时前端联动将 `enable` 自动置为 `false`；列表仅展示该字段作为账号可用依据。 | 布尔值；建议与人员在职状态保持一致。 |
 | **organizationId（所属部门）** | 用户归属组织。 | `GET /services/app/OrganizationUnit/GetOrganizationUnitTreeAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗通过组织树选择。 | **必填项**，未选择时阻止保存。 |
 | **organizations（所属组织）** | 列表展示用户全部所属组织层级路径。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizations[]`（含 `default`、`oneOrganizationPath`） | **触发/依赖：** 列 `field` 必须为 `organizations`（避免 vxe formatter 按旧 `organizationPath` 缓存导致改组织后不刷新）；`formatter` 拼接路径名，回退 `organizationPath` / `organization`。 | 只读展示；未挂组织时为空数组。 |
-| **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举（含操作/客服/单证/商务/销售/财务/海外客服/人事/航线） | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码。 | **必填项**，至少勾选一项。 |
+| **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举（含操作/客服/单证/商务/销售/财务/海外客服/人事/航线/**监装**） | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码；筛监装师傅走 `GetUserSimplePagedListAsync?userAttribute=512`。 | **必填项**，至少勾选一项。判断必须按位与，`(attr & 512) === 512`。 |
 | **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
 | **gender（性别）** | 用户性别。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗下拉选择；取值 `1` 男 / `2` 女，与个人中心一致；历史值 `0` 回显为空。 | 选填；可为 `null`。 |
@@ -62,6 +62,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-22 | `Feature` | 用户属性新增「监装」（`LoadingSupervision = 512`），并铺到所有用户属性入口：用户管理勾选、标签映射、海出干系人可配角色、港口服务项负责岗位、枚举管理角色下拉。 | TAPD #1000122。位掩码末尾追加 512，四处拷贝枚举同步；未做成销售/操作那种写死的必填固定角色，是否默认展示仍由枚举 `SeaExportUserAttribute.extra1` 决定；干系人「监装」与监装工单师傅列表两套独立、不同步。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-11 | `Fix` | 用户列表去掉后端不支持的列头排序（头像/所属组织/角色），默认排序改为创建时间降序。 | 白名单见 `GetUserPagedListAsync`；`applyDefaultSortable` 下须显式 `sortable: false`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)。 |
 | 2026-08-11 | `Fix` | 修复编辑用户修改所属组织后，列表「所属组织」列仍显示旧值的问题。 | 根因是 vxe `getCellLabel` 按列 `field` 的 cellValue 缓存 formatter；列绑了不存在的 `organizationPath`，`organizations` 变了也不重算。已改为 `field: 'organizations'`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)。 |
 | 2026-07-31 | `Feature` | 用户属性新增「航线」（`ShippingLine = 256`）；原「商务(航线)」更名为「商务」。 | 枚举与 `getUserAttributeOptions` 同步；海出专用 6 项角色未纳入航线。详见 [变更日志](../../changelogs/change-log-2026-07-31-user-attribute-shipping-line.md)。 |

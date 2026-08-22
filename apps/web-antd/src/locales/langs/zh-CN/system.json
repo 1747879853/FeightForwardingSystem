@@ -17,7 +17,16 @@
       "ediCode": "EDI代码",
       "remark": "备注",
       "keyword": "关键字",
-      "creationTime": "创建时间"
+      "creationTime": "创建时间",
+      "yards": "堆场",
+      "addYard": "添加堆场",
+      "yardName": "堆场名称",
+      "yardAddress": "堆场地址",
+      "yardTableTip": "编辑提交为全量覆盖：删除的行直接去掉即可；顺序由行顺序决定，无需填写排序。",
+      "yardNameRequired": "第{0}行堆场名称不能为空",
+      "yardNameMaxLength": "第{0}行堆场名称不能超过128个字符",
+      "yardAddressMaxLength": "第{0}行堆场地址不能超过512个字符",
+      "yardNameDuplicated": "堆场名称【{0}】重复"
     },
     "laneCode": {
       "title": "航线管理",
@@ -218,7 +227,33 @@
       "sortId": "排序",
       "remark": "备注",
       "keyword": "关键字",
-      "creationTime": "创建时间"
+      "creationTime": "创建时间",
+      "items": "明细包装",
+      "addItem": "添加明细包装",
+      "itemName": "明细包装名称",
+      "itemTableTip": "编辑提交为全量覆盖：删除的行直接去掉即可；顺序由行顺序决定，无需填写排序。",
+      "itemNameRequired": "第{0}行明细包装名称不能为空",
+      "itemNameMaxLength": "第{0}行明细包装名称不能超过128个字符",
+      "itemNameDuplicated": "明细包装名称【{0}】重复"
+    },
+    "loadingRequirement": {
+      "title": "监装要求",
+      "list": "监装要求列表",
+      "name": "监装要求",
+      "requirementName": "要求名",
+      "sortId": "排序",
+      "remark": "备注",
+      "itemCount": "明细数",
+      "creatorUserName": "创建人",
+      "keyword": "关键字",
+      "creationTime": "创建时间",
+      "items": "要求明细",
+      "addItem": "添加明细",
+      "itemName": "明细名称",
+      "itemTableTip": "编辑提交为全量覆盖：删除的行直接去掉即可；顺序由行顺序决定，无需填写排序。",
+      "itemNameRequired": "第{0}行明细名称不能为空",
+      "itemNameMaxLength": "第{0}行明细名称不能超过128个字符",
+      "itemNameDuplicated": "明细名称【{0}】重复"
     },
     "codeIssueType": {
       "title": "签单方式",
@@ -420,6 +455,9 @@
         },
         "PreOrder": {
           "PreOrderNum": "业务联系单编号"
+        },
+        "LoadingOrder": {
+          "LoadingOrderNum": "监装工单号"
         }
       }
     },
@@ -592,7 +630,8 @@
       "finance": "财务",
       "overseasCustomerService": "海外客服",
       "hr": "人事",
-      "shippingLine": "航线"
+      "shippingLine": "航线",
+      "loadingSupervision": "监装"
     },
     "enName": "英文名称",
     "qq": "QQ",

@@ -25,6 +25,8 @@ export enum UserAttribute {
   HR = 128,
   /** 航线 */
   ShippingLine = 256,
+  /** 监装 */
+  LoadingSupervision = 512,
 }
 
 // ==================== 用户管理 API (UserAdminAppService) ====================

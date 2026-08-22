@@ -31,6 +31,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.GenerateNum',
         'Admin.ServiceConfig.SeServiceConfig',
         'Admin.OrderFeeTemplate',
+        'Admin.LoadingRequirement',
       ]),
     },
     name: 'BasicData',
@@ -95,6 +96,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/CodePackageAdmin/list.vue'),
+      },
+      {
+        path: '/basic-data/loading-requirement',
+        name: 'BasicDataLoadingRequirement',
+        meta: {
+          icon: 'mdi:clipboard-check-outline',
+          keepAlive: true,
+          title: $t('system.basicData.loadingRequirement.title'),
+          authority: abpPageAuthority('Admin.LoadingRequirement'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/LoadingRequirementAdmin/list.vue'),
       },
       {
         path: '/basic-data/code-issue-type',

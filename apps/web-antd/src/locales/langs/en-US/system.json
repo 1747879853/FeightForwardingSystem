@@ -17,7 +17,16 @@
       "ediCode": "EDI Code",
       "remark": "Remark",
       "keyword": "Keyword",
-      "creationTime": "Creation Time"
+      "creationTime": "Creation Time",
+      "yards": "Yards",
+      "addYard": "Add Yard",
+      "yardName": "Yard Name",
+      "yardAddress": "Yard Address",
+      "yardTableTip": "Editing submits the full list: just remove rows to delete them. Order follows row order, no sort input needed.",
+      "yardNameRequired": "Row {0}: yard name is required",
+      "yardNameMaxLength": "Row {0}: yard name cannot exceed 128 characters",
+      "yardAddressMaxLength": "Row {0}: yard address cannot exceed 512 characters",
+      "yardNameDuplicated": "Yard name [{0}] is duplicated"
     },
     "laneCode": {
       "title": "Lane Management",
@@ -218,7 +227,33 @@
       "sortId": "Sort Order",
       "remark": "Remark",
       "keyword": "Keyword",
-      "creationTime": "Creation Time"
+      "creationTime": "Creation Time",
+      "items": "Package Items",
+      "addItem": "Add Package Item",
+      "itemName": "Package Item Name",
+      "itemTableTip": "Editing submits the full list: just remove rows to delete them. Order follows row order, no sort input needed.",
+      "itemNameRequired": "Row {0}: package item name is required",
+      "itemNameMaxLength": "Row {0}: package item name cannot exceed 128 characters",
+      "itemNameDuplicated": "Package item name [{0}] is duplicated"
+    },
+    "loadingRequirement": {
+      "title": "Loading Requirement",
+      "list": "Loading Requirement List",
+      "name": "Loading Requirement",
+      "requirementName": "Requirement Name",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "itemCount": "Items",
+      "creatorUserName": "Created By",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time",
+      "items": "Requirement Items",
+      "addItem": "Add Item",
+      "itemName": "Item Name",
+      "itemTableTip": "Editing submits the full list: just remove rows to delete them. Order follows row order, no sort input needed.",
+      "itemNameRequired": "Row {0}: item name is required",
+      "itemNameMaxLength": "Row {0}: item name cannot exceed 128 characters",
+      "itemNameDuplicated": "Item name [{0}] is duplicated"
     },
     "codeIssueType": {
       "title": "Issue Type",
@@ -418,6 +453,9 @@
         },
         "PreOrder": {
           "PreOrderNum": "Business Contact Form No."
+        },
+        "LoadingOrder": {
+          "LoadingOrderNum": "Loading Order No."
         }
       }
     },
@@ -590,7 +628,8 @@
       "finance": "Finance",
       "overseasCustomerService": "Overseas Customer Service",
       "hr": "HR",
-      "shippingLine": "Shipping Line"
+      "shippingLine": "Shipping Line",
+      "loadingSupervision": "Loading Supervision"
     },
     "enName": "English Name",
     "qq": "QQ",

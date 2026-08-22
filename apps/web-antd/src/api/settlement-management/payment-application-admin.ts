@@ -26,6 +26,8 @@ export namespace PaymentApplicationAdminApi {
     HR = 128,
     /** 航线 */
     ShippingLine = 256,
+    /** 监装 */
+    LoadingSupervision = 512,
   }
 
   /** 业务相关用户 */

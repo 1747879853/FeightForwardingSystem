@@ -71,6 +71,8 @@ export namespace PreOrderAdminApi {
     HR = 128,
     /** 航线 */
     ShippingLine = 256,
+    /** 监装 */
+    LoadingSupervision = 512,
   }
 
   export interface OrganizationUnitSimpleDto {

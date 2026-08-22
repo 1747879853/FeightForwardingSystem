@@ -1,18 +1,17 @@
 <script lang="ts" setup>
 import type { OnActionClickParams } from '#/adapter/vxe-table';
-import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-admin';
+import type { LoadingRequirementAdminApi } from '#/api/system/base-data/loading-requirement-admin';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message } from 'ant-design-vue';
 
-import { codePackageListCache } from '#/adapter/component/biz-select/cache/code-package-cache';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteCodePackage,
-  getCodePackagePagedList,
-} from '#/api/system/base-data/code-package-admin';
+  deleteLoadingRequirement,
+  getLoadingRequirementPagedList,
+} from '#/api/system/base-data/loading-requirement-admin';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
@@ -28,11 +27,13 @@ const handleCreate = () => {
   formDrawerApi.setData(null).open();
 };
 
-const handleEdit = (row: CodePackageAdminApi.CodePackageDto) => {
+const handleEdit = (row: LoadingRequirementAdminApi.LoadingRequirementDto) => {
   formDrawerApi.setData({ id: row.id }).open();
 };
 
-const handleDelete = async (row: CodePackageAdminApi.CodePackageDto) => {
+const handleDelete = async (
+  row: LoadingRequirementAdminApi.LoadingRequirementDto,
+) => {
   const hideLoading = message.loading({
     content: $t('ui.actionMessage.deleting', [row.name]),
     duration: 0,
@@ -40,7 +41,7 @@ const handleDelete = async (row: CodePackageAdminApi.CodePackageDto) => {
   });
 
   try {
-    await deleteCodePackage(row.id);
+    await deleteLoadingRequirement(row.id);
     message.success({
       content: $t('ui.actionMessage.deleteSuccess', [row.name]),
       key: 'action_process_msg',
@@ -54,7 +55,7 @@ const handleDelete = async (row: CodePackageAdminApi.CodePackageDto) => {
 const handleActionClick = ({
   code,
   row,
-}: OnActionClickParams<CodePackageAdminApi.CodePackageDto>) => {
+}: OnActionClickParams<LoadingRequirementAdminApi.LoadingRequirementDto>) => {
   switch (code) {
     case 'delete': {
       handleDelete(row);
@@ -67,49 +68,52 @@ const handleActionClick = ({
   }
 };
 
-const [Grid, gridApi] = useVbenVxeGrid<CodePackageAdminApi.CodePackageDto>({
-  formOptions: {
-    schema: useGridFormSchema(),
-    submitOnChange: true,
-    showCollapseButton: false,
-  },
-  gridOptions: {
-    columns: useColumns(handleActionClick),
-    height: 'auto',
-    keepSource: true,
-    pagerConfig: {
-      enabled: true,
+const [Grid, gridApi] =
+  useVbenVxeGrid<LoadingRequirementAdminApi.LoadingRequirementDto>({
+    formOptions: {
+      schema: useGridFormSchema(),
+      submitOnChange: true,
+      showCollapseButton: false,
     },
-    proxyConfig: {
-      ajax: {
-        query: createPagedListQuery(getCodePackagePagedList),
+    gridOptions: {
+      columns: useColumns(handleActionClick),
+      height: 'auto',
+      keepSource: true,
+      pagerConfig: {
+        enabled: true,
+      },
+      proxyConfig: {
+        ajax: {
+          // 主表排序由前端维护，默认按 SortId 升序，不同于其它基础资料的创建时间倒序
+          query: createPagedListQuery(getLoadingRequirementPagedList, {
+            defaultSort: 'SortId ASC',
+          }),
+        },
+      },
+      toolbarConfig: {
+        custom: true,
+        export: false,
+        refresh: { code: 'query' },
+        zoom: true,
       },
     },
-    toolbarConfig: {
-      custom: true,
-      export: false,
-      refresh: { code: 'query' },
-      zoom: true,
-    },
-  },
-});
+  });
 
 const handleRefresh = () => {
   gridApi.query();
-  void codePackageListCache.ensure({ force: true });
 };
 </script>
 
 <template>
   <Page auto-content-height>
     <FormDrawer @success="handleRefresh" />
-    <Grid :table-title="$t('system.basicData.codePackage.list')">
+    <Grid :table-title="$t('system.basicData.loadingRequirement.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="handleCreate">
           <Plus class="size-5" />
           {{
             $t('ui.actionTitle.create', [
-              $t('system.basicData.codePackage.name'),
+              $t('system.basicData.loadingRequirement.name'),
             ])
           }}
         </Button>

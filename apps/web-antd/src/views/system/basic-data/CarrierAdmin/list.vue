@@ -2,7 +2,7 @@
 import type { OnActionClickParams } from '#/adapter/vxe-table';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 
-import { Page, useVbenModal } from '@vben/common-ui';
+import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message } from 'ant-design-vue';
@@ -19,17 +19,17 @@ import { buildAttachmentUrl } from '#/utils';
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
-const [FormModal, formModalApi] = useVbenModal({
+const [FormDrawer, formDrawerApi] = useVbenDrawer({
   connectedComponent: Form,
   destroyOnClose: true,
 });
 
 const handleCreate = () => {
-  formModalApi.setData(null).open();
+  formDrawerApi.setData(null).open();
 };
 
 const handleEdit = (row: CarrierAdminApi.CarrierDto) => {
-  formModalApi.setData({ id: row.id }).open();
+  formDrawerApi.setData({ id: row.id }).open();
 };
 
 const handleDelete = async (row: CarrierAdminApi.CarrierDto) => {
@@ -101,7 +101,7 @@ const handleRefresh = () => {
 
 <template>
   <Page auto-content-height>
-    <FormModal @success="handleRefresh" />
+    <FormDrawer @success="handleRefresh" />
     <Grid :table-title="$t('system.basicData.carrier.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="handleCreate">

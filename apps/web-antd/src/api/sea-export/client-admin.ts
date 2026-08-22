@@ -42,6 +42,8 @@ export namespace ClientAdminApi {
     HR = 128,
     /** 航线 */
     ShippingLine = 256,
+    /** 监装 */
+    LoadingSupervision = 512,
   }
 
   /** 客户名称校验参数 */
