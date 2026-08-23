@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-23 费用打印拉模板列表传入 bizType](./changelogs/change-log-2026-08-23-order-fee-print-biztype.md)
 - [2026-08-23 空运出口对接单据打印](./changelogs/change-log-2026-08-23-air-export-print.md)
 - [2026-08-22 船公司 Logo 改为单图缩略图预览](./changelogs/change-log-2026-08-22-carrier-logo-picture-card.md)
 - [2026-08-22 监装模块前端落地（TAPD #1000122）](./changelogs/change-log-2026-08-22-loading-supervision-frontend.md)

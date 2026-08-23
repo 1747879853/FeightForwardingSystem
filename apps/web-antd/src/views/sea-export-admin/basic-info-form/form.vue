@@ -84,7 +84,11 @@ import {
 } from '#/api/sea-export/se-service-task-admin';
 import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
 import { $t } from '#/locales';
-import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
 import {
   TerminalSchedulePickerModal,
   buildTerminalScheduleFormPatch,
@@ -2854,6 +2858,7 @@ const handlePrint = async () => {
       codeIssueTypeId: ctx.codeIssueTypeId,
       carrierId: ctx.carrierId,
       orgId: ctx.orgId,
+      bizType: PrintFormatBizType.SeaExport,
       detailInput: { id: editId.value },
     });
   } catch {

@@ -22,7 +22,11 @@ import { IconifyIcon } from '@vben/icons';
 
 import { $t } from '#/locales';
 
-import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
 
 import * as feeConstants from '../data';
 import * as clientConstants from '#/views/client/base/data';
@@ -519,7 +523,7 @@ const handlePrint = async () => {
 
   const isChangeOrder = props.mode === 'changeOrder';
   const orderDetail = orderBaseData.value ?? props.orderDetail ?? null;
-  // 当票要素：用于按签单方式/船公司/分公司筛选可用模板
+  // 当票要素：用于按签单方式/船公司/分公司/业务类型筛选可用模板
   const templateContext = {
     codeIssueTypeId:
       (orderDetail as any)?.codeIssueTypeId ??
@@ -527,6 +531,7 @@ const handlePrint = async () => {
       null,
     carrierId: orderDetail?.carrierId ?? null,
     orgId: orderDetail?.orgId ?? null,
+    bizType: PrintFormatBizType.SeaImport,
   };
   const printJsonType =
     props.type === 0

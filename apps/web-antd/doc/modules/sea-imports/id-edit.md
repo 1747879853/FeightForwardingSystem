@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,7 @@ last_updated: 2026-08-19
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填航次（`ivoyage` → `innerVoyno`）并走原有编辑保存；进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
-- **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
+- **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。打印拉模板传 `bizType=1`（海运进口，结果含通用模板）。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
 - **委托编号：** 编辑态可一键重新生成（需 `Admin.SeaImport.Edit` **且** `detail.isEditable`）。
 - **复制：** 保存下拉支持复制整单（可选复制费用）；`isEditable === false` 时保存禁用，复制仍可用。
@@ -62,6 +62,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=1`。 | 与海出/空出同一套费用打印，按业务类型筛模板。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
 | 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与海出/空出共用 `UserSelect` 缓存层。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-17 | `Feature` | 「码头船舶」改为查询接口：有可引入数据才弹窗，确定引入后回填航次并自动保存；无数据只提示。 | 与海出共用 `QueryTerminalScheduleAsync`；进口仅映射 `ivoyage` → `innerVoyno`。详见 `changelogs/change-log-2026-08-17-terminal-schedule-query-import.md`。 |

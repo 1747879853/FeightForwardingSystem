@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -46,13 +46,13 @@ last_updated: 2026-08-22
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **委托编号重新生成：** 基础信息页头「委托编号」右侧的刷新图标（仅编辑态、需 `Admin.SeaExport.Edit` **且** `detail.isEditable`）调用 `UpdateCommissionNumAsync`（PUT，入参仅 `{ id }`），由后端按编号规则重新取号并写回同 Id 的 `TransportOrder.CommissionNum`；前端用返回的新编号即时替换页头展示并标记列表待刷新。该操作立即生效、不随「保存」提交；点击前若表单本无未保存修改会同步脏检查基线，避免误触发未保存拦截。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
-- **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
+- **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付），拉模板列表传 `bizType=0`（海运出口，结果含通用模板）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **监装工单：** Tab 进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 显示「新建监装工单」（需 `.Add`）。表单为明细包装、明细包装件数、预计到货时间、监装堆场、监装师傅（`userAttribute=512`，**前端限制最多 2 人**，数组顺序即监装顺序）、监装要求勾选（用详情 `loadingRequirements` 的 `isChecked` 回填，提交 `loadingRequirementItemIds` 全量）。**明细包装与堆场的候选项只认已保存的海运出口**：分别取落库 `transportOrder.codePackageId` 的包装详情与 `carrierId` 的船公司详情，基础信息未保存的改动不联动；缺包装/缺船公司时对应下拉禁用并给后端同口径提示。按状态控制操作：未提交（编辑/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。箱型区只读展示箱型/箱号/封号/是否完成/照片数，箱内容由师傅在小程序维护。工单号由后端按编号规则 `LoadingOrder.LoadingOrderNum` 生成，未配置则新建报「未配置生成规则」。干系人里的「监装」与工单师傅列表是两套，互不同步。
 - **分单处理：** 分单弹窗按业务动线：身份+运费条款 → 船期港口（可折叠）→ 左收发通/国外代理｜右货物 → 装箱通栏 → 签单。**新增默认**只带主单条款与装箱，不带收发通/货描；「读入主单」才整包覆盖。主单只读字段仍展示但不提交。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
-- **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput`。模板列表走非管理端接口并按当票签单方式/船公司/分公司筛选。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
+- **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，`bizType=0`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput` + `bizType=0`。模板列表走非管理端接口并按当票签单方式/船公司/分公司/业务类型筛选（`bizType` 相等或为空）。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。`isEditable === false` 时保存禁用、复制拆成独立按钮以免被一起禁用。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。提交仅 `seaExportIds`，字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**里程碑**节点「已完成」仅看 `actualityTime` 是否有值，不再用 `isCurrent` 标「进行中」。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
@@ -137,6 +137,7 @@ last_updated: 2026-08-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-23 | `Feature` | 单据打印与费用打印拉模板列表传入 `bizType=0`。 | 费用模板跨业务共用 1000/1500，必须按业务类型筛；结果含 `bizType` 为空的通用模板。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
 | 2026-08-22 | `Feature` | 新增「监装工单」Tab（位于派车与分单之间）：按海出查工单、未提交可编辑/删除/提交、待认领可撤回、已认领与已完成只读；勾选监装要求；箱型与监装照片只读。 | TAPD #1000122。`DetailBySeaExportIdAsync` 传的是**海出 id**；明细包装/堆场只认已保存的包装与船公司，基础信息未保存改动不联动；师傅最多 2 人由前端限制；无 `Admin.SeaExport.LoadingOrder.Get` 时整 Tab 隐藏且不参与 Tab 记忆。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-19 | `Fix` | 业务联系单引入的费用，「录入方式」不再显示数字 6，改为「业务联系单引入」。 | Handsontable 该列为 `type:text`，值被写成 `"6"`；`getDataEntryMethodLabel` 改为数值比较。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |

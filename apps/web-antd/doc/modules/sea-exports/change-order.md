@@ -99,6 +99,7 @@ last_change: edit-workspace-saved-detail-sync
 ## 2.5 打印
 
 - 应收 `PrintJsonType=1000`，应付 `1500`。
+- 拉模板列表必须传当前票 `bizType`（海出 0 / 海进 1 / 空出 2），结果含不限业务类型的通用模板。
 - 后端 `PrintFormatAdmin/GetPrintAsync`：`isChangeOrderPrint=true` 时按更改单详情取费用。
 - 勾选已保存费用则传 `detailInput.ids`，未勾选则打印该更改单下该收付方向全部费用。
 

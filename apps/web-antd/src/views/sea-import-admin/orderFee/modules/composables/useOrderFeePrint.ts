@@ -3,7 +3,11 @@ import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import { ref } from 'vue';
 import { message } from 'ant-design-vue';
-import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
 
 export interface OrderFeePrintOptions {
   /** 收付类型：0 应收 1 应付 */
@@ -45,7 +49,7 @@ export function useOrderFeePrint() {
         ? PrintJsonType.RecOrderFeeList
         : PrintJsonType.PayOrderFeeList;
 
-    // 当票要素：用于按签单方式/船公司/分公司筛选可用模板
+    // 当票要素：用于按签单方式/船公司/分公司/业务类型筛选可用模板
     const templateContext = {
       codeIssueTypeId:
         (orderDetail as any)?.codeIssueTypeId ??
@@ -53,6 +57,7 @@ export function useOrderFeePrint() {
         null,
       carrierId: orderDetail?.carrierId ?? null,
       orgId: orderDetail?.orgId ?? null,
+      bizType: PrintFormatBizType.SeaImport,
     };
 
     printing.value = true;

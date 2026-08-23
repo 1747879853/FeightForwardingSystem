@@ -49,6 +49,8 @@ export namespace PrintFormatAdminApi {
     carrier?: CarrierSimpleDto | null;
     /** 组织简易对象（列表接口返回） */
     org?: OrganizationUnitSimpleDto | null;
+    /** 业务类型，null 表示不限 */
+    bizType?: PrintFormatBizType | null;
     creationTime?: string;
     creatorUserId?: number | null;
     lastModificationTime?: string | null;

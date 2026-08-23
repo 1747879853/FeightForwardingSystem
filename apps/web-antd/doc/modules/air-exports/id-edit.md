@@ -23,7 +23,7 @@ last_updated: 2026-08-23
 
 - **标签容器：** 基础信息 / 应收应付（只读）/ 附件 / 运踪信息四个标签，按委托 ID 记忆上次停留的标签。
 - **基础信息：** 与新建同一组件，回显由详情接口一次性带回，各下拉的 `selectedItems` 直接由详情对象构造，避免逐个再调详情接口。收发通为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件重尺（件数与包装合并为一行）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）。航班与订舱代理在「航段信息」标题右侧，订舱代理回显写 header 表单。顶栏支持 AI 识别预填（与新建同一套 `form.vue`）。
-- **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=5000` 空运出口详情，`detailInput={id}`，`bizType=2`，按当票 `orgId` 筛模板）。后端 `GetPrintAsync` 自动取数并带公司打印信息。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」。空运无签单方式/船公司，不按这两项筛模板。应收应付费用表打印仍用 `1000`/`1500`。
+- **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=5000` 空运出口详情，`detailInput={id}`，`bizType=2`，按当票 `orgId` 筛模板）。后端 `GetPrintAsync` 自动取数并带公司打印信息。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」。空运无签单方式/船公司，不按这两项筛模板。应收应付费用表打印用 `1000`/`1500`，拉模板同样传 `bizType=2`。
 - **运踪订阅：** 基础信息工具栏「运踪订阅/重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。
 - **重新生成委托编号：** 按最新编号规则重新生成，**原编号不可恢复**，操作前二次确认。
 - **复制本票：** 保存按钮下拉菜单里提供，先检查未保存修改。
@@ -75,6 +75,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=2`。 | 与单据打印同一筛选口径。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
 | 2026-08-23 | `Feature` | 基础信息顶栏增加单据打印：选模板后预览/导出 PDF、Excel、Word。 | 走 `PrintFormatAdmin/GetPrintAsync` + `AirExportDetail=5000`；模板列表传 `bizType=2` 与当票 `orgId`。详见 `changelogs/change-log-2026-08-23-air-export-print.md`。 |
 | 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与新建页共用 `form.vue`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
