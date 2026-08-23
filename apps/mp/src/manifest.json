@@ -1,0 +1,25 @@
+{
+  "name": "监装师傅端",
+  "appid": "",
+  "description": "货代小程序：监装工单师傅端",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {},
+    "requiredPrivateInfos": []
+  },
+  "h5": {
+    "router": {
+      "base": "/"
+    }
+  },
+  "vueVersion": "3"
+}

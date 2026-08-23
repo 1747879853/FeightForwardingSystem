@@ -1,0 +1,85 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/loading/list",
+      "style": {
+        "enablePullDownRefresh": true,
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/points/index",
+      "style": {
+        "navigationBarTitleText": "积分兑换"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/loading/detail",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#F2F5FA",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "监装师傅端"
+  },
+  "tabBar": {
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "color": "#8A94A6",
+    "selectedColor": "#2E6BE6",
+    "list": [
+      {
+        "iconPath": "static/icons/tab-home.png",
+        "pagePath": "pages/home/index",
+        "selectedIconPath": "static/icons/tab-home.png",
+        "text": "首页"
+      },
+      {
+        "iconPath": "static/icons/tab-work.png",
+        "pagePath": "pages/loading/list",
+        "selectedIconPath": "static/icons/tab-work.png",
+        "text": "内部首页"
+      },
+      {
+        "iconPath": "static/icons/tab-points.png",
+        "pagePath": "pages/points/index",
+        "selectedIconPath": "static/icons/tab-points.png",
+        "text": "积分兑换"
+      },
+      {
+        "iconPath": "static/icons/tab-profile.png",
+        "pagePath": "pages/profile/index",
+        "selectedIconPath": "static/icons/tab-profile.png",
+        "text": "个人中心"
+      }
+    ]
+  }
+}
