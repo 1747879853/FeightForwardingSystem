@@ -13,9 +13,15 @@
 
 ## 2026-08
 
+- [2026-08-23 监装新建后记住工单 id](./changelogs/change-log-2026-08-23-loading-order-save-keep-id.md)
+- [2026-08-23 监装师傅取消前端人数上限](./changelogs/change-log-2026-08-23-loading-order-no-supervisor-limit.md)
+- [2026-08-23 监装「推荐」弹窗回填堆场与师傅](./changelogs/change-log-2026-08-23-loading-order-recommend.md)
+- [2026-08-23 监装输入框恢复聚焦蓝边](./changelogs/change-log-2026-08-23-loading-order-input-focus.md)
+- [2026-08-23 监装工单详细说明对接 remark](./changelogs/change-log-2026-08-23-loading-order-remark.md)
 - [2026-08-23 费用打印拉模板列表传入 bizType](./changelogs/change-log-2026-08-23-order-fee-print-biztype.md)
 - [2026-08-23 空运出口对接单据打印](./changelogs/change-log-2026-08-23-air-export-print.md)
 - [2026-08-22 船公司 Logo 改为单图缩略图预览](./changelogs/change-log-2026-08-22-carrier-logo-picture-card.md)
+- [2026-08-22 监装工单页面对齐 Figma 稿](./changelogs/change-log-2026-08-22-loading-order-figma.md)
 - [2026-08-22 监装模块前端落地（TAPD #1000122）](./changelogs/change-log-2026-08-22-loading-supervision-frontend.md)
 - [2026-08-20 运踪分享页页头补展示单号](./changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md)
 - [2026-08-20 付费申请汇率弹窗改为双向折算并预填有效应付汇率](./changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md)

@@ -23,7 +23,7 @@ last_updated: 2026-08-23
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、**监装工单**、分单、运踪信息。「监装工单」需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
+- **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、**监装**、分单、运踪信息。「监装」需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；点「确定引入」后前端回填 `atd`（实际开船）、`innerVoyno`（出口航次 `evoyage`）、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
 - **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/船代/订舱代理/车队；第 2 行订舱编号/主提单号/保险公司/报关行/仓库/场站；第 3 行签单方式/提单副本份数/付费方式付款地点/运输条款贸易条款/合同号（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。仅恢复当前可见且有对应面板的 Tab key；关闭浏览器标签后会话清空，下次默认回到「基础信息」。工作台「前往上传」会先写 pending Tab，再带 `?tab=attachments`；二者都优先于会话记忆。路由 `fullPathKey: false`，避免 query 变化整页重挂。命中后会立刻写入记忆并 `replace` 掉 `tab` 参数。基础信息表单内滚动**不再**改写工作台 `activeTab`（已移除分区 Tab 双向联动）。
@@ -49,7 +49,7 @@ last_updated: 2026-08-23
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付），拉模板列表传 `bizType=0`（海运出口，结果含通用模板）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
-- **监装工单：** Tab 进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 显示「新建监装工单」（需 `.Add`）。表单为明细包装、明细包装件数、预计到货时间、监装堆场、监装师傅（`userAttribute=512`，**前端限制最多 2 人**，数组顺序即监装顺序）、监装要求勾选（用详情 `loadingRequirements` 的 `isChecked` 回填，提交 `loadingRequirementItemIds` 全量）。**明细包装与堆场的候选项只认已保存的海运出口**：分别取落库 `transportOrder.codePackageId` 的包装详情与 `carrierId` 的船公司详情，基础信息未保存的改动不联动；缺包装/缺船公司时对应下拉禁用并给后端同口径提示。按状态控制操作：未提交（编辑/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。箱型区只读展示箱型/箱号/封号/是否完成/照片数，箱内容由师傅在小程序维护。工单号由后端按编号规则 `LoadingOrder.LoadingOrderNum` 生成，未配置则新建报「未配置生成规则」。干系人里的「监装」与工单师傅列表是两套，互不同步。
+- **监装工单：** Tab 文案为「监装」，位于派车与分单之间；需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 且有 `.Add` 时直接进入新建表单（不先点「新建」）；无 `.Add` 才显示空态。版式按 Figma 节点几何：工号只在基础信息第一格（带复制），顶栏仅状态 +「保存 / 提交 / 删除」；五列栅格（列间距 13px、行间距 12px），控件用默认 middle 高度；第三行预计到货/堆场/师傅各占一列，师傅为多选（人数不限）；堆场标签旁橙色「推荐」可点：先选预计到货时间且已保存船公司，弹窗调 `GetYardUsersAsync`，单选一行后回填堆场与师傅（接口只回名称，前端对本地 id）；监装要求已选标签区常驻一行高度，避免 0→1 勾选抖动；详细说明读写工单 `remark`（高 62px，最长 1024，未提交可改）；集装箱 32px 浅蓝标题条，列表头 36/行 50，照片采集按钮 123×30 用稿面相机 SVG。**明细包装与堆场的候选项只认已保存的海运出口**（基础信息未点保存不会带到监装；切回监装 Tab 会重拉堆场）。无船公司与船公司未维护堆场时下拉不禁用、打开为空列表，用不同空态文案。师傅 `userAttribute=512`，人数前后端都不卡。按状态：未提交（保存/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。工单号由后端按 `LoadingOrder.LoadingOrderNum` 生成。干系人里的「监装」与工单师傅列表是两套，互不同步。
 - **分单处理：** 分单弹窗按业务动线：身份+运费条款 → 船期港口（可折叠）→ 左收发通/国外代理｜右货物 → 装箱通栏 → 签单。**新增默认**只带主单条款与装箱，不带收发通/货描；「读入主单」才整包覆盖。主单只读字段仍展示但不提交。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，`bizType=0`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput` + `bizType=0`。模板列表走非管理端接口并按当票签单方式/船公司/分公司/业务类型筛选（`bizType` 相等或为空）。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
@@ -112,6 +112,8 @@ last_updated: 2026-08-23
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
+| **监装工单备注（详细说明）** | 监装 Tab 文本框；管理端新建/编辑填写。 | `LoadingOrderAdmin` 的 `remark`；`AddAsync` / `EditAsync` / `DetailBySeaExportIdAsync` | **触发/依赖：** 详情回填 `form.remark`，保存随工单提交；与拒接原因 `rejectReason`、监装要求主/子表 `remark` 无关。 | 可选，最长 1024；空串按 `null` 提交；仅未提交可改。 |
+| **监装推荐堆场/师傅** | 点「推荐」弹出该到货日该船公司已排师傅的堆场，选中回填。 | `LoadingOrderAdmin/GetYardUsersAsync` | **触发/依赖：** 要有预计到货时间 + 已保存 `carrierId`；回填覆盖当前堆场和 `userIds`。 | 接口无 id；堆场名对不上当前船公司则不回填。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -137,7 +139,16 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-23 | `Fix` | 监装新建成功后先记下工单 id，详情 500 时再保存走编辑而不是再新建。 | `AddAsync` 回 id；有师傅时详情 AutoMap `LoadingOrderUsers` 会炸。详见 `changelogs/change-log-2026-08-23-loading-order-save-keep-id.md`。 |
+| 2026-08-23 | `Fix` | 监装师傅不再限制最多 2 人，选几个传几个。 | 与后端一致，不卡人数；`userIds` 顺序仍是 `sortId`。详见 `changelogs/change-log-2026-08-23-loading-order-no-supervisor-limit.md`。 |
+| 2026-08-23 | `Feature` | 监装「推荐」弹窗拉已排师傅的堆场，选中后回填堆场与师傅。 | `GetYardUsersAsync` 只回名称；堆场对 `carrierYards`，师傅对用户缓存。详见 `changelogs/change-log-2026-08-23-loading-order-recommend.md`。 |
+| 2026-08-23 | `Style` | 监装可编辑输入框 hover/focus 恢复蓝色描边。 | 稿面灰边 `#e4e8ef` 盖过了 Ant 主色；只读格不套蓝。详见 `changelogs/change-log-2026-08-23-loading-order-input-focus.md`。 |
+| 2026-08-23 | `Feature` | 监装「详细说明」改为读写工单 `remark`，不再拼接已勾要求明细备注。 | `AddAsync`/`EditAsync` 带 `remark`；空串按 `null`；与 `rejectReason` 及要求资料 `remark` 无关。详见 `changelogs/change-log-2026-08-23-loading-order-remark.md`。 |
 | 2026-08-23 | `Feature` | 单据打印与费用打印拉模板列表传入 `bizType=0`。 | 费用模板跨业务共用 1000/1500，必须按业务类型筛；结果含 `bizType` 为空的通用模板。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
+| 2026-08-23 | `Fix` | 监装堆场：切回 Tab 重拉已保存船公司的堆场；无船公司与无堆场提示分开。 | KeepAlive 导致先开监装再保存船公司仍灰掉；占位不再误报「未选择船公司」。见 `changelogs/change-log-2026-08-22-loading-order-figma.md`。 |
+| 2026-08-22 | `Style` | 监装要求已选区常驻一行高度；师傅改为真正多选回显；全页输入改为默认尺寸，不再用 small。 | 标签区不再 `v-if` 等到有选中才出现；UserSelect 改绑 `modelValue`；去掉 24px 强制高度以免多选被压扁。见 `changelogs/change-log-2026-08-22-loading-order-figma.md`。 |
+| 2026-08-22 | `Fix` | 无监装工单时有 `.Add` 直接进新建表单，不必再点「新建」；无权限才显示空态。 | 删除工单后 `loadDetail` 同样自动进新建；草稿顶栏只留保存。见 `changelogs/change-log-2026-08-22-loading-order-figma.md`。 |
+| 2026-08-22 | `Style` | 监装 Tab 按 Figma 节点几何 1:1：五列 24px 控件、要求浅蓝井+橙色计数圆点、集装箱 32px 标题条与 123×30 照片按钮。 | 工号不在顶栏重复；师傅单列；推荐角标无接口；详细说明不入库；照片只预览。见 `changelogs/change-log-2026-08-22-loading-order-figma.md`。 |
 | 2026-08-22 | `Feature` | 新增「监装工单」Tab（位于派车与分单之间）：按海出查工单、未提交可编辑/删除/提交、待认领可撤回、已认领与已完成只读；勾选监装要求；箱型与监装照片只读。 | TAPD #1000122。`DetailBySeaExportIdAsync` 传的是**海出 id**；明细包装/堆场只认已保存的包装与船公司，基础信息未保存改动不联动；师傅最多 2 人由前端限制；无 `Admin.SeaExport.LoadingOrder.Get` 时整 Tab 隐藏且不参与 Tab 记忆。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-19 | `Fix` | 业务联系单引入的费用，「录入方式」不再显示数字 6，改为「业务联系单引入」。 | Handsontable 该列为 `type:text`，值被写成 `"6"`；`getDataEntryMethodLabel` 改为数值比较。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |

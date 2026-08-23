@@ -135,6 +135,8 @@ export namespace LoadingOrderAdminApi {
     lastModifierUserName?: null | string;
     creationTime?: string;
     lastModificationTime?: null | string;
+    /** 管理端新建/编辑填写，不是拒接原因 */
+    remark?: null | string;
     loadingOrderUsers?: LoadingOrderUserDto[] | null;
     /** 已勾选的监装要求明细 id，编辑时可原样回传 */
     loadingRequirementItemIds?: string[] | null;
@@ -150,10 +152,12 @@ export namespace LoadingOrderAdminApi {
     pkgs?: null | number;
     estimatedArrivalTime?: null | string;
     carrierYardId?: null | string;
-    /** 用户属性必须含监装；前端限制最多 2 个；数组顺序即监装顺序 */
+    /** 用户属性必须含监装；数组顺序即监装顺序 */
     userIds?: (number | string)[];
     /** 全量提交，漏传等于清空 */
     loadingRequirementItemIds?: string[];
+    /** 最长 1024；与拒接原因是两个独立字段 */
+    remark?: null | string;
   }
 
   /** 编辑监装工单参数；海运出口不允许改 */
@@ -162,6 +166,18 @@ export namespace LoadingOrderAdminApi {
     'seaExportId'
   > {
     id: string;
+  }
+
+  /** 按到货日+船公司查已排师傅 */
+  export interface LoadingOrderYardUserQueryDto {
+    estimatedArrivalDate: string;
+    carrierId: number | string;
+  }
+
+  /** 接口只回名称，回填 id 需前端对本地堆场 / 用户缓存 */
+  export interface LoadingOrderYardUserDto {
+    yardName?: null | string;
+    userName?: null | string;
   }
 }
 
@@ -211,4 +227,22 @@ export const withdrawLoadingOrder = (id: string) => {
   return requestClient.post<boolean>(`${ADMIN_PREFIX}/WithdrawAsync`, {
     id: String(id),
   });
+};
+
+/**
+ * 按预计到货日（只取天）+ 船公司查已排师傅的堆场。
+ * 出参只有堆场名 / 师傅昵称，按二者去重。
+ */
+export const getLoadingOrderYardUsers = (
+  params: LoadingOrderAdminApi.LoadingOrderYardUserQueryDto,
+) => {
+  return requestClient.get<LoadingOrderAdminApi.LoadingOrderYardUserDto[]>(
+    `${ADMIN_PREFIX}/GetYardUsersAsync`,
+    {
+      params: {
+        estimatedArrivalDate: params.estimatedArrivalDate,
+        carrierId: String(params.carrierId),
+      },
+    },
+  );
 };
