@@ -6,8 +6,9 @@ import { useRoute } from 'vue-router';
 /**
  * KeepAlive 页面用的路由 id。
  *
- * 当前页可见时跟着 `params` 走；被缓存藏起来后冻结上次的值。
- * 避免海进/海出/空运等同样叫 `:id` 的编辑页，切走后误用别人地址栏里的单号去拉详情。
+ * 只认「本实例挂上时的那条 path」。路由已经切走时（哪怕 KeepAlive 还没
+ * onDeactivated）也不跟着 `params.id` 走，避免海进/海出/空出/费用模板
+ * 等同名 `:id` 页互相抢详情。
  */
 export function useKeepAliveRouteParamId(
   paramName = 'id',
@@ -15,6 +16,7 @@ export function useKeepAliveRouteParamId(
   const route = useRoute();
   const isActive = ref(true);
   const id = ref<string | undefined>(undefined);
+  const ownedPath = ref(route.path);
 
   const read = () => {
     const raw = route.params[paramName];
@@ -24,18 +26,20 @@ export function useKeepAliveRouteParamId(
 
   const sync = () => {
     if (!isActive.value) return;
+    if (route.path !== ownedPath.value) return;
     id.value = read();
   };
 
   sync();
 
   watch(
-    () => route.params[paramName],
+    () => [route.path, route.params[paramName]] as const,
     () => sync(),
   );
 
   onActivated(() => {
     isActive.value = true;
+    ownedPath.value = route.path;
     sync();
   });
 
