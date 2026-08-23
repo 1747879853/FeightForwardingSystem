@@ -307,6 +307,11 @@ export namespace SeaExportAdminApi {
     reeferTemperatureUnit?: number;
     /** 通风口是否打开 */
     reeferVentOpen?: boolean;
+
+    /** 应收整票结算状态 */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（预留字段，目前恒为 null） */
+    paySettlementStatus?: number | null;
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {

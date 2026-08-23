@@ -208,6 +208,9 @@ export namespace AirExportAdminApi {
     remark?: null | string;
     creatorUserId?: null | number;
     creatorUserName?: null | string;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
   }
 
   /** 业务主表新增入参（空运出口用得到的字段） */

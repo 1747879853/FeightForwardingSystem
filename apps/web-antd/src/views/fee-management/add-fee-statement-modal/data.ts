@@ -333,6 +333,27 @@ export function useOrderFixedColumns() {
         return record.seaExport?.pod?.podRemark || record.podName || '-';
       },
     },
+    {
+      field: 'recSettlementStatus',
+      title: '应收完结',
+      width: 100,
+      customRender: ({ record }: any) => {
+        // recSettlementStatus 来自 transportOrder.recSettlementStatus
+        const status = record.recSettlementStatus;
+        if (status === null || status === undefined) return '-';
+        const statusMap: Record<number, string> = {
+          0: '录入中',
+          1: '待审核',
+          2: '已驳回',
+          3: '审核通过',
+          4: '部分结算',
+          5: '已结算',
+          6: '已开票',
+          7: '已付款',
+        };
+        return statusMap[status] || '-';
+      },
+    },
   ];
 }
 
@@ -440,7 +461,7 @@ export function calcCurrencyUnSummary(
 ): number {
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
-    .reduce((sum, f) => sum + (f.amount - f.settledAmount), 0);
+    .reduce((sum, f) => sum + ((f.amount ?? 0) - (f.settledAmount ?? 0)), 0);
 }
 
 /** 将订单数据转为表格行（含动态币别字段） */
@@ -469,6 +490,9 @@ export function buildOrderRow(
       ...fee,
       _orderId: order.id,
     })),
+    // 确保 recSettlementStatus 和 paySettlementStatus 字段被传递
+    recSettlementStatus: order.recSettlementStatus,
+    paySettlementStatus: order.paySettlementStatus,
   };
   for (const c of currencies) {
     row[`currency_${c.currencyId}_receive`] = calcCurrencySummary(

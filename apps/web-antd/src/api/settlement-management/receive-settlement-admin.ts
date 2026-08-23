@@ -27,6 +27,12 @@ export namespace ReceiveSettlementAdminApi {
     bookingNum?: string;
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
+
+    // === 整票结算状态字段（客户对账接口使用） ===
+    /** 应收整票结算状态（按该业务下全部应收费用汇总） */
+    recSettlementStatus?: number | null;
+    /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
+    paySettlementStatus?: number | null;
   }
 
   export interface ReceiveSettlementFeeDto {
@@ -146,6 +152,9 @@ export namespace ReceiveSettlementAdminApi {
     amount?: number;
     remainingAmount?: number;
     remark?: string;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
   }
 
   /** 按开票申请结算明细（详情） */

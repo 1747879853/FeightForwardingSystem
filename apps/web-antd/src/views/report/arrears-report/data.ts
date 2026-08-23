@@ -1,6 +1,10 @@
 import type { VbenFormSchema } from '@vben/common-ui';
 import type { ReportApi } from '#/api/system/report';
 
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
+import SmartPortSelect from '../profit-report/modules/SmartPortSelect.vue';
+
 import dayjs from 'dayjs';
 
 /**
@@ -93,29 +97,19 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
     {
       fieldName: 'clientId',
       label: '委托单位',
-      component: 'ApiSelect',
+      component: ClientSelect,
       componentProps: {
-        api: async () => {
-          try {
-            const { getClientPagedList } =
-              await import('#/api/sea-export/client-admin');
-            const result = await getClientPagedList({
-              PageIndex: 1,
-              PageSize: 1000,
-            });
-            return (result.items || []).map((item: any) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          } catch (error) {
-            console.error('加载客户列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
         placeholder: '请选择委托单位',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'keyword',
+      label: '关键词',
+      component: 'Input',
+      componentProps: {
+        placeholder: '主提单号或委托编号',
+        allowClear: true,
         style: { width: '100%' },
       },
     },
@@ -184,90 +178,104 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      fieldName: 'orgId',
-      label: '所属组织',
-      component: 'ApiTreeSelect',
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      component: ClientSelect,
       componentProps: {
-        api: async () => {
-          try {
-            const { getOrganizationUnitTree } =
-              await import('#/api/system/organization-unit');
-            const result = await getOrganizationUnitTree();
-            return result;
-          } catch (error) {
-            console.error('加载组织树失败:', error);
-            return [];
-          }
-        },
-        fieldNames: {
-          label: 'name',
-          value: 'id',
-          children: 'children',
-        },
-        showSearch: true,
-        treeDefaultExpandAll: false,
+        placeholder: '请选择订舱代理',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'carrierId',
+      label: '船公司',
+      component: CarrierSelect,
+      componentProps: {
+        placeholder: '请选择船公司',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'yardId',
+      label: '场站',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择场站',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'blType',
+      label: '装运方式',
+      component: 'Select',
+      componentProps: {
+        options: BL_TYPE_OPTIONS,
         allowClear: true,
-        placeholder: '请选择组织',
+        placeholder: '请选择装运方式',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'vessel',
+      label: '船名',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入船名',
+        allowClear: true,
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'innerVoyno',
+      label: '航次',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入航次',
+        allowClear: true,
         style: { width: '100%' },
       },
     },
     {
       fieldName: 'polId',
       label: '起运港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择起运港',
         style: { width: '100%' },
-      },
+        bizType: formValues.bizType,
+      }),
     },
     {
       fieldName: 'podId',
       label: '目的港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择目的港',
+        style: { width: '100%' },
+        bizType: formValues.bizType,
+      }),
+    },
+    {
+      fieldName: 'accountDateStart',
+      label: '会计期间起',
+      component: 'DatePicker',
+      componentProps: {
+        picker: 'month',
+        placeholder: '请选择开始月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'accountDateEnd',
+      label: '会计期间止',
+      component: 'DatePicker',
+      componentProps: {
+        picker: 'month',
+        placeholder: '请选择结束月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
         style: { width: '100%' },
       },
     },
@@ -275,10 +283,20 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       fieldName: 'paySide',
       label: '收付方',
       component: 'Select',
+      rules: 'required',
       componentProps: {
         options: PAY_SIDE_OPTIONS,
         allowClear: true,
         placeholder: '请选择收付方',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'settlementId',
+      label: '结算对象',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择结算对象',
         style: { width: '100%' },
       },
     },
@@ -294,13 +312,28 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      fieldName: 'paymentApplyStatus',
+      label: '付费申请状态',
+      component: 'Select',
+      componentProps: {
+        options: [
+          { label: '未提交', value: 0 },
+          { label: '提交了部分', value: 1 },
+          { label: '已全额提交', value: 2 },
+        ],
+        allowClear: true,
+        placeholder: '请选择付费申请状态',
+        style: { width: '100%' },
+      },
+    },
+    {
       fieldName: 'invoiceStatus',
-      label: '发票状态',
+      label: '开票状态',
       component: 'Select',
       componentProps: {
         options: INVOICE_STATUS_OPTIONS,
         allowClear: true,
-        placeholder: '请选择发票状态',
+        placeholder: '请选择开票状态',
         style: { width: '100%' },
       },
     },
@@ -399,6 +432,16 @@ export function getHotColumns() {
       width: 120,
     },
     {
+      data: 'polRemark',
+      title: '起运港备注',
+      width: 150,
+    },
+    {
+      data: 'podRemark',
+      title: '目的港备注',
+      width: 150,
+    },
+    {
       data: 'vessel',
       title: '船名',
       width: 150,
@@ -445,7 +488,7 @@ export function getHotColumns() {
     },
     {
       data: 'settlementDate',
-      title: '结算日期',
+      title: '应结日期',
       width: 120,
       renderer: (
         instance: any,
@@ -462,8 +505,48 @@ export function getHotColumns() {
     },
     {
       data: 'overdueDays',
-      title: '逾期天数',
+      title: '超期天数',
       width: 100,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        const numValue = parseInt(value) || 0;
+        // 超期天数为负数表示未到期
+        td.innerHTML = numValue.toString();
+        // 可以根据超期天数设置不同的颜色
+        if (numValue > 0) {
+          td.style.color = '#ff4d4f'; // 超期显示红色
+        } else if (numValue < 0) {
+          td.style.color = '#52c41a'; // 未到期显示绿色
+        } else {
+          td.style.color = ''; // 当天为默认色
+        }
+        return td;
+      },
+    },
+    {
+      data: 'feeLocked',
+      title: '费用锁定',
+      width: 100,
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        td.innerHTML = value ? '是' : '否';
+        return td;
+      },
     },
     {
       data: 'invoiceNos',
@@ -479,7 +562,11 @@ export function getHotColumns() {
         cellProperties: any,
       ) => {
         // value 是数组
-        td.innerHTML = Array.isArray(value) ? value.join(', ') : '-';
+        if (Array.isArray(value) && value.length > 0) {
+          td.innerHTML = value.join(', ');
+        } else {
+          td.innerHTML = '-';
+        }
         return td;
       },
     },
@@ -503,8 +590,8 @@ export function getHotColumns() {
     },
     {
       data: 'totalReceivable',
-      title: '合计应收(CNY)',
-      width: 140,
+      title: '合计应收/应付(CNY)',
+      width: 160,
       className: 'htRight',
       renderer: (
         instance: any,
@@ -521,8 +608,8 @@ export function getHotColumns() {
     },
     {
       data: 'totalReceived',
-      title: '合计已收(CNY)',
-      width: 140,
+      title: '合计已收/已付(CNY)',
+      width: 160,
       className: 'htRight',
       renderer: (
         instance: any,
@@ -539,8 +626,8 @@ export function getHotColumns() {
     },
     {
       data: 'totalUnReceived',
-      title: '合计欠费(CNY)',
-      width: 140,
+      title: '合计未收/未付(CNY)',
+      width: 160,
       className: 'htRight',
       renderer: (
         instance: any,

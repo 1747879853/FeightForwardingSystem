@@ -185,33 +185,37 @@ const feeInnerColumnsForAddFee = [
     width: 50,
   },
   {
-    title: '费用状态',
-    dataIndex: 'feeStatus',
-    key: 'feeStatus',
+    title: '开票状态',
+    dataIndex: 'invoiceStatus',
+    key: 'invoiceStatus',
     width: 100,
     customRender: ({ record }: any) => {
       const statusMap: Record<number, string> = {
-        0: '录入状态',
-        1: '提交审核',
-        2: '审核通过',
-        3: '审核驳回',
+        0: '未开票',
+        1: '部分开票',
+        2: '已开票',
       };
-      return statusMap[record.feeStatus] || '-';
+      return statusMap[record.invoiceStatus] ?? '-';
     },
   },
   {
-    title: '结算状态',
-    dataIndex: 'settlementStatus',
-    key: 'settlementStatus',
-    width: 100,
-    // customRender: ({ record }: any) => {
-    //   const statusMap: Record<number, string> = {
-    //     0: '未结算',
-    //     1: '部分结算',
-    //     2: '已结算',
-    //   };
-    //   return statusMap[record.settlementStatus] || '-';
-    // },
+    title: '费用状态',
+    dataIndex: 'combinedFeeStatus',
+    key: 'combinedFeeStatus',
+    width: 120,
+    customRender: ({ record }: any) => {
+      const statusMap: Record<number, string> = {
+        0: '录入中',
+        1: '待审核',
+        2: '已驳回',
+        3: '审核通过',
+        4: '部分结算',
+        5: '已结算',
+        6: '已开票',
+        7: '已付款',
+      };
+      return statusMap[record.combinedFeeStatus] ?? '-';
+    },
   },
   {
     title: '对账信息',
@@ -284,7 +288,7 @@ async function handleSearch() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const values = formValues ?? (await searchFormApi.getValues());
-  if (!values.SettlementId) return;
+  if (!values || !values.SettlementId) return;
 
   const [etdStart, etdEnd] = Array.isArray(values.ETDRange)
     ? values.ETDRange
@@ -498,7 +502,7 @@ function getSelectedFees(): SelectedFeeItem[] {
         seen.add(fee.id);
         result.push({
           feeId: fee.id,
-          transportOrderId: fee.transportOrderId,
+          transportOrderId: fee.transportOrderId ?? '',
           commissionNum: order?.commissionNum,
           mblNum: order?.mblNum,
           clientName: order?.client?.name,
@@ -507,16 +511,16 @@ function getSelectedFees(): SelectedFeeItem[] {
           saleUserNames,
           operationUserNames,
           customerServiceUserNames,
-          paySide: fee.paySide,
-          feeCodeId: fee.feeCodeId,
+          paySide: fee.paySide ?? 0,
+          feeCodeId: fee.feeCodeId ?? 0,
           feeCodeName: fee.feeCode?.cnName ?? undefined,
-          currencyId: fee.currencyId,
+          currencyId: fee.currencyId ?? 0,
           currencyName: fee.currency?.cnName ?? fee.currency?.code ?? undefined,
-          settlementId: fee.settlementId,
+          settlementId: fee.settlementId ?? '',
           settlementName: fee.settlement?.name ?? undefined,
-          amount: fee.amount,
-          settledAmount: fee.settledAmount,
-          unSettledAmount: fee.unSettledAmount,
+          amount: fee.amount ?? 0,
+          settledAmount: fee.settledAmount ?? 0,
+          unSettledAmount: fee.unSettledAmount ?? 0,
         });
       }
     }
@@ -606,6 +610,88 @@ function getSettlementStatusLabel(
     2: '已结算',
   };
   return statusMap[settlementStatus ?? -1] || '-';
+}
+
+function getRecSettlementStatusLabel(
+  recSettlementStatus: number | undefined,
+): string {
+  const statusMap: Record<number, string> = {
+    0: '录入中',
+    1: '待审核',
+    2: '已驳回',
+    3: '审核通过',
+    4: '部分结算',
+    5: '已结算',
+    6: '已开票',
+    7: '已付款',
+  };
+  return statusMap[recSettlementStatus ?? -1] ?? '-';
+}
+
+function getRecSettlementStatusColor(
+  recSettlementStatus: number | undefined,
+): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 录入中 - 灰色
+    1: 'orange', // 待审核 - 橙色
+    2: 'red', // 已驳回 - 红色
+    3: 'blue', // 审核通过 - 蓝色
+    4: 'purple', // 部分结算 - 紫色
+    5: 'green', // 已结算 - 绿色
+    6: 'cyan', // 已开票 - 青色
+    7: 'gold', // 已付款 - 金色
+  };
+  return colorMap[recSettlementStatus ?? -1] ?? 'default';
+}
+
+function getInvoiceStatusLabel(invoiceStatus: number | undefined): string {
+  const statusMap: Record<number, string> = {
+    0: '未开票',
+    1: '部分开票',
+    2: '已开票',
+  };
+  return statusMap[invoiceStatus ?? -1] ?? '-';
+}
+
+function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 未开票 - 灰色
+    1: 'orange', // 部分开票 - 橙色
+    2: 'green', // 已开票 - 绿色
+  };
+  return colorMap[invoiceStatus ?? -1] ?? 'default';
+}
+
+function getCombinedFeeStatusLabel(
+  combinedFeeStatus: number | undefined,
+): string {
+  const statusMap: Record<number, string> = {
+    0: '录入中',
+    1: '待审核',
+    2: '已驳回',
+    3: '审核通过',
+    4: '部分结算',
+    5: '已结算',
+    6: '已开票',
+    7: '已付款',
+  };
+  return statusMap[combinedFeeStatus ?? -1] ?? '-';
+}
+
+function getCombinedFeeStatusColor(
+  combinedFeeStatus: number | undefined,
+): string {
+  const colorMap: Record<number, string> = {
+    0: 'default', // 录入中 - 灰色
+    1: 'orange', // 待审核 - 橙色
+    2: 'red', // 已驳回 - 红色
+    3: 'blue', // 审核通过 - 蓝色
+    4: 'purple', // 部分结算 - 紫色
+    5: 'green', // 已结算 - 绿色
+    6: 'cyan', // 已开票 - 青色
+    7: 'gold', // 已付款 - 金色
+  };
+  return colorMap[combinedFeeStatus ?? -1] ?? 'default';
 }
 
 function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {
@@ -713,6 +799,13 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.field === 'podName'">
             {{ record.seaExport?.podRemark || record.seaImport?.podRemark }}
           </template>
+          <template v-else-if="column.field === 'recSettlementStatus'">
+            <Tag
+              :color="getRecSettlementStatusColor(record.recSettlementStatus)"
+            >
+              {{ getRecSettlementStatusLabel(record.recSettlementStatus) }}
+            </Tag>
+          </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
           </template>
@@ -750,8 +843,17 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.key === 'unSettledAmount'">
             {{ formatAmount(feeRecord.amount - feeRecord.settledAmount) }}
           </template>
-          <template v-else-if="column.key === 'feeStatus'">
-            {{ getFeeStatusLabel(feeRecord.feeStatus) }}
+          <template v-else-if="column.key === 'invoiceStatus'">
+            <Tag :color="getInvoiceStatusColor(feeRecord.invoiceStatus)">
+              {{ getInvoiceStatusLabel(feeRecord.invoiceStatus) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'combinedFeeStatus'">
+            <Tag
+              :color="getCombinedFeeStatusColor(feeRecord.combinedFeeStatus)"
+            >
+              {{ getCombinedFeeStatusLabel(feeRecord.combinedFeeStatus) }}
+            </Tag>
           </template>
           <template v-else-if="column.key === 'isStatemented'">
             <!-- 未对账时显示红色Tag -->

@@ -657,8 +657,8 @@ const totalAmount = computed(() => {
   list.push({
     name: '利润率:',
     color: 'blue',
-    value: totalRec
-      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
+    value: totalPay
+      ? (((totalRec - totalPay) / totalPay) * 100).toFixed(1) + '%'
       : '--',
   });
   console.log(list);

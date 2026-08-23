@@ -88,6 +88,69 @@ export namespace ReportApi {
     code: string;
   }
 
+  // ==================== 业务类型专属 DTO ====================
+
+  /** 海运出口业务信息 */
+  export interface ReportSeaExportDto {
+    bookingAgent: ClientSimpleDto;
+    carrier: CarrierSimpleDto;
+    yard: ClientSimpleDto;
+    vessel: string;
+    innerVoyno: string;
+    blType: number;
+    pol: SeaAirPortSimpleDto;
+    pod: SeaAirPortSimpleDto;
+    polRemark: string;
+    podRemark: string;
+  }
+
+  /** 海运进口业务信息 */
+  export interface ReportSeaImportDto {
+    carrier: CarrierSimpleDto;
+    vessel: string;
+    innerVoyno: string;
+    pol: SeaAirPortSimpleDto;
+    pod: SeaAirPortSimpleDto;
+    polRemark: string;
+    podRemark: string;
+  }
+
+  /** 空运出口业务信息 */
+  export interface ReportAirExportDto {
+    bookingAgent: ClientSimpleDto;
+    pol: SeaAirPortSimpleDto;
+    pod: SeaAirPortSimpleDto;
+    polRemark: string;
+    podRemark: string;
+  }
+
+  /** 业务主单信息（三种业务类型共有的字段） */
+  export interface ReportTransportOrderDto {
+    bizType: number;
+    client: ClientSimpleDto;
+    bizDate?: string;
+    mblNum: string;
+    commissionNum: string;
+    cargoId: number;
+    settlementType?: number | null;
+    settlementDate: string;
+    orgs: OrganizationUnitSimpleDto[];
+    sales: UserSimpleDto[];
+    operations: UserSimpleDto[];
+    customerServices: UserSimpleDto[];
+    documentations: UserSimpleDto[];
+    laners: UserSimpleDto[];
+    overseasCustomerServices: UserSimpleDto[];
+    codeGoodss: CodeGoodsSimpleDto[];
+    pkgs?: number;
+    kgs?: number;
+    cbm?: number;
+    ctns: ReportCtnSimpleDto[];
+    seaExport?: ReportSeaExportDto | null;
+    seaImport?: ReportSeaImportDto | null;
+    airExport?: ReportAirExportDto | null;
+  }
+
   // ==================== 利润报表相关类型 ====================
 
   /** 利润报表查询参数 */
@@ -95,6 +158,7 @@ export namespace ReportApi {
     isMergeChangeOrder: boolean;
     bizType?: number;
     clientId?: string;
+    keyword?: string;
     mblNum?: string;
     commissionNum?: string;
     bizDateStart?: string;
@@ -134,38 +198,12 @@ export namespace ReportApi {
 
   /** 利润报表数据项 */
   export interface ProfitReportDto {
-    // 业务信息
+    // 行级字段
     transportOrderId: string;
     changeOrderId?: string;
-    bizType: number;
     isOriginal: boolean;
-    client: ClientSimpleDto;
-    bookingAgent?: ClientSimpleDto | null;
-    carrier?: CarrierSimpleDto | null;
-    yard?: ClientSimpleDto | null;
-    bizDate?: string;
     accountDate: string;
-    mblNum: string;
-    commissionNum: string;
-    pol: SeaAirPortSimpleDto;
-    pod: SeaAirPortSimpleDto;
-    vessel?: string | null;
-    innerVoyno?: string | null;
-    ctns: ReportCtnSimpleDto[];
-    cargoId: number;
-    blType?: number | null;
-    settlementType?: number | null;
-    orgs: OrganizationUnitSimpleDto[];
-    sales: UserSimpleDto[];
-    operations: UserSimpleDto[];
-    customerServices: UserSimpleDto[];
-    documentations: UserSimpleDto[];
-    laners: UserSimpleDto[];
-    overseasCustomerServices: UserSimpleDto[];
-    codeGoodss: CodeGoodsSimpleDto[];
-    pkgs?: number;
-    kgs?: number;
-    cbm?: number;
+    transportOrder: ReportTransportOrderDto;
 
     // 金额
     currencies: ProfitCurrencyDto[];
@@ -199,21 +237,21 @@ export namespace ReportApi {
   }
 
   /** 欠费报表数据项 */
-  export interface ArrearsReportDto extends Omit<
-    ProfitReportDto,
-    | 'currencies'
-    | 'totalUnReceived'
-    | 'totalPayable'
-    | 'totalUnPaid'
-    | 'totalProfit'
-    | 'totalProfitRate'
-  > {
-    // 新增字段
+  export interface ArrearsReportDto {
+    // 行级字段（与利润报表相同的部分）
+    transportOrderId: string;
+    changeOrderId?: string;
+    isOriginal: boolean;
+    accountDate: string;
+    transportOrder: ReportTransportOrderDto;
+
+    // 欠费报表特有的行级字段
     settlement?: ClientSimpleDto | null;
     feeLocked: boolean;
-    settlementDate: string;
     overdueDays: number;
     invoiceNos: string[];
+
+    // 金额
     currencies: ArrearsCurrencyDto[];
     totalReceivable: number;
     totalReceived: number;

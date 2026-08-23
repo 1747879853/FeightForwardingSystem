@@ -269,6 +269,9 @@ export namespace SeaImportAdminApi {
     remark?: null | string;
     creatorUserId?: null | number;
     creatorUserName?: null | string;
+
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
   }
 
   /** 委托单位联系人简易对象 */

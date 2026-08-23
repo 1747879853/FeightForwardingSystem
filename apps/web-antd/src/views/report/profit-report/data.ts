@@ -1,7 +1,10 @@
-import type { VbenFormSchema } from '@vben/common-ui';
 import type { ReportApi } from '#/api/system/report';
 
-import dayjs from 'dayjs';
+import type { VbenFormSchema } from '#/adapter/form';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
+import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import SmartPortSelect from './modules/SmartPortSelect.vue';
 
 /**
  * 业务类型选项
@@ -46,16 +49,6 @@ export const BL_TYPE_OPTIONS = [
 export function useProfitReportFormSchema(): VbenFormSchema[] {
   return [
     {
-      fieldName: 'isMergeChangeOrder',
-      label: '合并更改单',
-      component: 'Switch',
-      defaultValue: true,
-      componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
-      },
-    },
-    {
       fieldName: 'bizType',
       label: '业务类型',
       component: 'Select',
@@ -69,52 +62,42 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
     {
       fieldName: 'clientId',
       label: '委托单位',
-      component: 'ApiSelect',
+      component: ClientSelect,
       componentProps: {
-        api: async () => {
-          try {
-            const { getClientPagedList } =
-              await import('#/api/sea-export/client-admin');
-            const result = await getClientPagedList({
-              PageIndex: 1,
-              PageSize: 1000,
-            });
-            return (result.items || []).map((item: any) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          } catch (error) {
-            console.error('加载客户列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
         placeholder: '请选择委托单位',
         style: { width: '100%' },
       },
     },
     {
-      fieldName: 'mblNum',
-      label: '主提单号',
+      fieldName: 'keyword',
+      label: '关键词',
       component: 'Input',
       componentProps: {
-        placeholder: '请输入主提单号',
+        placeholder: '主提单号或委托编号',
         allowClear: true,
         style: { width: '100%' },
       },
     },
-    {
-      fieldName: 'commissionNum',
-      label: '委托编号',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入委托编号',
-        allowClear: true,
-        style: { width: '100%' },
-      },
-    },
+    // {
+    //   fieldName: 'mblNum',
+    //   label: '主提单号',
+    //   component: 'Input',
+    //   componentProps: {
+    //     placeholder: '请输入主提单号',
+    //     allowClear: true,
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // {
+    //   fieldName: 'commissionNum',
+    //   label: '委托编号',
+    //   component: 'Input',
+    //   componentProps: {
+    //     placeholder: '请输入委托编号',
+    //     allowClear: true,
+    //     style: { width: '100%' },
+    //   },
+    // },
     {
       fieldName: 'bizDateStart',
       label: '业务日期起',
@@ -160,90 +143,135 @@ export function useProfitReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      fieldName: 'orgId',
-      label: '所属组织',
-      component: 'ApiTreeSelect',
+      fieldName: 'isMergeChangeOrder',
+      label: '合并更改单',
+      component: 'Switch',
+      defaultValue: false,
       componentProps: {
-        api: async () => {
-          try {
-            const { getOrganizationUnitTree } =
-              await import('#/api/system/organization-unit');
-            const result = await getOrganizationUnitTree();
-            return result;
-          } catch (error) {
-            console.error('加载组织树失败:', error);
-            return [];
-          }
-        },
-        fieldNames: {
-          label: 'name',
-          value: 'id',
-          children: 'children',
-        },
-        showSearch: true,
-        treeDefaultExpandAll: false,
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+    },
+    {
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择订舱代理',
+        style: { width: '100%' },
+        // 可以添加过滤条件只显示订舱代理类型的客户
+      },
+    },
+    {
+      fieldName: 'carrierId',
+      label: '船公司',
+      component: CarrierSelect,
+      componentProps: {
+        placeholder: '请选择船公司',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'saleUserIds',
+      label: '销售',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择销售',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'operationUserIds',
+      label: '操作',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择操作',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'yardId',
+      label: '场站',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择场站',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'blType',
+      label: '装运方式',
+      component: 'Select',
+      componentProps: {
+        options: BL_TYPE_OPTIONS,
         allowClear: true,
-        placeholder: '请选择组织',
+        placeholder: '请选择装运方式',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'vessel',
+      label: '船名',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入船名',
+        allowClear: true,
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'innerVoyno',
+      label: '航次',
+      component: 'Input',
+      componentProps: {
+        placeholder: '请输入航次',
+        allowClear: true,
         style: { width: '100%' },
       },
     },
     {
       fieldName: 'polId',
       label: '起运港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择起运港',
         style: { width: '100%' },
-      },
+        bizType: formValues.bizType,
+      }),
     },
     {
       fieldName: 'podId',
       label: '目的港',
-      component: 'ApiSelect',
-      componentProps: {
-        api: async () => {
-          try {
-            const { getSeaAirPortPagedList } =
-              await import('#/api/system/report');
-            const result = await getSeaAirPortPagedList({
-              pageIndex: 1,
-              pageSize: 1000,
-            });
-            return result.items.map((item: any) => ({
-              label: `${item.cnName}(${item.code})`,
-              value: item.id,
-              isSeaPort: item.isSeaPort,
-            }));
-          } catch (error) {
-            console.error('加载港口列表失败:', error);
-            return [];
-          }
-        },
-        showSearch: true,
-        filterOption: true,
-        allowClear: true,
+      component: SmartPortSelect,
+      componentProps: (formValues: any) => ({
         placeholder: '请选择目的港',
+        style: { width: '100%' },
+        bizType: formValues.bizType,
+      }),
+    },
+    {
+      fieldName: 'accountDateStart',
+      label: '会计期间起',
+      component: 'DatePicker',
+      componentProps: {
+        picker: 'month',
+        placeholder: '请选择开始月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'accountDateEnd',
+      label: '会计期间止',
+      component: 'DatePicker',
+      componentProps: {
+        picker: 'month',
+        placeholder: '请选择结束月份',
+        format: 'YYYY-MM',
+        valueFormat: 'YYYY-MM',
         style: { width: '100%' },
       },
     },
@@ -433,19 +461,21 @@ function safeFormatDateForRenderer(
 }
 
 /**
- * 获取 Handsontable 列配置
+ * 获取 Handsontable 列配置（基础列）
  */
-export function getHotColumns() {
+export function getBaseHotColumns() {
   return [
     {
       data: 'commissionNum',
       title: '委托编号',
       width: 150,
+      fixed: 'left' as const, // 固定在左侧
     },
     {
       data: 'mblNum',
       title: '主提单号',
       width: 150,
+      fixed: 'left' as const, // 固定在左侧
     },
     {
       data: 'bizType',
@@ -458,14 +488,29 @@ export function getHotColumns() {
       width: 150,
     },
     {
-      data: 'pol',
-      title: '起运港',
+      data: 'carrier',
+      title: '船公司',
+      width: 150,
+    },
+    {
+      data: 'sales',
+      title: '销售',
       width: 120,
     },
     {
-      data: 'pod',
-      title: '目的港',
+      data: 'operations',
+      title: '操作',
       width: 120,
+    },
+    {
+      data: 'polRemark',
+      title: '起运港备注',
+      width: 150,
+    },
+    {
+      data: 'podRemark',
+      title: '目的港备注',
+      width: 150,
     },
     {
       data: 'vessel',
@@ -475,11 +520,11 @@ export function getHotColumns() {
     {
       data: 'innerVoyno',
       title: '航次',
-      width: 100,
+      width: 120,
     },
     {
       data: 'ctns',
-      title: '箱型箱量',
+      title: '箱型数量',
       width: 150,
       renderer: (
         instance: any,
@@ -490,7 +535,6 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
         td.innerHTML = value || '-';
         return td;
       },
@@ -529,10 +573,24 @@ export function getHotColumns() {
         return td;
       },
     },
-    {
-      data: 'currencies',
-      title: '币别明细',
-      width: 300,
+  ];
+}
+
+/**
+ * 获取币别明细列配置
+ */
+export function getCurrencyColumns(currencyCodes: string[]) {
+  const currencyColumns: any[] = [];
+
+  // 按币别代码排序，确保列顺序一致
+  const sortedCodes = [...currencyCodes].sort();
+
+  sortedCodes.forEach((code) => {
+    currencyColumns.push({
+      data: `${code}_receivable`,
+      title: `${code}应收`,
+      width: 120,
+      className: 'htRight',
       renderer: (
         instance: any,
         td: HTMLTableCellElement,
@@ -542,11 +600,61 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
-        td.innerHTML = value || '-';
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
-    },
+    });
+
+    currencyColumns.push({
+      data: `${code}_payable`,
+      title: `${code}应付`,
+      width: 120,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        return td;
+      },
+    });
+
+    currencyColumns.push({
+      data: `${code}_profit`,
+      title: `${code}利润`,
+      width: 120,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        return td;
+      },
+    });
+  });
+
+  return currencyColumns;
+}
+
+/**
+ * 获取合计列配置
+ */
+export function getTotalColumns() {
+  return [
     {
       data: 'totalReceivable',
       title: '合计应收(CNY)',
@@ -561,7 +669,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },
@@ -579,7 +688,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },
@@ -597,7 +707,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        const numValue = parseFloat(value) || 0;
+        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
         return td;
       },
     },
@@ -621,6 +732,13 @@ export function getHotColumns() {
       },
     },
   ];
+}
+
+/**
+ * 获取 Handsontable 列配置（兼容旧版本）
+ */
+export function getHotColumns() {
+  return [...getBaseHotColumns(), ...getTotalColumns()];
 }
 
 /**
@@ -660,11 +778,7 @@ export function calculateStatistics(data: ReportApi.ProfitReportDto[]) {
     totalPayable: stats.totalPayable.toFixed(2),
     totalProfit: stats.totalProfit.toFixed(2),
     totalProfitRate:
-      stats.totalPayable !== 0
-        ? ((stats.totalProfit / Math.abs(stats.totalPayable)) * 100).toFixed(
-            2,
-          ) + '%'
-        : '-',
+      stats.totalPayable !== 0 ? stats.totalProfit / stats.totalPayable : null,
     currencies: Array.from(stats.currencyStats.entries()).map(
       ([code, stat]) => ({
         code,

@@ -5,20 +5,44 @@ import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { HotTable } from '@handsontable/vue3';
+import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
+
+// ✅ 注册中文语言包
+registerLanguageDictionary(zhCN);
 
 import { Page } from '@vben/common-ui';
 
 import { useAccess } from '@vben/access';
 import { useVbenForm } from '#/adapter/form';
 
-import { Button, Card, message, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  message,
+  Tag,
+  Dropdown,
+  Modal,
+  Checkbox,
+} from 'ant-design-vue';
 
 import { getProfitReportList } from '#/api/system/report';
 
-import { useProfitReportFormSchema, getHotColumns } from './data';
+// ✅ 不再使用 SortableJS，直接使用原生鼠标事件实现拖拽
+
+import {
+  useProfitReportFormSchema,
+  getBaseHotColumns,
+  getCurrencyColumns,
+  getTotalColumns,
+} from './data';
+
+// 导入列配置组件
+import ColumnConfigModal from './modules/ColumnConfigModal.vue';
 
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
+
+// ✅ 移除 SortableJS 的 import
 
 defineOptions({
   name: 'ProfitReport',
@@ -45,130 +69,532 @@ const loading = ref(false);
 const groupColumns = ref<string[]>([]); // 当前分组的列名数组
 const expandedGroups = ref<Set<string>>(new Set()); // 展开的分组键集合
 
+// ✅ 拖拽状态管理
+let isDraggingColumn = false;
+let dragColumnData: { columnData?: string; columnTitle?: string } = {};
+let dragGhostElement: HTMLElement | null = null;
+
+// ✅ 分组标签拖拽状态
+const draggedGroupIndex = ref<number | null>(null);
+const dragOverGroupIndex = ref<number | null>(null);
+
+// ✅ 新增：拖拽提示显示状态
+const showDragHint = ref(true);
+
+// ✅ 新增：悬停提示状态
+const hoverColumnData = ref<string | null>(null);
+
+// 表单配置
+const formConfig = ref<FormConfig>({
+  groups: [],
+  columns: [],
+});
+
+// ✅ 新增：列选择器相关状态
+const showColumnSelector = ref(false);
+
+const selectedColumnsForGroup = ref<string[]>([]);
+
 // 表单配置
 const formSchema = useProfitReportFormSchema();
 
-// Handsontable 列配置
-const hotColumns = getHotColumns();
+// 存储所有出现的币别代码
+const allCurrencyCodes = ref<Set<string>>(new Set());
+
+// 列配置相关状态
+const columnConfigVisible = ref(false);
+const columnConfigs = ref<any[]>([]);
+const defaultColumnConfigs = ref<any[]>([]);
+
+// Handsontable 基础列配置
+const baseHotColumns = getBaseHotColumns();
+// Handsontable 合计列配置
+const totalHotColumns = getTotalColumns();
+
+// 动态列配置计算属性
+const dynamicHotColumns = computed(() => {
+  return [
+    ...baseHotColumns,
+    ...getCurrencyColumns(Array.from(allCurrencyCodes.value)),
+    ...totalHotColumns,
+  ];
+});
 
 // 获取列标题映射（用于表头显示）
-const columnTitleMap = hotColumns.reduce(
-  (map, col) => {
-    map[col.data] = col.title;
-    return map;
+const columnTitleMap = computed<Record<string, string>>(() => {
+  const columns = dynamicHotColumns.value;
+  return columns.reduce(
+    (map, col) => {
+      map[col.data] = col.title;
+      return map;
+    },
+    {} as Record<string, string>,
+  );
+});
+
+// 更新数值列字段（用于累加和右对齐）
+const numericColumns = computed(() => {
+  const cols = new Set([
+    'totalReceivable',
+    'totalPayable',
+    'totalProfit',
+    'totalProfitRate',
+  ]);
+
+  // 添加所有币别相关的数值列
+  allCurrencyCodes.value.forEach((code) => {
+    cols.add(`${code}_receivable`);
+    cols.add(`${code}_payable`);
+    cols.add(`${code}_profit`);
+  });
+
+  return cols;
+});
+
+// 初始化默认列配置
+// ✅ 新增：计算可用于分组的列（排除已在分组中的列）
+const availableGroupColumns = computed(() => {
+  const groupedSet = new Set(groupColumns.value);
+  return dynamicHotColumns.value.filter(
+    (col) =>
+      !groupedSet.has(col.data) &&
+      col.data !== '_groupDisplay' &&
+      !col.data.startsWith('total'), // 排除合计列
+  );
+});
+
+// 初始化默认列配置
+function initDefaultColumnConfigs() {
+  const allCols = dynamicHotColumns.value;
+  defaultColumnConfigs.value = allCols.map((col, index) => ({
+    data: col.data,
+    title: col.title,
+    visible: true,
+    fixed: col.fixed || false,
+    order: index,
+  }));
+  columnConfigs.value = [...defaultColumnConfigs.value];
+}
+
+// 应用列配置
+function applyColumnConfig(configs: any[]) {
+  columnConfigs.value = configs;
+
+  // 重新应用分组逻辑以使用新的列配置
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+}
+
+// 监听动态列变化，更新默认配置
+watch(
+  dynamicHotColumns,
+  () => {
+    initDefaultColumnConfigs();
   },
-  {} as Record<string, string>,
+  { immediate: true },
 );
 
-// 数值列字段（用于累加和右对齐）
-const numericColumns = new Set([
-  'totalReceivable',
-  'totalPayable',
-  'totalProfit',
-  'totalProfitRate',
-]);
+// Handsontable 配置（改为计算属性）
+const hotSettings = computed(() => {
+  // 获取可见列并按order排序
+  // 如果有分组，使用currentColumnsRef（包含分组列），否则使用columnConfigs
+  const visibleColumns =
+    groupColumns.value.length > 0
+      ? [...currentColumnsRef.value]
+      : [...columnConfigs.value]
+          .filter((col) => col.visible)
+          .sort((a, b) => a.order - b.order);
 
-// Handsontable 配置
-const hotSettings = {
-  data: tableData.value,
-  columns: [] as any[], // 动态设置
-  rowHeaders: true,
-  colHeaders: true,
-  height: '100%', // 使用百分比高度，配合 CSS 实现自适应
-  width: '100%',
-  stretchH: 'all',
-  manualColumnResize: true,
-  manualRowResize: true,
-  contextMenu: false,
-  readOnly: true,
-  licenseKey: 'non-commercial-and-evaluation',
-  className: 'htCenter htMiddle',
-  rowHeight: 28,
-  autoWrapRow: false,
-  autoWrapCol: false,
-  afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-    TH.style.backgroundColor = '#1890ff'; // 蓝色背景
-    TH.style.color = '#ffffff'; // 白色文字
-    TH.style.fontWeight = '600';
-    TH.style.textAlign = 'center';
+  // 计算固定列数量
+  const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
+  const rightFixedColumns = visibleColumns.filter(
+    (col) => col.fixed === 'right',
+  );
 
-    // 如果是分组列（第一列且有分组），不添加列分组点击事件
-    if (groupColumns.value.length > 0 && col === 0) {
-      TH.style.cursor = 'default';
-      TH.title = '';
-      return;
-    }
+  const fixedColumnsLeft = leftFixedColumns.length;
+  const fixedColumnsRight = rightFixedColumns.length;
 
-    TH.style.cursor = 'pointer';
-    TH.title = '点击添加到分组';
+  return {
+    data: tableData.value,
+    columns: visibleColumns.map((col) => {
+      const isNumeric = numericColumns.value.has(col.data);
+      return {
+        ...col,
+        className: isNumeric ? 'htRight' : 'htLeft',
+        // ✅ 分组时确保每列都有明确的宽度，防止自适应
+        width: col.width || (groupColumns.value.length > 0 ? 150 : undefined),
+      };
+    }),
+    rowHeaders: true,
+    colHeaders: true,
+    height: '100%', // 使用百分比高度，配合 CSS 实现自适应
+    width: '100%',
+    // ✅ 分组时禁用 stretchH，防止列宽度根据内容自适应
+    stretchH: groupColumns.value.length > 0 ? 'none' : 'all',
+    manualColumnResize: true,
+    manualRowResize: true,
 
-    // 添加点击事件监听器
-    const handleClick = () => {
-      // 从当前显示的列配置中获取列数据
-      const currentColumns = currentColumnsRef.value;
-      if (col >= 0 && col < currentColumns.length) {
-        const columnData = currentColumns[col]?.data;
-        // 确保不是分组列的数据字段
-        if (
-          columnData &&
-          columnData !== '_groupDisplay' &&
-          !groupColumns.value.includes(columnData)
-        ) {
-          groupColumns.value.push(columnData);
-          if (originalData.value.length > 0) {
-            applyGrouping([...originalData.value]);
+    // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
+    manualColumnMove: true,
+
+    // ✅ 重新启用列排序功能
+    columnSorting: {
+      indicator: true,
+      sortEmptyCells: false,
+    },
+
+    // ✅ 启用右键菜单和列隐藏/显示功能，使用中文标签
+    contextMenu: {
+      items: {
+        hidden_columns_show: {
+          name: '显示隐藏的列',
+        },
+        hidden_columns_hide: {
+          name: '隐藏列',
+        },
+      },
+    },
+
+    // ✅ 配置隐藏列功能
+    hiddenColumns: {
+      columns: [], // 初始时没有隐藏的列
+      indicators: true, // 显示隐藏列指示器（小箭头）
+      copyPasteEnabled: false, // 隐藏列不参与复制粘贴
+    },
+
+    // ✅ 设置语言为中文
+    language: zhCN.languageCode,
+
+    readOnly: true,
+    licenseKey: 'non-commercial-and-evaluation',
+    className: 'htCenter htMiddle',
+    rowHeight: 28,
+    autoWrapRow: false,
+    autoWrapCol: false,
+
+    // ✅ 方案A：禁用固定列以启用完整的拖拽功能
+    // 原配置（已注释）：
+    // fixedColumnsLeft: fixedColumnsLeft,
+    // fixedColumnsRight: fixedColumnsRight,
+    fixedColumnsLeft: 0, // 禁用左侧固定列
+    fixedColumnsRight: 0, // 禁用右侧固定列
+
+    afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
+      TH.style.backgroundColor = '#1890ff';
+      TH.style.color = '#ffffff';
+      TH.style.fontWeight = '600';
+      TH.style.textAlign = 'center';
+
+      // ✅ 如果是分组列或序号列，不显示拖拽手柄
+      const isGroupColumn = groupColumns.value.length > 0 && col === 0;
+      const isRowHeaderColumn = col === -1; // Handsontable 的序号列索引为 -1
+
+      if (isGroupColumn || isRowHeaderColumn) {
+        TH.style.cursor = 'default';
+        TH.title = '';
+
+        // 确保没有拖拽手柄
+        const existingHandle = TH.querySelector('.drag-handle');
+        if (existingHandle) {
+          existingHandle.remove();
+        }
+        return;
+      }
+
+      // ✅ 创建拖拽手柄，并使用内联事件处理器
+      let dragHandle = TH.querySelector('.drag-handle') as HTMLElement;
+      if (!dragHandle) {
+        dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮'; // 双竖线图标
+        dragHandle.style.cssText = `
+          position: absolute;
+          left: 2px;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: grab;
+          opacity: 0.6;
+          font-size: 14px;
+          padding: 8px 12px;
+          z-index: 10;
+          user-select: none;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          min-width: 32px;
+          min-height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        `;
+
+        // ✅ 关键：使用内联事件处理器，直接绑定到元素上
+        dragHandle.onmousedown = (e: MouseEvent) => {
+          console.log('✅ 手柄 onmousedown 触发了！');
+
+          // 只处理左键
+          if (e.button !== 0) return;
+
+          // ✅ 立即提供视觉反馈，让用户知道已响应
+          const handleElement = e.currentTarget as HTMLElement;
+          handleElement.style.opacity = '0.9';
+          handleElement.style.transform = 'translateY(-50%) scale(0.95)';
+
+          // ✅ 记录鼠标起始位置
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let isVerticalDrag = false;
+          let hasStartedDrag = false;
+          let dragHandled = false; // ✅ 标记是否已经处理了拖拽
+
+          // ✅ 关键修复：直接使用 afterGetColHeader 提供的 col 参数
+          const currentColumns = currentColumnsRef.value;
+
+          if (col < 0 || col >= currentColumns.length) {
+            console.warn('列索引超出范围:', col, currentColumns.length);
+            return;
           }
+
+          const columnData = currentColumns[col]?.data;
+          const columnTitle = currentColumns[col]?.title || columnData;
+
+          console.log(
+            '📌 准备拖拽列索引:',
+            col,
+            '数据:',
+            columnData,
+            '标题:',
+            columnTitle,
+          );
+
+          if (!columnData || columnData === '_groupDisplay') {
+            console.warn('该列不支持分组:', columnData);
+            return;
+          }
+
+          // ✅ 监听 mousemove 来判断拖动方向
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            if (!hasStartedDrag) {
+              const deltaX = Math.abs(moveEvent.clientX - startX);
+              const deltaY = Math.abs(moveEvent.clientY - startY);
+
+              // ✅ 优化：降低阈值从5px到2px，提高响应速度
+              // 如果垂直移动距离大于水平移动距离，则认为是垂直拖动
+              if (deltaY > 0) {
+                isVerticalDrag = true;
+                hasStartedDrag = true;
+                dragHandled = true; // ✅ 标记已处理
+
+                console.log('🖱️ 开始垂直拖拽列:', columnData, columnTitle);
+
+                isDraggingColumn = true;
+                dragColumnData = { columnData, columnTitle };
+
+                // ✅ 创建拖拽幽灵元素
+                dragGhostElement = document.createElement('div');
+                dragGhostElement.className = 'column-drag-ghost';
+                dragGhostElement.textContent = columnTitle || '';
+                dragGhostElement.style.cssText = `
+                  position: fixed;
+                  left: ${moveEvent.clientX + 10}px;
+                  top: ${moveEvent.clientY + 10}px;
+                  padding: 8px 16px;
+                  background: #1890ff;
+                  color: white;
+                  border-radius: 4px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                  z-index: 9999;
+                  pointer-events: none;
+                  font-size: 13px;
+                  font-weight: 600;
+                  opacity: 0.85;
+                  cursor: grabbing;
+                `;
+                document.body.appendChild(dragGhostElement);
+
+                // ✅ 关键：阻止所有后续事件，避免干扰 Handsontable
+                moveEvent.preventDefault();
+                moveEvent.stopPropagation();
+                moveEvent.stopImmediatePropagation();
+              } else if (deltaX > 1) {
+                // 水平移动，让 Handsontable 处理列移动
+                hasStartedDrag = true;
+                cleanup();
+                removeListeners();
+              }
+            } else if (isVerticalDrag && dragGhostElement) {
+              // 更新幽灵元素位置
+              dragGhostElement.style.left = `${moveEvent.clientX + 10}px`;
+              dragGhostElement.style.top = `${moveEvent.clientY + 10}px`;
+
+              // 检查是否在分组区域上方
+              const groupArea = document.querySelector('.group-area-tags');
+              if (groupArea) {
+                const rect = groupArea.getBoundingClientRect();
+                const isOver =
+                  moveEvent.clientX >= rect.left &&
+                  moveEvent.clientX <= rect.right &&
+                  moveEvent.clientY >= rect.top &&
+                  moveEvent.clientY <= rect.bottom;
+
+                if (isOver) {
+                  groupArea.classList.add('sortable-over');
+                } else {
+                  groupArea.classList.remove('sortable-over');
+                }
+              }
+
+              // ✅ 关键：持续阻止事件
+              moveEvent.preventDefault();
+              moveEvent.stopPropagation();
+              moveEvent.stopImmediatePropagation();
+            }
+          };
+
+          // ✅ 监听 mouseup 来结束拖拽
+          const handleMouseUp = (upEvent: MouseEvent) => {
+            removeListeners();
+
+            if (dragHandled && isDraggingColumn) {
+              console.log('🖱️ 鼠标释放');
+
+              const groupArea = document.querySelector('.group-area-tags');
+              if (groupArea) {
+                groupArea.classList.remove('sortable-over');
+              }
+
+              if (dragColumnData.columnData && groupArea) {
+                const rect = groupArea.getBoundingClientRect();
+                const isOver =
+                  upEvent.clientX >= rect.left &&
+                  upEvent.clientX <= rect.right &&
+                  upEvent.clientY >= rect.top &&
+                  upEvent.clientY <= rect.bottom;
+
+                if (
+                  isOver &&
+                  !groupColumns.value.includes(dragColumnData.columnData)
+                ) {
+                  console.log('✅ 添加到分组:', dragColumnData.columnData);
+
+                  groupColumns.value.push(dragColumnData.columnData);
+
+                  if (originalData.value.length > 0) {
+                    applyGrouping([...originalData.value]);
+                  }
+
+                  message.success(
+                    `已将 "${dragColumnData.columnTitle}" 添加到分组`,
+                  );
+                }
+              }
+
+              if (dragGhostElement) {
+                dragGhostElement.remove();
+                dragGhostElement = null;
+              }
+
+              isDraggingColumn = false;
+              dragColumnData = {};
+              dragHandled = false;
+            }
+
+            cleanup();
+          };
+
+          const cleanup = () => {
+            const th = dragHandle?.closest('th') as HTMLTableCellElement;
+            if (th) {
+              th.style.opacity = '1';
+            }
+            if (dragHandle) {
+              // ✅ 恢复拖拽手柄的样式
+              dragHandle.style.opacity = '0.6';
+              dragHandle.style.transform = 'translateY(-50%) scale(1)';
+              dragHandle.style.cursor = 'grab';
+            }
+          };
+
+          const removeListeners = () => {
+            document.removeEventListener('mousemove', handleMouseMove, true);
+            document.removeEventListener('mouseup', handleMouseUp, true);
+          };
+
+          document.addEventListener('mousemove', handleMouseMove, true);
+          document.addEventListener('mouseup', handleMouseUp, true);
+
+          // ✅ 关键：立即阻止 mousedown 事件的传播，防止 Handsontable 处理
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        };
+
+        TH.style.position = 'relative';
+        TH.appendChild(dragHandle);
+      }
+
+      // 提示用户可以使用排序和拖拽功能
+      TH.style.cursor = 'pointer';
+      TH.title = '左键单击排序 | 拖动左侧 ⋮⋮ 图标到分组区 ';
+    },
+    //afterOnCellMouseDown: onAfterOnCellMouseDown,
+    afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
+    // 添加单元格渲染后的事件处理（用于分组列的点击和悬浮提示）
+    afterRenderer: (
+      TD: HTMLTableCellElement,
+      row: number,
+      col: number,
+      prop: string,
+      value: any,
+      cellProperties: any,
+    ) => {
+      const rowData = tableData.value[row];
+
+      // 为合计行添加data属性
+      if (rowData?._isTotalRow) {
+        TD.parentElement?.setAttribute('data-total-row', 'true');
+        TD.style.fontWeight = 'bold';
+        return;
+      }
+
+      // ✅ 添加鼠标悬浮提示，显示完整内容
+      const cellValue = TD.textContent || TD.innerText || '';
+      if (cellValue && cellValue !== '-' && cellValue.trim() !== '') {
+        TD.title = cellValue;
+      }
+
+      if (col === 0 && groupColumns.value.length > 0) {
+        // 分组列，添加点击事件
+        if (rowData?._isGroupRow) {
+          TD.onclick = () => {
+            toggleGroupExpand(rowData._groupKey);
+          };
+          TD.style.cursor = 'pointer';
         }
       }
-    };
-
-    TH.onclick = handleClick;
-  },
-  //afterOnCellMouseDown: onAfterOnCellMouseDown,
-  afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
-  // 添加单元格渲染后的事件处理（用于分组列的点击）
-  afterRenderer: (
-    TD: HTMLTableCellElement,
-    row: number,
-    col: number,
-    prop: string,
-    value: any,
-    cellProperties: any,
-  ) => {
-    const rowData = tableData.value[row];
-
-    // 为合计行添加data属性
-    if (rowData?._isTotalRow) {
-      TD.parentElement?.setAttribute('data-total-row', 'true');
-      TD.style.fontWeight = 'bold';
-      return;
-    }
-
-    if (col === 0 && groupColumns.value.length > 0) {
-      // 分组列，添加点击事件
-      if (rowData?._isGroupRow) {
-        TD.onclick = () => {
-          toggleGroupExpand(rowData._groupKey);
-        };
-        TD.style.cursor = 'pointer';
-      }
-    }
-  },
-};
+    },
+  };
+});
 
 /**
  * 更新表格高度
  */
 let resizeObserver: ResizeObserver | null = null;
+let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
 
 function updateTableHeight() {
-  nextTick(() => {
+  // 清除之前的定时器，避免重复调用
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+  }
+
+  // 使用 requestAnimationFrame 确保在下一帧执行，避免布局抖动
+  heightUpdateTimer = setTimeout(() => {
     const container = containerRef.value;
     const hotInstance = hotTableRef.value?.hotInstance;
 
     if (!container || !hotInstance) {
-      // 如果实例还没准备好，稍后重试
-      setTimeout(updateTableHeight, 50);
+      heightUpdateTimer = null;
       return;
     }
 
@@ -188,7 +614,9 @@ function updateTableHeight() {
 
     // 4. 更新 Handsontable 高度
     hotInstance.updateSettings({ height: targetHeight }, false);
-  });
+
+    heightUpdateTimer = null;
+  }, 16); // 约1帧的时间（60fps）
 }
 
 function initResizeObserver() {
@@ -200,28 +628,179 @@ function initResizeObserver() {
   }
 
   resizeObserver = new ResizeObserver(() => {
-    updateTableHeight();
+    // 清除之前的定时器
+    if (heightUpdateTimer) {
+      clearTimeout(heightUpdateTimer);
+    }
+    // 使用防抖，避免频繁更新
+    heightUpdateTimer = setTimeout(() => {
+      updateTableHeight();
+    }, 50); // 50ms 防抖
   });
 
-  // 观察 body 的变化，因为窗口缩放时容器本身尺寸可能不变但视口变了
+  // 观察多个元素的变化
+  // 1. 观察 document.body - 窗口缩放时视口变化
   resizeObserver.observe(document.body);
+
+  // 2. 观察 Page 组件的 wrapper - 当查询表单展开/收缩时，整体布局会变化
+  const pageWrapper = document.querySelector('.vben-page-wrapper');
+  if (pageWrapper) {
+    resizeObserver.observe(pageWrapper as Element);
+  }
+
+  // 3. 观察 query-card - 查询表单展开/收缩的直接容器
+  const queryCard = document.querySelector('.query-card');
+  if (queryCard) {
+    resizeObserver.observe(queryCard as Element);
+  }
+
+  // 4. 使用 MutationObserver 监听 DOM 变化，动态添加新的观察对象
+  let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const mutationObserver = new MutationObserver((mutations) => {
+    // 防抖处理：避免频繁调用
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
+    }
+
+    let needUpdate = false;
+
+    mutations.forEach((mutation) => {
+      if (!needUpdate) {
+        // 检查是否有相关节点添加
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            if (node.classList.contains('query-card')) {
+              resizeObserver?.observe(node);
+            }
+            if (
+              node.classList.contains('vben-page-wrapper') ||
+              node.querySelector?.('.vben-page-wrapper')
+            ) {
+              const wrapper = node.classList.contains('vben-page-wrapper')
+                ? node
+                : node.querySelector('.vben-page-wrapper');
+              if (wrapper) {
+                resizeObserver?.observe(wrapper);
+              }
+            }
+          }
+        });
+
+        // 监听属性变化（特别是样式和类名变化）
+        if (
+          mutation.type === 'attributes' &&
+          (mutation.attributeName === 'style' ||
+            mutation.attributeName === 'class')
+        ) {
+          const target = mutation.target as HTMLElement;
+          if (
+            target.classList.contains('query-card') ||
+            target.classList.contains('vben-page-wrapper') ||
+            target.closest('.query-card') ||
+            target.closest('.vben-page-wrapper')
+          ) {
+            needUpdate = true;
+          }
+        }
+      }
+    });
+
+    // 如果需要更新，使用防抖延迟执行
+    if (needUpdate) {
+      updateTimeout = setTimeout(() => {
+        updateTableHeight();
+        updateTimeout = null;
+      }, 100); // 100ms 防抖
+    }
+  });
+
+  // 监听整个文档的变化
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class'],
+  });
+
+  // 保存 mutationObserver 引用以便清理
+  (initResizeObserver as any).mutationObserver = mutationObserver;
 }
 
-// 监听窗口大小变化
-window.addEventListener('resize', updateTableHeight);
+/**
+ * 初始化列头拖拽功能（使用内联事件处理器）
+ */
+function initColumnHeaderDrag() {
+  nextTick(() => {
+    const hotInstance = hotTableRef.value?.hotInstance;
+    if (!hotInstance) {
+      console.warn('Handsontable 实例不存在');
+      return;
+    }
+
+    const container = hotInstance.rootElement;
+    if (!container) {
+      console.warn('Handsontable 根元素不存在');
+      return;
+    }
+
+    const columnHeader = container.querySelector('thead');
+    if (!columnHeader) {
+      console.warn('未找到 thead 元素');
+      return;
+    }
+
+    (initColumnHeaderDrag as any).cleanup = () => {
+      console.log('✅ 列头拖拽清理完成');
+    };
+  });
+}
+
+// 监听窗口大小变化（带防抖）
+let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+window.addEventListener('resize', () => {
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
+  resizeTimer = setTimeout(() => {
+    updateTableHeight();
+  }, 100);
+});
 
 onMounted(() => {
   // 初始化观察者
   initResizeObserver();
-  // 默认执行一次查询
+  // 默认执行一次查询（查询后会初始化拖拽）
   handleQuery();
 });
 
 onUnmounted(() => {
+  // 移除窗口resize监听器
   window.removeEventListener('resize', updateTableHeight);
+
+  // 清理所有定时器
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+    heightUpdateTimer = null;
+  }
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+    resizeTimer = null;
+  }
+
+  // 清理 ResizeObserver
   if (resizeObserver) {
     resizeObserver.disconnect();
   }
+
+  // 清理 MutationObserver
+  const mutationObserver = (initResizeObserver as any).mutationObserver;
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+  }
+
+  // 清理拖拽相关资源
+  cleanupSortable();
 });
 
 // 创建表单
@@ -302,17 +881,22 @@ async function handleQuery(formData?: any) {
     const transformedData = transformDataForHotTable(dataList);
 
     originalData.value = [...transformedData];
+
     applyGrouping(transformedData);
 
-    // 数据加载并渲染后，重新计算表格高度
+    // 数据加载并渲染后，重新计算表格高度并初始化拖拽
     nextTick(() => {
       updateTableHeight();
+      // 使用 setTimeout 确保 Handsontable 完全渲染后再初始化拖拽
+      setTimeout(() => {
+        initColumnHeaderDrag();
+      }, 100);
     });
 
     message.success(`查询成功，共 ${transformedData.length} 条记录`);
   } catch (error: any) {
     console.error('查询失败:', error);
-    message.error(error?.message || '查询失败，请稍后重试');
+    //message.error(error?.message || '查询失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -331,24 +915,6 @@ async function handleReset() {
   await nextTick();
   if (hotTableRef.value && hotTableRef.value.hotInstance) {
     hotTableRef.value.hotInstance.loadData([]);
-  }
-}
-
-/**
- * 处理表格点击事件
- */
-function onAfterOnCellMouseDown(
-  event: any,
-  coords: any,
-  TD: HTMLTableCellElement,
-) {
-  if (coords.row >= 0 && coords.row < tableData.value.length) {
-    const rowData = tableData.value[coords.row];
-    if (rowData && rowData._isGroupRow) {
-      // 点击分组行，切换展开/折叠
-      toggleGroupExpand(rowData._groupKey);
-    }
-    // 数据行双击跳转在 afterOnCellDblClick 中处理
   }
 }
 
@@ -411,31 +977,166 @@ function safeFormatDate(
 }
 
 /**
- * 转换数据以适应 Handsontable
+ * 转换数据以适应 Handsontable（支持币别明细拆分）
  */
 function transformDataForHotTable(data: ReportApi.ProfitReportDto[]) {
-  return data.map((item) => ({
-    commissionNum: item.commissionNum,
-    mblNum: item.mblNum,
-    bizType: formatBizType(item.bizType),
-    client: item.client?.name || '-',
-    pol: item.pol ? item.pol.code : '-',
-    pod: item.pod ? item.pod.code : '-',
-    vessel: item.vessel || '-',
-    innerVoyno: item.innerVoyno || '-',
-    ctns: formatCtns(item.ctns),
-    bizDate: safeFormatDate(item.bizDate, 'date'),
-    accountDate: safeFormatDate(item.accountDate, 'month'),
-    currencies: formatCurrencies(item.currencies),
-    totalReceivable: item.totalReceivable?.toFixed(2) || '0.00',
-    totalPayable: item.totalPayable?.toFixed(2) || '0.00',
-    totalProfit: item.totalProfit?.toFixed(2) || '0.00',
-    totalProfitRate:
-      item.totalProfitRate != null
-        ? `${(item.totalProfitRate * 100).toFixed(2)}%`
+  // 清空币别代码集合
+  allCurrencyCodes.value = new Set();
+
+  // 收集所有币别代码
+  data.forEach((item) => {
+    if (item.currencies && item.currencies.length > 0) {
+      item.currencies.forEach((curr) => {
+        if (curr.currency?.code) {
+          allCurrencyCodes.value.add(curr.currency.code);
+        }
+      });
+    }
+  });
+
+  const currencyCodes = Array.from(allCurrencyCodes.value).sort();
+
+  return data.map((item) => {
+    // 从 transportOrder 中提取业务字段
+    const transportOrder = item.transportOrder;
+
+    // 根据业务类型获取专属字段
+    let seaExport: ReportApi.ReportSeaExportDto | null = null;
+    let seaImport: ReportApi.ReportSeaImportDto | null = null;
+    let airExport: ReportApi.ReportAirExportDto | null = null;
+
+    if (transportOrder) {
+      seaExport = transportOrder.seaExport || null;
+      seaImport = transportOrder.seaImport || null;
+      airExport = transportOrder.airExport || null;
+    }
+
+    // 确定港口信息（根据业务类型）
+    let pol: any = null;
+    let pod: any = null;
+    let polRemark: string = '';
+    let podRemark: string = '';
+    let vessel: string = '';
+    let innerVoyno: string = '';
+    let bookingAgent: any = null;
+    let carrier: any = null;
+    let yard: any = null;
+    let blType: number | null = null;
+
+    if (seaExport) {
+      pol = seaExport.pol;
+      pod = seaExport.pod;
+      polRemark = seaExport.polRemark || '';
+      podRemark = seaExport.podRemark || '';
+      vessel = seaExport.vessel || '';
+      innerVoyno = seaExport.innerVoyno || '';
+      bookingAgent = seaExport.bookingAgent;
+      carrier = seaExport.carrier;
+      yard = seaExport.yard;
+      blType = seaExport.blType;
+    } else if (seaImport) {
+      pol = seaImport.pol;
+      pod = seaImport.pod;
+      polRemark = seaImport.polRemark || '';
+      podRemark = seaImport.podRemark || '';
+      vessel = seaImport.vessel || '';
+      innerVoyno = seaImport.innerVoyno || '';
+      carrier = seaImport.carrier;
+    } else if (airExport) {
+      pol = airExport.pol;
+      pod = airExport.pod;
+      polRemark = airExport.polRemark || '';
+      podRemark = airExport.podRemark || '';
+      bookingAgent = airExport.bookingAgent;
+    }
+
+    const rowData: any = {
+      // 行级字段
+      transportOrderId: item.transportOrderId,
+      changeOrderId: item.changeOrderId,
+      isOriginal: item.isOriginal,
+      accountDate: safeFormatDate(item.accountDate, 'month'),
+
+      // 业务字段（从 transportOrder 提取）
+      bizType: formatBizType(transportOrder?.bizType ?? 0),
+      client: transportOrder?.client?.name || '-',
+      mblNum: transportOrder?.mblNum || '',
+      commissionNum: transportOrder?.commissionNum || '',
+      bizDate: safeFormatDate(transportOrder?.bizDate, 'date'),
+      settlementDate: safeFormatDate(transportOrder?.settlementDate, 'date'),
+      cargoId: transportOrder?.cargoId,
+      settlementType: transportOrder?.settlementType,
+      pkgs: transportOrder?.pkgs,
+      kgs: transportOrder?.kgs,
+      cbm: transportOrder?.cbm,
+
+      // 干系人
+      sales: (transportOrder?.sales || [])
+        .map((u: any) => u.nickName)
+        .join(', '),
+      operations: (transportOrder?.operations || [])
+        .map((u: any) => u.nickName)
+        .join(', '),
+
+      // 港口和运输信息
+      pol: pol ? pol.code : '-',
+      pod: pod ? pod.code : '-',
+      polRemark,
+      podRemark,
+      vessel,
+      innerVoyno,
+
+      // 船公司（用于显示列）
+      carrier: carrier
+        ? carrier.cnShortName || carrier.cnName || carrier.enName
         : '-',
-    _originalData: item,
-  }));
+
+      // 箱型箱量
+      ctns: formatCtns(transportOrder?.ctns || []),
+
+      // 金额
+      totalReceivable: item.totalReceivable?.toFixed(2) || '',
+      totalPayable: item.totalPayable?.toFixed(2) || '',
+      totalProfit: item.totalProfit?.toFixed(2) || '',
+      totalProfitRate:
+        item.totalProfitRate != null
+          ? item.totalProfitRate // 保持小数形式
+          : null,
+
+      // 原始数据（用于跳转详情）
+      _originalData: item,
+      _isDataRow: true,
+    };
+
+    // 初始化所有币别字段为空值
+    currencyCodes.forEach((code) => {
+      rowData[`${code}_receivable`] = '';
+      rowData[`${code}_payable`] = '';
+      rowData[`${code}_profit`] = '';
+    });
+
+    // 填充实际的币别数据
+    if (item.currencies && item.currencies.length > 0) {
+      item.currencies.forEach((curr) => {
+        if (curr.currency?.code) {
+          const code = curr.currency.code;
+          const receivableValue = (curr.receivable || 0).toFixed(2);
+          rowData[`${code}_receivable`] =
+            receivableValue === '0.00' ? '' : receivableValue;
+          rowData[`${code}_payable`] =
+            (curr.payable || 0).toFixed(2) === '0.00'
+              ? ''
+              : (curr.payable || 0).toFixed(2);
+          rowData[`${code}_profit`] =
+            (curr.profit || 0).toFixed(2) === '0.00'
+              ? ''
+              : (curr.profit || 0).toFixed(2);
+        }
+      });
+    }
+
+    return rowData;
+  });
 }
 
 /**
@@ -459,19 +1160,6 @@ function formatCtns(ctns: any[]) {
 }
 
 /**
- * 格式化币别明细
- */
-function formatCurrencies(currencies: any[]) {
-  if (!currencies || currencies.length === 0) return '-';
-  return currencies
-    .map(
-      (curr) =>
-        `${curr.currency.code}:应收${curr.receivable.toFixed(2)}/应付${curr.payable.toFixed(2)}/利润${curr.profit.toFixed(2)}`,
-    )
-    .join('; ');
-}
-
-/**
  * 跳转到业务详情 /sea-exports/7897b6b1-039f-4b88-ae51-b419f5a85e8f/edit
  */
 function handleViewDetail(record: ReportApi.ProfitReportDto) {
@@ -480,13 +1168,16 @@ function handleViewDetail(record: ReportApi.ProfitReportDto) {
     return;
   }
 
+  // 从 transportOrder 中获取业务类型
+  const bizType = record.transportOrder?.bizType ?? 0;
+
   const bizTypeMap: Record<number, string> = {
     0: 'sea-exports',
     1: 'sea-imports',
     2: 'air-exports',
   };
 
-  const basePath = bizTypeMap[record.bizType];
+  const basePath = bizTypeMap[bizType];
   if (!basePath) {
     message.warning('不支持的业务类型，无法跳转详情');
     return;
@@ -505,8 +1196,9 @@ function calculateTotalRow(): any {
     _isTotalRow: true, // 标记为合计行
   };
 
-  // 初始化所有字段为空字符串
-  hotColumns.forEach((col) => {
+  // 初始化所有可见字段为空字符串
+  const visibleColumns = columnConfigs.value.filter((col) => col.visible);
+  visibleColumns.forEach((col) => {
     totalRow[col.data] = '';
   });
 
@@ -514,17 +1206,17 @@ function calculateTotalRow(): any {
   if (groupColumns.value.length > 0) {
     totalRow._groupDisplay = '合计';
   } else {
-    // 无分组时，在第一列显示"合计"
-    if (hotColumns.length > 0) {
-      totalRow[hotColumns[0].data] = '合计';
+    // 无分组时，在第一列无需显示"合计"
+    if (visibleColumns.length > 0) {
+      totalRow[visibleColumns[0].data] = '';
     }
   }
 
   // 基于原始数据计算合计（originalData.value 包含所有原始数据）
   const originalDataArray = originalData.value;
 
-  // 对数值列进行合计
-  numericColumns.forEach((colName) => {
+  // ✅ 对所有数值列进行合计（包括隐藏的币别列，确保合计完整）
+  numericColumns.value.forEach((colName) => {
     let sum = 0;
     let hasData = false;
 
@@ -548,7 +1240,9 @@ function calculateTotalRow(): any {
             ? `${(((totalReceivableSum - totalPayableSum) / totalPayableSum) * 100).toFixed(2)}%`
             : '-';
       } else {
-        totalRow[colName] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        // ✅ 即使值为 0.00 也要显示，不要设为空字符串
+        totalRow[colName] = formattedValue;
       }
     } else {
       totalRow[colName] = '0.00';
@@ -578,7 +1272,7 @@ function buildTreeStructure(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空값';
+    const groupValue = item[currentGroupCol as string] || '空值';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -592,37 +1286,38 @@ function buildTreeStructure(
     const aggregatedRow: any = {};
 
     // 设置分组列的值
-    aggregatedRow[currentGroupCol] = groupName;
+    aggregatedRow[currentGroupCol as string] = groupName;
 
     // 聚合其他列的数据
-    hotColumns.forEach((colConfig) => {
+    const visibleColumns = columnConfigs.value.filter((col) => col.visible);
+    visibleColumns.forEach((colConfig) => {
       const col = colConfig.data;
       if (col === currentGroupCol) return; // 分组列已经设置
 
       const values = items.map((item) => item[col]);
 
-      if (numericColumns.has(col)) {
+      if (numericColumns.value.has(col)) {
         // 数值列：累加
         let sum = 0;
         values.forEach((val) => {
           const numVal = parseFloat(val) || 0;
           sum += numVal;
         });
-        aggregatedRow[col] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
+        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
         const totalProfit = items.reduce(
           (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
           0,
         );
         const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
+          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
           0,
         );
         aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
+          totalPayable !== 0 ? totalProfit / totalPayable : null;
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};
@@ -639,14 +1334,14 @@ function buildTreeStructure(
         if (uniqueValues.length === 0) {
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(数量)"
+          // 只有一个唯一值，显示为 "값(번호)"
           const value = uniqueValues[0];
-          const count = valueCounts[value];
+          const count = valueCounts[value] || 0;
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
-            return `${value}(${valueCounts[value]})`;
+            return `${value}(${valueCounts[value] || 0})`;
           });
           aggregatedRow[col] = formattedValues.join(', ');
         }
@@ -712,7 +1407,8 @@ function buildFullExportTree(
   // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
-    const groupValue = item[currentGroupCol] || '空값';
+    const groupValue =
+      (currentGroupCol && item[currentGroupCol as string]) || '空值';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
@@ -725,38 +1421,38 @@ function buildFullExportTree(
     // 创建聚合后的分组行数据
     const aggregatedRow: any = {};
 
-    // 设置分组列的값
-    aggregatedRow[currentGroupCol] = groupName;
+    // 设置分组列的值
+    aggregatedRow[currentGroupCol as string] = groupName;
 
-    // 聚合其他列的数据
-    hotColumns.forEach((colConfig) => {
+    // 聚合其他列的数据（使用所有列，包括隐藏列，用于导出）
+    dynamicHotColumns.value.forEach((colConfig) => {
       const col = colConfig.data;
       if (col === currentGroupCol) return; // 分组列已经设置
 
       const values = items.map((item) => item[col]);
 
-      if (numericColumns.has(col)) {
+      if (numericColumns.value.has(col)) {
         // 数值列：累加
         let sum = 0;
         values.forEach((val) => {
           const numVal = parseFloat(val) || 0;
           sum += numVal;
         });
-        aggregatedRow[col] = sum.toFixed(2);
+        const formattedValue = sum.toFixed(2);
+        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
       } else if (col === 'totalProfitRate') {
         // 利润率特殊处理：根据总利润和总应付计算
+        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
         const totalProfit = items.reduce(
           (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
           0,
         );
         const totalPayable = items.reduce(
-          (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
+          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
           0,
         );
         aggregatedRow[col] =
-          totalPayable !== 0
-            ? `${((totalProfit / totalPayable) * 100).toFixed(2)}%`
-            : '-';
+          totalPayable !== 0 ? totalProfit / totalPayable : null;
       } else {
         // 文本列：统计每个值的出现次数并格式化显示
         const valueCounts: Record<string, number> = {};
@@ -814,17 +1510,6 @@ function buildFullExportTree(
   });
 
   return result;
-}
-
-// 获取带对齐样式的列配置
-function getColumnsWithAlignment() {
-  return hotColumns.map((col) => {
-    const isNumeric = numericColumns.has(col.data);
-    return {
-      ...col,
-      className: isNumeric ? 'htRight' : 'htLeft',
-    };
-  });
 }
 
 // 创建分组列配置
@@ -895,15 +1580,18 @@ function applyGrouping(data: any[]) {
     data.length,
   );
 
+  // 获取可见的列配置
+  const visibleColumnConfigs = columnConfigs.value.filter((col) => col.visible);
+
   let columnsConfig = [];
 
   if (groupColumns.value.length > 0) {
     // 如果有分组，在最前面添加分组列，并过滤掉已用于分组的列
     const groupedColumnSet = new Set(groupColumns.value);
-    const filteredColumns = hotColumns
+    const filteredColumns = visibleColumnConfigs
       .filter((col) => !groupedColumnSet.has(col.data))
       .map((col) => {
-        const isNumeric = numericColumns.has(col.data);
+        const isNumeric = numericColumns.value.has(col.data);
         return {
           ...col,
           className: isNumeric ? 'htRight' : 'htLeft',
@@ -912,13 +1600,18 @@ function applyGrouping(data: any[]) {
 
     columnsConfig = [createGroupColumn(), ...filteredColumns];
   } else {
-    // 无分组时显示所有列
-    columnsConfig = getColumnsWithAlignment();
+    // 无分组时显示所有可见列
+    columnsConfig = visibleColumnConfigs.map((col) => {
+      const isNumeric = numericColumns.value.has(col.data);
+      return {
+        ...col,
+        className: isNumeric ? 'htRight' : 'htLeft',
+      };
+    });
   }
 
   // 保存当前列配置
   currentColumnsRef.value = columnsConfig;
-  hotSettings.columns = columnsConfig;
 
   if (groupColumns.value.length === 0) {
     tableData.value = data.map((item) => ({
@@ -946,10 +1639,7 @@ function applyGrouping(data: any[]) {
     if (hotTableRef.value && hotTableRef.value.hotInstance) {
       try {
         hotTableRef.value.hotInstance.loadData(tableData.value);
-        // 重新设置列配置
-        hotTableRef.value.hotInstance.updateSettings({
-          columns: hotSettings.columns,
-        });
+        // 不再手动更新列配置，由计算属性处理
 
         console.log(
           'Handsontable 更新完成，当前行数:',
@@ -965,19 +1655,194 @@ function applyGrouping(data: any[]) {
 }
 
 // 移除分组列
-function removeGroupColumn(index: number) {
-  groupColumns.value.splice(index, 1);
+function removeGroupColumn(columnName: string) {
+  const index = groupColumns.value.indexOf(columnName);
+  if (index > -1) {
+    const newGroupColumns = [...groupColumns.value];
+    newGroupColumns.splice(index, 1);
+    groupColumns.value = newGroupColumns;
+
+    // 清空展开状态，因为分组结构已经改变
+    expandedGroups.value = new Set();
+
+    if (originalData.value.length > 0) {
+      applyGrouping([...originalData.value]);
+    }
+
+    message.success(
+      `已移除分组 "${columnTitleMap.value[columnName] || columnName}"`,
+    );
+  }
+}
+
+// ✅ 新增：清空所有分组
+function clearAllGroups() {
+  if (groupColumns.value.length === 0) return;
+
+  groupColumns.value = [];
+  expandedGroups.value = new Set();
+
   if (originalData.value.length > 0) {
     applyGrouping([...originalData.value]);
   }
+
+  message.success('已清空所有分组');
+}
+
+// ✅ 新增：处理添加选中的列到分组
+function handleAddSelectedColumns() {
+  if (selectedColumnsForGroup.value.length === 0) {
+    message.warning('请至少选择一个列');
+    return;
+  }
+
+  // 将选中的列添加到分组
+  selectedColumnsForGroup.value.forEach((colData) => {
+    if (!groupColumns.value.includes(colData)) {
+      groupColumns.value.push(colData);
+    }
+  });
+
+  // 清空展开状态
+  expandedGroups.value = new Set();
+
+  // 重新应用分组
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+
+  message.success(`已添加 ${selectedColumnsForGroup.value.length} 个分组`);
+
+  // 关闭弹窗并重置选择
+  showColumnSelector.value = false;
+  selectedColumnsForGroup.value = [];
 }
 
 // 监听分组变化
 watch(groupColumns, (newVal, oldVal) => {
+  // 如果分组结构发生变化（不是第一次初始化），清空展开状态
+  if (oldVal && oldVal.length > 0 && newVal.length !== oldVal.length) {
+    expandedGroups.value = new Set();
+  }
+
   if (originalData.value.length > 0) {
     applyGrouping([...originalData.value]);
   }
 });
+
+/**
+ * 处理分组标签拖拽开始
+ */
+function handleGroupTagDragStart(
+  e: DragEvent,
+  columnData: string,
+  index: number,
+) {
+  console.log('🏷️ 开始拖拽分组标签:', columnData, '索引:', index);
+
+  draggedGroupIndex.value = index;
+
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', columnData);
+    e.dataTransfer.setData('application/index', String(index));
+  }
+
+  // 添加拖拽样式
+  setTimeout(() => {
+    const target = e.target as HTMLElement;
+    if (target) {
+      target.style.opacity = '0.5';
+    }
+  }, 0);
+}
+
+/**
+ * 处理分组标签拖拽经过
+ */
+function handleGroupTagDragOver(e: DragEvent, index: number) {
+  e.preventDefault();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move';
+  }
+  dragOverGroupIndex.value = index;
+}
+
+/**
+ * 处理分组标签放置
+ */
+function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
+  e.preventDefault();
+
+  const dragIndexStr = e.dataTransfer?.getData('application/index');
+  const columnData = e.dataTransfer?.getData('text/plain');
+
+  if (!dragIndexStr || !columnData) return;
+
+  const dragIndex = parseInt(dragIndexStr, 10);
+
+  console.log('🏷️ 放置分组标签:', columnData, '从', dragIndex, '到', dropIndex);
+
+  if (dragIndex === dropIndex) return;
+
+  // 重新排列数组
+  const newGroupColumns = [...groupColumns.value];
+  const [movedItem] = newGroupColumns.splice(dragIndex, 1);
+  newGroupColumns.splice(dropIndex, 0, movedItem!);
+
+  groupColumns.value = newGroupColumns;
+
+  // 清空展开状态
+  expandedGroups.value = new Set();
+
+  // 重新应用分组
+  if (originalData.value.length > 0) {
+    applyGrouping([...originalData.value]);
+  }
+
+  message.success('分组顺序已调整');
+
+  // 重置状态
+  draggedGroupIndex.value = null;
+  dragOverGroupIndex.value = null;
+}
+
+/**
+ * 处理分组标签拖拽结束
+ */
+function handleGroupTagDragEnd(e: DragEvent) {
+  console.log('🏷️ 分组标签拖拽结束');
+
+  // 重置状态
+  draggedGroupIndex.value = null;
+  dragOverGroupIndex.value = null;
+
+  // 恢复样式
+  const target = e.target as HTMLElement;
+  if (target) {
+    target.style.opacity = '1';
+  }
+}
+
+/**
+ * 清理拖拽相关资源
+ */
+function cleanupSortable() {
+  // 清理全局事件监听器
+  const dragCleanup = (initColumnHeaderDrag as any).cleanup;
+  if (typeof dragCleanup === 'function') {
+    dragCleanup();
+    console.log('✅ 已清理拖拽事件监听器');
+  }
+
+  // 重置状态
+  isDraggingColumn = false;
+  dragColumnData = {};
+  if (dragGhostElement) {
+    dragGhostElement.remove();
+    dragGhostElement = null;
+  }
+}
 
 /**
  * 导出当前显示的数据为Excel
@@ -996,12 +1861,14 @@ function handleExport() {
     if (groupColumns.value.length > 0) {
       // 有分组的情况 - 使用完整的导出树结构
       const currentColumns = currentColumnsRef.value;
-      headers = currentColumns.map((col) => col.data);
-      headerTitles = currentColumns.map((col) =>
-        col.data === '_groupDisplay'
-          ? '分组'
-          : columnTitleMap[col.data] || col.data,
-      );
+      headers = currentColumns.map((col) => col.data!).filter(Boolean);
+      headerTitles = currentColumns
+        .map((col) =>
+          col.data === '_groupDisplay'
+            ? '分组'
+            : columnTitleMap[col.data!] || col.data!,
+        )
+        .filter(Boolean);
 
       // 构建完整的导出数据（包含所有未展开的数据）
       const fullExportTree = buildFullExportTree(
@@ -1033,7 +1900,7 @@ function handleExport() {
             }
           } else {
             // 普通列
-            exportRow[colData] = row[colData] ?? '';
+            exportRow[colData] = (row as any)[colData] ?? '';
           }
         }
 
@@ -1041,10 +1908,11 @@ function handleExport() {
       }
     } else {
       // 无分组的情况
-      headers = hotColumns.map((col) => col.data);
-      headerTitles = hotColumns.map(
-        (col) => columnTitleMap[col.data] || col.data,
-      );
+      const currentColumns = currentColumnsRef.value;
+      headers = currentColumns.map((col) => col.data!).filter(Boolean);
+      headerTitles = currentColumns
+        .map((col) => columnTitleMap[col.data!] || col.data!)
+        .filter(Boolean);
 
       // 包含合计行
       const totalRow = calculateTotalRow();
@@ -1052,8 +1920,8 @@ function handleExport() {
 
       for (const row of allData) {
         const exportRow: Record<string, any> = {};
-        for (const col of hotColumns) {
-          exportRow[col.data] = row[col.data] ?? '';
+        for (const col of currentColumns) {
+          exportRow[col.data!] = row[col.data!] ?? '';
         }
         exportData.push(exportRow);
       }
@@ -1079,7 +1947,7 @@ function handleExport() {
 
     // 计算列宽（考虑表头和数据内容的最大长度）
     const colWidths = headers.map((header, index) => {
-      const title = headerTitles[index];
+      const title = headerTitles[index] || header;
       let maxWidth = Math.min(50, Math.max(10, title.length + 2)); // 表头长度
 
       // 检查数据内容的最大长度
@@ -1125,39 +1993,205 @@ function handleExport() {
 
     <!-- 分组区域 -->
     <div
-      class="group-area mb-2 flex items-center rounded border bg-gray-50 px-4"
-      style="flex-shrink: 0; width: 100%; height: 40px"
+      class="group-area mb-2 flex items-center rounded border bg-gradient-to-r from-blue-50 to-indigo-50 px-4 transition-all duration-300"
+      :class="{
+        'border-blue-400 shadow-md': isDraggingColumn,
+        'border-gray-200 hover:border-blue-300': !isDraggingColumn,
+      }"
+      style="flex-shrink: 0; width: 100%; min-height: 48px; padding: 8px 16px"
+      @dragenter.prevent="showDragHint = true"
+      @dragleave.prevent="showDragHint = false"
+      @drop.prevent="showDragHint = false"
     >
-      <span class="mr-2 text-sm text-gray-600">点击列标题添加分组：</span>
-      <div
-        v-if="groupColumns.length === 0"
-        class="flex-1 text-sm text-gray-400"
-      >
-        暂无分组列
-      </div>
-      <div v-else class="flex flex-1 flex-wrap gap-1">
-        <Tag
-          v-for="(col, index) in groupColumns"
-          :key="index"
-          closable
-          @close="removeGroupColumn(index)"
-          class="cursor-pointer"
+      <div class="flex w-full items-center gap-2">
+        <!-- 分组标签图标 -->
+        <span class="flex items-center text-sm font-medium text-gray-700">
+          <svg
+            class="mr-1 h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h7"
+            />
+          </svg>
+          分组
+        </span>
+
+        <!-- 空状态提示 - 增强视觉效果 -->
+        <div
+          v-if="groupColumns.length === 0"
+          class="group-area-tags flex flex-1 items-center justify-center rounded border-2 border-dashed border-gray-300 bg-white py-2 text-sm text-gray-500 transition-all duration-300"
+          :class="{
+            'scale-105 border-blue-400 bg-blue-50 text-blue-600':
+              showDragHint && isDraggingColumn,
+            'animate-pulse': showDragHint,
+          }"
         >
-          {{ columnTitleMap[col] || col }}
-          <span class="ml-1 text-xs text-gray-500">{{ index + 1 }}级</span>
-        </Tag>
+          <div class="flex items-center gap-2">
+            <svg
+              v-if="!isDraggingColumn"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+              />
+            </svg>
+            <svg
+              v-else
+              class="h-4 w-4 animate-bounce"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span class="font-medium">
+              {{
+                isDraggingColumn
+                  ? '释放鼠标添加分组'
+                  : '拖动列标题的 ⋮⋮ 图标到此处添加分组'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 分组标签列表 - 增强交互反馈 -->
+        <div v-else class="group-area-tags flex flex-1 flex-wrap gap-2">
+          <Tag
+            v-for="(col, index) in groupColumns"
+            :key="col"
+            closable
+            draggable="true"
+            @dragstart="handleGroupTagDragStart($event, col, index)"
+            @dragover.prevent="handleGroupTagDragOver($event, index)"
+            @drop="handleGroupTagDrop($event, index)"
+            @dragend="handleGroupTagDragEnd"
+            @mouseenter="hoverColumnData = col"
+            @mouseleave="hoverColumnData = null"
+            @close="
+              (e: Event) => {
+                e.preventDefault();
+                removeGroupColumn(col);
+              }
+            "
+            class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md active:cursor-grabbing"
+            :class="{
+              'scale-95 opacity-50': draggedGroupIndex === index,
+              'ring-2 ring-blue-400 ring-offset-2':
+                dragOverGroupIndex === index,
+              'border-blue-600 bg-gradient-to-r from-blue-500 to-indigo-500 text-white':
+                hoverColumnData === col,
+              'border-gray-200 bg-white hover:border-blue-300':
+                hoverColumnData !== col,
+            }"
+            :style="{
+              transform:
+                draggedGroupIndex === index
+                  ? 'scale(0.95)'
+                  : dragOverGroupIndex === index
+                    ? 'scale(1.05)'
+                    : 'scale(1)',
+            }"
+          >
+            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+              <!-- 拖拽手柄图标 -->
+              <svg
+                v-if="hoverColumnData === col || draggedGroupIndex === index"
+                class="h-3 w-3 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 8h16M4 16h16"
+                />
+              </svg>
+              <span class="font-medium">{{ columnTitleMap[col] || col }}</span>
+              <span
+                class="ml-1 flex-shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-xs"
+                :class="{
+                  'text-white/80': hoverColumnData === col,
+                  'text-gray-500': hoverColumnData !== col,
+                }"
+              >
+                {{ index + 1 }}级
+              </span>
+            </span>
+          </Tag>
+        </div>
+
+        <!-- 操作按钮组 -->
+        <div class="flex items-center gap-2">
+          <!-- 清空分组按钮 -->
+          <Button
+            v-if="groupColumns.length > 0"
+            size="small"
+            type="text"
+            danger
+            @click="clearAllGroups"
+            class="text-xs"
+          >
+            清空
+          </Button>
+
+          <!-- 导出按钮 -->
+          <Button
+            type="primary"
+            size="small"
+            @click="handleExport"
+            :disabled="tableData.length === 0"
+          >
+            导出
+          </Button>
+        </div>
       </div>
-      <!-- 导出按钮 -->
-      <Button
-        type="primary"
-        size="small"
-        class="ml-2"
-        @click="handleExport"
-        :disabled="tableData.length === 0"
-      >
-        导出
-      </Button>
     </div>
+
+    <!-- 列选择器弹窗 -->
+    <Modal
+      v-model:open="showColumnSelector"
+      title="选择分组列"
+      width="600px"
+      @ok="handleAddSelectedColumns"
+    >
+      <div class="max-h-96 overflow-y-auto">
+        <Checkbox.Group
+          v-model:value="selectedColumnsForGroup"
+          class="flex flex-col gap-3"
+        >
+          <Checkbox
+            v-for="col in availableGroupColumns"
+            :key="col.data"
+            :value="col.data"
+            class="rounded border p-2 hover:bg-gray-50"
+          >
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ col.title }}</span>
+              <span class="text-xs text-gray-500">({{ col.data }})</span>
+            </div>
+          </Checkbox>
+        </Checkbox.Group>
+      </div>
+    </Modal>
 
     <!-- 表格区域 -->
     <Card class="table-card" :bordered="false">
@@ -1169,7 +2203,41 @@ function handleExport() {
 </template>
 
 <style scoped lang="scss">
-/* 强制根容器占满高度并移除默认内边距 */
+/* ✅ 新增：拖拽提示动画 */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .profit-report-page {
   display: flex;
   flex-direction: column;
@@ -1201,7 +2269,40 @@ function handleExport() {
 .group-area {
   flex-shrink: 0;
   min-width: 200px;
-  height: 40px;
+
+  // ✅ 分组标签拖拽样式增强
+  :deep(.ant-tag) {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s ease;
+
+    // 确保关闭按钮和内容在一行
+    .ant-tag-close-icon {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      margin-left: 4px;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+
+    // 添加悬停效果
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+      transform: translateY(-2px);
+    }
+  }
 }
 
 .query-card {
@@ -1209,7 +2310,7 @@ function handleExport() {
 
   // 覆盖 Card 组件的默认样式
   :deep(.ant-card-body) {
-    padding: 16px;
+    padding: 16px 10px 0;
   }
 }
 
@@ -1258,7 +2359,25 @@ function handleExport() {
         padding: 6px 4px;
         font-weight: 600;
         vertical-align: middle;
-        cursor: pointer;
+        cursor: pointer; /* 默认指针，表示可点击排序 */
+
+        /* 拖拽手柄样式 */
+        .drag-handle {
+          cursor: grab !important;
+
+          &:hover {
+            background-color: rgb(255 255 255 / 30%);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
+            opacity: 1 !important;
+            transform: translateY(-50%) scale(1.05);
+          }
+
+          &:active {
+            cursor: grabbing !important;
+            transform: translateY(-50%) scale(0.95);
+          }
+        }
       }
     }
 
@@ -1277,4 +2396,54 @@ function handleExport() {
     }
   }
 }
+
+/* 原生拖拽样式增强 */
+.group-area-tags {
+  min-height: 32px;
+  padding: 4px;
+  transition: all 0.3s;
+
+  /* 当有元素拖拽经过时高亮 */
+  &.sortable-over {
+    background-color: #e6f7ff !important;
+    border: 2px dashed #1890ff !important;
+  }
+
+  :deep(.ant-tag) {
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ✅ 新增：拖拽幽灵元素样式 */
+.column-drag-ghost {
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ✅ 新增：分组区域悬停提示 */
+.drag-hint-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  z-index: 100;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: white;
+  white-space: nowrap;
+  background: rgb(0 0 0 / 80%);
+  border-radius: 4px;
+  transform: translateX(-50%);
+  animation: fade-in 0.3s ease-in;
+}
+
+/* 强制根容器占满高度并移除默认内边距 */
 </style>
