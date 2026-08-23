@@ -2120,12 +2120,11 @@ const handleAiExtractFile = async (file: File) => {
 
 // 简报相关状态
 const briefingModalOpen = ref(false);
-const briefingFormData = ref<Record<string, any>>({});
 
 const handleOpenBriefing = async () => {
   if (isOrderReadonly.value) return;
-  // 在打开弹窗前获取最新的表单数据
-  briefingFormData.value = await getBriefingFormData();
+  // 不再需要获取表单数据，直接打开弹窗
+  // briefingFormData.value = await getBriefingFormData();
   briefingModalOpen.value = true;
 };
 const handleBriefingConfirm = async (content: string) => {
@@ -4219,7 +4218,7 @@ defineExpose({
     <BriefingModal
       v-model:open="briefingModalOpen"
       :biz-type="0"
-      :form-data="briefingFormData"
+      :sea-export-id="editId"
       @confirm="handleBriefingConfirm"
     />
     <TerminalSchedulePickerModal

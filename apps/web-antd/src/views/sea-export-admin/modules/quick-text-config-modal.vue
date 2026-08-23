@@ -73,13 +73,13 @@ const availablePlaceholders = [
 
   // 单位类
   {
-    label: '委托单位全称',
-    value: '[委托单位全称]',
+    label: '委托单位',
+    value: '[委托单位]',
     example: '上海某某国际贸易有限公司',
   },
   {
-    label: '订舱代理全称',
-    value: '[订舱代理全称]',
+    label: '订舱代理',
+    value: '[订舱代理]',
     example: '上海某某货运代理有限公司',
   },
   { label: '船公司', value: '[船公司]', example: 'COSCO' },
@@ -87,20 +87,20 @@ const availablePlaceholders = [
   { label: '船代', value: '[船代]', example: '中外运船代' },
 
   // 港口类（使用备注字段）
-  { label: '装货港', value: '[装货港]', example: 'SHANGHAI, CHINA' },
+  { label: '起运港', value: '[起运港]', example: 'SHANGHAI, CHINA' },
   { label: '目的港', value: '[目的港]', example: 'LOS ANGELES, USA' },
   { label: '交货地', value: '[交货地]', example: 'LOS ANGELES WAREHOUSE' },
 
   // 日期类
-  { label: '货好时间', value: '[货好时间]', example: '2024-01-15' },
+  { label: '货好日期', value: '[货好日期]', example: '2024-01-15' },
   { label: '开船日期', value: '[开船日期]', example: '2024-01-20' },
-  { label: '实际开船日期', value: '[实际开船日期]', example: '2024-01-21' },
+  { label: '实际开船', value: '[实际开船]', example: '2024-01-21' },
   { label: '预抵日期', value: '[预抵日期]', example: '2024-02-10' },
   { label: '截单日期', value: '[截单日期]', example: '2024-01-18' },
-  { label: '截VGM日期', value: '[截VGM日期]', example: '2024-01-17' },
+  { label: '截港日期', value: '[截港日期]', example: '2024-01-17' },
 
   // 货物信息类
-  { label: '箱型箱量', value: '[箱型箱量]', example: '1x40HQ' },
+  { label: '箱型箱量', value: '[箱型箱量]', example: '40NOR*1' },
   { label: '件数', value: '[件数]', example: '100' },
   { label: '包装', value: '[包装]', example: 'CARTONS' },
   { label: '重量', value: '[重量]', example: '15000.00' },
@@ -117,7 +117,7 @@ const availablePlaceholders = [
 
   // 货物描述类
   { label: '唛头', value: '[唛头]', example: 'N/M' },
-  { label: '货描', value: '[货描]', example: 'ELECTRONIC PARTS' },
+  { label: '货物描述', value: '[货物描述]', example: 'ELECTRONIC PARTS' },
 
   // 运输条款类
   { label: '付费方式', value: '[付费方式]', example: 'FREIGHT PREPAID' },
@@ -133,12 +133,39 @@ const availablePlaceholders = [
   },
 ];
 
-/** 插入占位符到模板内容 */
+// TextArea元素引用
+const textAreaRef = ref<any>(null);
+
+/** 插入占位符到模板内容（在光标位置） */
 function insertPlaceholder(placeholder: string, example: string) {
-  if (!formData.value.text) {
-    formData.value.text = '';
+  const textArea = textAreaRef.value?.$el?.querySelector('textarea');
+  if (!textArea) {
+    // 如果无法获取textarea元素，回退到原来的行为
+    if (!formData.value.text) {
+      formData.value.text = '';
+    }
+    formData.value.text += placeholder;
+    return;
   }
-  formData.value.text += placeholder;
+
+  const startPos = textArea.selectionStart;
+  const endPos = textArea.selectionEnd;
+  const currentText = formData.value.text || '';
+
+  // 在光标位置插入占位符
+  const newText =
+    currentText.substring(0, startPos) +
+    placeholder +
+    currentText.substring(endPos);
+
+  formData.value.text = newText;
+
+  // 设置光标位置到插入内容的后面
+  setTimeout(() => {
+    const newCursorPos = startPos + placeholder.length;
+    textArea.setSelectionRange(newCursorPos, newCursorPos);
+    textArea.focus();
+  }, 0);
 }
 
 /** 根据模板和占位符生成示例字符串 */
@@ -447,7 +474,7 @@ onMounted(() => {
         </div>
 
         <!-- 模板列表 -->
-        <div style="max-height: 350px; overflow-y: auto">
+        <div style="max-height: 390px; overflow-y: auto">
           <!-- 全选复选框 -->
           <div
             v-if="templateList.length > 0"
@@ -498,32 +525,52 @@ onMounted(() => {
                 margin-bottom: 8px;
               "
             >
-              <div style="display: flex; gap: 8px; align-items: center">
+              <div
+                style="display: flex; flex: 1; gap: 8px; align-items: center"
+              >
                 <Checkbox
                   :checked="selectedTemplateIds.includes(item.id)"
                   @change="
                     (e) => toggleTemplateSelection(item.id, e.target.checked)
                   "
                 />
-                <Tag v-if="item.default" color="orange">默认</Tag>
-                <span style="font-size: 16px; font-weight: bold">
-                  {{ item.title || '未命名' }}
-                </span>
-                <Tag v-if="item.remark" color="blue">
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    min-width: 0;
+                  "
+                >
+                  <span
+                    style="
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      font-size: 16px;
+                      font-weight: bold;
+                      white-space: nowrap;
+                    "
+                  >
+                    {{ item.title || '未命名' }}
+                  </span>
+                  <Button
+                    v-if="!item.default"
+                    size="small"
+                    type="primary"
+                    ghost
+                    style="height: 24px; padding: 0 8px"
+                    @click="handleSetDefault(item)"
+                  >
+                    设默认
+                  </Button>
+                  <Tag v-if="item.default" color="orange">默认</Tag>
+                </div>
+                <Tag v-if="item.remark" color="blue" style="flex-shrink: 0">
                   {{ item.remark.substring(0, 10)
                   }}{{ item.remark.length > 10 ? '...' : '' }}
                 </Tag>
               </div>
-              <Space size="small">
-                <Button
-                  v-if="!item.default"
-                  size="small"
-                  type="primary"
-                  ghost
-                  @click="handleSetDefault(item)"
-                >
-                  设默认
-                </Button>
+              <Space size="small" style="flex-shrink: 0">
                 <Button size="small" @click="handleEdit(item)">编辑</Button>
                 <Button size="small" danger @click="handleDelete(item)"
                   >删除</Button
@@ -586,6 +633,7 @@ onMounted(() => {
               >模板内容</label
             >
             <Input.TextArea
+              ref="textAreaRef"
               v-model:value="formData.text"
               :rows="8"
               placeholder="输入模板内容，可点击左侧占位符插入..."
@@ -618,33 +666,36 @@ onMounted(() => {
             />
           </div> -->
 
-          <div style="margin-bottom: 12px">
+          <!-- <div style="margin-bottom: 12px">
             <Checkbox v-model:checked="formData.default">
               设为默认模板
             </Checkbox>
-          </div>
+          </div> -->
 
-          <!-- 模板预览 -->
+          <!-- 模板预览标题 -->
           <div
             style="
-              height: 120px;
+              margin-bottom: 8px;
+              font-size: 13px;
+              font-weight: bold;
+              color: #666;
+            "
+          >
+            模板预览（示例效果）
+          </div>
+
+          <!-- 模板预览内容 -->
+          <div
+            style="
+              height: 160px;
               padding: 12px;
               margin-bottom: 12px;
+              overflow-y: auto;
               background: #fff;
               border: 1px dashed #d9d9d9;
               border-radius: 4px;
             "
           >
-            <div
-              style="
-                margin-bottom: 8px;
-                font-size: 13px;
-                font-weight: bold;
-                color: #666;
-              "
-            >
-              模板预览（示例效果）
-            </div>
             <div
               style="
                 font-size: 12px;

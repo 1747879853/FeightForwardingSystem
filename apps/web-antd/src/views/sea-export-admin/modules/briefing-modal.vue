@@ -9,6 +9,8 @@ import {
 } from '#/api/quick-text/quick-text';
 import { QuickTextBizType } from '#/api/quick-text/quick-text-admin';
 import QuickTextConfigModal from './quick-text-config-modal.vue';
+// 添加海运出口详情接口
+import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 
 defineOptions({
   name: 'BriefingModal',
@@ -17,7 +19,8 @@ defineOptions({
 const props = defineProps<{
   open: boolean;
   bizType?: QuickTextBizType;
-  formData?: Record<string, any>;
+  // 移除 formData prop，添加 seaExportId prop
+  seaExportId?: string | number;
 }>();
 
 const emit = defineEmits<{
@@ -42,6 +45,9 @@ const generatedContent = ref('');
 
 // 配置弹窗显示状态
 const configModalOpen = ref(false);
+
+// 海运出口详情数据
+const seaExportDetail = ref<any>(null);
 
 // 当前选中的模板
 const selectedTemplate = computed(() => {
@@ -76,12 +82,30 @@ const loadQuickTextList = async () => {
   }
 };
 
+// 加载海运出口详情
+const loadSeaExportDetail = async () => {
+  if (!props.seaExportId) {
+    seaExportDetail.value = null;
+    return;
+  }
+
+  try {
+    const detail = await getSeaExportDetail(props.seaExportId);
+    seaExportDetail.value = detail;
+  } catch (error) {
+    console.error('加载海运出口详情失败:', error);
+    message.error('加载海运出口详情失败');
+    seaExportDetail.value = null;
+  }
+};
+
 // 监听弹窗打开，加载数据
 watch(
   () => props.open,
   (newVal) => {
     if (newVal) {
       loadQuickTextList();
+      loadSeaExportDetail();
     }
   },
 );
@@ -91,9 +115,9 @@ watch(selectedTemplateId, () => {
   generateContent();
 });
 
-// 监听表单数据变化，重新生成内容
+// 监听详情数据变化，重新生成内容
 watch(
-  () => props.formData,
+  () => seaExportDetail.value,
   () => {
     if (props.open) {
       generateContent();
@@ -101,6 +125,105 @@ watch(
   },
   { deep: true },
 );
+
+// 辅助函数：格式化日期
+const formatDate = (date: any): string => {
+  if (!date) return '';
+  try {
+    return dayjs(date).format('YYYY-MM-DD');
+  } catch {
+    return String(date);
+  }
+};
+
+// 辅助函数：获取值，支持多种可能的字段名
+const getValue = (...keys: string[]): any => {
+  console.log('seaExportDetail', seaExportDetail);
+  const transportOrder = seaExportDetail.value?.transportOrder || {};
+  const seaExport = seaExportDetail.value || {};
+
+  for (const key of keys) {
+    // 优先从 transportOrder 中获取
+    if (
+      transportOrder[key] !== undefined &&
+      transportOrder[key] !== null &&
+      transportOrder[key] !== ''
+    ) {
+      return transportOrder[key];
+    }
+    // 然后从 seaExport 中获取
+    if (
+      seaExport[key] !== undefined &&
+      seaExport[key] !== null &&
+      seaExport[key] !== ''
+    ) {
+      return seaExport[key];
+    }
+  }
+  return '';
+};
+
+// 辅助函数：从对象中获取名称
+const getName = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    // 尝试常见的名称字段
+    return (
+      value.cnName ||
+      value.name ||
+      value.portName ||
+      value.clientName ||
+      value.carrierName ||
+      value.cnShortName ||
+      value.enName ||
+      value.billType ||
+      ''
+    );
+  }
+  return '';
+};
+
+// 辅助函数：从对象中获取名称
+const getRemarkName = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    // 尝试常见的名称字段
+    return (
+      value.cnName ||
+      value.name ||
+      value.portName ||
+      value.clientName ||
+      value.carrierName ||
+      value.cnShortName ||
+      value.enName ||
+      ''
+    );
+  }
+  return '';
+};
+
+// 辅助函数：从对象中获取名称
+const getFullName = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'object') {
+    // 尝试常见的名称字段
+    return value.fullName || '';
+  }
+  return '';
+};
+// 辅助函数：从对象中获取名称
+const getEnName = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'object') {
+    // 尝试常见的名称字段
+    return value.enName || '';
+  }
+  return '';
+};
 
 // 生成内容（替换占位符）
 const generateContent = () => {
@@ -111,153 +234,69 @@ const generateContent = () => {
   }
 
   let content = template.text;
-  const formData = props.formData || {};
 
-  // 辅助函数：安全获取嵌套对象的名称
-  const getName = (obj: any): string => {
-    if (!obj) return '';
-    if (typeof obj === 'string') return obj;
-    // 尝试多种可能的名称字段
-    return (
-      obj.name ||
-      obj.cnName ||
-      obj.enName ||
-      obj.fullName ||
-      obj.shortName ||
-      ''
-    );
-  };
-
-  // 辅助函数：格式化日期
-  const formatDate = (date: any): string => {
-    if (!date) return '';
-    try {
-      return dayjs(date).format('YYYY-MM-DD');
-    } catch {
-      return String(date);
-    }
-  };
-
-  // 辅助函数：获取值，支持多种可能的字段名
-  const getValue = (...keys: string[]): any => {
-    for (const key of keys) {
-      if (
-        formData[key] !== undefined &&
-        formData[key] !== null &&
-        formData[key] !== ''
-      ) {
-        return formData[key];
-      }
-    }
-    return undefined;
-  };
-
-  // 海运出口占位符映射关系
-  // 注意：这里的字段名需要根据实际的表单 schema 进行调整
+  // 海运出口占位符映射关系（只用于方括号格式的占位符）
   const placeholderMap: Record<string, any> = {
     // 编号类
-    委托编号: formData.commissionNum,
-    主提单号: formData.mblNum,
-    订舱编号: getValue('bookingNo', 'bookingNumber', 'orderNo'),
-    合同号: getValue('contractNo', 'contractNumber'),
+    委托编号: getValue('commissionNum'),
+    主提单号: getValue('mblNum'),
+    订舱编号: getValue('bookingNum'),
+    合同号: getValue('contractNum'),
 
     // 单位类
-    委托单位全称:
-      formData.clientName ||
-      getName(formData.client) ||
-      getName(formData.clientId) ||
-      formData.clientId,
-    订舱代理全称:
-      formData.bookingAgentName ||
-      getName(formData.bookingAgent) ||
-      getName(formData.bookingAgentId) ||
-      formData.bookingAgentId,
-    船公司:
-      formData.carrierName ||
-      formData.carrierCode ||
-      getName(formData.carrier) ||
-      getName(formData.carrierId) ||
-      formData.carrierId,
-    场站:
-      formData.yardName ||
-      getName(formData.yard) ||
-      getName(formData.yardId) ||
-      formData.yardId,
-    船代:
-      formData.shippingAgentName ||
-      getName(formData.shippingAgent) ||
-      getName(formData.shippingAgentId) ||
-      formData.shippingAgentId,
+    委托单位: getFullName(getValue('client')),
+    订舱代理: getFullName(getValue('bookingAgent')),
+    船公司: getEnName(getValue('carrier')),
+    船代: getName(getValue('shipAgent')) || getValue('shipAgentId'),
+    场站: getName(getValue('yard')) || getValue('yardId'),
+    报关行: getName(getValue('custBroker')) || getValue('custBrokerId'),
+    保险公司: getName(getValue('insurance')) || getValue('insuranceId'),
+    车队: getName(getValue('team')) || getValue('teamId'),
+    仓库: getName(getValue('warehouse')) || getValue('warehouseId'),
 
-    // 港口类（优先使用备注字段）
-    装货港:
-      formData.polRemark ||
-      formData.polName ||
-      getName(formData.pol) ||
-      getName(formData.polId) ||
-      formData.polId,
-    目的港:
-      formData.podRemark ||
-      formData.podName ||
-      getName(formData.pod) ||
-      getName(formData.podId) ||
-      formData.podId,
-    交货地:
-      formData.deliverPortRemark ||
-      formData.deliverPortName ||
-      getName(formData.deliverPort) ||
-      getName(formData.deliverPortId) ||
-      formData.deliverPortId,
+    // 港口类
+    起运港: getRemarkName(getValue('poIRemark')),
+    目的港: getRemarkName(getValue('podRemark')),
+    中转港1: getRemarkName(getValue('pot1')),
+    中转港2: getRemarkName(getValue('pot2')),
+    交货地: getRemarkName(getValue('deliverPortRemark')),
+    收货地: getRemarkName(getValue('receivePort')),
 
-    // 日期类
-    货好时间: formatDate(getValue('cargoReadyDate', 'goodsReadyDate')),
-    开船日期: formatDate(formData.etd),
-    实际开船日期: formatDate(formData.atd),
-    预抵日期: formatDate(formData.eta),
-    截单日期: formatDate(getValue('siCutOffTime', 'siCutOff', 'cutOffSi')),
-    截VGM日期: formatDate(getValue('vgmCutOffTime', 'vgmCutOff', 'cutOffVgm')),
+    // 船期类
+    船名: getValue('vessel'),
+    航次: getValue('innerVoyno'),
+    开船日期: formatDate(getValue('etd')),
+    实际开船: formatDate(getValue('atd')),
+    预抵日期: formatDate(getValue('eta')),
+    货好日期: formatDate(getValue('goodsCompleteTime')),
+    截港日期: formatDate(getValue('closeVgmTime')),
+    截单日期: formatDate(getValue('closeDocTime')),
+    截VGM日期: formatDate(getValue('closeVgmTime')),
+    截关日期: formatDate(getValue('closeManifestTime')),
+    签单日期: formatDate(getValue('signingTime')),
 
     // 货物信息类
-    箱型箱量:
-      formData.containerInfo ||
-      `${formData.ctnQty || ''}${formData.codePackageName || getName(formData.codePackage) || getName(formData.codePackageId)}`,
-    件数: formData.pkgs,
-    包装: getName(formData.codePackage) || getName(formData.codePackageId),
-    重量: formData.kgs,
-    尺码: formData.cbm,
+    发货人: getValue('shipperContent'),
+    收货人: getValue('consigneeContent'),
+    通知人: getValue('notifierContent'),
+    唛头: getValue('marks'),
+    货物描述: getValue('goodsDes'),
+    件数: getValue('pkgs'),
+    重量: getValue('kgs'),
+    尺码: getValue('cbm'),
+    包装: getName(getValue('codePackage')) || getValue('codePackageId'),
+    箱型箱量: getName(getValue('totalCtn')),
 
-    // 收发货人类
-    发货人:
-      formData.shipperName ||
-      getName(formData.shipper) ||
-      getName(formData.shipperId) ||
-      formData.shipperId,
-    收货人:
-      formData.consigneeName ||
-      getName(formData.consignee) ||
-      getName(formData.consigneeId) ||
-      formData.consigneeId,
-    通知人:
-      formData.notifierName ||
-      getName(formData.notifier) ||
-      getName(formData.notifierId) ||
-      formData.notifierId,
+    // 其他信息类
+    外部备注: getValue('remark'),
+    内部备注: getValue('internalRemark'),
 
-    // 货物描述类
-    唛头: formData.marks,
-    货描: formData.goodsDes,
-
-    // 运输条款类
-    付费方式: getValue('paymentTerm', 'freightTerm', 'freightChargeType'),
-    运输条款: getValue('transportTerm', 'moveType', 'termOfPayment'),
-    签单方式: getValue('signBillType', 'billReleaseType', 'surrenderType'),
-
-    // 备注类
-    内部备注: formData.internalRemark,
-    外部备注: formData.remark,
+    付费方式: getName(getValue('codeFrt')),
+    运输条款: getName(getValue('codeService')),
+    签单方式: getName(getValue('codeIssueType')),
   };
 
-  // 替换占位符，支持 [字段名] 格式
+  // 替换占位符，只支持 [字段名] 格式
   content = content.replace(/\[(.*?)\]/g, (match, key) => {
     const value = placeholderMap[key];
     // 如果值为空，保留原始占位符，方便用户识别哪些字段缺失
@@ -265,7 +304,8 @@ const generateContent = () => {
       ? String(value)
       : match;
   });
-  console.log('生成的内容：', formData);
+
+  console.log('生成的内容：', seaExportDetail.value);
   generatedContent.value = content;
 };
 
