@@ -6,7 +6,7 @@ import {
 } from '#/api/sea-import/order-fee-admin';
 import dayjs from 'dayjs';
 import { computed, nextTick, onMounted, ref, watch, h } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
@@ -40,6 +40,7 @@ import {
 
 import { useVbenForm } from '#/adapter/form';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
@@ -76,14 +77,9 @@ const props = defineProps<{
   latestDetail?: SeaImportAdminApi.SeaImportDto;
 }>();
 
-const route = useRoute();
 const router = useRouter();
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 const isEdit = computed(() => !!editId.value);
 

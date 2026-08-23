@@ -6,7 +6,6 @@ import {
 } from '#/api/sea-export/order-fee-admin';
 import dayjs from 'dayjs';
 import { computed, nextTick, onMounted, ref, watch, h } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { getCurrencyEnumOptions, getCurrencyEnumSymbolOptions } from './data';
 import { Page } from '@vben/common-ui';
 
@@ -37,6 +36,7 @@ import {
 
 import { useVbenForm } from '#/adapter/form';
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
@@ -73,14 +73,7 @@ const props = defineProps<{
   latestDetail?: AirExportAdminApi.AirExportDto;
 }>();
 
-const route = useRoute();
-const router = useRouter();
-
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 const isEdit = computed(() => !!editId.value);
 

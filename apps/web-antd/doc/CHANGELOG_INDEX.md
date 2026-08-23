@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-23 KeepAlive 编辑页冻结路由 id，避免海进/海出/空出互拉详情](./changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md)
 - [2026-08-23 新增小程序端 apps/mp：监装师傅端第一期](./changelogs/change-log-2026-08-23-mp-loading-supervision-app.md)
 - [2026-08-23 详情页 KeepAlive 缓存与未保存提示](./changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md)
 - [2026-08-23 监装新建后记住工单 id](./changelogs/change-log-2026-08-23-loading-order-save-keep-id.md)

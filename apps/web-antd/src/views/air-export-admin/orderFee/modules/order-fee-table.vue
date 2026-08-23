@@ -4,7 +4,6 @@ import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-adm
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, onMounted, onUnmounted, ref, watch, h, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
 import {
   Button,
   Space,
@@ -20,6 +19,7 @@ import {
 
 import { IconifyIcon } from '@vben/icons';
 
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 
 import {
@@ -93,19 +93,13 @@ const emit = defineEmits([
   'change',
 ]);
 
-const route = useRoute();
-
 // 订单箱型列表（用于单位下拉框过滤）
 const orderCtnList = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>([]);
 
 // 订单基础数据（用于行业类别切换时自动填充结算对象）
 const orderBaseData = ref<SeaExportAdminApi.SeaExportDto | null>(null);
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 // 订单基础数据（用于行业类别切换时自动填充结算对象）
 const ORDER_CTN_API_KEYS: Array<

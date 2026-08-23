@@ -27,6 +27,7 @@ last_updated: 2026-08-23
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；点「确定引入」后前端回填 `atd`（实际开船）、`innerVoyno`（出口航次 `evoyage`）、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
 - **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/船代/订舱代理/车队；第 2 行订舱编号/主提单号/保险公司/报关行/仓库/场站；第 3 行签单方式/提单副本份数/付费方式付款地点/运输条款贸易条款/合同号（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。仅恢复当前可见且有对应面板的 Tab key；关闭浏览器标签后会话清空，下次默认回到「基础信息」。工作台「前往上传」会先写 pending Tab，再带 `?tab=attachments`；二者都优先于会话记忆。路由 `fullPathKey: false`，避免 query 变化整页重挂。命中后会立刻写入记忆并 `replace` 掉 `tab` 参数。基础信息表单内滚动**不再**改写工作台 `activeTab`（已移除分区 Tab 双向联动）。
+- **缓存页冻结委托 id：** 编辑工作台及费用/更改单/附件/派车/监装/分单从路由取 id 时走 `useKeepAliveRouteParamId`。本页可见才同步地址栏；KeepAlive 藏起来后冻结上次 id，避免海进等同名 `:id` 页把海出缓存页带去打进口详情（或反过来）。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。保存 / 只读以当次详情根上的 `isEditable` 为准（并要有 `Admin.SeaExport.Edit`）；为假则整页只读、保存禁用，复制仍可用。详情能打开不代表能保存。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaExportDto`，经 `form` → `saved` → `editor.savedDetail` 下发给费用/更改单（`:latest-detail`）；同时调用 `clearOrderDetailCache` 清掉 `useOrderFeeLinkage` 模块级订单详情缓存，避免 KeepAlive 子页继续展示或联动旧数据。
@@ -139,6 +140,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-23 | `Fix` | KeepAlive 缓存的海出编辑页不再跟着别人地址栏的 `:id` 拉详情。 | `useKeepAliveRouteParamId`：可见才同步 `params.id`，停用后冻结。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive：切走提示后缓存草稿；点 X 才销毁。离开时基础信息或应收应付任一未落库都算脏。 | 路由 `keepAlive` + `defineOptions({ name: 'SeaExportEdit' })`；费用表快照见 `fee-table-dirty.ts`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Fix` | 监装新建成功后先记下工单 id，详情 500 时再保存走编辑而不是再新建。 | `AddAsync` 回 id；有师傅时详情 AutoMap `LoadingOrderUsers` 会炸。详见 `changelogs/change-log-2026-08-23-loading-order-save-keep-id.md`。 |
 | 2026-08-23 | `Fix` | 监装师傅不再限制最多 2 人，选几个传几个。 | 与后端一致，不卡人数；`userIds` 顺序仍是 `sortId`。详见 `changelogs/change-log-2026-08-23-loading-order-no-supervisor-limit.md`。 |

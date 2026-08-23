@@ -2,9 +2,9 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, ref, watch, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 
 import * as feeConstants from '../../data';
@@ -144,8 +144,6 @@ export function useOrderFeeData(
   },
   emit: any,
 ) {
-  const route = useRoute();
-
   // 数据源
   const dataSource = ref<OrderFeeAdminApi.OrderFeeDto[]>([]);
   const feeDirty = createFeeTableDirtyTracker(() => dataSource.value);
@@ -164,12 +162,8 @@ export function useOrderFeeData(
   // 更改单 ID
   const changeOrderId = ref('');
 
-  // 编辑 ID
-  const editId = computed<string | undefined>(() => {
-    const id = route.params.id;
-    if (Array.isArray(id)) return id[0];
-    return id ? String(id) : undefined;
-  });
+  // 编辑 ID：KeepAlive 停用时冻结，避免跟上海进等其它 :id 页
+  const editId = useKeepAliveRouteParamId();
 
   /**
    * 应用订单详情：保存基础数据并提取箱型列表

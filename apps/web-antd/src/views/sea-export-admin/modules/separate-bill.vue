@@ -5,7 +5,6 @@ import type { SeaExportSeparateAdminApi } from '#/api/sea-export/sea-export-sepa
 import dayjs from 'dayjs';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -32,6 +31,7 @@ import CodeServiceSelect from '#/adapter/component/biz-select/code-service-selec
 import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import {
   addSeparate,
   deleteSeparate,
@@ -56,13 +56,8 @@ type CtnEditRow = Omit<
   ctnCodeName?: null | string;
 };
 
-const route = useRoute();
-
-const seaExportId = computed<string>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const seaExportIdRef = useKeepAliveRouteParamId();
+const seaExportId = computed(() => seaExportIdRef.value ?? '');
 
 const loading = ref(false);
 const dataSource = ref<SeaExportSeparateAdminApi.SeparateDto[]>([]);

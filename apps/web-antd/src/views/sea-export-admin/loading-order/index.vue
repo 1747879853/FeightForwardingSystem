@@ -6,7 +6,6 @@ import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-ad
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Copy } from '@vben/icons';
@@ -47,6 +46,7 @@ import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getCodePackageDetail } from '#/api/system/base-data/code-package-admin';
 import { getLoadingRequirementPagedList } from '#/api/system/base-data/loading-requirement-admin';
 import { UserAttribute } from '#/api/system/user-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
 
@@ -58,14 +58,10 @@ defineOptions({
   name: 'SeaExportLoadingOrder',
 });
 
-const route = useRoute();
 const { hasAccessByCodes } = useAccess();
 
-const seaExportId = computed<string>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const seaExportIdRef = useKeepAliveRouteParamId();
+const seaExportId = computed(() => seaExportIdRef.value ?? '');
 
 const canAdd = computed(() =>
   hasAccessByCodes(['Admin.SeaExport.LoadingOrder.Add']),
@@ -1139,8 +1135,6 @@ const displayValue = (value: null | number | string | undefined) => {
 </template>
 
 <style scoped>
-
-
 @media (max-width: 1280px) {
   .loading-order__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

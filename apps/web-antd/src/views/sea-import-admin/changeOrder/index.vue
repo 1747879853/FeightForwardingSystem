@@ -3,7 +3,6 @@ import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { Users } from '@vben/icons';
@@ -14,6 +13,7 @@ import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 
 import { EditAsync } from '#/api/sea-import/change-order-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import OrderFeeTable from '#/views/sea-import-admin/orderFee/modules/order-fee-table.vue';
 
@@ -21,17 +21,12 @@ import ChangeOrderTable from './table.vue';
 
 defineOptions({ name: 'ChangeOrder' });
 
-const route = useRoute();
-
 /** 编辑页保存成功后下发的最新详情：替换订单信息卡片数据 */
 const props = defineProps<{
   latestDetail?: SeaImportAdminApi.SeaImportDto;
 }>();
 
-const editId = computed(() => {
-  const id = route.params.id;
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 const changeOrderTableRef = ref<any>(null);
 

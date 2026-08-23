@@ -10,7 +10,6 @@ import {
   ref,
   watch,
 } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
@@ -38,6 +37,7 @@ import {
 } from 'ant-design-vue';
 
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   getCurrencyEnumOptions,
@@ -63,17 +63,12 @@ defineOptions({
   name: 'ChangeOrder',
 });
 
-const route = useRoute();
-
 /** 编辑页保存成功后下发的最新详情：替换订单信息卡片与费用表 order-detail */
 const props = defineProps<{
   latestDetail?: SeaExportAdminApi.SeaExportDto;
 }>();
 
-const editId = computed(() => {
-  const id = route.params.id;
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 const pageLoading = ref(false);
 const submitting = ref(false);

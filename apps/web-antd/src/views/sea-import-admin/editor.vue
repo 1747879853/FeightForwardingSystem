@@ -2,13 +2,13 @@
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
 import { getOrderFeePagedList } from '#/api/sea-import/order-fee-admin';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import { ContainerTrackingPanel } from '#/components/tracking';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -70,8 +70,6 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 
 const formRef = ref<FormExpose | null>(null);
 const feeRef = ref<FeeExpose | null>(null);
-const route = useRoute();
-
 /** 编辑页对外暴露：基础信息保存成功后携带最新详情 DTO */
 const emit = defineEmits<{
   saved: [detail: SeaImportAdminApi.SeaImportDto];
@@ -85,11 +83,7 @@ const onFormSaved = (detail: SeaImportAdminApi.SeaImportDto) => {
   emit('saved', detail);
 };
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 /** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
 const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');

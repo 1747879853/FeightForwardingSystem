@@ -3,7 +3,6 @@ import type { UploadFile } from 'ant-design-vue';
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
@@ -36,6 +35,7 @@ import {
   getAttachmentDtlTypeList,
   getAttachmentDtlTypesByModuleTypes,
 } from '#/api/system/attachment-dtl-type';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -89,7 +89,7 @@ const IMAGE_EXTENSIONS = new Set([
 
 const perm = createAbpPermission('Admin.AirExport');
 const { hasAccessByCodes } = useAccess();
-const route = useRoute();
+const airExportIdRef = useKeepAliveRouteParamId();
 
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
@@ -103,11 +103,7 @@ const manualTypeIds = ref<number[]>([]);
 const addOtherTypeVisible = ref(false);
 const selectedOtherTypeId = ref<number | undefined>(undefined);
 
-const AirExportId = computed<string>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const AirExportId = computed(() => airExportIdRef.value ?? '');
 
 const canEdit = computed(() => hasAccessByCodes([perm.edit]));
 

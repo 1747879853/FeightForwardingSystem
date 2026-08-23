@@ -17,6 +17,7 @@ import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import { ContainerTrackingPanel } from '#/components/tracking';
 import { clearOrderDetailCache } from '#/views/sea-export-admin/orderFee/modules/composables/useOrderFeeLinkage';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -159,11 +160,7 @@ const onFormSaved = (detail: SeaExportAdminApi.SeaExportDto) => {
   emit('saved', detail);
 };
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
   enabled: tabTitleEnabled,

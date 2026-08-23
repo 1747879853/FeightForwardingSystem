@@ -4,7 +4,6 @@ import type { SeaExportDispatchAdminApi } from '#/api/sea-export/dispatch-admin'
 import dayjs from 'dayjs';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -33,19 +32,15 @@ import {
   editDispatch,
   getDispatchPagedList,
 } from '#/api/sea-export/dispatch-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 
 defineOptions({
   name: 'SeaExportDispatch',
 });
 
-const route = useRoute();
-
-const seaExportId = computed<string>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const seaExportIdRef = useKeepAliveRouteParamId();
+const seaExportId = computed(() => seaExportIdRef.value ?? '');
 
 const loading = ref(false);
 const dataSource = ref<SeaExportDispatchAdminApi.DispatchDto[]>([]);

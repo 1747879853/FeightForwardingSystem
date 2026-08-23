@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import {
   Button,
   Card,
@@ -16,13 +16,7 @@ import {
 
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
-const route = useRoute();
-const router = useRouter();
-
-const editId = computed(() => {
-  const id = route.params.id;
-  return id ? Number(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 const pageLoading = ref(false);
 const isEdit = computed(() => !!editId.value);
 

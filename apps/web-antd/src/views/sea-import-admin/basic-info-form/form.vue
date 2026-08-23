@@ -69,6 +69,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { useAllUserOrg } from '#/composables/use-all-user-org';
 import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 
 import {
@@ -131,11 +132,7 @@ const pageWrapperProps = computed(() =>
   props.embedded ? {} : { autoContentHeight: true, contentClass: '!p-0' },
 );
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  const resolved = Array.isArray(id) ? id[0] : id;
-  return resolved ? String(resolved) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 const isEdit = computed(() => !!editId.value);
 
 /** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */

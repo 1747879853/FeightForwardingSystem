@@ -66,6 +66,7 @@ import {
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import {
   formatOrgPathLabel,
@@ -210,11 +211,7 @@ const pageWrapperProps = computed(() =>
         contentClass: '!p-0',
       },
 );
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const editId = useKeepAliveRouteParamId();
 
 const isEdit = computed(() => !!editId.value);
 
