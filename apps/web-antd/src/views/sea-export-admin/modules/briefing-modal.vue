@@ -317,12 +317,37 @@ const handleCopy = async () => {
   }
 
   try {
-    await navigator.clipboard.writeText(generatedContent.value);
-    message.success('复制成功');
-    modalOpen.value = false; // 复制成功后关闭弹窗
+    // 首先尝试使用现代的 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(generatedContent.value);
+      message.success('复制成功');
+      modalOpen.value = false; // 复制成功后关闭弹窗
+      return;
+    }
+
+    // 如果 Clipboard API 不可用，使用传统的 execCommand 方法
+    const textArea = document.createElement('textarea');
+    textArea.value = generatedContent.value;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '-9999px';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+
+    textArea.focus();
+    textArea.select();
+
+    const success = document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    if (success) {
+      message.success('复制成功');
+      modalOpen.value = false; // 复制成功后关闭弹窗
+    } else {
+      throw new Error('execCommand copy failed');
+    }
   } catch (error) {
     console.error('复制失败:', error);
-    message.error('复制失败');
+    message.error('复制失败，请手动复制内容');
   }
 };
 
