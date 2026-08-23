@@ -25,6 +25,8 @@ import { isVendorOceanExportTracking } from '#/utils/tracking-brand';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { consumeSeaExportEditPendingTab } from './sea-export-edit-tab';
 
+defineOptions({ name: 'SeaExportEdit' });
+
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
 type TabKey =
@@ -40,6 +42,9 @@ type TabKey =
 type FormExpose = {
   isFormDirty: () => boolean | Promise<boolean>;
   scrollToSection: (key: SectionKey) => void;
+};
+type FeeExpose = {
+  isFeeDirty?: () => boolean;
 };
 
 /** 无监装工单查看权限时整个 Tab 不出现，也不参与记忆恢复 */
@@ -110,6 +115,7 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 }
 
 const formRef = ref<FormExpose | null>(null);
+const feeRef = ref<FeeExpose | null>(null);
 const route = useRoute();
 const router = useRouter();
 
@@ -287,11 +293,12 @@ const onSwitchTab = (tab: string) => {
   activeTab.value = tab;
 };
 
-// 编辑工作台未保存拦截：无论当前停留在哪个内部标签，离开路由时都基于基础信息表单的脏状态二次确认
+// 编辑工作台未保存拦截：基础信息或应收应付任一未落库都算脏
 useUnsavedGuard({
   isDirty: async () => {
     const check = formRef.value?.isFormDirty;
-    return check ? await check() : false;
+    if (check && (await check())) return true;
+    return feeRef.value?.isFeeDirty?.() ?? false;
   },
 });
 
@@ -355,6 +362,7 @@ const getContentTabStyle = (isActive: boolean) =>
           <KeepAlive include="OrderFee">
             <orderFee
               v-if="activeTab === 'fee'"
+              ref="feeRef"
               :latest-detail="savedDetail"
               @fee-count-change="onFeeCountChange"
             />

@@ -1,33 +1,39 @@
 <script lang="ts" setup>
-import { nextTick, ref, computed } from 'vue';
+import { nextTick, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
-import { useRoute, useRouter } from 'vue-router';
+
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+
+import Attachments from './attachments/list.vue';
 import Form from './base/form.vue';
 import ContactList from './contact/list.vue';
-import PaymentList from './payment-terms/list.vue';
-import InvoiceList from './invoice/list.vue';
-import Attachments from './attachments/list.vue';
 import ExceptService from './except-service/index.vue';
+import InvoiceList from './invoice/list.vue';
+import PaymentList from './payment-terms/list.vue';
 
-type SectionKey = 'basic' | 'contact' | 'payment' | 'invoice' | 'attachments';
+defineOptions({ name: 'ClientEdit' });
+
+type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice' | 'payment';
 type FormSectionTabKey =
+  | 'attachments'
   | 'basic'
   | 'contact'
-  | 'payment'
+  | 'exceptService'
   | 'invoice'
-  | 'attachments'
-  | 'exceptService';
+  | 'payment';
 type TabKey = FormSectionTabKey;
-type FormExpose = { scrollToSection: (key: SectionKey) => void };
-const formRef = ref<FormExpose | null>(null);
-const activeTab = ref<TabKey>('basic');
-const route = useRoute();
+type FormExpose = {
+  isFormDirty?: () => boolean | Promise<boolean>;
+  scrollToSection?: (key: SectionKey) => void;
+};
+type ContactExpose = { isContactDirty?: () => boolean };
+type InvoiceExpose = { isInvoiceDirty?: () => boolean | Promise<boolean> };
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const formRef = ref<FormExpose | null>(null);
+const contactRef = ref<ContactExpose | null>(null);
+const invoiceRef = ref<InvoiceExpose | null>(null);
+const activeTab = ref<TabKey>('basic');
 
 const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
@@ -42,14 +48,24 @@ const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
   nextTick(() => {
-    formRef.value?.scrollToSection(tab.sectionKey);
+    formRef.value?.scrollToSection?.(tab.sectionKey);
   });
 };
 
 const onSectionChange = (sectionKey: SectionKey) => {
-  if (sectionKey === 'cargo') return;
   activeTab.value = sectionKey;
 };
+
+useUnsavedGuard({
+  isDirty: async () => {
+    const formDirty = formRef.value?.isFormDirty;
+    if (formDirty && (await formDirty())) return true;
+    if (contactRef.value?.isContactDirty?.()) return true;
+    const invoiceDirty = invoiceRef.value?.isInvoiceDirty;
+    if (invoiceDirty && (await invoiceDirty())) return true;
+    return false;
+  },
+});
 
 const contentTabsStyle = {
   display: 'flex',
@@ -102,17 +118,29 @@ const getContentTabStyle = (isActive: boolean) =>
       </div>
       <div class="flex items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
-          <Form
-            v-if="activeTab === 'basic'"
-            ref="formRef"
-            embedded
-            @section-change="onSectionChange"
-          />
-          <ContactList v-if="activeTab === 'contact'" />
-          <PaymentList v-if="activeTab === 'payment'" />
-          <InvoiceList v-if="activeTab === 'invoice'" />
-          <Attachments v-if="activeTab === 'attachments'" />
-          <ExceptService v-if="activeTab === 'exceptService'" />
+          <KeepAlive include="ClientAdminForm">
+            <Form
+              v-if="activeTab === 'basic'"
+              ref="formRef"
+              embedded
+              @section-change="onSectionChange"
+            />
+          </KeepAlive>
+          <KeepAlive include="ClientContactList">
+            <ContactList v-if="activeTab === 'contact'" ref="contactRef" />
+          </KeepAlive>
+          <KeepAlive include="ClientPaymentList">
+            <PaymentList v-if="activeTab === 'payment'" />
+          </KeepAlive>
+          <KeepAlive include="ClientInvoiceList">
+            <InvoiceList v-if="activeTab === 'invoice'" ref="invoiceRef" />
+          </KeepAlive>
+          <KeepAlive include="ClientAttachments">
+            <Attachments v-if="activeTab === 'attachments'" />
+          </KeepAlive>
+          <KeepAlive include="ClientExceptService">
+            <ExceptService v-if="activeTab === 'exceptService'" />
+          </KeepAlive>
         </div>
       </div>
     </div>

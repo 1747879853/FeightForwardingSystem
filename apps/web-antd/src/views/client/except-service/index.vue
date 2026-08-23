@@ -39,6 +39,8 @@ import {
   type SelectOption,
 } from './data';
 
+defineOptions({ name: 'ClientExceptService' });
+
 const route = useRoute();
 
 const clientId = computed(() => {

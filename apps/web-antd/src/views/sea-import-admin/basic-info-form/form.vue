@@ -69,6 +69,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { useAllUserOrg } from '#/composables/use-all-user-org';
 import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 
 import {
   CARGO_TYPE,
@@ -1290,6 +1291,11 @@ const scheduleCargoMainLayoutHeightSync = () => {
     });
   });
 };
+
+useUnsavedGuard({
+  isDirty: isFormDirty,
+  enabled: () => !props.embedded,
+});
 
 defineExpose({ scrollToSection, isFormDirty });
 

@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-19
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -103,7 +103,7 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 8：数量以单位重算结果为准]** 联系单录入的 `quantity` 在转换时被完全丢弃 -> 数量列只读、恒由单位派生；箱量（影响 TEU）、货物毛重/体积变更后全表重新带量，保证「预估看到的」= 「落库算出的」。
 
-> [!IMPORTANT] **[卡点 9：未保存拦截]** 表单内容与上次基线不一致时切标签 / 跳菜单 / 前进后退 -> 弹二次确认。脏检查比对「提交 DTO 的 JSON 快照」，基线在详情加载完成和新增后跳转前各同步一次；只读状态不参与拦截。
+> [!IMPORTANT] **[卡点 9：未保存拦截]** 表单内容与上次基线不一致时切标签 / 跳菜单 / 前进后退 -> 弹二次确认，确认后 KeepAlive，点 X 才销毁。脏检查比对「提交 DTO 的 JSON 快照」（含费用），基线在详情加载完成和新增后跳转前各同步一次；只读状态不参与拦截。
 
 > [!IMPORTANT] **[卡点 11：切业务类型会清掉不适用的干系人角色]** 角色清单来自业务类型对应的枚举（`SeaExportUserAttribute` / `SeaImportUserAttribute`），用户主动切换业务类型后，新枚举里没有的角色行会被清掉（含已选人员），只有销售固定保留；详情回填时不清理，历史角色原样保留在末尾。枚举名大小写敏感，写错或未配置时面板只剩销售，属预期兜底；角色未勾 `extra1` 时只能从「+ 添加角色」手动加。
 
@@ -117,6 +117,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 新建/编辑 KeepAlive：切走可回来继续填，点 X 才丢。 | `keepAliveName: PreOrderEditor`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Fix` | 费用小计按币别拆分展示；提交审核拦截未填结算对象的费用行。同缺陷下海出费用「录入方式」把 `"6"` 显示为「业务联系单引入」。 | TAPD `#1161580498001000680` 剩余项。小计走 `summarizePreOrderFeesByCurrency`；选币别写入 `currency` 快照。Handsontable 录入方式列为 `type:text` 会把枚举变成字符串，标签匹配须兼容 number/string。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
 | 2026-08-19 | `Fix` | 港口选中态改为「英文名-中文名」（如 QINGDAO-青岛），对齐长泽；海运出口仍显示 EDI。 | `PortSelect` 新增 `labelKey: 'portNameCnName'`；业务联系单经 `buildPreOrderPortSelectProps` 覆盖，不改共用的 `buildPortSelectProps`。详见 `changelogs/change-log-2026-08-19-pre-order-port-name-cn-label.md`。 |
 | 2026-08-17 | `Style` | 主表字段顺序对齐业务稿：首行末项改为付款方式；次行起运地/目的地/贸易条款·运输条款（合并双下拉占一列）/备注（占剩余三列）；订舱代理因稿中没有排到末行 | `ServiceTradeTermsInput` 的 `componentProps` 必须是函数，回显时整段替换；条款勿再设 `col-span-2`。详见 `changelogs/change-log-2026-08-17-pre-order-basic-field-order.md` |

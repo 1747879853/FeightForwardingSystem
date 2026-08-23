@@ -67,6 +67,7 @@ const {
   orderCtnList,
   editId,
   getTableDate,
+  isFeeDirty,
   syncFee,
   sanitizeOrderFee,
 } = useOrderFeeData(props, emit as any);
@@ -805,6 +806,7 @@ defineExpose({
   getSelectedFeeIds,
   getSelectedFees,
   getAllFees, // 新增：获取所有费用
+  isFeeDirty,
   openModifyModal,
 });
 </script>

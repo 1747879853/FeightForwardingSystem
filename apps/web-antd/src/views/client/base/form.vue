@@ -50,6 +50,7 @@ import {
   cancelDishonest,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
@@ -61,6 +62,12 @@ import {
 import * as ClientConstants from './data';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
 import type { RiskbirdApi } from '#/api/riskbird/riskbird';
+
+defineOptions({ name: 'ClientAdminForm' });
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
+  embedded: false,
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -686,6 +693,7 @@ const loadEditData = async () => {
 
     // 触发响应式更新
     await nextTick();
+    await syncFormSnapshot();
   } catch (error) {
     console.error('加载编辑数据失败:', error);
     //message.error($t('common.loadFailed'));
@@ -1255,6 +1263,7 @@ const handleSubmit = async () => {
           ? ''
           : String(resolvedCreatedId).trim();
       if (createdIdStr) {
+        await syncFormSnapshot();
         router.push(`/clients/${createdIdStr}/edit`);
       } else {
         router.push('/clients');
@@ -1497,6 +1506,47 @@ const delAddress = (index: number) => {
   addressList.value = addressList.value.filter((_, i) => i !== index);
 };
 
+const formSnapshot = ref<null | string>(null);
+
+async function buildClientDirtySnapshot() {
+  const [baseValues, businessValues, clientValues, supplierValues] =
+    await Promise.all([
+      baseFormApi.getValues(),
+      businessFormApi.getValues(),
+      clientFormApi.getValues(),
+      supplierFormApi.getValues(),
+    ]);
+  return JSON.stringify({
+    addressList: addressList.value,
+    baseValues,
+    businessValues,
+    clientValues,
+    defaultOrderUsers: defaultOrderUsers.value,
+    isClient: isClient.value,
+    isDishonest: isDishonest.value,
+    isSupplier: isSupplier.value,
+    reconcilerUserIds: reconcilerUserIds.value,
+    supplierValues,
+  });
+}
+
+async function syncFormSnapshot() {
+  await nextTick();
+  formSnapshot.value = await buildClientDirtySnapshot();
+}
+
+async function isFormDirty() {
+  if (!formSnapshot.value) return false;
+  return (await buildClientDirtySnapshot()) !== formSnapshot.value;
+}
+
+useUnsavedGuard({
+  enabled: () => !props.embedded,
+  isDirty: isFormDirty,
+});
+
+defineExpose({ isFormDirty });
+
 onMounted(() => {
   loadEditData();
 
@@ -1558,6 +1608,9 @@ onMounted(() => {
           },
         },
       ]);
+    }
+    if (!isEdit.value) {
+      void syncFormSnapshot();
     }
   }, 100); // 延迟100ms确保表单完全渲染
 });

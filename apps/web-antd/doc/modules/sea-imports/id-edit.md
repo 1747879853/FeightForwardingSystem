@@ -21,6 +21,7 @@ last_updated: 2026-08-23
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **未保存与整页缓存：** 离开时基础信息或应收应付任一未落库都二次确认；确认切走后整页 KeepAlive，点 X 才销毁。
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填航次（`ivoyage` → `innerVoyno`）并走原有编辑保存；进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
@@ -62,6 +63,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 编辑页 KeepAlive；未保存含应收应付；点 X 才销毁。新建页补未保存守卫。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=1`。 | 与海出/空出同一套费用打印，按业务类型筛模板。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
 | 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与海出/空出共用 `UserSelect` 缓存层。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |

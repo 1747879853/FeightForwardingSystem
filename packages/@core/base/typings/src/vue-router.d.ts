@@ -85,6 +85,10 @@ interface RouteMeta {
    */
   keepAlive?: boolean;
   /**
+   * 页面组件 defineOptions.name 与路由 name 不一致时，写入 KeepAlive include
+   */
+  keepAliveName?: string | string[];
+  /**
    * 外链-跳转路径
    */
   link?: string;

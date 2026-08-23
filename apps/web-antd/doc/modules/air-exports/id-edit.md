@@ -30,7 +30,7 @@ last_updated: 2026-08-23
 - **应收应付：** 只读展示该票全部费用（含改单费用），按收/付两段分组，合计按币别分别汇总；增删改在业务费用模块进行。基础信息保存成功后，编辑工作台把最新详情经 `:latest-detail` 下发，费用列表与 Tab「收 - 付」徽标一并刷新，不再重复拉详情。
 - **运踪信息：** Tab 内嵌运踪面板；四态（未订阅/订阅失败/等待推送/有动态）；有动态时展示运单摘要 + 里程碑/航段/状态轨迹；等待推送时 30s 轮询最多 20 次。
 - **附件：** 按附件类型分组上传、预览、下载、删除，支持客户可见性开关。
-- **未保存拦截：** 停留在任意标签离开路由时，都按基础信息表单的脏状态二次确认。
+- **未保存拦截：** 离开路由时基础信息或应收应付任一未落库都二次确认；确认切走后整页 KeepAlive，点 X 才销毁。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -75,6 +75,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-23 | `Feature` | 编辑页 KeepAlive；未保存含应收应付；点 X 才销毁。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=2`。 | 与单据打印同一筛选口径。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
 | 2026-08-23 | `Feature` | 基础信息顶栏增加单据打印：选模板后预览/导出 PDF、Excel、Word。 | 走 `PrintFormatAdmin/GetPrintAsync` + `AirExportDetail=5000`；模板列表传 `bizType=2` 与当票 `orgId`。详见 `changelogs/change-log-2026-08-23-air-export-print.md`。 |
 | 2026-08-19 | `Feature` | 详情保存、只读、重新生成委托编号对接票根 `isEditable`。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |

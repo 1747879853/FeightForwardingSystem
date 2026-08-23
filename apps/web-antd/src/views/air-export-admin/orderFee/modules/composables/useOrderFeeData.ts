@@ -13,6 +13,7 @@ import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { createFeeTableDirtyTracker } from '#/utils/fee-table-dirty';
 
 /**
  * 从订单详情中提取所有可能的结算对象映射
@@ -147,6 +148,7 @@ export function useOrderFeeData(
 
   // 数据源
   const dataSource = ref<OrderFeeAdminApi.OrderFeeDto[]>([]);
+  const feeDirty = createFeeTableDirtyTracker(() => dataSource.value);
 
   // 选中的行 keys
   const selectedRowKeys = ref<(string | number)[]>([]);
@@ -300,8 +302,10 @@ export function useOrderFeeData(
 
       dataSource.value = normalizeOrderFeeWithRowKey(feesWithNames);
       syncFee();
+      feeDirty.syncFeeSnapshot();
     } else {
       dataSource.value = [];
+      feeDirty.syncFeeSnapshot();
     }
   };
 
@@ -370,6 +374,7 @@ export function useOrderFeeData(
     // 触发 syncFee 以通知父组件和计算金额
     await nextTick();
     syncFee();
+    feeDirty.syncFeeSnapshot();
   };
 
   /**
@@ -605,7 +610,9 @@ export function useOrderFeeData(
     applyOrderDetail,
     normalizeOrderFeeWithRowKey,
     getTableDate,
+    isFeeDirty: feeDirty.isFeeDirty,
     syncFee,
     sanitizeOrderFee,
+    syncFeeSnapshot: feeDirty.syncFeeSnapshot,
   };
 }

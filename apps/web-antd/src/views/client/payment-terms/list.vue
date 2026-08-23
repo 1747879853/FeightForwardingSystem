@@ -25,6 +25,8 @@ import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { Modal as AntModal } from 'ant-design-vue';
 
+defineOptions({ name: 'ClientPaymentList' });
+
 const route = useRoute();
 
 const editId = computed<string | undefined>(() => {

@@ -23,6 +23,8 @@ import {
   type ClientInvoiceInfoAdminApi,
 } from '#/api/sea-export/clinet-invoice-admin';
 
+defineOptions({ name: 'ClientInvoiceList' });
+
 const route = useRoute();
 const router = useRouter();
 
@@ -181,6 +183,16 @@ const setFormRef = (el: any, invoiceId: string) => {
     formRefs.value[invoiceId] = el;
   }
 };
+
+async function isInvoiceDirty() {
+  for (const form of Object.values(formRefs.value)) {
+    const dirty = await form?.isInvoiceFormDirty?.();
+    if (dirty) return true;
+  }
+  return false;
+}
+
+defineExpose({ isInvoiceDirty });
 
 onMounted(() => {
   loadInvoiceList();

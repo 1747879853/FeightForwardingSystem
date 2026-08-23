@@ -22,6 +22,8 @@ import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import ContactHandsontable from './contact-handsontable.vue'; // 导入新的Handsontable组件
 
+defineOptions({ name: 'ClientContactList' });
+
 const tmpAdd = ref(false);
 const dataSource = defineModel<ClientContactAdminApi.ClientContactDto[]>({
   default: () => [],
@@ -79,7 +81,27 @@ const queryTableData = async () => {
   const res = await getClientContactPagedList(params);
   console.log('res', res.items);
   dataSource.value = normalizeWithRowKey(res.items);
+  syncContactSnapshot();
 };
+
+const contactSnapshot = ref<null | string>(null);
+
+function contactDirtyPayload() {
+  return JSON.stringify(
+    (dataSource.value ?? []).map(({ _rowKey: _k, ...rest }) => rest),
+  );
+}
+
+function syncContactSnapshot() {
+  contactSnapshot.value = contactDirtyPayload();
+}
+
+function isContactDirty() {
+  if (contactSnapshot.value === null) return false;
+  return contactDirtyPayload() !== contactSnapshot.value;
+}
+
+defineExpose({ isContactDirty });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
 

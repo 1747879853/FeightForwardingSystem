@@ -16,6 +16,7 @@ import {
   getClientPagedList,
   getClientGroupedByIndustryCategory,
 } from '#/api/common/client';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { Button, message, Tabs, Card, Space } from 'ant-design-vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
@@ -26,6 +27,8 @@ import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import OrderFeeTemplateTable from './modules/order-fee-template-table.vue';
 import { useDropdownSources } from './modules/composables/useDropdownSources';
 import { getFormSchema } from './modules/data';
+
+defineOptions({ name: 'OrderFeeTemplateEditor' });
 
 const router = useRouter();
 const route = useRoute();
@@ -67,9 +70,11 @@ const [Form, formApi] = useVbenForm({
 // ==================== 初始化逻辑 ====================
 
 async function initPage() {
-  const { id, mode: routeMode } = route.query;
+  const paramId = route.params.id;
+  const queryId = route.query.id;
+  const id = Array.isArray(paramId) ? paramId[0] : paramId || queryId;
 
-  if (routeMode === 'edit' && id) {
+  if (id) {
     mode.value = 'edit';
     templateId.value = String(id);
     await loadDetail();
@@ -80,7 +85,30 @@ async function initPage() {
 
   // 加载下拉数据（因为现在是独立页面，需要自己加载）
   await loadDropdownData();
+  await syncTemplateSnapshot();
 }
+
+const templateSnapshot = ref<null | string>(null);
+
+async function buildTemplateSnapshot() {
+  const formValues = await formApi.getValues();
+  return JSON.stringify({
+    feeItems: feeItems.value,
+    formValues,
+  });
+}
+
+async function syncTemplateSnapshot() {
+  await nextTick();
+  templateSnapshot.value = await buildTemplateSnapshot();
+}
+
+async function isTemplateDirty() {
+  if (!templateSnapshot.value) return false;
+  return (await buildTemplateSnapshot()) !== templateSnapshot.value;
+}
+
+useUnsavedGuard({ isDirty: isTemplateDirty });
 
 // ==================== 表格操作函数 ====================
 
@@ -592,14 +620,8 @@ async function handleSubmit() {
       };
       const newTemplateId = await addOrderFeeTemplate(dto);
       message.success('新建成功');
-      // 新建成功后跳转到编辑页面
-      router.replace({
-        path: '/basic-data/order-fee-template/edit',
-        query: {
-          mode: 'edit',
-          id: newTemplateId,
-        },
-      });
+      await syncTemplateSnapshot();
+      router.replace(`/basic-data/order-fee-template/${newTemplateId}/edit`);
     } else {
       // 编辑
       const dto: OrderFeeTemplateAdminApi.OrderFeeTemplateEditDto = {
@@ -625,6 +647,7 @@ async function handleSubmit() {
       };
       await editOrderFeeTemplate(dto);
       message.success('编辑成功');
+      await syncTemplateSnapshot();
       //router.push({ path: '/basic-data/order-fee-template' });
     }
   } catch (error) {

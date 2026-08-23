@@ -73,6 +73,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 新建页接入未保存守卫并 KeepAlive。 | `keepAliveName: AirExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 顶栏增加「打印」按钮（与编辑页共用 `form.vue`）。 | 新建未保存会拦截；详见 `changelogs/change-log-2026-08-23-air-export-print.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-18 | `Feature` | 新建/编辑基础信息顶栏增加 AI 识别，上传单证后预填表单。 | 走 `TextInAdmin/ExtractAirExportToAddDtoAsync`；空港回显 `AirPort`；货物明细写 `airExportOrderCtns`。详见 `changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md`。 |

@@ -6,22 +6,22 @@
 | dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-08-19 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为 `/analytics`。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-08-14 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-07-12 |
-| clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
-| clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；账期删除大数 ID 原样透传。 | [客户编辑](./modules/clients/id-edit.md) | 2026-07-12 |
+| clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。未保存切走可缓存。 | [客户新建](./modules/clients/create.md) | 2026-08-23 |
+| clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-08-23 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；支持多选后运踪批量订阅（按打包品牌分流：sjtd 用现有运踪、其他品牌用新服务商），主提单号前带异常预警叹号，并可按权限删除单条勾选委托。无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-08-19 |
-| sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存时切标签/跳转弹二次确认；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-08-19 |
+| sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存切走可 KeepAlive，点 X 才丢；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-08-23 |
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/航次/截港等并保存。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-23 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；箱型与监装照片只读，师傅端在小程序。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-23 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-14 |
-| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；各下拉用详情外键对象回显。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-19 |
+| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；各下拉用详情外键对象回显；未保存切走可 KeepAlive。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-23 |
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口；码头为往来单位筛选，含联运单号/分单号/贸易方式；支持多选运踪批量订阅、「运踪状态」列与主提单号前异常预警叹号。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-19 |
-| sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单；码头走往来单位下拉；集装箱规格/型号按品名 id 选择；收发通可折叠且默认展开；货物区件数包装同行，右侧为内外部备注 Tab（多行 textarea）；提交成功后进入编辑工作台。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-19 |
+| sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单；码头走往来单位下拉；集装箱规格/型号按品名 id 选择；收发通可折叠且默认展开；货物区件数包装同行，右侧为内外部备注 Tab（多行 textarea）；提交成功后进入编辑工作台；未保存切走可 KeepAlive。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-23 |
 | sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器；基础信息对齐最新接口（码头对象、规格型号 id、联运/分单/贸易方式）；收发通可折叠且默认展开；货物区件数包装同行，右侧为内外部备注 Tab（多行 textarea）；保存后下发最新详情联动费用/更改单；船名/航次右侧可查询码头船舶，确定引入后回填航次并保存；基础信息工具栏支持单票运踪订阅；「运踪信息」Tab 展示当前节点、集装箱清单、全量异常预警、轨迹地图与刷新运踪。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-23 |
 | air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：关键字搜 5 字段、9 维分组统计、复制与删除；运踪已切新服务商，支持多选批量订阅、「运踪状态」列与主运单号前异常预警叹号。 | [空运出口列表](./modules/air-exports/index.md) | 2026-08-19 |
-| air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地），航班与订舱代理在航段标题右侧；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值；支持 TextIn AI 识别预填；顶栏打印需先保存。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-23 |
+| air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地），航班与订舱代理在航段标题右侧；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值；支持 TextIn AI 识别预填；顶栏打印需先保存；未保存切走可 KeepAlive。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-23 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；航班与订舱代理在航段标题右侧；支持重新生成委托编号、复制、运踪订阅与单据打印（`PrintJsonType=5000`）；运踪 Tab 已切新服务商（摘要、全量异常预警、轨迹地图、重新订阅）；基础信息保存后联动刷新只读费用与收付徽标；基础信息顶栏支持 AI 识别预填。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-23 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
@@ -62,6 +62,7 @@
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-08-04 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
+| basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板列表；新建 `/create`、编辑 `/:id/edit`，未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-08-23 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-08-22 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-07-29 |
@@ -84,4 +85,4 @@
 | shared | （运踪品牌分流） | 共享能力 / 运踪 | 按品牌×业务线分流：sjtd 海出保留现有运踪，其余海进/空出/非 sjtd 海出走新服务商；含接口清单、列表预警字段、白标分享、地图 URL 来源与用户侧去品牌化要求。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-16 |
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-06-21 |
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
-| shared | （全站页面级表单） | 共享能力 | 未保存内容离开拦截：`useUnsavedGuard({ isDirty })` + 全局 `beforeEach`，切标签/菜单跳转/后退/关闭当前标签时二次确认；首个接入方为海运出口新建与编辑工作台。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-07-14 |
+| shared | （全站页面级表单） | 共享能力 | 未保存离开拦截：切走可缓存、点 X 才销毁；单个关标签先确认；当前页脏时 `beforeunload`。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-08-23 |

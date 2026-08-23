@@ -256,7 +256,7 @@ function onCreate() {
     return;
   }
 
-  router.push('/basic-data/order-fee-template/edit?mode=create');
+  router.push('/basic-data/order-fee-template/create');
 }
 
 /**
@@ -268,13 +268,7 @@ function onEdit(row: OrderFeeTemplateAdminApi.OrderFeeTemplateListDto) {
     return;
   }
   // 改为路由跳转
-  router.push({
-    path: '/basic-data/order-fee-template/edit',
-    query: {
-      mode: 'edit',
-      id: row.id,
-    },
-  });
+  router.push(`/basic-data/order-fee-template/${row.id}/edit`);
 }
 
 /**

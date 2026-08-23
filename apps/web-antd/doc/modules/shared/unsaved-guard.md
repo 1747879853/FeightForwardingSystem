@@ -2,21 +2,21 @@
 title: 未保存内容离开拦截（全局工具）
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-07-14
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 页面（尤其录入/编辑类）有未保存修改时，用户切换标签页、点菜单跳转、浏览器后退或关闭当前标签，若直接离开会丢失已填内容。本工具把「拦截跳转 + 二次确认」沉淀成全站可复用的组合式函数：页面只需提供一个"是否脏"的判断函数，即可在离开前弹出「有未保存的内容」确认框，确认才放行、取消则留在原页。
+**白话解释：** 页面有未保存修改时，切标签/点菜单/后退先二次确认；确认后页面可 KeepAlive，回来草稿还在。点 X 关闭才销毁并丢失。刷新走浏览器原生提示。
 
-对应 TAPD 缺陷 `#1161580498001000498`【海运出口】页面切换时需要保留数据（改为"拦截离开"而非"缓存数据"）。
+对应 TAPD `#1161580498001000498` 最初只做拦截；2026-08-23 起与详情页缓存一起用。
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **页面接入：** 在组件里调用 `useUnsavedGuard({ isDirty })` 即可。挂载自动登记、卸载自动注销；`keep-alive` 缓存页失活自动暂停、激活自动恢复。
-- **二次确认：** 存在未保存内容时离开，弹 `Modal.confirm`（默认文案取 `common.unsavedLeaveTitle/unsavedLeaveContent/leave`），确认离开、取消留在本页。
-- **覆盖范围：** 所有走 vue-router 的导航——切换多标签页、点击菜单、浏览器前进/后退、关闭当前标签页（内部 `router.replace`）。
-- **暂不覆盖：** 点标签「X」/右键"关闭"（需改框架包 tabbar 关闭时序）、浏览器刷新/关闭标签（`beforeunload` 原生提示）。
+- **二次确认：** 切走用 `unsavedLeave*`（切换后可回来继续编辑）；点 X 用 `unsavedClose*`（关闭后将丢失）。
+- **覆盖范围：** vue-router 导航（切标签/菜单/前进后退）；单个关闭标签（点 X / 右键「关闭」）在删 tab 前确认；当前页脏时 `beforeunload`。
+- **暂不覆盖：** 右键关其它/左侧/右侧/全部；sessionStorage 草稿恢复。
 
 # 3. API 与接入协议
 
@@ -59,11 +59,12 @@ useUnsavedGuard({ isDirty: () => formRef.value?.isFormDirty?.() });
 
 > [!IMPORTANT] **[卡点 2：保存后跳转会被误拦]** 保存成功后若还要 `router.push/replace` 到别的路由，须先把基线刷新到已保存值（或重置脏态），否则这条正常跳转会被拦。
 
-> [!IMPORTANT] **[卡点 3：关闭标签 X 的时序（未覆盖）]** `tabbar` store `closeTab` 先删 tab 再 `router.replace`。仅靠 `beforeEach` 拦"点 X"会出现"tab 已删、页面仍停留"的不一致，需改 `packages/effects/layouts` 在删 tab 前先确认。
+> [!IMPORTANT] **[卡点 3：关闭标签须先确认再删 tab]** `closeTab` 先走 `setBeforeCloseTabHandler`（按 tabKey 查脏，后台缓存页也问），确认后再 `_close`。确认关当前页后把 key 放入 `closeConfirmedTabKeys`，避免随后 `router.replace` 再弹「切走」文案。关其它/左右/全部仍不查脏。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 切走与点 X 文案分开；单个关标签先确认再销毁；当前页脏时 `beforeunload`；按 tabKey 查后台缓存页脏状态。 | `setBeforeCloseTabHandler` 挂在 `closeTab`；KeepAlive 失活仍保留 tabKey 登记。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-07-14 | `Fix` | 接入方（海运出口）修复「文本删空恢复原状仍被拦截」；补充卡点 4：快照比对须归一化空值。 | 根因是裸 `JSON.stringify` 对 `undefined`/`null`/`''` 序列化不一致。工具本身不变，脏检查归一化由各接入页负责（海运出口 `normalizeForDirtyCheck`）。 |
 | 2026-07-14 | `Feature` | 新增全局「未保存内容离开拦截 + 二次确认」工具，覆盖切标签/菜单跳转/后退/关闭当前标签；首个接入方为海运出口新建页与编辑工作台。对应 TAPD `#1161580498001000498`。 | 新建 `composables/use-unsaved-guard.ts`（注册表 + 全局 `beforeEach` + `useUnsavedGuard`），在 `router/guard.ts` 最先注册；文案入 `packages/locales` 的 `common.json`。keep-alive 通过 `onActivated/onDeactivated` 暂停/恢复，避免后台缓存页误拦其它页面间跳转。 |

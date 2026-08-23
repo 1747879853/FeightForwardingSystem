@@ -2,7 +2,7 @@
 title: 客户新建
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,8 +21,8 @@ last_updated: 2026-05-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础资料录入：** 填写客户基础字段并提交创建接口。
-- **创建后流转：** 页面级表单创建成功后应进入客户编辑上下文，而不是简单返回列表。
+- **基础资料录入：** 填写客户基础字段并提交创建接口。未保存切走可 KeepAlive，点 X 才丢。
+- **创建后流转：** 页面级表单创建成功后应进入客户编辑上下文，而不是简单返回列表。保存前先刷新脏基线，避免误拦跳转。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -45,4 +45,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 新建页 KeepAlive 与未保存提示。 | `keepAliveName: ClientAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/create` 对应组件 `src/views/client/base/form.vue`，权限口径为 未在路由中声明独立权限。 |

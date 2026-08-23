@@ -139,6 +139,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-23 | `Feature` | 编辑页 KeepAlive：切走提示后缓存草稿；点 X 才销毁。离开时基础信息或应收应付任一未落库都算脏。 | 路由 `keepAlive` + `defineOptions({ name: 'SeaExportEdit' })`；费用表快照见 `fee-table-dirty.ts`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Fix` | 监装新建成功后先记下工单 id，详情 500 时再保存走编辑而不是再新建。 | `AddAsync` 回 id；有师傅时详情 AutoMap `LoadingOrderUsers` 会炸。详见 `changelogs/change-log-2026-08-23-loading-order-save-keep-id.md`。 |
 | 2026-08-23 | `Fix` | 监装师傅不再限制最多 2 人，选几个传几个。 | 与后端一致，不卡人数；`userIds` 顺序仍是 `sortId`。详见 `changelogs/change-log-2026-08-23-loading-order-no-supervisor-limit.md`。 |
 | 2026-08-23 | `Feature` | 监装「推荐」弹窗拉已排师傅的堆场，选中后回填堆场与师傅。 | `GetYardUsersAsync` 只回名称；堆场对 `carrierYards`，师傅对用户缓存。详见 `changelogs/change-log-2026-08-23-loading-order-recommend.md`。 |

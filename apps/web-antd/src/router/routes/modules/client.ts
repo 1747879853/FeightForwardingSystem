@@ -31,6 +31,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: $t('seaExport.client.title'),
           hideInMenu: true,
+          keepAlive: true,
+          keepAliveName: 'ClientAdminForm',
           activePath: '/clients',
           authority: abpPageAuthority('Admin.Client'),
         },
@@ -42,6 +44,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: $t('seaExport.client.title'),
           hideInMenu: true,
+          keepAlive: true,
           activePath: '/clients',
           authority: abpPageAuthority('Admin.Client'),
         },

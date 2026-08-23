@@ -222,6 +222,7 @@ const loadDetail = async () => {
     });
 
     bankList.value = [];
+    await syncInvoiceSnapshot();
     return;
   }
 
@@ -243,6 +244,7 @@ const loadDetail = async () => {
 
     // 填充银行信息
     bankList.value = detail.clientInvoiceBanks ?? [];
+    await syncInvoiceSnapshot();
   } catch (error) {
     console.error('加载详情失败:', error);
   } finally {
@@ -357,8 +359,28 @@ watch(
 );
 
 // 暴露方法给父组件
+const invoiceSnapshot = ref<null | string>(null);
+
+async function buildInvoiceSnapshot() {
+  const formData = await invoiceFormApi.getValues();
+  return JSON.stringify({
+    banks: bankList.value,
+    formData,
+  });
+}
+
+async function syncInvoiceSnapshot() {
+  invoiceSnapshot.value = await buildInvoiceSnapshot();
+}
+
+async function isInvoiceFormDirty() {
+  if (!invoiceSnapshot.value) return false;
+  return (await buildInvoiceSnapshot()) !== invoiceSnapshot.value;
+}
+
 defineExpose({
   getFormData,
+  isInvoiceFormDirty,
   resetForm: () => {
     invoiceFormApi.resetForm();
     bankList.value = [];

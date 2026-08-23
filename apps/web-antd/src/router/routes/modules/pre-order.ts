@@ -30,6 +30,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '业务联系单',
           hideInMenu: true,
+          keepAlive: true,
+          keepAliveName: 'PreOrderEditor',
           activePath: '/pre-order',
           authority: abpPageAuthority('Admin.PreOrder.Add'),
         },
@@ -41,6 +43,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '业务联系单',
           hideInMenu: true,
+          keepAlive: true,
+          keepAliveName: 'PreOrderEditor',
           activePath: '/pre-order',
           authority: abpPageAuthority('Admin.PreOrder'),
         },

@@ -441,6 +441,15 @@ const selectedFeeIds = ref<string[]>([]);
 const recOrderFeeTableRef = ref();
 const payOrderFeeTableRef = ref();
 
+function isFeeDirty() {
+  return !!(
+    recOrderFeeTableRef.value?.isFeeDirty?.() ||
+    payOrderFeeTableRef.value?.isFeeDirty?.()
+  );
+}
+
+defineExpose({ isFeeDirty });
+
 /**
  * 收集两个表格选中的费用ID
  */

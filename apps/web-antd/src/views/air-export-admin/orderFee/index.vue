@@ -406,6 +406,15 @@ const configModalRef = ref<any>(null);
 const recOrderFeeTableRef = ref<InstanceType<typeof OrderFeeTable>>();
 const payOrderFeeTableRef = ref<InstanceType<typeof OrderFeeTable>>();
 
+function isFeeDirty() {
+  return !!(
+    recOrderFeeTableRef.value?.isFeeDirty?.() ||
+    payOrderFeeTableRef.value?.isFeeDirty?.()
+  );
+}
+
+defineExpose({ isFeeDirty });
+
 // 打开配置弹窗
 const openConfigModal = () => {
   configModalRef.value?.open();

@@ -53,6 +53,7 @@ import {
   PrintJsonType,
   usePrintFormat,
 } from '#/components/print-format';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
@@ -1184,6 +1185,11 @@ const scheduleCargoMainLayoutHeightSync = () => {
     });
   });
 };
+
+useUnsavedGuard({
+  isDirty: isFormDirty,
+  enabled: () => !props.embedded,
+});
 
 defineExpose({ scrollToSection, isFormDirty });
 

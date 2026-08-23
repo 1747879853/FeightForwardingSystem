@@ -18,6 +18,20 @@ import {
 
 import { acceptHMRUpdate, defineStore } from 'pinia';
 
+/** 单个关闭标签前的确认（如未保存拦截）。返回 false 则不删 tab。 */
+export type BeforeCloseTabHandler = (
+  tab: TabDefinition,
+) => boolean | Promise<boolean>;
+
+let beforeCloseTabHandler: BeforeCloseTabHandler | null = null;
+
+/** 由业务应用注册；批量关闭（关其它/左右/全部）不走此钩子 */
+export function setBeforeCloseTabHandler(
+  handler: BeforeCloseTabHandler | null,
+) {
+  beforeCloseTabHandler = handler;
+}
+
 interface TabbarState {
   /**
    * @zh_CN 当前打开的标签页列表缓存
@@ -248,6 +262,12 @@ export const useTabbarStore = defineStore('core-tabbar', {
      * @param router
      */
     async closeTab(tab: TabDefinition, router: Router) {
+      if (beforeCloseTabHandler) {
+        const allowed = await beforeCloseTabHandler(tab);
+        if (!allowed) {
+          return;
+        }
+      }
       const { currentRoute } = router;
       // 关闭不是激活选项卡
       if (getTabKey(currentRoute.value) !== getTabKeyFromTab(tab)) {
@@ -496,6 +516,14 @@ export const useTabbarStore = defineStore('core-tabbar', {
 
         const name = tab.name as string;
         cacheMap.add(name);
+        const keepAliveName = tab.meta?.keepAliveName;
+        if (typeof keepAliveName === 'string' && keepAliveName) {
+          cacheMap.add(keepAliveName);
+        } else if (Array.isArray(keepAliveName)) {
+          keepAliveName.forEach((item) => {
+            if (item) cacheMap.add(item);
+          });
+        }
       }
       this.cachedTabs = cacheMap;
     },
@@ -655,4 +683,4 @@ function routeToTab(route: RouteRecordNormalized) {
   } as TabDefinition;
 }
 
-export { getTabKey };
+export { getTabKey, getTabKeyFromTab };

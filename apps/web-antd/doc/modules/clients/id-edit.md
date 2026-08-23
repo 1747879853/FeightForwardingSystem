@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,8 +21,8 @@ last_updated: 2026-07-12
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息维护：** 编辑客户主数据。
-- **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件。
+- **基础信息维护：** 编辑客户主数据。未保存切走可 KeepAlive；点 X 关闭才丢。脏检查含基础信息、联系人 Handsontable、开票表单。
+- **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件；内部 Tab 使用 KeepAlive，页内切换不销毁未保存块。
 - **海运出口服务项目：** 仅委托单位（`industryCategories` 含 `p`）可配置按起运港排除的服务项；开关关闭表示排除，保存后写入 `ClientExceptService`；全局模板含默认港口配置（`polId` 为空）时，Tab 以「默认港口配置」Card 展示。
 - **业务引用：** 客户资料会被海运委托、费用、对账等业务模块引用。
 
@@ -49,6 +49,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 编辑页 KeepAlive + 内部 Tab 缓存；未保存含基础信息/联系人/开票。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-07-12 | `Fix` | 客户账期删除不再对 `row.id` 使用 `Number()`，避免大数主键删错记录。 | `BillingPeriodAdminApi.IdDto.id` 改为 `number \| string`，与 json-bigint 响应一致。 |
 | 2026-06-09 | `Feature` | 客户「海运出口服务项目」Tab 支持展示默认港口配置分组，保存排除项时 `polId` 传 `null`。 | `formatPolLabel` / `buildEditPayload` / `getPortGroupKey` 统一空 `polId` 口径，文案复用基础资料 `defaultPolConfig`。 |
 | 2026-05-30 | `Refactor` | “海运出口服务项目”Tab 的服务项枚举加载统一改为 `ServiceType` 大写口径，并复用海运出口共享模块。 | `except-service/index.vue` 改为调用统一 `loadSeServiceTypeOptions()`，移除 `serviceType` 小写回退，确保客户页与海运出口主流程枚举源一致。 |

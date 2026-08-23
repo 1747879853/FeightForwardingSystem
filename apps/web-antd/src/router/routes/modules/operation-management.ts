@@ -46,6 +46,8 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('seaExport.export.title'),
               hideInMenu: true,
+              keepAlive: true,
+              keepAliveName: 'SeaExportAdminForm',
               activePath: '/sea-exports',
               authority: abpPageAuthority('Admin.SeaExport'),
             },
@@ -58,6 +60,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('seaExport.export.title'),
               hideInMenu: true,
+              keepAlive: true,
               activePath: '/sea-exports',
               /** query.tab 不参与页签 key，避免进页后改 query 导致整页重挂、回落到基础信息 */
               fullPathKey: false,
@@ -93,6 +96,8 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('seaImport.import.title'),
               hideInMenu: true,
+              keepAlive: true,
+              keepAliveName: 'SeaImportAdminForm',
               activePath: '/sea-imports',
               authority: abpPageAuthority('Admin.SeaImport'),
             },
@@ -105,6 +110,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('seaImport.import.title'),
               hideInMenu: true,
+              keepAlive: true,
               activePath: '/sea-imports',
               authority: abpPageAuthority('Admin.SeaImport'),
             },
@@ -138,6 +144,8 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('airExport.export.title'),
               hideInMenu: true,
+              keepAlive: true,
+              keepAliveName: 'AirExportAdminForm',
               activePath: '/air-exports',
               authority: abpPageAuthority('Admin.AirExport'),
             },
@@ -150,6 +158,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               title: $t('airExport.export.title'),
               hideInMenu: true,
+              keepAlive: true,
               activePath: '/air-exports',
               authority: abpPageAuthority('Admin.AirExport'),
             },

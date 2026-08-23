@@ -65,6 +65,8 @@
   "invalid": "无效",
   "valid": "有效",
   "leave": "离开",
-  "unsavedLeaveTitle": "有未保存的内容",
-  "unsavedLeaveContent": "当前页面有未保存的修改，直接离开将丢失这些修改，确定要离开吗？"
+  "unsavedLeaveTitle": "有未保存的修改",
+  "unsavedLeaveContent": "当前有未保存修改，切换后可回来继续编辑。确定离开？",
+  "unsavedCloseTitle": "有未保存的修改",
+  "unsavedCloseContent": "关闭后未保存内容将丢失。确定关闭？"
 }

@@ -290,16 +290,49 @@ const routes: RouteRecordRaw[] = [
           import('#/views/system/basic-data/OrderFeeTemplateAdmin/list.vue'),
       },
       {
-        path: '/basic-data/order-fee-template/edit',
+        path: '/basic-data/order-fee-template/create',
+        name: 'BasicDataOrderFeeTemplateCreate',
+        meta: {
+          title: $t('system.basicData.orderFeeTemplate.editTitle'),
+          hideInMenu: true,
+          keepAlive: true,
+          keepAliveName: 'OrderFeeTemplateEditor',
+          activePath: '/basic-data/order-fee-template',
+          authority: abpPageAuthority('Admin.OrderFeeTemplate'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/OrderFeeTemplateAdmin/edit.vue'),
+      },
+      {
+        path: '/basic-data/order-fee-template/:id([0-9a-fA-F-]{36})/edit',
         name: 'BasicDataOrderFeeTemplateEdit',
         meta: {
           title: $t('system.basicData.orderFeeTemplate.editTitle'),
           hideInMenu: true,
           keepAlive: true,
+          keepAliveName: 'OrderFeeTemplateEditor',
+          activePath: '/basic-data/order-fee-template',
           authority: abpPageAuthority('Admin.OrderFeeTemplate'),
         },
         component: () =>
           import('#/views/system/basic-data/OrderFeeTemplateAdmin/edit.vue'),
+      },
+      {
+        path: '/basic-data/order-fee-template/edit',
+        name: 'BasicDataOrderFeeTemplateEditLegacy',
+        meta: {
+          hideInMenu: true,
+          hideInTab: true,
+          authority: abpPageAuthority('Admin.OrderFeeTemplate'),
+        },
+        redirect: (to) => {
+          const id = to.query.id;
+          const mode = to.query.mode;
+          if (mode === 'edit' && id) {
+            return `/basic-data/order-fee-template/${String(id)}/edit`;
+          }
+          return '/basic-data/order-fee-template/create';
+        },
       },
     ],
   },
