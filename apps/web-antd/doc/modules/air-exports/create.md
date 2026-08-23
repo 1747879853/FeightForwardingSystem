@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -29,6 +29,7 @@ last_updated: 2026-08-19
 - **货物明细：** 可增删行、上下移动，体积/体积重/计费重自动带出且允许手改。
 - **保存：** 校验通过后新建并跳转编辑页，同时刷新列表与工作台。
 - **AI识别：** 顶栏上传空运单证（PDF/图片/Office/OFD），调用 `TextInAdmin/ExtractAirExportToAddDtoAsync` 预填表单；空港走机场下拉；货物明细写入 `airExportOrderCtns`；用户校对后再点保存走 `AirExportAdmin/AddAsync`。
+- **打印：** 顶栏有「打印」按钮，新建未保存时提示先保存；真正打印在跳转编辑页后按已保存 id 取数。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -72,6 +73,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-23 | `Feature` | 顶栏增加「打印」按钮（与编辑页共用 `form.vue`）。 | 新建未保存会拦截；详见 `changelogs/change-log-2026-08-23-air-export-print.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-18 | `Feature` | 新建/编辑基础信息顶栏增加 AI 识别，上传单证后预填表单。 | 走 `TextInAdmin/ExtractAirExportToAddDtoAsync`；空港回显 `AirPort`；货物明细写 `airExportOrderCtns`。详见 `changelogs/change-log-2026-08-18-air-export-textin-ai-extract.md`。 |
 | 2026-08-17 | `Fix` | 选中空港后输入框只回显三字码，备注回填英文名称。 | `labelKey=iataCode`；备注走 `formatAirPortRemark`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |

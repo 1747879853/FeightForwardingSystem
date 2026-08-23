@@ -8,6 +8,16 @@ export enum PrintExportFormat {
   Word = 2,
 }
 
+/** 打印格式业务类型，与后端 PrintFormat.BizType 对齐；空表示三种业务通用 */
+export enum PrintFormatBizType {
+  /** 海运出口 */
+  SeaExport = 0,
+  /** 海运进口 */
+  SeaImport = 1,
+  /** 空运出口 */
+  AirExport = 2,
+}
+
 /** 打印数据源类型，与业务模块对应 */
 export enum PrintJsonType {
   /** 海运出口详情 */

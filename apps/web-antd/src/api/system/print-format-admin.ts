@@ -2,6 +2,7 @@ import { requestClient } from '#/api/request';
 
 import {
   PrintExportFormat,
+  type PrintFormatBizType,
   PrintJsonType,
 } from '#/components/print-format/types';
 
@@ -63,7 +64,9 @@ export namespace PrintFormatAdminApi {
     /** 船公司 id */
     carrierId?: number | null;
     /** 组织 id */
-    orgId?: number | null;
+    orgId?: number | string | null;
+    /** 业务类型：0海运出口 / 1海运进口 / 2空运出口；不传不过滤 */
+    bizType?: PrintFormatBizType | null;
     /** 打印文件名（模糊匹配） */
     fileName?: string;
     pageIndex: number;
@@ -146,6 +149,7 @@ function buildPrintFormatQueryParams(
     CodeIssueTypeId: params.codeIssueTypeId,
     CarrierId: params.carrierId,
     OrgId: params.orgId,
+    BizType: params.bizType,
     FileName: params.fileName,
     PageIndex: params.pageIndex,
     PageSize: params.pageSize,

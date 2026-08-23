@@ -48,6 +48,11 @@ import {
   getAirExportDetail,
   updateAirExportCommissionNum,
 } from '#/api/air-export/air-export-admin';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
@@ -135,6 +140,8 @@ const currentUserId = computed<number | undefined>(() => {
 });
 
 const pageLoading = ref(false);
+const printing = ref(false);
+const { openPrint } = usePrintFormat();
 const transportOrderId = ref<string | undefined>();
 const orderCtns = ref<any[]>([]);
 /** 收发通区块可折叠，默认展开（对齐海运进口） */
@@ -937,6 +944,80 @@ const handleCopyAirExport = async () => {
   });
 };
 
+const confirmUnsavedPrint = () => {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    Modal.confirm({
+      title: '存在未保存的修改',
+      content: '当前表单有未保存的修改，打印将使用已保存的数据，是否继续？',
+      okText: '继续打印',
+      cancelText: '取消',
+      onOk: () => {
+        settle(true);
+      },
+      onCancel: () => {
+        settle(false);
+      },
+    });
+  });
+};
+
+/**
+ * 解析打印所需的当票要素。空运无签单方式/船公司，只按分公司筛模板。
+ * 打印数据由后端按 id 取数，未保存的表单修改不会体现在打印结果中。
+ */
+const resolvePrintContext = async (): Promise<null | {
+  orgId?: null | number | string;
+}> => {
+  if (!isEdit.value || !editId.value) {
+    message.warning('请先保存后再打印');
+    return null;
+  }
+
+  try {
+    const dirty = await isFormDirty();
+    if (dirty) {
+      const confirmed = await confirmUnsavedPrint();
+      if (!confirmed) return null;
+    }
+
+    const detail = await getAirExportDetail(editId.value);
+    return {
+      orgId: detail.orgId ?? detail.transportOrder?.orgId ?? null,
+    };
+  } catch {
+    message.error('获取打印数据失败');
+    return null;
+  }
+};
+
+const handlePrint = async () => {
+  if (printing.value) return;
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    const ctx = await resolvePrintContext();
+    if (!ctx) return;
+    openPrint({
+      printJsonType: PrintJsonType.AirExportDetail,
+      orgId: ctx.orgId,
+      bizType: PrintFormatBizType.AirExport,
+      detailInput: { id: editId.value },
+    });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
+};
+
 const { ResultModal, subscribe, subscribing } = useAirTrackingSubscribe();
 
 /** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
@@ -1160,6 +1241,18 @@ watch(pageLoading, (loading) => {
                         class="mr-1 inline-block size-3.5 align-middle"
                       />
                       <span class="align-middle">AI识别</span>
+                    </Button>
+                    <Button
+                      size="small"
+                      class="flex items-center justify-center"
+                      :loading="printing"
+                      @click="handlePrint"
+                    >
+                      <IconifyIcon
+                        icon="mdi:printer-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">打印</span>
                     </Button>
                     <template v-if="isEdit">
                       <span

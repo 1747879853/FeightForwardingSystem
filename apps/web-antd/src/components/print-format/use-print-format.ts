@@ -12,6 +12,7 @@ import {
 } from '#/api/system/print-format-admin';
 import {
   PrintExportFormat,
+  type PrintFormatBizType,
   type PrintJsonType,
 } from '#/components/print-format/types';
 import { buildStaticFileUrl } from '#/utils/attachment-url';
@@ -43,7 +44,9 @@ export interface PrintFormatOpenParams {
   /** 当票船公司 id，用于筛选模板 */
   carrierId?: null | number;
   /** 当票分公司/组织 id，用于筛选模板 */
-  orgId?: null | number;
+  orgId?: null | number | string;
+  /** 业务类型，按「相等或为空」筛模板 */
+  bizType?: PrintFormatBizType | null;
   /** 详情类/更改单类取数入参（GuidIdDto） */
   detailInput?: PrintFormatAdminApi.GuidIdDto;
   /** 费用列表类取数入参（OrderFeeQueryDto） */
@@ -187,6 +190,7 @@ async function loadTemplates(params: PrintFormatOpenParams) {
       codeIssueTypeId: params.codeIssueTypeId ?? undefined,
       carrierId: params.carrierId ?? undefined,
       orgId: params.orgId ?? undefined,
+      bizType: params.bizType ?? undefined,
       pageIndex: 1,
       pageSize: 1000,
     });
