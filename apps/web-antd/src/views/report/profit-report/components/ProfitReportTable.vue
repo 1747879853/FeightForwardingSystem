@@ -50,7 +50,10 @@ const hotTableRef = ref<any>(null);
 const containerRef = ref<HTMLElement | null>(null);
 // 当前显示的列配置
 const currentColumnsRef = ref<any[]>([]);
-
+// ✅ 新增：存储隐藏列的状态（索引数组）
+const hiddenColumnsRef = ref<number[]>([]);
+// ✅ 新增：存储隐藏列的data属性（而不是索引）
+const hiddenColumnDataRefs = ref<Set<string>>(new Set());
 // 表格数据
 const tableData = ref<any[]>([]);
 
@@ -339,7 +342,7 @@ const hotSettings = computed(() => {
 
     // ✅ 配置隐藏列功能
     hiddenColumns: {
-      columns: [], // 初始时没有隐藏的列
+      columns: hiddenColumnsRef.value, // 使用计算后的隐藏列索引
       indicators: true, // 显示隐藏列指示器（小箭头）
       copyPasteEnabled: false, // 隐藏列不参与复制粘贴
     },
@@ -448,6 +451,42 @@ const hotSettings = computed(() => {
       if (col !== undefined) {
         rightClickColumnIndex.value = col;
       }
+    },
+    // ✅ 监听隐藏列变化
+    afterHideColumns: (
+      currentHideConfig: number[],
+      destinationHideConfig: number[],
+    ) => {
+      const hotInstance = hotTableRef.value?.hotInstance;
+      if (!hotInstance) return;
+
+      const columns = hotInstance.getSettings().columns || [];
+      const hiddenData = new Set<string>();
+      destinationHideConfig.forEach((colIndex) => {
+        const colConfig = columns[colIndex];
+        if (colConfig && colConfig.data) {
+          hiddenData.add(colConfig.data);
+        }
+      });
+      hiddenColumnDataRefs.value = hiddenData;
+    },
+    // ✅ 监听取消隐藏列变化
+    afterUnhideColumns: (
+      currentHideConfig: number[],
+      destinationHideConfig: number[],
+    ) => {
+      const hotInstance = hotTableRef.value?.hotInstance;
+      if (!hotInstance) return;
+
+      const columns = hotInstance.getSettings().columns || [];
+      const hiddenData = new Set<string>();
+      destinationHideConfig.forEach((colIndex) => {
+        const colConfig = columns[colIndex];
+        if (colConfig && colConfig.data) {
+          hiddenData.add(colConfig.data);
+        }
+      });
+      hiddenColumnDataRefs.value = hiddenData;
     },
   };
 });
@@ -827,6 +866,15 @@ function applyGrouping(data: any[]) {
   // 保存当前列配置
   currentColumnsRef.value = columnsConfig;
 
+  // ✅ 计算应该隐藏的列索引
+  const newHiddenColumnIndexes: number[] = [];
+  columnsConfig.forEach((col, index) => {
+    if (hiddenColumnDataRefs.value.has(col.data)) {
+      newHiddenColumnIndexes.push(index);
+    }
+  });
+  hiddenColumnsRef.value = newHiddenColumnIndexes;
+
   if (localGroupColumns.value.length === 0) {
     tableData.value = data.map((item) => ({
       ...item,
@@ -1105,7 +1153,7 @@ function buildFullExportTree(
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
