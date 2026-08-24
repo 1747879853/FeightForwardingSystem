@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-24 业务联系单编辑页增加复制新建](./changelogs/change-log-2026-08-24-pre-order-editor-copy-create.md)
 - [2026-08-24 权限树优先展示接口中文名](./changelogs/change-log-2026-08-24-permission-tree-display-name.md)
 - [2026-08-24 业务联系单费用汇率去掉末尾多余的零](./changelogs/change-log-2026-08-24-pre-order-fee-exchange-rate-trim.md)
 - [2026-08-24 货物区内外部备注字号与其他输入框对齐](./changelogs/change-log-2026-08-24-cargo-remark-font-size.md)

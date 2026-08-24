@@ -18,6 +18,9 @@ import { useUserStore } from '@vben/stores';
 import {
   Button,
   Card,
+  Dropdown,
+  Menu,
+  MenuItem,
   message,
   Modal,
   Select,
@@ -96,6 +99,8 @@ import { usePreOrderAiRecognize } from './use-pre-order-ai-recognize';
 
 defineOptions({ name: 'PreOrderEditor' });
 
+const DropdownButton = Dropdown.Button;
+
 const perm = createAbpPermission('Admin.PreOrder');
 const auditCode = 'Admin.PreOrder.Audit';
 const route = useRoute();
@@ -103,6 +108,7 @@ const router = useRouter();
 const userStore = useUserStore();
 const { hasAccessByCodes } = useAccess();
 const canAudit = computed(() => hasAccessByCodes([auditCode]));
+const canAdd = computed(() => hasAccessByCodes([perm.add]));
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 const { setTabTitle } = useTabs();
 
@@ -1490,6 +1496,18 @@ function handleViewWorkflow() {
   });
 }
 
+/** 编辑页「复制新建」：带当前单 id 走列表同一套 copyFrom 预填 */
+function handleCopyCreate() {
+  if (!preOrderId.value) {
+    message.warning('请先保存单据后再复制新建');
+    return;
+  }
+  void router.push({
+    path: '/pre-order/add',
+    query: { copyFrom: preOrderId.value },
+  });
+}
+
 const contentTabsStyle = {
   display: 'flex',
   gap: '8px',
@@ -1590,8 +1608,27 @@ const getContentTabStyle = (isActive: boolean) =>
                       >
                         审核流程
                       </Button>
+                      <DropdownButton
+                        v-if="isEdit && canSave && canAdd"
+                        v-access:code="perm.edit"
+                        type="primary"
+                        size="small"
+                        :loading="saving"
+                        :trigger="['hover']"
+                        class="pre-order-save-dropdown"
+                        @click="handleSave"
+                      >
+                        保存
+                        <template #overlay>
+                          <Menu>
+                            <MenuItem @click="handleCopyCreate">
+                              复制新建
+                            </MenuItem>
+                          </Menu>
+                        </template>
+                      </DropdownButton>
                       <Button
-                        v-if="canSave"
+                        v-else-if="canSave"
                         v-access:code="isEdit ? perm.edit : perm.add"
                         size="small"
                         type="primary"
@@ -1599,6 +1636,14 @@ const getContentTabStyle = (isActive: boolean) =>
                         @click="handleSave"
                       >
                         保存
+                      </Button>
+                      <Button
+                        v-if="isEdit && !canSave"
+                        v-access:code="perm.add"
+                        size="small"
+                        @click="handleCopyCreate"
+                      >
+                        复制新建
                       </Button>
                       <Button
                         v-if="isEdit && canSave"
@@ -1943,6 +1988,12 @@ const getContentTabStyle = (isActive: boolean) =>
 /* 业务联系单：基础 Tab 占满 Page 高度，货物卡片吃掉费用区之上的剩余高度 */
 .pre-order-editor-page {
   height: 100%;
+}
+
+/* 保存拆分按钮高度与顶栏 size=small 对齐 */
+.pre-order-save-dropdown :deep(.ant-btn) {
+  height: 24px;
+  font-size: 12px;
 }
 
 /* 顶部 content-tabs 与海运出口一致：禁止被下方 flex 内容压扁 */
