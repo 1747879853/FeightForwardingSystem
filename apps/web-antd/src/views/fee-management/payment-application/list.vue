@@ -14,6 +14,8 @@ import {
   deletePaymentApplication,
   getPaymentApplicationPagedList,
   PaymentApplicationStatus,
+  submitPaymentApplication,
+  unsubmitPaymentApplication,
 } from '#/api/settlement-management/payment-application-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import {
@@ -310,6 +312,85 @@ function getSelectedRows(): PaymentApplicationAdminApi.PaymentApplicationDto[] {
     []) as PaymentApplicationAdminApi.PaymentApplicationDto[];
 }
 
+function canSubmitRow(row: PaymentApplicationAdminApi.PaymentApplicationDto) {
+  return (
+    row.status === PaymentApplicationStatus.Entering ||
+    row.status === PaymentApplicationStatus.Rejected
+  );
+}
+
+function canRevokeRow(row: PaymentApplicationAdminApi.PaymentApplicationDto) {
+  return row.status === PaymentApplicationStatus.Auditing;
+}
+
+function handleSubmit() {
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择要提交的记录');
+    return;
+  }
+  const eligible = rows.filter(canSubmitRow);
+  if (eligible.length === 0) {
+    message.warning('仅未提交或驳回状态的申请可以提交');
+    return;
+  }
+  if (eligible.length < rows.length) {
+    message.warning(
+      `选中的 ${rows.length} 条中，仅 ${eligible.length} 条可提交（未提交/驳回）`,
+    );
+  }
+  Modal.confirm({
+    title: '确认提交',
+    content: `确定要提交选中的 ${eligible.length} 条付费申请吗？提交后将进入审批流程。`,
+    onOk: async () => {
+      actionLoading.value = true;
+      try {
+        for (const row of eligible) {
+          await submitPaymentApplication(row.id);
+        }
+        message.success('提交成功');
+      } finally {
+        actionLoading.value = false;
+        handleRefresh();
+      }
+    },
+  });
+}
+
+function handleRevoke() {
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择要撤销的记录');
+    return;
+  }
+  const eligible = rows.filter(canRevokeRow);
+  if (eligible.length === 0) {
+    message.warning('仅已提交（审批尚未开始）的申请可以撤销');
+    return;
+  }
+  if (eligible.length < rows.length) {
+    message.warning(
+      `选中的 ${rows.length} 条中，仅 ${eligible.length} 条可撤销（已提交）`,
+    );
+  }
+  Modal.confirm({
+    title: '确认撤销',
+    content: `确定要撤销选中的 ${eligible.length} 条付费申请吗？撤销后状态将回到未提交。`,
+    onOk: async () => {
+      actionLoading.value = true;
+      try {
+        for (const row of eligible) {
+          await unsubmitPaymentApplication(row.id);
+        }
+        message.success('撤销成功');
+      } finally {
+        actionLoading.value = false;
+        handleRefresh();
+      }
+    },
+  });
+}
+
 function handleBatchDelete() {
   const rows = getSelectedRows();
   if (rows.length === 0) {
@@ -350,6 +431,8 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           <Button type="primary" @click="handleCreate">
             {{ t('addTitle') }}
           </Button>
+          <Button :loading="actionLoading" @click="handleSubmit">提交</Button>
+          <Button :loading="actionLoading" @click="handleRevoke">撤销</Button>
           <Button danger :loading="actionLoading" @click="handleBatchDelete">
             删除
           </Button>
