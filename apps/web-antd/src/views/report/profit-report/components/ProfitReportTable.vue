@@ -60,17 +60,12 @@ const localExpandedGroups = ref<Set<string>>(
   new Set([...props.expandedGroups]),
 );
 
-// ✅ 拖拽状态管理
-let isDraggingColumn = false;
-let dragColumnData: { columnData?: string; columnTitle?: string } = {};
-let dragGhostElement: HTMLElement | null = null;
+// ✅ 新增：存储当前右键点击的列索引
+const rightClickColumnIndex = ref<number | null>(null);
 
 // ✅ 分组标签拖拽状态
 const draggedGroupIndex = ref<number | null>(null);
 const dragOverGroupIndex = ref<number | null>(null);
-
-// ✅ 新增：拖拽提示显示状态
-const showDragHint = ref(true);
 
 // ✅ 新增：悬停提示状态
 const hoverColumnData = ref<string | null>(null);
@@ -187,6 +182,17 @@ watch(
   },
 );
 
+// 在 setup 函数中添加对组件实例的引用，用于 contextMenu
+const componentInstance = {
+  localGroupColumns,
+  localExpandedGroups,
+  currentColumnsRef,
+  props,
+  emit,
+  applyGrouping,
+  rightClickColumnIndex,
+};
+
 // Handsontable 配置（改为计算属性）
 const hotSettings = computed(() => {
   // 获取可见列并按order排序
@@ -246,6 +252,88 @@ const hotSettings = computed(() => {
         hidden_columns_hide: {
           name: '隐藏列',
         },
+        // ✅ 添加分隔线
+        separator1: '---------',
+        // ✅ 添加分组菜单项
+        add_to_group: {
+          name: '添加到分组',
+          callback: function (key, selection, clickEvent) {
+            const instance = componentInstance;
+            let col = selection[0].start.col;
+
+            // 获取当前列的data属性
+            const currentColumns = instance.currentColumnsRef.value;
+            if (col < 0 || col >= currentColumns.length) {
+              return;
+            }
+
+            const columnData = currentColumns[col]?.data;
+            const columnTitle = currentColumns[col]?.title || columnData;
+
+            if (!columnData || columnData === '_groupDisplay') {
+              message.warning('该列不能用于分组');
+              return;
+            }
+
+            // 检查是否已经在分组中
+            if (instance.localGroupColumns.value.includes(columnData)) {
+              message.warning(`"${columnTitle}" 已在分组中`);
+              return;
+            }
+
+            // 添加到分组
+            instance.localGroupColumns.value.push(columnData);
+            instance.emit('update:groupColumns', [
+              ...instance.localGroupColumns.value,
+            ]);
+
+            // 清空展开状态
+            instance.localExpandedGroups.value = new Set();
+            instance.emit('update:expandedGroups', new Set());
+
+            if (instance.props.originalData.length > 0) {
+              instance.applyGrouping([...instance.props.originalData]);
+            }
+
+            message.success(`已将 "${columnTitle}" 添加到分组`);
+          },
+          disabled: function () {
+            const instance = componentInstance;
+            const col = instance.rightClickColumnIndex.value;
+
+            // 如果没有有效的列索引，启用菜单项（让callback处理验证）
+            // 这解决了第一次右键时菜单项灰色的问题
+            if (col === null || col < 0) {
+              return false;
+            }
+
+            // 获取当前列的data属性
+            const currentColumns = instance.currentColumnsRef.value;
+            if (col >= currentColumns.length) {
+              return false; // 启用菜单项，让callback处理
+            }
+
+            const columnData = currentColumns[col]?.data;
+
+            // 如果列数据无效，启用菜单项，让callback处理
+            if (!columnData) {
+              return false;
+            }
+
+            // 如果是分组列（_groupDisplay），禁用分组功能
+            if (columnData === '_groupDisplay') {
+              return true;
+            }
+
+            // 如果是合计列（以total开头），禁用分组功能
+            if (columnData.startsWith('total')) {
+              return true;
+            }
+
+            // 如果已经在分组中，禁用
+            return instance.localGroupColumns.value.includes(columnData);
+          },
+        },
       },
     },
 
@@ -279,7 +367,7 @@ const hotSettings = computed(() => {
       TH.style.fontWeight = '600';
       TH.style.textAlign = 'center';
 
-      // ✅ 如果是分组列或序号列，不显示拖拽手柄
+      // ✅ 如果是分组列或序号列，不显示任何特殊功能
       const isGroupColumn = localGroupColumns.value.length > 0 && col === 0;
       const isRowHeaderColumn = col === -1; // Handsontable 的序号列索引为 -1
 
@@ -289,175 +377,12 @@ const hotSettings = computed(() => {
         return;
       }
 
-      // ✅ 创建拖拽手柄，但只创建一次并只绑定一次事件处理器
-      let dragHandle = TH.querySelector('.drag-handle') as HTMLElement;
-      if (!dragHandle) {
-        dragHandle = document.createElement('span');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '⋮⋮'; // 双竖线图标
-        dragHandle.style.cssText = `
-          position: absolute;
-          left: 2px;
-          top: 50%;
-          transform: translateY(-50%);
-          cursor: grab;
-          opacity: 0.6;
-          font-size: 14px;
-          padding: 8px 12px;
-          z-index: 10;
-          user-select: none;
-          border-radius: 4px;
-          transition: opacity 0.2s ease;
-          min-width: 32px;
-          min-height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        `;
+      // ✅ 移除拖拽手柄创建逻辑，只保留提示信息
+      TH.style.position = 'relative';
 
-        // ✅ 只在创建新手柄时绑定事件处理器，避免重复绑定
-        dragHandle.addEventListener('mousedown', (e: MouseEvent) => {
-          // 只处理左键
-          if (e.button !== 0) return;
-
-          // 阻止默认行为
-          e.preventDefault();
-          e.stopPropagation();
-
-          // 获取当前列信息
-          const currentColumns = currentColumnsRef.value;
-          if (col < 0 || col >= currentColumns.length) {
-            return;
-          }
-
-          const columnData = currentColumns[col]?.data;
-          const columnTitle = currentColumns[col]?.title || columnData;
-
-          if (!columnData || columnData === '_groupDisplay') {
-            return;
-          }
-
-          // 设置拖拽状态
-          isDraggingColumn = true;
-          dragColumnData = { columnData, columnTitle };
-
-          // 创建拖拽幽灵元素
-          dragGhostElement = document.createElement('div');
-          dragGhostElement.className = 'column-drag-ghost';
-          dragGhostElement.textContent = columnTitle || '';
-          dragGhostElement.style.cssText = `
-            position: fixed;
-            left: ${e.clientX + 10}px;
-            top: ${e.clientY + 10}px;
-            padding: 8px 16px;
-            background: #1890ff;
-            color: white;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            z-index: 9999;
-            pointer-events: none;
-            font-size: 13px;
-            font-weight: 600;
-            opacity: 0.85;
-            cursor: grabbing;
-          `;
-          document.body.appendChild(dragGhostElement);
-
-          // 添加全局鼠标移动和释放监听器
-          const handleMouseMove = (moveEvent: MouseEvent) => {
-            if (dragGhostElement) {
-              dragGhostElement.style.left = `${moveEvent.clientX + 10}px`;
-              dragGhostElement.style.top = `${moveEvent.clientY + 10}px`;
-            }
-
-            // 检查是否在分组区域上方
-            const groupArea = document.querySelector('.group-area-tags');
-            if (groupArea) {
-              const rect = groupArea.getBoundingClientRect();
-              const isOver =
-                moveEvent.clientX >= rect.left &&
-                moveEvent.clientX <= rect.right &&
-                moveEvent.clientY >= rect.top &&
-                moveEvent.clientY <= rect.bottom;
-
-              if (isOver) {
-                groupArea.classList.add('sortable-over');
-              } else {
-                groupArea.classList.remove('sortable-over');
-              }
-            }
-          };
-
-          const handleMouseUp = (upEvent: MouseEvent) => {
-            // 移除分组区域高亮
-            const groupArea = document.querySelector('.group-area-tags');
-            if (groupArea) {
-              groupArea.classList.remove('sortable-over');
-            }
-
-            // 处理拖拽完成
-            if (dragColumnData.columnData && groupArea) {
-              const rect = groupArea.getBoundingClientRect();
-              const isOver =
-                upEvent.clientX >= rect.left &&
-                upEvent.clientX <= rect.right &&
-                upEvent.clientY >= rect.top &&
-                upEvent.clientY <= rect.bottom;
-
-              if (
-                isOver &&
-                !localGroupColumns.value.includes(dragColumnData.columnData)
-              ) {
-                localGroupColumns.value.push(dragColumnData.columnData);
-                emit('update:groupColumns', [...localGroupColumns.value]);
-
-                if (props.originalData.length > 0) {
-                  applyGrouping([...props.originalData]);
-                }
-
-                message.success(
-                  `已将 "${dragColumnData.columnTitle}" 添加到分组`,
-                );
-              }
-            }
-
-            // 清理拖拽状态
-            if (dragGhostElement) {
-              dragGhostElement.remove();
-              dragGhostElement = null;
-            }
-            isDraggingColumn = false;
-            dragColumnData = {};
-
-            // 移除事件监听器
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-          };
-
-          // 添加全局事件监听器
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-
-          // 提供视觉反馈
-          dragHandle.style.opacity = '0.9';
-          dragHandle.style.transform = 'translateY(-50%) scale(0.95)';
-        });
-
-        // 恢复样式
-        dragHandle.addEventListener('mouseleave', () => {
-          if (!isDraggingColumn) {
-            dragHandle.style.opacity = '0.6';
-            dragHandle.style.transform = 'translateY(-50%) scale(1)';
-          }
-        });
-
-        TH.style.position = 'relative';
-        TH.appendChild(dragHandle);
-      }
-
-      // 提示用户可以使用排序和拖拽功能
+      // 提示用户可以使用排序和右键菜单功能
       TH.style.cursor = 'pointer';
-      TH.title = '左键单击排序 | 拖动左侧 ⋮⋮ 图标到分组区 ';
+      TH.title = '左键单击排序 | 右键菜单可进行分组操作';
     },
     //afterOnCellMouseDown: onAfterOnCellMouseDown,
     afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
@@ -508,6 +433,20 @@ const hotSettings = computed(() => {
         !(rowData?._isGroupRow && col === 0)
       ) {
         TD.style.cursor = 'default';
+      }
+    },
+    // ✅ 添加右键菜单事件处理，捕获点击位置
+    afterOnCellContextMenu: (event: MouseEvent, coords: any) => {
+      // 存储当前右键点击的列索引
+      if (coords && coords.col !== undefined) {
+        rightClickColumnIndex.value = coords.col;
+      }
+    },
+    // ✅ 添加列头右键菜单事件处理
+    afterOnColumnHeaderContextMenu: (event: MouseEvent, col: number) => {
+      // 存储当前右键点击的列索引
+      if (col !== undefined) {
+        rightClickColumnIndex.value = col;
       }
     },
   };
@@ -665,33 +604,33 @@ function initResizeObserver() {
 }
 
 /**
- * 初始化列头拖拽功能（使用内联事件处理器）
+ * 初始化列头拖拽功能（使用内联事件处理器） - 已完全移除拖拽功能，此函数不再需要
  */
-function initColumnHeaderDrag() {
-  nextTick(() => {
-    const hotInstance = hotTableRef.value?.hotInstance;
-    if (!hotInstance) {
-      console.warn('Handsontable 实例不存在');
-      return;
-    }
+// function initColumnHeaderDrag() {
+//   nextTick(() => {
+//     const hotInstance = hotTableRef.value?.hotInstance;
+//     if (!hotInstance) {
+//       console.warn('Handsontable 实例不存在');
+//       return;
+//     }
 
-    const container = hotInstance.rootElement;
-    if (!container) {
-      console.warn('Handsontable 根元素不存在');
-      return;
-    }
+//     const container = hotInstance.rootElement;
+//     if (!container) {
+//       console.warn('Handsontable 根元素不存在');
+//       return;
+//     }
 
-    const columnHeader = container.querySelector('thead');
-    if (!columnHeader) {
-      console.warn('未找到 thead 元素');
-      return;
-    }
+//     const columnHeader = container.querySelector('thead');
+//     if (!columnHeader) {
+//       console.warn('未找到 thead 元素');
+//       return;
+//     }
 
-    (initColumnHeaderDrag as any).cleanup = () => {
-      console.log('✅ 列头拖拽清理完成');
-    };
-  });
-}
+//     (initColumnHeaderDrag as any).cleanup = () => {
+//       console.log('✅ 列头拖拽清理完成');
+//     };
+//   });
+// }
 
 // 监听窗口大小变化（带防抖）
 let resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -742,17 +681,17 @@ onUnmounted(() => {
     mutationObserver.disconnect();
   }
 
-  // ✅ 清理拖拽相关资源
-  if (dragGhostElement) {
-    dragGhostElement.remove();
-    dragGhostElement = null;
-  }
-  isDraggingColumn = false;
-  dragColumnData = {};
+  // ✅ 移除拖拽相关资源清理（已完全移除拖拽功能）
+  // if (dragGhostElement) {
+  //   dragGhostElement.remove();
+  //   dragGhostElement = null;
+  // }
+  // isDraggingColumn = false;
+  // dragColumnData = {};
 
   // 移除可能残留的全局事件监听器
   document.querySelectorAll('.column-drag-ghost').forEach((el) => el.remove());
-  document.querySelector('.group-area-tags')?.classList.remove('sortable-over');
+  // document.querySelector('.group-area-tags')?.classList.remove('sortable-over');
 });
 
 // 创建分组列配置
@@ -1166,7 +1105,7 @@ function buildFullExportTree(
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
-          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
+          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
           const formattedValues = uniqueValues.map((value) => {
             return `${value}(${valueCounts[value]})`;
           });
@@ -1454,24 +1393,24 @@ function handleGroupTagDragEnd(e: DragEvent) {
 }
 
 /**
- * 清理拖拽相关资源
+ * 清理拖拽相关资源 - 由于移除了拖拽功能，这个函数也不需要了
  */
-function cleanupSortable() {
-  // 清理全局事件监听器
-  const dragCleanup = (initColumnHeaderDrag as any).cleanup;
-  if (typeof dragCleanup === 'function') {
-    dragCleanup();
-    console.log('✅ 已清理拖拽事件监听器');
-  }
+// function cleanupSortable() {
+//   // 清理全局事件监听器
+//   const dragCleanup = (initColumnHeaderDrag as any).cleanup;
+//   if (typeof dragCleanup === 'function') {
+//     dragCleanup();
+//     console.log('✅ 已清理拖拽事件监听器');
+//   }
 
-  // 重置状态
-  isDraggingColumn = false;
-  dragColumnData = {};
-  if (dragGhostElement) {
-    dragGhostElement.remove();
-    dragGhostElement = null;
-  }
-}
+//   // 重置状态
+//   isDraggingColumn = false;
+//   dragColumnData = {};
+//   if (dragGhostElement) {
+//     dragGhostElement.remove();
+//     dragGhostElement = null;
+//   }
+// }
 
 /**
  * 添加双击事件处理
@@ -1641,13 +1580,9 @@ function handleExport() {
   <div
     class="group-area mb-2 flex items-center rounded border bg-gradient-to-r from-blue-50 to-indigo-50 px-4 transition-all duration-300"
     :class="{
-      'border-blue-400 shadow-md': isDraggingColumn,
-      'border-gray-200 hover:border-blue-300': !isDraggingColumn,
+      'border-gray-200': true,
     }"
     style="flex-shrink: 0; width: 100%; min-height: 48px; padding: 8px 16px"
-    @dragenter.prevent="showDragHint = true"
-    @dragleave.prevent="showDragHint = false"
-    @drop.prevent="showDragHint = false"
   >
     <div class="flex w-full items-center gap-2">
       <!-- 分组标签图标 -->
@@ -1672,15 +1607,9 @@ function handleExport() {
       <div
         v-if="localGroupColumns.length === 0"
         class="group-area-tags flex flex-1 items-center justify-center rounded border-2 border-dashed border-gray-300 bg-white py-2 text-sm text-gray-500 transition-all duration-300"
-        :class="{
-          'scale-105 border-blue-400 bg-blue-50 text-blue-600':
-            showDragHint && isDraggingColumn,
-          'animate-pulse': showDragHint,
-        }"
       >
         <div class="flex items-center gap-2">
-          <svg
-            v-if="!isDraggingColumn"
+          <!-- <svg
             class="h-4 w-4"
             fill="none"
             stroke="currentColor"
@@ -1692,33 +1621,19 @@ function handleExport() {
               stroke-width="2"
               d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
             />
-          </svg>
-          <svg
-            v-else
-            class="h-4 w-4 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <span class="font-medium">
-            {{
-              isDraggingColumn
-                ? '释放鼠标添加分组'
-                : '拖动列标题的 ⋮⋮ 图标到此处添加分组'
-            }}
-          </span>
+          </svg> -->
+          <span class="font-medium"> 右键点击列标题可添加分组 </span>
         </div>
       </div>
 
       <!-- 分组标签列表 - 增强交互反馈 -->
-      <div v-else class="group-area-tags flex flex-1 flex-wrap gap-2">
+      <div
+        v-else
+        class="group-area-tags flex flex-1 flex-wrap gap-2"
+        :class="{
+          'sortable-over': dragOverGroupIndex !== null,
+        }"
+      >
         <Tag
           v-for="(col, index) in localGroupColumns"
           :key="col"
@@ -1736,7 +1651,7 @@ function handleExport() {
               removeGroupColumn(col);
             }
           "
-          class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md active:cursor-grabbing"
+          class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md"
           :class="{
             'scale-95 opacity-50': draggedGroupIndex === index,
             'ring-2 ring-blue-400 ring-offset-2': dragOverGroupIndex === index,
@@ -1745,14 +1660,7 @@ function handleExport() {
             'border-gray-200 bg-white hover:border-blue-300':
               hoverColumnData !== col,
           }"
-          :style="{
-            transform:
-              draggedGroupIndex === index
-                ? 'scale(0.95)'
-                : dragOverGroupIndex === index
-                  ? 'scale(1.05)'
-                  : 'scale(1)',
-          }"
+          style="min-height: 28px; padding: 4px 8px"
         >
           <span class="inline-flex items-center gap-1 whitespace-nowrap">
             <!-- 拖拽手柄图标 -->
@@ -1875,7 +1783,7 @@ function handleExport() {
   flex-shrink: 0;
   min-width: 200px;
 
-  // ✅ 分组标签拖拽样式增强
+  // ✅ 恢复分组标签拖拽样式增强
   :deep(.ant-tag) {
     display: inline-flex;
     align-items: center;
@@ -1890,7 +1798,27 @@ function handleExport() {
       display: inline-flex;
       flex-shrink: 0;
       align-items: center;
-      margin-left: 4px;
+      justify-content: center;
+      width: 22px; // 进一步增大宽度
+      height: 22px; // 进一步增大高度
+      margin-left: 6px; // 增加左边距，避免与文字重叠
+      font-size: 16px; // 进一步增大字体大小（图标大小）
+      line-height: 22px; // 确保垂直居中
+      cursor: pointer; // 确保有手型光标
+      border-radius: 50%; // 圆形背景
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: #ff4d4f; // 悬停时显示红色
+        background-color: rgb(0 0 0 / 15%);
+        transform: scale(1.15);
+      }
+
+      // 点击时的反馈
+      &:active {
+        background-color: rgb(0 0 0 / 20%);
+        transform: scale(0.95);
+      }
     }
 
     &:active {
@@ -1903,6 +1831,28 @@ function handleExport() {
     }
 
     // 添加悬停效果
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// ✅ 恢复分组区域拖拽高亮样式
+.group-area-tags {
+  min-height: 32px;
+  padding: 4px;
+  transition: all 0.3s;
+
+  /* 当有元素拖拽经过时高亮 */
+  &.sortable-over {
+    background-color: #e6f7ff !important;
+    border: 2px dashed #1890ff !important;
+  }
+
+  :deep(.ant-tag) {
+    transition: all 0.3s;
+
     &:hover {
       box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
       transform: translateY(-2px);
@@ -1977,24 +1927,6 @@ function handleExport() {
         font-weight: 600;
         vertical-align: middle;
         cursor: pointer; /* 默认指针，表示可点击排序 */
-
-        /* 拖拽手柄样式 */
-        .drag-handle {
-          cursor: grab !important;
-
-          &:hover {
-            background-color: rgb(255 255 255 / 30%);
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
-            opacity: 1 !important;
-            transform: translateY(-50%) scale(1.05);
-          }
-
-          &:active {
-            cursor: grabbing !important;
-            transform: translateY(-50%) scale(0.95);
-          }
-        }
       }
     }
 
@@ -2012,53 +1944,5 @@ function handleExport() {
       background-color: #f0f0f0 !important;
     }
   }
-}
-
-/* 原生拖拽样式增强 */
-.group-area-tags {
-  min-height: 32px;
-  padding: 4px;
-  transition: all 0.3s;
-
-  /* 当有元素拖拽经过时高亮 */
-  &.sortable-over {
-    background-color: #e6f7ff !important;
-    border: 2px dashed #1890ff !important;
-  }
-
-  :deep(.ant-tag) {
-    transition: all 0.3s;
-
-    &:hover {
-      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-      transform: translateY(-2px);
-    }
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* ✅ 新增：拖拽幽灵元素样式 */
-.column-drag-ghost {
-  z-index: 9999;
-  pointer-events: none;
-}
-
-/* ✅ 新增：分组区域悬停提示 */
-.drag-hint-tooltip {
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  z-index: 100;
-  padding: 4px 12px;
-  font-size: 12px;
-  color: white;
-  white-space: nowrap;
-  background: rgb(0 0 0 / 80%);
-  border-radius: 4px;
-  transform: translateX(-50%);
-  animation: fade-in 0.3s ease-in;
 }
 </style>
