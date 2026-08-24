@@ -2,16 +2,10 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SeaExportSeparateAdminApi } from '#/api/sea-export/sea-export-separate-admin';
 
-import dayjs from 'dayjs';
-import { useDebounceFn } from '@vueuse/core';
-import { computed, onMounted, ref } from 'vue';
-
-import { IconifyIcon } from '@vben/icons';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
 
 import {
   Button,
-  Card,
-  DatePicker,
   Input,
   InputNumber,
   message,
@@ -24,21 +18,26 @@ import {
 
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CodeFrtSelect from '#/adapter/component/biz-select/code-frt-select.vue';
-import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vue';
 import CodeIssueTypeSelect from '#/adapter/component/biz-select/code-issue-type-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
 import CodeServiceSelect from '#/adapter/component/biz-select/code-service-select.vue';
 import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
-import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
-import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import {
   addSeparate,
   deleteSeparate,
   editSeparate,
   getSeparatePagedList,
 } from '#/api/sea-export/sea-export-separate-admin';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
+
+import addTabIcon from './assets/separate-bill-add.svg';
 
 defineOptions({
   name: 'SeaExportSeparateBill',
@@ -56,151 +55,161 @@ type CtnEditRow = Omit<
   ctnCodeName?: null | string;
 };
 
+type PortSimple =
+  | SeaExportAdminApi.PortCodeSimpleDtoForOrder
+  | null
+  | undefined;
+
+const DRAFT_KEY = '__draft__';
+
 const seaExportIdRef = useKeepAliveRouteParamId();
 const seaExportId = computed(() => seaExportIdRef.value ?? '');
+const { openPrint } = usePrintFormat();
 
 const loading = ref(false);
+const submitting = ref(false);
+const printing = ref(false);
 const dataSource = ref<SeaExportSeparateAdminApi.SeparateDto[]>([]);
-const selectedSeparateKeys = ref<(string | number)[]>([]);
-const totalCount = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(20);
-const keyword = ref('');
+const activeTabKey = ref<string>(DRAFT_KEY);
+const editingId = ref<string | undefined>();
+const formData = ref<Record<string, any>>({});
+const ctnList = ref<CtnEditRow[]>([]);
+const selectedCtnKeys = ref<(number | string)[]>([]);
+const notifierPartyTab = ref<'notifier' | 'secondNotifier'>('notifier');
+const formSnapshot = ref('');
 
-/** 主单详情：船期/港口/主提单号只读，以及「读入主单」数据源 */
 const masterDetail = ref<null | SeaExportAdminApi.SeaExportDto>(null);
 const masterLoading = ref(false);
-/** 船期港口默认折叠，减少分单录入干扰 */
-const masterVoyageExpanded = ref(false);
 
-const toDayjs = (val: string | null | undefined) =>
-  val && dayjs(val).isValid() ? dayjs(val) : undefined;
+let ctnRowKeyCounter = 0;
 
 const toDateString = (val: unknown) => {
   if (val == null) return undefined;
-  const d = dayjs(val as string | Date);
-  return d.isValid() ? d.toISOString() : undefined;
+  const d = new Date(val as string | Date);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 };
 
 const formatDate = (
   val: string | null | undefined,
-  format = 'YYYY-MM-DD HH:mm',
+  format: 'date' | 'placeholder' = 'date',
 ) => {
-  if (!val) return '--';
-  const d = dayjs(val);
-  return d.isValid() ? d.format(format) : '--';
+  if (!val) return format === 'placeholder' ? '' : '';
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
 };
 
-const displayText = (val: null | string | undefined) =>
-  val && String(val).trim() ? String(val).trim() : '--';
+const displayText = (val: null | number | string | undefined) => {
+  if (val == null) return '';
+  const text = String(val).trim();
+  return text;
+};
 
-const portDisplay = (name?: null | string, remark?: null | string) =>
-  displayText(name || remark);
+const portName = (port?: PortSimple) => port?.portName || port?.cnName;
 
-/** 港口对象展示名，优先英文港口名，回退中文名 */
-const portName = (
-  port?: { cnName?: null | string; portName?: null | string } | null,
-) => port?.portName || port?.cnName;
+const formatPortCode = (port?: PortSimple) =>
+  displayText(port?.ediCode || port?.portName);
 
-/** 弹窗内只读主单摘要 */
+const formatPortName = (port?: PortSimple, remark?: null | string) => {
+  const en = port?.portName;
+  const country = port?.country?.countryEnName || port?.country?.countryName;
+  const cn = port?.cnName;
+  const composed = [en, country].filter(Boolean).join('.');
+  const withCn =
+    composed && cn && cn !== en ? `${composed}${cn}` : composed || cn;
+  return displayText(withCn || remark);
+};
+
 const masterReadonly = computed(() => {
   const se = masterDetail.value;
   const to = se?.transportOrder;
+  const noBill = se?.noBillEnum;
+  const copyNoBill = se?.copyNoBillEnum;
+  const billCounts =
+    noBill == null && copyNoBill == null
+      ? ''
+      : `${noBill ?? '-'}/${copyNoBill ?? '-'}`;
   return {
     mblNum: displayText(to?.mblNum),
-    bookingNum: displayText(to?.bookingNum),
-    carrierName: displayText(se?.carrier?.cnShortName || se?.carrier?.cnName),
-    etd: formatDate(to?.etd, 'YYYY-MM-DD'),
-    atd: formatDate(to?.atd, 'YYYY-MM-DD'),
-    eta: formatDate(to?.eta, 'YYYY-MM-DD'),
-    closingTime: formatDate(se?.closingTime, 'YYYY-MM-DD'),
+    noBillEnum: billCounts,
+    etd: formatDate(to?.etd),
+    eta: formatDate(to?.eta),
     vessel: displayText(se?.vessel),
     innerVoyno: displayText(se?.innerVoyno),
-    receivePort: portDisplay(portName(se?.receivePort), se?.receivePortRemark),
-    pol: portDisplay(portName(se?.pol), se?.polRemark),
-    pod: portDisplay(portName(se?.pod), se?.podRemark),
-    deliverPort: portDisplay(portName(se?.deliverPort), se?.deliverPortRemark),
-    pot1: portDisplay(portName(se?.pot1), se?.poT1Remark),
-    pot2: portDisplay(portName(se?.pot2), se?.poT2Remark),
-    noBillEnum: se?.noBillEnum == null ? '--' : String(se.noBillEnum),
-    secondNotifierName: displayText(se?.secondNotifier?.name),
-    secondNotifierContent: displayText(se?.secondNotifierContent),
+    receivePortCode: formatPortCode(se?.receivePort),
+    receivePortName: formatPortName(se?.receivePort, se?.receivePortRemark),
+    polCode: formatPortCode(se?.pol),
+    polName: formatPortName(se?.pol, se?.polRemark),
+    podCode: formatPortCode(se?.pod),
+    podName: formatPortName(se?.pod, se?.podRemark),
+    deliverPortCode: formatPortCode(se?.deliverPort),
+    deliverPortName: formatPortName(se?.deliverPort, se?.deliverPortRemark),
   };
 });
 
-/** 折叠态一行摘要：船名/航次 · ETD · POL→POD */
-const masterVoyageSummary = computed(() => {
-  const m = masterReadonly.value;
-  const vesselVoy =
-    m.vessel === '--' && m.innerVoyno === '--'
-      ? '--'
-      : `${m.vessel === '--' ? '' : m.vessel}${
-          m.innerVoyno === '--' ? '' : ` / ${m.innerVoyno}`
-        }`.trim() || '--';
-  const lane =
-    m.pol === '--' && m.pod === '--'
-      ? '--'
-      : `${m.pol === '--' ? '?' : m.pol} → ${m.pod === '--' ? '?' : m.pod}`;
-  return `${vesselVoy} · ETD ${m.etd} · ${lane}`;
-});
-
-const loadMasterDetail = async () => {
-  if (!seaExportId.value) return;
-  masterLoading.value = true;
-  try {
-    masterDetail.value = await getSeaExportDetail(seaExportId.value);
-  } finally {
-    masterLoading.value = false;
-  }
+/** 分单 DTO 无第二通知人，界面与通知人同槽编辑，值从主单带出 */
+const masterSecondNotifierFields = () => {
+  const se = masterDetail.value;
+  return {
+    secondNotifierId: se?.secondNotifierId,
+    secondNotifierName: se?.secondNotifier?.name,
+    secondNotifierContent: se?.secondNotifierContent,
+  };
 };
 
-const loadData = async () => {
-  if (!seaExportId.value) return;
-  loading.value = true;
-  try {
-    const res = await getSeparatePagedList({
-      seaExportId: seaExportId.value,
-      keyword: keyword.value || undefined,
-      pageIndex: currentPage.value,
-      pageSize: pageSize.value,
-      sorting: 'Id DESC',
-    });
-    dataSource.value = res.items || [];
-    selectedSeparateKeys.value = [];
-    totalCount.value = res.totalCount || 0;
-  } finally {
-    loading.value = false;
-  }
+const onPartyClientChange = (
+  nameField:
+    | 'consigneeName'
+    | 'notifierName'
+    | 'secondNotifierName'
+    | 'shipperName',
+  value: unknown,
+  option: any,
+) => {
+  const raw = Array.isArray(option) ? option[0] : option;
+  formData.value[nameField] = value
+    ? raw?.raw?.name || raw?.label || raw?.rawLabel || formData.value[nameField]
+    : undefined;
 };
-
-const runKeywordSearch = () => {
-  currentPage.value = 1;
-  return loadData();
-};
-
-const debouncedKeywordSearch = useDebounceFn(runKeywordSearch, 400);
-
-const onKeywordChange = (v: string) => {
-  keyword.value = v;
-  debouncedKeywordSearch();
-};
-
-const modalVisible = ref(false);
-const modalTitle = ref('');
-const submitting = ref(false);
-const editingId = ref<string | undefined>();
-const formData = ref<Record<string, any>>({});
-const ctnList = ref<CtnEditRow[]>([]);
-const selectedCtnKeys = ref<(string | number)[]>([]);
-/** 通知人 / 第二通知人切换，默认通知人（对齐基础信息）；国外代理独立在下方 */
-const notifierPartyTab = ref<'notifier' | 'secondNotifier'>('notifier');
-
-let ctnRowKeyCounter = 0;
 
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
 };
+
+const currentSnapshot = () =>
+  JSON.stringify({
+    form: formData.value,
+    ctns: ctnList.value.map(({ _rowKey, ...rest }) => rest),
+  });
+
+const isDirty = () => currentSnapshot() !== formSnapshot.value;
+
+const markPristine = () => {
+  formSnapshot.value = currentSnapshot();
+};
+
+const tabItems = computed(() => {
+  const saved = dataSource.value.map((item) => ({
+    key: String(item.id),
+    label: displayText(item.blNum) || $t('seaExport.export.separate.newDraft'),
+  }));
+  if (activeTabKey.value === DRAFT_KEY || !editingId.value) {
+    return [
+      ...saved,
+      {
+        key: DRAFT_KEY,
+        label:
+          displayText(formData.value.blNum) ||
+          $t('seaExport.export.separate.newDraft'),
+      },
+    ];
+  }
+  return saved;
+});
 
 const mapMasterCtns = (
   orderCtns?: SeaExportAdminApi.OrderCtnDto[] | null,
@@ -227,11 +236,6 @@ const mapMasterCtns = (
     _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
   }));
 
-/**
- * 从主单带入字段。
- * - defaults：新增默认 —— 仅运费/签单条款 + 装箱，不带收发通与货描（分票常与主单不同）
- * - full：「读入主单」—— 收发通/代理、条款、货描件毛体、装箱全部覆盖
- */
 const applyMasterToForm = (
   mode: 'defaults' | 'full' = 'full',
   silent = false,
@@ -256,11 +260,15 @@ const applyMasterToForm = (
     prepareAtName: portName(se.prepareAt),
     signingPortId: se.signingPortId,
     signingPortName: portName(se.signingPort),
-    signingTime: toDayjs(se.signingTime),
+    signingTime: se.signingTime,
   };
 
   if (mode === 'defaults') {
-    formData.value = { ...formData.value, ...terms };
+    formData.value = {
+      ...formData.value,
+      ...terms,
+      ...masterSecondNotifierFields(),
+    };
   } else {
     formData.value = {
       ...formData.value,
@@ -274,6 +282,7 @@ const applyMasterToForm = (
       notifierId: to.notifierId,
       notifierName: to.notifier?.name,
       notifierContent: to.notifierContent,
+      ...masterSecondNotifierFields(),
       podAgentId: se.podAgentId,
       podAgentName: se.podAgent?.name,
       podAgentContent: se.podAgentContent,
@@ -295,34 +304,19 @@ const applyMasterToForm = (
   return true;
 };
 
-const confirmLoadFromMaster = () => {
-  Modal.confirm({
-    title: $t('seaExport.export.separate.loadFromMaster'),
-    content: $t('seaExport.export.separate.loadFromMasterConfirm'),
-    onOk: () => applyMasterToForm('full'),
-  });
-};
-
-const openAddModal = async () => {
-  editingId.value = undefined;
-  modalTitle.value = $t('seaExport.export.separate.add');
-  formData.value = {};
-  ctnList.value = [];
-  selectedCtnKeys.value = [];
-  notifierPartyTab.value = 'notifier';
-  masterVoyageExpanded.value = false;
-  if (!masterDetail.value && !masterLoading.value) {
-    await loadMasterDetail();
-  }
-  applyMasterToForm('defaults', true);
-  modalVisible.value = true;
-};
-
-const openEditModal = (record: SeaExportSeparateAdminApi.SeparateDto) => {
+const fillFormFromRecord = (
+  record: SeaExportSeparateAdminApi.SeparateDto,
+  options?: { keepSecondNotifier?: boolean },
+) => {
   editingId.value = record.id;
-  modalTitle.value = $t('seaExport.export.separate.edit');
   notifierPartyTab.value = 'notifier';
-  masterVoyageExpanded.value = false;
+  const secondNotifier = options?.keepSecondNotifier
+    ? {
+        secondNotifierId: formData.value.secondNotifierId,
+        secondNotifierName: formData.value.secondNotifierName,
+        secondNotifierContent: formData.value.secondNotifierContent,
+      }
+    : masterSecondNotifierFields();
   formData.value = {
     consigneeId: record.consigneeId,
     consigneeName: record.consignee?.name,
@@ -333,6 +327,7 @@ const openEditModal = (record: SeaExportSeparateAdminApi.SeparateDto) => {
     notifierId: record.notifierId,
     notifierName: record.notifier?.name,
     notifierContent: record.notifierContent,
+    ...secondNotifier,
     podAgentId: record.podAgentId,
     podAgentName: record.podAgent?.name,
     podAgentContent: record.podAgentContent,
@@ -348,7 +343,7 @@ const openEditModal = (record: SeaExportSeparateAdminApi.SeparateDto) => {
     codeIssueTypeName: record.codeIssueType?.billType,
     signingPortId: record.signingPortId,
     signingPortName: portName(record.signingPort),
-    signingTime: toDayjs(record.signingTime),
+    signingTime: record.signingTime,
     codeFrtId: record.codeFrtId,
     codeFrtName: record.codeFrt?.cnName,
     prepareAtId: record.prepareAtId,
@@ -368,7 +363,97 @@ const openEditModal = (record: SeaExportSeparateAdminApi.SeparateDto) => {
     };
   });
   selectedCtnKeys.value = [];
-  modalVisible.value = true;
+  markPristine();
+};
+
+const openDraft = (silentMaster = true) => {
+  editingId.value = undefined;
+  activeTabKey.value = DRAFT_KEY;
+  notifierPartyTab.value = 'notifier';
+  formData.value = {};
+  ctnList.value = [];
+  selectedCtnKeys.value = [];
+  applyMasterToForm('defaults', silentMaster);
+  markPristine();
+};
+
+const confirmIfDirty = (onOk: () => void) => {
+  if (!isDirty()) {
+    onOk();
+    return;
+  }
+  Modal.confirm({
+    title: $t('common.prompt'),
+    content: $t('seaExport.export.separate.switchDirtyConfirm'),
+    onOk,
+  });
+};
+
+const selectTab = (key: string) => {
+  if (key === activeTabKey.value) return;
+  confirmIfDirty(() => {
+    if (key === DRAFT_KEY) {
+      openDraft();
+      return;
+    }
+    const record = dataSource.value.find((item) => String(item.id) === key);
+    if (!record) return;
+    activeTabKey.value = key;
+    fillFormFromRecord(record);
+  });
+};
+
+const addDraftTab = () => {
+  if (activeTabKey.value === DRAFT_KEY) return;
+  confirmIfDirty(() => openDraft());
+};
+
+const loadMasterDetail = async () => {
+  if (!seaExportId.value) return;
+  masterLoading.value = true;
+  try {
+    masterDetail.value = await getSeaExportDetail(seaExportId.value);
+  } finally {
+    masterLoading.value = false;
+  }
+};
+
+const loadData = async (
+  preferId?: string,
+  options?: { keepSecondNotifier?: boolean },
+) => {
+  if (!seaExportId.value) return;
+  loading.value = true;
+  try {
+    const res = await getSeparatePagedList({
+      seaExportId: seaExportId.value,
+      pageIndex: 1,
+      pageSize: 100,
+      sorting: 'Id DESC',
+    });
+    dataSource.value = res.items || [];
+    const nextId = preferId || (editingId.value ? String(editingId.value) : '');
+    const matched = dataSource.value.find((item) => String(item.id) === nextId);
+    if (matched) {
+      activeTabKey.value = String(matched.id);
+      fillFormFromRecord(matched, options);
+    } else if (dataSource.value[0]) {
+      activeTabKey.value = String(dataSource.value[0].id);
+      fillFormFromRecord(dataSource.value[0], options);
+    } else {
+      openDraft();
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const confirmLoadFromMaster = () => {
+  Modal.confirm({
+    title: $t('seaExport.export.separate.loadFromMaster'),
+    content: $t('seaExport.export.separate.loadFromMasterConfirm'),
+    onOk: () => applyMasterToForm('full'),
+  });
 };
 
 const addCtnRow = () => {
@@ -385,9 +470,8 @@ const removeCtnRows = () => {
   selectedCtnKeys.value = [];
 };
 
-/** 按装箱明细合计回填件/毛/体 */
 const updateCargoTotalsFromCtn = () => {
-  const sum = (key: 'pkgs' | 'grossWeight' | 'volume') =>
+  const sum = (key: 'grossWeight' | 'pkgs' | 'volume') =>
     ctnList.value.reduce((acc, row) => {
       const n = Number(row[key]);
       return acc + (Number.isFinite(n) ? n : 0);
@@ -416,30 +500,8 @@ const updateCtnRow = (index: number, field: string, value: any) => {
   ctnList.value = list;
 };
 
-const measureCtnFields = new Set([
-  'grossWeight',
-  'tareWeight',
-  'volume',
-  'overLength',
-  'overWidth',
-  'overHeight',
-]);
-
-const isMeasureCtnField = (key: unknown) =>
-  typeof key === 'string' && measureCtnFields.has(key);
-
-const getCtnFieldValue = (record: Record<string, any>, key: unknown) => {
-  if (typeof key !== 'string') return undefined;
-  return record[key];
-};
-
-const updateCtnMeasureRow = (index: number, key: unknown, value: any) => {
-  if (typeof key !== 'string') return;
-  updateCtnRow(index, key, value);
-};
-
-const buildCtnPayload = () => {
-  return ctnList.value
+const buildCtnPayload = () =>
+  ctnList.value
     .filter((ctn) => ctn.ctnCodeId)
     .map((ctn) => {
       const {
@@ -453,7 +515,6 @@ const buildCtnPayload = () => {
       } = ctn;
       return rest;
     });
-};
 
 const buildPayload = () => ({
   seaExportId: seaExportId.value,
@@ -484,132 +545,70 @@ const buildPayload = () => ({
 const handleSubmit = async () => {
   submitting.value = true;
   try {
+    let savedId = editingId.value;
     if (editingId.value) {
       await editSeparate({
         id: editingId.value,
         ...buildPayload(),
       });
     } else {
-      await addSeparate(buildPayload());
+      savedId = await addSeparate(buildPayload());
     }
     message.success($t('ui.actionMessage.operationSuccess'));
-    modalVisible.value = false;
-    loadData();
+    await loadData(savedId ? String(savedId) : undefined, {
+      keepSecondNotifier: true,
+    });
   } finally {
     submitting.value = false;
   }
 };
 
-const selectedSeparateRows = computed(() =>
-  dataSource.value.filter((item) =>
-    selectedSeparateKeys.value.includes(item.id),
-  ),
-);
-
-const handleEditSelected = () => {
-  if (selectedSeparateRows.value.length !== 1) return;
-  openEditModal(selectedSeparateRows.value[0]!);
-};
-
-const handleDeleteSelected = () => {
-  if (!selectedSeparateRows.value.length) return;
+const handleDelete = () => {
+  if (!editingId.value) return;
   Modal.confirm({
     title: $t('ui.actionTitle.delete', [$t('seaExport.export.separate.name')]),
-    content: $t('ui.actionMessage.deleteConfirm', [
-      `${selectedSeparateRows.value.length}`,
-    ]),
+    content: $t('ui.actionMessage.deleteConfirm', ['1']),
     okType: 'danger',
     async onOk() {
-      await deleteSeparate({
-        ids: selectedSeparateRows.value.map((item) => item.id),
-      });
+      await deleteSeparate({ ids: [editingId.value!] });
       message.success($t('ui.actionMessage.operationSuccess'));
-      loadData();
+      editingId.value = undefined;
+      await loadData();
     },
   });
 };
 
-const listColumns = [
-  {
-    title: $t('seaExport.export.separate.blNum'),
-    dataIndex: 'blNum',
-    width: 140,
-  },
-  {
-    title: $t('seaExport.export.consigneeId'),
-    dataIndex: 'consigneeName',
-    width: 140,
-  },
-  {
-    title: $t('seaExport.export.shipperId'),
-    dataIndex: 'shipperName',
-    width: 140,
-  },
-  {
-    title: $t('seaExport.export.notifierId'),
-    dataIndex: 'notifierName',
-    width: 140,
-  },
-  {
-    title: $t('seaExport.export.podAgentId'),
-    dataIndex: 'podAgentName',
-    width: 140,
-  },
-  {
-    title: $t('seaExport.export.pkgs'),
-    dataIndex: 'pkgs',
-    width: 90,
-  },
-  {
-    title: $t('seaExport.export.codePackageId'),
-    dataIndex: 'codePackageName',
-    width: 100,
-  },
-  {
-    title: $t('seaExport.export.kgs'),
-    dataIndex: 'kgs',
-    width: 100,
-  },
-  {
-    title: $t('seaExport.export.cbm'),
-    dataIndex: 'cbm',
-    width: 100,
-  },
-  {
-    title: $t('seaExport.export.codeFrtId'),
-    dataIndex: 'codeFrtName',
-    width: 110,
-  },
-  {
-    title: $t('seaExport.export.codeServiceId'),
-    dataIndex: 'codeServiceName',
-    width: 110,
-  },
-  {
-    title: $t('seaExport.export.signingTime'),
-    dataIndex: 'signingTime',
-    width: 140,
-    customRender: ({ text }: any) => formatDate(text),
-  },
-  {
-    title: $t('seaExport.export.goodsDes'),
-    dataIndex: 'goodsDes',
-    width: 180,
-    ellipsis: true,
-  },
-  {
-    title: $t('seaExport.export.creationTime'),
-    dataIndex: 'creationTime',
-    width: 140,
-    customRender: ({ text }: any) => formatDate(text),
-  },
-];
+const handlePrint = () => {
+  if (!seaExportId.value) return;
+  printing.value = true;
+  try {
+    const se = masterDetail.value;
+    openPrint({
+      printJsonType: PrintJsonType.SeaExportDetail,
+      codeIssueTypeId: formData.value.codeIssueTypeId ?? se?.codeIssueTypeId,
+      carrierId: se?.carrierId,
+      orgId: se?.orgId,
+      bizType: PrintFormatBizType.SeaExport,
+      detailInput: { id: seaExportId.value },
+    });
+  } catch {
+    message.error($t('seaExport.export.separate.printFailed'));
+  } finally {
+    printing.value = false;
+  }
+};
 
 const ctnColumns = [
   {
+    title: $t('seaExport.export.separate.seq'),
+    key: 'seq',
+    width: 52,
+    align: 'center' as const,
+  },
+  {
     title: $t('seaExport.export.separate.ctnCodeId'),
     key: 'ctnCodeId',
-    width: 120,
+    width: 88,
   },
   {
     title: $t('seaExport.export.separate.ctnNo'),
@@ -619,378 +618,155 @@ const ctnColumns = [
   {
     title: $t('seaExport.export.separate.sealNo'),
     key: 'sealNo',
-    width: 100,
+    width: 110,
   },
   {
     title: $t('seaExport.export.separate.pkgs'),
     key: 'pkgs',
-    width: 80,
+    width: 72,
   },
   {
     title: $t('seaExport.export.separate.codePackageId'),
     key: 'codePackageId',
-    width: 110,
+    width: 96,
   },
   {
     title: $t('seaExport.export.separate.grossWeight'),
     key: 'grossWeight',
-    width: 100,
+    width: 88,
   },
   {
-    title: $t('seaExport.export.separate.tareWeight'),
-    key: 'tareWeight',
-    width: 100,
-  },
-  {
-    title: $t('seaExport.export.separate.volume'),
+    title: $t('seaExport.export.separate.volumeShort'),
     key: 'volume',
-    width: 90,
+    width: 80,
   },
   {
-    title: $t('seaExport.export.separate.overLength'),
-    key: 'overLength',
-    width: 90,
-  },
-  {
-    title: $t('seaExport.export.separate.overWidth'),
-    key: 'overWidth',
-    width: 90,
-  },
-  {
-    title: $t('seaExport.export.separate.overHeight'),
-    key: 'overHeight',
-    width: 90,
-  },
-  {
-    title: $t('seaExport.export.separate.codeGoodsId'),
-    key: 'codeGoodsId',
-    width: 110,
-  },
-  {
-    title: $t('seaExport.export.separate.bookingNo'),
-    key: 'bookingNo',
-    width: 120,
+    title: $t('seaExport.export.separate.tareWeightShort'),
+    key: 'tareWeight',
+    width: 80,
   },
   {
     title: $t('seaExport.export.separate.ctnRemark'),
     key: 'remark',
-    width: 120,
+    width: 110,
   },
 ];
 
+const reloadAll = async () => {
+  await loadMasterDetail();
+  await loadData();
+};
+
 onMounted(() => {
-  loadData();
+  reloadAll();
+});
+
+onActivated(() => {
   loadMasterDetail();
+});
+
+watch(seaExportId, () => {
+  reloadAll();
 });
 </script>
 
 <template>
-  <div class="separate-container p-2">
-    <Card>
-      <template #title>
-        <span class="flex items-center gap-2 text-sm font-medium">
-          <IconifyIcon icon="mdi:file-document-multiple" class="text-base" />
-          {{ $t('seaExport.export.separate.list') }}
-        </span>
-      </template>
-      <template #extra>
-        <Space>
-          <Input
-            :value="keyword"
-            :placeholder="$t('seaExport.export.separate.keyword')"
-            allow-clear
-            style="width: 240px"
-            @update:value="onKeywordChange"
-          />
-          <Button
-            type="primary"
-            class="!inline-flex !items-center !gap-1"
-            @click="openAddModal"
-          >
-            <IconifyIcon icon="mdi:plus" class="shrink-0 text-base" />
-            {{ $t('seaExport.export.separate.add') }}
-          </Button>
-          <Button
-            class="!inline-flex !items-center !gap-1"
-            :disabled="selectedSeparateKeys.length !== 1"
-            @click="handleEditSelected"
-          >
-            <IconifyIcon icon="mdi:pencil" class="shrink-0 text-base" />
-            {{ $t('common.edit') }}
-          </Button>
-          <Button
-            class="!inline-flex !items-center !gap-1"
-            danger
-            :disabled="!selectedSeparateKeys.length"
-            @click="handleDeleteSelected"
-          >
-            <IconifyIcon icon="mdi:delete" class="shrink-0 text-base" />
-            {{ $t('common.delete') }}
-          </Button>
-        </Space>
-      </template>
-
-      <Spin :spinning="loading">
-        <Table
-          :data-source="dataSource"
-          :columns="listColumns"
-          :row-selection="{
-            selectedRowKeys: selectedSeparateKeys,
-            onChange: (keys) => {
-              selectedSeparateKeys = keys;
-            },
-          }"
-          :pagination="{
-            current: currentPage,
-            pageSize,
-            total: totalCount,
-            showSizeChanger: true,
-            showTotal: (total) => `${total}`,
-            onChange: (page, size) => {
-              currentPage = page;
-              pageSize = size;
-              loadData();
-            },
-          }"
-          :scroll="{ x: 1700 }"
-          size="small"
-          bordered
-          row-key="id"
-        />
-      </Spin>
-    </Card>
-
-    <Modal
-      :open="modalVisible"
-      :title="modalTitle"
-      :width="1280"
-      :confirm-loading="submitting"
-      destroy-on-close
-      :body-style="{ maxHeight: '78vh', overflowY: 'auto', paddingTop: '12px' }"
-      @ok="handleSubmit"
-      @cancel="modalVisible = false"
-    >
-      <div class="separate-form">
-        <!-- 1. 提单身份 + 运费条款 -->
-        <div class="section-block">
-          <div class="meta-grid meta-grid--identity">
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.mblNum') }}
-              </label>
-              <div class="readonly-text">{{ masterReadonly.mblNum }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.separate.blNum') }}
-              </label>
-              <Input
-                :value="formData.blNum"
-                :maxlength="64"
-                allow-clear
-                @update:value="(v) => (formData.blNum = v)"
-              />
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.bookingNum') }}
-              </label>
-              <div class="readonly-text">{{ masterReadonly.bookingNum }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.carrierId') }}
-              </label>
-              <div class="readonly-text">{{ masterReadonly.carrierName }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.noBillEnum') }}
-              </label>
-              <div class="readonly-text">{{ masterReadonly.noBillEnum }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.codeServiceId') }}
-              </label>
-              <CodeServiceSelect
-                v-model="formData.codeServiceId"
-                :selected-items="
-                  toSelectedItems(
-                    formData.codeServiceId,
-                    formData.codeServiceName,
-                    'cnName',
-                  )
-                "
-                class="w-full"
-                :placeholder="$t('ui.placeholder.select')"
-              />
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.codeFrtId') }}
-              </label>
-              <CodeFrtSelect
-                v-model="formData.codeFrtId"
-                :selected-items="
-                  toSelectedItems(
-                    formData.codeFrtId,
-                    formData.codeFrtName,
-                    'cnName',
-                  )
-                "
-                class="w-full"
-                :placeholder="$t('ui.placeholder.select')"
-              />
-            </div>
-            <div class="form-item">
-              <label class="field-label">
-                {{ $t('seaExport.export.prepareAtId') }}
-              </label>
-              <PortSelect
-                v-model="formData.prepareAtId"
-                :selected-items="
-                  toSelectedItems(
-                    formData.prepareAtId,
-                    formData.prepareAtName,
-                    'cnName',
-                  )
-                "
-                class="w-full"
-                :placeholder="$t('ui.placeholder.select')"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. 主单船期港口（默认折叠） -->
-        <div class="section-block">
-          <div
-            class="section-bar section-bar--toggle"
-            @click="masterVoyageExpanded = !masterVoyageExpanded"
-          >
-            <span>{{ $t('seaExport.export.separate.voyagePortSection') }}</span>
-            <span class="master-summary">{{ masterVoyageSummary }}</span>
+  <div class="separate-bill">
+    <Spin :spinning="loading || masterLoading">
+      <section class="separate-card separate-card--main">
+        <div class="separate-toolbar">
+          <div class="hbl-tabs">
+            <button
+              v-for="tab in tabItems"
+              :key="tab.key"
+              type="button"
+              class="hbl-tab"
+              :class="{ 'hbl-tab--active': activeTabKey === tab.key }"
+              @click="selectTab(tab.key)"
+            >
+              {{ tab.label }}
+            </button>
             <button
               type="button"
-              class="expand-btn"
-              @click.stop="masterVoyageExpanded = !masterVoyageExpanded"
+              class="hbl-add"
+              :title="$t('seaExport.export.separate.add')"
+              @click="addDraftTab"
             >
-              {{
-                masterVoyageExpanded
-                  ? $t('seaExport.export.separate.collapse')
-                  : $t('seaExport.export.separate.expand')
-              }}
+              <img
+                :src="addTabIcon"
+                alt=""
+                class="hbl-add__icon"
+                width="10"
+                height="10"
+              />
             </button>
           </div>
-          <div v-show="masterVoyageExpanded" class="voyage-grid">
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.etd')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.etd }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.atd')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.atd }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.eta')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.eta }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.closingTime')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.closingTime }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.vessel')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.vessel }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.innerVoyno')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.innerVoyno }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.receivePortId')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.receivePort }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.polId')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.pol }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.podId')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.pod }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.deliverPortId')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.deliverPort }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.poT1Id')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.pot1 }}</div>
-            </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.poT2Id')
-              }}</label>
-              <div class="readonly-text">{{ masterReadonly.pot2 }}</div>
-            </div>
-          </div>
+          <Space :size="8">
+            <Button
+              size="small"
+              :disabled="!editingId"
+              danger
+              @click="handleDelete"
+            >
+              {{ $t('common.delete') }}
+            </Button>
+            <Button
+              size="small"
+              class="separate-btn-print"
+              :loading="printing"
+              @click="handlePrint"
+            >
+              {{ $t('seaExport.export.separate.print') }}
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              class="separate-btn-save"
+              :loading="submitting"
+              @click="handleSubmit"
+            >
+              {{ $t('common.save') }}
+            </Button>
+          </Space>
         </div>
 
-        <!-- 3. 中区：左收发通 | 右货物 -->
-        <div class="mid-split">
+        <div class="main-split">
           <div class="party-col">
             <div class="party-block">
-              <div class="party-head">
-                <label class="field-label">{{
-                  $t('seaExport.export.shipperId')
-                }}</label>
+              <div class="inline-field">
+                <label class="inline-label inline-label--party">
+                  {{ $t('seaExport.export.separate.shipperLabel') }}
+                </label>
                 <ClientSelect
                   v-model="formData.shipperId"
                   :selected-items="
                     toSelectedItems(formData.shipperId, formData.shipperName)
                   "
                   industry-category="b"
-                  class="party-select"
+                  size="small"
+                  class="flex-1"
                   :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (value, option) =>
+                      onPartyClientChange('shipperName', value, option)
+                  "
                 />
               </div>
               <Input.TextArea
                 :value="formData.shipperContent"
                 :maxlength="1024"
-                :rows="3"
+                :rows="5"
                 class="party-textarea"
                 allow-clear
                 @update:value="(v) => (formData.shipperContent = v)"
               />
             </div>
+
             <div class="party-block">
-              <div class="party-head">
-                <label class="field-label">{{
-                  $t('seaExport.export.consigneeId')
-                }}</label>
+              <div class="inline-field">
+                <label class="inline-label inline-label--party">
+                  {{ $t('seaExport.export.separate.consigneeLabel') }}
+                </label>
                 <ClientSelect
                   v-model="formData.consigneeId"
                   :selected-items="
@@ -1000,517 +776,652 @@ onMounted(() => {
                     )
                   "
                   industry-category="e"
-                  class="party-select"
+                  size="small"
+                  class="flex-1"
                   :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (value, option) =>
+                      onPartyClientChange('consigneeName', value, option)
+                  "
                 />
               </div>
               <Input.TextArea
                 :value="formData.consigneeContent"
                 :maxlength="1024"
-                :rows="3"
+                :rows="5"
                 class="party-textarea"
                 allow-clear
                 @update:value="(v) => (formData.consigneeContent = v)"
               />
             </div>
+
             <div class="party-block">
-              <div class="party-head">
-                <div class="party-tab-row">
-                  <span class="notifier-tabs">
-                    <button
-                      type="button"
-                      class="notifier-tabs__item"
-                      :class="{
-                        'notifier-tabs__item--active':
-                          notifierPartyTab === 'notifier',
-                      }"
-                      @click="notifierPartyTab = 'notifier'"
-                    >
-                      {{ $t('seaExport.export.notifierId') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="notifier-tabs__item"
-                      :class="{
-                        'notifier-tabs__item--active':
-                          notifierPartyTab === 'secondNotifier',
-                      }"
-                      @click="notifierPartyTab = 'secondNotifier'"
-                    >
-                      {{ $t('seaExport.export.secondNotifierId') }}
-                    </button>
-                  </span>
-                </div>
+              <div class="inline-field">
+                <button
+                  type="button"
+                  class="party-switch"
+                  :class="{
+                    'party-switch--active': notifierPartyTab === 'notifier',
+                  }"
+                  @click="notifierPartyTab = 'notifier'"
+                >
+                  {{ $t('seaExport.export.separate.notifierLabel') }}
+                </button>
+                <button
+                  type="button"
+                  class="party-switch"
+                  :class="{
+                    'party-switch--active':
+                      notifierPartyTab === 'secondNotifier',
+                  }"
+                  @click="notifierPartyTab = 'secondNotifier'"
+                >
+                  {{ $t('seaExport.export.secondNotifierId') }}
+                </button>
                 <ClientSelect
-                  v-if="notifierPartyTab === 'notifier'"
+                  v-show="notifierPartyTab === 'notifier'"
                   v-model="formData.notifierId"
                   :selected-items="
                     toSelectedItems(formData.notifierId, formData.notifierName)
                   "
                   industry-category="h"
-                  class="party-select"
+                  size="small"
+                  class="flex-1"
                   :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (value, option) =>
+                      onPartyClientChange('notifierName', value, option)
+                  "
                 />
-                <div v-else class="readonly-text">
-                  {{ masterReadonly.secondNotifierName }}
-                </div>
+                <ClientSelect
+                  v-show="notifierPartyTab === 'secondNotifier'"
+                  v-model="formData.secondNotifierId"
+                  :selected-items="
+                    toSelectedItems(
+                      formData.secondNotifierId,
+                      formData.secondNotifierName,
+                    )
+                  "
+                  industry-category="h"
+                  size="small"
+                  class="flex-1"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (value, option) =>
+                      onPartyClientChange('secondNotifierName', value, option)
+                  "
+                />
               </div>
               <Input.TextArea
-                v-if="notifierPartyTab === 'notifier'"
+                v-show="notifierPartyTab === 'notifier'"
                 :value="formData.notifierContent"
                 :maxlength="1024"
-                :rows="3"
+                :rows="5"
                 class="party-textarea"
                 allow-clear
                 @update:value="(v) => (formData.notifierContent = v)"
               />
-              <div
-                v-else
-                class="readonly-text readonly-text--multiline readonly-text--compact"
-              >
-                {{
-                  masterReadonly.secondNotifierContent === '--'
-                    ? '--'
-                    : masterReadonly.secondNotifierContent
-                }}
-              </div>
+              <Input.TextArea
+                v-show="notifierPartyTab === 'secondNotifier'"
+                :value="formData.secondNotifierContent"
+                :maxlength="1024"
+                :rows="5"
+                class="party-textarea"
+                allow-clear
+                @update:value="(v) => (formData.secondNotifierContent = v)"
+              />
             </div>
-            <div class="party-block">
-              <div class="party-head">
-                <label class="field-label">{{
-                  $t('seaExport.export.overseasAgent')
-                }}</label>
+          </div>
+
+          <div class="meta-col">
+            <div class="meta-grid">
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.mblNum') }}
+                </label>
+                <Input
+                  size="small"
+                  readonly
+                  class="readonly-input"
+                  :value="masterReadonly.mblNum"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.separate.blNum') }}
+                </label>
+                <Input
+                  size="small"
+                  :value="formData.blNum"
+                  :maxlength="64"
+                  allow-clear
+                  @update:value="(v) => (formData.blNum = v)"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.issueType') }}
+                </label>
+                <CodeIssueTypeSelect
+                  v-model="formData.codeIssueTypeId"
+                  :selected-items="
+                    toSelectedItems(
+                      formData.codeIssueTypeId,
+                      formData.codeIssueTypeName,
+                      'billType',
+                    )
+                  "
+                  size="small"
+                  class="flex-1"
+                  :placeholder="$t('ui.placeholder.select')"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.noBillEnum') }}
+                </label>
+                <Input
+                  size="small"
+                  readonly
+                  class="readonly-input"
+                  :value="masterReadonly.noBillEnum"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.separate.serviceStatus') }}
+                </label>
+                <CodeServiceSelect
+                  v-model="formData.codeServiceId"
+                  :selected-items="
+                    toSelectedItems(
+                      formData.codeServiceId,
+                      formData.codeServiceName,
+                      'cnName',
+                    )
+                  "
+                  size="small"
+                  class="flex-1"
+                  :placeholder="$t('ui.placeholder.select')"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.separate.payMethod') }}
+                </label>
+                <CodeFrtSelect
+                  v-model="formData.codeFrtId"
+                  :selected-items="
+                    toSelectedItems(
+                      formData.codeFrtId,
+                      formData.codeFrtName,
+                      'cnName',
+                    )
+                  "
+                  size="small"
+                  class="flex-1"
+                  :placeholder="$t('ui.placeholder.select')"
+                />
+              </div>
+              <div class="inline-field meta-grid__span">
+                <label class="inline-label">
+                  {{ $t('seaExport.export.separate.agentLabel') }}
+                </label>
                 <ClientSelect
                   v-model="formData.podAgentId"
                   :selected-items="
                     toSelectedItems(formData.podAgentId, formData.podAgentName)
                   "
                   industry-category="q"
-                  class="party-select"
-                  :placeholder="$t('ui.placeholder.select')"
-                />
-              </div>
-              <Input.TextArea
-                :value="formData.podAgentContent"
-                :maxlength="1024"
-                :rows="3"
-                class="party-textarea"
-                allow-clear
-                @update:value="(v) => (formData.podAgentContent = v)"
-              />
-            </div>
-          </div>
-
-          <div class="cargo-col">
-            <div class="section-bar">
-              {{ $t('seaExport.export.separate.cargoSection') }}
-            </div>
-            <div class="cargo-grid cargo-grid--stack">
-              <div class="form-item">
-                <label class="field-label">{{
-                  $t('seaExport.export.marks')
-                }}</label>
-                <Input.TextArea
-                  :value="formData.marks"
-                  :rows="4"
-                  class="cargo-textarea"
-                  allow-clear
-                  @update:value="(v) => (formData.marks = v)"
-                />
-              </div>
-              <div class="form-item">
-                <label class="field-label">{{
-                  $t('seaExport.export.goodsDes')
-                }}</label>
-                <Input.TextArea
-                  :value="formData.goodsDes"
-                  :rows="6"
-                  class="cargo-textarea"
-                  allow-clear
-                  @update:value="(v) => (formData.goodsDes = v)"
-                />
-              </div>
-              <div class="cargo-metrics cargo-metrics--row">
-                <div class="form-item">
-                  <label class="field-label">{{
-                    $t('seaExport.export.pkgs')
-                  }}</label>
-                  <InputNumber
-                    :value="formData.pkgs"
-                    class="w-full"
-                    :min="0"
-                    :controls="false"
-                    @update:value="(v) => (formData.pkgs = v)"
-                  />
-                </div>
-                <div class="form-item">
-                  <label class="field-label">{{
-                    $t('seaExport.export.codePackageId')
-                  }}</label>
-                  <CodePackageSelect
-                    v-model="formData.codePackageId"
-                    :selected-items="
-                      toSelectedItems(
-                        formData.codePackageId,
-                        formData.codePackageName,
-                      )
-                    "
-                    class="w-full"
-                    :placeholder="$t('ui.placeholder.select')"
-                  />
-                </div>
-                <div class="form-item">
-                  <label class="field-label">{{
-                    $t('seaExport.export.kgs')
-                  }}</label>
-                  <InputNumber
-                    :value="formData.kgs"
-                    class="w-full"
-                    :min="0"
-                    :controls="false"
-                    :precision="2"
-                    @update:value="(v) => (formData.kgs = v)"
-                  />
-                </div>
-                <div class="form-item">
-                  <label class="field-label">{{
-                    $t('seaExport.export.cbm')
-                  }}</label>
-                  <InputNumber
-                    :value="formData.cbm"
-                    class="w-full"
-                    :min="0"
-                    :controls="false"
-                    :precision="2"
-                    @update:value="(v) => (formData.cbm = v)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. 装箱通栏（分票主操作） -->
-        <div class="ctn-block">
-          <div class="ctn-toolbar">
-            <span class="section-title">{{
-              $t('seaExport.export.separate.ctnTable')
-            }}</span>
-            <Space size="small">
-              <Button size="small" type="primary" ghost @click="addCtnRow">
-                + {{ $t('seaExport.export.separate.addCtn') }}
-              </Button>
-              <Button
-                size="small"
-                danger
-                ghost
-                :disabled="!selectedCtnKeys.length"
-                @click="removeCtnRows"
-              >
-                - {{ $t('common.delete') }}
-              </Button>
-              <Tooltip :title="$t('seaExport.export.separate.updateTotal')">
-                <Button size="small" @click="updateCargoTotalsFromCtn">
-                  {{ $t('seaExport.export.separate.updateTotal') }}
-                </Button>
-              </Tooltip>
-              <Tooltip
-                :title="$t('seaExport.export.separate.loadFromMasterTip')"
-              >
-                <Button
                   size="small"
-                  :loading="masterLoading"
-                  @click="confirmLoadFromMaster"
-                >
-                  {{ $t('seaExport.export.separate.loadFromMaster') }}
-                </Button>
-              </Tooltip>
-            </Space>
-          </div>
-          <Table
-            :data-source="ctnList"
-            :columns="ctnColumns"
-            :row-selection="{
-              selectedRowKeys: selectedCtnKeys,
-              onChange: (keys) => {
-                selectedCtnKeys = keys;
-              },
-            }"
-            :pagination="false"
-            :scroll="{ x: 1400, y: 220 }"
-            size="small"
-            bordered
-            row-key="_rowKey"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'ctnCodeId'">
-                <CtnSelect
-                  :model-value="record.ctnCodeId"
-                  :selected-items="
-                    toSelectedItems(
-                      record.ctnCodeId,
-                      record.ctnCodeName,
-                      'ctnName',
-                    )
-                  "
-                  class="w-full min-w-[100px]"
+                  class="flex-1"
                   :placeholder="$t('ui.placeholder.select')"
-                  @update:model-value="
-                    (v) => updateCtnRow(index, 'ctnCodeId', v)
-                  "
                 />
-              </template>
-              <template v-else-if="column.key === 'ctnNo'">
-                <Input
-                  :value="record.ctnNo"
-                  :maxlength="32"
-                  allow-clear
-                  @update:value="(v) => updateCtnRow(index, 'ctnNo', v)"
-                />
-              </template>
-              <template v-else-if="column.key === 'sealNo'">
-                <Input
-                  :value="record.sealNo"
-                  :maxlength="32"
-                  allow-clear
-                  @update:value="(v) => updateCtnRow(index, 'sealNo', v)"
-                />
-              </template>
-              <template v-else-if="column.key === 'pkgs'">
-                <InputNumber
-                  :value="record.pkgs"
-                  class="w-full"
-                  :min="0"
-                  :controls="false"
-                  @update:value="(v) => updateCtnRow(index, 'pkgs', v)"
-                />
-              </template>
-              <template v-else-if="column.key === 'codePackageId'">
-                <CodePackageSelect
-                  :model-value="record.codePackageId"
-                  :selected-items="
-                    toSelectedItems(
-                      record.codePackageId,
-                      record.codePackageName,
-                    )
-                  "
-                  class="w-full min-w-[90px]"
-                  :placeholder="$t('ui.placeholder.select')"
-                  @update:model-value="
-                    (v) => updateCtnRow(index, 'codePackageId', v)
-                  "
-                />
-              </template>
-              <template v-else-if="isMeasureCtnField(column.key)">
-                <InputNumber
-                  :value="getCtnFieldValue(record, column.key)"
-                  class="w-full"
-                  :min="0"
-                  :controls="false"
-                  :precision="2"
-                  @update:value="
-                    (v) => updateCtnMeasureRow(index, column.key, v)
-                  "
-                />
-              </template>
-              <template v-else-if="column.key === 'codeGoodsId'">
-                <CodeGoodsSelect
-                  :model-value="record.codeGoodsId"
-                  :selected-items="
-                    toSelectedItems(record.codeGoodsId, record.codeGoodsName)
-                  "
-                  class="w-full min-w-[90px]"
-                  :placeholder="$t('ui.placeholder.select')"
-                  @update:model-value="
-                    (v) => updateCtnRow(index, 'codeGoodsId', v)
-                  "
-                />
-              </template>
-              <template v-else-if="column.key === 'bookingNo'">
-                <Input
-                  :value="record.bookingNo"
-                  :maxlength="64"
-                  allow-clear
-                  @update:value="(v) => updateCtnRow(index, 'bookingNo', v)"
-                />
-              </template>
-              <template v-else-if="column.key === 'remark'">
-                <Input
-                  :value="record.remark"
-                  :maxlength="1024"
-                  allow-clear
-                  @update:value="(v) => updateCtnRow(index, 'remark', v)"
-                />
-              </template>
-            </template>
-          </Table>
-        </div>
+              </div>
+            </div>
 
-        <!-- 5. 签单信息 -->
-        <div class="section-block">
-          <div class="section-bar">
-            {{ $t('seaExport.export.separate.signingSection') }}
+            <Input.TextArea
+              :value="formData.podAgentContent"
+              :maxlength="1024"
+              :rows="5"
+              class="agent-textarea"
+              allow-clear
+              @update:value="(v) => (formData.podAgentContent = v)"
+            />
+
+            <div class="ctn-block">
+              <div class="ctn-head">
+                <span class="ctn-title">
+                  {{ $t('seaExport.export.separate.ctnTable') }}
+                </span>
+                <Space :size="6">
+                  <Button size="small" type="link" @click="addCtnRow">
+                    + {{ $t('seaExport.export.separate.addCtn') }}
+                  </Button>
+                  <Button
+                    size="small"
+                    type="link"
+                    danger
+                    :disabled="!selectedCtnKeys.length"
+                    @click="removeCtnRows"
+                  >
+                    - {{ $t('common.delete') }}
+                  </Button>
+                  <Tooltip :title="$t('seaExport.export.separate.updateTotal')">
+                    <Button
+                      size="small"
+                      type="link"
+                      @click="updateCargoTotalsFromCtn"
+                    >
+                      {{ $t('seaExport.export.separate.updateTotal') }}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip
+                    :title="$t('seaExport.export.separate.loadFromMasterTip')"
+                  >
+                    <Button
+                      size="small"
+                      type="link"
+                      :loading="masterLoading"
+                      @click="confirmLoadFromMaster"
+                    >
+                      {{ $t('seaExport.export.separate.loadFromMaster') }}
+                    </Button>
+                  </Tooltip>
+                </Space>
+              </div>
+              <Table
+                class="ctn-table"
+                :data-source="ctnList"
+                :columns="ctnColumns"
+                :row-selection="{
+                  selectedRowKeys: selectedCtnKeys,
+                  onChange: (keys) => {
+                    selectedCtnKeys = keys;
+                  },
+                }"
+                :pagination="false"
+                :scroll="{ x: 980, y: 108 }"
+                size="small"
+                bordered
+                row-key="_rowKey"
+              >
+                <template #bodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'seq'">
+                    {{ index + 1 }}
+                  </template>
+                  <template v-else-if="column.key === 'ctnCodeId'">
+                    <CtnSelect
+                      :model-value="record.ctnCodeId"
+                      :selected-items="
+                        toSelectedItems(
+                          record.ctnCodeId,
+                          record.ctnCodeName,
+                          'ctnName',
+                        )
+                      "
+                      size="small"
+                      class="w-full min-w-[72px]"
+                      :placeholder="$t('ui.placeholder.select')"
+                      @update:model-value="
+                        (v) => updateCtnRow(index, 'ctnCodeId', v)
+                      "
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'ctnNo'">
+                    <Input
+                      size="small"
+                      :value="record.ctnNo"
+                      :maxlength="32"
+                      allow-clear
+                      @update:value="(v) => updateCtnRow(index, 'ctnNo', v)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'sealNo'">
+                    <Input
+                      size="small"
+                      :value="record.sealNo"
+                      :maxlength="32"
+                      allow-clear
+                      @update:value="(v) => updateCtnRow(index, 'sealNo', v)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'pkgs'">
+                    <InputNumber
+                      size="small"
+                      :value="record.pkgs"
+                      class="w-full"
+                      :min="0"
+                      :controls="false"
+                      @update:value="(v) => updateCtnRow(index, 'pkgs', v)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'codePackageId'">
+                    <CodePackageSelect
+                      :model-value="record.codePackageId"
+                      :selected-items="
+                        toSelectedItems(
+                          record.codePackageId,
+                          record.codePackageName,
+                        )
+                      "
+                      size="small"
+                      class="w-full min-w-[72px]"
+                      :placeholder="$t('ui.placeholder.select')"
+                      @update:model-value="
+                        (v) => updateCtnRow(index, 'codePackageId', v)
+                      "
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'grossWeight'">
+                    <InputNumber
+                      size="small"
+                      :value="record.grossWeight"
+                      class="w-full"
+                      :min="0"
+                      :controls="false"
+                      :precision="2"
+                      @update:value="
+                        (v) => updateCtnRow(index, 'grossWeight', v)
+                      "
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'volume'">
+                    <InputNumber
+                      size="small"
+                      :value="record.volume"
+                      class="w-full"
+                      :min="0"
+                      :controls="false"
+                      :precision="3"
+                      @update:value="(v) => updateCtnRow(index, 'volume', v)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'tareWeight'">
+                    <InputNumber
+                      size="small"
+                      :value="record.tareWeight"
+                      class="w-full"
+                      :min="0"
+                      :controls="false"
+                      :precision="2"
+                      @update:value="
+                        (v) => updateCtnRow(index, 'tareWeight', v)
+                      "
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'remark'">
+                    <Input
+                      size="small"
+                      :value="record.remark"
+                      :maxlength="1024"
+                      allow-clear
+                      @update:value="(v) => updateCtnRow(index, 'remark', v)"
+                    />
+                  </template>
+                </template>
+              </Table>
+            </div>
           </div>
-          <div class="signing-grid">
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.issueType')
-              }}</label>
-              <CodeIssueTypeSelect
-                v-model="formData.codeIssueTypeId"
-                :selected-items="
-                  toSelectedItems(
-                    formData.codeIssueTypeId,
-                    formData.codeIssueTypeName,
-                    'billType',
-                  )
-                "
-                class="w-full"
-                :placeholder="$t('ui.placeholder.select')"
+        </div>
+      </section>
+
+      <section class="separate-card">
+        <div class="section-title">
+          <span class="section-title__icon" aria-hidden="true">◉</span>
+          {{ $t('seaExport.export.separate.voyagePortSection') }}
+        </div>
+        <div class="voyage-grid">
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.separate.etdLabel') }}
+            </label>
+            <Input
+              size="small"
+              readonly
+              class="readonly-input"
+              :value="masterReadonly.etd"
+            />
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.eta') }}
+            </label>
+            <Input
+              size="small"
+              readonly
+              class="readonly-input"
+              :value="masterReadonly.eta"
+            />
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.vessel') }}
+            </label>
+            <Input
+              size="small"
+              readonly
+              class="readonly-input"
+              :value="masterReadonly.vessel"
+            />
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.separate.voyageNo') }}
+            </label>
+            <Input
+              size="small"
+              readonly
+              class="readonly-input"
+              :value="masterReadonly.innerVoyno"
+            />
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.receivePortId') }}
+            </label>
+            <div class="port-pair">
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__code"
+                :value="masterReadonly.receivePortCode"
+              />
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__name"
+                :value="masterReadonly.receivePortName"
               />
             </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.signingTime')
-              }}</label>
-              <DatePicker
-                :value="formData.signingTime"
-                class="w-full"
-                show-time
-                format="YYYY-MM-DD HH:mm"
-                @update:value="(v) => (formData.signingTime = v)"
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.polId') }}
+            </label>
+            <div class="port-pair">
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__code"
+                :value="masterReadonly.polCode"
+              />
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__name"
+                :value="masterReadonly.polName"
               />
             </div>
-            <div class="form-item">
-              <label class="field-label">{{
-                $t('seaExport.export.signingPortId')
-              }}</label>
-              <PortSelect
-                v-model="formData.signingPortId"
-                :selected-items="
-                  toSelectedItems(
-                    formData.signingPortId,
-                    formData.signingPortName,
-                    'cnName',
-                  )
-                "
-                class="w-full"
-                :placeholder="$t('ui.placeholder.select')"
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.podId') }}
+            </label>
+            <div class="port-pair">
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__code"
+                :value="masterReadonly.podCode"
+              />
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__name"
+                :value="masterReadonly.podName"
+              />
+            </div>
+          </div>
+          <div class="inline-field">
+            <label class="inline-label">
+              {{ $t('seaExport.export.deliverPortId') }}
+            </label>
+            <div class="port-pair">
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__code"
+                :value="masterReadonly.deliverPortCode"
+              />
+              <Input
+                size="small"
+                readonly
+                class="readonly-input port-pair__name"
+                :value="masterReadonly.deliverPortName"
               />
             </div>
           </div>
         </div>
-      </div>
-    </Modal>
+      </section>
+
+      <section class="separate-card">
+        <div class="section-title">
+          <span class="section-title__icon" aria-hidden="true">◉</span>
+          {{ $t('seaExport.export.separate.cargoSection') }}
+        </div>
+        <div class="cargo-grid">
+          <div class="cargo-field">
+            <label class="stack-label">
+              {{ $t('seaExport.export.separate.marksLabel') }}
+            </label>
+            <Input.TextArea
+              :value="formData.marks"
+              class="cargo-textarea"
+              allow-clear
+              @update:value="(v) => (formData.marks = v)"
+            />
+          </div>
+          <div class="cargo-field">
+            <label class="stack-label">
+              {{ $t('seaExport.export.separate.goodsDesLabel') }}
+            </label>
+            <Input.TextArea
+              :value="formData.goodsDes"
+              class="cargo-textarea"
+              allow-clear
+              @update:value="(v) => (formData.goodsDes = v)"
+            />
+          </div>
+          <div class="cargo-metrics">
+            <div class="cargo-field">
+              <label class="stack-label">
+                {{ $t('seaExport.export.pkgs') }}
+              </label>
+              <InputNumber
+                size="small"
+                :value="formData.pkgs"
+                class="w-full"
+                :min="0"
+                :controls="false"
+                @update:value="(v) => (formData.pkgs = v)"
+              />
+            </div>
+            <div class="cargo-field">
+              <label class="stack-label">
+                {{ $t('seaExport.export.codePackageId') }}
+              </label>
+              <CodePackageSelect
+                v-model="formData.codePackageId"
+                :selected-items="
+                  toSelectedItems(
+                    formData.codePackageId,
+                    formData.codePackageName,
+                  )
+                "
+                size="small"
+                class="w-full"
+                :placeholder="$t('ui.placeholder.select')"
+              />
+            </div>
+            <div class="cargo-field">
+              <label class="stack-label">
+                {{ $t('seaExport.export.separate.grossWeightKgs') }}
+              </label>
+              <InputNumber
+                size="small"
+                :value="formData.kgs"
+                class="w-full"
+                :min="0"
+                :controls="false"
+                :precision="2"
+                @update:value="(v) => (formData.kgs = v)"
+              />
+            </div>
+            <div class="cargo-field">
+              <label class="stack-label">
+                {{ $t('seaExport.export.separate.volumeCbm') }}
+              </label>
+              <InputNumber
+                size="small"
+                :value="formData.cbm"
+                class="w-full"
+                :min="0"
+                :controls="false"
+                :precision="3"
+                @update:value="(v) => (formData.cbm = v)"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    </Spin>
   </div>
 </template>
 
 <style scoped>
-.separate-form {
+.separate-bill {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 14px;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+  background: #f7fafc;
 }
 
-.field-label {
-  margin-bottom: 4px;
-  font-size: 12px;
-  line-height: 1.2;
-  color: rgb(107 114 128);
-}
-
-.form-item {
+.separate-bill :deep(.ant-spin-nested-loading),
+.separate-bill :deep(.ant-spin-container) {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  min-width: 0;
+  gap: 12px;
 }
 
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px 12px;
-}
-
-.mid-split {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.party-col,
-.cargo-col {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.party-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.party-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.party-tab-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.notifier-tabs {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.notifier-tabs__item {
-  padding: 4px 8px;
-  font-size: 11px;
-  line-height: 1;
-  color: #595959;
-  cursor: pointer;
+.separate-card {
+  padding: 10px 12px 12px;
   background: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border: 1px solid #e4e8ef;
+  border-radius: 6px;
 }
 
-.notifier-tabs__item--active {
-  font-weight: 600;
-  color: #1677ff;
-  background: #e6f4ff;
-  border-color: #91caff;
-}
-
-.party-head .field-label {
-  margin-bottom: 0;
-}
-
-.party-select {
-  width: 100%;
-  min-width: 0;
-}
-
-.party-textarea :deep(textarea) {
-  resize: vertical;
-}
-
-.ctn-block {
+.separate-card--main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+  gap: 10px;
 }
 
-.ctn-toolbar {
+.separate-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1518,130 +1429,350 @@ onMounted(() => {
   justify-content: space-between;
 }
 
-.section-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgb(75 85 99);
+.hbl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
 }
 
-.section-block {
+.hbl-tab {
+  min-width: 88px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #8c95a3;
+  text-align: center;
+  cursor: pointer;
+  background: #eff1f5;
+  border: 0;
+  border-radius: 3px;
+}
+
+.hbl-tab--active {
+  color: #3389eb;
+  background: rgb(51 137 235 / 15%);
+}
+
+.hbl-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  cursor: pointer;
+  background: rgb(51 137 235 / 15%);
+  border: 0;
+  border-radius: 3px;
+}
+
+.hbl-add__icon {
+  display: block;
+  width: 10px;
+  height: 10px;
+}
+
+.separate-btn-print {
+  min-width: 52px;
+  color: #252a31;
+  background: #fff;
+  border-color: #e4e8ef;
+}
+
+.separate-btn-save {
+  min-width: 52px;
+  background: #006ce6;
+  border-color: #006ce6;
+}
+
+.main-split {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.party-col,
+.meta-col,
+.party-block,
+.ctn-block,
+.cargo-field,
+.cargo-metrics {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  min-width: 0;
 }
 
-.section-bar {
+.party-col,
+.meta-col {
+  gap: 10px;
+}
+
+.party-block {
+  gap: 6px;
+}
+
+.inline-field {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: rgb(55 65 81);
-}
-
-.section-bar::before {
-  width: 3px;
-  height: 14px;
-  content: '';
-  background: hsl(var(--primary));
-  border-radius: 2px;
-}
-
-.section-bar--toggle {
-  cursor: pointer;
-  user-select: none;
-}
-
-.master-summary {
-  flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 12px;
-  font-weight: 400;
-  color: rgb(107 114 128);
-  white-space: nowrap;
 }
 
-.expand-btn {
-  padding: 2px 8px;
+.inline-label {
+  flex-shrink: 0;
+  width: 56px;
   font-size: 12px;
-  color: #1677ff;
+  line-height: 16px;
+  color: #8c95a3;
+  text-align: right;
+}
+
+.inline-label--party {
+  width: 118px;
+  text-align: left;
+}
+
+.meta-grid .inline-label {
+  text-align: left;
+}
+
+.party-switch {
+  flex-shrink: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8c95a3;
   cursor: pointer;
   background: transparent;
-  border: none;
+  border: 0;
+}
+
+.party-switch--active {
+  font-weight: 500;
+  color: #3389eb;
+}
+
+.party-textarea :deep(textarea),
+.agent-textarea :deep(textarea) {
+  min-height: 85px;
+  font-size: 12px;
+  line-height: 18px;
+  resize: vertical;
+  background: #fcfdfe;
+  border-color: #e4e8ef;
+  border-radius: 5px;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.meta-grid__span {
+  grid-column: 1 / -1;
+}
+
+.readonly-input,
+.separate-bill :deep(.ant-input:not(textarea)),
+.separate-bill :deep(.ant-input-affix-wrapper),
+.separate-bill
+  :deep(.ant-select:not(.ant-select-multiple) .ant-select-selector),
+.separate-bill :deep(.ant-input-number) {
+  background: #fcfdfe;
+  border-color: #e4e8ef;
+  border-radius: 5px;
+}
+
+.readonly-input,
+.readonly-input.ant-input[readonly] {
+  color: #8c95a3;
+  cursor: default;
+  background: rgb(228 232 239 / 60%);
+}
+
+.separate-bill
+  :deep(.ant-input:not(textarea):not([readonly]):not(:disabled):hover),
+.separate-bill
+  :deep(.ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover),
+.separate-bill
+  :deep(.ant-select:not(.ant-select-disabled):hover .ant-select-selector),
+.separate-bill :deep(.ant-input-number:not(.ant-input-number-disabled):hover) {
+  border-color: #4096ff;
+}
+
+.separate-bill
+  :deep(.ant-input:not(textarea):not([readonly]):not(:disabled):focus),
+.separate-bill
+  :deep(
+    .ant-input-affix-wrapper-focused:not(.ant-input-affix-wrapper-disabled)
+  ),
+.separate-bill
+  :deep(.ant-select-focused:not(.ant-select-disabled) .ant-select-selector),
+.separate-bill
+  :deep(.ant-input-number-focused:not(.ant-input-number-disabled)) {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgb(5 145 255 / 10%);
+}
+
+.party-textarea :deep(textarea:hover),
+.agent-textarea :deep(textarea:hover),
+.cargo-textarea :deep(textarea:hover) {
+  border-color: #4096ff;
+}
+
+.party-textarea :deep(textarea:focus),
+.agent-textarea :deep(textarea:focus),
+.cargo-textarea :deep(textarea:focus) {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgb(5 145 255 / 10%);
+}
+
+.ctn-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ctn-title {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #3389eb;
+}
+
+.ctn-table :deep(.ant-table-thead > tr > th) {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #252a31;
+  background: #f7fafc;
+}
+
+.ctn-table :deep(.ant-table-tbody > tr > td) {
+  height: 32px;
+  padding: 2px 4px;
+}
+
+.section-title {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #3389eb;
+}
+
+.section-title__icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: #3389eb;
 }
 
 .voyage-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px 12px;
+  gap: 8px 16px;
 }
 
-.signing-grid {
+.port-pair {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+
+.port-pair__code {
+  flex-shrink: 0;
+  width: 72px;
+}
+
+.port-pair__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.cargo-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 12px;
+  grid-template-columns: minmax(180px, 272fr) minmax(280px, 624fr) minmax(
+      180px,
+      272fr
+    );
+  gap: 12px;
+  align-items: stretch;
 }
 
-.readonly-text {
+.cargo-grid > .cargo-field {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+
+.stack-label {
+  flex-shrink: 0;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #8c95a3;
+}
+
+.cargo-textarea {
+  height: 100%;
+  min-height: 0;
+}
+
+.cargo-textarea :deep(.ant-input-affix-wrapper) {
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 4px 0 6px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: rgb(31 41 55);
-  overflow-wrap: anywhere;
-  border-bottom: 1px dashed rgb(229 231 235);
-}
-
-.readonly-text--multiline {
-  align-items: flex-start;
-  min-height: 72px;
-  padding: 8px 0;
-  white-space: pre-wrap;
-  border-bottom: none;
-}
-
-.readonly-text--compact {
-  min-height: 64px;
-}
-
-.cargo-grid--stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  width: 100%;
+  height: 100% !important;
 }
 
 .cargo-textarea :deep(textarea) {
-  resize: vertical;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0;
+  font-size: 12px;
+  line-height: 17px;
+  resize: none;
+  background: #fcfdfe;
+  border-color: #e4e8ef;
+  border-radius: 5px;
 }
 
-.cargo-metrics--row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.cargo-metrics {
   gap: 8px;
+  justify-content: flex-start;
 }
 
-.separate-container :deep(.ant-table-tbody > tr.ant-table-row-selected > td),
-.separate-container
-  :deep(.ant-table-tbody > tr.ant-table-row-selected:hover > td),
-.separate-container
-  :deep(
-    .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover
-  ) {
+.cargo-metrics > .cargo-field {
+  flex: none;
+}
+
+.separate-bill :deep(.ant-table-tbody > tr.ant-table-row-selected > td),
+.separate-bill :deep(.ant-table-tbody > tr.ant-table-row-selected:hover > td) {
   background: hsl(var(--primary) / 15%) !important;
 }
 
 @media (max-width: 1100px) {
+  .main-split,
   .meta-grid,
-  .mid-split,
   .voyage-grid,
-  .signing-grid,
-  .cargo-metrics--row {
-    grid-template-columns: 1fr 1fr;
+  .cargo-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

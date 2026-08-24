@@ -13,6 +13,9 @@
 
 ## 2026-08
 
+- [2026-08-24 分单货物明细唛头/货描底边与右侧对齐](./changelogs/change-log-2026-08-24-separate-bill-cargo-align.md)
+- [2026-08-24 分单第二通知人切换后可编辑](./changelogs/change-log-2026-08-24-separate-bill-second-notifier-editable.md)
+- [2026-08-24 分单 Tab 按 Figma 改为页内工作台](./changelogs/change-log-2026-08-24-separate-bill-figma-layout.md)
 - [2026-08-24 付费申请列表增加提交与撤销](./changelogs/change-log-2026-08-24-payment-application-list-submit-revoke.md)
 - [2026-08-24 业务联系单编辑页增加复制新建](./changelogs/change-log-2026-08-24-pre-order-editor-copy-create.md)
 - [2026-08-24 权限树优先展示接口中文名](./changelogs/change-log-2026-08-24-permission-tree-display-name.md)

@@ -51,7 +51,7 @@ last_updated: 2026-08-24
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **监装工单：** Tab 文案为「监装」，位于派车与分单之间；需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 且有 `.Add` 时直接进入新建表单（不先点「新建」）；无 `.Add` 才显示空态。版式按 Figma 节点几何：工号只在基础信息第一格（带复制），顶栏仅状态 +「保存 / 提交 / 删除」；五列栅格（列间距 13px、行间距 12px），控件用默认 middle 高度；第三行预计到货/堆场/师傅各占一列，师傅为多选（人数不限）；堆场标签旁橙色「推荐」可点：先选预计到货时间且已保存船公司，弹窗调 `GetYardUsersAsync`，单选一行后回填堆场与师傅（接口只回名称，前端对本地 id）；监装要求已选标签区常驻一行高度，避免 0→1 勾选抖动；详细说明读写工单 `remark`（高 62px，最长 1024，未提交可改）；集装箱 32px 浅蓝标题条，列表头 36/行 50，照片采集按钮 123×30 用稿面相机 SVG。**明细包装与堆场的候选项只认已保存的海运出口**（基础信息未点保存不会带到监装；切回监装 Tab 会重拉堆场）。无船公司与船公司未维护堆场时下拉不禁用、打开为空列表，用不同空态文案。师傅 `userAttribute=512`，人数前后端都不卡。按状态：未提交（保存/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。工单号由后端按 `LoadingOrder.LoadingOrderNum` 生成。干系人里的「监装」与工单师傅列表是两套，互不同步。
-- **分单处理：** 分单弹窗按业务动线：身份+运费条款 → 船期港口（可折叠）→ 左收发通/国外代理｜右货物 → 装箱通栏 → 签单。**新增默认**只带主单条款与装箱，不带收发通/货描；「读入主单」才整包覆盖。主单只读字段仍展示但不提交。
+- **分单处理：** Tab 内按 [Figma 分单稿](https://www.figma.com/design/6Fp1XCtTc0rfw2hLtZCOCn/Untitled?node-id=24-654) 做成页内工作台，不再用列表+弹窗。顶栏用分提单号胶囊切换已保存分单，蓝色「+」开新草稿；右侧「删除 / 打印 / 保存」。主卡左列收发通（Shipper / Consignee / Notify Party 与第二通知人切换，二者都是下拉+地址，切过去即可改；第二通知人从主单带出，不随分单保存），右列主/分提单号、签单方式、提单份数（主单只读 `noBillEnum/copyNoBillEnum`）、运输条款、付费方式、代理及装箱明细表。其下两张白卡：船期与港口（ETD/预抵/船名/船次及收货地·起运港·目的港·交货地代码+名称，全部主单只读）、货物明细（唛头、货描大文本底边与右侧件数/包装/毛重/体积齐平）。**新增默认**只带主单条款与装箱，不带收发通/货描；装箱标题栏「读入主单」才整包覆盖。打印走海出 `PrintJsonType=0`。切换分单 Tab 若有未保存修改会确认丢弃。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，`bizType=0`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput` + `bizType=0`。模板列表走非管理端接口并按当票签单方式/船公司/分公司/业务类型筛选（`bizType` 相等或为空）。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。`isEditable === false` 时保存禁用、复制拆成独立按钮以免被一起禁用。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
@@ -80,7 +80,7 @@ last_updated: 2026-08-24
 | 费用提交审核 | 审核驳回 | 驳回 | 费用回到可修正状态，具体可编辑范围以后端状态规则为准。 |
 | 费用已审核或结算中 | 申请修改/删除 | 申请修改/申请删除 | 通过审核任务处理已进入管控状态的费用变动。 |
 | 费用锁定 | 用户进入更改单 | 更改单承载变更 | 更改单记录变更原因与费用列表，保留锁费状态和锁费人/时间。 |
-| 派车/分单标签 | 新增或编辑弹窗提交 | 子记录更新 | 子模块以 `seaExportId` 作为外键保存并刷新分页列表。 |
+| 派车/分单标签 | 页内保存当前分单 | 子记录更新 | 分单以 `seaExportId` 为外键；保存后刷新 Tab 列表并停留在刚保存的分提单。 |
 
 # 4. 核心字段说明 (Field Definitions)
 
@@ -101,7 +101,7 @@ last_updated: 2026-08-24
 | **费用状态** | 费用生命周期状态。 | `getFeeStatusOptions` | **触发/依赖：** 录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。 | 不同状态下可编辑范围不同，需以后端和费用表格逻辑为准。 |
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
-| **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
+| **分单记录** | 分票提单及其货物/箱明细；页内按分提单号 Tab 编辑。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 分页（`pageSize=100`）列出并保存；装箱列对齐稿面（序号/箱型/箱号/封号/件数/包装/重量/尺码/箱皮重/备注）；船期港口只读自主单；第二通知人从主单带出、界面可改，不写分单 DTO。 | 子记录需绑定当前海出 ID。 |
 | **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；点击文件打开 `AttachmentViewerModal` 预览。 | 上传需 `Admin.SeaExport.Edit`；新上传 `clientVisible` 默认 `false`。 |
 | **客户可见（clientVisible）** | 单个附件对客户端是否可见。 | `AttachmentItemDto.clientVisible` / `Attachment.UpdateAttachmentItemsClientVisibleAsync`（PUT） | **触发/依赖：** 文件项 `Switch` 单条切换；卡片标题行 `Checkbox` 按类型批量切换（全选/半选由各文件计算）；入参 `[{ id: AttachmentItem.id, clientVisible }]`。 | 需 `Admin.SeaExport.Edit`；`id<=0` 忽略，空集合不报错。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
@@ -135,11 +135,16 @@ last_updated: 2026-08-24
 > [!IMPORTANT] **[卡点 8：干系人角色靠 `SeaExportUserAttribute` 枚举，`extra1` 决定默认展示]** 枚举名大小写敏感，写错或未配置时面板只剩销售与操作；角色加进枚举但未勾 `extra1` 时只能从「+ 添加角色」手动加，不会默认出现。服务项配置的用户属性下拉仍是固定 6 项，未随本次改动走枚举。
 
 > [!IMPORTANT] **[卡点 9：能看 ≠ 能改]** 详情按查询口径，编辑/删除/重新生成委托编号按 `isEditable`（编辑口径）。缺字段按 false。不要用功能权限代替行级字段，也不要读 `transportOrder.isEditable`。
+>
+> **[卡点 10：分单没有第二通知人字段]** 分单 Tab 第二通知人从主单带出，界面可改，但 `SeaExportSeparate` 无对应列，分单保存不会写入。要落库请改基础信息并保存主单。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-24 | `Style` | 分单货物明细唛头、货描文本框底边与右侧件数/包装/毛重/体积对齐；标签到输入框间距仍为 6px。 | 两列 `auto 1fr` 只拉高文本框。详见 `changelogs/change-log-2026-08-24-separate-bill-cargo-align.md`。 |
+| 2026-08-24 | `Fix` | 分单切到第二通知人后可改客户和下拉地址，不再只读。 | 分单实体无该字段，仍从主单带出、不随分单保存。详见 `changelogs/change-log-2026-08-24-separate-bill-second-notifier-editable.md`。 |
+| 2026-08-24 | `Style` | 分单 Tab 按 Figma 改为页内多提单胶囊工作台：左收发通、右条款+代理+装箱，下方船期港口与货物明细；去掉列表弹窗。 | 新增默认仍只带条款+箱；船期港口只读主单（港口拆代码/名称）；打印复用海出 `PrintJsonType=0`。详见 `changelogs/change-log-2026-08-24-separate-bill-figma-layout.md`。 |
 | 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的海出编辑页不再跟着别人地址栏的 `:id` 拉详情。 | `useKeepAliveRouteParamId` 只认本实例 path；路由先变、停用后到时也不抢跑。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive：切走提示后缓存草稿；点 X 才销毁。离开时基础信息或应收应付任一未落库都算脏。 | 路由 `keepAlive` + `defineOptions({ name: 'SeaExportEdit' })`；费用表快照见 `fee-table-dirty.ts`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
