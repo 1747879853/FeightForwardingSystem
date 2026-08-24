@@ -89,7 +89,7 @@ pnpm deploy:antd:demo
 
 | 品牌 | env 文件 | 当前 API |
 | --- | --- | --- |
-| 津海通 (jht) | `.env.jht` | `https://api.jinhaitone.com/api` |
+| 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
 | 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://118.190.1.4:82/api` |
 | 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
 | 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
@@ -107,7 +107,7 @@ Get-Content dist/_app.config.js
 
 | 打包方式 | `_app.config.js` 实际读取的 env | jht 打包结果 |
 | --- | --- | --- |
-| `pnpm build:jht` / `pnpm build:antd:jht` ✅ | `.env.jht` | API = https://api.jinhaitone.com/api |
+| `pnpm build:jht` / `pnpm build:antd:jht` ✅ | `.env.jht` | API = 43.138.14.122:82 |
 | `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 118.190.1.4:82 |
 
 原因：`internal/vite-config` 生成 `_app.config.js` 时，`getConfFiles()` 从 `npm_lifecycle_script` 解析 `--mode`，绕过 npm script 直接调 vite 时解析失败，回退到 `production`。
@@ -144,7 +144,8 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
-| 2026-08-24 | `Fix` | 津海通生产接口改为 `https://api.jinhaitone.com/api` | `.env.jht` 与 `vite.config.mts` 本地代理同步；域名解析到原 `43.138.14.122`，HTTPS 避免前端站点混合内容拦截 |
+| 2026-08-24 | `Revert` | 撤回津海通 HTTPS 域名，生产接口改回 `http://43.138.14.122:82/api` | `.env.jht` 与 `vite.config.mts` 代理同步回滚；须重新 `build:jht` 后再发布 |
+| 2026-08-24 | `Fix` | 津海通生产接口改为 `https://api.jinhaitone.com/api` | 该改动已撤回，见上一行 |
 | 2026-08-17 | `Feature` | 本地全量发布改为按品牌独立 `dist-<品牌>` 并行打包与 MSDeploy；hhyy 仍走 GitHub Actions | `publish-all-web.ps1` 共享 prebuild 后按 `-ThrottleLimit` 并行；`--outDir` 才隔离 public，未传参时默认 `dist` 不变 |
 | 2026-08-17 | `Feature` | 龙山接入 `publish-web.ps1` / `deploy:antd:longshan`，目标 `175.178.101.30` / `longshan-web` | 凭据仅写本地 `publish-config.local.json`；批量发布顺序增加 longshan |
 | 2026-08-11 | `Feature` | 新增龙山（longshan）独立开发与打包命令，后端 175.178.101.30:86；登录背景视频用 `longshan.mp4` | 新增 `.env.longshan`、`build:longshan`/`dev:longshan`；`brand-assets.ts` 与 `vite.config.mts` 注册 `longshan` 素材目录；视频 OSS Key=`longshan.mp4` |

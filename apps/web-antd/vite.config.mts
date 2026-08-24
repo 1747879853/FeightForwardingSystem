@@ -84,7 +84,7 @@ function resolveSidebarLogoSrc(brandImgDir: string) {
 function resolveApiTarget(mode: string) {
   const brand = resolveAppBrand(mode);
   if (brand === 'jht') {
-    return 'https://api.jinhaitone.com';
+    return 'http://43.138.14.122:82';
   }
   if (brand === 'sjtd') {
     return 'http://43.138.14.122:84';
