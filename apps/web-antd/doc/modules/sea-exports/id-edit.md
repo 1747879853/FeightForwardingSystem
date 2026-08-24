@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -112,7 +112,7 @@ last_updated: 2026-08-23
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
-| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 | **监装工单备注（详细说明）** | 监装 Tab 文本框；管理端新建/编辑填写。 | `LoadingOrderAdmin` 的 `remark`；`AddAsync` / `EditAsync` / `DetailBySeaExportIdAsync` | **触发/依赖：** 详情回填 `form.remark`，保存随工单提交；与拒接原因 `rejectReason`、监装要求主/子表 `remark` 无关。 | 可选，最长 1024；空串按 `null` 提交；仅未提交可改。 |
 | **监装推荐堆场/师傅** | 点「推荐」弹出该到货日该船公司已排师傅的堆场，选中回填。 | `LoadingOrderAdmin/GetYardUsersAsync` | **触发/依赖：** 要有预计到货时间 + 已保存 `carrierId`；回填覆盖当前堆场和 `userIds`。 | 接口无 id；堆场名对不上当前船公司则不回填。 |
 
@@ -140,6 +140,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的海出编辑页不再跟着别人地址栏的 `:id` 拉详情。 | `useKeepAliveRouteParamId` 只认本实例 path；路由先变、停用后到时也不抢跑。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive：切走提示后缓存草稿；点 X 才销毁。离开时基础信息或应收应付任一未落库都算脏。 | 路由 `keepAlive` + `defineOptions({ name: 'SeaExportEdit' })`；费用表快照见 `fee-table-dirty.ts`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Fix` | 监装新建成功后先记下工单 id，详情 500 时再保存走编辑而不是再新建。 | `AddAsync` 回 id；有师傅时详情 AutoMap `LoadingOrderUsers` 会炸。详见 `changelogs/change-log-2026-08-23-loading-order-save-keep-id.md`。 |

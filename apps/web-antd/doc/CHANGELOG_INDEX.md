@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-24 货物区内外部备注字号与其他输入框对齐](./changelogs/change-log-2026-08-24-cargo-remark-font-size.md)
 - [2026-08-24 审批流程驳回原因换行展示](./changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md)
 - [2026-08-24 撤回津海通生产接口 HTTPS 域名替换](./changelogs/change-log-2026-08-24-jht-api-https-rollback.md)
 - [2026-08-24 津海通生产接口改为 https://api.jinhaitone.com](./changelogs/change-log-2026-08-24-jht-api-https-domain.md)

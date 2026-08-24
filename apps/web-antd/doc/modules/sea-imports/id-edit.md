@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,7 +48,7 @@ last_updated: 2026-08-23
 | **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `basic-info-form/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。`UserSelect` 按当前用户各公司或所选销售组织所属公司过滤候选；已选/客户默认干系人 pin 昵称。 | 销售必须且仅一人；销售与操作必须选择人员。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
-| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -63,6 +63,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的海进编辑页不再跟着别人地址栏的 `:id` 拉进口详情。 | `useKeepAliveRouteParamId`：可见才同步 `params.id`，停用后冻结。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive；未保存含应收应付；点 X 才销毁。新建页补未保存守卫。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=1`。 | 与海出/空出同一套费用打印，按业务类型筛模板。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |

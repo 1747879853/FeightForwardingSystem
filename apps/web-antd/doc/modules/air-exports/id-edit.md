@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,7 +49,7 @@ last_updated: 2026-08-23
 | **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
 | **录入方式** | 手动录入 / 业务联系单导入 / 复制。 | `transportOrder.inputType` | **触发/依赖：** 复制来的票显示「复制」标签。 | 只读。 |
 | **会计期间 / 应结日期** | 由后端按起飞日期与账期规则算出。 | `transportOrder.accountDate` / `settlementDate` | **触发/依赖：** 随起飞日期变化，保存后回显。 | 只读。 |
-| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选，最长 1024。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选，最长 1024。 |
 | **业务锁定** | 是否锁定业务信息。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 无 schema 字段，用独立状态承载并随保存回传。 | 可编辑。 |
 | **费用列表** | 该票全部费用。 | `transportOrder.orderFees`（详情接口） | **触发/依赖：** 标签上的「收 - 付」条数由它算出。 | 只读。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
@@ -75,6 +75,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的空出编辑页不再跟着别人地址栏的 `:id` 拉详情。 | 与海进/海出共用 `useKeepAliveRouteParamId`。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive；未保存含应收应付；点 X 才销毁。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 费用打印拉模板列表传入 `bizType=2`。 | 与单据打印同一筛选口径。详见 `changelogs/change-log-2026-08-23-order-fee-print-biztype.md`。 |
