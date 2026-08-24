@@ -65,7 +65,6 @@ function initDefaultColumnConfigs() {
     data: col.data,
     title: col.title,
     visible: true,
-    fixed: col.fixed || false,
     order: index,
   }));
 }

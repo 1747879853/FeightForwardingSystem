@@ -198,14 +198,14 @@ const hotSettings = computed(() => {
           .filter((col) => col.visible)
           .sort((a, b) => a.order - b.order);
 
-  // 计算固定列数量
-  const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
-  const rightFixedColumns = visibleColumns.filter(
-    (col) => col.fixed === 'right',
-  );
+  // 计算固定列数量 - 移除固定列以提高性能
+  // const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
+  // const rightFixedColumns = visibleColumns.filter(
+  //   (col) => col.fixed === 'right',
+  // );
 
-  const fixedColumnsLeft = leftFixedColumns.length;
-  const fixedColumnsRight = rightFixedColumns.length;
+  // const fixedColumnsLeft = leftFixedColumns.length;
+  // const fixedColumnsRight = rightFixedColumns.length;
 
   return {
     data: tableData.value,
@@ -266,12 +266,12 @@ const hotSettings = computed(() => {
     autoWrapRow: false,
     autoWrapCol: false,
 
-    // ✅ 重新启用固定列以提高滚动性能
-    fixedColumnsLeft: Math.min(fixedColumnsLeft, visibleColumns.length - 1), // 确保不超过总列数
-    fixedColumnsRight: Math.min(
-      fixedColumnsRight,
-      visibleColumns.length - fixedColumnsLeft,
-    ),
+    // ✅ 移除固定列以提高滚动性能
+    fixedColumnsLeft: 0, // Math.min(fixedColumnsLeft, visibleColumns.length - 1), // 确保不超过总列数
+    fixedColumnsRight: 0, // Math.min(
+    // fixedColumnsRight,
+    // visibleColumns.length - fixedColumnsLeft,
+    // ),
 
     afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
       TH.style.backgroundColor = '#1890ff';

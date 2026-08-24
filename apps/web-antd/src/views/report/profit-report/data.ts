@@ -469,13 +469,13 @@ export function getBaseHotColumns() {
       data: 'commissionNum',
       title: '委托编号',
       width: 150,
-      fixed: 'left' as const, // 固定在左侧
+      // fixed: 'left' as const, // 固定在左侧 - 移除固定列以提高性能
     },
     {
       data: 'mblNum',
       title: '主提单号',
       width: 150,
-      fixed: 'left' as const, // 固定在左侧
+      // fixed: 'left' as const, // 固定在左侧 - 移除固定列以提高性能
     },
     {
       data: 'bizType',
