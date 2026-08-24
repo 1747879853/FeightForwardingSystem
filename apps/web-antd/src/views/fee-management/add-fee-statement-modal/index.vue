@@ -4,7 +4,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, nextTick, reactive, ref } from 'vue';
-
+import { getFeeStatusOptions } from '#/views/air-export-admin/orderFee/data';
 import { useThrottleFn } from '@vueuse/core';
 import dayjs from 'dayjs';
 import {
@@ -850,9 +850,17 @@ defineExpose({ open: openDrawer });
           </template>
           <template v-else-if="column.key === 'combinedFeeStatus'">
             <Tag
-              :color="getCombinedFeeStatusColor(feeRecord.combinedFeeStatus)"
+              :color="
+                getFeeStatusOptions().find(
+                  (item) => item.value === feeRecord.combinedFeeStatus,
+                )?.color
+              "
             >
-              {{ getCombinedFeeStatusLabel(feeRecord.combinedFeeStatus) }}
+              {{
+                getFeeStatusOptions().find(
+                  (item) => item.value === feeRecord.combinedFeeStatus,
+                )?.label
+              }}
             </Tag>
           </template>
           <template v-else-if="column.key === 'isStatemented'">
