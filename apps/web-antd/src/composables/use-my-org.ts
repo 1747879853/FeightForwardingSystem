@@ -31,6 +31,14 @@ function pickDirectOrgNode(
   return path[path.length - 1];
 }
 
+/** 取一条组织路径中的「直属组织」节点（路径末端，即用户直接挂靠的组织） */
+function pickFirstOrgNode(
+  path: SystemOrganizationUnitApi.OrganizationUnitDto[] | undefined,
+): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
+  if (!path || path.length === 0) return undefined;
+  return path[0];
+}
+
 /**
  * 我的「直属组织」下拉选项（value = 直属组织 id）。
  * 用于数据权限单据「归属组织」录入，选项即本人直属组织范围。
@@ -46,6 +54,20 @@ export function getMyOrgOptions(): MyOrgOption[] {
           formatOrgPathLabel(item.oneOrganizationPath) ||
           node.displayName ||
           '',
+        value: node.id,
+      };
+    })
+    .filter((x): x is MyOrgOption => x !== null);
+}
+
+export function getMyTrueCompanyOptions(): MyOrgOption[] {
+  return getMyOrganizations()
+    .map((item) => {
+      const node = pickFirstOrgNode(item.oneOrganizationPath);
+      if (!node || !node.isCompany) return null;
+      return {
+        isDefault: !!item.default,
+        label: node.displayName || '',
         value: node.id,
       };
     })

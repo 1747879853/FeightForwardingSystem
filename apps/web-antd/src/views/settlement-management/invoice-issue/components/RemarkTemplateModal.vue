@@ -12,7 +12,7 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
-import { getMyOrgOptions } from '#/composables/use-my-org';
+import { getMyTrueCompanyOptions } from '#/composables/use-my-org';
 
 interface Props {
   visible: boolean;
@@ -132,7 +132,7 @@ function generateExampleText(template: string): string {
 
 /** 提取本人直属组织作为可选归属组织 */
 function extractCompanyFromUserInfo() {
-  companyList.value = getMyOrgOptions().map((o) => ({
+  companyList.value = getMyTrueCompanyOptions().map((o) => ({
     id: o.value,
     displayName: o.label,
   }));

@@ -33,6 +33,7 @@ import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { NestedDataTable } from '#/components/nested-data-table';
 import type { Attachment } from '#/api/common/upload';
+import { getFeeStatusOptions } from '#/views/air-export-admin/orderFee/data';
 import {
   ClientSelect,
   CurrencySelect,
@@ -129,38 +130,6 @@ function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
     2: 'green', // 已开票 - 绿色
   };
   return colorMap[invoiceStatus ?? -1] ?? 'default';
-}
-
-function getCombinedFeeStatusLabel(
-  combinedFeeStatus: number | undefined,
-): string {
-  const statusMap: Record<number, string> = {
-    0: '录入中',
-    1: '待审核',
-    2: '已驳回',
-    3: '审核通过',
-    4: '部分结算',
-    5: '已结算',
-    6: '已开票',
-    7: '已付款',
-  };
-  return statusMap[combinedFeeStatus ?? -1] ?? '-';
-}
-
-function getCombinedFeeStatusColor(
-  combinedFeeStatus: number | undefined,
-): string {
-  const colorMap: Record<number, string> = {
-    0: 'default', // 录入中 - 灰色
-    1: 'orange', // 待审核 - 橙色
-    2: 'red', // 已驳回 - 红色
-    3: 'blue', // 审核通过 - 蓝色
-    4: 'purple', // 部分结算 - 紫色
-    5: 'green', // 已结算 - 绿色
-    6: 'cyan', // 已开票 - 青色
-    7: 'gold', // 已付款 - 金色
-  };
-  return colorMap[combinedFeeStatus ?? -1] ?? 'default';
 }
 
 const route = useRoute();
@@ -491,7 +460,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   ];
   currencies.value = collectCurrenciesByFeeConfirm(feeDetailRows.value ?? []);
   nextTick(() => {
-    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+    // expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
 }
 
@@ -717,7 +686,7 @@ async function loadEditData() {
     }));
 
     nextTick(() => {
-      expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+      // expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
     });
   } finally {
     pageLoading.value = false;
@@ -1305,7 +1274,7 @@ function formatMonth(val: string | undefined | null): string {
                   <!-- 新增：所属组织 -->
                   <div class="info-field">
                     <label class="field-label">所属组织</label>
-                    <MyCompanySelect
+                    <myOrgSelect
                       v-model:model-value="orgId"
                       placeholder="请选择所属公司"
                       allow-clear
@@ -1652,10 +1621,16 @@ function formatMonth(val: string | undefined | null): string {
                   <template v-else-if="column.key === 'combinedFeeStatus'">
                     <Tag
                       :color="
-                        getCombinedFeeStatusColor(record.combinedFeeStatus)
+                        getFeeStatusOptions().find(
+                          (item) => item.value === record.combinedFeeStatus,
+                        )?.color
                       "
                     >
-                      {{ getCombinedFeeStatusLabel(record.combinedFeeStatus) }}
+                      {{
+                        getFeeStatusOptions().find(
+                          (item) => item.value === record.combinedFeeStatus,
+                        )?.label
+                      }}
                     </Tag>
                   </template>
                   <template v-else>

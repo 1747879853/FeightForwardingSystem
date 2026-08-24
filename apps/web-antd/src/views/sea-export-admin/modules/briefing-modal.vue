@@ -216,11 +216,11 @@ const getFullName = (value: any): string => {
   return '';
 };
 // 辅助函数：从对象中获取名称
-const getEnName = (value: any): string => {
+const getCodeName = (value: any): string => {
   if (!value) return '';
   if (typeof value === 'object') {
     // 尝试常见的名称字段
-    return value.enName || '';
+    return value.code || '';
   }
   return '';
 };
@@ -246,7 +246,7 @@ const generateContent = () => {
     // 单位类
     委托单位: getFullName(getValue('client')),
     订舱代理: getFullName(getValue('bookingAgent')),
-    船公司: getEnName(getValue('carrier')),
+    船公司: getCodeName(getValue('carrier')),
     船代: getName(getValue('shipAgent')) || getValue('shipAgentId'),
     场站: getName(getValue('yard')) || getValue('yardId'),
     报关行: getName(getValue('custBroker')) || getValue('custBrokerId'),
@@ -255,7 +255,7 @@ const generateContent = () => {
     仓库: getName(getValue('warehouse')) || getValue('warehouseId'),
 
     // 港口类
-    起运港: getRemarkName(getValue('poIRemark')),
+    起运港: getRemarkName(getValue('polRemark')),
     目的港: getRemarkName(getValue('podRemark')),
     中转港1: getRemarkName(getValue('pot1')),
     中转港2: getRemarkName(getValue('pot2')),

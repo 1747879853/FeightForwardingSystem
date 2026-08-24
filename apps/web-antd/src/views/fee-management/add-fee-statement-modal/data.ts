@@ -335,21 +335,16 @@ export function useOrderFixedColumns() {
     },
     {
       field: 'recSettlementStatus',
-      title: '应收完结',
+      title: '结算状态',
       width: 100,
       customRender: ({ record }: any) => {
         // recSettlementStatus 来自 transportOrder.recSettlementStatus
         const status = record.recSettlementStatus;
         if (status === null || status === undefined) return '-';
         const statusMap: Record<number, string> = {
-          0: '录入中',
-          1: '待审核',
-          2: '已驳回',
-          3: '审核通过',
-          4: '部分结算',
-          5: '已结算',
-          6: '已开票',
-          7: '已付款',
+          0: '未结算',
+          1: '部分结算',
+          2: '结算完毕',
         };
         return statusMap[status] || '-';
       },

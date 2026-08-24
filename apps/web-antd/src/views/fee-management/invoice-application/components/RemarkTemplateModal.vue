@@ -14,7 +14,7 @@ import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
 import { UserCompanySelect } from '#/adapter/component/biz-select';
 import { getMyOrgOptions } from '#/composables/use-my-org';
-
+import { getMyTrueCompanyOptions } from '#/composables/use-my-org';
 interface Props {
   visible: boolean;
   // 用于接收当前表单的结算单位和币别信息，以便自动加载默认模板
@@ -75,9 +75,6 @@ const formData = ref<Partial<InvoiceRemarkTemplateApi.InvoiceRemarkTemAddDto>>({
 const isEditMode = ref(false);
 const editingId = ref<string>('');
 
-// 归属组织列表 - 取本人直属组织
-const companyList = ref<{ displayName: string; id: number }[]>([]);
-
 // 选中的模板ID列表（用于批量操作）
 const selectedTemplateIds = ref<string[]>([]);
 
@@ -129,14 +126,6 @@ function generateExampleText(template: string): string {
   });
 
   return result;
-}
-
-/** 提取本人直属组织作为可选归属组织 */
-function extractCompanyFromUserInfo() {
-  companyList.value = getMyOrgOptions().map((o) => ({
-    id: o.value,
-    displayName: o.label,
-  }));
 }
 
 /** 加载模板列表 */
@@ -415,6 +404,16 @@ function handleBatchDelete() {
       }
     },
   });
+}
+
+// 归属组织列表 - 取本人直属组织
+const companyList = ref<{ displayName: string; id: number }[]>([]);
+/** 提取本人直属组织作为可选归属组织 */
+function extractCompanyFromUserInfo() {
+  companyList.value = getMyTrueCompanyOptions().map((o) => ({
+    id: o.value,
+    displayName: o.label,
+  }));
 }
 
 /** 批量设置默认 */
@@ -727,17 +726,11 @@ defineExpose({
               >已有模板 ({{ templateList.length }})</span
             >
             <span style="color: #999">筛选:</span>
-            <!-- <Select
+            <Select
               v-model:value="filterCompanyId"
               :options="
                 companyList.map((c) => ({ label: c.displayName, value: c.id }))
               "
-              placeholder="全部公司"
-              style="width: 150px"
-              allow-clear
-            /> -->
-            <UserCompanySelect
-              v-model="filterCompanyId"
               placeholder="全部公司"
               style="width: 150px"
               allow-clear
@@ -924,8 +917,11 @@ defineExpose({
             <label style="display: block; margin-bottom: 4px; font-weight: bold"
               >所属公司</label
             >
-            <UserCompanySelect
-              v-model="formData.orgId"
+            <Select
+              v-model:value="formData.orgId"
+              :options="
+                companyList.map((c) => ({ label: c.displayName, value: c.id }))
+              "
               placeholder="请选择所属公司"
               style="width: 100%"
             />
