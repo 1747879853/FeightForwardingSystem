@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-23
 - **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」，重新显示保存/提交。
 - **审核通过 / 审核驳回：** 「待审核」状态下弹窗填写意见；通过时若缺少「操作」干系人，弹窗强制先指派。
 - **审核后驳回：** 「通过」状态下可用，二次确认提示必须先删除关联海运出口。
-- **审核流程：** 任意已保存单据可点「审核流程」，复用 `workflow-timeline`，`taskType = TaskType.PreOrder(8)`。
+- **审核流程：** 任意已保存单据可点「审核流程」，复用 `workflow-timeline`，`taskType = TaskType.PreOrder(8)`。驳回意见单独红色换行展示「驳回原因：」+ 原文，不再跟人名、时间挤在同一行。
 - **复制预填：** 带 `?copyFrom=<id>` 进入新建页时拉源单详情预填，清掉单号与子表主键。
 - **按钮权限：** 保存 / 提交审核 / 撤回按 `Admin.PreOrder.Add`、`Admin.PreOrder.Edit` 控制；三个审核类按钮需要 `Admin.PreOrder.Audit`。
 - **费用工具栏：** 可编辑时提供单一「添加」与「删除」icon 按钮（样式对齐海运出口箱型箱量）；新增行默认应收 + USD + 汇率 + 单位「票」，收付在行内切换；费用代码带出类别/结算/币别/税率/单位；单位可选票·重量·体积·TEU 或本单箱型名，数量只读并由单位自动带出；须先勾选行再删。表底「应收合计 / 应付合计」按币别分别累计（如 `USD 100.00 / CNY 200.00`），不把不同币别加在一起。
@@ -117,6 +117,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 「审核流程」弹窗驳回意见改为红色「驳回原因：」换行展示。 | TAPD `#1161580498001000871`。共用 `workflow-timeline`，驳回 `comment` 放到 `__detail` 外。详见 `changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md`。 |
 | 2026-08-23 | `Feature` | 新建/编辑 KeepAlive：切走可回来继续填，点 X 才丢。 | `keepAliveName: PreOrderEditor`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Fix` | 费用小计按币别拆分展示；提交审核拦截未填结算对象的费用行。同缺陷下海出费用「录入方式」把 `"6"` 显示为「业务联系单引入」。 | TAPD `#1161580498001000680` 剩余项。小计走 `summarizePreOrderFeesByCurrency`；选币别写入 `currency` 快照。Handsontable 录入方式列为 `type:text` 会把枚举变成字符串，标签匹配须兼容 number/string。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
 | 2026-08-19 | `Fix` | 港口选中态改为「英文名-中文名」（如 QINGDAO-青岛），对齐长泽；海运出口仍显示 EDI。 | `PortSelect` 新增 `labelKey: 'portNameCnName'`；业务联系单经 `buildPreOrderPortSelectProps` 覆盖，不改共用的 `buildPortSelectProps`。详见 `changelogs/change-log-2026-08-19-pre-order-port-name-cn-label.md`。 |

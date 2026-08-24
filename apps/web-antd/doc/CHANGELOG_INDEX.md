@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-24 审批流程驳回原因换行展示](./changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md)
 - [2026-08-24 撤回津海通生产接口 HTTPS 域名替换](./changelogs/change-log-2026-08-24-jht-api-https-rollback.md)
 - [2026-08-24 津海通生产接口改为 https://api.jinhaitone.com](./changelogs/change-log-2026-08-24-jht-api-https-domain.md)
 - [2026-08-23 KeepAlive 编辑页冻结路由 id，避免海进/海出/空出互拉详情](./changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md)

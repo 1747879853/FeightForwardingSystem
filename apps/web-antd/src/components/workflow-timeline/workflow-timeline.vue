@@ -328,24 +328,35 @@ defineExpose({ reload });
               <div
                 v-for="item in getVisibleItems(group)"
                 :key="item.id"
-                class="workflow-timeline__detail"
+                class="workflow-timeline__item"
               >
-                <span>{{ item.userNickName || `用户 ${item.userId}` }}</span>
-                <span
-                  :class="`workflow-timeline__status is-${getStatusColor(item.taskStatus)}`"
+                <div class="workflow-timeline__detail">
+                  <span>{{ item.userNickName || `用户 ${item.userId}` }}</span>
+                  <span
+                    :class="`workflow-timeline__status is-${getStatusColor(item.taskStatus)}`"
+                  >
+                    {{ getStatusLabel(item.taskStatus, group.passMethod) }}
+                  </span>
+                  <span v-if="item.auditTime"
+                    >· {{ formatTime(item.auditTime) }}</span
+                  >
+                  <span
+                    v-if="
+                      item.comment && item.taskStatus !== TaskStatus.Rejected
+                    "
+                    class="workflow-timeline__comment"
+                    :title="item.comment"
+                  >
+                    · {{ item.comment }}
+                  </span>
+                </div>
+                <div
+                  v-if="item.comment && item.taskStatus === TaskStatus.Rejected"
+                  class="workflow-timeline__reject-reason"
                 >
-                  {{ getStatusLabel(item.taskStatus, group.passMethod) }}
-                </span>
-                <span v-if="item.auditTime"
-                  >· {{ formatTime(item.auditTime) }}</span
-                >
-                <span
-                  v-if="item.comment"
-                  class="workflow-timeline__comment"
-                  :title="item.comment"
-                >
-                  · {{ item.comment }}
-                </span>
+                  <div>驳回原因：</div>
+                  <div>{{ item.comment }}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -508,6 +519,10 @@ defineExpose({ reload });
   color: #8b5cf6;
 }
 
+.workflow-timeline__item {
+  min-width: 0;
+}
+
 .workflow-timeline__detail {
   display: flex;
   gap: 4px;
@@ -540,5 +555,14 @@ defineExpose({ reload });
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workflow-timeline__reject-reason {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 17px;
+  color: #ff3b30;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>

@@ -2,7 +2,7 @@
 title: 业务联系单审核
 module: 审核审批
 author: 前端团队
-last_updated: 2026-08-11
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,7 +14,7 @@ last_updated: 2026-08-11
 - **任务列表：** 调 `PreOrderAdmin/PreOrderTaskListAsync`，行上同时展示任务信息（我的审核状态、任务状态、审核人、审核时间）与单据信息（业务编号、委托单位、起运港 / 目的港、ETD）。
 - **检索：** 关键字、我的审核状态（**默认「审核中」**）、单据状态、委托单位、起运港、审核时间区间。
 - **进入单据：** 双击行，或勾选后点「打开单据」，跳转 `/pre-order/:id/edit`；审核动作在单据编辑页完成，不在本页直接审。
-- **审核流程：** 勾选行后点「审核流程」，复用 `workflow-timeline`（`taskType = TaskType.PreOrder`）查看各级审批人与意见。
+- **审核流程：** 勾选行后点「审核流程」，复用 `workflow-timeline`（`taskType = TaskType.PreOrder`）查看各级审批人与意见。驳回意见单独红色换行展示「驳回原因：」+ 原文。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -44,6 +44,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 「审核流程」弹窗驳回意见改为红色「驳回原因：」换行展示 | TAPD `#1161580498001000871`。共用 `workflow-timeline`。详见 `changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md` |
 | 2026-08-11 | `Fix` | 「我的审核状态」默认「审核中」，首屏只看待办 | `MyStatus` `defaultValue: 0`。详见 `changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md` |
 | 2026-07-26 | `Feature` | 「打开单据」/ 双击改回 `/pre-order/:id/edit`（取消独立详情页） | 审核动作仍在单据编辑页；待审核态隐藏保存按钮 |
 | 2026-07-26 | `Feature` | 「打开单据」/ 双击改为跳转 `/pre-order/:id/detail`（不再进 edit） | （已废弃）曾走独立详情路由 |
