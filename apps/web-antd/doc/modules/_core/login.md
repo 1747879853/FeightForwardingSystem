@@ -2,7 +2,7 @@
 title: 登录页
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-08-14
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,6 +52,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 津海通生产接口改为 `https://api.jinhaitone.com/api` | 登录页请求走 `_app.config.js` 注入的 `VITE_GLOB_API_URL`；jht 前端站点已是 HTTPS，必须改用同协议域名 |
 | 2026-08-14 | `Chore` | 更新 `public/favicon.png` 与 `public/logo.png` 默认品牌位图 | 稳定路径 `/favicon.png`、`/logo.png`；侧栏/偏好回退与浏览器标签共用，无代码逻辑变更 |
 | 2026-08-11 | `Style` | 龙山登录页视频蒙层调亮（48% → 24%） | 仅改 `.login-background-mask--dimmed` 透明度 |
 | 2026-08-11 | `Feature` | 龙山登录页背景视频增加压暗蒙层 | `auth.vue` 传 `loginBackgroundDimmed=isLongshanBrand`；蒙层样式在 `authentication.vue` |
