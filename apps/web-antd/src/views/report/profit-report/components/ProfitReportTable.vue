@@ -124,7 +124,7 @@ const numericColumns = computed(() => {
 const groupingCache = new Map<string, any[]>();
 const treeStructureCache = new Map<string, any[]>();
 
-// ✅ 新增：清理缓存的函数
+// ✅ 重新添加 clearCaches 函数，确保展开/折叠操作时数据正确性
 function clearCaches() {
   groupingCache.clear();
   treeStructureCache.clear();
@@ -152,7 +152,7 @@ function toggleGroupExpand(groupKey: string) {
   // 更新父组件的状态
   emit('update:expandedGroups', Array.from(localExpandedGroups.value));
 
-  // ✅ 清理缓存，确保折叠/展开时使用最新数据，避免缓存导致的数据显示错误
+  // ✅ 重新添加 clearCaches 调用，确保展开/折叠操作时数据正确性
   clearCaches();
 
   // 重新应用分组（这会触发表格数据更新）
@@ -914,6 +914,8 @@ function applyGrouping(data: any[]) {
     if (hotTableRef.value && hotTableRef.value.hotInstance) {
       try {
         hotTableRef.value.hotInstance.loadData(tableData.value);
+        // 强制重新渲染，确保折叠/展开操作正确显示
+        //hotTableRef.value.hotInstance.render();
         // 不再手动更新列配置，由计算属性处理
 
         console.log(
@@ -1277,7 +1279,7 @@ function removeGroupColumn(columnName: string) {
     localExpandedGroups.value = new Set();
     emit('update:expandedGroups', new Set());
 
-    // ✅ 清理缓存，避免使用过期的缓存数据
+    // ✅ 重新添加 clearCaches 调用，确保移除分组列时数据正确性
     clearCaches();
 
     if (props.originalData.length > 0) {
@@ -1300,7 +1302,7 @@ function clearAllGroups() {
   localExpandedGroups.value = new Set();
   emit('update:expandedGroups', new Set());
 
-  // ✅ 清理缓存，确保显示原始数据而不是缓存的分组数据
+  // ✅ 重新添加 clearCaches 调用，确保清空分组时数据正确性
   clearCaches();
 
   if (props.originalData.length > 0) {
@@ -1933,16 +1935,37 @@ function handleExport() {
   min-height: 0;
   overflow: hidden;
 
+  /* ✅ 添加硬件加速优化 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1px;
+
   :deep(.handsontable) {
     font-size: 13px;
 
+    /* ✅ 为Handsontable根元素添加硬件加速 */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1px;
+    will-change: transform, opacity;
+
     .htCore {
+      /* ✅ 为核心表格区域添加硬件加速 */
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      perspective: 1px;
+      will-change: transform, scroll-position;
+
       td {
         padding: 6px 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         vertical-align: middle;
         white-space: nowrap;
+
+        /* ✅ 为单元格添加硬件加速 */
+        transform: translateZ(0);
+        backface-visibility: hidden;
       }
 
       tr:not([data-group-row='true']) td {

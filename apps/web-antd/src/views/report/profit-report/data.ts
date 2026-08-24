@@ -535,6 +535,7 @@ export function getBaseHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
         td.innerHTML = value || '-';
         return td;
       },
@@ -552,7 +553,8 @@ export function getBaseHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = safeFormatDateForRenderer(value, 'date');
+        // 日期已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '-';
         return td;
       },
     },
@@ -569,7 +571,8 @@ export function getBaseHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = safeFormatDateForRenderer(value, 'month');
+        // 日期已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '-';
         return td;
       },
     },
@@ -600,8 +603,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     });
@@ -620,8 +623,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     });
@@ -640,8 +643,8 @@ export function getCurrencyColumns(currencyCodes: string[]) {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     });
@@ -669,8 +672,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
@@ -688,8 +691,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
@@ -707,8 +710,8 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseFloat(value) || 0;
-        td.innerHTML = numValue === 0 ? '' : numValue.toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
@@ -726,6 +729,7 @@ export function getTotalColumns() {
         value: any,
         cellProperties: any,
       ) => {
+        // 利润率需要特殊处理，因为存储的是小数形式
         td.innerHTML =
           value != null ? (parseFloat(value) * 100).toFixed(2) + '%' : '-';
         return td;
