@@ -214,6 +214,7 @@ function syncDataToParent() {
       switch (col.data) {
         case 'serviceType': {
           // ✅ 服务项：优先使用 serviceType_value，否则从 Label 转换
+          // console.log('✅ [syncDataToParent] 服务项转换:', value);
           const valueIndex = columns.findIndex(
             (c: any) => c.data === 'serviceType_value',
           );
@@ -231,7 +232,7 @@ function syncDataToParent() {
               const serviceTypeItem = serviceTypeOptions.value.find(
                 (item) => item.label === value,
               );
-              obj[col.data] = serviceTypeItem?.value || null;
+              obj[col.data] = serviceTypeItem?.value;
             }
           } else {
             obj[col.data] = null;

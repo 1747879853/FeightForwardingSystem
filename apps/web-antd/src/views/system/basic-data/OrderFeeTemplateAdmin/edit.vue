@@ -67,6 +67,15 @@ const [Form, formApi] = useVbenForm({
   wrapperClass: 'grid-cols-4',
 });
 
+/**
+ * 从 id + name 构建 select 组件的 selectedItems，
+ * 避免每个 select 组件单独调详情接口回显。
+ */
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
+};
+
 // ==================== 初始化逻辑 ====================
 
 async function initPage() {
@@ -489,6 +498,25 @@ async function loadDetail() {
       sortId: detail.sortId,
       remark: detail.remark,
     });
+
+    // ✅ 新增：设置委托单位和订舱代理的selectedItems，确保回显正确显示名称而不是ID
+    formApi.updateSchema([
+      {
+        fieldName: 'clientId',
+        componentProps: {
+          selectedItems: toSelectedItems(detail.clientId, detail.client?.name),
+        },
+      },
+      {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgent?.name,
+          ),
+        },
+      },
+    ]);
 
     // 填充费用明细
     feeItems.value =
