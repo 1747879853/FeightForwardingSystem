@@ -968,6 +968,24 @@ function formatSideTotals(
     .map((item) => `${item.currency} ${item[side].toFixed(2)}`);
   return parts.length === 0 ? '0.00' : parts.join(' / ');
 }
+
+/** 汇率最多 6 位小数，展示时去掉末尾 0；输入过程中不改写，避免打小数点被吃掉。 */
+function formatExchangeRateDisplay(
+  value: number | string,
+  info?: { input: string; userTyping: boolean },
+) {
+  if (info?.userTyping) {
+    return info.input;
+  }
+  if (value === '' || value == null) {
+    return '';
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return String(value);
+  }
+  return num.toFixed(6).replace(/\.?0+$/, '');
+}
 </script>
 
 <template>
@@ -1105,6 +1123,7 @@ function formatSideTotals(
               class="w-full"
               :min="0"
               :precision="6"
+              :formatter="formatExchangeRateDisplay"
             />
           </Tooltip>
         </template>

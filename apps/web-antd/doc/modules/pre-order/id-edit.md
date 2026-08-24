@@ -73,7 +73,7 @@ last_updated: 2026-08-24
 | **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h)/订舱代理(o) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
 | **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤；回显依赖 `selectedItems`（id+name） | **提交审核必填**；保存草稿只提示 |
 | **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后按汇率表生效记录重取汇率 | 生成海出费用时缺币别会被跳过 |
-| **费用.汇率** | 对本位币汇率 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **触发：** 币别 / 收付变更后按「汇率表生效记录（应收 `drValue` / 应付 `crValue`）→ 本位币兜底 1 → 置空」三级取值，取到值后仍可手改；只有走本位币兜底的行（行标记 `__isLocalCurrency=true`，与应收应付费用表同口径，提交时剔除）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效记录 = 已启用 且 当前时间在有效期内；同币别多条按 `sortId`、id 取大 |
+| **费用.汇率** | 对本位币汇率；展示去掉末尾 0，最多 6 位小数。 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **触发：** 币别 / 收付变更后按「汇率表生效记录（应收 `drValue` / 应付 `crValue`）→ 本位币兜底 1 → 置空」三级取值，取到值后仍可手改；只有走本位币兜底的行（行标记 `__isLocalCurrency=true`，与应收应付费用表同口径，提交时剔除）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效记录 = 已启用 且 当前时间在有效期内；同币别多条按 `sortId`、id 取大 |
 | **费用.单位** | 计价单位 | 通用四项 `票` / `重量` / `体积` / `TEU`（`PRE_ORDER_GENERIC_UNITS`） **+ 本单箱型名**（由箱型箱量表派生） | **默认：** 手工新增「票」，一键生成时=箱型名；费用代码默认单位经 `coercePreOrderFeeUnit` 落到白名单内（泛称「箱型/CTN」→票）；**触发：** 按单位自动带出数量（见「费用.数量」） | 必须是四项之一或本单已存在的箱型名，提交审核前校验；箱型行被删除后对应费用行单位落回「票」 |
 | **费用.含税单价** | 对客单价 | 手填 | —— | 非负 |
 | **费用.数量** | 计价数量 | 完全由单位派生，**始终只读**（后端审核通过时按单位重算并覆盖，手改无意义） | **触发：** 票=1；重量=货物 `kgs`；体积=`cbm`；TEU=各箱型 `teu×箱量` 累加；箱型名=该箱型的箱量合计。箱型、箱量、毛重/体积变更后全表重新带量 | 非负 |
@@ -117,6 +117,7 @@ last_updated: 2026-08-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 费用汇率展示去掉末尾 0（输入 7 显示 7，不再补成 7.000000）。 | TAPD `#1161580498001000870`。`InputNumber` formatter 在非输入态 `toFixed(6)` 后去零。详见 `changelogs/change-log-2026-08-24-pre-order-fee-exchange-rate-trim.md`。 |
 | 2026-08-24 | `Fix` | 「审核流程」弹窗驳回意见改为红色「驳回原因：」换行展示。 | TAPD `#1161580498001000871`。共用 `workflow-timeline`，驳回 `comment` 放到 `__detail` 外。详见 `changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md`。 |
 | 2026-08-23 | `Feature` | 新建/编辑 KeepAlive：切走可回来继续填，点 X 才丢。 | `keepAliveName: PreOrderEditor`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Fix` | 费用小计按币别拆分展示；提交审核拦截未填结算对象的费用行。同缺陷下海出费用「录入方式」把 `"6"` 显示为「业务联系单引入」。 | TAPD `#1161580498001000680` 剩余项。小计走 `summarizePreOrderFeesByCurrency`；选币别写入 `currency` 快照。Handsontable 录入方式列为 `type:text` 会把枚举变成字符串，标签匹配须兼容 number/string。详见 `changelogs/change-log-2026-08-19-pre-order-fee-currency-subtotal-settlement.md`。 |
