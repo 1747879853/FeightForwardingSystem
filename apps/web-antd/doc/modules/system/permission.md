@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-10
+last_updated: 2026-08-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-08-10
 - **数据权限 Tab：** 为当前选中的角色/用户维护 `UserDataPermission` 主规则；数据范围为「多用户」或「多部门/多公司」时，在弹窗内通过 `UserSelect` / `OrganizationSelect` 多选维护子项，保存时通过 `entityIds` 随主规则一次性提交；列表/详情由后端返回 `items` 子表，支持「查看明细」抽屉回显名称；列表展示明细数。
 - **表级权限 Tab：** 为当前选中的角色/用户维护 `UserTablePermission` 主规则及 `UserTablePermissionCondition` 条件子项；主规则仅配置业务模块，条件在抽屉内维护（字段下拉 + 操作符 + 值）；列表展示条件条数，支持「查看条件」只读抽屉；编辑已保存条件仅可改操作符与值。
 - **数据权限说明：** 「自己」为系统默认行为，表单中不展示；子表由 `UserDataPermissionAdmin` 统一维护（不再调用 `UserDataPermissionItemAdmin`）；删除主规则会级联删除子表。
-- **模块权限文案：** 「模块权限」Tab 节点名称来自 `auth.json`（`auth.${权限码.replaceAll('.','_')}`），**以后端权限接口 `displayName` 为基准**；与左侧菜单 `meta.title` 不一致时，以接口返回为准（菜单文案可另行对齐）。
+- **模块权限文案：** 「模块权限」Tab 优先用 `GetAllPermissions.displayName`；为空或 ABP 方括号占位时才查 `auth.json`。缺 i18n 键时不再把 `auth.Admin_Report` 这类键直接显示出来。
 - **模块权限搜索：** 在「模块权限」Tab 顶部输入关键词，按权限显示名称或权限码（如 `Admin.User.Get`）前端过滤树节点；保留命中节点的父级路径并自动展开；无匹配时提示「未找到匹配的权限」。切换角色/用户或 Tab 时搜索词自动清空。搜索仅影响树展示，保存时仍提交全量已选权限（含不可见节点）。
 - **配置对象区布局：** 顶部卡片占满整行；配置类型（角色/用户）与对象下拉横向靠左排列，下拉固定宽度，不随卡片拉满。
 
@@ -49,6 +49,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-24 | `Fix` | 模块权限树优先显示接口中文名；报表、提成配置不再显示 `auth.Admin_Report` 这类码。 | TAPD `#1161580498001000856`。`buildPermissionTree` 先用 `displayName`。详见 `changelogs/change-log-2026-08-24-permission-tree-display-name.md`。 |
 | 2026-08-10 | `Fix` | 表级/字段权限模块下拉同步「客户管理」`FrightModule.Client=9`，与后端枚举对齐。 | 仅补枚举与选项/标签；Client 暂无 `TablePermissionFieldMetaMap` 字段元数据，条件字段待后端确认后再补。 |
 | 2026-07-29 | `Style` | 顶部配置对象区卡片仍占满，内容改为横向 flex 靠左；角色/用户下拉固定 `w-56`。 | 去掉 `Row`/`Col` 满宽栅格，避免控件被拉满。 |
 | 2026-07-24 | `Fix` | 按最新权限接口补齐 13 个缺失 `auth.json` 键（客户失信、业务基础、业务联系单等）；`Admin.ReceiveSettlement` 文案改为「收费结算」。 | `Admin.PersonalSetting` 接口仍返回未本地化占位符，前端已有「个人设置」不改。 |

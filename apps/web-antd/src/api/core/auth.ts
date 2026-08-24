@@ -223,6 +223,34 @@ export interface PermissionTreeNode {
   children?: PermissionTreeNode[];
 }
 
+/** ABP 未维护本地化时 displayName 会是 `[Admin.Xxx]` */
+function isAbpUntranslatedDisplayName(displayName: string): boolean {
+  return /^\[[^\]]+\]$/.test(displayName);
+}
+
+/**
+ * 权限树标签：优先后端 displayName；缺名或 ABP 方括号占位时再走 i18n。
+ */
+function resolvePermissionLabel(
+  permission: AuthApi.PermissionDto,
+  t?: (key: string) => string,
+): string {
+  const displayName = permission.displayName?.trim() ?? '';
+  if (displayName && !isAbpUntranslatedDisplayName(displayName)) {
+    return displayName;
+  }
+
+  if (permission.name && t) {
+    const i18nKey = `auth.${permission.name.replaceAll('.', '_')}`;
+    const translated = t(i18nKey);
+    if (translated && translated !== i18nKey) {
+      return translated;
+    }
+  }
+
+  return displayName || permission.name || '';
+}
+
 /**
  * 将权限列表构建为树形结构
  * @param permissions 权限列表
@@ -243,9 +271,7 @@ export function buildPermissionTree(
 
     const node: PermissionTreeNode = {
       id: permission.name,
-      name: t
-        ? t(`auth.${permission.name.replaceAll('.', '_')}`)
-        : permission.name.replaceAll('.', '_'),
+      name: resolvePermissionLabel(permission, t),
       authCode: permission.name,
       pid: permission.parentName || '',
       children: [],
