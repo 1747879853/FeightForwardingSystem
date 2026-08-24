@@ -491,7 +491,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   ];
   currencies.value = collectCurrenciesByFeeConfirm(feeDetailRows.value ?? []);
   nextTick(() => {
-    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+    // expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
 }
 
@@ -717,7 +717,7 @@ async function loadEditData() {
     }));
 
     nextTick(() => {
-      expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+      // expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
     });
   } finally {
     pageLoading.value = false;

@@ -85,6 +85,8 @@ const availablePlaceholders = [
   { label: '船公司', value: '[船公司]', example: 'COSCO' },
   { label: '场站', value: '[场站]', example: '外高桥堆场' },
   { label: '船代', value: '[船代]', example: '中外运船代' },
+  { label: '船名', value: '[船名]', example: '中远海运银河' },
+  { label: '航次', value: '[航次]', example: 'YH-20240101' },
 
   // 港口类（使用备注字段）
   { label: '起运港', value: '[起运港]', example: 'SHANGHAI, CHINA' },
