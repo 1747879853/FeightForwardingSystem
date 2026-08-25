@@ -13,6 +13,10 @@
 
 ## 2026-08
 
+- [2026-08-25 浩瀚远洋取消 GitHub main push 自动发布](./changelogs/change-log-2026-08-25-hhyy-disable-auto-deploy-on-push.md)
+- [2026-08-25 本地开发后端改到金海通同机 88 端口](./changelogs/change-log-2026-08-25-dev-api-jht-host-port-88.md)
+- [2026-08-25 浩瀚远洋接入本地 MSDeploy 自动发布（站点 hhyy-web）](./changelogs/change-log-2026-08-25-hhyy-msdeploy-publish.md)
+- [2026-08-25 浩瀚远洋生产接口改到金海通同机 88 端口](./changelogs/change-log-2026-08-25-hhyy-api-jht-host-port-88.md)
 - [2026-08-24 分单货物明细唛头/货描底边与右侧对齐](./changelogs/change-log-2026-08-24-separate-bill-cargo-align.md)
 - [2026-08-24 分单第二通知人切换后可编辑](./changelogs/change-log-2026-08-24-separate-bill-second-notifier-editable.md)
 - [2026-08-24 分单 Tab 按 Figma 改为页内工作台](./changelogs/change-log-2026-08-24-separate-bill-figma-layout.md)

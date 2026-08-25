@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('jht', 'jiayue', 'sjtd', 'longshan', 'demo')]
+  [ValidateSet('hhyy', 'jht', 'jiayue', 'sjtd', 'longshan', 'demo')]
   [string]$Environment,
   [string]$ConfigPath = '',
   [switch]$InstallDeps,
@@ -20,6 +20,11 @@ Set-StrictMode -Version Latest
 # Always write a result file and force a non-zero process exit on failure.
 $resultPath = ''
 trap {
+  $message = $_.Exception.Message
+  if ([string]::IsNullOrWhiteSpace($message)) {
+    $message = "$_"
+  }
+  Write-Host "ERROR: $message"
   if (-not [string]::IsNullOrWhiteSpace($resultPath)) {
     Set-Content -LiteralPath $resultPath -Value 'FAILED' -Encoding ascii
   }
@@ -98,18 +103,21 @@ function Read-PlainTextPassword {
 function Select-Environment {
   Write-Host ''
   Write-Host 'Select company environment:'
-  Write-Host '  1. jht'
-  Write-Host '  2. jiayue'
-  Write-Host '  3. sjtd'
-  Write-Host '  4. longshan'
-  Write-Host '  5. demo'
-  $selection = Read-Host 'Enter 1-5 or environment name'
+  Write-Host '  1. hhyy'
+  Write-Host '  2. jht'
+  Write-Host '  3. jiayue'
+  Write-Host '  4. sjtd'
+  Write-Host '  5. longshan'
+  Write-Host '  6. demo'
+  $selection = Read-Host 'Enter 1-6 or environment name'
   switch ($selection.ToLowerInvariant()) {
-    '1' { return 'jht' }
-    '2' { return 'jiayue' }
-    '3' { return 'sjtd' }
-    '4' { return 'longshan' }
-    '5' { return 'demo' }
+    '1' { return 'hhyy' }
+    '2' { return 'jht' }
+    '3' { return 'jiayue' }
+    '4' { return 'sjtd' }
+    '5' { return 'longshan' }
+    '6' { return 'demo' }
+    'hhyy' { return 'hhyy' }
     'jht' { return 'jht' }
     'jiayue' { return 'jiayue' }
     'sjtd' { return 'sjtd' }
@@ -127,7 +135,7 @@ if ([string]::IsNullOrWhiteSpace($Environment)) {
 }
 
 # Isolated per-brand dist so deploy:antd:all can build in parallel.
-# GitHub hhyy still uses the default apps/web-antd/dist (no --outDir).
+# GitHub hhyy workflow still uses the default apps/web-antd/dist (no --outDir).
 $distPath = Join-Path $repoRoot "apps\web-antd\dist-$Environment"
 $viteOutDir = "dist-$Environment"
 $viteCacheDir = "node_modules/.vite-$Environment"
@@ -261,7 +269,7 @@ try {
     throw "Brand environment file not found: $brandEnvPath"
   }
 
-  $apiLine = Get-Content -LiteralPath $brandEnvPath |
+  $apiLine = Get-Content -LiteralPath $brandEnvPath -Encoding UTF8 |
     Where-Object { $_ -match '^\s*VITE_GLOB_API_URL=' } |
     Select-Object -First 1
   if (-not $apiLine) {

@@ -19,7 +19,7 @@
 
 | 品牌 | Workflow | 构建命令 | 触发 |
 | --- | --- | --- | --- |
-| 浩瀚远洋 (hhyy) | `.github/workflows/deploy-web-antd-iis.yml` | `pnpm build:antd:hhyy` | `main` push / 手动 |
+| 浩瀚远洋 (hhyy) | `.github/workflows/deploy-web-antd-iis.yml` | `pnpm build:antd:hhyy` | 仅手动 `workflow_dispatch` |
 | 津海通 (jht) | `.github/workflows/deploy-web-antd-iis-jht.yml` | `pnpm build:antd:jht` | 仅手动 `workflow_dispatch` |
 
 两路 workflow 使用**独立**的 GitHub Secrets（`IIS_*` 与 `IIS_JHT_*`），可指向同一台服务器、不同 IIS 站点。部署阶段会先把 `apps/web-antd/dist` 打成 `dist.zip`（MSDeploy package）再上传，目标 IIS 侧由 MSDeploy 自动解包同步，减少传输体积。
@@ -37,19 +37,22 @@
 
 浩瀚远洋沿用：`IIS_SERVER_IP`、`IIS_MSDEPLOY_ENDPOINT`、`IIS_SITE_NAME`、`IIS_USER`、`IIS_PWD`。
 
-提交信息含 `[skip ci]` 时，两路部署均跳过。
+hhyy / jht 均不再随 `main` push 自动发布。日常用本地 `pnpm deploy:antd:hhyy`；GitHub 上仍可手动跑对应 workflow。
 
 ### 本地打包并发布（publish-web）
 
 Windows 本机安装 MSDeploy 3.x 后，在 `scripts\publish-config.local.json`（Git 忽略）填写各品牌 IIS 参数，然后：
 
 ```powershell
+pnpm deploy:antd:hhyy
 pnpm deploy:antd:jht
 pnpm deploy:antd:jiayue
 pnpm deploy:antd:sjtd
 pnpm deploy:antd:longshan
 pnpm deploy:antd:demo
 ```
+
+浩瀚远洋目标：服务器与津海通同机 `43.138.14.122`，站点 `hhyy-web`；密码也可设环境变量 `IIS_HHYY_PWD`（优先于配置文件）。
 
 龙山目标（与 `龙山.pubxml` 一致）：服务器 `175.178.101.30`，站点 `longshan-web`；密码也可设环境变量 `IIS_LONGSHAN_PWD`（优先于配置文件）。
 
@@ -71,7 +74,7 @@ pnpm deploy:antd:demo
 
 脚本会校验 `dist-<环境>/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
 
-`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌并行构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy。**不包含 hhyy**（仍由 GitHub Actions 使用默认 `dist` 自动发布）。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
+`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌并行构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy，包含浩瀚远洋（站点 `hhyy-web`）。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
 
 ## 环境文件
 
@@ -90,7 +93,7 @@ pnpm deploy:antd:demo
 | 品牌 | env 文件 | 当前 API |
 | --- | --- | --- |
 | 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
-| 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://118.190.1.4:82/api` |
+| 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://43.138.14.122:88/api` |
 | 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
 | 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
 | 演示环境 (demo) | `.env.demo` | `http://43.138.14.122:86/api` |
@@ -108,7 +111,7 @@ Get-Content dist/_app.config.js
 | 打包方式 | `_app.config.js` 实际读取的 env | jht 打包结果 |
 | --- | --- | --- |
 | `pnpm build:jht` / `pnpm build:antd:jht` ✅ | `.env.jht` | API = 43.138.14.122:82 |
-| `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 118.190.1.4:82 |
+| `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 43.138.14.122:88 |
 
 原因：`internal/vite-config` 生成 `_app.config.js` 时，`getConfFiles()` 从 `npm_lifecycle_script` 解析 `--mode`，绕过 npm script 直接调 vite 时解析失败，回退到 `production`。
 
@@ -144,6 +147,10 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Chore` | 浩瀚远洋 GitHub Actions 取消 `main` push 自动发布，仅保留手动 | 与 jht 一致；日常发布走 `pnpm deploy:antd:hhyy` |
+| 2026-08-25 | `Chore` | 本地默认开发与小程序开发接口改到 `http://43.138.14.122:88`，停用 `118.190.1.4:82` | `.env.development` 静态根、`vite.config.mts` 默认代理、`apps/mp` 的 `VITE_API_ORIGIN` 同步 |
+| 2026-08-25 | `Feature` | 浩瀚远洋接入本地 `publish-web.ps1` / `deploy:antd:hhyy` / `deploy:antd:all`，IIS 站点 `hhyy-web` | 本地产物走 `dist-hhyy`；须关 `VITE_ARCHIVER`，否则会压硬编码 `dist.zip` 导致 pnpm 退出 1；GitHub 仍写默认 `dist` |
+| 2026-08-25 | `Chore` | 浩瀚远洋生产接口改为金海通同机 `http://43.138.14.122:88/api` | `.env.hhyy` / `.env.production` 与 `dev:hhyy` 代理同步；须重新 `build:hhyy` 后再发布 |
 | 2026-08-24 | `Revert` | 撤回津海通 HTTPS 域名，生产接口改回 `http://43.138.14.122:82/api` | `.env.jht` 与 `vite.config.mts` 代理同步回滚；须重新 `build:jht` 后再发布 |
 | 2026-08-24 | `Fix` | 津海通生产接口改为 `https://api.jinhaitone.com/api` | 该改动已撤回，见上一行 |
 | 2026-08-17 | `Feature` | 本地全量发布改为按品牌独立 `dist-<品牌>` 并行打包与 MSDeploy；hhyy 仍走 GitHub Actions | `publish-all-web.ps1` 共享 prebuild 后按 `-ThrottleLimit` 并行；`--outDir` 才隔离 public，未传参时默认 `dist` 不变 |

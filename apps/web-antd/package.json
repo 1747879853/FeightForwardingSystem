@@ -25,6 +25,7 @@
     "build:longshan": "pnpm vite build --mode longshan",
     "build:sjtd": "pnpm vite build --mode sjtd",
     "build-only:demo": "pnpm vite build --mode demo",
+    "build-only:hhyy": "pnpm vite build --mode hhyy",
     "build-only:jiayue": "pnpm vite build --mode jiayue",
     "build-only:jht": "pnpm vite build --mode jht",
     "build-only:longshan": "pnpm vite build --mode longshan",

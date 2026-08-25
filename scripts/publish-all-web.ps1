@@ -6,7 +6,7 @@ param(
   [switch]$ForcePrebuild,
   [switch]$SkipConnectivityCheck,
   [ValidateRange(1, 8)]
-  [int]$ThrottleLimit = 5
+  [int]$ThrottleLimit = 6
 )
 
 $ErrorActionPreference = 'Stop'
@@ -155,8 +155,7 @@ function Write-TailLog {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publishScriptPath = Join-Path $PSScriptRoot 'publish-web.ps1'
-# hhyy is published by GitHub Actions, not this local batch script.
-$environments = @('jht', 'jiayue', 'sjtd', 'longshan', 'demo')
+$environments = @('hhyy', 'jht', 'jiayue', 'sjtd', 'longshan', 'demo')
 
 if (-not (Test-Path -LiteralPath $publishScriptPath -PathType Leaf)) {
   throw "Publish script was not found: $publishScriptPath"
@@ -169,7 +168,6 @@ try {
   Write-Host '=== Publish all company environments (parallel, Force mode) ==='
   Write-Host "Brands     : $($environments -join ', ')"
   Write-Host "Throttle   : $ThrottleLimit"
-  Write-Host 'hhyy is excluded (GitHub Actions auto-publish).'
   Write-Host 'Each brand builds to apps/web-antd/dist-<brand> independently.'
 
   if ($InstallDeps) {

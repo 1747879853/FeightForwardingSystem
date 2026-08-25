@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -64,4 +64,5 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Chore` | 开发态后端改为 `http://43.138.14.122:88`，停用 `118.190.1.4:82` | `apps/mp/.env.development` 的 `VITE_API_ORIGIN`；须重启小程序开发服务 |
 | 2026-08-23 | `Feature` | 新增 `apps/mp` 小程序工程与监装师傅端第一期：登录（微信静默 + 手机号绑定 + 开发态账密）、监装列表三分段与检索、详情三卡与认领/拒接/保存/取消完成、分组照片面板、四个底栏 Tab（首页与积分兑换为占位）。 | 小程序不能用 `json-bigint`：其依赖 `bignumber.js` 会被打包器外部化成运行时找不到的 `require`，改为零依赖的 `safe-json.ts`（超安全范围整数先加引号再 parse），保持与 web-antd 一致的「ID 即 string」口径。`vite` 必须锁 5.2.8 以满足 `vite-plugin-uni` 的 peer；包内不提供 `build`/`dev` 脚本，`pnpm build` 与 `pnpm dev` 因此不会带上小程序。stylelint 对 `apps/mp` 需关 `rpx` 未知值校验与 `inset` 简写合并（旧 webview 不支持，遮罩会塌陷）。 |

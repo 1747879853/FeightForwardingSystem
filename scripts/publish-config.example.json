@@ -1,4 +1,12 @@
 {
+  "hhyy": {
+    "serverIp": "192.168.1.10",
+    "endpoint": "",
+    "siteName": "hhyy-web",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
   "jht": {
     "serverIp": "192.168.1.10",
     "endpoint": "",

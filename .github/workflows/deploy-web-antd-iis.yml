@@ -1,10 +1,7 @@
-# 浩瀚远洋（hhyy）。津海通见 deploy-web-antd-iis-jht.yml
+# 浩瀚远洋（hhyy）生产前端：pnpm build:antd:hhyy → MSDeploy 发布 IIS（仅手动触发，push 不自动发布）
 name: 生产环境前端自动发布 - 浩瀚远洋 (hhyy)
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
