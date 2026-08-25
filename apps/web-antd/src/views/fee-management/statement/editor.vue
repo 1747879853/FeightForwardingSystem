@@ -86,14 +86,9 @@ function getRecSettlementStatusLabel(
   recSettlementStatus: number | undefined,
 ): string {
   const statusMap: Record<number, string> = {
-    0: '录入中',
-    1: '待审核',
-    2: '已驳回',
-    3: '审核通过',
-    4: '部分结算',
-    5: '已结算',
-    6: '已开票',
-    7: '已付款',
+    0: '未结算',
+    1: '部分结算',
+    2: '结算完毕',
   };
   return statusMap[recSettlementStatus ?? -1] ?? '-';
 }
@@ -103,13 +98,8 @@ function getRecSettlementStatusColor(
 ): string {
   const colorMap: Record<number, string> = {
     0: 'default', // 录入中 - 灰色
-    1: 'orange', // 待审核 - 橙色
-    2: 'red', // 已驳回 - 红色
-    3: 'blue', // 审核通过 - 蓝色
-    4: 'purple', // 部分结算 - 紫色
-    5: 'green', // 已结算 - 绿色
-    6: 'cyan', // 已开票 - 青色
-    7: 'gold', // 已付款 - 金色
+    1: 'purple', // 部分结算 - 紫色
+    2: 'green', // 已结算 - 绿色
   };
   return colorMap[recSettlementStatus ?? -1] ?? 'default';
 }
@@ -198,7 +188,7 @@ const currencies = ref<CurrencyInfo[]>([]);
 // --- 过滤条件 ---
 const filterAccountDate = ref<string>('');
 const filterFeeName = ref<string>('');
-const filterCommissionNum = ref<string>(''); // 委托编号
+const filterReferenceNum = ref<string>(''); // 编号（支持委托编号和提单号）
 const filterEtdStart = ref<string>(''); // 开船日期起始
 const filterEtdEnd = ref<string>(''); // 开船日期截止
 const filterPaySide = ref<number | undefined>(undefined); // 收付类型：0-收，1-付，undefined-全部
@@ -219,7 +209,7 @@ const filteredFeeDetailRows = computed(() => {
   if (
     !filterAccountDate.value &&
     !filterFeeName.value &&
-    !filterCommissionNum.value &&
+    !filterReferenceNum.value &&
     !filterEtdStart.value &&
     !filterEtdEnd.value &&
     filterPaySide.value === undefined
@@ -244,13 +234,14 @@ const filteredFeeDetailRows = computed(() => {
       }
     }
 
-    // 委托编号过滤（模糊匹配，不区分大小写）
-    if (filterCommissionNum.value) {
+    // 编号过滤（支持委托编号和提单号，模糊匹配，不区分大小写）
+    if (filterReferenceNum.value) {
       const commissionNum = row.commissionNum || '';
+      const mblNum = row.mblNum || '';
+      const searchValue = filterReferenceNum.value.toLowerCase();
       if (
-        !commissionNum
-          .toLowerCase()
-          .includes(filterCommissionNum.value.toLowerCase())
+        !commissionNum.toLowerCase().includes(searchValue) &&
+        !mblNum.toLowerCase().includes(searchValue)
       ) {
         return false;
       }
@@ -986,7 +977,7 @@ function resetForm() {
   // 重置过滤条件
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
+  filterReferenceNum.value = ''; // 重置编号过滤条件
   filterEtdStart.value = '';
   filterEtdEnd.value = '';
   filterPaySide.value = undefined;
@@ -995,7 +986,7 @@ function resetForm() {
 function clearFilters() {
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
+  filterReferenceNum.value = ''; // 重置编号过滤条件
   filterEtdStart.value = '';
   filterEtdEnd.value = '';
   filterPaySide.value = undefined;
@@ -1392,11 +1383,9 @@ function formatMonth(val: string | undefined | null): string {
                 style="width: 200px"
                 allow-clear
               />
-              <span class="text-sm text-gray-600"
-                >{{ t('commissionNum') }}：</span
-              >
+              <span class="text-sm text-gray-600">编号：</span>
               <Input
-                v-model:value="filterCommissionNum"
+                v-model:value="filterReferenceNum"
                 :placeholder="$t('ui.placeholder.input')"
                 size="small"
                 style="width: 180px"

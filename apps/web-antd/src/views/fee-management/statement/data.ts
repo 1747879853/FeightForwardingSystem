@@ -2,6 +2,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
 import { $t } from '#/locales';
 
@@ -64,21 +65,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
-    // 新增：收付类型筛选
-    {
-      component: 'Select',
-      fieldName: 'PaySide',
-      label: '收付类型',
-      componentProps: {
-        placeholder: '请选择',
-        allowClear: true,
-        options: [
-          { label: '应收', value: 0 },
-          { label: '应付', value: 1 },
-          { label: '收付', value: 2 },
-        ],
-      },
-    },
+    // 移除：收付类型筛选
     // 新增：开票状态筛选
     {
       component: 'Select',
@@ -135,10 +122,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
 }
 
 /**
- * 列表列配置（无操作列，第一列为 radio 单选列）
+ * 获取基础列配置（包含最常用的币别列）
  */
-export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
-  return [
+export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] {
+  const baseColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] = [
     { type: 'checkbox', width: 48, fixed: 'left' },
     {
       field: 'statementNum',
@@ -166,14 +153,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       formatter: 'formatDate',
       sortable: true,
     },
-    // 新增：收付类型汇总列
-    {
-      field: 'paySide',
-      title: '收付类型',
-      minWidth: 120,
-      slots: { default: 'paySide' },
-      sortable: true,
-    },
+    // 移除：收付类型汇总列
     // 新增：开票状态汇总列
     {
       field: 'invoiceStatus',
@@ -205,24 +185,6 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: false,
     },
     {
-      field: 'localCurrency.code',
-      title: $t('seaExport.export.statement.localCurrencyCode'),
-      minWidth: 130,
-      sortable: true,
-    },
-    {
-      field: 'localCurrencyReceiveAmount',
-      title: $t('seaExport.export.statement.localCurrencyReceiveAmount'),
-      minWidth: 100,
-      sortable: true,
-    },
-    {
-      field: 'localCurrencyPayAmount',
-      title: $t('seaExport.export.statement.localCurrencyPayAmount'),
-      minWidth: 100,
-      sortable: true,
-    },
-    {
       field: 'description',
       title: $t('seaExport.export.statement.notes'),
       minWidth: 160,
@@ -236,5 +198,44 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       formatter: 'formatDateTime',
       sortable: true,
     },
+    // 新增：创建人列
+    {
+      field: 'creatorUserName',
+      title: '创建人',
+      minWidth: 120,
+      sortable: true,
+    },
   ];
+
+  // 添加最常用的币别列（RMB、USD）
+  const commonCurrencies = ['RMB', 'USD'];
+  const currencyColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] = [];
+  
+  commonCurrencies.forEach(currencyCode => {
+    // 应收列
+    currencyColumns.push({
+      field: `currency_${currencyCode}_receive`,
+      title: `${currencyCode}应收`,
+      minWidth: 100,
+      formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+        const currencyGroup = row.statementCurrencyGroup?.find(c => c.currency?.code === currencyCode);
+        return currencyGroup ? currencyGroup.receiveAmount : '';
+      },
+      sortable: false,
+    });
+    
+    // 应付列
+    currencyColumns.push({
+      field: `currency_${currencyCode}_pay`,
+      title: `${currencyCode}应付`,
+      minWidth: 100,
+      formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+        const currencyGroup = row.statementCurrencyGroup?.find(c => c.currency?.code === currencyCode);
+        return currencyGroup ? currencyGroup.payAmount : '';
+      },
+      sortable: false,
+    });
+  });
+
+  return [...baseColumns, ...currencyColumns];
 }

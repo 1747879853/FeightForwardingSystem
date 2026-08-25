@@ -142,14 +142,6 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
         </Button>
       </template>
 
-      <!-- 收付类型列自定义渲染 -->
-      <template #paySide="{ row }">
-        <span v-if="row.paySide === 0">应收</span>
-        <span v-else-if="row.paySide === 1">应付</span>
-        <span v-else-if="row.paySide === 2">收付</span>
-        <span v-else>-</span>
-      </template>
-
       <!-- 我司银行列自定义渲染 -->
       <template #orgBankAccount="{ row }">
         <span v-if="row.orgBankAccount">

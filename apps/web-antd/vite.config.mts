@@ -92,7 +92,7 @@ function resolveApiTarget(mode: string) {
   if (brand === 'longshan') {
     return 'http://175.178.101.30:86';
   }
-  return 'http://118.190.1.4:82';
+  return 'http://43.138.14.122:88';
 }
 
 function resolveCliArg(name: string) {

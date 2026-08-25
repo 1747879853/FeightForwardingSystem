@@ -616,14 +616,9 @@ function getRecSettlementStatusLabel(
   recSettlementStatus: number | undefined,
 ): string {
   const statusMap: Record<number, string> = {
-    0: '录入中',
-    1: '待审核',
-    2: '已驳回',
-    3: '审核通过',
-    4: '部分结算',
-    5: '已结算',
-    6: '已开票',
-    7: '已付款',
+    0: '未结算',
+    1: '部分结算',
+    2: '结算完毕',
   };
   return statusMap[recSettlementStatus ?? -1] ?? '-';
 }
@@ -633,13 +628,8 @@ function getRecSettlementStatusColor(
 ): string {
   const colorMap: Record<number, string> = {
     0: 'default', // 录入中 - 灰色
-    1: 'orange', // 待审核 - 橙色
-    2: 'red', // 已驳回 - 红色
-    3: 'blue', // 审核通过 - 蓝色
-    4: 'purple', // 部分结算 - 紫色
-    5: 'green', // 已结算 - 绿色
-    6: 'cyan', // 已开票 - 青色
-    7: 'gold', // 已付款 - 金色
+    1: 'purple', // 部分结算 - 紫色
+    2: 'green', // 已结算 - 绿色
   };
   return colorMap[recSettlementStatus ?? -1] ?? 'default';
 }
@@ -660,38 +650,6 @@ function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
     2: 'green', // 已开票 - 绿色
   };
   return colorMap[invoiceStatus ?? -1] ?? 'default';
-}
-
-function getCombinedFeeStatusLabel(
-  combinedFeeStatus: number | undefined,
-): string {
-  const statusMap: Record<number, string> = {
-    0: '录入中',
-    1: '待审核',
-    2: '已驳回',
-    3: '审核通过',
-    4: '部分结算',
-    5: '已结算',
-    6: '已开票',
-    7: '已付款',
-  };
-  return statusMap[combinedFeeStatus ?? -1] ?? '-';
-}
-
-function getCombinedFeeStatusColor(
-  combinedFeeStatus: number | undefined,
-): string {
-  const colorMap: Record<number, string> = {
-    0: 'default', // 录入中 - 灰色
-    1: 'orange', // 待审核 - 橙色
-    2: 'red', // 已驳回 - 红色
-    3: 'blue', // 审核通过 - 蓝色
-    4: 'purple', // 部分结算 - 紫色
-    5: 'green', // 已结算 - 绿色
-    6: 'cyan', // 已开票 - 青色
-    7: 'gold', // 已付款 - 金色
-  };
-  return colorMap[combinedFeeStatus ?? -1] ?? 'default';
 }
 
 function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {
