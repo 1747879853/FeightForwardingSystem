@@ -12,8 +12,6 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
-import { UserCompanySelect } from '#/adapter/component/biz-select';
-import { getMyOrgOptions } from '#/composables/use-my-org';
 import { getMyTrueCompanyOptions } from '#/composables/use-my-org';
 interface Props {
   visible: boolean;

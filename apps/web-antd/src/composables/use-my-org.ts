@@ -156,3 +156,15 @@ export function resolveOrderUserCompanyIds(
   }
   return getMyCompanyIds();
 }
+
+/**
+ * 根据组织id获取对应的公司id（一级组织id）
+ * @param orgId 组织id
+ * @returns 公司id，如果找不到则返回undefined
+ */
+export function getCompanyIdByOrgId(orgId: number): number | undefined {
+  if (!orgId) return undefined;
+  const path = getMyOrgPath(orgId);
+  const companyNode = pickCompanyNodeFromPath(path);
+  return companyNode?.id;
+}

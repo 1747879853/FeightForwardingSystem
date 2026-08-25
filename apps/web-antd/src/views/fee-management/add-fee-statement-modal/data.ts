@@ -337,17 +337,6 @@ export function useOrderFixedColumns() {
       field: 'recSettlementStatus',
       title: '结算状态',
       width: 100,
-      customRender: ({ record }: any) => {
-        // recSettlementStatus 来自 transportOrder.recSettlementStatus
-        const status = record.recSettlementStatus;
-        if (status === null || status === undefined) return '-';
-        const statusMap: Record<number, string> = {
-          0: '未结算',
-          1: '部分结算',
-          2: '结算完毕',
-        };
-        return statusMap[status] || '-';
-      },
     },
   ];
 }

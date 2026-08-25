@@ -136,14 +136,14 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
       minWidth: 140,
     },
     {
-      field: 'settlementName',
+      field: 'settlement.name',
       title: '结算对象',
       minWidth: 160,
       showOverflow: true,
     },
     {
-      field: 'currencyCode',
-      title: '币别',
+      field: 'currency.code',
+      title: '发票币别',
       minWidth: 80,
     },
     {
@@ -179,7 +179,7 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
     {
       field: 'invoiceAmount',
       title: '发票金额',
-      minWidth: 120,
+      minWidth: 130,
       align: 'right',
       formatter: ({ cellValue }) => {
         if (cellValue === null || cellValue === undefined) return '-';

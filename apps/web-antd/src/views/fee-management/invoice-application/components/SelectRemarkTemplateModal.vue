@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { Modal, Button, message, Space, Tag } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
-import { CurrencySelect } from '#/adapter/component';
+import { getCompanyIdByOrgId } from '#/composables/use-my-org';
 
 interface Props {
   visible: boolean;
@@ -264,7 +264,7 @@ async function loadTemplateList() {
 
     // 如果有传入归属组织和币别，进行筛选
     if (props.settlementId) {
-      params.orgId = Number(props.settlementId);
+      params.orgId = getCompanyIdByOrgId(Number(props.settlementId));
     }
     if (props.currencyId) {
       params.currencyId = props.currencyId;

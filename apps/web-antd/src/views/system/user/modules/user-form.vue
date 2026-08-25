@@ -330,7 +330,21 @@ const getOrgDisplayName = (orgId: number): string => {
   };
 
   const node = findNode(organizationTreeData.value, orgId);
-  return node?.displayName || `ID:${orgId}`;
+  if (!node) {
+    return `ID:${orgId}`;
+  }
+
+  // 获取公司名称
+  const tree =
+    organizationTreeData.value as SystemOrganizationUnitApi.OrganizationUnitTreeDto[];
+  const companyName = resolveOrganizationCompanyName(tree, orgId);
+
+  // 如果有公司名称且与组织名称不同，则显示"公司名称 + 组织名称"
+  if (companyName && companyName !== node.displayName) {
+    return `${companyName} + ${node.displayName}`;
+  }
+
+  return node.displayName || `ID:${orgId}`;
 };
 
 // 同步公司名称（使用第一个选中的组织的公司）
@@ -633,10 +647,11 @@ const getModalTitle = computed(() => {
               :key="org.id"
               closable
               :color="org.default ? 'blue' : 'default'"
+              class="text-sm"
               @close="removeOrg(org.id)"
             >
-              <div class="flex items-center gap-1">
-                <span>{{ getOrgDisplayName(org.id) }}</span>
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
                 <template v-if="!org.default">
                   <Radio
                     :checked="false"
@@ -647,7 +662,10 @@ const getModalTitle = computed(() => {
                     {{ $t('system.user.setDefault') || '设为默认' }}
                   </Radio>
                 </template>
-                <span v-else class="ml-1 text-xs font-medium text-blue-600">
+                <span
+                  v-else
+                  class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
+                >
                   ✓ {{ $t('system.user.isDefault') || '默认' }}
                 </span>
               </div>

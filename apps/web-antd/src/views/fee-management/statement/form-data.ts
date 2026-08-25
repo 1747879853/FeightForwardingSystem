@@ -255,16 +255,6 @@ export function useOrderGroupColumns() {
       key: 'recSettlementStatus',
       width: 100,
       align: 'center' as const,
-      customRender: ({ record }: any) => {
-        const status = record.transportOrder?.recSettlementStatus;
-        if (status === null || status === undefined) return '-';
-        const statusMap: Record<number, string> = {
-          0: '未结算',
-          1: '部分结算',
-          2: '结算完毕',
-        };
-        return statusMap[status] ?? '-';
-      },
     },
   ];
 }
