@@ -1,11 +1,10 @@
-import type { VbenFormSchema } from '@vben/common-ui';
 import type { ReportApi } from '#/api/system/report';
 
+import type { VbenFormSchema } from '#/adapter/form';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
-import SmartPortSelect from '../profit-report/modules/SmartPortSelect.vue';
-
-import dayjs from 'dayjs';
+import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import SmartPortSelect from './modules/SmartPortSelect.vue';
 
 /**
  * 业务类型选项
@@ -45,7 +44,7 @@ export const BL_TYPE_OPTIONS = [
 ];
 
 /**
- * 收付方选项
+ * 收付类型选项
  */
 export const PAY_SIDE_OPTIONS = [
   { label: '应收', value: 0 },
@@ -57,15 +56,26 @@ export const PAY_SIDE_OPTIONS = [
  */
 export const SETTLEMENT_STATUS_OPTIONS = [
   { label: '未结算', value: 0 },
-  { label: '已结算', value: 1 },
+  { label: '部分结算', value: 1 },
+  { label: '结算完毕', value: 2 },
 ];
 
 /**
- * 发票状态选项
+ * 付费申请状态选项
+ */
+export const PAYMENT_APPLY_STATUS_OPTIONS = [
+  { label: '未提交', value: 0 },
+  { label: '提交了部分', value: 1 },
+  { label: '已全额提交', value: 2 },
+];
+
+/**
+ * 开票状态选项
  */
 export const INVOICE_STATUS_OPTIONS = [
   { label: '未开票', value: 0 },
-  { label: '已开票', value: 1 },
+  { label: '部分开票', value: 1 },
+  { label: '已开票', value: 2 },
 ];
 
 /**
@@ -74,13 +84,15 @@ export const INVOICE_STATUS_OPTIONS = [
 export function useArrearsReportFormSchema(): VbenFormSchema[] {
   return [
     {
-      fieldName: 'isMergeChangeOrder',
-      label: '合并更改单',
-      component: 'Switch',
-      defaultValue: true,
+      fieldName: 'paySide',
+      label: '收付类型',
+      component: 'Select',
+      defaultValue: 0,
       componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
+        options: PAY_SIDE_OPTIONS,
+        allowClear: false,
+        placeholder: '请选择收付类型',
+        style: { width: '100%' },
       },
     },
     {
@@ -104,31 +116,20 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      fieldName: 'settlementId',
+      label: '结算对象',
+      component: ClientSelect,
+      componentProps: {
+        placeholder: '请选择结算对象',
+        style: { width: '100%' },
+      },
+    },
+    {
       fieldName: 'keyword',
       label: '关键词',
       component: 'Input',
       componentProps: {
         placeholder: '主提单号或委托编号',
-        allowClear: true,
-        style: { width: '100%' },
-      },
-    },
-    {
-      fieldName: 'mblNum',
-      label: '主提单号',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入主提单号',
-        allowClear: true,
-        style: { width: '100%' },
-      },
-    },
-    {
-      fieldName: 'commissionNum',
-      label: '委托编号',
-      component: 'Input',
-      componentProps: {
-        placeholder: '请输入委托编号',
         allowClear: true,
         style: { width: '100%' },
       },
@@ -178,6 +179,16 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      fieldName: 'isMergeChangeOrder',
+      label: '合并更改单',
+      component: 'Switch',
+      defaultValue: false,
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+    },
+    {
       fieldName: 'bookingAgentId',
       label: '订舱代理',
       component: ClientSelect,
@@ -192,6 +203,26 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       component: CarrierSelect,
       componentProps: {
         placeholder: '请选择船公司',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'saleUserIds',
+      label: '销售',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择销售',
+        style: { width: '100%' },
+      },
+    },
+    {
+      fieldName: 'operationUserIds',
+      label: '操作',
+      component: UserSelect,
+      componentProps: {
+        mode: 'multiple',
+        placeholder: '请选择操作',
         style: { width: '100%' },
       },
     },
@@ -280,27 +311,6 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      fieldName: 'paySide',
-      label: '收付方',
-      component: 'Select',
-      rules: 'required',
-      componentProps: {
-        options: PAY_SIDE_OPTIONS,
-        allowClear: true,
-        placeholder: '请选择收付方',
-        style: { width: '100%' },
-      },
-    },
-    {
-      fieldName: 'settlementId',
-      label: '结算对象',
-      component: ClientSelect,
-      componentProps: {
-        placeholder: '请选择结算对象',
-        style: { width: '100%' },
-      },
-    },
-    {
       fieldName: 'settlementStatus',
       label: '结算状态',
       component: 'Select',
@@ -316,11 +326,7 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
       label: '付费申请状态',
       component: 'Select',
       componentProps: {
-        options: [
-          { label: '未提交', value: 0 },
-          { label: '提交了部分', value: 1 },
-          { label: '已全额提交', value: 2 },
-        ],
+        options: PAYMENT_APPLY_STATUS_OPTIONS,
         allowClear: true,
         placeholder: '请选择付费申请状态',
         style: { width: '100%' },
@@ -340,19 +346,29 @@ export function useArrearsReportFormSchema(): VbenFormSchema[] {
     {
       fieldName: 'isStatemented',
       label: '是否对账',
-      component: 'Switch',
+      component: 'Select',
       componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
+        options: [
+          { label: '是', value: true },
+          { label: '否', value: false },
+        ],
+        allowClear: true,
+        placeholder: '请选择是否对账',
+        style: { width: '100%' },
       },
     },
     {
       fieldName: 'feeLocked',
       label: '费用锁定',
-      component: 'Switch',
+      component: 'Select',
       componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
+        options: [
+          { label: '是', value: true },
+          { label: '否', value: false },
+        ],
+        allowClear: true,
+        placeholder: '请选择费用锁定',
+        style: { width: '100%' },
       },
     },
   ];
@@ -392,9 +408,9 @@ function safeFormatDateForRenderer(
 }
 
 /**
- * 获取 Handsontable 列配置
+ * 获取 Handsontable 列配置（基础列）
  */
-export function getHotColumns() {
+export function getBaseHotColumns() {
   return [
     {
       data: 'commissionNum',
@@ -422,13 +438,18 @@ export function getHotColumns() {
       width: 150,
     },
     {
-      data: 'pol',
-      title: '起运港',
+      data: 'carrier',
+      title: '船公司',
+      width: 150,
+    },
+    {
+      data: 'sales',
+      title: '销售',
       width: 120,
     },
     {
-      data: 'pod',
-      title: '目的港',
+      data: 'operations',
+      title: '操作',
       width: 120,
     },
     {
@@ -449,11 +470,11 @@ export function getHotColumns() {
     {
       data: 'innerVoyno',
       title: '航次',
-      width: 100,
+      width: 120,
     },
     {
       data: 'ctns',
-      title: '箱型箱量',
+      title: '箱型数量',
       width: 150,
       renderer: (
         instance: any,
@@ -464,7 +485,7 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
         td.innerHTML = value || '-';
         return td;
       },
@@ -482,7 +503,26 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = safeFormatDateForRenderer(value, 'date');
+        // 日期已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '-';
+        return td;
+      },
+    },
+    {
+      data: 'accountDate',
+      title: '会计期间',
+      width: 120,
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        // 日期已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '-';
         return td;
       },
     },
@@ -499,7 +539,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = safeFormatDateForRenderer(value, 'date');
+        // 日期已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '-';
         return td;
       },
     },
@@ -517,16 +558,43 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        const numValue = parseInt(value) || 0;
-        // 超期天数为负数表示未到期
-        td.innerHTML = numValue.toString();
-        // 可以根据超期天数设置不同的颜色
-        if (numValue > 0) {
-          td.style.color = '#ff4d4f'; // 超期显示红色
-        } else if (numValue < 0) {
-          td.style.color = '#52c41a'; // 未到期显示绿色
+        // 超期天数显示逻辑：负数表示未到期，正数表示超期
+        if (value == null || value === '') {
+          td.innerHTML = '-';
         } else {
-          td.style.color = ''; // 当天为默认色
+          const days = parseInt(value);
+          if (days < 0) {
+            td.innerHTML = `-${Math.abs(days)}天`;
+            td.style.color = '#52c41a'; // 绿色表示未到期
+          } else if (days === 0) {
+            td.innerHTML = '0天';
+            td.style.color = '#faad14'; // 黄色表示当天到期
+          } else {
+            td.innerHTML = `${days}天`;
+            td.style.color = '#f5222d'; // 红色表示超期
+          }
+        }
+        return td;
+      },
+    },
+    {
+      data: 'invoiceNos',
+      title: '发票号',
+      width: 150,
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        // 发票号数组显示
+        if (Array.isArray(value) && value.length > 0) {
+          td.innerHTML = value.join(', ');
+        } else {
+          td.innerHTML = '-';
         }
         return td;
       },
@@ -544,14 +612,29 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
+        // 费用锁定显示为是/否
         td.innerHTML = value ? '是' : '否';
         return td;
       },
     },
-    {
-      data: 'invoiceNos',
-      title: '发票号',
-      width: 200,
+  ];
+}
+
+/**
+ * 获取币别明细列配置
+ */
+export function getCurrencyColumns(currencyCodes: string[]) {
+  const currencyColumns: any[] = [];
+
+  // 按币别代码排序，确保列顺序一致
+  const sortedCodes = [...currencyCodes].sort();
+
+  sortedCodes.forEach((code) => {
+    currencyColumns.push({
+      data: `${code}_receivable`,
+      title: `${code}应收/应付`,
+      width: 120,
+      className: 'htRight',
       renderer: (
         instance: any,
         td: HTMLTableCellElement,
@@ -561,19 +644,17 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 是数组
-        if (Array.isArray(value) && value.length > 0) {
-          td.innerHTML = value.join(', ');
-        } else {
-          td.innerHTML = '-';
-        }
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
-    },
-    {
-      data: 'currencies',
-      title: '币别明细',
-      width: 300,
+    });
+
+    currencyColumns.push({
+      data: `${code}_received`,
+      title: `${code}已收/已付`,
+      width: 120,
+      className: 'htRight',
       renderer: (
         instance: any,
         td: HTMLTableCellElement,
@@ -583,11 +664,41 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        // value 已经是格式化好的字符串
-        td.innerHTML = value || '-';
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
-    },
+    });
+
+    currencyColumns.push({
+      data: `${code}_unReceived`,
+      title: `${code}未收/未付`,
+      width: 120,
+      className: 'htRight',
+      renderer: (
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) => {
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
+        return td;
+      },
+    });
+  });
+
+  return currencyColumns;
+}
+
+/**
+ * 获取合计列配置
+ */
+export function getTotalColumns() {
+  return [
     {
       data: 'totalReceivable',
       title: '合计应收/应付(CNY)',
@@ -602,7 +713,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
@@ -620,7 +732,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
@@ -638,7 +751,8 @@ export function getHotColumns() {
         value: any,
         cellProperties: any,
       ) => {
-        td.innerHTML = (parseFloat(value) || 0).toFixed(2);
+        // 数据已在 transformDataForHotTable 中预格式化，直接显示
+        td.innerHTML = value || '';
         return td;
       },
     },
