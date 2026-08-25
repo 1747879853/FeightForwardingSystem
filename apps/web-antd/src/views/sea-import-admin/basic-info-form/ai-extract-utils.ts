@@ -2,7 +2,7 @@ import type { TextInAdminApi } from '#/api/common/text-in-admin';
 
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
-import { calcCtnNetWeight, toDayjs } from './sea-import-detail-mapper';
+import { toDayjs } from './sea-import-detail-mapper';
 
 export const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
@@ -129,10 +129,7 @@ function normalizeExtractOrderCtn(
   const pkgs = pickProp<number>(raw, 'pkgs', 'pKGS');
   const grossWeight = pickProp<number>(raw, 'grossWeight');
   const tareWeight = pickProp<number>(raw, 'tareWeight');
-  let netWeight = pickProp<number>(raw, 'netWeight');
-  if (isEmptyRecognizedValue(netWeight)) {
-    netWeight = calcCtnNetWeight(grossWeight, tareWeight);
-  }
+  const netWeight = pickProp<number>(raw, 'netWeight');
 
   return {
     ...item,

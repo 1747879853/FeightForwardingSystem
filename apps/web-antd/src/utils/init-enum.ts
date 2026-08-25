@@ -66,7 +66,7 @@ export async function initEnumCache(
     // 并行获取所有枚举的值
     const promises = enumNames.map(async (name) => {
       try {
-        const items = await getItemsByName(name);
+        const items = await getItemsByName(name, { silent: true });
         enumData[name] = items;
       } catch (error) {
         console.warn(`[Enum Cache] 获取枚举 ${name} 失败:`, error);
@@ -255,6 +255,8 @@ async function getAllEnumNames(): Promise<string[]> {
     'FeeStatus',
     'ModuleType',
     'ServiceType',
+    // 海运进口贸易方式，见 sea-import-admin/data.ts
+    'TradeMode',
     // 干系人可用角色（按业务类型），见 composables/use-order-user-roles.ts
     'SeaExportUserAttribute',
     // 海运进口干系人角色枚举暂未落地，勿预热以免「枚举不存在」报错

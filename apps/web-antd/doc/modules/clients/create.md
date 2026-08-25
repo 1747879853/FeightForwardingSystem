@@ -2,7 +2,7 @@
 title: 客户新建
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -34,7 +34,7 @@ last_updated: 2026-08-23
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **客户基础字段** | 客户名称、编码、类型、地址等主数据。 | `src/views/client/base/data.ts` | **触发/依赖：** 创建成功后成为联系人、账期、发票等子模块的父级。 | 必填、格式和唯一性以后端接口为准。 |
+| **供应商行业类别** | 勾选供应商后可选的属性，含「码头」（字母 `t`，数字 `20`）。 | `getSupplierIndustryCategoryOptions()` | 海运进口码头下拉只筛此属性。 | 可多选字母拼进 `IndustryCategory`。 |
 | **页面根节点** | 表单页面必须保持单元素根。 | `src/views/client/base/form.vue` | **触发/依赖：** 受 `RouterView` 外层 `Transition` 影响。 | 禁止退化为多根 Fragment。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -45,5 +45,5 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-23 | `Feature` | 新建页 KeepAlive 与未保存提示。 | `keepAliveName: ClientAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
+| 2026-08-25 | `Feature` | 供应商行业类别新增「码头」（字母 `t`，数字 `20`）。 | 与后端 `IndustryCategory.码头` 对齐。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/create` 对应组件 `src/views/client/base/form.vue`，权限口径为 未在路由中声明独立权限。 |

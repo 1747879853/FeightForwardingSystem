@@ -222,6 +222,11 @@ export const getIndustryCategoryOptions = () => [
   },
   {
     key: 20,
+    value: 't',
+    label: $t('seaExport.client.industryCategoryOptions.wharf'),
+  },
+  {
+    key: 21,
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },

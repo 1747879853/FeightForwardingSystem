@@ -127,7 +127,7 @@ const getLaneIdOptions = () => [
   },
 ];
 
-/** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
+/** 行业类别枚举选项（value 取字母，与后端 IndustryCategory 对应：a 船公司、b 发货人、c 场站、t 码头=20） */
 const getIndustryCategoryOptions = () => [
   // {
   //   key: 1,
@@ -226,6 +226,11 @@ const getIndustryCategoryOptions = () => [
   },
   {
     key: 20,
+    value: 't',
+    label: $t('seaExport.client.industryCategoryOptions.wharf'),
+  },
+  {
+    key: 21,
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
@@ -248,7 +253,7 @@ const getCustomerIndustryCategoryOptions = () => [
     label: $t('seaExport.client.industryCategoryOptions.consignee'),
   },
   {
-    key: 20,
+    key: 21,
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
@@ -264,6 +269,11 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 3,
     value: 'c',
     label: $t('seaExport.client.industryCategoryOptions.terminal'),
+  },
+  {
+    key: 20,
+    value: 't',
+    label: $t('seaExport.client.industryCategoryOptions.wharf'),
   },
   {
     key: 4,

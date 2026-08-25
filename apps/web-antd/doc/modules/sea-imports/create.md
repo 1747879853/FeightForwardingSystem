@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -39,12 +39,13 @@ last_updated: 2026-08-19
 | :-- | :-- | :-- | :-- | :-- |
 | **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 头部选择写回隐藏字段 `codeSourceId`；**不**随委托单位自动带出（与海出不同）。 | 可选，允许清空。 |
 | **到港日期 (`etd`)** | 界面「到港日期」，落库 `transportOrder.etd`。 | `data.ts` / 详情扁平化 | **触发：** 重算转站日期、箱使日期。 | 可手选。 |
-| **转站/箱使日期** | 推算结果，只读文本。 | 到港 +9 天；到港 + 免箱期 −1 | **触发/依赖：** 到港、免箱期变化时写入 `YYYY-MM-DD`。 | 不可手改。 |
+| **转站/箱使日期** | 推算结果，只读文本。 | 到港 +6 天；到港 + 免箱期 −1 | **触发/依赖：** 到港、免箱期变化时写入 `YYYY-MM-DD`。 | 不可手改。 |
 | **原产国** | 整票属性。 | `CountrySelect` | 放在基础信息「运输条款」之后。 | 可选。 |
 | **净重合计** | 货物区净重。 | 箱型行 `netWeight` 求和 | 箱型变动自动回填，可二次手改。 | 详情回填时挂起自动求和。 |
-| **码头 (`terminalId`)** | 往来单位，行业类别含码头/场站。 | `ClientSelect` `industryCategory=c` | 提交最外层 `terminalId`，读取 `terminal.name`。 | 后端只校验客户存在，不校验行业类别。 |
+| **码头 (`terminalId`)** | 往来单位，行业类别含「码头」。 | `ClientSelect` `industryCategory=t` | 提交最外层 `terminalId`，读取 `terminal.name`。 | 后端只校验客户存在，不校验行业类别。 |
 | **联运单号 / 分单号** | 一票一号字段。 | 文本 | 复制时后端清空。 | 上限 32。 |
-| **贸易方式** | 前端自定义枚举。 | `getTradeModeOptions()` | 后端只存整数。 | 不校验取值。 |
+| **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
+| **集装箱净重** | 进口箱表专属列。 | 手填 | **不**按毛重减皮重自动计算。 | 可选。 |
 | **集装箱规格/型号** | 品名子表 id。 | 品名详情 `codeGoodsSpecs` / `codeGoodsModels` | 先选品名；切换品名清空这两列。 | 未选品名或 id 不属于该品名会被后端拦下。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **干系人** | 订单协同角色。 | `use-order-users.ts` | 右侧面板；销售必填且唯一。 | 保存前校验销售与必填角色人员。 |
@@ -59,6 +60,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Fix` | 码头下拉改为行业类别「码头」`t`；转站日期改为到港+6；集装箱净重不再自动计算；贸易方式改为枚举中心 `TradeMode`；主提单号与保险公司换位。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-23 | `Feature` | 新建页接入未保存守卫并 KeepAlive。 | `keepAliveName: SeaImportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |
 | 2026-08-16 | `Feature` | 货物区内外部备注由单行改为多行 textarea，撑满备注卡片高度。 | `CargoRemarkForm` 组件改为 `Textarea`。详见 `changelogs/change-log-2026-08-16-air-export-sea-import-remark-textarea.md`。 |

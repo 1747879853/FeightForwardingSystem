@@ -22,8 +22,6 @@ import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { $t } from '#/locales';
 
-import { calcCtnNetWeight } from '../basic-info-form/sea-import-detail-mapper';
-
 type SpecOption = CodeGoodsAdminApi.CodeGoodsSpecSimpleDto;
 type ModelOption = CodeGoodsAdminApi.CodeGoodsModelSimpleDto;
 
@@ -190,13 +188,6 @@ const updateRow = (
   if (!list[index])
     list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
   const next = { ...list[index], [field]: value } as any;
-  // 净重由毛重/皮重带出，但仍允许手改：只在改毛重或皮重时重算
-  if (field === 'grossWeight' || field === 'tareWeight') {
-    const derived = calcCtnNetWeight(next.grossWeight, next.tareWeight);
-    if (derived !== undefined) {
-      next.netWeight = derived;
-    }
-  }
   list[index] = next;
   modelValue.value = list;
 };

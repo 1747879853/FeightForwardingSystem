@@ -222,6 +222,7 @@
       "fileCount": "{0} file(s)",
       "empty": "No attachment type configured",
       "emptyType": "No attachment",
+      "clickOrDragUpload": "Click or drag to upload",
       "uncategorized": "Uncategorized",
       "uploadTime": "Upload Time",
       "uploader": "Uploader",

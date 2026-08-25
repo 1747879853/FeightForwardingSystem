@@ -93,6 +93,8 @@ const seaExportIdRef = useKeepAliveRouteParamId();
 
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
+/** 当前拖拽悬停的附件类型 id（含 null=未分类） */
+const dragOverTypeId = ref<number | null | undefined>(undefined);
 const groups = ref<AttachmentTypeGroup[]>([]);
 const clientVisibleByTypeId = ref<Map<number | null, boolean>>(new Map());
 const allAttachmentTypes = ref<SeaExportAdminApi.AttachmentDtlTypeSimpleDto[]>(
@@ -444,7 +446,10 @@ const handleBeforeUpload = async (
           attachmentId: Number(uploaded.attachmentId),
           attachmentDtlTypeId: group.attachmentDtlTypeId ?? undefined,
           clientVisible: getClientVisible(group.attachmentDtlTypeId),
-          displayOrder: group.items.length,
+          displayOrder:
+            groups.value.find(
+              (item) => item.attachmentDtlTypeId === group.attachmentDtlTypeId,
+            )?.items.length ?? 0,
           url: uploaded.url,
         },
       ],
@@ -460,6 +465,41 @@ const handleBeforeUpload = async (
   }
 
   return false;
+};
+
+const isDragOver = (typeId: number | null) =>
+  dragOverTypeId.value !== undefined && dragOverTypeId.value === typeId;
+
+const onDragEnter = (group: AttachmentTypeGroup, event: DragEvent) => {
+  if (!canEdit.value) return;
+  if (!event.dataTransfer?.types?.includes('Files')) return;
+  dragOverTypeId.value = group.attachmentDtlTypeId;
+};
+
+const onDragOver = (group: AttachmentTypeGroup, event: DragEvent) => {
+  if (!canEdit.value) return;
+  if (!event.dataTransfer?.types?.includes('Files')) return;
+  event.dataTransfer.dropEffect = 'copy';
+  dragOverTypeId.value = group.attachmentDtlTypeId;
+};
+
+const onDragLeave = (group: AttachmentTypeGroup, event: DragEvent) => {
+  const current = event.currentTarget as HTMLElement | null;
+  const related = event.relatedTarget as Node | null;
+  if (current && related && current.contains(related)) return;
+  if (isDragOver(group.attachmentDtlTypeId)) {
+    dragOverTypeId.value = undefined;
+  }
+};
+
+const onDrop = async (group: AttachmentTypeGroup, event: DragEvent) => {
+  dragOverTypeId.value = undefined;
+  if (!canEdit.value) return;
+  const files = Array.from(event.dataTransfer?.files ?? []);
+  if (files.length === 0) return;
+  for (const file of files) {
+    await handleBeforeUpload(file as unknown as UploadFile, group);
+  }
 };
 
 const handleDownload = (row: SeaExportAdminApi.AttachmentItemDto) => {
@@ -583,6 +623,14 @@ onMounted(() => {
           :key="getGroupKey(group.attachmentDtlTypeId)"
           size="small"
           class="attachment-card"
+          :class="{
+            'attachment-card--droppable': canEdit,
+            'attachment-card--drag-over': isDragOver(group.attachmentDtlTypeId),
+          }"
+          @dragenter.prevent="onDragEnter(group, $event)"
+          @dragover.prevent="onDragOver(group, $event)"
+          @dragleave="onDragLeave(group, $event)"
+          @drop.prevent="onDrop(group, $event)"
         >
           <template #title>
             <div class="flex items-center gap-2">
@@ -638,7 +686,11 @@ onMounted(() => {
               v-if="group.items.length === 0"
               class="py-6 text-center text-xs text-gray-400"
             >
-              {{ $t('seaExport.export.attachments.emptyType') }}
+              {{
+                canEdit
+                  ? $t('seaExport.export.attachments.clickOrDragUpload')
+                  : $t('seaExport.export.attachments.emptyType')
+              }}
             </div>
 
             <div
@@ -800,6 +852,16 @@ onMounted(() => {
 <style scoped>
 .attachment-card :deep(.ant-card-body) {
   padding: 12px;
+}
+
+.attachment-card--droppable {
+  cursor: default;
+}
+
+.attachment-card.attachment-card--drag-over {
+  background: #f0f9ff;
+  border-color: #3b82f6;
+  border-style: dashed;
 }
 
 .attachment-card-list {

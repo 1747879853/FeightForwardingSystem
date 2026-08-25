@@ -39,6 +39,7 @@ last_updated: 2026-05-18
 | :------------------------ | :---------------------------------------- |
 | `InvoiceStatus`           | `getEnumItems('InvoiceStatus')`           |
 | `FeeStatus`               | `getEnumItems('FeeStatus')`               |
+| `TradeMode`               | `getEnumItems('TradeMode')`               |
 | `freightConditionItem`    | `getEnumItems('freightConditionItem')`    |
 | `ConditionComparisonType` | `getEnumItems('ConditionComparisonType')` |
 
@@ -54,6 +55,7 @@ last_updated: 2026-05-18
 
 - `InvoiceStatus`
 - `FeeStatus`
+- `TradeMode`
 
 其余枚举名称 **不必** 加入该列表也可在页面使用（见下文按需加载）。
 

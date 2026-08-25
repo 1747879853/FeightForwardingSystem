@@ -12,7 +12,7 @@ import { getClientPagedList } from '#/api/common/client';
 
 import { usePagedSelect } from './use-paged-select';
 
-/** 行业类别枚举：a 船公司、b 发货人、c 场站 等 */
+/** 行业类别枚举：a 船公司、b 发货人、c 场站、t 码头 等 */
 export type IndustryCategory = string;
 
 interface Props {

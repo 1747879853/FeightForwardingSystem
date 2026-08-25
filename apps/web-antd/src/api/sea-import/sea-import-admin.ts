@@ -4,7 +4,7 @@
  * 与海运出口的关键差异：
  * - 集装箱列表 `orderCtns` 位于**海运进口这一层**，不在 `transportOrder` 里，且多出规格/型号 id、净重；
  * - 关联表出参一律是对象（`pol` / `pod` / `originCountry` / `carrier` / `ctnCode` ...），不平铺成 `xxxName`；
- * - 码头是最外层往来单位 `terminalId` + `terminal` 对象（行业类别含「码头/场站」）；
+ * - 码头是最外层往来单位 `terminalId` + `terminal` 对象（行业类别含「码头」，字母 t / 20）；
  * - 界面上的「到港日期」对应 `transportOrder.etd`；`eta` / `atd` / `goodsCompleteTime` 进口不使用。
  */
 import type { UserAttribute } from '#/api/system/user-admin';
@@ -142,7 +142,7 @@ export namespace SeaImportAdminApi {
     codePackageId?: LongId;
     grossWeight?: number;
     tareWeight?: number;
-    /** 净重（进口专属）：前端按「毛重 − 皮重」算，后端只存 */
+    /** 净重（进口专属）：由用户手填，不按毛重/皮重自动计算，后端只存 */
     netWeight?: number;
     overLength?: number;
     overWidth?: number;
@@ -493,14 +493,14 @@ export namespace SeaImportAdminApi {
     podRemark?: string;
     /** 客户编号，32；与委托单位无联动 */
     clientNum?: string;
-    /** 码头：往来单位 id，下拉取行业类别含「码头/场站」的客户 */
+    /** 码头：往来单位 id，下拉取行业类别含「码头」（字母 t）的客户 */
     terminalId?: string;
     /** 联运单号，32；复制时按一票一号清空 */
     throughBillNum?: string;
     /** 分单号，32；复制时按一票一号清空 */
     hblNum?: string;
     /**
-     * 贸易方式：枚举由前端维护，后端只存整数、不校验、不参与逻辑。
+     * 贸易方式：枚举中心 `TradeMode`，后端只存整数、不校验、不参与逻辑。
      */
     tradeMode?: number;
     invoiceNum?: string;
@@ -512,7 +512,7 @@ export namespace SeaImportAdminApi {
     exchangeBillDate?: string;
     pickUpDate?: string;
     customsDeclareDate?: string;
-    /** 转站日期：前端按「到港日期 + 9 天」带出 */
+    /** 转站日期：前端按「到港日期 + 6 天」带出 */
     transferStationDate?: string;
     freeDays?: number;
     /** 箱使日期：前端按「到港日期 + 免箱期 − 1 天」带出 */
@@ -662,6 +662,7 @@ export namespace SeaImportAdminApi {
     TerminalIdEmpty?: boolean;
     ThroughBillNum?: string;
     HblNum?: string;
+    /** 贸易方式：筛选项来自枚举中心 `TradeMode` */
     TradeMode?: number;
     InvoiceNum?: string;
     BatchNum?: string;

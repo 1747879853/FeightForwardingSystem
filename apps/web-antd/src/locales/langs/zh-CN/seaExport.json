@@ -34,6 +34,7 @@
       "fileCount": "共 {0} 个文件",
       "empty": "暂无附件类型配置",
       "emptyType": "暂无附件",
+      "clickOrDragUpload": "点击或拖拽上传",
       "uploadTip": "支持 PDF、Word、Excel、PPT、图片、压缩包等格式，单文件不超过 10MB",
       "uncategorized": "未分类",
       "fileName": "文件名",
@@ -806,6 +807,7 @@
       "warehouse": "仓库",
       "insuranceCompany": "保险公司",
       "destinationAgent": "国外代理",
+      "wharf": "码头",
       "factory": "工厂"
     },
     "contactPerson": {

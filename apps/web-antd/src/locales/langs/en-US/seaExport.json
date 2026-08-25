@@ -42,6 +42,7 @@
       "terminal": "Terminal",
       "trader": "Trader",
       "warehouse": "Warehouse",
+      "wharf": "Wharf",
       "factory": "Factory"
     },
     "keyword": "Keyword",
@@ -180,6 +181,7 @@
       "fileCount": "{0} file(s)",
       "empty": "No attachment types configured",
       "emptyType": "No attachments",
+      "clickOrDragUpload": "Click or drag to upload",
       "uploadTip": "PDF, Word, Excel, PPT, images, archives supported. Max 10MB per file.",
       "uncategorized": "Uncategorized",
       "fileName": "File Name",

@@ -3,8 +3,10 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
+import { getItemsByName } from '#/api/system/enum-admin';
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
+import { getEnumItems } from '#/utils/init-enum';
 
 import { createClientSelectSchema } from '../client/base/data';
 
@@ -20,8 +22,8 @@ const USER_ATTRIBUTE = {
 /** 销售角色：每票有且只有一个 */
 export const SALE_USER_ATTRIBUTE = USER_ATTRIBUTE.sale;
 
-/** 转站日期默认偏移：到港日期 + 9 天 */
-export const TRANSFER_STATION_DATE_OFFSET_DAYS = 9;
+/** 转站日期默认偏移：到港日期 + 6 天 */
+export const TRANSFER_STATION_DATE_OFFSET_DAYS = 6;
 
 export const CARGO_TYPE = {
   S: 0,
@@ -57,16 +59,53 @@ export const getReeferTemperatureUnitOptions = () => [
 ];
 
 /**
- * 贸易方式：后端只存整数、不校验、不参与逻辑。
- * 取值与文案全部由前端维护。
+ * 贸易方式：枚举中心 `/system/enumeration` 的 `TradeMode`。
+ * 后端只存整数、不校验、不参与逻辑；文案与取值以后台子项为准。
+ * 建议子项：0 一般贸易、1 保税区、2 物流园、3 来料加工、4 进料加工、5 转关、6 一日游、7 其他。
  */
-export const getTradeModeOptions = () => [
-  { value: 0, label: $t('seaImport.import.tradeModeOptions.general') },
-  { value: 1, label: $t('seaImport.import.tradeModeOptions.processingIn') },
-  { value: 2, label: $t('seaImport.import.tradeModeOptions.processingOut') },
-  { value: 3, label: $t('seaImport.import.tradeModeOptions.bonded') },
-  { value: 4, label: $t('seaImport.import.tradeModeOptions.other') },
-];
+export const TRADE_MODE_ENUM_NAME = 'TradeMode';
+
+let tradeModeOptions: Array<{ label: string; value: number }> = [];
+
+function mapTradeModeItems(
+  items: Array<{
+    displayName?: string;
+    enable?: boolean;
+    value: number;
+  }>,
+) {
+  return items
+    .filter((item) => item.enable !== false)
+    .map((item) => ({
+      value: Number(item.value),
+      label: item.displayName || String(item.value),
+    }))
+    .filter((item) => !Number.isNaN(item.value))
+    .sort((a, b) => a.value - b.value);
+}
+
+export async function loadTradeModeOptions() {
+  try {
+    const items = await getItemsByName(TRADE_MODE_ENUM_NAME, { silent: true });
+    tradeModeOptions = mapTradeModeItems(items ?? []);
+  } catch {
+    tradeModeOptions = mapTradeModeItems(
+      await getEnumItems(TRADE_MODE_ENUM_NAME, false),
+    );
+  }
+  return tradeModeOptions;
+}
+
+void loadTradeModeOptions();
+
+export const getTradeModeOptions = () => tradeModeOptions;
+
+export const getTradeModeSelectComponentProps = () => ({
+  allowClear: true,
+  class: 'w-full',
+  options: getTradeModeOptions(),
+  placeholder: $t('ui.placeholder.select'),
+});
 
 const resolveTradeModeLabel = (value: null | number | undefined) => {
   if (value === null || value === undefined) return '';
@@ -490,12 +529,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'TradeMode',
       label: $t('seaImport.import.tradeMode'),
-      componentProps: {
-        allowClear: true,
-        options: getTradeModeOptions(),
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
+      componentProps: () => getTradeModeSelectComponentProps(),
     },
     {
       component: 'Input',
@@ -508,7 +542,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     createClientSelectSchema({
       fieldName: 'TerminalId',
-      industryCategory: 'c',
+      industryCategory: 't',
       label: $t('seaImport.import.terminal'),
     }),
     {
@@ -1336,19 +1370,14 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
     },
     createClientSelectSchema({
       fieldName: 'terminalId',
-      industryCategory: 'c',
+      industryCategory: 't',
       label: $t('seaImport.import.terminal'),
     }),
     {
       component: 'Select',
       fieldName: 'tradeMode',
       label: $t('seaImport.import.tradeMode'),
-      componentProps: {
-        allowClear: true,
-        options: getTradeModeOptions(),
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
+      componentProps: () => getTradeModeSelectComponentProps(),
     },
     createClientSelectSchema({
       fieldName: 'clientId',

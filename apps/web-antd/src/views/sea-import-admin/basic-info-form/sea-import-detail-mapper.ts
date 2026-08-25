@@ -279,17 +279,6 @@ export const buildOrderCodeGoodsSubmitRows = (
   });
 };
 
-/** 净重 = 毛重 − 皮重，任一缺失则不计算 */
-export const calcCtnNetWeight = (
-  grossWeight: unknown,
-  tareWeight: unknown,
-): number | undefined => {
-  const gross = toOptionalNumber(grossWeight);
-  const tare = toOptionalNumber(tareWeight);
-  if (gross === undefined || tare === undefined) return undefined;
-  return Number.parseFloat((gross - tare).toFixed(2));
-};
-
 /** 净重合计 = 各集装箱净重求和；全部为空时返回 undefined，避免把 0 写回表单 */
 export const sumCtnNetWeight = (
   items: Array<{ netWeight?: unknown }> | undefined,

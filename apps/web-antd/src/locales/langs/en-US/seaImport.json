@@ -41,7 +41,9 @@
       "supplier": "Supplier",
       "terminal": "Terminal",
       "trader": "Trader",
-      "warehouse": "Warehouse"
+      "warehouse": "Warehouse",
+      "wharf": "Wharf",
+      "factory": "Factory"
     },
     "keyword": "Keyword",
     "list": "Client List",
@@ -328,13 +330,6 @@
     "throughBillNum": "Through Bill No.",
     "title": "Sea Import",
     "tradeMode": "Trade Mode",
-    "tradeModeOptions": {
-      "bonded": "Bonded Warehouse",
-      "general": "General Trade",
-      "other": "Other",
-      "processingIn": "Processing with Imported Materials",
-      "processingOut": "Processing with Supplied Materials"
-    },
     "tradeTermsType": "Trade Terms",
     "tradeTermsTypeOptions": {
       "cAndF": "C&F",

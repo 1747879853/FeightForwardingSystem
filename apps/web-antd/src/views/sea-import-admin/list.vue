@@ -54,6 +54,8 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import {
   SEA_IMPORT_SORT_FIELD_MAP,
+  getTradeModeSelectComponentProps,
+  loadTradeModeOptions,
   useColumns,
   useGridFormSchema,
 } from './data';
@@ -343,6 +345,13 @@ const applyDefaultAccountDate = async () => {
 };
 
 onMounted(async () => {
+  await loadTradeModeOptions();
+  await gridApi.formApi.updateSchema([
+    {
+      fieldName: 'TradeMode',
+      componentProps: getTradeModeSelectComponentProps(),
+    },
+  ]);
   await applyDefaultAccountDate();
   // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
   // 从而在同一次查询中拉取分组数据，避免恢复与首查竞态导致分组只剩「全部」。

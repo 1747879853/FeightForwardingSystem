@@ -2,7 +2,7 @@
 title: 枚举管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,7 +28,7 @@ last_updated: 2026-08-02
 - **子项编辑形态随枚举名变化：** 编辑干系人角色枚举时，「枚举值」输入框自动换成 **「用户属性」下拉**（位值由前端填、已占用项置灰、选完自动带出显示名称），保存前校验必选且不重复；其余枚举仍是手填数字。枚举名取自表单实时值，新建时输入名称即切换形态。
 - **导出配置：** 工具栏「导出配置」勾选若干枚举，下载 JSON（不含 Id/租户/审计字段），便于带到其他公司系统。
 - **导入配置：** 工具栏「导入配置」上传上述 JSON；按 `name` 匹配，不存在则新增；同名可选「覆盖」（同步为文件内容，该枚举下文件没有的子项会删）或「跳过」。只影响勾选的枚举，不会清空整张表。成功后清枚举缓存并刷新列表。
-- **业务页面消费：** 使用 `getEnumItems('枚举名称')` 获取选项；详见 [使用指南](../../guides/enumeration-usage-in-pages.md)。
+- **业务页面消费：** 使用 `getEnumItems('枚举名称')` 获取选项；详见 [使用指南](../../guides/enumeration-usage-in-pages.md)。海运进口贸易方式读 `TradeMode`。
 - **干系人角色配置：** 当前仅启用 `SeaExportUserAttribute`（业务类型=海运出口），决定海运出口编辑页与业务联系单编辑页干系人面板的可用角色。子项通过「用户属性」下拉勾选角色（存库仍是 `UserAttribute` 位值：操作=1、客服=2、单证=4、商务=8、销售=16、财务=32、海外客服=64、人事=128、航线=256），`displayName` 为面板显示的角色名，勾选右侧「默认展示」（即 `extra1`）表示进页面即渲染该角色卡，子项顺序即面板展示顺序。海运出口的操作/销售、业务联系单的销售为固定角色，枚举漏配也会兜底展示且不可删除。`SeaImportUserAttribute`（海运进口）暂未落地，前端不再预热/映射拉取。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -62,6 +62,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Fix` | 海运进口贸易方式改走本页枚举 `TradeMode`，业务页不再写死选项。 | TAPD `#1161580498001000779`。建议子项 0~7：一般贸易、保税区、物流园、来料加工、进料加工、转关、一日游、其他。 |
 | 2026-08-02 | `Fix` | 编辑/详情弹窗子项按枚举值升序展示与保存（如 ServiceType）。 | `sortEnumerationItemsByValue` + 模板 computed；`:key` 用 `id`。详见 `changelogs/change-log-2026-08-02-enumeration-sort-by-value.md`。 |
 | 2026-08-01 | `Fix` | 暂停拉取不存在的 `SeaImportUserAttribute`：移出 `init-enum` 预热列表，并从 `ORDER_USER_ROLE_ENUM_NAMES` 去掉 `bizType=1` 映射。 | 海运进口干系人角色暂未落地；无映射时 `getOrderUserRoleOptions` 仅返回固定角色兜底。 |
 | 2026-08-01 | `Style` | 导入配置弹窗上传区图标水平居中。 | `IconifyIcon` 不走 `.anticon` 默认居中，需 `flex justify-center`。 |

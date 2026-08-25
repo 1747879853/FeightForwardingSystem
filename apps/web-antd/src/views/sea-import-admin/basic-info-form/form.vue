@@ -77,6 +77,8 @@ import {
   createEmptyDgValues,
   createEmptyReeferValues,
   formatSeaImportPortRemark,
+  getTradeModeSelectComponentProps,
+  loadTradeModeOptions,
   pickPortSelectOption,
   TRANSFER_STATION_DATE_OFFSET_DAYS,
   useBasicInfoFormSchema,
@@ -218,8 +220,8 @@ const BASIC_INFO_FIELD_ORDER = [
   'teamId',
   'custBrokerId',
   'warehouseId',
-  'insuranceId',
   'mblNum',
+  'insuranceId',
   'hblNum',
   'throughBillNum',
   'contractNum',
@@ -708,7 +710,7 @@ const refreshPortLabelTargets = () => {
 
 /**
  * 到港日期 / 免箱期变化时推算：
- * 转站日期 = 到港日期 + 9 天；箱使日期 = 到港日期 + 免箱期 − 1 天。
+ * 转站日期 = 到港日期 + 6 天；箱使日期 = 到港日期 + 免箱期 − 1 天。
  * 两个字段只读展示，写入 YYYY-MM-DD 文本。
  */
 const recalcDerivedDates = async () => {
@@ -1296,7 +1298,20 @@ useUnsavedGuard({
 
 defineExpose({ scrollToSection, isFormDirty });
 
+const applyTradeModeSelectOptions = async () => {
+  await loadTradeModeOptions();
+  await basicInfoFormApi.updateSchema([
+    {
+      fieldName: 'tradeMode',
+      componentProps: withSmallComponentProps(
+        getTradeModeSelectComponentProps(),
+      ),
+    },
+  ]);
+};
+
 onMounted(async () => {
+  await applyTradeModeSelectOptions();
   if (isEdit.value) {
     await loadEditData();
   } else {

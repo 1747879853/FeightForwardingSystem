@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -40,6 +40,7 @@ last_updated: 2026-08-19
 | **委托编号** | 运输单业务识别号。 | `src/views/sea-import-admin/data.ts` / `sea-import-admin.ts` | **触发/依赖：** 贯穿列表、编辑、费用与审核。 | 展示与查询口径以后端 DTO 为准。 |
 | **客户** | 委托关联的客户主体。 | 客户选择组件与客户 API | **触发/依赖：** 影响账期、付款、对账等后续链路。 | 必须选择有效客户。 |
 | **锁费状态** | 费用是否允许继续改动。 | 运输单详情字段 | **触发/依赖：** 影响订单费用、费用审核和锁费页面。 | 锁定后费用编辑能力受限。 |
+| **贸易方式** | 列表筛选与列展示。 | 枚举中心 `TradeMode` | 筛选项与列文案均读枚举子项 `displayName`。 | 未配置枚举时筛选项为空，列回退显示数字。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -51,6 +52,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Fix` | 贸易方式筛选项与列文案改为枚举中心 `TradeMode`，不再写死。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-16 | `Fix` | 「新增」「复制」按钮图标与文字垂直对齐。 | lucide 裸 svg 进 `#icon` 无 `.anticon` 基线/间距；按钮加 `inline-flex items-center gap-1`。见 `changelogs/change-log-2026-08-16-list-create-copy-icon-align.md`。 |
 | 2026-08-16 | `Feature` | 运踪详情弹窗新增「轨迹节点」时间轴（整票合并各箱节点，区分实际/预计/当前）。 | 节点来自弹窗已请求的运踪快照 `containers[].status[]`，无新增请求。详见 `changelogs/change-log-2026-08-16-tracking-timeline.md`。 |

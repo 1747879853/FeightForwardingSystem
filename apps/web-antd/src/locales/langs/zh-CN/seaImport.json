@@ -23,6 +23,7 @@
       "fileCount": "共 {0} 个文件",
       "empty": "暂无附件类型配置",
       "emptyType": "暂无附件",
+      "clickOrDragUpload": "点击或拖拽上传",
       "uploadTip": "支持 PDF、Word、Excel、PPT、图片、压缩包等格式，单文件不超过 10MB",
       "uncategorized": "未分类",
       "fileName": "文件名",
@@ -140,13 +141,6 @@
     "throughBillNum": "联运单号",
     "hblNum": "分单号",
     "tradeMode": "贸易方式",
-    "tradeModeOptions": {
-      "general": "一般贸易",
-      "processingIn": "进料加工",
-      "processingOut": "来料加工",
-      "bonded": "保税仓储",
-      "other": "其他"
-    },
     "invoiceNum": "发票号",
     "batchNum": "批次号",
     "originCountryId": "原产国",
@@ -157,7 +151,7 @@
     "pickUpDate": "提货日期",
     "customsDeclareDate": "报关日期",
     "transferStationDate": "转站日期",
-    "transferStationDateTip": "自动计算：到港日期 + 9 天，不可手改",
+    "transferStationDateTip": "自动计算：到港日期 + 6 天，不可手改",
     "freeDays": "免箱期",
     "freeDaysUnit": "天",
     "ctnUseDate": "箱使日期",
@@ -481,7 +475,9 @@
       "entrustingUnit": "委托单位",
       "warehouse": "仓库",
       "insuranceCompany": "保险公司",
-      "destinationAgent": "目的港代理"
+      "destinationAgent": "目的港代理",
+      "wharf": "码头",
+      "factory": "工厂"
     },
     "paymentTerms": {
       "title": "账期",

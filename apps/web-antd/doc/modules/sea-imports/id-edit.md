@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-24
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-08-24
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填航次（`ivoyage` → `innerVoyno`）并走原有编辑保存；进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。打印拉模板传 `bizType=1`（海运进口，结果含通用模板）。
-- **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
+- **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。
 - **委托编号：** 编辑态可一键重新生成（需 `Admin.SeaImport.Edit` **且** `detail.isEditable`）。
 - **复制：** 保存下拉支持复制整单（可选复制费用）；`isEditable === false` 时保存禁用，复制仍可用。
 - **运踪订阅：** 基础信息工具栏「运踪订阅 / 重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。与列表共用 `useContainerTrackingSubscribe`（`bizType=1`）。
@@ -50,6 +50,7 @@ last_updated: 2026-08-24
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
+| **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -63,6 +64,7 @@ last_updated: 2026-08-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Fix` | 基础信息：码头筛「码头」属性、转站+6、净重手填、贸易方式改走枚举中心 `TradeMode`；附件卡片支持拖拽上传。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的海进编辑页不再跟着别人地址栏的 `:id` 拉进口详情。 | `useKeepAliveRouteParamId`：可见才同步 `params.id`，停用后冻结。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |
 | 2026-08-23 | `Feature` | 编辑页 KeepAlive；未保存含应收应付；点 X 才销毁。新建页补未保存守卫。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |

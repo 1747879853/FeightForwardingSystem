@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,7 +49,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-23 | `Feature` | 编辑页 KeepAlive + 内部 Tab 缓存；未保存含基础信息/联系人/开票。 | 见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
+| 2026-08-25 | `Feature` | 供应商行业类别新增「码头」（字母 `t`，数字 `20`）。 | 与后端 `IndustryCategory.码头` 对齐。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-07-12 | `Fix` | 客户账期删除不再对 `row.id` 使用 `Number()`，避免大数主键删错记录。 | `BillingPeriodAdminApi.IdDto.id` 改为 `number \| string`，与 json-bigint 响应一致。 |
 | 2026-06-09 | `Feature` | 客户「海运出口服务项目」Tab 支持展示默认港口配置分组，保存排除项时 `polId` 传 `null`。 | `formatPolLabel` / `buildEditPayload` / `getPortGroupKey` 统一空 `polId` 口径，文案复用基础资料 `defaultPolConfig`。 |
 | 2026-05-30 | `Refactor` | “海运出口服务项目”Tab 的服务项枚举加载统一改为 `ServiceType` 大写口径，并复用海运出口共享模块。 | `except-service/index.vue` 改为调用统一 `loadSeServiceTypeOptions()`，移除 `serviceType` 小写回退，确保客户页与海运出口主流程枚举源一致。 |
