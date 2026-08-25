@@ -6,7 +6,8 @@
 
 | 公司/场景 | 开发 | 打包 | Vite mode | 素材目录 |
 | --- | --- | --- | --- | --- |
-| 佳越软件（本地默认） | `pnpm dev:antd` 或 `pnpm dev:antd:jiayue` | 一般不单独打包 | `development` | `src/assets/img/jiayue/` |
+| 佳越软件（本地默认） | `pnpm dev:antd` | 一般不单独打包 | `development` | `src/assets/img/jiayue/` |
+| 佳越标准库（:85，禁止测试） | `pnpm dev:antd:jiayue` | `pnpm build:antd:jiayue` | `jiayue` | `src/assets/img/jiayue/` |
 | 浩瀚远洋 | `pnpm dev:antd:hhyy` | `pnpm build:antd:hhyy` | `hhyy` | `src/assets/img/hhyy/` |
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
 | 世纪通达 | `pnpm dev:antd:sjtd` | `pnpm build:antd:sjtd` | `sjtd` | `src/assets/img/sjtd/` |
@@ -78,15 +79,16 @@ pnpm deploy:antd:demo
 
 ## 环境文件
 
-| 文件               | 说明                                              |
-| ------------------ | ------------------------------------------------- |
-| `.env.development` | 佳越软件：`VITE_APP_BRAND=jiayue`                 |
-| `.env.hhyy`        | 浩瀚远洋                                          |
-| `.env.jht`         | 津海通                                            |
-| `.env.sjtd`        | 世纪通达                                          |
-| `.env.longshan`    | 龙山                                              |
-| `.env.demo`        | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材） |
-| `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode）    |
+| 文件               | 说明                                                |
+| ------------------ | --------------------------------------------------- |
+| `.env.development` | 佳越软件（本地默认）：`VITE_APP_BRAND=jiayue`       |
+| `.env.jiayue`      | 佳越标准库-禁止测试（:85）：`VITE_APP_BRAND=jiayue` |
+| `.env.hhyy`        | 浩瀚远洋                                            |
+| `.env.jht`         | 津海通                                              |
+| `.env.sjtd`        | 世纪通达                                            |
+| `.env.longshan`    | 龙山                                                |
+| `.env.demo`        | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材）   |
+| `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode）      |
 
 ### 生产 API 地址（`VITE_GLOB_API_URL`）
 
@@ -95,6 +97,7 @@ pnpm deploy:antd:demo
 | 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
 | 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://43.138.14.122:88/api` |
 | 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
+| 佳越标准库 (jiayue) | `.env.jiayue` | `http://43.138.14.122:85/api` |
 | 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
 | 演示环境 (demo) | `.env.demo` | `http://43.138.14.122:86/api` |
 
@@ -147,6 +150,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-25 | `Chore` | 佳越 `:85` 站点标题改为「佳越标准库-禁止测试」 | 仅改 `.env.jiayue` 的 `VITE_APP_TITLE`；须重新 `build:antd:jiayue` 后浏览器标签/登录页才生效 |
 | 2026-08-25 | `Chore` | 浩瀚远洋 GitHub Actions 取消 `main` push 自动发布，仅保留手动 | 与 jht 一致；日常发布走 `pnpm deploy:antd:hhyy` |
 | 2026-08-25 | `Chore` | 本地默认开发与小程序开发接口改到 `http://43.138.14.122:88`，停用 `118.190.1.4:82` | `.env.development` 静态根、`vite.config.mts` 默认代理、`apps/mp` 的 `VITE_API_ORIGIN` 同步 |
 | 2026-08-25 | `Feature` | 浩瀚远洋接入本地 `publish-web.ps1` / `deploy:antd:hhyy` / `deploy:antd:all`，IIS 站点 `hhyy-web` | 本地产物走 `dist-hhyy`；须关 `VITE_ARCHIVER`，否则会压硬编码 `dist.zip` 导致 pnpm 退出 1；GitHub 仍写默认 `dist` |
