@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-22
+last_updated: 2026-08-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-08-22
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/user` 进入 `用户管理` 页面。
+- **顶部查询区：** 关键词、用户属性、角色三个筛选条件；`formOptions.wrapperClass` 为 `grid-cols-4`，与查询/重置按钮同一行展示。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
 - **所属组织路径：** 列表「所属组织」列 `field` 绑定 `organizations`，按多组织路径拼接（如 `世纪通达/操作部/操作一部`，多组织逗号分隔）；无路径时回退旧字段 `organizationPath` / `organization`。
@@ -62,6 +63,7 @@ last_updated: 2026-08-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-26 | `Fix` | 用户列表顶部查询区改为一行 4 列，关键词、用户属性、角色与查询按钮同一行。 | 覆盖表格默认 `lg:grid-cols-3`。详见 [变更日志](../../changelogs/change-log-2026-08-26-system-user-query-four-columns.md)。 |
 | 2026-08-22 | `Feature` | 用户属性新增「监装」（`LoadingSupervision = 512`），并铺到所有用户属性入口：用户管理勾选、标签映射、海出干系人可配角色、港口服务项负责岗位、枚举管理角色下拉。 | TAPD #1000122。位掩码末尾追加 512，四处拷贝枚举同步；未做成销售/操作那种写死的必填固定角色，是否默认展示仍由枚举 `SeaExportUserAttribute.extra1` 决定；干系人「监装」与监装工单师傅列表两套独立、不同步。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-11 | `Fix` | 用户列表去掉后端不支持的列头排序（头像/所属组织/角色），默认排序改为创建时间降序。 | 白名单见 `GetUserPagedListAsync`；`applyDefaultSortable` 下须显式 `sortable: false`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)。 |
 | 2026-08-11 | `Fix` | 修复编辑用户修改所属组织后，列表「所属组织」列仍显示旧值的问题。 | 根因是 vxe `getCellLabel` 按列 `field` 的 cellValue 缓存 formatter；列绑了不存在的 `organizationPath`，`organizations` 变了也不重算。已改为 `field: 'organizations'`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)。 |

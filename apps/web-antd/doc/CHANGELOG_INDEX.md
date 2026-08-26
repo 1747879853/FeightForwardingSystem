@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-26 用户管理列表查询区改为一行 4 列](./changelogs/change-log-2026-08-26-system-user-query-four-columns.md)
 - [2026-08-26 小程序开发态后端改到津海通 :82](./changelogs/change-log-2026-08-26-mp-api-origin-jht.md)
 - [2026-08-26 浩瀚远洋 IIS 发布改到独立机 47.105.61.173](./changelogs/change-log-2026-08-26-hhyy-msdeploy-host.md)
 - [2026-08-26 新增佳越测试环境开发与打包（后端端口 88）](./changelogs/change-log-2026-08-26-jytest-env-port-88.md)

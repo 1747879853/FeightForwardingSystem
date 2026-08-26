@@ -136,6 +136,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemUserAdminApi.SystemUser>({
     schema: useGridFormSchema(),
     showCollapseButton: true,
     submitOnChange: true,
+    wrapperClass: 'grid-cols-4',
   },
   gridOptions: {
     columns: useColumns(onActionClick, onStatusChange),
