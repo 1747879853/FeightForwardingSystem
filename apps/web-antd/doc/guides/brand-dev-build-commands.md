@@ -56,6 +56,8 @@ pnpm deploy:antd:demo
 
 浩瀚远洋目标：独立业务机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER`；密码只写本地 `publish-config.local.json` 或环境变量 `IIS_HHYY_PWD`（优先于配置文件），禁止提交进仓库。
 
+佳越测试目标：服务器 `43.138.14.122`，IIS 站点 **`jiayue-web-test`**；`pnpm deploy:antd:jytest` 发到该站点，接口仍是 `:88`。
+
 龙山目标（与 `龙山.pubxml` 一致）：服务器 `175.178.101.30`，站点 `longshan-web`；密码也可设环境变量 `IIS_LONGSHAN_PWD`（优先于配置文件）。
 
 常用参数：
@@ -154,7 +156,7 @@ Get-Content dist/_app.config.js
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
 | 2026-08-26 | `Chore` | 浩瀚远洋 IIS / WebDeploy 目标改为独立机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER` | 本地 `publish-config.local.json` 与 example 模板同步；GitHub Secret `IIS_SERVER_IP` 须手工改到新机；密码不入库 |
-| 2026-08-26 | `Feature` | 新增佳越测试环境（jytest），后端 43.138.14.122:88，站点标题「佳越测试」，Logo 复用佳越 | 新增 `.env.jytest`，`VITE_APP_BRAND=jiayue`；本地 `pnpm dev:antd` 标题同步为「佳越测试」；独立 `VITE_APP_NAMESPACE=vben-web-antd-jytest`；favicon 同步增加 `logo.webp` 候选 |
+| 2026-08-26 | `Feature` | 新增佳越测试环境（jytest），后端 43.138.14.122:88，站点标题「佳越测试」，Logo 复用佳越；IIS 站点 `jiayue-web-test` | 新增 `.env.jytest`，`VITE_APP_BRAND=jiayue`；本地 `pnpm dev:antd` 标题同步为「佳越测试」；独立 `VITE_APP_NAMESPACE=vben-web-antd-jytest`；favicon 同步增加 `logo.webp` 候选 |
 | 2026-08-26 | `Chore` | 浩瀚远洋生产接口改为 `http://47.105.61.173:84/api` | `.env.hhyy` / `.env.production` 与 `dev:hhyy` 代理同步；勿与世纪通达同端口 `:84`（`43.138.14.122`）混淆；须重新 `build:hhyy` 后再发布 |
 | 2026-08-25 | `Chore` | 佳越 `:85` 站点标题改为「佳越标准库-禁止测试」 | 仅改 `.env.jiayue` 的 `VITE_APP_TITLE`；须重新 `build:antd:jiayue` 后浏览器标签/登录页才生效 |
 | 2026-08-25 | `Chore` | 浩瀚远洋 GitHub Actions 取消 `main` push 自动发布，仅保留手动 | 与 jht 一致；日常发布走 `pnpm deploy:antd:hhyy` |
