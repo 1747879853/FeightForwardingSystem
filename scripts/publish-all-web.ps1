@@ -155,7 +155,7 @@ function Write-TailLog {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publishScriptPath = Join-Path $PSScriptRoot 'publish-web.ps1'
-$environments = @('hhyy', 'jht', 'jiayue', 'sjtd', 'longshan', 'demo')
+$environments = @('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'demo')
 
 if (-not (Test-Path -LiteralPath $publishScriptPath -PathType Leaf)) {
   throw "Publish script was not found: $publishScriptPath"

@@ -1,6 +1,6 @@
-# 佳越软件（jiayue）— 本地开发默认品牌
+# 佳越软件（jiayue）— 本地开发默认 / 佳越测试 / 演示环境品牌素材
 
-`pnpm dev` / `pnpm dev:antd`（`--mode development`）使用本目录，对应 `.env.development` 中 `VITE_APP_BRAND=jiayue`、`VITE_APP_TITLE=佳越软件`。
+`pnpm dev` / `pnpm dev:antd`（`--mode development`）与 `pnpm dev:antd:jytest` 使用本目录，对应 `.env.development` / `.env.jytest` 中 `VITE_APP_BRAND=jiayue`、`VITE_APP_TITLE=佳越测试`。佳越标准库（:85）同样复用本目录，标题为「佳越标准库-禁止测试」。
 
 | 文件              | 用途                                  |
 | ----------------- | ------------------------------------- |

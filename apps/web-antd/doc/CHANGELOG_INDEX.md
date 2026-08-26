@@ -13,6 +13,9 @@
 
 ## 2026-08
 
+- [2026-08-26 浩瀚远洋 IIS 发布改到独立机 47.105.61.173](./changelogs/change-log-2026-08-26-hhyy-msdeploy-host.md)
+- [2026-08-26 新增佳越测试环境开发与打包（后端端口 88）](./changelogs/change-log-2026-08-26-jytest-env-port-88.md)
+- [2026-08-26 浩瀚远洋生产接口改到 47.105.61.173:84](./changelogs/change-log-2026-08-26-hhyy-api-host-port-84.md)
 - [2026-08-25 佳越 :85 站点标题改为「佳越标准库-禁止测试」](./changelogs/change-log-2026-08-25-jiayue-title-standard-lib.md)
 - [2026-08-25 小程序填入津海通 AppId](./changelogs/change-log-2026-08-25-mp-jht-appid.md)
 - [2026-08-25 海运进口 TAPD #0779：码头属性、日期公式、净重与附件拖拽](./changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md)

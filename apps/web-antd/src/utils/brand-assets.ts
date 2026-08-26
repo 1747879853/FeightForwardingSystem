@@ -17,7 +17,7 @@ export const isJhtBrand = appBrand === 'jht';
 /** 浩瀚远洋 */
 export const isHhyyBrand = appBrand === 'hhyy';
 
-/** 佳越软件（pnpm dev 默认，Vben 中性 Logo） */
+/** 佳越软件 / 佳越测试 / 演示环境（VITE_APP_BRAND=jiayue，复用佳越 Logo） */
 export const isJiayueBrand = appBrand === 'jiayue';
 
 /** 世纪通达 */
@@ -66,7 +66,7 @@ export const brandLogoText = pickBrandAsset(
   jiayueLogoText,
 );
 
-/** 登录页背景视频（jiayue/demo 与 jht 共用 jht-login-back.mp4；原 login-back.mp4 已从 OSS 下线） */
+/** 登录页背景视频（jiayue/jytest/demo 与 jht 共用 jht-login-back.mp4；原 login-back.mp4 已从 OSS 下线） */
 const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
   'https://oss.jiayuebetter.com/jht-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',

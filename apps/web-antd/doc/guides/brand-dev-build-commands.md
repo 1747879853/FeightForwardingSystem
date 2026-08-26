@@ -6,7 +6,7 @@
 
 | 公司/场景 | 开发 | 打包 | Vite mode | 素材目录 |
 | --- | --- | --- | --- | --- |
-| 佳越软件（本地默认） | `pnpm dev:antd` | 一般不单独打包 | `development` | `src/assets/img/jiayue/` |
+| 佳越测试（:88） | `pnpm dev:antd` / `pnpm dev:antd:jytest` | `pnpm build:antd:jytest` | `development` / `jytest` | `src/assets/img/jiayue/`（复用佳越素材） |
 | 佳越标准库（:85，禁止测试） | `pnpm dev:antd:jiayue` | `pnpm build:antd:jiayue` | `jiayue` | `src/assets/img/jiayue/` |
 | 浩瀚远洋 | `pnpm dev:antd:hhyy` | `pnpm build:antd:hhyy` | `hhyy` | `src/assets/img/hhyy/` |
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
@@ -23,7 +23,7 @@
 | 浩瀚远洋 (hhyy) | `.github/workflows/deploy-web-antd-iis.yml` | `pnpm build:antd:hhyy` | 仅手动 `workflow_dispatch` |
 | 津海通 (jht) | `.github/workflows/deploy-web-antd-iis-jht.yml` | `pnpm build:antd:jht` | 仅手动 `workflow_dispatch` |
 
-两路 workflow 使用**独立**的 GitHub Secrets（`IIS_*` 与 `IIS_JHT_*`），可指向同一台服务器、不同 IIS 站点。部署阶段会先把 `apps/web-antd/dist` 打成 `dist.zip`（MSDeploy package）再上传，目标 IIS 侧由 MSDeploy 自动解包同步，减少传输体积。
+两路 workflow 使用**独立**的 GitHub Secrets（`IIS_*` 与 `IIS_JHT_*`）。浩瀚远洋发布到独立业务机 `47.105.61.173`，津海通仍在 `43.138.14.122`，不要共用 `IIS_SERVER_IP`。部署阶段会先把 `apps/web-antd/dist` 打成 `dist.zip`（MSDeploy package）再上传，目标 IIS 侧由 MSDeploy 自动解包同步，减少传输体积。
 
 ### GitHub Secrets（津海通 jht）
 
@@ -36,7 +36,7 @@
 | `IIS_JHT_SITE_NAME` | IIS 站点/应用路径（与 hhyy 的 `IIS_SITE_NAME` 通常不同） |
 | `IIS_JHT_USER` / `IIS_JHT_PWD` | Web Deploy 基本认证账号 |
 
-浩瀚远洋沿用：`IIS_SERVER_IP`、`IIS_MSDEPLOY_ENDPOINT`、`IIS_SITE_NAME`、`IIS_USER`、`IIS_PWD`。
+浩瀚远洋沿用：`IIS_SERVER_IP`（`47.105.61.173`）、`IIS_MSDEPLOY_ENDPOINT`、`IIS_SITE_NAME`（`hhyy-web`）、`IIS_USER`（`IISUSER`）、`IIS_PWD`。迁机后须在 GitHub Secrets 改 `IIS_SERVER_IP`（以及若有硬编码旧机的 `IIS_MSDEPLOY_ENDPOINT`）。
 
 hhyy / jht 均不再随 `main` push 自动发布。日常用本地 `pnpm deploy:antd:hhyy`；GitHub 上仍可手动跑对应 workflow。
 
@@ -48,12 +48,13 @@ Windows 本机安装 MSDeploy 3.x 后，在 `scripts\publish-config.local.json`�
 pnpm deploy:antd:hhyy
 pnpm deploy:antd:jht
 pnpm deploy:antd:jiayue
+pnpm deploy:antd:jytest
 pnpm deploy:antd:sjtd
 pnpm deploy:antd:longshan
 pnpm deploy:antd:demo
 ```
 
-浩瀚远洋目标：服务器与津海通同机 `43.138.14.122`，站点 `hhyy-web`；密码也可设环境变量 `IIS_HHYY_PWD`（优先于配置文件）。
+浩瀚远洋目标：独立业务机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER`；密码只写本地 `publish-config.local.json` 或环境变量 `IIS_HHYY_PWD`（优先于配置文件），禁止提交进仓库。
 
 龙山目标（与 `龙山.pubxml` 一致）：服务器 `175.178.101.30`，站点 `longshan-web`；密码也可设环境变量 `IIS_LONGSHAN_PWD`（优先于配置文件）。
 
@@ -81,7 +82,8 @@ pnpm deploy:antd:demo
 
 | 文件               | 说明                                                |
 | ------------------ | --------------------------------------------------- |
-| `.env.development` | 佳越软件（本地默认）：`VITE_APP_BRAND=jiayue`       |
+| `.env.development` | 佳越测试（本地默认，:88）：`VITE_APP_BRAND=jiayue`  |
+| `.env.jytest`      | 佳越测试（:88 可打包）：`VITE_APP_BRAND=jiayue`     |
 | `.env.jiayue`      | 佳越标准库-禁止测试（:85）：`VITE_APP_BRAND=jiayue` |
 | `.env.hhyy`        | 浩瀚远洋                                            |
 | `.env.jht`         | 津海通                                              |
@@ -95,8 +97,9 @@ pnpm deploy:antd:demo
 | 品牌 | env 文件 | 当前 API |
 | --- | --- | --- |
 | 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
-| 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://43.138.14.122:88/api` |
+| 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://47.105.61.173:84/api` |
 | 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
+| 佳越测试 (jytest) | `.env.jytest` | `http://43.138.14.122:88/api` |
 | 佳越标准库 (jiayue) | `.env.jiayue` | `http://43.138.14.122:85/api` |
 | 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
 | 演示环境 (demo) | `.env.demo` | `http://43.138.14.122:86/api` |
@@ -114,7 +117,7 @@ Get-Content dist/_app.config.js
 | 打包方式 | `_app.config.js` 实际读取的 env | jht 打包结果 |
 | --- | --- | --- |
 | `pnpm build:jht` / `pnpm build:antd:jht` ✅ | `.env.jht` | API = 43.138.14.122:82 |
-| `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 43.138.14.122:88 |
+| `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 47.105.61.173:84 |
 
 原因：`internal/vite-config` 生成 `_app.config.js` 时，`getConfFiles()` 从 `npm_lifecycle_script` 解析 `--mode`，绕过 npm script 直接调 vite 时解析失败，回退到 `production`。
 
@@ -132,7 +135,7 @@ Get-Content dist/_app.config.js
 | --- | --- | --- |
 | jht | `jht-login-back.mp4` | `src/assets/img/jht/jht-login-back.mp4` |
 | hhyy | `hhyy-login-back.mp4` | `src/assets/img/hhyy/hhyy-login-back.mp4` |
-| jiayue / demo | `jht-login-back.mp4`（与 jht 共用；原 `login-back.mp4` 已从 OSS 下线） | — |
+| jiayue / jytest / demo | `jht-login-back.mp4`（与 jht 共用；原 `login-back.mp4` 已从 OSS 下线） | — |
 | longshan | `longshan.mp4` | — |
 
 全局字体 6 个字重同理，Key 为根路径文件名（如 `Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf`）。上传时请保持与代码中 `objectNames` 一致。
@@ -150,6 +153,9 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-26 | `Chore` | 浩瀚远洋 IIS / WebDeploy 目标改为独立机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER` | 本地 `publish-config.local.json` 与 example 模板同步；GitHub Secret `IIS_SERVER_IP` 须手工改到新机；密码不入库 |
+| 2026-08-26 | `Feature` | 新增佳越测试环境（jytest），后端 43.138.14.122:88，站点标题「佳越测试」，Logo 复用佳越 | 新增 `.env.jytest`，`VITE_APP_BRAND=jiayue`；本地 `pnpm dev:antd` 标题同步为「佳越测试」；独立 `VITE_APP_NAMESPACE=vben-web-antd-jytest`；favicon 同步增加 `logo.webp` 候选 |
+| 2026-08-26 | `Chore` | 浩瀚远洋生产接口改为 `http://47.105.61.173:84/api` | `.env.hhyy` / `.env.production` 与 `dev:hhyy` 代理同步；勿与世纪通达同端口 `:84`（`43.138.14.122`）混淆；须重新 `build:hhyy` 后再发布 |
 | 2026-08-25 | `Chore` | 佳越 `:85` 站点标题改为「佳越标准库-禁止测试」 | 仅改 `.env.jiayue` 的 `VITE_APP_TITLE`；须重新 `build:antd:jiayue` 后浏览器标签/登录页才生效 |
 | 2026-08-25 | `Chore` | 浩瀚远洋 GitHub Actions 取消 `main` push 自动发布，仅保留手动 | 与 jht 一致；日常发布走 `pnpm deploy:antd:hhyy` |
 | 2026-08-25 | `Chore` | 本地默认开发与小程序开发接口改到 `http://43.138.14.122:88`，停用 `118.190.1.4:82` | `.env.development` 静态根、`vite.config.mts` 默认代理、`apps/mp` 的 `VITE_API_ORIGIN` 同步 |

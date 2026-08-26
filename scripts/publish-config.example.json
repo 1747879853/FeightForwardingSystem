@@ -1,9 +1,9 @@
 {
   "hhyy": {
-    "serverIp": "192.168.1.10",
+    "serverIp": "47.105.61.173",
     "endpoint": "",
     "siteName": "hhyy-web",
-    "userName": "deploy-user",
+    "userName": "IISUSER",
     "password": "",
     "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
   },
@@ -19,6 +19,14 @@
     "serverIp": "192.168.1.11",
     "endpoint": "",
     "siteName": "your-jiayue-site",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "jytest": {
+    "serverIp": "192.168.1.11",
+    "endpoint": "",
+    "siteName": "your-jytest-site",
     "userName": "deploy-user",
     "password": "",
     "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"

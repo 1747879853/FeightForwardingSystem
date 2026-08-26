@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('hhyy', 'jht', 'jiayue', 'sjtd', 'longshan', 'demo')]
+  [ValidateSet('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'demo')]
   [string]$Environment,
   [string]$ConfigPath = '',
   [switch]$InstallDeps,
@@ -106,20 +106,23 @@ function Select-Environment {
   Write-Host '  1. hhyy'
   Write-Host '  2. jht'
   Write-Host '  3. jiayue'
-  Write-Host '  4. sjtd'
-  Write-Host '  5. longshan'
-  Write-Host '  6. demo'
-  $selection = Read-Host 'Enter 1-6 or environment name'
+  Write-Host '  4. jytest'
+  Write-Host '  5. sjtd'
+  Write-Host '  6. longshan'
+  Write-Host '  7. demo'
+  $selection = Read-Host 'Enter 1-7 or environment name'
   switch ($selection.ToLowerInvariant()) {
     '1' { return 'hhyy' }
     '2' { return 'jht' }
     '3' { return 'jiayue' }
-    '4' { return 'sjtd' }
-    '5' { return 'longshan' }
-    '6' { return 'demo' }
+    '4' { return 'jytest' }
+    '5' { return 'sjtd' }
+    '6' { return 'longshan' }
+    '7' { return 'demo' }
     'hhyy' { return 'hhyy' }
     'jht' { return 'jht' }
     'jiayue' { return 'jiayue' }
+    'jytest' { return 'jytest' }
     'sjtd' { return 'sjtd' }
     'longshan' { return 'longshan' }
     'demo' { return 'demo' }

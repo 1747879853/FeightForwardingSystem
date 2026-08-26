@@ -56,7 +56,7 @@ function resolveLoadingLogoSrc(brandImgDir: string) {
 }
 
 function resolveFaviconSrc(brandImgDir: string) {
-  const candidates = ['favicon.png', 'logo.png'];
+  const candidates = ['favicon.png', 'logo.png', 'logo.webp'];
   for (const file of candidates) {
     const filePath = join(brandImgDir, file);
     if (existsSync(filePath)) {
@@ -87,7 +87,7 @@ function resolveApiTarget(mode: string) {
     return 'http://43.138.14.122:82';
   }
   if (brand === 'hhyy') {
-    return 'http://43.138.14.122:88';
+    return 'http://47.105.61.173:84';
   }
   if (brand === 'sjtd') {
     return 'http://43.138.14.122:84';
@@ -95,6 +95,7 @@ function resolveApiTarget(mode: string) {
   if (brand === 'longshan') {
     return 'http://175.178.101.30:86';
   }
+  // 默认开发代理：佳越测试后端 :88
   return 'http://43.138.14.122:88';
 }
 
