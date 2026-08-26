@@ -1,6 +1,6 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
-| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/保存/取消完成、分组拍照；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-08-25 |
+| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/保存/取消完成、分组拍照；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。开发态接口指向津海通 `:82`。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-08-26 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；`:88` 展示「佳越测试」。 | [登录页](./modules/_core/login.md) | 2026-08-26 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |

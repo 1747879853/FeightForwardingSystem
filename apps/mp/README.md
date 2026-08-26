@@ -26,7 +26,7 @@ pnpm --filter @vben/mp run build:mp-weixin
 | 位置 | 配什么 | 不配的后果 |
 | --- | --- | --- |
 | `src/manifest.json` 的 `appid` / `mp-weixin.appid` | 津海通小程序 AppId（已填） | 开发者工具无法登录、`wx.login` 拿不到 code |
-| `.env.development` 的 `VITE_API_ORIGIN` | 后端根地址（不带 `/api`） | 所有接口 404 |
+| `.env.development` 的 `VITE_API_ORIGIN` | 津海通后端根地址 `http://43.138.14.122:82`（不带 `/api`） | 所有接口 404 |
 | `.env.production` 的 `VITE_API_ORIGIN` | 已在小程序后台登记的 **https** 合法域名 | 真机请求被拦 |
 | 微信开发者工具 → 详情 → 本地设置 | 勾「不校验合法域名」 | 开发态连 http 后端会被拦 |
 

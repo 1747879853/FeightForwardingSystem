@@ -155,6 +155,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-26 | `Chore` | 小程序开发态接口改到津海通 `http://43.138.14.122:82` | 仅 `apps/mp/.env.development` 的 `VITE_API_ORIGIN`；管理端本地默认仍走佳越测试 `:88` |
 | 2026-08-26 | `Chore` | 浩瀚远洋 IIS / WebDeploy 目标改为独立机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER` | 本地 `publish-config.local.json` 与 example 模板同步；GitHub Secret `IIS_SERVER_IP` 须手工改到新机；密码不入库 |
 | 2026-08-26 | `Feature` | 新增佳越测试环境（jytest），后端 43.138.14.122:88，站点标题「佳越测试」，Logo 复用佳越；IIS 站点 `jiayue-web-test` | 新增 `.env.jytest`，`VITE_APP_BRAND=jiayue`；本地 `pnpm dev:antd` 标题同步为「佳越测试」；独立 `VITE_APP_NAMESPACE=vben-web-antd-jytest`；favicon 同步增加 `logo.webp` 候选 |
 | 2026-08-26 | `Chore` | 浩瀚远洋生产接口改为 `http://47.105.61.173:84/api` | `.env.hhyy` / `.env.production` 与 `dev:hhyy` 代理同步；勿与世纪通达同端口 `:84`（`43.138.14.122`）混淆；须重新 `build:hhyy` 后再发布 |
