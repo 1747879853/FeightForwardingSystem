@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 import { Button, message, Popconfirm, Table } from 'ant-design-vue';
@@ -15,21 +15,23 @@ import { $t } from '#/locales';
 import { useUserBankAccountColumns } from '../data';
 import BankAccountModal from './bank-account-modal.vue';
 
-const userId = ref<number>(0);
-const userName = ref<string>('');
+defineOptions({ name: 'UserBankAccountPanel' });
+
+const props = defineProps<{ userId: number }>();
+
 const loading = ref(false);
 const bankAccountList = ref<SystemUserAdminApi.UserBankAccountDto[]>([]);
 
 const columns = computed(() => useUserBankAccountColumns());
 
 async function loadBankAccounts() {
-  if (!userId.value) {
+  if (!props.userId) {
     bankAccountList.value = [];
     return;
   }
   loading.value = true;
   try {
-    bankAccountList.value = await getUserBankAccountList(userId.value);
+    bankAccountList.value = await getUserBankAccountList(props.userId);
   } finally {
     loading.value = false;
   }
@@ -39,7 +41,7 @@ async function onDelete(record: SystemUserAdminApi.UserBankAccountDto) {
   try {
     await deleteUserBankAccount(record.id);
     message.success($t('system.user.bankAccount.deleteSuccess'));
-    loadBankAccounts();
+    await loadBankAccounts();
   } catch {
     // error handled by request interceptor
   }
@@ -51,7 +53,7 @@ const [BankAccountModalComponent, bankAccountModalApi] = useVbenModal({
 });
 
 function onAdd() {
-  bankAccountModalApi.setData({ userId: userId.value }).open();
+  bankAccountModalApi.setData({ userId: props.userId }).open();
 }
 
 function onEdit(record: SystemUserAdminApi.UserBankAccountDto) {
@@ -59,27 +61,18 @@ function onEdit(record: SystemUserAdminApi.UserBankAccountDto) {
 }
 
 function onBankAccountSuccess() {
-  loadBankAccounts();
+  void loadBankAccounts();
 }
 
-const getTitle = computed(() => {
-  return $t('system.user.bankAccount.title', { name: userName.value });
-});
-
-const [Modal, modalApi] = useVbenModal({
-  async onOpenChange(isOpen) {
-    if (!isOpen) return;
-
-    const data = modalApi.getData<{ userId: number; userName: string }>();
-    userId.value = data?.userId ?? 0;
-    userName.value = data?.userName ?? '';
-    await loadBankAccounts();
-  },
+onMounted(() => {
+  if (props.userId != null) {
+    void loadBankAccounts();
+  }
 });
 </script>
 
 <template>
-  <Modal :title="getTitle" class="w-[900px]" :footer="false">
+  <div class="p-4">
     <BankAccountModalComponent @success="onBankAccountSuccess" />
 
     <div class="mb-3 flex items-center justify-end">
@@ -99,12 +92,16 @@ const [Modal, modalApi] = useVbenModal({
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'action'">
-          <Button type="link" size="small" @click="onEdit(record)">
+          <Button
+            type="link"
+            size="small"
+            @click="onEdit(record as SystemUserAdminApi.UserBankAccountDto)"
+          >
             {{ $t('common.edit') }}
           </Button>
           <Popconfirm
             :title="$t('system.user.bankAccount.confirmDelete')"
-            @confirm="onDelete(record)"
+            @confirm="onDelete(record as SystemUserAdminApi.UserBankAccountDto)"
           >
             <Button type="link" danger size="small">
               {{ $t('common.delete') }}
@@ -113,5 +110,5 @@ const [Modal, modalApi] = useVbenModal({
         </template>
       </template>
     </Table>
-  </Modal>
+  </div>
 </template>

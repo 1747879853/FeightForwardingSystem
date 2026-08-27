@@ -545,6 +545,7 @@
   },
   "user": {
     "title": "User Management",
+    "editTabTitle": "User Edit",
     "list": "User List",
     "name": "User",
     "id": "User ID",

@@ -1,11 +1,6 @@
 import type { VbenFormSchema } from '#/adapter/form';
-import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { SystemUserAdminApi } from '#/api';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 
-import {
-  getOrganizationUnitTree,
-  withOrganizationTreeDisabled,
-} from '#/api/system/organization-unit';
 import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
 import { z } from '@vben/common-ui';
@@ -504,13 +499,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 /**
  * 用户列表列定义
  */
-export function useColumns<T = SystemUserAdminApi.SystemUser>(
-  onActionClick: OnActionClickFn<T>,
-  _onStatusChange?: (
-    newStatus: any,
-    row: T,
-  ) => PromiseLike<boolean | undefined>,
-): VxeTableGridOptions['columns'] {
+export function useColumns(): VxeTableGridOptions['columns'] {
   return [
     {
       type: 'checkbox',
@@ -651,45 +640,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       formatter: 'formatDateTime',
       title: $t('system.user.createTime'),
       width: 170,
-    },
-    {
-      align: 'center',
-      cellRender: {
-        attrs: {
-          nameField: 'userName',
-          nameTitle: $t('system.user.name'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          { code: 'edit', text: $t('common.edit') },
-          { code: 'permission', text: $t('system.user.permission') },
-          {
-            code: 'viewPermissions',
-            text: $t('system.user.viewPermissions'),
-          },
-          { code: 'setRoles', text: $t('system.user.setRoles') },
-          {
-            code: 'more',
-            text: $t('common.more'),
-            children: [
-              {
-                code: 'bankAccount',
-                text: $t('system.user.bankAccountAction'),
-              },
-              {
-                code: 'changePassword',
-                text: $t('system.user.changePassword'),
-              },
-              { code: 'delete', text: $t('common.delete'), danger: true },
-            ],
-          },
-        ],
-      },
-      field: 'operation',
-      fixed: 'right',
-      title: $t('system.user.operation'),
-      width: 340,
     },
   ];
 }

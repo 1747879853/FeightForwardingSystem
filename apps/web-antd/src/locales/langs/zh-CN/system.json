@@ -547,6 +547,7 @@
   },
   "user": {
     "title": "用户管理",
+    "editTabTitle": "用户编辑",
     "list": "用户列表",
     "name": "用户",
     "id": "用户ID",
