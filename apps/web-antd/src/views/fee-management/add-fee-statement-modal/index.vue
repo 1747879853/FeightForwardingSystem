@@ -22,6 +22,7 @@ import { useVbenForm } from '#/adapter/form';
 import { NestedDataTable } from '#/components/nested-data-table';
 
 import { getOrderFeeGroup } from '#/api/settlement-management/statement-admin';
+import { formatAmount } from '#/views/settlement-management/receive-settlement/form-data';
 
 import {
   type AddFeeDrawerProps,
@@ -60,6 +61,82 @@ const selectionMap = reactive(new Map<string, Set<string>>());
 const appliedAmountMap = reactive(new Map<string, number>());
 
 const expandedRowKeys = ref<string[]>([]);
+
+// 勾选合计：按币别和收付类型汇总选中费用金额
+const selectedFeeSummary = computed(() => {
+  const summary = new Map<
+    string,
+    {
+      currencyName: string;
+      receiveAmount: number;
+      payAmount: number;
+      receiveCount: number;
+      payCount: number;
+    }
+  >();
+  const disabled = disabledFeeIds.value;
+
+  for (const [orderId, feeIds] of selectionMap.entries()) {
+    const fees = getOrderFees(orderId);
+
+    for (const fee of fees) {
+      if (feeIds.has(fee.id) && !disabled.has(fee.id)) {
+        const currencyId = fee.currencyId ?? 0;
+        const currencyName =
+          fee.currency?.cnName ?? fee.currency?.code ?? '未知币别';
+        // 正确计算未结算金额：amount - settledAmount
+        const unSettledAmount = (fee.amount ?? 0) - (fee.settledAmount ?? 0);
+        const key = String(currencyId);
+
+        if (summary.has(key)) {
+          const item = summary.get(key)!;
+          if (fee.paySide === 0) {
+            // 应收
+            item.receiveAmount += unSettledAmount;
+            item.receiveCount += 1;
+          } else {
+            // 应付
+            item.payAmount += unSettledAmount;
+            item.payCount += 1;
+          }
+        } else {
+          const newItem = {
+            currencyName,
+            receiveAmount: 0,
+            payAmount: 0,
+            receiveCount: 0,
+            payCount: 0,
+          };
+          if (fee.paySide === 0) {
+            newItem.receiveAmount = unSettledAmount;
+            newItem.receiveCount = 1;
+          } else {
+            newItem.payAmount = unSettledAmount;
+            newItem.payCount = 1;
+          }
+          summary.set(key, newItem);
+        }
+      }
+    }
+  }
+
+  return Array.from(summary.values());
+});
+
+const selectedFeeCount = computed(() => {
+  let count = 0;
+  const disabled = disabledFeeIds.value;
+
+  for (const [, feeIds] of selectionMap.entries()) {
+    for (const feeId of feeIds) {
+      if (!disabled.has(feeId)) {
+        count++;
+      }
+    }
+  }
+
+  return count;
+});
 
 // 全选和半选状态计算
 const isAllSelected = computed(() => {
@@ -583,10 +660,10 @@ function handleCancel() {
   open.value = false;
 }
 
-function formatAmount(val: number | undefined | null): string {
-  if (val == null) return '';
-  return Number(val).toFixed(2);
-}
+// function formatAmount(val: number | undefined | null): string {
+//   if (val == null) return '';
+//   return Number(val).toFixed(2);
+// }
 
 function formatMonth(val: string | undefined | null): string {
   if (!val) return '';
@@ -915,9 +992,37 @@ defineExpose({ open: openDrawer });
 
     <!-- 底部操作栏 -->
     <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button @click="handleCancel">取消</Button>
-        <Button type="primary" @click="handleConfirm">添加对账</Button>
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600">
+          <span v-if="selectedFeeCount > 0">
+            已选 {{ selectedFeeCount }} 笔，
+            <span
+              v-for="(item, index) in selectedFeeSummary"
+              :key="index"
+              class="ml-2"
+            >
+              <span v-if="item.receiveCount > 0" class="mr-2">
+                <span class="font-medium">{{ item.currencyName }}应收</span>：
+                <span class="text-blue-600">{{
+                  formatAmount(item.receiveAmount)
+                }}</span>
+                ({{ item.receiveCount }}笔)
+              </span>
+              <span v-if="item.payCount > 0">
+                <span class="font-medium">{{ item.currencyName }}应付</span>：
+                <span class="text-orange-600">{{
+                  formatAmount(item.payAmount)
+                }}</span>
+                ({{ item.payCount }}笔)
+              </span>
+            </span>
+          </span>
+          <span v-else>&nbsp;</span>
+        </div>
+        <div class="flex gap-2">
+          <Button @click="handleCancel">取消</Button>
+          <Button type="primary" @click="handleConfirm">添加对账</Button>
+        </div>
       </div>
     </template>
   </Drawer>
