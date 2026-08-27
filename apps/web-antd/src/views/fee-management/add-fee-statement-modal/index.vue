@@ -245,18 +245,31 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   await searchFormApi.resetForm();
   await nextTick();
-  if (props.settlementId) {
-    searchFormApi.setValues({ SettlementId: props.settlementId });
-  }
+
   const hasFees = (props.selectedFeeIds?.length ?? 0) > 0;
+  // 先回显结算对象选项，再写表单值，避免首次 getValues 丢 SettlementId
   searchFormApi.updateSchema([
     {
-      fieldName: 'settlementId',
+      fieldName: 'SettlementId',
       componentProps: {
         disabled: hasFees,
+        selectedItems:
+          props.settlementId && props.settlementName
+            ? [
+                {
+                  fullName: props.settlementName,
+                  id: props.settlementId,
+                  name: props.settlementName,
+                },
+              ]
+            : [],
       },
     },
   ]);
+  await nextTick();
+  if (props.settlementId) {
+    searchFormApi.setValues({ SettlementId: props.settlementId });
+  }
 }
 
 function resetState() {

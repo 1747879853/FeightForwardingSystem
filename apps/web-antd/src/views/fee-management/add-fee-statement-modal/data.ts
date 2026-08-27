@@ -10,6 +10,8 @@ import { $t } from '#/locales';
 export interface AddFeeDrawerProps {
   /** 结算对象 id（由外层表单传入） */
   settlementId?: string;
+  /** 结算对象名称（用于 ClientSelect 回显） */
+  settlementName?: string;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
   /** 当前对账单 id，排除已选费用 */
