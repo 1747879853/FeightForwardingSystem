@@ -76,6 +76,7 @@ const filterEtdStart = ref<string>(''); // 新增：开船日期起
 const filterEtdEnd = ref<string>(''); // 新增：开船日期止
 const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
 const filterBizType = ref<number | undefined>(undefined); // ✅ 新增：业务类型
+const filterStatementNum = ref<string>(''); // ✅ 新增：客户对账单号
 
 // ✅ 新增：用于 RangePicker 的日期范围状态
 const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
@@ -352,6 +353,7 @@ function handleResetFilter() {
   filterEtdRange.value = undefined; // ✅ 重置日期范围
   filterPaySide.value = 0;
   filterBizType.value = undefined; // ✅ 重置业务类型
+  filterStatementNum.value = ''; // ✅ 重置客户对账单号
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
 }
@@ -517,6 +519,11 @@ async function loadFeeGroupData() {
     // ✅ 新增：业务类型
     if (filterBizType.value !== undefined) {
       params.bizType = filterBizType.value;
+    }
+
+    // ✅ 新增：客户对账单号
+    if (filterStatementNum.value) {
+      params.StatementNum = filterStatementNum.value;
     }
 
     if (props.invoiceApplicationId) {
@@ -803,6 +810,19 @@ defineExpose({
             <Input
               v-model:value="keyWord"
               placeholder="委托编号/主提单号/订舱编号"
+              style="flex: 1"
+              allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >对账单号:</span
+            >
+            <Input
+              v-model:value="filterStatementNum"
+              placeholder="请输入客户对账单号"
               style="flex: 1"
               allow-clear
             />

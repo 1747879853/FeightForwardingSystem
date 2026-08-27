@@ -160,6 +160,25 @@ export namespace StatementAdminApi {
     swiftCode?: string;
   }
 
+  /** 客户往来单位简易对象（用于对账单选择费用返回） */
+  export interface ClientSimpleDtoForOrder {
+    id: string;
+    name?: string;
+    fullName?: string;
+    address?: string | null;
+  }
+
+  /** 客户联系人简易对象（用于对账单选择费用返回） */
+  export interface ClientContactSimpleDto {
+    id: number;
+    name?: string;
+    mobile?: string;
+    email?: string;
+    tel?: string;
+    position?: string;
+    weChat?: string;
+  }
+
   /** 费用和海出 */
   export interface OrderFeeAndSeaExportDto {
     statementCurrencyGroup?: StatementCurrencyDto[];

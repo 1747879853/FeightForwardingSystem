@@ -236,6 +236,8 @@ export namespace InvoiceApplicationApi {
     innerVoyno?: string;
     /** 组织ID（通过TransportOrder的UserId查询） */
     orgId?: number;
+    /** 客户对账单号，模糊匹配，可空；不传时行为完全不变 */
+    StatementNum?: string;
     /** 当前页码（从1开始） */
     pageIndex: number;
     /** 每页条数 */
