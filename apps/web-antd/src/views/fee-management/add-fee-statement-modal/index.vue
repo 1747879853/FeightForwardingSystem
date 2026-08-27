@@ -328,6 +328,7 @@ async function fetchData(formValues?: Record<string, any>) {
 
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
     SettlementId: values.SettlementId,
+    PaySide: values.PaySide !== undefined ? values.PaySide : undefined,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,

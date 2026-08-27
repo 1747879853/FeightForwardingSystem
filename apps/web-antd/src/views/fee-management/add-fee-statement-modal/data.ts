@@ -96,18 +96,39 @@ export const SettlementStatusLabelMap: Record<number, string> = {
   2: '已结算',
 };
 
+/** PaySide 枚举选项 */
+export const PaySideOptions = [
+  { value: 0, label: '收' },
+  { value: 1, label: '付' },
+];
+
+export function getPaySideLabel(value: number): string {
+  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
+}
+
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(): VbenFormSchema[] {
   return [
     {
       component: 'ClientSelect',
       fieldName: 'SettlementId',
-      label: '客户名称',
+      label: '委托单位',
       rules: 'required',
       componentProps: {
         industryCategory: '',
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'PaySide',
+      label: '收付类型',
+      defaultValue: undefined,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: PaySideOptions,
       },
     },
     {
@@ -370,7 +391,7 @@ export function collectCurrencies(
   const map = new Map<number, string>();
   for (const order of items) {
     for (const fee of order.orderFees ?? []) {
-      const name = fee.currency?.cnName ?? fee.currency?.code;
+      const name = fee.currency?.code;
       if (fee.currencyId && name && !map.has(fee.currencyId)) {
         map.set(fee.currencyId, name);
       }
@@ -505,14 +526,4 @@ export function buildOrderRow(
     );
   }
   return row;
-}
-
-/** PaySide 枚举选项 */
-export const PaySideOptions = [
-  { value: 0, label: '收' },
-  { value: 1, label: '付' },
-];
-
-export function getPaySideLabel(value: number): string {
-  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
 }
