@@ -102,6 +102,14 @@ export namespace InvoiceApplicationApi {
     enName?: string;
   }
 
+  /** 对账单简要信息 */
+  export interface StatementSimpleDto {
+    /** 对账 id */
+    id: string;
+    /** 对账单号 */
+    statementNum: string;
+  }
+
   /** 运输订单简易信息 */
   export interface TransportOrderSimpleDto {
     id: string;
@@ -175,6 +183,9 @@ export namespace InvoiceApplicationApi {
     taxRate: number;
     creatorUserId?: number;
     accountDate?: string;
+
+    statements: StatementSimpleDto[];
+    isStatemented: boolean;
     [key: string]: any;
   }
 
@@ -192,8 +203,8 @@ export namespace InvoiceApplicationApi {
 
   /** 开票申请费用查询DTO */
   export interface InvoiceApplicationFeeQueryDto {
-    /** 关键字（可输入委托编号、主提单号、订舱编号、结算单位、业务类别、船公司、委托单位、开船日期、销售、会计期间、操作人、起运港、目的港、船名、航次、组织） */
-    keyWord?: string;
+    /** 关键字（模糊匹配主提单号或委托编号） */
+    keyword?: string;
     /** 开票申请ID（编辑时传入，排除此申请已关联的费用） */
     invoiceApplicationId?: string;
     /** 委托编号（模糊） */
@@ -202,10 +213,14 @@ export namespace InvoiceApplicationApi {
     mblNum?: string;
     /** 订舱编号（模糊） */
     bookingNum?: string;
+    /** 客户对账单号（模糊）；传入时只返回被命中对账单所包含的费用 */
+    statementNum?: string;
     /** 结算单位ID（费用的） */
     settlementId?: string;
     /** 币别ID */
     currencyId?: number;
+    /** 收付类型（收/付） */
+    paySide?: PaySide;
     /** 业务类别 */
     bizType?: BizType;
     /** 船公司ID */
@@ -236,8 +251,6 @@ export namespace InvoiceApplicationApi {
     innerVoyno?: string;
     /** 组织ID（通过TransportOrder的UserId查询） */
     orgId?: number;
-    /** 客户对账单号，模糊匹配，可空；不传时行为完全不变 */
-    StatementNum?: string;
     /** 当前页码（从1开始） */
     pageIndex: number;
     /** 每页条数 */

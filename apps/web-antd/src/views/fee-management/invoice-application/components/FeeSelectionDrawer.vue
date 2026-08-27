@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Spin,
+  Tag,
 } from 'ant-design-vue';
 
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
@@ -351,7 +352,7 @@ function handleResetFilter() {
   filterEtdStart.value = '';
   filterEtdEnd.value = '';
   filterEtdRange.value = undefined; // ✅ 重置日期范围
-  filterPaySide.value = 0;
+  filterPaySide.value = 0; // ✅ 重置为全部，而不是默认应收
   filterBizType.value = undefined; // ✅ 重置业务类型
   filterStatementNum.value = ''; // ✅ 重置客户对账单号
   selectedFeeRowKeys.value = [];
@@ -514,7 +515,9 @@ async function loadFeeGroupData() {
     }
 
     // 新增：收付类型
-    params.paySide = filterPaySide.value;
+    if (filterPaySide.value !== null && filterPaySide.value !== undefined) {
+      params.paySide = filterPaySide.value;
+    }
 
     // ✅ 新增：业务类型
     if (filterBizType.value !== undefined) {
@@ -523,7 +526,7 @@ async function loadFeeGroupData() {
 
     // ✅ 新增：客户对账单号
     if (filterStatementNum.value) {
-      params.StatementNum = filterStatementNum.value;
+      params.statementNum = filterStatementNum.value;
     }
 
     if (props.invoiceApplicationId) {
@@ -576,6 +579,11 @@ function transformToTreeData(
           amount: fee.amount,
           currencyCode: fee.currency?.code || '-',
           remainingInvoiceAmount: fee.remainingInvoiceAmount,
+          // ✅ 对账单号：将statements数组中的statementNum拼接显示
+          statementNums:
+            fee.statements && fee.statements.length > 0
+              ? fee.statements.map((s: any) => s.statementNum).join(' ')
+              : '-',
           // ✅ 关键修复：在子节点中也保存委托编号和主提单号
           commissionNum: item.transportOrder.commissionNum,
           mblNum: item.transportOrder.mblNum || '-',
@@ -749,6 +757,13 @@ const feeInnerColumns = computed(() => [
     dataIndex: 'feeName',
     key: 'feeName',
     width: 120,
+    ellipsis: true,
+  },
+  {
+    title: '对账单号',
+    dataIndex: 'statementNums',
+    key: 'statementNums',
+    width: 150,
     ellipsis: true,
   },
   {
@@ -1024,6 +1039,22 @@ defineExpose({
                 class="fee-applied-amount-input w-full"
                 :disabled="record.alreadyAdded"
               />
+            </template>
+            <template v-else-if="column.key === 'payReceiveType'">
+              <Tag
+                v-if="record.payReceiveType === '应收'"
+                color="blue"
+                style="margin: 0"
+              >
+                应收
+              </Tag>
+              <Tag
+                v-else-if="record.payReceiveType === '应付'"
+                color="orange"
+                style="margin: 0"
+              >
+                应付
+              </Tag>
             </template>
             <template v-else>
               {{ column.dataIndex ? record[column.dataIndex] : '' }}
