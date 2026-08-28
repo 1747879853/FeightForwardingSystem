@@ -45,6 +45,11 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import OrderFeeTable from './modules/order-fee-table-handsontable.vue';
+import {
+  tryOpenPaymentApplicationFromSelectedFees,
+  collectOrderFeesForPaymentNav,
+} from '#/views/fee-management/payment-application/open-from-order-fees';
+import { createAbpPermission } from '#/utils/abp-permission';
 import DisplayFieldsConfigModal, {
   type DisplayFieldConfig,
 } from './modules/display-fields-config-modal.vue';
@@ -78,6 +83,8 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const paymentApplicationPerm = createAbpPermission('Admin.PaymentApplication');
+const paymentApplicationNavLoading = ref(false);
 
 const editId = useKeepAliveRouteParamId();
 
@@ -467,6 +474,21 @@ const handleSelectionChange = (payload: {
   collectSelectedFeeIds();
 };
 
+function collectSelectedFeesForPaymentApplication() {
+  collectSelectedFeeIds();
+  const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+  const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+  return collectOrderFeesForPaymentNav(recFees, payFees);
+}
+
+function handleCreatePaymentApplication() {
+  const fees = collectSelectedFeesForPaymentApplication();
+  paymentApplicationNavLoading.value = true;
+  void tryOpenPaymentApplicationFromSelectedFees(router, fees).finally(() => {
+    paymentApplicationNavLoading.value = false;
+  });
+}
+
 // ==================== 费用操作功能 ====================
 
 // 整票提交
@@ -823,6 +845,15 @@ watch(
               <span class="text-sm text-gray-500">
                 已选中: {{ selectedFeeIds.length }} 条费用
               </span>
+
+              <Button
+                v-access:code="paymentApplicationPerm.add"
+                :disabled="selectedFeeIds.length === 0"
+                :loading="paymentApplicationNavLoading"
+                @click="handleCreatePaymentApplication"
+              >
+                创建付费申请
+              </Button>
 
               <!-- 更多操作下拉菜单 -->
               <DropdownButton type="primary" @click="handleSubmitAllFees">

@@ -39,9 +39,7 @@ import {
   type SelectedFeeItem,
   isOriginalCurrencyApplication,
   isSpecifiedCurrencyApplication,
-  resolveGroupSettlementName,
-  resolvePolPortDisplayName,
-  resolvePodPortDisplayName,
+  buildSelectedFeeItemFromGroupFee,
   isUserRoleColumnField,
   useAddFeeSearchSchema,
   useOrderFixedColumns,
@@ -553,68 +551,15 @@ async function checkSearchChanged() {
 
 // --- 汇总选中费用 ---
 
-function hasUserAttribute(
-  userAttribute: number | undefined,
-  target: PaymentApplicationAdminApi.UserAttribute,
-) {
-  return (
-    typeof userAttribute === 'number' && (userAttribute & target) === target
-  );
-}
-
-function getOrderUserNamesByAttribute(
-  orderUsers: PaymentApplicationAdminApi.OrderUserDto[] | undefined,
-  target: PaymentApplicationAdminApi.UserAttribute,
-) {
-  return (orderUsers ?? [])
-    .filter((user) => hasUserAttribute(user.userAttribute, target))
-    .map((user) => user.userNickName)
-    .filter((name): name is string => Boolean(name))
-    .join('、');
-}
-
 /** 勾选时写入跨页缓存；翻页后仍可确认/合计 */
 function buildSelectedFeeItem(
   groupKey: string,
   fee: PaymentApplicationAdminApi.OrderFeeDto,
 ): null | SelectedFeeItem {
   const order = findGroupByKey(groupKey);
+  if (!order) return null;
   return {
-    feeId: fee.id,
-    transportOrderId: fee.transportOrderId,
-    commissionNum: order?.commissionNum,
-    mblNum: order?.mblNum,
-    clientId: order?.clientId,
-    clientName: order?.client?.name,
-    accountDate: order?.accountDate,
-    etd: order?.etd,
-    polName: order ? resolvePolPortDisplayName(order) : '',
-    podName: order ? resolvePodPortDisplayName(order) : '',
-    saleUserNames: getOrderUserNamesByAttribute(
-      order?.orderUsers,
-      PaymentApplicationAdminApi.UserAttribute.Sale,
-    ),
-    operationUserNames: getOrderUserNamesByAttribute(
-      order?.orderUsers,
-      PaymentApplicationAdminApi.UserAttribute.Operation,
-    ),
-    customerServiceUserNames: getOrderUserNamesByAttribute(
-      order?.orderUsers,
-      PaymentApplicationAdminApi.UserAttribute.CustomerService,
-    ),
-    paySide: fee.paySide,
-    feeCodeId: fee.feeCodeId,
-    feeCodeName: fee.feeCode?.cnName,
-    currencyId: fee.currencyId,
-    currencyCode: fee.currency?.code ?? '',
-    currencyName: fee.currency?.cnName,
-    settlementId: fee.settlementId,
-    settlementName: order
-      ? resolveGroupSettlementName(order)
-      : (fee.settlement?.name ?? ''),
-    amount: fee.amount,
-    settledAmount: fee.settledAmount,
-    unRqstPaymentAmount: fee.unRqstPaymentAmount ?? 0,
+    ...buildSelectedFeeItemFromGroupFee(order, fee),
     appliedAmount: resolveAppliedAmount(fee.id, fee.unRqstPaymentAmount) ?? 0,
   };
 }

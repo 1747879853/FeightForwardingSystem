@@ -66,6 +66,11 @@ import {
 import AddFeeDrawer from '../add-fee-modal/index.vue';
 import AttachmentGroups from './attachment-groups.vue';
 import {
+  fetchOrderFeesForPaymentApplication,
+  notifyPrefillOrderFeesResult,
+  parseOrderFeeIdsFromQuery,
+} from './prefill-from-order-fee-ids';
+import {
   isOriginalCurrencyApplication,
   isSpecifiedCurrencyApplication,
   resolvePodPortDisplayName,
@@ -982,14 +987,60 @@ async function loadEditData() {
   }
 }
 
-onMounted(() => {
+async function prefillFromOrderFeeIds(feeIds: string[]): Promise<boolean> {
+  const result = await fetchOrderFeesForPaymentApplication(feeIds);
+  if (!notifyPrefillOrderFeesResult(result)) {
+    return false;
+  }
+
+  const rows: FeeDetailRow[] = result.items.map((item) => ({
+    ...item,
+    itemRemark: '',
+    rate: item.exchangeRate ?? 1,
+  }));
+  feeDetailRows.value = rows;
+  originalFeeDetailRows.value = rows.map((r) => ({ ...r }));
+
+  const first = rows[0];
+  if (first?.settlementId) {
+    settlementId.value = String(first.settlementId);
+    settlementName.value = first.settlementName ?? '';
+    settlementSelectedItems.value = [
+      { id: first.settlementId, name: first.settlementName ?? '' },
+    ];
+  }
+
+  nextTick(() => {
+    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+  });
+  return true;
+}
+
+onMounted(async () => {
   if (isEdit.value) {
     loadEditData();
-  } else {
-    nextTick(() => {
-      handleOpenAddFee();
-    });
+    return;
   }
+
+  const orderFeeIds = parseOrderFeeIdsFromQuery(route.query);
+  if (orderFeeIds.length > 0) {
+    pageLoading.value = true;
+    try {
+      const ok = await prefillFromOrderFeeIds(orderFeeIds);
+      if (!ok) {
+        nextTick(() => {
+          handleOpenAddFee();
+        });
+      }
+    } finally {
+      pageLoading.value = false;
+    }
+    return;
+  }
+
+  nextTick(() => {
+    handleOpenAddFee();
+  });
 });
 
 // --- Submit ---

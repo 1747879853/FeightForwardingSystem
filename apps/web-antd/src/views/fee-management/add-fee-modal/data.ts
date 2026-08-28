@@ -403,7 +403,7 @@ function hasUserAttribute(
   return (userAttribute & target) === target;
 }
 
-function getOrderUserNamesByAttribute(
+export function getOrderUserNamesByAttribute(
   orderUsers: PaymentApplicationAdminApi.OrderUserDto[] | undefined,
   target: PaymentApplicationAdminApi.UserAttribute,
 ): string {
@@ -519,4 +519,71 @@ export function buildOrderRow(
     );
   }
   return row;
+}
+
+/**
+ * 将 GetOrderFeeGroupAsync 分组内单条费用映射为 SelectedFeeItem。
+ * appliedAmount 默认取 unRqstPaymentAmount（剩余可申请额度）。
+ */
+export function buildSelectedFeeItemFromGroupFee(
+  order: PaymentApplicationAdminApi.PayAppFeeGroupDto,
+  fee: PaymentApplicationAdminApi.OrderFeeDto,
+  appliedAmount?: number,
+): SelectedFeeItem {
+  const unRqst = fee.unRqstPaymentAmount ?? 0;
+  return {
+    feeId: fee.id,
+    transportOrderId: fee.transportOrderId,
+    commissionNum: order.commissionNum,
+    mblNum: order.mblNum,
+    clientId: order.clientId,
+    clientName: order.client?.name,
+    accountDate: order.accountDate,
+    etd: order.etd,
+    polName: resolvePolPortDisplayName(order),
+    podName: resolvePodPortDisplayName(order),
+    saleUserNames: getOrderUserNamesByAttribute(
+      order.orderUsers,
+      PaymentApplicationAdminApi.UserAttribute.Sale,
+    ),
+    operationUserNames: getOrderUserNamesByAttribute(
+      order.orderUsers,
+      PaymentApplicationAdminApi.UserAttribute.Operation,
+    ),
+    customerServiceUserNames: getOrderUserNamesByAttribute(
+      order.orderUsers,
+      PaymentApplicationAdminApi.UserAttribute.CustomerService,
+    ),
+    paySide: fee.paySide,
+    feeCodeId: fee.feeCodeId,
+    feeCodeName: fee.feeCode?.cnName,
+    currencyId: fee.currencyId,
+    currencyCode: fee.currency?.code ?? '',
+    currencyName: fee.currency?.cnName,
+    settlementId: fee.settlementId,
+    settlementName: resolveGroupSettlementName(order) || fee.settlement?.name,
+    amount: fee.amount,
+    settledAmount: fee.settledAmount,
+    unRqstPaymentAmount: unRqst,
+    appliedAmount: appliedAmount ?? unRqst,
+    exchangeRate: fee.exchangeRate,
+  };
+}
+
+/** 将分组列表展平为 SelectedFeeItem；可选 feeIds 仅保留指定 id */
+export function flattenPayAppFeeGroupsToSelectedItems(
+  groups: PaymentApplicationAdminApi.PayAppFeeGroupDto[],
+  options?: { feeIds?: Iterable<string> },
+): SelectedFeeItem[] {
+  const idSet = options?.feeIds
+    ? new Set([...options.feeIds].map(String))
+    : null;
+  const result: SelectedFeeItem[] = [];
+  for (const group of groups) {
+    for (const fee of group.orderFees ?? []) {
+      if (idSet && !idSet.has(String(fee.id))) continue;
+      result.push(buildSelectedFeeItemFromGroupFee(group, fee));
+    }
+  }
+  return result;
 }

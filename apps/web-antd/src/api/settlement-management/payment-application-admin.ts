@@ -466,6 +466,11 @@ export namespace PaymentApplicationAdminApi {
   export interface GetOrderFeeGroupParams {
     /** 当前付费申请id，排除已选费用 */
     Id?: string;
+    /**
+     * 费用 id 集合，只返回这些费用；不传则不按费用 id 过滤。
+     * GET 传数组须 repeat：orderFeeIds=guid1&orderFeeIds=guid2
+     */
+    OrderFeeIds?: string[];
     /** 结算对象(客户id) 必填 */
     SettlementId?: string;
     /** 会计期间起 */
@@ -888,6 +893,12 @@ export namespace PaymentApplicationAdminApi {
     saleNames?: string[];
     operatorNames?: string[];
     customerServiceNames?: string[];
+    /** 销售昵称逗号拼接；无值时为 null */
+    saleNamesStr?: string | null;
+    /** 操作昵称逗号拼接；无值时为 null */
+    operatorNamesStr?: string | null;
+    /** 客服昵称逗号拼接；无值时为 null */
+    customerServiceNamesStr?: string | null;
     isBusinessLocking: boolean;
     pkgs?: number;
     grossWeight?: number;
@@ -915,7 +926,10 @@ export namespace PaymentApplicationAdminApi {
     creatorUserId?: number;
   }
 
-  /** 费用和业务分组 DTO（详情输出） */
+  /**
+   * 费用和业务分组 DTO。
+   * 详情四个字段都有值；审批任务列表 `PayAppTaskListAsync` 只填 `transportOrder`，其余恒为 null。
+   */
   export interface PayAppFeeAndSeaExportDto {
     currencyGroup?: CurrencyGroupDto[];
     totalPayPrice?: number;

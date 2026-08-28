@@ -6,6 +6,7 @@ import {
 } from '#/api/sea-export/order-fee-admin';
 import dayjs from 'dayjs';
 import { computed, nextTick, onMounted, ref, watch, h } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
@@ -51,6 +52,11 @@ import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
 // ✅ 新增：导入下拉框数据源管理
 import { useDropdownSources } from './modules/composables/useDropdownSources';
+import {
+  tryOpenPaymentApplicationFromSelectedFees,
+  collectOrderFeesForPaymentNav,
+} from '#/views/fee-management/payment-application/open-from-order-fees';
+import { createAbpPermission } from '#/utils/abp-permission';
 
 // 导入费用操作相关的 API
 import {
@@ -658,6 +664,25 @@ const handleSelectionChange = (payload: {
   collectSelectedFeeIds();
 };
 
+const router = useRouter();
+const paymentApplicationPerm = createAbpPermission('Admin.PaymentApplication');
+const paymentApplicationNavLoading = ref(false);
+
+function collectSelectedFeesForPaymentApplication() {
+  collectSelectedFeeIds();
+  const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+  const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+  return collectOrderFeesForPaymentNav(recFees, payFees);
+}
+
+function handleCreatePaymentApplication() {
+  const fees = collectSelectedFeesForPaymentApplication();
+  paymentApplicationNavLoading.value = true;
+  void tryOpenPaymentApplicationFromSelectedFees(router, fees).finally(() => {
+    paymentApplicationNavLoading.value = false;
+  });
+}
+
 // 提取提交费用的公共逻辑
 const submitFees = async (recFees: any[], payFees: any[]) => {
   try {
@@ -1009,6 +1034,15 @@ onMounted(async () => {
               <span class="text-sm text-gray-500">
                 已选中: {{ selectedFeeIds.length }} 条费用
               </span>
+
+              <Button
+                v-access:code="paymentApplicationPerm.add"
+                :disabled="selectedFeeIds.length === 0"
+                :loading="paymentApplicationNavLoading"
+                @click="handleCreatePaymentApplication"
+              >
+                创建付费申请
+              </Button>
 
               <!-- 更多操作下拉菜单 -->
               <DropdownButton type="primary" @click="handleSubmitAllFees">
