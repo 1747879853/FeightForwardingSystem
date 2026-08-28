@@ -5,8 +5,10 @@ param(
   [switch]$SkipPrebuild,
   [switch]$ForcePrebuild,
   [switch]$SkipConnectivityCheck,
-  [ValidateRange(1, 8)]
-  [int]$ThrottleLimit = 6
+  [switch]$SkipHealthCheck,
+  # 0 = 不限制，环境列表有几套就并行几路
+  [ValidateRange(0, 32)]
+  [int]$ThrottleLimit = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,6 +68,7 @@ function Start-BrandPublish {
     $ConfigPath
     '-Force'
     '-SkipPrebuild'
+    '-SkipHealthCheck'
   )
   if ($SkipConnectivityCheck) {
     $argumentList += '-SkipConnectivityCheck'
@@ -156,6 +159,9 @@ function Write-TailLog {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publishScriptPath = Join-Path $PSScriptRoot 'publish-web.ps1'
 $environments = @('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'demo')
+if ($ThrottleLimit -le 0) {
+  $ThrottleLimit = [Math]::Max(1, $environments.Count)
+}
 
 if (-not (Test-Path -LiteralPath $publishScriptPath -PathType Leaf)) {
   throw "Publish script was not found: $publishScriptPath"
@@ -263,6 +269,21 @@ try {
   Write-Host '=== All environments published successfully ==='
   Write-Host ($environments -join ', ')
   Write-Host "$(Get-TotalElapsedLabel): $totalElapsed"
+
+  if ($SkipHealthCheck) {
+    Write-Warning 'Site health check skipped by request.'
+  } else {
+    $healthCheckScript = Join-Path $PSScriptRoot 'invoke-site-health-check.ps1'
+    Invoke-ExternalCommand 'powershell.exe' @(
+      '-NoProfile'
+      '-ExecutionPolicy'
+      'Bypass'
+      '-File'
+      $healthCheckScript
+      '-RepoRoot'
+      $repoRoot
+    )
+  }
 } finally {
   Pop-Location
 }

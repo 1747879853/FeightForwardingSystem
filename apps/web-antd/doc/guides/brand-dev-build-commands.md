@@ -6,7 +6,8 @@
 
 | 公司/场景 | 开发 | 打包 | Vite mode | 素材目录 |
 | --- | --- | --- | --- | --- |
-| 佳越测试（:88） | `pnpm dev:antd` / `pnpm dev:antd:jytest` | `pnpm build:antd:jytest` | `development` / `jytest` | `src/assets/img/jiayue/`（复用佳越素材） |
+| 本地默认（佳越 Logo，后端 hhyy） | `pnpm dev` / `pnpm dev:antd` | — | `development` | `src/assets/img/jiayue/`（标题「佳越测试」，接口 `47.105.61.173:84`） |
+| 佳越测试（:88） | `pnpm dev:antd:jytest` | `pnpm build:antd:jytest` | `jytest` | `src/assets/img/jiayue/`（复用佳越素材） |
 | 佳越标准库（:85，禁止测试） | `pnpm dev:antd:jiayue` | `pnpm build:antd:jiayue` | `jiayue` | `src/assets/img/jiayue/` |
 | 浩瀚远洋 | `pnpm dev:antd:hhyy` | `pnpm build:antd:hhyy` | `hhyy` | `src/assets/img/hhyy/` |
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
@@ -69,6 +70,7 @@ pnpm deploy:antd:demo
 | `-WhatIfOnly` | 只执行 MSDeploy 发布预览，不修改服务器 |
 | `-SkipConnectivityCheck` | 跳过 8172 端口检查 |
 | `-Force` | 跳过正式发布前输入环境名的二次确认，适合受控自动化 |
+| `-SkipHealthCheck` | 发布后不探测线上标题 / `_app.config.js` API |
 
 示例：只预览已有产物：
 
@@ -78,21 +80,21 @@ pnpm deploy:antd:demo
 
 脚本会校验 `dist-<环境>/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
 
-`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌并行构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy，包含浩瀚远洋（站点 `hhyy-web`）。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
+`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌**全量并行**构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy（默认不限并发，有几套发几路）。全部 SUCCESS 后自动跑 `site-health-check`，核对各站标题和 `_app.config.js` 后端地址。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
 
 ## 环境文件
 
-| 文件               | 说明                                                |
-| ------------------ | --------------------------------------------------- |
-| `.env.development` | 佳越测试（本地默认，:88）：`VITE_APP_BRAND=jiayue`  |
-| `.env.jytest`      | 佳越测试（:88 可打包）：`VITE_APP_BRAND=jiayue`     |
-| `.env.jiayue`      | 佳越标准库-禁止测试（:85）：`VITE_APP_BRAND=jiayue` |
-| `.env.hhyy`        | 浩瀚远洋                                            |
-| `.env.jht`         | 津海通                                              |
-| `.env.sjtd`        | 世纪通达                                            |
-| `.env.longshan`    | 龙山                                                |
-| `.env.demo`        | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材）   |
-| `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode）      |
+| 文件 | 说明 |
+| --- | --- |
+| `.env.development` | 本地默认：佳越 Logo + 标题「佳越测试」，后端浩瀚远洋 `47.105.61.173:84` |
+| `.env.jytest` | 佳越测试（:88 可打包）：`VITE_APP_BRAND=jiayue` |
+| `.env.jiayue` | 佳越标准库-禁止测试（:85）：`VITE_APP_BRAND=jiayue` |
+| `.env.hhyy` | 浩瀚远洋 |
+| `.env.jht` | 津海通 |
+| `.env.sjtd` | 世纪通达 |
+| `.env.longshan` | 龙山 |
+| `.env.demo` | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材） |
+| `.env.production` | 与 `hhyy` 保持一致（兼容旧 `production` mode） |
 
 ### 生产 API 地址（`VITE_GLOB_API_URL`）
 
@@ -155,6 +157,9 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | `Chore` | 本地默认 `pnpm dev` / `dev:antd` 后端改到浩瀚远洋 `http://47.105.61.173:84` | 仅 `.env.development` 静态根与 `vite.config.mts` 默认代理；标题/Logo 仍为佳越测试；`jytest`/`jiayue`/`demo` 按 mode 保留各自后端 |
+| 2026-08-26 | `Chore` | 本地发布成功后自动跑 `site-health-check`，核对标题与后端 API | 单品牌 `publish-web.ps1` 发完测该站；`deploy:antd:all` 子进程跳过探测，全部 SUCCESS 后再测全集；`-SkipHealthCheck` 可关 |
+| 2026-08-26 | `Chore` | `deploy:antd:all` 默认不再限制并发，有几套环境就并行几路 | `ThrottleLimit=0` 解析为 `$environments.Count`；机器吃紧仍可手动 `-ThrottleLimit 2` |
 | 2026-08-26 | `Chore` | 小程序开发态接口改到津海通 `http://43.138.14.122:82` | 仅 `apps/mp/.env.development` 的 `VITE_API_ORIGIN`；管理端本地默认仍走佳越测试 `:88` |
 | 2026-08-26 | `Chore` | 浩瀚远洋 IIS / WebDeploy 目标改为独立机 `47.105.61.173`，站点 `hhyy-web`，用户 `IISUSER` | 本地 `publish-config.local.json` 与 example 模板同步；GitHub Secret `IIS_SERVER_IP` 须手工改到新机；密码不入库 |
 | 2026-08-26 | `Feature` | 新增佳越测试环境（jytest），后端 43.138.14.122:88，站点标题「佳越测试」，Logo 复用佳越；IIS 站点 `jiayue-web-test` | 新增 `.env.jytest`，`VITE_APP_BRAND=jiayue`；本地 `pnpm dev:antd` 标题同步为「佳越测试」；独立 `VITE_APP_NAMESPACE=vben-web-antd-jytest`；favicon 同步增加 `logo.webp` 候选 |

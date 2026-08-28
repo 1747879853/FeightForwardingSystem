@@ -10,7 +10,8 @@ param(
   [switch]$PackageOnly,
   [switch]$WhatIfOnly,
   [switch]$SkipConnectivityCheck,
-  [switch]$Force
+  [switch]$Force,
+  [switch]$SkipHealthCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -366,6 +367,24 @@ try {
   Write-Host '=== Deploy to IIS ==='
   Invoke-ExternalCommand $msDeployPath $deployArguments
   Write-Host "Deployment completed: $Environment -> $siteName"
+
+  if ($SkipHealthCheck) {
+    Write-Warning 'Site health check skipped by request.'
+  } else {
+    $healthCheckScript = Join-Path $PSScriptRoot 'invoke-site-health-check.ps1'
+    Invoke-ExternalCommand 'powershell.exe' @(
+      '-NoProfile'
+      '-ExecutionPolicy'
+      'Bypass'
+      '-File'
+      $healthCheckScript
+      '-RepoRoot'
+      $repoRoot
+      '-Name'
+      $Environment
+    )
+  }
+
   Set-Content -LiteralPath $resultPath -Value 'SUCCESS' -Encoding ascii
 } finally {
   Pop-Location

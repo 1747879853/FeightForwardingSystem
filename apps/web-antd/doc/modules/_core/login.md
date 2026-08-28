@@ -2,7 +2,7 @@
 title: 登录页
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-08-26
+last_updated: 2026-08-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,6 +52,7 @@ last_updated: 2026-08-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | `Chore` | 本地 `pnpm dev` / `dev:antd` 接口改到浩瀚远洋 `47.105.61.173:84`，标题/Logo 仍为佳越测试 | 仅 `.env.development` 与默认代理；`jytest`/`jiayue`/`demo` 按 mode 保留各自后端 |
 | 2026-08-26 | `Chore` | 登录页/浏览器标题在对接 `:88` 时展示「佳越测试」并使用佳越 Logo | 本地 `pnpm dev:antd` 与可打包 `jytest` 均读 `VITE_APP_TITLE`；须 `build:antd:jytest` 后线上才生效 |
 | 2026-08-26 | `Chore` | 浩瀚远洋登录接口改为 `http://47.105.61.173:84/api` | 登录仍读 `_app.config.js` 的 `VITE_GLOB_API_URL`，须重新 `build:hhyy` 后才生效 |
 | 2026-08-25 | `Chore` | 佳越 `:85` 登录页/浏览器标题改为「佳越标准库-禁止测试」 | 读 `VITE_APP_TITLE`（`preferences.ts` `app.name`）；须 `build:antd:jiayue` 后生效 |
