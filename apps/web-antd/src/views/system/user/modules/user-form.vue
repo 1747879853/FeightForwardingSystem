@@ -608,13 +608,14 @@ async function handleSubmit() {
     message.success($t('ui.actionMessage.operationSuccess'));
     markListShouldRefresh('SystemUser');
     await syncSnapshot();
-    // 新建成功后关闭当前新建页签，根据返回的用户id跳转到该用户的编辑页
+    // 新建成功后关闭当前新建页签，根据返回的用户id跳转到该用户的编辑页。
+    // 需先 await 导航完成，否则关闭页签时当前路由仍是新建页，会被当作激活页签跳到相邻页签。
     if (!isEdit.value) {
       const createTabKey = route.fullPath;
       if (userId != null) {
-        router.push(`/system/user/edit/${userId}`);
+        await router.push(`/system/user/edit/${userId}`);
       } else {
-        router.push('/system/user');
+        await router.push('/system/user');
       }
       await closeTabByKey(createTabKey);
     }
