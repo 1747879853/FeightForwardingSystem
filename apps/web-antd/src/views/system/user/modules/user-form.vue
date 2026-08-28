@@ -3,11 +3,13 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
+import { FileText, IconifyIcon, Save } from '@vben/icons';
 
-import { Button, message, Radio, Tag, Tree } from 'ant-design-vue';
+import { Button, message, Radio, Space, Tag, Tree } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
@@ -25,7 +27,11 @@ import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
   combineUserAttribute,
   parseUserAttribute,
-  useFormSchema,
+  useUserAttributeFormSchema,
+  useUserBasicFormSchema,
+  useUserContactFormSchema,
+  useUserEmailFormSchema,
+  useUserRemarkFormSchema,
 } from '../data';
 import {
   avatarUrlToFormValue,
@@ -45,6 +51,8 @@ const props = withDefaults(
 );
 
 const router = useRouter();
+const route = useRoute();
+const { closeTabByKey } = useTabs();
 
 // 编辑ID由父级（用户编辑页）传入；独立新建页时为 undefined
 const editId = computed<number | undefined>(() => props.userId);
@@ -369,19 +377,19 @@ const getOrgDisplayName = (orgId: number): string => {
 // 同步公司名称（使用第一个选中的组织的公司）
 async function syncCompanyName() {
   if (selectedOrganizations.value.length === 0) {
-    await formApi.setFieldValue('companyName', '');
+    await basicFormApi.setFieldValue('companyName', '');
     return;
   }
 
   const tree = await ensureOrgTree();
   const firstOrgId = selectedOrganizations.value[0]?.id;
   if (!firstOrgId) {
-    await formApi.setFieldValue('companyName', '');
+    await basicFormApi.setFieldValue('companyName', '');
     return;
   }
 
   const companyName = resolveOrganizationCompanyName(tree, firstOrgId);
-  await formApi.setFieldValue('companyName', companyName);
+  await basicFormApi.setFieldValue('companyName', companyName);
 }
 
 // 监听组织选择变化
@@ -393,17 +401,62 @@ watch(
   { deep: true },
 );
 
-const [Form, formApi] = useVbenForm({
+// ===== 分区表单（对齐客户管理基础信息的卡片式分区布局） =====
+const formCommonConfig = {
   commonConfig: {
     componentProps: {
       class: 'w-full',
     },
   },
-  layout: 'vertical',
-  schema: useFormSchema(),
+  layout: 'vertical' as const,
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2',
+};
+
+const [BasicForm, basicFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserBasicFormSchema(),
+  wrapperClass: 'grid-cols-4',
 });
+
+const [ContactForm, contactFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserContactFormSchema(),
+  wrapperClass: 'grid-cols-4',
+});
+
+const [AttributeForm, attributeFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserAttributeFormSchema(),
+  wrapperClass: 'grid-cols-1',
+});
+
+const [EmailForm, emailFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserEmailFormSchema(),
+  wrapperClass: 'grid-cols-4',
+});
+
+const [RemarkForm, remarkFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserRemarkFormSchema(),
+  wrapperClass: 'grid-cols-1',
+});
+
+const sectionFormApis = [
+  basicFormApi,
+  contactFormApi,
+  attributeFormApi,
+  emailFormApi,
+  remarkFormApi,
+] as const;
+
+/** 汇总所有分区表单的值 */
+async function getAllFormValues() {
+  const valuesList = await Promise.all(
+    sectionFormApis.map((api) => api.getValues()),
+  );
+  return Object.assign({}, ...valuesList);
+}
 
 /**
  * 加载编辑数据
@@ -441,33 +494,41 @@ async function loadUserDetail(id: number) {
     }
 
     await nextTick();
-    formApi.setValues({
+    await basicFormApi.setValues({
       id: userDetail.id,
       userName: userDetail.userName,
       nickName: userDetail.nickName,
-      emailAddress: userDetail.emailAddress,
-      phoneNumber: userDetail.phoneNumber,
-      isActive: userDetail.isActive,
-      status: userDetail.status,
-      avatar: avatarUrlToFormValue(userDetail.avatar),
-      userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
       enName: userDetail.enName,
-      qq: userDetail.qq,
-      employeeID: userDetail.employeeID,
       gender:
         userDetail.gender === 1 || userDetail.gender === 2
           ? userDetail.gender
           : undefined,
-      enable: userDetail.enable ?? true,
+      employeeID: userDetail.employeeID,
       idNumber: userDetail.idNumber,
-      remark: userDetail.remark,
+      avatar: avatarUrlToFormValue(userDetail.avatar),
+      isActive: userDetail.isActive,
+      enable: userDetail.enable ?? true,
+      status: userDetail.status,
+      shouldChangePasswordOnNextLogin:
+        userDetail.shouldChangePasswordOnNextLogin,
+    });
+    await contactFormApi.setValues({
+      phoneNumber: userDetail.phoneNumber,
+      officeTel: userDetail.officeTel,
+      emailAddress: userDetail.emailAddress,
+      qq: userDetail.qq,
+    });
+    await attributeFormApi.setValues({
+      userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
+    });
+    await emailFormApi.setValues({
+      senderDisplayName: userDetail.senderDisplayName,
       emailPwd: userDetail.emailPwd,
       receiveAddrPort: userDetail.receiveAddrPort,
       sendAddrPort: userDetail.sendAddrPort,
-      officeTel: userDetail.officeTel,
-      senderDisplayName: userDetail.senderDisplayName,
-      shouldChangePasswordOnNextLogin:
-        userDetail.shouldChangePasswordOnNextLogin,
+    });
+    await remarkFormApi.setValues({
+      remark: userDetail.remark,
     });
 
     await syncCompanyName();
@@ -480,9 +541,11 @@ async function loadUserDetail(id: number) {
  * 提交表单
  */
 async function handleSubmit() {
-  const { valid } = await formApi.validate();
-  if (!valid) return;
-  const values = await formApi.getValues();
+  const results = await Promise.all(
+    sectionFormApis.map((api) => api.validate()),
+  );
+  if (results.some(({ valid }) => !valid)) return;
+  const values = await getAllFormValues();
 
   // 验证至少选择一个组织
   if (selectedOrganizations.value.length === 0) {
@@ -545,13 +608,15 @@ async function handleSubmit() {
     message.success($t('ui.actionMessage.operationSuccess'));
     markListShouldRefresh('SystemUser');
     await syncSnapshot();
-    // 新建成功后跳转到该用户的编辑页
+    // 新建成功后关闭当前新建页签，跳转到该用户的编辑页
     if (!isEdit.value) {
+      const createTabKey = route.fullPath;
       if (result.id != null) {
         router.push(`/system/user/edit/${result.id}`);
       } else {
         router.push('/system/user');
       }
+      await closeTabByKey(createTabKey);
     }
   } catch {
     // 错误已由请求拦截器统一处理
@@ -571,7 +636,7 @@ function handleBack() {
 const formSnapshot = ref<null | string>(null);
 
 async function buildFormSnapshot() {
-  const values = await formApi.getValues();
+  const values = await getAllFormValues();
   return JSON.stringify({
     selectedOrganizations: selectedOrganizations.value,
     values,
@@ -610,98 +675,202 @@ onMounted(async () => {
     :is="props.embedded ? 'div' : Page"
     v-bind="props.embedded ? {} : { autoContentHeight: true }"
   >
-    <div class="mb-3 flex items-center justify-end gap-2">
-      <Button v-if="!props.embedded" @click="handleBack">
-        {{ $t('common.back') }}
-      </Button>
-      <Button type="primary" :loading="submitting" @click="handleSubmit">
-        {{ $t('common.save') }}
-      </Button>
-    </div>
-
-    <Form />
-
-    <!-- 多组织选择区域 -->
-    <div class="mt-4 rounded border p-3">
-      <div class="mb-3 font-medium">
-        {{ $t('system.user.organizations') || '所属组织' }}
-      </div>
-
-      <!-- 已选组织展示 -->
-      <div v-if="selectedOrganizations.length > 0" class="mb-3">
-        <div class="mb-2 text-sm text-gray-600">
-          {{ $t('system.user.selectedOrganizations') || '已选组织' }}
-          <span class="ml-1 text-xs text-gray-400"
-            >（点击"设为默认"指定默认组织）</span
-          >
+    <div class="user-basic-layout">
+      <!-- 基础信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <FileText class="size-4" />
+            {{ $t('system.user.sectionBasicInfo') }}
+          </span>
+          <Space>
+            <Button v-if="!props.embedded" @click="handleBack">
+              {{ $t('common.back') }}
+            </Button>
+            <Button
+              type="primary"
+              :loading="submitting"
+              class="flex items-center justify-center"
+              @click="handleSubmit"
+            >
+              <Save class="mr-1 size-4" />
+              {{ $t('common.save') }}
+            </Button>
+          </Space>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <Tag
-            v-for="org in selectedOrganizations"
-            :key="org.id"
-            closable
-            :color="org.default ? 'blue' : 'default'"
-            class="text-sm"
-            @close="removeOrg(org.id)"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
-              <template v-if="!org.default">
-                <Radio
-                  :checked="false"
-                  size="small"
-                  class="ml-1"
-                  @click.stop="setDefaultOrg(org.id)"
-                >
-                  {{ $t('system.user.setDefault') || '设为默认' }}
-                </Radio>
-              </template>
-              <span
-                v-else
-                class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
-              >
-                ✓ {{ $t('system.user.isDefault') || '默认' }}
-              </span>
+        <div class="user-section__body">
+          <BasicForm />
+        </div>
+      </section>
+
+      <!-- 联系信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:contacts-outline" class="size-4" />
+            {{ $t('system.user.sectionContactInfo') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <ContactForm />
+        </div>
+      </section>
+
+      <!-- 用户属性 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:account-tag-outline" class="size-4" />
+            {{ $t('system.user.userAttribute') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <AttributeForm />
+        </div>
+      </section>
+
+      <!-- 个人邮箱信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:email-outline" class="size-4" />
+            {{ $t('system.user.sectionEmailInfo') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <EmailForm />
+        </div>
+      </section>
+
+      <!-- 备注 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:note-text-outline" class="size-4" />
+            {{ $t('system.user.remark') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <RemarkForm />
+        </div>
+      </section>
+
+      <!-- 所属组织 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:file-tree-outline" class="size-4" />
+            {{ $t('system.user.organizations') }}
+          </span>
+          <span class="user-section__tip">
+            {{
+              $t('system.user.organizationSelectorTip') ||
+              '勾选组织进行选择，点击"设为默认"指定默认组织（最多一个）'
+            }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <!-- 已选组织展示 -->
+          <div v-if="selectedOrganizations.length > 0" class="mb-3">
+            <div class="mb-2 text-sm text-gray-600">
+              {{ $t('system.user.selectedOrganizations') || '已选组织' }}
             </div>
-          </Tag>
+            <div class="flex flex-wrap gap-2">
+              <Tag
+                v-for="org in selectedOrganizations"
+                :key="org.id"
+                closable
+                :color="org.default ? 'blue' : 'default'"
+                class="text-sm"
+                @close="removeOrg(org.id)"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
+                  <template v-if="!org.default">
+                    <Radio
+                      :checked="false"
+                      size="small"
+                      class="ml-1"
+                      @click.stop="setDefaultOrg(org.id)"
+                    >
+                      {{ $t('system.user.setDefault') || '设为默认' }}
+                    </Radio>
+                  </template>
+                  <span
+                    v-else
+                    class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
+                  >
+                    ✓ {{ $t('system.user.isDefault') || '默认' }}
+                  </span>
+                </div>
+              </Tag>
+            </div>
+          </div>
+
+          <!-- 组织树选择器 -->
+          <div
+            class="max-h-[400px] overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2"
+          >
+            <Tree
+              v-model:expanded-keys="expandedKeys"
+              :tree-data="organizationTreeData"
+              :field-names="{
+                title: 'displayName',
+                key: 'id',
+                children: 'children',
+              }"
+              checkable
+              :check-strictly="true"
+              :checked-keys="checkedOrgKeys"
+              block-node
+              @check="handleTreeCheck"
+            />
+          </div>
         </div>
-      </div>
-
-      <!-- 组织树选择器 -->
-      <div class="max-h-[400px] overflow-y-auto rounded border bg-gray-50 p-2">
-        <Tree
-          v-model:expanded-keys="expandedKeys"
-          :tree-data="organizationTreeData"
-          :field-names="{
-            title: 'displayName',
-            key: 'id',
-            children: 'children',
-          }"
-          checkable
-          :check-strictly="true"
-          :checked-keys="checkedOrgKeys"
-          block-node
-          @check="handleTreeCheck"
-        />
-      </div>
-
-      <!-- 提示信息 -->
-      <div class="mt-2 text-xs text-gray-500">
-        {{
-          $t('system.user.organizationSelectorTip') ||
-          '勾选组织进行选择，点击"设为默认"指定默认组织（最多一个）'
-        }}
-      </div>
+      </section>
     </div>
   </component>
 </template>
 
-<style scoped>
-.border {
-  border: 1px solid #d9d9d9;
+<style scoped lang="scss">
+.user-basic-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
 }
 
-.rounded {
-  border-radius: 4px;
+.user-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+}
+
+.user-section__header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.user-section__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.user-section__tip {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.user-section__body {
+  padding: 12px 18px 4px;
 }
 </style>

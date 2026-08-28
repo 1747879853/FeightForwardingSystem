@@ -652,6 +652,7 @@
     "isActiveOff": "Resigned",
     "isActiveLabel": "Employment Status",
     "sectionBasicInfo": "Basic Information",
+    "sectionContactInfo": "Contact Information",
     "sectionSystemPermission": "System Permissions",
     "sectionEmailInfo": "Personal Email Settings",
     "sectionSystemFields": "System Fields",

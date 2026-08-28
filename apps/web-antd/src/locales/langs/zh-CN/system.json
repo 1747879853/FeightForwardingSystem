@@ -654,6 +654,7 @@
     "isActiveOff": "离职",
     "isActiveLabel": "人员在职",
     "sectionBasicInfo": "基础信息",
+    "sectionContactInfo": "联系信息",
     "sectionSystemPermission": "系统权限",
     "sectionEmailInfo": "个人邮箱信息",
     "sectionSystemFields": "系统字段",
