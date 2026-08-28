@@ -189,6 +189,21 @@ export function useSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'InputPassword',
+      componentProps: {
+        autocomplete: 'new-password',
+        maxLength: 512,
+        placeholder: $t('system.dept.invoiceAccessTokenPlaceholder'),
+      },
+      fieldName: 'invoiceAccessToken',
+      label: $t('system.dept.invoiceAccessToken'),
+      help: $t('system.dept.invoiceAccessTokenHelp'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
+    {
       component: 'FileUploadInput',
       fieldName: 'logo',
       label: $t('system.dept.logo'),

@@ -2,7 +2,7 @@
 title: 部门管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-18
+last_updated: 2026-08-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-08-18
 - **新增组织：** 左侧树选中节点后，点击顶部「+」或右键「新增下级」，表单「上级组织」自动带出选中节点；未选中时上级组织留空。
 - **新增/编辑组织弹窗：** 不再包含「负责人」字段；组织详情与成员列表亦不展示负责人相关信息。
 - **公司 Logo：** 组织类型为「公司」时，编辑弹窗以缩略图卡片（`picture-card`）上传单张 Logo；保存后详情页在标题与「组织名称」旁直接展示 Logo，不再单独占一行。部门不展示、不维护该字段。
-- **开票应用凭据：** 组织类型为「公司」时，新增/编辑弹窗可维护 `invoiceAppKey`、`invoiceAppSecret`（密码框）。每家公司在开票服务商侧独立配置，与统一社会信用代码（销方税号）一起用于接口开票。编辑必须先调 `GetOrganizationUnitAsync` 回显后再整体提交。详情页展示 AppKey，AppSecret 只显示「已配置/未配置」。部门不展示、不维护。
+- **开票应用凭据：** 组织类型为「公司」时，新增/编辑弹窗可维护 `invoiceAppKey`、`invoiceAppSecret`（密码框）、`invoiceAccessToken`（密码框）。每家公司在开票服务商侧独立配置，与统一社会信用代码（销方税号）一起用于接口开票。Token 是固定值，向服务商索取后填入，系统不会自动获取或刷新。编辑必须先调 `GetOrganizationUnitAsync` 回显后再整体提交。详情页展示 AppKey，AppSecret / Token 只显示「已配置/未配置」。部门不展示、不维护。
 - **组织人数展示：** 左侧树中公司节点同时展示本级人数与含下级总人数，普通组织节点仅展示本级人数；组织信息区域不展示组织编码。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 
@@ -47,17 +47,21 @@ last_updated: 2026-08-18
 | **公司 Logo** | 公司品牌图，供打印等下游读取（附件模块 `OrganizationUnitLogo`）。 | **组织机构**<br/>`CreateOrganizationUnitAsync` / `UpdateOrganizationUnitAsync` / `GetOrganizationUnitAsync` 的 `logo` | **触发/依赖：** 仅 `isCompany=true` 可上传；详情回显在标题/「组织名称」旁，不单独占字段行；提交 `{ attachmentId, displayOrder: 0 }`；清空传 `null`。 | 单文件图片（png/jpg/jpeg/webp/svg），≤5MB；非必填。 |
 | **开票应用 AppKey** | 该公司在开票服务商侧的应用标识，接口开票凭据之一。 | **组织机构**<br/>`CreateOrganizationUnitAsync` / `UpdateOrganizationUnitAsync` / `GetOrganizationUnitAsync` 的 `invoiceAppKey` | **触发/依赖：** 仅 `isCompany=true` 显示与提交；列表接口恒为 null，编辑禁止用列表回填。 | 最长 128；非必填。 |
 | **开票应用 AppSecret** | 该公司在开票服务商侧的应用密钥（机密）。 | **组织机构**<br/>同上 `invoiceAppSecret` | **触发/依赖：** 仅公司可维护；表单用密码框并从详情接口回显后全量提交；详情页只展示是否已配置。 | 最长 128；非必填；留空会清空库值。 |
+| **开票令牌 Token** | 该公司在开票服务商侧的 accessToken（机密、固定值）。 | **组织机构**<br/>同上 `invoiceAccessToken` | **触发/依赖：** 仅公司可维护；表单用密码框并从详情接口回显后全量提交；详情页只展示是否已配置。系统不会自动取号或刷新。 | 最长 512；非必填；留空会清空库值。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：部门管理一致性]** 系统管理页面影响权限、组织、审批和缓存等底层能力，变更前需确认业务模块依赖。
 
-> [!IMPORTANT] **[卡点 2：开票凭据全量覆盖]** `invoiceAppKey` / `invoiceAppSecret` 更新时不传或传 `null` 会清空库值。编辑页必须用 `GetOrganizationUnitAsync` 取回原值再整体提交；组织列表这两个字段恒为 null，不能拿列表数据回填编辑表单。AppSecret 不明文展示。
+> [!IMPORTANT] **[卡点 2：开票凭据全量覆盖]** `invoiceAppKey` / `invoiceAppSecret` / `invoiceAccessToken` 更新时不传或传 `null` 会清空库值。编辑页必须用 `GetOrganizationUnitAsync` 取回原值再整体提交；组织列表这三个字段恒为 null，不能拿列表数据回填编辑表单。AppSecret 与 Token 不明文展示。
+
+> [!IMPORTANT] **[卡点 3：开票令牌禁止自动刷新]** `invoiceAccessToken` 必须人工维护。服务商侧同一应用 30 天内取号超过 50 次会被锁死，只能人工重置。令牌失效时到公司编辑页手工更新，不要自动重取。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | `Feature` | 公司级组织编辑增加开票令牌 Token（密码框）；详情页只显示是否已配置。 | Token 与 AppKey/AppSecret 同属全量覆盖字段；固定值、不自动刷新。详见 `changelogs/change-log-2026-08-28-dept-company-invoice-access-token.md`。 |
 | 2026-08-22 | `Fix` | 公司 Logo 上传后只显示缩略图，不再附带文件名列表。 | 与船公司共用 `FileUploadInput` 的 `picture-card`：隐藏自定义文件名列表与 Ant Design 文件名。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |
 | 2026-08-18 | `Feature` | 公司级组织支持维护开票应用 AppKey / AppSecret；详情页密钥不明文展示。 | 更新接口全量覆盖这两个字段；编辑必须走 `GetOrganizationUnitAsync` 回显，不能用列表数据。详见 `changelogs/change-log-2026-08-18-dept-company-invoice-app.md`。 |
 | 2026-08-09 | `Feature` | 公司级组织支持 Logo 上传、编辑回显与详情预览，供打印等场景使用。 | 对齐船公司附件协议：`FileUploadInput` + `logo: { attachmentId, displayOrder }`；详情 URL 用 `buildAttachmentUrl`；部门提交 `logo: null`。详见 `changelogs/change-log-2026-08-09-dept-company-logo-upload.md`。 |

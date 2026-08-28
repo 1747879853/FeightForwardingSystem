@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-28 公司组织编辑增加开票令牌 Token](./changelogs/change-log-2026-08-28-dept-company-invoice-access-token.md)
 - [2026-08-28 小程序底栏「内部首页」改名为「监装」](./changelogs/change-log-2026-08-28-mp-tab-jianzhuang.md)
 - [2026-08-26 小程序列表详情按 Figma 还原视觉](./changelogs/change-log-2026-08-26-mp-figma-list-detail-style.md)
 - [2026-08-26 用户管理列表查询区改为一行 4 列](./changelogs/change-log-2026-08-26-system-user-query-four-columns.md)

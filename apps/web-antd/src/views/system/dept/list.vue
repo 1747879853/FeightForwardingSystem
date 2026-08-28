@@ -677,6 +677,15 @@ loadTree();
                         : $t('system.dept.invoiceAppNotConfigured')
                     }}
                   </DescriptionsItem>
+                  <DescriptionsItem
+                    :label="$t('system.dept.invoiceAccessToken')"
+                  >
+                    {{
+                      selectedOrgDetail.invoiceAccessToken
+                        ? $t('system.dept.invoiceAppConfigured')
+                        : $t('system.dept.invoiceAppNotConfigured')
+                    }}
+                  </DescriptionsItem>
                 </template>
               </Descriptions>
             </TabPane>

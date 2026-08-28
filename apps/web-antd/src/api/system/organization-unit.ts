@@ -65,6 +65,8 @@ export namespace SystemOrganizationUnitApi {
     invoiceAppKey?: string | null;
     /** 开票应用 appSecret（机密）。返回范围同上 */
     invoiceAppSecret?: string | null;
+    /** 开票令牌 accessToken（机密，固定值，系统不自动刷新）。返回范围同上 */
+    invoiceAccessToken?: string | null;
     orgBankAccounts?: OrgBankAccountDto[] | null;
     /** 公司 Logo（附件模块 OrganizationUnitLogo） */
     logo?: AttachmentItemDto | null;
@@ -120,6 +122,7 @@ export namespace SystemOrganizationUnitApi {
     invoiceTel?: string | null;
     invoiceAppKey?: string | null;
     invoiceAppSecret?: string | null;
+    invoiceAccessToken?: string | null;
     /** 公司 Logo；无值传 null 可清空 */
     logo?: AttachmentItemForItemInputDto | null;
   }
@@ -143,6 +146,7 @@ export namespace SystemOrganizationUnitApi {
     invoiceTel?: string | null;
     invoiceAppKey?: string | null;
     invoiceAppSecret?: string | null;
+    invoiceAccessToken?: string | null;
     /** 公司 Logo；无值传 null 可清空 */
     logo?: AttachmentItemForItemInputDto | null;
   }
