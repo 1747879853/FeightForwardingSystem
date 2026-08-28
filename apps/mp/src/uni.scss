@@ -1,11 +1,27 @@
 /* 设计稿 750rpx 宽，尺寸按稿 1:1 写 rpx */
-$brand-primary: #2e6be6;
-$brand-primary-soft: #e8f1ff;
-$page-bg: #f2f5fa;
+$brand-primary: #327aff;
+$brand-primary-soft: rgb(50 122 255 / 12%);
+$page-bg: #eceef6;
 $card-bg: #fff;
-$text-title: #1d2129;
-$text-body: #4e5969;
-$text-label: #8a94a6;
-$divider: #eef1f6;
-$status-pending: #ff9a2e;
+$text-title: #1d1a27;
+$text-body: #1d1a27;
+$text-label: #6e7b83;
+$divider: #e1e5e8;
+$tab-track: #e3ecff;
+$chip-bg: #f7f8fc;
+$chip-border: rgb(110 123 131 / 30%);
+$hero-gradient: linear-gradient(
+  190.33deg,
+  rgb(75 165 255 / 75%) 8.34%,
+  rgb(141 219 255 / 35.9%) 55.05%,
+  rgb(185 215 255 / 0%) 97.95%
+);
+$title-gradient: linear-gradient(
+  90deg,
+  #00689c 0%,
+  #15acff 32.69%,
+  #0057ff 67.79%,
+  #1e5ca5 100%
+);
+$status-pending: #ff953e;
 $status-done: #22c55e;

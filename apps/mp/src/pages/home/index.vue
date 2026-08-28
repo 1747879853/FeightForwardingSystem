@@ -26,7 +26,8 @@ function goLoading() {
   align-items: center;
   min-height: 100vh;
   padding: 140rpx 60rpx;
-  background: linear-gradient(180deg, #d8e7ff 0%, $page-bg 420rpx);
+  background: $hero-gradient;
+  background-color: $page-bg;
 }
 
 .page__img {

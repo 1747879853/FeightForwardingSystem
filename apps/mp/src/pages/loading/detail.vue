@@ -183,9 +183,15 @@ onLoad((options) => {
 
 <template>
   <view class="page">
+    <view class="hero-bg" />
+
     <view class="nav" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav__back" @tap="goBack">
-        <wd-icon name="arrow-left" size="20px" color="#1d2129" />
+        <image
+          class="nav__back-icon"
+          src="/static/icons/icon-back.svg"
+          mode="aspectFit"
+        />
       </view>
       <text class="nav__title">详情</text>
     </view>
@@ -245,8 +251,7 @@ onLoad((options) => {
           <text class="col col--type">箱型</text>
           <text class="col col--input">箱号</text>
           <text class="col col--input">封号</text>
-          <text class="col col--photo">监装图片</text>
-          <text class="col col--status">监装状态</text>
+          <text class="col col--handling">监装处理</text>
         </view>
 
         <view v-for="(ctn, index) in ctns" :key="ctn.id" class="table__row">
@@ -277,40 +282,19 @@ onLoad((options) => {
             <text v-else class="cell-text">{{ ctn.sealNo || EMPTY_TEXT }}</text>
           </view>
 
-          <view class="col col--photo">
-            <view class="photo-btn" @tap="openPhotoPanel(index)">
-              <text class="photo-btn__text">监装图片</text>
-              <text v-if="countPhotos(ctn) > 0" class="photo-btn__count">
-                {{ countPhotos(ctn) }}
-              </text>
-            </view>
-          </view>
-
-          <view class="col col--status">
-            <view
-              v-if="editable"
-              class="status-toggle"
-              @tap="ctn.isLoadingCompleted = !ctn.isLoadingCompleted"
-            >
+          <view class="col col--handling">
+            <view class="handling-btn" @tap="openPhotoPanel(index)">
               <view
                 :class="[
-                  'dot',
+                  'handling-btn__dot',
                   ctn.isLoadingCompleted ? 'dot--done' : 'dot--pending',
                 ]"
               />
-              <text class="status-toggle__text">
+              <text class="handling-btn__text">
                 {{ ctn.isLoadingCompleted ? '已完成' : '待处理' }}
               </text>
-            </view>
-            <view v-else class="status-toggle">
-              <view
-                :class="[
-                  'dot',
-                  ctn.isLoadingCompleted ? 'dot--done' : 'dot--pending',
-                ]"
-              />
-              <text class="status-toggle__text">
-                {{ ctn.isLoadingCompleted ? '已完成' : '待处理' }}
+              <text v-if="countPhotos(ctn) > 0" class="handling-btn__count">
+                {{ countPhotos(ctn) }}图
               </text>
             </view>
           </view>
@@ -381,9 +365,30 @@ onLoad((options) => {
 
 <style lang="scss" scoped>
 .page {
+  position: relative;
   min-height: 100vh;
   padding-bottom: 40rpx;
-  background: linear-gradient(180deg, #d8e7ff 0%, $page-bg 320rpx);
+  background: $page-bg;
+}
+
+.hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 565rpx;
+  pointer-events: none;
+  background: $hero-gradient;
+}
+
+.nav,
+.card,
+.placeholder,
+.actions,
+.mask {
+  position: relative;
+  z-index: 1;
 }
 
 .nav {
@@ -395,22 +400,35 @@ onLoad((options) => {
 }
 
 .nav__back {
-  padding-left: 32rpx;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  padding-left: 16rpx;
+}
+
+.nav__back-icon {
+  width: 32rpx;
+  height: 32rpx;
+  transform: rotate(90deg);
 }
 
 .nav__title {
   position: absolute;
   left: 0;
   width: 100%;
-  font-size: 34rpx;
-  font-weight: 600;
+  font-size: 38rpx;
+  font-weight: 500;
+  line-height: 38rpx;
   color: $text-title;
   text-align: center;
 }
 
 .card {
-  padding: 28rpx;
-  margin: 24rpx 28rpx 0;
+  padding: 32rpx 28rpx 28rpx;
+  margin: 0 28rpx 20rpx;
   background: $card-bg;
   border-radius: 24rpx;
 }
@@ -418,26 +436,28 @@ onLoad((options) => {
 .card__head {
   display: flex;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 36rpx;
 }
 
 .card__bar {
-  width: 8rpx;
-  height: 28rpx;
+  width: 7rpx;
+  height: 26rpx;
   margin-right: 16rpx;
-  background: $brand-primary;
+  background: linear-gradient(180deg, #327aff 0%, rgb(50 122 255 / 50%) 100%);
   border-radius: 4rpx;
 }
 
 .card__title {
-  font-size: 30rpx;
-  font-weight: 600;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 28rpx;
   color: $text-title;
 }
 
 .card__count {
   margin-left: 8rpx;
   font-size: 24rpx;
+  font-weight: 500;
   color: $text-label;
 }
 
@@ -445,17 +465,19 @@ onLoad((options) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 72rpx;
+  min-height: 68rpx;
 }
 
 .row__label {
-  font-size: 26rpx;
+  font-size: 28rpx;
+  font-weight: 500;
   color: $text-label;
 }
 
 .row__value {
   max-width: 60%;
-  font-size: 26rpx;
+  font-size: 28rpx;
+  font-weight: 500;
   color: $text-title;
   text-align: right;
 }
@@ -463,36 +485,40 @@ onLoad((options) => {
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
-  padding: 16rpx 0 8rpx;
+  gap: 20rpx;
+  padding: 0 0 8rpx;
 }
 
 .tags__item {
-  padding: 12rpx 24rpx;
+  height: 48rpx;
+  padding: 0 24rpx;
   font-size: 24rpx;
+  font-weight: 500;
+  line-height: 48rpx;
   color: $brand-primary;
   background: $brand-primary-soft;
-  border-radius: 12rpx;
+  border-radius: 24rpx;
 }
 
 .section-title {
   display: block;
-  margin: 28rpx 0 16rpx;
+  margin: 28rpx 0 20rpx;
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 500;
   color: $text-title;
 }
 
 .note {
-  padding: 24rpx;
-  background: #f7f9fc;
+  padding: 24rpx 28rpx;
+  background: rgb(218 223 231 / 12%);
+  border: 1rpx solid $divider;
   border-radius: 16rpx;
 }
 
 .note__text {
-  font-size: 26rpx;
+  font-size: 24rpx;
   line-height: 40rpx;
-  color: $text-body;
+  color: $text-label;
 }
 
 .empty-line {
@@ -509,22 +535,27 @@ onLoad((options) => {
 }
 
 .table__head {
-  height: 72rpx;
+  height: 52rpx;
   margin-top: 16rpx;
-  background: #f5f7fa;
-  border-radius: 12rpx;
+  background: #eef1f2;
+  border-radius: 12rpx 12rpx 0 0;
 }
 
 .table__row {
-  min-height: 88rpx;
-  border-bottom: 2rpx solid $divider;
+  min-height: 58rpx;
+  border-bottom: 1rpx solid $divider;
 }
 
 .col {
   padding: 0 6rpx;
-  font-size: 24rpx;
-  color: $text-body;
+  font-size: 20rpx;
+  font-weight: 500;
+  color: $text-title;
   text-align: center;
+}
+
+.table__head .col {
+  color: $text-label;
 }
 
 .col--no {
@@ -539,63 +570,56 @@ onLoad((options) => {
   flex: 1;
 }
 
-.col--photo {
-  width: 148rpx;
-}
-
-.col--status {
-  width: 150rpx;
+.col--handling {
+  width: 192rpx;
 }
 
 .cell-input {
   width: 100%;
-  height: 60rpx;
-  font-size: 24rpx;
+  height: 48rpx;
+  font-size: 20rpx;
   text-align: center;
-  background: #f7f9fc;
+  background: $chip-bg;
   border-radius: 10rpx;
 }
 
 .cell-input__placeholder {
-  font-size: 24rpx;
+  font-size: 20rpx;
   color: #c2c8d2;
 }
 
 .cell-text {
-  font-size: 24rpx;
+  font-size: 20rpx;
   color: $text-title;
 }
 
-.photo-btn {
+.handling-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 56rpx;
-  background: $brand-primary;
-  border-radius: 10rpx;
+  width: 156rpx;
+  height: 38rpx;
+  margin: 0 auto;
+  background: $chip-bg;
+  border-radius: 24rpx;
 }
 
-.photo-btn__text {
-  font-size: 22rpx;
-  color: #fff;
+.handling-btn__text,
+.handling-btn__count {
+  font-size: 18rpx;
+  font-weight: 500;
+  color: $text-title;
 }
 
-.photo-btn__count {
-  margin-left: 6rpx;
-  font-size: 22rpx;
-  color: #fff;
+.handling-btn__count {
+  margin-left: 8rpx;
+  color: $brand-primary;
 }
 
-.status-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dot {
-  width: 14rpx;
-  height: 14rpx;
-  margin-right: 10rpx;
+.handling-btn__dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 8rpx;
   border-radius: 50%;
 }
 
@@ -607,11 +631,6 @@ onLoad((options) => {
   background: $status-pending;
 }
 
-.status-toggle__text {
-  font-size: 24rpx;
-  color: $text-body;
-}
-
 .footer-space {
   height: 140rpx;
 }
@@ -621,11 +640,12 @@ onLoad((options) => {
   right: 0;
   bottom: 0;
   left: 0;
+  z-index: 10;
   display: flex;
   gap: 20rpx;
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
   background: $card-bg;
-  box-shadow: 0 -4rpx 16rpx rgb(29 33 41 / 6%);
+  box-shadow: 0 -4rpx 16rpx rgb(29 26 39 / 6%);
 }
 
 .actions__btn {
@@ -654,7 +674,7 @@ onLoad((options) => {
 .placeholder__title {
   font-size: 30rpx;
   font-weight: 600;
-  color: $text-body;
+  color: $text-title;
 }
 
 .placeholder__desc {
@@ -696,7 +716,7 @@ onLoad((options) => {
   padding: 20rpx;
   margin: 24rpx 0;
   font-size: 26rpx;
-  background: #f7f9fc;
+  background: $chip-bg;
   border-radius: 16rpx;
 }
 

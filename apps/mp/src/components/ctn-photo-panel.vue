@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import type { EditableCtn, EditablePhoto } from '@/utils/ctn-model';
 
-import { chooseImages, uploadImage } from '@/api/upload';
+import { chooseImages, uploadImage, type ImageSource } from '@/api/upload';
 
 const props = defineProps<{
   ctn: EditableCtn | null;
@@ -16,6 +16,14 @@ const emit = defineEmits<{ (event: 'close'): void }>();
 const uploading = ref(false);
 
 const groups = computed(() => props.ctn?.groups ?? []);
+const statusText = computed(() =>
+  props.ctn?.isLoadingCompleted ? '已完成' : '待处理',
+);
+
+function toggleStatus() {
+  if (!props.editable || !props.ctn) return;
+  props.ctn.isLoadingCompleted = !props.ctn.isLoadingCompleted;
+}
 
 function previewGroup(groupIndex: number, photoIndex: number) {
   const urls = groups.value[groupIndex]?.items.map((item) => item.url) ?? [];
@@ -23,11 +31,48 @@ function previewGroup(groupIndex: number, photoIndex: number) {
   uni.previewImage({ current: photoIndex, urls });
 }
 
+function choosePhotoSource() {
+  return new Promise<ImageSource | null>((resolve, reject) => {
+    uni.showActionSheet({
+      itemList: ['拍照', '从相册选择'],
+      success: (result) => resolve(result.tapIndex === 0 ? 'camera' : 'album'),
+      fail: (error) => {
+        if (String(error.errMsg || '').includes('cancel')) {
+          resolve(null);
+          return;
+        }
+        reject(error);
+      },
+    });
+  });
+}
+
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
   if (!group || uploading.value) return;
 
-  const paths = await chooseImages();
+  let sourceType: ImageSource | null;
+  try {
+    sourceType = await choosePhotoSource();
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '无法打开图片来源',
+    });
+    return;
+  }
+  if (!sourceType) return;
+
+  let paths: string[];
+  try {
+    paths = await chooseImages([sourceType], sourceType === 'camera' ? 1 : 9);
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '选择图片失败',
+    });
+    return;
+  }
   if (paths.length === 0) return;
 
   uploading.value = true;
@@ -62,14 +107,31 @@ function removePhoto(groupIndex: number, photoIndex: number) {
   <view v-if="visible" class="mask" @tap="emit('close')">
     <view class="panel" @tap.stop>
       <view class="panel__head">
-        <text class="panel__title">监装图片</text>
+        <text class="panel__title">监装处理</text>
         <text class="panel__sub"> 箱号 {{ ctn?.ctnNo || '--' }} </text>
         <view class="panel__close" @tap="emit('close')">
-          <wd-icon name="close" size="20px" color="#8a94a6" />
+          <wd-icon name="close" size="20px" color="#6e7b83" />
         </view>
       </view>
 
       <scroll-view class="panel__body" scroll-y>
+        <view class="status-card">
+          <text class="status-card__label">监装状态</text>
+          <view
+            :class="['status-card__value', { 'is-editable': editable }]"
+            @tap="toggleStatus"
+          >
+            <view
+              :class="[
+                'status-card__dot',
+                ctn?.isLoadingCompleted ? 'is-done' : 'is-pending',
+              ]"
+            />
+            <text>{{ statusText }}</text>
+            <text v-if="editable" class="status-card__hint">点击切换</text>
+          </view>
+        </view>
+
         <view v-for="(group, gi) in groups" :key="gi" class="group">
           <text class="group__title">{{ group.typeName }}</text>
           <view class="group__grid">
@@ -94,8 +156,8 @@ function removePhoto(groupIndex: number, photoIndex: number) {
             </view>
 
             <view v-if="editable" class="thumb thumb--add" @tap="addPhotos(gi)">
-              <wd-icon name="camera" size="26px" color="#8a94a6" />
-              <text class="thumb__tip">拍照/相册</text>
+              <wd-icon name="camera" size="26px" color="#6e7b83" />
+              <text class="thumb__tip">添加图片</text>
             </view>
           </view>
 
@@ -168,6 +230,58 @@ function removePhoto(groupIndex: number, photoIndex: number) {
 .panel__body {
   flex: 1;
   padding: 8rpx 32rpx;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid $divider;
+}
+
+.status-card__label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text-body;
+}
+
+.status-card__value {
+  display: flex;
+  align-items: center;
+  min-height: 52rpx;
+  padding: 0 18rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: $text-title;
+  background: $chip-bg;
+  border-radius: 26rpx;
+}
+
+.status-card__value.is-editable {
+  color: $brand-primary;
+  background: $brand-primary-soft;
+}
+
+.status-card__dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+}
+
+.status-card__dot.is-done {
+  background: $status-done;
+}
+
+.status-card__dot.is-pending {
+  background: $status-pending;
+}
+
+.status-card__hint {
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: $text-label;
 }
 
 .group {

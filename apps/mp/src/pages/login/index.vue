@@ -151,7 +151,8 @@ onShow(() => {
 .page {
   min-height: 100vh;
   padding: 0 56rpx;
-  background: linear-gradient(180deg, #d8e7ff 0%, $page-bg 520rpx);
+  background: $hero-gradient;
+  background-color: $page-bg;
 }
 
 .hero {
@@ -170,7 +171,7 @@ onShow(() => {
   margin-top: 24rpx;
   font-size: 44rpx;
   font-weight: 700;
-  color: #1a4fb4;
+  color: $brand-primary;
 }
 
 .hero__sub {

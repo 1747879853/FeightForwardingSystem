@@ -45,7 +45,7 @@
     }
   ],
   "globalStyle": {
-    "backgroundColor": "#F2F5FA",
+    "backgroundColor": "#ECEEF6",
     "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "监装师傅端"
@@ -53,31 +53,31 @@
   "tabBar": {
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
-    "color": "#8A94A6",
-    "selectedColor": "#2E6BE6",
+    "color": "#6E7B83",
+    "selectedColor": "#327AFF",
     "list": [
       {
         "iconPath": "static/icons/tab-home.png",
         "pagePath": "pages/home/index",
-        "selectedIconPath": "static/icons/tab-home.png",
+        "selectedIconPath": "static/icons/tab-home-active.png",
         "text": "首页"
       },
       {
         "iconPath": "static/icons/tab-work.png",
         "pagePath": "pages/loading/list",
-        "selectedIconPath": "static/icons/tab-work.png",
-        "text": "内部首页"
+        "selectedIconPath": "static/icons/tab-work-active.png",
+        "text": "监装"
       },
       {
         "iconPath": "static/icons/tab-points.png",
         "pagePath": "pages/points/index",
-        "selectedIconPath": "static/icons/tab-points.png",
+        "selectedIconPath": "static/icons/tab-points-active.png",
         "text": "积分兑换"
       },
       {
         "iconPath": "static/icons/tab-profile.png",
         "pagePath": "pages/profile/index",
-        "selectedIconPath": "static/icons/tab-profile.png",
+        "selectedIconPath": "static/icons/tab-profile-active.png",
         "text": "个人中心"
       }
     ]

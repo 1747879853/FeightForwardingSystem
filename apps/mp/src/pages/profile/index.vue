@@ -69,7 +69,8 @@ function onLogout() {
 .page {
   min-height: 100vh;
   padding: 32rpx 28rpx;
-  background: linear-gradient(180deg, #d8e7ff 0%, $page-bg 320rpx);
+  background: $hero-gradient;
+  background-color: $page-bg;
 }
 
 .header {

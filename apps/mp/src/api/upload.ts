@@ -54,13 +54,15 @@ export function uploadImage(filePath: string) {
   });
 }
 
-/** 相机或相册选图，返回本地临时路径 */
-export function chooseImages(count = 9) {
+export type ImageSource = 'album' | 'camera';
+
+/** 从指定来源选图，返回本地临时路径 */
+export function chooseImages(sourceType: ImageSource[], count = 9) {
   return new Promise<string[]>((resolve, reject) => {
     uni.chooseImage({
       count,
       sizeType: ['compressed'],
-      sourceType: ['camera', 'album'],
+      sourceType,
       success: (res) => resolve(res.tempFilePaths as string[]),
       fail: (err) => {
         // 用户主动取消不算失败

@@ -37,6 +37,14 @@ const hasFilter = computed(() =>
   Object.values(filters.value).some((value) => Boolean(value)),
 );
 
+function openSearchDrawer() {
+  searchVisible.value = true;
+}
+
+function closeSearchDrawer() {
+  searchVisible.value = false;
+}
+
 function buildQuery(): LoadingOrderQuery {
   return {
     status: STATUS_TABS[activeTab.value]!.status,
@@ -89,7 +97,7 @@ function switchTab(index: number) {
 }
 
 function applyFilter() {
-  searchVisible.value = false;
+  closeSearchDrawer();
   void fetchList(true);
 }
 
@@ -143,71 +151,30 @@ onReachBottom(() => {
 
 <template>
   <view class="page">
-    <view class="hero">
-      <view class="nav" :style="{ paddingTop: `${statusBarHeight}px` }">
-        <view class="nav__action" @tap="searchVisible = !searchVisible">
-          <wd-icon name="search" size="22px" color="#1d2129" />
-          <view v-if="hasFilter" class="nav__dot" />
-        </view>
-        <text class="nav__title">检索条件</text>
-      </view>
+    <view class="hero-bg" />
 
-      <view class="hero__body">
-        <view class="hero__text">
-          <text class="hero__title">一键托付 高效省心</text>
-          <text class="hero__sub">简易托付，全程服务安心无忧</text>
-        </view>
+    <view class="nav" :style="{ paddingTop: `${statusBarHeight}px` }">
+      <view class="nav__action" @tap="openSearchDrawer">
         <image
-          class="hero__img"
-          src="/static/images/banner-worker.png"
+          class="nav__search"
+          src="/static/icons/icon-search.svg"
           mode="aspectFit"
         />
+        <view v-if="hasFilter" class="nav__dot" />
       </view>
+      <text class="nav__title">检索条件</text>
     </view>
 
-    <view v-if="searchVisible" class="filter">
-      <view class="filter__row">
-        <text class="filter__label">监装工单号</text>
-        <input
-          v-model="filters.loadingOrderNum"
-          class="filter__input"
-          placeholder="支持模糊搜索"
-          placeholder-class="filter__placeholder"
-        />
+    <view class="hero">
+      <view class="hero__text">
+        <view class="hero__title">一键托付 高效省心</view>
+        <text class="hero__sub">简易托付，全程服务安心无忧</text>
       </view>
-      <view class="filter__row">
-        <text class="filter__label">主提单号</text>
-        <input
-          v-model="filters.mblNum"
-          class="filter__input"
-          placeholder="支持模糊搜索"
-          placeholder-class="filter__placeholder"
-        />
-      </view>
-      <view class="filter__row">
-        <text class="filter__label">预计到货日</text>
-        <picker
-          class="filter__picker"
-          mode="date"
-          :value="filters.estimatedArrivalDate"
-          @change="onArrivalDateChange"
-        >
-          <text
-            :class="[
-              'filter__value',
-              { 'is-empty': !filters.estimatedArrivalDate },
-            ]"
-          >
-            {{ filters.estimatedArrivalDate || '请选择' }}
-          </text>
-        </picker>
-      </view>
-      <view class="filter__actions">
-        <view class="filter__btn filter__btn--ghost" @tap="resetFilter">
-          重置
-        </view>
-        <view class="filter__btn" @tap="applyFilter">查询</view>
-      </view>
+      <image
+        class="hero__img"
+        src="/static/images/banner-worker.png"
+        mode="aspectFit"
+      />
     </view>
 
     <view class="sheet">
@@ -239,13 +206,17 @@ onReachBottom(() => {
           >
             <image
               class="card__watermark"
-              src="/static/images/card-crane.png"
+              src="/static/images/card-watermark.png"
               mode="aspectFit"
             />
 
             <view class="card__head">
               <view class="card__no">
-                <wd-icon name="file-paste" size="16px" color="#8a94a6" />
+                <image
+                  class="card__no-icon"
+                  src="/static/icons/icon-grid.svg"
+                  mode="aspectFit"
+                />
                 <text class="card__no-text">
                   监装工号 {{ textOr(item.loadingOrderNum) }}
                 </text>
@@ -291,12 +262,18 @@ onReachBottom(() => {
             </view>
 
             <view class="card__foot">
-              <text class="card__foot-text">
-                下单日期: {{ formatDate(item.creationTime) }}
-              </text>
-              <text class="card__foot-text">
-                预计到货日期: {{ formatDate(item.estimatedArrivalTime) }}
-              </text>
+              <view class="card__foot-item">
+                <text class="card__foot-label">下单日期：</text>
+                <text class="card__foot-date">
+                  {{ formatDate(item.creationTime) }}
+                </text>
+              </view>
+              <view class="card__foot-item">
+                <text class="card__foot-label">预计到货日期：</text>
+                <text class="card__foot-date">
+                  {{ formatDate(item.estimatedArrivalTime) }}
+                </text>
+              </view>
             </view>
           </view>
 
@@ -312,19 +289,98 @@ onReachBottom(() => {
         </template>
       </view>
     </view>
+
+    <wd-popup
+      v-model="searchVisible"
+      position="right"
+      :root-portal="true"
+      :z-index="20"
+    >
+      <view
+        class="filter-drawer"
+        :style="{ paddingTop: `${statusBarHeight + 24}px` }"
+      >
+        <view class="filter-drawer__head">
+          <text class="filter-drawer__title">检索条件</text>
+          <view class="filter-drawer__close" @tap="closeSearchDrawer">
+            <text>×</text>
+          </view>
+        </view>
+
+        <view class="filter-drawer__body">
+          <view class="filter__row">
+            <text class="filter__label">监装工单号</text>
+            <input
+              v-model="filters.loadingOrderNum"
+              class="filter__input"
+              placeholder="支持模糊搜索"
+              placeholder-class="filter__placeholder"
+            />
+          </view>
+          <view class="filter__row">
+            <text class="filter__label">主提单号</text>
+            <input
+              v-model="filters.mblNum"
+              class="filter__input"
+              placeholder="支持模糊搜索"
+              placeholder-class="filter__placeholder"
+            />
+          </view>
+          <view class="filter__row">
+            <text class="filter__label">预计到货日</text>
+            <picker
+              class="filter__picker"
+              mode="date"
+              :value="filters.estimatedArrivalDate"
+              @change="onArrivalDateChange"
+            >
+              <text
+                :class="[
+                  'filter__value',
+                  { 'is-empty': !filters.estimatedArrivalDate },
+                ]"
+              >
+                {{ filters.estimatedArrivalDate || '请选择' }}
+              </text>
+            </picker>
+          </view>
+        </view>
+
+        <view class="filter__actions">
+          <view class="filter__btn filter__btn--ghost" @tap="resetFilter">
+            重置
+          </view>
+          <view class="filter__btn" @tap="applyFilter">查询</view>
+        </view>
+      </view>
+    </wd-popup>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .page {
+  position: relative;
   min-height: 100vh;
-  padding-bottom: 40rpx;
+  padding-bottom: 24rpx;
   background: $page-bg;
 }
 
-.hero {
+.hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 565rpx;
+  pointer-events: none;
+  background: $hero-gradient;
+}
+
+.nav,
+.hero,
+.sheet {
   position: relative;
-  background: linear-gradient(180deg, #d8e7ff 0%, #eef4fd 60%, $page-bg 100%);
+  z-index: 1;
 }
 
 .nav {
@@ -337,13 +393,24 @@ onReachBottom(() => {
 
 .nav__action {
   position: relative;
-  padding-left: 32rpx;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 88rpx;
+  margin-left: 10rpx;
+}
+
+.nav__search {
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .nav__dot {
   position: absolute;
-  top: -2rpx;
-  right: -6rpx;
+  top: 18rpx;
+  right: 12rpx;
   width: 12rpx;
   height: 12rpx;
   background: #ff4d4f;
@@ -354,45 +421,95 @@ onReachBottom(() => {
   position: absolute;
   left: 0;
   width: 100%;
-  font-size: 34rpx;
-  font-weight: 600;
+  font-size: 38rpx;
+  font-weight: 500;
+  line-height: 38rpx;
   color: $text-title;
   text-align: center;
 }
 
-.hero__body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 32rpx 40rpx;
+.hero {
+  position: relative;
+  z-index: 2;
+  min-height: 182rpx;
+  padding: 18rpx 32rpx 0;
 }
 
 .hero__text {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  width: 420rpx;
 }
 
 .hero__title {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #1a4fb4;
+  font-size: 36rpx;
+  font-weight: 500;
+  line-height: 36rpx;
+  color: #00689c;
+  background-image: $title-gradient;
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-text-fill-color: transparent;
 }
 
 .hero__sub {
-  margin-top: 16rpx;
+  margin-top: 24rpx;
   font-size: 24rpx;
+  line-height: 24rpx;
   color: $text-label;
 }
 
 .hero__img {
-  width: 260rpx;
-  height: 280rpx;
+  position: absolute;
+  top: -70rpx;
+  right: 52rpx;
+  z-index: 0;
+  width: 294rpx;
+  height: 320rpx;
+  pointer-events: none;
 }
 
-.filter {
-  padding: 24rpx 28rpx 8rpx;
-  margin: 0 28rpx 24rpx;
+.filter-drawer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 620rpx;
+  height: 100vh;
+  background: $page-bg;
+}
+
+.filter-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 28rpx 0 32rpx;
+  background: $card-bg;
+}
+
+.filter-drawer__title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $text-title;
+}
+
+.filter-drawer__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 56rpx;
+  font-weight: 300;
+  line-height: 56rpx;
+  color: $text-label;
+}
+
+.filter-drawer__body {
+  padding: 8rpx 28rpx;
+  margin: 24rpx 20rpx 0;
   background: $card-bg;
   border-radius: 24rpx;
 }
@@ -401,7 +518,7 @@ onReachBottom(() => {
   display: flex;
   align-items: center;
   min-height: 88rpx;
-  border-bottom: 2rpx solid $divider;
+  border-bottom: 1rpx solid $divider;
 }
 
 .filter__label {
@@ -428,7 +545,9 @@ onReachBottom(() => {
 .filter__actions {
   display: flex;
   gap: 20rpx;
-  padding: 24rpx 0;
+  padding: 24rpx 28rpx calc(24rpx + env(safe-area-inset-bottom));
+  margin-top: auto;
+  background: $card-bg;
 }
 
 .filter__btn {
@@ -443,85 +562,107 @@ onReachBottom(() => {
 }
 
 .filter__btn--ghost {
-  color: $text-body;
+  color: $text-title;
   background: $brand-primary-soft;
 }
 
 .sheet {
+  z-index: 3;
   padding: 0 28rpx;
 }
 
 .tabs {
   display: flex;
+  height: 88rpx;
   overflow: hidden;
-  background: #e4edfb;
-  border-radius: 24rpx 24rpx 0 0;
+  background: $tab-track;
+  border-radius: 20rpx 20rpx 0 0;
 }
 
 .tabs__item {
   flex: 1;
-  height: 88rpx;
-  font-size: 28rpx;
+  font-size: 26rpx;
+  font-weight: 500;
   line-height: 88rpx;
   color: $text-label;
   text-align: center;
 }
 
 .tabs__item.is-active {
-  font-weight: 600;
+  font-size: 28rpx;
   color: $text-title;
   background: $card-bg;
-  border-radius: 24rpx 24rpx 0 0;
+  border-radius: 20rpx 20rpx 0 0;
 }
 
 .list {
-  padding-top: 24rpx;
+  padding-top: 0;
 }
 
 .card {
   position: relative;
   padding: 24rpx 28rpx 0;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
   overflow: hidden;
   background: $card-bg;
-  border-radius: 24rpx;
+  border-radius: 28rpx;
 }
 
 .card__watermark {
   position: absolute;
   right: 0;
   bottom: 72rpx;
-  width: 180rpx;
-  height: 180rpx;
-  opacity: 0.16;
+  width: 177rpx;
+  height: 177rpx;
+  pointer-events: none;
+  opacity: 0.2;
 }
 
 .card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 44rpx;
 }
 
 .card__no {
   display: flex;
-  gap: 8rpx;
+  flex: 1;
+  gap: 10rpx;
   align-items: center;
+  min-width: 0;
+}
+
+.card__no-icon {
+  flex-shrink: 0;
+  width: 16rpx;
+  height: 16rpx;
 }
 
 .card__no-text {
-  font-size: 24rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 20rpx;
+  line-height: 20rpx;
   color: $text-label;
+  white-space: nowrap;
 }
 
 .badge {
-  padding: 6rpx 20rpx;
-  font-size: 24rpx;
+  flex-shrink: 0;
+  min-width: 100rpx;
+  height: 44rpx;
+  padding: 0 16rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  line-height: 44rpx;
+  text-align: center;
   border-radius: 22rpx;
 }
 
 .badge--pending {
   color: $status-pending;
-  background: #fff2e2;
+  background: rgb(255 149 62 / 12%);
 }
 
 .badge--doing {
@@ -538,20 +679,26 @@ onReachBottom(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 20rpx;
+  min-height: 40rpx;
+  margin-top: 18rpx;
 }
 
 .card__title {
   font-size: 36rpx;
   font-weight: 700;
+  line-height: 36rpx;
   color: $text-title;
 }
 
 .card__chip {
-  padding: 8rpx 20rpx;
+  height: 40rpx;
+  padding: 0 16rpx;
   font-size: 24rpx;
-  color: $text-body;
-  background: #f2f4f8;
+  font-weight: 500;
+  line-height: 38rpx;
+  color: $text-title;
+  background: $chip-bg;
+  border: 1rpx solid $chip-border;
   border-radius: 20rpx;
 }
 
@@ -564,32 +711,56 @@ onReachBottom(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
+  min-width: 0;
 }
 
 .card__value {
-  font-size: 28rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 24rpx;
   color: $text-title;
+  white-space: nowrap;
 }
 
 .card__label {
-  margin-top: 10rpx;
-  font-size: 24rpx;
+  margin-top: 17rpx;
+  font-size: 20rpx;
+  line-height: 20rpx;
   color: $text-label;
 }
 
 .card__foot {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 22rpx 0;
-  padding-right: 28rpx;
-  padding-left: 28rpx;
+  height: 72rpx;
+  padding: 0 28rpx;
   margin: 0 -28rpx;
-  background: #f7f9fc;
+  background: $chip-bg;
+  border-radius: 0 0 24rpx 24rpx;
 }
 
-.card__foot-text {
+.card__foot-item {
+  display: flex;
+  align-items: center;
+}
+
+.card__foot-label,
+.card__foot-date {
   font-size: 24rpx;
+  line-height: 24rpx;
+}
+
+.card__foot-label {
+  font-weight: 500;
   color: $text-label;
+}
+
+.card__foot-date {
+  font-weight: 700;
+  color: $text-title;
 }
 
 .placeholder {
@@ -604,7 +775,7 @@ onReachBottom(() => {
 .placeholder__title {
   font-size: 30rpx;
   font-weight: 600;
-  color: $text-body;
+  color: $text-title;
 }
 
 .placeholder__desc {
