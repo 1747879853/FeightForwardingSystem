@@ -460,7 +460,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'AccountDateRange',
       label: $t('seaExport.export.accountDate'),
       formItemClass: 'col-span-2',
-      // 默认当月由 list.vue onMounted 写入；不设 defaultValue，否则「重置」会回到当月而非清空
+      // 不设 defaultValue：进入列表不再预填当月，重置后保持为空
       componentProps: {
         allowClear: true,
         class: 'w-full',

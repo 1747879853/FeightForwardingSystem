@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-08-19
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。关闭 `autoLoad`，挂载后写入默认会计期间（当月）再 `submitForm` 首查；`normalizeQuery` 在默认值写入前对空会计期间按当月兜底，避免分组恢复抢先查询漏条件。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。
+- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
@@ -57,7 +57,7 @@ last_updated: 2026-08-19
 | :-- | :-- | :-- | :-- | :-- |
 | **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；需点「查询」触发表格刷新；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
 | **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
-| **开船日期** | 按运输单 ETD 时间过滤海出委托。 | `ETDRange` -> `ETDStart` / `ETDEnd` | **触发/依赖：** 前端拆分日期区间并转 ISO。 | RangePicker 可为空；开始/结束均可由组件约束。 |
+| **开船日期** | 按运输单 ETD 时间过滤海出委托；列表默认按该字段降序。 | 筛 `ETDRange` -> `ETDStart` / `ETDEnd`；列 `transportOrder.etd`；`sorting`=`TransportOrder.ETD` | **触发/依赖：** 前端拆分日期区间并转 ISO；`defaultSort` 写成 `TransportOrder.Etd DESC` 才能把列头箭头落到本列。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **货好 / 实际开船 / 预抵 / 截港 / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截港/截关在海出根级；`formatDate`。 | 无值时空。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
@@ -73,7 +73,7 @@ last_updated: 2026-08-19
 | **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列表展示 `codeSource?.cnName`、`codeIssueType?.billType`（无对象时回退旧 `*Name`）；列 `field` 仍为 `codeSourceName` / `codeIssueTypeName` 以便排序与列持久化。付费方式、包装同理读 `codeFrt?.cnName`、`codePackage?.name`。 | 需选择有效代码资料。 |
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表列仅图标展示（锁定红色 `LockKeyhole` / 未锁定灰色 `LockKeyholeOpen`）；查询区仍可按是/否筛选；编辑页以锁定标签展示。 | 布尔值，是/否。 |
-| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表默认当月；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** `autoLoad: false`，挂载后写入当月再 `submitForm` 首查；写入前的早期查询由 `accountDateDefaultApplied` 兜底当月。schema 不设 `defaultValue`；`handleReset` 清空期间不查询（写入后不再兜底当月）。 | Month RangePicker；可清空后重查（写入后不再兜底）。 |
+| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表**不预填**；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** 未选则不传起止；用户选月后 `normalizeQuery` 扩成整月。schema 不设 `defaultValue`；`handleReset` 清空期间不查询。 | Month RangePicker；可清空后重查。 |
 | **业务状态** | 当前进行到的服务项名称，或「已完成」/「-」。 | 前端 `getSeaExportBusinessStatusMeta` 根据 `seaExportServices` 计算 | **触发/依赖：** 三态色 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 文字色对齐详情页；背景为半透明 rgba。 | 无服务项显示 `-`；非空以色块展示。 |
 | **应收费用状态 / 应付费用状态** | 该委托下对应方向（含更改单）费用的组合流转状态；无费用时为 null。 | 接口 `receiveFeeStatus`、`payFeeStatus`；枚举 `getSeaExportFeeStatusOptions`（八态含结算/驳回/申请修改删除） | **触发/依赖：** 后端按优先级聚合判断，与单笔 `FeeStatus` 枚举值不同。 | 可空；0–7 为 `SeaExportFeeStatus` 有效值。 |
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
@@ -85,7 +85,7 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 0：分组禁用提示的还原依赖空值覆盖]** 分组禁用搜索项时会改写其 `placeholder`/`help` 作为提示，关闭分组需还原。`updateSchema` 底层用 `defu` 合并会忽略 `undefined`（保留旧值），所以还原时必须用空字符串等假值覆盖，而非 `undefined`，否则提示会残留。
 >
-> [!IMPORTANT] **[卡点 0.5：搜索默认值必须写入「最近提交值」]** `gridApi.query()` 读的是最近提交值而非表单当前值；挂载期默认会计期间需 `submitForm`。分组恢复可能抢先 `query`，靠 `normalizeQuery` + `accountDateDefaultApplied` 在默认值写入前兜底当月；写入后用户清空不再回填。验证需硬刷新（HMR 不重跑 `onMounted`）。
+> [!IMPORTANT] **[卡点 0.5：首查仍须 `submitForm` 写入「最近提交值」]** `gridApi.query()` 读的是最近提交值而非表单当前值。会计期间已不再默认当月，但分组恢复后仍用 `submitForm` 首查，保证后续分页/排序带上同一套（可为空的）条件。验证默认排序与空会计期间需硬刷新（HMR 不重跑 `onMounted`）。
 >
 > [!IMPORTANT] **[卡点 1：列表字段跨 SeaExport 与 TransportOrder 两层 DTO]** 表格大量字段来自 `row.transportOrder.*`，例如委托编号、客户、件毛体、锁费状态；另一些字段来自海出主表，例如船公司、港口、船名航次。改列配置或接口 DTO 时要确认字段层级，否则会出现列表空值。
 >
@@ -107,6 +107,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按开船日期降序；列头显示降序箭头。 | `defaultSort` 用 `TransportOrder.Etd DESC`；列持久化 `refreshColumn` 会冲掉箭头，由 `use-vxe-grid` 补 `setSort`。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |
 | 2026-08-19 | `Fix` | 台账无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列（含顺序/显隐/固定/列宽）；列设置可勾回隐藏列。 | 有用户 `table_config_SeaExportList` 仍优先；load 无命中不带 id，避免写成用户设置。恢复默认尊重列定义快照。对应 TAPD #0824。见 `changelogs/change-log-2026-08-19-sea-export-list-default-columns.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除；复制与进详情不拦。 | 字段在票根，缺省按 false。见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Fix` | 列表补货好/实际开船/预抵/截港/截关五列；业务来源、付费方式、包装、签单方式改为读嵌套对象，不再空白。 | 日期：运输单三项 + 海出根级截港截关，均 `formatDate`。名称列与 #0819 航线同类，`field` 不改。见 `changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md`。 |

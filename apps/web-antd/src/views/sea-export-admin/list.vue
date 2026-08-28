@@ -229,26 +229,13 @@ const grouping = useListGrouping({
   },
 });
 
-/**
- * 会计日期默认值是否已写入表单。
- * 用于兜底：在默认值写入前（如分组恢复抢先触发查询），仍按当月过滤；
- * 写入后则完全尊重表单值（允许用户清空或改月）。
- */
-let accountDateDefaultApplied = false;
-
 const normalizeQuery = (
   formValues: Record<string, unknown>,
 ): SeaExportAdminApi.GetPagedListParams => {
   const { ETDRange, CloseDocTimeRange, AccountDateRange, ...rest } = formValues;
   const [etdStart, etdEnd] = getRangeValue(ETDRange);
   const [closeDocTimeStart, closeDocTimeEnd] = getRangeValue(CloseDocTimeRange);
-  let [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
-  // 默认值尚未写入表单前的早期查询，兜底按当月过滤，避免首屏漏掉默认会计期间
-  if (!accountDateStart && !accountDateEnd && !accountDateDefaultApplied) {
-    const currentMonth = dayjs().startOf('month');
-    accountDateStart = currentMonth;
-    accountDateEnd = currentMonth;
-  }
+  const [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
 
   const baseParams = {
     ...rest,
@@ -333,14 +320,15 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       enabled: true,
     },
     proxyConfig: {
-      // 关闭自动加载：改由 onMounted 里先写入「会计日期」默认值（当月）再手动查询，
-      // 否则首查在表单模型尚未落入默认值时触发，会漏掉默认会计期间。
+      // 关闭自动加载：由 onMounted 先恢复分组字段再 submitForm 首查，
+      // 避免分组恢复与首查竞态。
       autoLoad: false,
       ajax: {
         query: createPagedListQuery(getSeaExportPagedList, {
-          defaultSort: 'CreationTime DESC',
+          defaultSort: 'TransportOrder.Etd DESC',
           mapParams: normalizeQuery,
           fieldMap: {
+            'transportOrder.etd': 'TransportOrder.ETD',
             'transportOrder.clientName': 'TransportOrder.Client.Name',
             'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
             'transportOrder.codeFrtName': 'TransportOrder.CodeFrt.CnName',
@@ -379,24 +367,13 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   },
 });
 
-/** 默认会计期间：当月（起止均为当月，配合 normalizeQuery 扩展为整月区间） */
-const applyDefaultAccountDate = async () => {
-  const currentMonth = dayjs().startOf('month');
-  await gridApi.formApi.setValues({
-    AccountDateRange: [currentMonth, currentMonth],
-  });
-};
-
 onMounted(async () => {
-  await applyDefaultAccountDate();
   // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
   // 从而在同一次查询中拉取分组数据，避免恢复与首查竞态导致分组只剩「全部」。
   await grouping.restorePersistedField();
   // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
-  // 从而让首查及后续分页/排序都带上默认会计期间（gridApi.query 用的是最近提交值）。
+  // 后续分页/排序走 gridApi.query 时才能带上同一套条件。
   await gridApi.formApi.submitForm();
-  // 默认值已写入表单，之后完全尊重表单值（允许清空/改月）
-  accountDateDefaultApplied = true;
 });
 
 // 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。

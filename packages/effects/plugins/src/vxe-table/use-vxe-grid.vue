@@ -1149,6 +1149,7 @@ async function resetColumnConfig() {
     } as any);
     await nextTick();
     props.api.grid?.refreshColumn?.();
+    await restoreDefaultSortIndicators();
     isApplyingColumnConfig.value = false;
     await captureColumnBaselineWidthsWithRetry();
     debugLog('恢复默认列配置完成', {
@@ -1187,6 +1188,38 @@ async function healColumnConfig(
     healedConfig,
     userSettingId: userSettingId.value,
   });
+}
+
+/**
+ * 列持久化会 setGridOptions + refreshColumn，vxe 的 handleDefaultSort 只在初始化执行一次，
+ * 列对象被重建后 column.order 丢失，列头箭头消失。这里按 sortConfig.defaultSort 补回去，
+ * 用 setSort(..., false) 只改表头状态，不触发查询。
+ */
+async function restoreDefaultSortIndicators() {
+  const grid = props.api?.grid as any;
+  const defaultSort = gridOptions.value?.sortConfig?.defaultSort;
+  if (!grid || !defaultSort) {
+    return;
+  }
+  const list = (
+    Array.isArray(defaultSort) ? defaultSort : [defaultSort]
+  ).filter(
+    (item: any) =>
+      item &&
+      typeof item.field === 'string' &&
+      item.field &&
+      (item.order === 'asc' || item.order === 'desc'),
+  );
+  if (list.length === 0) {
+    return;
+  }
+  if (typeof grid.setSort === 'function') {
+    await grid.setSort(list.length === 1 ? list[0] : list, false);
+    return;
+  }
+  if (typeof grid.sort === 'function') {
+    await grid.sort(list);
+  }
 }
 
 async function loadColumnConfig() {
@@ -1318,6 +1351,7 @@ async function loadColumnConfig() {
   } as any);
   await nextTick();
   props.api.grid?.refreshColumn?.();
+  await restoreDefaultSortIndicators();
   isApplyingColumnConfig.value = false;
   await captureColumnBaselineWidthsWithRetry();
   initializedColumns.value = true;
@@ -2066,6 +2100,7 @@ async function init() {
       } as any);
       await nextTick();
       props.api.grid?.refreshColumn?.();
+      await restoreDefaultSortIndicators();
     }
   }
   await loadColumnConfig();
@@ -2102,6 +2137,8 @@ async function init() {
   extendProxyOptions(props.api, defaultGridOptions, () =>
     formApi.getLatestSubmissionValues(),
   );
+  await nextTick();
+  await restoreDefaultSortIndicators();
 }
 
 // formOptions支持响应式

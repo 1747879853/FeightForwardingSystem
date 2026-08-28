@@ -402,7 +402,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'AccountDateRange',
       label: $t('seaImport.import.accountDate'),
       formItemClass: 'col-span-2',
-      // 默认当月由 list.vue onMounted 写入；不设 defaultValue，否则「重置」会回到当月而非清空
+      // 不设 defaultValue：进入列表不再预填当月，重置后保持为空
       componentProps: {
         allowClear: true,
         class: 'w-full',
@@ -770,6 +770,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 关联表出参是对象，列本身不可直接排序，需映射到后端导航属性路径。
  */
 export const SEA_IMPORT_SORT_FIELD_MAP: Record<string, string> = {
+  'transportOrder.etd': 'TransportOrder.ETD',
   'transportOrder.clientName': 'TransportOrder.Client.Name',
   'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
   'transportOrder.codeServiceName': 'TransportOrder.CodeService.CnName',

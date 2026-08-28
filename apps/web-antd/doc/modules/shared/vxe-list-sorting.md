@@ -2,7 +2,7 @@
 title: vxe 分页列表列头排序
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-06-26
+last_updated: 2026-08-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -47,10 +47,13 @@ proxyConfig: {
 
 > [!IMPORTANT] **聚合/计算列不可排** 如海运出口组合费用状态，必须 `sortable: false`，否则后端 Dynamic LINQ 可能 500。
 
+> [!IMPORTANT] **列持久化会冲掉默认排序箭头** vxe `handleDefaultSort` 只在表格初始化执行一次。列设置 `setGridOptions` + `refreshColumn` 会重建列对象，`column.order` 丢失，请求仍按 `defaultSort` 排，但列头没有升降序高亮。`use-vxe-grid.vue` 在列刷新后用 `setSort(..., false)` 按 `sortConfig.defaultSort` 补回箭头，不触发二次查询。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | Fix | 列设置加载/恢复默认列后，默认排序列头箭头不再消失。 | `refreshColumn` 冲掉 `column.order`；补 `restoreDefaultSortIndicators`。见海出/海进默认开船日期排序 changelog。 |
 | 2026-07-07 | Fix | 修复有 defaultSort 时点击其他列仍叠加默认排序 | `resolveEffectiveSortList` 识别 proxy 中相对 default 新增的字段并单独替换，保留已有 session 后的多列叠加 |
 | 2026-06-26 | Fix | 修复再次点击已激活箭头无法取消排序 | vxe clearSort 后 proxy 为空，须清空 session 而非沿用旧值 |
 | 2026-06-26 | Fix | 修复点击降序箭头却变为升序的排序 bug | `applySortClick` 读取 vxe proxy 目标 order，替代盲目 `toggleSortList` 循环 |
