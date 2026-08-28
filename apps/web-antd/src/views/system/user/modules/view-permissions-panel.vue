@@ -1,11 +1,9 @@
 <script lang="ts" setup>
 import type { DataNode } from 'ant-design-vue/es/tree';
 
-import type { SystemUserAdminApi } from '#/api/system/user-admin';
+import { computed, onMounted, ref } from 'vue';
 
-import { computed, ref } from 'vue';
-
-import { Tree, useVbenModal } from '@vben/common-ui';
+import { Tree } from '@vben/common-ui';
 
 import { Checkbox, Input, Spin } from 'ant-design-vue';
 
@@ -13,7 +11,10 @@ import { getAllPermissionsTreeApi } from '#/api/core/auth';
 import { getUserPermissions } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
-const userData = ref<SystemUserAdminApi.SystemUser>();
+defineOptions({ name: 'UserViewPermissionsPanel' });
+
+const props = defineProps<{ userId: number }>();
+
 const loading = ref(false);
 const permissionTree = ref<DataNode[]>([]);
 const grantedPermissions = ref<string[]>([]);
@@ -21,11 +22,6 @@ const searchKeyword = ref('');
 const onlyGranted = ref(true);
 
 const grantedSet = computed(() => new Set(grantedPermissions.value));
-
-const modalTitle = computed(() => {
-  const userName = userData.value?.nickName || userData.value?.userName || '';
-  return $t('system.user.viewPermissionsFor', { name: userName });
-});
 
 const filteredTree = computed(() => {
   let nodes = permissionTree.value;
@@ -50,8 +46,10 @@ function nodeOrDescendantGranted(
 ): boolean {
   const authCode = (node as any).authCode as string | undefined;
   if (authCode && granted.has(authCode)) return true;
-  return (node.children as DataNode[] | undefined)?.some((child) =>
-    nodeOrDescendantGranted(child, granted),
+  return (
+    (node.children as DataNode[] | undefined)?.some((child) =>
+      nodeOrDescendantGranted(child, granted),
+    ) ?? false
   );
 }
 
@@ -110,30 +108,15 @@ async function loadData(userId: number | string) {
   }
 }
 
-const [Modal, modalApi] = useVbenModal({
-  showConfirmButton: false,
-  cancelText: $t('common.close'),
-  class: 'w-[720px]',
-  async onOpenChange(isOpen) {
-    if (!isOpen) {
-      permissionTree.value = [];
-      grantedPermissions.value = [];
-      searchKeyword.value = '';
-      onlyGranted.value = true;
-      return;
-    }
-
-    const data = modalApi.getData<SystemUserAdminApi.SystemUser>();
-    userData.value = data;
-    if (data?.id != null) {
-      await loadData(data.id);
-    }
-  },
+onMounted(() => {
+  if (props.userId != null) {
+    void loadData(props.userId);
+  }
 });
 </script>
 
 <template>
-  <Modal :title="modalTitle">
+  <div class="p-4">
     <div class="mb-3 flex flex-wrap items-center gap-3">
       <Input
         v-model:value="searchKeyword"
@@ -184,5 +167,5 @@ const [Modal, modalApi] = useVbenModal({
         </Tree>
       </div>
     </Spin>
-  </Modal>
+  </div>
 </template>

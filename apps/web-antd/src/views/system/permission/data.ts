@@ -1,13 +1,13 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemPermissionApi } from '#/api/system/permission';
-import { FreightRateLabelOptions } from '#/api/sea-export/freight-rate-admin';
 import {
   DataPermissionType,
   FrightModule,
   FrightModuleOptions,
   ManageType,
   OperatorOptions,
+  PropMaskConditionOperator,
   UserTablePermissionOperator,
 } from '#/api/system/permission';
 import { $t } from '#/locales';
@@ -410,7 +410,8 @@ export function useTablePermissionColumns<
       field: 'frightModule',
       title: $t('system.permission.module'),
       width: 150,
-      formatter: ({ cellValue }) => FrightModuleLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) =>
+        FrightModuleLabels[cellValue as FrightModule] || cellValue,
     },
     {
       field: 'conditionCount',
@@ -513,7 +514,8 @@ export function useTableConditionColumns<
       field: 'operator',
       title: $t('system.permission.conditionOperator'),
       width: 100,
-      formatter: ({ cellValue }) => OperatorLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) =>
+        OperatorLabels[cellValue as UserTablePermissionOperator] || cellValue,
     },
     {
       field: 'value',
@@ -545,11 +547,189 @@ export function useTableConditionColumns<
 
 // ==================== 字段权限表单和表格配置 ====================
 
-export function usePropPermissionFormSchema(options?: {
-  frightModule?: FrightModule;
-}): VbenFormSchema[] {
-  const fieldOptions = getTablePermissionFieldOptions(options?.frightModule);
+/** 字段权限条件操作符标签（键为枚举名，后端读取时统一返回枚举名） */
+export const PropMaskOperatorLabels: Record<string, string> = {
+  Equals: '等于',
+  NotEquals: '不等于',
+  In: '属于',
+  NotIn: '不属于',
+  IsNull: '为空',
+  IsNotNull: '不为空',
+  GreaterThan: '大于',
+  GreaterThanOrEqual: '大于等于',
+  LessThan: '小于',
+  LessThanOrEqual: '小于等于',
+  Contains: '包含',
+};
 
+/** 将操作符（数字或枚举名）归一化为枚举数值 */
+const propMaskOperatorNameMap: Record<string, PropMaskConditionOperator> = {
+  Equals: PropMaskConditionOperator.Equals,
+  NotEquals: PropMaskConditionOperator.NotEquals,
+  In: PropMaskConditionOperator.In,
+  NotIn: PropMaskConditionOperator.NotIn,
+  IsNull: PropMaskConditionOperator.IsNull,
+  IsNotNull: PropMaskConditionOperator.IsNotNull,
+  GreaterThan: PropMaskConditionOperator.GreaterThan,
+  GreaterThanOrEqual: PropMaskConditionOperator.GreaterThanOrEqual,
+  LessThan: PropMaskConditionOperator.LessThan,
+  LessThanOrEqual: PropMaskConditionOperator.LessThanOrEqual,
+  Contains: PropMaskConditionOperator.Contains,
+};
+
+export function normalizePropMaskOperator(
+  op: number | string | undefined | null,
+): PropMaskConditionOperator | undefined {
+  if (op === undefined || op === null) {
+    return undefined;
+  }
+  if (typeof op === 'number') {
+    return op as PropMaskConditionOperator;
+  }
+  return propMaskOperatorNameMap[op];
+}
+
+/** 字段权限条件编辑行（单层分组，与后端条件树叶子节点对应） */
+export interface PropConditionRow {
+  prop?: string;
+  op?: PropMaskConditionOperator;
+  value?: any;
+  showName?: string;
+  showValue?: string | string[];
+}
+
+/** 解析 conditionJson 为编辑态，不支持的结构置 unsupported */
+export function parsePropConditionJson(conditionJson?: string | null): {
+  logic: 'and' | 'or';
+  rows: PropConditionRow[];
+  unsupported: boolean;
+} {
+  const empty = { logic: 'and' as const, rows: [], unsupported: false };
+  if (!conditionJson) {
+    return empty;
+  }
+  try {
+    const root = JSON.parse(conditionJson);
+    // 分组节点：只支持一层（items 全为叶子）
+    if (Array.isArray(root?.items)) {
+      const hasNestedGroup = root.items.some((item: any) =>
+        Array.isArray(item?.items),
+      );
+      if (hasNestedGroup) {
+        return { ...empty, unsupported: true };
+      }
+      return {
+        logic: root.logic === 'or' ? 'or' : 'and',
+        rows: root.items.map((item: any) => ({
+          prop: item.prop,
+          op: normalizePropMaskOperator(item.op),
+          value: item.value,
+          showName: item.showName,
+          showValue: item.showValue,
+        })),
+        unsupported: false,
+      };
+    }
+    // 叶子节点：单条件
+    if (root?.prop) {
+      return {
+        logic: 'and',
+        rows: [
+          {
+            prop: root.prop,
+            op: normalizePropMaskOperator(root.op),
+            value: root.value,
+            showName: root.showName,
+            showValue: root.showValue,
+          },
+        ],
+        unsupported: false,
+      };
+    }
+    return { ...empty, unsupported: true };
+  } catch {
+    return { ...empty, unsupported: true };
+  }
+}
+
+/** 将编辑态序列化为 conditionJson，无条件返回 undefined（不传） */
+export function buildPropConditionJson(
+  rows: PropConditionRow[],
+  logic: 'and' | 'or',
+): string | undefined {
+  const leaves = rows
+    .filter((row) => row.prop && row.op !== undefined)
+    .map((row) => {
+      const leaf: SystemPermissionApi.PropMaskConditionLeaf = {
+        prop: row.prop!,
+        op: row.op!,
+      };
+      if (
+        row.op !== PropMaskConditionOperator.IsNull &&
+        row.op !== PropMaskConditionOperator.IsNotNull &&
+        row.value !== undefined &&
+        row.value !== null
+      ) {
+        leaf.value = row.value;
+      }
+      if (row.showName) {
+        leaf.showName = row.showName;
+      }
+      if (row.showValue !== undefined && row.showValue !== null) {
+        leaf.showValue = row.showValue;
+      }
+      return leaf;
+    });
+  if (leaves.length === 0) {
+    return undefined;
+  }
+  if (leaves.length === 1) {
+    return JSON.stringify(leaves[0]);
+  }
+  return JSON.stringify({ logic, items: leaves });
+}
+
+function formatConditionLeafValue(leaf: any): string {
+  if (leaf.showValue !== undefined && leaf.showValue !== null) {
+    return Array.isArray(leaf.showValue)
+      ? leaf.showValue.join('、')
+      : String(leaf.showValue);
+  }
+  if (leaf.value === undefined || leaf.value === null) {
+    return '';
+  }
+  return Array.isArray(leaf.value)
+    ? leaf.value.map((item: any) => String(item)).join('、')
+    : String(leaf.value);
+}
+
+/** 生成条件表达式摘要，解析失败时返回原文 */
+export function formatPropConditionSummary(
+  row: Pick<SystemPermissionApi.UserPropPermissionDto, 'conditionJson'>,
+): string {
+  if (!row.conditionJson) {
+    return '-';
+  }
+  const parsed = parsePropConditionJson(row.conditionJson);
+  if (parsed.unsupported || parsed.rows.length === 0) {
+    return row.conditionJson;
+  }
+  const segments = parsed.rows.map((leaf) => {
+    const opName =
+      leaf.op === undefined ? undefined : PropMaskConditionOperator[leaf.op];
+    const opLabel = (opName && PropMaskOperatorLabels[opName]) ?? leaf.op;
+    const valueLabel = formatConditionLeafValue(leaf);
+    const fieldLabel = leaf.showName || leaf.prop;
+    return valueLabel
+      ? `${fieldLabel} ${opLabel} ${valueLabel}`
+      : `${fieldLabel} ${opLabel}`;
+  });
+  return segments.join(parsed.logic === 'or' ? ' 或 ' : ' 且 ');
+}
+
+export function usePropPermissionFormSchema(options?: {
+  fieldOptions?: Array<{ label: string; value: string }>;
+}): VbenFormSchema[] {
   return [
     {
       component: 'Select',
@@ -565,7 +745,7 @@ export function usePropPermissionFormSchema(options?: {
     {
       component: 'Select',
       componentProps: {
-        options: fieldOptions,
+        options: options?.fieldOptions ?? [],
         placeholder: '请选择需要屏蔽的字段名称',
         style: { minWidth: '200px' },
         showSearch: true,
@@ -574,6 +754,15 @@ export function usePropPermissionFormSchema(options?: {
       fieldName: 'propName',
       label: $t('system.permission.propName'),
       rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        placeholder: $t('system.permission.propDescriptionPlaceholder'),
+        maxlength: 200,
+      },
+      fieldName: 'description',
+      label: $t('system.permission.propDescription'),
     },
   ];
 }
@@ -591,12 +780,33 @@ export function usePropPermissionColumns<
       field: 'frightModule',
       title: $t('system.permission.module'),
       width: 150,
-      formatter: ({ cellValue }) => FrightModuleLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) =>
+        FrightModuleLabels[cellValue as FrightModule] || cellValue,
     },
     {
       field: 'propName',
       title: $t('system.permission.propName'),
-      minWidth: 200,
+      minWidth: 160,
+    },
+    {
+      field: 'isConditional',
+      title: $t('system.permission.propConditional'),
+      width: 100,
+      formatter: ({ cellValue }) => (cellValue ? '是' : '否'),
+    },
+    {
+      field: 'conditionJson',
+      title: $t('system.permission.propConditionSummary'),
+      minWidth: 240,
+      formatter: ({ row }) =>
+        formatPropConditionSummary(
+          row as SystemPermissionApi.UserPropPermissionDto,
+        ),
+    },
+    {
+      field: 'description',
+      title: $t('system.permission.propDescription'),
+      minWidth: 150,
     },
     {
       field: 'creationTime',

@@ -1,11 +1,6 @@
 import type { VbenFormSchema } from '#/adapter/form';
-import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { SystemUserAdminApi } from '#/api';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 
-import {
-  getOrganizationUnitTree,
-  withOrganizationTreeDisabled,
-} from '#/api/system/organization-unit';
 import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
 import { z } from '@vben/common-ui';
@@ -170,9 +165,9 @@ export const booleanOptions = [
 ];
 
 /**
- * 用户表单 Schema（分区布局）
+ * 用户表单 Schema：基础信息分区（账号信息 + 状态）
  */
-export function useFormSchema(): VbenFormSchema[] {
+export function useUserBasicFormSchema(): VbenFormSchema[] {
   return [
     // ===== 隐藏字段 =====
     {
@@ -255,63 +250,6 @@ export function useFormSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       componentProps: {
-        maxlength: 20,
-        showCount: true,
-        autocomplete: 'off',
-      },
-      fieldName: 'phoneNumber',
-      label: $t('system.user.phoneNumber'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [$t('system.user.phoneNumber')]),
-        })
-        .regex(/^1[3-9]\d{9}$/, {
-          message: $t('common.invalidFormat', [$t('system.user.phoneNumber')]),
-        }),
-    },
-    {
-      component: 'Input',
-      componentProps: {
-        maxlength: 32,
-        showCount: true,
-      },
-      fieldName: 'officeTel',
-      label: $t('system.user.officeTel'),
-    },
-    {
-      component: 'Input',
-      componentProps: {
-        maxlength: 128,
-        showCount: true,
-        autocomplete: 'off',
-      },
-      fieldName: 'emailAddress',
-      label: $t('system.user.email'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [$t('system.user.email')]),
-        })
-        .max(128, {
-          message: $t('ui.formRules.maxLength', [$t('system.user.email'), 128]),
-        })
-        .refine((value) => /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value), {
-          message: $t('ui.formRules.invalidEmail', [$t('system.user.email')]),
-        }),
-    },
-    {
-      component: 'Input',
-      componentProps: {
-        maxlength: 32,
-        showCount: true,
-      },
-      fieldName: 'qq',
-      label: $t('system.user.qq'),
-    },
-    {
-      component: 'Input',
-      componentProps: {
         maxlength: 32,
         showCount: true,
       },
@@ -388,12 +326,6 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'idNumber',
       label: $t('system.user.idNumber'),
     },
-
-    // {
-    //   component: 'ReadonlyText',
-    //   fieldName: 'companyName',
-    //   label: $t('system.user.company'),
-    // },
     {
       component: 'Input',
       defaultValue: UserStatus.Passed,
@@ -404,16 +336,97 @@ export function useFormSchema(): VbenFormSchema[] {
         triggerFields: ['status'],
       },
     },
+  ];
+}
+
+/**
+ * 用户表单 Schema：联系方式分区（初始密码在基础信息分区，仅新建可见）
+ */
+export function useUserContactFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 20,
+        showCount: true,
+        autocomplete: 'off',
+      },
+      fieldName: 'phoneNumber',
+      label: $t('system.user.phoneNumber'),
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [$t('system.user.phoneNumber')]),
+        })
+        .regex(/^1[3-9]\d{9}$/, {
+          message: $t('common.invalidFormat', [$t('system.user.phoneNumber')]),
+        }),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 32,
+        showCount: true,
+      },
+      fieldName: 'officeTel',
+      label: $t('system.user.officeTel'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 128,
+        showCount: true,
+        autocomplete: 'off',
+      },
+      fieldName: 'emailAddress',
+      label: $t('system.user.email'),
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [$t('system.user.email')]),
+        })
+        .max(128, {
+          message: $t('ui.formRules.maxLength', [$t('system.user.email'), 128]),
+        })
+        .refine((value) => /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value), {
+          message: $t('ui.formRules.invalidEmail', [$t('system.user.email')]),
+        }),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 32,
+        showCount: true,
+      },
+      fieldName: 'qq',
+      label: $t('system.user.qq'),
+    },
+  ];
+}
+
+/**
+ * 用户表单 Schema：用户属性分区（位标志复选）
+ */
+export function useUserAttributeFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'CheckboxGroup',
       componentProps: {
+        class: 'flex w-full flex-wrap gap-x-6 gap-y-2',
         options: getUserAttributeOptions(),
       },
       fieldName: 'userAttributeFlags',
       label: $t('system.user.userAttribute'),
       rules: 'required',
     },
+  ];
+}
 
+/**
+ * 用户表单 Schema：个人邮箱信息分区
+ */
+export function useUserEmailFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'Input',
       componentProps: {
@@ -454,7 +467,14 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'sendAddrPort',
       label: $t('system.user.sendAddrPort'),
     },
+  ];
+}
 
+/**
+ * 用户表单 Schema：备注分区
+ */
+export function useUserRemarkFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'Textarea',
       componentProps: {
@@ -504,13 +524,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 /**
  * 用户列表列定义
  */
-export function useColumns<T = SystemUserAdminApi.SystemUser>(
-  onActionClick: OnActionClickFn<T>,
-  _onStatusChange?: (
-    newStatus: any,
-    row: T,
-  ) => PromiseLike<boolean | undefined>,
-): VxeTableGridOptions['columns'] {
+export function useColumns(): VxeTableGridOptions['columns'] {
   return [
     {
       type: 'checkbox',
@@ -651,45 +665,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       formatter: 'formatDateTime',
       title: $t('system.user.createTime'),
       width: 170,
-    },
-    {
-      align: 'center',
-      cellRender: {
-        attrs: {
-          nameField: 'userName',
-          nameTitle: $t('system.user.name'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          { code: 'edit', text: $t('common.edit') },
-          { code: 'permission', text: $t('system.user.permission') },
-          {
-            code: 'viewPermissions',
-            text: $t('system.user.viewPermissions'),
-          },
-          { code: 'setRoles', text: $t('system.user.setRoles') },
-          {
-            code: 'more',
-            text: $t('common.more'),
-            children: [
-              {
-                code: 'bankAccount',
-                text: $t('system.user.bankAccountAction'),
-              },
-              {
-                code: 'changePassword',
-                text: $t('system.user.changePassword'),
-              },
-              { code: 'delete', text: $t('common.delete'), danger: true },
-            ],
-          },
-        ],
-      },
-      field: 'operation',
-      fixed: 'right',
-      title: $t('system.user.operation'),
-      width: 340,
     },
   ];
 }

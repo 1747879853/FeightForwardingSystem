@@ -38,6 +38,31 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/system/user/list.vue'),
       },
       {
+        path: '/system/user/create',
+        name: 'SystemUserCreate',
+        meta: {
+          title: $t('ui.actionTitle.create', [$t('system.user.name')]),
+          hideInMenu: true,
+          activePath: '/system/user',
+          // 用户管理：拥有 Admin.Team.User 或 Admin.Team.User.Get 权限
+          authority: abpPageAuthority('Admin.Team.User'),
+        },
+        component: () => import('#/views/system/user/modules/user-form.vue'),
+      },
+      {
+        path: '/system/user/edit/:id',
+        name: 'SystemUserEdit',
+        meta: {
+          title: $t('system.user.editTabTitle'),
+          hideInMenu: true,
+          keepAlive: true,
+          activePath: '/system/user',
+          // 用户管理：拥有 Admin.Team.User 或 Admin.Team.User.Get 权限
+          authority: abpPageAuthority('Admin.Team.User'),
+        },
+        component: () => import('#/views/system/user/editor.vue'),
+      },
+      {
         path: '/system/role',
         name: 'SystemRole',
         meta: {

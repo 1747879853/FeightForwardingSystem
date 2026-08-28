@@ -161,6 +161,8 @@ export enum TaskType {
   PaymentApplication = 3,
   /** 业务联系单（与后端 FrightModule.PreOrder 同值） */
   PreOrder = 8,
+  /** 提成单（与后端 TaskType.CommissionOrder 同值） */
+  CommissionOrder = 10,
 }
 
 /** 工作流实例状态 */

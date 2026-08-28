@@ -282,9 +282,9 @@ const onGroupFieldChange = (value: number | undefined) => {
   }
 };
 
-const SubmittedOther = async (e: any) => {
-  console.log('SubmittedOther', e);
-  showConfirmWithRemark(true, e.key);
+const SubmittedOther = async (key: any) => {
+  console.log('SubmittedOther', key);
+  showConfirmWithRemark(true, key);
 };
 
 const detailRef = ref<any>(null);
@@ -430,15 +430,12 @@ const changeTableType = (type: string) => {
         </div>
       </template>
       <template #toolbar-tools>
-        <DropdownButton
-          @click="showConfirmWithRemark(true, 'all')"
-          type="primary"
-        >
-          {{ $t('auditApproval.task.allPass') }}
+        <DropdownButton @click="SubmittedOther('selectPass')" type="primary">
+          {{ $t('auditApproval.task.selectPass') }}
           <template #overlay>
-            <Menu @click="SubmittedOther">
-              <MenuItem key="selectPass">
-                {{ $t('auditApproval.task.selectPass') }}
+            <Menu @click="showConfirmWithRemark(true, 'all')">
+              <MenuItem>
+                {{ $t('auditApproval.task.allPass') }}
               </MenuItem>
             </Menu>
           </template>

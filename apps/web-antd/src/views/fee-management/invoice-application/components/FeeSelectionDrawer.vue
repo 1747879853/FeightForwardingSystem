@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Spin,
+  Tag,
 } from 'ant-design-vue';
 
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
@@ -76,6 +77,7 @@ const filterEtdStart = ref<string>(''); // 新增：开船日期起
 const filterEtdEnd = ref<string>(''); // 新增：开船日期止
 const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
 const filterBizType = ref<number | undefined>(undefined); // ✅ 新增：业务类型
+const filterStatementNum = ref<string>(''); // ✅ 新增：客户对账单号
 
 // ✅ 新增：用于 RangePicker 的日期范围状态
 const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
@@ -350,8 +352,9 @@ function handleResetFilter() {
   filterEtdStart.value = '';
   filterEtdEnd.value = '';
   filterEtdRange.value = undefined; // ✅ 重置日期范围
-  filterPaySide.value = 0;
+  filterPaySide.value = 0; // ✅ 重置为全部，而不是默认应收
   filterBizType.value = undefined; // ✅ 重置业务类型
+  filterStatementNum.value = ''; // ✅ 重置客户对账单号
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
 }
@@ -512,11 +515,18 @@ async function loadFeeGroupData() {
     }
 
     // 新增：收付类型
-    params.paySide = filterPaySide.value;
+    if (filterPaySide.value !== null && filterPaySide.value !== undefined) {
+      params.paySide = filterPaySide.value;
+    }
 
     // ✅ 新增：业务类型
     if (filterBizType.value !== undefined) {
       params.bizType = filterBizType.value;
+    }
+
+    // ✅ 新增：客户对账单号
+    if (filterStatementNum.value) {
+      params.statementNum = filterStatementNum.value;
     }
 
     if (props.invoiceApplicationId) {
@@ -569,6 +579,11 @@ function transformToTreeData(
           amount: fee.amount,
           currencyCode: fee.currency?.code || '-',
           remainingInvoiceAmount: fee.remainingInvoiceAmount,
+          // ✅ 对账单号：将statements数组中的statementNum拼接显示
+          statementNums:
+            fee.statements && fee.statements.length > 0
+              ? fee.statements.map((s: any) => s.statementNum).join(' ')
+              : '-',
           // ✅ 关键修复：在子节点中也保存委托编号和主提单号
           commissionNum: item.transportOrder.commissionNum,
           mblNum: item.transportOrder.mblNum || '-',
@@ -745,6 +760,13 @@ const feeInnerColumns = computed(() => [
     ellipsis: true,
   },
   {
+    title: '对账单号',
+    dataIndex: 'statementNums',
+    key: 'statementNums',
+    width: 150,
+    ellipsis: true,
+  },
+  {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
@@ -803,6 +825,19 @@ defineExpose({
             <Input
               v-model:value="keyWord"
               placeholder="委托编号/主提单号/订舱编号"
+              style="flex: 1"
+              allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >对账单号:</span
+            >
+            <Input
+              v-model:value="filterStatementNum"
+              placeholder="请输入客户对账单号"
               style="flex: 1"
               allow-clear
             />
@@ -1004,6 +1039,22 @@ defineExpose({
                 class="fee-applied-amount-input w-full"
                 :disabled="record.alreadyAdded"
               />
+            </template>
+            <template v-else-if="column.key === 'payReceiveType'">
+              <Tag
+                v-if="record.payReceiveType === '应收'"
+                color="blue"
+                style="margin: 0"
+              >
+                应收
+              </Tag>
+              <Tag
+                v-else-if="record.payReceiveType === '应付'"
+                color="orange"
+                style="margin: 0"
+              >
+                应付
+              </Tag>
             </template>
             <template v-else>
               {{ column.dataIndex ? record[column.dataIndex] : '' }}

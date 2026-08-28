@@ -364,6 +364,7 @@ function toggleGroupSelection(group: OrderGroupRow, checked: boolean) {
 function handleOpenAddFee() {
   addFeeDrawerRef.value?.open({
     settlementId: clientId.value || undefined,
+    settlementName: clientName.value || undefined,
     selectedFeeIds: feeDetailRows.value.map((r) => r.feeId),
     statementNum: editId.value,
   });

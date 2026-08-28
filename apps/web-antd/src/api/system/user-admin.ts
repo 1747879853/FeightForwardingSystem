@@ -481,11 +481,12 @@ async function getUserForEdit(
 
 /**
  * 创建或更新用户（基础字段）
+ * @remarks 该接口无返回值（CreateOrUpdateUserAsync 未改造）
  */
 async function createOrUpdateUser(
   data: SystemUserAdminApi.UserInAdminInputDto,
-): Promise<SystemUserAdminApi.UserDto> {
-  return requestClient.post<SystemUserAdminApi.UserDto>(
+): Promise<void> {
+  return requestClient.post<void>(
     '/services/app/UserAdmin/CreateOrUpdateUserAsync',
     data,
   );
@@ -493,11 +494,12 @@ async function createOrUpdateUser(
 
 /**
  * 创建或更新用户（含数据权限）
+ * @returns 用户 id（long）。新增时为新生成的 id，更新时为入参 id
  */
 async function createOrUpdateUserWithDataPermission(
   data: SystemUserAdminApi.UserInAdminDataPermissionInputDto,
-): Promise<SystemUserAdminApi.UserInAdminDataPermissionDto> {
-  return requestClient.post<SystemUserAdminApi.UserInAdminDataPermissionDto>(
+): Promise<number> {
+  return requestClient.post<number>(
     '/services/app/UserAdmin/CreateOrUpdateUserInAdminAsync',
     data,
   );

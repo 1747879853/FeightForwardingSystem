@@ -2,10 +2,14 @@
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-import { useVbenModal } from '@vben/common-ui';
-import { message, Tree, Radio, Tag } from 'ant-design-vue';
+import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
+import { FileText, IconifyIcon, Save } from '@vben/icons';
+
+import { Button, message, Radio, Space, Tag, Tree } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
@@ -16,23 +20,46 @@ import {
   getOrganizationUnitTree,
   resolveOrganizationCompanyName,
 } from '#/api/system/organization-unit';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
   combineUserAttribute,
   parseUserAttribute,
-  useFormSchema,
+  useUserAttributeFormSchema,
+  useUserBasicFormSchema,
+  useUserContactFormSchema,
+  useUserEmailFormSchema,
+  useUserRemarkFormSchema,
 } from '../data';
 import {
   avatarUrlToFormValue,
   normalizeAvatarSubmitValue,
 } from '../avatar-utils';
 
-const emits = defineEmits(['success']);
+defineOptions({ name: 'UserAdminForm' });
 
+const props = withDefaults(
+  defineProps<{
+    /** 嵌入用户编辑页的基础信息 Tab 时置为 true（不渲染 Page 与返回按钮） */
+    embedded?: boolean;
+    /** 编辑的用户ID；新建时不传 */
+    userId?: number;
+  }>(),
+  { embedded: false, userId: undefined },
+);
+
+const router = useRouter();
+const route = useRoute();
+const { closeTabByKey } = useTabs();
+
+// 编辑ID由父级（用户编辑页）传入；独立新建页时为 undefined
+const editId = computed<number | undefined>(() => props.userId);
+const isEdit = computed(() => editId.value != null);
+
+const submitting = ref(false);
 const formData = ref<SystemUserAdminApi.SystemUser>();
-
-const id = ref<number>();
 const orgTreePromise = ref<ReturnType<typeof getOrganizationUnitTree> | null>(
   null,
 );
@@ -76,7 +103,7 @@ async function ensureOrgTree() {
 }
 
 // 处理树节点选中变化
-const handleTreeCheck = (checkedKeys: any, info: any) => {
+const handleTreeCheck = (checkedKeys: any) => {
   const keys = Array.isArray(checkedKeys) ? checkedKeys : checkedKeys.checked;
 
   // 直接使用用户选中的节点（不进行级联）
@@ -350,19 +377,19 @@ const getOrgDisplayName = (orgId: number): string => {
 // 同步公司名称（使用第一个选中的组织的公司）
 async function syncCompanyName() {
   if (selectedOrganizations.value.length === 0) {
-    await formApi.setFieldValue('companyName', '');
+    await basicFormApi.setFieldValue('companyName', '');
     return;
   }
 
   const tree = await ensureOrgTree();
   const firstOrgId = selectedOrganizations.value[0]?.id;
   if (!firstOrgId) {
-    await formApi.setFieldValue('companyName', '');
+    await basicFormApi.setFieldValue('companyName', '');
     return;
   }
 
   const companyName = resolveOrganizationCompanyName(tree, firstOrgId);
-  await formApi.setFieldValue('companyName', companyName);
+  await basicFormApi.setFieldValue('companyName', companyName);
 }
 
 // 监听组织选择变化
@@ -374,343 +401,476 @@ watch(
   { deep: true },
 );
 
-const [Form, formApi] = useVbenForm({
+// ===== 分区表单（对齐客户管理基础信息的卡片式分区布局） =====
+const formCommonConfig = {
   commonConfig: {
     componentProps: {
       class: 'w-full',
     },
   },
-  layout: 'vertical',
-  schema: useFormSchema(),
+  layout: 'vertical' as const,
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2',
+};
+
+const [BasicForm, basicFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserBasicFormSchema(),
+  wrapperClass: 'grid-cols-4',
 });
 
-const [Modal, modalApi] = useVbenModal({
-  async onConfirm() {
-    const { valid } = await formApi.validate();
-    if (!valid) return;
-    const values = await formApi.getValues();
+const [ContactForm, contactFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserContactFormSchema(),
+  wrapperClass: 'grid-cols-4',
+});
 
-    // 验证至少选择一个组织
-    if (selectedOrganizations.value.length === 0) {
-      message.error(
-        $t('system.user.organizationRequired') || '请至少选择一个组织',
+const [AttributeForm, attributeFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserAttributeFormSchema(),
+  wrapperClass: 'grid-cols-1',
+});
+
+const [EmailForm, emailFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserEmailFormSchema(),
+  wrapperClass: 'grid-cols-4',
+});
+
+const [RemarkForm, remarkFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useUserRemarkFormSchema(),
+  wrapperClass: 'grid-cols-1',
+});
+
+const sectionFormApis = [
+  basicFormApi,
+  contactFormApi,
+  attributeFormApi,
+  emailFormApi,
+  remarkFormApi,
+] as const;
+
+/** 汇总所有分区表单的值 */
+async function getAllFormValues() {
+  const valuesList = await Promise.all(
+    sectionFormApis.map((api) => api.getValues()),
+  );
+  return Object.assign({}, ...valuesList);
+}
+
+/**
+ * 加载编辑数据
+ */
+async function loadUserDetail(id: number) {
+  try {
+    const userDetail = await getUserForEdit(id);
+    formData.value = userDetail;
+
+    // 处理organizations数据
+    if (userDetail.organizations && userDetail.organizations.length > 0) {
+      selectedOrganizations.value = userDetail.organizations.map((org) => ({
+        id:
+          org.oneOrganizationPath[org.oneOrganizationPath.length - 1]?.id || 0,
+        default: org.default,
+      }));
+
+      // 初始化实际选中的IDs
+      actualSelectedIds.value = new Set(
+        selectedOrganizations.value.map((org) => org.id),
       );
-      return;
-    }
+      checkedOrgKeys.value = Array.from(actualSelectedIds.value);
 
-    // 验证最多一个默认组织
-    const defaultCount = selectedOrganizations.value.filter(
-      (org) => org.default,
-    ).length;
-    if (defaultCount > 1) {
-      message.error(
-        $t('system.user.onlyOneDefaultOrganization') ||
-          '最多只能设置一个默认组织',
-      );
-      return;
-    }
-
-    // 构建提交数据
-    const submitData: SystemUserAdminApi.UserInAdminInputDto = {
-      userName: values.userName,
-      nickName: values.nickName,
-      emailAddress: values.emailAddress,
-      phoneNumber: values.phoneNumber,
-      isActive: values.isActive,
-      status: values.status,
-      roleIds: values.roleIds,
-      avatar: normalizeAvatarSubmitValue(values.avatar, formData.value?.avatar),
-      organizations: selectedOrganizations.value, // 使用新的organizations字段
-      userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
-      enName: values.enName || undefined,
-      qq: values.qq || undefined,
-      employeeID: values.employeeID || undefined,
-      gender: values.gender ?? null,
-      enable: values.enable,
-      idNumber: values.idNumber || undefined,
-      remark: values.remark || undefined,
-      emailPwd: values.emailPwd || undefined,
-      receiveAddrPort: values.receiveAddrPort || undefined,
-      sendAddrPort: values.sendAddrPort || undefined,
-      officeTel: values.officeTel || undefined,
-      senderDisplayName: values.senderDisplayName || undefined,
-      shouldChangePasswordOnNextLogin: values.shouldChangePasswordOnNextLogin,
-    };
-
-    if (!id.value && values.password) {
-      submitData.password = values.password;
-    }
-
-    if (id.value) {
-      submitData.id = id.value;
-    }
-
-    modalApi.lock();
-    createOrUpdateUserWithDataPermission(submitData)
-      .then(() => {
-        message.success($t('ui.actionMessage.operationSuccess'));
-        emits('success');
-        modalApi.close();
-      })
-      .catch(() => {
-        modalApi.unlock();
+      // 只展开已选组织的父节点路径
+      const parentIds = new Set<number>();
+      userDetail.organizations.forEach((org) => {
+        org.oneOrganizationPath.forEach((path) => {
+          parentIds.add(path.id);
+        });
       });
-  },
+      expandedKeys.value = Array.from(parentIds);
 
-  async onOpenChange(isOpen) {
-    if (isOpen) {
-      const data = modalApi.getData<
-        SystemUserAdminApi.SystemUser & { focusRoles?: boolean }
-      >();
-      formApi.resetForm();
-      orgTreePromise.value = null;
-
-      // 重置多组织选择状态
-      selectedOrganizations.value = [];
-      checkedOrgKeys.value = [];
-      actualSelectedIds.value = new Set();
-      expandedKeys.value = [];
-      disabledNodeIds.value = new Set(); // 重置禁用节点集合
-
-      // 加载组织树
-      await ensureOrgTree();
-
-      if (data?.id) {
-        id.value = data.id;
-        try {
-          const userDetail = await getUserForEdit(data.id);
-          formData.value = { ...data, ...userDetail };
-
-          // 处理organizations数据
-          if (userDetail.organizations && userDetail.organizations.length > 0) {
-            selectedOrganizations.value = userDetail.organizations.map(
-              (org) => ({
-                id:
-                  org.oneOrganizationPath[org.oneOrganizationPath.length - 1]
-                    ?.id || 0,
-                default: org.default,
-              }),
-            );
-
-            // 初始化实际选中的IDs
-            actualSelectedIds.value = new Set(
-              selectedOrganizations.value.map((org) => org.id),
-            );
-            checkedOrgKeys.value = Array.from(actualSelectedIds.value);
-
-            // 只展开已选组织的父节点路径
-            const parentIds = new Set<number>();
-            userDetail.organizations.forEach((org) => {
-              org.oneOrganizationPath.forEach((path) => {
-                parentIds.add(path.id);
-              });
-            });
-            expandedKeys.value = Array.from(parentIds);
-
-            // 计算并应用禁用节点
-            updateDisabledNodes(Array.from(actualSelectedIds.value));
-          }
-
-          await nextTick();
-          formApi.setValues({
-            id: userDetail.id,
-            userName: userDetail.userName,
-            nickName: userDetail.nickName,
-            emailAddress: userDetail.emailAddress,
-            phoneNumber: userDetail.phoneNumber,
-            isActive: userDetail.isActive,
-            status: userDetail.status,
-            avatar: avatarUrlToFormValue(userDetail.avatar),
-            userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
-            enName: userDetail.enName,
-            qq: userDetail.qq,
-            employeeID: userDetail.employeeID,
-            gender:
-              userDetail.gender === 1 || userDetail.gender === 2
-                ? userDetail.gender
-                : undefined,
-            enable: userDetail.enable ?? true,
-            idNumber: userDetail.idNumber,
-            remark: userDetail.remark,
-            emailPwd: userDetail.emailPwd,
-            receiveAddrPort: userDetail.receiveAddrPort,
-            sendAddrPort: userDetail.sendAddrPort,
-            officeTel: userDetail.officeTel,
-            senderDisplayName: userDetail.senderDisplayName,
-            shouldChangePasswordOnNextLogin:
-              userDetail.shouldChangePasswordOnNextLogin,
-          });
-
-          await syncCompanyName();
-
-          if (data.focusRoles) {
-            // 可以通过 formApi 实现聚焦逻辑
-          }
-        } catch (error) {
-          console.error('获取用户详情失败:', error);
-          formData.value = data;
-
-          // 降级处理
-          if (data.organizations && data.organizations.length > 0) {
-            selectedOrganizations.value = data.organizations.map((org) => ({
-              id:
-                org.oneOrganizationPath[org.oneOrganizationPath.length - 1]
-                  ?.id || 0,
-              default: org.default,
-            }));
-
-            // 初始化实际选中的IDs
-            actualSelectedIds.value = new Set(
-              selectedOrganizations.value.map((org) => org.id),
-            );
-            checkedOrgKeys.value = Array.from(actualSelectedIds.value);
-
-            // 只展开已选组织的父节点路径
-            const parentIds = new Set<number>();
-            data.organizations.forEach((org) => {
-              org.oneOrganizationPath.forEach((path) => {
-                parentIds.add(path.id);
-              });
-            });
-            expandedKeys.value = Array.from(parentIds);
-
-            // 计算并应用禁用节点
-            updateDisabledNodes(Array.from(actualSelectedIds.value));
-          }
-
-          await nextTick();
-          formApi.setValues({
-            id: data.id,
-            userName: data.userName,
-            nickName: data.nickName,
-            emailAddress: data.emailAddress,
-            phoneNumber: data.phoneNumber,
-            isActive: data.isActive,
-            status: data.status,
-            avatar: avatarUrlToFormValue(data.avatar),
-            userAttributeFlags: parseUserAttribute(data.userAttribute),
-            enName: data.enName,
-            qq: data.qq,
-            employeeID: data.employeeID,
-            gender:
-              data.gender === 1 || data.gender === 2 ? data.gender : undefined,
-            enable: data.enable ?? true,
-            idNumber: data.idNumber,
-            remark: data.remark,
-            emailPwd: data.emailPwd,
-            receiveAddrPort: data.receiveAddrPort,
-            sendAddrPort: data.sendAddrPort,
-            officeTel: data.officeTel,
-            senderDisplayName: data.senderDisplayName,
-          });
-          await syncCompanyName();
-        }
-      } else {
-        id.value = undefined;
-        formData.value = undefined;
-      }
+      // 计算并应用禁用节点
+      updateDisabledNodes(Array.from(actualSelectedIds.value));
     }
-  },
+
+    await nextTick();
+    await basicFormApi.setValues({
+      id: userDetail.id,
+      userName: userDetail.userName,
+      nickName: userDetail.nickName,
+      enName: userDetail.enName,
+      gender:
+        userDetail.gender === 1 || userDetail.gender === 2
+          ? userDetail.gender
+          : undefined,
+      employeeID: userDetail.employeeID,
+      idNumber: userDetail.idNumber,
+      avatar: avatarUrlToFormValue(userDetail.avatar),
+      isActive: userDetail.isActive,
+      enable: userDetail.enable ?? true,
+      status: userDetail.status,
+      shouldChangePasswordOnNextLogin:
+        userDetail.shouldChangePasswordOnNextLogin,
+    });
+    await contactFormApi.setValues({
+      phoneNumber: userDetail.phoneNumber,
+      officeTel: userDetail.officeTel,
+      emailAddress: userDetail.emailAddress,
+      qq: userDetail.qq,
+    });
+    await attributeFormApi.setValues({
+      userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
+    });
+    await emailFormApi.setValues({
+      senderDisplayName: userDetail.senderDisplayName,
+      emailPwd: userDetail.emailPwd,
+      receiveAddrPort: userDetail.receiveAddrPort,
+      sendAddrPort: userDetail.sendAddrPort,
+    });
+    await remarkFormApi.setValues({
+      remark: userDetail.remark,
+    });
+
+    await syncCompanyName();
+  } catch (error) {
+    console.error('获取用户详情失败:', error);
+  }
+}
+
+/**
+ * 提交表单
+ */
+async function handleSubmit() {
+  const results = await Promise.all(
+    sectionFormApis.map((api) => api.validate()),
+  );
+  if (results.some(({ valid }) => !valid)) return;
+  const values = await getAllFormValues();
+
+  // 验证至少选择一个组织
+  if (selectedOrganizations.value.length === 0) {
+    message.error(
+      $t('system.user.organizationRequired') || '请至少选择一个组织',
+    );
+    return;
+  }
+
+  // 验证最多一个默认组织
+  const defaultCount = selectedOrganizations.value.filter(
+    (org) => org.default,
+  ).length;
+  if (defaultCount > 1) {
+    message.error(
+      $t('system.user.onlyOneDefaultOrganization') ||
+        '最多只能设置一个默认组织',
+    );
+    return;
+  }
+
+  // 构建提交数据
+  const submitData: SystemUserAdminApi.UserInAdminInputDto = {
+    userName: values.userName,
+    nickName: values.nickName,
+    emailAddress: values.emailAddress,
+    phoneNumber: values.phoneNumber,
+    isActive: values.isActive,
+    status: values.status,
+    roleIds: values.roleIds,
+    avatar: normalizeAvatarSubmitValue(values.avatar, formData.value?.avatar),
+    organizations: selectedOrganizations.value, // 使用新的organizations字段
+    userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
+    enName: values.enName || undefined,
+    qq: values.qq || undefined,
+    employeeID: values.employeeID || undefined,
+    gender: values.gender ?? null,
+    enable: values.enable,
+    idNumber: values.idNumber || undefined,
+    remark: values.remark || undefined,
+    emailPwd: values.emailPwd || undefined,
+    receiveAddrPort: values.receiveAddrPort || undefined,
+    sendAddrPort: values.sendAddrPort || undefined,
+    officeTel: values.officeTel || undefined,
+    senderDisplayName: values.senderDisplayName || undefined,
+    shouldChangePasswordOnNextLogin: values.shouldChangePasswordOnNextLogin,
+  };
+
+  if (!isEdit.value && values.password) {
+    submitData.password = values.password;
+  }
+
+  if (editId.value != null) {
+    submitData.id = editId.value;
+  }
+
+  submitting.value = true;
+  try {
+    const userId = await createOrUpdateUserWithDataPermission(submitData);
+    message.success($t('ui.actionMessage.operationSuccess'));
+    markListShouldRefresh('SystemUser');
+    await syncSnapshot();
+    // 新建成功后关闭当前新建页签，根据返回的用户id跳转到该用户的编辑页
+    if (!isEdit.value) {
+      const createTabKey = route.fullPath;
+      if (userId != null) {
+        router.push(`/system/user/edit/${userId}`);
+      } else {
+        router.push('/system/user');
+      }
+      await closeTabByKey(createTabKey);
+    }
+  } catch {
+    // 错误已由请求拦截器统一处理
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/**
+ * 返回用户列表
+ */
+function handleBack() {
+  router.push('/system/user');
+}
+
+// ===== 未保存拦截 =====
+const formSnapshot = ref<null | string>(null);
+
+async function buildFormSnapshot() {
+  const values = await getAllFormValues();
+  return JSON.stringify({
+    selectedOrganizations: selectedOrganizations.value,
+    values,
+  });
+}
+
+async function syncSnapshot() {
+  await nextTick();
+  formSnapshot.value = await buildFormSnapshot();
+}
+
+async function isFormDirty() {
+  if (!formSnapshot.value) return false;
+  return (await buildFormSnapshot()) !== formSnapshot.value;
+}
+
+// 独立新建页时自行拦截未保存；嵌入编辑页时由编辑页统一判断
+useUnsavedGuard({
+  enabled: () => !props.embedded,
+  isDirty: isFormDirty,
 });
 
-const getModalTitle = computed(() => {
-  return formData.value?.id
-    ? $t('common.edit') + $t('system.user.name')
-    : $t('common.create') + $t('system.user.name');
+defineExpose({ isFormDirty });
+
+onMounted(async () => {
+  await ensureOrgTree();
+  if (editId.value != null) {
+    await loadUserDetail(editId.value);
+  }
+  await syncSnapshot();
 });
 </script>
 
 <template>
-  <Modal :title="getModalTitle" class="w-[900px]">
-    <div class="mx-4">
-      <Form />
-
-      <!-- 多组织选择区域 -->
-      <div class="mt-4 rounded border p-3">
-        <div class="mb-3 font-medium">
-          {{ $t('system.user.organizations') || '所属组织' }}
+  <component
+    :is="props.embedded ? 'div' : Page"
+    v-bind="props.embedded ? {} : { autoContentHeight: true }"
+  >
+    <div class="user-basic-layout">
+      <!-- 基础信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <FileText class="size-4" />
+            {{ $t('system.user.sectionBasicInfo') }}
+          </span>
+          <Space>
+            <Button v-if="!props.embedded" @click="handleBack">
+              {{ $t('common.back') }}
+            </Button>
+            <Button
+              type="primary"
+              :loading="submitting"
+              class="flex items-center justify-center"
+              @click="handleSubmit"
+            >
+              <Save class="mr-1 size-4" />
+              {{ $t('common.save') }}
+            </Button>
+          </Space>
         </div>
+        <div class="user-section__body">
+          <BasicForm />
+        </div>
+      </section>
 
-        <!-- 已选组织展示 -->
-        <div v-if="selectedOrganizations.length > 0" class="mb-3">
-          <div class="mb-2 text-sm text-gray-600">
-            {{ $t('system.user.selectedOrganizations') || '已选组织' }}
-            <span class="ml-1 text-xs text-gray-400"
-              >（点击"设为默认"指定默认组织）</span
-            >
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <Tag
-              v-for="org in selectedOrganizations"
-              :key="org.id"
-              closable
-              :color="org.default ? 'blue' : 'default'"
-              class="text-sm"
-              @close="removeOrg(org.id)"
-            >
-              <div class="flex min-w-0 items-center gap-2">
-                <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
-                <template v-if="!org.default">
-                  <Radio
-                    :checked="false"
-                    size="small"
-                    class="ml-1"
-                    @click.stop="setDefaultOrg(org.id)"
+      <!-- 联系信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:contacts-outline" class="size-4" />
+            {{ $t('system.user.sectionContactInfo') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <ContactForm />
+        </div>
+      </section>
+
+      <!-- 用户属性 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:account-tag-outline" class="size-4" />
+            {{ $t('system.user.userAttribute') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <AttributeForm />
+        </div>
+      </section>
+
+      <!-- 个人邮箱信息 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:email-outline" class="size-4" />
+            {{ $t('system.user.sectionEmailInfo') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <EmailForm />
+        </div>
+      </section>
+
+      <!-- 备注 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:note-text-outline" class="size-4" />
+            {{ $t('system.user.remark') }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <RemarkForm />
+        </div>
+      </section>
+
+      <!-- 所属组织 -->
+      <section class="user-section">
+        <div class="user-section__header">
+          <span class="user-section__title">
+            <IconifyIcon icon="mdi:file-tree-outline" class="size-4" />
+            {{ $t('system.user.organizations') }}
+          </span>
+          <span class="user-section__tip">
+            {{
+              $t('system.user.organizationSelectorTip') ||
+              '勾选组织进行选择，点击"设为默认"指定默认组织（最多一个）'
+            }}
+          </span>
+        </div>
+        <div class="user-section__body">
+          <!-- 已选组织展示 -->
+          <div v-if="selectedOrganizations.length > 0" class="mb-3">
+            <div class="mb-2 text-sm text-gray-600">
+              {{ $t('system.user.selectedOrganizations') || '已选组织' }}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Tag
+                v-for="org in selectedOrganizations"
+                :key="org.id"
+                closable
+                :color="org.default ? 'blue' : 'default'"
+                class="text-sm"
+                @close="removeOrg(org.id)"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
+                  <template v-if="!org.default">
+                    <Radio
+                      :checked="false"
+                      size="small"
+                      class="ml-1"
+                      @click.stop="setDefaultOrg(org.id)"
+                    >
+                      {{ $t('system.user.setDefault') || '设为默认' }}
+                    </Radio>
+                  </template>
+                  <span
+                    v-else
+                    class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
                   >
-                    {{ $t('system.user.setDefault') || '设为默认' }}
-                  </Radio>
-                </template>
-                <span
-                  v-else
-                  class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
-                >
-                  ✓ {{ $t('system.user.isDefault') || '默认' }}
-                </span>
-              </div>
-            </Tag>
+                    ✓ {{ $t('system.user.isDefault') || '默认' }}
+                  </span>
+                </div>
+              </Tag>
+            </div>
+          </div>
+
+          <!-- 组织树选择器 -->
+          <div
+            class="max-h-[400px] overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2"
+          >
+            <Tree
+              v-model:expanded-keys="expandedKeys"
+              :tree-data="organizationTreeData"
+              :field-names="{
+                title: 'displayName',
+                key: 'id',
+                children: 'children',
+              }"
+              checkable
+              :check-strictly="true"
+              :checked-keys="checkedOrgKeys"
+              block-node
+              @check="handleTreeCheck"
+            />
           </div>
         </div>
-
-        <!-- 组织树选择器 -->
-        <div
-          class="max-h-[400px] overflow-y-auto rounded border bg-gray-50 p-2"
-        >
-          <Tree
-            v-model:expanded-keys="expandedKeys"
-            :tree-data="organizationTreeData"
-            :field-names="{
-              title: 'displayName',
-              key: 'id',
-              children: 'children',
-            }"
-            checkable
-            :check-strictly="true"
-            :checked-keys="checkedOrgKeys"
-            block-node
-            @check="handleTreeCheck"
-          />
-        </div>
-
-        <!-- 提示信息 -->
-        <div class="mt-2 text-xs text-gray-500">
-          {{
-            $t('system.user.organizationSelectorTip') ||
-            '勾选组织进行选择，点击"设为默认"指定默认组织（最多一个）'
-          }}
-        </div>
-      </div>
+      </section>
     </div>
-  </Modal>
+  </component>
 </template>
 
-<style scoped>
-.border {
-  border: 1px solid #d9d9d9;
+<style scoped lang="scss">
+.user-basic-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
 }
 
-.rounded {
-  border-radius: 4px;
+.user-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+}
+
+.user-section__header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.user-section__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.user-section__tip {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.user-section__body {
+  padding: 12px 18px 4px;
 }
 </style>
