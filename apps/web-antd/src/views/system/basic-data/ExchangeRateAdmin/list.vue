@@ -18,6 +18,7 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { initCurrencyCache, useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
+import SyncFeeRate from './modules/sync-fee-rate.vue';
 
 // 初始化币种缓存
 onMounted(() => {
@@ -29,12 +30,21 @@ const [FormDrawer, formDrawerApi] = useVbenDrawer({
   destroyOnClose: true,
 });
 
+const [SyncDrawer, syncDrawerApi] = useVbenDrawer({
+  connectedComponent: SyncFeeRate,
+  destroyOnClose: true,
+});
+
 const handleCreate = () => {
   formDrawerApi.setData(null).open();
 };
 
 const handleEdit = (row: ExchangeRateAdminApi.ExchangeRateDto) => {
   formDrawerApi.setData({ id: row.id }).open();
+};
+
+const handleSyncFeeRate = (row: ExchangeRateAdminApi.ExchangeRateDto) => {
+  syncDrawerApi.setData(row).open();
 };
 
 const handleDelete = async (row: ExchangeRateAdminApi.ExchangeRateDto) => {
@@ -69,6 +79,10 @@ const handleActionClick = ({
       handleEdit(row);
       break;
     }
+    case 'syncFeeRate': {
+      handleSyncFeeRate(row);
+      break;
+    }
   }
 };
 
@@ -88,12 +102,14 @@ const [Grid, gridApi] = useVbenVxeGrid<ExchangeRateAdminApi.ExchangeRateDto>({
     proxyConfig: {
       ajax: {
         query: createPagedListQuery(getExchangeRatePagedList, {
-          afterFetch: async (tmp) => ({
+          afterFetch: async (tmp: any) => ({
             ...tmp,
-            items: tmp.items.map((item) => ({
-              ...item,
-              _rowKey: `exchangeRate_${item.id}_${Date.now()}`,
-            })),
+            items: (tmp.items as ExchangeRateAdminApi.ExchangeRateDto[]).map(
+              (item) => ({
+                ...item,
+                _rowKey: `exchangeRate_${item.id}_${Date.now()}`,
+              }),
+            ),
           }),
         }),
       },
@@ -115,6 +131,7 @@ const handleRefresh = () => {
 <template>
   <Page auto-content-height>
     <FormDrawer @success="handleRefresh" />
+    <SyncDrawer @success="handleRefresh" />
     <Grid :table-title="$t('system.basicData.exchangeRate.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="handleCreate">
