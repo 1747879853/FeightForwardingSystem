@@ -383,6 +383,11 @@ export namespace PaymentApplicationAdminApi {
     recSettlementStatus?: number | null;
     /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
     paySettlementStatus?: number | null;
+    /**
+     * 费用按业务分组。详情四个字段都有值；
+     * 列表若下发则组内通常只有 `transportOrder`（与审批任务列表同口径）。
+     */
+    payAppFeeBySeaExportGroup?: PayAppFeeAndSeaExportDto[];
   }
 
   /** 付费申请列表 DTO（用于付费结算选择列表） */
@@ -940,7 +945,6 @@ export namespace PaymentApplicationAdminApi {
 
   /** 付费申请详情 DTO */
   export interface PaymentApplicationDetailDto extends PaymentApplicationDto {
-    payAppFeeBySeaExportGroup?: PayAppFeeAndSeaExportDto[];
     attachmentGroup?: AttachmentGroupDto[];
   }
 

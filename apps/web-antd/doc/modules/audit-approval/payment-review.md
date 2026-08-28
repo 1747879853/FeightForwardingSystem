@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-08-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,6 +23,7 @@ last_updated: 2026-08-19
 # 2. 功能与操作说明 (Features & Operations)
 
 - **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。
+- **提单号列：** 从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum` 保序去重后逗号拼接；一组付费申请可跨多票。组内金额字段恒为 `null`，不要拿来展示。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示「{币别}申请合计」（原币/固定币别分口径，与付款申请列表一致）；默认插在「结算对象」后；列配置仅暴露「申请合计」锚点。
 - **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示已上传文件（只读预览）。
 - **费用合计展示：** 原币多币别时以紧凑列表展示（币别+金额一行，银行信息单行缩略，悬停看全量）；卡片底部另展示该结算对象「应收未结算」（按币别，橙色区，与本申请金额分开）；合计区按内容限高，避免挤占附件区。
@@ -56,6 +57,7 @@ last_updated: 2026-08-19
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
+| **提单号** | 本申请涉及业务的主提单号，多票逗号拼接。 | 列表 `PayAppTaskListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.mblNum` | **触发/依赖：** 空数组兜底 `?? []`；trim 后跳过空值并保序去重。 | 组内 `currencyGroup`/`totalPayPrice`/`totalReceivePrice` 恒为 null，金额用行根字段。 |
 | **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空 |
 | **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 无合法状态行时提示，不发请求 |
 | **应收未结算** | 该行结算对象已审核通过的应收费用未结算合计（原币、按币别）。展示在右侧费用合计卡片底部，不进列表列。 | 列表 `PayAppTaskListAsync` → `settlementReceivableGroup[]`（随选中行传入详情面板） | **触发/依赖：** 点击列表行后回填；与本申请 `currencyGroup` 无关；空数组兜底 `?? []`。 | 已结清币别不出现；无欠款显示「无欠款」。不要当成「本申请可结算余额」。 |
@@ -77,10 +79,13 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 5：应收未结算 ≠ 申请合计]** `settlementReceivableGroup` 是结算对象维度的应收欠款总览；`currencyGroup` 是本申请申请金额。两列分开展示，禁止拼到同一套动态币别列。
 
+> [!IMPORTANT] **[卡点 6：业务分组与行根金额同名不同层]** 列表 `payAppFeeBySeaExportGroup` 只填 `transportOrder`。组内 `currencyGroup` / `totalPayPrice` / `totalReceivePrice` 恒为 `null`；金额仍读 `PayAppTaskItemDto` 根上的同名字段。提单号只取 `transportOrder.mblNum`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-28 | `Feature` | 审批列表新增「提单号」列：从 `payAppFeeBySeaExportGroup` 取各票 `mblNum`，逗号拼接。 | 对接 `PayAppTaskListAsync` 新增业务分组；组内金额恒为 null，勿与行根 `currencyGroup` 混用。详见 `changelogs/change-log-2026-08-28-payment-review-list-mbl-nums.md`。 |
 | 2026-08-19 | `Feature` | 右侧费用合计卡片展示结算对象「应收未结算」（TAPD 1000609）；列表不单开此列。 | 数据仍来自任务列表 `settlementReceivableGroup`，随选中行传入 `detail-panel`；与 `currencyGroup` 申请合计分开展示。详见 `changelogs/change-log-2026-08-19-payment-review-settlement-receivable.md`。 |
 | 2026-08-11 | `Feature` | 列表删除结算币别/应付总金额/应收总金额列；申请合计按原币与固定币别分口径，默认插在结算对象后。 | `calcRowAppliedTotal` + 动态锚点列；详见 `changelogs/change-log-2026-08-11-payment-review-list-applied-total-settlement.md`。 |
 | 2026-08-09 | `Fix` | 工具栏改为「通过 / 驳回 / 审核后驳回」：前两者走 `AuditAsync`（`success` 区分），后者走 `RejectAsync`；按任务状态启用与过滤提交。 | 原先「驳回」误调 `RejectAsync`。详见 `changelogs/change-log-2026-08-09-payment-review-audit-reject-api-align.md`。 |

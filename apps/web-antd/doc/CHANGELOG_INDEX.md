@@ -13,7 +13,11 @@
 
 ## 2026-08
 
+- [2026-08-29 付款申请列表新增提单号列](./changelogs/change-log-2026-08-29-payment-application-list-mbl-nums.md)
+- [2026-08-28 付费申请审批列表新增提单号列](./changelogs/change-log-2026-08-28-payment-review-list-mbl-nums.md)
+- [2026-08-28 海运进出口列表取消默认会计期间并按开船日期降序](./changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md)
 - [2026-08-28 公司组织编辑增加开票令牌 Token](./changelogs/change-log-2026-08-28-dept-company-invoice-access-token.md)
+- [2026-08-28 应收应付选中费用直接创建付费申请](./changelogs/change-log-2026-08-28-order-fee-create-payment-application.md)
 - [2026-08-28 小程序底栏「内部首页」改名为「监装」](./changelogs/change-log-2026-08-28-mp-tab-jianzhuang.md)
 - [2026-08-26 小程序列表详情按 Figma 还原视觉](./changelogs/change-log-2026-08-26-mp-figma-list-detail-style.md)
 - [2026-08-26 用户管理列表查询区改为一行 4 列](./changelogs/change-log-2026-08-26-system-user-query-four-columns.md)

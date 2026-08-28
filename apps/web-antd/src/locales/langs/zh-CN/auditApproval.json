@@ -62,6 +62,7 @@
   "paymentReview": {
     "title": "付费申请审批",
     "applicationNo": "申请单号",
+    "mblNum": "提单号",
     "settlementName": "结算对象",
     "settlementReceivableGroup": "应收未结算",
     "settlementReceivableEmpty": "无欠款",

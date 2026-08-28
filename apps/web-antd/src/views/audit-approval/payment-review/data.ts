@@ -7,6 +7,8 @@ import { $t } from '#/locales';
 import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { isSpecifiedCurrencyApplication } from '#/views/fee-management/add-fee-modal/data';
 
+import { formatPayAppMblNums } from '#/views/fee-management/payment-application/format-pay-app-mbl-nums';
+
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
 
 /** 列配置持久化 key（与 columnPersist.tableId 对应） */
@@ -314,6 +316,15 @@ function buildStaticColumns(): Array<Record<string, any>> {
       fixed: 'left',
       // 后端任务列表不支持按 ApplicationNo 排序
       sortable: false,
+    },
+    {
+      field: 'mblNums',
+      title: t('mblNum'),
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+        formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
     },
     {
       field: 'settlementName',

@@ -1,3 +1,5 @@
+import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
+
 import { requestClient } from '#/api/request';
 
 export namespace PaymentReviewAdminApi {
@@ -108,6 +110,12 @@ export namespace PaymentReviewAdminApi {
     currencyGroup?: CurrencyGroupDto[];
     /** 结算对象应收未结算（按币别）；无欠款为 `[]` */
     settlementReceivableGroup?: SettlementReceivableGroupDto[];
+    /**
+     * 该行付费申请涉及的业务票；组内只有 `transportOrder` 有值。
+     * 组内 `currencyGroup` / `totalPayPrice` / `totalReceivePrice` / `paymentApplicationItems` 恒为 null，
+     * 金额用本行根级字段；费用明细请调 `DetailAsync`。
+     */
+    payAppFeeBySeaExportGroup?: PaymentApplicationAdminApi.PayAppFeeAndSeaExportDto[];
     totalPayPrice?: number;
     totalReceivePrice?: number;
     id: string;
