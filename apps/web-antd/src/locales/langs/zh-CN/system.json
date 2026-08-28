@@ -458,6 +458,9 @@
         },
         "LoadingOrder": {
           "LoadingOrderNum": "监装工单号"
+        },
+        "CommissionOrder": {
+          "CommissionOrderNum": "提成编号"
         }
       }
     },

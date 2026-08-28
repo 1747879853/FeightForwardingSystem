@@ -14,6 +14,10 @@ export enum TaskType {
   PaymentApplication = 3,
   /** 业务联系单（与后端 FrightModule.PreOrder 同值） */
   PreOrder = 8,
+  SubmitClient = 90,
+  ModifyClient = 91,
+  DeleteClient = 92,
+  CommissionOrder = 10,
 }
 
 /** 通过方式 */
@@ -231,6 +235,10 @@ export function getTaskTypeOptions(): { label: string; value: TaskType }[] {
     { label: '费用变更', value: TaskType.ModifyOrderFee },
     { label: '付费申请', value: TaskType.PaymentApplication },
     { label: '业务联系单', value: TaskType.PreOrder },
+    { label: '提成申请', value: TaskType.CommissionOrder },
+    { label: '客户提交', value: TaskType.SubmitClient },
+    { label: '客户变更', value: TaskType.ModifyClient },
+    { label: '客户删除', value: TaskType.DeleteClient },
   ];
 }
 
