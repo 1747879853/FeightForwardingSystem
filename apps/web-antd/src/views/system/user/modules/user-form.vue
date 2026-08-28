@@ -604,15 +604,15 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
-    const result = await createOrUpdateUserWithDataPermission(submitData);
+    const userId = await createOrUpdateUserWithDataPermission(submitData);
     message.success($t('ui.actionMessage.operationSuccess'));
     markListShouldRefresh('SystemUser');
     await syncSnapshot();
-    // 新建成功后关闭当前新建页签，跳转到该用户的编辑页
+    // 新建成功后关闭当前新建页签，根据返回的用户id跳转到该用户的编辑页
     if (!isEdit.value) {
       const createTabKey = route.fullPath;
-      if (result.id != null) {
-        router.push(`/system/user/edit/${result.id}`);
+      if (userId != null) {
+        router.push(`/system/user/edit/${userId}`);
       } else {
         router.push('/system/user');
       }
