@@ -16,6 +16,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.BankStatement',
         'Admin.OrderFee.Lock',
         'Admin.ExchangeRate',
+        'Admin.CommissionOrder.Grant',
       ]),
     },
     name: 'SettlementManagement',
@@ -96,6 +97,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/settlement-management/invoice-issue/form.vue'),
+      },
+      {
+        path: 'commission-grant',
+        name: 'CommissionGrantList',
+        meta: {
+          icon: 'mdi:cash-multiple',
+          keepAlive: true,
+          title: $t('commissionOrder.menu.commissionGrant'),
+          authority: abpPageAuthority('Admin.CommissionOrder.Grant'),
+        },
+        component: () =>
+          import('#/views/settlement-management/commission-grant/index.vue'),
       },
       {
         meta: {

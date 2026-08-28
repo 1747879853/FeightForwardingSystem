@@ -141,6 +141,16 @@ export function useFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'InputNumber',
+      fieldName: 'commissionValue',
+      label: $t('system.basicData.exchangeRate.commissionValue'),
+      componentProps: {
+        min: 0,
+        precision: 6,
+        style: { width: '100%' },
+      },
+    },
+    {
+      component: 'InputNumber',
       fieldName: 'customValue',
       label: $t('system.basicData.exchangeRate.customValue'),
       componentProps: {
@@ -268,6 +278,11 @@ export function useColumns(
       minWidth: 100,
     },
     {
+      field: 'commissionValue',
+      title: $t('system.basicData.exchangeRate.commissionValue'),
+      minWidth: 100,
+    },
+    {
       field: 'customValue',
       title: $t('system.basicData.exchangeRate.customValue'),
       minWidth: 100,
@@ -327,14 +342,21 @@ export function useColumns(
           onClick: onActionClick,
         },
         name: 'CellOperation',
-        options: ['edit', 'delete'],
+        options: [
+          'edit',
+          'delete',
+          {
+            code: 'syncFeeRate',
+            text: $t('system.basicData.exchangeRate.syncFeeRate'),
+          },
+        ],
       },
       field: 'operation',
       fixed: 'right',
       headerAlign: 'center',
       showOverflow: false,
       title: $t('system.basicData.operation'),
-      width: 150,
+      width: 200,
     },
   ];
 }

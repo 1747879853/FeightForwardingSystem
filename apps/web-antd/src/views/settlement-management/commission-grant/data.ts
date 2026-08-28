@@ -1,11 +1,9 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { TaskStatus } from '#/api/audit-approval/payment-review-admin';
 
 import { CommissionOrderAdminApi } from '#/api/commission/commission-order-admin';
 import { $t } from '#/locales';
-import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import {
   formatAmount,
   formatDateTimeText,
@@ -14,22 +12,10 @@ import {
 } from '#/views/commission/data';
 
 /**
- * 提成审核页：搜索表单与列定义。
- * 列表走待我审核列表（从工作流反查当前登录人，不过数据权限），
- * 审核岗若用普通分页列表会漏掉该自己审的单子。
+ * 提成发放页：搜索表单与列定义。
+ * 列表复用提成单分页接口（销售与操作共用），提成状态默认筛选审核通过（只有审核通过的才能发放），
+ * 也可切换其它状态查看；发放与批量发放仅对审核通过的提成单生效。
  */
-
-/** 审核页行：提成单信息平铺 + 任务级字段（id 即提成单id，审核/驳回接口传它） */
-export type CommissionReviewRow = CommissionOrderAdminApi.CommissionOrderDto & {
-  /** 任务id，不是提成单id */
-  taskId: string;
-  /** 整个任务的状态 */
-  taskStatus?: null | TaskStatus;
-  /** 我这一级的状态，为空=还没轮到我或被或签置空 */
-  myStatus?: null | TaskStatus;
-};
-
-const t = (key: string) => $t(`auditApproval.commissionReview.${key}`);
 
 // ==================== 提成类型选项 ====================
 
@@ -46,18 +32,9 @@ export const getCommissionTypeOptions = () => [
   },
 ];
 
-export const getCommissionTypeLabel = (value?: null | number): string => {
-  if (value == null) return '-';
-  return (
-    getCommissionTypeOptions().find((o) => o.value === value)?.label ??
-    String(value)
-  );
-};
-
 // ==================== 搜索表单 ====================
 
-export function useCommissionReviewFormSchema(): VbenFormSchema[] {
-  const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
+export function useCommissionGrantFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
@@ -70,8 +47,7 @@ export function useCommissionReviewFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'UserSelect',
-      // 待我审核列表入参叫 commissionUserId，不叫 userId，避免与审核人混淆
-      fieldName: 'commissionUserId',
+      fieldName: 'userId',
       label: $t('commissionOrder.search.user'),
       componentProps: {
         allowClear: true,
@@ -81,7 +57,7 @@ export function useCommissionReviewFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'commissionType',
-      label: t('commissionType'),
+      label: $t('commissionOrder.detail.type'),
       componentProps: {
         allowClear: true,
         options: getCommissionTypeOptions(),
@@ -90,39 +66,13 @@ export function useCommissionReviewFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Select',
-      // 审核视角默认只看审核中的提成单，可手动清除查看全部（含审核通过以便审核后驳回）
-      defaultValue: Status.Submitted,
-      fieldName: 'commissionOrderStatus',
+      fieldName: 'status',
       label: $t('commissionOrder.search.status'),
+      // 默认审核通过：只有审核通过的才能发放，切换其它状态仅用于查看
+      defaultValue: CommissionOrderAdminApi.CommissionOrderStatus.Approved,
       componentProps: {
         allowClear: true,
         options: getStatusOptions(),
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'taskStatus',
-      label: $t('auditApproval.task.status'),
-      componentProps: {
-        allowClear: true,
-        options: getTaskStatusOptions().map(({ label, value }) => ({
-          label,
-          value,
-        })),
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'myStatus',
-      label: t('myStatus'),
-      componentProps: {
-        allowClear: true,
-        options: getTaskStatusOptions().map(({ label, value }) => ({
-          label,
-          value,
-        })),
         placeholder: $t('ui.placeholder.select'),
       },
     },
@@ -147,9 +97,9 @@ export function useCommissionReviewFormSchema(): VbenFormSchema[] {
 // ==================== 列定义 ====================
 
 /**
- * 提成审核页列定义（无操作列：详情由行双击打开，审核/驳回在表格上方工具栏批量操作）
+ * 提成发放页列定义（无操作列：详情由行双击打开，发放在表格上方工具栏）
  */
-export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionReviewRow>['columns'] {
+export function useCommissionGrantColumns(): VxeTableGridOptions<CommissionOrderAdminApi.CommissionOrderDto>['columns'] {
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     {
@@ -160,9 +110,15 @@ export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionRevi
     },
     {
       field: 'commissionType',
-      title: t('commissionType'),
+      title: $t('commissionOrder.detail.type'),
       minWidth: 100,
       cellRender: { name: 'CellTag', options: getCommissionTypeOptions() },
+    },
+    {
+      field: 'status',
+      title: $t('commissionOrder.columns.status'),
+      minWidth: 100,
+      cellRender: { name: 'CellTag', options: getStatusOptions() },
     },
     {
       field: 'accountDate',
@@ -175,19 +131,6 @@ export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionRevi
       title: $t('commissionOrder.columns.user'),
       minWidth: 100,
       formatter: ({ cellValue }) => cellValue?.nickName ?? '',
-    },
-    {
-      field: 'status',
-      title: $t('commissionOrder.columns.status'),
-      minWidth: 110,
-      cellRender: { name: 'CellTag', options: getStatusOptions() },
-    },
-    {
-      field: 'myStatus',
-      title: t('myStatus'),
-      minWidth: 110,
-      // 为空=还没轮到我或被或签置空，按状态筛会把这些单子漏掉，不传时后端照样返回
-      cellRender: { name: 'CellTag', options: getTaskStatusOptions() },
     },
     {
       field: 'commissionAmount',
@@ -223,27 +166,21 @@ export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionRevi
       align: 'right',
     },
     {
-      field: 'submitUserName',
-      title: $t('commissionOrder.columns.submitUser'),
+      field: 'auditUserName',
+      title: $t('commissionOrder.columns.auditUser'),
       minWidth: 100,
     },
     {
-      field: 'submitTime',
-      title: $t('commissionOrder.detail.submitTime'),
+      field: 'auditTime',
+      title: $t('commissionOrder.detail.auditTime'),
       minWidth: 160,
       formatter: ({ cellValue }) => formatDateTimeText(cellValue),
     },
     {
-      field: 'auditRemark',
-      title: $t('commissionOrder.detail.auditRemark'),
-      minWidth: 140,
-      showOverflow: true,
-    },
-    {
-      field: 'remark',
-      title: $t('commissionOrder.columns.remark'),
-      minWidth: 140,
-      showOverflow: true,
+      field: 'creationTime',
+      title: $t('commissionOrder.columns.creationTime'),
+      minWidth: 160,
+      formatter: 'formatDateTime',
     },
   ];
 }
