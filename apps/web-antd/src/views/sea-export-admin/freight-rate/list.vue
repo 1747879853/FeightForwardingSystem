@@ -917,7 +917,11 @@ onMounted(async () => {
       (module) => module.frightModule === FrightModule.SeFreiPrice,
     );
     if (freightRateModule && freightRateModule.fields) {
-      maskedFields.value = freightRateModule.fields.map((f) => f.propName);
+      // 只有 alwaysMasked = true（存在无条件规则）的字段才能整列隐藏；
+      // 条件规则（alwaysMasked = false）只能逐行判定，不能隐藏整列（见字段权限设计文档坑点 F8）
+      maskedFields.value = freightRateModule.fields
+        .filter((f) => f.alwaysMasked)
+        .map((f) => f.propName);
       console.log('[字段权限] 运价模块被屏蔽的字段:', maskedFields.value);
     } else {
       console.log('[字段权限] 运价模块没有屏蔽字段');

@@ -62,7 +62,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[vue]": {
-    "editor.defaultFormatter": "octref.vetur"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   // extensions
   "extensions.ignoreRecommendations": true,
@@ -238,5 +238,9 @@
     "rollup",
     "vitest"
   ],
-  "svn.ignoreMissingSvnWarning": true
+  "svn.ignoreMissingSvnWarning": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "modifications",
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000
 }

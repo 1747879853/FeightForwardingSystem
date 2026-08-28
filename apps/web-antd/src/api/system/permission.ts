@@ -74,6 +74,32 @@ export enum UserTablePermissionOperator {
   EndsWith = 8,
 }
 
+/** 字段权限条件屏蔽的比较操作符 */
+export enum PropMaskConditionOperator {
+  /** 等于 */
+  Equals = 0,
+  /** 不等于 */
+  NotEquals = 1,
+  /** 属于，value 为数组 */
+  In = 2,
+  /** 不属于，value 为数组 */
+  NotIn = 3,
+  /** 为空，不需要 value */
+  IsNull = 4,
+  /** 不为空，不需要 value */
+  IsNotNull = 5,
+  /** 大于 */
+  GreaterThan = 6,
+  /** 大于等于 */
+  GreaterThanOrEqual = 7,
+  /** 小于 */
+  LessThan = 8,
+  /** 小于等于 */
+  LessThanOrEqual = 9,
+  /** 字符串包含，不区分大小写 */
+  Contains = 10,
+}
+
 // ==================== 枚举选项定义 ====================
 
 /** 功能类型选项 */
@@ -117,6 +143,21 @@ export const OperatorOptions = [
   { label: '小于等于', value: UserTablePermissionOperator.LessThanOrEqual },
   { label: '开头包含', value: UserTablePermissionOperator.StartsWith },
   { label: '结尾包含', value: UserTablePermissionOperator.EndsWith },
+];
+
+/** 字段权限条件屏蔽操作符选项 */
+export const PropMaskOperatorOptions = [
+  { label: '等于', value: PropMaskConditionOperator.Equals },
+  { label: '不等于', value: PropMaskConditionOperator.NotEquals },
+  { label: '属于', value: PropMaskConditionOperator.In },
+  { label: '不属于', value: PropMaskConditionOperator.NotIn },
+  { label: '为空', value: PropMaskConditionOperator.IsNull },
+  { label: '不为空', value: PropMaskConditionOperator.IsNotNull },
+  { label: '大于', value: PropMaskConditionOperator.GreaterThan },
+  { label: '大于等于', value: PropMaskConditionOperator.GreaterThanOrEqual },
+  { label: '小于', value: PropMaskConditionOperator.LessThan },
+  { label: '小于等于', value: PropMaskConditionOperator.LessThanOrEqual },
+  { label: '包含', value: PropMaskConditionOperator.Contains },
 ];
 
 // ==================== 类型定义 ====================
@@ -245,6 +286,12 @@ export namespace SystemPermissionApi {
     roleId?: number;
     frightModule: FrightModule;
     propName: string;
+    /** 条件表达式 JSON 字符串，为空表示无条件屏蔽 */
+    conditionJson?: string;
+    /** 规则描述 */
+    description?: string;
+    /** 是否带条件（后端计算，等价于 conditionJson 非空） */
+    isConditional?: boolean;
     creationTime?: string;
   }
 
@@ -254,6 +301,10 @@ export namespace SystemPermissionApi {
     roleId?: number;
     frightModule: FrightModule;
     propName: string;
+    /** 条件表达式 JSON 字符串，为空表示无条件屏蔽 */
+    conditionJson?: string;
+    /** 规则描述 */
+    description?: string;
   }
 
   /** 字段权限编辑DTO */
@@ -263,6 +314,72 @@ export namespace SystemPermissionApi {
     roleId?: number;
     frightModule: FrightModule;
     propName: string;
+    /** 条件表达式 JSON 字符串，为空表示无条件屏蔽 */
+    conditionJson?: string;
+    /** 规则描述 */
+    description?: string;
+  }
+
+  /** 字段权限条件表达式叶子节点 */
+  export interface PropMaskConditionLeaf {
+    /** 判据属性名 */
+    prop: string;
+    /** 比较操作符，提交时枚举名或数字都认，读取时统一是枚举名 */
+    op: PropMaskConditionOperator | string;
+    /** 比较值，In/NotIn 必须是数组，IsNull/IsNotNull 不需要 */
+    value?: any;
+    /** 判据展示名，纯回显，不传后端兜底 */
+    showName?: string;
+    /** 比较值展示文本，纯回显，与 value 按下标一一对应，value 是数组时它也是数组 */
+    showValue?: string | string[];
+  }
+
+  /** 字段权限条件表达式节点（叶子或分组） */
+  export type PropMaskCondition =
+    | PropMaskConditionGroup
+    | PropMaskConditionLeaf;
+
+  /** 字段权限条件表达式分组节点 */
+  export interface PropMaskConditionGroup {
+    /** and 或 or，缺省 and */
+    logic?: 'and' | 'or';
+    /** 子节点，有值即视为分组节点 */
+    items: PropMaskCondition[];
+  }
+
+  /** 字段权限条件判据候选字段DTO */
+  export interface PropMaskConditionSourceDto {
+    /** 填到条件表达式的 prop 里 */
+    propName: string;
+    /** 展示名 */
+    showName: string;
+    /** 字段类型分类 */
+    dataType: 'bool' | 'datetime' | 'enum' | 'guid' | 'number' | 'string';
+    /** 仅 dataType 为 enum 时有值，value 填到条件的 value 里 */
+    enumOptions?: Array<{
+      value: number | string;
+      name: string;
+      showName: string;
+    }>;
+  }
+
+  /** 屏蔽规则明细（按字段聚合） */
+  export interface PropPermissionFieldRuleDto {
+    description?: string;
+    conditionJson?: string;
+    isConditional: boolean;
+  }
+
+  /** 当前用户不可见字段（按模块分组） */
+  export interface PropPermissionModuleFieldsDto {
+    frightModule: number;
+    frightModuleName: string;
+    fields: Array<{
+      propName: string;
+      /** true 表示存在无条件规则，可整列隐藏；false 为条件规则，不能整列隐藏 */
+      alwaysMasked: boolean;
+      rules: PropPermissionFieldRuleDto[];
+    }>;
   }
 
   /** 分页列表响应 */
@@ -564,16 +681,34 @@ async function deletePropPermission(id: number) {
 }
 
 /**
+ * 获取字段权限详情
+ * @param id 规则记录的Id
+ */
+async function getPropPermissionDetail(id: number) {
+  return requestClient.get<SystemPermissionApi.UserPropPermissionDto>(
+    '/services/app/UserPropPermissionAdmin/DetailAsync',
+    { params: { id } },
+  );
+}
+
+/**
+ * 获取指定模块的可选判据字段列表（含类型分类与枚举可选值）
+ * @param frightModule 模块枚举值
+ */
+async function getPropPermissionConditionSources(frightModule: FrightModule) {
+  return requestClient.get<SystemPermissionApi.PropMaskConditionSourceDto[]>(
+    '/services/app/UserPropPermissionAdmin/GetConditionSourcesAsync',
+    { params: { frightModule } },
+  );
+}
+
+/**
  * 获取当前用户不可见字段列表
  */
 async function getCurrentUserMaskedFields() {
-  return requestClient.get<
-    Array<{
-      frightModule: number;
-      frightModuleName: string;
-      fields: Array<{ propName: string; description: string }>;
-    }>
-  >('/services/app/UserPropPermissionAdmin/GetCurrentUserMaskedFieldsAsync');
+  return requestClient.get<SystemPermissionApi.PropPermissionModuleFieldsDto[]>(
+    '/services/app/UserPropPermissionAdmin/GetCurrentUserMaskedFieldsAsync',
+  );
 }
 
 /**
@@ -581,15 +716,10 @@ async function getCurrentUserMaskedFields() {
  * @param userId 用户ID
  */
 async function getUserMaskedFields(userId: number) {
-  return requestClient.get<
-    Array<{
-      frightModule: number;
-      frightModuleName: string;
-      fields: Array<{ propName: string; description: string }>;
-    }>
-  >('/services/app/UserPropPermissionAdmin/GetUserMaskedFieldsAsync', {
-    params: { userId },
-  });
+  return requestClient.get<SystemPermissionApi.PropPermissionModuleFieldsDto[]>(
+    '/services/app/UserPropPermissionAdmin/GetUserMaskedFieldsAsync',
+    { params: { userId } },
+  );
 }
 
 export {
@@ -617,6 +747,8 @@ export {
   deletePropPermission,
   editPropPermission,
   getCurrentUserMaskedFields,
+  getPropPermissionConditionSources,
+  getPropPermissionDetail,
   getPropPermissionList,
   getUserMaskedFields,
 };
