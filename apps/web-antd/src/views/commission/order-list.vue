@@ -238,17 +238,23 @@ const mapParams = (formValues: Record<string, any>) => {
   };
 };
 
-const fetchList = (params: Record<string, any>) =>
-  getCommissionOrderPagedList({
+const fetchList = async (params: Record<string, any>) => {
+  const result = await getCommissionOrderPagedList({
     ...params,
     commissionType: commissionType.value,
   });
+  // 数据刷新（查询/刷新/翻页）后勾选会被清空，同步清空选中行，避免工具栏按钮状态与实际勾选不一致
+  selectedRows.value = [];
+  return result;
+};
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
   gridEvents: {
     cellDblclick: handleRowDblclick,
     checkboxAll: syncSelectedRows,
     checkboxChange: syncSelectedRows,
+    // trigger: 'row' 下单击行只触发 current-change 不触发 checkbox-change，需同步，否则按钮状态不跟随勾选
+    currentRowChange: syncSelectedRows,
   },
   formOptions: {
     collapsed: true,

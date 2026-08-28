@@ -2,7 +2,8 @@
   "menu": {
     "commissionManagement": "Commission",
     "salesCommission": "Sales Commission",
-    "operationCommission": "Operation Commission"
+    "operationCommission": "Operation Commission",
+    "commissionGrant": "Commission Grant"
   },
   "search": {
     "keyword": "Keyword",
@@ -192,6 +193,14 @@
     "rejectSuccess": "Rejected",
     "grantSuccess": "Granted",
     "deleteSuccess": "Deleted",
-    "batchPartialFailed": "Batch finished: {success} succeeded, {failed} failed"
+    "batchPartialFailed": "Batch finished: {success} succeeded, {failed} failed",
+    "batchGrant": "Batch Grant",
+    "batchGrantTitle": "Confirm Batch Grant",
+    "batchGrantHint": "{count} commission orders will be granted at their full final amounts, totaling {amount}. Batch grant cannot be undone. Please enter a grant remark.",
+    "batchGrantRemarkPlaceholder": "Required, up to 1024 characters",
+    "batchGrantRemarkRequired": "Grant remark is required for batch grant",
+    "batchGrantNoSelection": "Please select commission orders to grant",
+    "batchGrantApprovedOnly": "Only approved commission orders can be granted. Please uncheck orders in other statuses",
+    "batchGrantSuccess": "Batch granted: {count} orders, total amount {amount}"
   }
 }

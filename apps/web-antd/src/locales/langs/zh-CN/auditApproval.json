@@ -92,6 +92,7 @@
   "commissionReview": {
     "title": "提成审核",
     "commissionType": "提成类型",
+    "myStatus": "我的审核状态",
     "auditPass": "通过",
     "selectReject": "驳回",
     "postReject": "审核后驳回",
@@ -101,7 +102,8 @@
     "noPostRejectable": "请选择审核中或审核通过的提成单",
     "workflow": "审批流程",
     "workflowSelectionRequired": "请勾选一条提成单查看审批流程",
-    "batchPartialFailed": "{success}条成功，{failed}条失败"
+    "batchAuditSuccess": "批量审核完成，共处理 {count} 张",
+    "batchRejectSuccess": "批量驳回完成，共处理 {count} 张"
   },
   "creatorUserName": "创建人",
   "taskItemCount": "任务项数量",

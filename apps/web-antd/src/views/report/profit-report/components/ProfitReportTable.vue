@@ -364,6 +364,9 @@ const hotSettings = computed(() => {
     // visibleColumns.length - fixedColumnsLeft,
     // ),
 
+    // ✅ 合计行（最后一行）固定在底部，不参与列排序，排序后始终保持在最后一行
+    fixedRowsBottom: tableData.value.length > 0 ? 1 : 0,
+
     afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
       TH.style.backgroundColor = '#1890ff';
       TH.style.color = '#ffffff';

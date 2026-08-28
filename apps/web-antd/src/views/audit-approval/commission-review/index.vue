@@ -9,10 +9,10 @@ import dayjs from 'dayjs';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { TaskType } from '#/api/audit-approval/payment-review-admin';
 import {
-  auditCommissionOrder,
+  batchAuditCommissionOrder,
+  batchRejectCommissionOrder,
   CommissionOrderAdminApi,
-  getCommissionOrderPagedList,
-  rejectCommissionOrder,
+  getCommissionOrderTaskList,
 } from '#/api/commission/commission-order-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
@@ -20,6 +20,7 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import DetailModal from '#/views/commission/detail-modal.vue';
 
 import {
+  type CommissionReviewRow,
   useCommissionReviewColumns,
   useCommissionReviewFormSchema,
 } from './data';
@@ -44,7 +45,7 @@ const [DetailModalComp, detailModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const openDetail = (row: CommissionOrderAdminApi.CommissionOrderDto) => {
+const openDetail = (row: CommissionReviewRow) => {
   detailModalApi.setData({
     commissionType: row.commissionType,
     id: row.id,
@@ -55,18 +56,18 @@ const openDetail = (row: CommissionOrderAdminApi.CommissionOrderDto) => {
 // ==================== 选中行与状态判定 ====================
 
 /** 待审核：审核中才可审（通过/驳回） */
-const isPendingAudit = (row: CommissionOrderAdminApi.CommissionOrderDto) =>
+const isPendingAudit = (row: CommissionReviewRow) =>
   row.status === Status.Submitted;
 
 /** 可审核后驳回：审核中与审核通过都能驳（已发放的不可驳） */
-const canPostReject = (row: CommissionOrderAdminApi.CommissionOrderDto) =>
+const canPostReject = (row: CommissionReviewRow) =>
   row.status === Status.Approved || row.status === Status.Submitted;
 
-const selectedRows = ref<CommissionOrderAdminApi.CommissionOrderDto[]>([]);
+const selectedRows = ref<CommissionReviewRow[]>([]);
 
 const syncSelectedRows = () => {
   selectedRows.value = (gridApi.grid?.getCheckboxRecords?.() ??
-    []) as CommissionOrderAdminApi.CommissionOrderDto[];
+    []) as CommissionReviewRow[];
 };
 
 const hasPendingAuditSelection = computed(() =>
@@ -84,7 +85,7 @@ const handleRowDblclick = ({
   column,
 }: {
   column?: { type?: string };
-  row: CommissionOrderAdminApi.CommissionOrderDto;
+  row: CommissionReviewRow;
 }) => {
   if (column?.type === 'checkbox') {
     return;
@@ -121,54 +122,76 @@ const mapParams = (formValues: Record<string, any>) => {
   };
 };
 
-const [Grid, gridApi] =
-  useVbenVxeGrid<CommissionOrderAdminApi.CommissionOrderDto>({
-    formOptions: {
-      collapsed: true,
-      compact: true,
-      schema: useCommissionReviewFormSchema(),
-      showCollapseButton: true,
-      submitOnChange: true,
-      wrapperClass: 'grid-cols-6',
+/** 待我审核列表：提成单信息平铺为行，行 id 保持提成单id（审核/驳回接口传它）；任务级字段另存 */
+const mapTaskRow = (
+  task: CommissionOrderAdminApi.CommissionOrderTaskDto,
+): CommissionReviewRow => ({
+  ...task.commissionOrder,
+  taskId: task.id,
+  taskStatus: task.taskStatus,
+  myStatus: task.myStatus,
+});
+
+/** 数据刷新（查询/刷新/翻页）后勾选会被清空，同步清空选中行，避免工具栏按钮状态与实际勾选不一致 */
+const fetchList = async (params: Record<string, any>) => {
+  const result = await getCommissionOrderTaskList(params);
+  selectedRows.value = [];
+  return {
+    items: (result.items ?? []).map(mapTaskRow),
+    totalCount: result.totalCount ?? 0,
+  };
+};
+
+const [Grid, gridApi] = useVbenVxeGrid<CommissionReviewRow>({
+  formOptions: {
+    collapsed: true,
+    compact: true,
+    schema: useCommissionReviewFormSchema(),
+    showCollapseButton: true,
+    submitOnChange: true,
+    wrapperClass: 'grid-cols-6',
+  },
+  gridEvents: {
+    cellDblclick: handleRowDblclick,
+    checkboxAll: syncSelectedRows,
+    checkboxChange: syncSelectedRows,
+    // trigger: 'row' 下单击行只触发 current-change 不触发 checkbox-change，需同步，否则按钮状态不跟随勾选
+    currentRowChange: syncSelectedRows,
+  },
+  gridOptions: {
+    checkboxConfig: {
+      highlight: true,
+      // 点击整行即可勾选，便于批量审核与驳回
+      trigger: 'row',
     },
-    gridEvents: {
-      cellDblclick: handleRowDblclick,
-      checkboxAll: syncSelectedRows,
-      checkboxChange: syncSelectedRows,
+    columns: useCommissionReviewColumns(),
+    height: 'auto',
+    keepSource: true,
+    pagerConfig: {
+      enabled: true,
     },
-    gridOptions: {
-      checkboxConfig: {
-        highlight: true,
-        // 点击整行即可勾选，便于批量审核与驳回
-        trigger: 'row',
-      },
-      columns: useCommissionReviewColumns(),
-      height: 'auto',
-      keepSource: true,
-      pagerConfig: {
-        enabled: true,
-      },
-      proxyConfig: {
-        ajax: {
-          query: createPagedListQuery(getCommissionOrderPagedList, {
-            defaultSort: 'AccountDate DESC, CreationTime DESC',
-            mapParams,
-          }),
-        },
-      },
-      rowConfig: {
-        isCurrent: true,
-        isHover: true,
-        keyField: 'id',
-      },
-      toolbarConfig: {
-        custom: true,
-        export: false,
-        refresh: { code: 'query' },
-        zoom: true,
+    proxyConfig: {
+      ajax: {
+        query: createPagedListQuery(fetchList, {
+          // 待我审核列表默认按提交时间倒序，最新提上来的在前（后端默认 CreationTime DESC）
+          defaultSort: 'CreationTime DESC',
+          mapParams,
+        }),
       },
     },
-  });
+    rowConfig: {
+      isCurrent: true,
+      isHover: true,
+      keyField: 'id',
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: { code: 'query' },
+      zoom: true,
+    },
+  },
+});
 
 const reloadGrid = async () => {
   await gridApi.reload();
@@ -177,43 +200,25 @@ const reloadGrid = async () => {
 
 // ==================== 批量审核 ====================
 
-/** 逐单调用审核接口（后端只支持单条），失败的条数汇总提示 */
+/** 批量审核：全部校验通过才执行，有一张不满足就整批报错、一条都不改 */
 const batchAudit = async (success: boolean, remark: string, ids: string[]) => {
-  const results = await Promise.allSettled(
-    ids.map((id) =>
-      auditCommissionOrder({ id, remark: remark || undefined, success }),
-    ),
+  const result = await batchAuditCommissionOrder({
+    ids,
+    remark: remark || undefined,
+    success,
+  });
+  message.success(
+    t('batchAuditSuccess', { count: result?.count ?? ids.length }),
   );
-  const failedCount = results.filter((r) => r.status === 'rejected').length;
-  if (failedCount === 0) {
-    message.success($t('ui.actionMessage.operationSuccess'));
-  } else {
-    message.warning(
-      t('batchPartialFailed', {
-        failed: failedCount,
-        success: ids.length - failedCount,
-      }),
-    );
-  }
   await reloadGrid();
 };
 
-/** 逐单调用审核后驳回接口 */
+/** 批量审核后驳回：一批共用同一条驳回原因，全部校验通过才执行 */
 const batchReject = async (remark: string, ids: string[]) => {
-  const results = await Promise.allSettled(
-    ids.map((id) => rejectCommissionOrder({ id, remark })),
+  const result = await batchRejectCommissionOrder({ ids, remark });
+  message.success(
+    t('batchRejectSuccess', { count: result?.count ?? ids.length }),
   );
-  const failedCount = results.filter((r) => r.status === 'rejected').length;
-  if (failedCount === 0) {
-    message.success($t('ui.actionMessage.operationSuccess'));
-  } else {
-    message.warning(
-      t('batchPartialFailed', {
-        failed: failedCount,
-        success: ids.length - failedCount,
-      }),
-    );
-  }
   await reloadGrid();
 };
 
@@ -221,7 +226,7 @@ const openRemarkConfirm = (options: {
   danger?: boolean;
   emptyMessage: string;
   onConfirm: (remark: string, ids: string[]) => Promise<void>;
-  pickRows: () => CommissionOrderAdminApi.CommissionOrderDto[];
+  pickRows: () => CommissionReviewRow[];
   remarkRequired: boolean;
   title: string;
 }) => {

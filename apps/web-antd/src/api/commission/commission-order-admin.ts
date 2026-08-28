@@ -1,3 +1,7 @@
+import {
+  type PaymentReviewAdminApi,
+  TaskStatus,
+} from '#/api/audit-approval/payment-review-admin';
 import { requestClient } from '#/api/request';
 
 export namespace CommissionOrderAdminApi {
@@ -179,6 +183,60 @@ export namespace CommissionOrderAdminApi {
     accountDateEnd?: string;
   }
 
+  /** 待我审核列表查询入参（继承 TaskItemQueryDto，不过数据权限） */
+  export interface CommissionOrderTaskQueryDto {
+    /** 页码，从1开始，默认1 */
+    pageIndex?: number;
+    /** 每页条数，默认10 */
+    pageSize?: number;
+    /** 排序，默认 CreationTime DESC，最新提上来的在前 */
+    sorting?: string;
+    /** 我的审核状态，不传=全部（含我这一条为空的） */
+    myStatus?: TaskStatus;
+    /** 整个任务的状态，不传=全部 */
+    taskStatus?: TaskStatus;
+    /** 终审人，按任务上的终审人筛 */
+    auditUserId?: number;
+    /** 终审时间起 */
+    auditTimeStart?: string;
+    /** 终审时间止 */
+    auditTimeEnd?: string;
+    /** 审核意见，模糊匹配 */
+    remark?: string;
+    /** 关键字，模糊匹配提成单号或备注 */
+    keyword?: string;
+    /** 提成人（不叫 userId，避免与审核人混淆），不传=全部 */
+    commissionUserId?: number;
+    /** 提成类型，不传=全部 */
+    commissionType?: CommissionType;
+    /** 提成单状态，不传=全部 */
+    commissionOrderStatus?: CommissionOrderStatus;
+    /** 提成月起，只取年月，含当月 */
+    accountDateStart?: string;
+    /** 提成月止，只取年月，含当月 */
+    accountDateEnd?: string;
+  }
+
+  /** 待发放列表查询入参（只返回审核通过的单据，状态写死在后端，无状态字段） */
+  export interface CommissionOrderGrantQueryDto {
+    /** 页码，从1开始，默认1 */
+    pageIndex?: number;
+    /** 每页条数，默认10 */
+    pageSize?: number;
+    /** 排序，默认 AccountDate DESC, CreationTime DESC */
+    sorting?: string;
+    /** 关键字，模糊匹配提成单号或备注 */
+    keyword?: string;
+    /** 提成人，不传=全部 */
+    userId?: number;
+    /** 提成类型，不传=全部 */
+    commissionType?: CommissionType;
+    /** 提成月起，只取年月，含当月 */
+    accountDateStart?: string;
+    /** 提成月止，只取年月，含当月 */
+    accountDateEnd?: string;
+  }
+
   /** 提交审核 / 撤销提交入参 */
   export interface CommissionOrderSubmitDto {
     /** 提成单id */
@@ -200,6 +258,32 @@ export namespace CommissionOrderAdminApi {
     /** 提成单id */
     id: string;
     /** 驳回原因，必填，最长1024 */
+    remark: string;
+  }
+
+  /** 批量审核入参（一批共用同一个结论与同一条审核意见） */
+  export interface CommissionOrderBatchAuditDto {
+    /** 提成单id集合，至少一个，后端会去重 */
+    ids: string[];
+    /** 是否通过，一批共用同一个结论 */
+    success: boolean;
+    /** 审核意见，驳回时必填，最长1024，一批共用同一条 */
+    remark?: string;
+  }
+
+  /** 批量审核后驳回入参 */
+  export interface CommissionOrderBatchRejectDto {
+    /** 提成单id集合，至少一个，后端会去重 */
+    ids: string[];
+    /** 驳回原因，必填，最长1024，一批共用同一条 */
+    remark: string;
+  }
+
+  /** 批量发放入参（一律按各自应发金额全额发放，没有金额入参） */
+  export interface CommissionOrderBatchGrantDto {
+    /** 提成单id集合，至少一个，后端会去重 */
+    ids: string[];
+    /** 发放备注，必填，最长1024，一批共用同一条 */
     remark: string;
   }
 
@@ -488,6 +572,48 @@ export namespace CommissionOrderAdminApi {
     maxResultCount: number;
   }
 
+  /** 待我审核列表项（任务信息 + 提成单信息） */
+  export interface CommissionOrderTaskDto {
+    /** 任务id，不是提成单id */
+    id: string;
+    /** 整个任务的状态 */
+    taskStatus: TaskStatus;
+    /** 我这一级的状态，为空=还没轮到我或被或签置空 */
+    myStatus?: null | TaskStatus;
+    /** 逐级审批明细，按 Level 分组 */
+    taskItemWorkFlowInstance?: null | PaymentReviewAdminApi.WorkFlowInstanceDetailDto;
+    /** 终审人昵称 */
+    auditUserName?: null | string;
+    /** 终审时间 */
+    auditTime?: null | string;
+    /** 审核意见 */
+    remark?: null | string;
+    /** 任务创建人，即提交人 */
+    creatorUserName?: null | string;
+    /** 任务创建时间，即提交时间 */
+    creationTime?: null | string;
+    /** 提成单id，调审核/驳回接口用这个 */
+    commissionOrderId: string;
+    /** 提成单信息 */
+    commissionOrder: CommissionOrderDto;
+  }
+
+  /** 待我审核列表分页响应 */
+  export interface PagedListOfCommissionOrderTaskDto {
+    items: CommissionOrderTaskDto[];
+    totalCount: number;
+    skipCount?: number;
+    maxResultCount?: number;
+  }
+
+  /** 批量操作结果（批量审核/批量驳回/批量发放共用） */
+  export interface CommissionOrderBatchResultDto {
+    /** 实际处理的提成单数 */
+    count: number;
+    /** 本批应发金额合计，仅批量发放返回，其余两个恒为 0 */
+    totalAmount: number;
+  }
+
   // ---- 详情出参 ----
 
   /** 销售提成单详情 */
@@ -581,6 +707,32 @@ export const getCommissionOrderPagedList = (
 };
 
 /**
+ * 待我审核列表（从工作流实例明细反查当前登录人，不过数据权限）
+ * 审核岗必须用这个列表，不能用普通分页列表（会漏掉该我审的单子）
+ */
+export const getCommissionOrderTaskList = (
+  params: CommissionOrderAdminApi.CommissionOrderTaskQueryDto,
+) => {
+  return requestClient.get<CommissionOrderAdminApi.PagedListOfCommissionOrderTaskDto>(
+    `${API_PREFIX}/CommissionOrderTaskListAsync`,
+    { params },
+  );
+};
+
+/**
+ * 待发放列表（只返回审核通过的单据，状态写死在后端，不过数据权限）
+ * 发放岗必须用这个列表，发放完成的单据会从列表里消失
+ */
+export const getCommissionOrderGrantList = (
+  params: CommissionOrderAdminApi.CommissionOrderGrantQueryDto,
+) => {
+  return requestClient.get<CommissionOrderAdminApi.PagedListOfCommissionOrderDto>(
+    `${API_PREFIX}/CommissionOrderGrantListAsync`,
+    { params },
+  );
+};
+
+/**
  * 删除提成单（只有录入状态与驳回状态可以删）
  */
 export const deleteCommissionOrder = (id: string) => {
@@ -617,6 +769,18 @@ export const auditCommissionOrder = (
 };
 
 /**
+ * 批量审核（一批共用同一个结论与同一条审核意见，全部校验通过才执行）
+ */
+export const batchAuditCommissionOrder = (
+  data: CommissionOrderAdminApi.CommissionOrderBatchAuditDto,
+) => {
+  return requestClient.post<CommissionOrderAdminApi.CommissionOrderBatchResultDto>(
+    `${API_PREFIX}/BatchAuditAsync`,
+    data,
+  );
+};
+
+/**
  * 审核后驳回（审核中与审核通过都能驳，已发放完成的不可驳回）
  */
 export const rejectCommissionOrder = (
@@ -626,10 +790,34 @@ export const rejectCommissionOrder = (
 };
 
 /**
+ * 批量审核后驳回（一批共用同一条驳回原因，全部校验通过才执行）
+ */
+export const batchRejectCommissionOrder = (
+  data: CommissionOrderAdminApi.CommissionOrderBatchRejectDto,
+) => {
+  return requestClient.post<CommissionOrderAdminApi.CommissionOrderBatchResultDto>(
+    `${API_PREFIX}/BatchRejectAsync`,
+    data,
+  );
+};
+
+/**
  * 发放（只有审核通过的可发放，发放完成是终态）
  */
 export const grantCommissionOrder = (
   data: CommissionOrderAdminApi.CommissionOrderGrantDto,
 ) => {
   return requestClient.post<boolean>(`${API_PREFIX}/GrantAsync`, data);
+};
+
+/**
+ * 批量发放（一律按各自应发金额全额发放，没有金额入参；发放备注必填；全部校验通过才执行）
+ */
+export const batchGrantCommissionOrder = (
+  data: CommissionOrderAdminApi.CommissionOrderBatchGrantDto,
+) => {
+  return requestClient.post<CommissionOrderAdminApi.CommissionOrderBatchResultDto>(
+    `${API_PREFIX}/BatchGrantAsync`,
+    data,
+  );
 };
