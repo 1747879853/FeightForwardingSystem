@@ -191,6 +191,7 @@
     "auditSuccess": "审核完成",
     "rejectSuccess": "驳回成功",
     "grantSuccess": "发放成功",
-    "deleteSuccess": "删除成功"
+    "deleteSuccess": "删除成功",
+    "batchPartialFailed": "批量操作完成：{success} 条成功，{failed} 条失败"
   }
 }

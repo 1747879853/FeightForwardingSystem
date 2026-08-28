@@ -106,19 +106,10 @@ export function useCommissionReviewFormSchema(): VbenFormSchema[] {
 
 // ==================== 列定义 ====================
 
-type ReviewColumnContext = {
-  /** 操作列点击回调 */
-  onActionClick: (params: {
-    code: string;
-    row: CommissionOrderAdminApi.CommissionOrderDto;
-  }) => void;
-};
-
-export function useCommissionReviewColumns(
-  context: ReviewColumnContext,
-): VxeTableGridOptions<CommissionOrderAdminApi.CommissionOrderDto>['columns'] {
-  const { onActionClick } = context;
-  const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
+/**
+ * 提成审核页列定义（无操作列：详情由行双击打开，审核/驳回在表格上方工具栏批量操作）
+ */
+export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionOrderAdminApi.CommissionOrderDto>['columns'] {
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     {
@@ -143,7 +134,7 @@ export function useCommissionReviewColumns(
       field: 'user',
       title: $t('commissionOrder.columns.user'),
       minWidth: 100,
-      formatter: ({ cellValue }) => cellValue?.name ?? '',
+      formatter: ({ cellValue }) => cellValue?.nickName ?? '',
     },
     {
       field: 'status',
@@ -206,38 +197,6 @@ export function useCommissionReviewColumns(
       title: $t('commissionOrder.columns.remark'),
       minWidth: 140,
       showOverflow: true,
-    },
-    {
-      align: 'right',
-      cellRender: {
-        attrs: {
-          nameField: 'commissionOrderNum',
-          nameTitle: $t('commissionOrder.columns.orderNum'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          { code: 'detail', text: $t('commissionOrder.actions.detail') },
-          {
-            code: 'audit',
-            text: $t('commissionOrder.actions.audit'),
-            show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-              row.status === Status.Submitted,
-          },
-          {
-            code: 'reject',
-            text: $t('commissionOrder.actions.reject'),
-            show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-              row.status === Status.Submitted || row.status === Status.Approved,
-          },
-        ],
-      },
-      field: 'operation',
-      fixed: 'right',
-      headerAlign: 'center',
-      showOverflow: false,
-      title: $t('commissionOrder.columns.operation'),
-      width: 200,
     },
   ];
 }

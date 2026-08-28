@@ -191,6 +191,7 @@
     "auditSuccess": "Audit completed",
     "rejectSuccess": "Rejected",
     "grantSuccess": "Granted",
-    "deleteSuccess": "Deleted"
+    "deleteSuccess": "Deleted",
+    "batchPartialFailed": "Batch finished: {success} succeeded, {failed} failed"
   }
 }

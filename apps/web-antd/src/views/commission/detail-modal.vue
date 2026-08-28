@@ -124,7 +124,7 @@ const tickets = computed(() => detail.value?.tickets ?? []);
             {{ formatMonth(order.accountDate) }}
           </Descriptions.Item>
           <Descriptions.Item :label="$t('commissionOrder.detail.user')">
-            {{ order.user?.name ?? '-' }}
+            {{ order.user?.nickName ?? '-' }}
           </Descriptions.Item>
           <Descriptions.Item :label="$t('commissionOrder.detail.orgs')">
             {{ orgsText }}

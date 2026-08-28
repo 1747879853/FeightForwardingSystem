@@ -17,7 +17,6 @@ import {
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
-import ActionModal from '#/views/commission/action-modal.vue';
 import DetailModal from '#/views/commission/detail-modal.vue';
 
 import {
@@ -45,29 +44,12 @@ const [DetailModalComp, detailModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const [ActionModalComp, actionModalApi] = useVbenModal({
-  connectedComponent: ActionModal,
-  destroyOnClose: true,
-});
-
 const openDetail = (row: CommissionOrderAdminApi.CommissionOrderDto) => {
   detailModalApi.setData({
     commissionType: row.commissionType,
     id: row.id,
   });
   detailModalApi.open();
-};
-
-const openAction = (
-  row: CommissionOrderAdminApi.CommissionOrderDto,
-  mode: 'audit' | 'reject',
-) => {
-  actionModalApi.setData({
-    finalAmount: row.finalAmount,
-    id: row.id,
-    mode,
-  });
-  actionModalApi.open();
 };
 
 // ==================== 选中行与状态判定 ====================
@@ -95,33 +77,7 @@ const hasPostRejectSelection = computed(() =>
   selectedRows.value.some(canPostReject),
 );
 
-// ==================== 行操作 ====================
-
-const onActionClick = ({
-  code,
-  row,
-}: {
-  code: string;
-  row: CommissionOrderAdminApi.CommissionOrderDto;
-}) => {
-  switch (code) {
-    case 'audit': {
-      openAction(row, 'audit');
-      break;
-    }
-    case 'detail': {
-      openDetail(row);
-      break;
-    }
-    case 'reject': {
-      openAction(row, 'reject');
-      break;
-    }
-    default: {
-      break;
-    }
-  }
-};
+// ==================== 行双击打开详情 ====================
 
 const handleRowDblclick = ({
   row,
@@ -186,7 +142,7 @@ const [Grid, gridApi] =
         // 点击整行即可勾选，便于批量审核与驳回
         trigger: 'row',
       },
-      columns: useCommissionReviewColumns({ onActionClick }),
+      columns: useCommissionReviewColumns(),
       height: 'auto',
       keepSource: true,
       pagerConfig: {
@@ -408,6 +364,5 @@ const handleViewWorkflow = () => {
     </Grid>
 
     <DetailModalComp />
-    <ActionModalComp @success="reloadGrid" />
   </Page>
 </template>

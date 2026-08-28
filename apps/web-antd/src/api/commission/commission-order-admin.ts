@@ -106,7 +106,7 @@ export namespace CommissionOrderAdminApi {
   /** 用户简易对象 */
   export interface UserSimpleDto {
     id?: number;
-    name?: string | null;
+    nickName?: string | null;
   }
 
   /** 组织简易对象 */

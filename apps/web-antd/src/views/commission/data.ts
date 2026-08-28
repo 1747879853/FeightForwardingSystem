@@ -207,22 +207,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
 
 // ==================== 列表列定义 ====================
 
-type ListColumnContext = {
-  /** 是否拥有权限码 */
-  hasCode: (code: string) => boolean;
-  /** 操作列点击回调 */
-  onActionClick: (params: {
-    code: string;
-    row: CommissionOrderAdminApi.CommissionOrderDto;
-  }) => void;
-};
-
-export function useListColumns(
-  context: ListColumnContext,
-): VxeTableGridOptions<CommissionOrderAdminApi.CommissionOrderDto>['columns'] {
-  const { hasCode, onActionClick } = context;
-  const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
+/**
+ * 提成单列表列定义（无操作列：详情由行双击打开，其余操作在表格上方工具栏）
+ */
+export function useListColumns(): VxeTableGridOptions<CommissionOrderAdminApi.CommissionOrderDto>['columns'] {
   return [
+    { type: 'checkbox', width: 50, fixed: 'left' },
     {
       field: 'commissionOrderNum',
       title: $t('commissionOrder.columns.orderNum'),
@@ -239,7 +229,7 @@ export function useListColumns(
       field: 'user',
       title: $t('commissionOrder.columns.user'),
       minWidth: 100,
-      formatter: ({ cellValue }) => cellValue?.name ?? '',
+      formatter: ({ cellValue }) => cellValue?.nickName ?? '',
     },
     {
       field: 'status',
@@ -313,91 +303,6 @@ export function useListColumns(
       title: $t('commissionOrder.columns.creationTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
-    },
-    {
-      align: 'right',
-      cellRender: {
-        attrs: {
-          nameField: 'commissionOrderNum',
-          nameTitle: $t('commissionOrder.columns.orderNum'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          { code: 'detail', text: $t('commissionOrder.actions.detail') },
-          {
-            code: 'submit',
-            text: $t('commissionOrder.actions.submit'),
-            show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-              (row.status === Status.Draft || row.status === Status.Rejected) &&
-              hasCode('Admin.CommissionOrder.Submit'),
-          },
-          {
-            code: 'unsubmit',
-            text: $t('commissionOrder.actions.unsubmit'),
-            show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-              row.status === Status.Submitted &&
-              hasCode('Admin.CommissionOrder.Submit'),
-          },
-          {
-            code: 'more',
-            text: $t('commissionOrder.actions.more'),
-            show: (row: CommissionOrderAdminApi.CommissionOrderDto) => {
-              const canDelete =
-                (row.status === Status.Draft ||
-                  row.status === Status.Rejected) &&
-                hasCode('Admin.CommissionOrder.Delete');
-              const canAudit =
-                (row.status === Status.Submitted ||
-                  row.status === Status.Approved) &&
-                hasCode('Admin.CommissionOrder.Audit');
-              const canGrant =
-                row.status === Status.Approved &&
-                hasCode('Admin.CommissionOrder.Grant');
-              return canDelete || canAudit || canGrant;
-            },
-            children: [
-              {
-                code: 'audit',
-                text: $t('commissionOrder.actions.audit'),
-                show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-                  row.status === Status.Submitted &&
-                  hasCode('Admin.CommissionOrder.Audit'),
-              },
-              {
-                code: 'reject',
-                text: $t('commissionOrder.actions.reject'),
-                show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-                  (row.status === Status.Submitted ||
-                    row.status === Status.Approved) &&
-                  hasCode('Admin.CommissionOrder.Audit'),
-              },
-              {
-                code: 'grant',
-                text: $t('commissionOrder.actions.grant'),
-                show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-                  row.status === Status.Approved &&
-                  hasCode('Admin.CommissionOrder.Grant'),
-              },
-              {
-                code: 'delete',
-                text: $t('commissionOrder.actions.delete'),
-                danger: true,
-                show: (row: CommissionOrderAdminApi.CommissionOrderDto) =>
-                  (row.status === Status.Draft ||
-                    row.status === Status.Rejected) &&
-                  hasCode('Admin.CommissionOrder.Delete'),
-              },
-            ],
-          },
-        ],
-      },
-      field: 'operation',
-      fixed: 'right',
-      headerAlign: 'center',
-      showOverflow: false,
-      title: $t('commissionOrder.columns.operation'),
-      width: 190,
     },
   ];
 }
