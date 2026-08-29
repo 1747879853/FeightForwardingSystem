@@ -2,7 +2,7 @@
 import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onActivated, onMounted, provide, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { Users } from '@vben/icons';
@@ -15,7 +15,10 @@ import { EditAsync } from '#/api/sea-import/change-order-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
-import OrderFeeTable from '#/views/sea-import-admin/orderFee/modules/order-fee-table.vue';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table.vue';
+import { seaImportAdapter } from '#/views/_shared/order-fee/adapter/sea-import';
+import { ORDER_FEE_ADAPTER_KEY } from '#/views/_shared/order-fee/types';
+import { bindOrderFeeDataI18n } from '#/views/_shared/order-fee/data';
 
 import ChangeOrderTable from './table.vue';
 
@@ -25,6 +28,17 @@ defineOptions({ name: 'ChangeOrder' });
 const props = defineProps<{
   latestDetail?: SeaImportAdminApi.SeaImportDto;
 }>();
+
+// 为共享费用表格提供海运进口适配器
+provide(ORDER_FEE_ADAPTER_KEY, seaImportAdapter);
+
+// setup 同步绑定模块级 i18n 前缀：子组件（费用表格）setup 阶段构建列定义，先于 onActivated
+bindOrderFeeDataI18n('seaImport.import', 'seaImport');
+
+// KeepAlive 多页共存时重新激活再次绑定，防页面级文案串页
+onActivated(() => {
+  bindOrderFeeDataI18n('seaImport.import', 'seaImport');
+});
 
 const editId = useKeepAliveRouteParamId();
 

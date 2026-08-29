@@ -16,7 +16,7 @@ import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import { ContainerTrackingPanel } from '#/components/tracking';
-import { clearOrderDetailCache } from '#/views/sea-export-admin/orderFee/modules/composables/useOrderFeeLinkage';
+import { clearOrderDetailCache } from '#/views/_shared/order-fee/modules/composables/useOrderFeeLinkage';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
@@ -235,7 +235,8 @@ const setFeeNumber = (recCount: number, payCount: number) => {
 };
 
 const getOrderFeeNumber = async () => {
-  let params = {
+  // 不传 PaySide：一次查询同时返回应收/应付，前端再按 paySide 过滤
+  let params: any = {
     TransportOrderId: editId.value,
     PageIndex: 1,
     PageSize: 999,

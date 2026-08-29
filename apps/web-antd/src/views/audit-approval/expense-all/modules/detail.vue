@@ -10,7 +10,7 @@ import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
   getFeeStatusValueByLabel,
-} from '#/views/sea-export-admin/orderFee/data';
+} from '#/views/_shared/order-fee/data';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import {
   Button,
@@ -26,7 +26,7 @@ import {
 
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/all-order-fee-table.vue';
 import {
   OrderFeeAuditAsync,
   OrderFeeRejectedAsync,

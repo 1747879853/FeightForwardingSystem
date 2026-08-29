@@ -7,6 +7,7 @@ import {
   onBeforeUnmount,
   onDeactivated,
   onMounted,
+  provide,
   ref,
   watch,
 } from 'vue';
@@ -40,14 +41,17 @@ import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
+  bindOrderFeeDataI18n,
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
-} from '#/views/sea-export-admin/orderFee/data';
+} from '#/views/_shared/order-fee/data';
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/order-fee-table.vue';
-import type { DisplayFieldConfig } from '#/views/sea-export-admin/orderFee/modules/display-fields-config-modal.vue';
-import { useDisplayFieldConfig } from '#/views/sea-export-admin/orderFee/composables/use-display-field-config';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table.vue';
+import type { DisplayFieldConfig } from '#/views/_shared/order-fee/modules/display-fields-config-modal.vue';
+import { useDisplayFieldConfig } from '#/views/_shared/order-fee/composables/use-display-field-config';
+import { seaExportAdapter } from '#/views/_shared/order-fee/adapter/sea-export';
+import { ORDER_FEE_ADAPTER_KEY } from '#/views/_shared/order-fee/types';
 
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
@@ -67,6 +71,17 @@ defineOptions({
 const props = defineProps<{
   latestDetail?: SeaExportAdminApi.SeaExportDto;
 }>();
+
+// 为共享费用表格提供海运出口适配器
+provide(ORDER_FEE_ADAPTER_KEY, seaExportAdapter);
+
+// setup 同步绑定模块级 i18n 前缀：子组件（费用表格）setup 阶段构建列定义，先于 onActivated
+bindOrderFeeDataI18n('seaExport.export', 'seaExport');
+
+// KeepAlive 多页共存时重新激活再次绑定，防页面级文案串页
+onActivated(() => {
+  bindOrderFeeDataI18n('seaExport.export', 'seaExport');
+});
 
 const editId = useKeepAliveRouteParamId();
 
@@ -178,7 +193,7 @@ const ORDER_INFO_PRIORITY_KEYS = [
 const KEY_ORDER_INFO_KEYS = ORDER_INFO_PRIORITY_KEYS.slice(0, 10);
 
 const sortByOrderInfoPriority = <T extends { key: string }>(items: T[]) => {
-  const rank = new Map(
+  const rank = new Map<string, number>(
     ORDER_INFO_PRIORITY_KEYS.map((key, index) => [key, index]),
   );
   return [...items].sort(
