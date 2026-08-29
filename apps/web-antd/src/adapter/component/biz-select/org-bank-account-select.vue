@@ -4,9 +4,9 @@ import { onMounted, ref, watch } from 'vue';
 import { Select } from 'ant-design-vue';
 
 import {
-  getMyPermissionCompanies,
-  getOrgBankAccountList,
-} from '#/api/system/organization-unit';
+  getMyCompanyBankAccounts,
+  getMyCompanyIds,
+} from '#/composables/use-my-org';
 
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
@@ -54,11 +54,11 @@ watch(
 async function loadBankAccounts() {
   loading.value = true;
   try {
-    // 如果传入了orgId，则只获取指定公司的银行列表
+    // 如果传入了orgId，则只获取指定公司的银行列表（从用户信息缓存读取，不调用接口，避免用户无接口权限）
     if (props.orgId) {
-      console.log('✅ 获取指定公司的银行列表，公司ID:', props.orgId);
-      const accounts = await getOrgBankAccountList(props.orgId);
-      
+      console.log('✅ 从缓存获取指定公司的银行列表，公司ID:', props.orgId);
+      const accounts = getMyCompanyBankAccounts(props.orgId);
+
       options.value = (accounts || []).map((account) => ({
         id: account.id,
         value: account.id,
@@ -70,26 +70,30 @@ async function loadBankAccounts() {
       return;
     }
 
-    // 未传入orgId，获取当前用户有权限的所有公司的银行列表
-    const companies = await getMyPermissionCompanies();
-    console.log('✅ 当前用户有权限的公司列表:', companies);
-    if (!companies || companies.length === 0) {
+    // 未传入orgId，从缓存获取当前用户所有公司的银行列表（不调用接口）
+    const companyIds = getMyCompanyIds();
+    console.log('✅ 当前用户所属公司IDs:', companyIds);
+    if (companyIds.length === 0) {
       console.warn('当前用户没有关联的公司');
       options.value = [];
       return;
     }
 
-    // 遍历所有公司，获取每个公司的银行列表
+    // 遍历所有公司（按公司id去重），从缓存获取每个公司的银行列表
     const allAccounts: SystemOrganizationUnitApi.OrgBankAccountDto[] = [];
-    
-    for (const company of companies) {
+    const seen = new Set<string>();
+
+    for (const companyId of companyIds) {
+      const key = String(companyId);
+      if (seen.has(key)) continue;
+      seen.add(key);
       try {
-        const accounts = await getOrgBankAccountList(company.id);
+        const accounts = getMyCompanyBankAccounts(Number(companyId));
         if (accounts && accounts.length > 0) {
           allAccounts.push(...accounts);
         }
       } catch (error) {
-        console.error(`加载公司 ${company.name} 的银行列表失败:`, error);
+        console.error(`加载公司 ${companyId} 的银行列表失败:`, error);
       }
     }
 

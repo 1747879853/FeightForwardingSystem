@@ -98,14 +98,20 @@ export function getMyDefaultOrgId(): number | undefined {
   return pickDirectOrgNode(target?.oneOrganizationPath)?.id;
 }
 
-/** 取某直属组织所在的完整组织路径（从顶到底） */
+/** 取某直属组织所在的完整组织路径（从顶到底）。
+ * 优先按路径末端（直属组织）匹配；未命中时兼容匹配路径中的任意节点（如公司级组织）。 */
 export function getMyOrgPath(
   orgId?: null | number,
 ): SystemOrganizationUnitApi.OrganizationUnitDto[] {
   if (orgId === undefined || orgId === null) return [];
-  const found = getMyOrganizations().find(
-    (o) => pickDirectOrgNode(o.oneOrganizationPath)?.id === orgId,
-  );
+  const orgList = getMyOrganizations();
+  const found =
+    orgList.find(
+      (o) => pickDirectOrgNode(o.oneOrganizationPath)?.id === orgId,
+    ) ??
+    orgList.find((o) =>
+      o.oneOrganizationPath?.some((node) => node.id === orgId),
+    );
   return found?.oneOrganizationPath ?? [];
 }
 
@@ -120,6 +126,20 @@ export function getMyOrgCompanyNode(
   const targetOrgId = orgId ?? getMyDefaultOrgId();
   const path = getMyOrgPath(targetOrgId);
   return pickCompanyNodeFromPath(path);
+}
+
+/**
+ * 根据组织id（公司）获取该公司的银行账户列表（来自用户信息缓存，不发起接口请求）。
+ * 传入部门级组织id时会先换算为公司节点；缓存中无银行账户时返回空数组。
+ * 用于加载「我司银行」选项等场景。
+ */
+export function getMyCompanyBankAccounts(
+  orgId?: null | number,
+): SystemOrganizationUnitApi.OrgBankAccountDto[] {
+  const companyNode = getMyOrgCompanyNode(orgId);
+  return Array.isArray(companyNode?.orgBankAccounts)
+    ? companyNode!.orgBankAccounts!
+    : [];
 }
 
 /** 当前登录用户所属的全部公司 id（按组织路径 isCompany 节点去重） */
