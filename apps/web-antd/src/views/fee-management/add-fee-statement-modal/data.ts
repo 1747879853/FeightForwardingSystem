@@ -113,7 +113,8 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       component: 'ClientSelect',
       fieldName: 'SettlementId',
       label: '委托单位',
-      rules: 'required',
+      // 结算对象非必填（2026-08-29）：不传则不按结算对象过滤，可跨结算对象浏览；
+      // 但对账人免数据权限仅在传了结算对象时生效，建议优先选择结算对象查询。
       componentProps: {
         industryCategory: '',
         placeholder: $t('ui.placeholder.select'),
