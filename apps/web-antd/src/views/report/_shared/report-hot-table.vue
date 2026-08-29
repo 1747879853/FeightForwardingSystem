@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import type { ReportApi } from '#/api/system/report';
-
 import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
@@ -9,39 +7,37 @@ import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
 // ✅ 注册中文语言包
 registerLanguageDictionary(zhCN);
 
-import { message, Tag, Dropdown, Modal, Checkbox } from 'ant-design-vue';
+import { message, Tag, Modal, Checkbox } from 'ant-design-vue';
 
-import {
-  getBaseHotColumns,
-  getCurrencyColumns,
-  getTotalColumns,
-} from '../data';
-
-// 导入列配置组件
-import ColumnConfigModal from '../modules/ColumnConfigModal.vue';
+// 说明：列配置弹窗（ColumnConfigModal）由父级模板组件 report-page.vue 渲染，此处不再引入
 
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
 
 defineOptions({
-  name: 'ProfitReportTable',
+  name: 'ReportHotTable',
 });
 
 // Props and emits
 const props = defineProps<{
-  originalData: ReportApi.ProfitReportDto[];
+  originalData: Record<string, any>[];
   groupColumns: string[];
   expandedGroups: Set<string>;
   columnConfigs: any[];
-  allCurrencyCodes: Set<string>;
   loading: boolean;
+  /** 完整列配置（基础列 + 币别动态列 + 合计列），由报表配置驱动 */
+  hotColumns: Record<string, any>[];
+  /** 数值列键集合（用于合计行累加、分组聚合与右对齐） */
+  numericColumnKeys: string[];
+  /** 报表名称（用于导出文件名与工作表名） */
+  reportTitle: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:groupColumns', value: string[]): void;
   (e: 'update:expandedGroups', value: Set<string>): void;
   (e: 'update:columnConfigs', value: any[]): void;
-  (e: 'viewDetail', record: ReportApi.ProfitReportDto): void;
+  (e: 'viewDetail', record: Record<string, any>): void;
   (e: 'export'): void;
 }>();
 
@@ -73,19 +69,8 @@ const dragOverGroupIndex = ref<number | null>(null);
 // ✅ 新增：悬停提示状态
 const hoverColumnData = ref<string | null>(null);
 
-// Handsontable 基础列配置
-const baseHotColumns = getBaseHotColumns();
-// Handsontable 合计列配置
-const totalHotColumns = getTotalColumns();
-
-// 动态列配置计算属性
-const dynamicHotColumns = computed(() => {
-  return [
-    ...baseHotColumns,
-    ...getCurrencyColumns(Array.from(props.allCurrencyCodes)),
-    ...totalHotColumns,
-  ];
-});
+// Handsontable 列配置（由父级根据报表配置计算后注入）
+const dynamicHotColumns = computed(() => props.hotColumns);
 
 // 获取列标题映射（用于表头显示）
 const columnTitleMap = computed<Record<string, string>>(() => {
@@ -99,23 +84,9 @@ const columnTitleMap = computed<Record<string, string>>(() => {
   );
 });
 
-// 更新数值列字段（用于累加和右对齐）
+// 更新数值列字段（用于累加和右对齐），由报表配置驱动，不再硬编码某个报表的字段
 const numericColumns = computed(() => {
-  const cols = new Set([
-    'totalReceivable',
-    'totalPayable',
-    'totalProfit',
-    'totalProfitRate',
-  ]);
-
-  // 添加所有币别相关的数值列
-  props.allCurrencyCodes.forEach((code) => {
-    cols.add(`${code}_receivable`);
-    cols.add(`${code}_payable`);
-    cols.add(`${code}_profit`);
-  });
-
-  return cols;
+  return new Set(props.numericColumnKeys);
 });
 
 // ✅ 新增：数据处理缓存
@@ -147,8 +118,8 @@ function toggleGroupExpand(groupKey: string) {
     localExpandedGroups.value.add(groupKey);
   }
 
-  // 更新父组件的状态
-  emit('update:expandedGroups', Array.from(localExpandedGroups.value));
+  // 更新父组件的状态（保持 Set 类型，与 emit 签名一致）
+  emit('update:expandedGroups', localExpandedGroups.value);
 
   // ✅ 重新添加 clearCaches 调用，确保展开/折叠操作时数据正确性
   clearCaches();
@@ -182,6 +153,23 @@ watch(
   () => props.expandedGroups,
   (newVal) => {
     localExpandedGroups.value = new Set([...newVal]);
+  },
+);
+
+// 监听原始数据变化：查询刷新或重置清空时同步刷新表格显示，
+// 避免重置后表格残留上一次的分组长态数据
+watch(
+  () => props.originalData,
+  (newVal) => {
+    clearCaches();
+    if (newVal.length > 0) {
+      applyGrouping([...newVal]);
+    } else {
+      // 数据被清空（重置）：恢复初始展示状态（无分组行、无隐藏列）
+      tableData.value = [];
+      hiddenColumnsRef.value = [];
+      hiddenColumnDataRefs.value = new Set();
+    }
   },
 );
 
@@ -260,7 +248,11 @@ const hotSettings = computed(() => {
         // ✅ 添加分组菜单项
         add_to_group: {
           name: '添加到分组',
-          callback: function (key, selection, clickEvent) {
+          callback: function (
+            _key: string,
+            selection: any[],
+            _clickEvent: any,
+          ) {
             const instance = componentInstance;
             let col = selection[0].start.col;
 
@@ -397,9 +389,9 @@ const hotSettings = computed(() => {
       TD: HTMLTableCellElement,
       row: number,
       col: number,
-      prop: string,
+      _prop: string,
       value: any,
-      cellProperties: any,
+      _cellProperties: any,
     ) => {
       const rowData = tableData.value[row];
 
@@ -442,14 +434,14 @@ const hotSettings = computed(() => {
       }
     },
     // ✅ 添加右键菜单事件处理，捕获点击位置
-    afterOnCellContextMenu: (event: MouseEvent, coords: any) => {
+    afterOnCellContextMenu: (_event: MouseEvent, coords: any) => {
       // 存储当前右键点击的列索引
       if (coords && coords.col !== undefined) {
         rightClickColumnIndex.value = coords.col;
       }
     },
     // ✅ 添加列头右键菜单事件处理
-    afterOnColumnHeaderContextMenu: (event: MouseEvent, col: number) => {
+    afterOnColumnHeaderContextMenu: (_event: MouseEvent, col: number) => {
       // 存储当前右键点击的列索引
       if (col !== undefined) {
         rightClickColumnIndex.value = col;
@@ -457,7 +449,7 @@ const hotSettings = computed(() => {
     },
     // ✅ 监听隐藏列变化
     afterHideColumns: (
-      currentHideConfig: number[],
+      _currentHideConfig: number[],
       destinationHideConfig: number[],
     ) => {
       const hotInstance = hotTableRef.value?.hotInstance;
@@ -475,7 +467,7 @@ const hotSettings = computed(() => {
     },
     // ✅ 监听取消隐藏列变化
     afterUnhideColumns: (
-      currentHideConfig: number[],
+      _currentHideConfig: number[],
       destinationHideConfig: number[],
     ) => {
       const hotInstance = hotTableRef.value?.hotInstance;
@@ -744,13 +736,13 @@ function createGroupColumn() {
     width: 250,
     className: 'htLeft', // 分组列左对齐
     renderer: (
-      instance: any,
+      _instance: any,
       td: HTMLTableCellElement,
       row: number,
-      col: number,
-      prop: string,
-      value: any,
-      cellProperties: any,
+      _col: number,
+      _prop: string,
+      _value: any,
+      _cellProperties: any,
     ) => {
       const rowData = tableData.value[row];
       if (rowData?._isGroupRow) {
@@ -1016,7 +1008,7 @@ function buildTreeStructure(
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
           // 只有一个唯一值，显示为 "값(번호)"
-          const value = uniqueValues[0];
+          const value = uniqueValues[0]!;
           const count = valueCounts[value] || 0;
           aggregatedRow[col] = `${value}(${count})`;
         } else {
@@ -1152,7 +1144,7 @@ function buildFullExportTree(
           aggregatedRow[col] = '-';
         } else if (uniqueValues.length === 1) {
           // 只有一个唯一值，显示为 "값(번호)"
-          const value = uniqueValues[0];
+          const value = uniqueValues[0]!;
           const count = valueCounts[value];
           aggregatedRow[col] = `${value}(${count})`;
         } else {
@@ -1467,9 +1459,9 @@ function handleGroupTagDragEnd(e: DragEvent) {
  * 添加双击事件处理
  */
 function onAfterOnCellDblClick(
-  event: any,
+  _event: any,
   coords: any,
-  TD: HTMLTableCellElement,
+  _TD: HTMLTableCellElement,
 ) {
   if (coords.row >= 0 && coords.row < tableData.value.length) {
     const rowData = tableData.value[coords.row];
@@ -1508,7 +1500,7 @@ function handleExport() {
         .map((col) =>
           col.data === '_groupDisplay'
             ? '分组'
-            : columnTitleMap[col.data!] || col.data!,
+            : columnTitleMap.value[col.data!] || col.data!,
         )
         .filter(Boolean);
 
@@ -1527,6 +1519,7 @@ function handleExport() {
 
         for (let i = 0; i < headers.length; i++) {
           const colData = headers[i];
+          if (!colData) continue;
           if (colData === '_groupDisplay') {
             // 分组列的特殊处理
             if (row._isGroupRow) {
@@ -1553,7 +1546,7 @@ function handleExport() {
       const currentColumns = currentColumnsRef.value;
       headers = currentColumns.map((col) => col.data!).filter(Boolean);
       headerTitles = currentColumns
-        .map((col) => columnTitleMap[col.data!] || col.data!)
+        .map((col) => columnTitleMap.value[col.data!] || col.data!)
         .filter(Boolean);
 
       // 包含合计行
@@ -1609,14 +1602,14 @@ function handleExport() {
 
     // 创建工作簿
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '利润报表');
+    XLSX.utils.book_append_sheet(wb, ws, props.reportTitle);
 
     // 导出Excel文件
     const timestamp =
       new Date().toLocaleDateString('zh-CN').replace(/\//g, '') +
       '_' +
       new Date().toLocaleTimeString('zh-CN').replace(/[:]/g, '');
-    XLSX.writeFile(wb, `利润报表_${timestamp}.xlsx`);
+    XLSX.writeFile(wb, `${props.reportTitle}_${timestamp}.xlsx`);
 
     message.success('导出成功');
   } catch (error) {

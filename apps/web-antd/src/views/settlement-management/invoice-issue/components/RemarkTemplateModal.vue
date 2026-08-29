@@ -12,7 +12,10 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
-import { getMyTrueCompanyOptions } from '#/composables/use-my-org';
+import {
+  getCompanyIdByOrgId,
+  getMyTrueCompanyOptions,
+} from '#/composables/use-my-org';
 
 interface Props {
   visible: boolean;
@@ -542,12 +545,19 @@ async function getDefaultRemarkTemplate(
   },
 ): Promise<string> {
   try {
-    console.log('🔍 查询默认备注模板 - 公司ID:', orgId, '币别ID:', currencyId);
+    // 备注模板按公司维度维护，需先把归属组织换算成公司ID再查询，否则查不到默认模板导致备注为空
+    const templateOrgId = getCompanyIdByOrgId(orgId) ?? orgId;
+    console.log(
+      '🔍 查询默认备注模板 - 公司ID:',
+      templateOrgId,
+      '币别ID:',
+      currencyId,
+    );
 
     const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
       pageIndex: 1,
       pageSize: 1,
-      orgId,
+      orgId: templateOrgId,
       currencyId,
       default: true, // 只查询默认模板
     });

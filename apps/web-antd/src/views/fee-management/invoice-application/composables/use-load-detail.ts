@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getCodeInvoicePagedList } from '#/api/system/base-data/code-invoice-admin';
+import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { isExchangeRateEffective } from '#/utils/exchange-rate-cache';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -30,6 +32,43 @@ export function useLoadDetail(
 ) {
   const router = useRouter();
   const { detailAsync } = InvoiceApplicationApi;
+
+  /**
+   * 按币别查询当前生效的发票汇率（口径与新增流程一致：启用且在有效期内，
+   * 同币别多条时 sortId 大者优先，其次 id 大者）
+   */
+  async function fetchInvoiceExchangeRate(currencyId: number): Promise<number> {
+    try {
+      const result = await getExchangeRatePagedList({
+        CurrencyId: currencyId,
+        PageIndex: 1,
+        PageSize: 100,
+      });
+
+      const validRates = (result?.items || []).filter((rate) =>
+        isExchangeRateEffective(rate),
+      );
+
+      if (validRates.length > 0) {
+        validRates.sort((a, b) => {
+          const aSortId = Number(a.sortId ?? 0);
+          const bSortId = Number(b.sortId ?? 0);
+          if (bSortId !== aSortId) return bSortId - aSortId;
+          return String(b.id) > String(a.id) ? -1 : 1;
+        });
+
+        const bestRate = validRates[0];
+        if (bestRate && bestRate.invoiceValue) {
+          console.log('✅ 查询到币别发票汇率:', bestRate.invoiceValue);
+          return bestRate.invoiceValue;
+        }
+      }
+      console.warn('⚠️ 未找到币别', currencyId, '的有效发票汇率，使用默认 1.0');
+    } catch (error) {
+      console.error('查询发票汇率失败:', error);
+    }
+    return 1.0;
+  }
 
   /**
    * 根据结算对象和币别生成默认商品明细
@@ -203,8 +242,17 @@ export function useLoadDetail(
         ? dayjs(detail.applyTime).format('YYYY-MM-DD')
         : dayjs().format('YYYY-MM-DD');
 
-      // 设置汇率
-      invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
+      // 设置汇率：优先使用后端返回的 invoiceExchangeRate；
+      // 详情接口未返回有效值时，按币别查询当前生效的发票汇率，避免始终回退为 1.0
+      if (detail.invoiceExchangeRate) {
+        invoiceExchangeRate.value = detail.invoiceExchangeRate;
+      } else if (detail.currencyId && detail.currencyId !== 1) {
+        invoiceExchangeRate.value = await fetchInvoiceExchangeRate(
+          detail.currencyId,
+        );
+      } else {
+        invoiceExchangeRate.value = 1.0;
+      }
 
       // 加载币别代码
       if (detail.currencyId) {

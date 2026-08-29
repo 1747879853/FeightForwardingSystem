@@ -1,6 +1,9 @@
 import { message } from 'ant-design-vue';
 import type { Ref } from 'vue';
-import { getMyDefaultOrgId } from '#/composables/use-my-org';
+import {
+  getCompanyIdByOrgId,
+  getMyDefaultOrgId,
+} from '#/composables/use-my-org';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 // ✅ 修改：只导入ensureExchangeRateCache函数
@@ -225,12 +228,14 @@ export function useFeeSelectionSave(
           formData.value.invoiceApplicationItems?.length || 0,
         );
 
+        // 记录用户是否已手工填写备注（用户输入优先，默认模板不覆盖）
+        const hasUserRemark = !!(
+          formData.value.remark && formData.value.remark.trim()
+        );
+
         // ✅ 在新增前，先加载默认备注模板（如果备注为空）
         // 此时 invoiceApplicationItems 已有数据，可以正确提取主提单号和委托编号
-        if (
-          loadDefaultRemarkTemplate &&
-          (!formData.value.remark || !formData.value.remark.trim())
-        ) {
+        if (loadDefaultRemarkTemplate && !hasUserRemark) {
           console.log('📝 加载默认备注模板...');
           await loadDefaultRemarkTemplate();
         }
@@ -419,8 +424,13 @@ export function useFeeSelectionSave(
           // ✅ 新增：获取当前币别的默认备注模板并替换占位符
           let currencyRemark = '';
           try {
-            const orgId = formData.value.orgId || getMyDefaultOrgId() || 0;
-            if (orgId && currencyId) {
+            const rawOrgId = formData.value.orgId || getMyDefaultOrgId() || 0;
+            // 备注模板按公司维度维护，需先把归属组织换算成公司ID再查询，否则查不到默认模板导致备注为空
+            const orgId = getCompanyIdByOrgId(rawOrgId) ?? rawOrgId;
+            if (hasUserRemark) {
+              // 用户已手工填写备注：优先使用用户输入，不用默认模板覆盖
+              currencyRemark = formData.value.remark || '';
+            } else if (orgId && currencyId) {
               const templates =
                 await InvoiceRemarkTemplateApi.getPagedListAsync({
                   pageIndex: 1,
