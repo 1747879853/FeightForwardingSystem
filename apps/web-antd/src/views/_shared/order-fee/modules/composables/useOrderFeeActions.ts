@@ -465,14 +465,23 @@ export function useOrderFeeActions(
   };
 
   /**
-   * 保存行
+   * 保存行：只保存录入状态且未对账的费用（已对账费用不可保存）
    */
   const saveRow = () => {
     const list = (dataContext.dataSource.value ?? []).filter(
       (row) =>
-        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
-        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected,
+        (row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
+          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected) &&
+        !feeConstants.isFeeStatemented(row),
     );
+
+    if (!list.length) {
+      message.warning({
+        content: '只能对录入状态且未对账的费用进行保存',
+        key: 'action_process_msg',
+      });
+      return;
+    }
 
     const editList = dataContext.sanitizeOrderFee(list);
     adapter.api.batchEditOrderFee(editList).then(() => {

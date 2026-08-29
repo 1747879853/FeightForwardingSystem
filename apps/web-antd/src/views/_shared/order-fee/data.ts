@@ -34,11 +34,38 @@ export const clientDataT = (key: string) =>
 // 费用编辑权限判断
 // --------------------------------------------------------
 /**
+ * 判断费用是否已对账（存在于任意一张对账单中）
+ * @param row 费用行数据（含 statements / isStatemented 字段）
+ * @returns true 表示已对账，不可编辑、不可保存
+ */
+export const isFeeStatemented = (row: any): boolean => {
+  if (!row) return false;
+  if (row.isStatemented === true) return true;
+  return Array.isArray(row.statements) && row.statements.length > 0;
+};
+
+/**
+ * 获取费用所属对账单号的展示文本，多个对账单号用“，”分割
+ * @param row 费用行数据（含 statements 数组）
+ * @returns 对账单号文本，未对账时为空字符串
+ */
+export const getStatementNumsText = (row: any): string => {
+  const statements = Array.isArray(row?.statements) ? row.statements : [];
+  return statements
+    .map((s: any) => s?.statementNum)
+    .filter(Boolean)
+    .join('，');
+};
+
+/**
  * 判断费用是否可编辑
  * @param feeStatus 费用状态
+ * @param statemented 是否已对账（已对账费用一律不可编辑）
  * @returns true 表示可编辑，false 表示不可编辑
  */
-export const canEditFee = (feeStatus: number): boolean => {
+export const canEditFee = (feeStatus: number, statemented = false): boolean => {
+  // 已对账费用不可编辑，只能对录入状态且未对账的费用进行编辑保存
+  if (statemented) return false;
   // 可编辑的状态：录入中(0)、审核驳回(3)、申请修改(4)、申请删除(5)
   const editableStatuses = [
     getFeeStatusValue.Entering, // 0 - 录入中
@@ -759,7 +786,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellFeeCodeSelect',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -773,7 +801,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellIndustryCategorySelect',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -786,7 +815,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellClientSelect',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -802,7 +832,8 @@ export function useOrderFeeColumns(
         name: 'CurrencySelect',
         props: {
           type: type,
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -816,7 +847,8 @@ export function useOrderFeeColumns(
         name: 'CellInput',
         props: {
           disabled: (row: any) =>
-            !canEditFee(row.feeStatus) || row['__isLocalCurrency'] === true,
+            !canEditFee(row.feeStatus, isFeeStatemented(row)) ||
+            row['__isLocalCurrency'] === true,
         },
       },
     },
@@ -829,7 +861,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -842,7 +875,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -863,7 +897,8 @@ export function useOrderFeeColumns(
               value: ctn.ctnCodeName,
             }));
           },
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -877,7 +912,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -891,7 +927,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },
@@ -927,17 +964,14 @@ export function useOrderFeeColumns(
       },
     },
     {
-      title: '对账单号',
+      title: '对账单',
       field: 'statementNum',
       width: 120,
       align: 'center',
       sortable: false,
       formatter: ({ row }: any) => {
-        // 从 statement 对象中获取 statementNum
-        if (row.statement && row.statement.statementNum) {
-          return row.statement.statementNum;
-        }
-        return '';
+        // 从 statements 数组中获取 statementNum，多个用“，”分割展示
+        return getStatementNumsText(row);
       },
     },
     {
@@ -1021,7 +1055,7 @@ export function useOrderFeeColumns(
         default: ({ row }: any) => {
           return h(Checkbox, {
             checked: row.invoiceBlocked === true,
-            disabled: !canEditFee(row.feeStatus),
+            disabled: !canEditFee(row.feeStatus, isFeeStatemented(row)),
             onChange: (e: any) => {
               row.invoiceBlocked = !e.target.checked;
             },
@@ -1040,7 +1074,7 @@ export function useOrderFeeColumns(
         default: ({ row }: any) => {
           return h(Checkbox, {
             checked: row.isConfidential === true,
-            disabled: !canEditFee(row.feeStatus),
+            disabled: !canEditFee(row.feeStatus, isFeeStatemented(row)),
             onChange: (e: any) => {
               row.isConfidential = e.target.checked;
             },
@@ -1056,7 +1090,8 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus, isFeeStatemented(row)),
         },
       },
     },

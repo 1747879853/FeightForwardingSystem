@@ -1,7 +1,7 @@
 import { shallowRef, nextTick, type Ref } from 'vue';
 import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { getFeeStatusOptions } from '../../data';
+import { getFeeStatusOptions, isFeeStatemented } from '../../data';
 
 export function useHotSettings(
   dataSource: Ref<any[]> | any[],
@@ -73,6 +73,20 @@ export function useHotSettings(
     autoRowSize: false,
     autoColumnSize: false,
     renderAllRows: false,
+
+    // 已对账费用（statements 不为空）整行只读，不可编辑、不可保存
+    cells: function (row: number, col: number, prop: string | number) {
+      const cellProperties: Record<string, any> = {};
+      // 初始化阶段 handsontable 会以 null 调用获取模板，跳过
+      if (row === null || row === undefined || row < 0) {
+        return cellProperties;
+      }
+      const rowData = getDataSource()[row];
+      if (rowData && isFeeStatemented(rowData)) {
+        cellProperties.readOnly = true;
+      }
+      return cellProperties;
+    },
 
     afterOnCellMouseDown: function (
       this: any,

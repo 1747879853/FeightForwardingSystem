@@ -1040,11 +1040,13 @@ const sanitizeOrderFee = (
   });
 };
 const saveRow = () => {
+  // 已对账费用（statements 不为空）不可保存，只能保存录入状态且未对账的费用
   const list = (dataSource.value ?? []).filter(
     (row) =>
-      row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
-      row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
-      row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
+      (row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
+        row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
+        row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify) &&
+      !feeConstants.isFeeStatemented(row),
   );
 
   console.log('list', list);

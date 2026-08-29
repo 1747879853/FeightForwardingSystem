@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { useOrderFeeColumns } from '../../data';
+import { useOrderFeeColumns, getStatementNumsText } from '../../data';
 import {
   getInvoiceStatusLabel,
   getFeeStatusLabel,
@@ -742,7 +742,7 @@ export function useHotColumns(
             culture: 'en-US',
           };
         } else if (col.field === 'statementNum') {
-          // 对账单号列 - 只读文本，不可编辑
+          // 对账单列 - 只读文本，不可编辑；多个对账单号用“，”分割展示
           hotCol.type = 'text';
           hotCol.readOnly = true;
           hotCol.renderer = function (
@@ -756,11 +756,14 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             td.innerHTML = '';
-            // 从 statement 对象中获取 statementNum
-            const rowData = actualDataSource[row] as any;
-            const statementNum = rowData?.statement?.statementNum || '';
-            // ✅ 新增：添加省略号样式
-            td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${statementNum}</span>`;
+            // 从 statements 数组中获取 statementNum，多个用“，”分割展示
+            const currentDataSource = Array.isArray(dataSource)
+              ? dataSource
+              : dataSource.value;
+            const rowData = currentDataSource[row] as any;
+            const statementNum = getStatementNumsText(rowData);
+            // ✅ 添加省略号样式，title 展示完整对账单号
+            td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="${statementNum}">${statementNum}</span>`;
             return td;
           };
         } else if (col.field === 'creatorUserName') {
