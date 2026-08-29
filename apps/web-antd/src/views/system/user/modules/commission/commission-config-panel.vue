@@ -1,35 +1,23 @@
 <script lang="ts" setup>
-import { CommissionConfigAdminApi } from '#/api/commission/commission-config-admin';
+import { computed, ref } from 'vue';
 
-import { computed, onMounted, ref } from 'vue';
-
+import { useAccess } from '@vben/access';
 import { useVbenModal } from '@vben/common-ui';
+import { Plus } from '@vben/icons';
 
-import {
-  Button,
-  message,
-  Popconfirm,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'ant-design-vue';
+import { Button, message, Modal, Space } from 'ant-design-vue';
 
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  CommissionConfigAdminApi,
   deleteCommissionConfig,
   getCommissionConfigPagedList,
 } from '#/api/commission/commission-config-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
-import {
-  buildRuleSummary,
-  formatBaseSalary,
-  formatDateTime,
-  formatEffectivePeriod,
-  getBizTypeLabels,
-  useCommissionConfigColumns,
-} from './commission-data';
+import { useCommissionConfigColumns } from './commission-data';
 import CommissionConfigModal from './commission-config-modal.vue';
 
 defineOptions({ name: 'UserCommissionConfigPanel' });
@@ -40,6 +28,10 @@ const props = defineProps<{
 }>();
 
 const perm = createAbpPermission('Admin.CommissionConfig');
+const { hasAccessByCodes } = useAccess();
+const canEdit = computed(() => hasAccessByCodes([perm.edit]));
+
+type ConfigRow = CommissionConfigAdminApi.CommissionConfigDto;
 
 const typeLabel = computed(() =>
   $t(
@@ -49,47 +41,21 @@ const typeLabel = computed(() =>
   ),
 );
 
-const loading = ref(false);
-const list = ref<CommissionConfigAdminApi.CommissionConfigDto[]>([]);
-const pageIndex = ref(1);
-const pageSize = ref(10);
-const total = ref(0);
+// ==================== 选中行 ====================
 
-const columns = computed(() => useCommissionConfigColumns());
+const selectedRows = ref<ConfigRow[]>([]);
 
-async function load() {
-  if (props.userId == null) {
-    list.value = [];
-    total.value = 0;
-    return;
-  }
-  loading.value = true;
-  try {
-    const res = await getCommissionConfigPagedList({
-      commissionType: props.commissionType,
-      userId: props.userId,
-      pageIndex: pageIndex.value,
-      pageSize: pageSize.value,
-    });
-    list.value = res.items ?? [];
-    total.value = res.totalCount ?? 0;
-  } finally {
-    loading.value = false;
-  }
-}
+const syncSelectedRows = () => {
+  selectedRows.value = (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as ConfigRow[];
+};
 
-const pagination = computed(() => ({
-  current: pageIndex.value,
-  pageSize: pageSize.value,
-  total: total.value,
-  showSizeChanger: true,
-  showTotal: (count: number) => $t('commission.totalCount', { count }),
-  onChange: (page: number, size: number) => {
-    pageIndex.value = page;
-    pageSize.value = size;
-    void load();
-  },
-}));
+/** 编辑/删除为单行操作：仅选中一行时可用 */
+const singleRow = computed(() =>
+  selectedRows.value.length === 1 ? selectedRows.value[0] : undefined,
+);
+
+// ==================== 弹窗 ====================
 
 const [CommissionConfigModalComponent, commissionConfigModalApi] = useVbenModal(
   {
@@ -104,7 +70,7 @@ function onAdd() {
     .open();
 }
 
-function onEdit(record: CommissionConfigAdminApi.CommissionConfigDto) {
+function onEdit(record: ConfigRow) {
   commissionConfigModalApi
     .setData({
       userId: props.userId,
@@ -114,146 +80,139 @@ function onEdit(record: CommissionConfigAdminApi.CommissionConfigDto) {
     .open();
 }
 
-async function onDelete(record: CommissionConfigAdminApi.CommissionConfigDto) {
-  try {
-    await deleteCommissionConfig(record.id);
-    message.success($t('ui.actionMessage.operationSuccess'));
-    // 当前页删空时回退一页
-    if (list.value.length === 1 && pageIndex.value > 1) {
-      pageIndex.value -= 1;
-    }
-    await load();
-  } catch {
-    // 错误已由请求拦截器统一处理
-  }
-}
+// ==================== 工具栏操作 ====================
 
-onMounted(() => {
-  if (props.userId != null) {
-    void load();
+const handleEdit = () => {
+  const row = singleRow.value;
+  if (row) {
+    onEdit(row);
   }
+};
+
+const handleDelete = () => {
+  const row = singleRow.value;
+  if (!row) {
+    return;
+  }
+  Modal.confirm({
+    title: $t('common.delete'),
+    content: $t('commission.deleteConfirm', { name: row.name }),
+    okButtonProps: { danger: true },
+    async onOk() {
+      await deleteCommissionConfig(row.id);
+      message.success($t('ui.actionMessage.operationSuccess'));
+      // 删除后回第一页重载，避免当前页删空后无数据显示
+      await gridApi.reload();
+    },
+  });
+};
+
+/** 双击行打开编辑弹窗（无编辑权限时不响应） */
+const handleRowDblclick = ({
+  row,
+  column,
+}: {
+  row: ConfigRow;
+  column?: { type?: string };
+}) => {
+  if (column?.type === 'checkbox' || !canEdit.value) {
+    return;
+  }
+  onEdit(row);
+};
+
+// ==================== 列表查询 ====================
+
+const fetchList = async (params: Record<string, any>) => {
+  const result = await getCommissionConfigPagedList({
+    ...params,
+    commissionType: props.commissionType,
+    userId: props.userId,
+  });
+  // 数据刷新（查询/刷新/翻页）后勾选会被清空，同步清空选中行，避免工具栏按钮状态与实际勾选不一致
+  selectedRows.value = [];
+  return result;
+};
+
+const [Grid, gridApi] = useVbenVxeGrid<ConfigRow>({
+  gridEvents: {
+    cellDblclick: handleRowDblclick,
+    checkboxAll: syncSelectedRows,
+    checkboxChange: syncSelectedRows,
+    // trigger: 'row' 下单击行只触发 current-change 不触发 checkbox-change，需同步，否则按钮状态不跟随勾选
+    currentRowChange: syncSelectedRows,
+  },
+  gridOptions: {
+    checkboxConfig: {
+      highlight: true,
+      // 点击整行即可勾选，便于工具栏编辑/删除操作
+      trigger: 'row',
+    },
+    columns: useCommissionConfigColumns(),
+    height: 'auto',
+    keepSource: true,
+    pagerConfig: {
+      enabled: true,
+    },
+    proxyConfig: {
+      ajax: {
+        query: createPagedListQuery(fetchList, {
+          // 后端默认 SortId ASC，不是创建时间倒序
+          defaultSort: 'SortId ASC',
+        }),
+      },
+    },
+    rowConfig: {
+      isCurrent: true,
+      isHover: true,
+      keyField: 'id',
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: { code: 'query' },
+      zoom: true,
+    },
+  },
 });
+
+const handleModalSuccess = () => {
+  void gridApi.reload();
+};
 </script>
 
 <template>
-  <div class="p-4">
-    <CommissionConfigModalComponent @success="load" />
+  <div class="flex h-full flex-col p-4">
+    <CommissionConfigModalComponent @success="handleModalSuccess" />
 
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <Typography.Text type="secondary" class="text-xs">
-        {{ $t('commission.listHint') }}
-      </Typography.Text>
-      <Button
-        v-access:code="perm.add"
-        type="primary"
-        size="small"
-        @click="onAdd"
-      >
-        {{ $t('ui.actionTitle.create', [typeLabel]) }}
-      </Button>
+    <div class="mb-2 text-xs text-gray-400">
+      {{ $t('commission.listHint') }}
     </div>
 
-    <Table
-      :columns="columns"
-      :data-source="list"
-      :loading="loading"
-      :pagination="pagination"
-      row-key="id"
-      size="small"
-      :scroll="{ x: 1150 }"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'isEnabled'">
-          <Tag
-            :color="
-              (record as CommissionConfigAdminApi.CommissionConfigDto).isEnabled
-                ? 'green'
-                : 'default'
-            "
-          >
-            {{
-              (record as CommissionConfigAdminApi.CommissionConfigDto).isEnabled
-                ? $t('commission.enabled')
-                : $t('commission.disabled')
-            }}
-          </Tag>
-        </template>
-        <template v-else-if="column.key === 'effectivePeriod'">
-          {{
-            formatEffectivePeriod(
-              record as CommissionConfigAdminApi.CommissionConfigDto,
-            )
-          }}
-        </template>
-        <template v-else-if="column.key === 'bizTypes'">
-          {{
-            getBizTypeLabels(
-              (record as CommissionConfigAdminApi.CommissionConfigDto).bizTypes,
-            )
-          }}
-        </template>
-        <template v-else-if="column.key === 'baseSalary'">
-          {{
-            formatBaseSalary(
-              record as CommissionConfigAdminApi.CommissionConfigDto,
-            )
-          }}
-        </template>
-        <template v-else-if="column.key === 'creationTime'">
-          {{
-            formatDateTime(
-              (record as CommissionConfigAdminApi.CommissionConfigDto)
-                .creationTime,
-            )
-          }}
-        </template>
-        <template v-else-if="column.key === 'ruleSummary'">
-          <Tooltip
-            :title="
-              buildRuleSummary(
-                record as CommissionConfigAdminApi.CommissionConfigDto,
-              ).full
-            "
-          >
-            <span>
-              {{
-                buildRuleSummary(
-                  record as CommissionConfigAdminApi.CommissionConfigDto,
-                ).short
-              }}
-            </span>
-          </Tooltip>
-        </template>
-        <template v-else-if="column.key === 'action'">
+    <Grid class="min-h-0 flex-1">
+      <template #toolbar-tools>
+        <Space>
           <Button
             v-access:code="perm.edit"
-            type="link"
-            size="small"
-            @click="
-              onEdit(record as CommissionConfigAdminApi.CommissionConfigDto)
-            "
+            :disabled="!singleRow"
+            @click="handleEdit"
           >
             {{ $t('common.edit') }}
           </Button>
-          <span v-access:code="perm.delete">
-            <Popconfirm
-              :title="
-                $t('commission.deleteConfirm', {
-                  name: (record as CommissionConfigAdminApi.CommissionConfigDto)
-                    .name,
-                })
-              "
-              @confirm="
-                onDelete(record as CommissionConfigAdminApi.CommissionConfigDto)
-              "
-            >
-              <Button type="link" danger size="small">
-                {{ $t('common.delete') }}
-              </Button>
-            </Popconfirm>
-          </span>
-        </template>
+          <Button
+            v-access:code="perm.delete"
+            danger
+            :disabled="!singleRow"
+            @click="handleDelete"
+          >
+            {{ $t('common.delete') }}
+          </Button>
+          <Button v-access:code="perm.add" type="primary" @click="onAdd">
+            <Plus class="size-5" />
+            {{ $t('ui.actionTitle.create', [typeLabel]) }}
+          </Button>
+        </Space>
       </template>
-    </Table>
+    </Grid>
   </div>
 </template>

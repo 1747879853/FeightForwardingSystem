@@ -1,3 +1,5 @@
+import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
+
 import dayjs from 'dayjs';
 
 import { CommissionConfigAdminApi } from '#/api/commission/commission-config-admin';
@@ -319,70 +321,81 @@ export const buildRuleSummary = (
 };
 
 /**
- * 提成配置列表列定义（bodyCell 按 key 渲染）
+ * 提成配置列表列定义（vxe-table；无操作列：编辑由行双击或工具栏触发）
  */
-export const useCommissionConfigColumns = () => {
+export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConfigAdminApi.CommissionConfigDto>['columns'] {
   return [
     {
+      field: 'name',
       title: $t('commission.configName'),
-      dataIndex: 'name',
-      key: 'name',
       minWidth: 170,
-      ellipsis: true,
+      showOverflow: true,
     },
     {
+      field: 'sortId',
       title: $t('commission.sortId'),
-      dataIndex: 'sortId',
-      key: 'sortId',
       width: 70,
-      align: 'center' as const,
+      align: 'center',
     },
     {
+      field: 'isEnabled',
       title: $t('commission.isEnabled'),
-      dataIndex: 'isEnabled',
-      key: 'isEnabled',
       width: 90,
-      align: 'center' as const,
+      align: 'center',
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { value: true, label: $t('commission.enabled'), color: 'green' },
+          { value: false, label: $t('commission.disabled'), color: 'default' },
+        ],
+      },
     },
     {
+      field: 'effectiveStartDate',
       title: $t('commission.effectivePeriod'),
-      key: 'effectivePeriod',
       width: 170,
+      formatter: ({ row }) =>
+        formatEffectivePeriod(
+          row as CommissionConfigAdminApi.CommissionConfigDto,
+        ),
     },
     {
+      field: 'bizTypes',
       title: $t('commission.bizTypes'),
-      key: 'bizTypes',
-      width: 170,
-    },
-    {
-      title: $t('commission.baseSalary'),
-      key: 'baseSalary',
-      width: 140,
-    },
-    {
-      title: $t('commission.rulesSummary'),
-      key: 'ruleSummary',
       minWidth: 170,
-      ellipsis: true,
+      // 数组字段后端无法排序，禁用列头排序避免报「该列不支持排序」
+      sortable: false,
+      formatter: ({ cellValue }) =>
+        getBizTypeLabels(cellValue as CommissionConfigAdminApi.BizType[]),
     },
     {
+      field: 'baseSalary',
+      title: $t('commission.baseSalary'),
+      width: 140,
+      formatter: ({ row }) =>
+        formatBaseSalary(row as CommissionConfigAdminApi.CommissionConfigDto),
+    },
+    {
+      field: 'ruleSummary',
+      title: $t('commission.rulesSummary'),
+      minWidth: 170,
+      showOverflow: true,
+      // 行上无此字段，仅列标识，禁排序；完整规则双击编辑弹窗查看
+      sortable: false,
+      formatter: ({ row }) =>
+        buildRuleSummary(row as CommissionConfigAdminApi.CommissionConfigDto)
+          .short,
+    },
+    {
+      field: 'creatorUserName',
       title: $t('commission.creator'),
-      dataIndex: 'creatorUserName',
-      key: 'creatorUserName',
       width: 110,
     },
     {
+      field: 'creationTime',
       title: $t('commission.creationTime'),
-      dataIndex: 'creationTime',
-      key: 'creationTime',
       width: 160,
-    },
-    {
-      title: $t('system.user.operation'),
-      key: 'action',
-      width: 120,
-      fixed: 'right' as const,
-      align: 'center' as const,
+      formatter: ({ cellValue }) => formatDateTime(cellValue as string),
     },
   ];
-};
+}
