@@ -1,6 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { isExchangeRateEffective } from './exchange-rate-cache';
+const mocks = vi.hoisted(() => ({
+  getExchangeRatePagedList: vi.fn(),
+}));
+
+vi.mock('#/api/system/base-data/exchange-rate-admin', () => ({
+  getExchangeRatePagedList: mocks.getExchangeRatePagedList,
+}));
+
+import {
+  ensureExchangeRateCache,
+  isExchangeRateEffective,
+  peekExchangeRate,
+} from './exchange-rate-cache';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -65,5 +77,48 @@ describe('isExchangeRateEffective', () => {
     const todayOutside = new Date('2026-08-30T12:00:00').getTime();
     expect(isExchangeRateEffective(rate, etd)).toBe(true);
     expect(isExchangeRateEffective(rate, todayOutside)).toBe(false);
+  });
+});
+
+describe('peekExchangeRate 按匹配日取值', () => {
+  const usd = 11;
+  const rmb = 1;
+
+  beforeEach(() => {
+    mocks.getExchangeRatePagedList.mockResolvedValue({
+      items: [
+        {
+          id: 2,
+          enable: true,
+          currencyId: usd,
+          localCurrencyId: rmb,
+          drValue: 7,
+          crValue: 7,
+          startDate: '2026-04-01',
+          endDate: '2026-04-30',
+          sortId: 0,
+        },
+        {
+          id: 3,
+          enable: true,
+          currencyId: usd,
+          localCurrencyId: rmb,
+          drValue: 8,
+          crValue: 8,
+          startDate: '2026-07-01',
+          endDate: '2026-12-31',
+          sortId: 0,
+        },
+      ],
+    });
+  });
+
+  it('先按今天再按落在另一区间的开船日，会取到不同汇率', async () => {
+    await ensureExchangeRateCache(true);
+    const todayRate = peekExchangeRate(usd, 0, rmb, '2026-08-30');
+    const etdRate = peekExchangeRate(usd, 0, rmb, '2026-04-15');
+    expect(todayRate).toBe(8);
+    expect(etdRate).toBe(7);
+    expect(todayRate).not.toBe(etdRate);
   });
 });

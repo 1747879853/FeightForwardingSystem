@@ -16,3 +16,4 @@
 - 打开已有单据不要根据详情里的 ETD 自动覆盖已落库汇率；`skipEtdRateConfirm` 挡住 DatePicker 回填触发的 `onChange`。
 - 取消覆盖后，新加的费用行仍按**新的** ETD（或今天）取汇率，只有旧行保持原值。
 - 待审核/通过（`canSave=false`）改 ETD 不弹窗、不覆盖。
+- 改开船日时要把新匹配日传给 `resyncRatesIfChanged`，不要读尚未刷新的 `props.rateAsOf`，否则先录费用再选 ETD 会漏弹窗。见 `change-log-2026-08-30-pre-order-etd-rate-resync-asof.md`。

@@ -446,7 +446,10 @@ function sameExchangeRate(
 }
 
 /** 按费用币别 + 公司本位币 + 匹配日（无 ETD 用今天）取汇率，不写行 */
-async function matchRateForRow(row: PreOrderFeeRow): Promise<{
+async function matchRateForRow(
+  row: PreOrderFeeRow,
+  asOf: null | string | undefined = props.rateAsOf,
+): Promise<{
   __isLocalCurrency: boolean;
   exchangeRate?: number;
 }> {
@@ -458,7 +461,7 @@ async function matchRateForRow(row: PreOrderFeeRow): Promise<{
     currencyId,
     Number(row.paySide ?? 0),
     props.localCurrencyId,
-    props.rateAsOf,
+    asOf,
   );
   if (rate === undefined) {
     const isLocal = isLocalCurrencyRow(row);
@@ -483,8 +486,11 @@ async function applyExchangeRate(row: PreOrderFeeRow) {
 /**
  * 开船日期变更后重匹配：有费用行汇率与新结果不同才弹窗，确认后覆盖。
  * 详情回填 / 复制预填不要调这个，避免打开单据就提示覆盖。
+ * @param asOf 刚改完的匹配日；必须由调用方传入，不能等 props.rateAsOf 刷新
  */
-async function resyncRatesIfChanged() {
+async function resyncRatesIfChanged(
+  asOf: null | string | undefined = props.rateAsOf,
+) {
   if (props.readonly) return;
   if (dataSource.value.length === 0) return;
   const patches: Array<{
@@ -492,7 +498,7 @@ async function resyncRatesIfChanged() {
     row: PreOrderFeeRow;
   }> = [];
   for (const row of dataSource.value) {
-    const next = await matchRateForRow(row);
+    const next = await matchRateForRow(row, asOf);
     if (
       !sameExchangeRate(row.exchangeRate, next.exchangeRate) ||
       !!row.__isLocalCurrency !== next.__isLocalCurrency
@@ -501,7 +507,7 @@ async function resyncRatesIfChanged() {
     }
   }
   if (patches.length === 0) return;
-  const asOfLabel = props.rateAsOf ? `开船日期 ${props.rateAsOf}` : '当前日期';
+  const asOfLabel = asOf ? `开船日期 ${asOf}` : '当前日期';
   Modal.confirm({
     title: '按开船日期重新匹配汇率',
     content: `有 ${patches.length} 条费用的汇率与按${asOfLabel}匹配的结果不一致，确认后将覆盖为新汇率。`,

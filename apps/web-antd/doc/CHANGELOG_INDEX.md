@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-30 业务联系单先录费用再选开船日会漏弹汇率覆盖确认](./changelogs/change-log-2026-08-30-pre-order-etd-rate-resync-asof.md)
 - [2026-08-30 付费申请折算只取汇率表原币兑结算币](./changelogs/change-log-2026-08-30-payment-application-rate-quote-local.md)
 - [2026-08-30 付费申请折算汇率对齐业务联系单匹配口径](./changelogs/change-log-2026-08-30-payment-application-rate-align-pre-order.md)
 - [2026-08-30 业务联系单费用汇率按开船日期匹配](./changelogs/change-log-2026-08-30-pre-order-fee-rate-by-etd.md)

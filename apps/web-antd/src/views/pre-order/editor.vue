@@ -412,9 +412,12 @@ function applyFeeRateAsOf(value: unknown, confirmIfChanged: boolean) {
   } else {
     raw = String(value);
   }
-  feeRateAsOf.value = toExchangeRateDateKey(raw) ?? null;
+  const asOf = toExchangeRateDateKey(raw) ?? null;
+  feeRateAsOf.value = asOf;
   if (!confirmIfChanged || skipEtdRateConfirm || !canSave.value) return;
-  void feeTableRef.value?.resyncRatesIfChanged();
+  // 必须把刚算出的匹配日传下去：此时子组件 props.rateAsOf 往往还是旧值
+  //（先录费用再选 ETD 时仍是空=今天），读 props 会误判「汇率没变」而不弹窗
+  void feeTableRef.value?.resyncRatesIfChanged(asOf);
 }
 
 /** 开船日期变更：有 ETD 按开船日匹配汇率，清空则回到今天；已有费用汇率不同则确认后覆盖 */
