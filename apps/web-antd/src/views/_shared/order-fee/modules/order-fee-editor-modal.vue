@@ -13,7 +13,7 @@ import {
   getIndustryCategoryOptions,
 } from '../data';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
-import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+import { resolveExchangeRateOnDate } from '#/utils/exchange-rate-cache';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { orderCtnListRef } from '../data';
 
@@ -1104,61 +1104,45 @@ const setupFeeCodeChangeListener = async () => {
                       );
                     }
 
-                    console.log(
-                      '✅ [汇率查询] 即将调用 getExchangeRateDetail，参数:',
-                      currencyIdForApi,
-                      '类型:',
-                      typeof currencyIdForApi,
-                    );
+                    // 单据上的 localCurrencyId 已是「所属公司」的本位币，别再自己遍历 orgs：
+                    // 集团等上级节点历史上也可能配过本位币，从组织串里找会取到集团的
+                    const localCurrencyId =
+                      orderBaseData.value?.localCurrencyId;
+                    // 业务 ETD：海出=开船日、海进=到港日、空出=起飞日
+                    const etd =
+                      orderBaseData.value?.transportOrder?.etd ??
+                      orderBaseData.value?.etd;
 
-                    // 先获取汇率详情
-                    const exchangeRateData =
-                      await getExchangeRateDetail(currencyIdForApi);
-
-                    console.log(
-                      '✅ [汇率查询] 成功获取汇率详情:',
-                      exchangeRateData,
-                    );
-
-                    // 判断是否为本位币：需要查询订单所属公司的本位币
-                    let isLocalCurrency = false;
-
-                    // 从row中获取运输订单ID
-                    if (transportOrderId && orderBaseData.value) {
-                      // 单据上的 localCurrencyId 已是「所属公司」的本位币，别再自己遍历 orgs：
-                      // 集团等上级节点历史上也可能配过本位币，从组织串里找会取到集团的
-                      const localCurrencyId =
-                        orderBaseData.value?.localCurrencyId;
-
-                      if (
-                        localCurrencyId != null &&
-                        String(localCurrencyId) === String(currencyIdForApi)
-                      ) {
-                        isLocalCurrency = true;
-                        console.log(
-                          '✅ [本位币判断] 检测到本位币，公司本位币ID:',
-                          localCurrencyId,
-                          '费用币别ID:',
-                          currencyIdForApi,
-                        );
-                      }
-                    }
+                    const isLocalCurrency =
+                      localCurrencyId != null &&
+                      String(localCurrencyId) === String(currencyIdForApi);
 
                     // 如果是本位币，汇率固定为1
                     if (isLocalCurrency) {
                       await orderFeeFormApi.setFieldValue('exchangeRate', 1);
                       console.log('检测到本位币，汇率固定为1');
                     } else {
-                      // 非本位币，使用正常汇率
-                      const exchangeRate =
-                        paySide === 0
-                          ? exchangeRateData.drValue
-                          : exchangeRateData.crValue;
-                      await orderFeeFormApi.setFieldValue(
-                        'exchangeRate',
-                        exchangeRate,
+                      // 按「ETD 落在汇率有效期内 + 本位币匹配」从汇率表取汇率，
+                      // 本位币严格匹配，找不到时置空由用户手填
+                      const exchangeRate = await resolveExchangeRateOnDate(
+                        currencyIdForApi,
+                        paySide,
+                        localCurrencyId,
+                        etd,
+                        { strictLocalCurrency: true },
                       );
-                      console.log('✅ [汇率设置] 设置汇率为:', exchangeRate);
+
+                      if (exchangeRate !== undefined) {
+                        await orderFeeFormApi.setFieldValue(
+                          'exchangeRate',
+                          exchangeRate,
+                        );
+                        console.log('✅ [汇率设置] 设置汇率为:', exchangeRate);
+                      } else {
+                        console.warn(
+                          '⚠️ [汇率设置] 未找到符合 ETD+本位币条件的汇率，请手动输入',
+                        );
+                      }
                     }
                   } catch (error) {
                     console.error('❌ [汇率查询] 获取汇率详情失败:', error);

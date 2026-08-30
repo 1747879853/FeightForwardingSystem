@@ -29,6 +29,10 @@ import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import {
+  isExchangeRateEffective,
+  isRmbLocalCurrencyRate,
+} from '#/utils/exchange-rate-cache';
 import { useAntTableColumnResize } from '#/utils/table-column-resize';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
@@ -197,7 +201,9 @@ const isAllSelected = computed(() => {
 /** ✅ 新增：是否半选 */
 const isIndeterminate = computed(() => {
   const selectedCount = selectedAppRowKeys.value.length;
-  return selectedCount > 0 && selectedCount < applicationGroupsData.value.length;
+  return (
+    selectedCount > 0 && selectedCount < applicationGroupsData.value.length
+  );
 });
 
 /** 从选中的申请中更新币别 */
@@ -218,44 +224,37 @@ async function updateCurrencyFromSelectedApplications() {
   }
 }
 
-/** 加载默认汇率 */
+/** 加载默认汇率（发票只有中国有：本位币恒为人民币 + 在有效期内） */
 async function loadDefaultExchangeRate(currencyId: number) {
   try {
-    const now = dayjs();
-    const currentDate = now.format('YYYY-MM-DD');
-
     const result = await getExchangeRatePagedList({
       CurrencyId: currencyId,
+      LocalCurrencyId: 1,
       PageIndex: 1,
       PageSize: 100,
     });
 
-    if (result.items && result.items.length > 0) {
-      const matchedRate = result.items.find((item: any) => {
-        const startDate = item.startDate ? dayjs(item.startDate) : null;
-        const endDate = item.endDate ? dayjs(item.endDate) : null;
+    const validRates = (result?.items || []).filter(
+      (rate) => isRmbLocalCurrencyRate(rate) && isExchangeRateEffective(rate),
+    );
 
-        const isStartDateValid =
-          !startDate || now.isAfter(startDate) || now.isSame(startDate);
-        const isEndDateValid =
-          !endDate || now.isBefore(endDate) || now.isSame(endDate);
-
-        return isStartDateValid && isEndDateValid;
+    if (validRates.length > 0) {
+      // 同币别多条时 sortId 大者优先，其次 id 大者
+      validRates.sort((a, b) => {
+        const aSortId = Number(a.sortId ?? 0);
+        const bSortId = Number(b.sortId ?? 0);
+        if (bSortId !== aSortId) return bSortId - aSortId;
+        return String(b.id) > String(a.id) ? -1 : 1;
       });
 
-      if (matchedRate) {
-        const defaultRate = matchedRate.invoiceValue ?? 1.0;
-        invoiceExchangeRate.value = defaultRate;
-      } else {
-        const firstRate = result.items[0];
-        if (firstRate) {
-          const defaultRate = firstRate.invoiceValue ?? 1.0;
-          invoiceExchangeRate.value = defaultRate;
-        } else {
-          invoiceExchangeRate.value = 1.0;
-        }
-      }
+      const defaultRate = validRates[0]?.invoiceValue ?? 1.0;
+      invoiceExchangeRate.value = defaultRate;
     } else {
+      console.warn(
+        '⚠️ 未找到币别',
+        currencyId,
+        '本位币为人民币且在有效期内的发票汇率，使用默认 1.0',
+      );
       invoiceExchangeRate.value = 1.0;
     }
 
@@ -899,7 +898,8 @@ function transformToTreeData(
           currencyCode: item.orderFee?.currency?.code || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
-          saleNames: item.orderFee?.transportOrder?.saleNames?.join('、') || '-', // 销售
+          saleNames:
+            item.orderFee?.transportOrder?.saleNames?.join('、') || '-', // 销售
           invoiceCurrencyCode: app.currency?.code || '-', // 发票币别
           appliedAmountOriginal: item.appliedAmount || 0, // 开票申请金额（原币）
           settlementAmount: 0, // 结算金额

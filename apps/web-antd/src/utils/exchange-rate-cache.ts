@@ -8,7 +8,7 @@ import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-a
 const PAGE_SIZE = 1000;
 
 /** 币别 id（string 化，雪花 id 不做数值化）→ 已启用的汇率记录列表 */
-// 有效期按匹配日在 peek 时筛（今天或业务联系单 ETD），缓存须留下非「今天」也有效的行
+// 本位币改外键后同一币别可并存多条不同本位币的记录，故按币别存全量再按本位币/日期筛
 const rateCache = shallowRef(
   new Map<string, ExchangeRateAdminApi.ExchangeRateDto[]>(),
 );
@@ -53,7 +53,29 @@ function resolveAsOfTime(asOf?: Date | null | number | string): number {
 }
 
 /**
- * 生效条件：已启用，且匹配日落在 startDate～endDate（含起止当天；起止为空视为不限）。
+ * 生效条件：已启用，且指定日期落在 startDate～endDate（含起止当天；起止为空视为不限）。
+ * 不用时刻比较，避免 `YYYY-MM-DD` 被解析成 UTC 0 点后结束日上午就过期。
+ * @param dateStr 业务日期（YYYY-MM-DD 或 ISO 字符串），为空按今天
+ */
+export function isExchangeRateEffectiveOn(
+  rate: Pick<
+    ExchangeRateAdminApi.ExchangeRateDto,
+    'enable' | 'endDate' | 'startDate'
+  >,
+  dateStr?: null | string,
+): boolean {
+  if (!rate.enable) return false;
+  const day = dateStr ? toExchangeRateDateKey(dateStr) : undefined;
+  const today = day ?? formatLocalDate(new Date());
+  const start = toExchangeRateDateKey(rate.startDate);
+  const end = toExchangeRateDateKey(rate.endDate);
+  if (start && today < start) return false;
+  if (end && today > end) return false;
+  return true;
+}
+
+/**
+ * 生效条件：已启用，且今天落在 startDate～endDate（含起止当天；起止为空视为不限）。
  * 不用时刻比较，避免 `YYYY-MM-DD` 被解析成 UTC 0 点后结束日上午就过期。
  * @param now 匹配日时间戳；业务联系单有开船日期时传入 ETD 当天，否则默认今天
  */
@@ -64,13 +86,27 @@ export function isExchangeRateEffective(
   >,
   now = Date.now(),
 ): boolean {
-  if (!rate.enable) return false;
-  const day = formatLocalDate(new Date(now));
-  const start = toExchangeRateDateKey(rate.startDate);
-  const end = toExchangeRateDateKey(rate.endDate);
-  if (start && day < start) return false;
-  if (end && day > end) return false;
-  return true;
+  return isExchangeRateEffectiveOn(rate, formatLocalDate(new Date(now)));
+}
+
+/** 人民币币别 id（币别种子数据）。发票只有中国有，发票汇率的本位币恒为人民币 */
+const RMB_CURRENCY_ID = '1';
+
+/**
+ * 汇率记录的本位币是否为人民币。
+ * 发票只有中国有：发票汇率（invoiceValue）恒为「外币兑人民币」。
+ * 本位币改外键后同一币别可并存多条不同本位币的记录，取发票汇率前必须过滤。
+ */
+export function isRmbLocalCurrencyRate(
+  rate: Pick<
+    ExchangeRateAdminApi.ExchangeRateDto,
+    'localCurrency' | 'localCurrencyId'
+  >,
+): boolean {
+  return (
+    String(rate.localCurrencyId ?? '') === RMB_CURRENCY_ID ||
+    rate.localCurrency?.code === 'RMB'
+  );
 }
 
 /** 雪花 id 超出安全整数，按十进制字符串比大小 */
@@ -99,6 +135,8 @@ async function loadCache() {
       PageIndex: 1,
       PageSize: PAGE_SIZE,
     });
+    // 只剔除停用记录；日期有效性在取数时按「今天」或业务日期判断，
+    // 提前按今天过滤会把历史/未来 ETD 可用的汇率丢掉。
     const next = new Map<string, ExchangeRateAdminApi.ExchangeRateDto[]>();
     for (const rate of res?.items ?? []) {
       if (!rate.enable) continue;
@@ -184,6 +222,32 @@ export function peekQuotedExchangeRate(
 }
 
 /**
+ * 读取已加载缓存中指定日期有效的汇率：应收取 drValue、应付取 crValue。
+ * 缓存未就绪、该币别未维护、或没有满足条件的记录时返回 undefined。
+ * @param localCurrencyId 业务所属公司的本位币；传入时优先取本位币匹配的记录。
+ * @param dateStr 业务日期（如 ETD），为空按今天判有效期。
+ * @param opts.strictLocalCurrency 为 true 时本位币严格匹配：传入 localCurrencyId 后
+ * 找不到匹配记录直接返回 undefined，不做跨本位币兜底（费用录入用，避免填错公司的汇率）。
+ * 默认 false，保留「取不到再按 sortId/id 优先级兜底」的兼容行为。
+ */
+export function peekExchangeRateOnDate(
+  currencyId?: null | number | string,
+  paySide?: null | number,
+  localCurrencyId?: null | number | string,
+  dateStr?: null | string,
+  opts?: { strictLocalCurrency?: boolean },
+): number | undefined {
+  const localKey = String(localCurrencyId ?? '');
+  const strict = opts?.strictLocalCurrency === true && localKey !== '';
+  const rate = strict
+    ? pickQuotedRate(currencyId, localCurrencyId, dateStr)
+    : pickEffectiveRate(currencyId, localCurrencyId, dateStr);
+  if (!rate) return undefined;
+  const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
+  return value ?? undefined;
+}
+
+/**
  * 读取已加载缓存中的生效汇率：应收取 drValue、应付取 crValue。
  * 缓存未就绪、该币别未维护、或记录在匹配日已不在有效期内时返回 undefined。
  * @param localCurrencyId 业务所属公司的本位币；传入时优先取本位币匹配的记录，
@@ -196,10 +260,30 @@ export function peekExchangeRate(
   localCurrencyId?: null | number | string,
   asOf?: Date | null | number | string,
 ): number | undefined {
-  const rate = pickEffectiveRate(currencyId, localCurrencyId, asOf);
-  if (!rate) return undefined;
-  const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
-  return value ?? undefined;
+  return peekExchangeRateOnDate(
+    currencyId,
+    paySide,
+    localCurrencyId,
+    asOf == null || asOf === '' ? undefined : toExchangeRateDateKey(asOf),
+  );
+}
+
+/** 等缓存就绪后取指定日期生效汇率，语义同 {@link peekExchangeRateOnDate} */
+export async function resolveExchangeRateOnDate(
+  currencyId?: null | number | string,
+  paySide?: null | number,
+  localCurrencyId?: null | number | string,
+  dateStr?: null | string,
+  opts?: { strictLocalCurrency?: boolean },
+) {
+  await ensureExchangeRateCache();
+  return peekExchangeRateOnDate(
+    currencyId,
+    paySide,
+    localCurrencyId,
+    dateStr,
+    opts,
+  );
 }
 
 /** 等缓存就绪后取生效汇率，语义同 {@link peekExchangeRate} */

@@ -58,7 +58,7 @@ const [DetailModalComp, detailModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const [ActionModalComp, actionModalApi] = useVbenModal({
+const [ActionModalComp] = useVbenModal({
   connectedComponent: ActionModal,
   destroyOnClose: true,
 });
@@ -87,9 +87,6 @@ const canSubmitOrDelete = (row: OrderRow) =>
 /** 可撤销提交：审核中 */
 const canUnsubmit = (row: OrderRow) => row.status === Status.Submitted;
 
-/** 可发放：审核通过 */
-const canGrant = (row: OrderRow) => row.status === Status.Approved;
-
 const selectedRows = ref<OrderRow[]>([]);
 
 const syncSelectedRows = () => {
@@ -99,32 +96,10 @@ const syncSelectedRows = () => {
 
 const hasAny = (predicate: RowPredicate) => selectedRows.value.some(predicate);
 
-/** 仅选中单行且满足条件时返回该行，否则返回 undefined（审核/驳回/发放为单行操作） */
-const singleRowOf = (predicate: RowPredicate) => {
-  if (selectedRows.value.length !== 1) {
-    return undefined;
-  }
-  const row = selectedRows.value[0];
-  return row && predicate(row) ? row : undefined;
-};
-
 const hasSubmitSelection = computed(() => hasAny(canSubmitOrDelete));
 const hasUnsubmitSelection = computed(() => hasAny(canUnsubmit));
-const grantRow = computed(() => singleRowOf(canGrant));
 
 // ==================== 工具栏操作 ====================
-
-/** 发放为单行操作（审核/驳回在提成审核页，本页不提供） */
-const handleGrant = () => {
-  const row = grantRow.value;
-  if (!row) return;
-  actionModalApi.setData({
-    finalAmount: row.finalAmount,
-    id: row.id,
-    mode: 'grant',
-  });
-  actionModalApi.open();
-};
 
 /** 逐单调用（后端只支持单条），失败的条数汇总提示 */
 const batchRun = async (
@@ -318,13 +293,6 @@ const handleRefresh = () => {
             @click="handleUnsubmit"
           >
             {{ $t('commissionOrder.actions.unsubmit') }}
-          </Button>
-          <Button
-            v-access:code="'Admin.CommissionOrder.Grant'"
-            :disabled="!grantRow"
-            @click="handleGrant"
-          >
-            {{ $t('commissionOrder.actions.grant') }}
           </Button>
           <Button
             v-access:code="'Admin.CommissionOrder.Delete'"

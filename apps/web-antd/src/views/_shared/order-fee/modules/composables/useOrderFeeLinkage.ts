@@ -2,6 +2,7 @@
 // import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 // import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
+import { resolveExchangeRateOnDate } from '#/utils/exchange-rate-cache';
 import { getIndustryCategoryOptions } from '../../data';
 import { useOrderFeeAdapter } from '../../use-adapter';
 
@@ -167,6 +168,50 @@ export function useOrderFeeLinkage(
       console.error('❌ [checkIfIsLocalCurrency] 检查失败:', error);
       return false;
     }
+  }
+
+  /**
+   * 取汇率解析上下文：业务所属公司的本位币 + 业务 ETD（海出=开船日、海进=到港日、空出=起飞日）。
+   * ETD 为空时按今天判汇率有效期。
+   */
+  async function getOrderRateContext(transportOrderId?: string) {
+    const orderId = transportOrderId || dataContext.editId.value;
+    if (!orderId) {
+      return { etd: undefined, localCurrencyId: undefined };
+    }
+    try {
+      const orderDetail = await loadOrderDetailCached(orderId);
+      // 单据上的 localCurrencyId 已是「所属公司」的本位币（见 checkIfIsLocalCurrency）
+      const localCurrencyId = orderDetail?.localCurrencyId;
+      const etd =
+        orderDetail?.transportOrder?.etd ?? orderDetail?.etd ?? undefined;
+      return { etd, localCurrencyId };
+    } catch (error) {
+      console.error('❌ [getOrderRateContext] 加载订单详情失败:', error);
+      return { etd: undefined, localCurrencyId: undefined };
+    }
+  }
+
+  /**
+   * 按「业务 ETD 落在汇率有效期内 + 汇率本位币 = 业务所属公司本位币」从汇率表查汇率。
+   * 本位币严格匹配：找不到符合条件的记录返回 undefined（不做跨本位币兜底，避免填错公司的汇率）。
+   */
+  async function resolveRateByOrderContext(
+    currencyId: any,
+    paySide: number,
+    transportOrderId?: string,
+  ) {
+    const { etd, localCurrencyId } =
+      await getOrderRateContext(transportOrderId);
+    return await resolveExchangeRateOnDate(
+      currencyId,
+      paySide,
+      localCurrencyId,
+      etd,
+      {
+        strictLocalCurrency: true,
+      },
+    );
   }
 
   /**
@@ -726,33 +771,52 @@ export function useOrderFeeLinkage(
           '(label)',
         );
 
-        // ✅ 关键优化：从费用代码缓存中获取汇率，避免调用 getExchangeRateDetail API
-        const exchangeRate = getExchangeRateFromFeeCodeCache(
-          feeCodeId,
+        // 优先按业务 ETD 与本位币从汇率表查符合条件的汇率（本位币严格匹配）
+        const rateFromTable = await resolveRateByOrderContext(
           feeCodeDetail.currencyId,
+          props.type,
+          row['transportOrderId'],
         );
 
-        if (exchangeRate !== undefined) {
-          row['exchangeRate'] = exchangeRate;
+        if (rateFromTable !== undefined) {
+          row['exchangeRate'] = rateFromTable;
           row['__isLocalCurrency'] = false;
-          console.log('💱 [handleFeeCodeChange] 从缓存获取汇率:', exchangeRate);
+          console.log(
+            '💱 [handleFeeCodeChange] 按 ETD+本位币从汇率表获取汇率:',
+            rateFromTable,
+          );
         } else {
-          // 如果缓存中没有汇率，判断是否为本位币
-          const currencyIdNum =
-            typeof feeCodeDetail.currencyId === 'number'
-              ? feeCodeDetail.currencyId
-              : Number(feeCodeDetail.currencyId);
-          const isLocalCurrency = await checkIfIsLocalCurrency(currencyIdNum);
+          // 汇率表没有符合条件的记录时，退回费用代码自带的汇率（后端维护的当前有效汇率）
+          const exchangeRate = getExchangeRateFromFeeCodeCache(
+            feeCodeId,
+            feeCodeDetail.currencyId,
+          );
 
-          if (isLocalCurrency) {
-            row['exchangeRate'] = 1;
-            row['__isLocalCurrency'] = true;
-            row['__editing_exchangeRate'] = false;
-            console.log('💱 [handleFeeCodeChange] 本位币，汇率设为1');
-          } else {
-            console.warn(
-              '⚠️ [handleFeeCodeChange] 无法获取汇率，请检查费用代码配置',
+          if (exchangeRate !== undefined) {
+            row['exchangeRate'] = exchangeRate;
+            row['__isLocalCurrency'] = false;
+            console.log(
+              '💱 [handleFeeCodeChange] 从缓存获取汇率:',
+              exchangeRate,
             );
+          } else {
+            // 如果缓存中没有汇率，判断是否为本位币
+            const currencyIdNum =
+              typeof feeCodeDetail.currencyId === 'number'
+                ? feeCodeDetail.currencyId
+                : Number(feeCodeDetail.currencyId);
+            const isLocalCurrency = await checkIfIsLocalCurrency(currencyIdNum);
+
+            if (isLocalCurrency) {
+              row['exchangeRate'] = 1;
+              row['__isLocalCurrency'] = true;
+              row['__editing_exchangeRate'] = false;
+              console.log('💱 [handleFeeCodeChange] 本位币，汇率设为1');
+            } else {
+              console.warn(
+                '⚠️ [handleFeeCodeChange] 无法获取汇率，请检查费用代码配置',
+              );
+            }
           }
         }
       }
@@ -904,18 +968,22 @@ export function useOrderFeeLinkage(
       row['currencyId_value'] = currencyId;
 
       if (currencyId) {
-        // ✅ 关键优化：优先从汇率缓存中获取汇率
-        const exchangeRate = getExchangeRateFromCache(currencyId, props.type);
+        // 优先按业务 ETD 与本位币从汇率表查符合条件的汇率（本位币严格匹配）
+        const rateFromTable = await resolveRateByOrderContext(
+          currencyId,
+          props.type,
+          row['transportOrderId'],
+        );
 
-        if (exchangeRate !== undefined) {
-          row['exchangeRate'] = exchangeRate;
+        if (rateFromTable !== undefined) {
+          row['exchangeRate'] = rateFromTable;
           row['__isLocalCurrency'] = false;
           console.log(
-            '💱 [handleCurrencyChange] 从汇率缓存获取汇率:',
-            exchangeRate,
+            '💱 [handleCurrencyChange] 按 ETD+本位币从汇率表获取汇率:',
+            rateFromTable,
           );
         } else {
-          // 如果汇率缓存中没有，尝试从费用代码缓存中获取
+          // 汇率表没有符合条件的记录时，尝试从费用代码缓存中获取
           const feeCodeId = row['feeCodeId_value'];
           if (feeCodeId) {
             const feeCodeExchangeRate = getExchangeRateFromFeeCodeCache(
