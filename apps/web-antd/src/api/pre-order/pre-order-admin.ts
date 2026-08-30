@@ -78,7 +78,10 @@ export namespace PreOrderAdminApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name?: string;
-    localCurrencyId?: number;
+    /** 本节点自身配置的本位币，只有公司节点才会有值 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 是否公司节点 */
     isCompany?: boolean;
   }
@@ -268,6 +271,10 @@ export namespace PreOrderAdminApi {
     lastModifierUserId?: number | null;
     userId?: number;
     orgs?: OrganizationUnitSimpleDto[] | null;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     client?: SimpleNamedDto | null;
     carrier?: CarrierSimpleDto | null;
     receivePort?: SimpleNamedDto | null;

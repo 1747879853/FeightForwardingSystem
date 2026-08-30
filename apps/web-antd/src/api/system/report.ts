@@ -74,8 +74,9 @@ export namespace ReportApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name: string;
-    localCurrencyId?: number;
-    localCurrencyCode: string;
+    /** 本节点自身配置的本位币，只有公司节点才会有值；单据本位币请读行级 localCurrencyId */
+    localCurrencyId?: null | number;
+    localCurrencyCode?: null | string;
     /** 是否公司节点 */
     isCompany?: boolean;
   }
@@ -205,6 +206,10 @@ export namespace ReportApi {
     isOriginal: boolean;
     accountDate: string;
     transportOrder: ReportTransportOrderDto;
+    /** 本位币id：主单所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，合计金额的计量单位；同一次查询里不同行可能不同 */
+    localCurrencyCode?: null | string;
 
     // 金额
     currencies: ProfitCurrencyDto[];
@@ -245,6 +250,10 @@ export namespace ReportApi {
     isOriginal: boolean;
     accountDate: string;
     transportOrder: ReportTransportOrderDto;
+    /** 本位币id：主单所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，合计金额的计量单位；同一次查询里不同行可能不同 */
+    localCurrencyCode?: null | string;
 
     // 欠费报表特有的行级字段
     settlement?: ClientSimpleDto | null;

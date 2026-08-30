@@ -544,6 +544,10 @@ export namespace SeaImportAdminApi {
     userId?: number;
     orgId?: LongId | null;
     orgs?: OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: LongId | null;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     vessel?: null | string;
     innerVoyno?: null | string;
     carrierId?: LongId | null;

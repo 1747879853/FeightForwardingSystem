@@ -324,6 +324,71 @@ function resolveOrganizationCompanyName(
   return '';
 }
 
+/** 本位币解析结果（对齐后端单据上的 localCurrencyId / localCurrencyCode） */
+export interface OrganizationLocalCurrency {
+  localCurrencyCode: null | string;
+  localCurrencyId: null | number;
+}
+
+/** 全量组织列表缓存，供本位币解析复用（组织配置在一次会话内基本不变） */
+let allOrganizationUnitsPromise: null | Promise<
+  SystemOrganizationUnitApi.OrganizationUnitDto[]
+> = null;
+
+/**
+ * 解析某组织所属公司的本位币。
+ *
+ * 与后端 `SetDataPermissionPropsAsync` 同口径：沿组织串向上找**最近的公司节点**，
+ * 取该公司配置的本位币。不能用「组织串上第一个有本位币的节点」——集团等上级节点
+ * 历史上也可能配过本位币，那样会取到集团的。
+ *
+ * 单据返回体已直接带 `localCurrencyId` / `localCurrencyCode` 时优先读单据字段，
+ * 本函数只用于表单里用户临时切换归属组织、还没有单据可读的场景。
+ */
+async function resolveOrganizationLocalCurrency(
+  organizationId?: null | number | string,
+): Promise<OrganizationLocalCurrency> {
+  const empty: OrganizationLocalCurrency = {
+    localCurrencyId: null,
+    localCurrencyCode: null,
+  };
+  if (organizationId === undefined || organizationId === null) {
+    return empty;
+  }
+
+  allOrganizationUnitsPromise ||= getOrganizationUnits().catch((error) => {
+    allOrganizationUnitsPromise = null;
+    throw error;
+  });
+
+  let list: SystemOrganizationUnitApi.OrganizationUnitDto[];
+  try {
+    list = await allOrganizationUnitsPromise;
+  } catch {
+    return empty;
+  }
+
+  const nodeMap = new Map(list.map((item) => [String(item.id), item]));
+  let current = nodeMap.get(String(organizationId));
+  const visited = new Set<string>();
+
+  while (current && !visited.has(String(current.id))) {
+    visited.add(String(current.id));
+    if (current.isCompany) {
+      return {
+        localCurrencyId: current.localCurrencyId ?? null,
+        localCurrencyCode: current.localCurrencyCode ?? null,
+      };
+    }
+    current =
+      current.parentId === undefined || current.parentId === null
+        ? undefined
+        : nodeMap.get(String(current.parentId));
+  }
+
+  return empty;
+}
+
 /**
  * 获取组织单元列表
  * @param params 查询参数，支持按公司/部门、启用/禁用状态筛选
@@ -675,6 +740,7 @@ export {
   moveOrganizationUnit,
   removeUserFromOrganizationUnit,
   resolveOrganizationCompanyName,
+  resolveOrganizationLocalCurrency,
   updateOrgBankAccount,
   updateOrganizationUnit,
   withOrganizationTreeDisabled,

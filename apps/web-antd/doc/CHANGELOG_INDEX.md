@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-30 数据权限返回体统一新增本位币并对齐所属公司口径](./changelogs/change-log-2026-08-30-data-permission-local-currency.md)
 - [2026-08-30 监装处理改为弹窗内保存](./changelogs/change-log-2026-08-30-mp-panel-save.md)
 - [2026-08-30 箱号封号改到监装处理面板集中填写](./changelogs/change-log-2026-08-30-mp-ctn-no-in-panel.md)
 - [2026-08-30 拒接弹窗 textarea 不再撑出右边](./changelogs/change-log-2026-08-30-mp-reject-textarea-overflow.md)

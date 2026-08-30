@@ -562,6 +562,10 @@ export namespace CommissionOrderAdminApi {
     orgId?: number | null;
     /** 所属组织串，从最高级组织到本组织 */
     orgs: OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 创建人昵称 */
     creatorUserName?: string | null;
     /** 最后修改人昵称 */

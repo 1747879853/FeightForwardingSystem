@@ -109,6 +109,10 @@ export namespace PaymentApplicationAdminApi {
     bookingNum?: string;
     /** 结算对象名称 */
     clientName?: string;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   /** 费用 DTO（用于付费结算选择列表） */
@@ -375,6 +379,10 @@ export namespace PaymentApplicationAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     isDeleted: boolean;
     creationTime: string;
 
@@ -408,6 +416,10 @@ export namespace PaymentApplicationAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 申请单号 */
     applicationNo?: string;
     /** 申请状态：`3`=审核通过，`4`=部分结算 */
@@ -908,6 +920,10 @@ export namespace PaymentApplicationAdminApi {
     pkgs?: number;
     grossWeight?: number;
     remark?: string;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     isDeleted: boolean;
     creationTime: string;
   }

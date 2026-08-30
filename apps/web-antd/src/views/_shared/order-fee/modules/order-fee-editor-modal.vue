@@ -1125,40 +1125,19 @@ const setupFeeCodeChangeListener = async () => {
 
                     // 从row中获取运输订单ID
                     if (transportOrderId && orderBaseData.value) {
-                      const orderDetail = orderBaseData.value;
-
-                      // 从组织串中取公司节点：优先取最后一个 isCompany 节点（最接近本组织的所属公司），
-                      // 避免集团等上级节点配过本位币时取错；后端未返回 isCompany 时兜底首个含本位币的节点
-                      const orgs = orderDetail.orgs ?? [];
-                      const companyNode =
-                        [...orgs]
-                          .reverse()
-                          .find((node: any) => node?.isCompany === true) ??
-                        orgs.find(
-                          (node: any) =>
-                            node?.localCurrencyId !== null &&
-                            node?.localCurrencyId !== undefined,
-                        );
-
-                      // ✅ 关键修复：比较时也使用正确的ID
-                      let companyCurrencyId: any = companyNode?.localCurrencyId;
-                      if (
-                        typeof companyCurrencyId === 'object' &&
-                        companyCurrencyId !== null
-                      ) {
-                        companyCurrencyId =
-                          (companyCurrencyId as any).id ||
-                          (companyCurrencyId as any).value;
-                      }
+                      // 单据上的 localCurrencyId 已是「所属公司」的本位币，别再自己遍历 orgs：
+                      // 集团等上级节点历史上也可能配过本位币，从组织串里找会取到集团的
+                      const localCurrencyId =
+                        orderBaseData.value?.localCurrencyId;
 
                       if (
-                        companyNode &&
-                        String(companyCurrencyId) === String(currencyIdForApi)
+                        localCurrencyId != null &&
+                        String(localCurrencyId) === String(currencyIdForApi)
                       ) {
                         isLocalCurrency = true;
                         console.log(
                           '✅ [本位币判断] 检测到本位币，公司本位币ID:',
-                          companyCurrencyId,
+                          localCurrencyId,
                           '费用币别ID:',
                           currencyIdForApi,
                         );

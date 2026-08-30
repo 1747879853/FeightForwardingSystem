@@ -30,7 +30,10 @@ export namespace PaymentReviewAdminApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name?: string;
-    localCurrencyId?: number;
+    /** 本节点自身配置的本位币，只有公司节点才会有值 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 是否公司节点 */
     isCompany?: boolean;
   }
@@ -95,6 +98,11 @@ export namespace PaymentReviewAdminApi {
     id: string;
   }
 
+  /**
+   * 待我审核的付费申请。
+   * 平铺结构，不继承数据权限基类，因此**没有** localCurrencyId / localCurrencyCode；
+   * `orgs` 末级也未必是公司节点，不要拿它推本位币。需要本位币请走 `DetailAsync`。
+   */
   export interface PayAppTaskItemDto {
     paymentApplicationId: string;
     applicationNo?: string;

@@ -330,6 +330,10 @@ export namespace OrderFeeTemplateAdminApi {
     pod?: PortCodeSimpleDto | null;
     /** 费用明细列表 */
     orderFeeTemplateItems?: OrderFeeTemplateItemListDto[] | null;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   /** 模板列表 DTO */
@@ -342,6 +346,10 @@ export namespace OrderFeeTemplateAdminApi {
     startTime?: string | null;
     endTime?: string | null;
     orgId?: number | null;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     clientId?: string | null;
     tradeTermsType?: TradeTermsType | null;
     cargoId?: CargoType | null;

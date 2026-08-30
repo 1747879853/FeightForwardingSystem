@@ -33,6 +33,11 @@ export namespace ReceiveSettlementAdminApi {
     recSettlementStatus?: number | null;
     /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
     paySettlementStatus?: number | null;
+
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   export interface ReceiveSettlementFeeDto {
@@ -188,6 +193,10 @@ export namespace ReceiveSettlementAdminApi {
     bankStatementId: string;
     /** 归属组织id */
     orgId?: null | number;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     settlementNo?: string;
     status: number;
     /** 结算类型 0 按费用(按业务) 1 按开票申请 */
@@ -209,6 +218,10 @@ export namespace ReceiveSettlementAdminApi {
   export interface ReceiveSettlementListDto {
     id: string;
     bankStatementId: string;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     settlementNo?: string;
     status: number;
     /** 结算类型 0 按费用(按业务) 1 按开票申请 */

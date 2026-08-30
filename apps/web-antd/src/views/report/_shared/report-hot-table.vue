@@ -14,6 +14,12 @@ import { message, Tag, Modal, Checkbox } from 'ant-design-vue';
 // 导入 SheetJS
 import * as XLSX from 'xlsx';
 
+import {
+  blankMixedCurrencyTotals,
+  collectRowLocalCurrencies,
+  LOCAL_CURRENCY_COLUMN_KEY,
+} from './hot-columns';
+
 defineOptions({
   name: 'ReportHotTable',
 });
@@ -916,6 +922,23 @@ function applyGrouping(data: any[]) {
   groupingCache.set(cacheKey, tableData.value);
 }
 
+/**
+ * 汇总行的本位币口径：合计列（total*）以本位币计价，
+ * 跨公司查询时不同行的本位币可能不同，此时不能直接加总，置为「多币别」。
+ */
+function applyLocalCurrencyToAggregate(
+  aggregatedRow: Record<string, any>,
+  items: Record<string, any>[],
+  columnKeys: string[],
+) {
+  const codes = collectRowLocalCurrencies(items);
+  if (codes.length > 1) {
+    blankMixedCurrencyTotals(aggregatedRow, columnKeys);
+    return;
+  }
+  aggregatedRow[LOCAL_CURRENCY_COLUMN_KEY] = codes[0] ?? '';
+}
+
 // 递归构建树状结构（带聚合数据）
 function buildTreeStructure(
   data: any[],
@@ -1020,6 +1043,12 @@ function buildTreeStructure(
         }
       }
     });
+
+    applyLocalCurrencyToAggregate(
+      aggregatedRow,
+      items,
+      visibleColumns.map((col) => col.data),
+    );
 
     // 添加分组行元数据
     aggregatedRow._isGroupRow = true;
@@ -1157,6 +1186,12 @@ function buildFullExportTree(
       }
     });
 
+    applyLocalCurrencyToAggregate(
+      aggregatedRow,
+      items,
+      dynamicHotColumns.value.map((col) => col.data),
+    );
+
     // 添加分组行元数据
     aggregatedRow._isGroupRow = true;
     aggregatedRow._groupName = `${groupName}(${items.length})`;
@@ -1244,6 +1279,12 @@ function calculateTotalRow(): any {
       totalRow[colName] = '0.00';
     }
   });
+
+  applyLocalCurrencyToAggregate(
+    totalRow,
+    originalDataArray,
+    dynamicHotColumns.value.map((col) => col.data),
+  );
 
   return totalRow;
 }

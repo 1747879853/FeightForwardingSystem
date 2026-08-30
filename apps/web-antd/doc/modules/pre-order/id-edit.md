@@ -117,6 +117,7 @@ last_updated: 2026-08-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-30 | `Fix` | 归属组织选到**部门**时费用行本位币不再解析失败，汇率锁 1 恢复生效。 | 原来直接读 `getOrganizationUnit(headerOrgId).localCurrencyId`，而本位币只配在公司节点上，选部门必然拿到 null。改用新增的 `resolveOrganizationLocalCurrency()`（`api/system/organization-unit.ts`）沿组织串向上找最近的 `isCompany` 节点，与后端 `SetDataPermissionPropsAsync` 的「所属公司」口径一致。注意不能退回「组织串第一个有本位币的节点」——集团节点历史上也可能配过。详见 `changelogs/change-log-2026-08-30-data-permission-local-currency.md`。 |
 | 2026-08-24 | `Fix` | 编辑页「复制新建」：有保存时进保存下拉，无保存时单独按钮。 | TAPD `#1161580498001000855`。对齐海出保存▾复制。详见 `changelogs/change-log-2026-08-24-pre-order-editor-copy-create.md`。 |
 | 2026-08-24 | `Fix` | 费用汇率展示去掉末尾 0（输入 7 显示 7，不再补成 7.000000）。 | TAPD `#1161580498001000870`。`InputNumber` formatter 在非输入态 `toFixed(6)` 后去零。详见 `changelogs/change-log-2026-08-24-pre-order-fee-exchange-rate-trim.md`。 |
 | 2026-08-24 | `Fix` | 「审核流程」弹窗驳回意见改为红色「驳回原因：」换行展示。 | TAPD `#1161580498001000871`。共用 `workflow-timeline`，驳回 `comment` 放到 `__detail` 外。详见 `changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md`。 |

@@ -51,6 +51,10 @@ export namespace InvoiceRemarkTemplateApi {
     orgId: number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     currencyId: number;
     template: string;
     default: boolean;

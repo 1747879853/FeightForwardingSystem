@@ -31,7 +31,7 @@ views/report/
 2. 新建 `views/report/<report-name>/config.ts`，提供 `ReportPageConfig`：
    - `fetchApi`：列表接口（当前为不分页全量查询）
    - `formSchema`：查询表单（用 `_shared/options` 的字段工厂组合公共字段 + 特有字段）
-   - `baseHotColumns` / `totalHotColumns`：基础列与合计列（可用 `textRenderer` 工厂）
+   - `baseHotColumns` / `totalHotColumns`：基础列与合计列（可用 `textRenderer` 工厂）；合计列以本位币计价，`totalHotColumns` 首位放 `localCurrencyColumn()`，列标题不要写死币种
    - `currencyFields`：币别明细列定义（行数据键规则 `${币别代码}_${key}`）
    - `mapExtraRow`：本报表特有的行字段（合计金额等）
    - `numericColumnKeys`：数值列（合计行累加、分组聚合、右对齐）
@@ -61,4 +61,5 @@ defineOptions({ name: 'MyReport' });
 
 - 港口参数需成对传递：`polId`/`polIsSeaPort`、`podId`/`podIsSeaPort`；查询时由 `setPortTypeByBizType` 按业务类型自动补齐。
 - 表格合计行、分组聚合基于 `numericColumnKeys` 声明的数值列计算；利润率列（`totalProfitRate`）在表格组件内有专门的聚合/合计逻辑。
+- 合计列（`total*`）的计量单位是**本行主单所属公司的本位币**，一次查询可能跨多个公司。分组行与合计行遇到多种本位币时会显示「多币别」并把合计置为 `-`，不做跨币别加总；币别明细列按原币分列，不受影响。
 - 双击数据行跳转对应业务编辑页（按 `bizType` 路由）。

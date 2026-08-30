@@ -184,6 +184,10 @@ export namespace BankStatementAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 已结算金额（收为正、付为负） */
     settledAmount?: number;
     /** 核销状态 */
@@ -219,6 +223,13 @@ export namespace BankStatementAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /**
+     * 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找。
+     * 非管理端 `/BankStatement/GetPagedListAsync` 未做数据权限填充，恒为 null。
+     */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     creationTime: string;
     /** 已结算金额（收为正、付为负） */
     settledAmount?: number;

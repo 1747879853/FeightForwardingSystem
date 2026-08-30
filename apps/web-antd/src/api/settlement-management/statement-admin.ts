@@ -204,9 +204,10 @@ export namespace StatementAdminApi {
     mblNums?: string[];
     statementCurrencyGroup?: StatementCurrencyDto[];
     orderFeeGroups?: OrderFeeAndSeaExportDto[];
-    localCurrencyId?: number;
-    /** 本位币对象（替代 localCurrencyCode，编码读 code） */
-    localCurrency?: CurrencySimpleDto | null;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD（替代已删除的 localCurrency 对象） */
+    localCurrencyCode?: null | string;
     localCurrencyReceiveAmount: number;
     localCurrencyPayAmount: number;
     isDeleted: boolean;

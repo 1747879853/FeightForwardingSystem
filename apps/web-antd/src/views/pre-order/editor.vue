@@ -45,7 +45,7 @@ import {
   unSubmitPreOrder,
 } from '#/api/pre-order/pre-order-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
-import { getOrganizationUnit } from '#/api/system/organization-unit';
+import { resolveOrganizationLocalCurrency } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { useOrderUserRoles } from '#/composables/use-order-user-roles';
@@ -1199,12 +1199,10 @@ watch(
       localCurrencyId.value = null;
       return;
     }
-    try {
-      const org = await getOrganizationUnit(Number(orgId));
-      localCurrencyId.value = org?.localCurrencyId ?? null;
-    } catch {
-      localCurrencyId.value = null;
-    }
+    // 归属组织可能是部门，本位币配在其所属公司上，需沿组织串向上找
+    const { localCurrencyId: resolved } =
+      await resolveOrganizationLocalCurrency(orgId);
+    localCurrencyId.value = resolved;
   },
   { immediate: true },
 );

@@ -473,6 +473,10 @@ export namespace AirExportAdminApi {
     userName?: null | string;
     orgId?: LongId | null;
     orgs?: OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: LongId | null;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     bookingAgentId?: null | string;
     bookingAgent?: ClientSimpleDto | null;
     flightNo?: null | string;

@@ -192,120 +192,6 @@ export namespace PaymentSettlementAdminApi {
     unInvoicedAmount?: number;
   }
 
-  /** 币别分组DTO（用于详情中的分组展示，包含结算信息） */
-  export interface CurrencyGroupForDetailDto {
-    /** 币别ID */
-    id: number;
-    /** 币别代码 */
-    code?: string;
-    /** 本次该币别的结算量（原币）= 该币别下所有费用的结算量之和 */
-    settledAmount?: number;
-    /** 本次该币别的结算金额（结算币别）= settledAmount × 汇率 */
-    settledPrice?: number;
-    /** 该币别下的费用列表（含本次结算量） */
-    orderFees: OrderFeeDto[];
-  }
-
-  /** 付费申请分组DTO（用于详情中的分组展示，包含结算信息） */
-  export interface PaymentApplicationForDetailDto {
-    /** 付费申请ID */
-    id: string;
-    /** 付费申请单号 */
-    applicationNo: string;
-    /** 结算对象（客户简易对象，无则为 null） */
-    settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
-    /** 本条付费申请的总结算金额（结算币别）= 各币别 SettledPrice 之和 */
-    totalSettledPrice?: number;
-    /** 按币别分组的结算明细 */
-    currencyGroup: CurrencyGroupForDetailDto[];
-  }
-
-  /** 结算明细详情DTO */
-  export interface PaymentSettlementItemDetailDto {
-    /** 结算明细ID */
-    id: string;
-    /** 付费结算ID */
-    paymentSettlementId: string;
-    /** 付费申请明细ID */
-    paymentApplicationItemId: string;
-    /** 付费申请ID */
-    paymentApplicationId: string;
-    /** 费用ID */
-    orderFeeId: string;
-    /** 原币币别ID */
-    originalCurrencyId: number;
-    /** 本次结算原币金额 */
-    settledAmount: number;
-    /** 汇率快照 */
-    rate: number;
-    /** 备注 */
-    remark?: string;
-    /** 结算币别金额 = settledAmount × rate */
-    settledPrice: number;
-    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
-    originalCurrency?: CurrencySimpleDto | null;
-    /** 付费申请单号 */
-    applicationNo: string;
-    /** 该付费申请明细剩余申请量（原币） */
-    remainingAppliedAmount: number;
-    /** 费用剩余结算量（原币） */
-    remainingFeeAmount: number;
-    /** 费用详情 */
-    orderFee: OrderFeeDto;
-  }
-
-  /** 付费结算详情DTO */
-  export interface PaymentSettlementDetailDto {
-    /** 付费结算ID */
-    id: string;
-    /** 结算单号 */
-    settlementNo: string;
-    /** 结算状态 */
-    status: number;
-    /** 结算时间 */
-    settlementTime: string;
-    /** 付款方式 */
-    payType?: number;
-    /** 是否锁定 */
-    locked: boolean;
-    /** 锁定时间 */
-    lockeTime?: string;
-    /** 结算对象ID */
-    settlementId: string;
-    /** 结算币别ID */
-    currencyId: number;
-    /** 我司银行ID */
-    orgBankAccountId?: string;
-    /** 结算对象银行ID */
-    clientInvoiceBankId?: string;
-    /** 手续费 */
-    transactionFee?: number;
-    /** 备注 */
-    remark?: string;
-    /** 结算对象（客户简易对象，无则为 null） */
-    settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
-    /** 结算币别对象（替代 currencyCode，编码读 code） */
-    currency?: CurrencySimpleDto | null;
-    /** 创建人名称 */
-    creatorUserName: string;
-    /** 申请人昵称（userId 对应用户的 nickName） */
-    userName?: string;
-    /** 最后修改人昵称 */
-    lastModifierUserName?: string;
-    /** 结算明细（扁平列表） */
-    paymentSettlementItems: PaymentSettlementItemDetailDto[];
-    /** 按付费申请分组的结算明细 */
-    paymentApplications: PaymentApplicationForDetailDto[];
-    /** 附件列表 */
-    attachments: AttachmentItemDto[];
-    /** 归属组织id */
-    orgId?: null | number;
-    /** 组织串（从最高级组织到该组织） */
-    orgs?:
-      | import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]
-      | null;
-  }
-
   /** 分页查询参数DTO */
   export interface PaymentSettlementQueryDto {
     /** 结算对象ID */
@@ -410,6 +296,10 @@ export namespace PaymentSettlementAdminApi {
     paymentApplications: PayAppSimpleDto[];
     /** 费用简要列表（id + 主提单号） */
     orderFees: FeeSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   /** 分页列表响应 */
@@ -471,6 +361,10 @@ export namespace PaymentSettlementAdminApi {
     bookingNum?: string;
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   /**
@@ -670,6 +564,10 @@ export namespace PaymentSettlementAdminApi {
     orgId?: number;
     /** 付费申请的归属组织串 */
     orgs?: PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 付费申请的结算对象ID */
     settlementId: string;
     /** 结算对象（含默认地址） */
@@ -711,6 +609,10 @@ export namespace PaymentSettlementAdminApi {
     userId: number;
     orgId?: number;
     orgs?: PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
 
     settlementNo: string;
     status: number;
@@ -776,14 +678,6 @@ export const deletePaymentSettlement = (
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data,
   });
-};
-
-/** 获取付费结算详情 */
-export const getPaymentSettlementDetail = (id: string) => {
-  return requestClient.get<PaymentSettlementAdminApi.PaymentSettlementDetailDto>(
-    `${API_PREFIX}/DetailAsync`,
-    { params: { id } },
-  );
 };
 
 /** 获取付费结算分页列表 */

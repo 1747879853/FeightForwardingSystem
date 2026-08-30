@@ -16,7 +16,7 @@
 | sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；箱型与监装照片只读，师傅端在小程序。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-23 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-14 |
-| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；编辑页可复制新建（有保存进下拉，无保存单独按钮）；各下拉用详情外键对象回显；未保存切走可 KeepAlive。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-24 |
+| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；编辑页可复制新建（有保存进下拉，无保存单独按钮）；各下拉用详情外键对象回显；未保存切走可 KeepAlive。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-30 |
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口；码头为往来单位筛选，含联运单号/分单号/贸易方式；支持多选运踪批量订阅、「运踪状态」列与主提单号前异常预警叹号。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-28 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单；码头走往来单位下拉；集装箱规格/型号按品名 id 选择；收发通可折叠且默认展开；货物区件数包装同行，右侧为内外部备注 Tab（多行 textarea）；提交成功后进入编辑工作台；未保存切走可 KeepAlive。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-25 |
@@ -87,3 +87,5 @@
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-08-28 |
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
 | shared | （全站页面级表单） | 共享能力 | 未保存离开拦截：切走可缓存、点 X 才销毁；单个关标签先确认；当前页脏时 `beforeunload`。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-08-23 |
+| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总。 | [利润报表](./modules/report/profit-report.md) | 2026-08-30 |
+| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总。 | [欠费报表](./modules/report/arrears-report.md) | 2026-08-30 |

@@ -7,7 +7,7 @@ import { message } from 'ant-design-vue';
 import { getProfitReportList } from '#/api/system/report';
 
 import { setPortTypeByBizType } from '../_shared/formatters';
-import { textRenderer } from '../_shared/hot-columns';
+import { localCurrencyColumn, textRenderer } from '../_shared/hot-columns';
 import { getCommonReportFormFields } from '../_shared/options';
 
 /**
@@ -65,25 +65,26 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
     { key: 'profit', title: (code) => `${code}利润` },
   ],
 
-  // 合计列
+  // 合计列。金额口径为本行本位币，单位见前置的「本位币」列，不写死币种
   totalHotColumns: [
+    localCurrencyColumn(),
     {
       data: 'totalReceivable',
-      title: '合计应收(CNY)',
+      title: '合计应收',
       width: 140,
       className: 'htRight',
       renderer: textRenderer(''),
     },
     {
       data: 'totalPayable',
-      title: '合计应付(CNY)',
+      title: '合计应付',
       width: 140,
       className: 'htRight',
       renderer: textRenderer(''),
     },
     {
       data: 'totalProfit',
-      title: '合计利润(CNY)',
+      title: '合计利润',
       width: 140,
       className: 'htRight',
       renderer: textRenderer(''),

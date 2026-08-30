@@ -10,7 +10,7 @@ import { getArrearsReportList } from '#/api/system/report';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 
 import { setPortTypeByBizType } from '../_shared/formatters';
-import { textRenderer } from '../_shared/hot-columns';
+import { localCurrencyColumn, textRenderer } from '../_shared/hot-columns';
 import {
   accountDateRangeFields,
   bizDateRangeFields,
@@ -316,25 +316,26 @@ export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
       { key: 'unReceived', title: (code) => `${code}未收/未付` },
     ],
 
-    // 合计列
+    // 合计列。金额口径为本行本位币，单位见前置的「本位币」列，不写死币种
     totalHotColumns: [
+      localCurrencyColumn(),
       {
         data: 'totalReceivable',
-        title: '合计应收/应付(CNY)',
+        title: '合计应收/应付',
         width: 160,
         className: 'htRight',
         renderer: textRenderer(''),
       },
       {
         data: 'totalReceived',
-        title: '合计已收/已付(CNY)',
+        title: '合计已收/已付',
         width: 160,
         className: 'htRight',
         renderer: textRenderer(''),
       },
       {
         data: 'totalUnReceived',
-        title: '合计未收/未付(CNY)',
+        title: '合计未收/未付',
         width: 160,
         className: 'htRight',
         renderer: textRenderer(''),

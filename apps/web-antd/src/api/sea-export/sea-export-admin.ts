@@ -596,6 +596,10 @@ export namespace SeaExportAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     transportOrder?: TransportOrderDto;
     /** 应付费用最小状态（该方向无费用时为 null） */
     feeStatusPay?: number | null;

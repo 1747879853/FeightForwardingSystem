@@ -156,29 +156,13 @@ export function useOrderFeeLinkage(
 
       const orderDetail = await loadOrderDetailCached(transportOrderId);
 
-      // 组织串从顶到底排列：优先取最后一个 isCompany 节点（最接近本组织的所属公司），
-      // 避免集团等上级节点配过本位币时取错；后端未返回 isCompany 时兜底旧逻辑（首个有本位币的节点）
-      const orgs = orderDetail?.orgs ?? [];
-      const companyNode =
-        [...orgs].reverse().find((node: any) => node?.isCompany === true) ??
-        orgs.find(
-          (node: any) =>
-            node?.localCurrencyId !== null &&
-            node?.localCurrencyId !== undefined,
-        );
-      if (companyNode && companyNode.localCurrencyId != null) {
-        const isLocal = companyNode.localCurrencyId === currencyId;
-        console.log(
-          '💱 [checkIfIsLocalCurrency] 币别ID:',
-          currencyId,
-          '本位币ID:',
-          companyNode.localCurrencyId,
-          '是否本位币:',
-          isLocal,
-        );
-        return isLocal;
+      // 单据上的 localCurrencyId 已是「所属公司」的本位币，别再自己遍历 orgs：
+      // 集团等上级节点历史上也可能配过本位币，从组织串里找会取到集团的
+      const localCurrencyId = orderDetail?.localCurrencyId;
+      if (localCurrencyId == null) {
+        return false;
       }
-      return false;
+      return String(localCurrencyId) === String(currencyId);
     } catch (error) {
       console.error('❌ [checkIfIsLocalCurrency] 检查失败:', error);
       return false;

@@ -75,6 +75,8 @@ interface ReportRowItem {
   accountDate: string;
   transportOrder: ReportApi.ReportTransportOrderDto;
   currencies: { currency: ReportApi.CurrencySimpleDto }[];
+  /** 合计金额的计量单位，取主单所属公司的本位币；跨公司查询时各行可能不同 */
+  localCurrencyCode?: null | string;
 }
 
 /**
@@ -115,6 +117,7 @@ function buildCommonRow(item: ReportRowItem): Record<string, any> {
       ? carrier.cnShortName || carrier.cnName || carrier.enName
       : '-',
     ctns: formatCtns(transportOrder?.ctns || []),
+    localCurrencyCode: item.localCurrencyCode || '',
     _originalData: item,
     _isDataRow: true,
   };

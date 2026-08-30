@@ -68,6 +68,11 @@ export namespace InvoiceApplicationAdminApi {
     recSettlementStatus?: number | null;
     /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
     paySettlementStatus?: number | null;
+
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
   }
 
   /** 港口简易对象（PortCodeSimpleDto） */
@@ -393,6 +398,10 @@ export namespace InvoiceApplicationAdminApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 组织（公司）对象（替代 companyName） */
     company?: CompanySimpleDto | null;
     orgBankAccountId: string;

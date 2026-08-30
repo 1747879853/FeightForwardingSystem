@@ -422,6 +422,10 @@ export namespace CommissionConfigAdminApi {
     orgId?: number | null;
     /** 数据所属组织串，从最高级组织到本组织。当前停用，恒为空列表。与 applyOrgs 语义不同，别混 */
     orgs: OrganizationUnitSimpleDto[];
+    /** 本位币id。数据权限停用导致 orgId 不写库，本模块恒为 null */
+    localCurrencyId?: null | number;
+    /** 本位币代码。同上，本模块恒为 null */
+    localCurrencyCode?: null | string;
     /** 创建人昵称 */
     creatorUserName?: string | null;
     /** 最后修改人昵称 */

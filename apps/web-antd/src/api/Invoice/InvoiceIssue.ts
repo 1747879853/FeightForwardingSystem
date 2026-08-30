@@ -193,6 +193,10 @@ export namespace InvoiceIssueApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 发票开出方式 */
     invoiceIssueType: InvoiceIssueType;
     /** 开出单号 */
@@ -362,6 +366,10 @@ export namespace InvoiceIssueApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     invoiceIssueType: InvoiceIssueType;
     applicationNo: string;
     invoiceNo?: string;
@@ -574,6 +582,11 @@ export namespace InvoiceIssueApi {
     /** 应付整票结算状态（本次不赋值，恒为 null，预留字段） */
     paySettlementStatus?: number | null;
 
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
+
     [key: string]: any;
   }
 
@@ -683,6 +696,10 @@ export namespace InvoiceIssueApi {
   export interface InvoiceIssueApplicationDto {
     /** 开票申请ID */
     id: string;
+    /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
+    localCurrencyId?: null | number;
+    /** 本位币代码，如 RMB / USD */
+    localCurrencyCode?: null | string;
     /** 申请单号 */
     applicationNo?: string;
     /** 发票号 */
