@@ -42,9 +42,9 @@ import {
   getConditionOperatorOptions,
   getProfitThresholdOperatorOptions,
   getSalesCommissionTypeOptions,
-} from './commission-data';
+} from './data';
 
-defineOptions({ name: 'UserCommissionConfigModal' });
+defineOptions({ name: 'SystemCommissionConfigModal' });
 
 const emit = defineEmits(['success']);
 
@@ -626,7 +626,7 @@ const [Modal, modalApi] = useVbenModal({
       }
     } else {
       editId.value = null;
-      // 从用户页进入时预选当前用户为适用人
+      // 携带上下文用户时（如从用户相关入口进入）预选该用户为适用人
       if (
         contextUserId.value != null &&
         !baseForm.userIds.includes(contextUserId.value)

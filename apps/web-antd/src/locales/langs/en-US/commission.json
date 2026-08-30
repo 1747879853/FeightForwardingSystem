@@ -1,6 +1,10 @@
 {
   "salesTab": "Sales Commission",
   "operationTab": "Operation Commission",
+  "search": {
+    "keyword": "Keyword",
+    "keywordPlaceholder": "Config name or remark"
+  },
   "applyUsers": "Apply Users",
   "applyOrgs": "Apply Organizations",
   "configName": "Config Name",

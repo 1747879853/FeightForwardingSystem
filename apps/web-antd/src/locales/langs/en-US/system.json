@@ -1,5 +1,8 @@
 {
   "title": "System Management",
+  "commissionConfig": {
+    "title": "Commission Config"
+  },
   "basicData": {
     "title": "Basic Data",
     "operation": "Operation",

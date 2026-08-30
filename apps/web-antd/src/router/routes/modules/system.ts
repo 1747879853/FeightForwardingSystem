@@ -19,6 +19,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.Team.Organization',
         'Admin.WorkFlow',
         'Admin.Enumeration',
+        'Admin.CommissionConfig',
         'Admin.Setting.ClearCache',
       ]),
     },
@@ -110,6 +111,18 @@ const routes: RouteRecordRaw[] = [
           authority: abpPageAuthority('Admin.Team.Organization'),
         },
         component: () => import('#/views/system/dept/list.vue'),
+      },
+      {
+        path: '/system/commission-config',
+        name: 'SystemCommissionConfig',
+        meta: {
+          icon: 'lucide:badge-percent',
+          keepAlive: true,
+          title: $t('system.commissionConfig.title'),
+          // 提成配置：拥有 Admin.CommissionConfig 或 Admin.CommissionConfig.Get 权限
+          authority: abpPageAuthority('Admin.CommissionConfig'),
+        },
+        component: () => import('#/views/system/commission-config/index.vue'),
       },
       {
         path: '/system/workflow',
