@@ -37,7 +37,7 @@ pnpm --filter @vben/mp run build:mp-weixin
 ```
 src/
   api/            请求封装与接口（request / auth / user / loading-order / upload）
-  components/     ctn-photo-panel.vue 分组照片面板
+  components/     skew-tabs/ 斜切滑块分段、ctn-photo-panel.vue 监装处理面板（箱号/封号/状态/照片/保存）
   pages/
     home/         首页（占位）
     loading/      list 列表、detail 详情
@@ -56,6 +56,8 @@ src/
 - **取消完成不会清各箱的完成勾选**，不手动取消至少一个箱就保存会立刻再次自动完成。
 - **别用 `inset: 0`**，旧版小程序 webview 不支持，遮罩会塌成 0 尺寸。根 `stylelint.config.mjs` 已对本包关掉相关自动合并规则。
 - **租户写死为 1**，微信登录不接受前端传租户；多品牌要各自 AppId 与独立打包。
+- **本地组件走 easycom / `usingComponents`，不要只靠 `import Xxx.vue`。** 微信「代码依赖分析」只认 JS `require`，Vue 的组件 import 会被编成 JSON，开发者工具默认「过滤无依赖文件」会把组件丢掉，报「已被代码依赖分析忽略」。`node-modules/wot-design-uni` 同样会被过滤，列表检索不要用 `wd-popup`，用本地 `search-drawer`。`manifest.json` 已关 `ignoreDevUnusedFiles`；若仍报错，在微信开发者工具 → 详情 → 本地设置里取消勾选「过滤无依赖文件」，并重新编译。
+- **`canvas type="2d"` 上的字要画进 canvas。** 微信里这块 canvas 常在原生层，会盖住普通 `view` 文字，`z-index` 抬不上去。`skew-tabs` 用 `fillText` 画「新派 / 进行中 / 已完成」，上层 view 只做点击。打开检索抽屉时传 `hidden`，`v-if` 卸掉 canvas，关掉再挂回。切底栏、进出详情不再卸 canvas。
 
 ## 已知待补
 

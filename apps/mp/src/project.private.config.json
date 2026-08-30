@@ -1,0 +1,7 @@
+{
+  "description": "关闭微信「过滤无依赖文件」，否则 usingComponents 注册的组件会被代码依赖分析丢掉。",
+  "setting": {
+    "ignoreDevUnusedFiles": false,
+    "ignoreUploadUnusedFiles": false
+  }
+}

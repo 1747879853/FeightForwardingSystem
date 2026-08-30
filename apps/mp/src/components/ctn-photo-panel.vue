@@ -8,10 +8,14 @@ import { chooseImages, uploadImage, type ImageSource } from '@/api/upload';
 const props = defineProps<{
   ctn: EditableCtn | null;
   editable: boolean;
+  saving?: boolean;
   visible: boolean;
 }>();
 
-const emit = defineEmits<{ (event: 'close'): void }>();
+const emit = defineEmits<{
+  (event: 'close'): void;
+  (event: 'save'): void;
+}>();
 
 const uploading = ref(false);
 
@@ -101,15 +105,29 @@ async function addPhotos(groupIndex: number) {
 function removePhoto(groupIndex: number, photoIndex: number) {
   groups.value[groupIndex]?.items.splice(photoIndex, 1);
 }
+
+function onSave() {
+  if (!props.editable || props.saving) return;
+  if (uploading.value) {
+    uni.showToast({ icon: 'none', title: '请等待图片上传完成' });
+    return;
+  }
+  emit('save');
+}
+
+function onDismiss() {
+  if (props.saving) return;
+  emit('close');
+}
 </script>
 
 <template>
-  <view v-if="visible" class="mask" @tap="emit('close')">
+  <view v-if="visible" class="mask" @tap="onDismiss">
     <view class="panel" @tap.stop>
       <view class="panel__head">
         <text class="panel__title">监装处理</text>
         <text class="panel__sub"> 箱号 {{ ctn?.ctnNo || '--' }} </text>
-        <view class="panel__close" @tap="emit('close')">
+        <view class="panel__close" @tap="onDismiss">
           <wd-icon name="close" size="20px" color="#6e7b83" />
         </view>
       </view>
@@ -129,6 +147,33 @@ function removePhoto(groupIndex: number, photoIndex: number) {
             />
             <text>{{ statusText }}</text>
             <text v-if="editable" class="status-card__hint">点击切换</text>
+          </view>
+        </view>
+
+        <view v-if="ctn" class="fields">
+          <view class="field">
+            <text class="field__label">箱号</text>
+            <input
+              v-if="editable"
+              v-model="ctn.ctnNo"
+              class="field__input"
+              maxlength="32"
+              placeholder="请填写箱号"
+              placeholder-class="field__placeholder"
+            />
+            <text v-else class="field__text">{{ ctn.ctnNo || '--' }}</text>
+          </view>
+          <view class="field">
+            <text class="field__label">封号</text>
+            <input
+              v-if="editable"
+              v-model="ctn.sealNo"
+              class="field__input"
+              maxlength="32"
+              placeholder="请填写封号"
+              placeholder-class="field__placeholder"
+            />
+            <text v-else class="field__text">{{ ctn.sealNo || '--' }}</text>
           </view>
         </view>
 
@@ -171,10 +216,14 @@ function removePhoto(groupIndex: number, photoIndex: number) {
       </scroll-view>
 
       <view class="panel__foot">
-        <text v-if="editable" class="panel__hint">
-          照片改动需返回详情页点「保存」后才会提交
-        </text>
-        <view class="panel__btn" @tap="emit('close')">完成</view>
+        <view
+          v-if="editable"
+          :class="['panel__btn', { 'is-disabled': saving }]"
+          @tap="onSave"
+        >
+          {{ saving ? '保存中…' : '保存' }}
+        </view>
+        <view v-else class="panel__btn" @tap="onDismiss">关闭</view>
       </view>
     </view>
   </view>
@@ -284,6 +333,41 @@ function removePhoto(groupIndex: number, photoIndex: number) {
   color: $text-label;
 }
 
+.fields {
+  padding-bottom: 8rpx;
+  border-bottom: 2rpx solid $divider;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  min-height: 88rpx;
+}
+
+.field__label {
+  width: 96rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text-body;
+}
+
+.field__input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 28rpx;
+  color: $text-title;
+}
+
+.field__placeholder {
+  color: #c2c8d2;
+}
+
+.field__text {
+  flex: 1;
+  font-size: 28rpx;
+  color: $text-title;
+}
+
 .group {
   padding: 24rpx 0;
 }
@@ -354,13 +438,6 @@ function removePhoto(groupIndex: number, photoIndex: number) {
   border-top: 2rpx solid $divider;
 }
 
-.panel__hint {
-  display: block;
-  margin-bottom: 16rpx;
-  font-size: 22rpx;
-  color: $text-label;
-}
-
 .panel__btn {
   height: 84rpx;
   font-size: 30rpx;
@@ -369,5 +446,9 @@ function removePhoto(groupIndex: number, photoIndex: number) {
   text-align: center;
   background: $brand-primary;
   border-radius: 42rpx;
+}
+
+.panel__btn.is-disabled {
+  opacity: 0.6;
 }
 </style>

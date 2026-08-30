@@ -5,7 +5,7 @@ import type {
 } from '@/api/loading-order';
 
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import {
   getMyLoadingOrders,
@@ -15,6 +15,8 @@ import {
 } from '@/api/loading-order';
 import { isLoggedIn } from '@/stores/auth';
 import { formatDate, joinNames, textOr, vesselVoyage } from '@/utils/format';
+
+const tabLabels = STATUS_TABS.map((tab) => tab.label);
 
 const PAGE_SIZE = 10;
 
@@ -88,13 +90,12 @@ async function fetchList(reset = false) {
   }
 }
 
-function switchTab(index: number) {
-  if (activeTab.value === index) return;
-  activeTab.value = index;
+watch(activeTab, (index, prev) => {
+  if (index === prev) return;
   list.value = [];
   total.value = 0;
   void fetchList(true);
-}
+});
 
 function applyFilter() {
   closeSearchDrawer();
@@ -134,6 +135,9 @@ function statusClass(status: number) {
 }
 
 onShow(() => {
+  setTimeout(() => {
+    uni.showTabBar({ animation: false });
+  }, 50);
   void fetchList(true);
 });
 
@@ -178,18 +182,14 @@ onReachBottom(() => {
     </view>
 
     <view class="sheet">
-      <view class="tabs">
-        <view
-          v-for="(tab, index) in STATUS_TABS"
-          :key="tab.status"
-          :class="['tabs__item', { 'is-active': activeTab === index }]"
-          @tap="switchTab(index)"
-        >
-          {{ tab.label }}
-        </view>
-      </view>
+      <skew-tabs
+        v-model="activeTab"
+        :hidden="searchVisible"
+        :tabs="tabLabels"
+      />
 
       <view class="list">
+        <view class="list__fade" />
         <view v-if="noPermission" class="placeholder">
           <text class="placeholder__title">当前账号无监装权限</text>
           <text class="placeholder__desc">
@@ -290,12 +290,7 @@ onReachBottom(() => {
       </view>
     </view>
 
-    <wd-popup
-      v-model="searchVisible"
-      position="right"
-      :root-portal="true"
-      :z-index="20"
-    >
+    <search-drawer v-model="searchVisible">
       <view
         class="filter-drawer"
         :style="{ paddingTop: `${statusBarHeight + 24}px` }"
@@ -353,7 +348,7 @@ onReachBottom(() => {
           <view class="filter__btn" @tap="applyFilter">查询</view>
         </view>
       </view>
-    </wd-popup>
+    </search-drawer>
   </view>
 </template>
 
@@ -571,36 +566,25 @@ onReachBottom(() => {
   padding: 0 28rpx;
 }
 
-.tabs {
-  display: flex;
-  height: 88rpx;
-  overflow: hidden;
-  background: $tab-track;
-  border-radius: 20rpx 20rpx 0 0;
-}
-
-.tabs__item {
-  flex: 1;
-  font-size: 26rpx;
-  font-weight: 500;
-  line-height: 88rpx;
-  color: $text-label;
-  text-align: center;
-}
-
-.tabs__item.is-active {
-  font-size: 28rpx;
-  color: $text-title;
-  background: $card-bg;
-  border-radius: 20rpx 20rpx 0 0;
-}
-
 .list {
-  padding-top: 0;
+  position: relative;
+  padding-top: 24rpx;
+}
+
+.list__fade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 200rpx;
+  pointer-events: none;
+  background: linear-gradient(180deg, #f9fafd 0%, #f0f2f8 52.55%);
 }
 
 .card {
   position: relative;
+  z-index: 1;
   padding: 24rpx 28rpx 0;
   margin-bottom: 20rpx;
   overflow: hidden;
@@ -764,12 +748,14 @@ onReachBottom(() => {
 }
 
 .placeholder {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 120rpx 40rpx;
   background: $card-bg;
-  border-radius: 0 0 24rpx 24rpx;
+  border-radius: 28rpx;
 }
 
 .placeholder__title {

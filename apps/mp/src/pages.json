@@ -2,7 +2,9 @@
   "easycom": {
     "autoscan": true,
     "custom": {
-      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue",
+      "^search-drawer$": "@/components/search-drawer/search-drawer.vue",
+      "^skew-tabs$": "@/components/skew-tabs/skew-tabs.vue"
     }
   },
   "pages": [
@@ -16,7 +18,11 @@
       "path": "pages/loading/list",
       "style": {
         "enablePullDownRefresh": true,
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "usingComponents": {
+          "search-drawer": "/components/search-drawer/search-drawer",
+          "skew-tabs": "/components/skew-tabs/skew-tabs"
+        }
       }
     },
     {

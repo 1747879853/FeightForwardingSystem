@@ -2,7 +2,7 @@
 import type { LoadingOrderDetailDto } from '@/api/loading-order';
 import type { EditableCtn } from '@/utils/ctn-model';
 
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onShow } from '@dcloudio/uni-app';
 import { computed, ref } from 'vue';
 
 import {
@@ -39,10 +39,13 @@ const noPermission = ref(false);
 
 const photoPanelVisible = ref(false);
 const activeCtnIndex = ref(-1);
+const ctnDraft = ref<EditableCtn | null>(null);
 const rejectVisible = ref(false);
 const rejectReason = ref('');
 
-const status = computed(() => detail.value?.status ?? -1);
+const routeStatus = ref(-1);
+const actionsReady = ref(false);
+const status = computed(() => detail.value?.status ?? routeStatus.value);
 /** 只有已认领能改箱；已完成需先取消完成 */
 const editable = computed(() => status.value === LoadingOrderStatus.Claimed);
 const activeCtn = computed(() => ctns.value[activeCtnIndex.value] ?? null);
@@ -110,9 +113,31 @@ function goBack() {
   uni.navigateBack();
 }
 
+function cloneCtn(ctn: EditableCtn): EditableCtn {
+  return {
+    ...ctn,
+    groups: ctn.groups.map((group) => ({
+      ...group,
+      items: group.items.map((photo) => ({ ...photo })),
+    })),
+  };
+}
+
 function openPhotoPanel(index: number) {
+  const current = ctns.value[index];
+  if (!current) return;
   activeCtnIndex.value = index;
+  ctnDraft.value = cloneCtn(current);
   photoPanelVisible.value = true;
+}
+
+function closePhotoPanel() {
+  if (ctnDraft.value && activeCtnIndex.value >= 0) {
+    ctns.value[activeCtnIndex.value] = ctnDraft.value;
+  }
+  photoPanelVisible.value = false;
+  activeCtnIndex.value = -1;
+  ctnDraft.value = null;
 }
 
 async function runAction(action: () => Promise<unknown>, successText: string) {
@@ -138,11 +163,24 @@ function onClaim() {
   void runAction(() => claimLoadingOrder(orderId.value), '认领成功');
 }
 
-function onSave() {
-  void runAction(
-    () => editLoadingOrderCtns(orderId.value, toCtnEditPayload(ctns.value)),
-    '已保存',
-  );
+async function onSaveFromPanel() {
+  if (!detail.value || submitting.value) return;
+  submitting.value = true;
+  try {
+    await editLoadingOrderCtns(orderId.value, toCtnEditPayload(ctns.value));
+    uni.showToast({ icon: 'none', title: '已保存' });
+    photoPanelVisible.value = false;
+    activeCtnIndex.value = -1;
+    ctnDraft.value = null;
+    await fetchDetail();
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '保存失败',
+    });
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function onCancelComplete() {
@@ -152,7 +190,7 @@ function onCancelComplete() {
       showCancel: false,
       title: '已恢复编辑',
       content:
-        '取消完成不会清掉各箱的完成勾选，如需保留未完成状态，请先取消至少一个箱子的勾选再保存。',
+        '取消完成不会清掉各箱的完成勾选，如需保留未完成状态，请先打开监装处理取消至少一个箱子的勾选再保存。',
     });
   }, '已取消完成');
 }
@@ -177,7 +215,22 @@ function confirmReject() {
 
 onLoad((options) => {
   orderId.value = String(options?.id ?? '');
+  const parsed = Number(options?.status);
+  if (
+    parsed === LoadingOrderStatus.Pending ||
+    parsed === LoadingOrderStatus.Claimed ||
+    parsed === LoadingOrderStatus.Completed
+  ) {
+    routeStatus.value = parsed;
+  }
   void fetchDetail();
+});
+
+onShow(() => {
+  actionsReady.value = false;
+  setTimeout(() => {
+    actionsReady.value = true;
+  }, 180);
 });
 </script>
 
@@ -243,7 +296,6 @@ onLoad((options) => {
         <view class="card__head">
           <view class="card__bar" />
           <text class="card__title">集装箱要求</text>
-          <text v-if="editable" class="card__count">（可填写箱号、封号）</text>
         </view>
 
         <view class="table__head">
@@ -259,27 +311,11 @@ onLoad((options) => {
           <text class="col col--type">{{ ctn.ctnName }}</text>
 
           <view class="col col--input">
-            <input
-              v-if="editable"
-              v-model="ctn.ctnNo"
-              class="cell-input"
-              maxlength="32"
-              placeholder="箱号"
-              placeholder-class="cell-input__placeholder"
-            />
-            <text v-else class="cell-text">{{ ctn.ctnNo || EMPTY_TEXT }}</text>
+            <text class="cell-text">{{ ctn.ctnNo || EMPTY_TEXT }}</text>
           </view>
 
           <view class="col col--input">
-            <input
-              v-if="editable"
-              v-model="ctn.sealNo"
-              class="cell-input"
-              maxlength="32"
-              placeholder="封号"
-              placeholder-class="cell-input__placeholder"
-            />
-            <text v-else class="cell-text">{{ ctn.sealNo || EMPTY_TEXT }}</text>
+            <text class="cell-text">{{ ctn.sealNo || EMPTY_TEXT }}</text>
           </view>
 
           <view class="col col--handling">
@@ -306,27 +342,23 @@ onLoad((options) => {
       </view>
 
       <view class="footer-space" />
-
-      <view class="actions">
-        <template v-if="status === LoadingOrderStatus.Pending">
-          <view class="actions__btn" @tap="onClaim">认领</view>
-        </template>
-        <template v-else-if="status === LoadingOrderStatus.Claimed">
-          <view class="actions__btn actions__btn--ghost" @tap="openReject">
-            拒接
-          </view>
-          <view class="actions__btn" @tap="onSave">保存</view>
-        </template>
-        <template v-else-if="status === LoadingOrderStatus.Completed">
-          <view
-            class="actions__btn actions__btn--ghost"
-            @tap="onCancelComplete"
-          >
-            取消完成
-          </view>
-        </template>
-      </view>
     </template>
+
+    <view v-if="actionsReady && !noPermission && status > 0" class="actions">
+      <template v-if="status === LoadingOrderStatus.Pending">
+        <view class="actions__btn" @tap="onClaim">认领</view>
+      </template>
+      <template v-else-if="status === LoadingOrderStatus.Claimed">
+        <view class="actions__btn actions__btn--ghost" @tap="openReject">
+          拒接
+        </view>
+      </template>
+      <template v-else-if="status === LoadingOrderStatus.Completed">
+        <view class="actions__btn actions__btn--ghost" @tap="onCancelComplete">
+          取消完成
+        </view>
+      </template>
+    </view>
 
     <view v-else-if="loading" class="placeholder">
       <text class="placeholder__desc">加载中…</text>
@@ -335,20 +367,24 @@ onLoad((options) => {
     <CtnPhotoPanel
       :ctn="activeCtn"
       :editable="editable"
+      :saving="submitting"
       :visible="photoPanelVisible"
-      @close="photoPanelVisible = false"
+      @close="closePhotoPanel"
+      @save="onSaveFromPanel"
     />
 
     <view v-if="rejectVisible" class="mask" @tap="rejectVisible = false">
       <view class="dialog" @tap.stop>
         <text class="dialog__title">拒接工单</text>
-        <textarea
-          v-model="rejectReason"
-          class="dialog__input"
-          maxlength="1024"
-          placeholder="请填写拒接原因"
-          placeholder-class="cell-input__placeholder"
-        />
+        <view class="dialog__field">
+          <textarea
+            v-model="rejectReason"
+            class="dialog__input"
+            maxlength="1024"
+            placeholder="请填写拒接原因"
+            placeholder-class="cell-input__placeholder"
+          />
+        </view>
         <view class="dialog__actions">
           <view
             class="actions__btn actions__btn--ghost"
@@ -698,6 +734,7 @@ onLoad((options) => {
 }
 
 .dialog {
+  box-sizing: border-box;
   width: 600rpx;
   padding: 32rpx;
   background: $card-bg;
@@ -710,14 +747,18 @@ onLoad((options) => {
   color: $text-title;
 }
 
+.dialog__field {
+  box-sizing: border-box;
+  padding: 20rpx;
+  margin: 24rpx 0;
+  background: $chip-bg;
+  border-radius: 16rpx;
+}
+
 .dialog__input {
   width: 100%;
   height: 200rpx;
-  padding: 20rpx;
-  margin: 24rpx 0;
   font-size: 26rpx;
-  background: $chip-bg;
-  border-radius: 16rpx;
 }
 
 .dialog__actions {
