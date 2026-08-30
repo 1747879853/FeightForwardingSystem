@@ -212,6 +212,13 @@
     "batchGrantRemarkRequired": "批量发放时发放备注必填",
     "batchGrantNoSelection": "请勾选需要发放的提成单",
     "batchGrantApprovedOnly": "只有审核通过的提成单可以发放，请取消勾选其它状态的单据",
-    "batchGrantSuccess": "批量发放成功：{count} 张，应发合计 {amount}"
+    "batchGrantSuccess": "批量发放成功：{count} 张，应发合计 {amount}",
+    "batchCancelGrant": "批量取消发放",
+    "batchCancelGrantTitle": "确认批量取消发放",
+    "batchCancelGrantHint": "将取消 {count} 张提成单的发放，原发放金额合计 {amount}，单据状态将退回「审核通过」。",
+    "batchCancelGrantWarning": "取消后原发放信息（发放人、发放时间、发放金额、发放备注）将被清空，且无法恢复。",
+    "batchCancelGrantNoSelection": "请勾选需要取消发放的提成单",
+    "batchCancelGrantGrantedOnly": "只有发放完成的提成单可以取消发放，请取消勾选其它状态的单据",
+    "batchCancelGrantSuccess": "批量取消发放成功：{count} 张，原发放金额合计 {amount}"
   }
 }

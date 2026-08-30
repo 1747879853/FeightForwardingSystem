@@ -3,11 +3,12 @@ import { computed, h, ref } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
-import { Button, message, Modal, Space, Textarea } from 'ant-design-vue';
+import { Button, message, Modal, Textarea } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  batchCancelGrantCommissionOrder,
   batchGrantCommissionOrder,
   CommissionOrderAdminApi,
   getCommissionOrderPagedList,
@@ -58,29 +59,37 @@ const syncSelectedRows = () => {
     []) as OrderRow[];
 };
 
-/** 单张发放：仅勾选一行且该行审核通过时可用（列表可按状态筛选，非审核通过的不可发放） */
-const grantRow = computed(() => {
-  if (selectedRows.value.length !== 1) return undefined;
-  const row = selectedRows.value[0];
-  return row && row.status === Status.Approved ? row : undefined;
-});
-
-/** 批量发放：至少勾选一行且全部为审核通过 */
-const canBatchGrant = computed(
+/** 发放（合并按钮）：至少勾选一行且全部审核通过时可用（列表可按状态筛选，非审核通过的不可发放） */
+const canGrant = computed(
   () =>
     selectedRows.value.length > 0 &&
     selectedRows.value.every((row) => row.status === Status.Approved),
 );
 
+/** 批量取消发放：至少勾选一行且全部发放完成（发放完成的唯一出口就是批量取消发放） */
+const canCancelGrant = computed(
+  () =>
+    selectedRows.value.length > 0 &&
+    selectedRows.value.every((row) => row.status === Status.Granted),
+);
+
+/** 合并发放入口：单选走单张发放，多选走批量发放 */
 const handleGrant = () => {
-  const row = grantRow.value;
-  if (!row) return;
-  actionModalApi.setData({
-    finalAmount: row.finalAmount,
-    id: row.id,
-    mode: 'grant',
-  });
-  actionModalApi.open();
+  const rows = selectedRows.value;
+  if (rows.length === 0) return;
+  if (rows.length === 1) {
+    // 单张发放：可自由填写实际发放金额，默认应发金额
+    const row = rows[0];
+    if (!row) return;
+    actionModalApi.setData({
+      finalAmount: row.finalAmount,
+      id: row.id,
+      mode: 'grant',
+    });
+    actionModalApi.open();
+    return;
+  }
+  handleBatchGrant();
 };
 
 /** 批量发放：一律按各自应发金额全额发放，发放备注必填 */
@@ -90,7 +99,7 @@ const handleBatchGrant = () => {
     message.warning($t('commissionOrder.action.batchGrantNoSelection'));
     return;
   }
-  if (!canBatchGrant.value) {
+  if (!canGrant.value) {
     message.warning($t('commissionOrder.action.batchGrantApprovedOnly'));
     return;
   }
@@ -146,6 +155,68 @@ const handleBatchGrant = () => {
       } catch {
         // 整批报错（全部校验通过才执行），错误由响应拦截器提示，保持弹窗不关闭
         return Promise.reject(new Error('batch grant failed'));
+      }
+    },
+  });
+};
+
+/** 批量取消发放：退回审核通过并清空发放信息（取消不留痕），弹窗展示原发放金额合计供二次确认 */
+const handleBatchCancelGrant = () => {
+  const rows = selectedRows.value;
+  if (rows.length === 0) {
+    message.warning($t('commissionOrder.action.batchCancelGrantNoSelection'));
+    return;
+  }
+  if (!canCancelGrant.value) {
+    message.warning($t('commissionOrder.action.batchCancelGrantGrantedOnly'));
+    return;
+  }
+  const totalAmount = rows.reduce(
+    (sum, row) => sum + (row.grantAmount ?? 0),
+    0,
+  );
+  Modal.confirm({
+    title: $t('commissionOrder.action.batchCancelGrantTitle'),
+    content: () =>
+      h('div', {}, [
+        h(
+          'p',
+          $t('commissionOrder.action.batchCancelGrantHint', {
+            amount: formatAmount(totalAmount),
+            count: rows.length,
+          }),
+        ),
+        h(
+          'p',
+          {
+            style: 'margin-top: 8px; color: #e6a23c;',
+          },
+          $t('commissionOrder.action.batchCancelGrantWarning'),
+        ),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okButtonProps: { danger: true },
+    async onOk() {
+      try {
+        const result = await batchCancelGrantCommissionOrder({
+          ids: rows.map((row) => row.id),
+        });
+        // totalAmount 口径文档两处不一（14.2 为被取消金额合计，14.3 说恒为 0），后端返回 0 时回退前端求和
+        const total = result?.totalAmount || totalAmount;
+        message.success(
+          $t('commissionOrder.action.batchCancelGrantSuccess', {
+            amount: formatAmount(total),
+            count: result?.count ?? rows.length,
+          }),
+        );
+        await gridApi.query();
+      } catch {
+        // 整批报错（全部校验通过才执行），错误由响应拦截器提示，保持弹窗不关闭
+        return Promise.reject(new Error('batch cancel grant failed'));
       }
     },
   });
@@ -256,23 +327,23 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
   <Page auto-content-height>
     <Grid :table-title="$t('commissionOrder.menu.commissionGrant')">
       <template #toolbar-tools>
-        <Space>
-          <Button
-            v-access:code="'Admin.CommissionOrder.Grant'"
-            :disabled="!canBatchGrant"
-            @click="handleBatchGrant"
-          >
-            {{ $t('commissionOrder.action.batchGrant') }}
-          </Button>
-          <Button
-            v-access:code="'Admin.CommissionOrder.Grant'"
-            type="primary"
-            :disabled="!grantRow"
-            @click="handleGrant"
-          >
-            {{ $t('commissionOrder.actions.grant') }}
-          </Button>
-        </Space>
+        <Button
+          v-access:code="'Admin.CommissionOrder.Grant'"
+          danger
+          :disabled="!canCancelGrant"
+          @click="handleBatchCancelGrant"
+          class="mr-2"
+        >
+          {{ $t('commissionOrder.action.batchCancelGrant') }}
+        </Button>
+        <Button
+          v-access:code="'Admin.CommissionOrder.Grant'"
+          type="primary"
+          :disabled="!canGrant"
+          @click="handleGrant"
+        >
+          {{ $t('commissionOrder.actions.grant') }}
+        </Button>
       </template>
     </Grid>
 

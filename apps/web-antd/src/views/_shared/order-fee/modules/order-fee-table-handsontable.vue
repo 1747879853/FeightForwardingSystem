@@ -39,6 +39,7 @@ import { useHotColumns } from './composables/useHotColumns';
 import { useHotSettings } from './composables/useHotSettings';
 import { useModals } from './composables/useModals';
 import { initOrderFeeEnumCache } from '../data';
+import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -664,6 +665,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 onMounted(async () => {
   initOrderFeeEnumCache();
+  // 本次进入费用页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率（ETD+本位币匹配用）
+  await ensureExchangeRateCache(true);
   await initDropdownSources();
   await getFeeCodeList();
 

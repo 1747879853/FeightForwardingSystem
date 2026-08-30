@@ -6,7 +6,10 @@ import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getCodeInvoicePagedList } from '#/api/system/base-data/code-invoice-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
-import { isExchangeRateEffective } from '#/utils/exchange-rate-cache';
+import {
+  isExchangeRateEffective,
+  isRmbLocalCurrencyRate,
+} from '#/utils/exchange-rate-cache';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -34,19 +37,21 @@ export function useLoadDetail(
   const { detailAsync } = InvoiceApplicationApi;
 
   /**
-   * 按币别查询当前生效的发票汇率（口径与新增流程一致：启用且在有效期内，
+   * 按币别查询当前生效的发票汇率（口径与新增流程一致：本位币人民币 + 启用且在有效期内，
    * 同币别多条时 sortId 大者优先，其次 id 大者）
    */
   async function fetchInvoiceExchangeRate(currencyId: number): Promise<number> {
     try {
       const result = await getExchangeRatePagedList({
         CurrencyId: currencyId,
+        // 发票只有中国有：发票汇率恒为人民币本位，只取本位币为人民币的记录
+        LocalCurrencyId: 1,
         PageIndex: 1,
         PageSize: 100,
       });
 
-      const validRates = (result?.items || []).filter((rate) =>
-        isExchangeRateEffective(rate),
+      const validRates = (result?.items || []).filter(
+        (rate) => isRmbLocalCurrencyRate(rate) && isExchangeRateEffective(rate),
       );
 
       if (validRates.length > 0) {

@@ -212,6 +212,13 @@
     "batchGrantRemarkRequired": "Grant remark is required for batch grant",
     "batchGrantNoSelection": "Please select commission orders to grant",
     "batchGrantApprovedOnly": "Only approved commission orders can be granted. Please uncheck orders in other statuses",
-    "batchGrantSuccess": "Batch granted: {count} orders, total amount {amount}"
+    "batchGrantSuccess": "Batch granted: {count} orders, total amount {amount}",
+    "batchCancelGrant": "Batch Cancel Grant",
+    "batchCancelGrantTitle": "Confirm Batch Cancel Grant",
+    "batchCancelGrantHint": "{count} commission orders will have their grants cancelled. Original granted amount total: {amount}. Status will return to \"Approved\".",
+    "batchCancelGrantWarning": "After cancellation, the original grant info (grantor, time, amount, remark) will be cleared and cannot be recovered.",
+    "batchCancelGrantNoSelection": "Please select commission orders to cancel grant",
+    "batchCancelGrantGrantedOnly": "Only granted commission orders can be cancelled. Please uncheck orders in other statuses",
+    "batchCancelGrantSuccess": "Batch grant cancelled: {count} orders, original granted amount total {amount}"
   }
 }

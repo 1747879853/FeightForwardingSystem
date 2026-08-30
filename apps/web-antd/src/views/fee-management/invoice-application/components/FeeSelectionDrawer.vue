@@ -24,6 +24,10 @@ import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import {
+  isExchangeRateEffective,
+  isRmbLocalCurrencyRate,
+} from '#/utils/exchange-rate-cache';
 import { useBaseStore } from '#/store/base';
 
 const baseStore = useBaseStore();
@@ -260,44 +264,37 @@ const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
 };
-/** 加载默认汇率 */
+/** 加载默认汇率（发票只有中国有：本位币恒为人民币 + 在有效期内） */
 async function loadDefaultExchangeRate(currencyId: number) {
   try {
-    const now = dayjs();
-    const currentDate = now.format('YYYY-MM-DD');
-
     const result = await getExchangeRatePagedList({
       CurrencyId: currencyId,
+      LocalCurrencyId: 1,
       PageIndex: 1,
       PageSize: 100,
     });
 
-    if (result.items && result.items.length > 0) {
-      const matchedRate = result.items.find((item: any) => {
-        const startDate = item.startDate ? dayjs(item.startDate) : null;
-        const endDate = item.endDate ? dayjs(item.endDate) : null;
+    const validRates = (result?.items || []).filter(
+      (rate) => isRmbLocalCurrencyRate(rate) && isExchangeRateEffective(rate),
+    );
 
-        const isStartDateValid =
-          !startDate || now.isAfter(startDate) || now.isSame(startDate);
-        const isEndDateValid =
-          !endDate || now.isBefore(endDate) || now.isSame(endDate);
-
-        return isStartDateValid && isEndDateValid;
+    if (validRates.length > 0) {
+      // 同币别多条时 sortId 大者优先，其次 id 大者
+      validRates.sort((a, b) => {
+        const aSortId = Number(a.sortId ?? 0);
+        const bSortId = Number(b.sortId ?? 0);
+        if (bSortId !== aSortId) return bSortId - aSortId;
+        return String(b.id) > String(a.id) ? -1 : 1;
       });
 
-      if (matchedRate) {
-        const defaultRate = matchedRate.invoiceValue ?? 1.0;
-        invoiceExchangeRate.value = defaultRate;
-      } else {
-        const firstRate = result.items[0];
-        if (firstRate) {
-          const defaultRate = firstRate.invoiceValue ?? 1.0;
-          invoiceExchangeRate.value = defaultRate;
-        } else {
-          invoiceExchangeRate.value = 1.0;
-        }
-      }
+      const defaultRate = validRates[0]?.invoiceValue ?? 1.0;
+      invoiceExchangeRate.value = defaultRate;
     } else {
+      console.warn(
+        '⚠️ 未找到币别',
+        currencyId,
+        '本位币为人民币且在有效期内的发票汇率，使用默认 1.0',
+      );
       invoiceExchangeRate.value = 1.0;
     }
 

@@ -6,8 +6,11 @@ import {
 } from '#/composables/use-my-org';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
-// ✅ 修改：只导入ensureExchangeRateCache函数
-import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
+// ✅ 修改：导入汇率缓存工具（含人民币本位币判断）
+import {
+  isExchangeRateEffective,
+  isRmbLocalCurrencyRate,
+} from '#/utils/exchange-rate-cache';
 // ✅ 新增：导入汇率API
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 // ✅ 新增：导入客户开票信息API
@@ -311,26 +314,18 @@ export function useFeeSelectionSave(
           let currentCurrencyExchangeRate = 1.0;
           if (currencyId !== 1) {
             try {
-              // 获取当前币别的有效发票汇率
+              // 获取当前币别的有效发票汇率（发票只有中国有：本位币恒为人民币）
               const exchangeRateList = await getExchangeRatePagedList({
                 CurrencyId: currencyId,
+                LocalCurrencyId: 1,
                 PageIndex: 1,
-                PageSize: 10,
+                PageSize: 100,
               });
 
-              // 筛选启用且在有效期内的汇率记录
-              const now = new Date();
+              // 筛选「本位币人民币 + 启用且在有效期内」的汇率记录
               const validRates = (exchangeRateList?.items || []).filter(
-                (rate) => {
-                  if (!rate.enable) return false;
-                  const startDate = rate.startDate
-                    ? new Date(rate.startDate)
-                    : null;
-                  const endDate = rate.endDate ? new Date(rate.endDate) : null;
-                  if (startDate && now < startDate) return false;
-                  if (endDate && now > endDate) return false;
-                  return true;
-                },
+                (rate) =>
+                  isRmbLocalCurrencyRate(rate) && isExchangeRateEffective(rate),
               );
 
               // 按sortId降序、id降序排序，取第一条

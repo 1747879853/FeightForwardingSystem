@@ -14,7 +14,7 @@ import {
 /**
  * 提成发放页：搜索表单与列定义。
  * 列表复用提成单分页接口（销售与操作共用），提成状态默认筛选审核通过（只有审核通过的才能发放），
- * 也可切换其它状态查看；发放与批量发放仅对审核通过的提成单生效。
+ * 也可切换其它状态查看；发放与批量发放仅对审核通过的提成单生效，批量取消发放仅对发放完成状态的生效（需切到发放完成筛选）。
  */
 
 // ==================== 提成类型选项 ====================
@@ -68,7 +68,7 @@ export function useCommissionGrantFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'status',
       label: $t('commissionOrder.search.status'),
-      // 默认审核通过：只有审核通过的才能发放，切换其它状态仅用于查看
+      // 默认审核通过：发放仅对审核通过的单据生效；批量取消发放需切到发放完成筛选
       defaultValue: CommissionOrderAdminApi.CommissionOrderStatus.Approved,
       componentProps: {
         allowClear: true,
@@ -149,6 +149,13 @@ export function useCommissionGrantColumns(): VxeTableGridOptions<CommissionOrder
     {
       field: 'finalAmount',
       title: $t('commissionOrder.columns.finalAmount'),
+      minWidth: 110,
+      align: 'right',
+      formatter: ({ cellValue }) => formatAmount(cellValue),
+    },
+    {
+      field: 'grantAmount',
+      title: $t('commissionOrder.columns.grantAmount'),
       minWidth: 110,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),

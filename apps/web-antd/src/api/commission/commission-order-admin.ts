@@ -293,6 +293,12 @@ export namespace CommissionOrderAdminApi {
     remark: string;
   }
 
+  /** 批量取消发放入参（只有发放完成的可以取消，状态退回审核通过并清空发放信息；没有单条版本也没有备注入参） */
+  export interface CommissionOrderBatchCancelGrantDto {
+    /** 提成单id集合，至少一个，后端会去重 */
+    ids: string[];
+  }
+
   /** 发放入参 */
   export interface CommissionOrderGrantDto {
     /** 提成单id */
@@ -698,11 +704,11 @@ export namespace CommissionOrderAdminApi {
     maxResultCount?: number;
   }
 
-  /** 批量操作结果（批量审核/批量驳回/批量发放共用） */
+  /** 批量操作结果（批量审核/批量驳回/批量发放/批量取消发放共用） */
   export interface CommissionOrderBatchResultDto {
     /** 实际处理的提成单数 */
     count: number;
-    /** 本批应发金额合计，仅批量发放返回，其余两个恒为 0 */
+    /** 批量发放返回本批应发金额合计；批量取消发放返回被取消的实际发放金额（GrantAmount）合计；其余恒为 0 */
     totalAmount: number;
   }
 
@@ -910,6 +916,18 @@ export const batchGrantCommissionOrder = (
 ) => {
   return requestClient.post<CommissionOrderAdminApi.CommissionOrderBatchResultDto>(
     `${API_PREFIX}/BatchGrantAsync`,
+    data,
+  );
+};
+
+/**
+ * 批量取消发放（只有发放完成的可以取消，状态退回审核通过并清空发放信息；全部校验通过才执行）
+ */
+export const batchCancelGrantCommissionOrder = (
+  data: CommissionOrderAdminApi.CommissionOrderBatchCancelGrantDto,
+) => {
+  return requestClient.post<CommissionOrderAdminApi.CommissionOrderBatchResultDto>(
+    `${API_PREFIX}/BatchCancelGrantAsync`,
     data,
   );
 };
