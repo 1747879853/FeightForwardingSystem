@@ -210,7 +210,7 @@ export function useFeeSelection(
 
       // 跳转到编辑页面
       if (newId) {
-        router.push(`/settlement-management/invoice-issue/${newId}/edit`);
+        router.replace(`/settlement-management/invoice-issue/${newId}/edit`);
       }
     } catch (error) {
       console.error('❌ 创建发票失败:', error);
@@ -225,7 +225,10 @@ export function useFeeSelection(
   async function addApplicationsToExistingInvoice(selectedApplications: any[]) {
     try {
       // ✅ 编辑状态下，只处理新增的申请商品明细，避免重复添加
-      console.log('✅ 编辑状态：只处理新增申请的商品明细，数量:', selectedApplications.length);
+      console.log(
+        '✅ 编辑状态：只处理新增申请的商品明细，数量:',
+        selectedApplications.length,
+      );
 
       // ✅ 使用合并逻辑处理新增申请的商品明细
       await mergeGoodsDetailsFromApplications(selectedApplications);
@@ -286,10 +289,9 @@ export function useFeeSelection(
       console.log('📤 发送添加申请请求:', {
         新增申请数量: selectedApplications.length,
         商品明细数量: goodsDetails.value.length,
-        总金额: goodsDetails.value.reduce(
-          (sum: number, item: any) => sum + (item.amount || 0),
-          0,
-        ).toFixed(2),
+        总金额: goodsDetails.value
+          .reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
+          .toFixed(2),
       });
 
       // 调用添加申请接口

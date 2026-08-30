@@ -114,7 +114,7 @@ export function useSubmit(
         message.success('创建成功');
 
         if (ids && ids.length > 0) {
-          router.push(`/fee-management/invoice-application/${ids[0]}/edit`);
+          router.replace(`/fee-management/invoice-application/${ids[0]}/edit`);
         }
       }
     } catch (error) {

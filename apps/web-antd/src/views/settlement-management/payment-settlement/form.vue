@@ -354,7 +354,7 @@ async function handleCreateSettlementAndRedirect(
 
     // 跳转到编辑页面
     if (newId) {
-      router.push(`/settlement-management/payment-settlement/edit/${newId}`);
+      router.replace(`/settlement-management/payment-settlement/edit/${newId}`);
     } else {
       console.error('创建成功后未返回ID');
     }

@@ -166,7 +166,7 @@ export function useSubmit(
 
           // 创建成功后跳转到编辑页面
           if (result.id) {
-            router.push(
+            router.replace(
               `/settlement-management/invoice-issue/${result.id}/edit`,
             );
           }

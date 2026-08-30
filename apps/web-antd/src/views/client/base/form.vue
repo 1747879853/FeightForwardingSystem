@@ -1264,9 +1264,9 @@ const handleSubmit = async () => {
           : String(resolvedCreatedId).trim();
       if (createdIdStr) {
         await syncFormSnapshot();
-        router.push(`/clients/${createdIdStr}/edit`);
+        router.replace(`/clients/${createdIdStr}/edit`);
       } else {
-        router.push('/clients');
+        router.replace('/clients');
       }
     }
 
