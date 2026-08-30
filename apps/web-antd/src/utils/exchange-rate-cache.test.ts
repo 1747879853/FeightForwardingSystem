@@ -121,4 +121,10 @@ describe('peekExchangeRate 按匹配日取值', () => {
     expect(etdRate).toBe(7);
     expect(todayRate).not.toBe(etdRate);
   });
+
+  it('本位币对不上视为未维护，不拿别的本位币兜底', async () => {
+    await ensureExchangeRateCache(true);
+    expect(peekExchangeRate(usd, 0, 999, '2026-08-30')).toBeUndefined();
+    expect(peekExchangeRate(usd, 0, undefined, '2026-08-30')).toBeUndefined();
+  });
 });

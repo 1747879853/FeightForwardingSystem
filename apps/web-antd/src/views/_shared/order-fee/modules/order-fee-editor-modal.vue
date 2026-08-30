@@ -1129,7 +1129,6 @@ const setupFeeCodeChangeListener = async () => {
                         paySide,
                         localCurrencyId,
                         etd,
-                        { strictLocalCurrency: true },
                       );
 
                       if (exchangeRate !== undefined) {

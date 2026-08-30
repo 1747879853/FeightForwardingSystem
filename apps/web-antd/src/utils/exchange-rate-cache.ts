@@ -185,26 +185,6 @@ function pickQuotedRate(
   return rate;
 }
 
-function pickEffectiveRate(
-  currencyId?: null | number | string,
-  localCurrencyId?: null | number | string,
-  asOf?: Date | null | number | string,
-): ExchangeRateAdminApi.ExchangeRateDto | undefined {
-  const quoted = pickQuotedRate(currencyId, localCurrencyId, asOf);
-  if (quoted) return quoted;
-  const key = String(currencyId ?? '');
-  if (key === '') return undefined;
-  const list = rateCache.value.get(key);
-  if (!list || list.length === 0) return undefined;
-  const asOfTime = resolveAsOfTime(asOf);
-  let rate: ExchangeRateAdminApi.ExchangeRateDto | undefined;
-  for (const item of list) {
-    if (!isExchangeRateEffective(item, asOfTime)) continue;
-    if (!rate || isPreferred(item, rate)) rate = item;
-  }
-  return rate;
-}
-
 /**
  * 付费申请指定结算币别：只取「费用币别兑结算币」且**今天**有效的资料，
  * 不交叉折算、不按开船日。未维护则 undefined。
@@ -223,35 +203,23 @@ export function peekQuotedExchangeRate(
 
 /**
  * 读取已加载缓存中指定日期有效的汇率：应收取 drValue、应付取 crValue。
- * 缓存未就绪、该币别未维护、或没有满足条件的记录时返回 undefined。
- * @param localCurrencyId 业务所属公司的本位币；传入时优先取本位币匹配的记录。
+ * 只认「费用币别兑指定本位币」；对不上或未维护返回 undefined，不跨本位币兜底。
+ * @param localCurrencyId 业务所属公司的本位币；未传或对不上视为未维护。
  * @param dateStr 业务日期（如 ETD），为空按今天判有效期。
- * @param opts.strictLocalCurrency 为 true 时本位币严格匹配：传入 localCurrencyId 后
- * 找不到匹配记录直接返回 undefined，不做跨本位币兜底（费用录入用，避免填错公司的汇率）。
- * 默认 false，保留「取不到再按 sortId/id 优先级兜底」的兼容行为。
  */
 export function peekExchangeRateOnDate(
   currencyId?: null | number | string,
   paySide?: null | number,
   localCurrencyId?: null | number | string,
   dateStr?: null | string,
-  opts?: { strictLocalCurrency?: boolean },
 ): number | undefined {
-  const localKey = String(localCurrencyId ?? '');
-  const strict = opts?.strictLocalCurrency === true && localKey !== '';
-  const rate = strict
-    ? pickQuotedRate(currencyId, localCurrencyId, dateStr)
-    : pickEffectiveRate(currencyId, localCurrencyId, dateStr);
-  if (!rate) return undefined;
-  const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
-  return value ?? undefined;
+  return peekQuotedExchangeRate(currencyId, paySide, localCurrencyId, dateStr);
 }
 
 /**
  * 读取已加载缓存中的生效汇率：应收取 drValue、应付取 crValue。
- * 缓存未就绪、该币别未维护、或记录在匹配日已不在有效期内时返回 undefined。
- * @param localCurrencyId 业务所属公司的本位币；传入时优先取本位币匹配的记录，
- * 取不到再兜底按 sortId/id 优先级选（兼容未传本位币的旧调用方）
+ * 缓存未就绪、该币别未维护、本位币对不上、或记录在匹配日已不在有效期内时返回 undefined。
+ * @param localCurrencyId 业务所属公司的本位币；必须对上汇率行的 localCurrencyId
  * @param asOf 匹配日；不传则今天。业务联系单有开船日期时传 ETD
  */
 export function peekExchangeRate(
@@ -274,16 +242,9 @@ export async function resolveExchangeRateOnDate(
   paySide?: null | number,
   localCurrencyId?: null | number | string,
   dateStr?: null | string,
-  opts?: { strictLocalCurrency?: boolean },
 ) {
   await ensureExchangeRateCache();
-  return peekExchangeRateOnDate(
-    currencyId,
-    paySide,
-    localCurrencyId,
-    dateStr,
-    opts,
-  );
+  return peekExchangeRateOnDate(currencyId, paySide, localCurrencyId, dateStr);
 }
 
 /** 等缓存就绪后取生效汇率，语义同 {@link peekExchangeRate} */

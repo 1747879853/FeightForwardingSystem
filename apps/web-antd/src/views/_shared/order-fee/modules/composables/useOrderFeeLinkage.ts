@@ -208,9 +208,6 @@ export function useOrderFeeLinkage(
       paySide,
       localCurrencyId,
       etd,
-      {
-        strictLocalCurrency: true,
-      },
     );
   }
 

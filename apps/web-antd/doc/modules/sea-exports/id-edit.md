@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-28
+last_updated: 2026-08-30
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -47,7 +47,7 @@ last_updated: 2026-08-28
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **委托编号重新生成：** 基础信息页头「委托编号」右侧的刷新图标（仅编辑态、需 `Admin.SeaExport.Edit` **且** `detail.isEditable`）调用 `UpdateCommissionNumAsync`（PUT，入参仅 `{ id }`），由后端按编号规则重新取号并写回同 Id 的 `TransportOrder.CommissionNum`；前端用返回的新编号即时替换页头展示并标记列表待刷新。该操作立即生效、不随「保存」提交；点击前若表单本无未保存修改会同步脏检查基线，避免误触发未保存拦截。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
-- **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。工具栏新增「**创建付费申请**」（需 `Admin.PaymentApplication.Add`）：勾选应付且组合状态为审核通过/部分结算、同一结算对象、跳转前先 `GetOrderFeeGroupAsync` 回捞，成功后进入付费申请新增页预填（`orderFeeIds` query）。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付），拉模板列表传 `bizType=0`（海运出口，结果含通用模板）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
+- **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。改币别时汇率只取「费用币别兑所属公司本位币」且业务日期（海出=开船日）有效的记录，对不上留空手填；费用币别本身就是本位币则锁 1。工具栏新增「**创建付费申请**」（需 `Admin.PaymentApplication.Add`）：勾选应付且组合状态为审核通过/部分结算、同一结算对象、跳转前先 `GetOrderFeeGroupAsync` 回捞，成功后进入付费申请新增页预填（`orderFeeIds` query）。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付），拉模板列表传 `bizType=0`（海运出口，结果含通用模板）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **监装工单：** Tab 文案为「监装」，位于派车与分单之间；需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 且有 `.Add` 时直接进入新建表单（不先点「新建」）；无 `.Add` 才显示空态。版式按 Figma 节点几何：工号只在基础信息第一格（带复制），顶栏仅状态 +「保存 / 提交 / 删除」；五列栅格（列间距 13px、行间距 12px），控件用默认 middle 高度；第三行预计到货/堆场/师傅各占一列，师傅为多选（人数不限）；堆场标签旁橙色「推荐」可点：先选预计到货时间且已保存船公司，弹窗调 `GetYardUsersAsync`，单选一行后回填堆场与师傅（接口只回名称，前端对本地 id）；监装要求已选标签区常驻一行高度，避免 0→1 勾选抖动；详细说明读写工单 `remark`（高 62px，最长 1024，未提交可改）；集装箱 32px 浅蓝标题条，列表头 36/行 50，照片采集按钮 123×30 用稿面相机 SVG。**明细包装与堆场的候选项只认已保存的海运出口**（基础信息未点保存不会带到监装；切回监装 Tab 会重拉堆场）。无船公司与船公司未维护堆场时下拉不禁用、打开为空列表，用不同空态文案。师傅 `userAttribute=512`，人数前后端都不卡。按状态：未提交（保存/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。工单号由后端按 `LoadingOrder.LoadingOrderNum` 生成。干系人里的「监装」与工单师傅列表是两套，互不同步。
@@ -142,6 +142,7 @@ last_updated: 2026-08-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-30 | `Change` | 费用汇率只认「费用币别兑所属公司本位币」，对不上留空；本页原先已是严格匹配，与缓存去掉跨本位币兜底对齐。 | 共用 `exchange-rate-cache` 删掉宽松兜底和 `strictLocalCurrency`。详见 `changelogs/change-log-2026-08-30-exchange-rate-no-local-fallback.md`。 |
 | 2026-08-28 | `Feature` | 应收应付 Tab 新增「创建付费申请」：勾选应付费用跳转付费申请新增并预填（需 `Admin.PaymentApplication.Add`）。 | 与海进/空出共用 `open-from-order-fees.ts`；详见 `changelogs/change-log-2026-08-28-order-fee-create-payment-application.md`。 |
 | 2026-08-25 | `Feature` | 附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。 | TAPD `#1161580498001000779` 附件上传统一。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-24 | `Style` | 分单货物明细唛头、货描文本框底边与右侧件数/包装/毛重/体积对齐；标签到输入框间距仍为 6px。 | 两列 `auto 1fr` 只拉高文本框。详见 `changelogs/change-log-2026-08-24-separate-bill-cargo-align.md`。 |

@@ -73,7 +73,7 @@ last_updated: 2026-08-30
 | **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h)/订舱代理(o) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
 | **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤；回显依赖 `selectedItems`（id+name） | **提交审核必填**；保存草稿只提示 |
 | **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后按汇率表在匹配日生效的记录重取汇率 | 生成海出费用时缺币别会被跳过 |
-| **费用.汇率** | 对本位币汇率；展示去掉末尾 0，最多 6 位小数。 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **匹配日：** 无开船日期用今天，有 ETD 用开船日日历日。**触发：** 币别 / 收付 / 新增行 / 生成海运费按「匹配日生效记录（应收 `drValue` / 应付 `crValue`）→ 本位币兜底 1 → 置空」取值，取到后仍可手改；改开船日期或 AI 回填 ETD 后，已录费用与新结果不同则弹窗，确认才覆盖（重匹配必须传入刚算出的开船日，不能读尚未刷新的 `rateAsOf`）；只有走本位币兜底的行（`__isLocalCurrency=true`）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效 = 已启用 且 匹配日落在有效期内；同币别多条按 `sortId`、id 取大；开船日与今天落在同一有效期则不弹窗 |
+| **费用.汇率** | 对本位币汇率；展示去掉末尾 0，最多 6 位小数。 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **匹配日：** 无开船日期用今天，有 ETD 用开船日日历日。**触发：** 币别 / 收付 / 新增行 / 生成海运费只取「费用币别兑公司本位币」且匹配日生效的记录（应收 `drValue` / 应付 `crValue`），对不上视为未维护置空，取到后仍可手改；改开船日期或 AI 回填 ETD 后，已录费用与新结果不同则弹窗，确认才覆盖（重匹配必须传入刚算出的开船日，不能读尚未刷新的 `rateAsOf`）；费用币别本身就是本位币时（`__isLocalCurrency=true`）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效 = 已启用 且 匹配日落在有效期内 且 本位币对上；同币别多条按 `sortId`、id 取大；开船日与今天落在同一有效期则不弹窗 |
 | **费用.单位** | 计价单位 | 通用四项 `票` / `重量` / `体积` / `TEU`（`PRE_ORDER_GENERIC_UNITS`） **+ 本单箱型名**（由箱型箱量表派生） | **默认：** 手工新增「票」，一键生成时=箱型名；费用代码默认单位经 `coercePreOrderFeeUnit` 落到白名单内（泛称「箱型/CTN」→票）；**触发：** 按单位自动带出数量（见「费用.数量」） | 必须是四项之一或本单已存在的箱型名，提交审核前校验；箱型行被删除后对应费用行单位落回「票」 |
 | **费用.含税单价** | 对客单价 | 手填 | —— | 非负 |
 | **费用.数量** | 计价数量 | 完全由单位派生，**始终只读**（后端审核通过时按单位重算并覆盖，手改无意义） | **触发：** 票=1；重量=货物 `kgs`；体积=`cbm`；TEU=各箱型 `teu×箱量` 累加；箱型名=该箱型的箱量合计。箱型、箱量、毛重/体积变更后全表重新带量 | 非负 |
@@ -117,6 +117,7 @@ last_updated: 2026-08-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-30 | `Change` | 费用汇率必须对上所属公司本位币；对不上当没维护留空，不再拿别的本位币记录凑。 | 缓存去掉跨本位币兜底和 `strictLocalCurrency` 开关。费用币别本身就是本位币时页面仍锁 1。详见 `changelogs/change-log-2026-08-30-exchange-rate-no-local-fallback.md`。 |
 | 2026-08-30 | `Fix` | 先录费用再选开船日期时，汇率与新开船日不一致会弹出覆盖确认（原先误判为没变而不弹）。 | `resyncRatesIfChanged` 必须接收刚算出的匹配日；当时 `props.rateAsOf` 往往还是空（今天）。详见 `changelogs/change-log-2026-08-30-pre-order-etd-rate-resync-asof.md`。 |
 | 2026-08-30 | `Change` | 费用汇率匹配日改为：无开船日期用今天，有 ETD 用开船日；改 ETD 后若已录费用汇率与新结果不同则弹窗，确认后覆盖。 | 缓存改为只按启用落库、有效期在 peek 时按匹配日筛，否则 ETD 落在「非今天」区间的汇率会被丢掉。详情/复制回填用 `skipEtdRateConfirm` 避免 DatePicker onChange 误弹窗。详见 `changelogs/change-log-2026-08-30-pre-order-fee-rate-by-etd.md`。 |
 | 2026-08-30 | `Fix` | 归属组织选到**部门**时费用行本位币不再解析失败，汇率锁 1 恢复生效。 | 原来直接读 `getOrganizationUnit(headerOrgId).localCurrencyId`，而本位币只配在公司节点上，选部门必然拿到 null。改用新增的 `resolveOrganizationLocalCurrency()`（`api/system/organization-unit.ts`）沿组织串向上找最近的 `isCompany` 节点，与后端 `SetDataPermissionPropsAsync` 的「所属公司」口径一致。注意不能退回「组织串第一个有本位币的节点」——集团节点历史上也可能配过。详见 `changelogs/change-log-2026-08-30-data-permission-local-currency.md`。 |
