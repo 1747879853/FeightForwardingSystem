@@ -344,6 +344,7 @@ const onConfirmCreate = () => {
               <Table
                 bordered
                 size="small"
+                :scroll="{ x: 'max-content' }"
                 :columns="ticketColumns"
                 :data-source="month.settledTickets"
                 :pagination="false"
@@ -368,6 +369,7 @@ const onConfirmCreate = () => {
                 <Table
                   bordered
                   size="small"
+                  :scroll="{ x: 'max-content' }"
                   :columns="unsettledTicketColumns"
                   :data-source="month.unsettledTickets"
                   :pagination="false"
@@ -425,6 +427,7 @@ const onConfirmCreate = () => {
               <Table
                 bordered
                 size="small"
+                :scroll="{ x: 'max-content' }"
                 :columns="ticketColumns"
                 :data-source="month.tickets"
                 :pagination="false"

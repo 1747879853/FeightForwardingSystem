@@ -384,8 +384,72 @@ export namespace CommissionOrderAdminApi {
     payable: number;
     /** 利润（原币）= 应收 − 应付 */
     profit: number;
-    /** 本次折算用的应收汇率，费用币别即本位币时恒为 1 */
+    /** 本次折算用的提成汇率（ExchangeRate.CommissionValue，应收应付共用同一个值），费用币别即本位币时恒为 1 */
     exchangeRate: number;
+  }
+
+  /** 海空港口（海运港 isSeaPort=true 查 PortCode，空运港 isSeaPort=false 查 AirPort，与 id 成对使用） */
+  export interface SeaAirPortSimpleDto {
+    id: number;
+    isSeaPort: boolean;
+    cnName?: null | string;
+    enName?: null | string;
+    code?: null | string;
+  }
+
+  /** 箱型简易对象（后端 CtnCodeSimpleDto，结构与报表模块一致） */
+  export interface CtnCodeSimpleDto {
+    id?: number;
+    ctnName?: null | string;
+    cabinetSize?: null | string;
+    ctnType?: null | string;
+    teu?: null | number;
+  }
+
+  /** 箱型箱量（系统里一个箱子一行、没有数量列，箱量是按箱型数出来的条数） */
+  export interface CommissionCtnSimpleDto {
+    ctnCode?: null | CtnCodeSimpleDto;
+    count?: number;
+  }
+
+  /** 海运出口专属：起运港/目的港（三个子对象结构相同，按业务类型只有对应的一个有值） */
+  export interface CommissionSeaExportDto {
+    pol?: null | SeaAirPortSimpleDto;
+    pod?: null | SeaAirPortSimpleDto;
+  }
+
+  /** 海运进口专属：起运港/目的港 */
+  export interface CommissionSeaImportDto {
+    pol?: null | SeaAirPortSimpleDto;
+    pod?: null | SeaAirPortSimpleDto;
+  }
+
+  /** 空运出口专属：起运地/目的地 */
+  export interface CommissionAirExportDto {
+    pol?: null | SeaAirPortSimpleDto;
+    pod?: null | SeaAirPortSimpleDto;
+  }
+
+  /** 本票欠款按结算对象分组（仅销售提成第二部分有值） */
+  export interface CommissionUnsettledSettlementDto {
+    /** 结算对象，可能为 null（费用还在录入状态时结算对象可空，这些费用单独归一组） */
+    settlement?: null | ClientSimpleDto;
+    /** 该结算对象下按币别分组的原币明细 */
+    currencies?: null | CommissionUnsettledCurrencyDto[];
+  }
+
+  /** 未结清费用按币别分组的原币明细（只统计未结清的费用行，只算本票自己的费用） */
+  export interface CommissionUnsettledCurrencyDto {
+    /** 币别 */
+    currency?: CurrencySimpleDto;
+    /** 应收（原币）Σ 费用金额 */
+    receivable?: number;
+    /** 未收（原币）Σ(费用金额 − 已结算金额) */
+    unReceived?: number;
+    /** 应付（原币）Σ 费用金额 */
+    payable?: number;
+    /** 未付（原币）Σ(费用金额 − 已结算金额) */
+    unPaid?: number;
   }
 
   /** 业务主单信息 */
@@ -412,6 +476,18 @@ export namespace CommissionOrderAdminApi {
     sales: UserSimpleDto[];
     /** 操作 */
     operations: UserSimpleDto[];
+    /** 应结日期，按委托单位账期算出，下单当时的快照 */
+    settlementDate?: null | string;
+    /** 超期天数，今天-应结日期，只比日期，未到期是负数不归零 */
+    overdueDays?: null | number;
+    /** 箱型箱量，空运出口恒为空列表 */
+    ctns?: null | CommissionCtnSimpleDto[];
+    /** 起运港/目的港，仅海运出口有值 */
+    seaExport?: null | CommissionSeaExportDto;
+    /** 起运港/目的港，仅海运进口有值 */
+    seaImport?: null | CommissionSeaImportDto;
+    /** 起运地/目的地，仅空运出口有值 */
+    airExport?: null | CommissionAirExportDto;
   }
 
   /** 操作提成命中条件项 */
@@ -438,6 +514,12 @@ export namespace CommissionOrderAdminApi {
     accountDate: string;
     /** 业务主单信息 */
     transportOrder: CommissionTransportOrderDto;
+    /**
+     * 这一票分摊到的提成金额，销售与操作都有值、四个接口都返回。
+     * 销售：阶梯内分段计费下的达标票为 null；操作：命中的各条件项金额之和，一条都没命中时为 0。
+     * 只供逐票展示，逐票相加不一定等于单头金额；第二部分恒为 null
+     */
+    amount?: number | null;
 
     // ---- 销售提成专属字段 ----
     /** 这一票的利润（本位币），第二部分为 null */
@@ -452,10 +534,10 @@ export namespace CommissionOrderAdminApi {
     currencies?: CommissionCurrencyDto[] | null;
     /** 未结清的费用条数，仅第二部分有值 */
     unsettledFeeCount?: number | null;
+    /** 本票欠款按结算对象分组的明细，仅第二部分有值 */
+    unsettledSettlements?: null | CommissionUnsettledSettlementDto[];
 
     // ---- 操作提成专属字段 ----
-    /** 操作提成金额，一条都没命中时为 0 */
-    amount?: number | null;
     /** 命中的条件项，一条都没命中时为空列表 */
     hitRules?: CommissionHitRuleDto[] | null;
   }

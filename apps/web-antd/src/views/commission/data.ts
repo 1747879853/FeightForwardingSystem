@@ -155,6 +155,80 @@ export const formatCurrencies = (
     .join('；');
 };
 
+/** 按业务类型取对应的起运港/目的港子对象（三个子对象只有对应的一个有值） */
+const getPortPair = (
+  transportOrder: CommissionOrderAdminApi.CommissionTransportOrderDto,
+):
+  | CommissionOrderAdminApi.CommissionSeaExportDto
+  | CommissionOrderAdminApi.CommissionSeaImportDto
+  | CommissionOrderAdminApi.CommissionAirExportDto
+  | null
+  | undefined => {
+  switch (transportOrder.bizType) {
+    case CommissionOrderAdminApi.BizType.SeaExport: {
+      return transportOrder.seaExport;
+    }
+    case CommissionOrderAdminApi.BizType.SeaImport: {
+      return transportOrder.seaImport;
+    }
+    case CommissionOrderAdminApi.BizType.AirExport: {
+      return transportOrder.airExport;
+    }
+    default: {
+      return undefined;
+    }
+  }
+};
+
+const formatPortName = (
+  port?: null | CommissionOrderAdminApi.SeaAirPortSimpleDto,
+): string => port?.cnName || port?.enName || port?.code || '-';
+
+/** 起运港/目的港文案：`上海 → 汉堡`，无值时显示 `-` */
+export const formatPolPod = (
+  transportOrder?: null | CommissionOrderAdminApi.CommissionTransportOrderDto,
+): string => {
+  if (!transportOrder) return '-';
+  const pair = getPortPair(transportOrder);
+  if (!pair?.pol && !pair?.pod) return '-';
+  return `${formatPortName(pair.pol)} → ${formatPortName(pair.pod)}`;
+};
+
+/** 箱型箱量文案：`40HQ×2、20GP×1`，空运出口（无箱）显示 `-` */
+export const formatCtns = (
+  ctns?: null | CommissionOrderAdminApi.CommissionCtnSimpleDto[],
+): string => {
+  if (!ctns || ctns.length === 0) return '-';
+  return ctns
+    .map((c) => {
+      const name = c.ctnCode?.ctnName ?? c.ctnCode?.cabinetSize ?? '-';
+      return `${name}×${c.count ?? 0}`;
+    })
+    .join('、');
+};
+
+/** 欠款明细文案：`结算对象A：USD 应收100 未收80 应付50 未付30；...`，无值时显示 `-` */
+export const formatUnsettledSettlements = (
+  groups?: null | CommissionOrderAdminApi.CommissionUnsettledSettlementDto[],
+): string => {
+  if (!groups || groups.length === 0) return '-';
+  return groups
+    .map((group) => {
+      const party =
+        group.settlement?.name ??
+        group.settlement?.fullName ??
+        $t('commissionOrder.ticket.unsettledSettlementNone');
+      const details = (group.currencies ?? [])
+        .map((c) => {
+          const code = c.currency?.code ?? '-';
+          return `${code} ${$t('commissionOrder.ticket.receivable')}${formatAmount(c.receivable)} ${$t('commissionOrder.ticket.unReceived')}${formatAmount(c.unReceived)} ${$t('commissionOrder.ticket.payable')}${formatAmount(c.payable)} ${$t('commissionOrder.ticket.unPaid')}${formatAmount(c.unPaid)}`;
+        })
+        .join('；');
+      return details ? `${party}：${details}` : party;
+    })
+    .join('；');
+};
+
 // ==================== 列表搜索表单 ====================
 
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -403,6 +477,33 @@ const ticketBaseColumns = (options: {
           ?.client?.name ?? '-',
     },
     {
+      title: ticketTitle('operations'),
+      dataIndex: ['transportOrder', 'operations'],
+      key: 'operations',
+      width: 100,
+      customRender: ({ record }) => {
+        const operations = (
+          record as CommissionOrderAdminApi.CommissionTicketDto
+        ).transportOrder?.operations;
+        const text = (operations ?? [])
+          .map((o) => o.nickName)
+          .filter(Boolean)
+          .join('、');
+        return text || '-';
+      },
+    },
+    {
+      title: ticketTitle('polPod'),
+      key: 'polPod',
+      width: 150,
+      ellipsis: true,
+      customRender: ({ record }) =>
+        formatPolPod(
+          (record as CommissionOrderAdminApi.CommissionTicketDto)
+            .transportOrder,
+        ),
+    },
+    {
       title: ticketTitle('ticketType'),
       key: 'ticketType',
       width: 80,
@@ -430,18 +531,33 @@ const ticketBaseColumns = (options: {
           ? '-'
           : $t('commissionOrder.ticket.unsettledCountValue', { count: text }),
     });
+    columns.push({
+      title: ticketTitle('unsettledDetails'),
+      key: 'unsettledDetails',
+      width: 220,
+      customRender: ({ record }) => {
+        const text = formatUnsettledSettlements(
+          (record as CommissionOrderAdminApi.CommissionTicketDto)
+            .unsettledSettlements,
+        );
+        return h(Tooltip, { title: () => text, placement: 'topLeft' }, () =>
+          h('span', { class: 'block max-w-[210px] truncate' }, text),
+        );
+      },
+    });
   }
   return columns;
 };
 
-/** 销售提成票表格列（第一部分与第二部分共用，第二部分多一列未结清费用） */
+/** 销售提成票表格列（第一部分与第二部分共用；第二部分加未结清费用与欠款明细两列、无提成金额列） */
 export function useSalesTicketColumns(
   options: {
     showUnsettled?: boolean;
   } = {},
 ): TicketColumns {
-  return [
-    ...ticketBaseColumns({ showUnsettled: options.showUnsettled ?? false }),
+  const showUnsettled = options.showUnsettled ?? false;
+  const columns: TicketColumns = [
+    ...ticketBaseColumns({ showUnsettled }),
     {
       title: ticketTitle('totalReceivable'),
       dataIndex: 'totalReceivable',
@@ -482,33 +598,19 @@ export function useSalesTicketColumns(
         );
       },
     },
-    {
-      title: ticketTitle('currencies'),
-      dataIndex: 'currencies',
-      key: 'currencies',
-      width: 150,
-      customRender: ({ text }) => {
-        const textValue = formatCurrencies(
-          text as
-            | CommissionOrderAdminApi.CommissionCurrencyDto[]
-            | null
-            | undefined,
-        );
-        return h(
-          Tooltip,
-          { title: () => textValue, placement: 'topLeft' },
-          () =>
-            h(
-              'span',
-              {
-                class: 'block truncate max-w-[140px]',
-              },
-              textValue,
-            ),
-        );
-      },
-    },
   ];
+  if (!showUnsettled) {
+    // 提成金额（分摊）：第二部分未参与计算恒为 null，不展示
+    columns.splice(columns.length, 0, {
+      title: ticketTitle('amount'),
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 110,
+      align: 'right',
+      customRender: ({ text }) => amountCell(text),
+    });
+  }
+  return columns;
 }
 
 /** 操作提成票表格列 */

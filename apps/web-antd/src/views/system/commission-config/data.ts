@@ -454,24 +454,6 @@ export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConf
           .join('、'),
     },
     {
-      field: 'baseSalary',
-      title: $t('commission.baseSalary'),
-      width: 140,
-      formatter: ({ row }) =>
-        formatBaseSalary(row as CommissionConfigAdminApi.CommissionConfigDto),
-    },
-    {
-      field: 'ruleSummary',
-      title: $t('commission.rulesSummary'),
-      minWidth: 170,
-      showOverflow: true,
-      // 行上无此字段，仅列标识，禁排序；完整规则双击编辑弹窗查看
-      sortable: false,
-      formatter: ({ row }) =>
-        buildRuleSummary(row as CommissionConfigAdminApi.CommissionConfigDto)
-          .short,
-    },
-    {
       field: 'creatorUserName',
       title: $t('commission.creator'),
       width: 110,
