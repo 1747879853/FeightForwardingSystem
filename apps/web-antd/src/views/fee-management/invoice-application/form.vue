@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
-import { useRouter } from 'vue-router';
+import { useTabs } from '@vben/hooks';
+import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
   Card,
@@ -48,6 +49,8 @@ import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 
 // ==================== 初始化路由 ====================
 const router = useRouter();
+const route = useRoute();
+const { closeTabByKey } = useTabs();
 
 // ==================== 使用组合函数 ====================
 
@@ -188,24 +191,29 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
     console.log('✅ 开票申请创建成功，IDs:', ids);
 
     if (ids && ids.length > 0) {
+      const createTabKey = route.fullPath;
       // 第一个ID使用replace替换当前页面
       const firstId = ids[0];
-      router.replace({
-        path: `/fee-management/invoice-application/${firstId}/edit`,
-      });
+      void (async () => {
+        await router.replace({
+          path: `/fee-management/invoice-application/${firstId}/edit`,
+        });
+        // 关闭残留的新建页签
+        await closeTabByKey(createTabKey);
 
-      // 其他ID在新tab中打开
-      if (ids.length > 1) {
-        setTimeout(() => {
-          ids.slice(1).forEach((id) => {
-            // 使用router.push打开新tab
-            router.push({
-              path: `/fee-management/invoice-application/${id}/edit`,
+        // 其他ID在新tab中打开
+        if (ids.length > 1) {
+          setTimeout(() => {
+            ids.slice(1).forEach((id) => {
+              // 使用router.push打开新tab
+              router.push({
+                path: `/fee-management/invoice-application/${id}/edit`,
+              });
+              console.log('📑 已打开开票申请tab:', id);
             });
-            console.log('📑 已打开开票申请tab:', id);
-          });
-        }, 300); // 延迟300ms，确保第一个tab已经打开
-      }
+          }, 300); // 延迟300ms，确保第一个tab已经打开
+        }
+      })();
     }
   },
   handleFeeDetailRefresh, // ✅ 传递刷新数据的回调

@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { IconifyIcon } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 import { $t } from '#/locales';
@@ -56,6 +57,7 @@ import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const { closeTabByKey } = useTabs();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -352,9 +354,13 @@ async function handleCreateSettlementAndRedirect(
       `成功创建结算单，已添加 ${paymentApplicationCurrencyItems.length} 个「申请+原币」组合`,
     );
 
-    // 跳转到编辑页面
+    // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
     if (newId) {
-      router.replace(`/settlement-management/payment-settlement/edit/${newId}`);
+      const createTabKey = route.fullPath;
+      await router.replace(
+        `/settlement-management/payment-settlement/edit/${newId}`,
+      );
+      await closeTabByKey(createTabKey);
     } else {
       console.error('创建成功后未返回ID');
     }

@@ -50,6 +50,7 @@ import {
   cancelDishonest,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
@@ -71,6 +72,7 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -1262,12 +1264,14 @@ const handleSubmit = async () => {
         resolvedCreatedId === null || resolvedCreatedId === undefined
           ? ''
           : String(resolvedCreatedId).trim();
+      const createTabKey = route.fullPath;
       if (createdIdStr) {
         await syncFormSnapshot();
-        router.replace(`/clients/${createdIdStr}/edit`);
+        await router.replace(`/clients/${createdIdStr}/edit`);
       } else {
-        router.replace('/clients');
+        await router.replace('/clients');
       }
+      await closeTabByKey(createTabKey);
     }
 
     if (createdId) {

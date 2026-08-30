@@ -1,4 +1,6 @@
 import { message } from 'ant-design-vue';
+import { useRoute } from 'vue-router';
+import { useTabs } from '@vben/hooks';
 import {
   addInvoiceIssue,
   InvoiceIssueApi,
@@ -29,6 +31,9 @@ export function useFeeSelection(
   isEdit: any,
   invoiceIssueTime: any,
 ) {
+  const route = useRoute();
+  const { closeTabByKey } = useTabs();
+
   /**
    * 处理费用选择保存
    */
@@ -208,9 +213,13 @@ export function useFeeSelection(
 
       console.log('✅ 发票创建成功，ID:', res.id);
 
-      // 跳转到编辑页面
+      // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
       if (newId) {
-        router.replace(`/settlement-management/invoice-issue/${newId}/edit`);
+        const createTabKey = route.fullPath;
+        await router.replace(
+          `/settlement-management/invoice-issue/${newId}/edit`,
+        );
+        await closeTabByKey(createTabKey);
       }
     } catch (error) {
       console.error('❌ 创建发票失败:', error);

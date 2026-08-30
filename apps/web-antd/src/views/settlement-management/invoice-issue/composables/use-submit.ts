@@ -1,5 +1,6 @@
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useTabs } from '@vben/hooks';
 import { message, Modal } from 'ant-design-vue';
 import {
   addInvoiceIssue,
@@ -21,6 +22,8 @@ export function useSubmit(
   isEdit: any,
 ) {
   const router = useRouter();
+  const route = useRoute();
+  const { closeTabByKey } = useTabs();
   const submitLoading = ref(false);
 
   /**
@@ -164,11 +167,13 @@ export function useSubmit(
         if (result.code === 0) {
           message.success('创建成功');
 
-          // 创建成功后跳转到编辑页面
+          // 创建成功后跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
           if (result.id) {
-            router.replace(
+            const createTabKey = route.fullPath;
+            await router.replace(
               `/settlement-management/invoice-issue/${result.id}/edit`,
             );
+            await closeTabByKey(createTabKey);
           }
         }
       }
