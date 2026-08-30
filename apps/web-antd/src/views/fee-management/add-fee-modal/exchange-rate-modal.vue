@@ -11,16 +11,19 @@ import {
 import type { CurrencyInfo } from './data';
 import {
   calcOriginalToSettlementRate,
+  currencyRatePairKey,
+  fallbackLocalCurrencyRate,
   inverseRate,
-  isLocalCurrencyCode,
   PAYABLE_PAY_SIDE,
   RATE_PRECISION,
 } from './exchange-rate-convert';
 
 interface RatePair {
+  pairKey: string;
   currencyId: number;
   originalCode: string;
   settlementCode: string;
+  asOf?: string;
   /** 1 原币 = ? 结算币（写入费用申请汇率） */
   originalToSettlement: null | number;
   /** 1 结算币 = ? 原币（展示用，与上一字段互为倒数） */
@@ -32,48 +35,60 @@ const props = defineProps<{
   currencies: CurrencyInfo[];
   settlementCurrencyId?: number | null;
   settlementCurrencyName?: string;
+  /** 申请主体所属公司本位币；与业务联系单同一套 peek 口径 */
+  localCurrencyId?: null | number;
 }>();
 
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  confirm: [rateMap: Map<number, number>];
+  confirm: [rateMap: Map<string, number>];
 }>();
 
 const pairs = ref<RatePair[]>([]);
 
-function rmbPerUnit(
+/** 1 该币 = n 公司本位币：汇率表优先，未维护且是本位币才锁 1 */
+function unitLocalRate(
   currencyId?: null | number | string,
-  currencyCode?: null | string,
+  asOf?: Date | null | number | string,
 ): number | undefined {
-  if (isLocalCurrencyCode(currencyCode)) return 1;
-  return peekExchangeRate(currencyId, PAYABLE_PAY_SIDE);
+  const tableRate = peekExchangeRate(
+    currencyId,
+    PAYABLE_PAY_SIDE,
+    props.localCurrencyId,
+    asOf,
+  );
+  return fallbackLocalCurrencyRate(
+    tableRate,
+    currencyId,
+    props.localCurrencyId,
+  );
 }
 
 function buildPair(currency: CurrencyInfo): RatePair {
   const settlementCode = props.settlementCurrencyName || '结算币别';
-  const originalRmb = rmbPerUnit(currency.currencyId, currency.currencyCode);
-  const settlementRmb = rmbPerUnit(
-    props.settlementCurrencyId,
-    props.settlementCurrencyName,
-  );
+  const asOf = currency.asOf;
+  const originalLocal = unitLocalRate(currency.currencyId, asOf);
+  const settlementLocal = unitLocalRate(props.settlementCurrencyId, asOf);
   const originalToSettlement = calcOriginalToSettlementRate(
-    originalRmb,
-    settlementRmb,
+    originalLocal,
+    settlementLocal,
   );
   return {
+    pairKey: currencyRatePairKey(currency.currencyId, asOf),
     currencyId: currency.currencyId,
     originalCode: currency.currencyCode || '原币',
     settlementCode,
+    asOf,
     originalToSettlement: originalToSettlement ?? null,
     settlementToOriginal: inverseRate(originalToSettlement),
   };
 }
 
 watch(
-  () => [props.open, props.currencies] as const,
+  () => [props.open, props.currencies, props.localCurrencyId] as const,
   async ([open]) => {
     if (!open) return;
-    // 打开时强制刷新，只预填当前启用且在有效期内的应付汇率
+    // 打开时强制刷新；预填口径与业务联系单一致：公司本位币 + 开船日/今天 + 应付 crValue
     await ensureExchangeRateCache(true);
     if (!props.open) return;
     pairs.value = props.currencies.map((currency) => buildPair(currency));
@@ -105,7 +120,7 @@ function onOriginalToSettlementChange(
 }
 
 function handleOk() {
-  const rateMap = new Map<number, number>();
+  const rateMap = new Map<string, number>();
   for (const pair of pairs.value) {
     const rate = pair.originalToSettlement;
     if (rate == null || rate <= 0) {
@@ -114,7 +129,7 @@ function handleOk() {
       );
       return;
     }
-    rateMap.set(pair.currencyId, rate);
+    rateMap.set(pair.pairKey, rate);
   }
   emit('confirm', rateMap);
   emit('update:open', false);
@@ -142,7 +157,10 @@ function handleCancel() {
         {{ RATE_PRECISION }} 位，改一侧另一侧自动取倒数）。
       </div>
       <div class="space-y-4">
-        <div v-for="pair in pairs" :key="pair.currencyId" class="rate-pair">
+        <div v-for="pair in pairs" :key="pair.pairKey" class="rate-pair">
+          <div v-if="pair.asOf" class="rate-pair__as-of">
+            按开船日期 {{ pair.asOf }} 匹配
+          </div>
           <div class="rate-row">
             <span class="rate-row__lead">1</span>
             <span class="rate-row__code">{{ pair.settlementCode }}</span>
@@ -188,6 +206,11 @@ function handleCancel() {
   background: #f8fafc;
   border: 1px solid #e8eef6;
   border-radius: 8px;
+}
+
+.rate-pair__as-of {
+  font-size: 12px;
+  color: #64748b;
 }
 
 .rate-row {

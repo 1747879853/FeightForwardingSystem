@@ -54,4 +54,16 @@ describe('isExchangeRateEffective', () => {
       ),
     ).toBe(false);
   });
+
+  it('匹配日用开船日期而不是今天：落在区间内有效，区间外无效', () => {
+    const rate = {
+      enable: true,
+      startDate: '2026-03-01',
+      endDate: '2026-03-31',
+    };
+    const etd = new Date('2026-03-15T12:00:00').getTime();
+    const todayOutside = new Date('2026-08-30T12:00:00').getTime();
+    expect(isExchangeRateEffective(rate, etd)).toBe(true);
+    expect(isExchangeRateEffective(rate, todayOutside)).toBe(false);
+  });
 });

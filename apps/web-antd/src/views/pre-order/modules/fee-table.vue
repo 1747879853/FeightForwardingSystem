@@ -12,6 +12,7 @@ import {
   Input,
   InputNumber,
   message,
+  Modal,
   Select,
   Space,
   Table,
@@ -98,6 +99,11 @@ const props = withDefaults(
     cargo?: PreOrderFeeCargo;
     /** 归属组织本位币 id，命中时汇率锁定为 1 */
     localCurrencyId?: null | number;
+    /**
+     * 汇率匹配日：开船日期 YYYY-MM-DD；空则用今天。
+     * 改日期后的覆盖确认走 resyncRatesIfChanged，详情回填不要调。
+     */
+    rateAsOf?: null | string;
     readonly?: boolean;
   }>(),
   {
@@ -106,6 +112,7 @@ const props = withDefaults(
     resolveParties: undefined,
     cargo: () => ({}),
     localCurrencyId: null,
+    rateAsOf: null,
     readonly: false,
   },
 );
@@ -427,30 +434,87 @@ function isLocalCurrencyRow(row: PreOrderFeeRow) {
   return currency === String(props.localCurrencyId);
 }
 
-/**
- * 币别 → 汇率（与海出费用表一致）：优先取汇率表中当前生效的记录
- *（应收 drValue / 应付 crValue）；未维护时本位币锁 1，其余置空由用户手填。
- */
-async function applyExchangeRate(row: PreOrderFeeRow) {
+function sameExchangeRate(
+  left?: null | number,
+  right?: null | number,
+): boolean {
+  const empty = (value?: null | number) =>
+    value == null || Number.isNaN(Number(value));
+  if (empty(left) && empty(right)) return true;
+  if (empty(left) || empty(right)) return false;
+  return Math.abs(Number(left) - Number(right)) < 1e-9;
+}
+
+/** 按费用币别 + 公司本位币 + 匹配日（无 ETD 用今天）取汇率，不写行 */
+async function matchRateForRow(row: PreOrderFeeRow): Promise<{
+  __isLocalCurrency: boolean;
+  exchangeRate?: number;
+}> {
   const currencyId = String(row.currencyId ?? '');
   if (currencyId === '') {
-    row.exchangeRate = undefined;
-    row.__isLocalCurrency = false;
-    return;
+    return { exchangeRate: undefined, __isLocalCurrency: false };
   }
   const rate = await resolveExchangeRate(
     currencyId,
     Number(row.paySide ?? 0),
     props.localCurrencyId,
+    props.rateAsOf,
   );
   if (rate === undefined) {
     const isLocal = isLocalCurrencyRow(row);
-    row.exchangeRate = isLocal ? 1 : undefined;
-    row.__isLocalCurrency = isLocal;
-    return;
+    return {
+      exchangeRate: isLocal ? 1 : undefined,
+      __isLocalCurrency: isLocal,
+    };
   }
-  row.exchangeRate = rate;
-  row.__isLocalCurrency = false;
+  return { exchangeRate: rate, __isLocalCurrency: false };
+}
+
+/**
+ * 币别 → 汇率：优先取汇率表在匹配日生效的记录
+ *（应收 drValue / 应付 crValue）；未维护时本位币锁 1，其余置空由用户手填。
+ */
+async function applyExchangeRate(row: PreOrderFeeRow) {
+  const next = await matchRateForRow(row);
+  row.exchangeRate = next.exchangeRate;
+  row.__isLocalCurrency = next.__isLocalCurrency;
+}
+
+/**
+ * 开船日期变更后重匹配：有费用行汇率与新结果不同才弹窗，确认后覆盖。
+ * 详情回填 / 复制预填不要调这个，避免打开单据就提示覆盖。
+ */
+async function resyncRatesIfChanged() {
+  if (props.readonly) return;
+  if (dataSource.value.length === 0) return;
+  const patches: Array<{
+    next: Awaited<ReturnType<typeof matchRateForRow>>;
+    row: PreOrderFeeRow;
+  }> = [];
+  for (const row of dataSource.value) {
+    const next = await matchRateForRow(row);
+    if (
+      !sameExchangeRate(row.exchangeRate, next.exchangeRate) ||
+      !!row.__isLocalCurrency !== next.__isLocalCurrency
+    ) {
+      patches.push({ row, next });
+    }
+  }
+  if (patches.length === 0) return;
+  const asOfLabel = props.rateAsOf ? `开船日期 ${props.rateAsOf}` : '当前日期';
+  Modal.confirm({
+    title: '按开船日期重新匹配汇率',
+    content: `有 ${patches.length} 条费用的汇率与按${asOfLabel}匹配的结果不一致，确认后将覆盖为新汇率。`,
+    okText: '覆盖汇率',
+    cancelText: '保持原汇率',
+    onOk: () => {
+      for (const patch of patches) {
+        patch.row.exchangeRate = patch.next.exchangeRate;
+        patch.row.__isLocalCurrency = patch.next.__isLocalCurrency;
+      }
+      touchDataSource();
+    },
+  });
 }
 
 /**
@@ -473,7 +537,11 @@ async function syncDerivedRows() {
   }
 }
 
-defineExpose({ generateOceanFreightFees, syncDerivedRows });
+defineExpose({
+  generateOceanFreightFees,
+  resyncRatesIfChanged,
+  syncDerivedRows,
+});
 
 onMounted(async () => {
   // 本次进入编辑页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率

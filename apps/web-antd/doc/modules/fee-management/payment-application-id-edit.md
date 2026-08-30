@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-20
+last_updated: 2026-08-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-08-20
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
 - **发票附件：** 任意状态本地增删，支持点击上传或**拖拽到附件类型卡片**；保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。名称含「发票」或 `invoice` 的分组，文件旁有「识别发票」按钮：传 `attachmentId` 调 `ExtractInvoiceAsync`，把发票号/开票日期预填到表单，**不自动保存**。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
-- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
+- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填口径与业务联系单一致（公司本位币 + 开船日 + 应付 `crValue`）。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
 - **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，调用 `SubmitAsync` 重新进入审核链路。
 
@@ -76,6 +76,7 @@ last_updated: 2026-08-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-30 | `Fix` | 指定结算币别折算汇率改与业务联系单同口径：公司本位币、开船日匹配、应付 crValue。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-30-payment-application-rate-align-pre-order.md`。 |
 | 2026-08-20 | `Fix` | 指定结算币别添加费用时，汇率弹窗改为「1 单位 =」双向折算，并预填当天有效应付汇率。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md`。 |
 | 2026-08-19 | `Feature` | 发票附件增加识别按钮，调用 Gemini 回填发票号与开票日期，不自动保存。 | 见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |
 | 2026-08-16 | `Fix` | 添加费用抽屉外层增加「开船日期」列，只显示年月日。 | 见 `changelogs/change-log-2026-08-16-payment-application-add-fee-etd-col.md`。 |

@@ -52,6 +52,13 @@ vi.mock('#/api/settlement-management/payment-application-admin', () => ({
   unsubmitPaymentApplication: vi.fn(),
 }));
 
+vi.mock('#/api/system/organization-unit', () => ({
+  resolveOrganizationLocalCurrency: vi.fn().mockResolvedValue({
+    localCurrencyCode: null,
+    localCurrencyId: null,
+  }),
+}));
+
 vi.mock('ant-design-vue', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ant-design-vue')>();
   return {

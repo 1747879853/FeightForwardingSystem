@@ -25,6 +25,10 @@ import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
+import {
+  collectOriginalCurrencyRatePairs,
+  currencyRatePairKey,
+} from './exchange-rate-convert';
 
 import {
   type AddFeeDrawerProps,
@@ -681,19 +685,12 @@ function handleConfirm() {
 
   const curSettlementCurrencyId = drawerProps.value.settlementCurrencyId;
   if (isSpecifiedCurrencyApplication(curSettlementCurrencyId)) {
-    const diffCurrencies = new Map<number, string>();
-    for (const fee of selected) {
-      if (fee.currencyId !== curSettlementCurrencyId) {
-        diffCurrencies.set(
-          fee.currencyId,
-          fee.currencyCode ?? fee.currencyName ?? '',
-        );
-      }
-    }
-    if (diffCurrencies.size > 0) {
-      pendingCurrencies.value = [...diffCurrencies.entries()].map(
-        ([currencyId, currencyCode]) => ({ currencyId, currencyCode }),
-      );
+    const pending = collectOriginalCurrencyRatePairs(
+      selected,
+      curSettlementCurrencyId,
+    );
+    if (pending.length > 0) {
+      pendingCurrencies.value = pending;
       settlementCurrencyName.value = resolveSettlementCurrencyName(
         curSettlementCurrencyId,
       );
@@ -705,12 +702,12 @@ function handleConfirm() {
   emitResult(selected);
 }
 
-function handleExchangeRateConfirm(rateMap: Map<number, number>) {
+function handleExchangeRateConfirm(rateMap: Map<string, number>) {
   const selected = getSelectedFees();
   if (!validateSameSettlement(selected)) return;
   if (!validateAppliedAmounts(selected)) return;
   for (const fee of selected) {
-    const rate = rateMap.get(fee.currencyId);
+    const rate = rateMap.get(currencyRatePairKey(fee.currencyId, fee.etd));
     if (rate !== undefined) {
       fee.exchangeRate = rate;
     }
@@ -1102,6 +1099,7 @@ defineExpose({ open: openDrawer });
       :currencies="pendingCurrencies"
       :settlement-currency-id="drawerProps.settlementCurrencyId"
       :settlement-currency-name="settlementCurrencyName"
+      :local-currency-id="drawerProps.localCurrencyId"
       @confirm="handleExchangeRateConfirm"
       @update:open="(val) => (exchangeRateModalVisible = val)"
     />

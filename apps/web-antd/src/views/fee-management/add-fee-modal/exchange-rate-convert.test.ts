@@ -2,16 +2,44 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calcOriginalToSettlementRate,
+  collectOriginalCurrencyRatePairs,
+  currencyRatePairKey,
+  fallbackLocalCurrencyRate,
   inverseRate,
-  isLocalCurrencyCode,
 } from './exchange-rate-convert';
 
 describe('exchange-rate-convert', () => {
-  it('isLocalCurrencyCode: 识别人民币编码', () => {
-    expect(isLocalCurrencyCode('RMB')).toBe(true);
-    expect(isLocalCurrencyCode('cny')).toBe(true);
-    expect(isLocalCurrencyCode('USD')).toBe(false);
-    expect(isLocalCurrencyCode('')).toBe(false);
+  it('fallbackLocalCurrencyRate: 表有值用表值，未维护且是公司本位币才兜底 1', () => {
+    expect(fallbackLocalCurrencyRate(7.2, 100, 200)).toBe(7.2);
+    expect(fallbackLocalCurrencyRate(undefined, 200, 200)).toBe(1);
+    expect(fallbackLocalCurrencyRate(undefined, 100, 200)).toBeUndefined();
+    expect(fallbackLocalCurrencyRate(undefined, 100, null)).toBeUndefined();
+  });
+
+  it('currencyRatePairKey: 同币别不同开船日拆开', () => {
+    expect(currencyRatePairKey(11, '2026-03-15')).toBe('11_2026-03-15');
+    expect(currencyRatePairKey(11)).toBe('11_');
+    expect(currencyRatePairKey(11, '2026-03-15T08:00:00')).toBe(
+      '11_2026-03-15',
+    );
+  });
+
+  it('collectOriginalCurrencyRatePairs: 跳过结算币，按币别+ETD 去重', () => {
+    const pairs = collectOriginalCurrencyRatePairs(
+      [
+        { currencyId: 1, currencyCode: 'CNY', etd: '2026-03-15' },
+        { currencyId: 2, currencyCode: 'USD', etd: '2026-03-15' },
+        { currencyId: 2, currencyCode: 'USD', etd: '2026-03-15' },
+        { currencyId: 2, currencyCode: 'USD', etd: '2026-04-01' },
+        { currencyId: 3, currencyCode: 'EUR' },
+      ],
+      1,
+    );
+    expect(pairs).toEqual([
+      { currencyId: 2, currencyCode: 'USD', asOf: '2026-03-15' },
+      { currencyId: 2, currencyCode: 'USD', asOf: '2026-04-01' },
+      { currencyId: 3, currencyCode: 'EUR', asOf: undefined },
+    ]);
   });
 
   it('inverseRate: 7 与 1/7 互为倒数', () => {
@@ -21,11 +49,11 @@ describe('exchange-rate-convert', () => {
     expect(inverseRate(null)).toBeNull();
   });
 
-  it('calcOriginalToSettlementRate: RMB→USD 用 1/美元兑人民币', () => {
+  it('calcOriginalToSettlementRate: 本位币→USD 用 1/美元兑本位币', () => {
     expect(calcOriginalToSettlementRate(1, 7)).toBeCloseTo(1 / 7, 10);
   });
 
-  it('calcOriginalToSettlementRate: USD→RMB 用美元兑人民币', () => {
+  it('calcOriginalToSettlementRate: USD→本位币 用美元兑本位币', () => {
     expect(calcOriginalToSettlementRate(7, 1)).toBe(7);
   });
 

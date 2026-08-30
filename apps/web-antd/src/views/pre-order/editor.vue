@@ -51,6 +51,7 @@ import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { useOrderUserRoles } from '#/composables/use-order-user-roles';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { toExchangeRateDateKey } from '#/utils/exchange-rate-cache';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
   hasValidUserId,
@@ -173,6 +174,8 @@ const salesUserId = computed<number | undefined>(() => {
 });
 /** 详情回填期间不按业务类型清理干系人，避免删掉历史角色行 */
 let skipBizTypeUserSync = false;
+/** 详情/复制回填会触发 DatePicker onChange，避免当成用户改 ETD 去弹覆盖确认 */
+let skipEtdRateConfirm = false;
 /** 业务类型已切换、等新角色到位后再剔除不适用的角色行 */
 let pendingRoleCleanup = false;
 
@@ -342,6 +345,8 @@ const feeCargo = ref<{
 }>({});
 /** 归属组织本位币，费用行币别命中时汇率锁 1 */
 const localCurrencyId = ref<null | number>(null);
+/** 费用汇率匹配日：有开船日期用 ETD，没有则费用表按今天匹配 */
+const feeRateAsOf = ref<null | string>(null);
 
 function toOptionalStringId(value: unknown): string | undefined {
   if (value == null || value === '') return undefined;
@@ -383,6 +388,46 @@ function bindBasicPortLinkage() {
       fieldName: 'podId',
       componentProps: {
         ...buildPreOrderPortSelectProps('podId', handleBasicPortChange),
+      },
+    },
+  ]);
+}
+
+function applyFeeRateAsOf(value: unknown, confirmIfChanged: boolean) {
+  let raw: Date | null | number | string = null;
+  if (value == null || value === '') {
+    raw = null;
+  } else if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    value instanceof Date
+  ) {
+    raw = value;
+  } else if (
+    typeof value === 'object' &&
+    'format' in value &&
+    typeof (value as { format?: unknown }).format === 'function'
+  ) {
+    raw = (value as { format: (token: string) => string }).format('YYYY-MM-DD');
+  } else {
+    raw = String(value);
+  }
+  feeRateAsOf.value = toExchangeRateDateKey(raw) ?? null;
+  if (!confirmIfChanged || skipEtdRateConfirm || !canSave.value) return;
+  void feeTableRef.value?.resyncRatesIfChanged();
+}
+
+/** 开船日期变更：有 ETD 按开船日匹配汇率，清空则回到今天；已有费用汇率不同则确认后覆盖 */
+function bindEtdRateLinkage() {
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'etd',
+      componentProps: {
+        class: 'w-full',
+        valueFormat: 'YYYY-MM-DD HH:mm:ss',
+        onChange: (value: unknown) => {
+          applyFeeRateAsOf(value, true);
+        },
       },
     },
   ]);
@@ -851,6 +896,10 @@ async function applyAiExtractAfterFill(ctx: {
   ) {
     partyExpanded.value = true;
   }
+
+  if (values.etd != null && String(values.etd) !== '') {
+    applyFeeRateAsOf(values.etd, true);
+  }
 }
 
 const { aiRecognizing, recognizeAiFile } = usePreOrderAiRecognize({
@@ -921,6 +970,7 @@ function buildAttachmentGroupSubmit(): PreOrderAdminApi.AttachmentGroupInputDto[
 function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   detail.value = dto;
   skipBizTypeUserSync = true;
+  skipEtdRateConfirm = true;
   void nextTick(() => {
     skipBizTypeUserSync = false;
   });
@@ -938,20 +988,27 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   bindBookingAgentLinkage(
     toSelectedItems(dto.bookingAgentId, dto.bookingAgent?.name),
   );
-  void basicFormApi.setValues({
-    clientId: dto.clientId,
-    mblNum: dto.mblNum,
-    polId: dto.polId,
-    podId: dto.podId,
-    codeServiceId: dto.codeServiceId,
-    tradeTermsType: dto.tradeTermsType,
-    codeFrtId: dto.codeFrtId,
-    etd: dto.etd,
-    goodsCompleteTime: dto.goodsCompleteTime,
-    carrierId: dto.carrierId,
-    bookingAgentId: dto.bookingAgentId,
-    remark: dto.remark,
-  });
+  applyFeeRateAsOf(dto.etd, false);
+  void basicFormApi
+    .setValues({
+      clientId: dto.clientId,
+      mblNum: dto.mblNum,
+      polId: dto.polId,
+      podId: dto.podId,
+      codeServiceId: dto.codeServiceId,
+      tradeTermsType: dto.tradeTermsType,
+      codeFrtId: dto.codeFrtId,
+      etd: dto.etd,
+      goodsCompleteTime: dto.goodsCompleteTime,
+      carrierId: dto.carrierId,
+      bookingAgentId: dto.bookingAgentId,
+      remark: dto.remark,
+    })
+    .finally(() => {
+      void nextTick(() => {
+        skipEtdRateConfirm = false;
+      });
+    });
   // 详情已返回各外键对象：一次性拼好 selectedItems，各下拉不再按 id 回拉详情
   basicFormApi.updateSchema([
     {
@@ -989,6 +1046,16 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
       componentProps: buildPreOrderServiceTradeTermsProps(
         toCodeNamedSelectedItems(dto.codeServiceId, dto.codeService),
       ),
+    },
+    {
+      fieldName: 'etd',
+      componentProps: {
+        class: 'w-full',
+        valueFormat: 'YYYY-MM-DD HH:mm:ss',
+        onChange: (value: unknown) => {
+          applyFeeRateAsOf(value, true);
+        },
+      },
     },
   ]);
   partyFormApi.updateSchema([
@@ -1213,6 +1280,7 @@ onMounted(async () => {
   bindClientUserLinkage();
   bindBookingAgentLinkage();
   bindBasicPortLinkage();
+  bindEtdRateLinkage();
   bindPartySettlementLinkage();
   bindCargoMetricsLinkage();
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
@@ -1913,6 +1981,7 @@ const getContentTabStyle = (isActive: boolean) =>
                     :resolve-parties="resolveFeeParties"
                     :cargo="feeCargo"
                     :local-currency-id="localCurrencyId"
+                    :rate-as-of="feeRateAsOf"
                   />
                 </Card>
               </section>

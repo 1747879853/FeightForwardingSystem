@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-30 付费申请折算汇率对齐业务联系单匹配口径](./changelogs/change-log-2026-08-30-payment-application-rate-align-pre-order.md)
+- [2026-08-30 业务联系单费用汇率按开船日期匹配](./changelogs/change-log-2026-08-30-pre-order-fee-rate-by-etd.md)
 - [2026-08-30 数据权限返回体统一新增本位币并对齐所属公司口径](./changelogs/change-log-2026-08-30-data-permission-local-currency.md)
 - [2026-08-30 监装处理改为弹窗内保存](./changelogs/change-log-2026-08-30-mp-panel-save.md)
 - [2026-08-30 箱号封号改到监装处理面板集中填写](./changelogs/change-log-2026-08-30-mp-ctn-no-in-panel.md)
