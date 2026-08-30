@@ -79,6 +79,8 @@ export namespace SystemOrganizationUnitApi {
     localCurrencyId?: number | null;
     /** 本位币代码（只读） */
     localCurrencyCode?: string | null;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 组织单元列表项DTO（带层级） */

@@ -438,7 +438,11 @@ async function applyExchangeRate(row: PreOrderFeeRow) {
     row.__isLocalCurrency = false;
     return;
   }
-  const rate = await resolveExchangeRate(currencyId, Number(row.paySide ?? 0));
+  const rate = await resolveExchangeRate(
+    currencyId,
+    Number(row.paySide ?? 0),
+    props.localCurrencyId,
+  );
   if (rate === undefined) {
     const isLocal = isLocalCurrencyRow(row);
     row.exchangeRate = isLocal ? 1 : undefined;

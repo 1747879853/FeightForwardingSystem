@@ -153,16 +153,15 @@ const isIndeterminate = computed(() => {
 
 function toggleAllOrders(checked: boolean) {
   if (checked) {
-    // 全选所有订单的所有费用
+    // 全选：只勾选可选费用（同一结算对象且有结算对象）
     for (const row of tableRows.value) {
-      const fees = row._fees || [];
-      const set = new Set<string>();
-      for (const fee of fees) {
-        if (!disabledFeeIds.value.has(fee.id)) {
-          set.add(fee.id);
-          if (!appliedAmountMap.has(fee.id)) {
-            appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
-          }
+      const selectable = getSelectableFees(row.id);
+      if (selectable.length === 0) continue;
+      const set = new Set<string>(selectionMap.get(row.id));
+      for (const fee of selectable) {
+        set.add(fee.id);
+        if (!appliedAmountMap.has(fee.id)) {
+          appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
         }
       }
       selectionMap.set(row.id, set);
@@ -177,9 +176,34 @@ const pendingCurrencies = ref<CurrencyInfo[]>([]);
 const settlementCurrencyName = ref('');
 const currencySelectRef = ref();
 
+/** 是否至少存在一个有效查询条件（该接口不分页，无任何条件时会全量拉取，必须拦截） */
+function hasAnySearchCondition(
+  values: Record<string, any> | undefined,
+): values is Record<string, any> {
+  if (!values) return false;
+  const hasArray = (v: unknown) => Array.isArray(v) && v.length > 0;
+  return Boolean(
+    values.SettlementId ||
+    values.Keyword ||
+    values.OrgId ||
+    values.CurrencyId ||
+    values.PaySide !== undefined ||
+    values.BizType !== undefined ||
+    values.FeeStatus !== undefined ||
+    values.SettlementStatus !== undefined ||
+    values.includeStatemented !== undefined ||
+    hasArray(values.FeeCodeIds) ||
+    hasArray(values.OperatorIds) ||
+    hasArray(values.SaleIds) ||
+    hasArray(values.CustomerServiceIds) ||
+    (Array.isArray(values.ETDRange) && values.ETDRange.length > 0),
+  );
+}
+
 const throttledAutoSearch = useThrottleFn(
   async (values: Record<string, any>) => {
-    if (!values.SettlementId) return;
+    // 结算对象非必填后，无任何条件时不自动查询，避免全租户费用全量拉取
+    if (!hasAnySearchCondition(values)) return;
     const feeCodeMode = values.feeCodeMode ?? 'include';
     const feeCodeIds = values.FeeCodeIds;
     const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
@@ -315,6 +339,51 @@ const isSettlementCurrencyLocked = computed(
   () => (drawerProps.value.selectedFeeIds?.length ?? 0) > 0,
 );
 
+// --- 单一结算对象限制：一张对账单只能对一个结算对象 ---
+
+/** 当前锁定的结算对象：优先取已勾费用的结算对象；已有费用的对账单加费用时锁定为对账单客户 */
+const lockedSettlementId = computed<string | undefined>(() => {
+  const disabled = disabledFeeIds.value;
+  for (const [orderId, feeIds] of selectionMap.entries()) {
+    for (const fee of getOrderFees(orderId)) {
+      if (feeIds.has(fee.id) && !disabled.has(fee.id) && fee.settlementId) {
+        return fee.settlementId;
+      }
+    }
+  }
+  if ((drawerProps.value.selectedFeeIds?.length ?? 0) > 0) {
+    return drawerProps.value.settlementId || undefined;
+  }
+  return undefined;
+});
+
+/** 费用是否可勾选：已含费用、未设置结算对象、结算对象与锁定值不一致的费用均不可勾选 */
+function isFeeSelectable(fee: OrderFeeAdminApi.OrderFeeDto): boolean {
+  if (disabledFeeIds.value.has(fee.id)) return false;
+  if (!fee.settlementId) return false;
+  const locked = lockedSettlementId.value;
+  return !locked || fee.settlementId === locked;
+}
+
+/** 不可勾选原因（悬停提示）；可勾选或已含费用时返回 undefined */
+function getFeeDisabledReason(
+  fee: OrderFeeAdminApi.OrderFeeDto,
+): string | undefined {
+  if (disabledFeeIds.value.has(fee.id)) return undefined;
+  if (!fee.settlementId) return '该费用未设置结算对象，不可对账';
+  if (
+    lockedSettlementId.value &&
+    fee.settlementId !== lockedSettlementId.value
+  ) {
+    return '与已选费用的结算对象不一致，不可勾选';
+  }
+  return undefined;
+}
+
+function getSelectableFees(orderId: string): OrderFeeAdminApi.OrderFeeDto[] {
+  return getOrderFees(orderId).filter((fee) => isFeeSelectable(fee));
+}
+
 async function openDrawer(props: AddFeeDrawerProps = {}) {
   drawerProps.value = props;
   open.value = true;
@@ -367,8 +436,9 @@ function clearSelection() {
 
 async function handleSearch() {
   const values = await searchFormApi.getValues();
-  if (!values.SettlementId) {
-    message.warning('请先选择客户名称');
+  // 结算对象已非必填：允许不选委托单位按其它条件检索，但至少需要一个查询条件
+  if (!hasAnySearchCondition(values)) {
+    message.warning('请至少输入一个查询条件后再查询');
     return;
   }
   currentPage.value = 1;
@@ -378,7 +448,7 @@ async function handleSearch() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const values = formValues ?? (await searchFormApi.getValues());
-  if (!values || !values.SettlementId) return;
+  if (!hasAnySearchCondition(values)) return;
 
   const [etdStart, etdEnd] = Array.isArray(values.ETDRange)
     ? values.ETDRange
@@ -404,7 +474,8 @@ async function fetchData(formValues?: Record<string, any>) {
       : undefined;
 
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
-    SettlementId: values.SettlementId,
+    // 结算对象非必填：不传则不按结算对象过滤；传了才享受对账人免数据权限
+    SettlementId: values.SettlementId || undefined,
     PaySide: values.PaySide !== undefined ? values.PaySide : undefined,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
@@ -467,26 +538,26 @@ function getOrderFees(orderId: string): OrderFeeAdminApi.OrderFeeDto[] {
 }
 
 function isOrderChecked(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
-  if (fees.length === 0) return false;
+  const selectable = getSelectableFees(orderId);
+  if (selectable.length === 0) return false;
   const selected = selectionMap.get(orderId);
   if (!selected) return false;
-  return fees.every((f) => selected.has(f.id));
+  return selectable.every((f) => selected.has(f.id));
 }
 
 function isOrderIndeterminate(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
+  const selectable = getSelectableFees(orderId);
   const selected = selectionMap.get(orderId);
   if (!selected || selected.size === 0) return false;
-  const allChecked = fees.every((f) => selected.has(f.id));
-  return !allChecked;
+  const checkedCount = selectable.filter((f) => selected.has(f.id)).length;
+  return checkedCount > 0 && checkedCount < selectable.length;
 }
 
 function toggleOrder(orderId: string, checked: boolean) {
-  const fees = getOrderFees(orderId);
   if (checked) {
-    const set = new Set<string>();
-    for (const fee of fees) {
+    // 仅勾选可选费用（同一结算对象且有结算对象）
+    const set = new Set<string>(selectionMap.get(orderId));
+    for (const fee of getSelectableFees(orderId)) {
       set.add(fee.id);
       if (!appliedAmountMap.has(fee.id)) {
         appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
@@ -644,13 +715,25 @@ function handleConfirm() {
     message.warning('请至少选择一条费用');
     return;
   }
+  // 后端提交时会拦截以下情况，前端提前校验，避免提交才报错
+  if (selected.some((fee) => !fee.settlementId)) {
+    message.warning('存在未设置结算对象的费用 不可对账');
+    return;
+  }
+  const settlementIds = new Set(selected.map((fee) => fee.settlementId));
+  if (settlementIds.size > 1) {
+    message.warning('所选费用的结算对象不一致 不可对账');
+    return;
+  }
   emitResult(selected);
 }
 
 async function emitResult(fees: SelectedFeeItem[]) {
   const values = await searchFormApi.getValues();
-  if (values.SettlementId) {
-    emit('update:settlementId', String(values.SettlementId));
+  // 结算对象：优先取搜索条件所选；未选时回退勾选费用锁定的结算对象（作为对账单客户）
+  const settlementId = values.SettlementId || lockedSettlementId.value;
+  if (settlementId) {
+    emit('update:settlementId', String(settlementId));
   }
   emit('confirm', fees);
   open.value = false;
@@ -780,7 +863,10 @@ defineExpose({ open: openDrawer });
     <!-- 搜索区域 -->
     <div class="mb-4">
       <SearchForm />
-      <div class="mt-2 flex justify-end">
+      <div class="mt-2 flex items-center justify-between">
+        <div class="text-xs text-gray-400">
+          提示：不选委托单位可跨结算对象浏览，但仅按普通数据权限展示；选择委托单位后对账人可免数据权限查看该客户全部费用。
+        </div>
         <Button type="primary" :loading="loading" @click="handleSearch">
           查询
         </Button>
@@ -873,13 +959,15 @@ defineExpose({ open: openDrawer });
 
         <template #innerBodyCell="{ column, record: feeRecord }">
           <template v-if="column.key === 'checkbox'">
-            <Checkbox
-              :checked="isFeeChecked(feeRecord._orderId, feeRecord.id)"
-              :disabled="disabledFeeIds.has(feeRecord.id)"
-              @change="
-                (e) => onFeeCheckChange(feeRecord._orderId, feeRecord.id, e)
-              "
-            />
+            <Tooltip :title="getFeeDisabledReason(feeRecord)">
+              <Checkbox
+                :checked="isFeeChecked(feeRecord._orderId, feeRecord.id)"
+                :disabled="!isFeeSelectable(feeRecord)"
+                @change="
+                  (e) => onFeeCheckChange(feeRecord._orderId, feeRecord.id, e)
+                "
+              />
+            </Tooltip>
           </template>
           <template v-else-if="column.key === 'paySide'">
             <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
@@ -962,7 +1050,7 @@ defineExpose({ open: openDrawer });
             </Tooltip>
           </template>
           <template v-else-if="column.key === 'settlementName'">
-            {{ feeRecord.settlement?.name ?? '' }}
+            {{ feeRecord.settlement?.name ?? '-' }}
           </template>
           <template v-else-if="column.key === 'feeCodeName'">
             {{ feeRecord.feeCode?.cnName ?? '' }}

@@ -7,9 +7,10 @@ import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-a
 /** 汇率表体量小，一次拉全量，避免每行按币别打详情 */
 const PAGE_SIZE = 1000;
 
-/** 币别 id（string 化，雪花 id 不做数值化）→ 当前生效的汇率记录 */
+/** 币别 id（string 化，雪花 id 不做数值化）→ 当前生效的汇率记录列表 */
+// 本位币改外键后同一币别可并存多条不同本位币的记录，故按币别存全量再按本位币筛
 const rateCache = shallowRef(
-  new Map<string, ExchangeRateAdminApi.ExchangeRateDto>(),
+  new Map<string, ExchangeRateAdminApi.ExchangeRateDto[]>(),
 );
 
 let loaded = false;
@@ -79,13 +80,14 @@ async function loadCache() {
       PageSize: PAGE_SIZE,
     });
     const now = Date.now();
-    const next = new Map<string, ExchangeRateAdminApi.ExchangeRateDto>();
+    const next = new Map<string, ExchangeRateAdminApi.ExchangeRateDto[]>();
     for (const rate of res?.items ?? []) {
       if (!isExchangeRateEffective(rate, now)) continue;
       const key = String(rate.currencyId ?? '');
       if (key === '') continue;
-      const current = next.get(key);
-      if (!current || isPreferred(rate, current)) next.set(key, rate);
+      const list = next.get(key) ?? [];
+      list.push(rate);
+      next.set(key, list);
     }
     rateCache.value = next;
     loaded = true;
@@ -109,15 +111,34 @@ export function ensureExchangeRateCache(forceRefresh = false): Promise<void> {
 /**
  * 读取已加载缓存中的生效汇率：应收取 drValue、应付取 crValue。
  * 缓存未就绪、该币别未维护、或记录已不在有效期内时返回 undefined。
+ * @param localCurrencyId 业务所属公司的本位币；传入时优先取本位币匹配的记录，
+ * 取不到再兜底按 sortId/id 优先级选（兼容未传本位币的旧调用方）
  */
 export function peekExchangeRate(
   currencyId?: null | number | string,
   paySide?: null | number,
+  localCurrencyId?: null | number | string,
 ): number | undefined {
   const key = String(currencyId ?? '');
   if (key === '') return undefined;
-  const rate = rateCache.value.get(key);
-  if (!rate || !isExchangeRateEffective(rate)) return undefined;
+  const list = rateCache.value.get(key);
+  if (!list || list.length === 0) return undefined;
+  const localKey = String(localCurrencyId ?? '');
+  let rate: ExchangeRateAdminApi.ExchangeRateDto | undefined;
+  if (localKey !== '') {
+    for (const item of list) {
+      if (String(item.localCurrencyId ?? '') !== localKey) continue;
+      if (!isExchangeRateEffective(item)) continue;
+      if (!rate || isPreferred(item, rate)) rate = item;
+    }
+  }
+  if (!rate) {
+    for (const item of list) {
+      if (!isExchangeRateEffective(item)) continue;
+      if (!rate || isPreferred(item, rate)) rate = item;
+    }
+  }
+  if (!rate) return undefined;
   const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
   return value ?? undefined;
 }
@@ -126,7 +147,8 @@ export function peekExchangeRate(
 export async function resolveExchangeRate(
   currencyId?: null | number | string,
   paySide?: null | number,
+  localCurrencyId?: null | number | string,
 ) {
   await ensureExchangeRateCache();
-  return peekExchangeRate(currencyId, paySide);
+  return peekExchangeRate(currencyId, paySide, localCurrencyId);
 }

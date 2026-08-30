@@ -111,6 +111,8 @@ export namespace CommissionConfigAdminApi {
     localCurrencyId?: number | null;
     /** 本位币编码（仅组织串 Orgs 填，ApplyOrgs 不填） */
     localCurrencyCode?: string | null;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 航线简易对象 */

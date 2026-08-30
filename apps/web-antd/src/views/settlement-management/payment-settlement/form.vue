@@ -31,7 +31,6 @@ import {
   OrgBankAccountSelect,
   ClientSelect,
   CurrencySelect,
-  ClientBankAccountSelect,
 } from '#/adapter/component';
 import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import {
@@ -41,9 +40,11 @@ import {
   addItemsToSettlementByCurrency, // ✅ 使用新的按原币添加明细接口
   deleteItemsFromSettlementByCurrency, // ✅ 使用新的按原币删除明细接口
 } from '#/api/sea-export/payment-settlement-admin';
-import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
-import { getMyDefaultOrgId } from '#/composables/use-my-org';
-import { getOrgBankAccountList } from '#/api/system/organization-unit';
+import {
+  getMyCompanyBankAccounts,
+  getMyDefaultOrgId,
+  getMyOrgCompanyNode,
+} from '#/composables/use-my-org';
 import { buildAttachmentUrl } from '#/utils';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
@@ -89,6 +90,22 @@ const attachments = ref<Attachment[]>([]);
 const paymentApplicationAttachments = ref<
   PaymentSettlementAdminApi.AttachmentItemDto[]
 >([]);
+
+// 所属公司（归属组织换算到公司层级并去重，仅用于展示）
+const orgCompanies = computed(() => {
+  const seen = new Map<number, { id: number; name: string }>();
+  orgs.value.forEach((org) => {
+    if (!org.id) return;
+    const companyNode = getMyOrgCompanyNode(org.id);
+    if (companyNode?.id != null && !seen.has(companyNode.id)) {
+      seen.set(companyNode.id, {
+        id: companyNode.id,
+        name: companyNode.displayName || '',
+      });
+    }
+  });
+  return Array.from(seen.values());
+});
 
 // 我司银行选项（根据申请明细中的费用所属公司动态加载）
 interface OrgBankOption {
@@ -719,19 +736,30 @@ async function loadOrgBankOptions() {
 
     console.log('✅ 找到的归属组织IDs:', Array.from(orgIds));
 
-    // ✅ 遍历所有组织ID，获取每个组织的银行列表
+    // ✅ 从用户信息缓存的组织路径中获取公司银行账户（不调用接口，避免用户无接口权限）
+    // 先将归属组织换算为公司节点并按公司去重（同一公司下的多个组织共享同一份银行账户）
+    const companyIds = new Set<number>();
+    orgIds.forEach((orgId) => {
+      const companyNode = getMyOrgCompanyNode(orgId);
+      if (companyNode?.id) {
+        companyIds.add(companyNode.id);
+      }
+    });
+
     const allBanks: OrgBankOption[] = [];
 
-    for (const orgId of orgIds) {
+    for (const companyId of companyIds) {
       try {
-        console.log(`🏦 正在加载组织 ${orgId} 的银行列表...`);
-        const accounts = await getOrgBankAccountList(orgId);
-        console.log(`   返回账户数量: ${accounts?.length || 0}`);
+        console.log(`🏦 正在从缓存读取公司 ${companyId} 的银行列表...`);
+        const accounts = getMyCompanyBankAccounts(companyId);
+        console.log(`   缓存账户数量: ${accounts.length}`);
 
-        if (accounts && accounts.length > 0) {
-          // 根据结算币别过滤银行
+        if (accounts.length > 0) {
+          // 根据结算币别过滤银行（仅保留启用的账户）
           const filteredAccounts = accounts.filter(
-            (account) => account.currencyId === currencyId.value,
+            (account) =>
+              account.currencyId === currencyId.value &&
+              account.enable !== false,
           );
           console.log(
             `   过滤后(${currencyId.value})账户数量: ${filteredAccounts.length}`,
@@ -748,10 +776,10 @@ async function loadOrgBankOptions() {
             });
           });
         } else {
-          console.warn(`   ⚠️ 组织 ${orgId} 没有银行账户`);
+          console.warn(`   ⚠️ 公司 ${companyId} 缓存中没有银行账户`);
         }
       } catch (error) {
-        console.error(`❌ 加载组织 ${orgId} 的银行列表失败:`, error);
+        console.error(`❌ 读取公司 ${companyId} 的银行列表失败:`, error);
       }
     }
 
@@ -998,15 +1026,17 @@ onMounted(() => {
               />
             </div>
 
-            <!-- 归属组织 -->
-            <div v-if="orgs.length > 0">
+            <!-- 所属公司（归属组织换算到公司层级） -->
+            <div v-if="orgCompanies.length > 0">
               <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                归属组织
+                所属公司
               </div>
               <Select
                 mode="multiple"
-                :value="orgs.map((c) => c.id)"
-                :options="orgs.map((c) => ({ label: c.name, value: c.id }))"
+                :value="orgCompanies.map((c) => c.id)"
+                :options="
+                  orgCompanies.map((c) => ({ label: c.name, value: c.id }))
+                "
                 disabled
                 style="width: 100%; background: #f5f7fa"
               />

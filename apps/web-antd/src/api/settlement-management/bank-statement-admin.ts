@@ -51,7 +51,6 @@ export namespace BankStatementAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 公司银行账户简易对象 */
@@ -85,6 +84,8 @@ export namespace BankStatementAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   export interface BankStatementAddDto {

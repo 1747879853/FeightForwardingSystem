@@ -26,6 +26,8 @@ export namespace AirExportAdminApi {
     name?: null | string;
     localCurrencyId?: LongId | null;
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 往来单位简易对象（订舱代理 / 委托单位 / 车队 / 报关行 / 仓库 / 保险 / 收发通） */
@@ -163,7 +165,6 @@ export namespace AirExportAdminApi {
     code?: null | string;
     cnName?: null | string;
     enName?: null | string;
-    defaultRate?: number;
   }
 
   /** 费用（只读概览，字段口径见接口文档 3.11） */

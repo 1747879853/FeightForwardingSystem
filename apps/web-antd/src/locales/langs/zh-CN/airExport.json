@@ -6,6 +6,7 @@
     "name": "空运出口",
     "keyword": "关键字",
     "keywordPlaceholder": "航班/外部备注/主运单号/合同号/委托编号",
+    "formCardInfo": "订单信息",
     "formCardBasicInfo": "基础信息",
     "formCardFlight": "航段信息",
     "formCardDate": "日期信息",

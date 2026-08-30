@@ -145,7 +145,7 @@ const getContentTabStyle = (isActive: boolean) =>
 
 <template>
   <Page auto-content-height content-class="!p-0">
-    <div class="flex min-w-0 flex-1 flex-col gap-2">
+    <div class="flex min-w-0 flex-col gap-2" style="height: 100%">
       <div class="content-tabs" :style="contentTabsStyle">
         <span
           v-for="tab in tabs"
@@ -158,8 +158,8 @@ const getContentTabStyle = (isActive: boolean) =>
           {{ tab.label }}
         </span>
       </div>
-      <div class="flex items-stretch gap-3">
-        <div class="flex min-w-0 flex-1 flex-col">
+      <div class="flex min-h-0 flex-1 items-stretch gap-3">
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col">
           <KeepAlive include="UserAdminForm">
             <UserForm
               v-if="activeTab === 'basic' && userId != null"

@@ -347,6 +347,8 @@ export namespace ClientAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 简易币种DTO */
@@ -357,8 +359,6 @@ export namespace ClientAdminApi {
     cnName?: string;
     /** 英文名称 */
     enName?: string;
-    /** 默认对人民币汇率 */
-    defaultRate: number;
   }
 
   /** 客户航线DTO */

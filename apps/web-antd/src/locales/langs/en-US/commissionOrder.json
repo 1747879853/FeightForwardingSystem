@@ -59,6 +59,8 @@
     "titleOperation": "New Operation Commission",
     "user": "Commissioner",
     "userRequired": "Please select the commissioner",
+    "org": "Organization",
+    "orgRequired": "Please select the organization",
     "monthRange": "Commission Months",
     "monthRangeRequired": "Please select the commission months",
     "monthRangeHint": "Multiple months generate one order per month; only months before the current month are allowed",

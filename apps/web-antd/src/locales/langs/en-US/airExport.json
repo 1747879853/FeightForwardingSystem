@@ -6,6 +6,7 @@
     "name": "Air Export",
     "keyword": "Keyword",
     "keywordPlaceholder": "Flight / Remark / MAWB No. / Contract No. / Commission No.",
+    "formCardInfo": "Order Information",
     "formCardBasicInfo": "Basic Info",
     "formCardFlight": "Flight Info",
     "formCardDate": "Dates",

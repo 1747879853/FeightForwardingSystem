@@ -117,6 +117,8 @@ export namespace CommissionOrderAdminApi {
   export interface OrganizationUnitSimpleDto {
     id?: number;
     name?: string | null;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 客户简易对象 */
@@ -145,6 +147,8 @@ export namespace CommissionOrderAdminApi {
   export interface CommissionPreviewQueryDto {
     /** 提成人id，单选 */
     userId: number;
+    /** 所属组织id，必填，必须是提成人的直属组织；确认与新建必须传同一个值 */
+    orgId: number | string;
     /** 提成月集合，至少一个，只取年月 */
     accountDates: string[];
   }
@@ -153,6 +157,8 @@ export namespace CommissionOrderAdminApi {
   export interface CommissionOrderAddDto {
     /** 提成人id，单选 */
     userId: number;
+    /** 所属组织id，必填，必须是提成人的直属组织；须与确认预览时传的 orgId 一致 */
+    orgId: number | string;
     /** 提成类型：0销售提成 1操作提成 */
     commissionType: CommissionType;
     /** 提成月集合，至少一个，一个月生成一张提成单 */
@@ -378,7 +384,7 @@ export namespace CommissionOrderAdminApi {
     payable: number;
     /** 利润（原币）= 应收 − 应付 */
     profit: number;
-    /** 本次折算用的应收汇率，人民币恒为 1 */
+    /** 本次折算用的应收汇率，费用币别即本位币时恒为 1 */
     exchangeRate: number;
   }
 

@@ -461,7 +461,6 @@ export namespace PaymentSettlementAdminApi {
     name?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 运输订单简要DTO */

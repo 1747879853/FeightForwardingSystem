@@ -1,0 +1,1608 @@
+<script lang="ts" setup>
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+
+import { computed, onMounted, onUnmounted, ref, watch, h, nextTick } from 'vue';
+import {
+  Button,
+  Space,
+  message,
+  DropdownButton,
+  MenuItem,
+  Menu,
+  Modal,
+  Textarea,
+  Tag,
+  Card,
+} from 'ant-design-vue';
+
+import { IconifyIcon } from '@vben/icons';
+
+import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
+import { $t } from '#/locales';
+import { orderFeeDataT, clientDataT } from '../data';
+import { useOrderFeeAdapter } from '../use-adapter';
+
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+
+import * as feeConstants from '../data';
+import * as clientConstants from '#/views/client/base/data';
+
+import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
+
+import {
+  submitOrderFee,
+  modifyOrderFee,
+  deleteOrderFee,
+  submitOrderFeeWithdrawAsync,
+  OrderFeeTaskWithdraw,
+} from '#/api/audit-approval/expense-admin';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import {
+  useOrderFeeColumns,
+  initOrderFeeEnumCache,
+  setOrderCtnList,
+} from '../data';
+import OrderFeeEditorModal from './order-fee-editor-modal.vue';
+import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
+import BatchImportFeeModal from './batch-import-fee-modal.vue';
+import weiwanjie from '#/assets/img/base/weiwanjie.png';
+const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
+  default: () => [],
+});
+
+const adapter = useOrderFeeAdapter();
+
+const selectedRowKeys = ref<(string | number)[]>([]);
+const printing = ref(false);
+const { openPrint } = usePrintFormat();
+
+// 完结状态管理
+const isFinished = ref<boolean>(true); // true表示已完结，false表示未完结
+const loadingFinishStatus = ref(false);
+
+const props = defineProps<{
+  type: number; // 收付类型 0 应收 1 应付
+  mode?: string; // changeOrder 更改单
+  parentChangeOrderId?: string; //更改单Id
+  readonly?: boolean; // 当前更改单费用锁定时统一只读
+  recAmountMap?: Record<string, any>; // 应收金额汇总
+  payAmountMap?: Record<string, any>; // 应付金额汇总
+  orderDetail?: any | null; // 父组件传入的订单详情，避免重复请求 DetailAsync
+}>();
+
+const emit = defineEmits([
+  'sync-fee',
+  'update-amount',
+  'refresh-opposite-table',
+  'change',
+]);
+
+// 订单箱型列表（用于单位下拉框过滤）
+const orderCtnList = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>([]);
+
+// 订单基础数据（用于行业类别切换时自动填充结算对象）
+const orderBaseData = ref<any | null>(null);
+
+const editId = useKeepAliveRouteParamId();
+
+// 订单基础数据（用于行业类别切换时自动填充结算对象）
+const ORDER_CTN_API_KEYS: Array<
+  Extract<keyof OrderFeeAdminApi.OrderFeeDto, string>
+> = [
+  'id',
+  'transportOrderId',
+  'paySide',
+  'feeCodeId',
+  'industryCategory',
+  'settlementId',
+  'currencyId',
+  'exchangeRate',
+  'unitPrice',
+  'amount',
+  'unit',
+  'quantity',
+  'taxRate',
+  'noTaxUnitPrice',
+  'noTaxAmount',
+  'rqstPaymentAmount',
+  'invoicedAmount',
+  'orderInvoiceAmount',
+  'settledAmount',
+  'invoiceBlocked',
+  'isConfidential',
+  'dataEntryMethod',
+  'remark',
+];
+let rowKeyCounter = 0;
+
+const setChangeOrderFee = async (id: string) => {
+  if (id) {
+    let res = await adapter.api.getChangeOrderDetail(id);
+    console.log(
+      'res',
+      res.orderFees.filter((item) => item.paySide === props.type),
+    );
+    let orderFees = res.orderFees.filter((item) => item.paySide === props.type);
+    orderFees.forEach((item) => {
+      item.taskStatus = '';
+      if (
+        item.modifyOrderFeeTasks &&
+        item.modifyOrderFeeTasks[0]?.taskStatus === 0
+      ) {
+        item.taskStatus = $t('auditApproval.task.typeOptions.ModifyOrderFee');
+      } else if (
+        item.deleteOrderFeeTasks &&
+        item.deleteOrderFeeTasks[0]?.taskStatus === 0
+      ) {
+        item.taskStatus = $t('auditApproval.task.typeOptions.DeleteOrderFee');
+      } else {
+        item.taskStatus = '';
+      }
+    });
+
+    dataSource.value = normalizeOrderFeeWithRowKey(orderFees);
+    //更改单使用
+    syncFee();
+  } else {
+    dataSource.value = [];
+  }
+};
+const changeOrderId = ref('');
+
+const getTableDate = async (id = '') => {
+  changeOrderId.value = id;
+  gridApi.query();
+};
+
+const queryTableData = async () => {
+  if (props.mode === 'changeOrder') {
+    return await setChangeOrderFee(changeOrderId.value);
+  }
+
+  let params = {
+    TransportOrderId: editId.value,
+    PaySide: props.type ?? 0,
+    PageIndex: 1,
+    PageSize: 999,
+  };
+  const res = await adapter.api.getOrderFeePagedList(params);
+  res.items.forEach((item) => {
+    item.taskStatus = '';
+    if (
+      item.modifyOrderFeeTasks &&
+      item.modifyOrderFeeTasks[0]?.taskStatus === 0
+    ) {
+      item.taskStatus = $t('auditApproval.task.typeOptions.ModifyOrderFee');
+    } else if (
+      item.deleteOrderFeeTasks &&
+      item.deleteOrderFeeTasks[0]?.taskStatus === 0
+    ) {
+      item.taskStatus = $t('auditApproval.task.typeOptions.DeleteOrderFee');
+    } else {
+      let modifyOrderFeeTasksLength =
+        item.modifyOrderFeeTasks?.filter((item: any) => item.taskStatus === 2)
+          .length || 0;
+      if (modifyOrderFeeTasksLength > 0) {
+        item.ModificationCount = modifyOrderFeeTasksLength || 0;
+      }
+      item.taskStatus = '';
+    }
+
+    // 根据结算状态重新计算费用状态
+    // 只有审核通过的费用才需要根据结算金额调整状态
+    if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
+      const amount = item.amount || 0;
+      const settledAmount = item.settledAmount || 0;
+
+      if (settledAmount <= 0) {
+        // 未结算，保持审核通过状态
+        item.feeStatus = feeConstants.getFeeStatusValue.Approved;
+      } else if (settledAmount >= amount) {
+        // 已完全结算
+        item.feeStatus = feeConstants.getFeeStatusValue.Settled;
+      } else if (settledAmount > 0 && settledAmount < amount) {
+        // 部分结算
+        item.feeStatus = feeConstants.getFeeStatusValue.PartialSettlement;
+      }
+    }
+  });
+  //  console.log('res', res.items);
+  dataSource.value = normalizeOrderFeeWithRowKey(res.items);
+};
+const tmpAdd = ref(false);
+const tmpDel = ref(false);
+
+// 应用订单详情：保存基础数据并提取箱型列表（供单位下拉框过滤使用）
+const applyOrderDetail = (orderDetail: any | null | undefined) => {
+  // 保存订单基础数据（用于行业类别切换时自动填充结算对象）
+  orderBaseData.value = orderDetail ?? null;
+
+  const orderCtns = orderDetail?.transportOrder?.orderCtns;
+  if (orderCtns?.length) {
+    // 提取唯一的箱型列表
+    const ctnMap = new Map<number, string>();
+    orderCtns.forEach((ctn: any) => {
+      if (ctn.ctnCodeId && ctn.ctnCodeName) {
+        ctnMap.set(ctn.ctnCodeId, ctn.ctnCodeName);
+      }
+    });
+
+    const ctnList = Array.from(ctnMap.entries()).map(([id, name]) => ({
+      ctnCodeId: id,
+      ctnCodeName: name,
+    }));
+
+    orderCtnList.value = ctnList;
+    setOrderCtnList(ctnList);
+  } else {
+    orderCtnList.value = [];
+    setOrderCtnList([]);
+  }
+};
+
+// 父组件传入的订单详情就绪后应用（初始加载走此处，不再单独请求 DetailAsync）
+watch(
+  () => props.orderDetail,
+  (detail) => {
+    if (detail) applyOrderDetail(detail);
+  },
+  { immediate: true },
+);
+
+// 模态框引用
+const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
+const auditHistoryModalRef =
+  ref<InstanceType<typeof OrderFeeAuditHistoryModal>>();
+const batchImportModalRef = ref<InstanceType<typeof BatchImportFeeModal>>();
+
+// 打开批量引入费用弹窗
+const openBatchImportModal = async () => {
+  // 获取当前订单的详细信息，用于设置默认检索条件
+  console.log('🔍 [openBatchImportModal] 检查 editId:', editId.value);
+  console.log('🔍 [openBatchImportModal] editId 类型:', typeof editId.value);
+
+  if (!editId.value) {
+    console.warn('⚠️ [openBatchImportModal] editId 为空');
+    message.warning('请先保存业务信息');
+    return;
+  }
+
+  try {
+    // 优先复用已加载的订单详情，避免重复请求 DetailAsync
+    const orderDetail =
+      orderBaseData.value ?? (await adapter.api.getDetail(editId.value));
+
+    console.log('✅ [openBatchImportModal] 获取订单详情成功');
+    console.log('📋 [openBatchImportModal] 订单详情:', orderDetail);
+    console.log('📋 [openBatchImportModal] carrierId:', orderDetail?.carrierId);
+    console.log('📋 [openBatchImportModal] polId:', orderDetail?.polId);
+    console.log('📋 [openBatchImportModal] podId:', orderDetail?.podId);
+
+    // 设置弹窗数据
+    batchImportModalRef.value?.modalApi.setData({
+      transportOrderId: editId.value,
+      paySide: props.type, // 当前表格的收付类型（0=应收，1=应付）
+      carrierId: orderDetail?.carrierId,
+      polId: orderDetail?.polId,
+      podId: orderDetail?.podId,
+      bizType: 2, // 空运出口固定为 2
+    });
+
+    console.log('✅ [openBatchImportModal] 已设置弹窗数据，准备打开弹窗');
+
+    // 打开弹窗
+    batchImportModalRef.value?.modalApi.open();
+  } catch (error) {
+    console.error('❌ [openBatchImportModal] 获取订单详情失败:', error);
+    console.error('❌ [openBatchImportModal] 错误对象:', error);
+    console.error(
+      '❌ [openBatchImportModal] 错误消息:',
+      error instanceof Error ? error.message : '未知错误',
+    );
+    console.error(
+      '❌ [openBatchImportModal] 错误堆栈:',
+      error instanceof Error ? error.stack : '无堆栈信息',
+    );
+
+    const errorMsg = error instanceof Error ? error.message : '请稍后重试';
+    message.error(`获取订单详情失败: ${errorMsg}`);
+  }
+};
+
+// 处理批量导入确认
+const handleBatchImportConfirm = () => {
+  // 刷新当前表格数据
+  getTableDate();
+
+  // 通知父组件同步费用
+  syncFee();
+
+  // 通知父组件刷新对立表格
+  emit('refresh-opposite-table');
+};
+
+// 打开审核历史弹窗
+const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
+  if (!row) {
+    console.warn('⚠️ [openAuditHistoryModal] row 为空，无法打开弹窗');
+    return;
+  }
+
+  console.log('✅ [openAuditHistoryModal] 准备打开审核历史弹窗', {
+    feeId: row.id,
+    feeStatus: row.feeStatus,
+    modificationCount: row.ModificationCount,
+    hasData: !!auditHistoryModalRef.value,
+  });
+
+  // 设置数据并打开模态框
+  auditHistoryModalRef.value?.modalApi.setData(row);
+  auditHistoryModalRef.value?.modalApi.open();
+
+  console.log('✅ [openAuditHistoryModal] 已调用 open() 方法');
+};
+
+/** 更改单模式：关闭列头排序 */
+const disableColumnSort = (cols: any[] = []): any[] =>
+  cols.map((col) => ({
+    ...col,
+    sortable: false,
+    children: col.children ? disableColumnSort(col.children) : undefined,
+  }));
+
+const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
+  gridOptions: {
+    id:
+      props.mode === 'changeOrder'
+        ? `sea-export-change-order-fee-${props.type}`
+        : `sea-export-order-fee-${props.type}`,
+    columns:
+      props.mode === 'changeOrder'
+        ? disableColumnSort(useOrderFeeColumns(props.type) as any[])
+        : useOrderFeeColumns(props.type),
+    height: props.mode === 'changeOrder' ? 'auto' : '100%',
+    minHeight: props.mode === 'changeOrder' ? 180 : undefined,
+    maxHeight: props.mode === 'changeOrder' ? 420 : 700,
+    keepSource: true,
+    radioConfig: {
+      highlight: true,
+      trigger: 'default',
+    },
+    rowConfig: {
+      keyField: '_rowKey',
+    },
+    sortConfig:
+      props.mode === 'changeOrder'
+        ? { enabled: false }
+        : {
+            trigger: 'cell', // 点击单元格触发排序
+            remote: false, // 前端排序
+          },
+    pagerConfig: {
+      enabled: false,
+    },
+    proxyConfig: {
+      ajax: {
+        query: async () => {
+          //      console.log('addRowData', tmpAdd.value);
+          if (tmpAdd.value) {
+            tmpAdd.value = false;
+            console.log('addRowDataing');
+            addRowData();
+            return dataSource.value;
+          }
+          if (tmpDel.value) {
+            tmpDel.value = false;
+            return dataSource.value;
+          }
+          await queryTableData();
+          return dataSource.value;
+        },
+      },
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: { code: 'query' },
+      zoom: true,
+    },
+  },
+  gridEvents: {
+    // 双击单元格事件 - 当双击费用状态列时打开审核历史
+    cellDblclick: ({ column, row }: any) => {
+      console.log('🔍 [cellDblclick] 双击事件触发', {
+        columnField: column?.field,
+        columnName: column?.title,
+        rowData: row,
+        hasModificationCount: row?.ModificationCount > 0,
+      });
+
+      // 检查是否是费用状态列
+      if (column?.field === 'combinedFeeStatus') {
+        console.log('✅ [cellDblclick] 检测到费用状态列，准备打开审核历史弹窗');
+        openAuditHistoryModal(row);
+      } else {
+        console.log(
+          '❌ [cellDblclick] 非费用状态列，不执行操作',
+          column?.field,
+        );
+      }
+    },
+
+    // 单行选择变化事件
+    checkboxChange: ({ row, checked }) => {
+      const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
+
+      selectedRowKeys.value = records.map((r: any) => r._rowKey);
+
+      // 可以在这里处理业务逻辑
+    },
+
+    // 全选/取消全选事件
+    checkboxAll: ({ checked }) => {
+      const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
+
+      selectedRowKeys.value = records.map((r: any) => r._rowKey);
+    },
+
+    // 单选模式下的选择事件（如果使用 radio 类型）
+    radioChange: ({ row }) => {
+      //    console.log('单选选中:', row);
+    },
+  },
+});
+const addRowData = () => {
+  const list = [...(dataSource.value ?? [])];
+  list.push({
+    _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
+    id: '',
+    transportOrderId: editId.value,
+    paySide: props.type,
+    currencyId: '',
+    unit: '',
+    feeStatus: 0,
+    taxRate: 0,
+    taskStatus: '',
+    invoiceStatus: 0,
+    invoiceBlocked: true,
+    isConfidential: false,
+    dataEntryMethod: 0,
+  } as any);
+  dataSource.value = list;
+};
+const addRow = () => {
+  if (props.readonly) return;
+  tmpAdd.value = true;
+  gridApi.query();
+};
+const delRow = () => {
+  tmpDel.value = true;
+  gridApi.query();
+};
+
+const getSelectedRows = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  const fromGrid = (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as OrderFeeAdminApi.OrderFeeDto[];
+  if (fromGrid.length) return fromGrid;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  return (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as { _rowKey?: string })._rowKey),
+  );
+};
+
+const isSavedOrderFee = (row: OrderFeeAdminApi.OrderFeeDto) =>
+  Boolean(row.id && String(row.id).trim());
+
+const handlePrint = async () => {
+  if (printing.value) return;
+
+  const isChangeOrder = props.mode === 'changeOrder';
+  const orderDetail = orderBaseData.value ?? props.orderDetail ?? null;
+  // 当票要素：用于按签单方式/船公司/分公司/业务类型筛选可用模板
+  const templateContext = {
+    codeIssueTypeId:
+      (orderDetail as any)?.codeIssueTypeId ??
+      (orderDetail as any)?.issueType ??
+      null,
+    carrierId: orderDetail?.carrierId ?? null,
+    orgId: orderDetail?.orgId ?? null,
+    bizType: adapter.printBizType,
+  };
+  const printJsonType =
+    props.type === 0
+      ? PrintJsonType.RecOrderFeeList
+      : PrintJsonType.PayOrderFeeList;
+
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    // 更改单打印：按更改单 id 取费用，可选仅打印勾选的已保存费用
+    if (isChangeOrder) {
+      if (!changeOrderId.value) {
+        message.warning('未找到更改单，无法打印');
+        return;
+      }
+      const selectedIds = getSelectedRows()
+        .filter((row) => isSavedOrderFee(row))
+        .map((row) => row.id)
+        .filter(Boolean) as string[];
+      openPrint({
+        printJsonType,
+        ...templateContext,
+        isChangeOrderPrint: true,
+        detailInput: {
+          id: changeOrderId.value,
+          ids: selectedIds.length ? selectedIds : undefined,
+        },
+      });
+      return;
+    }
+
+    // 普通费用打印：由后端按业务 id 取费用；勾选已保存费用时仅打印勾选项
+    if (!editId.value) {
+      message.warning('请先保存业务信息后再打印');
+      return;
+    }
+    const selectedIds = getSelectedRows()
+      .filter((row) => isSavedOrderFee(row))
+      .map((row) => row.id)
+      .filter(Boolean) as string[];
+    openPrint({
+      printJsonType,
+      ...templateContext,
+      orderFeeListInput: {
+        transportOrderId: editId.value,
+        ids: selectedIds.length ? selectedIds : undefined,
+        pageIndex: 1,
+        // 打印整票费用：需后端放开 OrderFeeQueryDto.pageSize 上限（原为 1000）
+        pageSize: 9999,
+      },
+    });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
+};
+
+const showModifyWithRemark = () => {
+  if (!selectedRowKeys.value.length) return;
+
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: $t('auditApproval.task.okModify'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkModifyPlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await nextTick(); // 等待 Vue 响应式更新完成
+      submitModify(modalRemark);
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
+};
+
+const showDeleteWithRemark = () => {
+  if (!selectedRowKeys.value.length) return;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请删除
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount ||
+      hasRqstPaymentAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content: '当前费用不允许申请更改',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: $t('auditApproval.task.okDelete'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+            //     console.log('Textarea changed:', modalRemark);
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkDeletePlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await nextTick(); // 等待 Vue 响应式更新完成
+      //  console.log('remark onOk:', modalRemark);
+      submitDelete(modalRemark);
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
+};
+const ImportOther = async (e: any) => {
+  //console.log('SubmittedOther', e);
+  switch (e.key) {
+    case 'submit': {
+      generateOppositeFees();
+      break;
+    }
+  }
+};
+const SubmittedOther = async (e: any) => {
+  //console.log('SubmittedOther', e);
+  switch (e.key) {
+    case 'modify': {
+      showModifyWithRemark();
+      break;
+    }
+    case 'delete': {
+      showDeleteWithRemark();
+      break;
+    }
+  }
+};
+const orderFeeWithdraw = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  // const okList = list.filter(
+  //   (item) => item?.submitOrderFeeTasks[0]?.taskStatus === 0,
+  // );
+  // if (okList.length === 0) {
+  //   console.log('no_task_status', list);
+  //   message.error({
+  //     content: $t('ui.actionMessage.operationFailed'),
+  //     key: 'action_process_msg',
+  //   });
+  //   return;
+  // }
+  // let taskBaseId = okList[0]?.submitOrderFeeTasks[0]?.taskBaseId;
+  let orderFeeWithdrawDto: ExpenseSubmissionAdminApi.OrderFeeTaskWithdrawDto = {
+    orderFeeIds: list.map((item) => item.id),
+  };
+  OrderFeeTaskWithdraw(orderFeeWithdrawDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
+/**
+ * 获取完结状态
+ */
+const loadFinishStatus = async () => {
+  if (!editId.value) return;
+
+  loadingFinishStatus.value = true;
+  try {
+    const finished = await adapter.api.getIsFinishedAsync(editId.value);
+    isFinished.value = finished;
+    console.log('📊 [完结状态] 当前状态:', finished ? '已完结' : '未完结');
+  } catch (error) {
+    console.error('❌ [完结状态] 获取失败:', error);
+    //message.error('获取完结状态失败');
+  } finally {
+    loadingFinishStatus.value = false;
+  }
+};
+
+/**
+ * 切换完结/未完结状态
+ */
+const toggleFinishStatus = async () => {
+  if (!editId.value) {
+    message.warning('请先保存业务信息');
+    return;
+  }
+
+  try {
+    const result = await adapter.api.changeIsUnfinishedAsync(editId.value);
+
+    // 切换成功后更新本地状态
+    isFinished.value = !isFinished.value;
+
+    message.success({
+      content: isFinished.value ? '已设置为已完结' : '已设置为未完结',
+      key: 'action_process_msg',
+    });
+
+    console.log(
+      '✅ [完结状态] 切换成功，当前状态:',
+      isFinished.value ? '已完结' : '未完结',
+    );
+  } catch (error) {
+    console.error('❌ [完结状态] 切换失败:', error);
+    //message.error('切换完结状态失败');
+  }
+};
+
+// 收付互生费用（应收生成应付 / 应付生成应收）
+const generateOppositeFees = async () => {
+  if (!selectedRowKeys.value.length) {
+    message.warning($t('请选择一条数据'));
+    return;
+  }
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const selectedList = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  if (selectedList.length === 0) {
+    message.warning($t('请选择一条数据'));
+    return;
+  }
+
+  // 获取当前更改单ID（如果有）
+  const changeOrderId =
+    props.mode === 'changeOrder' ? props.parentChangeOrderId : undefined;
+
+  // 构建请求参数
+  const params: OrderFeeAdminApi.GenerateOppositeOrderFeesInputDto = {
+    transportOrderId: editId.value || '',
+    paySide: props.type, // 当前表格的收付类型（0=收，1=付）
+    orderFeeIds: selectedList.map((item) => item.id),
+    changeOrderId: changeOrderId,
+  };
+
+  console.log('🔄 [generateOppositeFees] 收付互生参数:', params);
+
+  try {
+    const result = await adapter.api.generateOppositeOrderFees(params);
+    console.log('✅ [generateOppositeFees] 生成的费用ID列表:', result);
+
+    message.success({
+      content: `成功生成 ${result.length} 条${props.type === 0 ? '应付' : '应收'}费用`,
+      key: 'action_process_msg',
+    });
+
+    // 刷新当前表格数据
+    await getTableDate();
+
+    // 通知父组件同步费用（触发emit事件）
+    syncFee();
+
+    // 通知父组件刷新对立表格（应收生成应付时刷新应付表，反之亦然）
+    emit('refresh-opposite-table');
+  } catch (error) {
+    console.error('❌ [generateOppositeFees] 收付互生失败:', error);
+    // message.error({
+    //   content: '收付互生失败，请检查费用状态和配置',
+    //   key: 'action_process_msg',
+    // });
+  }
+};
+
+const Submitted = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? [])
+    .filter((row) => keysSet.has((row as any)._rowKey))
+    .filter(
+      (row) =>
+        row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
+        row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
+        row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
+    );
+  let SubmitOrderFeeDto = {
+    TransportOrderId: editId.value,
+    PaySide: props.type ?? 0,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(SubmitOrderFeeDto);
+  submitOrderFee(SubmitOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
+const openModifyModal = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请修改
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount ||
+      hasRqstPaymentAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content: '当前费用不允许申请更改',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  if (list.length > 1) {
+    message.error({
+      content: $t('ui.actionMessage.lengthLimit1'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  // 打开模态框，传递选中的费用数据、合计数据和订单基础数据
+  const selectedFee = list[0];
+  console.log('📊 [父组件] selectedFee:', selectedFee);
+  console.log(
+    '📊 [父组件] orderBaseData.value 是否存在:',
+    !!orderBaseData.value,
+  );
+  console.log('📊 [父组件] 准备传递给子组件的数据:', {
+    feeData: selectedFee,
+    hasOrderBaseData: !!orderBaseData.value,
+    orderBaseDataKeys: orderBaseData.value
+      ? Object.keys(orderBaseData.value)
+      : [],
+  });
+
+  modifyModalRef.value?.modalApi.setData({
+    feeData: selectedFee,
+    orderBaseData: orderBaseData.value,
+  });
+
+  console.log('✅ [父组件] 已调用 setData，准备打开模态框');
+  modifyModalRef.value?.modalApi.open();
+};
+
+// 处理模态框确认事件
+const handleModalConfirm = (data: {
+  originalData: OrderFeeAdminApi.OrderFeeDto | null;
+  updatedData: OrderFeeAdminApi.OrderFeeDto | null;
+}) => {
+  //console.log('模态框确认:', data);
+  let list = [data.updatedData];
+  // TODO: 这里可以添加保存逻辑，调用API更新费用
+  let ModifyOrderFeeDto = {
+    remark: data.updatedData?.remark || '',
+    TransportOrderId: editId.value,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(ModifyOrderFeeDto);
+  modifyOrderFee(ModifyOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
+const submitModify = (remark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let ModifyOrderFeeDto = {
+    remark: remark,
+    TransportOrderId: editId.value,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(ModifyOrderFeeDto);
+  modifyOrderFee(ModifyOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
+const submitDelete = (remark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let DeleteOrderFeeDto = {
+    remark: remark,
+    TransportOrderId: editId.value,
+    orderFeeIds: list.map((item) => item.id),
+    //orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(DeleteOrderFeeDto);
+  deleteOrderFee(DeleteOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
+const normalizeOrderFeeWithRowKey = (
+  items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
+) => {
+  if (!items?.length) return [];
+  console.log('normalizeOrderFeeWithRowKey', items);
+  return items.map((item, i) => ({
+    ...item,
+    industryCategory:
+      item.industryCategory === 0 ? null : item.industryCategory, // 确保行业类别有默认值，避免编辑时下拉框异常
+    _rowKey: `ofee_${i}_${Date.now()}`,
+  })) as any[];
+};
+
+/** 提交时移除 _rowKey 等非 API 字段，仅保留 OrderCtnAddDto 字段 */
+const sanitizeOrderFee = (
+  items: any[] | undefined,
+): OrderFeeAdminApi.OrderFeeEditDto[] => {
+  if (!items?.length) return [];
+
+  // 定义必须保留的数字类型字段（即使值为0也要保留）
+  const numericFields = new Set([
+    'currencyId',
+    'feeCodeId',
+    'paySide',
+    'feeStatus',
+    'invoiceStatus',
+    'industryCategory',
+    'dataEntryMethod',
+  ]);
+
+  return items.map((item) => {
+    const dto: Record<string, any> = {};
+    for (const key of ORDER_CTN_API_KEYS) {
+      const val = item[key];
+
+      // 跳过 undefined 和 null
+      if (val === undefined || val === null) continue;
+
+      // 对于字符串类型，跳过空字符串
+      if (typeof val === 'string' && val === '') continue;
+
+      // 对于数字类型字段，即使是0也要保留
+      if (numericFields.has(key)) {
+        dto[key] = typeof val === 'number' ? val : Number(val);
+        continue;
+      }
+
+      dto[key] = val;
+    }
+    return dto as OrderFeeAdminApi.OrderFeeEditDto;
+  });
+};
+const saveRow = () => {
+  // 已对账费用（statements 不为空）不可保存，只能保存录入状态且未对账的费用
+  const list = (dataSource.value ?? []).filter(
+    (row) =>
+      (row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
+        row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
+        row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify) &&
+      !feeConstants.isFeeStatemented(row),
+  );
+
+  console.log('list', list);
+  // 转换为OrderFeeEditDto类型
+  const editList = sanitizeOrderFee(list);
+  adapter.api.batchEditOrderFee(editList).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+const removeSelectedRows = () => {
+  if (props.readonly) return;
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter(
+    (row) => !keysSet.has((row as any)._rowKey),
+  );
+  const needDelIds = (dataSource.value ?? [])
+    .filter((row) => keysSet.has((row as any)._rowKey))
+    .filter((row) => (row as any).id !== '')
+    .map((row) => (row as any).id);
+  //console.log('needDelIds', needDelIds);
+
+  selectedRowKeys.value = [];
+  if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
+    adapter.api.batchDeleteOrderFee(needDelIds).then(() => {
+      dataSource.value = list;
+      delRow();
+      message.success({
+        content: $t('ui.actionMessage.operationSuccess'),
+        key: 'action_process_msg',
+      });
+    });
+  } else {
+    dataSource.value = list;
+    delRow();
+  }
+};
+
+const syncFee = () => {
+  // const list = (dataSource.value ?? []).filter(
+  //   (row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering,
+  // );
+  const list = dataSource.value ?? [];
+  const syncFeeDto = {
+    type: props.type ?? 0,
+    orderFees: list,
+  };
+  console.log('费用同步', syncFeeDto);
+  emit('sync-fee', syncFeeDto);
+
+  // 实时计算当前表格的金额汇总
+  calculateAndEmitAmount(list);
+};
+
+// 计算并发送金额汇总数据
+const calculateAndEmitAmount = (list: OrderFeeAdminApi.OrderFeeDto[]) => {
+  if (!list || list.length === 0) {
+    emit('update-amount', {
+      type: props.type ?? 0,
+      amountMap: {},
+    });
+    return;
+  }
+
+  const amountMap: Record<string, any> = {};
+  const currencyIdList = list.map((item) => item.currencyId).filter(Boolean);
+
+  // 去重处理
+  const uniqueCurrencyIds = [...new Set(currencyIdList)];
+
+  uniqueCurrencyIds.forEach((currencyId) => {
+    const currencyList = list.filter((item) => item.currencyId === currencyId);
+
+    const totalAmount = currencyList.reduce((acc, cur) => {
+      return acc + (cur.amount || 0);
+    }, 0);
+
+    const totalRMBAmount = currencyList.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+    }, 0);
+
+    const exchangeRate = currencyList[0]?.exchangeRate || 1;
+    const currencyName =
+      currencyList[0]?.currency?.cnName ||
+      currencyList[0]?.currency?.code ||
+      '';
+
+    if (currencyId !== undefined && currencyId !== null) {
+      // 根据类型设置不同的字段名
+      if (props.type === 0) {
+        // 应收
+        amountMap[currencyId] = {
+          totalRecAmount: totalAmount,
+          totalRMBRecAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
+      } else {
+        // 应付
+        amountMap[currencyId] = {
+          totalPayAmount: totalAmount,
+          totalRMBPayAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
+      }
+    }
+  });
+
+  console.log(
+    `💰 [${props.type === 0 ? '应收' : '应付'}] 金额汇总更新:`,
+    amountMap,
+  );
+
+  emit('update-amount', {
+    type: props.type ?? 0,
+    amountMap,
+  });
+};
+
+watch(
+  () => dataSource.value,
+  (val) => {
+    if (val === undefined || val === null) {
+      dataSource.value = [];
+    }
+    const keys = new Set((val ?? []).map((r) => (r as any)._rowKey));
+    selectedRowKeys.value = selectedRowKeys.value.filter((k) => keys.has(k));
+    syncFee();
+    emit('change');
+  },
+  { deep: true, immediate: true },
+);
+
+// 监听 editId 变化，重新加载箱型数据
+watch(
+  () => editId.value,
+  async (newEditId, oldEditId) => {
+    // 只在 editId 真正变化时才重新加载（排除初始化）
+    if (newEditId && newEditId !== oldEditId) {
+      // 切换单据时父组件（KeepAlive）的 orderDetail 可能仍是旧值，
+      // 这里强制按新 id 拉取一次最新详情，保证箱型/基础数据同步
+      try {
+        const orderDetail = await adapter.api.getDetail(newEditId);
+        applyOrderDetail(orderDetail);
+      } catch (error) {
+        console.error('❌ [watch editId] 加载订单详情失败:', error);
+      }
+      // 重新加载表格数据
+      getTableDate();
+
+      // 重新加载完结状态
+      loadFinishStatus();
+    }
+  },
+);
+
+const feeCodeList = ref<FeeCodeAdminApi.FeeCodeDto[]>([]);
+const getFeeCodeList = async () => {
+  let res = (await getFeeCodePagedList({ PageIndex: 1, PageSize: 1000 })) || {};
+  feeCodeList.value = res.items || [];
+  //console.log('feeCodeList', feeCodeList.value);
+};
+
+/**
+ * 处理键盘快捷键 Ctrl+S 保存
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了 Ctrl+S (或 Cmd+S on Mac)
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault(); // 阻止浏览器默认的保存行为
+
+    // 只有在有选中行且不是只读模式时才执行保存
+    if (!props.readonly && selectedRowKeys.value.length > 0) {
+      console.log('⌨️ [键盘快捷键] 检测到 Ctrl+S，执行保存操作');
+      saveRow();
+    } else if (props.readonly) {
+      message.warning('当前为只读模式，无法保存');
+    } else {
+      message.warning('请先选择要保存的费用行');
+    }
+  }
+};
+
+onMounted(async () => {
+  // 初始化枚举数据缓存
+  initOrderFeeEnumCache();
+
+  // 订单详情（含箱型列表、订单基础数据）由父组件通过 orderDetail 传入，
+  // 见上方 watch(props.orderDetail)，此处不再单独请求 DetailAsync，避免同一 Tab 重复拉取。
+
+  // 加载表格数据
+  getTableDate();
+  getFeeCodeList();
+
+  // 加载完结状态
+  loadFinishStatus();
+
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已注册 Ctrl+S 保存快捷键');
+});
+
+onUnmounted(() => {
+  // 移除键盘事件监听器，防止内存泄漏
+  document.removeEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已移除 Ctrl+S 保存快捷键');
+});
+
+defineExpose({
+  getTableDate,
+});
+</script>
+
+<template>
+  <Card
+    class="order-fee-card"
+    :class="{ 'change-order-fee-table': props.mode === 'changeOrder' }"
+  >
+    <!-- 右上角完结状态图片 -->
+    <div v-if="!isFinished" class="finish-status-badge" title="业务未完结">
+      <img
+        v-show="type === 0"
+        :src="weiwanjie"
+        alt="未完结"
+        class="w-46 h-46"
+      />
+    </div>
+
+    <div :class="props.mode === 'changeOrder' ? undefined : 'px-1'">
+      <div>
+        <div class="order-ctn-table">
+          <Grid
+            :table-title="
+              props.mode === 'changeOrder'
+                ? ''
+                : type === 0
+                  ? orderFeeDataT('receivableCharges')
+                  : orderFeeDataT('payableCharges')
+            "
+          >
+            <template v-if="props.mode === 'changeOrder'" #empty>
+              <div class="change-order-empty">
+                <p class="change-order-empty__title">
+                  暂无{{ type === 0 ? '应收' : '应付' }}费用
+                </p>
+                <p class="change-order-empty__desc">
+                  {{
+                    type === 0
+                      ? '添加本次变更产生的客户应收费用。'
+                      : '添加本次变更产生的供应商应付费用。'
+                  }}
+                </p>
+                <Button
+                  v-if="!props.readonly"
+                  type="primary"
+                  size="small"
+                  @click="addRow"
+                >
+                  新增{{ type === 0 ? '应收' : '应付' }}费用
+                </Button>
+              </div>
+            </template>
+            <template v-if="$slots['toolbar-actions']" #toolbar-actions>
+              <slot name="toolbar-actions" />
+            </template>
+            <template #toolbar-tools>
+              <Space>
+                <Button
+                  type="primary"
+                  :disabled="props.readonly"
+                  @click="addRow"
+                >
+                  新增{{ type === 0 ? '应收' : '应付' }}费用
+                </Button>
+                <Button
+                  type="primary"
+                  @click="saveRow"
+                  v-show="props.mode !== 'changeOrder'"
+                >
+                  {{ $t('common.save') }}
+                </Button>
+                <Button :loading="printing" @click="handlePrint">
+                  <IconifyIcon
+                    icon="mdi:printer-outline"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  打印
+                </Button>
+                <Button
+                  danger
+                  :disabled="props.readonly || !selectedRowKeys.length"
+                  @click="removeSelectedRows"
+                >
+                  {{ $t('common.delete') }}
+                </Button>
+
+                <DropdownButton
+                  v-if="props.mode !== 'changeOrder'"
+                  @click="openBatchImportModal"
+                  type="primary"
+                >
+                  {{ orderFeeDataT('batchImport') }}
+                  <template #overlay>
+                    <Menu @click="ImportOther">
+                      <MenuItem key="submit">
+                        {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
+
+                <DropdownButton
+                  v-if="props.mode !== 'changeOrder'"
+                  @click="Submitted"
+                  type="primary"
+                  :disabled="!selectedRowKeys.length"
+                >
+                  {{ $t('auditApproval.status.Submitted') }}
+                  <template #overlay>
+                    <Menu @click="SubmittedOther">
+                      <MenuItem key="modify">
+                        {{ $t('auditApproval.ApplyModification') }}
+                      </MenuItem>
+                      <MenuItem key="delete">
+                        {{ $t('auditApproval.ApplyDeletion') }}
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
+
+                <Button
+                  v-if="props.mode !== 'changeOrder'"
+                  type="primary"
+                  :disabled="!selectedRowKeys.length"
+                  @click="orderFeeWithdraw"
+                  >{{ $t('auditApproval.withdraw') }}</Button
+                >
+
+                <Button
+                  v-if="props.mode !== 'changeOrder' && type === 0"
+                  type="default"
+                  :loading="loadingFinishStatus"
+                  @click="toggleFinishStatus"
+                >
+                  {{ isFinished ? '设为未完结' : '设为已完结' }}
+                </Button>
+              </Space>
+            </template>
+          </Grid>
+          <div
+            v-if="props.readonly"
+            class="readonly-fee-mask"
+            title="该更改单已锁定，费用仅可查看"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 费用编辑模态框 -->
+    <OrderFeeEditorModal
+      ref="modifyModalRef"
+      :rec-amount-map="recAmountMap || {}"
+      :pay-amount-map="payAmountMap || {}"
+      :fee-code-list="feeCodeList"
+      @confirm="handleModalConfirm"
+    />
+
+    <!-- 审核历史模态框 -->
+    <OrderFeeAuditHistoryModal ref="auditHistoryModalRef" />
+
+    <!-- 批量引入费用模态框 -->
+    <BatchImportFeeModal
+      ref="batchImportModalRef"
+      @confirm="handleBatchImportConfirm"
+    />
+  </Card>
+</template>
+
+<style scoped lang="scss">
+.change-order-fee-table {
+  border: 0;
+  box-shadow: none;
+
+  .order-ctn-table {
+    height: auto;
+    min-height: 180px;
+    max-height: 420px;
+  }
+
+  // 覆盖 vxe-grid 默认 p-2 的左右 padding，保留上下
+  :deep(.vxe-grid) {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  // 更改单模式下工具栏直接置于页签内容顶部，去掉多余标题占位
+  :deep(.vxe-toolbar) {
+    height: auto;
+    padding: 4px 0 8px;
+  }
+
+  // 可编辑单元格用浅底色，和只读结果区分
+  :deep(.vxe-body--column) {
+    .ant-input,
+    .ant-input-number,
+    .ant-select-selector {
+      background: #fafcff;
+      border-radius: 4px;
+    }
+
+    .ant-input::placeholder,
+    .ant-input-number-input::placeholder {
+      color: #bfbfbf;
+    }
+  }
+}
+
+.change-order-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 28px 16px;
+
+  .change-order-empty__title {
+    margin: 0;
+    font-weight: 500;
+    color: #262626;
+  }
+
+  .change-order-empty__desc {
+    margin: 0;
+    font-size: 13px;
+    color: #8c8c8c;
+  }
+}
+
+.readonly-fee-mask {
+  position: absolute;
+  inset: 44px 0 0;
+  z-index: 5;
+  cursor: not-allowed;
+  background: rgb(255 255 255 / 25%);
+}
+</style>
+
+<style scoped lang="scss">
+.order-fee-card {
+  position: relative; // 为绝对定位的子元素提供定位上下文
+
+  // 主单费用保留左右 20px；更改单模式由下方规则清零，避免盖不住
+  &:not(.change-order-fee-table) :deep(.ant-card-body) {
+    padding: 0 20px 12px !important;
+  }
+
+  &.change-order-fee-table :deep(.ant-card-body) {
+    padding: 0 !important;
+  }
+
+  .order-ctn-table {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 500px;
+  }
+
+  :deep(.vxe-grid) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  :deep(.vxe-table--body-wrapper) {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 8px;
+    overflow-y: auto;
+  }
+
+  // 优化横向滚动条样式
+  :deep(.vxe-table--scroll-x) {
+    height: 16px !important;
+
+    &::-webkit-scrollbar {
+      height: 16px !important;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      min-width: 40px;
+      background: #c1c1c1;
+      border-radius: 8px;
+
+      &:hover {
+        background: #a8a8a8;
+      }
+
+      &:active {
+        background: #8a8a8a;
+      }
+    }
+  }
+
+  // 优化纵向滚动条样式（如果需要）
+  :deep(.vxe-table--scroll-y) {
+    width: 16px !important;
+
+    &::-webkit-scrollbar {
+      width: 16px !important;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      min-height: 40px;
+      background: #c1c1c1;
+      border-radius: 8px;
+
+      &:hover {
+        background: #a8a8a8;
+      }
+
+      &:active {
+        background: #8a8a8a;
+      }
+    }
+  }
+}
+
+// 完结状态徽章（右上角绝对定位）
+.finish-status-badge {
+  position: absolute;
+  top: 20px;
+  right: 0;
+  z-index: 10;
+
+  img {
+    display: block;
+    width: 104px;
+    height: 104px;
+    object-fit: contain;
+  }
+}
+</style>

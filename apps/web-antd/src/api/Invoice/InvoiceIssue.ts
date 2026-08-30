@@ -181,6 +181,8 @@ export namespace InvoiceIssueApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 发票开出详情DTO */

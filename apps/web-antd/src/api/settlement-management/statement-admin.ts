@@ -108,6 +108,8 @@ export namespace StatementAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 币别简要对象 */
@@ -115,7 +117,6 @@ export namespace StatementAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 客户简要对象 */
@@ -346,7 +347,13 @@ export namespace StatementAdminApi {
   export interface OrderFeeGroupQueryParams {
     AccountDateStart?: string;
     AccountDateEnd?: string;
-    SettlementId: string;
+    /**
+     * 结算对象（客户）id，非必填（2026-08-29 起）
+     * 不传则不按结算对象过滤，列表会同时出现多个结算对象的费用；
+     * 费用行的 settlement 即该费用自己的结算对象，录入状态费用可能为 null。
+     * 注意：对账人免数据权限仅在传了 settlementId 时生效。
+     */
+    SettlementId?: string;
     FeeCodeIds?: number[];
     ExceptFeeCodeIds?: number[];
     PaySide?: number;

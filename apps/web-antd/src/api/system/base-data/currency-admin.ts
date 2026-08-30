@@ -9,7 +9,6 @@ export namespace CurrencyAdminApi {
     symbol?: string;
     description?: string;
     financeSoftCode?: string;
-    defaultRate?: number;
     alias?: string;
     enable?: boolean;
     sortId?: number;
@@ -25,7 +24,6 @@ export namespace CurrencyAdminApi {
     symbol?: string;
     description?: string;
     financeSoftCode?: string;
-    defaultRate?: number;
     alias?: string;
     enable?: boolean;
     sortId?: number;
@@ -41,7 +39,6 @@ export namespace CurrencyAdminApi {
     symbol?: string;
     description?: string;
     financeSoftCode?: string;
-    defaultRate?: number;
     alias?: string;
     enable?: boolean;
     sortId?: number;

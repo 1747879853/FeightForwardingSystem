@@ -3,12 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 
 import { Select } from 'ant-design-vue';
 
-import {
-  getMyPermissionCompanies,
-  getOrgBankAccountList,
-} from '#/api/system/organization-unit';
-
-import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
+import { getMyCompanyBankAccounts } from '#/composables/use-my-org';
 
 interface BankAccountOption {
   id: string;
@@ -58,11 +53,11 @@ watch(
 async function loadBankAccounts() {
   loading.value = true;
   try {
-    // 如果传入了orgId，则只获取指定公司的银行列表
+    // 如果传入了orgId，则只获取指定公司的银行列表（从用户信息缓存读取，不调用接口，避免用户无接口权限）
     if (props.orgId) {
-      console.log('✅ 获取指定公司的银行列表，公司ID:', props.orgId);
-      const accounts = await getOrgBankAccountList(props.orgId);
-      console.log('📋 银行列表原始数据:', accounts);
+      console.log('✅ 从缓存获取指定公司的银行列表，公司ID:', props.orgId);
+      const accounts = getMyCompanyBankAccounts(props.orgId);
+      console.log('📋 银行列表缓存数据:', accounts);
 
       const newOptions = (accounts || []).map((account) => ({
         id: account.id,
