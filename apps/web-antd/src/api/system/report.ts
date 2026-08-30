@@ -36,7 +36,6 @@ export namespace ReportApi {
     code: string;
     cnName: string;
     enName: string;
-    defaultRate: number;
   }
 
   /** 品名 */
@@ -77,6 +76,8 @@ export namespace ReportApi {
     name: string;
     localCurrencyId?: number;
     localCurrencyCode: string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 海空港口 */

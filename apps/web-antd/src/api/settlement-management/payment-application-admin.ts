@@ -285,6 +285,8 @@ export namespace PaymentApplicationAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 币别简易对象（展示用） */
@@ -295,8 +297,6 @@ export namespace PaymentApplicationAdminApi {
     cnName?: string;
     /** 英文名称 */
     enName?: string;
-    /** 默认对人民币汇率 */
-    defaultRate: number;
   }
 
   /** 对账单简要信息（用于费用 DTO 中的 statements 数组） */

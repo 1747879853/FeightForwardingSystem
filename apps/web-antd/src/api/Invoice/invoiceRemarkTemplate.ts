@@ -25,7 +25,6 @@ export namespace InvoiceRemarkTemplateApi {
     code: string;
     cnName: string;
     enName: string;
-    defaultRate: number;
   }
 
   /**
@@ -41,6 +40,8 @@ export namespace InvoiceRemarkTemplateApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   export interface InvoiceRemarkTemDetailDto {

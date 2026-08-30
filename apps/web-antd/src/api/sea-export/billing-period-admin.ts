@@ -55,8 +55,6 @@ export namespace BillingPeriodAdminApi {
     cnName: string;
     /** 英文名 */
     enName: string;
-    /** 默认对人民币汇率 */
-    defaultRate: number;
   }
 
   /** 新增账单期参数 */

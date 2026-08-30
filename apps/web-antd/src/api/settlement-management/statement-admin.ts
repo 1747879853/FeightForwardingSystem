@@ -108,6 +108,8 @@ export namespace StatementAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 币别简要对象 */
@@ -115,7 +117,6 @@ export namespace StatementAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 客户简要对象 */

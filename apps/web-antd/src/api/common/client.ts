@@ -23,6 +23,8 @@ export namespace ClientAppApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 客户简易DTO（用于外键关联场景） */

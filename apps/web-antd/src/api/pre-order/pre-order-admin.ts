@@ -79,6 +79,8 @@ export namespace PreOrderAdminApi {
     id: number;
     name?: string;
     localCurrencyId?: number;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   export interface SimpleNamedDto {

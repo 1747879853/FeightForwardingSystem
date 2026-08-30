@@ -366,6 +366,8 @@ export namespace SeaExportAdminApi {
     name?: string;
     localCurrencyId?: null | number;
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   export interface SeaExportServiceTaskUserDto {

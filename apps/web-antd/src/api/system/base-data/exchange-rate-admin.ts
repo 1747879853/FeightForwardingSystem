@@ -7,7 +7,6 @@ export namespace ExchangeRateAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 新增汇率参数 */
@@ -23,7 +22,8 @@ export namespace ExchangeRateAdminApi {
     invoiceValue?: number;
     startDate?: string;
     endDate?: string;
-    localCurrency?: string;
+    /** 本位币Id（必填，不可与币别相同） */
+    localCurrencyId?: number | string;
     enable?: boolean;
     sortId?: number;
     remark?: string;
@@ -44,7 +44,8 @@ export namespace ExchangeRateAdminApi {
     invoiceValue?: number;
     startDate?: string;
     endDate?: string;
-    localCurrency?: string;
+    /** 本位币Id（必填，不可与币别相同） */
+    localCurrencyId?: number | string;
     enable?: boolean;
     sortId?: number;
     remark?: string;
@@ -66,7 +67,10 @@ export namespace ExchangeRateAdminApi {
     invoiceValue?: number;
     startDate?: string;
     endDate?: string;
-    localCurrency?: string;
+    /** 本位币Id */
+    localCurrencyId?: number | string;
+    /** 本位币对象（折算的对家，注意与 currency 区分） */
+    localCurrency?: CurrencySimpleDto | null;
     enable?: boolean;
     sortId?: number;
     remark?: string;
@@ -84,8 +88,11 @@ export namespace ExchangeRateAdminApi {
 
   /** 分页查询参数 */
   export interface GetPagedListParams {
+    /** 关键字，匹配币别代码、本位币代码、备注 */
     Keyword?: string;
-    CurrencyId?: number;
+    CurrencyId?: number | string;
+    /** 本位币Id筛选 */
+    LocalCurrencyId?: number | string;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;

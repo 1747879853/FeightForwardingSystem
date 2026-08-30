@@ -3,7 +3,7 @@ import { CommissionOrderAdminApi } from '#/api/commission/commission-order-admin
 import type { FormInstance } from 'ant-design-vue';
 import type { Dayjs } from 'dayjs';
 
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
@@ -22,7 +22,7 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { UserSelect } from '#/adapter/component';
+import { UserOrgSelect, UserSelect } from '#/adapter/component';
 
 import {
   addCommissionOrder,
@@ -58,6 +58,7 @@ const [Modal, modalApi] = useVbenModal({
     }>();
     commissionType.value = data?.commissionType ?? CommissionType.Sales;
     formState.userId = undefined;
+    formState.orgId = undefined;
     formState.monthRange = undefined;
     formState.remark = '';
     preview.value = null;
@@ -83,10 +84,12 @@ const formRef = ref<FormInstance>();
 
 const formState = reactive<{
   monthRange?: [Dayjs, Dayjs];
+  orgId?: number;
   remark: string;
   userId?: number;
 }>({
   monthRange: undefined,
+  orgId: undefined,
   remark: '',
   userId: undefined,
 });
@@ -97,6 +100,12 @@ const formRules = {
       message: $t('commissionOrder.create.monthRangeRequired'),
       required: true,
       type: 'array' as const,
+    },
+  ],
+  orgId: [
+    {
+      message: $t('commissionOrder.create.orgRequired'),
+      required: true,
     },
   ],
   userId: [
@@ -132,6 +141,17 @@ const preview = ref<
 
 const previewing = ref(false);
 
+/**
+ * 确认与新建必须用同一个提成人/组织/月份组合。
+ * 任一条件变动后旧预览即失效，清空以免用户拿旧结果直接新建。
+ */
+watch(
+  () => [formState.userId, formState.orgId, formState.monthRange],
+  () => {
+    preview.value = null;
+  },
+);
+
 const salesMonths = computed(() =>
   isSales.value
     ? ((
@@ -154,17 +174,19 @@ const onPreview = async () => {
   } catch {
     return;
   }
-  if (!formState.userId || !formState.monthRange) return;
+  if (!formState.userId || !formState.orgId || !formState.monthRange) return;
   const accountDates = expandMonths(formState.monthRange);
   previewing.value = true;
   try {
     preview.value = isSales.value
       ? await getSalesPreview({
           accountDates,
+          orgId: formState.orgId,
           userId: formState.userId,
         })
       : await getOperationPreview({
           accountDates,
+          orgId: formState.orgId,
           userId: formState.userId,
         });
   } finally {
@@ -203,6 +225,7 @@ const onConfirmCreate = () => {
       await addCommissionOrder({
         accountDates,
         commissionType: commissionType.value,
+        orgId: formState.orgId as number,
         remark: formState.remark || undefined,
         userId: formState.userId as number,
       });
@@ -224,9 +247,16 @@ const onConfirmCreate = () => {
         :rules="formRules"
         layout="vertical"
       >
-        <div class="grid grid-cols-[1fr_1fr_auto] gap-x-4">
+        <div class="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-4">
           <FormItem :label="$t('commissionOrder.create.user')" name="userId">
             <UserSelect v-model="formState.userId" allow-clear class="w-full" />
+          </FormItem>
+          <FormItem :label="$t('commissionOrder.create.org')" name="orgId">
+            <UserOrgSelect
+              v-model="formState.orgId"
+              :user-id="formState.userId"
+              class="w-full"
+            />
           </FormItem>
           <FormItem
             :label="$t('commissionOrder.create.monthRange')"

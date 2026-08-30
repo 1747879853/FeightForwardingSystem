@@ -132,16 +132,6 @@ export function useFormSchema(): VbenFormSchema[] {
         .optional(),
     },
     {
-      component: 'InputNumber',
-      fieldName: 'defaultRate',
-      label: $t('system.basicData.currency.defaultRate'),
-      componentProps: {
-        min: 0,
-        precision: 6,
-        style: { width: '100%' },
-      },
-    },
-    {
       component: 'Input',
       fieldName: 'alias',
       label: $t('system.basicData.currency.alias'),
@@ -217,11 +207,6 @@ export function useColumns(
     {
       field: 'enName',
       title: $t('system.basicData.currency.enName'),
-      minWidth: 120,
-    },
-    {
-      field: 'defaultRate',
-      title: $t('system.basicData.currency.defaultRate'),
       minWidth: 120,
     },
     {

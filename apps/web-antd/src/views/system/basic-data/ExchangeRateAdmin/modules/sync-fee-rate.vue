@@ -48,7 +48,15 @@ const rateTitle = computed(() => {
   const rate = rateInfo.value;
   if (!rate) return '';
   const currency = rate.currency?.code || rate.currency?.cnName || '';
-  return [currency, rate.startDate?.slice(0, 10), rate.endDate?.slice(0, 10)]
+  // 本位币为对象返回，展示其代码；同步范围仅限主单所属公司本位币与该值一致的票
+  const localCurrency =
+    rate.localCurrency?.code || rate.localCurrency?.cnName || '';
+  return [
+    currency,
+    localCurrency ? `→ ${localCurrency}` : '',
+    rate.startDate?.slice(0, 10),
+    rate.endDate?.slice(0, 10),
+  ]
     .filter(Boolean)
     .join(' / ');
 });

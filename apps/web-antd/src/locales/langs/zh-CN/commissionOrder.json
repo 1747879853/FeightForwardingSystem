@@ -59,6 +59,8 @@
     "titleOperation": "新建操作提成",
     "user": "提成人",
     "userRequired": "请选择提成人",
+    "org": "所属组织",
+    "orgRequired": "请选择所属组织",
     "monthRange": "提成月范围",
     "monthRangeRequired": "请选择提成月",
     "monthRangeHint": "一次可提多个月，每月生成一张提成单；只能提当前月之前的月份",

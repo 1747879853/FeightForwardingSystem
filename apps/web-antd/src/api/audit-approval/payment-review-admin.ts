@@ -31,6 +31,8 @@ export namespace PaymentReviewAdminApi {
     id: number;
     name?: string;
     localCurrencyId?: number;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 结算对象简易对象（业务往来单位） */
@@ -47,7 +49,6 @@ export namespace PaymentReviewAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   export interface CurrencyGroupDto {

@@ -375,6 +375,8 @@ export namespace InvoiceApplicationAdminApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   /** 开票申请详情DTO */

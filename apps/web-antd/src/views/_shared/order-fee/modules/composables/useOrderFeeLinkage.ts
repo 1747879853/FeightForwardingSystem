@@ -156,11 +156,17 @@ export function useOrderFeeLinkage(
 
       const orderDetail = await loadOrderDetailCached(transportOrderId);
 
-      const companyNode = orderDetail?.orgs?.find(
-        (node) =>
-          node?.localCurrencyId !== null && node?.localCurrencyId !== undefined,
-      );
-      if (companyNode) {
+      // 组织串从顶到底排列：优先取最后一个 isCompany 节点（最接近本组织的所属公司），
+      // 避免集团等上级节点配过本位币时取错；后端未返回 isCompany 时兜底旧逻辑（首个有本位币的节点）
+      const orgs = orderDetail?.orgs ?? [];
+      const companyNode =
+        [...orgs].reverse().find((node: any) => node?.isCompany === true) ??
+        orgs.find(
+          (node: any) =>
+            node?.localCurrencyId !== null &&
+            node?.localCurrencyId !== undefined,
+        );
+      if (companyNode && companyNode.localCurrencyId != null) {
         const isLocal = companyNode.localCurrencyId === currencyId;
         console.log(
           '💱 [checkIfIsLocalCurrency] 币别ID:',

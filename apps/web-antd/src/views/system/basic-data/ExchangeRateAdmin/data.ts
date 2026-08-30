@@ -70,6 +70,15 @@ export function formatExchangeRateCurrency(
   return formatCurrencyName(row.currencyId);
 }
 
+/** 列表/详情展示本位币：优先 SimpleDto，再兜底缓存 */
+export function formatExchangeRateLocalCurrency(
+  row: ExchangeRateAdminApi.ExchangeRateDto,
+): string {
+  const fromDto = row.localCurrency?.code || row.localCurrency?.cnName;
+  if (fromDto) return fromDto;
+  return formatCurrencyName(row.localCurrencyId);
+}
+
 /**
  * 获取表格搜索表单的字段配置
  */
@@ -88,6 +97,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'CurrencySelect',
       fieldName: 'CurrencyId',
       label: $t('system.basicData.exchangeRate.currencyId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'LocalCurrencyId',
+      label: $t('system.basicData.exchangeRate.localCurrency'),
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
@@ -198,22 +216,22 @@ export function useFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Input',
-      fieldName: 'localCurrency',
+      component: 'CurrencySelect',
+      fieldName: 'localCurrencyId',
       label: $t('system.basicData.exchangeRate.localCurrency'),
-      componentProps: {
-        maxLength: 20,
-      },
-      rules: z
-        .string()
-        .max(
-          20,
-          $t('ui.formRules.maxLength', [
+      defaultValue: undefined,
+      // 本位币为必填外键；大数 ID 经 json-bigint 解析为 string，按字符串校验/透传
+      rules: z.preprocess(
+        (value) =>
+          value === undefined || value === null || value === ''
+            ? undefined
+            : String(value),
+        z.string({
+          required_error: $t('ui.formRules.selectRequired', [
             $t('system.basicData.exchangeRate.localCurrency'),
-            20,
           ]),
-        )
-        .optional(),
+        }),
+      ),
     },
     {
       component: 'Switch',
@@ -266,6 +284,12 @@ export function useColumns(
       title: $t('system.basicData.exchangeRate.currencyId'),
       minWidth: 100,
       formatter: ({ row }) => formatExchangeRateCurrency(row),
+    },
+    {
+      field: 'localCurrencyId',
+      title: $t('system.basicData.exchangeRate.localCurrency'),
+      minWidth: 100,
+      formatter: ({ row }) => formatExchangeRateLocalCurrency(row),
     },
     {
       field: 'drValue',
@@ -337,7 +361,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'currencyId',
-          nameFieldFallbacks: ['currencyId', 'remark', 'localCurrency'],
+          nameFieldFallbacks: ['currencyId', 'remark'],
           nameTitle: $t('system.basicData.exchangeRate.name'),
           onClick: onActionClick,
         },

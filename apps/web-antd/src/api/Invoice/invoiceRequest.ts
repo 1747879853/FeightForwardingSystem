@@ -77,7 +77,6 @@ export namespace InvoiceApplicationApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    defaultRate?: number;
   }
 
   /** 费用代码简易对象 */
@@ -457,6 +456,8 @@ export namespace InvoiceApplicationApi {
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
   /** 客户开票银行 列表和详情输出 */
   export interface ClientInvoiceBankDto {

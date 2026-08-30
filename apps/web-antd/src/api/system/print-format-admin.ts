@@ -26,6 +26,8 @@ export namespace PrintFormatAdminApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name?: string | null;
+    /** 是否公司节点 */
+    isCompany?: boolean;
   }
 
   export interface PrintFormatDto {

@@ -59,8 +59,6 @@ export namespace OrderFeeAdminApi {
     code?: string | null;
     cnName?: string | null;
     enName?: string | null;
-    /** 默认汇率 */
-    defaultRate?: number;
   }
 
   /**
