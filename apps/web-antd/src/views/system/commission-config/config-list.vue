@@ -17,13 +17,15 @@ import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
-import { useCommissionConfigColumns } from './commission-data';
 import CommissionConfigModal from './commission-config-modal.vue';
+import {
+  useCommissionConfigColumns,
+  useCommissionConfigFormSchema,
+} from './data';
 
-defineOptions({ name: 'UserCommissionConfigPanel' });
+defineOptions({ name: 'SystemCommissionConfigList' });
 
 const props = defineProps<{
-  userId: number;
   commissionType: CommissionConfigAdminApi.CommissionType;
 }>();
 
@@ -36,8 +38,8 @@ type ConfigRow = CommissionConfigAdminApi.CommissionConfigDto;
 const typeLabel = computed(() =>
   $t(
     props.commissionType === CommissionConfigAdminApi.CommissionType.Sales
-      ? 'commission.salesTab'
-      : 'commission.operationTab',
+      ? 'commissionOrder.menu.salesCommission'
+      : 'commissionOrder.menu.operationCommission',
   ),
 );
 
@@ -66,14 +68,13 @@ const [CommissionConfigModalComponent, commissionConfigModalApi] = useVbenModal(
 
 function onAdd() {
   commissionConfigModalApi
-    .setData({ userId: props.userId, commissionType: props.commissionType })
+    .setData({ commissionType: props.commissionType })
     .open();
 }
 
 function onEdit(record: ConfigRow) {
   commissionConfigModalApi
     .setData({
-      userId: props.userId,
       commissionType: props.commissionType,
       id: record.id,
     })
@@ -127,7 +128,6 @@ const fetchList = async (params: Record<string, any>) => {
   const result = await getCommissionConfigPagedList({
     ...params,
     commissionType: props.commissionType,
-    userId: props.userId,
   });
   // 数据刷新（查询/刷新/翻页）后勾选会被清空，同步清空选中行，避免工具栏按钮状态与实际勾选不一致
   selectedRows.value = [];
@@ -135,6 +135,12 @@ const fetchList = async (params: Record<string, any>) => {
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<ConfigRow>({
+  formOptions: {
+    schema: useCommissionConfigFormSchema(),
+    submitOnChange: true,
+    showCollapseButton: false,
+    wrapperClass: 'grid-cols-4',
+  },
   gridEvents: {
     cellDblclick: handleRowDblclick,
     checkboxAll: syncSelectedRows,
@@ -143,6 +149,8 @@ const [Grid, gridApi] = useVbenVxeGrid<ConfigRow>({
     currentRowChange: syncSelectedRows,
   },
   gridOptions: {
+    // 两个 Tab 各一个实例，id 区分，避免列配置持久化互相覆盖
+    id: `system-commission-config-${props.commissionType}`,
     checkboxConfig: {
       highlight: true,
       // 点击整行即可勾选，便于工具栏编辑/删除操作
@@ -182,12 +190,8 @@ const handleModalSuccess = () => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col p-4">
+  <div class="flex h-full flex-col">
     <CommissionConfigModalComponent @success="handleModalSuccess" />
-
-    <div class="mb-2 text-xs text-gray-400">
-      {{ $t('commission.listHint') }}
-    </div>
 
     <Grid class="min-h-0 flex-1">
       <template #toolbar-tools>

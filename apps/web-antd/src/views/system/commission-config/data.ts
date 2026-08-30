@@ -1,5 +1,7 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
+import type { VbenFormSchema } from '#/adapter/form';
+
 import dayjs from 'dayjs';
 
 import { CommissionConfigAdminApi } from '#/api/commission/commission-config-admin';
@@ -7,7 +9,7 @@ import { $t } from '#/locales';
 
 /**
  * 提成配置模块共享工具：
- * 枚举选项 / 文案映射 / 表格列 / 规则摘要格式化。
+ * 枚举选项 / 文案映射 / 表格列 / 查询表单 / 规则摘要格式化。
  */
 
 type Option = { label: string; value: number };
@@ -127,6 +129,15 @@ export const getBaseSalaryModeOptions = (): Option[] => [
     label: $t('commission.baseSalaryModeMax'),
     value: CommissionConfigAdminApi.BaseSalaryMode.MaxOfBoth,
   },
+];
+
+/** 是否启用选项（查询表单用） */
+export const getIsEnabledOptions = (): {
+  label: string;
+  value: boolean;
+}[] => [
+  { label: $t('commission.enabled'), value: true },
+  { label: $t('commission.disabled'), value: false },
 ];
 
 export const getBizTypeLabels = (
@@ -320,15 +331,64 @@ export const buildRuleSummary = (
     : { full: '-', short: '-' };
 };
 
+// ==================== 查询表单与列定义 ====================
+
 /**
- * 提成配置列表列定义（vxe-table；无操作列：编辑由行双击或工具栏触发）
+ * 提成配置列表查询表单
+ */
+export function useCommissionConfigFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Input',
+      fieldName: 'keyword',
+      label: $t('commission.search.keyword'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('commission.search.keywordPlaceholder'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'isEnabled',
+      label: $t('commission.isEnabled'),
+      componentProps: {
+        allowClear: true,
+        options: getIsEnabledOptions(),
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'userId',
+      label: $t('commission.applyUsers'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'OrganizationSelect',
+      fieldName: 'applyOrgId',
+      label: $t('commission.applyOrgs'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+  ];
+}
+
+/**
+ * 提成配置列表列定义（无操作列：编辑由行双击或工具栏触发）
  */
 export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConfigAdminApi.CommissionConfigDto>['columns'] {
   return [
+    { type: 'checkbox', width: 50, fixed: 'left' },
     {
       field: 'name',
       title: $t('commission.configName'),
       minWidth: 170,
+      fixed: 'left',
       showOverflow: true,
     },
     {
@@ -369,22 +429,29 @@ export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConf
         getBizTypeLabels(cellValue as CommissionConfigAdminApi.BizType[]),
     },
     {
-      field: 'baseSalary',
-      title: $t('commission.baseSalary'),
-      width: 140,
-      formatter: ({ row }) =>
-        formatBaseSalary(row as CommissionConfigAdminApi.CommissionConfigDto),
+      field: 'applyUsers',
+      title: $t('commission.applyUsers'),
+      minWidth: 150,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({ cellValue }) =>
+        ((cellValue as CommissionConfigAdminApi.UserSimpleDto[]) ?? [])
+          .map((u) => u.nickName)
+          .join('、'),
     },
     {
-      field: 'ruleSummary',
-      title: $t('commission.rulesSummary'),
-      minWidth: 170,
+      field: 'applyOrgs',
+      title: $t('commission.applyOrgs'),
+      minWidth: 150,
       showOverflow: true,
-      // 行上无此字段，仅列标识，禁排序；完整规则双击编辑弹窗查看
       sortable: false,
-      formatter: ({ row }) =>
-        buildRuleSummary(row as CommissionConfigAdminApi.CommissionConfigDto)
-          .short,
+      formatter: ({ cellValue }) =>
+        (
+          (cellValue as CommissionConfigAdminApi.OrganizationUnitSimpleDto[]) ??
+          []
+        )
+          .map((o) => o.name)
+          .join('、'),
     },
     {
       field: 'creatorUserName',

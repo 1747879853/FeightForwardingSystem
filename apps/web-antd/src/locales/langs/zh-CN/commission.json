@@ -1,6 +1,10 @@
 {
   "salesTab": "销售提成配置",
   "operationTab": "操作提成配置",
+  "search": {
+    "keyword": "关键字",
+    "keywordPlaceholder": "配置名称或备注"
+  },
   "applyUsers": "适用人",
   "applyOrgs": "适用组织",
   "configName": "配置名称",

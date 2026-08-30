@@ -222,6 +222,7 @@ const tickets = computed(() => detail.value?.tickets ?? []);
           <Table
             bordered
             size="small"
+            :scroll="{ x: 'max-content' }"
             :columns="ticketColumns"
             :data-source="tickets"
             :pagination="false"

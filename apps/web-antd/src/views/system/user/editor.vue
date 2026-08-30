@@ -6,12 +6,10 @@ import { Page } from '@vben/common-ui';
 import { useTabs } from '@vben/hooks';
 
 import { getUser } from '#/api';
-import { CommissionConfigAdminApi } from '#/api/commission/commission-config-admin';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 
 import BankAccountPanel from './modules/bank-account-panel.vue';
-import CommissionConfigPanel from './modules/commission/commission-config-panel.vue';
 import PasswordPanel from './modules/password-panel.vue';
 import RoleAssignPanel from './modules/role-assign-panel.vue';
 import UserForm from './modules/user-form.vue';
@@ -24,8 +22,6 @@ type TabKey =
   | 'viewPermissions'
   | 'roles'
   | 'bankAccount'
-  | 'salesCommission'
-  | 'operationCommission'
   | 'password';
 
 type FormExpose = {
@@ -79,8 +75,6 @@ const tabs = ref<{ key: TabKey; label: string }[]>([
   { key: 'viewPermissions', label: $t('system.user.viewPermissions') },
   { key: 'roles', label: $t('system.user.setRoles') },
   { key: 'bankAccount', label: $t('system.user.bankAccountAction') },
-  { key: 'salesCommission', label: $t('commission.salesTab') },
-  { key: 'operationCommission', label: $t('commission.operationTab') },
   { key: 'password', label: $t('system.user.changePassword') },
 ]);
 
@@ -184,22 +178,6 @@ const getContentTabStyle = (isActive: boolean) =>
             <BankAccountPanel
               v-if="activeTab === 'bankAccount' && userId != null"
               :user-id="userId"
-            />
-          </KeepAlive>
-          <KeepAlive include="UserCommissionConfigPanel">
-            <CommissionConfigPanel
-              v-if="activeTab === 'salesCommission' && userId != null"
-              :user-id="userId"
-              :commission-type="CommissionConfigAdminApi.CommissionType.Sales"
-            />
-          </KeepAlive>
-          <KeepAlive include="UserCommissionConfigPanel">
-            <CommissionConfigPanel
-              v-if="activeTab === 'operationCommission' && userId != null"
-              :user-id="userId"
-              :commission-type="
-                CommissionConfigAdminApi.CommissionType.Operation
-              "
             />
           </KeepAlive>
           <KeepAlive include="UserPasswordPanel">
