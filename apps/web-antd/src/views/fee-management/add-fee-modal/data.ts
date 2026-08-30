@@ -80,8 +80,6 @@ export interface AddFeeDrawerProps {
   settlementCurrencyId?: number | null;
   /** 结算币别名称（锁定时展示，通常 `currencyCode`） */
   settlementCurrencyName?: string;
-  /** 申请主体所属公司本位币，汇率预填与业务联系单同口径 */
-  localCurrencyId?: null | number;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
   /** 已选费用本次申请金额（禁选行展示，不传则不显示默认值） */
@@ -132,8 +130,6 @@ export interface FeeRowData extends PaymentApplicationAdminApi.OrderFeeDto {
 export interface CurrencyInfo {
   currencyId: number;
   currencyCode: string;
-  /** 汇率匹配日 YYYY-MM-DD；空则今天。仅折算弹窗使用 */
-  asOf?: string;
 }
 
 /** 业务 + 结算对象复合分组键 */

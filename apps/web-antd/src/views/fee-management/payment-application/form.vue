@@ -53,7 +53,6 @@ import {
 } from '#/adapter/component';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
-import { resolveOrganizationLocalCurrency } from '#/api/system/organization-unit';
 import {
   addPaymentApplication,
   editPaymentApplication,
@@ -166,21 +165,6 @@ const submitTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const companyName = ref('-');
 const orgId = ref<number | undefined>(getMyDefaultOrgId());
-/** 申请主体所属公司本位币，添加费用折算汇率与业务联系单同口径 */
-const localCurrencyId = ref<null | number>(null);
-watch(
-  orgId,
-  async (id) => {
-    if (id == null) {
-      localCurrencyId.value = null;
-      return;
-    }
-    const { localCurrencyId: resolved } =
-      await resolveOrganizationLocalCurrency(id);
-    localCurrencyId.value = resolved;
-  },
-  { immediate: true },
-);
 const applicationNo = ref('');
 const displayApplicationNo = computed(() =>
   isEdit.value ? applicationNo.value : t('autoGenerate'),
@@ -592,18 +576,13 @@ function toggleGroupSelection(group: OrderGroupRow, checked: boolean) {
 
 // --- Add / Remove fee ---
 
-async function handleOpenAddFee() {
+function handleOpenAddFee() {
   const currencyId = settlementCurrencyId.value;
   const currencyName =
     settlementCurrencyName.value ||
     (currencyId != null
       ? resolveSettlementCurrencyNameFromSelect(currencyId)
       : '');
-  if (orgId.value != null) {
-    const { localCurrencyId: resolved } =
-      await resolveOrganizationLocalCurrency(orgId.value);
-    localCurrencyId.value = resolved;
-  }
   addFeeDrawerRef.value?.open({
     enableInvoiceProcess: true,
     invoiceProcess: invoiceProcess.value,
@@ -611,7 +590,6 @@ async function handleOpenAddFee() {
     settlementName: settlementName.value || undefined,
     settlementCurrencyId: currencyId,
     settlementCurrencyName: currencyName || undefined,
-    localCurrencyId: localCurrencyId.value,
     selectedFeeIds: feeDetailRows.value.map((r) => r.feeId),
     selectedAppliedAmounts: Object.fromEntries(
       feeDetailRows.value.map((r) => [r.feeId, r.appliedAmount ?? 0]),
@@ -960,9 +938,6 @@ async function loadEditData() {
     remark.value = detail.remark ?? '';
 
     orgId.value = detail.orgId ?? undefined;
-    if (detail.localCurrencyId != null) {
-      localCurrencyId.value = detail.localCurrencyId;
-    }
     if (detail.orgs?.length) {
       companyName.value = formatOrgPathLabel(detail.orgs) || '-';
     }

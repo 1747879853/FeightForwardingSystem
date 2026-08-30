@@ -28,8 +28,8 @@
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示提单号（多票逗号拼接）；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-29 |
-| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；可从海出/海进/空出应收应付带 orderFeeIds 预填；指定结算币别折算汇率与业务联系单同口径（公司本位币+开船日+应付 crValue）；添加费用抽屉可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-30 |
-| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；指定结算币别折算汇率与业务联系单同口径；添加费用抽屉可筛业务类型并按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-30 |
+| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；可从海出/海进/空出应收应付带 orderFeeIds 预填；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-30 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可筛业务类型并按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-30 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-08-19 |

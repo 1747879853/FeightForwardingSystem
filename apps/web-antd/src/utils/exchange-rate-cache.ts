@@ -127,6 +127,62 @@ export function ensureExchangeRateCache(forceRefresh = false): Promise<void> {
   return inflight;
 }
 
+function pickQuotedRate(
+  currencyId?: null | number | string,
+  quoteCurrencyId?: null | number | string,
+  asOf?: Date | null | number | string,
+): ExchangeRateAdminApi.ExchangeRateDto | undefined {
+  const key = String(currencyId ?? '');
+  const quoteKey = String(quoteCurrencyId ?? '');
+  if (key === '' || quoteKey === '') return undefined;
+  const list = rateCache.value.get(key);
+  if (!list || list.length === 0) return undefined;
+  const asOfTime = resolveAsOfTime(asOf);
+  let rate: ExchangeRateAdminApi.ExchangeRateDto | undefined;
+  for (const item of list) {
+    if (String(item.localCurrencyId ?? '') !== quoteKey) continue;
+    if (!isExchangeRateEffective(item, asOfTime)) continue;
+    if (!rate || isPreferred(item, rate)) rate = item;
+  }
+  return rate;
+}
+
+function pickEffectiveRate(
+  currencyId?: null | number | string,
+  localCurrencyId?: null | number | string,
+  asOf?: Date | null | number | string,
+): ExchangeRateAdminApi.ExchangeRateDto | undefined {
+  const quoted = pickQuotedRate(currencyId, localCurrencyId, asOf);
+  if (quoted) return quoted;
+  const key = String(currencyId ?? '');
+  if (key === '') return undefined;
+  const list = rateCache.value.get(key);
+  if (!list || list.length === 0) return undefined;
+  const asOfTime = resolveAsOfTime(asOf);
+  let rate: ExchangeRateAdminApi.ExchangeRateDto | undefined;
+  for (const item of list) {
+    if (!isExchangeRateEffective(item, asOfTime)) continue;
+    if (!rate || isPreferred(item, rate)) rate = item;
+  }
+  return rate;
+}
+
+/**
+ * 付费申请指定结算币别：只取「费用币别兑结算币」且**今天**有效的资料，
+ * 不交叉折算、不按开船日。未维护则 undefined。
+ */
+export function peekQuotedExchangeRate(
+  currencyId?: null | number | string,
+  paySide?: null | number,
+  quoteCurrencyId?: null | number | string,
+  asOf?: Date | null | number | string,
+): number | undefined {
+  const rate = pickQuotedRate(currencyId, quoteCurrencyId, asOf);
+  if (!rate) return undefined;
+  const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
+  return value ?? undefined;
+}
+
 /**
  * 读取已加载缓存中的生效汇率：应收取 drValue、应付取 crValue。
  * 缓存未就绪、该币别未维护、或记录在匹配日已不在有效期内时返回 undefined。
@@ -140,26 +196,7 @@ export function peekExchangeRate(
   localCurrencyId?: null | number | string,
   asOf?: Date | null | number | string,
 ): number | undefined {
-  const key = String(currencyId ?? '');
-  if (key === '') return undefined;
-  const list = rateCache.value.get(key);
-  if (!list || list.length === 0) return undefined;
-  const asOfTime = resolveAsOfTime(asOf);
-  const localKey = String(localCurrencyId ?? '');
-  let rate: ExchangeRateAdminApi.ExchangeRateDto | undefined;
-  if (localKey !== '') {
-    for (const item of list) {
-      if (String(item.localCurrencyId ?? '') !== localKey) continue;
-      if (!isExchangeRateEffective(item, asOfTime)) continue;
-      if (!rate || isPreferred(item, rate)) rate = item;
-    }
-  }
-  if (!rate) {
-    for (const item of list) {
-      if (!isExchangeRateEffective(item, asOfTime)) continue;
-      if (!rate || isPreferred(item, rate)) rate = item;
-    }
-  }
+  const rate = pickEffectiveRate(currencyId, localCurrencyId, asOf);
   if (!rate) return undefined;
   const value = Number(paySide) === 1 ? rate.crValue : rate.drValue;
   return value ?? undefined;

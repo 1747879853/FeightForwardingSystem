@@ -707,7 +707,7 @@ function handleExchangeRateConfirm(rateMap: Map<string, number>) {
   if (!validateSameSettlement(selected)) return;
   if (!validateAppliedAmounts(selected)) return;
   for (const fee of selected) {
-    const rate = rateMap.get(currencyRatePairKey(fee.currencyId, fee.etd));
+    const rate = rateMap.get(currencyRatePairKey(fee.currencyId));
     if (rate !== undefined) {
       fee.exchangeRate = rate;
     }
@@ -1099,7 +1099,6 @@ defineExpose({ open: openDrawer });
       :currencies="pendingCurrencies"
       :settlement-currency-id="drawerProps.settlementCurrencyId"
       :settlement-currency-name="settlementCurrencyName"
-      :local-currency-id="drawerProps.localCurrencyId"
       @confirm="handleExchangeRateConfirm"
       @update:open="(val) => (exchangeRateModalVisible = val)"
     />

@@ -5,17 +5,15 @@ import { InputNumber, message, Modal } from 'ant-design-vue';
 
 import {
   ensureExchangeRateCache,
-  peekExchangeRate,
+  peekQuotedExchangeRate,
 } from '#/utils/exchange-rate-cache';
 
 import type { CurrencyInfo } from './data';
 import {
-  calcOriginalToSettlementRate,
-  currencyRatePairKey,
-  fallbackLocalCurrencyRate,
-  inverseRate,
   PAYABLE_PAY_SIDE,
   RATE_PRECISION,
+  currencyRatePairKey,
+  inverseRate,
 } from './exchange-rate-convert';
 
 interface RatePair {
@@ -23,7 +21,6 @@ interface RatePair {
   currencyId: number;
   originalCode: string;
   settlementCode: string;
-  asOf?: string;
   /** 1 原币 = ? 结算币（写入费用申请汇率） */
   originalToSettlement: null | number;
   /** 1 结算币 = ? 原币（展示用，与上一字段互为倒数） */
@@ -35,8 +32,6 @@ const props = defineProps<{
   currencies: CurrencyInfo[];
   settlementCurrencyId?: number | null;
   settlementCurrencyName?: string;
-  /** 申请主体所属公司本位币；与业务联系单同一套 peek 口径 */
-  localCurrencyId?: null | number;
 }>();
 
 const emit = defineEmits<{
@@ -46,49 +41,28 @@ const emit = defineEmits<{
 
 const pairs = ref<RatePair[]>([]);
 
-/** 1 该币 = n 公司本位币：汇率表优先，未维护且是本位币才锁 1 */
-function unitLocalRate(
-  currencyId?: null | number | string,
-  asOf?: Date | null | number | string,
-): number | undefined {
-  const tableRate = peekExchangeRate(
-    currencyId,
-    PAYABLE_PAY_SIDE,
-    props.localCurrencyId,
-    asOf,
-  );
-  return fallbackLocalCurrencyRate(
-    tableRate,
-    currencyId,
-    props.localCurrencyId,
-  );
-}
-
 function buildPair(currency: CurrencyInfo): RatePair {
   const settlementCode = props.settlementCurrencyName || '结算币别';
-  const asOf = currency.asOf;
-  const originalLocal = unitLocalRate(currency.currencyId, asOf);
-  const settlementLocal = unitLocalRate(props.settlementCurrencyId, asOf);
-  const originalToSettlement = calcOriginalToSettlementRate(
-    originalLocal,
-    settlementLocal,
+  const originalToSettlement = peekQuotedExchangeRate(
+    currency.currencyId,
+    PAYABLE_PAY_SIDE,
+    props.settlementCurrencyId,
   );
   return {
-    pairKey: currencyRatePairKey(currency.currencyId, asOf),
+    pairKey: currencyRatePairKey(currency.currencyId),
     currencyId: currency.currencyId,
     originalCode: currency.currencyCode || '原币',
     settlementCode,
-    asOf,
     originalToSettlement: originalToSettlement ?? null,
     settlementToOriginal: inverseRate(originalToSettlement),
   };
 }
 
 watch(
-  () => [props.open, props.currencies, props.localCurrencyId] as const,
+  () => [props.open, props.currencies, props.settlementCurrencyId] as const,
   async ([open]) => {
     if (!open) return;
-    // 打开时强制刷新；预填口径与业务联系单一致：公司本位币 + 开船日/今天 + 应付 crValue
+    // 打开时强制刷新；只预填「费用币别兑结算币」且今天有效的应付汇率
     await ensureExchangeRateCache(true);
     if (!props.open) return;
     pairs.value = props.currencies.map((currency) => buildPair(currency));
@@ -158,9 +132,6 @@ function handleCancel() {
       </div>
       <div class="space-y-4">
         <div v-for="pair in pairs" :key="pair.pairKey" class="rate-pair">
-          <div v-if="pair.asOf" class="rate-pair__as-of">
-            按开船日期 {{ pair.asOf }} 匹配
-          </div>
           <div class="rate-row">
             <span class="rate-row__lead">1</span>
             <span class="rate-row__code">{{ pair.settlementCode }}</span>
@@ -206,11 +177,6 @@ function handleCancel() {
   background: #f8fafc;
   border: 1px solid #e8eef6;
   border-radius: 8px;
-}
-
-.rate-pair__as-of {
-  font-size: 12px;
-  color: #64748b;
 }
 
 .rate-row {
