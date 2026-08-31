@@ -3,6 +3,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
+import { TaskStatus } from '#/api/audit-approval/payment-review-admin';
 import { $t } from '#/locales';
 import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { isSpecifiedCurrencyApplication } from '#/views/fee-management/add-fee-modal/data';
@@ -190,6 +191,8 @@ export function usePaymentReviewFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'TaskStatus',
       label: $t('auditApproval.task.status'),
+      /** 默认审核中，首屏只看待审；重置也回到该值，清空后可看全部 */
+      defaultValue: TaskStatus.Auditing,
       componentProps: {
         allowClear: true,
         options: getTaskStatusOptions().map(({ label, value }) => ({

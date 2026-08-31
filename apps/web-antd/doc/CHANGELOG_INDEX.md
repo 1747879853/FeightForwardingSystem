@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-31 付费申请审批列表默认筛审核中](./changelogs/change-log-2026-08-31-payment-review-default-auditing.md)
 - [2026-08-31 站点健康检查脚本入库 scripts](./changelogs/change-log-2026-08-31-site-health-check-in-scripts.md)
 - [2026-08-31 派车、业务联系单与费用数量对齐 4 位小数](./changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md)
 - [2026-08-31 毛重体积皮重改为最多 4 位小数且不展示末尾 0](./changelogs/change-log-2026-08-31-weight-volume-4-decimal.md)
