@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$checkScript = Join-Path $RepoRoot '.cursor\skills\site-health-check\scripts\check-sites.ps1'
+$checkScript = Join-Path $PSScriptRoot 'check-sites.ps1'
 if (-not (Test-Path -LiteralPath $checkScript -PathType Leaf)) {
   throw "Site health check script was not found: $checkScript"
 }

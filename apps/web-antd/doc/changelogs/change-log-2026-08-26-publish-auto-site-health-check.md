@@ -6,7 +6,7 @@
 
 ## 核心逻辑变更
 
-- 新增 `scripts/invoke-site-health-check.ps1`，封装 `.cursor/skills/site-health-check/scripts/check-sites.ps1`。
+- 新增 `scripts/invoke-site-health-check.ps1`，封装同目录 `check-sites.ps1`（对照 `scripts/sites.json`）。
 - `publish-web.ps1` 在 MSDeploy 成功后探测当前环境；`PackageOnly` / `WhatIfOnly` 不探测。
 - `publish-all-web.ps1` 给子进程传 `-SkipHealthCheck`，避免并行过程中互相干扰，全部 SUCCESS 后再测全集。
 - 增加 `-SkipHealthCheck` 可跳过。探测失败则发布脚本非 0 退出。

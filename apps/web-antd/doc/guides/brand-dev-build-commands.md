@@ -80,7 +80,7 @@ pnpm deploy:antd:demo
 
 脚本会校验 `dist-<环境>/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
 
-`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌**全量并行**构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy（默认不限并发，有几套发几路）。全部 SUCCESS 后自动跑 `site-health-check`，核对各站标题和 `_app.config.js` 后端地址。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
+`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌**全量并行**构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy（默认不限并发，有几套发几路）。全部 SUCCESS 后自动跑 `scripts/check-sites.ps1`（经 `invoke-site-health-check.ps1`），对照 `scripts/sites.json` 核对各站标题和 `_app.config.js` 后端地址。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
 
 ## 环境文件
 
@@ -157,6 +157,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Chore` | 站点健康检查脚本入库 `scripts/`，发布探测不再依赖本机 Cursor skill | `check-sites.ps1` 与 `sites.json` 随仓库提供；`invoke-site-health-check.ps1` 只调同目录脚本 |
 | 2026-08-28 | `Chore` | 本地默认 `pnpm dev` / `dev:antd` 后端改到浩瀚远洋 `http://47.105.61.173:84` | 仅 `.env.development` 静态根与 `vite.config.mts` 默认代理；标题/Logo 仍为佳越测试；`jytest`/`jiayue`/`demo` 按 mode 保留各自后端 |
 | 2026-08-26 | `Chore` | 本地发布成功后自动跑 `site-health-check`，核对标题与后端 API | 单品牌 `publish-web.ps1` 发完测该站；`deploy:antd:all` 子进程跳过探测，全部 SUCCESS 后再测全集；`-SkipHealthCheck` 可关 |
 | 2026-08-26 | `Chore` | `deploy:antd:all` 默认不再限制并发，有几套环境就并行几路 | `ThrottleLimit=0` 解析为 `$environments.Count`；机器吃紧仍可手动 `-ThrottleLimit 2` |
