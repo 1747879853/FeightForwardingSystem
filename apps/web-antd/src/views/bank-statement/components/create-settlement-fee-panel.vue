@@ -97,6 +97,27 @@ const tableRows = computed(() =>
   orderList.value.map((group) => buildOrderRow(group)),
 );
 
+const feeOrderColumns = [
+  {
+    key: 'feeSelect',
+    title: '',
+    width: 48,
+    align: 'center' as const,
+    className: 'fee-select-col',
+  },
+  ...orderColumns,
+];
+
+type FeeRow = ReceiveSettlementAdminApi.ReceiveSettlementFeeDto;
+
+function getRowFees(record: { orderFees?: FeeRow[] }) {
+  return record.orderFees ?? [];
+}
+
+const pageFees = computed(() =>
+  orderList.value.flatMap((group) => group.orderFees ?? []),
+);
+
 const currentSelectionTotal = computed(() =>
   selectedFeeIds.value.reduce(
     (sum, feeId) => sum + (settledAmountMap.get(feeId) ?? 0),
@@ -223,6 +244,15 @@ function isGroupIndeterminate(
 ) {
   const checkedCount = fees.filter((fee) => isFeeChecked(fee)).length;
   return checkedCount > 0 && checkedCount < fees.length;
+}
+
+const isPageAllChecked = computed(() => isGroupAllChecked(pageFees.value));
+const isPageIndeterminate = computed(() =>
+  isGroupIndeterminate(pageFees.value),
+);
+
+function handleSelectAllPageFees(selected: boolean) {
+  handleSelectGroupFees(selected, pageFees.value);
 }
 
 function handleSelectFee(
@@ -407,7 +437,7 @@ defineExpose({ reload });
     </div>
 
     <NestedDataTable
-      :columns="orderColumns"
+      :columns="feeOrderColumns"
       :data-source="tableRows"
       :loading="loading"
       :max-height="480"
@@ -417,8 +447,30 @@ defineExpose({ reload });
       row-key="id"
       v-model:expanded-row-keys="expandedRowKeys"
     >
+      <template #outerHeaderCell="{ column }">
+        <template v-if="column.key === 'feeSelect'">
+          <Checkbox
+            :checked="isPageAllChecked"
+            :indeterminate="isPageIndeterminate"
+            :disabled="pageFees.length === 0"
+            @change="(e) => handleSelectAllPageFees(e.target.checked)"
+          />
+        </template>
+        <template v-else>{{ column.title }}</template>
+      </template>
+
       <template #outerBodyCell="{ column, record, text }">
-        <template v-if="column.key === 'totalRemainingAmount'">
+        <template v-if="column.key === 'feeSelect'">
+          <Checkbox
+            :checked="isGroupAllChecked(getRowFees(record))"
+            :indeterminate="isGroupIndeterminate(getRowFees(record))"
+            :disabled="getRowFees(record).length === 0"
+            @change="
+              (e) => handleSelectGroupFees(e.target.checked, getRowFees(record))
+            "
+          />
+        </template>
+        <template v-else-if="column.key === 'totalRemainingAmount'">
           {{ formatAmount(record.totalRemainingAmount) }}
         </template>
         <template v-else>
@@ -545,6 +597,12 @@ defineExpose({ reload });
   display: flex;
   gap: 12px;
   align-items: flex-start;
+}
+
+.create-settlement-fee-panel :deep(.fee-select-col) {
+  padding-right: 8px;
+  padding-left: 8px;
+  overflow: visible;
 }
 
 .fee-toolbar__actions {

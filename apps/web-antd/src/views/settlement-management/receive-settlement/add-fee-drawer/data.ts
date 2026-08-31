@@ -256,6 +256,7 @@ export const feeItemColumns = [
     title: '',
     width: 48,
     align: 'center' as const,
+    className: 'fee-select-col',
   },
   {
     dataIndex: 'feeCodeName',

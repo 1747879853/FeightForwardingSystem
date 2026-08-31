@@ -2,7 +2,7 @@
 title: 银行流水编辑
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-08-19
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,7 +16,7 @@ last_updated: 2026-08-19
 - **流水状态锁定：** 仅 `PendingWriteOff`（待核销）状态且具备 `Admin.BankStatement.Edit` 权限时允许修改流水信息和可核销操作人；部分核销、核销完成状态隐藏保存，基础信息改为纯文本只读（不渲染禁用输入框）。
 - **关联收费核销（含发票结算）：** 列表展示核销单核心信息且不设操作列；双击行后，按 `type` 在抽屉打开费用核销或发票核销表单。
 - **可核销操作人：** Tag 展示额外指定的核销人，Popover 内增删人员与备注；流水创建财务仍可核销，最终操作授权由后端校验。新建/更换付款方时，自动带出该客户在客户管理绑定的「操作」干系人（可再手工增删）；编辑回填已保存流水时不覆盖。
-- **抽屉新增核销：** 从「关联核销单」区域的新建按钮打开宽抽屉，可切换按费用核销或按发票核销；创建成功关闭抽屉并刷新金额汇总与关联核销单。按费用选费检索为编号（委托编号/主提单号）、委托单位、开船日期、销售、操作、收付类型（默认应收）；业务行仍分列委托编号、主提单号，费用明细含收付类别。选费/选开票明细嵌套表使用 `NestedDataTable`（组内全选、表头拖拽调列宽）。
+- **抽屉新增核销：** 从「关联核销单」区域的新建按钮打开宽抽屉，可切换按费用核销或按发票核销；创建成功关闭抽屉并刷新金额汇总与关联核销单。按费用选费检索为编号（委托编号/主提单号）、委托单位、开船日期、销售、操作、收付类型（默认应收）；业务行仍分列委托编号、主提单号，费用明细含收付类别。选费/选开票明细嵌套表使用 `NestedDataTable`（业务行表头可全选当前页费用明细、行勾选该票费用、组内全选、表头拖拽调列宽）。
 - **抽屉编辑核销：** 复用收费核销独立表单的嵌入模式，支持保存、锁定、解锁、删除及明细维护；原独立路由继续保留。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -51,6 +51,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 按费用核销业务行增加勾选：表头全选当前页费用明细，行勾选该票全部费用；展开后组内全选仍可用。 | TAPD 1000914；勾选列只加在面板本地 `feeOrderColumns`，不改共享 `orderColumns`。详见 `changelogs/change-log-2026-08-31-bank-statement-fee-select-all.md`。 |
 | 2026-08-19 | `Feature` | 按费用新建核销选费区：编号合并检索，补委托单位/开船日期/销售/操作/收付类型（默认应收）；费用明细展示收付类别。业务行仍分列委托编号、主提单号。 | 检索 schema 与 `GetOrderFeeGroupAsync` 参数仍落在收费核销 `add-fee-drawer/data`，`create-settlement-fee-panel` 只隐藏结算对象/币别。详见 `changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md`。 |
 | 2026-08-11 | `Refactor` | 编辑页顶部左右分栏（左流水基础信息、右核销进度，等高）；基础信息 4 列「到账信息」，补充字段并入；锁定后纯文本只读。 | `form.vue`：`top-panels--split` + 卡片 `height:100%`；`canEditStatement` 为假时渲染 `form-text`。详见 `changelogs/change-log-2026-08-11-bank-statement-edit-split-layout.md`。 |
 | 2026-08-11 | `Refactor` | 新建核销抽屉内选费/选开票嵌套表改用 `NestedDataTable`，支持组内全选。 | `create-settlement-fee-panel` / `create-settlement-invoice-panel`；费用列配置落在 `add-fee-drawer/data`（`feeItemColumns` + `orderFees`）。详见 `changelogs/change-log-2026-08-11-create-settlement-nested-table.md`。 |
