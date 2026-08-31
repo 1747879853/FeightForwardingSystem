@@ -61,11 +61,14 @@ export function useReportPage(config: ReportPageConfig) {
     ),
   ]);
 
-  /** 根据当前列初始化默认列配置（全部可见，按原始顺序） */
+  /**
+   * 根据当前列初始化默认列配置（全部可见，按原始顺序）。
+   * 保留完整列定义（renderer/className/width 等），表格渲染时需要这些属性，
+   * 只抽取 data/title 会丢失自定义渲染器（如利润率乘 100、超期天数着色）
+   */
   function initDefaultColumnConfigs() {
     columnConfigs.value = dynamicHotColumns.value.map((col, index) => ({
-      data: col.data,
-      title: col.title,
+      ...col,
       visible: true,
       order: index,
     }));
