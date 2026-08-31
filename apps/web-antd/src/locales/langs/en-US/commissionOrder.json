@@ -14,6 +14,11 @@
     "accountDateStart": "Month From",
     "accountDateEnd": "Month To"
   },
+  "group": {
+    "commissionType": "Commission Type",
+    "user": "Commissioner",
+    "accountDate": "Commission Month"
+  },
   "status": {
     "draft": "Draft",
     "submitted": "Submitted",

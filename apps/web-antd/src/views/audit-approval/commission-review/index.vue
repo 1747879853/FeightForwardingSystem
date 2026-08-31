@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed, h, ref } from 'vue';
+import type { GroupFieldDef } from '#/components/list-grouping';
+
+import { computed, h, onActivated, onMounted, ref } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
@@ -12,10 +14,17 @@ import {
   batchAuditCommissionOrder,
   batchRejectCommissionOrder,
   CommissionOrderAdminApi,
+  getCommissionOrderTaskGroupedList,
   getCommissionOrderTaskList,
 } from '#/api/commission/commission-order-admin';
+import {
+  GroupingSettings,
+  GroupingTabs,
+  useListGrouping,
+} from '#/components/list-grouping';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
+import { useTableConfigStore } from '#/store/table-config';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import DetailModal from '#/views/commission/detail-modal.vue';
 
@@ -51,6 +60,98 @@ const openDetail = (row: CommissionReviewRow) => {
     id: row.id,
   });
   detailModalApi.open();
+};
+
+// ==================== 分组统计 ====================
+
+const tableConfigStore = useTableConfigStore();
+
+/** 分组设置持久化 key（与列表路由名 CommissionReview 对齐） */
+const GROUP_CONFIG_NAME = 'group_config_CommissionReview';
+
+const loadGroupField = async (): Promise<number | undefined> => {
+  await tableConfigStore.loadGroupConfigsOnce();
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (!hit?.setting) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(hit.setting) as { field?: null | number };
+    return typeof parsed?.field === 'number' ? parsed.field : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveGroupField = (fieldValue: number | undefined) => {
+  const setting = JSON.stringify({ field: fieldValue ?? null });
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (hit) {
+    void tableConfigStore.editGroupConfig({
+      id: hit.id,
+      name: GROUP_CONFIG_NAME,
+      setting,
+    });
+  } else {
+    void tableConfigStore.addGroupConfig({ name: GROUP_CONFIG_NAME, setting });
+  }
+};
+
+const { CommissionOrderGroupField: GroupField } = CommissionOrderAdminApi;
+
+/**
+ * 提成审核页分组字段配置（与后端 CommissionOrderGroupField 对齐，三种维度全支持）。
+ * 分组统计与待我审核列表同一套筛选条件、同样不过数据权限，分组条数与列表 TotalCount 对得上。
+ * 提成月分组项 id 为该月1号的完整日期，点击后同时回填提成月起止去查该月列表。
+ */
+const REVIEW_GROUP_FIELDS: GroupFieldDef<CommissionOrderAdminApi.CommissionOrderGroupField>[] =
+  [
+    {
+      value: GroupField.CommissionType,
+      label: $t('commissionOrder.group.commissionType'),
+      paramKey: 'commissionType',
+      searchField: 'commissionType',
+    },
+    {
+      value: GroupField.User,
+      label: $t('commissionOrder.group.user'),
+      paramKey: 'commissionUserId',
+      searchField: 'commissionUserId',
+    },
+    {
+      value: GroupField.AccountDate,
+      label: $t('commissionOrder.group.accountDate'),
+      paramKey: 'accountDateStart',
+      searchField: 'accountDateRange',
+    },
+  ];
+
+const grouping =
+  useListGrouping<CommissionOrderAdminApi.CommissionOrderGroupField>({
+    fields: REVIEW_GROUP_FIELDS,
+    getGridApi: () => gridApi,
+    fetchGroups: async (baseParams, field) => {
+      // 与待我审核列表同一套筛选条件，只是换成分组接口
+      const items = await getCommissionOrderTaskGroupedList({
+        ...baseParams,
+        groupField: field,
+      });
+      return items ?? [];
+    },
+    persist: {
+      load: loadGroupField,
+      save: saveGroupField,
+    },
+  });
+
+const onGroupFieldChange = (
+  value: CommissionOrderAdminApi.CommissionOrderGroupField | undefined,
+) => {
+  if (value === undefined) {
+    grouping.disable();
+  } else {
+    grouping.enableField(value);
+  }
 };
 
 // ==================== 选中行与状态判定 ====================
@@ -115,11 +216,23 @@ const toMonth = (value: unknown): string | undefined => {
 const mapParams = (formValues: Record<string, any>) => {
   const { accountDateRange, ...rest } = formValues;
   const [start, end] = getRangeValue(accountDateRange);
-  return {
+  const baseParams = {
     ...rest,
     accountDateEnd: toMonth(end),
     accountDateStart: toMonth(start),
   };
+  const decorated = grouping.decorateListParams(baseParams);
+  // 提成月分组：分组项 id 为该月1号的完整日期，同时回填提成月起止（后端只取年月、含当月）
+  const selectedId = grouping.selectedItemId.value;
+  if (
+    grouping.enabledField.value?.value === GroupField.AccountDate &&
+    typeof selectedId === 'string' &&
+    selectedId
+  ) {
+    decorated.accountDateStart = selectedId;
+    decorated.accountDateEnd = selectedId;
+  }
+  return decorated;
 };
 
 /** 待我审核列表：提成单信息平铺为行，行 id 保持提成单id（审核/驳回接口传它）；任务级字段另存 */
@@ -171,6 +284,9 @@ const [Grid, gridApi] = useVbenVxeGrid<CommissionReviewRow>({
       enabled: true,
     },
     proxyConfig: {
+      // 关闭自动加载：由 onMounted 先恢复持久化的分组字段再 submitForm 首查，
+      // 避免分组恢复与首查竞态导致分组数据拉不到
+      autoLoad: false,
       ajax: {
         query: createPagedListQuery(fetchList, {
           // 待我审核列表默认按提交时间倒序，最新提上来的在前（后端默认 CreationTime DESC）
@@ -197,6 +313,26 @@ const reloadGrid = async () => {
   await gridApi.reload();
   syncSelectedRows();
 };
+
+onMounted(async () => {
+  // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
+  // 从而在同一次查询中拉取分组数据
+  await grouping.restorePersistedField();
+  // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
+  // 后续分页/排序走 gridApi.query 时才能带上同一套条件
+  await gridApi.formApi.submitForm();
+});
+
+// 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。
+// 首次激活与 onMounted 首查重合，跳过以避免重复请求。
+let firstActivate = true;
+onActivated(() => {
+  if (firstActivate) {
+    firstActivate = false;
+    return;
+  }
+  grouping.refreshGroupData();
+});
 
 // ==================== 批量审核 ====================
 
@@ -335,7 +471,20 @@ const handleViewWorkflow = () => {
 
 <template>
   <Page auto-content-height>
-    <Grid :table-title="t('title')">
+    <Grid>
+      <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算 -->
+      <template #toolbar-actions>
+        <GroupingTabs
+          v-if="grouping.isGrouping.value"
+          :items="grouping.groupItems.value"
+          :selected-id="grouping.selectedItemId.value"
+          :loading="grouping.loading.value"
+          @select="grouping.selectItem"
+        />
+        <div v-else class="mr-1 pl-1 text-[1rem]">
+          {{ t('title') }}
+        </div>
+      </template>
       <template #toolbar-tools>
         <Space>
           <Button
@@ -364,6 +513,11 @@ const handleViewWorkflow = () => {
             {{ t('postReject') }}
           </Button>
           <Button @click="handleViewWorkflow">{{ t('workflow') }}</Button>
+          <GroupingSettings
+            :fields="grouping.fields"
+            :value="grouping.enabledField.value?.value"
+            @change="onGroupFieldChange"
+          />
         </Space>
       </template>
     </Grid>
