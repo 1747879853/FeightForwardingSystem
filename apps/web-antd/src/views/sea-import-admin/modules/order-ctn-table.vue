@@ -21,6 +21,10 @@ import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { $t } from '#/locales';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 type SpecOption = CodeGoodsAdminApi.CodeGoodsSpecSimpleDto;
 type ModelOption = CodeGoodsAdminApi.CodeGoodsModelSimpleDto;
@@ -41,7 +45,7 @@ const dataSource = computed({
 const formatSummaryNumber = (value: number) => {
   if (!Number.isFinite(value)) return '0';
   if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2).replace(/\.?0+$/, '');
+  return formatWeightVolume(value);
 };
 
 const ctnNameById = ref<Record<string, string>>({});
@@ -428,7 +432,8 @@ watch(
             class="w-full"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'grossWeight', v)"
           />
         </template>
@@ -439,7 +444,8 @@ watch(
             class="w-full"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'tareWeight', v)"
           />
         </template>
@@ -450,7 +456,8 @@ watch(
             class="w-full"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'netWeight', v)"
           />
         </template>
@@ -461,7 +468,8 @@ watch(
             class="w-full"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'volume', v)"
           />
         </template>

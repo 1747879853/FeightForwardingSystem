@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-25
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -60,6 +60,7 @@ last_updated: 2026-08-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 主单毛重/体积/净重合计、集装箱毛重/皮重/净重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-25 | `Fix` | 码头下拉改为行业类别「码头」`t`；转站日期改为到港+6；集装箱净重不再自动计算；贸易方式改为枚举中心 `TradeMode`；主提单号与保险公司换位。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-23 | `Feature` | 新建页接入未保存守卫并 KeepAlive。 | `keepAliveName: SeaImportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Feature` | 干系人下拉改为全量用户缓存；未选归属组织时看当前用户各公司，选了组织后看该销售组织所属公司。客户默认干系人仍带回且显示昵称。 | 与编辑页共用 `form.vue` 的 `company-ids`。详见 `changelogs/change-log-2026-08-19-user-select-full-cache-company-filter.md`。 |

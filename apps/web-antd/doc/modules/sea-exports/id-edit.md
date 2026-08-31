@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -112,6 +112,10 @@ last_updated: 2026-08-30
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
+| **毛重 KGS / 体积 CBM** | 整票毛重、体积。 | `transportOrder.kgs` / `cbm`；库列 `decimal(20,4)` | **触发/依赖：** 输入最多 4 位小数，末尾 0 不展示。 | 可选，非负。 |
+| **集装箱毛重 / 皮重 / 体积** | 箱明细重量体积；分单 kgs/cbm 与分单装箱同步同一精度。 | `orderCtns.grossWeight/tareWeight/volume`；分单 `kgs/cbm` | **触发/依赖：** 与主单同一套 `weight-volume-precision`。 | 可选，非负。 |
+| **派车箱毛重 / 皮重 / 体积** | 派车明细重量体积。 | `dispatch/index.vue` 箱行 `grossWeight/tareWeight/volume` | **触发/依赖：** 与主单同一套 4 位去尾 0。 | 可选，非负。 |
+| **费用.数量** | 计价数量；单位为毛重/尺码时等于 Kgs/Cbm。 | `OrderFee.Quantity`；库列 `decimal(20,4)` | **触发/依赖：** Handsontable 与编辑弹窗最多 4 位、去尾 0；金额仍 2 位。 | 可选，非负。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 | **监装工单备注（详细说明）** | 监装 Tab 文本框；管理端新建/编辑填写。 | `LoadingOrderAdmin` 的 `remark`；`AddAsync` / `EditAsync` / `DetailBySeaExportIdAsync` | **触发/依赖：** 详情回填 `form.remark`，保存随工单提交；与拒接原因 `rejectReason`、监装要求主/子表 `remark` 无关。 | 可选，最长 1024；空串按 `null` 提交；仅未提交可改。 |
 | **监装推荐堆场/师傅** | 点「推荐」弹出该到货日该船公司已排师傅的堆场，选中回填。 | `LoadingOrderAdmin/GetYardUsersAsync` | **触发/依赖：** 要有预计到货时间 + 已保存 `carrierId`；回填覆盖当前堆场和 `userIds`。 | 接口无 id；堆场名对不上当前船公司则不回填。 |
@@ -142,6 +146,8 @@ last_updated: 2026-08-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-31 | `Fix` | 派车箱毛重/皮重/体积、应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 后端同日扩到派车与 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
+| 2026-08-31 | `Fix` | 主单毛重/体积、集装箱毛重/皮重/体积、分单 kgs/cbm 及分单装箱改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。对齐后端 4 位小数。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-30 | `Change` | 费用汇率只认「费用币别兑所属公司本位币」，对不上留空；本页原先已是严格匹配，与缓存去掉跨本位币兜底对齐。 | 共用 `exchange-rate-cache` 删掉宽松兜底和 `strictLocalCurrency`。详见 `changelogs/change-log-2026-08-30-exchange-rate-no-local-fallback.md`。 |
 | 2026-08-28 | `Feature` | 应收应付 Tab 新增「创建付费申请」：勾选应付费用跳转付费申请新增并预填（需 `Admin.PaymentApplication.Add`）。 | 与海进/空出共用 `open-from-order-fees.ts`；详见 `changelogs/change-log-2026-08-28-order-fee-create-payment-application.md`。 |
 | 2026-08-25 | `Feature` | 附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。 | TAPD `#1161580498001000779` 附件上传统一。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |

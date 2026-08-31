@@ -36,6 +36,10 @@ import {
 } from '#/components/print-format';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 import addTabIcon from './assets/separate-bill-add.svg';
 
@@ -1120,7 +1124,8 @@ watch(seaExportId, () => {
                       class="w-full"
                       :min="0"
                       :controls="false"
-                      :precision="2"
+                      :precision="WEIGHT_VOLUME_PRECISION"
+                      :formatter="formatWeightVolume"
                       @update:value="
                         (v) => updateCtnRow(index, 'grossWeight', v)
                       "
@@ -1133,7 +1138,8 @@ watch(seaExportId, () => {
                       class="w-full"
                       :min="0"
                       :controls="false"
-                      :precision="3"
+                      :precision="WEIGHT_VOLUME_PRECISION"
+                      :formatter="formatWeightVolume"
                       @update:value="(v) => updateCtnRow(index, 'volume', v)"
                     />
                   </template>
@@ -1144,7 +1150,8 @@ watch(seaExportId, () => {
                       class="w-full"
                       :min="0"
                       :controls="false"
-                      :precision="2"
+                      :precision="WEIGHT_VOLUME_PRECISION"
+                      :formatter="formatWeightVolume"
                       @update:value="
                         (v) => updateCtnRow(index, 'tareWeight', v)
                       "
@@ -1364,7 +1371,8 @@ watch(seaExportId, () => {
                 class="w-full"
                 :min="0"
                 :controls="false"
-                :precision="2"
+                :precision="WEIGHT_VOLUME_PRECISION"
+                :formatter="formatWeightVolume"
                 @update:value="(v) => (formData.kgs = v)"
               />
             </div>
@@ -1378,7 +1386,8 @@ watch(seaExportId, () => {
                 class="w-full"
                 :min="0"
                 :controls="false"
-                :precision="3"
+                :precision="WEIGHT_VOLUME_PRECISION"
+                :formatter="formatWeightVolume"
                 @update:value="(v) => (formData.cbm = v)"
               />
             </div>

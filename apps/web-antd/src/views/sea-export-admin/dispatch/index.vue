@@ -34,6 +34,10 @@ import {
 } from '#/api/sea-export/dispatch-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 defineOptions({
   name: 'SeaExportDispatch',
@@ -857,7 +861,8 @@ onMounted(() => {
                 class="w-full"
                 :min="0"
                 :controls="false"
-                :precision="2"
+                :precision="WEIGHT_VOLUME_PRECISION"
+                :formatter="formatWeightVolume"
                 @update:value="(v) => updateCtnRow(index, 'grossWeight', v)"
               />
             </template>
@@ -867,7 +872,8 @@ onMounted(() => {
                 class="w-full"
                 :min="0"
                 :controls="false"
-                :precision="2"
+                :precision="WEIGHT_VOLUME_PRECISION"
+                :formatter="formatWeightVolume"
                 @update:value="(v) => updateCtnRow(index, 'tareWeight', v)"
               />
             </template>
@@ -877,7 +883,8 @@ onMounted(() => {
                 class="w-full"
                 :min="0"
                 :controls="false"
-                :precision="2"
+                :precision="WEIGHT_VOLUME_PRECISION"
+                :formatter="formatWeightVolume"
                 @update:value="(v) => updateCtnRow(index, 'volume', v)"
               />
             </template>

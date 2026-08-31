@@ -11,6 +11,8 @@ import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import dayjs from 'dayjs';
 
+import { roundWeightVolume } from '#/utils/weight-volume-precision';
+
 /** 宽松转数字：空值/非法值返回 undefined */
 export const toOptionalNumber = (value: unknown) => {
   if (value === null || value === undefined || value === '') return undefined;
@@ -293,7 +295,7 @@ export const sumCtnNetWeight = (
       total += value;
     }
   }
-  return hasValue ? Number.parseFloat(total.toFixed(2)) : undefined;
+  return hasValue ? roundWeightVolume(total) : undefined;
 };
 
 /**

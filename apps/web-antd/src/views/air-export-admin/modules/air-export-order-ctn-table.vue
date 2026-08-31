@@ -8,6 +8,10 @@ import { IconifyIcon } from '@vben/icons';
 import { Button, InputNumber, Table, Tooltip } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 import {
   calcChargeWeight,
@@ -169,6 +173,13 @@ const numberProps = {
   controls: false,
   precision: AIR_DECIMAL_PRECISION,
 };
+
+const weightVolumeNumberProps = {
+  class: 'w-full',
+  controls: false,
+  formatter: formatWeightVolume,
+  precision: WEIGHT_VOLUME_PRECISION,
+};
 </script>
 
 <template>
@@ -241,7 +252,7 @@ const numberProps = {
         <template v-else-if="column.key === 'kgs'">
           <InputNumber
             :value="record.kgs"
-            v-bind="numberProps"
+            v-bind="weightVolumeNumberProps"
             @update:value="(v) => updateRow(index, 'kgs', v)"
           />
         </template>
@@ -269,7 +280,7 @@ const numberProps = {
         <template v-else-if="column.key === 'cbm'">
           <InputNumber
             :value="record.cbm"
-            v-bind="numberProps"
+            v-bind="weightVolumeNumberProps"
             @update:value="(v) => updateRow(index, 'cbm', v)"
           />
         </template>

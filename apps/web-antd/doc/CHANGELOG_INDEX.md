@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-31 派车、业务联系单与费用数量对齐 4 位小数](./changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md)
+- [2026-08-31 毛重体积皮重改为最多 4 位小数且不展示末尾 0](./changelogs/change-log-2026-08-31-weight-volume-4-decimal.md)
 - [2026-08-30 汇率对不上本位币不再兜底](./changelogs/change-log-2026-08-30-exchange-rate-no-local-fallback.md)
 - [2026-08-30 业务联系单先录费用再选开船日会漏弹汇率覆盖确认](./changelogs/change-log-2026-08-30-pre-order-etd-rate-resync-asof.md)
 - [2026-08-30 付费申请折算只取汇率表原币兑结算币](./changelogs/change-log-2026-08-30-payment-application-rate-quote-local.md)

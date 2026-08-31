@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import { $t } from '#/locales';
+import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 
 import { createClientSelectSchema } from '../client/base/data';
 
@@ -22,7 +23,7 @@ export const SALE_USER_ATTRIBUTE = USER_ATTRIBUTE.sale;
 /** 体积重系数：写死的常量，不随航司或航线变化 */
 export const VOLUME_WEIGHT_FACTOR = 167;
 
-/** 空运新增小数字段统一 6 位精度 */
+/** 长宽高 / 体积重 / 计费重 / 泡比仍为 6 位；KGS/CBM 见 WEIGHT_VOLUME_PRECISION */
 export const AIR_DECIMAL_PRECISION = 6;
 
 export const CARGO_TYPE = {
@@ -1623,7 +1624,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 2,
+        ...weightVolumeInputNumberProps,
       },
       formItemClass: 'cargo-metrics-item cargo-metrics-item--kgs',
     },
@@ -1635,7 +1636,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 2,
+        ...weightVolumeInputNumberProps,
       },
       formItemClass: 'cargo-metrics-item cargo-metrics-item--cbm',
     },

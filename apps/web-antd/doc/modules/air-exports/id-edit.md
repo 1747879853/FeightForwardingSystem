@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-25
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,6 +54,9 @@ last_updated: 2026-08-25
 | **费用列表** | 该票全部费用。 | `transportOrder.orderFees`（详情接口） | **触发/依赖：** 标签上的「收 - 付」条数由它算出。 | 只读。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 | **运踪面板** | 订阅记录 + 运单动态。 | `GetAirPushInfoAsync` | **触发/依赖：** `waiting_push` 时自动轮询。 | 查看权限 `Admin.ExternalApi.Get`。 |
+| **毛重 KGS / 体积 CBM** | 整票毛重、体积。 | `transportOrder.kgs` / `cbm`；库列 `decimal(20,4)` | **触发/依赖：** 最多 4 位小数，末尾 0 不展示；泡比仍按 6 位算。 | 可选，非负。 |
+| **货物明细 KGS / CBM** | 单件重量、单件体积。 | `airExportOrderCtns.kgs/cbm`；库列 `decimal(20,4)` | **触发/依赖：** CBM 由长×宽×高÷1000000 后按 4 位四舍五入；长宽高/体积重/计费重仍 6 位。 | 可选，非负。 |
+| **费用.数量** | 计价数量；单位为毛重/尺码时等于 Kgs/Cbm。 | `OrderFee.Quantity`；库列 `decimal(20,4)` | **触发/依赖：** 与海出共用费用表，最多 4 位、去尾 0；金额仍 2 位。 | 可选，非负。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -75,6 +78,8 @@ last_updated: 2026-08-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
+| 2026-08-31 | `Fix` | 主单毛重/体积、货物明细单件重量/体积改为最多 4 位小数，末尾 0 不展示；长宽高/体积重/计费重/泡比仍 6 位。 | TAPD `#1161580498001000905`。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-25 | `Feature` | 附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。 | TAPD `#1161580498001000779` 附件上传统一。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的空出编辑页不再跟着别人地址栏的 `:id` 拉详情。 | 与海进/海出共用 `useKeepAliveRouteParamId`。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |

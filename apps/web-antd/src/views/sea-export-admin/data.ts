@@ -5,6 +5,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
+import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 
 import { createClientSelectSchema } from '../client/base/data';
 import { applySeaExportListDefaultColumns } from './list-column-defaults';
@@ -1982,7 +1983,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 2,
+        ...weightVolumeInputNumberProps,
       },
       formItemClass: 'cargo-main-item cargo-main-item--kgs',
     },
@@ -1994,7 +1995,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 2,
+        ...weightVolumeInputNumberProps,
       },
       formItemClass: 'cargo-main-item cargo-main-item--cbm',
     },

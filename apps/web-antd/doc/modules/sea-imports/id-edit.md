@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-25
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -51,6 +51,9 @@ last_updated: 2026-08-25
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 | **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
+| **毛重 KGS / 体积 CBM / 净重合计** | 整票毛重、体积与集装箱净重求和。 | `transportOrder.kgs/cbm`、`totalNetWeight`；库列毛重体积 `decimal(20,4)` | **触发/依赖：** 最多 4 位小数，末尾 0 不展示；净重合计可由箱明细净重汇总。 | 可选，非负。 |
+| **集装箱毛重 / 皮重 / 净重 / 体积** | 箱明细重量体积。 | `orderCtns.grossWeight/tareWeight/netWeight/volume` | **触发/依赖：** 与主单同一套 `weight-volume-precision`。 | 可选，非负。 |
+| **费用.数量** | 计价数量；单位为毛重/尺码时等于 Kgs/Cbm。 | `OrderFee.Quantity`；库列 `decimal(20,4)` | **触发/依赖：** 与海出共用 Handsontable，最多 4 位、去尾 0；金额仍 2 位。 | 可选，非负。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -64,6 +67,8 @@ last_updated: 2026-08-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
+| 2026-08-31 | `Fix` | 主单毛重/体积/净重合计、集装箱毛重/皮重/净重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-25 | `Fix` | 基础信息：码头筛「码头」属性、转站+6、净重手填、贸易方式改走枚举中心 `TradeMode`；附件卡片支持拖拽上传。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-24 | `Fix` | 货物区「内部备注 / 外部备注」字号改为 14px，与件数等输入框一致。 | TAPD `#1161580498001000872`。详见 `changelogs/change-log-2026-08-24-cargo-remark-font-size.md`。 |
 | 2026-08-23 | `Fix` | KeepAlive 缓存的海进编辑页不再跟着别人地址栏的 `:id` 拉进口详情。 | `useKeepAliveRouteParamId`：可见才同步 `params.id`，停用后冻结。详见 `changelogs/change-log-2026-08-23-keepalive-route-id-freeze.md`。 |

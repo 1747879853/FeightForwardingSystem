@@ -26,6 +26,10 @@ import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vu
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 /** 单箱型一次最多添加数量 */
 const BATCH_ADD_MAX_PER_TYPE = 99;
@@ -92,7 +96,7 @@ const dataSource = computed({
 const formatSummaryNumber = (value: number) => {
   if (!Number.isFinite(value)) return '0';
   if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2).replace(/\.?0+$/, '');
+  return formatWeightVolume(value);
 };
 
 const ctnNameById = ref<Record<string, string>>({});
@@ -707,7 +711,8 @@ watch(
             size="small"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'grossWeight', v)"
           />
         </template>
@@ -719,7 +724,8 @@ watch(
             size="small"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'tareWeight', v)"
           />
         </template>
@@ -731,7 +737,8 @@ watch(
             size="small"
             :min="0"
             :controls="false"
-            :precision="2"
+            :precision="WEIGHT_VOLUME_PRECISION"
+            :formatter="formatWeightVolume"
             @update:value="(v) => updateRow(index, 'volume', v)"
           />
         </template>

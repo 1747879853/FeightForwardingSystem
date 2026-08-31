@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-23
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -82,6 +82,7 @@ last_updated: 2026-08-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 主单毛重/体积、集装箱毛重/皮重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-23 | `Feature` | 新建页 KeepAlive：未保存切走可回来继续填，点 X 关闭才丢。 | `keepAlive` + `keepAliveName: SeaExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |
 | 2026-08-19 | `Feature` | `GetServiceTypesByPOLAsync` 展示/锁定/必填改为对象数组；必填可含附件类型 `10001`。 | 取值走 `toSeaExportPropEnum`；普通必填仍映射表单字段，`10001` 不参与字段校验。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |

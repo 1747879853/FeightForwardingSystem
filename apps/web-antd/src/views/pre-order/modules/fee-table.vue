@@ -36,6 +36,10 @@ import {
   ensureExchangeRateCache,
   resolveExchangeRate,
 } from '#/utils/exchange-rate-cache';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { PAY_SIDE_OPTIONS } from '../form-data';
@@ -1223,7 +1227,8 @@ function formatExchangeRateDisplay(
               :disabled="true"
               size="small"
               class="w-full"
-              :precision="2"
+              :precision="WEIGHT_VOLUME_PRECISION"
+              :formatter="formatWeightVolume"
             />
           </Tooltip>
         </template>

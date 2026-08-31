@@ -12,9 +12,11 @@ import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import dayjs from 'dayjs';
 
+import { roundWeightVolume } from '#/utils/weight-volume-precision';
+
 import { VOLUME_WEIGHT_FACTOR } from '../data';
 
-/** 派生值统一保留 6 位小数 */
+/** 体积重 / 计费重 / 泡比仍为 6 位；单件体积 CBM 改为 4 位 */
 const DECIMAL_SCALE = 6;
 
 /** 宽松转数字：空值/非法值返回 undefined */
@@ -44,7 +46,7 @@ export const toDateOnlyString = (val: unknown) => {
 const round6 = (value: number) =>
   Number.parseFloat(value.toFixed(DECIMAL_SCALE));
 
-/** 单件体积 CBM = 长 × 宽 × 高 ÷ 1000000（厘米 → 立方米），任一为空则留空 */
+/** 单件体积 CBM = 长 × 宽 × 高 ÷ 1000000（厘米 → 立方米），入库 4 位小数 */
 export const calcCtnCbm = (
   length: unknown,
   width: unknown,
@@ -54,7 +56,7 @@ export const calcCtnCbm = (
   const w = toOptionalNumber(width);
   const h = toOptionalNumber(height);
   if (l === undefined || w === undefined || h === undefined) return undefined;
-  return round6((l * w * h) / 1_000_000);
+  return roundWeightVolume((l * w * h) / 1_000_000);
 };
 
 /** 整行体积重 = 单件体积 × 167 × 件数，体积或件数为空则留空 */

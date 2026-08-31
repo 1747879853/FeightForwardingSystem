@@ -2,6 +2,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { PortFormSchemaOptions } from '#/views/sea-export-admin/data';
 
 import { $t } from '#/locales';
+import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 import { createClientSelectSchema } from '#/views/client/base/data';
 import {
   buildPortSelectProps,
@@ -412,7 +413,7 @@ export function usePreOrderCargoSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 3,
+        ...weightVolumeInputNumberProps,
       },
     },
     {
@@ -424,7 +425,7 @@ export function usePreOrderCargoSchema(): VbenFormSchema[] {
         class: 'w-full',
         min: 0,
         controls: false,
-        precision: 3,
+        ...weightVolumeInputNumberProps,
       },
     },
   ];

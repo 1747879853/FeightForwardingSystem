@@ -16,6 +16,10 @@ import {
 
 import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import { $t } from '#/locales';
+import {
+  WEIGHT_VOLUME_PRECISION,
+  formatWeightVolume,
+} from '#/utils/weight-volume-precision';
 
 /** 编辑行：额外携带前端行 key 与箱型名（箱型名用于费用「单位」联动） */
 export interface PreOrderCtnRow extends PreOrderAdminApi.PreOrderCtnDto {
@@ -252,7 +256,8 @@ watch(
               size="small"
               class="w-full"
               :min="0"
-              :precision="3"
+              :precision="WEIGHT_VOLUME_PRECISION"
+              :formatter="formatWeightVolume"
             />
           </template>
           <template v-else-if="column.dataIndex === 'sugPrice'">

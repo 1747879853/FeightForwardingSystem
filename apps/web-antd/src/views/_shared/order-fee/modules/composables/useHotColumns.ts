@@ -1,6 +1,8 @@
 import { computed, type Ref } from 'vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { useOrderFeeColumns, getStatementNumsText } from '../../data';
+import { formatWeightVolumeLocale } from '#/utils/weight-volume-precision';
+
 import {
   getInvoiceStatusLabel,
   getFeeStatusLabel,
@@ -437,7 +439,7 @@ export function useHotColumns(
           };
         } else if (col.field === 'quantity') {
           hotCol.type = 'numeric';
-          hotCol.format = '0,0';
+          hotCol.format = '0,0.[0000]';
           hotCol.allowInvalid = false;
           hotCol.renderer = function (
             this: any,
@@ -449,11 +451,15 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
-            const label = value || '';
-            // ✅ 新增：添加省略号样式
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '0'}</span>`;
+            let displayValue = '0';
+            if (value !== null && value !== undefined && value !== '') {
+              const numValue = Number.parseFloat(value);
+              if (!Number.isNaN(numValue)) {
+                displayValue = formatWeightVolumeLocale(numValue) || '0';
+              }
+            }
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
             return td;
           };
         } else if (col.field === 'amount') {
@@ -704,10 +710,7 @@ export function useHotColumns(
                     maximumFractionDigits: 2,
                   });
                 } else if (prop === 'quantity') {
-                  displayValue = numValue.toLocaleString('zh-CN', {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  });
+                  displayValue = formatWeightVolumeLocale(numValue) || '0';
                 } else if (prop === 'taxRate') {
                   displayValue = (numValue * 100).toFixed(2) + '%';
                 } else {

@@ -14,6 +14,10 @@ import {
 } from '../data';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { resolveExchangeRateOnDate } from '#/utils/exchange-rate-cache';
+import {
+  formatWeightVolume,
+  weightVolumeInputNumberProps,
+} from '#/utils/weight-volume-precision';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { orderCtnListRef } from '../data';
 
@@ -1454,7 +1458,7 @@ function useOrderFeeFormSchema() {
       label: orderFeeDataT('quantity'),
       componentProps: {
         min: 0,
-        precision: 2,
+        ...weightVolumeInputNumberProps,
         style: { width: '100%' },
         onChange: () => handleFieldChange('quantity'),
       },
@@ -1682,7 +1686,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ orderFeeDataT('quantity') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.quantity?.toFixed(2) || '0.00'
+                formatWeightVolume(originalFeeData?.quantity) || '0'
               }}</span>
             </div>
             <div class="flex">
