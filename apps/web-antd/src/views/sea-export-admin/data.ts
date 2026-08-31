@@ -1382,6 +1382,8 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       label: '',
       hideLabel: true,
       formItemClass: 'cargo-type-inline-item',
+      /** 新建默认普通货；编辑由详情 setValues 覆盖 */
+      defaultValue: CARGO_TYPE.S,
       componentProps: {
         allowClear: true,
         options: getCargoTypeOptions(),

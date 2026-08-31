@@ -1597,7 +1597,9 @@ portFormApiRef.current = portFormApi;
 bindServiceTypeLinkageEvents();
 
 const cargoSchema = useCargoFormSchema();
-const currentCargoId = ref<number | undefined>();
+const currentCargoId = ref<number | undefined>(
+  isEdit.value ? undefined : CARGO_TYPE.S,
+);
 const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);
 const cargoTypeSchema = mapSchemaWithSmallSize(
   [...useBasicInfoFormSchema(isEdit.value), ...cargoSchema]

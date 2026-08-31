@@ -27,7 +27,7 @@ last_updated: 2026-08-31
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后调用 `Client/GetDishonestStakeholdersAsync`（登录即可）按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。干系人 `UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户所属各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回的人不受过滤限制、始终显示昵称。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。`GetServiceTypesByPOLAsync` 的展示/锁定/必填已改为对象数组（`seaExportPropEnum` + `requireValues`），前端取枚举值时需兼容，不可再当 `number[]` 直接使用。
-- **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。校验失败时 toast 点名缺失必填字段（如「请完善必填项：归属组织」）；头部归属组织带红色 `*`。
+- **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。校验失败时 toast 点名缺失必填字段（如「请完善必填项：归属组织」）；头部归属组织带红色 `*`。货物类型新建默认「普通货」，可改可清。
 - **船期时间校验：** 截关节点展示为截单 → 截港 → 截关；保存时逐项校验上述日期，任一晚于开船日期或实际开船日期时提示对应字段并阻止保存。
 - **付费地点联动：** 选择到付（中文名含“到付”或 EDI 代码 `CC`）时，付费地点自动带出目的港；选择预付（中文名含“预付”或 EDI 代码 `PP`）时，自动带出起运港，带出后仍可手动修改。
 - **箱包装默认值：** 新增箱型箱量行时，将货物信息中的订单级总包装 ID 与文本复制到箱行包装；箱行包装仍可独立修改。
@@ -61,6 +61,7 @@ last_updated: 2026-08-31
 | **费用锁定** | 费用是否锁定。 | `transportOrder.feeLocked`；后端默认未锁定 | - | 禁止手动修改。 |
 | **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType`；枚举 `0` 整柜 / `1` 拼箱分票 / `2` 拼箱主票 | **触发/依赖：** 默认整柜。 | - |
 | **订单类型** | 直单或分单。 | `billType`；枚举 `0` 直单 / `1` 分单 | **触发/依赖：** 默认直单。 | - |
+| **货物类型** | 普通货/冻柜/危险品/超限箱；货物卡片标题栏内联。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 新建默认普通货（`CARGO_TYPE.S`）；编辑回填详情；危险品/冻柜才展示扩展字段。 | 可改可清。 |
 
 | **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **起运港** | 装货港。 | `polId`；`PortSelect` | **触发/依赖：** 变更时触发 `GetServiceTypesByPOLAsync`；选择港口可联动 `polRemark`。 | 联动查询依赖起运港有值。 | | **服务项目** | 订舱、拖车、报关、仓库、保险、代收支是否启用及对应服务商。 | 服务项卡片；`getServiceTypesByPOL`；提交字段 `serviceTypes`（`0-5`） | **触发/依赖：** `clientId`/`polId` 变化后按接口 `checked` 自动勾选/取消；`checked=true` 才可选手动服务商；取消勾选清空主体。代收支勾选时 `serviceTypes` 含 `5` 且可选组织部门。 | 只提交已勾选对应类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 固定角色不可删除且不可重复，新增仅补齐缺失角色，提交前按 `sortId` 排序并清洗无效行。 | 销售必须且仅一人；销售与操作必须选择人员。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、实际开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/atd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
 
@@ -82,6 +83,7 @@ last_updated: 2026-08-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 新建时货物类型默认「普通货」，可改可清。 | TAPD 1000913；`cargoId` 用 `CARGO_TYPE.S`（值为 0），提交须用 `??` 不能用逻辑或。编辑仍走详情回填。详见 `changelogs/change-log-2026-08-31-sea-export-default-cargo-normal.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、集装箱毛重/皮重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-23 | `Feature` | 新建页 KeepAlive：未保存切走可回来继续填，点 X 关闭才丢。 | `keepAlive` + `keepAliveName: SeaExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存并前端搜索；基础资料删除包装后下拉不再能搜到。 | 与 `UserSelect` 同构：`codePackageListCache` + `useCachedSelect`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |

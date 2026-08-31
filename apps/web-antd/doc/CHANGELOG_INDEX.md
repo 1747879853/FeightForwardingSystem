@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-31 海运出口新建货物类型默认普通货](./changelogs/change-log-2026-08-31-sea-export-default-cargo-normal.md)
 - [2026-08-31 付费申请审批列表默认筛审核中](./changelogs/change-log-2026-08-31-payment-review-default-auditing.md)
 - [2026-08-31 站点健康检查脚本入库 scripts](./changelogs/change-log-2026-08-31-site-health-check-in-scripts.md)
 - [2026-08-31 派车、业务联系单与费用数量对齐 4 位小数](./changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md)
