@@ -14,6 +14,11 @@
     "accountDateStart": "提成月起",
     "accountDateEnd": "提成月止"
   },
+  "group": {
+    "commissionType": "提成类型",
+    "user": "提成人",
+    "accountDate": "提成月"
+  },
   "status": {
     "draft": "录入",
     "submitted": "提交审核",

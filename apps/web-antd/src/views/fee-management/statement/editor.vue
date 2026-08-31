@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { useUserStore } from '@vben/stores';
 
 import {
@@ -124,6 +125,7 @@ function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 const userStore = useUserStore();
 
 const editId = computed<string | undefined>(() => {
@@ -432,8 +434,10 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
       message.success(t('addSuccess'));
       markListShouldRefresh('StatementList');
 
-      // 跳转到编辑页面
-      router.replace(`/fee-management/statement/${newId}/edit`);
+      // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
+      const createTabKey = route.fullPath;
+      await router.replace(`/fee-management/statement/${newId}/edit`);
+      await closeTabByKey(createTabKey);
       return;
     } catch (error) {
       console.error('自动保存失败:', error);
@@ -958,7 +962,10 @@ async function handleSave() {
       const newId = await addStatement(buildSubmitData());
       message.success(t('addSuccess'));
       markListShouldRefresh('StatementList');
-      router.replace(`/fee-management/statement/${newId}/edit`);
+      // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
+      const createTabKey = route.fullPath;
+      await router.replace(`/fee-management/statement/${newId}/edit`);
+      await closeTabByKey(createTabKey);
     }
   } finally {
     submitting.value = false;

@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import {
+  computed,
+  ref,
+  nextTick,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  watch,
+} from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
@@ -64,6 +73,11 @@ const localGroupColumns = ref<string[]>([...props.groupColumns]);
 const localExpandedGroups = ref<Set<string>>(
   new Set([...props.expandedGroups]),
 );
+
+// ✅ 排序状态：作用于原始数据源，合计行不参与排序、始终保持在最后一行
+const sortState = ref<{ column: string; order: 'asc' | 'desc' } | null>(null);
+// ✅ 表格数据源：保存排序后的原始数据，分组/展开/合计行均基于它重建
+const dataSource = ref<any[]>([...props.originalData]);
 
 // ✅ 新增：存储当前右键点击的列索引
 const rightClickColumnIndex = ref<number | null>(null);
@@ -131,8 +145,55 @@ function toggleGroupExpand(groupKey: string) {
   clearCaches();
 
   // 重新应用分组（这会触发表格数据更新）
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
+  }
+}
+
+// ✅ 自定义列排序：对原始数据源排序，分组/合计行在 applyGrouping 中重建，合计行始终保持在最后一行
+function compareCellValues(a: any, b: any): number {
+  const aEmpty = a == null || a === '' || a === '-';
+  const bEmpty = b == null || b === '' || b === '-';
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1; // 空值始终排在最后
+  if (bEmpty) return -1;
+
+  const aNum = Number.parseFloat(String(a).replaceAll(',', ''));
+  const bNum = Number.parseFloat(String(b).replaceAll(',', ''));
+  if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+    return aNum - bNum;
+  }
+  return String(a).localeCompare(String(b), 'zh-CN', { numeric: true });
+}
+
+function sortRows(data: any[], column: string, order: 'asc' | 'desc'): any[] {
+  return [...data].sort((rowA, rowB) => {
+    const result = compareCellValues(rowA[column], rowB[column]);
+    return order === 'asc' ? result : -result;
+  });
+}
+
+// 列头左键单击排序：同列切换升降序，不同列默认升序
+function handleColumnHeaderClick(colIndex: number) {
+  const colConfig = currentColumnsRef.value[colIndex];
+  const columnData = colConfig?.data;
+  if (!columnData || columnData === '_groupDisplay') {
+    return;
+  }
+
+  const currentSort = sortState.value;
+  const order: 'asc' | 'desc' =
+    currentSort?.column === columnData && currentSort?.order === 'asc'
+      ? 'desc'
+      : 'asc';
+
+  sortState.value = { column: columnData, order };
+
+  clearCaches();
+  dataSource.value = sortRows(dataSource.value, columnData, order);
+
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 }
 
@@ -142,8 +203,8 @@ const selectedColumnsForGroup = ref<string[]>([]);
 
 // 监听动态列变化，更新默认配置
 watch(dynamicHotColumns, () => {
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 });
 
@@ -168,8 +229,17 @@ watch(
   () => props.originalData,
   (newVal) => {
     clearCaches();
+    dataSource.value = [...newVal];
     if (newVal.length > 0) {
-      applyGrouping([...newVal]);
+      // 保持当前排序（如果有）
+      if (sortState.value) {
+        dataSource.value = sortRows(
+          dataSource.value,
+          sortState.value.column,
+          sortState.value.order,
+        );
+      }
+      applyGrouping([...dataSource.value]);
     } else {
       // 数据被清空（重置）：恢复初始展示状态（无分组行、无隐藏列）
       tableData.value = [];
@@ -188,6 +258,7 @@ const componentInstance = {
   emit,
   applyGrouping,
   rightClickColumnIndex,
+  dataSource,
 };
 
 // Handsontable 配置（改为计算属性）
@@ -216,7 +287,8 @@ const hotSettings = computed(() => {
       const isNumeric = numericColumns.value.has(col.data);
       return {
         ...col,
-        className: isNumeric ? 'htRight' : 'htLeft',
+        // 数值列右对齐；非数值列优先保留列配置自带的 className（如 htRight）
+        className: isNumeric ? 'htRight' : col.className || 'htLeft',
         // ✅ 分组时确保每列都有明确的宽度，防止自适应
         width:
           col.width || (localGroupColumns.value.length > 0 ? 150 : undefined),
@@ -233,12 +305,6 @@ const hotSettings = computed(() => {
 
     // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
     manualColumnMove: true,
-
-    // ✅ 重新启用列排序功能
-    columnSorting: {
-      indicator: true,
-      sortEmptyCells: false,
-    },
 
     // ✅ 启用右键菜单和列隐藏/显示功能，使用中文标签
     contextMenu: {
@@ -292,8 +358,8 @@ const hotSettings = computed(() => {
             instance.localExpandedGroups.value = new Set();
             instance.emit('update:expandedGroups', new Set());
 
-            if (instance.props.originalData.length > 0) {
-              instance.applyGrouping([...instance.props.originalData]);
+            if (instance.dataSource.value.length > 0) {
+              instance.applyGrouping([...instance.dataSource.value]);
             }
 
             message.success(`已将 "${columnTitle}" 添加到分组`);
@@ -362,9 +428,6 @@ const hotSettings = computed(() => {
     // visibleColumns.length - fixedColumnsLeft,
     // ),
 
-    // ✅ 合计行（最后一行）固定在底部，不参与列排序，排序后始终保持在最后一行
-    fixedRowsBottom: tableData.value.length > 0 ? 1 : 0,
-
     afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
       TH.style.backgroundColor = '#1890ff';
       TH.style.color = '#ffffff';
@@ -387,9 +450,28 @@ const hotSettings = computed(() => {
       // 提示用户可以使用排序和右键菜单功能
       TH.style.cursor = 'pointer';
       TH.title = '左键单击排序 | 右键菜单可进行分组操作';
+
+      // 排序指示箭头：先移除可能残留的指示，避免多次渲染时重复累积
+      TH.textContent = TH.textContent
+        .replaceAll('▲', '')
+        .replaceAll('▼', '')
+        .trimEnd();
+      const colConfig = currentColumnsRef.value[col];
+      const currentSort = sortState.value;
+      if (colConfig?.data && currentSort?.column === colConfig.data) {
+        TH.textContent = `${TH.textContent} ${
+          currentSort?.order === 'asc' ? '▲' : '▼'
+        }`;
+      }
     },
     //afterOnCellMouseDown: onAfterOnCellMouseDown,
     afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
+    // 列头左键单击：自定义排序（排序作用于原始数据源，合计行始终保持在最后一行）
+    afterOnCellMouseDown: (event: MouseEvent, coords: any) => {
+      if (event?.button === 0 && coords?.row === -1 && coords?.col >= 0) {
+        handleColumnHeaderClick(coords.col);
+      }
+    },
     // 添加单元格渲染后的事件处理（用于分组列的点击和悬浮提示）
     afterRenderer: (
       TD: HTMLTableCellElement,
@@ -409,7 +491,17 @@ const hotSettings = computed(() => {
         if (TD.style.fontWeight !== 'bold') {
           TD.style.fontWeight = 'bold';
         }
+        // 合计行背景色设在 td 上（而非仅 tr）：td 在滚动渲染中会被复用，
+        // 若不显式设置，样式会残留到数据行或丢失，造成视觉重叠
+        if (TD.style.backgroundColor !== '#f0f0f0') {
+          TD.style.backgroundColor = '#f0f0f0';
+        }
         return;
+      }
+
+      // 单元格复用清理：非分组行清除合计行残留的背景色，避免滚动时样式错位
+      if (!rowData?._isGroupRow && TD.style.backgroundColor) {
+        TD.style.backgroundColor = '';
       }
 
       // ✅ 优化：只在必要时设置 title
@@ -497,6 +589,9 @@ const hotSettings = computed(() => {
  */
 let resizeObserver: ResizeObserver | null = null;
 let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+let heightDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+/** 观察器是否已启动。onMounted 与 onActivated 都会调用启动函数，需要幂等 */
+let layoutWatching = false;
 
 function updateTableHeight() {
   // 清除之前的定时器，避免重复调用
@@ -535,112 +630,74 @@ function updateTableHeight() {
   }, 16); // 约1帧的时间（60fps）
 }
 
-function initResizeObserver() {
-  if (!containerRef.value) return;
-
-  // 清理旧的观察者
-  if (resizeObserver) {
-    resizeObserver.disconnect();
+/** 防抖调度一次高度重算 */
+function scheduleHeightUpdate(delay = 50) {
+  if (heightDebounceTimer) {
+    clearTimeout(heightDebounceTimer);
   }
+  heightDebounceTimer = setTimeout(() => {
+    heightDebounceTimer = null;
+    updateTableHeight();
+  }, delay);
+}
 
-  resizeObserver = new ResizeObserver(() => {
-    // 清除之前的定时器
-    if (heightUpdateTimer) {
-      clearTimeout(heightUpdateTimer);
-    }
-    // 使用防抖，避免频繁更新
-    heightUpdateTimer = setTimeout(() => {
-      updateTableHeight();
-    }, 50); // 50ms 防抖
-  });
+function handleWindowResize() {
+  scheduleHeightUpdate(100);
+}
 
-  // 观察多个元素的变化
-  // 1. 观察 document.body - 窗口缩放时视口变化
-  resizeObserver.observe(document.body);
+/**
+ * 启动布局观察。
+ *
+ * 只观察本页面的表格容器、页面容器与查询卡片：它们的尺寸变化会改变表格顶部
+ * 位置，需要重算 Handsontable 高度。视口变化由 window resize 覆盖，因此不再
+ * 观察 document.body，也不再用 MutationObserver 监听全站 DOM 的 class/style。
+ *
+ * 目标节点从 containerRef 向上 closest 查找，避免命中其它 keepAlive 缓存页里
+ * 的同名节点。
+ */
+function startLayoutWatchers() {
+  if (layoutWatching) return;
+  const container = containerRef.value;
+  if (!container) return;
+  layoutWatching = true;
 
-  // 2. 观察 Page 组件的 wrapper - 当查询表单展开/收缩时，整体布局会变化
-  const pageWrapper = document.querySelector('.vben-page-wrapper');
+  resizeObserver = new ResizeObserver(() => scheduleHeightUpdate(50));
+  resizeObserver.observe(container);
+
+  const pageWrapper = container.closest('.vben-page-wrapper');
   if (pageWrapper) {
-    resizeObserver.observe(pageWrapper as Element);
+    resizeObserver.observe(pageWrapper);
+    const queryCard = pageWrapper.querySelector('.query-card');
+    if (queryCard) {
+      resizeObserver.observe(queryCard);
+    }
   }
 
-  // 3. 观察 query-card - 查询表单展开/收缩的直接容器
-  const queryCard = document.querySelector('.query-card');
-  if (queryCard) {
-    resizeObserver.observe(queryCard as Element);
+  window.addEventListener('resize', handleWindowResize);
+}
+
+/**
+ * 停止布局观察并清空待执行的定时器。
+ *
+ * 报表路由带 keepAlive，离开页面只触发 onDeactivated 而不触发 onUnmounted，
+ * 所以两个钩子都要调用这里，否则观察器会在整个会话内一直存活。
+ */
+function stopLayoutWatchers() {
+  if (!layoutWatching) return;
+  layoutWatching = false;
+
+  window.removeEventListener('resize', handleWindowResize);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+
+  if (heightDebounceTimer) {
+    clearTimeout(heightDebounceTimer);
+    heightDebounceTimer = null;
   }
-
-  // 4. 使用 MutationObserver 监听 DOM 变化，动态添加新的观察对象
-  let updateTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  const mutationObserver = new MutationObserver((mutations) => {
-    // 防抖处理：避免频繁调用
-    if (updateTimeout) {
-      clearTimeout(updateTimeout);
-    }
-
-    let needUpdate = false;
-
-    mutations.forEach((mutation) => {
-      if (!needUpdate) {
-        // 检查是否有相关节点添加
-        mutation.addedNodes.forEach((node) => {
-          if (node instanceof HTMLElement) {
-            if (node.classList.contains('query-card')) {
-              resizeObserver?.observe(node);
-            }
-            if (
-              node.classList.contains('vben-page-wrapper') ||
-              node.querySelector?.('.vben-page-wrapper')
-            ) {
-              const wrapper = node.classList.contains('vben-page-wrapper')
-                ? node
-                : node.querySelector('.vben-page-wrapper');
-              if (wrapper) {
-                resizeObserver?.observe(wrapper);
-              }
-            }
-          }
-        });
-
-        // 监听属性变化（特别是样式和类名变化）
-        if (
-          mutation.type === 'attributes' &&
-          (mutation.attributeName === 'style' ||
-            mutation.attributeName === 'class')
-        ) {
-          const target = mutation.target as HTMLElement;
-          if (
-            target.classList.contains('query-card') ||
-            target.classList.contains('vben-page-wrapper') ||
-            target.closest('.query-card') ||
-            target.closest('.vben-page-wrapper')
-          ) {
-            needUpdate = true;
-          }
-        }
-      }
-    });
-
-    // 如果需要更新，使用防抖延迟执行
-    if (needUpdate) {
-      updateTimeout = setTimeout(() => {
-        updateTableHeight();
-        updateTimeout = null;
-      }, 100); // 100ms 防抖
-    }
-  });
-
-  // 监听整个文档的变化
-  mutationObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class'],
-  });
-
-  // 保存 mutationObserver 引用以便清理
-  (initResizeObserver as any).mutationObserver = mutationObserver;
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+    heightUpdateTimer = null;
+  }
 }
 
 /**
@@ -672,54 +729,30 @@ function initResizeObserver() {
 //   });
 // }
 
-// 监听窗口大小变化（带防抖）
-let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-window.addEventListener('resize', () => {
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-  }
-  resizeTimer = setTimeout(() => {
-    updateTableHeight();
-  }, 100);
-});
-
 onMounted(() => {
   // 初始化观察者
-  initResizeObserver();
+  startLayoutWatchers();
 
   // 如果有数据，应用分组
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 
   // 默认执行一次高度更新
   updateTableHeight();
 });
 
+// 从 keepAlive 缓存恢复：重新挂观察器，并按当前布局重算一次高度
+onActivated(() => {
+  startLayoutWatchers();
+  scheduleHeightUpdate(0);
+});
+
+// 切走时立即停掉，避免在整个会话内持续监听
+onDeactivated(stopLayoutWatchers);
+
 onUnmounted(() => {
-  // 移除窗口resize监听器
-  window.removeEventListener('resize', updateTableHeight);
-
-  // 清理所有定时器
-  if (heightUpdateTimer) {
-    clearTimeout(heightUpdateTimer);
-    heightUpdateTimer = null;
-  }
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-    resizeTimer = null;
-  }
-
-  // 清理 ResizeObserver
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
-
-  // 清理 MutationObserver
-  const mutationObserver = (initResizeObserver as any).mutationObserver;
-  if (mutationObserver) {
-    mutationObserver.disconnect();
-  }
+  stopLayoutWatchers();
 
   // ✅ 移除拖拽相关资源清理（已完全移除拖拽功能）
   // if (dragGhostElement) {
@@ -751,6 +784,21 @@ function createGroupColumn() {
       _cellProperties: any,
     ) => {
       const rowData = tableData.value[row];
+      if (rowData?._isTotalRow) {
+        // 合计行：显示「合计」并保持与合计行一致的背景色
+        td.innerHTML = '合计';
+        td.style.backgroundColor = '#f0f0f0';
+        td.style.fontWeight = 'bold';
+        td.style.cursor = 'default';
+
+        const existingHandler = (td as any)._groupClickHandler;
+        if (existingHandler) {
+          td.removeEventListener('click', existingHandler);
+          delete (td as any)._groupClickHandler;
+        }
+        return td;
+      }
+
       if (rowData?._isGroupRow) {
         // 分组行：显示分组信息和展开/折叠图标
         const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(
@@ -848,7 +896,7 @@ function applyGrouping(data: any[]) {
         const isNumeric = numericColumns.value.has(col.data);
         return {
           ...col,
-          className: isNumeric ? 'htRight' : 'htLeft',
+          className: isNumeric ? 'htRight' : col.className || 'htLeft',
         };
       });
 
@@ -859,7 +907,7 @@ function applyGrouping(data: any[]) {
       const isNumeric = numericColumns.value.has(col.data);
       return {
         ...col,
-        className: isNumeric ? 'htRight' : 'htLeft',
+        className: isNumeric ? 'htRight' : col.className || 'htLeft',
       };
     });
   }
@@ -892,7 +940,7 @@ function applyGrouping(data: any[]) {
   }
 
   // 添加合计行（只要有数据就显示）
-  if (props.originalData.length > 0) {
+  if (data.length > 0) {
     const totalRow = calculateTotalRow();
     tableData.value = [...tableData.value, totalRow];
   }
@@ -1236,11 +1284,9 @@ function calculateTotalRow(): any {
   // 设置分组列显示（如果有分组）
   if (localGroupColumns.value.length > 0) {
     totalRow._groupDisplay = '合计';
-  } else {
-    // 无分组时，在第一列无需显示"合计"
-    if (visibleColumns.length > 0) {
-      totalRow[visibleColumns[0].data] = '';
-    }
+  } else if (visibleColumns.length > 0) {
+    // 无分组时，在第一列显示「合计」
+    totalRow[visibleColumns[0].data] = '合计';
   }
 
   // 基于原始数据计算合计（originalData.value 包含所有原始数据）
@@ -1258,27 +1304,26 @@ function calculateTotalRow(): any {
     });
 
     if (hasData) {
-      if (colName === 'totalProfitRate') {
-        // 利润率特殊处理：需要重新计算总利润率
-        const totalReceivableSum = originalDataArray.reduce((acc, item) => {
-          return acc + (parseFloat(item.totalReceivable) || 0);
-        }, 0);
-        const totalPayableSum = originalDataArray.reduce((acc, item) => {
-          return acc + Math.abs(parseFloat(item.totalPayable) || 0);
-        }, 0);
-        totalRow[colName] =
-          totalPayableSum !== 0
-            ? `${(((totalReceivableSum - totalPayableSum) / totalPayableSum) * 100).toFixed(2)}%`
-            : '-';
-      } else {
-        const formattedValue = sum.toFixed(2);
-        // ✅ 即使值为 0.00 也要显示，不要设为空字符串
-        totalRow[colName] = formattedValue;
-      }
+      const formattedValue = sum.toFixed(2);
+      totalRow[colName] = formattedValue;
     } else {
       totalRow[colName] = '0.00';
     }
   });
+
+  // 利润率单独计算：利润 ÷ 应付，保留小数，由列渲染器统一乘 100 显示为百分比
+  const totalReceivableSum = originalDataArray.reduce(
+    (acc, item) => acc + (parseFloat(item.totalReceivable) || 0),
+    0,
+  );
+  const totalPayableSum = originalDataArray.reduce(
+    (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
+    0,
+  );
+  totalRow.totalProfitRate =
+    totalPayableSum !== 0
+      ? (totalReceivableSum - totalPayableSum) / totalPayableSum
+      : null;
 
   applyLocalCurrencyToAggregate(
     totalRow,
@@ -1305,8 +1350,8 @@ function removeGroupColumn(columnName: string) {
     // ✅ 重新添加 clearCaches 调用，确保移除分组列时数据正确性
     clearCaches();
 
-    if (props.originalData.length > 0) {
-      applyGrouping([...props.originalData]);
+    if (dataSource.value.length > 0) {
+      applyGrouping([...dataSource.value]);
     }
 
     message.success(
@@ -1328,8 +1373,8 @@ function clearAllGroups() {
   // ✅ 重新添加 clearCaches 调用，确保清空分组时数据正确性
   clearCaches();
 
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 
   message.success('已清空所有分组');
@@ -1356,8 +1401,8 @@ function handleAddSelectedColumns() {
   emit('update:expandedGroups', new Set());
 
   // 重新应用分组
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 
   message.success(`已添加 ${selectedColumnsForGroup.value.length} 个分组`);
@@ -1375,8 +1420,8 @@ watch(localGroupColumns, (newVal, oldVal) => {
     emit('update:expandedGroups', new Set());
   }
 
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 });
 
@@ -1448,8 +1493,8 @@ function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
   emit('update:expandedGroups', new Set());
 
   // 重新应用分组
-  if (props.originalData.length > 0) {
-    applyGrouping([...props.originalData]);
+  if (dataSource.value.length > 0) {
+    applyGrouping([...dataSource.value]);
   }
 
   message.success('分组顺序已调整');
@@ -1520,10 +1565,20 @@ function onAfterOnCellDblClick(
 }
 
 /**
+ * 导出单元格格式化：利润率存储为小数，导出时统一转为百分比字符串
+ */
+function formatExportCellValue(colData: string, value: any) {
+  if (colData === 'totalProfitRate' && value != null && value !== '') {
+    return `${(Number.parseFloat(value) * 100).toFixed(2)}%`;
+  }
+  return value;
+}
+
+/**
  * 导出当前显示的数据为Excel
  */
 function handleExport() {
-  if (props.originalData.length === 0) {
+  if (dataSource.value.length === 0) {
     message.warning('没有数据可导出');
     return;
   }
@@ -1547,7 +1602,7 @@ function handleExport() {
 
       // 构建完整的导出数据（包含所有未展开的数据）
       const fullExportTree = buildFullExportTree(
-        [...props.originalData],
+        [...dataSource.value],
         localGroupColumns.value,
       );
 
@@ -1576,7 +1631,10 @@ function handleExport() {
             }
           } else {
             // 普通列
-            exportRow[colData] = (row as any)[colData] ?? '';
+            exportRow[colData] = formatExportCellValue(
+              colData,
+              (row as any)[colData] ?? '',
+            );
           }
         }
 
@@ -1592,12 +1650,15 @@ function handleExport() {
 
       // 包含合计行
       const totalRow = calculateTotalRow();
-      const allData = [...props.originalData, totalRow];
+      const allData = [...dataSource.value, totalRow];
 
       for (const row of allData) {
         const exportRow: Record<string, any> = {};
         for (const col of currentColumns) {
-          exportRow[col.data!] = row[col.data!] ?? '';
+          exportRow[col.data!] = formatExportCellValue(
+            col.data!,
+            row[col.data!] ?? '',
+          );
         }
         exportData.push(exportRow);
       }
@@ -1970,37 +2031,31 @@ function handleExport() {
   min-height: 0;
   overflow: hidden;
 
-  /* ✅ 添加硬件加速优化 */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1px;
-
   :deep(.handsontable) {
     font-size: 13px;
 
-    /* ✅ 为Handsontable根元素添加硬件加速 */
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    perspective: 1px;
-    will-change: transform, opacity;
+    /* Chrome 121+ 中 scrollbar-color 非 auto 时会改用标准滚动条（Windows 上约 15px）并忽略
+       ::-webkit-scrollbar 样式，导致实际滚动条宽度与 Handsontable 检测的全局滚动条宽度（10px）
+       不一致，横向滚动到底时表头克隆层与主表错位；恢复 auto 使 webkit 滚动条样式生效 */
+    scrollbar-color: auto;
+
+    /* 统一滚动条宽度为 10px：与 vben 全局滚动条样式及 Handsontable 内部预留宽度保持一致 */
+    .wtHolder {
+      scrollbar-color: auto;
+
+      &::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+    }
 
     .htCore {
-      /* ✅ 为核心表格区域添加硬件加速 */
-      transform: translateZ(0);
-      backface-visibility: hidden;
-      perspective: 1px;
-      will-change: transform, scroll-position;
-
       td {
         padding: 6px 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         vertical-align: middle;
         white-space: nowrap;
-
-        /* ✅ 为单元格添加硬件加速 */
-        transform: translateZ(0);
-        backface-visibility: hidden;
       }
 
       tr:not([data-group-row='true']) td {
@@ -2013,6 +2068,14 @@ function handleExport() {
         vertical-align: middle;
         cursor: pointer; /* 默认指针，表示可点击排序 */
       }
+    }
+
+    /* 修复序号列与数据行垂直错位：Handsontable 渲染行头克隆层（ht_clone_inline_start）时
+       会按行高缓存强制给行头单元格设置 inline height（41px，含边框补偿），而主表行保持
+       自然高度（40.67px），每行累积 0.33px 偏差导致序号列与数据行不对齐；
+       让行头单元格高度自适应（与主表行一致），消除累积偏差 */
+    .ht_clone_inline_start .htCore tbody th {
+      height: auto !important;
     }
 
     :deep(tr[data-group-row='true']) {

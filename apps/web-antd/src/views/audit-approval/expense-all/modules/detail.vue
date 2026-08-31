@@ -49,9 +49,31 @@ const dataSource = computed(() => [
   ...dataSourcePay.value,
 ]);
 
+/**
+ * 将费用金额/币别等数值字段转为可用于合计的数字。
+ * 申请修改状态的费用明细，字段会被展示层改写为 "原值 => [新值]" 字符串，
+ * 合计时应取尚未生效的原值（"=>" 之前的部分）。
+ */
+const toNumberAmount = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const original = value.split('=>')[0]?.trim() ?? '';
+    const num = Number(original);
+    if (Number.isFinite(num)) {
+      return num;
+    }
+  }
+  return 0;
+};
+
 const totalFeeRec = computed(() => {
   console.log(dataSourceRec.value);
-  return dataSourceRec.value.reduce((acc, cur) => acc + (cur.amount || 0), 0);
+  return dataSourceRec.value.reduce(
+    (acc, cur) => acc + toNumberAmount(cur.amount),
+    0,
+  );
 });
 
 const selectedRecKeys = ref<(string | number)[]>([]);
@@ -622,27 +644,29 @@ const totalAmount = computed(() => {
   totalList.forEach((item) => {
     let recName = `应收${item.currencyName}:`;
     let recColor = 'green';
-    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    let recAmount = (Number(item.totalRecAmount) || 0).toFixed(2);
     list.push({
       name: recName,
       color: recColor,
       value: transCurrencySymbol(item.currencyId) + recAmount,
     });
-    totalRec += item.totalRMBRecAmount;
+    totalRec += Number(item.totalRMBRecAmount) || 0;
 
     let payName = `应付${item.currencyName}:`;
     let payColor = 'yellow';
-    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    let payAmount = (Number(item.totalPayAmount) || 0).toFixed(2);
     list.push({
       name: payName,
       color: payColor,
       value: transCurrencySymbol(item.currencyId) + payAmount,
     });
-    totalPay += item.totalRMBPayAmount;
+    totalPay += Number(item.totalRMBPayAmount) || 0;
 
     let profitName = `${item.currencyName}利润:`;
     let profitColor = 'blue';
-    let profitAmount = (recAmount - payAmount).toFixed(2);
+    let profitAmount = (
+      (Number(item.totalRecAmount) || 0) - (Number(item.totalPayAmount) || 0)
+    ).toFixed(2);
     list.push({
       name: profitName,
       color: profitColor,
@@ -670,20 +694,27 @@ const handleReceivableTableUpdate = (
   dataSourceRec.value = data;
 
   recAmountMap.value = {};
-  const currencyIdList = dataSourceRec.value.map((item) => item.currencyId);
+  const currencyIdList = dataSourceRec.value.map((item) =>
+    toNumberAmount(item.currencyId),
+  );
   currencyIdList.forEach((item) => {
-    if (item === undefined || item === null) return;
+    if (!item) return;
 
-    let list = dataSourceRec.value.filter((item2) => item2.currencyId === item);
+    let list = dataSourceRec.value.filter(
+      (item2) => toNumberAmount(item2.currencyId) === item,
+    );
     let totalRecAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0);
+      return acc + toNumberAmount(cur.amount);
     }, 0);
     let totalRMBRecAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+      return (
+        acc +
+        toNumberAmount(cur.amount) * (toNumberAmount(cur.exchangeRate) || 1)
+      );
     }, 0);
-    let exchangeRate = list[0]?.exchangeRate;
+    let exchangeRate = toNumberAmount(list[0]?.exchangeRate) || 1;
     let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
-    let currencyId = list[0]?.currencyId;
+    let currencyId = item;
     recAmountMap.value[item] = {
       totalRecAmount,
       totalRMBRecAmount,
@@ -701,24 +732,33 @@ const handlePayableTableUpdate = (
   dataSourcePay.value = data;
 
   payAmountMap.value = {};
-  const currencyIdList = dataSourcePay.value.map((item) => item.currencyId);
+  const currencyIdList = dataSourcePay.value.map((item) =>
+    toNumberAmount(item.currencyId),
+  );
   currencyIdList.forEach((item) => {
-    if (item === undefined || item === null) return;
+    if (!item) return;
 
-    let list = dataSourcePay.value.filter((item2) => item2.currencyId === item);
+    let list = dataSourcePay.value.filter(
+      (item2) => toNumberAmount(item2.currencyId) === item,
+    );
     let totalPayAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0);
+      return acc + toNumberAmount(cur.amount);
     }, 0);
     let totalRMBPayAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+      return (
+        acc +
+        toNumberAmount(cur.amount) * (toNumberAmount(cur.exchangeRate) || 1)
+      );
     }, 0);
-    let exchangeRate = list[0]?.exchangeRate;
+    let exchangeRate = toNumberAmount(list[0]?.exchangeRate) || 1;
     let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
+    let currencyId = item;
     payAmountMap.value[item] = {
       totalPayAmount,
       totalRMBPayAmount,
       exchangeRate,
       currencyName,
+      currencyId,
     };
     console.log('payAmountMap', payAmountMap);
   });

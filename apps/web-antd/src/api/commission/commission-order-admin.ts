@@ -105,6 +105,16 @@ export namespace CommissionOrderAdminApi {
     OverSize = 3,
   }
 
+  /** 分组统计字段 */
+  export enum CommissionOrderGroupField {
+    /** 提成类型 */
+    CommissionType = 1,
+    /** 提成人 */
+    User = 2,
+    /** 提成月 */
+    AccountDate = 3,
+  }
+
   // ==================== 共用 SimpleDto ====================
 
   /** 用户简易对象 */
@@ -241,6 +251,24 @@ export namespace CommissionOrderAdminApi {
     accountDateStart?: string;
     /** 提成月止，只取年月，含当月 */
     accountDateEnd?: string;
+  }
+
+  /**
+   * 普通列表分组统计查询入参。
+   * 与分页列表走同一套筛选条件和同一套数据权限，分页参数不起作用（一次返回全部分组）。
+   */
+  export interface CommissionOrderGroupQueryDto extends CommissionOrderQueryDto {
+    /** 分组字段：1提成类型 2提成人 3提成月 */
+    groupField: CommissionOrderGroupField;
+  }
+
+  /**
+   * 待我审核列表分组统计查询入参。
+   * 与待我审核列表走同一套筛选条件，同样不过数据权限，分页参数不起作用。
+   */
+  export interface CommissionOrderTaskGroupQueryDto extends CommissionOrderTaskQueryDto {
+    /** 分组字段：1提成类型 2提成人 3提成月 */
+    groupField: CommissionOrderGroupField;
   }
 
   /** 提交审核 / 撤销提交入参 */
@@ -712,6 +740,16 @@ export namespace CommissionOrderAdminApi {
     totalAmount: number;
   }
 
+  /** 分组统计结果项（普通列表与待我审核列表分组统计共用） */
+  export interface CommissionOrderGroupDto {
+    /** 分组值id：提成类型=枚举值字符串；提成人=用户id字符串；提成月=该月1号的 yyyy-MM-dd */
+    id: string;
+    /** 分组显示名：提成类型=枚举描述；提成人=用户昵称；提成月=yyyy年MM月 */
+    name: string;
+    /** 该分组下的提成单条数 */
+    count: number;
+  }
+
   // ---- 详情出参 ----
 
   /** 销售提成单详情 */
@@ -813,6 +851,32 @@ export const getCommissionOrderTaskList = (
 ) => {
   return requestClient.get<CommissionOrderAdminApi.PagedListOfCommissionOrderTaskDto>(
     `${API_PREFIX}/CommissionOrderTaskListAsync`,
+    { params },
+  );
+};
+
+/**
+ * 普通列表分组统计（入参=分页列表全部条件+GroupField，分页参数不起作用）
+ * 与分页列表走同一套筛选条件和同一套数据权限，分组条数与列表 TotalCount 必然对得上
+ */
+export const getCommissionOrderGroupedList = (
+  params: CommissionOrderAdminApi.CommissionOrderGroupQueryDto,
+) => {
+  return requestClient.get<CommissionOrderAdminApi.CommissionOrderGroupDto[]>(
+    `${API_PREFIX}/GetGroupedListAsync`,
+    { params },
+  );
+};
+
+/**
+ * 待我审核列表分组统计（入参=待我审核列表全部条件+GroupField，同样不过数据权限）
+ * 分组字段都在提成单上，后端先用待我审核条件圈出提成单id再按提成单分组，条数与列表 TotalCount 对得上
+ */
+export const getCommissionOrderTaskGroupedList = (
+  params: CommissionOrderAdminApi.CommissionOrderTaskGroupQueryDto,
+) => {
+  return requestClient.get<CommissionOrderAdminApi.CommissionOrderGroupDto[]>(
+    `${API_PREFIX}/CommissionOrderTaskGroupedListAsync`,
     { params },
   );
 };

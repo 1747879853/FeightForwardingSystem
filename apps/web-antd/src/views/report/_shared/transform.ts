@@ -2,7 +2,13 @@ import type { ReportApi } from '#/api/system/report';
 
 import type { CurrencyFieldDef } from './types';
 
-import { formatBizType, formatCtns, safeFormatDate } from './formatters';
+import {
+  formatBizType,
+  formatBlType,
+  formatCtns,
+  formatTeu,
+  safeFormatDate,
+} from './formatters';
 
 /**
  * 报表行数据转换
@@ -18,6 +24,7 @@ interface BizLineFields {
   vessel: string;
   innerVoyno: string;
   carrier: ReportApi.CarrierSimpleDto | null;
+  blType: number | null | undefined;
 }
 
 /**
@@ -35,6 +42,7 @@ function extractBizLineFields(
     vessel: '',
     innerVoyno: '',
     carrier: null,
+    blType: null,
   };
 
   if (!transportOrder) return fields;
@@ -48,6 +56,7 @@ function extractBizLineFields(
     fields.vessel = seaExport.vessel || '';
     fields.innerVoyno = seaExport.innerVoyno || '';
     fields.carrier = seaExport.carrier;
+    fields.blType = seaExport.blType;
   } else if (seaImport) {
     fields.pol = seaImport.pol;
     fields.pod = seaImport.pod;
@@ -56,12 +65,15 @@ function extractBizLineFields(
     fields.vessel = seaImport.vessel || '';
     fields.innerVoyno = seaImport.innerVoyno || '';
     fields.carrier = seaImport.carrier;
+    // 海运进口/空运出口 DTO 未声明 blType，运行时存在则兜底读取
+    fields.blType = (seaImport as any)?.blType;
   } else if (airExport) {
     fields.pol = airExport.pol;
     fields.pod = airExport.pod;
     fields.polRemark = airExport.polRemark || '';
     fields.podRemark = airExport.podRemark || '';
     fields.carrier = null;
+    fields.blType = (airExport as any)?.blType;
   }
 
   return fields;
@@ -113,10 +125,16 @@ function buildCommonRow(item: ReportRowItem): Record<string, any> {
     podRemark: biz.podRemark,
     vessel: biz.vessel,
     innerVoyno: biz.innerVoyno,
-    carrier: carrier
-      ? carrier.cnShortName || carrier.cnName || carrier.enName
-      : '-',
+    // 船公司显示英文简称（如 CMA、MSK），优先取 EDI 代码
+    carrier: carrier ? carrier.ediCode || carrier.code || carrier.enName : '-',
     ctns: formatCtns(transportOrder?.ctns || []),
+    teu: formatTeu(transportOrder?.ctns || []),
+    blType: formatBlType(biz.blType),
+    // 组织机构只显示所属公司（公司节点），无公司节点时回退第一个组织
+    org:
+      (transportOrder?.orgs || []).find((o) => o.isCompany)?.name ||
+      (transportOrder?.orgs || [])[0]?.name ||
+      '-',
     localCurrencyCode: item.localCurrencyCode || '',
     _originalData: item,
     _isDataRow: true,

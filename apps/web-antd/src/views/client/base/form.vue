@@ -50,6 +50,7 @@ import {
   cancelDishonest,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
@@ -71,6 +72,7 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -1248,7 +1250,7 @@ const handleSubmit = async () => {
         reconcilerUserIds: reconcilerUserIds.value,
       };
 
-      console.log('📤 新增模式提交数据:', {
+      console.log('新增模式提交数据:', {
         clientType: addData.clientType,
         isClient: addData.isClient,
         name: addData.name,
@@ -1262,12 +1264,14 @@ const handleSubmit = async () => {
         resolvedCreatedId === null || resolvedCreatedId === undefined
           ? ''
           : String(resolvedCreatedId).trim();
+      const createTabKey = route.fullPath;
       if (createdIdStr) {
         await syncFormSnapshot();
-        router.push(`/clients/${createdIdStr}/edit`);
+        await router.replace(`/clients/${createdIdStr}/edit`);
       } else {
-        router.push('/clients');
+        await router.replace('/clients');
       }
+      await closeTabByKey(createTabKey);
     }
 
     if (createdId) {
@@ -1509,12 +1513,18 @@ const delAddress = (index: number) => {
 const formSnapshot = ref<null | string>(null);
 
 async function buildClientDirtySnapshot() {
+  // ClientForm/SupplierForm 仅在对应类型勾选时渲染（v-if），
+  // 未渲染时 getValues() 会因等待表单挂载而永久挂起，必须跳过
   const [baseValues, businessValues, clientValues, supplierValues] =
     await Promise.all([
       baseFormApi.getValues(),
       businessFormApi.getValues(),
-      clientFormApi.getValues(),
-      supplierFormApi.getValues(),
+      isClient.value || clientFormApi.isMounted
+        ? clientFormApi.getValues()
+        : Promise.resolve({}),
+      isSupplier.value || supplierFormApi.isMounted
+        ? supplierFormApi.getValues()
+        : Promise.resolve({}),
     ]);
   return JSON.stringify({
     addressList: addressList.value,

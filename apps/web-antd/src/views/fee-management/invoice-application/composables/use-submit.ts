@@ -1,6 +1,7 @@
 import { message, Modal } from 'ant-design-vue';
 import type { Ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useTabs } from '@vben/hooks';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 // ✅ 新增：导入刷新标记工具函数
@@ -19,6 +20,8 @@ export function useSubmit(
   editId: Ref<string | undefined>,
 ) {
   const router = useRouter();
+  const route = useRoute();
+  const { closeTabByKey } = useTabs();
   const { addAsync, editAsync, submitAsync } = InvoiceApplicationApi;
 
   const submitLoading = ref(false);
@@ -114,7 +117,11 @@ export function useSubmit(
         message.success('创建成功');
 
         if (ids && ids.length > 0) {
-          router.push(`/fee-management/invoice-application/${ids[0]}/edit`);
+          const createTabKey = route.fullPath;
+          await router.replace(
+            `/fee-management/invoice-application/${ids[0]}/edit`,
+          );
+          await closeTabByKey(createTabKey);
         }
       }
     } catch (error) {
@@ -164,7 +171,12 @@ export function useSubmit(
         message.success('提交成功');
         // ✅ 设置刷新标记并返回列表页面（使用路由名称）
         returnToListWithRefresh('InvoiceApplicationList', () => {
-          router.push('/fee-management/invoice-application');
+          if (isEdit.value) {
+            router.push('/fee-management/invoice-application');
+          } else {
+            // 新建模式下 replace 回列表，避免残留新建页签
+            router.replace('/fee-management/invoice-application');
+          }
         });
       }
     } catch (error) {
@@ -197,9 +209,9 @@ export function useSubmit(
         if (ids && ids.length > 0) {
           await submitAsync({ id: ids[0]! });
           message.success('创建并提交成功');
-          // ✅ 设置刷新标记并返回列表页面（使用路由名称）
+          // ✅ 设置刷新标记并返回列表页面（新建模式 replace 避免残留新建页签）
           returnToListWithRefresh('InvoiceApplicationList', () => {
-            router.push('/fee-management/invoice-application');
+            router.replace('/fee-management/invoice-application');
           });
         }
       } else {

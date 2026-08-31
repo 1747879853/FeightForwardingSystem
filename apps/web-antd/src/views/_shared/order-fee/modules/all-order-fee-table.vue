@@ -84,22 +84,28 @@ const loadCurrencySymbols = async () => {
  * @param currencyId 币别ID
  * @returns 币别符号
  */
-const transCurrencySymbol = (currencyId: number | undefined) => {
+const transCurrencySymbol = (currencyId: number | string | undefined) => {
   // 如果 currencyId 为空，返回空字符串
-  if (currencyId === undefined || currencyId === null) {
+  if (currencyId === undefined || currencyId === null || currencyId === '') {
+    return '';
+  }
+
+  // 申请修改币别的费用，currencyId 会被展示层改写为 "原值 => [新值]"，取原值查找符号
+  const normalizedId = Number(String(currencyId).split('=>')[0]?.trim());
+  if (!Number.isFinite(normalizedId)) {
     return '';
   }
 
   // 优先从API获取的映射表中查找
-  if (currencySymbolMap.value[currencyId]) {
-    return currencySymbolMap.value[currencyId];
+  if (currencySymbolMap.value[normalizedId]) {
+    return currencySymbolMap.value[normalizedId];
   }
 
   // 如果映射表中没有，则使用默认的硬编码选项
   const option = feeConstants
     .getCurrencyEnumSymbolOptions()
-    .find((o) => o.value === currencyId);
-  return option ? option.label : String(currencyId);
+    .find((o) => o.value === normalizedId);
+  return option ? option.label : String(normalizedId);
 };
 
 /**
@@ -195,6 +201,15 @@ const useOrderFeeDetailColumns = () => {
       align: 'center',
       formatter: ({ row }: any) => {
         return row.currency?.code || '--';
+      },
+    },
+    {
+      title: orderFeeDataT('ExchangeRate'),
+      field: 'exchangeRate',
+      width: 80,
+      align: 'right',
+      formatter: ({ row }: any) => {
+        return row.exchangeRate ?? '--';
       },
     },
     {

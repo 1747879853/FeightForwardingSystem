@@ -39,11 +39,12 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
     { data: 'carrier', title: '船公司', width: 150 },
     { data: 'sales', title: '销售', width: 120 },
     { data: 'operations', title: '操作', width: 120 },
-    { data: 'polRemark', title: '起运港备注', width: 150 },
-    { data: 'podRemark', title: '目的港备注', width: 150 },
+    { data: 'polRemark', title: '起运港', width: 150 },
+    { data: 'podRemark', title: '目的港', width: 150 },
     { data: 'vessel', title: '船名', width: 150 },
     { data: 'innerVoyno', title: '航次', width: 120 },
     { data: 'ctns', title: '箱型数量', width: 150, renderer: textRenderer() },
+    { data: 'teu', title: 'TEU', width: 100, className: 'htRight' },
     {
       data: 'bizDate',
       title: '业务日期',
@@ -56,6 +57,8 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
       width: 120,
       renderer: textRenderer(),
     },
+    { data: 'blType', title: '装运方式', width: 100 },
+    { data: 'org', title: '组织机构', width: 180 },
   ],
 
   // 币别明细列：应收 / 应付 / 利润
@@ -121,11 +124,8 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
     totalProfitRate: item.totalProfitRate != null ? item.totalProfitRate : null,
   }),
 
-  // 数值列（合计行累加、分组聚合、右对齐）
-  numericColumnKeys: [
-    'totalReceivable',
-    'totalPayable',
-    'totalProfit',
-    'totalProfitRate',
-  ],
+  // 数值列（合计行累加、分组聚合、右对齐）。
+  // 利润率（totalProfitRate）不在此列：它按总利润/总应付重新计算，
+  // 若作为普通数值列会被累加分支拦截，聚合结果错误
+  numericColumnKeys: ['totalReceivable', 'totalPayable', 'totalProfit', 'teu'],
 };
