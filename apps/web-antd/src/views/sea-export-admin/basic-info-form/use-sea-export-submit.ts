@@ -18,6 +18,7 @@ import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import { CARGO_TYPE } from '../data';
+import { toNullableContactId } from './party-contact';
 import {
   sanitizeOrderCtns,
   sanitizeOrderUsers,
@@ -51,6 +52,9 @@ export const buildSeaExportDto = (
     podAgentId: values.podAgentId ?? undefined,
     podAgentContent: values.podAgentContent,
     bookingAgentId: values.bookingAgentId ?? undefined,
+    bookingAgentContactId: values.bookingAgentId
+      ? toNullableContactId(values.bookingAgentContactId)
+      : null,
     shipAgentId: values.shipAgentId ?? undefined,
     yardId: values.yardId ?? undefined,
     yardContact: values.yardContact,
@@ -103,6 +107,9 @@ export const buildSeaExportDto = (
     atd: toDateOnlyString(values.atd),
     eta: toDateString(values.eta),
     clientId: values.clientId,
+    clientContactId: values.clientId
+      ? toNullableContactId(values.clientContactId)
+      : null,
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
     warehouseId: values.warehouseId ?? undefined,

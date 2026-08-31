@@ -26,6 +26,7 @@ last_updated: 2026-08-31
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后调用 `Client/GetDishonestStakeholdersAsync`（登录即可）按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。干系人 `UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户所属各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回的人不受过滤限制、始终显示昵称。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
+- **委托单位 / 订舱代理联系人：** 标签右侧按场站同款展示联系人姓名，悬停看邮箱 / 手机 / 电话。选客户后拉该客户未禁用联系人（优先默认，否则第一条）并随保存提交 Id；清空客户则清空联系人。本轮无独立联系人下拉。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。`GetServiceTypesByPOLAsync` 的展示/锁定/必填已改为对象数组（`seaExportPropEnum` + `requireValues`），前端取枚举值时需兼容，不可再当 `number[]` 直接使用。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。校验失败时 toast 点名缺失必填字段（如「请完善必填项：归属组织」）；头部归属组织带红色 `*`。货物类型新建默认「普通货」，可改可清。
 - **船期时间校验：** 截关节点展示为截单 → 截港 → 截关；保存时逐项校验上述日期，任一晚于开船日期或实际开船日期时提示对应字段并阻止保存。
@@ -43,7 +44,7 @@ last_updated: 2026-08-31
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位）；`Client/GetDishonestStakeholdersAsync` | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并调用 `applyClientDefaultOrderUsers` 按客户绑定干系人回填，操作/单证/客服未绑定兜底当前账号。 | **必填项**（`selectRequired`）。 |
+| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位）；`Client/GetDishonestStakeholdersAsync` | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并调用 `applyClientDefaultOrderUsers` 按客户绑定干系人回填，操作/单证/客服未绑定兜底当前账号。标签右侧展示默认联系人，提交 `transportOrder.clientContactId`。 | **必填项**（`selectRequired`）。 |
 | **委托编号** | 业务委托号。 | `transportOrder.commissionNum`；按编号生成规则自动生成 |  | 前端禁用，不手工录入。 |
 | **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
@@ -54,7 +55,8 @@ last_updated: 2026-08-31
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时带出起运港（`polId`）；为到付时带出目的港（`podId`），带出后允许修改。 | - |
 | **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
-| **订舱代理** | 订舱服务执行方客户。 | `bookingAgentId`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与船公司/船代/场站一并迁入基础信息区，排在船代后、车队前；与服务流水线解耦，始终展示。 | 可选；须为含订舱代理属性的客户。 |
+| **订舱代理** | 订舱服务执行方客户。 | `bookingAgentId`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与船公司/船代/场站一并迁入基础信息区，排在船代后、车队前；与服务流水线解耦，始终展示。标签右侧展示默认联系人，提交 `bookingAgentContactId`；清空代理则联系人传 `null`。 | 可选；须为含订舱代理属性的客户。 |
+| **委托单位 / 订舱代理联系人** | 标签旁只读展示的客户联系人。 | `ClientContactAdmin/GetPagedListAsync`；保存 `clientContactId` / `bookingAgentContactId` | **触发/依赖：** 选客户后优先 `isDefault`，否则第一条未禁用；悬停邮箱/手机/电话。 | UI 只读；无联系人显示 `-`。 |
 | **船名航次** | 船名和内航次；海出侧船名:船次宽度 **3:2**。 | `VesselVoyageInput` -> `vessel`、`innerVoyno`（`mainRatio:3` / `secondRatio:2`） | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
 | **签单地点 / 签单日期** | 签单港与签单时间。 | `signingPortId`、`signingTime` | **触发/依赖：** 表单当前 `hidden`，模型保留可提交。 | - |
 | **业务锁定** | 业务资料是否锁定。 | `transportOrder.isBusinessLocking`；后端默认未锁定 | - | 禁止手动修改。 |
@@ -78,11 +80,14 @@ last_updated: 2026-08-31
 > **[卡点 5：服务项目联动是“双语义”查询]** `polId` 查询用于“显示哪些卡片”，`polId+clientId` 查询用于“默认勾选哪些卡片”；两者不可混用。若仅按 `checked` 控制展示，会把“未默认勾选”误判成“未配置服务”。
 >
 > **[卡点 6：新建保存后必须关闭原 Tab]** `/create` 与 `/:id/edit` 是不同 Tab key；仅 `push`/`replace` 都会留下新建页标签。须在跳转前缓存 create 的 `fullPath`，跳转后 `closeTabByKey`，否则顶部会残留空白标签。
+>
+> **[卡点 7：往来单位联系人 Id 层级不同]** 委托单位联系人在 `transportOrder.clientContactId`，订舱代理联系人在海出根 `bookingAgentContactId`。保存必须带回当前 Id，漏传会被空覆盖；展示学场站标签，数据不要抄场站四段字符串。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 委托单位、订舱代理标签旁按场站同款展示联系人；选客户带出默认联系人并随保存提交 Id。 | TAPD 1000904。详见 `changelogs/change-log-2026-08-31-sea-export-party-contact-label.md`。 |
 | 2026-08-31 | `Fix` | 新建时货物类型默认「普通货」，可改可清。 | TAPD 1000913；`cargoId` 用 `CARGO_TYPE.S`（值为 0），提交须用 `??` 不能用逻辑或。编辑仍走详情回填。详见 `changelogs/change-log-2026-08-31-sea-export-default-cargo-normal.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、集装箱毛重/皮重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-23 | `Feature` | 新建页 KeepAlive：未保存切走可回来继续填，点 X 关闭才丢。 | `keepAlive` + `keepAliveName: SeaExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |

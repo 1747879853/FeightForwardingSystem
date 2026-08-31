@@ -240,6 +240,8 @@ export namespace SeaExportAdminApi {
     kgs?: number;
     cbm?: number;
     clientId: number;
+    /** 须属于 clientId 下的客户联系人 */
+    clientContactId?: LongId | null;
     teamId?: number;
     custBrokerId?: number;
     warehouseId?: number;
@@ -322,6 +324,8 @@ export namespace SeaExportAdminApi {
     id: string;
     /** 委托单位（业务往来单位简易对象，无则为 null） */
     client?: ClientAdminApi.ClientDto | null;
+    /** 委托单位联系人（无则为 null） */
+    clientContact?: ClientContactSimpleDto | null;
     /** 车队（业务往来单位简易对象，无则为 null） */
     team?: ClientAdminApi.ClientDto | null;
     /** 报关行（业务往来单位简易对象，无则为 null） */
@@ -359,6 +363,17 @@ export namespace SeaExportAdminApi {
     creatorUserId?: number;
     /** 未完结状态。true 未完结，false 已完结（默认） */
     isUnfinished?: boolean;
+  }
+
+  /** 客户联系人简易对象（详情/列表展示，禁止再要平铺 Name） */
+  export interface ClientContactSimpleDto {
+    id: LongId;
+    name?: null | string;
+    mobile?: null | string;
+    email?: null | string;
+    tel?: null | string;
+    position?: null | string;
+    weChat?: null | string;
   }
 
   export interface OrganizationUnitSimpleDto {
@@ -403,6 +418,8 @@ export namespace SeaExportAdminApi {
     podAgentId?: number;
     podAgentContent?: string;
     bookingAgentId?: number;
+    /** 须属于 bookingAgentId 下的客户联系人 */
+    bookingAgentContactId?: LongId | null;
     shipAgentId?: number;
     yardId?: number;
     /** 场站联系人 */
@@ -457,6 +474,8 @@ export namespace SeaExportAdminApi {
     podAgentId?: number;
     podAgentContent?: string;
     bookingAgentId?: number;
+    /** 须属于 bookingAgentId 下的客户联系人 */
+    bookingAgentContactId?: LongId | null;
     shipAgentId?: number;
     yardId?: number;
     /** 场站联系人 */
@@ -520,8 +539,12 @@ export namespace SeaExportAdminApi {
     /** 目的港代理（业务往来单位简易对象，无则为 null） */
     podAgent?: ClientAdminApi.ClientDto | null;
     bookingAgentId?: number;
+    /** 须属于 bookingAgentId 下的客户联系人 */
+    bookingAgentContactId?: LongId | null;
     /** 订舱代理（业务往来单位简易对象，无则为 null） */
     bookingAgent?: ClientAdminApi.ClientDto | null;
+    /** 订舱代理联系人（无则为 null） */
+    bookingAgentContact?: ClientContactSimpleDto | null;
     shipAgentId?: number;
     /** 船代（业务往来单位简易对象，无则为 null） */
     shipAgent?: ClientAdminApi.ClientDto | null;

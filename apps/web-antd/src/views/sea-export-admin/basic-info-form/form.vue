@@ -100,6 +100,12 @@ import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
+  emptyPartyContact,
+  fetchDefaultClientContact,
+  toPartyContactDisplay,
+} from './party-contact';
+import { createPartyContactFieldLabel } from './party-contact-field-label';
+import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
   toDayjs,
@@ -487,6 +493,44 @@ const yardFieldLabelSchemaContent = YardFieldLabel as unknown as NonNullable<
   VbenFormSchema['label']
 >;
 
+const clientContactInfo = ref(emptyPartyContact());
+const bookingAgentContactInfo = ref(emptyPartyContact());
+const ClientContactFieldLabel = createPartyContactFieldLabel({
+  componentName: 'SeaExportClientContactFieldLabel',
+  fieldLabel: () => $t('seaExport.export.clientId'),
+  contact: clientContactInfo,
+  emailLabel: '邮箱',
+  mobileLabel: '手机',
+  telLabel: '电话',
+});
+const BookingAgentContactFieldLabel = createPartyContactFieldLabel({
+  componentName: 'SeaExportBookingAgentContactFieldLabel',
+  fieldLabel: () => $t('seaExport.export.bookingAgentId'),
+  contact: bookingAgentContactInfo,
+  emailLabel: '邮箱',
+  mobileLabel: '手机',
+  telLabel: '电话',
+});
+const clientContactFieldLabelSchemaContent =
+  ClientContactFieldLabel as unknown as NonNullable<VbenFormSchema['label']>;
+const bookingAgentContactFieldLabelSchemaContent =
+  BookingAgentContactFieldLabel as unknown as NonNullable<
+    VbenFormSchema['label']
+  >;
+
+function resolveBasicInfoFieldLabel(item: VbenFormSchema) {
+  if (item.fieldName === 'clientId') {
+    return clientContactFieldLabelSchemaContent;
+  }
+  if (item.fieldName === 'bookingAgentId') {
+    return bookingAgentContactFieldLabelSchemaContent;
+  }
+  if (isEdit.value && item.fieldName === 'yardId') {
+    return yardFieldLabelSchemaContent;
+  }
+  return item.label;
+}
+
 /**
  * 付费方式→付费地点联动：
  * - 付费方式为「到付」(cnName 含「到付」/ ediCode=CC) → 付费地点带出目的港(podId)
@@ -583,10 +627,7 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
         return {
           ...item,
           componentProps: withSmallComponentProps(item.componentProps),
-          label:
-            isEdit.value && item.fieldName === 'yardId'
-              ? yardFieldLabelSchemaContent
-              : item.label,
+          label: resolveBasicInfoFieldLabel(item),
           formItemClass: isHeaderSelectField
             ? 'hidden'
             : isMergedEntrustField
@@ -1121,6 +1162,8 @@ const collectCurrentFormValues = async () => {
     ...cargoRemarkValues,
     ...cargoDgValues,
     ...cargoReeferValues,
+    clientContactId: clientContactInfo.value.id ?? null,
+    bookingAgentContactId: bookingAgentContactInfo.value.id ?? null,
   } as Record<string, any>;
 };
 const getBriefingFormData = async () => {
@@ -1518,14 +1561,80 @@ const applyClientDefaultOrderUsersByClientId = async (value: unknown) => {
     applyClientDefaultOrderUsers(client);
   }
 };
+
+let clientContactFetchSeq = 0;
+let bookingAgentContactFetchSeq = 0;
+
+async function applyDefaultPartyContact(
+  target: 'bookingAgent' | 'client',
+  clientId: unknown,
+) {
+  const seq =
+    target === 'client'
+      ? ++clientContactFetchSeq
+      : ++bookingAgentContactFetchSeq;
+  const infoRef =
+    target === 'client' ? clientContactInfo : bookingAgentContactInfo;
+  const isCurrent = () =>
+    seq ===
+    (target === 'client' ? clientContactFetchSeq : bookingAgentContactFetchSeq);
+  if (toOptionalQueryValue(clientId) === undefined) {
+    infoRef.value = emptyPartyContact();
+    return;
+  }
+  try {
+    const contact = await fetchDefaultClientContact(clientId);
+    if (!isCurrent()) return;
+    infoRef.value = toPartyContactDisplay(contact);
+  } catch {
+    if (!isCurrent()) return;
+    infoRef.value = emptyPartyContact();
+  }
+}
+
+function applyPartyContactsFromDetail(detail: SeaExportAdminApi.SeaExportDto) {
+  clientContactInfo.value = toPartyContactDisplay(
+    detail.transportOrder?.clientContact,
+  );
+  bookingAgentContactInfo.value = toPartyContactDisplay(
+    detail.bookingAgentContact,
+  );
+}
+
+const applyPartyContactsFromFormValues = async (
+  values: Record<string, any>,
+) => {
+  if (toOptionalQueryValue(values.clientId) !== undefined) {
+    await applyDefaultPartyContact('client', values.clientId);
+  }
+  if (toOptionalQueryValue(values.bookingAgentId) !== undefined) {
+    await applyDefaultPartyContact('bookingAgent', values.bookingAgentId);
+  }
+};
+
 const bindServiceTypeLinkageEvents = () => {
   basicInfoFormApi.updateSchema([
     {
       fieldName: 'clientId',
+      label: clientContactFieldLabelSchemaContent,
       componentProps: {
         onChange: (value: unknown) => {
           queueSyncServiceTypesByPol({ clientId: value });
           void applyClientDefaultOrderUsersByClientId(value);
+          if (!suppressServiceTypeLinkage.value) {
+            void applyDefaultPartyContact('client', value);
+          }
+        },
+        size: 'small',
+      },
+    },
+    {
+      fieldName: 'bookingAgentId',
+      label: bookingAgentContactFieldLabelSchemaContent,
+      componentProps: {
+        onChange: (value: unknown) => {
+          if (suppressServiceTypeLinkage.value) return;
+          void applyDefaultPartyContact('bookingAgent', value);
         },
         size: 'small',
       },
@@ -2109,6 +2218,7 @@ const { aiRecognizing, recognizeAiFile } = useSeaExportAiRecognize({
   syncBasicInfoHeaderFields,
   isEdit,
   syncServiceTypesByPol,
+  applyPartyContacts: applyPartyContactsFromFormValues,
 });
 
 const aiExtractModalOpen = ref(false);
@@ -2167,6 +2277,7 @@ const loadEditData = async (): Promise<
     vendorSubscribeSuccess.value = detail.isFeituoSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     const to = detail.transportOrder;
+    applyPartyContactsFromDetail(detail);
 
     partyInfoFormApi.updateSchema([
       {
@@ -2215,9 +2326,17 @@ const loadEditData = async (): Promise<
     basicInfoFormApi.updateSchema([
       {
         fieldName: 'clientId',
+        label: clientContactFieldLabelSchemaContent,
         componentProps: {
           selectedItems: toSelectedItems(to?.clientId, to?.client?.name),
           size: 'small',
+          onChange: (value: unknown) => {
+            queueSyncServiceTypesByPol({ clientId: value });
+            void applyClientDefaultOrderUsersByClientId(value);
+            if (!suppressServiceTypeLinkage.value) {
+              void applyDefaultPartyContact('client', value);
+            }
+          },
         },
       },
       {
@@ -2258,12 +2377,17 @@ const loadEditData = async (): Promise<
       },
       {
         fieldName: 'bookingAgentId',
+        label: bookingAgentContactFieldLabelSchemaContent,
         componentProps: {
           selectedItems: toSelectedItems(
             detail.bookingAgentId,
             detail.bookingAgent?.name,
           ),
           size: 'small',
+          onChange: (value: unknown) => {
+            if (suppressServiceTypeLinkage.value) return;
+            void applyDefaultPartyContact('bookingAgent', value);
+          },
         },
       },
       {

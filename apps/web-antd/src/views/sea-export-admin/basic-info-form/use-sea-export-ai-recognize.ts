@@ -54,6 +54,7 @@ export type UseSeaExportAiRecognizeDeps = {
   refreshEntrustReadonlyInfo: (values: Record<string, any>) => void;
   syncTabTitleFromValues: (values: Record<string, any>) => void;
   syncBasicInfoHeaderFields: () => Promise<void> | void;
+  applyPartyContacts?: (values: Record<string, any>) => Promise<void> | void;
   isEdit: ComputedRef<boolean>;
   syncServiceTypesByPol: (args: {
     clientId?: unknown;
@@ -72,6 +73,7 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
     syncBasicInfoHeaderFields,
     isEdit,
     syncServiceTypesByPol,
+    applyPartyContacts,
   } = deps;
 
   const aiRecognizing = ref(false);
@@ -124,6 +126,8 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
         force: true,
       });
     }
+
+    await applyPartyContacts?.(values);
   };
 
   const applyAiExtractSelectedItems = (
