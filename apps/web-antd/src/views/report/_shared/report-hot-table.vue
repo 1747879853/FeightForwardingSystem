@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import {
+  computed,
+  ref,
+  nextTick,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onUnmounted,
+  watch,
+} from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
@@ -580,6 +589,9 @@ const hotSettings = computed(() => {
  */
 let resizeObserver: ResizeObserver | null = null;
 let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+let heightDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+/** 观察器是否已启动。onMounted 与 onActivated 都会调用启动函数，需要幂等 */
+let layoutWatching = false;
 
 function updateTableHeight() {
   // 清除之前的定时器，避免重复调用
@@ -618,112 +630,74 @@ function updateTableHeight() {
   }, 16); // 约1帧的时间（60fps）
 }
 
-function initResizeObserver() {
-  if (!containerRef.value) return;
-
-  // 清理旧的观察者
-  if (resizeObserver) {
-    resizeObserver.disconnect();
+/** 防抖调度一次高度重算 */
+function scheduleHeightUpdate(delay = 50) {
+  if (heightDebounceTimer) {
+    clearTimeout(heightDebounceTimer);
   }
+  heightDebounceTimer = setTimeout(() => {
+    heightDebounceTimer = null;
+    updateTableHeight();
+  }, delay);
+}
 
-  resizeObserver = new ResizeObserver(() => {
-    // 清除之前的定时器
-    if (heightUpdateTimer) {
-      clearTimeout(heightUpdateTimer);
-    }
-    // 使用防抖，避免频繁更新
-    heightUpdateTimer = setTimeout(() => {
-      updateTableHeight();
-    }, 50); // 50ms 防抖
-  });
+function handleWindowResize() {
+  scheduleHeightUpdate(100);
+}
 
-  // 观察多个元素的变化
-  // 1. 观察 document.body - 窗口缩放时视口变化
-  resizeObserver.observe(document.body);
+/**
+ * 启动布局观察。
+ *
+ * 只观察本页面的表格容器、页面容器与查询卡片：它们的尺寸变化会改变表格顶部
+ * 位置，需要重算 Handsontable 高度。视口变化由 window resize 覆盖，因此不再
+ * 观察 document.body，也不再用 MutationObserver 监听全站 DOM 的 class/style。
+ *
+ * 目标节点从 containerRef 向上 closest 查找，避免命中其它 keepAlive 缓存页里
+ * 的同名节点。
+ */
+function startLayoutWatchers() {
+  if (layoutWatching) return;
+  const container = containerRef.value;
+  if (!container) return;
+  layoutWatching = true;
 
-  // 2. 观察 Page 组件的 wrapper - 当查询表单展开/收缩时，整体布局会变化
-  const pageWrapper = document.querySelector('.vben-page-wrapper');
+  resizeObserver = new ResizeObserver(() => scheduleHeightUpdate(50));
+  resizeObserver.observe(container);
+
+  const pageWrapper = container.closest('.vben-page-wrapper');
   if (pageWrapper) {
-    resizeObserver.observe(pageWrapper as Element);
+    resizeObserver.observe(pageWrapper);
+    const queryCard = pageWrapper.querySelector('.query-card');
+    if (queryCard) {
+      resizeObserver.observe(queryCard);
+    }
   }
 
-  // 3. 观察 query-card - 查询表单展开/收缩的直接容器
-  const queryCard = document.querySelector('.query-card');
-  if (queryCard) {
-    resizeObserver.observe(queryCard as Element);
+  window.addEventListener('resize', handleWindowResize);
+}
+
+/**
+ * 停止布局观察并清空待执行的定时器。
+ *
+ * 报表路由带 keepAlive，离开页面只触发 onDeactivated 而不触发 onUnmounted，
+ * 所以两个钩子都要调用这里，否则观察器会在整个会话内一直存活。
+ */
+function stopLayoutWatchers() {
+  if (!layoutWatching) return;
+  layoutWatching = false;
+
+  window.removeEventListener('resize', handleWindowResize);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+
+  if (heightDebounceTimer) {
+    clearTimeout(heightDebounceTimer);
+    heightDebounceTimer = null;
   }
-
-  // 4. 使用 MutationObserver 监听 DOM 变化，动态添加新的观察对象
-  let updateTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  const mutationObserver = new MutationObserver((mutations) => {
-    // 防抖处理：避免频繁调用
-    if (updateTimeout) {
-      clearTimeout(updateTimeout);
-    }
-
-    let needUpdate = false;
-
-    mutations.forEach((mutation) => {
-      if (!needUpdate) {
-        // 检查是否有相关节点添加
-        mutation.addedNodes.forEach((node) => {
-          if (node instanceof HTMLElement) {
-            if (node.classList.contains('query-card')) {
-              resizeObserver?.observe(node);
-            }
-            if (
-              node.classList.contains('vben-page-wrapper') ||
-              node.querySelector?.('.vben-page-wrapper')
-            ) {
-              const wrapper = node.classList.contains('vben-page-wrapper')
-                ? node
-                : node.querySelector('.vben-page-wrapper');
-              if (wrapper) {
-                resizeObserver?.observe(wrapper);
-              }
-            }
-          }
-        });
-
-        // 监听属性变化（特别是样式和类名变化）
-        if (
-          mutation.type === 'attributes' &&
-          (mutation.attributeName === 'style' ||
-            mutation.attributeName === 'class')
-        ) {
-          const target = mutation.target as HTMLElement;
-          if (
-            target.classList.contains('query-card') ||
-            target.classList.contains('vben-page-wrapper') ||
-            target.closest('.query-card') ||
-            target.closest('.vben-page-wrapper')
-          ) {
-            needUpdate = true;
-          }
-        }
-      }
-    });
-
-    // 如果需要更新，使用防抖延迟执行
-    if (needUpdate) {
-      updateTimeout = setTimeout(() => {
-        updateTableHeight();
-        updateTimeout = null;
-      }, 100); // 100ms 防抖
-    }
-  });
-
-  // 监听整个文档的变化
-  mutationObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class'],
-  });
-
-  // 保存 mutationObserver 引用以便清理
-  (initResizeObserver as any).mutationObserver = mutationObserver;
+  if (heightUpdateTimer) {
+    clearTimeout(heightUpdateTimer);
+    heightUpdateTimer = null;
+  }
 }
 
 /**
@@ -755,20 +729,9 @@ function initResizeObserver() {
 //   });
 // }
 
-// 监听窗口大小变化（带防抖）
-let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-window.addEventListener('resize', () => {
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-  }
-  resizeTimer = setTimeout(() => {
-    updateTableHeight();
-  }, 100);
-});
-
 onMounted(() => {
   // 初始化观察者
-  initResizeObserver();
+  startLayoutWatchers();
 
   // 如果有数据，应用分组
   if (dataSource.value.length > 0) {
@@ -779,30 +742,17 @@ onMounted(() => {
   updateTableHeight();
 });
 
+// 从 keepAlive 缓存恢复：重新挂观察器，并按当前布局重算一次高度
+onActivated(() => {
+  startLayoutWatchers();
+  scheduleHeightUpdate(0);
+});
+
+// 切走时立即停掉，避免在整个会话内持续监听
+onDeactivated(stopLayoutWatchers);
+
 onUnmounted(() => {
-  // 移除窗口resize监听器
-  window.removeEventListener('resize', updateTableHeight);
-
-  // 清理所有定时器
-  if (heightUpdateTimer) {
-    clearTimeout(heightUpdateTimer);
-    heightUpdateTimer = null;
-  }
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-    resizeTimer = null;
-  }
-
-  // 清理 ResizeObserver
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-  }
-
-  // 清理 MutationObserver
-  const mutationObserver = (initResizeObserver as any).mutationObserver;
-  if (mutationObserver) {
-    mutationObserver.disconnect();
-  }
+  stopLayoutWatchers();
 
   // ✅ 移除拖拽相关资源清理（已完全移除拖拽功能）
   // if (dragGhostElement) {
