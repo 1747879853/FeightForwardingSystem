@@ -1020,6 +1020,22 @@ watch(
     text-align: center !important;
   }
 
+  // 已修改单元格角标：左上角橙色三角，纯 CSS 呈现，无 JS 渲染开销
+  td.cell-edited-mark {
+    position: relative;
+
+    &::before {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+      content: '';
+      border-top: 7px solid #fa8c16;
+      border-right: 7px solid transparent;
+    }
+  }
+
   th .select-all-checkbox {
     cursor: pointer;
 

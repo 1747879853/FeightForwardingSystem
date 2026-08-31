@@ -12,6 +12,7 @@ import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 import attachments from './attachments/index.vue';
+import changeOrder from './changeOrder/index.vue';
 import Form from './basic-info-form/form.vue';
 import AirTrackingPanel from './modules/air-tracking-panel.vue';
 import orderFee from './orderFee/index.vue';
@@ -19,7 +20,7 @@ import orderFee from './orderFee/index.vue';
 defineOptions({ name: 'AirExportEdit' });
 
 type SectionKey = 'basic' | 'cargo' | 'date' | 'leg' | 'party';
-type TabKey = 'attachments' | 'basic' | 'fee' | 'tracking';
+type TabKey = 'attachments' | 'basic' | 'fee' | 'party' | 'tracking';
 type FormExpose = {
   isFormDirty: () => boolean | Promise<boolean>;
   scrollToSection: (key: SectionKey) => void;
@@ -28,10 +29,11 @@ type FeeExpose = {
   isFeeDirty?: () => boolean;
 };
 
-/** 空运出口本期不做更改单，标签只有基础信息、只读费用、附件、运踪四个 */
+/** 与海出对齐：标签包含基础信息、应收应付费用、更改单、附件、运踪五个 */
 const VALID_TAB_KEYS: readonly TabKey[] = [
   'basic',
   'fee',
+  'party',
   'attachments',
   'tracking',
 ];
@@ -106,6 +108,7 @@ const tabs = computed<
     sectionKey: 'basic',
   },
   { key: 'fee', label: feeName.value },
+  { key: 'party', label: '更改单' },
   { key: 'attachments', label: $t('airExport.export.attachments.tabTitle') },
   { key: 'tracking', label: $t('tracking.trackingInfo') },
 ]);
@@ -209,6 +212,12 @@ const getContentTabStyle = (isActive: boolean) =>
             <orderFee
               v-if="activeTab === 'fee'"
               ref="feeRef"
+              :latest-detail="savedDetail"
+            />
+          </KeepAlive>
+          <KeepAlive include="AirChangeOrder">
+            <changeOrder
+              v-if="activeTab === 'party'"
               :latest-detail="savedDetail"
             />
           </KeepAlive>

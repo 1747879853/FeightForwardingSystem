@@ -229,7 +229,6 @@ const parseAndCompareFields = (
     'InvoiceBlocked',
     'settledPrice',
     'thisSettledPrice',
-    'taxRate',
     'statements',
     'isStatemented',
 
@@ -246,7 +245,7 @@ const parseAndCompareFields = (
     'CurrencyId',
     'CURRENCYID',
 
-    // 金额相关字段
+    // 金额相关字段（派生流程金额，不随编辑变化，排除）
     'invoicedAmount', // 已开票金额
     'orderInvoiceAmount', // 发票申请金额
     'settledAmount', // 已结算金额
@@ -256,14 +255,7 @@ const parseAndCompareFields = (
     'unSettledAmount', // 未结算金额
     'unInvoicedAmount', // 未开票金额
 
-    'amount',
-    'unitPrice',
-    'noTaxAmount',
-    'noTaxUnitPrice',
     'IsConfidential', // 是否机密
-    'quantity',
-    'Unit',
-    'UnitPrice',
     'statementId',
     'settlementCode',
     'statement',
@@ -345,6 +337,13 @@ const parseAndCompareFields = (
     Amount: '金额',
     unit: '单位',
     Quantity: '数量',
+    // 与上面对应的小写 camelCase 变体（后端 DTO 序列化为 camelCase）
+    unitPrice: '含税单价',
+    amount: '金额',
+    quantity: '数量',
+    taxRate: '税率',
+    noTaxUnitPrice: '不含税单价',
+    noTaxAmount: '不含税金额',
     TaxRate: '税率',
     NoTaxUnitPrice: '不含税单价',
     NoTaxAmount: '不含税金额',

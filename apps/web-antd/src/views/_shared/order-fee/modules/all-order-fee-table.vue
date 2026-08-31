@@ -225,6 +225,15 @@ const useOrderFeeDetailColumns = () => {
       align: 'right',
     },
     {
+      title: orderFeeDataT('quantity'),
+      field: 'quantity',
+      width: 80,
+      align: 'right',
+      formatter: ({ row }: any) => {
+        return row.quantity ?? '--';
+      },
+    },
+    {
       title: orderFeeDataT('noTaxUnitPrice'),
       field: 'noTaxUnitPriceStr',
       width: 110,
@@ -270,8 +279,20 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (item[key] !== info[key] && key !== 'combinedFeeStatus') {
-        item[key] = `${item[key]} => [${info[key]}]`;
+      if (key === 'combinedFeeStatus') return;
+      const current = item[key];
+      const next = info[key];
+      // 嵌套对象（如 feeCode / settlement / currency）不参与 "原值 => [新值]" 改写，
+      // 否则对象会被拼成 "[object Object] => [object Object]"，
+      // 导致费用名称、结算对象、币别等列取不到嵌套字段而显示为空
+      if (
+        (current !== null && typeof current === 'object') ||
+        (next !== null && typeof next === 'object')
+      ) {
+        return;
+      }
+      if (current !== next) {
+        item[key] = `${current} => [${next}]`;
       }
     });
     return {

@@ -3,7 +3,11 @@
 // import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { resolveExchangeRateOnDate } from '#/utils/exchange-rate-cache';
-import { getIndustryCategoryOptions } from '../../data';
+import {
+  ensureRowEditOriginals,
+  getIndustryCategoryOptions,
+  markLinkedCell,
+} from '../../data';
 import { useOrderFeeAdapter } from '../../use-adapter';
 
 /**
@@ -843,6 +847,15 @@ export function useOrderFeeLinkage(
         }
       }
 
+      // ✅ 标记联动写入的字段（仅既有行，新增行不标记；值与原值相同不产生标记）
+      markLinkedCell(row, 'industryCategory');
+      markLinkedCell(row, 'settlementId');
+      markLinkedCell(row, 'currencyId');
+      markLinkedCell(row, 'exchangeRate');
+      markLinkedCell(row, 'taxRate');
+      markLinkedCell(row, 'unit');
+      markLinkedCell(row, 'quantity');
+
       // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
       if (hotInstance) {
         // 在刷新前检查数据
@@ -917,6 +930,9 @@ export function useOrderFeeLinkage(
           industryCategoryCode,
         );
         await fillSettlementIdByIndustryCategory(row, industryCategoryCode);
+
+        // ✅ 标记联动写入的结算对象（值与原值相同不产生标记）
+        markLinkedCell(row, 'settlementId');
 
         // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
         if (hotInstance) {
@@ -1033,6 +1049,9 @@ export function useOrderFeeLinkage(
         console.log('💱 [handleCurrencyChange] 清空币别和汇率');
       }
 
+      // ✅ 标记联动写入的汇率（值与原值相同不产生标记）
+      markLinkedCell(row, 'exchangeRate');
+
       // 刷新表格显示
       if (hotInstance) {
         hotInstance.render();
@@ -1063,6 +1082,9 @@ export function useOrderFeeLinkage(
       row['unit_value'] = unitName;
 
       await fillQuantityByUnit(row, unitName);
+
+      // ✅ 标记联动写入的数量（值与原值相同不产生标记）
+      markLinkedCell(row, 'quantity');
 
       // 刷新表格显示
       if (hotInstance) {
@@ -1118,6 +1140,11 @@ export function useOrderFeeLinkage(
         }
       }
 
+      // ✅ 标记联动计算写入的金额字段（值与原值相同不产生标记）
+      markLinkedCell(row, 'amount');
+      markLinkedCell(row, 'noTaxUnitPrice');
+      markLinkedCell(row, 'noTaxAmount');
+
       // 刷新表格显示
       if (hotInstance) {
         hotInstance.render();
@@ -1166,6 +1193,10 @@ export function useOrderFeeLinkage(
         );
       }
 
+      // ✅ 标记联动计算写入的金额字段（值与原值相同不产生标记）
+      markLinkedCell(row, 'amount');
+      markLinkedCell(row, 'noTaxAmount');
+
       // 刷新表格显示
       if (hotInstance) {
         hotInstance.render();
@@ -1212,6 +1243,10 @@ export function useOrderFeeLinkage(
         }
       }
 
+      // ✅ 标记联动计算写入的金额字段（值与原值相同不产生标记）
+      markLinkedCell(row, 'noTaxUnitPrice');
+      markLinkedCell(row, 'noTaxAmount');
+
       // 刷新表格显示
       if (hotInstance) {
         hotInstance.render();
@@ -1256,6 +1291,11 @@ export function useOrderFeeLinkage(
           );
         }
       }
+
+      // ✅ 标记联动计算写入的金额字段（值与原值相同不产生标记）
+      markLinkedCell(row, 'unitPrice');
+      markLinkedCell(row, 'noTaxUnitPrice');
+      markLinkedCell(row, 'noTaxAmount');
 
       // 刷新表格显示
       if (hotInstance) {
@@ -1316,6 +1356,9 @@ export function useOrderFeeLinkage(
     changes.forEach(([rowIndex, prop, oldValue, newValue]: any[]) => {
       const row = dataContext.dataSource.value[rowIndex];
       if (!row) return;
+
+      // ✅ 记录字段原始值快照，供联动写入标记对比（改回原值时自动移除标记）
+      ensureRowEditOriginals(row);
 
       // 费用代码变化 - 使用 _value 字段
       if (prop === 'feeCodeId') {

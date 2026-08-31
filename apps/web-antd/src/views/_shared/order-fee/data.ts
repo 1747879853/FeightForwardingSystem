@@ -57,6 +57,82 @@ export const getStatementNumsText = (row: any): string => {
     .join('，');
 };
 
+// --------------------------------------------------------
+// 单元格修改标记（挂载在行数据对象上，渲染时 O(1) 查 Set，无性能影响）
+// --------------------------------------------------------
+/**
+ * 记录行字段的原始值快照（首次用户编辑时调用）。
+ * 联动写入（含税金额自动计算、币别联动等）需要对比字段原值，
+ * 用于「改回原值时自动移除标记」；已记录的原始值不会被覆盖。
+ * 仅对已保存的既有行生效（新增行已有“新”徽标，不记录）。
+ * @param row 费用行数据
+ */
+export const ensureRowEditOriginals = (row: any): void => {
+  if (!row || !row.id) return;
+  row._cellOriginals ??= {};
+  for (const key of Object.keys(row)) {
+    // 跳过标记相关的挂载字段，避免自引用
+    if (key.startsWith('_')) continue;
+    if (!(key in row._cellOriginals)) {
+      row._cellOriginals[key] = row[key];
+    }
+  }
+};
+
+/**
+ * 应用标记：与原始值相同则移除标记，不同则添加。
+ * 全部字段恢复原值后清理挂载字段，避免污染行数据。
+ */
+const applyCellEditMark = (row: any, prop: string, newValue: any): void => {
+  row._editedFields ??= new Set<string>();
+  if (newValue === row._cellOriginals[prop]) {
+    row._editedFields.delete(prop);
+    if (row._editedFields.size === 0) {
+      delete row._editedFields;
+      delete row._cellOriginals;
+    }
+  } else {
+    row._editedFields.add(prop);
+  }
+};
+
+/**
+ * 用户编辑路径：oldValue 即该字段的原始值（可为 undefined），显式记录。
+ * @param row 费用行数据
+ * @param prop 字段名
+ * @param oldValue 编辑前的值（原始值）
+ * @param newValue 编辑后的值
+ */
+export const markUserEditedCell = (
+  row: any,
+  prop: string,
+  oldValue: any,
+  newValue: any,
+): void => {
+  if (!row || !row.id || typeof prop !== 'string') return;
+  row._cellOriginals ??= {};
+  if (!(prop in row._cellOriginals)) {
+    row._cellOriginals[prop] = oldValue;
+  }
+  applyCellEditMark(row, prop, newValue);
+};
+
+/**
+ * 联动写入路径：调用前需先 ensureRowEditOriginals 记录快照，
+ * 此处按字段当前值与原始值对比添加/移除标记。
+ * @param row 费用行数据
+ * @param prop 联动写入的字段名
+ */
+export const markLinkedCell = (row: any, prop: string): void => {
+  if (!row || !row.id || typeof prop !== 'string') return;
+  row._cellOriginals ??= {};
+  if (!(prop in row._cellOriginals)) {
+    // 兜底：未记录快照时以当前值作为原始值（不产生标记）
+    row._cellOriginals[prop] = row[prop];
+  }
+  applyCellEditMark(row, prop, row[prop]);
+};
+
 /**
  * 判断费用是否可编辑
  * @param feeStatus 费用状态
