@@ -207,6 +207,11 @@ export namespace InvoiceApplicationApi {
 
   /** 开票申请费用查询DTO */
   export interface InvoiceApplicationFeeQueryDto {
+    /**
+     * 费用 id 集合，只返回这些费用；不传则不按费用 id 过滤。
+     * GET 传数组须重复键名：orderFeeIds=guid1&orderFeeIds=guid2
+     */
+    orderFeeIds?: string[];
     /** 关键字（模糊匹配主提单号或委托编号） */
     keyword?: string;
     /** 开票申请ID（编辑时传入，排除此申请已关联的费用） */
@@ -640,7 +645,11 @@ export namespace InvoiceApplicationApi {
   export function getOrderFeeGroupAsync(params: InvoiceApplicationFeeQueryDto) {
     return requestClient.get<PagedList<InvoiceApplicationFeeGroupOutputDto>>(
       'services/app/InvoiceApplicationAdmin/GetOrderFeeGroupAsync',
-      { params },
+      {
+        params,
+        // ASP.NET Core [FromQuery] List 需 repeat：orderFeeIds=guid1&orderFeeIds=guid2，勿用 brackets
+        paramsSerializer: 'repeat',
+      },
     );
   }
 

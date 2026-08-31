@@ -1,7 +1,25 @@
 import { shallowRef, nextTick, type Ref } from 'vue';
 import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { getFeeStatusOptions, isFeeStatemented } from '../../data';
+import {
+  getFeeStatusOptions,
+  isFeeStatemented,
+  markUserEditedCell,
+} from '../../data';
+
+/** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
+const USER_EDIT_SOURCES = new Set([
+  'edit', // 编辑器确认修改（含下拉选择）
+  'paste',
+  'CopyPaste.paste',
+  'Autofill.fill', // 拖拽填充
+  'autofill',
+  'UndoRedo.undo',
+  'UndoRedo.redo',
+]);
+
+/** 已修改单元格角标提示文案 */
+const EDITED_CELL_TITLE = '该单元格已修改';
 
 export function useHotSettings(
   dataSource: Ref<any[]> | any[],
@@ -255,9 +273,9 @@ export function useHotSettings(
         this.setCellMeta(row, col, 'originalValue', currentValue);
 
         // 清空文本内容，但保留结构
-        const textNodes = Array.from(td.childNodes).filter(
-          (node): node is Text => node.nodeType === Node.TEXT_NODE,
-        );
+        const textNodes = Array.from<ChildNode>(td.childNodes).filter(
+          (node) => node.nodeType === Node.TEXT_NODE,
+        ) as Text[];
         textNodes.forEach((node) => {
           node.textContent = '';
         });
@@ -487,6 +505,21 @@ export function useHotSettings(
             );
           }
         }
+
+        // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现（无 DOM 增删开销）
+        const editedFields = (rowData as any)._editedFields as
+          | Set<string>
+          | undefined;
+        const isEdited =
+          !!editedFields && typeof prop === 'string' && editedFields.has(prop);
+        td.classList.toggle('cell-edited-mark', isEdited);
+        if (isEdited) {
+          if (!td.title || td.title === EDITED_CELL_TITLE) {
+            td.title = EDITED_CELL_TITLE;
+          }
+        } else if (td.title === EDITED_CELL_TITLE) {
+          td.title = '';
+        }
       }
     },
 
@@ -536,6 +569,20 @@ export function useHotSettings(
         source === 'columnSort'
       ) {
         return;
+      }
+
+      // ✅ 已修改单元格标记：仅针对真实用户操作、仅针对已保存的既有行（新增行已有“新”角标）
+      // 标记直接存在行数据对象上，渲染时 O(1) 查 Set，不产生额外重渲染，无性能影响；
+      // 保存成功后 getTableDate 重载数据，标记自然清除。
+      if (changes && Array.isArray(changes) && USER_EDIT_SOURCES.has(source)) {
+        const actualDataSource = getDataSource();
+        for (const [rowIndex, prop, oldValue, newValue] of changes) {
+          const rowData = actualDataSource[rowIndex] as any;
+          if (!rowData || !rowData.id || typeof prop !== 'string') continue;
+
+          // 首次修改时记录原始值，用于改回原值时移除标记
+          markUserEditedCell(rowData, prop, oldValue, newValue);
+        }
       }
 
       let processedChanges = changes;

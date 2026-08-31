@@ -186,6 +186,11 @@ export namespace InvoiceApplicationAdminApi {
 
   /** 拉取剩余未开票金额>0的费用查询参数 */
   export interface InvoiceApplicationFeeQueryDto {
+    /**
+     * 费用 id 集合，只返回这些费用；不传则不按费用 id 过滤。
+     * GET 传数组须重复键名：orderFeeIds=guid1&orderFeeIds=guid2
+     */
+    orderFeeIds?: string[];
     invoiceApplicationId?: string;
     commissionNum?: string;
     mblNum?: string;
@@ -520,7 +525,11 @@ export namespace InvoiceApplicationAdminApi {
   export function getOrderFeeGroup(params: InvoiceApplicationFeeQueryDto) {
     return requestClient.get<PagedList<InvoiceApplicationFeeGroupOutputDto>>(
       `${API_PREFIX}/GetOrderFeeGroupAsync`,
-      { params },
+      {
+        params,
+        // ASP.NET Core [FromQuery] List 需 repeat：orderFeeIds=guid1&orderFeeIds=guid2，勿用 brackets
+        paramsSerializer: 'repeat',
+      },
     );
   }
 

@@ -62,6 +62,7 @@ import {
   tryOpenPaymentApplicationFromSelectedFees,
   collectOrderFeesForPaymentNav,
 } from '#/views/fee-management/payment-application/open-from-order-fees';
+import { tryOpenInvoiceApplicationFromSelectedFees } from '#/views/fee-management/invoice-application/open-from-order-fees';
 import { createAbpPermission } from '#/utils/abp-permission';
 
 // 导入费用操作相关的 API
@@ -514,6 +515,8 @@ const handleSelectionChange = (payload: {
 const router = useRouter();
 const paymentApplicationPerm = createAbpPermission('Admin.PaymentApplication');
 const paymentApplicationNavLoading = ref(false);
+const invoiceApplicationPerm = createAbpPermission('Admin.InvoiceApplication');
+const invoiceApplicationNavLoading = ref(false);
 
 function collectSelectedFeesForPaymentApplication() {
   collectSelectedFeeIds();
@@ -527,6 +530,14 @@ function handleCreatePaymentApplication() {
   paymentApplicationNavLoading.value = true;
   void tryOpenPaymentApplicationFromSelectedFees(router, fees).finally(() => {
     paymentApplicationNavLoading.value = false;
+  });
+}
+
+function handleCreateInvoiceApplication() {
+  const feeIds = collectSelectedFeeIds();
+  invoiceApplicationNavLoading.value = true;
+  void tryOpenInvoiceApplicationFromSelectedFees(router, feeIds).finally(() => {
+    invoiceApplicationNavLoading.value = false;
   });
 }
 
@@ -881,6 +892,15 @@ onMounted(async () => {
               <span class="text-sm text-gray-500">
                 已选中: {{ selectedFeeIds.length }} 条费用
               </span>
+
+              <Button
+                v-access:code="invoiceApplicationPerm.add"
+                :disabled="selectedFeeIds.length === 0"
+                :loading="invoiceApplicationNavLoading"
+                @click="handleCreateInvoiceApplication"
+              >
+                创建开票申请
+              </Button>
 
               <Button
                 v-access:code="paymentApplicationPerm.add"

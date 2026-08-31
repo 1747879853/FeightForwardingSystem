@@ -37,6 +37,7 @@ interface Props {
   currencyId?: number; // 已选择的币别（固定）
   invoiceApplicationId?: string; // 发票申请ID（用于排除已关联的费用）
   addedFeeIds?: string[]; // ✅ 新增：已添加的费用ID列表
+  orderFeeIds?: string[]; // ✅ 新增：按费用 id 回捞并自动勾选（从应收应付页跳转开票申请时传入）
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,6 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
   currencyId: undefined,
   invoiceApplicationId: '',
   addedFeeIds: () => [], // ✅ 默认空数组
+  orderFeeIds: () => [], // ✅ 默认空数组
 });
 
 const emit = defineEmits<{
@@ -511,8 +513,12 @@ async function loadFeeGroupData() {
       params.etdEnd = filterEtdEnd.value;
     }
 
-    // 新增：收付类型
-    if (filterPaySide.value !== null && filterPaySide.value !== undefined) {
+    // 新增：收付类型（预填场景按 id 回捞时后端收付都返回，不过滤收付）
+    if (
+      (!props.orderFeeIds || props.orderFeeIds.length === 0) &&
+      filterPaySide.value !== null &&
+      filterPaySide.value !== undefined
+    ) {
       params.paySide = filterPaySide.value;
     }
 
@@ -530,10 +536,30 @@ async function loadFeeGroupData() {
       params.invoiceApplicationId = props.invoiceApplicationId;
     }
 
+    // ✅ 按费用 id 回捞（从应收应付页跳转开票申请时预填勾选）
+    if (props.orderFeeIds && props.orderFeeIds.length > 0) {
+      params.orderFeeIds = props.orderFeeIds;
+    }
+
     const result = await InvoiceApplicationApi.getOrderFeeGroupAsync(params);
 
     const treeData = transformToTreeData(result.items || []);
     feeGroupsData.value = treeData;
+
+    // ✅ 预填场景：自动勾选回捞到的费用子节点并展开父级
+    if (props.orderFeeIds && props.orderFeeIds.length > 0) {
+      const flat = flattenTreeData(treeData);
+      const matchedKeys = flat
+        .filter(
+          (node: any) =>
+            node.orderFee &&
+            props.orderFeeIds!.includes(String(node.orderFee.id)),
+        )
+        .map((node: any) => node.id);
+      selectedFeeRowKeys.value = matchedKeys;
+      expandedRowKeys.value = treeData.map((node: any) => node.id);
+      await updateCurrencyFromSelectedFees();
+    }
   } catch (error) {
     console.error('❌ 加载费用数据失败:', error);
     message.error('加载费用数据失败');

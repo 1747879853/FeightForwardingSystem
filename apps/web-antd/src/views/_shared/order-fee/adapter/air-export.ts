@@ -13,7 +13,7 @@ import {
   batchDeleteOrderFee,
   generateOppositeOrderFees,
 } from '#/api/sea-export/order-fee-admin';
-import { GetDetail } from '#/api/sea-export/change-order-admin';
+import { GetDetail } from '#/api/air-export/change-order-admin';
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
 import {
   changeIsUnfinishedAsync,

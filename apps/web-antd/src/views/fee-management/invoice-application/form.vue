@@ -27,6 +27,11 @@ import { useGoodsDetails } from './composables/use-goods-details';
 import { useInvoiceInfo } from './composables/use-invoice-info';
 import { useTemplate } from './composables/use-template';
 import { useSubmit } from './composables/use-submit';
+import {
+  fetchOrderFeesForInvoiceApplication,
+  notifyInvoicePrefillResult,
+  parseOrderFeeIdsFromQuery,
+} from './open-from-order-fees';
 import { useFeeSelectionSave } from './composables/use-fee-selection';
 import { useComputed } from './composables/use-computed';
 import { useLoadDetail } from './composables/use-load-detail';
@@ -355,6 +360,8 @@ async function handleFeeDetailRefresh() {
 
 const feeSelectionDrawerRef = ref();
 const drawerVisible = ref(false);
+// ✅ 新增：从应收应付页跳转时预填勾选的费用 id（回捞后的可开票费用）
+const prefillOrderFeeIds = ref<string[]>([]);
 const feeDetailModalVisible = ref(false);
 const feeDetailModalLoading = ref(false);
 const selectedFeeDetails = ref<any[]>([]);
@@ -554,17 +561,34 @@ async function handleWithdraw() {
 
 // ==================== 生命周期 ====================
 
-onMounted(() => {
+onMounted(async () => {
   initApplicantInfo();
   loadCodeInvoiceList();
 
   if (isEdit.value) {
     loadDetail();
-  } else {
-    nextTick(() => {
-      handleOpenFeeDrawer();
-    });
+    return;
   }
+
+  // ✅ 新增：从应收应付页跳转（orderFeeIds 查询参数）时，先按费用 id 回捞可开票明细
+  const orderFeeIds = parseOrderFeeIdsFromQuery(route.query);
+  if (orderFeeIds.length > 0) {
+    loading.value = true;
+    try {
+      const result = await fetchOrderFeesForInvoiceApplication(orderFeeIds);
+      if (notifyInvoicePrefillResult(result)) {
+        prefillOrderFeeIds.value = result.feeIds;
+      }
+    } catch (error) {
+      console.error('拉取可开票费用失败:', error);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  nextTick(() => {
+    handleOpenFeeDrawer();
+  });
 });
 </script>
 
@@ -1282,6 +1306,7 @@ onMounted(() => {
         :currency-id="formData.currencyId"
         :invoice-application-id="editId"
         :added-fee-ids="getAddedFeeIdsArray()"
+        :order-fee-ids="prefillOrderFeeIds"
         @save="handleFeeSelectionSave"
       />
 
