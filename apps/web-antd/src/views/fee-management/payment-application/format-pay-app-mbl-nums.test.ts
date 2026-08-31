@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatPayAppMblNums } from './format-pay-app-mbl-nums';
+import {
+  formatPayAppCommissionNums,
+  formatPayAppMblNums,
+} from './format-pay-app-mbl-nums';
 
 describe('formatPayAppMblNums', () => {
   it('空数组与缺字段返回空串', () => {
@@ -22,5 +25,26 @@ describe('formatPayAppMblNums', () => {
         { transportOrder: { mblNum: '' } },
       ]),
     ).toBe('COSU1,MSCU2');
+  });
+});
+
+describe('formatPayAppCommissionNums', () => {
+  it('空数组与缺字段返回空串', () => {
+    expect(formatPayAppCommissionNums(undefined)).toBe('');
+    expect(formatPayAppCommissionNums(null)).toBe('');
+    expect(
+      formatPayAppCommissionNums([{ transportOrder: { commissionNum: '  ' } }]),
+    ).toBe('');
+  });
+
+  it('多票委托编号逗号拼接并保序去重', () => {
+    expect(
+      formatPayAppCommissionNums([
+        { transportOrder: { commissionNum: ' SE001 ' } },
+        { transportOrder: { commissionNum: 'SE002' } },
+        { transportOrder: { commissionNum: 'SE001' } },
+        { transportOrder: { commissionNum: '' } },
+      ]),
+    ).toBe('SE001,SE002');
   });
 });

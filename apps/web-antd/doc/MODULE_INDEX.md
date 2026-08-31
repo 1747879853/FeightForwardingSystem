@@ -27,7 +27,7 @@
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
-| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示提单号（多票逗号拼接）；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-29 |
+| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-31 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；可从海出/海进/空出应收应付带 orderFeeIds 预填；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-30 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可筛业务类型并按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-30 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-08-19 |
@@ -39,7 +39,7 @@
 | settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-08-31 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-08-09 |
-| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示提单号（多票逗号拼接）与申请合计；费用合计卡片展示结算对象应收未结算；通过/驳回走 AuditAsync、审核后驳回走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-08-31 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；通过/驳回走 AuditAsync、审核后驳回走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-08-31 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-08-24 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-08-22 |

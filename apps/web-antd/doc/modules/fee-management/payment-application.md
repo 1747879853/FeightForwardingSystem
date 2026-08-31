@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-29
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,7 @@ last_updated: 2026-08-29
 # 2. 功能与操作说明 (Features & Operations)
 
 - **申请单查询：** 按申请状态、客户/供应商、币别、时间等条件查询付款申请（筛选项「币别」保留）。
-- **提单号列：** 从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum` 保序去重后逗号拼接，默认插在申请单号后。组内金额字段不要用来展示。
+- **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接，默认插在申请单号后；过长省略号。组内金额字段不要用来展示。
 - **创建申请：** 进入新增页选择可申请付款的费用。
 - **提交申请：** 勾选未提交或驳回的申请，点工具栏「提交」，走 `SubmitAsync`，状态变为已提交并启动审批工作流。
 - **撤销申请：** 勾选已提交且审批尚未开始的申请，点工具栏「撤销」，走 `UnSubmitAsync`，状态回到未提交并删除工作流。
@@ -46,7 +46,8 @@ last_updated: 2026-08-29
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **申请状态** | 付款申请单当前处理阶段。 | `PaymentApplicationStatus` | **触发/依赖：** 部分结算/结算完毕可点击打开 `paymentSettlements` 弹窗。 | 状态流转以后端枚举为准。 |
-| **提单号** | 本申请涉及业务的主提单号，多票逗号拼接。 | `GetPagedListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.mblNum` | **触发/依赖：** 空数组兜底；trim 后跳过空值并保序去重。 | 列表接口若未填充该分组则列为空。 |
+| **主提单号** | 本申请涉及业务的主提单号，多票逗号拼接。 | `GetPagedListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.mblNum` | **触发/依赖：** 空数组兜底；trim 后跳过空值并保序去重；`showOverflow`。 | 列表接口若未填充该分组则列为空。 |
+| **委托编号** | 本申请涉及业务的内部委托编号，多票逗号拼接。 | `GetPagedListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.commissionNum` | **触发/依赖：** 与主提单号同一分组、同一拼接口径。 | 列表接口若未填充该分组则列为空。 |
 | **结算对象** | 申请结算客户简称。 | `settlement.name`（`ClientSimpleDtoForOrder`） | **触发/依赖：** 列表展示；勿再读已删除的 `clientName`。 | 客户不存在时为空。 |
 | **关联结算** | 本申请关联的付费结算简要。 | `paymentSettlements[]` | **触发/依赖：** 含结算附件 `attachments`；`totalSettledPrice` 为整单金额。 | 无关联时为空数组。 |
 | **发票流程** | 先票后付 / 先付后票 / 不开票。 | `invoiceProcess`（0/1/2） | **触发/依赖：** 值为 1（先付后票）时可点击打开发票维护弹窗。 | 补录保存走 `EditInvoiceAsync`。 |
@@ -69,6 +70,7 @@ last_updated: 2026-08-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 列表「提单号」改为「主提单号」，并增加「委托编号」；多票逗号拼接，过长省略。 | TAPD 1000910（不含付费结算）；与审批列表共用 `formatPayAppCommissionNums`。详见 `changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md`。 |
 | 2026-08-29 | `Feature` | 列表新增「提单号」列：从 `payAppFeeBySeaExportGroup` 取各票 `mblNum`，逗号拼接，插在申请单号后。 | 与审批列表共用 `formatPayAppMblNums`。`GetPagedListAsync` 目前注释仍为「详情才有 列表没有」，接口未填分组时列为空。详见 `changelogs/change-log-2026-08-29-payment-application-list-mbl-nums.md`。 |
 | 2026-08-24 | `Feature` | 列表工具栏增加「提交」「撤销」：勾选未提交/驳回可提交进入审批，勾选已提交可撤销回未提交。 | 复用编辑页 `SubmitAsync`/`UnSubmitAsync`；混选只处理符合状态的行。详见 `changelogs/change-log-2026-08-24-payment-application-list-submit-revoke.md`。 |
 | 2026-08-19 | `Feature` | 列表「维护发票信息」弹窗的发票附件可识别并预填发票号/开票日期，点确定才保存。 | 与编辑页共用 `attachment-groups.vue`；详见 `changelogs/change-log-2026-08-19-payment-application-invoice-extract.md`。 |

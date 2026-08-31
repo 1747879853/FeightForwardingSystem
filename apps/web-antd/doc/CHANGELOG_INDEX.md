@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-31 付费申请与审批列表补主提单号委托编号](./changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md)
 - [2026-08-31 银行流水按费用核销补费用明细全选](./changelogs/change-log-2026-08-31-bank-statement-fee-select-all.md)
 - [2026-08-31 海运出口新建货物类型默认普通货](./changelogs/change-log-2026-08-31-sea-export-default-cargo-normal.md)
 - [2026-08-31 付费申请审批列表默认筛审核中](./changelogs/change-log-2026-08-31-payment-review-default-auditing.md)

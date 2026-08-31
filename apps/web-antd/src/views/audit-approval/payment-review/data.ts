@@ -8,7 +8,10 @@ import { $t } from '#/locales';
 import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { isSpecifiedCurrencyApplication } from '#/views/fee-management/add-fee-modal/data';
 
-import { formatPayAppMblNums } from '#/views/fee-management/payment-application/format-pay-app-mbl-nums';
+import {
+  formatPayAppCommissionNums,
+  formatPayAppMblNums,
+} from '#/views/fee-management/payment-application/format-pay-app-mbl-nums';
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
 
@@ -322,12 +325,21 @@ function buildStaticColumns(): Array<Record<string, any>> {
     },
     {
       field: 'mblNums',
-      title: t('mblNum'),
+      title: '主提单号',
       minWidth: 160,
       showOverflow: true,
       sortable: false,
       formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
         formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+    },
+    {
+      field: 'commissionNums',
+      title: '委托编号',
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+        formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
     },
     {
       field: 'settlementName',

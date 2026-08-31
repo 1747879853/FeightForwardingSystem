@@ -23,7 +23,7 @@ last_updated: 2026-08-31
 # 2. 功能与操作说明 (Features & Operations)
 
 - **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。任务状态默认「审核中」，清空后可看全部。
-- **提单号列：** 从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum` 保序去重后逗号拼接；一组付费申请可跨多票。组内金额字段恒为 `null`，不要拿来展示。
+- **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接；一组付费申请可跨多票，过长省略号。组内金额字段恒为 `null`，不要拿来展示。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示「{币别}申请合计」（原币/固定币别分口径，与付款申请列表一致）；默认插在「结算对象」后；列配置仅暴露「申请合计」锚点。
 - **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示已上传文件（只读预览）。
 - **费用合计展示：** 原币多币别时以紧凑列表展示（币别+金额一行，银行信息单行缩略，悬停看全量）；卡片底部另展示该结算对象「应收未结算」（按币别，橙色区，与本申请金额分开）；合计区按内容限高，避免挤占附件区。
@@ -57,7 +57,8 @@ last_updated: 2026-08-31
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
-| **提单号** | 本申请涉及业务的主提单号，多票逗号拼接。 | 列表 `PayAppTaskListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.mblNum` | **触发/依赖：** 空数组兜底 `?? []`；trim 后跳过空值并保序去重。 | 组内 `currencyGroup`/`totalPayPrice`/`totalReceivePrice` 恒为 null，金额用行根字段。 |
+| **主提单号** | 本申请涉及业务的主提单号，多票逗号拼接。 | 列表 `PayAppTaskListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.mblNum` | **触发/依赖：** 空数组兜底 `?? []`；trim 后跳过空值并保序去重；`showOverflow`。 | 组内 `currencyGroup`/`totalPayPrice`/`totalReceivePrice` 恒为 null，金额用行根字段。 |
+| **委托编号** | 本申请涉及业务的内部委托编号，多票逗号拼接。 | 列表 `PayAppTaskListAsync` → `payAppFeeBySeaExportGroup[].transportOrder.commissionNum` | **触发/依赖：** 与主提单号同一分组、同一拼接口径。 | 组内金额字段恒为 null。 |
 | **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空 |
 | **任务状态（TaskStatus）** | 整单审核任务状态。 | 查询 schema `TaskStatus`；枚举 `TaskStatus`（0 审核中 / 1 已驳回 / 2 已通过 / 3 部分通过） | **触发/依赖：** 默认 `Auditing`；重置回到默认；清空后查全部。 | 可清空 |
 | **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 无合法状态行时提示，不发请求 |
@@ -80,12 +81,13 @@ last_updated: 2026-08-31
 
 > [!IMPORTANT] **[卡点 5：应收未结算 ≠ 申请合计]** `settlementReceivableGroup` 是结算对象维度的应收欠款总览；`currencyGroup` 是本申请申请金额。两列分开展示，禁止拼到同一套动态币别列。
 
-> [!IMPORTANT] **[卡点 6：业务分组与行根金额同名不同层]** 列表 `payAppFeeBySeaExportGroup` 只填 `transportOrder`。组内 `currencyGroup` / `totalPayPrice` / `totalReceivePrice` 恒为 `null`；金额仍读 `PayAppTaskItemDto` 根上的同名字段。提单号只取 `transportOrder.mblNum`。
+> [!IMPORTANT] **[卡点 6：业务分组与行根金额同名不同层]** 列表 `payAppFeeBySeaExportGroup` 只填 `transportOrder`。组内 `currencyGroup` / `totalPayPrice` / `totalReceivePrice` 恒为 `null`；金额仍读 `PayAppTaskItemDto` 根上的同名字段。主提单号取 `transportOrder.mblNum`，委托编号取 `transportOrder.commissionNum`。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 列表「提单号」改为「主提单号」，并增加「委托编号」；多票逗号拼接，过长省略。 | TAPD 1000910（不含付费结算）；共用 `formatPayAppCommissionNums`。详见 `changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md`。 |
 | 2026-08-31 | `Fix` | 列表任务状态默认「审核中」，首屏和重置只看待审；清空可看全部。 | TAPD 1000915；`defaultValue` 用 `TaskStatus.Auditing`（值为 0），请求层不可把 0 当空丢掉。`MyStatus` 不默认。详见 `changelogs/change-log-2026-08-31-payment-review-default-auditing.md`。 |
 | 2026-08-28 | `Feature` | 审批列表新增「提单号」列：从 `payAppFeeBySeaExportGroup` 取各票 `mblNum`，逗号拼接。 | 对接 `PayAppTaskListAsync` 新增业务分组；组内金额恒为 null，勿与行根 `currencyGroup` 混用。详见 `changelogs/change-log-2026-08-28-payment-review-list-mbl-nums.md`。 |
 | 2026-08-19 | `Feature` | 右侧费用合计卡片展示结算对象「应收未结算」（TAPD 1000609）；列表不单开此列。 | 数据仍来自任务列表 `settlementReceivableGroup`，随选中行传入 `detail-panel`；与 `currencyGroup` 申请合计分开展示。详见 `changelogs/change-log-2026-08-19-payment-review-settlement-receivable.md`。 |

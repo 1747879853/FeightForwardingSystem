@@ -6,7 +6,10 @@ import { getPaymentApplicationStatusOptions } from '#/constants/application-stat
 import { $t } from '#/locales';
 
 import { isSpecifiedCurrencyApplication } from '../add-fee-modal/data';
-import { formatPayAppMblNums } from './format-pay-app-mbl-nums';
+import {
+  formatPayAppCommissionNums,
+  formatPayAppMblNums,
+} from './format-pay-app-mbl-nums';
 
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
@@ -301,7 +304,7 @@ function buildStaticColumns(): Array<Record<string, any>> {
     },
     {
       field: 'mblNums',
-      title: '提单号',
+      title: '主提单号',
       minWidth: 160,
       showOverflow: true,
       sortable: false,
@@ -310,6 +313,18 @@ function buildStaticColumns(): Array<Record<string, any>> {
       }: {
         row: PaymentApplicationAdminApi.PaymentApplicationDto;
       }) => formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+    },
+    {
+      field: 'commissionNums',
+      title: '委托编号',
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentApplicationAdminApi.PaymentApplicationDto;
+      }) => formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
     },
     {
       field: 'status',
