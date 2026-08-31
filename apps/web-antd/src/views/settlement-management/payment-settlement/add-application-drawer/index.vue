@@ -750,8 +750,8 @@ const innerColumns = [
 
   {
     title: '申请付款金额',
-    dataIndex: 'settledPrice',
-    key: 'settledPrice',
+    dataIndex: 'rqstPaymentAmount',
+    key: 'rqstPaymentAmount',
     width: 120,
     align: 'right' as const,
   },
@@ -968,6 +968,9 @@ const innerColumns = [
         </template>
         <template v-else-if="column.key === 'amount'">
           {{ formatAmount(feeRecord.amount) }}
+        </template>
+        <template v-else-if="column.key === 'rqstPaymentAmount'">
+          {{ formatAmount(feeRecord.rqstPaymentAmount) }}
         </template>
         <template v-else-if="column.key === 'unInvoicedAmount'">
           {{ formatAmount(feeRecord.unInvoicedAmount) }}
