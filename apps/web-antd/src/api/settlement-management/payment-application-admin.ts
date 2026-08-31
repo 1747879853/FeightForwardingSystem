@@ -508,7 +508,7 @@ export namespace PaymentApplicationAdminApi {
     InvoiceStatus?: number;
     /** 币别id */
     CurrencyId?: number;
-    /** 对账编号 */
+    /** 客户对账单号（模糊）；传入时只返回被命中对账单所包含的费用 */
     StatementNum?: string;
     /** 编号 模糊匹配 */
     Keyword?: string;

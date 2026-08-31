@@ -124,6 +124,8 @@ export interface SelectedFeeItem {
 export interface FeeRowData extends PaymentApplicationAdminApi.OrderFeeDto {
   /** 本次申请金额 */
   appliedAmount: number;
+  /** 所属对账单号展示（多张用中文逗号拼接） */
+  statementNums?: string;
 }
 
 /** 币别汇总信息（动态列 / 汇率折算弹窗） */
@@ -241,6 +243,15 @@ export function useAddFeeSearchSchema(options?: {
       label: '编号',
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'StatementNum',
+      label: '对账单号',
+      componentProps: {
+        placeholder: '请输入客户对账单号',
         allowClear: true,
       },
     },

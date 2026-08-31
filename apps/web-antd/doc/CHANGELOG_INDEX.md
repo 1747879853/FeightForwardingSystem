@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-31 付费申请选费用抽屉支持按对账单号检索](./changelogs/change-log-2026-08-31-payment-add-fee-statement-num.md)
 - [2026-08-31 付费申请审批驳回与审核后驳回合成一个按钮](./changelogs/change-log-2026-08-31-payment-review-merge-reject.md)
 - [2026-08-31 付费申请与审批列表补主提单号委托编号](./changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md)
 - [2026-08-31 银行流水按费用核销补费用明细全选](./changelogs/change-log-2026-08-31-bank-statement-fee-select-all.md)

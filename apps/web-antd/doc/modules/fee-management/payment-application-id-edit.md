@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-08-30
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
 - **发票附件：** 任意状态本地增删，支持点击上传或**拖拽到附件类型卡片**；保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。名称含「发票」或 `invoice` 的分组，文件旁有「识别发票」按钮：传 `attachmentId` 调 `ExtractInvoiceAsync`，把发票号/开票日期预填到表单，**不自动保存**。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
-- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填只取汇率表「原币兑结算币」且**当天**有效的应付汇率。
+- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉可按客户对账单号模糊检索（`StatementNum`），展开行展示对账单号。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填只取汇率表「原币兑结算币」且**当天**有效的应付汇率。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
 - **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，调用 `SubmitAsync` 重新进入审核链路。
 
@@ -54,6 +54,8 @@ last_updated: 2026-08-30
 
 | **业务类型筛选** | 添加费用抽屉按业务类型过滤可选费用。 | 表单 `BizType` → `GetOrderFeeGroupParams.BizType` | **触发/依赖：** `0` 海出 / `1` 海进 / `2` 空出；清空则不传参，全业务混查。 | 可选；勿把空值传成 `0`。 |
 
+| **对账单号筛选** | 添加费用抽屉按客户对账单号模糊过滤。 | 表单 `StatementNum` → `GetOrderFeeGroupParams.StatementNum` | **触发/依赖：** trim 后有值才传；展开行展示 `statements` 拼接的对账单号。 | 空值不传。 |
+
 | **起运港 / 目的港** | 费用分组外层港口列展示值。 | 详情 `transportOrder.seaExport.polRemark/podRemark`；选费按 `bizType` 读取 `seaExport` / `seaImport` / `airExport` 的 `polRemark/podRemark` | **触发/依赖：** 经 `resolvePol/PodPortDisplayName` 写入行上 `polName`/`podName`（列名不变）。 | 备注为空不回退港口名称；不可再读选费分组根级港口字段。 |
 
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
@@ -76,6 +78,7 @@ last_updated: 2026-08-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-31 | `Fix` | 添加费用抽屉可按客户对账单号模糊检索；展开费用行展示对账单号。 | 与新增页共用 `add-fee-modal`；TAPD 1000898。详见 `changelogs/change-log-2026-08-31-payment-add-fee-statement-num.md`。 |
 | 2026-08-30 | `Fix` | 指定结算币别预填只取汇率表「原币兑结算币」且当天有效的应付汇率，不按开船日。 | 与新增页共用；详见 `changelogs/change-log-2026-08-30-payment-application-rate-quote-local.md`。 |
 | 2026-08-30 | `Fix` | 指定结算币别折算汇率改与业务联系单同口径：公司本位币、开船日匹配、应付 crValue。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-30-payment-application-rate-align-pre-order.md`。 |
 | 2026-08-20 | `Fix` | 指定结算币别添加费用时，汇率弹窗改为「1 单位 =」双向折算，并预填当天有效应付汇率。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md`。 |

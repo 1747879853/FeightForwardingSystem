@@ -3,7 +3,7 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 
 import { computed, nextTick, reactive, ref } from 'vue';
 
-import { useThrottleFn } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import dayjs from 'dayjs';
 import {
   Button,
@@ -23,6 +23,7 @@ import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
+import { getStatementNumsText } from '#/views/_shared/order-fee/data';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
 import {
@@ -92,20 +93,22 @@ function hasExistingFees(): boolean {
   return (drawerProps.value.selectedFeeIds?.length ?? 0) > 0;
 }
 
-const throttledAutoSearch = useThrottleFn(
-  async (values: Record<string, any>) => {
-    if (hasExistingFees() && !values.SettlementId) return;
-    const feeCodeMode = values.feeCodeMode ?? 'include';
-    const feeCodeIds = values.FeeCodeIds;
-    const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
-    // 排除模式未选费用名称时不自动查询，避免误以为「排除未生效」
-    if (feeCodeMode === 'exclude' && !hasFeeCodes) return;
-    currentPage.value = 1;
-    await checkSearchChanged();
-    await fetchData(values);
-  },
-  800,
-);
+/**
+ * 条件变更后停稳再查。原先用 throttle 会立刻发出第一笔（输入 123 只查了 1）。
+ * 触发时再读表单，避免闭包里还是第一个字符。
+ */
+const debouncedAutoSearch = useDebounceFn(async () => {
+  const values = await searchFormApi.getValues();
+  if (hasExistingFees() && !values.SettlementId) return;
+  const feeCodeMode = values.feeCodeMode ?? 'include';
+  const feeCodeIds = values.FeeCodeIds;
+  const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
+  // 排除模式未选费用名称时不自动查询，避免误以为「排除未生效」
+  if (feeCodeMode === 'exclude' && !hasFeeCodes) return;
+  currentPage.value = 1;
+  await checkSearchChanged();
+  await fetchData(values);
+}, 400);
 
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
@@ -125,6 +128,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   compact: true,
   wrapperClass: 'grid-cols-5',
   handleSubmit: async (values) => {
+    debouncedAutoSearch.cancel();
     if (hasExistingFees() && !values.SettlementId) {
       message.warning(
         $t('seaExport.export.paymentApplication.noSettlementWarning'),
@@ -143,6 +147,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
     await fetchData(values);
   },
   handleReset: async () => {
+    debouncedAutoSearch.cancel();
     const hasFees = (drawerProps.value.selectedFeeIds?.length ?? 0) > 0;
     const preservedSettlementId = hasFees
       ? drawerProps.value.settlementId
@@ -165,8 +170,8 @@ const [SearchForm, searchFormApi] = useVbenForm({
       await fetchData(await searchFormApi.getValues());
     }
   },
-  handleValuesChange: (values) => {
-    throttledAutoSearch(values);
+  handleValuesChange: () => {
+    debouncedAutoSearch();
   },
 });
 
@@ -310,6 +315,9 @@ function clearSelection() {
   bumpSelectionEpoch();
 }
 
+/** 后发请求覆盖先返回的旧结果，避免输入 123 时「1」的响应把列表改回去 */
+let fetchSeq = 0;
+
 async function fetchData(formValues?: Record<string, any>) {
   const values = formValues ?? (await searchFormApi.getValues());
   if (hasExistingFees() && !values.SettlementId) return;
@@ -322,10 +330,14 @@ async function fetchData(formValues?: Record<string, any>) {
   const feeCodeIds = values.FeeCodeIds;
   const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
 
+  const statementNum =
+    typeof values.StatementNum === 'string' ? values.StatementNum.trim() : '';
+
   const params: PaymentApplicationAdminApi.GetOrderFeeGroupParams = {
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
+    StatementNum: statementNum || undefined,
     PaySide: values.PaySide ?? undefined,
     BizType: values.BizType ?? undefined,
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
@@ -339,9 +351,11 @@ async function fetchData(formValues?: Record<string, any>) {
     PageSize: pageSize.value,
   };
 
+  const seq = ++fetchSeq;
   loading.value = true;
   try {
     const result = await getOrderFeeGroupAsync(params);
+    if (seq !== fetchSeq) return;
     orderList.value = result.items ?? [];
     totalCount.value = result.totalCount ?? 0;
 
@@ -351,7 +365,9 @@ async function fetchData(formValues?: Record<string, any>) {
     );
     expandedRowKeys.value = [];
   } finally {
-    loading.value = false;
+    if (seq === fetchSeq) {
+      loading.value = false;
+    }
   }
 }
 
@@ -524,6 +540,7 @@ function getFeeRows(groupKey: string): FeeRowData[] {
   return fees.map((f) => ({
     ...f,
     appliedAmount: resolveAppliedAmount(f.id, f.unRqstPaymentAmount) ?? 0,
+    statementNums: getStatementNumsText(f),
   }));
 }
 
@@ -773,6 +790,12 @@ const feeColumns = [
     dataIndex: 'feeCodeName',
     key: 'feeCodeName',
     width: 120,
+  },
+  {
+    title: '对账单号',
+    dataIndex: 'statementNums',
+    key: 'statementNums',
+    width: 150,
   },
   {
     title: '原始币别',
@@ -1027,6 +1050,14 @@ defineExpose({ open: openDrawer });
           </template>
           <template v-else-if="column.key === 'feeCodeName'">
             {{ feeRecord.feeCode?.cnName ?? '' }}
+          </template>
+          <template v-else-if="column.key === 'statementNums'">
+            <Tooltip
+              v-if="feeRecord.statementNums"
+              :title="feeRecord.statementNums"
+            >
+              <span class="ellipsis-cell">{{ feeRecord.statementNums }}</span>
+            </Tooltip>
           </template>
           <template v-else-if="column.key === 'currencyCode'">
             {{ feeRecord.currency?.code }}
