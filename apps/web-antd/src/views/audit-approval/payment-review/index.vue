@@ -30,16 +30,30 @@ import {
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
 
-/** AuditAsync：待审任务；RejectAsync：已通过（或整单仍在审、本人节点已过） */
+/** 通过：仅待审任务走 AuditAsync(success: true) */
 function isPendingAudit(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
   return row.taskStatus === TaskStatus.Auditing;
 }
 
-function canRejectAfterPass(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
+/**
+ * 驳回前置：仅审核中、审核通过（与 TAPD / 后端校验一致）。
+ * 已驳回、部分通过不可驳。
+ */
+function canReject(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
   return (
-    row.taskStatus === TaskStatus.Passed ||
-    (row.taskStatus === TaskStatus.Auditing &&
-      row.myStatus === TaskStatus.Passed)
+    row.taskStatus === TaskStatus.Auditing ||
+    row.taskStatus === TaskStatus.Passed
+  );
+}
+
+/**
+ * 须走 RejectAsync：整单仍在审、但本人节点已过。
+ * 整单已通过已并入 AuditAsync(false)；此场景仍走 RejectAsync，
+ * 否则会按「当前审核人」处理并报非当前审核人。
+ */
+function needsRejectAsync(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
+  return (
+    row.taskStatus === TaskStatus.Auditing && row.myStatus === TaskStatus.Passed
   );
 }
 
@@ -148,9 +162,7 @@ const syncSelectedRows = () => {
 const hasPendingAuditSelection = computed(() =>
   selectedRows.value.some(isPendingAudit),
 );
-const hasPassRejectSelection = computed(() =>
-  selectedRows.value.some(canRejectAfterPass),
-);
+const hasRejectSelection = computed(() => selectedRows.value.some(canReject));
 
 const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   {
@@ -262,8 +274,19 @@ const doAudit = async (approve: boolean, remark: string, ids: string[]) => {
   await reloadGrid();
 };
 
-const doReject = async (remark: string, ids: string[]) => {
-  await payAppReject({ remark, ids });
+/** 一个【驳回】：待审与整单已通过走 AuditAsync(false)，本人节点已过走 RejectAsync */
+const doUnifiedReject = async (remark: string, ids: string[]) => {
+  const rows = getSelectedRows().filter((row) => ids.includes(row.id));
+  const auditIds = rows
+    .filter((row) => !needsRejectAsync(row))
+    .map((row) => row.id);
+  const rejectIds = rows.filter(needsRejectAsync).map((row) => row.id);
+  if (auditIds.length > 0) {
+    await payAppAudit({ success: false, remark, ids: auditIds });
+  }
+  if (rejectIds.length > 0) {
+    await payAppReject({ remark, ids: rejectIds });
+  }
   message.success($t('ui.actionMessage.operationSuccess'));
   await reloadGrid();
 };
@@ -325,33 +348,18 @@ const showAuditConfirm = () => {
   });
 };
 
-/** 驳回 → AuditAsync(success: false)，审核中点「不通过」 */
+/** 驳回：审核中 / 审核通过合成一个按钮，按行分流接口 */
 const showRejectConfirm = () => {
-  if (!hasPendingAuditSelection.value) {
-    message.warning(t('noPendingAudit'));
+  if (!hasRejectSelection.value) {
+    message.warning(t('noRejectable'));
     return;
   }
   openRemarkConfirm({
     title: t('rejectConfirmTitle'),
     danger: true,
-    pickRows: () => getSelectedRows().filter(isPendingAudit),
-    emptyMessage: t('noPendingAudit'),
-    onConfirm: (remark, ids) => doAudit(false, remark, ids),
-  });
-};
-
-/** 审核后驳回 → RejectAsync，通过后再反悔 */
-const showPassRejectConfirm = () => {
-  if (!hasPassRejectSelection.value) {
-    message.warning(t('noPassRejectable'));
-    return;
-  }
-  openRemarkConfirm({
-    title: t('passRejectConfirmTitle'),
-    danger: true,
-    pickRows: () => getSelectedRows().filter(canRejectAfterPass),
-    emptyMessage: t('noPassRejectable'),
-    onConfirm: (remark, ids) => doReject(remark, ids),
+    pickRows: () => getSelectedRows().filter(canReject),
+    emptyMessage: t('noRejectable'),
+    onConfirm: (remark, ids) => doUnifiedReject(remark, ids),
   });
 };
 </script>
@@ -375,18 +383,10 @@ const showPassRejectConfirm = () => {
               </Button>
               <Button
                 danger
-                :disabled="!hasPendingAuditSelection"
+                :disabled="!hasRejectSelection"
                 @click="showRejectConfirm"
               >
                 {{ t('selectReject') }}
-              </Button>
-              <Button
-                danger
-                ghost
-                :disabled="!hasPassRejectSelection"
-                @click="showPassRejectConfirm"
-              >
-                {{ t('passReject') }}
               </Button>
             </Space>
           </template>

@@ -153,16 +153,20 @@ export namespace PaymentReviewAdminApi {
     totalPages: number;
   }
 
-  /** 待审任务上通过/驳回（AuditAsync） */
+  /** 待审通过 / 驳回（AuditAsync）。驳回已合并整单已通过的任务。 */
   export interface TaskItemAuditDto {
-    /** true=通过，false=驳回（审核中点「不通过」） */
+    /** true=通过（仅待审）；false=驳回（待审或整单已通过） */
     success: boolean;
     remark?: string;
     /** 审核任务 id 列表 */
     ids?: string[];
   }
 
-  /** 审核通过后反悔驳回（RejectAsync，非审核中「不通过」） */
+  /**
+   * 审核通过后反悔驳回（RejectAsync）。
+   * 前端统一【驳回】时：整单已通过也可走 AuditAsync(false)；
+   * 仅「整单仍在审、本人节点已过」必须走本接口。
+   */
   export interface TaskItemRejectAuditDto {
     remark?: string;
     /** 审核任务 id 列表；任务须为 Passed，或 Auditing 且本人节点已通过 */
@@ -242,10 +246,11 @@ export async function getPayAppTaskList(
 }
 
 /**
- * 审核通过 / 驳回（待审任务）
+ * 审核通过 / 驳回
  * POST PaymentApplicationAdmin/AuditAsync
- * - success=true → 通过；success=false → 驳回
- * - 前置：任务状态 = 待审核；权限 Admin.PaymentApplication.Audit
+ * - success=true → 通过，仅待审
+ * - success=false → 驳回；待审走工作流不通过，整单已通过走与 RejectAsync 同一套退回
+ * - 驳回前置：任务状态为待审核或已通过；权限 Admin.PaymentApplication.Audit
  */
 export async function payAppAudit(
   data: PaymentReviewAdminApi.TaskItemAuditDto,
@@ -258,7 +263,7 @@ export async function payAppAudit(
  * POST PaymentApplicationAdmin/RejectAsync
  * - 入参：任务 id 列表 + 驳回备注（无 success 字段）
  * - 前置：任务已是 Passed，或 Auditing（本人节点已过、整单还在审）
- * - 与 AuditAsync(false) 不同：后者是审核中点「不通过」
+ * - 整单已通过也可改走 AuditAsync(false)；本人已过、下一级还在审时仍须本接口
  */
 export async function payAppReject(
   data: PaymentReviewAdminApi.TaskItemRejectAuditDto,

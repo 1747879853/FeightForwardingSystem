@@ -82,10 +82,8 @@
     "batchReject": "驳回",
     "selectReject": "驳回",
     "rejectConfirmTitle": "确认驳回",
-    "passReject": "审核后驳回",
-    "passRejectConfirmTitle": "确认审核后驳回",
     "noPendingAudit": "请选择待审核的任务",
-    "noPassRejectable": "请选择已通过、或本人节点已通过的任务"
+    "noRejectable": "请选择审核中或审核通过的任务"
   },
   "expenseSubmission": {
     "title": "费用提交审核",
