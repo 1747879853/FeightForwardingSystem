@@ -1250,7 +1250,7 @@ const handleSubmit = async () => {
         reconcilerUserIds: reconcilerUserIds.value,
       };
 
-      console.log('📤 新增模式提交数据:', {
+      console.log('新增模式提交数据:', {
         clientType: addData.clientType,
         isClient: addData.isClient,
         name: addData.name,
@@ -1513,12 +1513,18 @@ const delAddress = (index: number) => {
 const formSnapshot = ref<null | string>(null);
 
 async function buildClientDirtySnapshot() {
+  // ClientForm/SupplierForm 仅在对应类型勾选时渲染（v-if），
+  // 未渲染时 getValues() 会因等待表单挂载而永久挂起，必须跳过
   const [baseValues, businessValues, clientValues, supplierValues] =
     await Promise.all([
       baseFormApi.getValues(),
       businessFormApi.getValues(),
-      clientFormApi.getValues(),
-      supplierFormApi.getValues(),
+      isClient.value || clientFormApi.isMounted
+        ? clientFormApi.getValues()
+        : Promise.resolve({}),
+      isSupplier.value || supplierFormApi.isMounted
+        ? supplierFormApi.getValues()
+        : Promise.resolve({}),
     ]);
   return JSON.stringify({
     addressList: addressList.value,
