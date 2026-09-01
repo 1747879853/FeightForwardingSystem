@@ -524,15 +524,21 @@ const showDeleteReason = (row: any) => {
     class="order-ctn-table justify-between rounded-md border"
     :class="[type === 0 ? 'rec-table' : 'pay-table']"
   >
-    <Grid
-      :table-title="
-        type === 0
-          ? orderFeeDataT('receivableCharges')
-          : orderFeeDataT('payableCharges')
-      "
-    >
+    <Grid>
+      <template #toolbar-actions>
+        <div class="fee-table-title flex items-center gap-2">
+          <span class="fee-title-dot"></span>
+          <span class="fee-title-text">
+            {{
+              type === 0
+                ? orderFeeDataT('receivableCharges')
+                : orderFeeDataT('payableCharges')
+            }}
+          </span>
+        </div>
+      </template>
       <template #toolbar-tools>
-        <div class="text-small font-normal">
+        <div class="fee-total-count text-small">
           {{ $t('auditApproval.totalNum', [dataSource.length]) }}
         </div>
       </template>
@@ -571,8 +577,15 @@ const showDeleteReason = (row: any) => {
   width: 100%;
   height: 100%;
   min-height: 200px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgb(16 42 83 / 4%),
+    0 4px 12px rgb(16 42 83 / 5%);
 
-  :deep(.vben-vxe-grid) {
+  :deep(.vxe-grid) {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -585,14 +598,61 @@ const showDeleteReason = (row: any) => {
     min-width: 0;
     min-height: 0;
   }
+
+  // 表头：浅灰底 + 加深字重，强化层级
+  :deep(.vxe-header--column) {
+    font-weight: 600;
+    color: #333;
+    background-color: #f5f7fa;
+  }
+
+  // 斑马纹行颜色更柔和，悬停高亮使用主题浅蓝
+  :deep(.vxe-body--row.row--stripe) {
+    background-color: #fafbfd;
+  }
+
+  :deep(.vxe-body--row:hover),
+  :deep(.vxe-body--row.row--hover) {
+    background-color: #e9f4ff;
+  }
+}
+
+// 标题与计数样式：标题带品牌色圆点，计数为弱化灰色副标题
+.fee-table-title {
+  padding-left: 4px;
+
+  .fee-title-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .fee-title-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2d3d;
+  }
+}
+
+.fee-total-count {
+  font-weight: normal;
+  color: #8a94a6;
 }
 
 .rec-table {
-  border-left: 2px solid rgb(6 100 224);
+  border-left: 3px solid rgb(6 100 224);
+
+  .fee-title-dot {
+    background-color: rgb(6 100 224);
+  }
 }
 
 .pay-table {
-  border-left: 2px solid rgb(255 153 0);
+  border-left: 3px solid rgb(255 153 0);
+
+  .fee-title-dot {
+    background-color: rgb(255 153 0);
+  }
 }
 
 .green {
@@ -605,23 +665,5 @@ const showDeleteReason = (row: any) => {
 
 .yellow {
   color: rgb(255 153 0);
-}
-
-.my-custom-table {
-  // min-height: 400px;
-}
-
-/* 或者如果需要更精确地控制内部容器 */
-.my-custom-table:deep(.ant-table-tbody) {
-  min-height: 300px;
-}
-
-.money {
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
-  font-variant-numeric: tabular-nums;
-
-  /* 增强对齐 */
 }
 </style>

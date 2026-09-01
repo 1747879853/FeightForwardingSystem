@@ -970,101 +970,104 @@ onMounted(() => {
   <Page :title="isEdit ? '编辑结算单' : '新建结算单'">
     <template #extra>
       <Space>
-        <Button @click="handleBack"> 关闭 </Button>
-        <Button type="primary" @click="handleSave" :loading="submitting">
+        <!-- 结算单号（设计稿展示于页面标题栏） -->
+        <span v-if="isEdit" class="ps-settlement-no">
+          结算单号：{{ settlementNo }}
+        </span>
+        <Button class="ps-action-btn" @click="handleBack">关闭</Button>
+        <Button
+          class="ps-action-btn ps-action-btn-primary"
+          type="primary"
+          @click="handleSave"
+          :loading="submitting"
+        >
           保存
         </Button>
       </Space>
     </template>
 
-    <div v-loading="pageLoading" style="padding: 16px">
-      <!-- 顶部三栏布局 -->
-      <div
-        style="
-          display: grid;
-          grid-template-columns: 50em 1fr 20em;
-          gap: 16px;
-          margin-bottom: 16px;
-        "
-      >
-        <!-- 左侧：结算信息 -->
-        <Card :bordered="false" size="small" class="info-card">
+    <div v-loading="pageLoading" class="ps-page">
+      <!-- 顶部布局：结算信息卡片 + 附件卡片（与设计稿一致） -->
+      <div class="ps-grid-top">
+        <!-- 结算信息卡片：费用汇总已按设计稿并入 -->
+        <Card :bordered="false" size="small" class="info-card combined-card">
           <template #title>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  font-size: 16px;
-                  color: #1890ff;
-                  background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
-                  border-radius: 8px;
-                "
-              >
-                ¥
+            <div class="card-title">
+              <div class="card-title-icon icon-blue">
+                <IconifyIcon icon="ion:cash-outline" class="size-4" />
               </div>
-              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
-                结算信息
-              </span>
+              <span class="card-title-text">结算信息</span>
             </div>
           </template>
 
-          <div
-            style="
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 16px 12px;
-              padding-top: 8px;
-            "
-          >
-            <!-- 结算单号（仅编辑时显示） -->
-            <div v-if="isEdit" style="grid-column: span 2">
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                结算单号
+          <!-- 卡片头部右侧：结算币别 + 结算总金额（与设计稿一致） -->
+          <template #extra>
+            <div class="header-summary">
+              <div class="hs-item">
+                <span class="hs-label">结算币别</span>
+                <CurrencySelect
+                  v-model="currencyId"
+                  placeholder="请选择"
+                  allow-clear
+                  disabled
+                  class="hs-currency"
+                />
               </div>
-              <Input
-                :value="settlementNo"
-                disabled
-                style="background: #f5f7fa"
-              />
+              <div class="hs-item">
+                <span class="hs-label">结算总金额</span>
+                <span class="hs-amount">
+                  ¥{{ formatAmount(totalSettledAmount) }}
+                </span>
+                <span class="hs-currency-code">
+                  {{ currencyCode || 'RMB' }}
+                </span>
+              </div>
             </div>
+          </template>
 
-            <!-- 所属公司（归属组织换算到公司层级） -->
-            <div v-if="orgCompanies.length > 0">
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                所属公司
-              </div>
+          <!-- 表单区：左半为结算基础字段（两小列），右半为银行/费用字段（填满） -->
+          <div class="settle-form">
+            <!-- 第 1 行 -->
+            <!-- 归属组织（换算到公司层级） -->
+            <div v-if="orgCompanies.length > 0" class="form-item form-col-1">
+              <div class="form-label">归属公司</div>
               <Select
-                mode="multiple"
                 :value="orgCompanies.map((c) => c.id)"
                 :options="
-                  orgCompanies.map((c) => ({ label: c.name, value: c.id }))
+                  orgCompanies.map((c) => ({
+                    label: c.name,
+                    value: c.id,
+                  }))
                 "
-                disabled
-                style="width: 100%; background: #f5f7fa"
+                style="width: 100%"
               />
             </div>
 
             <!-- 结算人 -->
-            <div>
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                结算人
-              </div>
-              <Input
-                :value="currentUserName"
-                disabled
-                style="background: #f5f7fa"
-              />
+            <div class="form-item form-col-2">
+              <div class="form-label">结算人</div>
+              <Input :value="currentUserName" disabled />
             </div>
 
-            <!-- 结算时间 -->
-            <div>
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                结算时间
+            <!-- 手续费（汇率设置已移除：2026-08-10起，汇率由后端从付费申请自动获取） -->
+            <div class="form-item form-col-3">
+              <div class="form-label">手续费</div>
+              <div class="fee-row">
+                <InputNumber
+                  v-model:value="transactionFee"
+                  placeholder="0.00"
+                  :min="0"
+                  :precision="2"
+                  style="flex: 1"
+                />
+                <span class="fee-unit">RMB</span>
               </div>
+            </div>
+
+            <!-- 第 2 行 -->
+            <!-- 结算时间 -->
+            <div class="form-item form-col-1">
+              <div class="form-label">结算时间</div>
               <DatePicker
                 v-model:value="settlementTime"
                 show-time
@@ -1074,10 +1077,8 @@ onMounted(() => {
             </div>
 
             <!-- 付款方式 -->
-            <div>
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                付款方式
-              </div>
+            <div class="form-item form-col-2">
+              <div class="form-label">付款方式</div>
               <Select
                 v-model:value="payType"
                 :options="payTypeOptions"
@@ -1087,11 +1088,28 @@ onMounted(() => {
               />
             </div>
 
+            <!-- 我司银行 -->
+            <div class="form-item form-col-3">
+              <div class="form-label bank-label-ours">我司银行</div>
+              <Select
+                v-model:value="orgBankAccountId"
+                :options="
+                  orgBankOptions.map((opt) => ({
+                    label: opt.label,
+                    value: opt.id,
+                  }))
+                "
+                placeholder="请先添加申请明细，然后选择我司银行"
+                allow-clear
+                :disabled="applicationItems.length === 0"
+                style="width: 100%"
+              />
+            </div>
+
+            <!-- 第 3 行 -->
             <!-- 结算对象 -->
-            <div>
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                结算对象
-              </div>
+            <div class="form-item form-col-1">
+              <div class="form-label">结算对象</div>
               <ClientSelect
                 v-model="settlementId"
                 :selected-items="settlementSelectedItems"
@@ -1102,25 +1120,27 @@ onMounted(() => {
               />
             </div>
 
-            <!-- 结算币别 -->
-            <div>
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                结算币别
-              </div>
-              <CurrencySelect
-                v-model="currencyId"
-                placeholder="请选择"
+            <!-- 对方银行 -->
+            <div class="form-item form-col-3">
+              <div class="form-label bank-label-theirs">对方银行</div>
+              <Select
+                v-model:value="clientInvoiceBankId"
+                :options="
+                  clientBankOptions.map((opt) => ({
+                    label: opt.label,
+                    value: opt.id,
+                  }))
+                "
+                placeholder="请先选择结算对象，然后选择对方银行"
                 allow-clear
-                disabled
+                :disabled="!settlementId"
                 style="width: 100%"
               />
             </div>
 
-            <!-- 备注 -->
-            <div style="grid-column: span 2">
-              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
-                备注
-              </div>
+            <!-- 第 4 行：备注（单独一行，横跨整行） -->
+            <div class="form-item form-col-all">
+              <div class="form-label">备注</div>
               <Input.TextArea
                 v-model:value="remark"
                 placeholder="请输入备注信息（选填）"
@@ -1130,196 +1150,17 @@ onMounted(() => {
           </div>
         </Card>
 
-        <!-- 中间：费用汇总 -->
-        <Card :bordered="false" size="small" class="info-card">
-          <template #title>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  font-size: 16px;
-                  color: #722ed1;
-                  background: linear-gradient(135deg, #f0e6ff 0%, #d9b3ff 100%);
-                  border-radius: 8px;
-                "
-              >
-                ￥
-              </div>
-              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
-                费用汇总
-              </span>
-            </div>
-          </template>
-
-          <div style="display: flex; flex-direction: column; gap: 16px">
-            <!-- 结算总金额 - 渐变背景卡片 -->
-            <div
-              style="
-                position: relative;
-                padding: 16px 20px;
-                overflow: hidden;
-                background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
-                border-radius: 8px;
-              "
-            >
-              <!-- 装饰性图标 -->
-              <div
-                style="
-                  position: absolute;
-                  top: 50%;
-                  right: 16px;
-                  font-size: 48px;
-                  opacity: 0.3;
-                  transform: translateY(-50%);
-                "
-              >
-                💰
-              </div>
-
-              <div style="position: relative; z-index: 1">
-                <div
-                  style="
-                    margin-bottom: 8px;
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: #1890ff;
-                  "
-                >
-                  结算总金额
-                </div>
-                <div style="display: flex; gap: 8px; align-items: baseline">
-                  <span
-                    style="font-size: 28px; font-weight: bold; color: #1890ff"
-                  >
-                    ¥{{ formatAmount(totalSettledAmount) }}
-                  </span>
-                  <span style="font-size: 14px; color: #1890ff; opacity: 0.8">
-                    {{ currencyCode || 'RMB' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 我司银行和对方银行同行显示 -->
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
-            >
-              <!-- 我司银行 -->
-              <div>
-                <div
-                  style="
-                    margin-bottom: 6px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: #1890ff;
-                  "
-                >
-                  我司银行
-                </div>
-                <Select
-                  v-model:value="orgBankAccountId"
-                  :options="
-                    orgBankOptions.map((opt) => ({
-                      label: opt.label,
-                      value: opt.id,
-                    }))
-                  "
-                  placeholder="请先添加申请明细，然后选择我司银行"
-                  allow-clear
-                  :disabled="applicationItems.length === 0"
-                  style="width: 100%"
-                />
-              </div>
-
-              <!-- 对方银行 -->
-              <div>
-                <div
-                  style="
-                    margin-bottom: 6px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: #fa8c16;
-                  "
-                >
-                  对方银行
-                </div>
-                <Select
-                  v-model:value="clientInvoiceBankId"
-                  :options="
-                    clientBankOptions.map((opt) => ({
-                      label: opt.label,
-                      value: opt.id,
-                    }))
-                  "
-                  placeholder="请先选择结算对象，然后选择对方银行"
-                  allow-clear
-                  :disabled="!settlementId"
-                  style="width: 100%"
-                />
-              </div>
-            </div>
-
-            <!-- 手续费（汇率设置已移除：2026-08-10起，汇率由后端从付费申请自动获取） -->
-            <div>
-              <div
-                style="
-                  margin-bottom: 6px;
-                  font-size: 13px;
-                  font-weight: 500;
-                  color: #fa8c16;
-                "
-              >
-                手续费
-              </div>
-              <div style="display: flex; gap: 8px; align-items: center">
-                <InputNumber
-                  v-model:value="transactionFee"
-                  placeholder="0.00"
-                  :min="0"
-                  :precision="2"
-                  style="flex: 1"
-                />
-                <span style="font-size: 12px; color: #999; white-space: nowrap"
-                  >RMB</span
-                >
-              </div>
-            </div>
-          </div>
-        </Card>
-
         <!-- 右侧：附件 -->
-        <Card :bordered="false" size="small" class="info-card">
+        <Card :bordered="false" size="small" class="info-card attach-card">
           <template #title>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  font-size: 16px;
-                  color: #1890ff;
-                  background: linear-gradient(135deg, #e6f7ff 0%, #91d5ff 100%);
-                  border-radius: 8px;
-                "
-              >
-                📎
-              </div>
-              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
-                附件
-              </span>
+            <div class="card-title">
+              <div class="card-title-icon icon-cyan">📎</div>
+              <span class="card-title-text">附件</span>
             </div>
           </template>
 
-          <div style="margin-bottom: 12px">
-            <div style="margin-bottom: 8px; font-weight: 500; color: #333">
-              结算单附件
-            </div>
+          <div class="attach-section">
+            <div class="attach-section-title">结算单附件</div>
             <FileUploadInput
               v-model="attachments"
               module-type-id="160011"
@@ -1328,28 +1169,19 @@ onMounted(() => {
             />
           </div>
 
-          <div v-if="paymentApplicationAttachments.length > 0">
-            <div style="margin-bottom: 8px; font-weight: 500; color: #333">
-              付费申请附件
-            </div>
+          <div
+            v-if="paymentApplicationAttachments.length > 0"
+            class="attach-section"
+          >
+            <div class="attach-section-title">付费申请附件</div>
             <div
               v-for="(item, index) in paymentApplicationAttachments"
               :key="index"
-              style="
-                display: flex;
-                align-items: center;
-                padding: 6px 10px;
-                margin-bottom: 4px;
-                background: #fafafa;
-                border: 1px solid #f0f0f0;
-                border-radius: 4px;
-                transition: all 0.2s;
-              "
+              class="attach-item"
             >
               <IconifyIcon
                 icon="ant-design:file-outlined"
-                class="size-4"
-                style="margin-right: 8px; color: #8c8c8c"
+                class="attach-item-icon size-4"
               />
               <span
                 class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm"
@@ -1379,24 +1211,21 @@ onMounted(() => {
       </div>
 
       <!-- 申请明细 -->
-      <Card :bordered="true" size="small" style="min-height: 300px">
+      <Card :bordered="false" size="small" class="info-card detail-card">
         <template #title>
-          <div style="display: flex; gap: 8px; align-items: center">
-            <div
-              style="
-                padding: 2px 8px;
-                font-size: 12px;
-                color: white;
-                background: #1890ff;
-              "
-            >
-              申请明细
-            </div>
+          <div class="card-title">
+            <div class="card-title-icon icon-blue">📋</div>
+            <span class="card-title-text">申请明细</span>
           </div>
         </template>
         <template #extra>
           <Space>
-            <Button type="primary" size="small" @click="handleAddApplication">
+            <Button
+              class="detail-btn-add"
+              type="primary"
+              size="small"
+              @click="handleAddApplication"
+            >
               + 添加申请
             </Button>
             <Button
@@ -1434,98 +1263,337 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 响应式调整 */
+
+
+/* ==================== 响应式适配 ==================== */
+
+/* 窄屏：列间距收紧，保证不溢出 */
 @media (max-width: 1400px) {
-  :deep(.info-card) {
-    margin-bottom: 12px;
+  .settle-form {
+    column-gap: 12px;
   }
 }
 
-:deep(.ant-card-small .ant-card-head) {
-  min-height: 36px;
-  padding: 0 12px;
+@media (max-width: 1200px) {
+  .ps-grid-top {
+    grid-template-columns: 1fr;
+  }
 }
 
-:deep(.ant-card-small .ant-card-body) {
-  padding: 12px;
+/* 页面纵向弹性布局：申请明细撑满屏幕剩余高度 */
+.ps-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 104px);
+  min-height: 720px;
+  padding: 16px;
 }
 
-/* 信息卡片样式 */
+.ps-grid-top {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* 顶部操作按钮：圆角 + 主按钮轻投影，强化点击感 */
+.ps-action-btn {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.ps-action-btn-primary {
+  box-shadow: 0 2px 8px rgb(24 144 255 / 30%);
+}
+
+.ps-action-btn-primary:hover {
+  box-shadow: 0 4px 12px rgb(24 144 255 / 40%);
+}
+
+/* 页面头部右侧：结算单号（设计稿展示于标题栏） */
+.ps-settlement-no {
+  font-size: 13px;
+  color: #8c95a3;
+}
+
+/* ==================== 分区卡片统一风格 ==================== */
 .info-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-  transition: all 0.3s ease;
+  overflow: hidden;
+  border: 1px solid #e8ecf3;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 6%);
+  transition: box-shadow 0.3s ease;
 }
 
 .info-card:hover {
-  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+  box-shadow: 0 6px 20px rgb(16 42 83 / 10%);
 }
 
-/* 标题样式优化 */
-:deep(.info-card .ant-card-head-title) {
+:deep(.info-card.ant-card-small > .ant-card-head) {
+  min-height: 56px;
+  padding: 0 16px;
+  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 60%, #fff 100%);
+  border-bottom: 1px solid #e4e8ef;
+}
+
+:deep(.info-card.ant-card-small > .ant-card-body) {
+  padding: 14px 16px;
+}
+
+/* 结算信息与附件卡片：固定高度 375px，body 撑满剩余高度 */
+.combined-card,
+.attach-card {
+  display: flex;
+  flex-direction: column;
+  height: 375px;
+}
+
+:deep(.combined-card.ant-card-small > .ant-card-body),
+:deep(.attach-card.ant-card-small > .ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px 16px;
+}
+
+/* 结算信息表单：三行在卡片内均匀分布 */
+.combined-card .settle-form {
+  flex: 1;
+  align-content: space-between;
+}
+
+/* 卡片标题：渐变图标徽标 + 加粗深色文字 */
+.card-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.card-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
+  border-radius: 8px;
 }
 
-/* 输入框和选择器统一样式 */
+.icon-blue {
+  color: #006ce6;
+  background: #eaf2ff;
+}
+
+.icon-cyan {
+  color: #13c2c2;
+  background: linear-gradient(135deg, #e6fffb 0%, #87e8de 100%);
+}
+
+.card-title-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #252a31;
+}
+
+/* ==================== 结算信息卡片（费用汇总已按设计稿并入） ==================== */
+
+/* 卡片头部右侧：结算币别 + 结算总金额 */
+.header-summary {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+
+.hs-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hs-label {
+  font-size: 12px;
+  color: #8c95a3;
+  white-space: nowrap;
+}
+
+.hs-currency {
+  width: 96px;
+}
+
+.hs-amount {
+  font-family: 'DIN Alternate', Roboto, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #006ce6;
+  letter-spacing: -0.3px;
+}
+
+.hs-currency-code {
+  font-size: 12px;
+  color: #8c95a3;
+}
+
+/* 表单区：左半为结算基础字段（两小列），右半为银行/费用字段（填满），与设计稿一致 */
+.settle-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 22px 16px;
+  padding-top: 4px;
+  padding-bottom: 60px;
+}
+
+.form-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.form-col-1 {
+  grid-column: 1;
+}
+
+.form-col-2 {
+  grid-column: 2;
+}
+
+/* 右半：银行/费用字段横跨两格，填满右半区 */
+.form-col-3 {
+  grid-column: 3 / span 2;
+}
+
+/* 备注：单独一行，横跨整行 */
+.form-col-all {
+  grid-column: 1 / -1;
+}
+
+/* ==================== 表单字段 ==================== */
+
+/* 标签：与控件同行居左、垂直居中（设计稿样式） */
+.form-label {
+  flex-shrink: 0;
+  width: 48px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #8c95a3;
+  text-align: right;
+}
+
+/* 控件统一圆角与边框，聚焦时品牌色反馈 */
 :deep(.info-card .ant-input),
 :deep(.info-card .ant-select-selector),
-:deep(.info-card .ant-picker) {
-  border-color: #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.3s ease;
+:deep(.info-card .ant-picker),
+:deep(.info-card .ant-input-number) {
+  border-color: #e4e8ef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 :deep(.info-card .ant-input:focus),
+:deep(.info-card .ant-input-focused),
 :deep(.info-card .ant-select-focused .ant-select-selector),
-:deep(.info-card .ant-picker-focused) {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgb(24 144 255 / 10%);
+:deep(.info-card .ant-picker-focused),
+:deep(.info-card .ant-input-number-focused) {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgb(24 144 255 / 12%);
 }
 
-/* 禁用状态样式 */
+/* 禁用态：浅灰底 + 浅灰文字（设计稿样式） */
 :deep(.info-card .ant-input-disabled),
 :deep(.info-card .ant-select-disabled .ant-select-selector) {
-  color: #666;
-  background: #f5f7fa;
+  color: #b9c0c9;
+  background: #f6f7f9;
 }
 
-/* 标签文字样式 */
-:deep(.info-card label),
-:deep(.info-card div[style*='font-size: 13px']) {
+/* ==================== 费用汇总相关字段（已并入表单三列） ==================== */
+
+/* 银行标签用品牌色区分归属（设计稿：我司银行蓝、对方银行橙） */
+.bank-label-ours {
   font-weight: 500;
+  color: #006ce6;
 }
 
-/* 金额数字样式 */
-:deep(.info-card [style*='font-size: 28px'] span) {
-  font-family: 'DIN Alternate', Roboto, sans-serif;
-  letter-spacing: -0.5px;
+.bank-label-theirs {
+  font-weight: 500;
+  color: #ff9b54;
 }
 
-/* 渐变背景卡片 */
-:deep(.info-card [style*='linear-gradient']) {
-  position: relative;
-  overflow: hidden;
+/* 手续费：输入框 + 币种单位 */
+.fee-row {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
 }
 
-:deep(.info-card [style*='linear-gradient'])::before {
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  pointer-events: none;
-  content: '';
-  background: radial-gradient(
-    circle,
-    rgb(255 255 255 / 30%) 0%,
-    transparent 70%
-  );
+.fee-unit {
+  font-size: 12px;
+  color: #8c95a3;
+  white-space: nowrap;
+}
+
+/* ==================== 附件卡片 ==================== */
+.attach-section + .attach-section {
+  margin-top: 16px;
+}
+
+.attach-section-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.attach-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: #fafbfd;
+  border: 1px solid #eef1f6;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.attach-item:hover {
+  background: #e9f4ff;
+  border-color: #91caff;
+}
+
+.attach-item-icon {
+  margin-right: 8px;
+  color: #8a94a6;
+}
+
+/* ==================== 申请明细卡片 ==================== */
+
+/* 申请明细撑满剩余高度：内部表格随高度自适应滚动 */
+.detail-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+:deep(.detail-card.ant-card-small > .ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.detail-btn-add {
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgb(24 144 255 / 25%);
 }
 
 /* 附件上传区域样式 */
 :deep(.info-card .file-upload-container) {
   border-radius: 8px;
 }
+
+/* ==================== 页面容器与布局 ==================== */
 </style>

@@ -18,6 +18,7 @@ import {
   Space,
   Spin,
   Table,
+  Tag,
   Modal,
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
@@ -29,6 +30,7 @@ import {
   issueByInterface,
   applyRedAsync,
   getInvoiceIssueDetail,
+  queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import { buildAttachmentUrl } from '#/utils';
 
@@ -84,11 +86,21 @@ const invoiceStatus = ref<{
   redLocked?: boolean;
   redStatus?: number;
   editLocked?: boolean;
+  redReason?: number;
+  redInvoiceNo?: string;
 }>({
   issueStatus: undefined,
   redLocked: false,
   redStatus: undefined,
   editLocked: false,
+  redReason: undefined,
+  redInvoiceNo: undefined,
+});
+
+// ✅ 新增：是否已冲红（已发起过冲红，即 redStatus 非 0），基础信息区据此展示冲红字段
+const isRedInvolved = computed(() => {
+  const { redStatus } = invoiceStatus.value;
+  return !!redStatus && redStatus !== 0;
 });
 
 // ✅ 新增：附件列表
@@ -262,6 +274,8 @@ async function refreshInvoiceStatus() {
       redLocked: detail.redLocked || false,
       redStatus: detail.redStatus,
       editLocked: detail.editLocked,
+      redReason: detail.redReason,
+      redInvoiceNo: detail.redInvoiceNo,
     };
     // 同步到 formData
     formData.value.editLocked = detail.editLocked;
@@ -347,8 +361,26 @@ async function handleRefreshProgress() {
 
   try {
     loading.value = true;
-    // 直接通过详情接口获取最新状态，不再调用 queryIssueResult 或 queryRedResult
-    await refreshInvoiceStatus(); // 刷新本地状态
+
+    const isIssued = invoiceStatus.value.issueStatus === 2; // 开票完成
+    const redStatus = invoiceStatus.value.redStatus;
+
+    // 已开票且已申请过冲红（redStatus 非 0）时，调用 queryRedResult 查询冲红进度：
+    // 该接口不只查询，还会推进整条链路（查确认单状态、纸票自动开红票、回填红票号并保存红票附件）；
+    // 未申请过冲红的记录调用会报错，所以必须先判 redStatus（见对接文档）
+    if (isIssued && redStatus && redStatus !== 0) {
+      const redState = await queryRedResult(editId.value);
+      // 失败态（确认单作废/申请失败）优先展示失败原因，
+      // 否则直接展示 redStatusText（含下一步操作说明，详情/列表出参里没有该字段）
+      if (redState.redFailCause) {
+        message.error(`冲红失败：${redState.redFailCause}`, 6);
+      } else if (redState.redStatusText) {
+        message.info(redState.redStatusText, 6);
+      }
+    }
+
+    // queryRedResult 可能已回填红票号与红票附件，重新拉取详情更新状态与页面数据
+    await refreshInvoiceStatus(); // 刷新本地状态（含附件列表）
     await loadDetailWithoutGoods(); // 刷新页面数据
     message.success('进度已刷新');
   } catch (error) {
@@ -410,6 +442,47 @@ function handleUpdateGoodsDetails(newGoodsDetails: any[]) {
     goodsDetails.value = newGoodsDetails;
     console.log('✅ 商品明细已更新:', goodsDetails.value.length, '条');
   });
+}
+
+/** 获取冲红状态中文标签（完整枚举见对接文档） */
+function getRedStatusLabel(status?: number): string {
+  if (status === undefined || status === null) return '-';
+  const map: Record<number, string> = {
+    0: '未冲红',
+    15: '红字确认单申请中',
+    1: '冲红中·确认单已生效',
+    2: '冲红中·待购方确认',
+    3: '冲红中·待我方确认',
+    4: '冲红中·已确认，待开红票',
+    5: '冲红失败（确认单作废）',
+    6: '冲红失败（确认单作废）',
+    7: '冲红失败（超时未确认）',
+    8: '冲红失败（发起方已撤销）',
+    9: '冲红失败（确认单作废）',
+    16: '冲红失败（申请失败）',
+    99: '冲红完成',
+  };
+  return map[status] || String(status);
+}
+
+/** 获取冲红状态 Tag 颜色：进行中橙、失败红、完成红 */
+function getRedStatusColor(status?: number): string {
+  if (!status || status === 0) return 'default';
+  if (status === 99) return 'red';
+  if ((status >= 5 && status <= 9) || status === 16) return 'error';
+  return 'orange';
+}
+
+/** 获取冲红原因中文标签 */
+function getRedReasonLabel(reason?: number): string {
+  if (!reason) return '-';
+  const map: Record<number, string> = {
+    1: '销货退回',
+    2: '开票有误',
+    3: '服务中止',
+    4: '销售折让',
+  };
+  return map[reason] || String(reason);
 }
 
 /** 根据发票类型获取标题 */
@@ -606,6 +679,29 @@ onMounted(() => {
                     :disabled="invoiceStatus.editLocked"
                   />
                 </Form.Item>
+
+                <!-- ✅ 新增：冲红信息（发票已冲红时显示） -->
+                <template v-if="isRedInvolved">
+                  <Form.Item label="冲红状态">
+                    <Tag :color="getRedStatusColor(invoiceStatus.redStatus)">
+                      {{ getRedStatusLabel(invoiceStatus.redStatus) }}
+                    </Tag>
+                  </Form.Item>
+
+                  <Form.Item label="冲红原因">
+                    <Input
+                      :value="getRedReasonLabel(invoiceStatus.redReason)"
+                      disabled
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="关联冲红发票号码">
+                    <Input
+                      :value="invoiceStatus.redInvoiceNo || '-'"
+                      disabled
+                    />
+                  </Form.Item>
+                </template>
 
                 <!-- 附件显示区域 -->
                 <div v-if="attachments && attachments.length > 0" class="mt-8">

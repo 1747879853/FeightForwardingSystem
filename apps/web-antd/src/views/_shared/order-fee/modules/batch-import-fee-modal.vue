@@ -2,6 +2,7 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { computed, ref, watch } from 'vue';
 import { Button, message, Modal, Space, Table, Input } from 'ant-design-vue';
+import type { TableColumnsType } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
 import { useOrderFeeI18n, useOrderFeeAdapter } from '../use-adapter';
@@ -34,7 +35,7 @@ const [modal, modalApi] = useVbenModal({
       if (data) {
         currentTransportOrderId.value = data.transportOrderId;
         currentPaySide.value = data.paySide;
-        currentBizType.value = data.bizType ?? 0; // 默认为海运出口
+        currentBizType.value = data.bizType ?? adapter.bizType; // 未传时按当前模块适配器取（0=海出，1=海进，2=空出）
 
         // 设置默认检索条件
         searchForm.value.carrierId = data.carrierId;
@@ -79,7 +80,7 @@ const bizColumns = computed(() => [
     width: 200,
   },
   {
-    title: '港口/航线',
+    title: '起运港-目的港',
     key: 'polPod',
     width: 200,
   },
@@ -91,12 +92,18 @@ const bizColumns = computed(() => [
 ]);
 
 // 费用列表表格列定义
-const feeColumns = computed(() => [
+const feeColumns = computed<TableColumnsType>(() => [
+  {
+    title: '费用代码',
+    dataIndex: ['feeCode', 'code'],
+    key: 'feeCodeCode',
+    width: 90,
+  },
   {
     title: '费用名称',
     dataIndex: ['feeCode', 'cnName'],
     key: 'feeCodeName',
-    width: 120,
+    width: 130,
   },
   {
     title: '结算对象',
@@ -108,13 +115,91 @@ const feeColumns = computed(() => [
     title: '币别',
     dataIndex: ['currency', 'cnName'],
     key: 'currencyName',
+    width: 70,
+    align: 'center',
+  },
+  {
+    title: '汇率',
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
     width: 80,
+    align: 'right',
+  },
+  {
+    title: '含税单价',
+    dataIndex: 'unitPrice',
+    key: 'unitPrice',
+    width: 90,
+    align: 'right',
+  },
+  {
+    title: '数量',
+    dataIndex: 'quantity',
+    key: 'quantity',
+    width: 80,
+    align: 'right',
+  },
+  {
+    title: '单位',
+    dataIndex: 'unit',
+    key: 'unit',
+    width: 70,
+    align: 'center',
   },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
     width: 100,
+    align: 'right',
+  },
+  {
+    title: '税率',
+    dataIndex: 'taxRate',
+    key: 'taxRate',
+    width: 70,
+    align: 'right',
+  },
+  {
+    title: '不含税单价',
+    dataIndex: 'noTaxUnitPrice',
+    key: 'noTaxUnitPrice',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '不含税金额',
+    dataIndex: 'noTaxAmount',
+    key: 'noTaxAmount',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '已开票金额',
+    dataIndex: 'invoicedAmount',
+    key: 'invoicedAmount',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '已结算金额',
+    dataIndex: 'settledAmount',
+    key: 'settledAmount',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '未结算金额',
+    dataIndex: 'unSettledAmount',
+    key: 'unSettledAmount',
+    width: 100,
+    align: 'right',
+  },
+  {
+    title: '创建人',
+    dataIndex: 'creatorUserName',
+    key: 'creatorUserName',
+    width: 90,
   },
   {
     title: '备注',
@@ -414,11 +499,15 @@ defineExpose({
           :pagination="false"
           :scroll="{ y: 300 }"
           row-key="id"
+          :custom-row="
+            (record) => ({
+              onClick: () => handleSelectTransportOrder(record),
+            })
+          "
           :row-class-name="
             (record) =>
               record.id === selectedTransportOrder?.id ? 'selected-row' : ''
           "
-          @click="handleSelectTransportOrder"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'commissionNum'">
@@ -433,12 +522,12 @@ defineExpose({
             <template v-else-if="column.key === 'polPod'">
               <!-- 根据 bizType 读取不同字段 -->
               <template v-if="record.transportOrder?.bizType === 0">
-                {{ record.transportOrder.seaExport?.pol?.cnName }} -
-                {{ record.transportOrder.seaExport?.pod?.cnName }}
+                {{ record.transportOrder.seaExport?.pol?.portName }} -
+                {{ record.transportOrder.seaExport?.pod?.portName }}
               </template>
               <template v-else-if="record.transportOrder?.bizType === 1">
-                {{ record.transportOrder.seaImport?.pol?.cnName }} -
-                {{ record.transportOrder.seaImport?.pod?.cnName }}
+                {{ record.transportOrder.seaImport?.pol?.portName }} -
+                {{ record.transportOrder.seaImport?.pod?.portName }}
               </template>
               <template v-else-if="record.transportOrder?.bizType === 2">
                 {{ record.transportOrder.airExport?.pol?.iataCode }} -
@@ -473,7 +562,7 @@ defineExpose({
             onChange: handleFeeSelectionChange,
           }"
           :pagination="false"
-          :scroll="{ y: 300 }"
+          :scroll="{ y: 300, x: 'max-content' }"
           row-key="id"
         >
           <!-- 费用列渲染逻辑保持不变，因为 orderFees 结构未变 -->

@@ -415,7 +415,7 @@ const changeTableType = (type: string) => {
 
 <template>
   <Page auto-content-height>
-    <Grid class="mb-[10px] h-[430px]">
+    <Grid class="expense-task-grid mb-[10px] h-[445px]">
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
       <template #toolbar-actions>
         <GroupingTabs
@@ -440,9 +440,9 @@ const changeTableType = (type: string) => {
             </Menu>
           </template>
         </DropdownButton>
-        <span class="split mx-4 flex">| </span>
+        <span class="split mx-3 flex">|</span>
         <Button
-          class="mr-2"
+          class="layout-toggle-btn mr-2"
           @click="changeTableType('vertical')"
           :class="[feeTableType === 'vertical' ? 'green-btn' : '']"
         >
@@ -451,6 +451,7 @@ const changeTableType = (type: string) => {
           {{ $t('auditApproval.tableType.vertical') }}
         </Button>
         <Button
+          class="layout-toggle-btn"
           @click="changeTableType('horizontal')"
           :class="[feeTableType === 'horizontal' ? 'green-btn' : '']"
         >
@@ -476,13 +477,45 @@ const changeTableType = (type: string) => {
 </template>
 <style scoped lang="scss">
 .split {
-  color: #33333345;
+  color: #d9dee8;
+}
+
+// 顶部任务列表：卡片化容器 + 表头层级强化，与下方费用明细卡片风格统一
+.expense-task-grid {
+  overflow: hidden;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgb(16 42 83 / 4%),
+    0 4px 12px rgb(16 42 83 / 5%);
+
+  :deep(.vxe-header--column) {
+    font-weight: 600;
+    color: #333;
+    background-color: #f5f7fa;
+  }
+
+  :deep(.vxe-body--row.row--stripe) {
+    background-color: #fafbfd;
+  }
+
+  :deep(.vxe-body--row:hover),
+  :deep(.vxe-body--row.row--hover) {
+    background-color: #e9f4ff;
+  }
+}
+
+// 布局切换按钮：未选中态更精致，选中态保持绿色高亮反馈
+.layout-toggle-btn {
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
 :deep(.green-btn) {
   color: #fff;
   background-color: #00b96b !important;
   border-color: #00b96b !important;
+  box-shadow: 0 2px 6px rgb(0 185 107 / 25%);
 }
 
 /* 如果需要处理悬停状态 */

@@ -296,6 +296,11 @@ export namespace PaymentSettlementAdminApi {
     paymentApplications: PayAppSimpleDto[];
     /** 费用简要列表（id + 主提单号） */
     orderFees: FeeSimpleDto[];
+    /**
+     * 本结算单涉及的业务票（按业务去重），与付费申请侧同结构。
+     * 组内只填 `transportOrder`，其余字段（paymentApplicationItems / currencyGroup / totalPayPrice / totalReceivePrice）恒为 null。
+     */
+    payAppFeeBySeaExportGroup?: PaymentApplicationAdminApi.PayAppFeeAndSeaExportDto[];
     /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
     localCurrencyId?: null | number;
     /** 本位币代码，如 RMB / USD */

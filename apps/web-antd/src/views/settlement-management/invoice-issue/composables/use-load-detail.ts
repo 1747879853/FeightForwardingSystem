@@ -38,6 +38,9 @@ export function useLoadDetail(
           redLocked: detail.redLocked || false,
           redStatus: detail.redStatus,
           editLocked: detail.editLocked,
+          // ✅ 新增：冲红原因与关联冲红发票号码（基础信息区展示用）
+          redReason: detail.redReason,
+          redInvoiceNo: detail.redInvoiceNo,
         };
       }
 
@@ -147,6 +150,9 @@ export function useLoadDetail(
           redLocked: detail.redLocked || false,
           redStatus: detail.redStatus,
           editLocked: detail.editLocked,
+          // ✅ 新增：冲红原因与关联冲红发票号码（基础信息区展示用）
+          redReason: detail.redReason,
+          redInvoiceNo: detail.redInvoiceNo,
         };
       }
 

@@ -476,6 +476,8 @@ export namespace InvoiceIssueApi {
     invoiceIssueType?: InvoiceIssueType;
     /** 发票类型 */
     invoiceType?: string;
+    /** 冲红状态（0未冲红 15申请中 99冲红完成 16冲红失败） */
+    redStatus?: number;
     /** 开票时间起 */
     invoiceIssueTimeStart?: string;
     /** 开票时间止 */
@@ -865,6 +867,7 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
     currencyId: params.currencyId,
     invoiceIssueType: params.invoiceIssueType,
     invoiceType: params.invoiceType,
+    redStatus: params.redStatus,
     invoiceIssueTimeStart: params.invoiceIssueTimeStart,
     invoiceIssueTimeEnd: params.invoiceIssueTimeEnd,
     creatorUserId: params.creatorUserId,

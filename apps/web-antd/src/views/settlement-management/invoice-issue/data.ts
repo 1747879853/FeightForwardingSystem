@@ -57,9 +57,18 @@ const getRedStatusLabel = (status: number | undefined | null): string => {
 
   const statusMap: Record<number, string> = {
     0: '未冲红',
+    1: '无需确认',
+    2: '待购方确认',
+    3: '待销方确认',
+    4: '双方已确认',
+    5: '已作废(购方否认)',
+    6: '已作废(销方否认)',
+    7: '已作废(超时未确认)',
+    8: '已作废(发起方撤销)',
+    9: '已作废(确认后撤销)',
     15: '申请中',
+    16: '申请失败', // C# 枚举原文为“申请失败”，如需与你示例保持一致可改为 '冲红失败'
     99: '冲红完成',
-    16: '冲红失败',
   };
 
   return statusMap[status] || String(status);
@@ -395,6 +404,30 @@ export const searchFormSchema = [
         { label: '普通发票(电票)', value: 'p' },
         { label: '普通发票(纸票)', value: 'c' },
         { label: '专用发票', value: 's' },
+      ],
+    },
+  },
+  {
+    fieldName: 'redStatus',
+    label: '冲红状态',
+    component: 'Select',
+    componentProps: {
+      placeholder: '请选择冲红状态',
+      clearable: true,
+      options: [
+        { label: '未冲红', value: 0 },
+        { label: '无需确认', value: 1 },
+        { label: '待购方确认', value: 2 },
+        { label: '待销方确认', value: 3 },
+        { label: '双方已确认', value: 4 },
+        { label: '已作废(购方否认)', value: 5 },
+        { label: '已作废(销方否认)', value: 6 },
+        { label: '已作废(超时未确认)', value: 7 },
+        { label: '已作废(发起方撤销)', value: 8 },
+        { label: '已作废(确认后撤销)', value: 9 },
+        { label: '申请中', value: 15 },
+        { label: '冲红失败', value: 16 },
+        { label: '冲红完成', value: 99 },
       ],
     },
   },
