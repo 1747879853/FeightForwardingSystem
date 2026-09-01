@@ -841,10 +841,10 @@ onMounted(() => {
     <div class="flex items-stretch">
       <!--  -->
       <div class="flex min-w-0 flex-1 flex-col gap-2">
-        <Card>
+        <Card class="fee-detail-card">
           <template #title>
-            <div class="flex">
-              <span class="mr-2 flex items-center gap-2">
+            <div class="flex items-center">
+              <span class="fee-detail-title mr-2 flex items-center gap-2">
                 <Package class="size-4" />
                 {{ $t('seaExport.export.orderFee.feeDetail') }}
               </span>
@@ -964,14 +964,14 @@ onMounted(() => {
             </div>
           </div>
         </Card>
-        <div class="total-amount flex rounded-md px-4 py-1 shadow">
+        <div class="total-amount flex rounded-lg px-4 py-2">
           <div
             v-for="(item, index) in totalAmount"
-            class="mr-4 flex"
+            class="mr-4 flex items-center"
             :key="item.name"
           >
             <span class="flex">{{ item.name }}</span>
-            <span class="ml-2 flex font-medium" :class="item.color">{{
+            <span class="ml-2 flex font-semibold" :class="item.color">{{
               item.value
             }}</span>
             <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
@@ -986,28 +986,66 @@ onMounted(() => {
 <style scoped lang="scss">
 .select-name {
   flex-direction: row-reverse;
+  padding: 2px 10px;
+  color: #52607a;
+  background: #f0f5ff;
+  border-radius: 6px;
+}
+
+// 费用明细卡片：强化卡片层次与标题品牌感
+.fee-detail-card {
+  overflow: hidden;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgb(16 42 83 / 4%),
+    0 4px 12px rgb(16 42 83 / 5%);
+
+  :deep(.ant-card-head) {
+    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 60%, #fff 100%);
+    border-bottom: 1px solid #e8ecf3;
+  }
+
+  :deep(.ant-card-head-title) {
+    padding: 10px 0;
+  }
+
+  .fee-detail-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2d3d;
+
+    :deep(svg) {
+      color: #1890ff;
+    }
+  }
 }
 
 .total-amount {
   display: flex;
   flex-wrap: wrap;
-  background: #fff;
+  align-items: center;
+  font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 
   .split {
-    color: #33333345;
+    color: #d9dee8;
   }
 }
 
 .green {
-  color: #00b96b;
+  color: #00a862;
 }
 
 .yellow {
-  color: #ffc107;
+  color: #f59e0b;
 }
 
 .blue {
-  color: #007bff;
+  color: #1890ff;
 }
 
 :deep(.green-btn) {
@@ -1061,7 +1099,7 @@ onMounted(() => {
   &.flex-col {
     flex-direction: column;
     height: calc(100vh - 300px);
-    min-height: 400px;
+    min-height: 580px;
     max-height: calc(100vh - 200px);
   }
 
@@ -1069,7 +1107,7 @@ onMounted(() => {
     flex-direction: row;
     width: 100%;
     // ✅ 左右布局时固定高度为 400px
-    height: 580px;
+    height: 400px;
   }
 
   .left-top-section,
@@ -1088,7 +1126,7 @@ onMounted(() => {
   }
 }
 
-// 拖动分隔条通用样式
+// 拖动分隔条通用样式：默认弱存在感，悬停/拖拽时高亮反馈
 .drag-handle {
   position: relative;
   z-index: 10;
@@ -1110,8 +1148,8 @@ onMounted(() => {
   }
 
   .drag-line {
-    background-color: #d9d9d9;
-    border-radius: 2px;
+    background-color: #e4e8ef;
+    border-radius: 999px;
     transition: all 0.2s ease;
   }
 }
@@ -1127,7 +1165,7 @@ onMounted(() => {
   }
 
   .drag-line {
-    width: 60px;
+    width: 48px;
     height: 4px;
   }
 }
@@ -1144,7 +1182,7 @@ onMounted(() => {
 
   .drag-line {
     width: 4px;
-    height: 60px;
+    height: 48px;
   }
 }
 </style>

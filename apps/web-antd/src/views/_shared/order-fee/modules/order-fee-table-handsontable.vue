@@ -40,6 +40,7 @@ import { useHotSettings } from './composables/useHotSettings';
 import { useModals } from './composables/useModals';
 import { initOrderFeeEnumCache } from '../data';
 import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
+import { useOrderFeeAdapter } from '../use-adapter';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -50,6 +51,8 @@ const props = defineProps<{
   orderDetail?: any | null;
   allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
 }>();
+
+const adapter = useOrderFeeAdapter();
 
 const emit = defineEmits([
   'sync-fee',
@@ -322,7 +325,7 @@ const openBatchImportModal = async () => {
     carrierId: orderDetail.carrierId,
     polId: orderDetail.polId,
     podId: orderDetail.podId,
-    bizType: 2, // 空运出口固定为 2
+    bizType: adapter.bizType, // 按当前模块适配器取业务类型（0=海运出口，1=海运进口，2=空运出口）
   });
 
   batchImportModalRef.value?.modalApi.open();

@@ -288,7 +288,7 @@ const openBatchImportModal = async () => {
       carrierId: orderDetail?.carrierId,
       polId: orderDetail?.polId,
       podId: orderDetail?.podId,
-      bizType: 2, // 空运出口固定为 2
+      bizType: adapter.bizType, // 按当前模块适配器取业务类型（0=海运出口，1=海运进口，2=空运出口）
     });
 
     console.log('✅ [openBatchImportModal] 已设置弹窗数据，准备打开弹窗');

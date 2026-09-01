@@ -5,6 +5,11 @@ import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlem
 
 import dayjs from 'dayjs';
 
+import {
+  formatPayAppCommissionNums,
+  formatPayAppMblNums,
+} from '#/views/fee-management/payment-application/format-pay-app-mbl-nums';
+
 /** 结算状态枚举 */
 export enum SettlementStatus {
   /** 录入中 */
@@ -80,6 +85,30 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       title: '结算单号',
       minWidth: 180,
       fixed: 'left',
+    },
+    {
+      field: 'mblNums',
+      title: '主提单号',
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentSettlementAdminApi.PaymentSettlementListDto;
+      }) => formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+    },
+    {
+      field: 'commissionNums',
+      title: '委托编号',
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentSettlementAdminApi.PaymentSettlementListDto;
+      }) => formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
     },
     // {
     //   field: 'status',
