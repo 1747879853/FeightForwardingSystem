@@ -22,6 +22,11 @@ const router = useRouter();
 // 选中的行
 const selectedRows = ref<any[]>([]);
 
+/** 同步选中行（单行勾选与全选/取消全选均触发） */
+const syncSelectedRows = () => {
+  selectedRows.value = (gridApi.grid as any)?.getCheckboxRecords?.() ?? [];
+};
+
 // 发票详情弹窗
 const detailModalOpen = ref(false);
 const detailModalData = ref<InvoiceIssueApi.InvoiceIssueListDto | null>(null);
@@ -29,11 +34,6 @@ const detailModalData = ref<InvoiceIssueApi.InvoiceIssueListDto | null>(null);
 /** 处理行双击事件 */
 function handleRowDblClick({ row }: any) {
   handleEdit(row);
-}
-
-/** 处理复选框选择变化 */
-function handleCheckboxChange({ records }: any) {
-  selectedRows.value = records;
 }
 
 const [Grid, gridApi] = useVbenVxeGrid({
@@ -83,7 +83,9 @@ const [Grid, gridApi] = useVbenVxeGrid({
   },
   gridEvents: {
     cellDblclick: handleRowDblClick,
-    checkboxChange: handleCheckboxChange,
+    // 单行勾选触发 checkbox-change；表头全选/取消全选只触发 checkbox-all，需同时监听
+    checkboxChange: syncSelectedRows,
+    checkboxAll: syncSelectedRows,
   },
 });
 
@@ -135,7 +137,9 @@ async function handleBatchDelete() {
         // 使用批量删除接口，一次性传入所有ID
         await deleteInvoiceIssue(selectedRows.value.map((row) => row.id));
         message.success('批量删除成功');
-        selectedRows.value = [];
+        const grid = gridApi.grid as any;
+        grid?.clearCheckboxRow?.();
+        syncSelectedRows();
         gridApi.query();
       } catch (error) {
         console.error('批量删除失败:', error);
