@@ -54,9 +54,9 @@ export namespace FeituoTerminalScheduleAdminApi {
     portCloseDate?: null | string;
     /** 截关时间 → 回填截关日期（仅出口） */
     customsCloseDate?: null | string;
-    /** 进口航次 → 进口回填航次 */
+    /** 进口航次，是码头航次 → 回填 terminalVoyno */
     ivoyage?: null | string;
-    /** 出口航次 → 出口回填航次 */
+    /** 出口航次，是码头航次 → 回填 terminalVoyno */
     evoyage?: null | string;
     /** 更新时间 */
     updateTime?: null | string;
@@ -74,16 +74,32 @@ export namespace FeituoTerminalScheduleAdminApi {
     portCode?: null | string;
     /** 本次查询用的起运港名称 */
     portName?: null | string;
-    /** 本次查询用的航次；业务单没填航次时为 null，表示按船名+港口查了全部 */
-    voyage?: null | string;
+    /** 业务单上的船公司航次 */
+    innerVoyno?: null | string;
     /**
-     * 进出口标识：E 出口、I 进口。跟着航次走，voyage 为空时也是 null。
+     * 本次尝试用来过滤的码头航次（字段名与业务单一致）。
+     * 优先取业务单码头航次；为空且船公司航次有值时是换算结果；两者都为空时为 null。
+     * 是否真按它过滤看 filteredByTerminalVoyno。
+     */
+    terminalVoyno?: null | string;
+    /** true = terminalVoyno 由船公司航次换算而来，业务单码头航次原本为空 */
+    terminalVoynoConverted?: boolean;
+    /**
+     * items 是否按码头航次过滤过。
+     * false = 该船在该港的全部挂靠计划，可能含多个航次，不要默认取第一条。
+     */
+    filteredByTerminalVoyno?: boolean;
+    /**
+     * 进出口标识：E 出口、I 进口。跟着航次走，退化成不带航次查全部时为 null。
      * 判业务类型请用 bizType，不要用这个字段。
      */
     isExport?: null | string;
     /** 飞驼返回的全部条目；无数据时为空数组 */
     items?: TerminalScheduleItemDto[];
-    /** 提示信息，仅未查到时有值，正常有数据时为 null */
+    /**
+     * 提示信息，可直接弹给用户。
+     * 两种情况有值：完全没查到、以及未匹配到码头航次已返回全部挂靠计划。
+     */
     message?: null | string;
   }
 }
@@ -94,8 +110,9 @@ const API_PREFIX = '/services/app/FeituoAdmin';
  * 查询飞驼码头船舶计划（纯查询，不写库）
  * POST /services/app/FeituoAdmin/QueryTerminalScheduleAsync
  *
- * 船名、航次、起运港代码、进出口标识全部由后端从业务单取，前端只传业务单 Id。
+ * 船名、码头航次、起运港代码、进出口标识全部由后端从业务单取，前端只传业务单 Id。
  * 仅支持海运出口与海运进口。选中条目后由前端回填表单并走原有编辑保存落库。
+ * 条目里的 evoyage/ivoyage 都是码头航次，必须填到 terminalVoyno，不要填 innerVoyno。
  */
 export function queryTerminalScheduleAsync(
   params: FeituoTerminalScheduleAdminApi.QueryTerminalScheduleInputDto,

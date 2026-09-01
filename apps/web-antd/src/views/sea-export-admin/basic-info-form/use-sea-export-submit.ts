@@ -46,6 +46,7 @@ export const buildSeaExportDto = (
     issueType: values.codeIssueTypeId ?? values.issueType ?? undefined,
     vessel: values.vessel,
     innerVoyno: values.innerVoyno,
+    terminalVoyno: values.terminalVoyno,
     carrierId: values.carrierId ?? undefined,
     secondNotifierId: values.secondNotifierId ?? undefined,
     secondNotifierContent: values.secondNotifierContent,

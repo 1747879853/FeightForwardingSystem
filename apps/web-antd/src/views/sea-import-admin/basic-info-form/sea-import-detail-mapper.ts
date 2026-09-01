@@ -46,6 +46,7 @@ export const flattenDetail = (
     // 海运进口层
     vessel: detail.vessel,
     innerVoyno: detail.innerVoyno,
+    terminalVoyno: detail.terminalVoyno,
     carrierId: detail.carrierId,
     polId: detail.polId,
     polRemark: detail.polRemark,

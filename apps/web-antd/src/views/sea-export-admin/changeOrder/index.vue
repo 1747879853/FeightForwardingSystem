@@ -166,6 +166,7 @@ const ORDER_INFO_PRIORITY_KEYS = [
   'carrierName',
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'polName',
   'podName',
   'etd',
@@ -259,6 +260,11 @@ const allDisplayFields: DisplayFieldConfig[] = [
   {
     key: 'innerVoyno',
     label: $t('seaExport.export.innerVoyno'),
+    visible: true,
+  },
+  {
+    key: 'terminalVoyno',
+    label: $t('seaExport.export.terminalVoyno'),
     visible: true,
   },
   { key: 'polName', label: $t('seaExport.export.polId'), visible: true },
@@ -387,6 +393,9 @@ const displayList = computed(() => {
         break;
       case 'innerVoyno':
         value = formValues.value?.innerVoyno || '--';
+        break;
+      case 'terminalVoyno':
+        value = formValues.value?.terminalVoyno || '--';
         break;
       case 'carrierName':
         value =

@@ -487,6 +487,8 @@ export namespace SeaImportAdminApi {
     orgId?: LongId;
     vessel?: string;
     innerVoyno?: string;
+    /** 码头航次（港区航次，最大 32；与船公司航次是两套编号） */
+    terminalVoyno?: string;
     carrierId?: LongId;
     polId?: LongId;
     polRemark?: string;
@@ -550,6 +552,8 @@ export namespace SeaImportAdminApi {
     localCurrencyCode?: null | string;
     vessel?: null | string;
     innerVoyno?: null | string;
+    /** 码头航次（港区航次；查码头船舶计划用这个） */
+    terminalVoyno?: null | string;
     carrierId?: LongId | null;
     carrier?: CarrierSimpleDto | null;
     carrierLogo?: AttachmentItemDto | null;
@@ -654,6 +658,8 @@ export namespace SeaImportAdminApi {
     Vessel?: string;
     VesselEmpty?: boolean;
     InnerVoyno?: string;
+    /** 码头航次（港区航次，模糊匹配） */
+    TerminalVoyno?: string;
     CarrierId?: LongId;
     CarrierIdEmpty?: boolean;
     POLId?: LongId;

@@ -208,6 +208,7 @@ const SHIPMENT_HEADER_FIELD_NAMES = ['freeDays'] as const;
 const BASIC_MODULE_EXTRA_FIELD_NAMES = [
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'carrierId',
 ] as const;
 const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set<string>(
@@ -217,6 +218,7 @@ const BASIC_INFO_FIELD_ORDER = [
   'clientId',
   'carrierId',
   'vessel',
+  'terminalVoyno',
   'teamId',
   'custBrokerId',
   'warehouseId',
@@ -1068,8 +1070,11 @@ const confirmTerminalSchedule = async (item: TerminalScheduleItem) => {
       item,
       terminalScheduleQueryInfo.value.bizType,
     );
-    if (patch.innerVoyno) {
-      await basicInfoFormApi.setFieldValue('innerVoyno', patch.innerVoyno);
+    if (patch.terminalVoyno) {
+      await basicInfoFormApi.setFieldValue(
+        'terminalVoyno',
+        patch.terminalVoyno,
+      );
     }
     await submitBasicInfo();
   } finally {

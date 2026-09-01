@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-01 海运进出口新增码头航次](./changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md)
 - [2026-09-01 用户管理对接开票分机号](./changelogs/change-log-2026-09-01-system-user-extension-number.md)
 
 ## 2026-08

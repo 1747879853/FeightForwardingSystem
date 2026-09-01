@@ -144,6 +144,7 @@
     "grossWeight": "Gross Weight",
     "hblNum": "HBL No.",
     "innerVoyno": "Voyage",
+    "terminalVoyno": "Terminal Voyage",
     "insuranceId": "Insurance Co.",
     "internalRemark": "Internal Remark",
     "externalRemark": "External Remark",

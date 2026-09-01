@@ -54,6 +54,7 @@ export const flattenDetail = (
     codeIssueTypeId: (detail as any).codeIssueTypeId ?? detail.issueType,
     vessel: detail.vessel,
     innerVoyno: detail.innerVoyno,
+    terminalVoyno: detail.terminalVoyno,
     carrierId: detail.carrierId,
     secondNotifierId: detail.secondNotifierId,
     secondNotifierContent: detail.secondNotifierContent,

@@ -289,6 +289,7 @@ export const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
   15: 'bookingNum',
   16: 'etd',
   17: 'clientId',
+  19: 'terminalVoyno',
 };
 export const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   carrierId: 'seaExport.export.carrierId',
@@ -296,6 +297,7 @@ export const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   podId: 'seaExport.export.podId',
   vessel: 'seaExport.export.vessel',
   innerVoyno: 'seaExport.export.innerVoyno',
+  terminalVoyno: 'seaExport.export.terminalVoyno',
   closingTime: 'seaExport.export.closingTime',
   closeDocTime: 'seaExport.export.closeDocTime',
   closeVgmTime: 'seaExport.export.closeVgmTime',

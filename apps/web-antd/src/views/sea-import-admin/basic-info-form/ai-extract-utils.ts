@@ -31,6 +31,7 @@ export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
 export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
   vessel: ['船名'],
   innerVoyno: ['航次'],
+  terminalVoyno: ['码头航次'],
   carrierId: ['船公司简称', '船公司'],
   polId: ['起运港名称', '起运港代码'],
   podId: ['目的港名称', '目的港代码'],
@@ -202,6 +203,11 @@ export function buildAiExtractFormPayload(
 
   assignScalar(formValues, 'vessel', pickProp(seaImportRaw, 'vessel'));
   assignScalar(formValues, 'innerVoyno', pickProp(seaImportRaw, 'innerVoyno'));
+  assignScalar(
+    formValues,
+    'terminalVoyno',
+    pickProp(seaImportRaw, 'terminalVoyno'),
+  );
   assignScalar(formValues, 'carrierId', pickProp(seaImportRaw, 'carrierId'));
   assignScalar(formValues, 'polId', pickProp(seaImportRaw, 'polId', 'pOLId'));
   assignScalar(
@@ -311,6 +317,7 @@ export function pickExtractedLabel(
 export const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'carrierId',
   'polId',
   'polRemark',
@@ -352,6 +359,7 @@ const ENGLISH_UPPER_CASE_FIELDS = new Set([
   'podRemark',
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'mblNum',
 ]);
 

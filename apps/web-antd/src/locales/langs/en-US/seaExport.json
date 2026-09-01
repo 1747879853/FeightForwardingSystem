@@ -313,6 +313,7 @@
     "goodsHsCode": "HS Code",
     "grossWeight": "Gross Weight",
     "innerVoyno": "Voyage",
+    "terminalVoyno": "Terminal Voyage",
     "insuranceId": "Insurance Co.",
     "internalRemark": "Internal Remark",
     "externalRemark": "External Remark",

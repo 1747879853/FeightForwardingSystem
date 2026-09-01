@@ -70,6 +70,7 @@
     "vessel": "船名",
     "vesselVoyage": "船名/航次",
     "innerVoyno": "航次",
+    "terminalVoyno": "码头航次",
     "carrierId": "船公司",
     "noBillEnum": "提单份数",
     "copyNoBillEnum": "副本份数",

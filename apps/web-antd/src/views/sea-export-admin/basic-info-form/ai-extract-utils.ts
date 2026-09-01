@@ -33,6 +33,7 @@ export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
 export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
   vessel: ['船名'],
   innerVoyno: ['航次'],
+  terminalVoyno: ['码头航次'],
   carrierId: ['船公司简称', '船公司'],
   shipAgentId: ['船代'],
   codeIssueTypeId: ['签单方式'],
@@ -144,6 +145,7 @@ export function buildAiExtractFormPayload(
   );
   assignScalar(formValues, 'vessel', seaExport.vessel);
   assignScalar(formValues, 'innerVoyno', seaExport.innerVoyno);
+  assignScalar(formValues, 'terminalVoyno', seaExport.terminalVoyno);
   assignScalar(formValues, 'carrierId', seaExport.carrierId);
   assignScalar(formValues, 'shipAgentId', seaExport.shipAgentId);
   assignScalar(formValues, 'signingTime', seaExport.signingTime);
@@ -226,6 +228,7 @@ export const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'issueType',
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'carrierId',
   'secondNotifierId',
   'secondNotifierContent',
@@ -326,6 +329,7 @@ const ENGLISH_UPPER_CASE_FIELDS = new Set([
   'deliverPortRemark',
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'mblNum',
 ]);
 /** 按字段类型规范化 AI 识别值（日期→dayjs、数值→number、英文字段→大写） */

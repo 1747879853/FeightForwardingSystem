@@ -312,6 +312,7 @@ const BASIC_INFO_FIELD_ORDER = [
   'clientId',
   'carrierId',
   'vessel',
+  'terminalVoyno',
   'shipAgentId',
   'bookingAgentId',
   'teamId',
@@ -337,6 +338,7 @@ const BASIC_MODULE_EXTRA_FIELD_NAMES = [
   'clientId',
   'vessel',
   'innerVoyno',
+  'terminalVoyno',
   'carrierId',
   'shipAgentId',
   'bookingAgentId',
@@ -2721,8 +2723,8 @@ const applyTerminalSchedulePatch = async (item: TerminalScheduleItem) => {
     item,
     terminalScheduleQueryInfo.value.bizType,
   );
-  if (patch.innerVoyno) {
-    await basicInfoFormApi.setFieldValue('innerVoyno', patch.innerVoyno);
+  if (patch.terminalVoyno) {
+    await basicInfoFormApi.setFieldValue('terminalVoyno', patch.terminalVoyno);
   }
   const dateFields = [
     ['atd', patch.atd],

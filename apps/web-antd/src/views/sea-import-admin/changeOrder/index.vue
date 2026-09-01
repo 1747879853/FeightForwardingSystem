@@ -72,6 +72,7 @@ const displayList = computed(() => {
     { name: t('teamId'), value: order?.team?.name },
     { name: t('vessel'), value: data?.vessel },
     { name: t('innerVoyno'), value: data?.innerVoyno },
+    { name: t('terminalVoyno'), value: data?.terminalVoyno },
     { name: t('carrierId'), value: data?.carrier?.cnShortName },
     { name: t('polId'), value: data?.pol?.portName },
     { name: t('podId'), value: data?.pod?.portName },

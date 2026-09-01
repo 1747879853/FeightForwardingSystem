@@ -136,6 +136,7 @@ const SEA_EXPORT_PROP_FALLBACK_ITEMS: EnumItem[] = [
   { value: 15, displayName: 'BookingNum', enable: true },
   { value: 16, displayName: 'ETD', enable: true },
   { value: 17, displayName: 'ClientId', enable: true },
+  { value: 19, displayName: 'TerminalVoyno', enable: true },
   { value: 1001, displayName: 'CarrierName', enable: true },
   { value: 1002, displayName: 'POLName', enable: true },
   { value: 1003, displayName: 'PODName', enable: true },

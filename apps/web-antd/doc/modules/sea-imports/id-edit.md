@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-08-31
 - **未保存与整页缓存：** 离开时基础信息或应收应付任一未落库都二次确认；确认切走后整页 KeepAlive，点 X 才销毁。缓存页的委托 id 用 `useKeepAliveRouteParamId`：本页可见才跟地址栏，藏起来后冻结，避免跟海出等同名 `:id` 页抢详情。
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
 - **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
-- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填航次（`ivoyage` → `innerVoyno`）并走原有编辑保存；进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
+- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择，确定引入后前端回填**码头航次**（`ivoyage` → `terminalVoyno`）并走原有编辑保存；**不要把 `ivoyage` 写进 `innerVoyno`。** 进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。打印拉模板传 `bizType=1`（海运进口，结果含通用模板）。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。
@@ -51,6 +51,7 @@ last_updated: 2026-08-31
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 | **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
+| **码头航次** | 港区航次，与船公司航次 `innerVoyno` 是两套编号。 | `SeaImportDto.terminalVoyno` | **触发/依赖：** 排在船名/航次后；码头船舶引入写这里（`ivoyage`）。 | 可空；上限 32。 |
 | **毛重 KGS / 体积 CBM / 净重合计** | 整票毛重、体积与集装箱净重求和。 | `transportOrder.kgs/cbm`、`totalNetWeight`；库列毛重体积 `decimal(20,4)` | **触发/依赖：** 最多 4 位小数，末尾 0 不展示；净重合计可由箱明细净重汇总。 | 可选，非负。 |
 | **集装箱毛重 / 皮重 / 净重 / 体积** | 箱明细重量体积。 | `orderCtns.grossWeight/tareWeight/netWeight/volume` | **触发/依赖：** 与主单同一套 `weight-volume-precision`。 | 可选，非负。 |
 | **费用.数量** | 计价数量；单位为毛重/尺码时等于 Kgs/Cbm。 | `OrderFee.Quantity`；库列 `decimal(20,4)` | **触发/依赖：** 与海出共用 Handsontable，最多 4 位、去尾 0；金额仍 2 位。 | 可选，非负。 |
@@ -63,10 +64,13 @@ last_updated: 2026-08-31
 
 > [!IMPORTANT] **[卡点 3：能看 ≠ 能改]** 详情能打开只说明有查询权限。保存、重新生成委托编号看 `Admin.SeaImport.Edit` ∧ `detail.isEditable`；缺字段按 false。附件增删不看 `isEditable`。
 
+> [!IMPORTANT] **[卡点 4：飞驼航次是码头航次]** 码头船舶条目的 `ivoyage` 必须写入 `terminalVoyno`，禁止回填 `innerVoyno`。进口按起运港查，国外港经常查不到，与本次字段无关。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-01 | `Feature` | 基础信息新增「码头航次」；码头船舶引入把 `ivoyage` 写入码头航次，不再改船公司航次。 | 共享 `buildTerminalScheduleFormPatch`。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积/净重合计、集装箱毛重/皮重/净重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-25 | `Fix` | 基础信息：码头筛「码头」属性、转站+6、净重手填、贸易方式改走枚举中心 `TradeMode`；附件卡片支持拖拽上传。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |

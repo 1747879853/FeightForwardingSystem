@@ -513,6 +513,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Input',
+      fieldName: 'TerminalVoyno',
+      label: $t('seaExport.export.terminalVoyno'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
       component: 'CarrierSelect',
       fieldName: 'CarrierId',
       label: $t('seaExport.export.carrierId'),
@@ -890,6 +899,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'innerVoyno',
       title: $t('seaExport.export.innerVoyno'),
       minWidth: 100,
+      showOverflow: true,
+    },
+    {
+      field: 'terminalVoyno',
+      title: $t('seaExport.export.terminalVoyno'),
+      minWidth: 110,
       showOverflow: true,
     },
     {
@@ -1583,6 +1598,16 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       label: '',
       formItemClass: 'hidden',
       componentProps: { class: 'hidden' },
+    },
+    {
+      component: 'EnglishUpperInput',
+      fieldName: 'terminalVoyno',
+      label: $t('seaExport.export.terminalVoyno'),
+      componentProps: {
+        allowClear: true,
+        maxlength: 64,
+        placeholder: $t('ui.placeholder.input'),
+      },
     },
     {
       component: 'CarrierSelect',

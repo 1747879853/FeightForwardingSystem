@@ -43,6 +43,7 @@ const PROP_VALUE_RESOLVERS: Record<number, PropValueResolver> = {
   3: (seaExport) => formatId(seaExport?.podId),
   4: (seaExport) => formatText(seaExport?.vessel),
   5: (seaExport) => formatText(seaExport?.innerVoyno),
+  19: (seaExport) => formatText(seaExport?.terminalVoyno),
   6: (seaExport) => formatDate(seaExport?.closingTime),
   7: (seaExport) => formatDate(seaExport?.closeDocTime),
   8: (seaExport) => formatDate(seaExport?.closeVgmTime),

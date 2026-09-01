@@ -436,6 +436,8 @@ export namespace SeaExportAdminApi {
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
+    /** 码头航次（港区航次，最大 64；与船公司航次是两套编号） */
+    terminalVoyno?: string;
     carrierId?: number;
     noBillEnum?: number;
     copyNoBillEnum?: number;
@@ -492,6 +494,8 @@ export namespace SeaExportAdminApi {
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
+    /** 码头航次（港区航次，最大 64；与船公司航次是两套编号） */
+    terminalVoyno?: string;
     carrierId?: number;
     noBillEnum?: number;
     copyNoBillEnum?: number;
@@ -567,6 +571,8 @@ export namespace SeaExportAdminApi {
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
+    /** 码头航次（港区航次；查码头船舶计划用这个） */
+    terminalVoyno?: string;
     carrierId?: number;
     /**
      * 船公司简易对象（无则为 null）。
@@ -715,6 +721,8 @@ export namespace SeaExportAdminApi {
     PODId?: number;
     Vessel?: string;
     InnerVoyno?: string;
+    /** 码头航次（港区航次，模糊匹配） */
+    TerminalVoyno?: string;
     CarrierId?: number;
     BookingAgentId?: string | number;
     /** 场站 id（往来单位，精确匹配） */

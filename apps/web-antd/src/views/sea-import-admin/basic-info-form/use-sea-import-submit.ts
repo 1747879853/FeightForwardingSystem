@@ -40,6 +40,7 @@ export const buildSeaImportDto = (
     orgId: values.orgId ?? undefined,
     vessel: values.vessel,
     innerVoyno: values.innerVoyno,
+    terminalVoyno: values.terminalVoyno,
     carrierId: values.carrierId ?? undefined,
     polId: values.polId ?? undefined,
     polRemark: values.polRemark,

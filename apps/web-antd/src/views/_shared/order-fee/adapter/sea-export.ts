@@ -69,6 +69,11 @@ const displayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   {
+    key: 'terminalVoyno',
+    label: $t('seaExport.export.terminalVoyno'),
+    visible: true,
+  },
+  {
     key: 'carrierName',
     label: $t('seaExport.export.carrierId'),
     visible: true,
@@ -138,6 +143,8 @@ const getDisplayValue = (fieldKey: string, detail: any, to: any) => {
       return detail?.vessel || '--';
     case 'innerVoyno':
       return detail?.innerVoyno || '--';
+    case 'terminalVoyno':
+      return detail?.terminalVoyno || '--';
     case 'carrierName':
       return detail?.carrier?.cnShortName || detail?.carrier?.cnName || '--';
     case 'etd':

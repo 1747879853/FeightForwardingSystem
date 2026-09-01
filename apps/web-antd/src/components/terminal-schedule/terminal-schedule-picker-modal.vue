@@ -123,11 +123,36 @@ const queryTip = computed(() =>
   $t('component.terminalSchedule.queryTip', {
     vessel: props.queryInfo?.vessel || '-',
     voyage:
-      props.queryInfo?.voyage ||
+      props.queryInfo?.terminalVoyno ||
       $t('component.terminalSchedule.queryVoyageAll'),
     port: props.queryInfo?.portName || props.queryInfo?.portCode || '-',
   }),
 );
+
+const showUnfilteredTip = computed(
+  () =>
+    props.items.length > 0 &&
+    props.queryInfo?.filteredByTerminalVoyno === false,
+);
+
+const convertedTip = computed(() => {
+  if (!props.queryInfo?.terminalVoynoConverted) return '';
+  const voyage = props.queryInfo?.terminalVoyno;
+  if (!voyage) return '';
+  return $t('component.terminalSchedule.convertedTip', { voyage });
+});
+
+const unfilteredMessage = computed(
+  () =>
+    props.queryInfo?.message || $t('component.terminalSchedule.unfilteredTip'),
+);
+
+const pickerDescription = computed(() => {
+  const multipleTip = $t('component.terminalSchedule.multipleTip');
+  return convertedTip.value
+    ? `${convertedTip.value} ${multipleTip}`
+    : multipleTip;
+});
 
 function getVoyage(record: TerminalScheduleItem): string {
   return (isImport.value ? record.ivoyage : record.evoyage) || '-';
@@ -189,7 +214,14 @@ function handleCancel() {
       show-icon
       class="mb-3"
       :message="queryTip"
-      :description="$t('component.terminalSchedule.multipleTip')"
+      :description="pickerDescription"
+    />
+    <Alert
+      v-if="showUnfilteredTip"
+      type="warning"
+      show-icon
+      class="mb-3"
+      :message="unfilteredMessage"
     />
     <Table
       :columns="columns"
