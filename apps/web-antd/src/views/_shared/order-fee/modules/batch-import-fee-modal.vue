@@ -80,7 +80,7 @@ const bizColumns = computed(() => [
     width: 200,
   },
   {
-    title: '港口/航线',
+    title: '起运港-目的港',
     key: 'polPod',
     width: 200,
   },
