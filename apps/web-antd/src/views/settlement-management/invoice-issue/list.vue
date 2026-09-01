@@ -177,10 +177,26 @@ function getRedStatusTag(status: number | undefined | null) {
   }
 
   const configMap: Record<number, { text: string; color: string }> = {
+    // 初始/本地状态
     0: { text: '未冲红', color: 'default' },
+
+    // 进行中 / 待确认
+    1: { text: '无需确认', color: 'processing' },
+    2: { text: '待购方确认', color: 'processing' },
+    3: { text: '待销方确认', color: 'processing' },
     15: { text: '申请中', color: 'processing' },
-    99: { text: '冲红完成', color: 'error' },
-    16: { text: '冲红失败', color: 'warning' },
+
+    // 成功 / 已确认
+    4: { text: '双方已确认', color: 'success' },
+    99: { text: '冲红完成', color: 'success' },
+
+    // 失败 / 作废终态
+    5: { text: '已作废(购方否认)', color: 'error' },
+    6: { text: '已作废(销方否认)', color: 'error' },
+    7: { text: '已作废(超时未确认)', color: 'error' },
+    8: { text: '已作废(发起方撤销)', color: 'error' },
+    9: { text: '已作废(确认后撤销)', color: 'error' },
+    16: { text: '申请失败', color: 'error' },
   };
 
   return configMap[status] || { text: String(status), color: 'default' };
