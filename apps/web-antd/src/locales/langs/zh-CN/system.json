@@ -676,6 +676,8 @@
     "receiveAddrPort": "收件服务器+端口",
     "sendAddrPort": "发件服务器+端口",
     "officeTel": "办公电话",
+    "extensionNumber": "开票分机号",
+    "extensionNumberHelp": "接口开票时传给开票服务商用于匹配开票员，由服务商分配。不填则发票归到企业默认开票员。",
     "senderDisplayName": "发件显示名",
     "isActiveOn": "在职",
     "isActiveOff": "离职",

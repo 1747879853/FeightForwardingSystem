@@ -11,6 +11,10 @@
 - 同一天多条可在标题后加简短后缀区分
 - 无对应月份时先新增月份分组，再添加条目
 
+## 2026-09
+
+- [2026-09-01 用户管理对接开票分机号](./changelogs/change-log-2026-09-01-system-user-extension-number.md)
+
 ## 2026-08
 
 - [2026-08-31 海运出口委托单位与订舱代理按场站同款展示联系人](./changelogs/change-log-2026-08-31-sea-export-party-contact-label.md)

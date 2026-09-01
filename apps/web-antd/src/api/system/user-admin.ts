@@ -217,6 +217,8 @@ export namespace SystemUserAdminApi {
     sendAddrPort?: string;
     officeTel?: string;
     senderDisplayName?: string;
+    /** 开票分机号，接口开票时用于匹配开票员；未维护为 null */
+    extensionNumber?: null | number;
   }
 
   /** 分页列表响应 */
@@ -288,6 +290,8 @@ export namespace SystemUserAdminApi {
     sendAddrPort?: string;
     officeTel?: string;
     senderDisplayName?: string;
+    /** 开票分机号，接口开票时用于匹配开票员；未维护为 null */
+    extensionNumber?: null | number;
     userBankAccounts?: UserBankAccountDto[];
     /** 下次登录是否需要改密码 */
     shouldChangePasswordOnNextLogin?: boolean;
@@ -328,6 +332,8 @@ export namespace SystemUserAdminApi {
     sendAddrPort?: string;
     officeTel?: string;
     senderDisplayName?: string;
+    /** 开票分机号，接口开票时用于匹配开票员；不填传 null */
+    extensionNumber?: null | number;
     /** 下次登录是否需要改密码 */
     shouldChangePasswordOnNextLogin?: boolean;
   }

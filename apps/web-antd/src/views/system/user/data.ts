@@ -372,6 +372,18 @@ export function useUserContactFormSchema(): VbenFormSchema[] {
       label: $t('system.user.officeTel'),
     },
     {
+      component: 'InputNumber',
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        precision: 0,
+        style: { width: '100%' },
+      },
+      fieldName: 'extensionNumber',
+      help: $t('system.user.extensionNumberHelp'),
+      label: $t('system.user.extensionNumber'),
+    },
+    {
       component: 'Input',
       componentProps: {
         maxlength: 128,
@@ -563,6 +575,12 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       field: 'employeeID',
       title: $t('system.user.employeeID'),
       minWidth: 100,
+    },
+    {
+      field: 'extensionNumber',
+      title: $t('system.user.extensionNumber'),
+      minWidth: 120,
+      sortable: false,
     },
     {
       // field 必须与真实数据源 organizations 对齐：

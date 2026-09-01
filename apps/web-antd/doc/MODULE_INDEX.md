@@ -64,7 +64,7 @@
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-08-04 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
 | basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板列表；新建 `/create`、编辑 `/:id/edit`，未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-08-23 |
-| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-08-26 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-09-01 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-08-24 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken。 | [部门管理](./modules/system/dept.md) | 2026-08-28 |

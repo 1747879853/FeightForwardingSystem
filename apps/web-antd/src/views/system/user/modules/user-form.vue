@@ -517,6 +517,7 @@ async function loadUserDetail(id: number) {
       officeTel: userDetail.officeTel,
       emailAddress: userDetail.emailAddress,
       qq: userDetail.qq,
+      extensionNumber: userDetail.extensionNumber ?? undefined,
     });
     await attributeFormApi.setValues({
       userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
@@ -591,6 +592,12 @@ async function handleSubmit() {
     sendAddrPort: values.sendAddrPort || undefined,
     officeTel: values.officeTel || undefined,
     senderDisplayName: values.senderDisplayName || undefined,
+    extensionNumber:
+      values.extensionNumber === undefined ||
+      values.extensionNumber === null ||
+      values.extensionNumber === ''
+        ? null
+        : values.extensionNumber,
     shouldChangePasswordOnNextLogin: values.shouldChangePasswordOnNextLogin,
   };
 

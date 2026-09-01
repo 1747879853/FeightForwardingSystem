@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-26
+last_updated: 2026-09-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,8 @@ last_updated: 2026-08-26
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
 - **所属组织路径：** 列表「所属组织」列 `field` 绑定 `organizations`，按多组织路径拼接（如 `世纪通达/操作部/操作一部`，多组织逗号分隔）；无路径时回退旧字段 `organizationPath` / `organization`。
-- **列头排序：** 仅后端白名单字段可排；`avatar` / `organizations` / `roles` 为 `sortable: false`；默认 `CreationTime DESC`。
+- **开票分机号：** 列表展示 `extensionNumber`；新建/编辑在「联系信息」分区选填维护，保存走 `CreateOrUpdateUserInAdminAsync`，空值传 `null`。
+- **列头排序：** 仅后端白名单字段可排；`avatar` / `organizations` / `roles` / `extensionNumber` 为 `sortable: false`；默认 `CreationTime DESC`。
 - **行内操作：** 操作列固定右侧；外露「修改 / 权限配置 / 最终权限 / 分配角色」，「银行账户 / 修改密码 / 删除」收入「更多」下拉；默认列宽 `340`。
 - **最终权限诊断：** 点击「最终权限」打开只读弹窗，调用 `GET /services/app/UserAdmin/GetUserPermissionsAsync?id=` 展示该用户最终生效权限树（角色 + 用户级授权/禁止合并结果）；默认仅显示已拥有分支，可搜索。
 - **权限配置：** 点击「权限配置」跳转 `/system/permission`，用于编辑用户级模块/数据/表/字段权限，与「最终权限」只读诊断分离。
@@ -47,7 +48,8 @@ last_updated: 2026-08-26
 | **organizationId（所属部门）** | 用户归属组织。 | `GET /services/app/OrganizationUnit/GetOrganizationUnitTreeAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗通过组织树选择。 | **必填项**，未选择时阻止保存。 |
 | **organizations（所属组织）** | 列表展示用户全部所属组织层级路径。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizations[]`（含 `default`、`oneOrganizationPath`） | **触发/依赖：** 列 `field` 必须为 `organizations`（避免 vxe formatter 按旧 `organizationPath` 缓存导致改组织后不刷新）；`formatter` 拼接路径名，回退 `organizationPath` / `organization`。 | 只读展示；未挂组织时为空数组。 |
 | **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举（含操作/客服/单证/商务/销售/财务/海外客服/人事/航线/**监装**） | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码；筛监装师傅走 `GetUserSimplePagedListAsync?userAttribute=512`。 | **必填项**，至少勾选一项。判断必须按位与，`(attr & 512) === 512`。 |
-| **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
+| **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserInAdminAsync` | **触发/依赖：** 用户编辑页联系信息区可编辑；保存时随入参提交。 | 最大长度 `32`，可为空。 |
+| **extensionNumber（开票分机号）** | 接口开票时传给开票服务商，用于匹配开票员；由服务商分配。 | `GET /services/app/UserAdmin/GetUserPagedListAsync`<br/>`GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserInAdminAsync` | **触发/依赖：** 列表列 `field` 为 `extensionNumber`；编辑页联系信息区 `InputNumber`；保存时空值传 `null`。 | **选填**，数字类型，未维护为 `null`。不填不影响开票，发票归企业默认开票员。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
 | **gender（性别）** | 用户性别。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗下拉选择；取值 `1` 男 / `2` 女，与个人中心一致；历史值 `0` 回显为空。 | 选填；可为 `null`。 |
 | **emailAddress（邮箱）** | 用户联系邮箱。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 新建与编辑弹窗均可编辑。 | **必填**；校验邮箱格式，最大长度 `128`。 |
@@ -63,6 +65,7 @@ last_updated: 2026-08-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-01 | `Feature` | 用户管理对接开票分机号 `extensionNumber`：列表展示，新建/编辑选填维护，空值保存为 `null`。 | 列未开排序（不在 `GetUserPagedListAsync` 白名单）；保存必须显式 `null` 才能清空。详见 [变更日志](../../changelogs/change-log-2026-09-01-system-user-extension-number.md)。 |
 | 2026-08-26 | `Fix` | 用户列表顶部查询区改为一行 4 列，关键词、用户属性、角色与查询按钮同一行。 | 覆盖表格默认 `lg:grid-cols-3`。详见 [变更日志](../../changelogs/change-log-2026-08-26-system-user-query-four-columns.md)。 |
 | 2026-08-22 | `Feature` | 用户属性新增「监装」（`LoadingSupervision = 512`），并铺到所有用户属性入口：用户管理勾选、标签映射、海出干系人可配角色、港口服务项负责岗位、枚举管理角色下拉。 | TAPD #1000122。位掩码末尾追加 512，四处拷贝枚举同步；未做成销售/操作那种写死的必填固定角色，是否默认展示仍由枚举 `SeaExportUserAttribute.extra1` 决定；干系人「监装」与监装工单师傅列表两套独立、不同步。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-11 | `Fix` | 用户列表去掉后端不支持的列头排序（头像/所属组织/角色），默认排序改为创建时间降序。 | 白名单见 `GetUserPagedListAsync`；`applyDefaultSortable` 下须显式 `sortable: false`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)。 |

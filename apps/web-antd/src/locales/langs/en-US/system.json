@@ -671,6 +671,8 @@
     "receiveAddrPort": "Receive Server+Port",
     "sendAddrPort": "Send Server+Port",
     "officeTel": "Office Phone",
+    "extensionNumber": "Invoice Extension No.",
+    "extensionNumberHelp": "Sent to the invoice provider when issuing invoices to match the clerk. Assigned by the provider. Leave empty to use the company default clerk.",
     "senderDisplayName": "Sender Display Name",
     "isActiveOn": "Active",
     "isActiveOff": "Resigned",
