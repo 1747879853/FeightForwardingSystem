@@ -426,6 +426,20 @@ export function useBillFormSchema(): VbenFormSchema[] {
         precision: 0,
       },
     },
+    {
+      // 票结加的天数，仅票结（settlementType=0）显示；默认结算方式为票结故默认可见
+      component: 'InputNumber',
+      hide: false,
+      fieldName: 'addDays',
+      label: $t('seaExport.client.paymentTerms.addDays'),
+      formItemClass: 'col-span-1',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        min: 0,
+        precision: 0,
+      },
+    },
     // 第五行：授信币别、授信额度、预警额度（固定在最后一行）
     {
       component: 'CurrencySelect',

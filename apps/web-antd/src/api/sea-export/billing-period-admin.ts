@@ -77,6 +77,8 @@ export namespace BillingPeriodAdminApi {
     settlementDay?: number;
     /** 天数 */
     days?: number;
+    /** 票结加的天数，仅票结（settlementType=0）使用；不填或 0 不加天，小于 0 报错 */
+    addDays?: number;
     /** 备注 */
     remark?: string;
     /** 组织id */
@@ -126,6 +128,8 @@ export namespace BillingPeriodAdminApi {
     settlementDay?: number;
     /** 天数 */
     days?: number;
+    /** 票结加的天数，仅票结（settlementType=0）使用 */
+    addDays?: number;
     /** 备注 */
     remark?: string;
     /** 组织id */
@@ -184,6 +188,8 @@ export namespace BillingPeriodAdminApi {
     settlementDay?: number;
     /** 天数 */
     days?: number;
+    /** 票结加的天数，仅票结（settlementType=0）使用 */
+    addDays?: number;
     /** 备注 */
     remark?: string;
     /** 组织id */

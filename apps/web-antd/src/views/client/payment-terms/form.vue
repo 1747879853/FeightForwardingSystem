@@ -36,6 +36,7 @@ interface Props {
     months?: number;
     settlementDay?: number;
     days?: number;
+    addDays?: number;
     remark?: string;
     attachments?: BillingPeriodAdminApi.AttachmentItemDto[];
     cbpCodeSources?: any[]; // 业务来源
@@ -72,18 +73,21 @@ const [BillForm, billFormApi] = useVbenForm({
           { fieldName: 'months', hide: false },
           { fieldName: 'settlementDay', hide: false },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else if (values.settlementType === 2) {
         billFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: false },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else {
         billFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: false },
         ]);
       }
     }
@@ -115,18 +119,21 @@ watch(
           { fieldName: 'months', hide: false },
           { fieldName: 'settlementDay', hide: false },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else if (newVal.settlementType === 2) {
         billFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: false },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else {
         billFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: false },
         ]);
       }
 
@@ -156,6 +163,7 @@ watch(
         months: newVal.months,
         settlementDay: newVal.settlementDay,
         days: newVal.days,
+        addDays: newVal.addDays,
         remark: newVal.remark,
         codeSourceIds:
           (newVal.cbpCodeSources as any[])?.map(
@@ -216,6 +224,8 @@ const handleSubmit = async () => {
         settlementDay: values.settlementDay,
         /** 结算天数 */
         days: values.days,
+        /** 票结加天数（仅票结） */
+        addDays: values.addDays,
         /** 备注   */
         remark: values.remark,
         /** 附件列表 */
@@ -258,6 +268,8 @@ const handleSubmit = async () => {
         settlementDay: values.settlementDay,
         /** 结算天数 */
         days: values.days,
+        /** 票结加天数（仅票结） */
+        addDays: values.addDays,
         /** 备注   */
         remark: values.remark,
         /** 附件列表 */

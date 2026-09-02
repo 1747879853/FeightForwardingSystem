@@ -14,6 +14,10 @@ import {
 
 import { IconifyIcon } from '@vben/icons';
 import { buildAttachmentUrl } from '#/utils';
+import {
+  getCombinedStatusColor,
+  getCombinedStatusLabel,
+} from './invoice-status';
 
 defineProps<{
   open: boolean;
@@ -209,6 +213,11 @@ const attachmentColumns = [
         </Descriptions.Item>
         <Descriptions.Item label="发票类型">
           {{ getInvoiceTypeLabel(invoiceData.invoiceType) }}
+        </Descriptions.Item>
+        <Descriptions.Item label="发票状态">
+          <Tag :color="getCombinedStatusColor(invoiceData.combinedStatus)">
+            {{ getCombinedStatusLabel(invoiceData.combinedStatus) }}
+          </Tag>
         </Descriptions.Item>
         <Descriptions.Item label="开票汇率">
           {{ formatAmount(invoiceData.invoiceExchangeRate) }}

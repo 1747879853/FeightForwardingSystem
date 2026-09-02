@@ -37,18 +37,21 @@ const [paymentForm, paymentFormApi] = useVbenForm({
           { fieldName: 'months', hide: false },
           { fieldName: 'settlementDay', hide: false },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else if (values.settlementType === 2) {
         paymentFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: false },
+          { fieldName: 'addDays', hide: true },
         ]);
       } else {
         paymentFormApi.updateSchema([
           { fieldName: 'months', hide: true },
           { fieldName: 'settlementDay', hide: true },
           { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: false },
         ]);
       }
     }
@@ -365,18 +368,21 @@ const [Modal, modalApi] = useVbenModal({
             { fieldName: 'months', hide: false },
             { fieldName: 'settlementDay', hide: false },
             { fieldName: 'days', hide: true },
+            { fieldName: 'addDays', hide: true },
           ]);
         } else if (data.settlementType === 2) {
           paymentFormApi.updateSchema([
             { fieldName: 'months', hide: true },
             { fieldName: 'settlementDay', hide: true },
             { fieldName: 'days', hide: false },
+            { fieldName: 'addDays', hide: true },
           ]);
         } else {
           paymentFormApi.updateSchema([
             { fieldName: 'months', hide: true },
             { fieldName: 'settlementDay', hide: true },
             { fieldName: 'days', hide: true },
+            { fieldName: 'addDays', hide: false },
           ]);
         }
 
@@ -405,6 +411,7 @@ const [Modal, modalApi] = useVbenModal({
           months: data.months,
           settlementDay: data.settlementDay,
           days: data.days,
+          addDays: data.addDays,
           remark: data.remark,
           codeSourceIds:
             (data.cbpCodeSources as any[])?.map(
@@ -422,6 +429,13 @@ const [Modal, modalApi] = useVbenModal({
       } else {
         isEdit.value = false;
         paymentFormApi.resetForm();
+        // 新增默认结算方式为票结，重置动态字段显隐：仅显示票结加天数
+        paymentFormApi.updateSchema([
+          { fieldName: 'months', hide: true },
+          { fieldName: 'settlementDay', hide: true },
+          { fieldName: 'days', hide: true },
+          { fieldName: 'addDays', hide: false },
+        ]);
         attachments.value = [];
       }
       loadContractAttachmentTypeId();

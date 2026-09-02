@@ -10,17 +10,12 @@ import {
   Space,
   Spin,
   Checkbox,
-  Select,
 } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
 import {
   getInvoiceIssueDetail,
   removeApplicationsFromInvoiceIssue,
-  issueByInterface,
-  applyRedAsync,
-  queryIssueResult,
-  queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
@@ -60,10 +55,6 @@ const expandedRowKeys = ref<(string | number)[]>([]);
 
 // 发票详情数据
 const invoiceDetailData = ref<any>(null);
-
-// ✅ 冲红弹窗相关状态
-const redModalVisible = ref(false);
-const redReason = ref<number>(1);
 
 // 申请组数据（从 invoiceIssueApplications 转换而来）
 const applicationGroupsData = ref<any[]>([]);
@@ -600,105 +591,6 @@ function handleResetSearch() {
   selectedRowKeys.value = [];
 }
 
-/** 税局开票 / 发票冲红 */
-async function handleTaxAction() {
-  if (!invoiceDetailData.value) return;
-
-  // ✅ 根据文档：使用 editLocked 判断是否可操作，不再判断 invoiceIssueType
-  const isEditLocked = invoiceDetailData.value.editLocked;
-
-  if (isEditLocked) {
-    message.warning('该发票已锁定，无法执行此操作');
-    return;
-  }
-
-  const isIssued = invoiceDetailData.value.issueStatus === 2; // 开票完成
-  const isRedLocked = invoiceDetailData.value.redLocked;
-
-  if (isRedLocked) {
-    message.warning('该发票正在冲红中或已冲红，无法执行此操作');
-    return;
-  }
-
-  if (isIssued) {
-    // 打开冲红弹窗
-    redReason.value = 1; // 重置默认原因
-    redModalVisible.value = true;
-  } else {
-    // 税局开票逻辑
-    Modal.confirm({
-      title: '确认开票',
-      content: `确定要对发票【${invoiceDetailData.value.applicationNo}】发起税局开票吗？`,
-      onOk: async () => {
-        try {
-          loading.value = true;
-          // ✅ 调用开票接口，成功后后端会自动将 invoiceIssueType 改为 0（接口开票）
-          const result = await issueByInterface(props.invoiceIssueId);
-
-          // ✅ 用出参中的 invoiceIssueType 刷新本地数据
-          if (result && result.invoiceIssueType !== undefined) {
-            invoiceDetailData.value.invoiceIssueType = result.invoiceIssueType;
-          }
-
-          message.success('开票请求已提交，请稍后刷新查看结果');
-          await loadInvoiceDetail();
-          emit('refresh');
-        } catch (error) {
-          console.error('❌ 开票失败:', error);
-        } finally {
-          loading.value = false;
-        }
-      },
-    });
-  }
-}
-
-/** 确认冲红 */
-async function handleConfirmRed() {
-  try {
-    loading.value = true;
-    await applyRedAsync({
-      id: props.invoiceIssueId,
-      redReason: redReason.value,
-    });
-    message.success('冲红申请已提交');
-    redModalVisible.value = false;
-    await loadInvoiceDetail();
-    emit('refresh');
-  } catch (error) {
-    console.error('❌ 冲红失败:', error);
-  } finally {
-    loading.value = false;
-  }
-}
-
-/** 刷新开票/冲红进度 */
-async function handleRefreshProgress() {
-  if (!invoiceDetailData.value) return;
-
-  try {
-    loading.value = true;
-    const isIssued = invoiceDetailData.value.issueStatus === 2;
-
-    if (
-      isIssued &&
-      invoiceDetailData.value.redStatus &&
-      invoiceDetailData.value.redStatus !== 0
-    ) {
-      await queryRedResult(props.invoiceIssueId);
-    } else {
-      await queryIssueResult(props.invoiceIssueId);
-    }
-
-    await loadInvoiceDetail();
-    message.success('进度已刷新');
-  } catch (error) {
-    console.error('❌ 刷新进度失败:', error);
-  } finally {
-    loading.value = false;
-  }
-}
-
 // 表格列定义（一级 - 开票申请）
 const parentColumns = [
   {
@@ -1090,30 +982,6 @@ defineExpose({
               </template>
               删除选中 ({{ selectedRowKeys.length }})
             </Button>
-            <!-- <Button
-              type="primary"
-              @click="handleTaxAction"
-              :disabled="invoiceDetailData?.redLocked"
-            >
-              <template #icon>
-                <IconifyIcon
-                  :icon="
-                    invoiceDetailData?.issueStatus === 2
-                      ? 'ant-design:undo-outlined'
-                      : 'ant-design:printer-outlined'
-                  "
-                />
-              </template>
-              {{
-                invoiceDetailData?.issueStatus === 2 ? '发票冲红' : '税局开票'
-              }}
-            </Button>
-            <Button @click="handleRefreshProgress">
-              <template #icon>
-                <IconifyIcon icon="ant-design:sync-outlined" />
-              </template>
-              刷新进度
-            </Button> -->
           </Space>
         </div>
       </div>
@@ -1250,26 +1118,5 @@ defineExpose({
         </div>
       </div>
     </Spin>
-  </Modal>
-
-  <!-- ✅ 冲红确认弹窗 -->
-  <Modal
-    v-model:open="redModalVisible"
-    title="确认冲红"
-    @ok="handleConfirmRed"
-    @cancel="redModalVisible = false"
-  >
-    <div>
-      <p>被冲红发票号：{{ invoiceDetailData?.invoiceNo }}</p>
-      <div style="margin-top: 16px">
-        <span>冲红原因：</span>
-        <Select v-model:value="redReason" style="width: 100%; margin-top: 8px">
-          <Select.Option :value="1">销货退回</Select.Option>
-          <Select.Option :value="2">开票有误</Select.Option>
-          <Select.Option :value="3">服务中止</Select.Option>
-          <Select.Option :value="4">销售折让</Select.Option>
-        </Select>
-      </div>
-    </div>
   </Modal>
 </template>

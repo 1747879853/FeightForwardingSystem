@@ -15,6 +15,11 @@ import {
 import { $t } from '#/locales';
 
 import { columns, searchFormSchema } from './data';
+import {
+  expandCombinedStatusGroup,
+  getCombinedStatusColor,
+  getCombinedStatusLabel,
+} from './invoice-status';
 import InvoiceDetailModal from './invoice-detail-modal.vue';
 
 const router = useRouter();
@@ -51,11 +56,18 @@ const [Grid, gridApi] = useVbenVxeGrid({
     proxyConfig: {
       ajax: {
         query: async ({ page }: any, formValues: any) => {
-          const params = {
-            ...formValues,
+          // 发票状态筛选是逻辑分组（如「开票中」跨 1/20/21），展开成 combinedStatuses 数组
+          const { combinedStatusGroup, ...restFormValues } = formValues;
+          const params: Record<string, any> = {
+            ...restFormValues,
             pageIndex: page.currentPage,
             pageSize: page.pageSize,
           };
+          const combinedStatuses =
+            expandCombinedStatusGroup(combinedStatusGroup);
+          if (combinedStatuses) {
+            params.combinedStatuses = combinedStatuses;
+          }
 
           const result = await getInvoiceIssuePagedList(params);
           return {
@@ -154,54 +166,6 @@ function handleView(row: any) {
   router.push(`/settlement-management/invoice-issue/${row.id}/edit`);
 }
 
-/** 获取诺诺开票状态的 Tag 配置 */
-function getIssueStatusTag(status: number | undefined | null) {
-  if (status === undefined || status === null) {
-    return { text: '-', color: 'default' };
-  }
-
-  const configMap: Record<number, { text: string; color: string }> = {
-    0: { text: '待开票', color: 'default' },
-    1: { text: '开票中', color: 'processing' },
-    2: { text: '开票完成', color: 'success' },
-    3: { text: '开票失败', color: 'error' },
-  };
-
-  return configMap[status] || { text: String(status), color: 'default' };
-}
-
-/** 获取红冲状态的 Tag 配置 */
-function getRedStatusTag(status: number | undefined | null) {
-  if (status === undefined || status === null) {
-    return { text: '-', color: 'default' };
-  }
-
-  const configMap: Record<number, { text: string; color: string }> = {
-    // 初始/本地状态
-    0: { text: '未冲红', color: 'default' },
-
-    // 进行中 / 待确认
-    1: { text: '无需确认', color: 'processing' },
-    2: { text: '待购方确认', color: 'processing' },
-    3: { text: '待销方确认', color: 'processing' },
-    15: { text: '申请中', color: 'processing' },
-
-    // 成功 / 已确认
-    4: { text: '双方已确认', color: 'success' },
-    99: { text: '冲红完成', color: 'success' },
-
-    // 失败 / 作废终态
-    5: { text: '已作废(购方否认)', color: 'error' },
-    6: { text: '已作废(销方否认)', color: 'error' },
-    7: { text: '已作废(超时未确认)', color: 'error' },
-    8: { text: '已作废(发起方撤销)', color: 'error' },
-    9: { text: '已作废(确认后撤销)', color: 'error' },
-    16: { text: '申请失败', color: 'error' },
-  };
-
-  return configMap[status] || { text: String(status), color: 'default' };
-}
-
 /** 获取锁定状态的 Tag 配置 */
 function getLockedTag(locked: boolean | undefined | null) {
   if (locked) {
@@ -238,19 +202,13 @@ function handleIssueStatusClick(row: any) {
         {{ row.clientInvoiceInfo?.taxNum || '-' }}
       </template>
 
-      <template #issueStatus="{ row }">
+      <template #combinedStatus="{ row }">
         <Tag
-          :color="getIssueStatusTag(row.issueStatus).color"
+          :color="getCombinedStatusColor(row.combinedStatus)"
           class="status-clickable"
           @click.stop="handleIssueStatusClick(row)"
         >
-          {{ getIssueStatusTag(row.issueStatus).text }}
-        </Tag>
-      </template>
-
-      <template #redStatus="{ row }">
-        <Tag :color="getRedStatusTag(row.redStatus).color">
-          {{ getRedStatusTag(row.redStatus).text }}
+          {{ getCombinedStatusLabel(row.combinedStatus) }}
         </Tag>
       </template>
 

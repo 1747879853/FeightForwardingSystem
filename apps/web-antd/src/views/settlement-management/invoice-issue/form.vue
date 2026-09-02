@@ -30,9 +30,16 @@ import {
   issueByInterface,
   applyRedAsync,
   getInvoiceIssueDetail,
+  queryIssueResult,
   queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import { buildAttachmentUrl } from '#/utils';
+
+// 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
+import {
+  getCombinedStatusColor,
+  getCombinedStatusLabel,
+} from './invoice-status';
 
 // 导入组合函数
 import { useFormData } from './composables/use-form-data';
@@ -88,6 +95,7 @@ const invoiceStatus = ref<{
   editLocked?: boolean;
   redReason?: number;
   redInvoiceNo?: string;
+  combinedStatus?: number;
 }>({
   issueStatus: undefined,
   redLocked: false,
@@ -95,12 +103,21 @@ const invoiceStatus = ref<{
   editLocked: false,
   redReason: undefined,
   redInvoiceNo: undefined,
+  combinedStatus: undefined,
 });
 
 // ✅ 新增：是否已冲红（已发起过冲红，即 redStatus 非 0），基础信息区据此展示冲红字段
 const isRedInvolved = computed(() => {
   const { redStatus } = invoiceStatus.value;
   return !!redStatus && redStatus !== 0;
+});
+
+// ✅ 新增：发票是否已通过接口开出——开票完成(2) 或签章失败(24)。
+// 签章失败(24) 是“票已开出来、发票号有值”的终态（见对接文档 3.2/3.6），因此可冲红，
+// 绝不能因非 2 就显示「税局开票」按钮（见文档「变更1」：冲红条件为 issueStatus 2/24 且 redLocked===false）。
+const isInvoiceIssued = computed(() => {
+  const issueStatus = invoiceStatus.value.issueStatus;
+  return issueStatus === 2 || issueStatus === 24;
 });
 
 // ✅ 新增：附件列表
@@ -276,6 +293,7 @@ async function refreshInvoiceStatus() {
       editLocked: detail.editLocked,
       redReason: detail.redReason,
       redInvoiceNo: detail.redInvoiceNo,
+      combinedStatus: detail.combinedStatus,
     };
     // 同步到 formData
     formData.value.editLocked = detail.editLocked;
@@ -294,11 +312,12 @@ async function handleTaxAction() {
     return;
   }
 
-  const isIssued = invoiceStatus.value.issueStatus === 2; // 开票完成
+  // 开票完成(2) 或签章失败(24) 都算“票已开出”，走冲红分支（见文档「变更1」）
+  const isIssued = isInvoiceIssued.value;
   const isRedLocked = invoiceStatus.value.redLocked;
   const isEditLocked = invoiceStatus.value.editLocked;
 
-  // 如果处于编辑锁定状态，且不是“开票完成”状态下的冲红操作，则禁止
+  // 如果处于编辑锁定状态，且不是“已开出(开票完成/签章失败)”状态下的冲红操作，则禁止
   if (isEditLocked && !isIssued) {
     message.warning('该发票开出已锁定，只能查询，不能执行此操作');
     return;
@@ -362,7 +381,8 @@ async function handleRefreshProgress() {
   try {
     loading.value = true;
 
-    const isIssued = invoiceStatus.value.issueStatus === 2; // 开票完成
+    // 开票完成(2) 或签章失败(24) 都算“票已开出”，据此决定是否查冲红进度
+    const isIssued = isInvoiceIssued.value;
     const redStatus = invoiceStatus.value.redStatus;
 
     // 已开票且已申请过冲红（redStatus 非 0）时，调用 queryRedResult 查询冲红进度：
@@ -377,9 +397,12 @@ async function handleRefreshProgress() {
       } else if (redState.redStatusText) {
         message.info(redState.redStatusText, 6);
       }
+    } else {
+      // 未冲红，调用 queryIssueResult 刷新发票开票进度
+      await queryIssueResult(editId.value);
     }
 
-    // queryRedResult 可能已回填红票号与红票附件，重新拉取详情更新状态与页面数据
+    // 重新拉取详情更新状态与页面数据
     await refreshInvoiceStatus(); // 刷新本地状态（含附件列表）
     await loadDetailWithoutGoods(); // 刷新页面数据
     message.success('进度已刷新');
@@ -547,9 +570,9 @@ onMounted(() => {
     <!-- 顶部操作按钮 -->
     <div style="margin-bottom: 16px; text-align: right">
       <Space>
-        <!-- ✅ 互斥显示的按钮：税局开票 / 发票冲红 -->
+        <!-- ✅ 互斥显示的按钮：未开出→税局开票；已开出(开票完成2/签章失败24)→发票冲红 -->
         <Button
-          v-if="invoiceStatus.issueStatus !== 2"
+          v-if="!isInvoiceIssued"
           type="primary"
           @click="handleTaxAction"
           :disabled="
@@ -678,6 +701,17 @@ onMounted(() => {
                     :rows="4"
                     :disabled="invoiceStatus.editLocked"
                   />
+                </Form.Item>
+
+                <!-- ✅ 发票状态（开票状态与冲红状态合并，编辑已保存记录时始终显示） -->
+                <Form.Item v-if="editId" label="发票状态">
+                  <Tag
+                    :color="
+                      getCombinedStatusColor(invoiceStatus.combinedStatus)
+                    "
+                  >
+                    {{ getCombinedStatusLabel(invoiceStatus.combinedStatus) }}
+                  </Tag>
                 </Form.Item>
 
                 <!-- ✅ 新增：冲红信息（发票已冲红时显示） -->
@@ -1035,11 +1069,7 @@ onMounted(() => {
                     /></template>
                     导入发票
                   </Button>
-                  <Button
-                    size="small"
-                    @click="handleOpenInvoiceDetailModal"
-                    :disabled="invoiceStatus.editLocked"
-                  >
+                  <Button size="small" @click="handleOpenInvoiceDetailModal">
                     <template #icon
                       ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
