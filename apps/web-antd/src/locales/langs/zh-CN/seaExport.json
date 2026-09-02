@@ -843,6 +843,7 @@
       "months": "间隔月份",
       "settlementDay": "结算日",
       "days": "天数",
+      "addDays": "票结加天数",
       "remark": "备注",
       "period": "账期周期",
       "operation": "操作",

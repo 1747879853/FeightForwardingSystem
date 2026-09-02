@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { $t } from '#/locales';
 
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+import { combinedStatusFilterOptions } from './invoice-status';
 
 /**
  * 格式化日期时间显示
@@ -184,11 +185,11 @@ export const columns: VxeTableGridOptions['columns'] = [
     formatter: ({ cellValue }) => formatDateTime(cellValue),
   },
   {
-    title: '开票状态',
-    field: 'issueStatus',
-    width: 120,
+    title: '发票状态',
+    field: 'combinedStatus',
+    width: 160,
     align: 'center',
-    slots: { default: 'issueStatus' },
+    slots: { default: 'combinedStatus' },
   },
   {
     title: '提交订单号',
@@ -223,13 +224,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     minWidth: 150,
     align: 'left',
     showOverflow: true,
-  },
-  {
-    title: '红冲状态',
-    field: 'redStatus',
-    width: 120,
-    align: 'center',
-    slots: { default: 'redStatus' },
   },
   {
     title: '冲红原因',
@@ -408,27 +402,15 @@ export const searchFormSchema = [
     },
   },
   {
-    fieldName: 'redStatus',
-    label: '冲红状态',
+    fieldName: 'combinedStatusGroup',
+    label: '发票状态',
     component: 'Select',
     componentProps: {
-      placeholder: '请选择冲红状态',
+      placeholder: '请选择发票状态',
       clearable: true,
-      options: [
-        { label: '未冲红', value: 0 },
-        { label: '无需确认', value: 1 },
-        { label: '待购方确认', value: 2 },
-        { label: '待销方确认', value: 3 },
-        { label: '双方已确认', value: 4 },
-        { label: '已作废(购方否认)', value: 5 },
-        { label: '已作废(销方否认)', value: 6 },
-        { label: '已作废(超时未确认)', value: 7 },
-        { label: '已作废(发起方撤销)', value: 8 },
-        { label: '已作废(确认后撤销)', value: 9 },
-        { label: '申请中', value: 15 },
-        { label: '冲红失败', value: 16 },
-        { label: '冲红完成', value: 99 },
-      ],
+      // 逻辑分组选项（未开票/开票中/开票完成/冲红中/已冲红…），
+      // 查询时由 list.vue 展开成 combinedStatuses 数组传给后端
+      options: combinedStatusFilterOptions,
     },
   },
   {

@@ -85,6 +85,7 @@
       "months": "Months Interval",
       "settlementDay": "Settlement Day",
       "days": "Days",
+      "addDays": "Add Days",
       "remark": "Remark",
       "period": "Billing Period",
       "operation": "Actions",

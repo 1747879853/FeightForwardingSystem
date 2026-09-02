@@ -128,6 +128,11 @@ const formatPeriod = (
 
   let periodText = settlementTypeText;
 
+  // 票结加天数（仅票结）
+  if (row.settlementType === 0 && row.addDays) {
+    periodText += ` - +${row.addDays}天`;
+  }
+
   // 月结
   if (row.settlementType === 1 && row.months) {
     const monthsText =

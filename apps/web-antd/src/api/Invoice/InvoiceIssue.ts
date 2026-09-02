@@ -242,6 +242,13 @@ export namespace InvoiceIssueApi {
     /** 发票汇率 */
     invoiceExchangeRate?: number;
 
+    // ========== 组合状态 ==========
+    /**
+     * 开票与冲红的组合状态。未冲红时等于 issueStatus；已发起冲红时等于 redStatus + 100。
+     * 列表/详情状态展示统一绑这个字段，取值映射见 invoice-status.ts。
+     */
+    combinedStatus?: number;
+
     // ========== 接口开票组 ==========
     /** 诺诺开票状态 */
     issueStatus?: number;
@@ -399,6 +406,13 @@ export namespace InvoiceIssueApi {
     /** 商品明细金额合计 */
     totalAmount: number;
 
+    // ========== 组合状态 ==========
+    /**
+     * 开票与冲红的组合状态。未冲红时等于 issueStatus；已发起冲红时等于 redStatus + 100。
+     * 列表状态列建议只绑这个字段，取值映射见 invoice-status.ts。
+     */
+    combinedStatus?: number;
+
     // ========== 接口开票组（新增/补齐） ==========
     /** 诺诺开票状态 */
     issueStatus?: number;
@@ -478,6 +492,13 @@ export namespace InvoiceIssueApi {
     invoiceType?: string;
     /** 冲红状态（0未冲红 15申请中 99冲红完成 16冲红失败） */
     redStatus?: number;
+    /** 开票与冲红的组合状态（精确，单值）。未冲红=开票状态原值；已冲红=红冲状态+100 */
+    combinedStatus?: number;
+    /**
+     * 组合状态（多选，OR）。「开票中」传 1/20/21；「冲红中」传 115/101/102/103/104；「已冲红」传 199。
+     * GET 数组参数需 repeat 序列化（combinedStatuses=1&combinedStatuses=20）。
+     */
+    combinedStatuses?: number[];
     /** 开票时间起 */
     invoiceIssueTimeStart?: string;
     /** 开票时间止 */
@@ -868,6 +889,8 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
     invoiceIssueType: params.invoiceIssueType,
     invoiceType: params.invoiceType,
     redStatus: params.redStatus,
+    combinedStatus: params.combinedStatus,
+    combinedStatuses: params.combinedStatuses,
     invoiceIssueTimeStart: params.invoiceIssueTimeStart,
     invoiceIssueTimeEnd: params.invoiceIssueTimeEnd,
     creatorUserId: params.creatorUserId,
@@ -882,6 +905,8 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
     InvoiceIssueApi.PagedList<InvoiceIssueApi.InvoiceIssueListDto>
   >('/services/app/InvoiceIssueAdmin/GetPagedListAsync', {
     params: queryParams,
+    // combinedStatuses 等数组参数：ASP.NET Core [FromQuery] List 需 repeat（key=1&key=2），勿用 brackets
+    paramsSerializer: 'repeat',
   });
 
   return {
