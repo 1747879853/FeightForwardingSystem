@@ -13,6 +13,21 @@
 
 ## 2026-09
 
+- [2026-09-02 船期查询点击查询后不再自动滚动](./changelogs/change-log-2026-09-02-schedule-query-no-auto-scroll.md)
+- [2026-09-02 船期查询日期与关键词输入对齐港口框](./changelogs/change-log-2026-09-02-schedule-query-toolbar-input-style.md)
+- [2026-09-02 船期查询方案统计与最近查询同一行](./changelogs/change-log-2026-09-02-schedule-query-result-recent-row.md)
+- [2026-09-02 船期查询顶部查询条吸顶](./changelogs/change-log-2026-09-02-schedule-query-toolbar-sticky.md)
+- [2026-09-02 船期查询最近记录不缓存日期且筛选标签完整展示](./changelogs/change-log-2026-09-02-schedule-query-recent-ports-full-tags.md)
+- [2026-09-02 船期查询最近航线只做胶囊不再回填查询条](./changelogs/change-log-2026-09-02-schedule-query-recent-chips-only.md)
+- [2026-09-02 PortSelect 按 EDI 回填时不再把五字码当港口 Id](./changelogs/change-log-2026-09-02-port-select-edi-not-id.md)
+- [2026-09-02 船期查询固定 8 周并缓存起运目的港](./changelogs/change-log-2026-09-02-schedule-query-fixed-weeks-cache-ports.md)
+- [2026-09-02 船期查询暂时去掉船舶定位](./changelogs/change-log-2026-09-02-schedule-query-drop-ais.md)
+- [2026-09-02 船期查询全宽布局并合并详情与船舶定位](./changelogs/change-log-2026-09-02-schedule-query-detail-ais.md)
+- [2026-09-02 船期查询按设计稿还原方案列表样式](./changelogs/change-log-2026-09-02-schedule-query-figma-ui.md)
+- [2026-09-01 船期查询去掉顶部摘要卡片把首屏还给方案](./changelogs/change-log-2026-09-01-schedule-query-drop-hero-cards.md)
+- [2026-09-01 船期查询按操作对照优化方案卡与班次表](./changelogs/change-log-2026-09-01-schedule-query-ops-ux.md)
+- [2026-09-01 船期查询方案分组对齐港到港方案卡](./changelogs/change-log-2026-09-01-schedule-query-align-freightower-group.md)
+- [2026-09-01 船期查询改为航线方案工作台](./changelogs/change-log-2026-09-01-schedule-query-scheme-workbench.md)
 - [2026-09-01 海运进出口新增码头航次](./changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md)
 - [2026-09-01 用户管理对接开票分机号](./changelogs/change-log-2026-09-01-system-user-extension-number.md)
 

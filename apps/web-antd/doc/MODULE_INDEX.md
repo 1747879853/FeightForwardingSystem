@@ -25,7 +25,9 @@
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地），航班与订舱代理在航段标题右侧；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值；支持 TextIn AI 识别预填；顶栏打印需先保存；未保存切走可 KeepAlive。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-31 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；航班与订舱代理在航段标题右侧；支持重新生成委托编号、复制、运踪订阅与单据打印（`PrintJsonType=5000`）；运踪 Tab 已切新服务商（摘要、全量异常预警、轨迹地图、重新订阅）；基础信息保存后联动刷新只读费用与收付徽标；基础信息顶栏支持 AI 识别预填。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-31 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
-| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
+| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；固定 8 周全量拉取后按共舱归组。查询条吸顶。方案数与最近查询同一行。最近查询胶囊可点再查、进页不回填港口。全宽方案卡 + 原生班次表；详情弹窗展示完整字段（船舶定位暂下线）。 | [船期查询](./modules/schedule-query/index.md) | 2026-09-02 |
+| schedule-query | （UI 设计说明） | 航线管理 / 船期查询 | 给专业 UI 重做船期查询的设计说明：用户任务、信息层级、必留字段、现稿问题和交付物。 | [UI 设计说明](./modules/schedule-query/ui-design-brief.md) | 2026-09-02 |
+| schedule-query | （方案分组规则） | 航线管理 / 船期查询 | 方案卡如何归组：分组键、groupName 共舱串、清洗去重、卡片星期/航程/码头、与飞驼方案列表差 1 组的口径。 | [方案分组规则](./modules/schedule-query/grouping.md) | 2026-09-01 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-31 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；可从海出/海进/空出应收应付带 orderFeeIds 预填；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索，可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-31 |
@@ -79,7 +81,7 @@
 | shared | （检查更新） | 共享能力 | 定时拉取 `version.json` 比对构建指纹；避免 IIS 压缩导致首页 etag 误报新版本。 | [检查更新](./modules/shared/check-updates.md) | 2026-08-13 |
 | shared | （全站根布局） | 共享能力 | 津海通品牌桌宠：Three.js 加载 OSS GLB，可拖拽/关闭并按品牌持久化。 | [津海通桌宠](./modules/shared/jht-mascot.md) | 2026-07-26 |
 | shared | （顶栏布局） | 共享能力 | 顶栏「进入会议」按品牌带入会议号：津海通 999999，hhyy/佳越 123456。 | [顶栏在线会议](./modules/shared/layout-meeting.md) | 2026-07-12 |
-| shared | （全站业务表单） | 共享能力 | 统一客户、港口、船公司、币别等业务选择组件的分页检索、标签回显与禁用只读展示；雪花 ID 禁止 Number 转换；`MyOrgSelect`（本人组织）与 `UserOrgSelect`（指定用户组织）均可录入多组织 `orgId`；禁用无值只读态显示 `-`；分页下拉搜索不固定注入精简已选项且关键词默认防抖。 | [业务选择组件](./modules/shared/biz-select.md) | 2026-08-05 |
+| shared | （全站业务表单） | 共享能力 | 统一客户、港口、船公司、币别等业务选择组件的分页检索、标签回显与禁用只读展示；雪花 ID 禁止 Number 转换；`MyOrgSelect`（本人组织）与 `UserOrgSelect`（指定用户组织）均可录入多组织 `orgId`；禁用无值只读态显示 `-`；分页下拉搜索不固定注入精简已选项且关键词默认防抖；`PortSelect` 按 EDI 取值时不把五字码当 Id 打详情。 | [业务选择组件](./modules/shared/biz-select.md) | 2026-09-02 |
 | shared | （全站全局弹窗） | 共享能力 | 货物轨迹全局单例弹窗：`useTrackingMap().open({ mblNo })` 打开，iframe 内嵌 trackingeyes 地图；工具栏展示白标品牌 Logo；企业编号与地址收敛到 env；支持中英文切换（英文分享链接带 `lang=en`）；运踪信息/运踪详情弹窗已接入「查看轨迹地图」入口。 | [全局货物轨迹弹窗](./modules/shared/tracking-map-modal.md) | 2026-07-16 |
 | shared | `/tracking-map/:mblNo?` | 共享能力 | 货物轨迹独立静态页：免登录、URL 传订阅号、iframe 内嵌轨迹地图、页头展示品牌 logo 与单号，随 VITE_APP_BRAND 自动切换；支持 `?lang=en` 英文分享；可分享给外部客户。 | [货物轨迹独立静态页](./modules/shared/tracking-map-page.md) | 2026-08-20 |
 | shared | `/cargo-tracking/air`、`/cargo-tracking/ocean` | 共享能力 / 运踪 | 新服务商货物轨迹独立静态页：免登录、可分享给外部客户；空运按航司单号前端拼装地址，海运按编码令牌还原轨迹链接；页头展示品牌 logo、单号（`?no=`）与中性标题，支持 `?lang=en`。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-20 |

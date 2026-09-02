@@ -2,7 +2,7 @@
 title: 业务选择组件
 module: shared
 author: 前端团队
-last_updated: 2026-08-05
+last_updated: 2026-09-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -46,6 +46,7 @@ last_updated: 2026-08-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-02 | `Fix` | `PortSelect` 按 EDI 回填时不再把五字码当港口 Id 去打详情。 | `ensureSelectedLoaded` 仅在 `valueKey=id` 时调 `DetailAsync`。详见 `changelogs/change-log-2026-09-02-port-select-edi-not-id.md`。 |
 | 2026-08-05 | `Fix` | 分页下拉：搜索不固定注入已选项；完整 option 不被精简 selectedItems 覆盖；关键词搜索默认 300ms 防抖；PortSelect 字段不齐时仍拉详情补全。 | 收敛在 `usePagedSelect`（`completeValues` / `searchDebounce` / 搜索态不 restore pin）；`PortSelect.isDisplayComplete` 避免残缺回显阻断详情。详见 change-log-2026-08-05-paged-select-pin-search-debounce。 |
 | 2026-07-12 | `Fix` | 港口/费用代码/汇率/客户账期等页面统一大数 ID 字符串校验与透传约定。 | 与 `request.ts` json-bigint `storeAsString` 对齐；biz-select 内 `parseIdToSafeString` 仅用于缓存键，不意味着表单可 coerce 为 number。 |
 | 2026-07-12 | `Feature` | 所有 biz-select 在整体禁用时改为清晰的只读文本外观 | 保留底层 Select/Cascader 解析标签，统一通过 `biz-select` 样式标识收敛视觉行为 |

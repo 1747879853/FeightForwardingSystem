@@ -19,6 +19,7 @@ interface Props {
   /**
    * 选中后下拉框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
    * 或特殊值 `'ediPortCountry'`（`EDI码/港口英文名,国家英文名`）、
+   * `'portNameEdi'`（`港口英文名 (EDI码)`，如 QINGDAO (CNTAO)）、
    * `'portNameCnName'`（`港口英文名-中文名`，如 QINGDAO-青岛）。
    * selectedItems 回显时尽量包含数组中的字段（缺字段则跳过，有 id 时会 lazy load 详情补全）。
    */
@@ -69,12 +70,24 @@ const getNestedValue = (obj: unknown, path: string): string => {
  * 选中回显文案。
  * - 普通字段 / 字段数组：按字段取值，多字段以 `, ` 拼接
  * - `'ediPortCountry'`：`EDI码/港口英文名,国家英文名`（如 CNTAO/QINGDAO,CHINA）
+ * - `'portNameEdi'`：`港口英文名 (EDI码)`（如 QINGDAO (CNTAO)）
  * - `'portNameCnName'`：`港口英文名-中文名`（如 QINGDAO-青岛）
  */
 const resolveLabelKey = (
   port: PortCodeAdminApi.PortCodeDto,
   labelKey: string | string[],
 ): string => {
+  if (labelKey === 'portNameEdi') {
+    const portName = (port.portName ?? '').toString().trim();
+    const ediCode = (port.ediCode ?? '').toString().trim();
+    if (portName && ediCode) return `${portName} (${ediCode})`;
+    return (
+      portName ||
+      ediCode ||
+      (port.cnName ?? '').toString().trim() ||
+      String((port as Record<string, unknown>).id ?? '')
+    );
+  }
   if (labelKey === 'portNameCnName') {
     const portName = (port.portName ?? '').toString().trim();
     const cnName = (port.cnName ?? '').toString().trim();
@@ -212,6 +225,13 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     const idStr = parseIdToSafeString(v);
     if (idStr === null) continue;
     if (loadedSelectedIds.value.has(idStr)) continue;
+
+    // DetailAsync 只认港口 GUID Id。valueKey 为 ediCode 时 modelValue 是五字码，
+    // 不能拿去当 Id 查询，否则后端报 The value 'BRPHE' is not valid for Id.
+    if (props.valueKey !== 'id') {
+      loadedSelectedIds.value.add(idStr);
+      continue;
+    }
 
     loadedSelectedIds.value.add(idStr);
     try {

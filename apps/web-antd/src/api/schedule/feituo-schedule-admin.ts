@@ -25,7 +25,7 @@ export namespace FeituoScheduleAdminApi {
     vessel?: string;
     /** 页码，默认 1 */
     pageNum?: number;
-    /** 每页条数，最大 1000，默认 100 */
+    /** 每页条数；船期查询工作台传 9999，一次取得查询区间内全部班次 */
     pageSize?: number;
   }
 
