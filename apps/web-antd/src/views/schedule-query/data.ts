@@ -214,6 +214,32 @@ export function text(value?: null | number | string): string {
     : String(value);
 }
 
+export interface VesselHoverField {
+  label: string;
+  value: string;
+}
+
+function vesselHoverValue(value?: null | string): string {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed || trimmed === '0') return '-';
+  return trimmed;
+}
+
+/**
+ * 班次表船名旁悬浮卡。船期行没有船旗/建造日/箱量，
+ * 只展示已有标识：船名、MMSI、IMO、呼号、航次、运营方。
+ */
+export function getVesselHoverFields(item: ScheduleItem): VesselHoverField[] {
+  return [
+    { label: '船名', value: vesselHoverValue(item.vessel) },
+    { label: 'MMSI', value: vesselHoverValue(item.mmsi) },
+    { label: 'IMO', value: vesselHoverValue(item.imoNumber) },
+    { label: '呼号', value: vesselHoverValue(item.callSign) },
+    { label: '航次', value: vesselHoverValue(item.voyage) },
+    { label: '运营方', value: vesselHoverValue(item.carrierCd) },
+  ];
+}
+
 export function getDelayDays(actual?: string, planned?: string): number {
   if (!actual || !planned) return 0;
   const actualDate = dayjs(actual);
@@ -282,18 +308,9 @@ export function getRouteEtdWeekday(item: ScheduleItem): string {
   return weekDays[date.day()] ?? '';
 }
 
-/** 卡片展示组内全部星期，不进分组键 */
+/** 卡片只写排序用的那一个星期，不进分组键 */
 export function formatGroupWeekdays(items: ScheduleItem[]): string {
-  const days = [
-    ...new Set(
-      items
-        .map((item) => getRouteEtdWeekday(item))
-        .filter((day): day is string => Boolean(day)),
-    ),
-  ].sort(
-    (left, right) => (WEEKDAY_SORT[left] ?? 99) - (WEEKDAY_SORT[right] ?? 99),
-  );
-  return days.map((day) => formatWeekdayShort(day)).join('、');
+  return formatWeekdayShort(pickGroupWeekday(items));
 }
 
 export function getTransitPath(item: ScheduleItem): string[] {
@@ -500,6 +517,12 @@ export function compareGroupWeekday(
     (WEEKDAY_SORT[left.departureDay] ?? 99) -
     (WEEKDAY_SORT[right.departureDay] ?? 99);
   if (day !== 0) return day;
+  const leftTime = left.nextEtd ? dayjs(left.nextEtd).valueOf() : Number.NaN;
+  const rightTime = right.nextEtd ? dayjs(right.nextEtd).valueOf() : Number.NaN;
+  const etd =
+    (Number.isNaN(leftTime) ? Number.MAX_SAFE_INTEGER : leftTime) -
+    (Number.isNaN(rightTime) ? Number.MAX_SAFE_INTEGER : rightTime);
+  if (etd !== 0) return etd;
   return left.groupName.localeCompare(right.groupName, 'en');
 }
 

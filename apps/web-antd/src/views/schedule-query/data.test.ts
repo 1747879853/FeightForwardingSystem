@@ -16,6 +16,7 @@ import {
   getGroupName,
   getRouteEtdWeekday,
   getScheduleGroupKey,
+  getVesselHoverFields,
   groupSchedules,
   sanitizeScheduleItems,
   splitScheduleMoment,
@@ -287,7 +288,7 @@ describe('schedule query display helpers', () => {
     });
   });
 
-  it('lists unique weekdays on the card without splitting the group', () => {
+  it('shows only the mode weekday on the card without splitting the group', () => {
     expect(
       formatGroupWeekdays([
         createItem({ routeEtd: 'TUE', vessel: 'A', voyage: '1' }),
@@ -295,13 +296,69 @@ describe('schedule query display helpers', () => {
         createItem({ routeEtd: 'THU', vessel: 'C', voyage: '3' }),
         createItem({ routeEtd: 'TUE', vessel: 'D', voyage: '4' }),
       ]),
-    ).toBe('周二、周四、周六');
+    ).toBe('周二');
+  });
+
+  it('sorts same-weekday schemes by nearest ETD, not groupName', () => {
+    const laterAlphaEarlierEtd = createItem({
+      carrierCd: 'ZIM',
+      etd: '2026-09-07T00:00:00',
+      routeCode: 'KYX',
+      routeEtd: 'MON',
+      vessel: 'ZIM EARLY',
+      voyage: 'Z1',
+    });
+    const earlierAlphaLaterEtd = createItem({
+      carrierCd: 'AAA',
+      etd: '2026-09-21T00:00:00',
+      routeCode: 'AA1',
+      routeEtd: 'MON',
+      vessel: 'AAA LATE',
+      voyage: 'A1',
+    });
+    const groups = groupSchedules([earlierAlphaLaterEtd, laterAlphaEarlierEtd]);
+    expect(groups.map((group) => group.groupName)).toEqual([
+      'ZIM(KYX)',
+      'AAA(AA1)',
+    ]);
   });
 
   it('omits empty terminal dashes', () => {
     expect(formatTerminalPath('前湾', 'PSA')).toBe('前湾 → PSA');
     expect(formatTerminalPath('', '')).toBe('');
     expect(formatTerminalPath('前湾', '')).toBe('前湾');
+  });
+
+  it('builds vessel hover fields from schedule row identifiers', () => {
+    expect(
+      getVesselHoverFields(
+        createItem({
+          callSign: 'OXRN2',
+          carrierCd: 'MSK',
+          imoNumber: '9619919',
+          mmsi: '219018501',
+          vessel: 'MAJESTIC MAERSK',
+          voyage: '636W',
+        }),
+      ),
+    ).toEqual([
+      { label: '船名', value: 'MAJESTIC MAERSK' },
+      { label: 'MMSI', value: '219018501' },
+      { label: 'IMO', value: '9619919' },
+      { label: '呼号', value: 'OXRN2' },
+      { label: '航次', value: '636W' },
+      { label: '运营方', value: 'MSK' },
+    ]);
+    expect(
+      getVesselHoverFields(createItem({ mmsi: '0', vessel: '  ' })),
+    ).toEqual([
+      { label: '船名', value: '-' },
+      { label: 'MMSI', value: '-' },
+      { label: 'IMO', value: '-' },
+      { label: '呼号', value: '-' },
+      { label: '航次', value: 'E001' },
+      { label: '运营方', value: 'ONE' },
+    ]);
   });
 
   it('writes delay as a concrete day count', () => {

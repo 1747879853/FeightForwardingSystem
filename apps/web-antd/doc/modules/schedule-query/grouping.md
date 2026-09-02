@@ -9,7 +9,7 @@ last_updated: 2026-09-02
 
 页面 `/schedule`。权威实现：`src/views/schedule-query/data.ts`（`groupSchedules` / `getGroupName` / `getScheduleGroupKey`），单测 `data.test.ts`。查询仍走 `QueryScheduleAsync`，**没有**港到港方案分组接口；方案卡由扁平班次在前端重建。
 
-对照产品（飞驼控制塔港到港页）的列表走 `/application/schedule/p2p/group`，返回的已经是方案。两边规则对齐的是「一张卡代表一条共舱服务」，不是同一接口。
+对照产品（飞驼控制塔港到港页）的列表走 `/application/schedule/p2p/group`，**前端 bundle 里没有拼 `groupName` 的逻辑**，分组全在对方服务端。两边对齐的是「一张卡代表一条共舱服务」，不是同一接口。
 
 ## 1. 处理流水线
 
@@ -28,7 +28,7 @@ QueryScheduleAsync（pageNum=1, pageSize=9999）
         ├─ 组内去重 船名$航次（保留更早 ETD）
         │     组内按 ETD 升序
         │
-        └─ 方案列表按星期一→星期日，同日再按 groupName 英文字母序
+        └─ 方案列表按星期一→星期日，同日再按最近离港，平票才按 groupName
 ```
 
 二次筛选（直达/中转 Tab、船公司、标准码头、关键词、排序）只作用于这次已拉取的 `allItems`，不再请求接口。
@@ -91,17 +91,17 @@ QueryScheduleAsync（pageNum=1, pageSize=9999）
 
 | 卡片位置 | 算法 |
 | :-- | :-- |
-| 星期 | 分组排序仍用众数 `departureDay`。卡片文案列出组内全部 `routeEtd` 短写（周一、周三），按周一→周日排，不拆组 |
+| 星期 | 卡片只写众数 `departureDay`（周一），与「按周班」排序键相同；组内其它班期不写在折叠卡上，不拆组 |
 | 直达/中转 · N 班 | 组的 `isTransit` + 去重后班次数；Tag 在共舱名左侧 |
 | N 天 / N-M 天 | 组内 `min(totalDuration ?? transitTime)`-`max(...)`；相同则只显示一个数。「航程最短」排序用最小值 |
 | 码头 | 标准化短名拼成 `起运 → 目的`；缺一侧只显示有值的那头，两端都空则不占位 |
-| 最近离港 / 截关 | 组内最早 ETD、最早 `cyCutoff`，卡片用 `MM-DD`；截关有钟点时再下一行时间 |
+| 最近离港 / 截关 | 组内最早 ETD、最早 `cyCutoff`，卡片用 `MM-DD`；截关有钟点时与日期同一行 |
 | 主标题 | 该组 `groupName`；点击复制。中转不再在折叠卡上写「经 xx」 |
-| 班次表 | 原生 `table`；船名+航次同一列；计划离到港/截关拆成日期+时间两行；延误写「延误 N 天」。零点不显示时间 |
+| 班次表 | 原生 `table`；船名、航次分列，船名旁 i 悬停看 MMSI/IMO/呼号等标识；计划离到港仍拆成日期+时间两行；截关时间一行（`YYYY-MM-DD HH:mm`）；延误写「延误 N 天」。零点不显示时间 |
 
 可同时展开多组对照。查询后不自动展开、不清空二次筛选。
 
-默认方案排序：星期一 → 星期日，同日按 `groupName`。筛选区可改成最早/最晚离港、航程最短。
+默认方案排序：星期一 → 星期日，同日按最近离港，平票再按 `groupName`。筛选区可改成最早/最晚离港、航程最短。
 
 ## 6. 二次筛选（先滤班次再重新分组）
 
@@ -114,9 +114,30 @@ QueryScheduleAsync（pageNum=1, pageSize=9999）
 
 码头筛选项也只来自标准化短名，空码头不进下拉。
 
-## 7. 与飞驼方案列表的已知差异
+## 7. 飞驼港到港页实际怎么分组
 
-总数可以对齐到同一量级；直达/中转计数不必逐张相等。青岛 CNTAO → 新加坡 SGSIN、ETD 2026-09-01、8 周曾对照：
+对方页面 `#/schedule/p2p` 不拿扁平班次自己归组。前端 `getScheduleGroups` 打：
+
+```text
+GET /application/schedule/p2p/group
+  polCode / podCode / etd
+  weeksOut=8
+  pageNum=1  pageSize=200
+  isTransit=0 | 1     ← 直达、中转各打一次
+  displayGroup=可选   ← 展开某一张卡时带上，content 变成班次
+```
+
+返回已经是方案：`groupName`、`routeEtd`（一张卡一个计划星期）、`maxDuration`、标准码头短名、`count`。同一次 `isTransit` 里 `groupName` **不重复**，所以对方的键也是 **直达|中转 + groupName**；星期、码头、航程只是卡片属性。
+
+卡片外层那个星期、那个航程，是方案接口给的**服务说明书**（这条共舱计划周几开、对外标几天），不是把 8 周班次再汇总。展开后班次经常对不上卡片：`CNC(KCS)` 卡片 `MON`、9 班全是 `FRI`；`CMA(IEX)/…` 卡片 `SUN`、班次全是 `MON`；航程字段名叫 `maxDuration`，也不等于组内 `totalDuration` 的最大（`IAL(NFS)/…` 卡片 9 天，展开班次 9–13 天）。本地没有这套方案属性，只能从班次反推，所以卡片会列出全部星期、航程写成最短–最长。
+
+`groupName` 拼法与本地几乎同一套，但航线代码取共舱里的 **`displayName`（标准航线）**，没有才退回 `routeCode`。本地 `getGroupName` 用的是原始 `routeCode`，所以会出现同一组两种拼写：`KMTC(FEM2)` vs `KMTC(FME2)`、`ONE(ALX3)` vs `ONE(AX3)`。这不是拆组，是令牌字母不同。
+
+展开班次走同一接口加 `displayGroup`。扁平 `/vessel2/v2/schedule` 是另一条线（本仓库 `QueryScheduleAsync` 转的就是它）；`solutionCode` 每条班次都不同，对方不用它当分组键。
+
+## 8. 与飞驼方案列表的已知差异
+
+总数可以对齐到同一量级；直达/中转计数不必逐张相等。青岛 CNTAO → 新加坡 SGSIN、8 周，ETD 2026-09-01 与 2026-09-02 两次对照口径相同：
 
 |      | 飞驼方案列表 | 本地重建 |
 | :--- | :----------- | :------- |
@@ -124,25 +145,24 @@ QueryScheduleAsync（pageNum=1, pageSize=9999）
 | 中转 | 16           | 15       |
 | 合计 | 62           | 62       |
 
-差在两张卡，不是把同一批班次算进了错误的直达/中转：
+2026-09-02 当场用扁平 635 条按本地规则重建，与方案列表对键：59 组完全相同，剩下 3 对不是「算错直达/中转」：
 
-1. **飞驼多一张中转 `CNC`：** 8 条全是卡车、船名航次为空。扁平船期接口没有这批陆运；前端清洗也会丢掉无船名。本地直达里另有一组海船 `CNC`（约 5 班），飞驼直达同样有，两边对齐。缺的是**另外那组空船名卡车中转**。
-2. **本地多一张直达 `WHL(AA1)`：** 万海 AA1，船 `WAN HAI 360` / 航次 `W030`，航程 52 天。扁平接口有这条，本地就编成方案卡。飞驼**方案列表那 46 张卡里没有 `WHL(AA1)`**——不是底层没有这条船，是他们的方案接口没把这组做成列表上的一张卡。
+1. **飞驼多一张中转 `CNC`：** 8 条全是卡车、船名航次为空。扁平接口**有这批**（当天 19 条 TRUCK 全是空船名），本地 `isUsableScheduleItem` 丢掉无船名所以没卡。本地直达另有海船 `CNC`，飞驼直达同样有。
+2. **本地多一张直达 `WHL(AA1)`：** 万海 AA1，船 `WAN HAI 360` / 航次 `W030`，航程 52 天。扁平有；对方列表 46 张卡里没有，但 `displayGroup=WHL(AA1)` 仍能展开到这条。同日列表上另有 `WHL(PM1)`（同船 `W031`，也是 52 天）。这是对方方案列表的过滤，扁平重建复现不了。
+3. **航线代码标准名：** `IAL(CI5)/KMTC(FEM2)/WHL(CI5)` 与 `HMM(NW3)/HPL(TPM)/ONE(ALX3)` 在飞驼列表上；本地因用原始 `routeCode` 写成 `FME2` / `AX3`。共舱对象上 `displayName` 已经是标准写法。
 
-其余方案名一一对应。个别航线代码拼写以扁平接口为准（如 `AX3` / `ALX3`、`FME2` / `FEM2`），卡片星期取众数，可能和飞驼方案上的 `routeEtd` 差一天。
+卡片星期飞驼用方案上的单个 `routeEtd`，本地也只写众数一个星期（不再列组内全部班期），可能差一天。组内班次数也可以更多：对方展开后还会再滤，本地是清洗后有的都进组。
 
-组内班次数也可以更多：飞驼方案接口还会再滤一层，本地是「清洗后有的班次都进组」。
+要对齐中转 16，需要接方案接口，或允许无船名/TRUCK 进组（方案卡会出现空船名，和「点船名看定位」冲突）。`groupName` 若改用 `displayName`，那两张「拼写不同」的卡会并进对方同名组。
 
-要对齐中转 16，需要接方案接口，或允许无船名/TRUCK 进组（方案卡会出现空船名，和「点船名看定位」冲突）。`WHL(AA1)` 是否展示取决于对方方案接口的过滤，扁平重建复现不了。
-
-## 8. 源码入口
+## 9. 源码入口
 
 | 步骤 | 函数 |
 | :-- | :-- |
 | 清洗 | `isUsableScheduleItem` / `sanitizeScheduleItems` |
 | 共舱串 | `getGroupName` / `formatCarrierRoute` / `uniqueCarrierRoutes` |
 | 分组键 | `getScheduleGroupKey` |
-| 卡片展示 | `groupSchedules`、`formatGroupWeekdays`、`pickGroupWeekday`、`pickGroupTerminal`、`dedupeByVesselVoyage`、`formatDurationFigure`、`formatTerminalPath`、`formatDelayLabel` |
+| 卡片展示 | `groupSchedules`、`formatGroupWeekdays`、`pickGroupWeekday`、`pickGroupTerminal`、`dedupeByVesselVoyage`、`formatDurationFigure`、`formatTerminalPath`、`formatDelayLabel`、`getVesselHoverFields` |
 | 筛选 | `filterSchedules` |
 | 查询与展示 | `src/views/schedule-query/list.vue` |
 

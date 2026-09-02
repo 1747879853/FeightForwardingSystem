@@ -24,6 +24,7 @@ import {
   Input,
   message,
   Modal,
+  Popover,
   Select,
   Spin,
   Tag,
@@ -40,6 +41,7 @@ import iconChevronSm from './assets/icon-chevron-sm.svg';
 import iconChevronSmDark from './assets/icon-chevron-sm-dark.svg';
 import iconChevronUp from './assets/icon-chevron-up.svg';
 import iconClock from './assets/icon-clock.svg';
+import iconInfo from './assets/icon-info.svg';
 import iconSearch from './assets/icon-search.svg';
 import iconSwap from './assets/icon-swap.svg';
 import {
@@ -49,7 +51,6 @@ import {
   formatDateTime,
   formatDelayLabel,
   formatDurationFigure,
-  formatGroupWeekdays,
   formatMonthDay,
   formatScheduleMoment,
   formatTerminalPath,
@@ -59,6 +60,7 @@ import {
   getStandardTerminal,
   getTerminal,
   getTransportModeText,
+  getVesselHoverFields,
   groupSchedules,
   makeScheduleRowKey,
   sanitizeScheduleItems,
@@ -515,9 +517,7 @@ function getGroupTerminalPath(group: {
 }
 
 function getGroupWeekdaysText(group: ScheduleGroup) {
-  return (
-    formatGroupWeekdays(group.items) || formatWeekdayShort(group.departureDay)
-  );
+  return formatWeekdayShort(group.departureDay);
 }
 
 function openDetails(item: ScheduleItem) {
@@ -868,9 +868,10 @@ function etdDelay(item: ScheduleItem) {
                   <strong>{{
                     formatMonthDay(group.nearestCyCutoff) || '—'
                   }}</strong>
-                  <span v-if="splitScheduleMoment(group.nearestCyCutoff).time">
-                    {{ splitScheduleMoment(group.nearestCyCutoff).time }}
-                  </span>
+                  <span
+                    v-if="splitScheduleMoment(group.nearestCyCutoff).time"
+                    >{{ splitScheduleMoment(group.nearestCyCutoff).time }}</span
+                  >
                 </div>
 
                 <span class="scheme-toggle" aria-hidden="true">
@@ -893,15 +894,17 @@ function etdDelay(item: ScheduleItem) {
                 <table class="scheme-table">
                   <colgroup>
                     <col />
+                    <col class="scheme-table__voyage" />
                     <col class="scheme-table__moment" />
                     <col class="scheme-table__moment" />
-                    <col class="scheme-table__moment" />
+                    <col class="scheme-table__cutoff" />
                     <col class="scheme-table__duration" />
                     <col class="scheme-table__action" />
                   </colgroup>
                   <thead>
                     <tr>
-                      <th>船名航次</th>
+                      <th>船名</th>
+                      <th>航次</th>
                       <th>计划离港</th>
                       <th>计划到港</th>
                       <th>截关时间</th>
@@ -915,7 +918,7 @@ function etdDelay(item: ScheduleItem) {
                       :key="makeScheduleRowKey(record, rowIndex)"
                     >
                       <td>
-                        <div class="vessel-cell">
+                        <div class="vessel-name-row">
                           <Tooltip title="查看详情">
                             <button
                               type="button"
@@ -925,10 +928,43 @@ function etdDelay(item: ScheduleItem) {
                               {{ record.vessel || '-' }}
                             </button>
                           </Tooltip>
-                          <span class="vessel-voyage">{{
-                            record.voyage || '-'
-                          }}</span>
+                          <Popover
+                            overlay-class-name="vessel-hover-pop"
+                            placement="rightTop"
+                            trigger="hover"
+                          >
+                            <template #content>
+                              <div class="vessel-hover">
+                                <div
+                                  v-for="field in getVesselHoverFields(record)"
+                                  :key="field.label"
+                                  class="vessel-hover__item"
+                                >
+                                  <span>{{ field.label }}</span>
+                                  <strong>{{ field.value }}</strong>
+                                </div>
+                              </div>
+                            </template>
+                            <button
+                              type="button"
+                              class="vessel-info"
+                              aria-label="船舶信息"
+                              @click.stop
+                            >
+                              <img
+                                :src="iconInfo"
+                                alt=""
+                                width="14"
+                                height="14"
+                              />
+                            </button>
+                          </Popover>
                         </div>
+                      </td>
+                      <td>
+                        <span class="vessel-voyage">{{
+                          record.voyage || '-'
+                        }}</span>
                       </td>
                       <td>
                         <div class="moment-cell">
@@ -960,15 +996,8 @@ function etdDelay(item: ScheduleItem) {
                           }}</span>
                         </div>
                       </td>
-                      <td>
-                        <div class="moment-cell moment-cell--cutoff">
-                          <strong>{{
-                            splitScheduleMoment(record.cyCutoff).date
-                          }}</strong>
-                          <span>{{
-                            splitScheduleMoment(record.cyCutoff).time
-                          }}</span>
-                        </div>
+                      <td class="cutoff-cell">
+                        {{ formatScheduleMoment(record.cyCutoff) }}
                       </td>
                       <td>
                         <div class="duration-cell">
@@ -1566,7 +1595,7 @@ function etdDelay(item: ScheduleItem) {
 .scheme-card__summary {
   display: grid;
   grid-template-columns:
-    minmax(0, 1fr) minmax(88px, 12%) minmax(108px, 14%) minmax(108px, 14%)
+    minmax(0, 1fr) minmax(88px, 12%) minmax(108px, 14%) minmax(156px, 16%)
     40px;
   gap: 16px;
   align-items: center;
@@ -1707,8 +1736,10 @@ function etdDelay(item: ScheduleItem) {
 
 .scheme-cutoff {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  gap: 8px;
+  align-items: baseline;
+  white-space: nowrap;
 }
 
 .scheme-cutoff span {
@@ -1737,7 +1768,15 @@ function etdDelay(item: ScheduleItem) {
   table-layout: auto;
 }
 
+.scheme-table__voyage {
+  width: 12%;
+}
+
 .scheme-table__moment {
+  width: 16%;
+}
+
+.scheme-table__cutoff {
   width: 18%;
 }
 
@@ -1781,11 +1820,27 @@ function etdDelay(item: ScheduleItem) {
   text-align: right;
 }
 
-.vessel-cell {
+.vessel-name-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
+  gap: 6px;
+  align-items: center;
+}
+
+.vessel-info {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: help;
+  line-height: 0;
+  opacity: 0.72;
+}
+
+.vessel-info:hover {
+  opacity: 1;
 }
 
 .vessel-link {
@@ -1805,10 +1860,12 @@ function etdDelay(item: ScheduleItem) {
 }
 
 .vessel-voyage {
-  color: var(--sq-muted);
+  color: var(--sq-ink);
   font-family: Consolas, 'SF Mono', ui-monospace, monospace;
-  font-size: 15px;
-  line-height: 21px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 23px;
+  white-space: nowrap;
 }
 
 .moment-cell {
@@ -1827,8 +1884,14 @@ function etdDelay(item: ScheduleItem) {
   line-height: 26px;
 }
 
-.moment-cell--cutoff strong {
+.cutoff-cell {
+  color: var(--sq-ink);
+  font-family: Consolas, 'SF Mono', ui-monospace, monospace;
+  font-size: 18px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 26px;
+  white-space: nowrap;
 }
 
 .moment-cell span,
@@ -1966,7 +2029,7 @@ function etdDelay(item: ScheduleItem) {
 @media (max-width: 1280px) {
   .scheme-columns,
   .scheme-card__summary {
-    grid-template-columns: minmax(0, 1fr) 110px 120px 120px 32px;
+    grid-template-columns: minmax(0, 1fr) 110px 120px 168px 32px;
     gap: 12px;
     padding-inline: 20px;
   }
@@ -2060,5 +2123,40 @@ function etdDelay(item: ScheduleItem) {
   max-height: 78vh;
   overflow: auto;
   padding: 12px 16px 20px;
+}
+
+.vessel-hover-pop .ant-popover-inner {
+  padding: 14px 16px;
+  border: 0;
+  background: #18181b;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+  color: #fff;
+}
+
+.vessel-hover-pop .ant-popover-arrow::after,
+.vessel-hover-pop .ant-popover-arrow::before {
+  background: #18181b;
+}
+
+.vessel-hover {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr);
+  gap: 12px 28px;
+  min-width: 280px;
+}
+
+.vessel-hover__item span {
+  display: block;
+  color: rgb(255 255 255 / 62%);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.vessel-hover__item strong {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  overflow-wrap: anywhere;
 }
 </style>
