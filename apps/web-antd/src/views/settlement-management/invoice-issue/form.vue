@@ -30,6 +30,7 @@ import {
   issueByInterface,
   applyRedAsync,
   getInvoiceIssueDetail,
+  queryIssueResult,
   queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import { buildAttachmentUrl } from '#/utils';
@@ -377,9 +378,12 @@ async function handleRefreshProgress() {
       } else if (redState.redStatusText) {
         message.info(redState.redStatusText, 6);
       }
+    } else {
+      // 未冲红，调用 queryIssueResult 刷新发票开票进度
+      await queryIssueResult(editId.value);
     }
 
-    // queryRedResult 可能已回填红票号与红票附件，重新拉取详情更新状态与页面数据
+    // 重新拉取详情更新状态与页面数据
     await refreshInvoiceStatus(); // 刷新本地状态（含附件列表）
     await loadDetailWithoutGoods(); // 刷新页面数据
     message.success('进度已刷新');
@@ -1035,11 +1039,7 @@ onMounted(() => {
                     /></template>
                     导入发票
                   </Button>
-                  <Button
-                    size="small"
-                    @click="handleOpenInvoiceDetailModal"
-                    :disabled="invoiceStatus.editLocked"
-                  >
+                  <Button size="small" @click="handleOpenInvoiceDetailModal">
                     <template #icon
                       ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
