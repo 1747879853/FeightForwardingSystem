@@ -212,6 +212,7 @@ function handleRemove(rowKey: string) {
         </div>
         <UserSelect
           :model-value="row.userId"
+          :user-attribute="row.userAttribute"
           :selected-items="userSelectedItemsMap[row.rowKey] ?? []"
           :disabled="props.readonly"
           size="small"

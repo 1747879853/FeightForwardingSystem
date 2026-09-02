@@ -73,7 +73,11 @@ function handleOk() {
     />
     <Form layout="vertical">
       <FormItem v-if="props.success" label="指派操作干系人">
-        <UserSelect v-model="operationUserId" class="w-full" />
+        <UserSelect
+          v-model="operationUserId"
+          :user-attribute="USER_ATTRIBUTE.Operation"
+          class="w-full"
+        />
       </FormItem>
       <FormItem :label="props.success ? '审核意见' : '驳回原因'">
         <Textarea

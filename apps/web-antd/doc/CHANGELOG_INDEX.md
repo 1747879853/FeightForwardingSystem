@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-02 业务联系单干系人下拉按用户属性过滤](./changelogs/change-log-2026-09-02-pre-order-user-attribute-filter.md)
 - [2026-09-02 船期查询点击查询后不再自动滚动](./changelogs/change-log-2026-09-02-schedule-query-no-auto-scroll.md)
 - [2026-09-02 船期查询日期与关键词输入对齐港口框](./changelogs/change-log-2026-09-02-schedule-query-toolbar-input-style.md)
 - [2026-09-02 船期查询方案统计与最近查询同一行](./changelogs/change-log-2026-09-02-schedule-query-result-recent-row.md)
