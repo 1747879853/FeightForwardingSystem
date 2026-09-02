@@ -1,6 +1,9 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
+import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
+import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
+import type { YundangAirAdminApi } from '#/api/yundang/yundang-air-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -21,10 +24,11 @@ export enum PreOrderStatus {
   Rejected = 3,
 }
 
-/** 业务类型（业务联系单本期仅海运出口） */
+/** 业务类型（标题栏下拉本期只开放海运出口；列表运踪会按三种类型分别读） */
 export enum PreOrderBizType {
   SeaExport = 0,
   SeaImport = 1,
+  AirExport = 2,
 }
 
 export const PRE_ORDER_BIZ_TYPE_TEXT: Partial<Record<PreOrderBizType, string>> =
@@ -220,6 +224,11 @@ export namespace PreOrderAdminApi {
     preOrderNum?: string | null;
     /** 审核通过后生成的业务表id，与业务联系单 id 一致 */
     transportOrderId?: string | null;
+    /**
+     * 审核通过后生成的业务及其运踪（**仅列表返回**）。
+     * 未通过或业务表已删时为 null。
+     */
+    transportOrder?: null | PreOrderTransportOrderDto;
     blType?: number;
     clientId?: string;
     mblNum?: string | null;
@@ -297,6 +306,56 @@ export namespace PreOrderAdminApi {
     preOrderServices?: PreOrderServiceDto[] | null;
     preOrderFees?: PreOrderFeeDto[] | null;
     attachmentGroup?: SeaExportAdminApi.AttachmentGroupDto[] | null;
+  }
+
+  /** 列表返回的关联业务主表；三个业务对象互斥 */
+  export interface PreOrderTransportOrderDto {
+    id: string;
+    bizType?: PreOrderBizType;
+    inputType?: number;
+    commissionNum?: string | null;
+    mblNum?: string | null;
+    bookingNum?: string | null;
+    accountDate?: string | null;
+    etd?: string | null;
+    atd?: string | null;
+    eta?: string | null;
+    isUnfinished?: boolean;
+    feeLocked?: boolean;
+    seaExport?: null | PreOrderSeaExportDto;
+    seaImport?: null | PreOrderSeaImportDto;
+    airExport?: null | PreOrderAirExportDto;
+  }
+
+  /** 海运出口：服务项 + 云当 + 飞驼，口径同海出列表 */
+  export interface PreOrderSeaExportDto {
+    id: string;
+    seaExportServices?: SeaExportAdminApi.SeaExportServiceDto[] | null;
+    isYundangSubscribed?: boolean;
+    isYundangSubscribeSuccess?: boolean;
+    yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
+    isFeituoSubscribed?: boolean;
+    isFeituoSubscribeSuccess?: boolean;
+    feituoTracking?: FeituoTrackingAdminApi.ContainerTrackingSummaryDto | null;
+  }
+
+  /** 海运进口：只有飞驼 */
+  export interface PreOrderSeaImportDto {
+    id: string;
+    isFeituoSubscribed?: boolean;
+    isFeituoSubscribeSuccess?: boolean;
+    feituoTracking?: FeituoTrackingAdminApi.ContainerTrackingSummaryDto | null;
+  }
+
+  /** 空运出口：云当空运 + 飞驼空运 */
+  export interface PreOrderAirExportDto {
+    id: string;
+    isYundangSubscribed?: boolean;
+    isYundangSubscribeSuccess?: boolean;
+    yundangAirShipmentNode?: null | YundangAirAdminApi.YundangAirShipmentNodeInfoDto;
+    isFeituoSubscribed?: boolean;
+    isFeituoSubscribeSuccess?: boolean;
+    feituoTracking?: FeituoTrackingAdminApi.AirTrackingSummaryDto | null;
   }
 
   /** 新增入参（子表全量提交） */

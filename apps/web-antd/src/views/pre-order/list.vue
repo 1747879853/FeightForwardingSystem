@@ -2,13 +2,14 @@
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+import { useAccess } from '@vben/access';
 
-import { Button, message, Modal, Space } from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -17,11 +18,22 @@ import {
   getPreOrderPagedList,
   PreOrderStatus,
 } from '#/api/pre-order/pre-order-admin';
+import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import {
   GroupingSettings,
   GroupingTabs,
   useListGrouping,
 } from '#/components/list-grouping';
+import {
+  buildAirTrackingPayload,
+  buildContainerTrackingPayload,
+  getAirTrackingStatusColor,
+  getAirTrackingStatusLabel,
+  getContainerTrackingStatusColor,
+  getContainerTrackingStatusLabel,
+  useAirTrackingDetail,
+  useContainerTrackingDetail,
+} from '#/components/tracking';
 import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -30,11 +42,28 @@ import {
   applyDefaultSortable,
   createPagedListQuery,
 } from '#/utils/paged-list-query';
+import { isLegacyOceanExportTracking } from '#/utils/tracking-brand';
+import { SEA_EXPORT_BUSINESS_STATUS_COLORS } from '#/views/sea-export-admin/data';
+import {
+  buildServiceTypeLabelMap,
+  loadSeServiceTypeOptions,
+} from '#/views/sea-export-admin/service-type';
+import {
+  getYundangTrackStatusColor,
+  getYundangTrackStatusLabel,
+  resolveOrderLabel,
+  useYundangOceanTrack,
+} from '#/views/sea-export-admin/use-yundang-ocean-track';
 
 import {
   buildColumns,
+  getPreOrderBusinessStatusMeta,
   getPreOrderFormPath,
+  getPreOrderTrackingKind,
   PRE_ORDER_LIST_TABLE_ID,
+  toPreOrderAirTrackingRow,
+  toPreOrderContainerTrackingRow,
+  toPreOrderYundangTrackRow,
   useGridFormSchema,
 } from './data';
 
@@ -42,6 +71,19 @@ const perm = createAbpPermission('Admin.PreOrder');
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
 const actionLoading = ref(false);
+const { hasAccessByCodes } = useAccess();
+const canViewTracking = computed(() =>
+  hasAccessByCodes(['Admin.ExternalApi.Get']),
+);
+const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
+const {
+  TrackingModal: YundangTrackingModal,
+  openTracking: openYundangTracking,
+} = useYundangOceanTrack();
+const { TrackingModal: VendorTrackingModal, openTracking: openVendorTracking } =
+  useContainerTrackingDetail();
+const { TrackingModal: AirTrackingModal, openTracking: openAirTracking } =
+  useAirTrackingDetail();
 
 /** 分组设置持久化 key（与列表 listKey 对齐，路由名 PreOrderList） */
 const GROUP_CONFIG_NAME = 'group_config_PreOrderList';
@@ -180,6 +222,9 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({
 });
 
 onMounted(async () => {
+  void loadSeServiceTypeOptions().then((options) => {
+    serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+  });
   await grouping.restorePersistedField();
   await gridApi.formApi.submitForm();
 });
@@ -260,6 +305,59 @@ const onGroupFieldChange = (value: number | undefined) => {
 };
 
 useRefreshListOnFormReturn('PreOrderList', handleRefresh);
+
+const resolveBusinessStatus = (row: PreOrderAdminApi.PreOrderDto) => {
+  const meta = getPreOrderBusinessStatusMeta(row, serviceTypeLabelMap.value);
+  return { ...meta, colors: SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state] };
+};
+
+const oceanTrackingRow = (row: PreOrderAdminApi.PreOrderDto) =>
+  toPreOrderContainerTrackingRow(row) ?? {
+    id: row.id,
+    transportOrder: row.transportOrder,
+  };
+
+const airTrackingRow = (row: PreOrderAdminApi.PreOrderDto) =>
+  toPreOrderAirTrackingRow(row) ?? {
+    id: row.id,
+    transportOrder: row.transportOrder,
+  };
+
+const yundangTrackingRow = (row: PreOrderAdminApi.PreOrderDto) =>
+  toPreOrderYundangTrackRow(row) ?? { id: String(row.id) };
+
+const handleOpenTracking = (row: PreOrderAdminApi.PreOrderDto) => {
+  if (!canViewTracking.value) return;
+  const kind = getPreOrderTrackingKind(row);
+  if (kind === 'air') {
+    const airRow = toPreOrderAirTrackingRow(row);
+    if (airRow) openAirTracking(buildAirTrackingPayload(airRow));
+    return;
+  }
+  if (kind === 'ocean-legacy') {
+    const trackRow = toPreOrderYundangTrackRow(row);
+    if (!trackRow) return;
+    openYundangTracking({
+      seaExportId: trackRow.id,
+      orderLabel: resolveOrderLabel(trackRow),
+      isYundangSubscribed: trackRow.isYundangSubscribed,
+      isYundangSubscribeSuccess: trackRow.isYundangSubscribeSuccess,
+    });
+    return;
+  }
+  if (kind === 'ocean-vendor') {
+    const oceanRow = toPreOrderContainerTrackingRow(row);
+    if (!oceanRow) return;
+    openVendorTracking(
+      buildContainerTrackingPayload(
+        oceanRow,
+        row.transportOrder?.seaImport
+          ? FeituoTrackingAdminApi.TrackingBizType.SeaImport
+          : FeituoTrackingAdminApi.TrackingBizType.SeaExport,
+      ),
+    );
+  }
+};
 </script>
 
 <template>
@@ -307,6 +405,74 @@ useRefreshListOnFormReturn('PreOrderList', handleRefresh);
           <span>{{ row?.carrier?.code || '--' }}</span>
         </span>
       </template>
+      <template #businessStatus="{ row }">
+        <span
+          v-if="resolveBusinessStatus(row).text === '-'"
+          class="text-gray-400"
+        >
+          -
+        </span>
+        <span
+          v-else
+          class="inline-flex items-center rounded px-2 py-0.5 text-xs leading-5"
+          :style="{
+            color: resolveBusinessStatus(row).colors.color,
+            backgroundColor: resolveBusinessStatus(row).colors.background,
+          }"
+        >
+          {{ resolveBusinessStatus(row).text }}
+        </span>
+      </template>
+      <template #yundangTrackStatus="{ row }">
+        <span
+          v-if="getPreOrderTrackingKind(row) === 'none'"
+          class="text-gray-400"
+        >
+          -
+        </span>
+        <template v-else-if="getPreOrderTrackingKind(row) === 'air'">
+          <Tag
+            v-if="canViewTracking"
+            class="cursor-pointer"
+            :color="getAirTrackingStatusColor(airTrackingRow(row))"
+            @click.stop="handleOpenTracking(row)"
+          >
+            {{ getAirTrackingStatusLabel(airTrackingRow(row)) }}
+          </Tag>
+          <span v-else class="text-[rgba(0,0,0,0.65)]">
+            {{ getAirTrackingStatusLabel(airTrackingRow(row)) }}
+          </span>
+        </template>
+        <template v-else-if="getPreOrderTrackingKind(row) === 'ocean-legacy'">
+          <Tag
+            v-if="canViewTracking"
+            class="cursor-pointer"
+            :color="getYundangTrackStatusColor(yundangTrackingRow(row))"
+            @click.stop="handleOpenTracking(row)"
+          >
+            {{ getYundangTrackStatusLabel(yundangTrackingRow(row)) }}
+          </Tag>
+          <span v-else class="text-[rgba(0,0,0,0.65)]">
+            {{ getYundangTrackStatusLabel(yundangTrackingRow(row)) }}
+          </span>
+        </template>
+        <template v-else>
+          <Tag
+            v-if="canViewTracking"
+            class="cursor-pointer"
+            :color="getContainerTrackingStatusColor(oceanTrackingRow(row))"
+            @click.stop="handleOpenTracking(row)"
+          >
+            {{ getContainerTrackingStatusLabel(oceanTrackingRow(row)) }}
+          </Tag>
+          <span v-else class="text-[rgba(0,0,0,0.65)]">
+            {{ getContainerTrackingStatusLabel(oceanTrackingRow(row)) }}
+          </span>
+        </template>
+      </template>
     </Grid>
+    <YundangTrackingModal v-if="isLegacyOceanExportTracking" />
+    <VendorTrackingModal />
+    <AirTrackingModal />
   </Page>
 </template>

@@ -1,10 +1,18 @@
 import type { VbenFormSchema } from '#/adapter/form';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type {
+  AirTrackingRowLike,
+  ContainerTrackingRowLike,
+} from '#/components/tracking';
+import type { YundangTrackRowInfo } from '#/views/sea-export-admin/use-yundang-ocean-track';
 
 import {
   PreOrderAdminApi,
   PreOrderStatus,
 } from '#/api/pre-order/pre-order-admin';
+import { isVendorOceanExportTracking } from '#/utils/tracking-brand';
 import { createClientSelectSchema } from '#/views/client/base/data';
+import { getSeaExportBusinessStatusMeta } from '#/views/sea-export-admin/data';
 
 /** 列配置持久化 key */
 export const PRE_ORDER_LIST_TABLE_ID = 'PreOrderList';
@@ -22,6 +30,90 @@ export function getPreOrderStatusOptions() {
     { label: '通过', value: PreOrderStatus.Passed, color: 'success' },
     { label: '驳回', value: PreOrderStatus.Rejected, color: 'error' },
   ];
+}
+
+/** 列表运踪走哪套：未生成业务 / 海出(新旧服务商) / 海进 / 空出 */
+export type PreOrderTrackingKind =
+  | 'air'
+  | 'none'
+  | 'ocean-legacy'
+  | 'ocean-vendor';
+
+export function getPreOrderTrackingKind(
+  row: PreOrderAdminApi.PreOrderDto,
+): PreOrderTrackingKind {
+  const order = row.transportOrder;
+  if (!order) return 'none';
+  if (order.airExport) return 'air';
+  if (order.seaImport) return 'ocean-vendor';
+  if (order.seaExport) {
+    return isVendorOceanExportTracking ? 'ocean-vendor' : 'ocean-legacy';
+  }
+  return 'none';
+}
+
+function toOrderLabelSource(row: PreOrderAdminApi.PreOrderDto) {
+  return {
+    commissionNum: row.transportOrder?.commissionNum,
+    mblNum: row.transportOrder?.mblNum ?? row.mblNum,
+  };
+}
+
+/** 业务状态只看海出服务项；海进/空出/未通过没有服务项，文案是 `-` */
+export function getPreOrderBusinessStatusMeta(
+  row: PreOrderAdminApi.PreOrderDto,
+  labelMap?: Map<number, string>,
+) {
+  const services = row.transportOrder?.seaExport?.seaExportServices ?? [];
+  return getSeaExportBusinessStatusMeta(
+    { seaExportServices: services } as SeaExportAdminApi.SeaExportDto,
+    labelMap,
+  );
+}
+
+export function toPreOrderContainerTrackingRow(
+  row: PreOrderAdminApi.PreOrderDto,
+): ContainerTrackingRowLike | null {
+  const sea =
+    row.transportOrder?.seaExport ?? row.transportOrder?.seaImport ?? null;
+  if (!sea) return null;
+  return {
+    id: sea.id,
+    isFeituoSubscribed: sea.isFeituoSubscribed,
+    isFeituoSubscribeSuccess: sea.isFeituoSubscribeSuccess,
+    feituoTracking: sea.feituoTracking,
+    transportOrder: toOrderLabelSource(row),
+  };
+}
+
+export function toPreOrderAirTrackingRow(
+  row: PreOrderAdminApi.PreOrderDto,
+): AirTrackingRowLike | null {
+  const air = row.transportOrder?.airExport;
+  if (!air) return null;
+  return {
+    id: air.id,
+    isFeituoSubscribed: air.isFeituoSubscribed,
+    isFeituoSubscribeSuccess: air.isFeituoSubscribeSuccess,
+    feituoTracking: air.feituoTracking,
+    transportOrder: toOrderLabelSource(row),
+  };
+}
+
+export function toPreOrderYundangTrackRow(
+  row: PreOrderAdminApi.PreOrderDto,
+): null | YundangTrackRowInfo {
+  const sea = row.transportOrder?.seaExport;
+  if (!sea) return null;
+  return {
+    id: String(sea.id),
+    isYundangSubscribed: sea.isYundangSubscribed,
+    isYundangSubscribeSuccess: sea.isYundangSubscribeSuccess,
+    yundangShipmentOceanNode: sea.yundangShipmentOceanNode,
+    commissionNum: row.transportOrder?.commissionNum,
+    mblNum: row.transportOrder?.mblNum ?? row.mblNum,
+    bookingNum: row.transportOrder?.bookingNum,
+  };
 }
 
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -132,6 +224,21 @@ export function buildColumns(): Array<Record<string, any>> {
       title: '状态',
       minWidth: 100,
       cellRender: { name: 'CellTag', options: getPreOrderStatusOptions() },
+    },
+    {
+      field: 'businessStatus',
+      title: '业务状态',
+      minWidth: 130,
+      sortable: false,
+      showOverflow: true,
+      slots: { default: 'businessStatus' },
+    },
+    {
+      field: 'yundangTrackStatus',
+      title: '运踪状态',
+      minWidth: 120,
+      sortable: false,
+      slots: { default: 'yundangTrackStatus' },
     },
     {
       field: 'clientName',

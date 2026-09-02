@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-14
+last_updated: 2026-09-03
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,7 +12,7 @@ last_updated: 2026-08-14
 # 2. 功能与操作说明 (Features & Operations)
 
 - **检索：** 支持关键字（业务编号 / 主提单号）、状态、委托单位、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
-- **列表列：** 除业务主字段外，展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。
+- **列表列：** 除业务主字段外，展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度（色块对齐海出列表），海进/空出/未通过为 `-`；运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
 - **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
@@ -35,6 +35,8 @@ last_updated: 2026-08-14
 | :-- | :-- | :-- | :-- | :-- |
 | **业务编号** | 单据唯一编号 | `PreOrderAdmin/GetPagedListAsync` 的 `preOrderNum` | 保存时后端生成 | 只读 |
 | **状态** | 单据生命周期 | `PreOrderStatus` 枚举 | 决定删除是否可用 | 只读，以 Tag 呈现 |
+| **业务状态** | 关联海出做到哪项服务 | 列表 `transportOrder.seaExport.seaExportServices`；前端复用 `getSeaExportBusinessStatusMeta`；服务名来自 `ServiceType` 枚举 | 仅列表返回；海进/空出没有服务项；未通过或业务表已删时 `transportOrder` 为 null，显示 `-` | 只读计算列，不可筛 |
+| **运踪状态** | 关联业务当前运踪节点或订阅态 | 列表 `transportOrder` 下 `seaExport` / `seaImport` / `airExport` 的订阅标志与摘要；海出按品牌分流新旧运踪 | 点 Tag 打开详情（权限 `Admin.ExternalApi.Get`）；列表不提供订阅。详情接口不返回这份嵌套 | 只读计算列，列 field 名沿用 `yundangTrackStatus` |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
 | **起运港 / 目的港** | 航段两端 | **港口**<br/>`PortSelect` | 起运港决定服务项候选池；可作为分组维度 | 筛选项非必填 |
 | **开船日期** | ETD | `ETDStart` / `ETDEnd` | 前端把区间拆成两个 ISO 时间参数 | 筛选项非必填 |
@@ -51,10 +53,13 @@ last_updated: 2026-08-14
 
 > [!IMPORTANT] **[卡点 3：分组数据刷新时机]** 点击分组 Tab 只重查列表；顶部搜索条件变更才重拉 `GetGroupedListAsync`。重新进入 keepAlive 列表会 `refreshGroupData()`。
 
+> [!IMPORTANT] **[卡点 4：运踪只在列表嵌套里]** `transportOrder` 仅 `GetPagedListAsync` 返回；详情另走 `TransportOrderDetailAsync`。未通过或业务表已删时为 null，两列都是 `-`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-03 | `Fix` | 状态列后增加业务状态、运踪状态；通过单可看海出服务进度与运踪，录入/驳回为 `-`；有权限可点运踪详情，列表不订阅。 | TAPD `#1161580498001000922`。数据在 `transportOrder` 嵌套，不在根上。详见 `changelogs/change-log-2026-09-03-pre-order-list-business-tracking-status.md`。 |
 | 2026-08-14 | `Fix` | 列表增加销售/操作/备注列，并支持按销售、操作、备注筛选（TAPD #1000794） | 对齐后端 `saleNames`/`operatorNames` 与 `SaleIds`/`OperatorIds`/`Remark`；筛选交互参考结算拉费用弹窗。详见 `changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md` |
 | 2026-08-12 | `Fix` | 列表委托单位筛选补齐 `industryCategory: 'p'` | 与新建页、海出列表对齐；空类别时通用客户接口不下发。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-02 | `Feature` | 侧边栏从「操作管理」子项提升为一级菜单「业务联系单」 | 路由迁至独立模块 `router/routes/modules/pre-order.ts`，`order: 194`、`hideChildrenInMenu: true`；页面 path 不变 |

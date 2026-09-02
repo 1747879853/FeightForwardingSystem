@@ -15,7 +15,7 @@
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；箱型与监装照片只读，师傅端在小程序。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-23 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
-| pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-14 |
+| pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`；状态列后展示业务状态（海出服务项进度）与运踪状态（可点开详情、不订阅）。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-09-03 |
 | pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表 6 列顺序对齐业务稿（付款方式在首行末项，贸易条款/运输条款合并，订舱代理在末行），收发通内嵌折叠；港口选中显示英文名-中文名；费用小计按币别拆分；提交审核拦截空结算对象；录入/驳回可保存提交并支持 TextIn AI 识别预填；待审核/通过仅审核；通过后内嵌海出；编辑页可复制新建（有保存进下拉，无保存单独按钮）；各下拉用详情外键对象回显；干系人下拉按用户属性过滤；未保存切走可 KeepAlive。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-09-02 |
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口；码头为往来单位筛选，含联运单号/分单号/贸易方式；支持多选运踪批量订阅、「运踪状态」列与主提单号前异常预警叹号。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-09-01 |
@@ -25,9 +25,9 @@
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地），航班与订舱代理在航段标题右侧；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值；支持 TextIn AI 识别预填；顶栏打印需先保存；未保存切走可 KeepAlive。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-31 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；航班与订舱代理在航段标题右侧；支持重新生成委托编号、复制、运踪订阅与单据打印（`PrintJsonType=5000`）；运踪 Tab 已切新服务商（摘要、全量异常预警、轨迹地图、重新订阅）；基础信息保存后联动刷新只读费用与收付徽标；基础信息顶栏支持 AI 识别预填。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-31 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
-| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；固定 8 周全量拉取后按共舱归组。查询条吸顶。方案数与最近查询同一行。最近查询胶囊可点再查、进页不回填港口。全宽方案卡 + 原生班次表；详情弹窗展示完整字段（船舶定位暂下线）。 | [船期查询](./modules/schedule-query/index.md) | 2026-09-02 |
+| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；固定 8 周全量拉取后按共舱归组。查询条吸顶。方案数与最近查询同一行。最近查询胶囊可点再查、进页不回填港口。按周班只显示一个星期，同日按最近离港。全宽方案卡 + 原生班次表（船名/航次分列，截关一行）；船名旁悬浮 MMSI/IMO/呼号；详情弹窗展示完整字段（船舶定位暂下线）。 | [船期查询](./modules/schedule-query/index.md) | 2026-09-02 |
 | schedule-query | （UI 设计说明） | 航线管理 / 船期查询 | 给专业 UI 重做船期查询的设计说明：用户任务、信息层级、必留字段、现稿问题和交付物。 | [UI 设计说明](./modules/schedule-query/ui-design-brief.md) | 2026-09-02 |
-| schedule-query | （方案分组规则） | 航线管理 / 船期查询 | 方案卡如何归组：分组键、groupName 共舱串、清洗去重、卡片星期/航程/码头、与飞驼方案列表差 1 组的口径。 | [方案分组规则](./modules/schedule-query/grouping.md) | 2026-09-01 |
+| schedule-query | （方案分组规则） | 航线管理 / 船期查询 | 方案卡如何归组：分组键、groupName 共舱串、清洗去重、卡片星期/航程/码头；飞驼列表走方案接口且用共舱 displayName，与本地差 1 组的口径。 | [方案分组规则](./modules/schedule-query/grouping.md) | 2026-09-02 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-31 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；可从海出/海进/空出应收应付带 orderFeeIds 预填；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索，可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-31 |

@@ -13,7 +13,11 @@
 
 ## 2026-09
 
+- [2026-09-03 业务联系单列表增加业务状态与运踪状态列](./changelogs/change-log-2026-09-03-pre-order-list-business-tracking-status.md)
+- [2026-09-02 船期查询班次表船名航次分列且截关一行](./changelogs/change-log-2026-09-02-schedule-query-vessel-voyage-cutoff-oneline.md)
+- [2026-09-02 船期查询班次表船名旁悬浮船舶标识](./changelogs/change-log-2026-09-02-schedule-query-vessel-hover.md)
 - [2026-09-02 业务联系单干系人下拉按用户属性过滤](./changelogs/change-log-2026-09-02-pre-order-user-attribute-filter.md)
+- [2026-09-02 船期查询按周班只显示一个星期并按离港排](./changelogs/change-log-2026-09-02-schedule-query-weekday-sort-ops.md)
 - [2026-09-02 船期查询点击查询后不再自动滚动](./changelogs/change-log-2026-09-02-schedule-query-no-auto-scroll.md)
 - [2026-09-02 船期查询日期与关键词输入对齐港口框](./changelogs/change-log-2026-09-02-schedule-query-toolbar-input-style.md)
 - [2026-09-02 船期查询方案统计与最近查询同一行](./changelogs/change-log-2026-09-02-schedule-query-result-recent-row.md)
