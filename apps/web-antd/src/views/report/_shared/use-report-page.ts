@@ -6,9 +6,11 @@ import { useRouter } from 'vue-router';
 import { useAccess } from '@vben/access';
 
 import { useVbenForm } from '#/adapter/form';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 
 import { message } from 'ant-design-vue';
 
+import { filterMaskedColumns, getMaskedFormFields } from './field-permission';
 import { setPortTypeByBizType } from './formatters';
 import { buildCurrencyColumns, buildCurrencyNumericKeys } from './hot-columns';
 import { transformReportData } from './transform';
@@ -43,7 +45,7 @@ export function useReportPage(config: ReportPageConfig) {
   // ==================== 动态列 ====================
 
   /** 完整列配置 = 基础列 + 币别明细列（随查询结果动态生成） + 合计列 */
-  const dynamicHotColumns = computed(() => [
+  const allHotColumns = computed(() => [
     ...config.baseHotColumns,
     ...buildCurrencyColumns(
       Array.from(allCurrencyCodes.value),
@@ -51,6 +53,15 @@ export function useReportPage(config: ReportPageConfig) {
     ),
     ...config.totalHotColumns,
   ]);
+
+  /**
+   * 应用字段级权限后的列配置（供表格渲染）。
+   * 只隐藏「所有数据来源都被无条件屏蔽」的列；条件屏蔽的列保留，
+   * 由行转换阶段逐行以 *** 覆盖（见 field-permission.ts）
+   */
+  const dynamicHotColumns = computed(() =>
+    filterMaskedColumns(allHotColumns.value),
+  );
 
   /** 数值列键集合 = 配置中的静态数值列 + 动态币别列（用于合计/聚合/右对齐） */
   const numericColumnKeys = computed(() => [
@@ -104,6 +115,24 @@ export function useReportPage(config: ReportPageConfig) {
 
   // ==================== 查询与重置 ====================
 
+  /** 查询表单的字段权限是否已应用（只需移除一次筛选项） */
+  let formPermissionApplied = false;
+
+  /**
+   * 确保字段级权限规则已就绪，并移除无权使用的查询筛选项。
+   * 必须在行数据转换前完成，否则 applyFieldMask 拿不到规则（fail-open 会漏打 ***）
+   */
+  async function ensureFieldPermission() {
+    await loadMaskedFields();
+    if (formPermissionApplied) return;
+    formPermissionApplied = true;
+
+    const maskedFieldNames = getMaskedFormFields(config.formSchema);
+    if (maskedFieldNames.length > 0) {
+      await formApi.removeSchemaByFields(maskedFieldNames);
+    }
+  }
+
   /**
    * 查询报表数据
    * 流程：取值 → beforeQuery 参数加工（可中止） → 请求接口 → 行数据转换 → 渲染
@@ -111,6 +140,7 @@ export function useReportPage(config: ReportPageConfig) {
   async function handleQuery(formData?: Record<string, any>) {
     try {
       loading.value = true;
+      await ensureFieldPermission();
       const values = formData || (await formApi.getValues());
 
       // 参数预处理：配置了 beforeQuery 则优先使用，否则默认按业务类型设置港口类型
