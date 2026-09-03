@@ -14,6 +14,7 @@ import {
   getBankStatementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
@@ -32,6 +33,8 @@ function splitTimeRange(
   formValues: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...formValues };
+  // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化），空则为 undefined 不下发
+  result.keys = normalizeKeysParam(formValues.keys);
   const range = formValues.statementTimeRange as [unknown, unknown] | undefined;
   if (Array.isArray(range) && range.length === 2) {
     const [start, end] = range;

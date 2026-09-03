@@ -47,6 +47,7 @@ import {
   buildAttachmentUrl,
   createPagedListQuery,
   isTicketEditable,
+  normalizeKeysParam,
 } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -241,6 +242,8 @@ const normalizeQuery = (
     ...rest,
     Keyword:
       typeof rest.Keyword === 'string' ? rest.Keyword.trim() : rest.Keyword,
+    // Keys 精确搜索：去空白去重后作为 List<string> 传后端（repeat 序列化）
+    Keys: normalizeKeysParam(rest.Keys),
     ETDStart: toIsoString(etdStart),
     ETDEnd: toIsoString(etdEnd),
     CloseDocTimeStart: toIsoString(closeDocTimeStart),

@@ -23,6 +23,7 @@ import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { getStatementNumsText } from '#/views/_shared/order-fee/data';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
@@ -337,6 +338,8 @@ async function fetchData(formValues?: Record<string, any>) {
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
+    // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+    Keys: normalizeKeysParam(values?.Keys),
     StatementNum: statementNum || undefined,
     PaySide: values.PaySide ?? undefined,
     BizType: values.BizType ?? undefined,

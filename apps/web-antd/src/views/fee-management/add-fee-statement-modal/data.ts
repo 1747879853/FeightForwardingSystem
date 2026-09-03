@@ -5,6 +5,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 /** 组件 Props */
 export interface AddFeeDrawerProps {
@@ -151,6 +152,9 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      help: '精确匹配（非模糊）：主提单号、订舱编号、委托编号',
+    }),
     {
       component: 'RangePicker',
       fieldName: 'ETDRange',

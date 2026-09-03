@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { $t } from '#/locales';
 
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 import { combinedStatusFilterOptions } from './invoice-status';
 
 /**
@@ -336,6 +337,10 @@ export const searchFormSchema = [
       placeholder: '开出编号/委托编号/主提单号',
     },
   },
+  createKeysSearchSchema({
+    fieldName: 'keys',
+    help: '精确匹配（开出编号、委托编号、主提单号），可粘贴多个',
+  }),
   {
     fieldName: 'invoiceNo',
     label: '发票号',

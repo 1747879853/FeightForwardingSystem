@@ -4,6 +4,7 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 import dayjs from 'dayjs';
 
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 interface BusinessPortRemarkSource {
   bizType?: number;
@@ -246,6 +247,9 @@ export function useAddFeeSearchSchema(options?: {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      help: '精确匹配（非模糊）：主提单号、订舱编号、委托编号',
+    }),
     {
       component: 'Input',
       fieldName: 'StatementNum',

@@ -214,6 +214,11 @@ export namespace InvoiceApplicationApi {
     orderFeeIds?: string[];
     /** 关键字（模糊匹配主提单号或委托编号） */
     keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、委托编号中任意一个即可（不含订舱编号）。
+     * GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     /** 开票申请ID（编辑时传入，排除此申请已关联的费用） */
     invoiceApplicationId?: string;
     /** 委托编号（模糊） */
@@ -573,6 +578,11 @@ export namespace InvoiceApplicationApi {
 
   /** 开票申请查询DTO */
   export interface InvoiceApplicationQueryDto {
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、委托编号中任意一个即可（不含订舱编号）。
+     * GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     /** 申请单号（模糊） */
     applicationNo?: string;
     /** 发票号（模糊） */
@@ -737,7 +747,8 @@ export namespace InvoiceApplicationApi {
   export function getPagedListAsync(params: InvoiceApplicationQueryDto) {
     return requestClient.get<PagedList<InvoiceApplicationListDto>>(
       'services/app/InvoiceApplicationAdmin/GetPagedListAsync',
-      { params },
+      // keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：keys=a&keys=b
+      { params, paramsSerializer: 'repeat' },
     );
   }
 

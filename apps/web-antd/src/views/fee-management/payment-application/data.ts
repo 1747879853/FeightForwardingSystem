@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import { getPaymentApplicationStatusOptions } from '#/constants/application-status';
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 import { isSpecifiedCurrencyApplication } from '../add-fee-modal/data';
 import {
@@ -176,6 +177,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      help: '精确匹配（非模糊）：主提单号、订舱编号、委托编号',
+    }),
     {
       component: 'Input',
       fieldName: 'ApplicationNo',

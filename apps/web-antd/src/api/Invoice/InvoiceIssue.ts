@@ -2,6 +2,7 @@ import type { Recordable } from '@vben/types';
 
 import { requestClient } from '#/api/request';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
+import { normalizeKeysParam } from '#/utils/keys-search';
 
 export namespace InvoiceIssueApi {
   /** 发票开出方式枚举 */
@@ -478,6 +479,11 @@ export namespace InvoiceIssueApi {
   /** 发票开出查询参数 */
   export interface InvoiceIssueQueryDto {
     keyword?: string;
+    /**
+     * Keys 精确多值搜索（IN），覆盖字段与 keyword 相同：
+     * 开出编号 ApplicationNo、委托编号、主提单号。GET 需 repeat 序列化（keys=A&keys=B）。
+     */
+    keys?: string[];
     /** 开出单号（模糊） */
     applicationNo?: string;
     /** 发票号（模糊） */
@@ -882,6 +888,7 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
 }> {
   const queryParams: InvoiceIssueApi.InvoiceIssueQueryDto = {
     keyword: params.keyword,
+    keys: normalizeKeysParam(params.keys ?? params.Keys),
     applicationNo: params.applicationNo,
     invoiceNo: params.invoiceNo,
     settlementId: params.settlementId,

@@ -8,6 +8,7 @@ import {
   resolvePaymentApplicationStatusTag,
 } from '#/constants/application-status';
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 /** 查询表单配置 */
 export function useSearchSchema() {
@@ -21,6 +22,10 @@ export function useSearchSchema() {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      fieldName: 'keys',
+      help: '精确匹配（非模糊）：主提单号、订舱编号、委托编号',
+    }),
     {
       component: 'Input',
       fieldName: 'applicationNo',

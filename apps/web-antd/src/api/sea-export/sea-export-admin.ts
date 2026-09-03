@@ -714,6 +714,12 @@ export namespace SeaExportAdminApi {
 
   export interface GetPagedListParams {
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中船名、船公司航次、业务备注、
+     * 主提单号、订舱编号、合同号、委托编号中任意一个即可（不含码头航次）。
+     * GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     ETDStart?: string;
     ETDEnd?: string;
     ClientId?: string | number;
@@ -864,7 +870,8 @@ export const getSeaExportPagedList = (
 ) => {
   return requestClient.get<SeaExportAdminApi.PagedListOfSeaExportDto>(
     `${API_PREFIX}/GetPagedListAsync`,
-    { params },
+    // Keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：Keys=a&Keys=b
+    { params, paramsSerializer: 'repeat' },
   );
 };
 
@@ -873,7 +880,8 @@ export const getSeaExportGroupedList = (
 ) => {
   return requestClient.get<SeaExportAdminApi.SeaExportGroupDto[]>(
     `${API_PREFIX}/GetGroupedListAsync`,
-    { params },
+    // 与列表共用筛选，含 Keys，需 repeat 序列化
+    { params, paramsSerializer: 'repeat' },
   );
 };
 
