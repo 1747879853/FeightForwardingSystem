@@ -175,6 +175,17 @@ export function useFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
       },
     },
+    {
+      component: 'InputNumber',
+      fieldName: 'sortId',
+      label: $t('system.basicData.portCode.sortId'),
+      defaultValue: 0,
+      help: $t('system.basicData.portCode.sortIdHelp'),
+      componentProps: {
+        precision: 0,
+        style: { width: '100%' },
+      },
+    },
   ];
 }
 
@@ -197,7 +208,6 @@ export function useColumns(
       minWidth: 160,
     },
     {
-      // 与 defaultSort「Country.CountryName」解析后的 field 对齐，便于列头高亮
       field: 'country.countryName',
       title: $t('system.basicData.portCode.countryName'),
       minWidth: 140,
@@ -253,6 +263,11 @@ export function useColumns(
         name: 'CellTag',
         options: getStatusOptions(),
       },
+    },
+    {
+      field: 'sortId',
+      title: $t('system.basicData.portCode.sortId'),
+      minWidth: 90,
     },
     {
       field: 'creatorUserName',

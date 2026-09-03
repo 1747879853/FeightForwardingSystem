@@ -66,6 +66,8 @@
       "ediCode": "EDI代码",
       "statisticalArea": "统计区域",
       "status": "状态",
+      "sortId": "排序",
+      "sortIdHelp": "降序排列，值越大越靠前，不填写时为 0",
       "keyword": "关键字",
       "portQuery": "港口查询",
       "portQueryPlaceholder": "支持港口英文名称、港口中文名称",

@@ -62,6 +62,7 @@ const [Modal, modalApi] = useVbenModal({
           ediCode: values.ediCode,
           statisticalArea: values.statisticalArea,
           status: values.status,
+          sortId: values.sortId,
         });
       } else {
         await addPortCode({
@@ -74,6 +75,7 @@ const [Modal, modalApi] = useVbenModal({
           ediCode: values.ediCode,
           statisticalArea: values.statisticalArea,
           status: values.status,
+          sortId: values.sortId,
         });
       }
 
@@ -108,6 +110,7 @@ const [Modal, modalApi] = useVbenModal({
         ediCode: detail.ediCode,
         statisticalArea: detail.statisticalArea,
         status: detail.status,
+        sortId: detail.sortId ?? 0,
       });
     } finally {
       modalApi.lock(false);

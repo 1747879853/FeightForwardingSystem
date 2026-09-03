@@ -66,6 +66,8 @@
       "ediCode": "EDI Code",
       "statisticalArea": "Statistical Area",
       "status": "Status",
+      "sortId": "Sort",
+      "sortIdHelp": "Sorted descending; larger values appear first. Defaults to 0",
       "keyword": "Keyword",
       "portQuery": "Port Search",
       "portQueryPlaceholder": "Supports port English / Chinese name",

@@ -15,6 +15,8 @@ export namespace PortCodeApi {
     c: string;
     /** 关联国家英文名称；无则为 null */
     e: string | null;
+    /** 排序 id，值越大越靠前 */
+    s: number;
   }
 }
 
@@ -26,9 +28,9 @@ const PORT_CODE_API_PREFIX = '/services/app/PortCode';
  * 说明：
  * - 全量返回，不分页
  * - 包含启用和禁用的港口（ABP 软删除过滤后的全部）
- * - 按 PortName 升序，再按 Id 升序
+ * - 后端按 SortId 降序返回，前端按返回顺序渲染
  * - 使用 ResponseCompression（gzip/brotli）压缩传输
- * - 字段使用单字母命名以减小体积：i(id), p(portName), c(cnName), e(countryEnName)
+ * - 字段使用单字母命名以减小体积：i(id), p(portName), c(cnName), e(countryEnName), s(sortId)
  *
  * @returns 港口列表（精简版）
  */
@@ -61,6 +63,8 @@ export namespace PortCodeAdminApi {
     statisticalArea?: string;
     /** 状态 0启用 1禁用 */
     status?: number;
+    /** 排序 id，值越大越靠前；不传时后端按 0 处理 */
+    sortId?: number;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -93,6 +97,8 @@ export namespace PortCodeAdminApi {
     statisticalArea?: string;
     /** 状态 0启用 1禁用 */
     status?: number;
+    /** 排序 id，值越大越靠前；不传时后端按 0 处理 */
+    sortId?: number;
   }
 
   /** 港口信息详情/列表输出 */
@@ -122,6 +128,8 @@ export namespace PortCodeAdminApi {
     statisticalArea?: string;
     /** 状态 0启用 1禁用 */
     status?: number;
+    /** 排序 id，值越大越靠前 */
+    sortId?: number;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -157,7 +165,7 @@ export namespace PortCodeAdminApi {
     CountryId?: number | string;
     /** 状态 0启用 1禁用 */
     Status?: number;
-    /** 排序，前端默认 Country.CountryName ASC；可排本表字段及 Country / Lane 导航属性 */
+    /** 排序，管理列表首次加载必须传 sortId desc */
     Sorting?: string;
     /** 当前页码 */
     PageIndex?: number;
