@@ -501,7 +501,7 @@ export const deleteOrderFeeTemplate = (
   data: OrderFeeTemplateAdminApi.OrderFeeTemplateDeleteDto,
 ) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
-    params: data,
+    data,
   });
 };
 
