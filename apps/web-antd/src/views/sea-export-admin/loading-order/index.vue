@@ -8,7 +8,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 
 import { useAccess } from '@vben/access';
-import { Copy } from '@vben/icons';
+import { Copy, IconifyIcon } from '@vben/icons';
 
 import dayjs from 'dayjs';
 
@@ -23,19 +23,20 @@ import {
   message,
   Modal,
   Select,
-  Space,
   Spin,
   Table,
-  Tag,
   Tooltip,
+  Upload,
 } from 'ant-design-vue';
 
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import {
   addLoadingOrder,
   deleteLoadingOrder,
   editLoadingOrder,
+  editLoadingOrderCtnsAdmin,
   getLoadingOrderBySeaExportId,
   LOADING_ORDER_STATUS_TEXT,
   LoadingOrderStatus,
@@ -88,6 +89,129 @@ const photoPreviewOpen = ref(false);
 const photoPreviewUrls = ref<string[]>([]);
 const photoPreviewIndex = ref(0);
 const recommendOpen = ref(false);
+
+// ── 照片编辑弹窗 ──────────────────────────────────────────────────
+/** 当前正在编辑照片的箱 */
+const photoEditCtn = ref<LoadingOrderAdminApi.LoadingOrderCtnDto | null>(null);
+const photoEditOpen = ref(false);
+const photoEditUploading = ref(false);
+const photoEditSaving = ref(false);
+
+/** 将后端 attachmentGroups 转成本地可编辑结构（带完整 URL） */
+function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+  const groups = (ctn.attachmentGroups ?? []).map((g) => ({
+    attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
+    typeName: g.attachmentDtlType?.typeName ?? '监装照片',
+    items: (g.items ?? []).map((item) => ({
+      id: item.id,
+      attachmentId: item.attachmentId!,
+      url: buildAttachmentUrl(item.url),
+      clientVisible: item.clientVisible,
+      displayOrder: item.displayOrder,
+    })),
+  }));
+  if (groups.length === 0) {
+    groups.push({ attachmentDtlTypeId: null, typeName: '监装照片', items: [] });
+  }
+  return groups;
+}
+
+type EditablePhoto = {
+  id?: number;
+  attachmentId: number;
+  url: string;
+  clientVisible?: boolean;
+  displayOrder?: number;
+};
+
+type EditableGroup = {
+  attachmentDtlTypeId: null | number | string;
+  typeName: string;
+  items: EditablePhoto[];
+};
+
+const photoEditGroups = ref<EditableGroup[]>([]);
+
+function openPhotoEdit(row: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+  photoEditCtn.value = row;
+  photoEditGroups.value = toEditableGroups(row);
+  photoEditOpen.value = true;
+}
+
+function removePhotoFromGroup(groupIndex: number, photoIndex: number) {
+  photoEditGroups.value[groupIndex]?.items.splice(photoIndex, 1);
+}
+
+async function handlePhotoUpload(file: unknown, groupIndex: number) {
+  photoEditUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file as File);
+    const results = await uploadFile(formData);
+    const uploaded = results[0];
+    if (!uploaded) throw new Error('上传返回为空');
+    const attachment = mapResultToAttachment(uploaded);
+    photoEditGroups.value[groupIndex]?.items.push({
+      attachmentId: attachment.attachmentId as number,
+      url: buildAttachmentUrl(attachment.url),
+    });
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '上传失败');
+  } finally {
+    photoEditUploading.value = false;
+  }
+  return false; // 阻止 antd Upload 默认行为
+}
+
+async function savePhotoEdit() {
+  const ctn = photoEditCtn.value;
+  const orderId = detail.value?.id;
+  if (!ctn || !orderId) return;
+
+  // 把工单所有箱都带上（全量替换），只改当前箱的 attachmentGroups
+  const orderCtns = (detail.value?.orderCtns ?? []).map((c) => {
+    const isCurrentCtn = String(c.id) === String(ctn.id);
+    return {
+      id: c.id,
+      ctnCodeId: c.ctnCodeId!,
+      ctnNo: c.ctnNo ?? null,
+      sealNo: c.sealNo ?? null,
+      isLoadingCompleted: c.isLoadingCompleted,
+      attachmentGroups: isCurrentCtn
+        ? photoEditGroups.value.map((g, _gi) => ({
+            attachmentDtlTypeId: g.attachmentDtlTypeId,
+            items: g.items.map((photo, idx) => ({
+              attachmentId: photo.attachmentId,
+              attachmentDtlTypeId: g.attachmentDtlTypeId,
+              clientVisible: photo.clientVisible,
+              displayOrder: idx,
+            })),
+          }))
+        : (c.attachmentGroups ?? []).map((g) => ({
+            attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
+            items: (g.items ?? []).map((item, idx) => ({
+              attachmentId: item.attachmentId!,
+              attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
+              clientVisible: item.clientVisible,
+              displayOrder: idx,
+            })),
+          })),
+    };
+  });
+
+  photoEditSaving.value = true;
+  try {
+    await editLoadingOrderCtnsAdmin(String(orderId), orderCtns);
+    message.success('照片保存成功');
+    photoEditOpen.value = false;
+    // 刷新工单数据
+    detail.value = await getLoadingOrderBySeaExportId(seaExportId.value);
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '保存失败');
+  } finally {
+    photoEditSaving.value = false;
+  }
+}
 /** 推荐弹窗回填的师傅，补进 UserSelect selectedItems */
 const extraSupervisors = ref<SystemUserAdminApi.UserSimpleDto[]>([]);
 
@@ -148,19 +272,49 @@ const isLocked = computed(
     status.value === LoadingOrderStatus.Completed,
 );
 
-const statusColor = computed(() => {
-  switch (status.value) {
+const statusMeta = computed(() => {
+  if (!detail.value) {
+    return {
+      tone: 'draft',
+      icon: 'lucide:file-plus-2',
+      label: $t('seaExport.loadingOrder.statusNew'),
+      hint: $t('seaExport.loadingOrder.statusHintNew'),
+    };
+  }
+
+  const label = LOADING_ORDER_STATUS_TEXT[detail.value.status] ?? '-';
+  switch (detail.value.status) {
+    case LoadingOrderStatus.Pending: {
+      return {
+        tone: 'pending',
+        icon: 'lucide:clock-3',
+        label,
+        hint: $t('seaExport.loadingOrder.statusHintPending'),
+      };
+    }
     case LoadingOrderStatus.Claimed: {
-      return 'processing';
+      return {
+        tone: 'claimed',
+        icon: 'lucide:user-check',
+        label,
+        hint: $t('seaExport.loadingOrder.statusHintClaimed'),
+      };
     }
     case LoadingOrderStatus.Completed: {
-      return 'success';
-    }
-    case LoadingOrderStatus.Pending: {
-      return 'warning';
+      return {
+        tone: 'completed',
+        icon: 'lucide:circle-check-big',
+        label,
+        hint: $t('seaExport.loadingOrder.statusHintCompleted'),
+      };
     }
     default: {
-      return 'default';
+      return {
+        tone: 'unsubmitted',
+        icon: 'lucide:file-pen-line',
+        label,
+        hint: $t('seaExport.loadingOrder.statusHintUnsubmitted'),
+      };
     }
   }
 });
@@ -684,39 +838,89 @@ const displayValue = (value: null | number | string | undefined) => {
 
       <template v-else>
         <div class="loading-order__toolbar">
-          <Tag v-if="detail" :color="statusColor">
-            {{ LOADING_ORDER_STATUS_TEXT[detail.status] }}
-          </Tag>
-          <span v-else />
-          <Space :size="8">
+          <div
+            class="loading-order__status-summary"
+            :class="`is-${statusMeta.tone}`"
+          >
+            <span class="loading-order__status-icon" aria-hidden="true">
+              <IconifyIcon :icon="statusMeta.icon" />
+            </span>
+            <div class="loading-order__status-copy">
+              <span class="loading-order__status-title">
+                {{ $t('seaExport.loadingOrder.statusTitle') }}
+              </span>
+              <div class="loading-order__status-line">
+                <strong>{{ statusMeta.label }}</strong>
+                <span>{{ statusMeta.hint }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="loading-order__actions">
             <template v-if="!detail && editing">
               <Button
                 v-if="canAdd"
                 type="primary"
                 :loading="saving"
+                class="loading-order__action-button"
                 @click="handleSave"
               >
+                <template #icon>
+                  <IconifyIcon icon="lucide:save" />
+                </template>
                 {{ $t('common.save') }}
               </Button>
             </template>
             <template v-else-if="isUnsubmitted">
               <Button
+                v-if="canDelete"
+                type="text"
+                danger
+                class="loading-order__action-button"
+                @click="handleDelete"
+              >
+                <template #icon>
+                  <IconifyIcon icon="lucide:trash-2" />
+                </template>
+                {{ $t('common.delete') }}
+              </Button>
+              <span
+                v-if="canDelete && canEdit"
+                class="loading-order__action-divider"
+                aria-hidden="true"
+              />
+              <Button
                 v-if="canEdit"
                 type="primary"
                 :loading="saving"
+                class="loading-order__action-button"
                 @click="handleSave"
               >
+                <template #icon>
+                  <IconifyIcon icon="lucide:save" />
+                </template>
                 {{ $t('common.save') }}
               </Button>
-              <Button v-if="canEdit" @click="handleSubmit">
+              <Button
+                v-if="canEdit"
+                class="loading-order__action-button"
+                @click="handleSubmit"
+              >
+                <template #icon>
+                  <IconifyIcon icon="lucide:send" />
+                </template>
                 {{ $t('seaExport.loadingOrder.submit') }}
-              </Button>
-              <Button v-if="canDelete" danger @click="handleDelete">
-                {{ $t('common.delete') }}
               </Button>
             </template>
             <template v-else-if="isPending">
-              <Button v-if="canEdit" @click="handleWithdraw">
+              <Button
+                v-if="canEdit"
+                class="loading-order__action-button"
+                @click="handleWithdraw"
+              >
+                <template #icon>
+                  <IconifyIcon icon="lucide:undo-2" />
+                </template>
                 {{ $t('seaExport.loadingOrder.withdraw') }}
               </Button>
             </template>
@@ -724,9 +928,14 @@ const displayValue = (value: null | number | string | undefined) => {
               v-else-if="isLocked"
               :title="$t('seaExport.loadingOrder.lockedTip')"
             >
-              <Button disabled>{{ $t('common.edit') }}</Button>
+              <Button disabled class="loading-order__action-button">
+                <template #icon>
+                  <IconifyIcon icon="lucide:lock-keyhole" />
+                </template>
+                {{ $t('common.edit') }}
+              </Button>
             </Tooltip>
-          </Space>
+          </div>
         </div>
 
         <section class="loading-order__card">
@@ -1066,7 +1275,7 @@ const displayValue = (value: null | number | string | undefined) => {
                   :class="{
                     'is-filled': formatCtnAttachmentCount(record) > 0,
                   }"
-                  @click="openCtnPhotos(record)"
+                  @click="openPhotoEdit(record)"
                 >
                   <img
                     :src="cameraIcon"
@@ -1131,6 +1340,72 @@ const displayValue = (value: null | number | string | undefined) => {
       :yards="carrierYards"
       @confirm="onRecommendConfirm"
     />
+
+    <!-- 照片编辑弹窗 -->
+    <Modal
+      v-model:open="photoEditOpen"
+      :title="`照片采集 — 箱号 ${photoEditCtn?.ctnNo || '--'}`"
+      :footer="null"
+      width="680px"
+      destroy-on-close
+    >
+      <Spin :spinning="photoEditSaving">
+        <div
+          v-for="(group, gi) in photoEditGroups"
+          :key="gi"
+          class="photo-edit-group"
+        >
+          <div class="photo-edit-group__title">{{ group.typeName }}</div>
+          <div class="photo-edit-group__grid">
+            <div
+              v-for="(photo, pi) in group.items"
+              :key="`${photo.attachmentId}-${pi}`"
+              class="photo-edit-thumb"
+            >
+              <Image
+                :src="photo.url"
+                class="photo-edit-thumb__img"
+                :preview="{ src: photo.url }"
+              />
+              <button
+                type="button"
+                class="photo-edit-thumb__remove"
+                @click="removePhotoFromGroup(gi, pi)"
+              >
+                ×
+              </button>
+            </div>
+            <Upload
+              :show-upload-list="false"
+              accept="image/*"
+              :multiple="true"
+              :before-upload="(file) => handlePhotoUpload(file, gi)"
+              :disabled="photoEditUploading"
+            >
+              <div class="photo-edit-add">
+                <span class="photo-edit-add__icon">{{
+                  photoEditUploading ? '…' : '+'
+                }}</span>
+                <span class="photo-edit-add__tip">{{
+                  photoEditUploading ? '上传中' : '添加图片'
+                }}</span>
+              </div>
+            </Upload>
+          </div>
+        </div>
+        <div class="photo-edit-footer">
+          <Button @click="photoEditOpen = false">取消</Button>
+          <Button
+            type="primary"
+            :loading="photoEditSaving"
+            :disabled="photoEditUploading"
+            @click="savePhotoEdit"
+          >
+            保存
+          </Button>
+        </div>
+      </Spin>
+    </Modal>
   </div>
 </template>
 
@@ -1144,6 +1419,29 @@ const displayValue = (value: null | number | string | undefined) => {
 @media (max-width: 768px) {
   .loading-order__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .loading-order__toolbar {
+    align-items: stretch;
+  }
+
+  .loading-order__status-summary,
+  .loading-order__actions {
+    width: 100%;
+  }
+
+  .loading-order__status-line span {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .loading-order__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid #eef1f5;
   }
 }
 
@@ -1174,11 +1472,116 @@ const displayValue = (value: null | number | string | undefined) => {
 .loading-order__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   justify-content: space-between;
-  min-height: 36px;
-  padding: 0 4px;
+  min-height: 56px;
+  padding: 9px 12px;
+  background: #fff;
+  border: 1px solid #e4e8ef;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
+}
+
+.loading-order__status-summary {
+  --status-color: #64748b;
+  --status-soft: #f1f5f9;
+
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.loading-order__status-summary.is-unsubmitted {
+  --status-color: #1677ff;
+  --status-soft: #eaf3ff;
+}
+
+.loading-order__status-summary.is-pending {
+  --status-color: #d97706;
+  --status-soft: #fff7e6;
+}
+
+.loading-order__status-summary.is-claimed {
+  --status-color: #2563eb;
+  --status-soft: #eff6ff;
+}
+
+.loading-order__status-summary.is-completed {
+  --status-color: #16a34a;
+  --status-soft: #f0fdf4;
+}
+
+.loading-order__status-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-size: 17px;
+  color: var(--status-color);
+  background: var(--status-soft);
+  border-radius: 8px;
+}
+
+.loading-order__status-copy {
+  min-width: 0;
+}
+
+.loading-order__status-title {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  line-height: 14px;
+  color: #8c95a3;
+}
+
+.loading-order__status-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  line-height: 18px;
+}
+
+.loading-order__status-line strong {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--status-color);
+}
+
+.loading-order__status-line span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #697586;
+  white-space: nowrap;
+}
+
+.loading-order__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.loading-order__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  height: 34px;
+  border-radius: 6px;
+}
+
+.loading-order__action-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: #e4e8ef;
 }
 
 .loading-order__input-copy {
@@ -1550,12 +1953,13 @@ const displayValue = (value: null | number | string | undefined) => {
   gap: 7px;
   align-items: center;
   justify-content: center;
-  width: 123px;
+  min-width: 123px;
   height: 30px;
   padding: 0 12px;
   font-size: 14px;
   line-height: 17px;
   color: #252a31;
+  white-space: nowrap;
   cursor: pointer;
   background: #f7fafc;
   border: 1px solid #e4e8ef;
@@ -1612,5 +2016,98 @@ const displayValue = (value: null | number | string | undefined) => {
   width: 0;
   height: 0;
   overflow: hidden;
+}
+
+/* ── 照片编辑弹窗 ── */
+.photo-edit-group {
+  margin-bottom: 16px;
+}
+
+.photo-edit-group__title {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.photo-edit-group__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photo-edit-thumb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.photo-edit-thumb__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.photo-edit-thumb__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  background: rgb(0 0 0 / 55%);
+  border: none;
+  border-radius: 50%;
+}
+
+.photo-edit-thumb__remove:hover {
+  background: rgb(0 0 0 / 75%);
+}
+
+.photo-edit-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  cursor: pointer;
+  background: #f5f7fa;
+  border: 1px dashed #cfd6e0;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.photo-edit-add:hover {
+  border-color: #006ce6;
+}
+
+.photo-edit-add__icon {
+  font-size: 24px;
+  color: #8c9caf;
+}
+
+.photo-edit-add__tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #8c9caf;
+}
+
+.photo-edit-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #f0f0f0;
 }
 </style>

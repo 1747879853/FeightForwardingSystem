@@ -179,6 +179,24 @@ export namespace LoadingOrderAdminApi {
     yardName?: null | string;
     userName?: null | string;
   }
+
+  /** 箱型编辑入参（admin 端调师傅端接口）；attachmentGroups 按箱全量替换 */
+  export interface LoadingOrderCtnEditItem {
+    id: number | string;
+    ctnCodeId: number | string;
+    ctnNo?: null | string;
+    sealNo?: null | string;
+    isLoadingCompleted?: boolean;
+    attachmentGroups?: {
+      attachmentDtlTypeId?: null | number | string;
+      items: {
+        attachmentId: number | string;
+        attachmentDtlTypeId?: null | number | string;
+        clientVisible?: boolean;
+        displayOrder?: number;
+      }[];
+    }[];
+  }
 }
 
 const ADMIN_PREFIX = '/services/app/LoadingOrderAdmin';
@@ -226,6 +244,22 @@ export const submitLoadingOrder = (id: string) => {
 export const withdrawLoadingOrder = (id: string) => {
   return requestClient.post<boolean>(`${ADMIN_PREFIX}/WithdrawAsync`, {
     id: String(id),
+  });
+};
+
+const MP_PREFIX = '/services/app/LoadingOrder';
+
+/**
+ * 保存箱号/封号/完成勾选/附件（Admin 端调师傅侧接口）。
+ * attachmentGroups 对每个箱是全量替换，漏传的分组照片会被删掉。
+ */
+export const editLoadingOrderCtnsAdmin = (
+  id: string,
+  orderCtns: LoadingOrderAdminApi.LoadingOrderCtnEditItem[],
+) => {
+  return requestClient.put<boolean>(`${MP_PREFIX}/EditOrderCtnsAsync`, {
+    id,
+    orderCtns,
   });
 };
 
