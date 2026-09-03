@@ -18,6 +18,18 @@ export namespace BankStatementAdminApi {
     WriteOffCompleted = 2,
   }
 
+  /** 银行流水分组统计字段 */
+  export enum BankStatementGroupField {
+    /** 付款方 */
+    Settlement = 1,
+    /** 我司银行 */
+    OrgBankAccount = 2,
+    /** 对方银行 */
+    ClientInvoiceBank = 3,
+    /** 核销状态 */
+    WriteOffStatus = 4,
+  }
+
   // ==================== DTO 定义 ====================
 
   /** 操作人添加 DTO */
@@ -266,6 +278,12 @@ export namespace BankStatementAdminApi {
   export interface BankStatementQueryDto {
     bankStatementNo?: string;
     settlementId?: string;
+    orgBankAccountId?: string;
+    /** 仅返回我司银行未填写记录；仅 true 生效，与 orgBankAccountId 互斥 */
+    orgBankAccountIdEmpty?: boolean;
+    clientInvoiceBankId?: string;
+    /** 仅返回对方银行未填写记录；仅 true 生效，与 clientInvoiceBankId 互斥 */
+    clientInvoiceBankIdEmpty?: boolean;
     currencyId?: number;
     statementTimeStart?: string;
     statementTimeEnd?: string;
@@ -275,6 +293,22 @@ export namespace BankStatementAdminApi {
     pageIndex: number;
     pageSize: number;
     sorting?: string;
+  }
+
+  /** 银行流水分组统计入参：与列表共用筛选条件 */
+  export type BankStatementGroupedQueryDto = Omit<
+    BankStatementQueryDto,
+    'pageIndex' | 'pageSize'
+  > & {
+    groupField: BankStatementGroupField;
+  };
+
+  /** 银行流水分组统计项 */
+  export interface BankStatementGroupDto {
+    /** 核销状态为 0/1/2 字符串；可空银行的未填写分组为 null */
+    id: null | string;
+    name: null | string;
+    count: number;
   }
 
   /** 银行流水下收费结算查询参数 */
@@ -344,6 +378,26 @@ export const getBankStatementPagedListByPermission = (
   return requestClient.get<
     BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>
   >(`${API_PREFIX}/GetPagedListAsync`, { params });
+};
+
+/** 获取银行流水分组统计（Admin） */
+export const getBankStatementGroupedList = (
+  params: BankStatementAdminApi.BankStatementGroupedQueryDto,
+) => {
+  return requestClient.get<BankStatementAdminApi.BankStatementGroupDto[]>(
+    `${API_ADMIN_PREFIX}/GetGroupedListAsync`,
+    { params },
+  );
+};
+
+/** 获取银行流水分组统计（按当前用户权限） */
+export const getBankStatementGroupedListByPermission = (
+  params: BankStatementAdminApi.BankStatementGroupedQueryDto,
+) => {
+  return requestClient.get<BankStatementAdminApi.BankStatementGroupDto[]>(
+    `${API_PREFIX}/GetGroupedListAsync`,
+    { params },
+  );
 };
 
 /** 获取银行流水下的收费结算分页列表（Admin） */

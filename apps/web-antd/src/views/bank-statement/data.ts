@@ -117,11 +117,10 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       sortable: true,
     },
     {
-      field: 'settlementName',
+      field: 'settlement.name',
       title: '付款方',
       minWidth: 150,
       sortable: true,
-      formatter: ({ row }) => row.settlement?.name || '-',
     },
     {
       field: 'amount',
@@ -155,6 +154,12 @@ export function useColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'orgBankAccount.bankName',
       title: '我司银行',
+      minWidth: 150,
+      sortable: true,
+    },
+    {
+      field: 'clientInvoiceBank.bankName',
+      title: '对方银行',
       minWidth: 150,
       sortable: true,
     },
@@ -221,12 +226,36 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'ClientSelect',
       fieldName: 'settlementId',
-      label: '结算对象',
+      label: '付款方',
       componentProps: {
-        placeholder: '请选择结算对象',
+        placeholder: '请选择付款方',
         allowClear: true,
         class: 'w-full',
       },
+    },
+    {
+      component: 'OrgBankAccountSelect',
+      fieldName: 'orgBankAccountId',
+      label: '我司银行',
+      componentProps: {
+        placeholder: '请选择我司银行',
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'ClientBankAccountSelect',
+      fieldName: 'clientInvoiceBankId',
+      label: '对方银行',
+      componentProps: (values: Record<string, unknown>) => ({
+        clientId:
+          typeof values.settlementId === 'string'
+            ? values.settlementId
+            : undefined,
+        placeholder: values.settlementId ? '请选择对方银行' : '请先选择付款方',
+        allowClear: true,
+        class: 'w-full',
+      }),
     },
     {
       component: 'CurrencySelect',

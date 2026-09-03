@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
+import type { GroupFieldDef } from '#/components/list-grouping';
 
+import { onActivated, onMounted } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -10,9 +11,17 @@ import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  BankStatementAdminApi,
   deleteBankStatement,
+  getBankStatementGroupedList,
   getBankStatementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
+import {
+  GroupingSettings,
+  GroupingTabs,
+  useListGrouping,
+} from '#/components/list-grouping';
+import { useTableConfigStore } from '#/store/table-config';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -26,6 +35,59 @@ import { enrichBankStatementListItems } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const router = useRouter();
+const tableConfigStore = useTableConfigStore();
+
+const GROUP_CONFIG_NAME = 'group_config_BankStatementList';
+
+const loadGroupField = async (): Promise<number | undefined> => {
+  await tableConfigStore.loadGroupConfigsOnce();
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (!hit?.setting) return undefined;
+  try {
+    const parsed = JSON.parse(hit.setting) as { field?: null | number };
+    return typeof parsed.field === 'number' ? parsed.field : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveGroupField = (fieldValue: number | undefined) => {
+  const setting = JSON.stringify({ field: fieldValue ?? null });
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (hit) {
+    void tableConfigStore.editGroupConfig({
+      id: hit.id,
+      name: GROUP_CONFIG_NAME,
+      setting,
+    });
+  } else {
+    void tableConfigStore.addGroupConfig({ name: GROUP_CONFIG_NAME, setting });
+  }
+};
+
+const { BankStatementGroupField: GroupField } = BankStatementAdminApi;
+
+const BANK_STATEMENT_GROUP_FIELDS: GroupFieldDef<BankStatementAdminApi.BankStatementGroupField>[] =
+  [
+    { value: GroupField.Settlement, label: '付款方', paramKey: 'settlementId' },
+    {
+      value: GroupField.OrgBankAccount,
+      label: '我司银行',
+      paramKey: 'orgBankAccountId',
+      emptyParamKey: 'orgBankAccountIdEmpty',
+    },
+    {
+      value: GroupField.ClientInvoiceBank,
+      label: '对方银行',
+      paramKey: 'clientInvoiceBankId',
+      emptyParamKey: 'clientInvoiceBankIdEmpty',
+    },
+    {
+      value: GroupField.WriteOffStatus,
+      label: '核销状态',
+      paramKey: 'writeOffStatus',
+    },
+  ];
 
 /** 将时间范围拆分为起止参数 */
 function splitTimeRange(
@@ -47,8 +109,24 @@ function splitTimeRange(
       : undefined;
   }
   delete result.statementTimeRange;
-  return result;
+  return grouping.decorateListParams(result);
 }
+
+const grouping = useListGrouping<BankStatementAdminApi.BankStatementGroupField>(
+  {
+    fields: BANK_STATEMENT_GROUP_FIELDS,
+    getGridApi: () => gridApi,
+    fetchGroups: async (baseParams, field) =>
+      await getBankStatementGroupedList({
+        ...baseParams,
+        groupField: field,
+      } as BankStatementAdminApi.BankStatementGroupedQueryDto),
+    persist: {
+      load: loadGroupField,
+      save: saveGroupField,
+    },
+  },
+);
 
 const [Grid, gridApi] =
   useVbenVxeGrid<BankStatementAdminApi.BankStatementListDto>({
@@ -78,14 +156,19 @@ const [Grid, gridApi] =
         enabled: true,
       },
       proxyConfig: {
+        autoLoad: false,
         ajax: {
           query: createPagedListQuery(getBankStatementPagedList, {
             defaultSort: 'StatementTime DESC',
             mapParams: splitTimeRange,
-            afterFetch: async (result) => ({
-              ...result,
-              items: await enrichBankStatementListItems(result.items || []),
-            }),
+            afterFetch: async (result) => {
+              const page =
+                result as BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>;
+              return {
+                ...page,
+                items: await enrichBankStatementListItems(page.items || []),
+              } as typeof result;
+            },
           }),
         },
       },
@@ -100,6 +183,27 @@ const [Grid, gridApi] =
       cellDblclick: handleRowDblClick,
     },
   });
+
+onMounted(async () => {
+  await grouping.restorePersistedField();
+  await gridApi.formApi.submitForm();
+});
+
+let firstActivate = true;
+onActivated(() => {
+  if (firstActivate) {
+    firstActivate = false;
+    return;
+  }
+  grouping.refreshGroupData();
+});
+
+function onGroupFieldChange(
+  value: BankStatementAdminApi.BankStatementGroupField | undefined,
+) {
+  if (value === undefined) grouping.disable();
+  else grouping.enableField(value);
+}
 
 function getSelectedRows(): BankStatementAdminApi.BankStatementListDto[] {
   return (gridApi.grid?.getCheckboxRecords?.() ??
@@ -156,7 +260,17 @@ async function handleDelete() {
 
 <template>
   <Page auto-content-height>
-    <Grid table-title="银行流水">
+    <Grid>
+      <template #toolbar-actions>
+        <GroupingTabs
+          v-if="grouping.isGrouping.value"
+          :items="grouping.groupItems.value"
+          :selected-id="grouping.selectedItemId.value"
+          :loading="grouping.loading.value"
+          @select="grouping.selectItem"
+        />
+        <div v-else class="mr-1 pl-1 text-[1rem]">银行流水</div>
+      </template>
       <template #toolbar-tools>
         <Space>
           <Button v-access:code="perm.add" type="primary" @click="handleCreate">
@@ -165,6 +279,11 @@ async function handleDelete() {
           <Button v-access:code="perm.delete" danger @click="handleDelete">
             删除
           </Button>
+          <GroupingSettings
+            :fields="grouping.fields"
+            :value="grouping.enabledField.value?.value"
+            @change="onGroupFieldChange"
+          />
         </Space>
       </template>
 
