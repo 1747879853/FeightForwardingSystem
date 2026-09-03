@@ -13,7 +13,7 @@ date: 2026-09-03
 
 - 港口新增、编辑、详情与管理列表 DTO 增加 `sortId`；表单默认值为 `0`，编辑时回显详情值。
 - 港口管理列表增加「排序」列，默认排序改为 `sortId DESC`；用户点击其他列后仍按该列远程排序。
-- 分页 `PortSelect` 调用 `PortCodeAdmin/GetPagedListAsync` 时固定补充 `Sorting: 'sortId DESC'`，搜索和翻页均保持排序号大的港口优先。
+- `getPortCodePagedList` 在未传 `Sorting` 时默认补 `sortId DESC`，管理列表、分页 `PortSelect` 及运价批量新增等调用方统一生效。
 - 修复搜索或重置筛选条件后默认排序箭头消失：`reload` 完成后重新同步 `sortConfig.defaultSort` 到列头状态。
 - `PortCode/GetListAsync` 精简列表 DTO 增加单字母字段 `s` 表示 `sortId`；请求不增加 `sorting`，下拉按接口返回顺序渲染。
 

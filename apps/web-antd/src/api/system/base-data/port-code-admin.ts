@@ -176,15 +176,25 @@ export namespace PortCodeAdminApi {
 
 const API_PREFIX = '/services/app/PortCodeAdmin';
 
+/** 管理端分页默认排序：值越大越靠前；调用方显式传 Sorting 时可覆盖 */
+const DEFAULT_PORT_CODE_PAGED_SORT = 'sortId DESC';
+
 /**
  * 获取港口信息分页列表
+ *
+ * 未传 Sorting 时默认 sortId 降序，避免后端回退为创建时间降序。
  */
 export const getPortCodePagedList = (
   params: PortCodeAdminApi.GetPagedListParams,
 ) => {
   return requestClient.get<PortCodeAdminApi.PagedListOfPortCodeDto>(
     `${API_PREFIX}/GetPagedListAsync`,
-    { params },
+    {
+      params: {
+        ...params,
+        Sorting: params.Sorting ?? DEFAULT_PORT_CODE_PAGED_SORT,
+      },
+    },
   );
 };
 
