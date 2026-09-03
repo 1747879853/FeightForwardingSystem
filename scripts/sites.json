@@ -4,9 +4,10 @@
     {
       "id": "jht",
       "name": "津海通",
-      "web": "http://43.138.14.122:180",
+      "web": "https://jht.jinhaitone.com",
       "title": "津海通",
-      "api": "https://api.jinhaitone.com/api"
+      "api": "https://api.jinhaitone.com/api",
+      "webCheckOptional": true
     },
     {
       "id": "sjtd",
