@@ -2,19 +2,9 @@
 import { onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
 
-import {
-  authState,
-  loginByPassword,
-  loginByPhone,
-  silentLogin,
-} from '@/stores/auth';
-
-const enablePasswordLogin =
-  String(import.meta.env.VITE_ENABLE_PASSWORD_LOGIN) === 'true';
+import { authState, loginByPhone, silentLogin } from '@/stores/auth';
 
 const busy = ref(false);
-const passwordVisible = ref(false);
-const form = ref({ password: '', userName: '' });
 
 function goHome() {
   uni.switchTab({ url: '/pages/loading/list' });
@@ -65,22 +55,6 @@ async function onGetPhoneNumber(event: any) {
   }
 }
 
-async function onPasswordLogin() {
-  if (!form.value.userName || !form.value.password) {
-    uni.showToast({ icon: 'none', title: '请输入账号和密码' });
-    return;
-  }
-  busy.value = true;
-  try {
-    const ok = await loginByPassword(form.value.userName, form.value.password);
-    if (ok) goHome();
-  } catch (error) {
-    toast(error, '登录失败');
-  } finally {
-    busy.value = false;
-  }
-}
-
 onShow(() => {
   if (authState.token) {
     goHome();
@@ -107,42 +81,28 @@ onShow(() => {
         class="btn"
         open-type="getPhoneNumber"
         :disabled="busy"
+        hover-class="btn--pressed"
         @getphonenumber="onGetPhoneNumber"
       >
-        手机号一键登录
+        {{ busy ? '登录中...' : '手机号一键登录' }}
       </button>
-      <view v-else class="btn" @tap="onSilentLogin">微信登录</view>
+      <button
+        v-else
+        class="btn"
+        :disabled="busy"
+        hover-class="btn--pressed"
+        @tap="onSilentLogin"
+      >
+        {{ busy ? '登录中...' : '微信登录' }}
+      </button>
       <text class="tip">
         账号需由管理员预先开通，登录手机号必须与系统内账号一致
       </text>
       <!-- #endif -->
 
       <!-- #ifndef MP-WEIXIN -->
-      <text class="tip">非微信环境下请使用账号密码登录</text>
+      <text class="tip tip--standalone">请在微信小程序中打开并登录</text>
       <!-- #endif -->
-
-      <template v-if="enablePasswordLogin">
-        <view class="switch" @tap="passwordVisible = !passwordVisible">
-          {{ passwordVisible ? '收起账号登录' : '开发调试：账号密码登录' }}
-        </view>
-
-        <view v-if="passwordVisible" class="form">
-          <input
-            v-model="form.userName"
-            class="form__input"
-            placeholder="账号"
-            placeholder-class="form__placeholder"
-          />
-          <input
-            v-model="form.password"
-            class="form__input"
-            password
-            placeholder="密码"
-            placeholder-class="form__placeholder"
-          />
-          <view class="btn btn--ghost" @tap="onPasswordLogin">登录</view>
-        </view>
-      </template>
     </view>
   </view>
 </template>
@@ -187,19 +147,36 @@ onShow(() => {
 }
 
 .btn {
+  width: 100%;
   height: 88rpx;
+  padding: 0;
+  margin: 0;
   font-size: 30rpx;
+  font-weight: 600;
   line-height: 88rpx;
   color: #fff;
   text-align: center;
   background: $brand-primary;
+  border: 0;
   border-radius: 44rpx;
+  box-shadow: 0 14rpx 28rpx rgb(50 122 255 / 22%);
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
-.btn--ghost {
-  margin-top: 8rpx;
-  color: $brand-primary;
-  background: $brand-primary-soft;
+.btn::after {
+  border: 0;
+}
+
+.btn--pressed {
+  opacity: 0.88;
+  transform: scale(0.98);
+}
+
+.btn[disabled] {
+  color: rgb(255 255 255 / 78%);
+  background: #8bb1f8;
 }
 
 .tip {
@@ -211,27 +188,7 @@ onShow(() => {
   text-align: center;
 }
 
-.switch {
-  margin-top: 32rpx;
-  font-size: 24rpx;
-  color: $brand-primary;
-  text-align: center;
-}
-
-.form {
-  margin-top: 24rpx;
-}
-
-.form__input {
-  height: 88rpx;
-  padding: 0 24rpx;
-  margin-bottom: 20rpx;
-  font-size: 28rpx;
-  background: #f7f9fc;
-  border-radius: 16rpx;
-}
-
-.form__placeholder {
-  color: #c2c8d2;
+.tip--standalone {
+  margin-top: 0;
 }
 </style>
