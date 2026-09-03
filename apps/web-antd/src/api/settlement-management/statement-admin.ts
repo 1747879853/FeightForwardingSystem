@@ -3,6 +3,7 @@ import type { Recordable } from '@vben/types';
 import { requestClient } from '#/api/request';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import { normalizeKeysParam } from '#/utils/keys-search';
 
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
@@ -322,6 +323,12 @@ export namespace StatementAdminApi {
   /** 查询参数 */
   export interface StatementQueryParams {
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中对账单号、备注、客户名称、客户代码中任意一个即可。
+     * 注意：本列表的 keys 不含主提单号（主提单号另有独立的 MblNum 模糊条件）。
+     * GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     StatementNum?: string;
     ClientId?: string;
     CreationStartTime?: string;
@@ -364,6 +371,11 @@ export namespace StatementAdminApi {
     CurrencyId?: number;
     ClientId?: string;
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、订舱编号、委托编号中任意一个即可。
+     * 与列表接口的 keys 不是同一批字段。GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     BizType?: number;
     ETDStart?: string;
     ETDEnd?: string;
@@ -483,6 +495,8 @@ export const removeStatementFees = (
 export const getStatementPagedList = async (params: Recordable<any>) => {
   const queryParams: StatementAdminApi.StatementQueryParams = {
     Keyword: params.Keyword || params.keyword,
+    // Keys 精确搜索：去空白去重，作为 List<string> 传后端
+    Keys: normalizeKeysParam(params.Keys ?? params.keys),
     StatementNum: params.StatementNum || params.statementNum,
     ClientId: params.ClientId || params.clientId,
     CreationStartTime: params.CreationStartTime || params.creationStartTime,
@@ -504,7 +518,8 @@ export const getStatementPagedList = async (params: Recordable<any>) => {
 
   return requestClient.get<StatementAdminApi.PagedListOfStatementDto>(
     '/services/app/StatementAdmin/GetPagedListAsync',
-    { params: queryParams },
+    // Keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：Keys=a&Keys=b
+    { params: queryParams, paramsSerializer: 'repeat' },
   );
 };
 

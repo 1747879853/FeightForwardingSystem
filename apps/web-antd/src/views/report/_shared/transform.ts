@@ -2,6 +2,7 @@ import type { ReportApi } from '#/api/system/report';
 
 import type { CurrencyFieldDef } from './types';
 
+import { applyFieldMask } from './field-permission';
 import {
   formatBizType,
   formatBlType,
@@ -205,6 +206,10 @@ export function transformReportData<TRaw extends ReportRowItem>(
       ...(mapExtraRow?.(item) ?? {}),
     };
     applyCurrencyAmounts(row, item.currencies, sortedCodes, currencyFields);
+    // 字段级权限：被屏蔽的字段以 *** 覆盖。
+    // 必须在行构建完成后执行，因为 buildCommonRow 用 `|| ''` / `|| '-'` 兜底，
+    // 已丢失「key 是否存在」的信息，只能基于原始 DTO 逐行判定
+    applyFieldMask(row, item);
     return row;
   });
 

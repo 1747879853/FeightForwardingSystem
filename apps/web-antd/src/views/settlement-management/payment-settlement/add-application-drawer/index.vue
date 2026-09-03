@@ -21,6 +21,7 @@ import { CurrencySelect } from '#/adapter/component';
 import { getPaymentApplicationPagedListByCurrencyForSettlement } from '#/api/sea-export/payment-settlement-admin';
 // ❌ 已删除：2026-08-10起，不再需要汇率录入弹窗，汇率由后端从付费申请自动获取
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
+import { normalizeKeysParam } from '#/utils/keys-search';
 
 import { useSearchSchema, getStatusTagProps } from './data';
 interface Props {
@@ -204,6 +205,8 @@ async function fetchData() {
       {
         paymentSettlementId: props.paymentSettlementId,
         keyword: formValues.keyword,
+        // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+        keys: normalizeKeysParam(formValues.keys),
         applicationNo: formValues.applicationNo,
         settlementId: formValues.settlementId,
         settlementCurrencyId: formValues.currencyId,

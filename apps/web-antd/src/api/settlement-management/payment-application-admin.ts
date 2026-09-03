@@ -1,6 +1,7 @@
 import type { Recordable } from '@vben/types';
 
 import { requestClient } from '#/api/request';
+import { normalizeKeysParam } from '#/utils/keys-search';
 
 const API_PREFIX = '/services/app/PaymentApplicationAdmin';
 
@@ -44,6 +45,11 @@ export namespace PaymentApplicationAdminApi {
   /** 付费申请列表查询参数（通用） */
   export interface PaymentApplicationQueryParams {
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、订舱编号、委托编号中任意一个即可。
+     * GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     ApplicationNo?: string;
     Status?: number;
     SettlementId?: string;
@@ -69,6 +75,11 @@ export namespace PaymentApplicationAdminApi {
     paymentSettlementId?: string;
     /** 关键字，模糊匹配费用关联的业务 CommissionNum / MblNum / BookingNum */
     keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、订舱编号、委托编号中任意一个即可。
+     * GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     /** 申请单号（模糊匹配） */
     applicationNo?: string;
     /** 结算对象ID（客户） */
@@ -512,6 +523,11 @@ export namespace PaymentApplicationAdminApi {
     StatementNum?: string;
     /** 编号 模糊匹配 */
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、订舱编号、委托编号中任意一个即可。
+     * GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     /** 委托单位id */
     ClientId?: string;
     /** 业务类型 */
@@ -1068,6 +1084,8 @@ export async function getPaymentApplicationPagedList(params: Recordable<any>) {
   const queryParams: PaymentApplicationAdminApi.PaymentApplicationQueryParams =
     {
       Keyword: params.Keyword || params.keyword,
+      // Keys 精确搜索：去空白去重，作为 List<string> 传后端
+      Keys: normalizeKeysParam(params.Keys ?? params.keys),
       ApplicationNo: params.ApplicationNo || params.applicationNo,
       Status: params.Status ?? params.status,
       SettlementId: params.SettlementId || params.settlementId,
@@ -1090,7 +1108,8 @@ export async function getPaymentApplicationPagedList(params: Recordable<any>) {
   const response =
     await requestClient.get<PaymentApplicationAdminApi.PagedListOfPaymentApplicationDto>(
       `${API_PREFIX}/GetPagedListAsync`,
-      { params: queryParams },
+      // Keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：Keys=a&Keys=b
+      { params: queryParams, paramsSerializer: 'repeat' },
     );
 
   return {
@@ -1105,7 +1124,11 @@ export async function getPaymentApplicationPagedListForSettlement(
 ) {
   return requestClient.get<
     PaymentApplicationAdminApi.PagedList<PaymentApplicationAdminApi.PaymentApplicationForSettlementDto>
-  >(`${API_PREFIX}/GetPagedListForSettlementAsync`, { params });
+  >(`${API_PREFIX}/GetPagedListForSettlementAsync`, {
+    params,
+    // keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：keys=a&keys=b
+    paramsSerializer: 'repeat',
+  });
 }
 
 /** 获取可进行付费申请的费用按业务分组列表 */

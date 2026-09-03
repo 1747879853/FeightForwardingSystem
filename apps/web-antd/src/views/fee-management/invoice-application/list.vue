@@ -22,6 +22,7 @@ import { IconifyIcon } from '@vben/icons';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { $t } from '#/locales';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { buildAttachmentUrl } from '#/utils';
@@ -332,6 +333,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
   return {
     ...formValues,
+    // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+    keys: normalizeKeysParam(formValues.keys),
     applyTimeStart: toIsoString(applyTimeStart),
     applyTimeEnd: toIsoString(applyTimeEnd),
     applyTimeRange: undefined,

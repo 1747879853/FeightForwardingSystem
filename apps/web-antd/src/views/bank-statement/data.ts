@@ -3,6 +3,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 import { BankStatementAdminApi as BankStatementApi } from '#/api/settlement-management/bank-statement-admin';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 import dayjs from 'dayjs';
 
@@ -223,6 +224,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      fieldName: 'keys',
+      label: '流水号精确搜索',
+      help: '精确匹配流水号，可粘贴多个（逗号/空格/换行分隔）',
+    }),
     {
       component: 'ClientSelect',
       fieldName: 'settlementId',

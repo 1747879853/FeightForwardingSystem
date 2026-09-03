@@ -17,6 +17,7 @@ import {
   TaskStatus,
 } from '#/api/audit-approval/payment-review-admin';
 import { $t } from '#/locales';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import DetailPanel from './detail-panel.vue';
@@ -141,6 +142,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
   return {
     ...formValues,
+    // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+    Keys: normalizeKeysParam(formValues.Keys),
     SubmitTimeStart: toIsoString(submitTimeStart),
     SubmitTimeEnd: toIsoString(submitTimeEnd),
     EndTimeStart: toIsoString(endTimeStart),

@@ -277,6 +277,11 @@ export namespace BankStatementAdminApi {
   /** 银行流水查询参数 */
   export interface BankStatementQueryDto {
     bankStatementNo?: string;
+    /**
+     * Keys 精确多值搜索（IN），精确匹配流水号 BankStatementNo。
+     * GET 需 repeat 序列化（keys=A&keys=B）。本模块无 keyword。
+     */
+    keys?: string[];
     settlementId?: string;
     orgBankAccountId?: string;
     /** 仅返回我司银行未填写记录；仅 true 生效，与 orgBankAccountId 互斥 */
@@ -368,7 +373,11 @@ export const getBankStatementPagedList = (
 ) => {
   return requestClient.get<
     BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>
-  >(`${API_ADMIN_PREFIX}/GetPagedListAsync`, { params });
+  >(`${API_ADMIN_PREFIX}/GetPagedListAsync`, {
+    params,
+    // keys 为 List<string>：ASP.NET Core [FromQuery] 需 repeat（keys=A&keys=B），勿用 brackets
+    paramsSerializer: 'repeat',
+  });
 };
 
 /** 获取银行流水分页列表（按当前用户权限过滤：操作人包含当前用户或未配置操作人） */
@@ -377,7 +386,11 @@ export const getBankStatementPagedListByPermission = (
 ) => {
   return requestClient.get<
     BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>
-  >(`${API_PREFIX}/GetPagedListAsync`, { params });
+  >(`${API_PREFIX}/GetPagedListAsync`, {
+    params,
+    // keys 为 List<string>：ASP.NET Core [FromQuery] 需 repeat（keys=A&keys=B），勿用 brackets
+    paramsSerializer: 'repeat',
+  });
 };
 
 /** 获取银行流水分组统计（Admin） */

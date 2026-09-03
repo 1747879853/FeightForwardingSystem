@@ -5,6 +5,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 
 import { createClientSelectSchema } from '../client/base/data';
@@ -445,6 +446,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
         class: 'sea-export-keyword-input',
       },
     },
+    createKeysSearchSchema({
+      help: '精确匹配（非模糊）：船名、船公司航次、业务备注、主提单号、订舱编号、合同号、委托编号（不含码头航次）',
+    }),
     {
       component: 'RangePicker',
       fieldName: 'ETDRange',

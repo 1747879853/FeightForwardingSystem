@@ -210,6 +210,11 @@ export namespace PaymentSettlementAdminApi {
     orgBankAccountId?: string;
     /** 关键字：模糊匹配 TransportOrder.MblNum 或 TransportOrder.CommissionNum */
     keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、委托编号中任意一个即可（不含订舱编号，与该列表原 keyword 一致）。
+     * GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     /** 委托编号（模糊匹配 TransportOrder.CommissionNum） */
     commissionNum?: string;
     /** 费用对应业务的主提单号（模糊）- 保留以兼容旧版本 */
@@ -691,7 +696,11 @@ export const getPaymentSettlementPagedList = (
 ) => {
   return requestClient.get<
     PaymentSettlementAdminApi.PagedList<PaymentSettlementAdminApi.PaymentSettlementListDto>
-  >(`${API_PREFIX}/GetPagedListAsync`, { params });
+  >(`${API_PREFIX}/GetPagedListAsync`, {
+    params,
+    // keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：keys=a&keys=b
+    paramsSerializer: 'repeat',
+  });
 };
 
 /** 锁定付费结算 */
@@ -730,7 +739,8 @@ export const getPaymentApplicationPagedListByCurrencyForSettlement = (
     PaymentSettlementAdminApi.PagedList<PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto>
   >(
     `${API_PREFIX.replace('PaymentSettlementAdmin', 'PaymentApplicationAdmin')}/GetPagedListByCurrencyForSettlementAsync`,
-    { params },
+    // keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：keys=a&keys=b
+    { params, paramsSerializer: 'repeat' },
   );
 };
 

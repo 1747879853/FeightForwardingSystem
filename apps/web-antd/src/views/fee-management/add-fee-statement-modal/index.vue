@@ -22,6 +22,7 @@ import { useVbenForm } from '#/adapter/form';
 import { NestedDataTable } from '#/components/nested-data-table';
 
 import { getOrderFeeGroup } from '#/api/settlement-management/statement-admin';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { formatAmount } from '#/views/settlement-management/receive-settlement/form-data';
 
 import {
@@ -185,6 +186,7 @@ function hasAnySearchCondition(
   return Boolean(
     values.SettlementId ||
     values.Keyword ||
+    hasArray(values.Keys) ||
     values.OrgId ||
     values.CurrencyId ||
     values.PaySide !== undefined ||
@@ -479,6 +481,8 @@ async function fetchData(formValues?: Record<string, any>) {
     PaySide: values.PaySide !== undefined ? values.PaySide : undefined,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
+    // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+    Keys: normalizeKeysParam(values.Keys),
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
     ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
     CurrencyId: values.CurrencyId,
@@ -617,6 +621,7 @@ async function checkSearchChanged() {
     SettlementId: values?.SettlementId,
     OrgId: values?.OrgId,
     Keyword: values?.Keyword,
+    Keys: values?.Keys,
     CurrencyId: values?.CurrencyId,
   });
   if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {

@@ -5,6 +5,11 @@ import { requestClient } from '#/api/request';
 export namespace PaymentReviewAdminApi {
   export interface PayAppTaskQueryParams {
     Keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、订舱编号、委托编号中任意一个即可。
+     * GET 需 repeat 序列化：Keys=a&Keys=b。
+     */
+    Keys?: string[];
     ApplicationNo?: string;
     SettlementId?: string;
     CurrencyId?: number;
@@ -236,7 +241,8 @@ export async function getPayAppTaskList(
   const response =
     await requestClient.get<PaymentReviewAdminApi.PagedListOfPayAppTaskItemDto>(
       `${API_PREFIX}/PayAppTaskListAsync`,
-      { params },
+      // Keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：Keys=a&Keys=b
+      { params, paramsSerializer: 'repeat' },
     );
 
   return {

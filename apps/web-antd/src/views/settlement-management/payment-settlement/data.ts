@@ -5,6 +5,7 @@ import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlem
 
 import dayjs from 'dayjs';
 
+import { createKeysSearchSchema } from '#/utils/keys-search';
 import {
   formatPayAppCommissionNums,
   formatPayAppMblNums,
@@ -192,6 +193,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      fieldName: 'keys',
+      help: '精确匹配（非模糊）：主提单号、委托编号（不含订舱编号）',
+    }),
     {
       component: 'Input',
       fieldName: 'settlementNo',

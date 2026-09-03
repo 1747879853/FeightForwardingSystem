@@ -5,6 +5,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 /**
  * 开票状态选项（参考费用状态的颜色规范）
@@ -38,6 +39,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      help: '精确匹配（非模糊）：对账单号、备注、客户名称、客户代码（不含主提单号）',
+    }),
     {
       component: 'Input',
       fieldName: 'StatementNum',
@@ -125,112 +129,118 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 获取基础列配置（包含最常用的币别列）
  */
 export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] {
-  const baseColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] = [
-    { type: 'checkbox', width: 48, fixed: 'left' },
-    {
-      field: 'statementNum',
-      title: $t('seaExport.export.statement.number'),
-      minWidth: 140,
-      sortable: true,
-    },
-    {
-      field: 'client.name',
-      title: $t('seaExport.export.statement.clientName'),
-      minWidth: 140,
-      sortable: true,
-    },
-    {
-      field: 'startTime',
-      title: $t('seaExport.export.statement.startTime'),
-      minWidth: 140,
-      formatter: 'formatDate',
-      sortable: true,
-    },
-    {
-      field: 'endTime',
-      title: $t('seaExport.export.statement.endTime'),
-      minWidth: 140,
-      formatter: 'formatDate',
-      sortable: true,
-    },
-    // 移除：收付类型汇总列
-    // 新增：开票状态汇总列
-    {
-      field: 'invoiceStatus',
-      title: '开票状态',
-      minWidth: 120,
-      cellRender: {
-        name: 'CellTag',
-        options: getInvoiceStatusOptions(),
+  const baseColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] =
+    [
+      { type: 'checkbox', width: 48, fixed: 'left' },
+      {
+        field: 'statementNum',
+        title: $t('seaExport.export.statement.number'),
+        minWidth: 140,
+        sortable: true,
       },
-      sortable: true,
-    },
-    // 新增：结算状态汇总列
-    {
-      field: 'settlementStatus',
-      title: '结算状态',
-      minWidth: 120,
-      cellRender: {
-        name: 'CellTag',
-        options: getSettlementStatusOptions(),
+      {
+        field: 'client.name',
+        title: $t('seaExport.export.statement.clientName'),
+        minWidth: 140,
+        sortable: true,
       },
-      sortable: true,
-    },
-    // 新增：我司银行列
-    {
-      field: 'orgBankAccount',
-      title: '我司银行',
-      minWidth: 200,
-      slots: { default: 'orgBankAccount' },
-      sortable: false,
-    },
-    {
-      field: 'description',
-      title: $t('seaExport.export.statement.notes'),
-      minWidth: 160,
-      showOverflow: true,
-      sortable: true,
-    },
-    {
-      field: 'creationTime',
-      title: $t('seaExport.export.creationTime'),
-      minWidth: 160,
-      formatter: 'formatDateTime',
-      sortable: true,
-    },
-    // 新增：创建人列
-    {
-      field: 'creatorUserName',
-      title: '创建人',
-      minWidth: 120,
-      sortable: true,
-    },
-  ];
+      {
+        field: 'startTime',
+        title: $t('seaExport.export.statement.startTime'),
+        minWidth: 140,
+        formatter: 'formatDate',
+        sortable: true,
+      },
+      {
+        field: 'endTime',
+        title: $t('seaExport.export.statement.endTime'),
+        minWidth: 140,
+        formatter: 'formatDate',
+        sortable: true,
+      },
+      // 移除：收付类型汇总列
+      // 新增：开票状态汇总列
+      {
+        field: 'invoiceStatus',
+        title: '开票状态',
+        minWidth: 120,
+        cellRender: {
+          name: 'CellTag',
+          options: getInvoiceStatusOptions(),
+        },
+        sortable: true,
+      },
+      // 新增：结算状态汇总列
+      {
+        field: 'settlementStatus',
+        title: '结算状态',
+        minWidth: 120,
+        cellRender: {
+          name: 'CellTag',
+          options: getSettlementStatusOptions(),
+        },
+        sortable: true,
+      },
+      // 新增：我司银行列
+      {
+        field: 'orgBankAccount',
+        title: '我司银行',
+        minWidth: 200,
+        slots: { default: 'orgBankAccount' },
+        sortable: false,
+      },
+      {
+        field: 'description',
+        title: $t('seaExport.export.statement.notes'),
+        minWidth: 160,
+        showOverflow: true,
+        sortable: true,
+      },
+      {
+        field: 'creationTime',
+        title: $t('seaExport.export.creationTime'),
+        minWidth: 160,
+        formatter: 'formatDateTime',
+        sortable: true,
+      },
+      // 新增：创建人列
+      {
+        field: 'creatorUserName',
+        title: '创建人',
+        minWidth: 120,
+        sortable: true,
+      },
+    ];
 
   // 添加最常用的币别列（RMB、USD）
   const commonCurrencies = ['RMB', 'USD'];
-  const currencyColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] = [];
-  
-  commonCurrencies.forEach(currencyCode => {
+  const currencyColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] =
+    [];
+
+  commonCurrencies.forEach((currencyCode) => {
     // 应收列
     currencyColumns.push({
       field: `currency_${currencyCode}_receive`,
       title: `${currencyCode}应收`,
       minWidth: 100,
       formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
-        const currencyGroup = row.statementCurrencyGroup?.find(c => c.currency?.code === currencyCode);
+        const currencyGroup = row.statementCurrencyGroup?.find(
+          (c) => c.currency?.code === currencyCode,
+        );
         return currencyGroup ? currencyGroup.receiveAmount : '';
       },
       sortable: false,
     });
-    
+
     // 应付列
     currencyColumns.push({
       field: `currency_${currencyCode}_pay`,
       title: `${currencyCode}应付`,
       minWidth: 100,
       formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
-        const currencyGroup = row.statementCurrencyGroup?.find(c => c.currency?.code === currencyCode);
+        const currencyGroup = row.statementCurrencyGroup?.find(
+          (c) => c.currency?.code === currencyCode,
+        );
         return currencyGroup ? currencyGroup.payAmount : '';
       },
       sortable: false,

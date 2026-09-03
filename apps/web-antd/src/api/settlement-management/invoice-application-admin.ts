@@ -195,6 +195,11 @@ export namespace InvoiceApplicationAdminApi {
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、委托编号中任意一个即可（不含订舱编号）。
+     * 选费用仍可用独立的 bookingNum（模糊）。GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     settlementId?: string;
     currencyId?: number;
     bizType?: BizType;
@@ -441,6 +446,11 @@ export namespace InvoiceApplicationAdminApi {
   /** 开票申请列表查询参数 */
   export interface InvoiceApplicationQueryDto {
     keyword?: string;
+    /**
+     * Keys 精确搜索（SQL IN，非模糊）：命中主提单号、委托编号中任意一个即可（不含订舱编号）。
+     * GET 需 repeat 序列化：keys=a&keys=b。
+     */
+    keys?: string[];
     applicationNo?: string;
     invoiceNo?: string;
     settlementId?: string;
@@ -600,7 +610,8 @@ export namespace InvoiceApplicationAdminApi {
   export function getPagedList(params: InvoiceApplicationQueryDto) {
     return requestClient.get<PagedList<InvoiceApplicationListDto>>(
       `${API_PREFIX}/GetPagedListAsync`,
-      { params },
+      // keys 为 List<string>，ABP [FromQuery] 绑定要求 repeat：keys=a&keys=b
+      { params, paramsSerializer: 'repeat' },
     );
   }
 

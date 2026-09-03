@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getInvoiceApplicationStatusOptions } from '#/constants/application-status';
 import { $t } from '#/locales';
+import { createKeysSearchSchema } from '#/utils/keys-search';
 
 /** 开票申请状态选项 */
 export const invoiceApplicationStatusOptions = () =>
@@ -35,6 +36,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    createKeysSearchSchema({
+      fieldName: 'keys',
+      help: '精确匹配（非模糊）：主提单号、委托编号（不含订舱编号）',
+    }),
     {
       component: 'Input',
       fieldName: 'applicationNo',

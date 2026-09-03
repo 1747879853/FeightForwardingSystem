@@ -28,6 +28,7 @@ import {
   isExchangeRateEffective,
   isRmbLocalCurrencyRate,
 } from '#/utils/exchange-rate-cache';
+import { normalizeKeysParam } from '#/utils/keys-search';
 import { useBaseStore } from '#/store/base';
 
 const baseStore = useBaseStore();
@@ -84,6 +85,7 @@ const filterEtdEnd = ref<string>(''); // 新增：开船日期止
 const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
 const filterBizType = ref<number | undefined>(undefined); // ✅ 新增：业务类型
 const filterStatementNum = ref<string>(''); // ✅ 新增：客户对账单号
+const filterKeys = ref<string[]>([]); // ✅ 新增：Keys 精确搜索（主提单号/委托编号）
 
 // ✅ 新增：用于 RangePicker 的日期范围状态
 const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
@@ -354,6 +356,7 @@ function handleResetFilter() {
   filterPaySide.value = 0; // ✅ 重置为全部，而不是默认应收
   filterBizType.value = undefined; // ✅ 重置业务类型
   filterStatementNum.value = ''; // ✅ 重置客户对账单号
+  filterKeys.value = []; // ✅ 重置 Keys 精确搜索
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
 }
@@ -499,6 +502,11 @@ async function loadFeeGroupData() {
     // 合并委托编号和主提单号到 commissionNum 参数
     if (keyWord.value) {
       params.keyword = keyWord.value;
+    }
+    // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
+    const normalizedKeys = normalizeKeysParam(filterKeys.value);
+    if (normalizedKeys) {
+      params.keys = normalizedKeys;
     }
     // 新增：委托单位
     if (filterClientId.value) {
@@ -849,6 +857,24 @@ defineExpose({
               v-model:value="keyWord"
               placeholder="委托编号/主提单号/订舱编号"
               style="flex: 1"
+              allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >精确搜索:</span
+            >
+            <Select
+              v-model:value="filterKeys"
+              mode="tags"
+              style="flex: 1"
+              :options="[]"
+              :token-separators="[',', '，', ' ', '\n']"
+              :not-found-content="null"
+              max-tag-count="responsive"
+              placeholder="主提单号/委托编号，回车或粘贴多个"
               allow-clear
             />
           </div>
