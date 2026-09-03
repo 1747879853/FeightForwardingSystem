@@ -71,9 +71,9 @@ export function useListGrouping<TField extends number = number>(
   let lastBaseParams: Record<string, any> = {};
   /** 当前因启用分组而被禁用的搜索项字段名 */
   let disabledSearchField: string | undefined;
-  /** 被禁用搜索项的原始 placeholder / help，恢复时还原 */
+  /** 被禁用搜索项的原始 componentProps / help，恢复时完整还原 */
   let disabledFieldOriginal:
-    | { help?: unknown; placeholder?: unknown }
+    | { componentProps?: unknown; help?: unknown }
     | undefined;
   /** 用于丢弃过期的分组请求结果 */
   let fetchToken = 0;
@@ -100,23 +100,31 @@ export function useListGrouping<TField extends number = number>(
     const schemaItem = (formApi.state?.schema ?? []).find(
       (item: any) => item.fieldName === target,
     );
-    const currentProps = (schemaItem?.componentProps ?? {}) as Record<
-      string,
-      unknown
-    >;
+    const originalComponentProps = schemaItem?.componentProps;
     disabledFieldOriginal = {
-      placeholder: currentProps.placeholder,
+      componentProps: originalComponentProps,
       help: schemaItem?.help,
     };
     disabledSearchField = target;
+    const groupingProps = {
+      disabled: true,
+      placeholder: `已按「${field.label}」分组`,
+    };
+    const disabledComponentProps =
+      typeof originalComponentProps === 'function'
+        ? (...args: any[]) => ({
+            ...(originalComponentProps(...args) ?? {}),
+            ...groupingProps,
+          })
+        : {
+            ...((originalComponentProps ?? {}) as Record<string, unknown>),
+            ...groupingProps,
+          };
     formApi.updateSchema([
       {
         fieldName: target,
         help: `该条件已作为「${field.label}」分组维度，暂不可筛选；关闭分组后可恢复。`,
-        componentProps: {
-          disabled: true,
-          placeholder: `已按「${field.label}」分组`,
-        },
+        componentProps: disabledComponentProps,
       },
     ]);
     formApi.setFieldValue?.(target, undefined);
@@ -134,10 +142,7 @@ export function useListGrouping<TField extends number = number>(
         // merge 基于 defu 会忽略 undefined（保留旧值），故用空字符串兜底覆盖，
         // 确保帮助图标与分组提示 placeholder 都能被清掉。
         help: (disabledFieldOriginal?.help ?? '') as any,
-        componentProps: {
-          disabled: false,
-          placeholder: disabledFieldOriginal?.placeholder ?? '',
-        },
+        componentProps: disabledFieldOriginal?.componentProps ?? {},
       },
     ]);
     disabledSearchField = undefined;
