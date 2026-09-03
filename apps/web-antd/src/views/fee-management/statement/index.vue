@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -20,6 +21,38 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
+
+/** 当前页表格数据，用于底部合计统计 */
+const currentPageData = ref<StatementAdminApi.StatementDto[]>([]);
+
+/** 按币种汇总当前页的应收/应付合计金额 */
+const currencyTotals = computed(() => {
+  const map = new Map<
+    string,
+    { currencyCode: string; payAmount: number; receiveAmount: number }
+  >();
+  currentPageData.value.forEach((row) => {
+    row.statementCurrencyGroup?.forEach((group) => {
+      const code = group.currency?.code || '未知';
+      const item = map.get(code) ?? {
+        currencyCode: code,
+        payAmount: 0,
+        receiveAmount: 0,
+      };
+      item.receiveAmount += Number(group.receiveAmount) || 0;
+      item.payAmount += Number(group.payAmount) || 0;
+      map.set(code, item);
+    });
+  });
+  return Array.from(map.values());
+});
+
+/** 金额格式化：千分位 + 两位小数 */
+const formatAmount = (value: number) =>
+  value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 const handleRowDblclick = ({
   row,
@@ -63,6 +96,11 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
       ajax: {
         query: createPagedListQuery(getStatementPagedList, {
           defaultSort: 'CreationTime DESC',
+          afterFetch: (result: any) => {
+            // 拦截当前页数据，驱动底部合计统计
+            currentPageData.value = result?.items ?? [];
+            return result;
+          },
         }),
       },
     },
@@ -151,5 +189,106 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
         <span v-else>-</span>
       </template>
     </Grid>
+
+    <!-- 表格下方：当前页按币种的应收/应付合计 -->
+    <template #footer>
+      <div v-if="currencyTotals.length > 0" class="statement-footer-summary">
+        <span class="statement-footer-summary__label">当页合计：</span>
+        <div class="statement-footer-summary__list">
+          <div
+            v-for="item in currencyTotals"
+            :key="item.currencyCode"
+            class="statement-footer-summary__item"
+          >
+            <span class="statement-footer-summary__currency">
+              {{ item.currencyCode }}
+            </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label">应收</span>
+              <span class="statement-footer-summary__receive">
+                {{ formatAmount(item.receiveAmount) }}
+              </span>
+            </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label">应付</span>
+              <span class="statement-footer-summary__pay">
+                {{ formatAmount(item.payAmount) }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div
+        v-else
+        class="statement-footer-summary statement-footer-summary--empty"
+      >
+        <span class="statement-footer-summary__label">当页合计：</span>
+        <span class="text-muted-foreground">暂无数据</span>
+      </div>
+    </template>
   </Page>
 </template>
+
+<style scoped>
+.statement-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  font-size: 13px;
+}
+
+.statement-footer-summary--empty {
+  color: rgb(0 0 0 / 45%);
+}
+
+.statement-footer-summary__label {
+  font-weight: 600;
+  color: rgb(0 0 0 / 85%);
+}
+
+.statement-footer-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.statement-footer-summary__item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  background: rgb(24 144 255 / 6%);
+  border: 1px solid rgb(24 144 255 / 20%);
+  border-radius: 4px;
+}
+
+.statement-footer-summary__currency {
+  padding-right: 8px;
+  font-weight: 600;
+  color: #1890ff;
+  border-right: 1px solid rgb(24 144 255 / 20%);
+}
+
+.statement-footer-summary__cell {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.statement-footer-summary__cell-label {
+  color: rgb(0 0 0 / 45%);
+}
+
+.statement-footer-summary__receive {
+  font-weight: 600;
+  color: #cf1322;
+}
+
+.statement-footer-summary__pay {
+  font-weight: 600;
+  color: #389e0d;
+}
+</style>
