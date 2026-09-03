@@ -27,6 +27,7 @@ import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import OrderFeeTemplateTable from './modules/order-fee-template-table.vue';
 import { useDropdownSources } from './modules/composables/useDropdownSources';
 import { getFormSchema } from './modules/data';
+import { loadSeServiceTypeOptions } from '#/views/sea-export-admin/service-type';
 
 defineOptions({ name: 'OrderFeeTemplateEditor' });
 
@@ -348,7 +349,7 @@ function handleDeleteSelectedRows() {
 
     // ✅ 关键修复：同步后，需要重新渲染表格以确保显示正确
     setTimeout(() => {
-      const hotInstanceRef = hotTableRef.value.hotInstance;
+      const hotInstanceRef = hotTableRef.value?.hotInstance;
       let hotInstanceToRender: any;
       if (
         hotInstanceRef &&
@@ -463,6 +464,20 @@ async function loadDropdownData() {
     console.log('🔄 [loadDropdownData] 开始加载箱型代码列表...');
     await dropdownSources.loadCtnCodeList();
     console.log('✅ [loadDropdownData] 箱型代码加载完成');
+
+    // ✅ 6. 加载服务项枚举（ServiceType），填充基础信息表单的服务项下拉
+    // 复用 loadSeServiceTypeOptions：后端优先、缓存兜底，已过滤 enable / 映射 displayName / 按 value 排序
+    console.log('🔄 [loadDropdownData] 开始加载服务项枚举...');
+    const serviceTypeOptions = await loadSeServiceTypeOptions();
+    formApi.updateSchema([
+      {
+        fieldName: 'serviceType',
+        componentProps: { options: serviceTypeOptions },
+      },
+    ]);
+    console.log(
+      `✅ [loadDropdownData] 服务项枚举加载完成，共 ${serviceTypeOptions.length} 项`,
+    );
 
     console.log('✅ [loadDropdownData] 所有下拉数据加载完成');
   } catch (error) {

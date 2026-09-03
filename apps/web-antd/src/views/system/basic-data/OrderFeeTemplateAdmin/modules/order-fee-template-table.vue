@@ -8,11 +8,10 @@ import { getClientGroupedByIndustryCategory } from '#/api/common/client';
 // ✅ 新增：导入API和store
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
 import { useDataRefreshStore } from '#/store/modules/data-refresh';
+// ✅ 服务项下拉改为从枚举管理（ServiceType）加载：后端优先、缓存兜底
+import { loadSeServiceTypeOptions } from '#/views/sea-export-admin/service-type';
 
-import {
-  getIndustryCategoryOptions,
-  getServiceTypeOptions,
-} from '#/views/sea-export-admin/orderFee/data';
+import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 const props = defineProps<{
   dataSource: any[];
@@ -33,10 +32,9 @@ const localAllClientsByIndustry = ref<
   Record<string, Array<{ label: string; value: any }>>
 >({});
 
-// ✅ 新增：服务项下拉选项（使用静态数据）
-const serviceTypeOptions = ref<Array<{ label: string; value: number }>>(
-  getServiceTypeOptions(),
-);
+// ✅ 服务项下拉选项：来源于枚举管理（ServiceType），挂载后异步加载并原地更新
+// 注意：useHotSettings 的 source/renderer 闭包捕获的是本数组引用，必须原地更新（splice），不可整体重新赋值
+const serviceTypeOptions = ref<Array<{ label: string; value: number }>>([]);
 
 // ✅ 新增：数据刷新store
 const dataRefreshStore = useDataRefreshStore();
@@ -654,8 +652,37 @@ async function loadCtnCodeData() {
   }
 }
 
-// ✅ 在组件挂载时加载箱型代码
+// ✅ 加载服务项枚举（ServiceType）：复用 loadSeServiceTypeOptions（后端优先、缓存兜底，
+// 已过滤 enable、映射 displayName 为 label、按 value 排序）
+async function loadServiceTypeOptions() {
+  try {
+    const options = await loadSeServiceTypeOptions();
+    // 原地更新数组，保持 useHotSettings 闭包捕获的引用不变（source/renderer 惰性读取）
+    serviceTypeOptions.value.splice(
+      0,
+      serviceTypeOptions.value.length,
+      ...options,
+    );
+    console.log(
+      `✅ [OrderFeeTemplateTable] 服务项枚举加载完成，共 ${options.length} 项`,
+    );
+
+    // 选项就绪后重新转换并渲染：避免详情数据先于枚举加载导致服务项显示为空
+    await nextTick();
+    if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      if (props.dataSource?.length > 0) {
+        updateData(props.dataSource);
+      }
+      hotInstance.value.render();
+    }
+  } catch (error) {
+    console.error('❌ [OrderFeeTemplateTable] 加载服务项枚举失败:', error);
+  }
+}
+
+// ✅ 在组件挂载时加载服务项枚举与箱型代码
 onMounted(() => {
+  loadServiceTypeOptions();
   loadCtnCodeData();
 });
 </script>

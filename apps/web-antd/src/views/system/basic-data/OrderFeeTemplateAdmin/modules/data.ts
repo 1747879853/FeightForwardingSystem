@@ -2,7 +2,6 @@ import type { VbenFormSchema } from '#/adapter/form';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
-import { getServiceTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 
 /**
  * 业务类型枚举选项
@@ -236,7 +235,8 @@ export function getFormSchema(): VbenFormSchema[] {
       component: 'Select',
       componentProps: {
         placeholder: '请选择服务项（留空表示所有）',
-        options: getServiceTypeOptions(),
+        // ✅ 选项由页面异步从枚举管理（ServiceType）加载后通过 formApi.updateSchema 填充
+        options: [],
         allowClear: true,
         style: { width: '100%' },
       },
