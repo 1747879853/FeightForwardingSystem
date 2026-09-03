@@ -11,7 +11,7 @@
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-08-25 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；支持多选后运踪批量订阅（按打包品牌分流：sjtd 用现有运踪、其他品牌用新服务商），主提单号前带异常预警叹号，并可按权限删除单条勾选委托。无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-09-01 |
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；货物类型默认普通货；委托单位/订舱代理标签旁展示默认联系人；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；船名/航次后有码头航次；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存切走可 KeepAlive，点 X 才丢；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-09-01 |
-| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；委托单位/订舱代理联系人同样挂在标签旁，保存带回联系人 Id；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/码头航次/截港等并保存。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-01 |
+| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；委托单位/订舱代理联系人同样挂在标签旁，保存带回联系人 Id；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/码头航次/截港等并保存；分单 Tab 支持分单头备注录入与复制分单（不带分提单号与装箱）。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-03 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；箱型与监装照片只读，师傅端在小程序。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-08-23 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
@@ -59,7 +59,7 @@
 | basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细；默认币别大数 ID 字符串透传。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-07-12 |
 | settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础；币别大数 ID 字符串透传；生效按日历日含结束日当天。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-08-20 |
 | basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-30 |
-| basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段；国家/航线大数 ID 字符串透传；`PortSelect` 精简回显可拉详情补全；列表默认按国家中文名排序并对齐后端可排字段。 | [港口代码](./modules/basic-data/port-code.md) | 2026-08-12 |
+| basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段；国家/航线大数 ID 字符串透传；可维护排序号，管理列表首次加载按排序号降序；`PortSelect` 全量下拉由后端排序并按返回顺序展示。 | [港口代码](./modules/basic-data/port-code.md) | 2026-09-03 |
 | basic-data | `/basic-data/air-port` | 基础资料 | 维护空运机场资料（IATA 三字码、ICAO 码、城市、时区），支撑空运起运/目的机场字段；提供 `AirPortSelect` 业务下拉，国家大数 ID 字符串透传。 | [空运港口](./modules/basic-data/air-port.md) | 2026-08-05 |
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码及普柜/特种柜分类，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-08-14 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |

@@ -58,6 +58,8 @@ export namespace SeaExportSeparateAdminApi {
     codeFrtId?: number;
     prepareAtId?: number;
     codeServiceId?: number;
+    /** 分单头备注，与箱型行 remark 不是同一字段 */
+    remark?: string;
     seaExportSeparateCtns?: SeparateCtnAddDto[];
   }
 
@@ -114,6 +116,8 @@ export namespace SeaExportSeparateAdminApi {
     creatorUserId?: number;
     lastModificationTime?: string;
     lastModifierUserId?: number;
+    /** 分单头备注，与 seaExportSeparateCtns[].remark 不是同一字段 */
+    remark?: string;
     seaExportSeparateCtns?: SeparateCtnDto[];
   }
 
@@ -165,4 +169,9 @@ export const deleteSeparate = (params: { id?: string; ids?: string[] }) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: params,
   });
+};
+
+/** 复制分单：只传源单 id。分提单号置空，不复制箱型箱量，仍挂同一海运出口 */
+export const copySeparate = (id: string) => {
+  return requestClient.post<string>(`${API_PREFIX}/CopyAsync`, { id });
 };

@@ -25,6 +25,7 @@ import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import {
   addSeparate,
+  copySeparate,
   deleteSeparate,
   editSeparate,
   getSeparatePagedList,
@@ -72,6 +73,7 @@ const { openPrint } = usePrintFormat();
 
 const loading = ref(false);
 const submitting = ref(false);
+const copying = ref(false);
 const printing = ref(false);
 const dataSource = ref<SeaExportSeparateAdminApi.SeparateDto[]>([]);
 const activeTabKey = ref<string>(DRAFT_KEY);
@@ -354,6 +356,7 @@ const fillFormFromRecord = (
     prepareAtName: portName(record.prepareAt),
     codeServiceId: record.codeServiceId,
     codeServiceName: record.codeService?.cnName,
+    remark: record.remark,
   };
   ctnList.value = (record.seaExportSeparateCtns || []).map((ctn) => {
     const { codeGoods, codePackage, ctnCode, ...rest } = ctn;
@@ -543,6 +546,7 @@ const buildPayload = () => ({
   codeFrtId: formData.value.codeFrtId,
   prepareAtId: formData.value.prepareAtId,
   codeServiceId: formData.value.codeServiceId,
+  remark: formData.value.remark,
   seaExportSeparateCtns: buildCtnPayload(),
 });
 
@@ -564,6 +568,60 @@ const handleSubmit = async () => {
     });
   } finally {
     submitting.value = false;
+  }
+};
+
+const confirmModal = (title: string, content: string) =>
+  new Promise<boolean>((resolve) => {
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    Modal.confirm({
+      title,
+      content,
+      okText: $t('common.confirm'),
+      cancelText: $t('common.cancel'),
+      onOk: () => settle(true),
+      onCancel: () => settle(false),
+    });
+  });
+
+const handleCopy = async () => {
+  if (!editingId.value) return;
+  if (isDirty()) {
+    const proceedUnsaved = await confirmModal(
+      $t('seaExport.export.separate.copyUnsavedTitle'),
+      $t('seaExport.export.separate.copyUnsavedContent'),
+    );
+    if (!proceedUnsaved) return;
+  }
+  const confirmed = await confirmModal(
+    $t('seaExport.export.separate.copyConfirmTitle'),
+    $t('seaExport.export.separate.copyConfirmContent'),
+  );
+  if (!confirmed) return;
+
+  copying.value = true;
+  const hideLoading = message.loading({
+    content: $t('seaExport.export.separate.copying'),
+    duration: 0,
+    key: 'sea_export_separate_copy_msg',
+  });
+  try {
+    const newId = await copySeparate(String(editingId.value));
+    hideLoading();
+    message.success({
+      content: $t('seaExport.export.separate.copySuccess'),
+      key: 'sea_export_separate_copy_msg',
+    });
+    await loadData(newId ? String(newId) : undefined);
+  } catch {
+    hideLoading();
+  } finally {
+    copying.value = false;
   }
 };
 
@@ -713,6 +771,14 @@ watch(seaExportId, () => {
               @click="handleDelete"
             >
               {{ $t('common.delete') }}
+            </Button>
+            <Button
+              size="small"
+              :disabled="!editingId"
+              :loading="copying"
+              @click="handleCopy"
+            >
+              {{ $t('seaExport.export.separate.copy') }}
             </Button>
             <Button
               size="small"
@@ -1171,6 +1237,20 @@ watch(seaExportId, () => {
             </div>
           </div>
         </div>
+
+        <div class="header-remark">
+          <label class="inline-label">
+            {{ $t('seaExport.export.separate.remark') }}
+          </label>
+          <Input.TextArea
+            :value="formData.remark"
+            :maxlength="1024"
+            :rows="2"
+            class="header-remark-textarea"
+            allow-clear
+            @update:value="(v) => (formData.remark = v)"
+          />
+        </div>
       </section>
 
       <section class="separate-card">
@@ -1483,6 +1563,42 @@ watch(seaExportId, () => {
   display: block;
   width: 10px;
   height: 10px;
+}
+
+.header-remark {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.header-remark .inline-label {
+  padding-top: 6px;
+  text-align: left;
+}
+
+.header-remark-textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-remark-textarea :deep(textarea) {
+  min-height: 52px;
+  font-size: 12px;
+  line-height: 18px;
+  resize: vertical;
+  background: #fcfdfe;
+  border-color: #e4e8ef;
+  border-radius: 5px;
+}
+
+.header-remark-textarea :deep(textarea:hover) {
+  border-color: #4096ff;
+}
+
+.header-remark-textarea :deep(textarea:focus) {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgb(5 145 255 / 10%);
 }
 
 .separate-btn-print {
