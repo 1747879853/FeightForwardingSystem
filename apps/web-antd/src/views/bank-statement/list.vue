@@ -39,19 +39,29 @@ const tableConfigStore = useTableConfigStore();
 
 const GROUP_CONFIG_NAME = 'group_config_BankStatementList';
 
-const loadGroupField = async (): Promise<number | undefined> => {
+const loadGroupField = async (): Promise<
+  BankStatementAdminApi.BankStatementGroupField | undefined
+> => {
   await tableConfigStore.loadGroupConfigsOnce();
   const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
   if (!hit?.setting) return undefined;
   try {
     const parsed = JSON.parse(hit.setting) as { field?: null | number };
-    return typeof parsed.field === 'number' ? parsed.field : undefined;
+    if (typeof parsed.field !== 'number') return undefined;
+    const validFields = Object.values(
+      BankStatementAdminApi.BankStatementGroupField,
+    ).filter((value): value is number => typeof value === 'number');
+    return validFields.includes(parsed.field)
+      ? (parsed.field as BankStatementAdminApi.BankStatementGroupField)
+      : undefined;
   } catch {
     return undefined;
   }
 };
 
-const saveGroupField = (fieldValue: number | undefined) => {
+const saveGroupField = (
+  fieldValue: BankStatementAdminApi.BankStatementGroupField | undefined,
+) => {
   const setting = JSON.stringify({ field: fieldValue ?? null });
   const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
   if (hit) {
