@@ -2,7 +2,7 @@
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -341,6 +341,52 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
   };
 };
 
+/** 当前页表格数据，用于底部按币别合计 */
+const currentPageData = ref<InvoiceApplicationApi.InvoiceApplicationListDto[]>(
+  [],
+);
+
+/** 按币别汇总当前页的申请金额合计与发票金额合计 */
+const currencyTotals = computed(() => {
+  const map = new Map<
+    string,
+    { appliedAmount: number; currencyCode: string; invoiceAmount: number }
+  >();
+  currentPageData.value.forEach((row) => {
+    const code = row.currency?.code || '未知';
+    const item = map.get(code) ?? {
+      appliedAmount: 0,
+      currencyCode: code,
+      invoiceAmount: 0,
+    };
+    item.appliedAmount += Number(row.totalAppliedAmount) || 0;
+    item.invoiceAmount += Number(row.invoiceAmount) || 0;
+    map.set(code, item);
+  });
+  // 币别按代码排序，翻页时合计行的胶囊顺序不跳动
+  return [...map.values()].sort((a, b) =>
+    a.currencyCode.localeCompare(b.currencyCode),
+  );
+});
+
+/** 金额格式化：千分位 + 两位小数 */
+const formatAmount = (value: number) =>
+  value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+/**
+ * 当前页发票金额总计：各币别金额直接相加，**未按开票汇率折算**。
+ * 混合币别时该数字只代表「量级」，不等于本位币金额。
+ */
+const totalInvoiceAmount = computed(() =>
+  currentPageData.value.reduce(
+    (sum, row) => sum + (Number(row.invoiceAmount) || 0),
+    0,
+  ),
+);
+
 /** 初始化表格 */
 const [Grid, gridApi] =
   useVbenVxeGrid<InvoiceApplicationApi.InvoiceApplicationListDto>({
@@ -376,6 +422,11 @@ const [Grid, gridApi] =
         ajax: {
           query: createPagedListQuery(getPagedListAsync, {
             mapParams: normalizeQuery,
+            afterFetch: (result: any) => {
+              // 拦截当前页数据，驱动底部按币别合计
+              currentPageData.value = result?.items ?? [];
+              return result;
+            },
           }),
         },
       },
@@ -569,6 +620,54 @@ function handleBatchWithdraw() {
         </Tag>
       </template>
     </Grid>
+
+    <!-- 表格下方：当前页按币别的申请金额/发票金额合计 -->
+    <template #footer>
+      <div v-if="currencyTotals.length > 0" class="invoice-footer-summary">
+        <span class="invoice-footer-summary__label">当页合计：</span>
+        <div class="invoice-footer-summary__list">
+          <div
+            v-for="item in currencyTotals"
+            :key="item.currencyCode"
+            class="invoice-footer-summary__item"
+          >
+            <span class="invoice-footer-summary__currency">
+              {{ item.currencyCode }}
+            </span>
+            <span class="invoice-footer-summary__cell">
+              <span class="invoice-footer-summary__cell-label">申请金额</span>
+              <span class="invoice-footer-summary__applied">
+                {{ formatAmount(item.appliedAmount) }}
+              </span>
+            </span>
+            <span class="invoice-footer-summary__cell">
+              <span class="invoice-footer-summary__cell-label">发票金额</span>
+              <span class="invoice-footer-summary__invoice">
+                {{ formatAmount(item.invoiceAmount) }}
+              </span>
+            </span>
+          </div>
+
+          <!-- 跨币别总计：直接相加，未折算 -->
+          <div
+            class="invoice-footer-summary__item invoice-footer-summary__item--total"
+            title="各币别发票金额直接相加，未按开票汇率折算"
+          >
+            <span class="invoice-footer-summary__currency">总计</span>
+            <span class="invoice-footer-summary__cell">
+              <span class="invoice-footer-summary__cell-label">发票金额</span>
+              <span class="invoice-footer-summary__invoice">
+                {{ formatAmount(totalInvoiceAmount) }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div v-else class="invoice-footer-summary invoice-footer-summary--empty">
+        <span class="invoice-footer-summary__label">当页合计：</span>
+        <span class="text-muted-foreground">暂无数据</span>
+      </div>
+    </template>
 
     <!-- 驳回原因对话框 -->
     <Modal
@@ -770,5 +869,77 @@ function handleBatchWithdraw() {
 .invoice-status-link:hover {
   opacity: 0.8;
   transform: scale(1.05);
+}
+
+/* 表格下方：当页按币别合计（与客户对账列表合计样式保持一致） */
+.invoice-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+
+  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.invoice-footer-summary--empty {
+  color: rgb(0 0 0 / 45%);
+}
+
+.invoice-footer-summary__label {
+  font-weight: 600;
+  color: rgb(0 0 0 / 85%);
+}
+
+.invoice-footer-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.invoice-footer-summary__item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  background: rgb(24 144 255 / 6%);
+  border: 1px solid rgb(24 144 255 / 20%);
+  border-radius: 4px;
+}
+
+/* 跨币别总计胶囊：底色加重，与各币别明细区分 */
+.invoice-footer-summary__item--total {
+  background: rgb(24 144 255 / 14%);
+  border-color: rgb(24 144 255 / 45%);
+}
+
+.invoice-footer-summary__currency {
+  padding-right: 8px;
+  font-weight: 600;
+  color: #1890ff;
+  border-right: 1px solid rgb(24 144 255 / 20%);
+}
+
+.invoice-footer-summary__cell {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.invoice-footer-summary__cell-label {
+  color: rgb(0 0 0 / 45%);
+}
+
+.invoice-footer-summary__applied {
+  font-weight: 600;
+  color: #cf1322;
+}
+
+.invoice-footer-summary__invoice {
+  font-weight: 600;
+  color: #389e0d;
 }
 </style>
