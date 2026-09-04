@@ -358,14 +358,18 @@ function buildStaticColumns(): Array<Record<string, any>> {
     {
       field: 'invoiceNo',
       title: '发票号',
-      minWidth: 140,
+      minWidth: 160,
       showOverflow: true,
+      sortable: false,
+      slots: { default: 'invoiceNo' },
     },
     {
       field: 'invoiceDate',
       title: '开票日期',
-      minWidth: 120,
-      formatter: 'formatDate',
+      minWidth: 140,
+      showOverflow: true,
+      sortable: false,
+      slots: { default: 'invoiceDate' },
     },
     {
       field: 'creatorUserName',

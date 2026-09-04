@@ -5,6 +5,7 @@ import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SelectedFeeItem } from '../add-fee-modal/data';
 import type { CurrencySummary, FeeDetailRow, OrderGroupRow } from './form-data';
+import type { InvoiceRowForm } from './invoice-rows';
 
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -65,6 +66,15 @@ import {
 } from '#/api/settlement-management/payment-application-admin';
 import AddFeeDrawer from '../add-fee-modal/index.vue';
 import AttachmentGroups from './attachment-groups.vue';
+import InvoiceTable from './invoice-table.vue';
+import {
+  INVOICE_PROCESS,
+  applyExtractedInvoiceToRows,
+  buildInvoiceSubmitPayload,
+  createEmptyInvoiceRow,
+  mapInvoicesFromDetail,
+  validateInvoiceRows,
+} from './invoice-rows';
 import {
   fetchOrderFeesForPaymentApplication,
   notifyPrefillOrderFeesResult,
@@ -183,34 +193,39 @@ const settlementCurrencyName = ref('');
 const paymentRequire = ref('');
 const remark = ref('');
 const invoiceProcess = ref<number | undefined>(undefined);
-const invoiceNo = ref('');
-const invoiceDate = ref<string | undefined>(undefined);
+const invoiceRows = ref<InvoiceRowForm[]>([]);
 /** 发票方式未选时标红 */
 const invoiceProcessError = ref(false);
 /** 不开票 */
-const isNoInvoice = computed(() => invoiceProcess.value === 2);
+const isNoInvoice = computed(
+  () => invoiceProcess.value === INVOICE_PROCESS.NoInvoice,
+);
 
 function onInvoiceProcessChange(value: number) {
   invoiceProcess.value = value;
   invoiceProcessError.value = false;
-  if (value === 2) {
-    invoiceNo.value = '';
-    invoiceDate.value = undefined;
+  if (value === INVOICE_PROCESS.NoInvoice) {
+    invoiceRows.value = [];
+    return;
+  }
+  if (invoiceRows.value.length === 0) {
+    invoiceRows.value = [createEmptyInvoiceRow()];
   }
 }
 
 /** 识别结果仅预填表单，不自动保存 */
 function applyExtractedInvoice(result: GeminiInvoiceDto) {
-  const nextNo = result.invoiceNo?.trim() || '';
-  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
-  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
-  if (!nextNo && !nextDate) {
-    message.warning('未能识别出发票号和开票日期，请手动填写');
+  if (isNoInvoice.value) {
+    message.warning('当前为不开票，无法填入发票信息');
     return;
   }
-  if (nextNo) invoiceNo.value = nextNo;
-  if (nextDate) invoiceDate.value = nextDate;
-  message.success('已填入识别结果，请核对后保存');
+  const applied = applyExtractedInvoiceToRows(invoiceRows.value, result);
+  if (!applied.ok) {
+    message.warning(applied.message);
+    return;
+  }
+  invoiceRows.value = applied.next;
+  message.success(applied.message);
 }
 const attachmentGroup = ref<
   PaymentApplicationAdminApi.AttachmentGroupInputDto[]
@@ -653,7 +668,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   let createdApplicationId: string | undefined;
 
   if (!isEdit.value && newRows.length > 0) {
-    if (!ensureInvoiceProcessSelected()) {
+    if (!ensureInvoiceRowsValid()) {
       feeDetailRows.value = nextRows;
       return;
     }
@@ -812,6 +827,17 @@ function ensureInvoiceProcessSelected() {
   return true;
 }
 
+/** 发票流程 + 子表校验，与后端 ValidatePaymentApplicationInvoices 对齐。 */
+function ensureInvoiceRowsValid() {
+  if (!ensureInvoiceProcessSelected()) return false;
+  const result = validateInvoiceRows(invoiceProcess.value, invoiceRows.value);
+  if (!result.ok) {
+    message.warning(result.message);
+    return false;
+  }
+  return true;
+}
+
 // --- Settlement currency ---
 
 function onSettlementCurrencyChange(val: unknown) {
@@ -954,14 +980,15 @@ async function loadEditData() {
 
     invoiceProcess.value = detail.invoiceProcess ?? undefined;
     invoiceProcessError.value = false;
-    if (invoiceProcess.value === 2) {
-      invoiceNo.value = '';
-      invoiceDate.value = undefined;
-    } else {
-      invoiceNo.value = detail.invoiceNo ?? '';
-      invoiceDate.value = detail.invoiceDate
-        ? dayjs(detail.invoiceDate).format('YYYY-MM-DD')
-        : undefined;
+    invoiceRows.value =
+      invoiceProcess.value === INVOICE_PROCESS.NoInvoice
+        ? []
+        : mapInvoicesFromDetail(detail.paymentApplicationInvoices);
+    if (
+      invoiceProcess.value !== INVOICE_PROCESS.NoInvoice &&
+      invoiceRows.value.length === 0
+    ) {
+      invoiceRows.value = [createEmptyInvoiceRow()];
     }
     attachmentGroup.value = (detail.attachmentGroup ?? []).map((group) => ({
       attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
@@ -1072,11 +1099,11 @@ function buildSubmitData(
     currencyId: settlementCurrencyId.value,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
-    invoiceProcess: invoiceProcess.value ?? null,
-    invoiceNo: invoiceNo.value || null,
-    invoiceDate: invoiceDate.value
-      ? dayjs(invoiceDate.value).toISOString()
-      : null,
+    invoiceProcess: invoiceProcess.value as number,
+    paymentApplicationInvoices: buildInvoiceSubmitPayload(
+      invoiceProcess.value,
+      invoiceRows.value,
+    ),
     paymentApplicationItems: items,
     paymentApplicationBanks: banks.length > 0 ? banks : undefined,
     attachmentGroup: (() => {
@@ -1099,11 +1126,11 @@ async function saveEditMode() {
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
-    invoiceProcess: invoiceProcess.value ?? null,
-    invoiceNo: invoiceNo.value || null,
-    invoiceDate: invoiceDate.value
-      ? dayjs(invoiceDate.value).toISOString()
-      : null,
+    invoiceProcess: invoiceProcess.value as number,
+    paymentApplicationInvoices: buildInvoiceSubmitPayload(
+      invoiceProcess.value,
+      invoiceRows.value,
+    ),
     paymentApplicationBanks:
       banks.length > 0
         ? banks.map((b) => ({ clientInvoiceBankId: b.clientInvoiceBankId }))
@@ -1156,7 +1183,7 @@ async function handleSave() {
   if (!ensureSettlementSelected()) {
     return;
   }
-  if (!isEdit.value && !ensureInvoiceProcessSelected()) {
+  if (!ensureInvoiceRowsValid()) {
     return;
   }
   if (feeDetailRows.value.length === 0) {
@@ -1190,7 +1217,7 @@ async function handleSubmit() {
   if (!ensureSettlementSelected()) {
     return;
   }
-  if (!ensureInvoiceProcessSelected()) {
+  if (!ensureInvoiceRowsValid()) {
     return;
   }
   if (feeDetailRows.value.length === 0) {
@@ -1215,7 +1242,7 @@ async function handleSubmitAndNew() {
   if (!ensureSettlementSelected()) {
     return;
   }
-  if (!ensureInvoiceProcessSelected()) {
+  if (!ensureInvoiceRowsValid()) {
     return;
   }
   if (feeDetailRows.value.length === 0) {
@@ -1238,7 +1265,7 @@ async function handleSubmitAndNew() {
 async function handleSubmitApplication() {
   if (!editId.value) return;
   if (!ensureSettlementSelected()) return;
-  if (!ensureInvoiceProcessSelected()) return;
+  if (!ensureInvoiceRowsValid()) return;
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1279,8 +1306,7 @@ function resetForm() {
   expandedGroupKeys.value = [];
   invoiceProcess.value = undefined;
   invoiceProcessError.value = false;
-  invoiceNo.value = '';
-  invoiceDate.value = undefined;
+  invoiceRows.value = [];
   attachmentGroup.value = [];
   settlementAttachments.value = [];
   bankSelections.value = {};
@@ -1494,25 +1520,10 @@ void handleSubmitAndNew;
                     class="invoice-fields"
                     :class="{ 'invoice-fields--collapsed': isNoInvoice }"
                   >
-                    <div class="invoice-field">
-                      <Input
-                        v-model:value="invoiceNo"
-                        :bordered="false"
-                        class="invoice-field__control"
-                        placeholder="发票号"
-                        :disabled="isNoInvoice"
-                      />
-                    </div>
-                    <div class="invoice-field">
-                      <DatePicker
-                        v-model:value="invoiceDate"
-                        :bordered="false"
-                        class="invoice-field__control"
-                        value-format="YYYY-MM-DD"
-                        placeholder="开票日期"
-                        :disabled="isNoInvoice"
-                      />
-                    </div>
+                    <InvoiceTable
+                      v-model="invoiceRows"
+                      :disabled="isNoInvoice"
+                    />
                   </div>
                 </div>
               </Card>
@@ -2522,12 +2533,9 @@ void handleSubmitAndNew;
 }
 
 .invoice-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  max-height: 80px;
+  max-height: 180px;
   margin-top: 0;
-  overflow: hidden;
+  overflow: hidden auto;
   opacity: 1;
   transition:
     max-height 0.28s ease,
@@ -2545,10 +2553,6 @@ void handleSubmitAndNew;
     flex: 1;
     width: auto;
   }
-
-  .invoice-fields {
-    grid-template-columns: 1fr;
-  }
 }
 
 .invoice-fields--collapsed {
@@ -2556,30 +2560,6 @@ void handleSubmitAndNew;
   margin-top: 0;
   pointer-events: none;
   opacity: 0;
-}
-
-.invoice-field {
-  min-height: 32px;
-  font-size: 12px;
-  background: #fff;
-  border: 1px solid #e5e9ef;
-  border-radius: 8px;
-  box-shadow: none;
-}
-
-.invoice-field__control {
-  width: 100%;
-  height: 30px;
-  font-size: 12px;
-}
-
-.invoice-field :deep(.ant-input),
-.invoice-field :deep(.ant-picker) {
-  height: 30px;
-  padding: 0 11px;
-  font-size: 12px;
-  color: #4e5969;
-  box-shadow: none;
 }
 
 .attachment-card {

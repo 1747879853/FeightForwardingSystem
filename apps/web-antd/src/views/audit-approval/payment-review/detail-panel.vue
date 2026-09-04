@@ -55,10 +55,14 @@ const applicationNo = ref('');
 const settlementCurrencyId = ref<null | number>(null);
 const settlementCurrencyName = ref('');
 const feeDetailRows = ref<FeeDetailRow[]>([]);
-/** 发票附件（按类型分组，保留类型名） */
+/** 申请自身附件（按类型分组） */
 const attachmentGroups = ref<PaymentApplicationAdminApi.AttachmentGroupDto[]>(
   [],
 );
+/** 发票子表（每张票带自己的单个附件） */
+const paymentApplicationInvoices = ref<
+  PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[]
+>([]);
 /** 关联结算附件（只读） */
 const settlementAttachments = ref<
   PaymentApplicationAdminApi.AttachmentItemDto[]
@@ -87,7 +91,8 @@ const visibleAttachmentGroups = computed(() =>
 const hasAttachments = computed(
   () =>
     visibleAttachmentGroups.value.length > 0 ||
-    settlementAttachments.value.length > 0,
+    settlementAttachments.value.length > 0 ||
+    paymentApplicationInvoices.value.length > 0,
 );
 
 /** 币别 -> 已选结算银行（只读展示） */
@@ -236,6 +241,7 @@ function resetState() {
   settlementCurrencyName.value = '';
   feeDetailRows.value = [];
   attachmentGroups.value = [];
+  paymentApplicationInvoices.value = [];
   settlementAttachments.value = [];
   bankByCurrency.value = {};
   expandedGroupKeys.value = [];
@@ -256,6 +262,7 @@ async function loadDetail(id: string | undefined) {
     feeDetailRows.value = mapDetailToFeeRows(detail);
     restoreBanksFromDetail(detail);
     attachmentGroups.value = detail.attachmentGroup ?? [];
+    paymentApplicationInvoices.value = detail.paymentApplicationInvoices ?? [];
     settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
       (ps) => ps.attachments ?? [],
     );
@@ -313,6 +320,10 @@ function getAttachmentFileName(
 
 function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
   if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+}
+
+function formatInvoiceDate(val: null | string | undefined): string {
+  return formatDate(val) || '-';
 }
 </script>
 
@@ -519,6 +530,41 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
                 {{ $t('common.noData') }}
               </div>
               <div v-else class="review-attachments">
+                <section
+                  v-if="paymentApplicationInvoices.length > 0"
+                  class="review-attachment-group"
+                >
+                  <div class="review-attachment-group__title">发票</div>
+                  <div class="review-invoice-list">
+                    <div
+                      v-for="invoice in paymentApplicationInvoices"
+                      :key="invoice.id"
+                      class="review-invoice-row"
+                    >
+                      <span class="review-invoice-row__no">
+                        {{ invoice.invoiceNo || '-' }}
+                      </span>
+                      <span class="review-invoice-row__date">
+                        {{ formatInvoiceDate(invoice.invoiceDate) }}
+                      </span>
+                      <button
+                        v-if="invoice.attachment"
+                        type="button"
+                        class="review-attachment-file"
+                        :title="getAttachmentFileName(invoice.attachment)"
+                        @click="openAttachment(invoice.attachment)"
+                      >
+                        <IconifyIcon icon="mdi:file-outline" />
+                        <span>{{
+                          getAttachmentFileName(invoice.attachment)
+                        }}</span>
+                      </button>
+                      <span v-else class="review-invoice-row__empty">
+                        无附件
+                      </span>
+                    </div>
+                  </div>
+                </section>
                 <section
                   v-for="group in visibleAttachmentGroups"
                   :key="group.key"
@@ -851,7 +897,7 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
 }
 
 .attachment-card :deep(.ant-card-body) {
-  max-height: 180px;
+  max-height: 240px;
   padding: 10px 12px;
   overflow-y: auto;
 }
@@ -867,6 +913,39 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
   font-size: 12px;
   font-weight: 600;
   color: #595959;
+}
+
+.review-invoice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-invoice-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.review-invoice-row__no {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #262626;
+  white-space: nowrap;
+}
+
+.review-invoice-row__date {
+  flex-shrink: 0;
+  color: #8c8c8c;
+}
+
+.review-invoice-row__empty {
+  flex-shrink: 0;
+  color: #bfbfbf;
 }
 
 .review-attachment-group__files {

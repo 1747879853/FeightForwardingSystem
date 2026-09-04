@@ -12,6 +12,7 @@ import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deletePaymentApplication,
+  downloadPaymentApplicationInvoices,
   getPaymentApplicationPagedList,
   PaymentApplicationStatus,
   submitPaymentApplication,
@@ -24,6 +25,8 @@ import {
 } from '#/constants/application-status';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import { buildAttachmentUrl } from '#/utils';
+import { downloadFileByUrl } from '#/utils/download-file';
 import {
   applyDefaultSortable,
   createPagedListQuery,
@@ -37,18 +40,15 @@ import {
   useGridFormSchema,
 } from './data';
 import InvoiceEditModal from './invoice-edit-modal.vue';
+import {
+  INVOICE_PROCESS,
+  INVOICE_PROCESS_LABELS,
+  formatPayAppInvoiceDates,
+  formatPayAppInvoiceNos,
+} from './invoice-rows';
 import SettlementDetailModal from './settlement-detail-modal.vue';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
-
-/** 发票流程：0=先票后付，1=先付后票，2=不开票 */
-const INVOICE_PROCESS_PAY_THEN_INVOICE = 1;
-
-const INVOICE_PROCESS_LABELS: Record<number, string> = {
-  0: '先票后付',
-  1: '先付后票',
-  2: '不开票',
-};
 
 const router = useRouter();
 const actionLoading = ref(false);
@@ -77,7 +77,7 @@ function canOpenSettlementDetail(status: number) {
 
 /** 仅「先付后票」可从列表点击维护发票信息（走 EditInvoiceAsync，不限 status） */
 function canOpenInvoiceEdit(invoiceProcess?: number | null) {
-  return invoiceProcess === INVOICE_PROCESS_PAY_THEN_INVOICE;
+  return invoiceProcess === INVOICE_PROCESS.PaymentBeforeInvoice;
 }
 
 function getInvoiceProcessLabel(invoiceProcess?: number | null) {
@@ -420,6 +420,52 @@ function handleRefresh() {
   gridApi.query();
 }
 
+const DOWNLOAD_INVOICE_MAX = 50;
+
+async function handleDownloadInvoices() {
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择要下载发票的付费申请');
+    return;
+  }
+  if (rows.length > DOWNLOAD_INVOICE_MAX) {
+    message.warning(`单次最多选择 ${DOWNLOAD_INVOICE_MAX} 条付费申请`);
+    return;
+  }
+  const downloadable = rows.filter(
+    (row) => row.invoiceProcess !== INVOICE_PROCESS.NoInvoice,
+  );
+  if (downloadable.length === 0) {
+    message.warning('所选付费申请均为不开票，没有发票可下载');
+    return;
+  }
+  if (downloadable.length < rows.length) {
+    message.warning(`已排除 ${rows.length - downloadable.length} 条不开票申请`);
+  }
+  actionLoading.value = true;
+  try {
+    const result = await downloadPaymentApplicationInvoices({
+      ids: downloadable.map((row) => row.id),
+    });
+    if (!result?.url) {
+      message.error('未返回下载地址');
+      return;
+    }
+    if (result.missingInvoiceNos?.length) {
+      message.warning(
+        `已下载 ${result.fileCount} 个附件；以下发票没有附件：${result.missingInvoiceNos.join('、')}`,
+      );
+    } else {
+      message.success(`已下载 ${result.fileCount} 个发票附件`);
+    }
+    downloadFileByUrl(buildAttachmentUrl(result.url), result.fileName);
+  } catch (error: any) {
+    message.error(error?.message || '下载失败');
+  } finally {
+    actionLoading.value = false;
+  }
+}
+
 useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </script>
 
@@ -433,6 +479,9 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           </Button>
           <Button :loading="actionLoading" @click="handleSubmit">提交</Button>
           <Button :loading="actionLoading" @click="handleRevoke">撤销</Button>
+          <Button :loading="actionLoading" @click="handleDownloadInvoices">
+            批量下载发票
+          </Button>
           <Button danger :loading="actionLoading" @click="handleBatchDelete">
             删除
           </Button>
@@ -462,6 +511,12 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           {{ getInvoiceProcessLabel(row.invoiceProcess) }}
         </span>
         <span v-else>{{ getInvoiceProcessLabel(row.invoiceProcess) }}</span>
+      </template>
+      <template #invoiceNo="{ row }">
+        {{ formatPayAppInvoiceNos(row.paymentApplicationInvoices) }}
+      </template>
+      <template #invoiceDate="{ row }">
+        {{ formatPayAppInvoiceDates(row.paymentApplicationInvoices) }}
       </template>
       <template #action="{ row }">
         <Button

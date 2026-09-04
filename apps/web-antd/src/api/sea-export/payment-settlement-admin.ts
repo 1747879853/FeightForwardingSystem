@@ -449,10 +449,6 @@ export namespace PaymentSettlementAdminApi {
     remark?: string;
     /** 发票流程 0先票后付 1先付后票 2不开票 */
     invoiceProcess?: number;
-    /** 发票号 */
-    invoiceNo?: string;
-    /** 开票日期 */
-    invoiceDate?: string;
     /** 租户ID */
     tenantId: number;
     /** 结算对象（含默认地址） */

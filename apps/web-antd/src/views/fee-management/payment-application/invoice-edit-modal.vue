@@ -1,18 +1,11 @@
 <script lang="ts" setup>
 import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
+import type { InvoiceRowForm } from './invoice-rows';
 
 import { computed, ref, watch } from 'vue';
-import dayjs from 'dayjs';
 
-import {
-  DatePicker,
-  Input,
-  Modal,
-  Select,
-  Spin,
-  message,
-} from 'ant-design-vue';
+import { Modal, Select, Spin, message } from 'ant-design-vue';
 
 import {
   editPaymentApplicationInvoice,
@@ -20,6 +13,15 @@ import {
 } from '#/api/settlement-management/payment-application-admin';
 
 import AttachmentGroups from './attachment-groups.vue';
+import InvoiceTable from './invoice-table.vue';
+import {
+  INVOICE_PROCESS,
+  applyExtractedInvoiceToRows,
+  buildInvoiceSubmitPayload,
+  createEmptyInvoiceRow,
+  mapInvoicesFromDetail,
+  validateInvoiceRows,
+} from './invoice-rows';
 
 const props = defineProps<{
   open: boolean;
@@ -35,24 +37,24 @@ const emit = defineEmits<{
 const loading = ref(false);
 const saving = ref(false);
 const invoiceProcess = ref<number | undefined>(undefined);
-const invoiceNo = ref('');
-const invoiceDate = ref<string | undefined>(undefined);
+const invoiceRows = ref<InvoiceRowForm[]>([]);
 const attachmentGroup = ref<
   PaymentApplicationAdminApi.AttachmentGroupInputDto[]
 >([]);
 
-const isNoInvoice = computed(() => invoiceProcess.value === 2);
+const isNoInvoice = computed(
+  () => invoiceProcess.value === INVOICE_PROCESS.NoInvoice,
+);
 
 const invoiceProcessOptions = [
-  { label: '先票后付', value: 0 },
-  { label: '先付后票', value: 1 },
-  { label: '不开票', value: 2 },
+  { label: '先票后付', value: INVOICE_PROCESS.InvoiceBeforePayment },
+  { label: '先付后票', value: INVOICE_PROCESS.PaymentBeforeInvoice },
+  { label: '不开票', value: INVOICE_PROCESS.NoInvoice },
 ];
 
 function resetForm() {
   invoiceProcess.value = undefined;
-  invoiceNo.value = '';
-  invoiceDate.value = undefined;
+  invoiceRows.value = [];
   attachmentGroup.value = [];
 }
 
@@ -79,7 +81,7 @@ function buildAttachmentGroupSubmit(): PaymentApplicationAdminApi.AttachmentGrou
     .map((group) => ({
       attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
       items: (group.items ?? []).map((item, index) => ({
-        attachmentId: Number(item.attachmentId),
+        attachmentId: item.attachmentId,
         attachmentDtlTypeId:
           item.attachmentDtlTypeId ?? group.attachmentDtlTypeId ?? null,
         clientVisible: item.clientVisible ?? false,
@@ -93,24 +95,28 @@ function buildAttachmentGroupSubmit(): PaymentApplicationAdminApi.AttachmentGrou
 
 function onInvoiceProcessChange(value: number) {
   invoiceProcess.value = value;
-  if (value === 2) {
-    invoiceNo.value = '';
-    invoiceDate.value = undefined;
+  if (value === INVOICE_PROCESS.NoInvoice) {
+    invoiceRows.value = [];
+    return;
+  }
+  if (invoiceRows.value.length === 0) {
+    invoiceRows.value = [createEmptyInvoiceRow()];
   }
 }
 
 /** 识别结果仅预填弹窗表单，点确定才走 EditInvoiceAsync */
 function applyExtractedInvoice(result: GeminiInvoiceDto) {
-  const nextNo = result.invoiceNo?.trim() || '';
-  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
-  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
-  if (!nextNo && !nextDate) {
-    message.warning('未能识别出发票号和开票日期，请手动填写');
+  if (isNoInvoice.value) {
+    message.warning('当前为不开票，无法填入发票信息');
     return;
   }
-  if (nextNo) invoiceNo.value = nextNo;
-  if (nextDate) invoiceDate.value = nextDate;
-  message.success('已填入识别结果，请核对后保存');
+  const applied = applyExtractedInvoiceToRows(invoiceRows.value, result);
+  if (!applied.ok) {
+    message.warning(applied.message);
+    return;
+  }
+  invoiceRows.value = applied.next;
+  message.success(applied.message);
 }
 
 async function loadDetail(id: string) {
@@ -118,14 +124,15 @@ async function loadDetail(id: string) {
   try {
     const detail = await getPaymentApplicationDetail(id);
     invoiceProcess.value = detail.invoiceProcess ?? undefined;
-    if (invoiceProcess.value === 2) {
-      invoiceNo.value = '';
-      invoiceDate.value = undefined;
-    } else {
-      invoiceNo.value = detail.invoiceNo ?? '';
-      invoiceDate.value = detail.invoiceDate
-        ? dayjs(detail.invoiceDate).format('YYYY-MM-DD')
-        : undefined;
+    invoiceRows.value =
+      invoiceProcess.value === INVOICE_PROCESS.NoInvoice
+        ? []
+        : mapInvoicesFromDetail(detail.paymentApplicationInvoices);
+    if (
+      invoiceProcess.value !== INVOICE_PROCESS.NoInvoice &&
+      invoiceRows.value.length === 0
+    ) {
+      invoiceRows.value = [createEmptyInvoiceRow()];
     }
     attachmentGroup.value = mapAttachmentGroupFromDetail(
       detail.attachmentGroup,
@@ -159,16 +166,23 @@ async function handleOk() {
     message.warning('请选择发票流程');
     return;
   }
+  const validation = validateInvoiceRows(
+    invoiceProcess.value,
+    invoiceRows.value,
+  );
+  if (!validation.ok) {
+    message.warning(validation.message);
+    return;
+  }
   saving.value = true;
   try {
     await editPaymentApplicationInvoice({
       id: props.applicationId,
       invoiceProcess: invoiceProcess.value,
-      invoiceNo: isNoInvoice.value ? null : invoiceNo.value || null,
-      invoiceDate:
-        isNoInvoice.value || !invoiceDate.value
-          ? null
-          : dayjs(invoiceDate.value).toISOString(),
+      paymentApplicationInvoices: buildInvoiceSubmitPayload(
+        invoiceProcess.value,
+        invoiceRows.value,
+      ),
       // 全量覆盖：必须带回当前附件，否则会被清空
       attachmentGroup: buildAttachmentGroupSubmit(),
     });
@@ -206,26 +220,9 @@ async function handleOk() {
             @update:value="onInvoiceProcessChange"
           />
         </div>
-        <div class="invoice-edit-row">
-          <span class="invoice-edit-label">发票号</span>
-          <Input
-            v-model:value="invoiceNo"
-            class="invoice-edit-control"
-            placeholder="发票号"
-            :maxlength="128"
-            allow-clear
-            :disabled="isNoInvoice"
-          />
-        </div>
-        <div class="invoice-edit-row">
-          <span class="invoice-edit-label">开票日期</span>
-          <DatePicker
-            v-model:value="invoiceDate"
-            class="invoice-edit-control"
-            value-format="YYYY-MM-DD"
-            placeholder="开票日期"
-            :disabled="isNoInvoice"
-          />
+        <div class="invoice-edit-invoices">
+          <div class="invoice-edit-invoices__title">发票明细</div>
+          <InvoiceTable v-model="invoiceRows" :disabled="isNoInvoice" />
         </div>
         <div class="invoice-edit-attachments">
           <div class="invoice-edit-attachments__title">附件</div>
@@ -267,6 +264,7 @@ async function handleOk() {
   min-width: 0;
 }
 
+.invoice-edit-invoices__title,
 .invoice-edit-attachments__title {
   margin-bottom: 8px;
   font-weight: 500;

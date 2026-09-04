@@ -118,6 +118,17 @@ const AddFeeDrawerStub = defineComponent({
           },
           'confirm fees with invoice',
         ),
+        h(
+          'button',
+          {
+            'data-testid': 'confirm-fees-invoice-before-pay',
+            onClick: () => {
+              emit('update:invoiceProcess', 0);
+              emitConfirm();
+            },
+          },
+          'confirm fees invoice before pay',
+        ),
       ]);
   },
 });
@@ -179,12 +190,35 @@ describe('payment application add form', () => {
         settlementId: 'client-1',
         status: 0,
         invoiceProcess: 1,
+        paymentApplicationInvoices: [],
       }),
     );
     expect(mocks.replace).toHaveBeenCalledWith({
       path: '/fee-management/payment-application/application-1/edit',
       query: { fromCreate: '1' },
     });
+  });
+
+  it('does not create an application for 先票后付 until at least one invoice is entered', async () => {
+    const wrapper = shallowMount(PaymentApplicationForm, {
+      global: {
+        stubs: {
+          ACard: SlotStub,
+          ASpin: SlotStub,
+          AddFeeDrawer: AddFeeDrawerStub,
+          Card: SlotStub,
+          Page: SlotStub,
+          Spin: SlotStub,
+        },
+      },
+    });
+
+    await wrapper
+      .get('[data-testid="confirm-fees-invoice-before-pay"]')
+      .trigger('click');
+    await flushPromises();
+
+    expect(mocks.addPaymentApplication).not.toHaveBeenCalled();
   });
 
   it('includes default bank accounts when auto-saving on first fee confirm', async () => {

@@ -396,6 +396,16 @@ export namespace PaymentApplicationAdminApi {
     localCurrencyCode?: null | string;
     isDeleted: boolean;
     creationTime: string;
+    /**
+     * 发票流程：0=先票后付、1=先付后票、2=不开票。
+     * 主表已改必填，正常出参不会再出现 null。
+     */
+    invoiceProcess: number;
+    /**
+     * 发票子表。列表/详情有值（无发票为 `[]`）；
+     * 付费结算选单列表不填充，恒为 null。
+     */
+    paymentApplicationInvoices?: PaymentApplicationInvoiceDto[] | null;
 
     // === 整票结算状态字段（客户对账接口使用） ===
     /** 应收整票结算状态（按该业务下全部应收费用汇总） */
@@ -892,6 +902,53 @@ export namespace PaymentApplicationAdminApi {
     items?: AttachmentItemForItemInputDto[];
   }
 
+  /**
+   * 付费申请发票附件入参。一条发票只能挂一个附件，所以是单个对象不是数组。
+   * 不传或 `attachmentId <= 0` 视为该发票没有附件。
+   */
+  export interface PaymentApplicationInvoiceAttachmentInputDto {
+    attachmentId: number | string;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
+    displayOrder?: number;
+    friendlyFileName?: string;
+    url?: string;
+  }
+
+  /** 付费申请发票入参（新增/编辑/仅编辑发票共用；编辑全量覆盖，不传 id） */
+  export interface PaymentApplicationInvoiceInputDto {
+    invoiceNo: string;
+    invoiceDate?: string | null;
+    sortId?: number;
+    attachment?: null | PaymentApplicationInvoiceAttachmentInputDto;
+  }
+
+  /** 付费申请发票出参（列表/详情） */
+  export interface PaymentApplicationInvoiceDto {
+    id: string;
+    paymentApplicationId: string;
+    invoiceNo?: string;
+    invoiceDate?: string | null;
+    sortId?: number;
+    creationTime?: string;
+    creatorUserId?: number | string | null;
+    /** 该发票的单个附件；没有附件时为 null */
+    attachment?: AttachmentItemDto | null;
+  }
+
+  /** 批量下载发票附件入参（传付费申请 id，不是发票 id） */
+  export interface PaymentApplicationInvoiceDownloadDto {
+    ids: string[];
+  }
+
+  /** 批量下载发票附件出参 */
+  export interface PaymentApplicationInvoiceDownloadResultDto {
+    url?: string;
+    fileName?: string;
+    fileCount: number;
+    missingInvoiceNos?: string[];
+  }
+
   /** 运输单简要信息 */
   export interface TransportOrderSimpleDto {
     id: string;
@@ -1013,9 +1070,10 @@ export namespace PaymentApplicationAdminApi {
     remark?: string;
     paymentApplicationItems?: PaymentApplicationItemAddDto[];
     paymentApplicationBanks?: PaymentApplicationBankAddDto[];
-    invoiceProcess?: number | null;
-    invoiceNo?: string | null;
-    invoiceDate?: string | null;
+    /** 发票流程，必填：0=先票后付、1=先付后票、2=不开票 */
+    invoiceProcess: number;
+    /** 发票子表；先票后付至少一条，不开票必须空，先付后票不限 */
+    paymentApplicationInvoices?: PaymentApplicationInvoiceInputDto[];
     attachmentGroup?: AttachmentGroupInputDto[];
   }
 
@@ -1030,9 +1088,10 @@ export namespace PaymentApplicationAdminApi {
     require?: string;
     remark?: string;
     paymentApplicationBanks?: PaymentApplicationBankEditDto[];
-    invoiceProcess?: number | null;
-    invoiceNo?: string | null;
-    invoiceDate?: string | null;
+    /** 发票流程，必填：0=先票后付、1=先付后票、2=不开票 */
+    invoiceProcess: number;
+    /** 发票子表全量覆盖；漏传的发票行（含附件）会被删除 */
+    paymentApplicationInvoices?: PaymentApplicationInvoiceInputDto[];
     attachmentGroup?: AttachmentGroupInputDto[];
   }
 
@@ -1054,15 +1113,14 @@ export namespace PaymentApplicationAdminApi {
   }
 
   /**
-   * 仅编辑发票与附件（不判断 status）。
-   * attachmentGroup 全量覆盖，未带回的附件会被清空。
+   * 仅编辑发票流程、发票子表与分组附件（不判断 status）。
+   * paymentApplicationInvoices / attachmentGroup 都是全量覆盖。
    */
   export interface PaymentApplicationInvoiceEditDto {
     id: string;
     /** 发票流程：0=先票后付，1=先付后票，2=不开票 */
-    invoiceProcess?: number | null;
-    invoiceNo?: string | null;
-    invoiceDate?: string | null;
+    invoiceProcess: number;
+    paymentApplicationInvoices?: PaymentApplicationInvoiceInputDto[] | null;
     attachmentGroup?: AttachmentGroupInputDto[] | null;
   }
 
@@ -1178,13 +1236,25 @@ export async function editPaymentApplication(
 }
 
 /**
- * 仅编辑发票流程 / 发票号 / 开票日期 / 附件。
- * 不判断 status；attachmentGroup 全量覆盖，须带回当前详情附件以免被清空。
+ * 仅编辑发票流程、发票子表与分组附件。
+ * 不判断 status；发票子表与 attachmentGroup 都是全量覆盖，须带回当前详情以免被清空。
  */
 export async function editPaymentApplicationInvoice(
   data: PaymentApplicationAdminApi.PaymentApplicationInvoiceEditDto,
 ) {
   return requestClient.put(`${API_PREFIX}/EditInvoiceAsync`, data);
+}
+
+/**
+ * 批量下载发票附件：传付费申请 id 集合，服务端打 zip 返回压缩包地址。
+ */
+export async function downloadPaymentApplicationInvoices(
+  data: PaymentApplicationAdminApi.PaymentApplicationInvoiceDownloadDto,
+) {
+  return requestClient.post<PaymentApplicationAdminApi.PaymentApplicationInvoiceDownloadResultDto>(
+    `${API_PREFIX}/DownloadInvoicesAsync`,
+    data,
+  );
 }
 
 /** 添加费用关联 */
