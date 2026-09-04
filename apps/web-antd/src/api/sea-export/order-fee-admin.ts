@@ -252,22 +252,35 @@ export namespace OrderFeeAdminApi {
     /** 税率 */
     taxRate?: number;
 
-    /** 付费申请金额 */
+    /** 付费申请已申请金额（仅付费申请，不含开票申请/收费结算） */
     rqstPaymentAmount?: number;
 
     /** 已开票金额 */
     invoicedAmount: number;
 
-    /** 发票申请金额 */
+    /**
+     * 发票已占用额度 = 开票申请已申请 + 付费申请已申请（三种发票流程都算），不含收费结算。
+     * 与 settlementOccupiedAmount 口径不同（后者看收费结算），两者不能互相加减或比大小。
+     */
     orderInvoiceAmount: number;
 
-    /** 已结算金额 */
+    /**
+     * 结算已占用额度 = 付费申请已申请 + 收费结算已结算 + 开票申请已申请。
+     * 含「被申请占住但还没结算」的钱，故不等于 settledAmount（仅真结算掉的钱）。
+     * 2026-09-04 起 StatementAdmin/DetailAsync 与 GetOrderFeeGroupAsync 返回真值（此前恒 0）。
+     */
+    settlementOccupiedAmount?: number;
+
+    /** 已结算量（结算回写，仅真结算掉的钱） */
     settledAmount: number;
 
-    /** 未申请金额 */
+    /**
+     * 未付费申请量（付费申请侧真实可用额度）= amount - settlementOccupiedAmount。
+     * 减数是 settlementOccupiedAmount 而非 rqstPaymentAmount，故 rqstPaymentAmount + unRqstPaymentAmount 一般不等于 amount，勿用该等式校验。
+     */
     unRqstPaymentAmount: number;
 
-    /** 未结算金额 */
+    /** 未结算金额 = amount - settledAmount（只扣已结算，不扣被申请占住的部分） */
     unSettledAmount: number;
 
     /** 是否允许开票 */

@@ -5,9 +5,6 @@ import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
 } from '#/views/sea-export-admin/orderFee/data';
-import reciveIcon from '#/assets/images/statement/reciveIcon.png';
-import payIcon from '#/assets/images/statement/payIcon.png';
-import allIcon from '#/assets/images/statement/allIcon.png';
 
 interface CurrencySummaryCard {
   currencyId: number;
@@ -221,8 +218,6 @@ function getCurrencyLabel(currencyId: number): string {
 </template>
 
 <style scoped lang="scss">
-
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .fee-summary-container {

@@ -1,7 +1,6 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
 import { $t } from '#/locales';

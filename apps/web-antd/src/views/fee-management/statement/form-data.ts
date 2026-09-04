@@ -88,16 +88,32 @@ export function calcCurrencySummary(
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
     .reduce((sum, f) => sum + (f.amount ?? 0), 0);
 }
-/** 计算某个订单的某币别的未收/未付合计 */
+/** 计算某个订单的某币别的未收/未付合计（优先接口 unSettledAmount，缺失时回退 amount - settledAmount） */
 export function calcCurrencyUnSummary(
   orderFees: FeeDetailRow[],
   currencyId: number,
   paySide: number,
 ): number {
-  console.log('MainTable-calcCurrencySummary', orderFees, currencyId, paySide);
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
-    .reduce((sum, f) => sum + (f.unSettledAmount ?? 0), 0);
+    .reduce(
+      (sum, f) =>
+        sum + (f.unSettledAmount ?? (f.amount ?? 0) - (f.settledAmount ?? 0)),
+      0,
+    );
+}
+/**
+ * 计算某个订单的某币别的已申请合计（rqstPaymentAmount：仅付费申请已申请）。
+ * 不含开票申请、不含收费结算，与 orderInvoiceAmount / settlementOccupiedAmount 口径不同，不可互相加减。
+ */
+export function calcCurrencyRqstSummary(
+  orderFees: FeeDetailRow[],
+  currencyId: number,
+  paySide: number,
+): number {
+  return orderFees
+    .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
+    .reduce((sum, f) => sum + (f.rqstPaymentAmount ?? 0), 0);
 }
 /** 按订单分组费用，计算各币别汇总 */
 export function groupFeesByOrder(
@@ -120,10 +136,7 @@ export function groupFeesByOrder(
     const first = items[0]!;
     const cMap = new Map<number, OrderCurrencyAmount>();
     for (const f of items) {
-      const existing = cMap.get(f.currencyId);
-      if (existing) {
-        existing.amount += 0;
-      } else {
+      if (!cMap.has(f.currencyId)) {
         cMap.set(f.currencyId, {
           currencyName: f.currencyName ?? '',
           amount: 0,
@@ -170,6 +183,17 @@ export function groupFeesByOrder(
         0,
       );
       row[`currency_${c.currencyId}_un_pay`] = calcCurrencyUnSummary(
+        items ?? [],
+        c.currencyId,
+        1,
+      );
+      // 已申请合计（rqstPaymentAmount），与动态列 currency_x_rqst_receive / _rqst_pay 对应
+      row[`currency_${c.currencyId}_rqst_receive`] = calcCurrencyRqstSummary(
+        items ?? [],
+        c.currencyId,
+        0,
+      );
+      row[`currency_${c.currencyId}_rqst_pay`] = calcCurrencyRqstSummary(
         items ?? [],
         c.currencyId,
         1,
@@ -250,10 +274,12 @@ export function useOrderGroupColumns() {
       width: 80,
     },
     {
-      title: '结算状态',
+      // 一级行取运输订单的 recSettlementStatus，故明确为「应收结算状态」，
+      // 以区别于对账单列表页自身的 settlementStatus（结算状态）
+      title: '应收结算状态',
       dataIndex: 'RecSettlementStatus',
       key: 'recSettlementStatus',
-      width: 100,
+      width: 110,
       align: 'center' as const,
     },
   ];
@@ -337,6 +363,14 @@ export function useFeeInnerColumns() {
       title: t('amount'),
       dataIndex: 'amount',
       key: 'amount',
+      width: 100,
+      align: 'right' as const,
+    },
+    {
+      // 已申请 = rqstPaymentAmount（仅付费申请已申请），不是占用额度合计
+      title: '已申请',
+      dataIndex: 'rqstPaymentAmount',
+      key: 'rqstPaymentAmount',
       width: 100,
       align: 'right' as const,
     },

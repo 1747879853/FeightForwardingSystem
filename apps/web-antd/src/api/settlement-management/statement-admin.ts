@@ -147,6 +147,31 @@ export namespace StatementAdminApi {
     currency?: CurrencySimpleDto | null;
     receiveAmount: number;
     payAmount: number;
+    /**
+     * 差额，恒等于 receiveAmount - payAmount。
+     * 注意：与「已占用额度」无关，后端未提供占用额度的应收-应付差额字段，勿用本字段推算占用差额。
+     */
+    balanceAmount?: number;
+    /**
+     * 该币别下【应收】费用的 orderInvoiceAmount（发票已占用额度）合计。
+     * 收/付按费用自身 paySide 拆分，非按占用来源拆分（应收费用上也可能有付费申请份额）。
+     */
+    receiveInvoiceOccupiedAmount?: number;
+    /**
+     * 该币别下【应付】费用的 orderInvoiceAmount（发票已占用额度）合计。
+     * 收/付按费用自身 paySide 拆分，非按占用来源拆分。
+     */
+    payInvoiceOccupiedAmount?: number;
+    /**
+     * 该币别下【应收】费用的 settlementOccupiedAmount（结算已占用额度）合计。
+     * 收/付按费用自身 paySide 拆分，非按占用来源拆分。
+     */
+    receiveSettlementOccupiedAmount?: number;
+    /**
+     * 该币别下【应付】费用的 settlementOccupiedAmount（结算已占用额度）合计。
+     * 收/付按费用自身 paySide 拆分，非按占用来源拆分。
+     */
+    paySettlementOccupiedAmount?: number;
   }
 
   /** 我司银行简易对象 */
@@ -184,6 +209,12 @@ export namespace StatementAdminApi {
   /** 费用和海出 */
   export interface OrderFeeAndSeaExportDto {
     statementCurrencyGroup?: StatementCurrencyDto[];
+    /**
+     * 业务组内币别汇总（含新增的 4 列占用合计）。
+     * 内容与同一业务组的 statementCurrencyGroup 完全一致（后者已按币别分组，本字段是其按币别再分组求和）。
+     * 注意：这是【业务组内】汇总，不是整张对账单合计；详情接口不返回整单币别合计，需前端把各业务组自行相加。
+     */
+    statementCurrencyGroupSummary?: StatementCurrencyDto[];
     orderFees?: OrderFeeAdminApi.OrderFeeDto[];
     transportOrder: ExpenseSubmissionAdminApi.TransportOrderSimpleDto;
   }

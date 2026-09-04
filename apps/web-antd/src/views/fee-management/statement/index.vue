@@ -25,11 +25,19 @@ const router = useRouter();
 /** 当前页表格数据，用于底部合计统计 */
 const currentPageData = ref<StatementAdminApi.StatementDto[]>([]);
 
-/** 按币种汇总当前页的应收/应付合计金额 */
+/** 按币种汇总当前页的应收/应付合计金额（含发票/结算已占用额度） */
 const currencyTotals = computed(() => {
   const map = new Map<
     string,
-    { currencyCode: string; payAmount: number; receiveAmount: number }
+    {
+      currencyCode: string;
+      payAmount: number;
+      receiveAmount: number;
+      receiveInvoiceOccupiedAmount: number;
+      payInvoiceOccupiedAmount: number;
+      receiveSettlementOccupiedAmount: number;
+      paySettlementOccupiedAmount: number;
+    }
   >();
   currentPageData.value.forEach((row) => {
     row.statementCurrencyGroup?.forEach((group) => {
@@ -38,9 +46,22 @@ const currencyTotals = computed(() => {
         currencyCode: code,
         payAmount: 0,
         receiveAmount: 0,
+        receiveInvoiceOccupiedAmount: 0,
+        payInvoiceOccupiedAmount: 0,
+        receiveSettlementOccupiedAmount: 0,
+        paySettlementOccupiedAmount: 0,
       };
       item.receiveAmount += Number(group.receiveAmount) || 0;
       item.payAmount += Number(group.payAmount) || 0;
+      // 占用合计：收/付按费用自身 paySide 拆分，后端已算好，此处仅跨对账单累加
+      item.receiveInvoiceOccupiedAmount +=
+        Number(group.receiveInvoiceOccupiedAmount) || 0;
+      item.payInvoiceOccupiedAmount +=
+        Number(group.payInvoiceOccupiedAmount) || 0;
+      item.receiveSettlementOccupiedAmount +=
+        Number(group.receiveSettlementOccupiedAmount) || 0;
+      item.paySettlementOccupiedAmount +=
+        Number(group.paySettlementOccupiedAmount) || 0;
       map.set(code, item);
     });
   });
@@ -215,6 +236,38 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
                 {{ formatAmount(item.payAmount) }}
               </span>
             </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label"
+                >发票占用收</span
+              >
+              <span class="statement-footer-summary__invoice-occupied">
+                {{ formatAmount(item.receiveInvoiceOccupiedAmount) }}
+              </span>
+            </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label"
+                >发票占用付</span
+              >
+              <span class="statement-footer-summary__invoice-occupied">
+                {{ formatAmount(item.payInvoiceOccupiedAmount) }}
+              </span>
+            </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label"
+                >结算占用收</span
+              >
+              <span class="statement-footer-summary__settlement-occupied">
+                {{ formatAmount(item.receiveSettlementOccupiedAmount) }}
+              </span>
+            </span>
+            <span class="statement-footer-summary__cell">
+              <span class="statement-footer-summary__cell-label"
+                >结算占用付</span
+              >
+              <span class="statement-footer-summary__settlement-occupied">
+                {{ formatAmount(item.paySettlementOccupiedAmount) }}
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -290,5 +343,15 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
 .statement-footer-summary__pay {
   font-weight: 600;
   color: #389e0d;
+}
+
+.statement-footer-summary__invoice-occupied {
+  font-weight: 600;
+  color: #722ed1;
+}
+
+.statement-footer-summary__settlement-occupied {
+  font-weight: 600;
+  color: #13c2c2;
 }
 </style>

@@ -11,7 +11,6 @@ import {
   Button,
   Checkbox,
   Drawer,
-  InputNumber,
   message,
   Pagination,
   Tag,
@@ -31,7 +30,6 @@ import {
   buildOrderRow,
   collectCurrencies,
   type CurrencyInfo,
-  type FeeRowData,
   getPaySideLabel,
   type SelectedFeeItem,
   useAddFeeSearchSchema,
@@ -85,19 +83,19 @@ const selectedFeeSummary = computed(() => {
         const currencyId = fee.currencyId ?? 0;
         const currencyName =
           fee.currency?.cnName ?? fee.currency?.code ?? '未知币别';
-        // 正确计算未结算金额：amount - settledAmount
-        const unSettledAmount = (fee.amount ?? 0) - (fee.settledAmount ?? 0);
+        // 真实可用额度：unRqstPaymentAmount = amount - settlementOccupiedAmount（已扣被开票/付费申请及收费结算占住的部分）
+        const availableAmount = fee.unRqstPaymentAmount ?? 0;
         const key = String(currencyId);
 
         if (summary.has(key)) {
           const item = summary.get(key)!;
           if (fee.paySide === 0) {
             // 应收
-            item.receiveAmount += unSettledAmount;
+            item.receiveAmount += availableAmount;
             item.receiveCount += 1;
           } else {
             // 应付
-            item.payAmount += unSettledAmount;
+            item.payAmount += availableAmount;
             item.payCount += 1;
           }
         } else {
@@ -109,10 +107,10 @@ const selectedFeeSummary = computed(() => {
             payCount: 0,
           };
           if (fee.paySide === 0) {
-            newItem.receiveAmount = unSettledAmount;
+            newItem.receiveAmount = availableAmount;
             newItem.receiveCount = 1;
           } else {
-            newItem.payAmount = unSettledAmount;
+            newItem.payAmount = availableAmount;
             newItem.payCount = 1;
           }
           summary.set(key, newItem);
@@ -162,7 +160,7 @@ function toggleAllOrders(checked: boolean) {
       for (const fee of selectable) {
         set.add(fee.id);
         if (!appliedAmountMap.has(fee.id)) {
-          appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
+          appliedAmountMap.set(fee.id, fee.unRqstPaymentAmount ?? 0);
         }
       }
       selectionMap.set(row.id, set);
@@ -172,10 +170,6 @@ function toggleAllOrders(checked: boolean) {
     selectionMap.clear();
   }
 }
-
-const pendingCurrencies = ref<CurrencyInfo[]>([]);
-const settlementCurrencyName = ref('');
-const currencySelectRef = ref();
 
 /** 是否至少存在一个有效查询条件（该接口不分页，无任何条件时会全量拉取，必须拦截） */
 function hasAnySearchCondition(
@@ -276,9 +270,17 @@ const feeInnerColumnsForAddFee = [
     align: 'right' as const,
   },
   {
-    title: '未结金额',
-    dataIndex: 'unSettledAmount',
-    key: 'unSettledAmount',
+    // 已申请 = rqstPaymentAmount（仅付费申请已申请），不含开票申请/收费结算
+    title: '已申请',
+    dataIndex: 'rqstPaymentAmount',
+    key: 'rqstPaymentAmount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '可用额度',
+    dataIndex: 'unRqstPaymentAmount',
+    key: 'unRqstPaymentAmount',
     width: 100,
     align: 'right' as const,
   },
@@ -337,9 +339,6 @@ const feeInnerColumnsForAddFee = [
 
 const disabledFeeIds = computed(
   () => new Set(drawerProps.value.selectedFeeIds ?? []),
-);
-const isSettlementCurrencyLocked = computed(
-  () => (drawerProps.value.selectedFeeIds?.length ?? 0) > 0,
 );
 
 // --- 单一结算对象限制：一张对账单只能对一个结算对象 ---
@@ -565,7 +564,7 @@ function toggleOrder(orderId: string, checked: boolean) {
     for (const fee of getSelectableFees(orderId)) {
       set.add(fee.id);
       if (!appliedAmountMap.has(fee.id)) {
-        appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
+        appliedAmountMap.set(fee.id, fee.unRqstPaymentAmount ?? 0);
       }
     }
     selectionMap.set(orderId, set);
@@ -599,7 +598,7 @@ function toggleFee(orderId: string, feeId: string, checked: boolean) {
     set.add(feeId);
     const fee = getOrderFees(orderId).find((f) => f.id === feeId);
     if (fee && !appliedAmountMap.has(feeId)) {
-      appliedAmountMap.set(feeId, fee.unSettledAmount ?? 0);
+      appliedAmountMap.set(feeId, fee.unRqstPaymentAmount ?? 0);
     }
   } else {
     set.delete(feeId);
@@ -607,10 +606,6 @@ function toggleFee(orderId: string, feeId: string, checked: boolean) {
       selectionMap.delete(orderId);
     }
   }
-}
-
-function setAppliedAmount(feeId: string, value: number | null) {
-  appliedAmountMap.set(feeId, value ?? 0);
 }
 
 // --- 搜索条件变化清空选择 ---
@@ -688,31 +683,18 @@ function getSelectedFees(): SelectedFeeItem[] {
           settlementName: fee.settlement?.name ?? undefined,
           amount: fee.amount ?? 0,
           settledAmount: fee.settledAmount ?? 0,
-          unSettledAmount: fee.unSettledAmount ?? 0,
+          // 未结算：优先接口值，缺失时回退 amount - settledAmount
+          unSettledAmount:
+            fee.unSettledAmount ?? (fee.amount ?? 0) - (fee.settledAmount ?? 0),
+          // 已申请金额（仅付费申请已申请）
+          rqstPaymentAmount: fee.rqstPaymentAmount ?? 0,
+          orderInvoiceAmount: fee.orderInvoiceAmount ?? 0,
+          settlementOccupiedAmount: fee.settlementOccupiedAmount ?? 0,
         });
       }
     }
   }
   return result;
-}
-
-function resolveSettlementCurrencyName(targetId: number): string {
-  const fromCurrencies = currencies.value.find(
-    (c) => c.currencyId === targetId,
-  );
-  if (fromCurrencies) return fromCurrencies.currencyName;
-  for (const order of orderList.value) {
-    for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId === targetId)
-        return fee.currency?.cnName ?? fee.currency?.code ?? '';
-    }
-  }
-  if (currencySelectRef.value) {
-    const options = currencySelectRef.value.getOptions?.() ?? [];
-    const opt = options.find((o: any) => o.value === targetId);
-    if (opt) return opt.label;
-  }
-  return '';
 }
 
 function handleConfirm() {
@@ -771,27 +753,6 @@ function getBizTypeLabel(bizType: number | undefined): string {
   return bizTypeMap[bizType ?? -1] || '-';
 }
 
-function getFeeStatusLabel(feeStatus: number | undefined): string {
-  const statusMap: Record<number, string> = {
-    0: '录入状态',
-    1: '提交审核',
-    2: '审核通过',
-    3: '审核驳回',
-  };
-  return statusMap[feeStatus ?? -1] || '-';
-}
-
-function getSettlementStatusLabel(
-  settlementStatus: number | undefined,
-): string {
-  const statusMap: Record<number, string> = {
-    0: '未结算',
-    1: '部分结算',
-    2: '已结算',
-  };
-  return statusMap[settlementStatus ?? -1] || '-';
-}
-
 function getRecSettlementStatusLabel(
   recSettlementStatus: number | undefined,
 ): string {
@@ -843,10 +804,6 @@ function onOrderCheckChange(orderId: string, e: any) {
 function onExpandClick(record: any, e: Event, onExpand: Function) {
   e.stopPropagation();
   onExpand(record, e);
-}
-
-function onAppliedAmountChange(feeId: string, val: number | null) {
-  setAppliedAmount(feeId, val);
 }
 
 function onPageChange(page: number, size: number) {
@@ -983,8 +940,11 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.key === 'amount'">
             {{ formatAmount(feeRecord.amount) }}
           </template>
-          <template v-else-if="column.key === 'unSettledAmount'">
-            {{ formatAmount(feeRecord.amount - feeRecord.settledAmount) }}
+          <template v-else-if="column.key === 'rqstPaymentAmount'">
+            {{ formatAmount(feeRecord.rqstPaymentAmount) }}
+          </template>
+          <template v-else-if="column.key === 'unRqstPaymentAmount'">
+            {{ formatAmount(feeRecord.unRqstPaymentAmount) }}
           </template>
           <template v-else-if="column.key === 'invoiceStatus'">
             <Tag :color="getInvoiceStatusColor(feeRecord.invoiceStatus)">
