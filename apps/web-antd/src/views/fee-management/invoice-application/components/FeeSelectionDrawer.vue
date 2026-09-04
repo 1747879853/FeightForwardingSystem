@@ -85,7 +85,7 @@ const filterEtdEnd = ref<string>(''); // 新增：开船日期止
 const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
 const filterBizType = ref<number | undefined>(undefined); // ✅ 新增：业务类型
 const filterStatementNum = ref<string>(''); // ✅ 新增：客户对账单号
-const filterKeys = ref<string[]>([]); // ✅ 新增：Keys 精确搜索（主提单号/委托编号）
+const filterKeys = ref<string>(''); // ✅ 新增：Keys 精确搜索（主提单号/委托编号），多个值用逗号/空格/分号分隔
 
 // ✅ 新增：用于 RangePicker 的日期范围状态
 const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
@@ -356,7 +356,7 @@ function handleResetFilter() {
   filterPaySide.value = 0; // ✅ 重置为全部，而不是默认应收
   filterBizType.value = undefined; // ✅ 重置业务类型
   filterStatementNum.value = ''; // ✅ 重置客户对账单号
-  filterKeys.value = []; // ✅ 重置 Keys 精确搜索
+  filterKeys.value = ''; // ✅ 重置 Keys 精确搜索
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
 }
@@ -866,15 +866,10 @@ defineExpose({
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >精确搜索:</span
             >
-            <Select
+            <Input
               v-model:value="filterKeys"
-              mode="tags"
               style="flex: 1"
-              :options="[]"
-              :token-separators="[',', '，', ' ', '\n']"
-              :not-found-content="null"
-              max-tag-count="responsive"
-              placeholder="主提单号/委托编号，回车或粘贴多个"
+              placeholder="主提单号/委托编号，多个用逗号、空格或分号分隔"
               allow-clear
             />
           </div>

@@ -186,7 +186,8 @@ function hasAnySearchCondition(
   return Boolean(
     values.SettlementId ||
     values.Keyword ||
-    hasArray(values.Keys) ||
+    // Keys 现在是输入框字符串（也兼容历史数组值），统一归一化后判断是否有值
+    normalizeKeysParam(values.Keys) ||
     values.OrgId ||
     values.CurrencyId ||
     values.PaySide !== undefined ||
