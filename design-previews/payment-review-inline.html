@@ -1,0 +1,1710 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>付费申请审批 · 单表展开方案</title>
+    <style>
+      :root {
+        --ink: #172033;
+        --muted: #697386;
+        --line: #dde3ec;
+        --line-soft: #edf0f5;
+        --canvas: #f3f5f8;
+        --paper: #fbfcfe;
+        --white: #fff;
+        --blue: #1268e8;
+        --blue-soft: #eaf3ff;
+        --blue-ink: #0756c7;
+        --amber: #b75e00;
+        --amber-soft: #fff4e5;
+        --red: #d9363e;
+        --green: #13855c;
+        --shadow: 0 8px 30px rgb(30 45 70 / 8%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        font-family:
+          Aptos, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--canvas);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: 52px 1fr;
+        height: 100vh;
+      }
+
+      .topbar {
+        position: relative;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        background: var(--white);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 26px;
+        height: 26px;
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        position: absolute;
+        width: 15px;
+        height: 24px;
+        content: '';
+        border-radius: 5px 9px;
+        transform: skew(-25deg);
+      }
+
+      .brand-mark::before {
+        top: 0;
+        left: 2px;
+        background: #9d65ee;
+      }
+
+      .brand-mark::after {
+        right: 2px;
+        bottom: 0;
+        background: #20bff2;
+      }
+
+      .top-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+      }
+
+      .icon-btn {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        color: inherit;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+      }
+
+      .icon-btn:hover {
+        color: var(--ink);
+        background: var(--canvas);
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+        color: #4f5a6d;
+        background: #eef1f5;
+        border-radius: 50%;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 74px 1fr;
+        min-height: 0;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 7px;
+        background: var(--white);
+        border-right: 1px solid var(--line);
+      }
+
+      .nav-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        font-size: 11px;
+        color: #667085;
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+      }
+
+      .nav-item .nav-icon {
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .nav-item.active {
+        font-weight: 700;
+        color: var(--blue-ink);
+        background: var(--blue-soft);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-rows: 38px 1fr;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 2px;
+        align-items: end;
+        padding-left: 14px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tab {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        height: 38px;
+        padding: 0 17px;
+        color: #596579;
+      }
+
+      .tab.active {
+        font-weight: 700;
+        color: var(--blue-ink);
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-bottom-color: var(--white);
+        border-radius: 8px 8px 0 0;
+      }
+
+      main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 10px;
+        min-height: 0;
+        padding: 12px 14px 14px;
+      }
+
+      .filters {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        min-height: 64px;
+        padding: 11px 14px;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      .field {
+        display: grid;
+        grid-template-columns: auto minmax(130px, 170px);
+        gap: 9px;
+        align-items: center;
+      }
+
+      .field label {
+        font-weight: 600;
+        color: #4f5b6e;
+        white-space: nowrap;
+      }
+
+      .control {
+        height: 34px;
+        padding: 0 11px;
+        color: #445067;
+        outline: none;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+
+      .control:focus {
+        border-color: #8cbcf9;
+        box-shadow: 0 0 0 3px #eaf3ff;
+      }
+
+      .filter-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-left: auto;
+      }
+
+      .btn {
+        height: 34px;
+        padding: 0 15px;
+        font-weight: 600;
+        color: #3e485a;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+
+      .btn:hover {
+        background: #fafbfd;
+        border-color: #aab5c5;
+      }
+
+      .btn.primary {
+        color: white;
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+
+      .btn.primary:hover {
+        background: #075dd6;
+      }
+
+      .btn.danger {
+        color: var(--red);
+        border-color: #efb4b7;
+      }
+
+      .text-btn {
+        padding: 6px 4px;
+        color: var(--blue-ink);
+        background: transparent;
+        border: 0;
+      }
+
+      .more-filters {
+        display: none;
+        flex-basis: 100%;
+        padding-top: 10px;
+        border-top: 1px dashed var(--line);
+      }
+
+      .filters.expanded {
+        flex-wrap: wrap;
+      }
+
+      .filters.expanded .more-filters {
+        display: flex;
+        gap: 18px;
+      }
+
+      .ledger {
+        display: grid;
+        grid-template-rows: 48px 1fr 42px;
+        min-height: 0;
+        overflow: hidden;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 1px 2px rgb(24 36 56 / 3%);
+      }
+
+      .ledger-toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 0 13px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .ledger-title {
+        font-size: 15px;
+        font-weight: 750;
+      }
+
+      .count {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .toolbar-spacer {
+        flex: 1;
+      }
+
+      .view-switch {
+        display: flex;
+        padding: 3px;
+        background: var(--canvas);
+        border-radius: 7px;
+      }
+
+      .view-switch button {
+        height: 27px;
+        padding: 0 10px;
+        font-size: 12px;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+      }
+
+      .view-switch button.active {
+        color: var(--blue-ink);
+        background: var(--white);
+        box-shadow: 0 1px 4px rgb(21 37 62 / 10%);
+      }
+
+      .table-viewport {
+        min-height: 0;
+        overflow: auto;
+        background: var(--white);
+      }
+
+      table {
+        width: 100%;
+        min-width: 1420px;
+        border-spacing: 0;
+        border-collapse: separate;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        height: 40px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #536074;
+        text-align: left;
+        white-space: nowrap;
+        background: #f8f9fb;
+        border-bottom: 1px solid var(--line);
+      }
+
+      td {
+        height: 49px;
+        color: #2d3749;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      th,
+      td {
+        padding: 0 12px;
+      }
+
+      th:first-child,
+      td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 6;
+        width: 48px;
+        padding: 0;
+        text-align: center;
+      }
+
+      th:nth-child(2),
+      td:nth-child(2) {
+        position: sticky;
+        left: 48px;
+        z-index: 6;
+      }
+
+      th:first-child,
+      th:nth-child(2) {
+        z-index: 10;
+        background: #f8f9fb;
+      }
+
+      th:last-child,
+      td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 6;
+        background: var(--white);
+        box-shadow: -8px 0 12px -12px rgb(34 49 72 / 60%);
+      }
+
+      th:last-child {
+        z-index: 10;
+        background: #f8f9fb;
+      }
+
+      tr.master-row td:first-child,
+      tr.master-row td:nth-child(2) {
+        background: var(--white);
+      }
+
+      tr.master-row:hover td {
+        background: #f8fbff;
+      }
+
+      tr.master-row:hover td:first-child,
+      tr.master-row:hover td:nth-child(2) {
+        background: #f8fbff;
+      }
+
+      tr.master-row.open td {
+        background: #edf5ff;
+        border-bottom-color: #d7e7fb;
+      }
+
+      tr.master-row.open td:first-child,
+      tr.master-row.open td:nth-child(2) {
+        background: #edf5ff;
+      }
+
+      tr.master-row.open td:last-child {
+        background: #edf5ff;
+      }
+
+      tr.master-row.open td:nth-child(2) {
+        box-shadow: inset 3px 0 0 var(--blue);
+      }
+
+      .amount {
+        font-weight: 750;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .status {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--amber);
+      }
+
+      .status::before {
+        width: 6px;
+        height: 6px;
+        content: '';
+        background: #ef8f15;
+        border-radius: 50%;
+      }
+
+      .expand-cell {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .chevron {
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      tr.open .chevron {
+        color: var(--blue);
+        transform: rotate(90deg);
+      }
+
+      input[type='checkbox'] {
+        width: 15px;
+        height: 15px;
+        accent-color: var(--blue);
+      }
+
+      .row-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .row-action {
+        padding: 5px 0;
+        font-size: 13px;
+        color: var(--blue-ink);
+        background: transparent;
+        border: 0;
+      }
+
+      .row-action.reject {
+        color: #a7474c;
+      }
+
+      .detail-row td {
+        position: static !important;
+        height: auto;
+        padding: 0;
+        background: #f8fbff;
+        border-bottom: 1px solid #bfd7f4;
+      }
+
+      .detail-wrap {
+        display: grid;
+        grid-template-rows: 1fr;
+        transition: grid-template-rows 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .detail-inner {
+        overflow: hidden;
+      }
+
+      .detail-panel {
+        padding: 14px 20px 16px 68px;
+      }
+
+      .audit-strip {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        min-width: 1100px;
+        min-height: 52px;
+        padding: 0 2px 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #d9e3ef;
+      }
+
+      .audit-summary {
+        font-size: 15px;
+        color: #354156;
+      }
+
+      .audit-summary strong {
+        margin: 0 4px;
+        font-size: 19px;
+        font-variant-numeric: tabular-nums;
+        color: var(--blue-ink);
+      }
+
+      .audit-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .audit-issue {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 9px;
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 700;
+        color: #895111;
+        background: var(--amber-soft);
+        border-radius: 5px;
+      }
+
+      .audit-actions {
+        display: flex;
+        gap: 7px;
+        padding-left: 4px;
+      }
+
+      .warn-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 5px;
+        background: #e68b19;
+        border-radius: 50%;
+      }
+
+      .fee-table {
+        min-width: 1100px;
+        overflow: hidden;
+        background: var(--white);
+        border: 1px solid #dfe7f1;
+        border-radius: 7px;
+      }
+
+      .fee-head,
+      .fee-data {
+        display: grid;
+        grid-template-columns: 50px 1.35fr 1.15fr 0.9fr 0.8fr 0.8fr 0.85fr 0.85fr 0.95fr;
+        align-items: center;
+      }
+
+      .fee-head {
+        min-height: 34px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #59667a;
+        background: #f4f7fb;
+      }
+
+      .fee-data {
+        min-height: 42px;
+      }
+
+      .fee-head span,
+      .fee-data span {
+        padding: 0 12px;
+        border-right: 1px solid #e6ebf2;
+      }
+
+      .fee-head span:last-child,
+      .fee-data span:last-child {
+        border-right: 0;
+      }
+
+      .fee-data .highlight {
+        font-weight: 800;
+        color: var(--blue-ink);
+      }
+
+      .fee-tag {
+        display: inline-flex;
+        width: fit-content;
+        padding: 3px 7px;
+        font-size: 12px;
+        color: #a25b08;
+        background: var(--amber-soft);
+        border-radius: 4px;
+      }
+
+      .pagination {
+        display: flex;
+        align-items: center;
+        padding: 0 13px;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      .page-controls {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        margin-left: auto;
+      }
+
+      .page {
+        width: 28px;
+        height: 28px;
+        color: #667085;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+      }
+
+      .page.active {
+        color: white;
+        background: var(--blue);
+      }
+
+      .review-workspace {
+        display: none;
+        grid-template-rows: 66px auto minmax(150px, 1fr) 38px;
+        min-height: 0;
+        overflow: hidden;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      main.review-mode {
+        grid-template-rows: minmax(260px, 38%) minmax(330px, 1fr);
+      }
+
+      main.review-mode .filters {
+        display: none;
+      }
+
+      main.review-mode .review-workspace {
+        display: grid;
+      }
+
+      .review-head {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .back-btn {
+        padding: 8px 4px;
+        font-weight: 700;
+        color: var(--blue-ink);
+        white-space: nowrap;
+        background: transparent;
+        border: 0;
+      }
+
+      .review-number {
+        min-width: 150px;
+      }
+
+      .review-number small,
+      .review-field small {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .review-number strong {
+        font-size: 17px;
+      }
+
+      .review-field {
+        min-width: 130px;
+        padding-left: 18px;
+        border-left: 1px solid var(--line);
+      }
+
+      .review-field strong {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .review-field .review-amount {
+        font-size: 18px;
+        color: var(--blue-ink);
+      }
+
+      .review-head-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-left: auto;
+      }
+
+      .level-marker {
+        display: inline-grid;
+        flex: 0 0 20px;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--blue-ink);
+        background: var(--blue-soft);
+        border-radius: 50%;
+      }
+
+      .level-section {
+        display: grid;
+        grid-template-rows: 36px 1fr;
+        min-height: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .level-section + .level-section {
+        border-top-color: #c9d9ec;
+      }
+
+      .level-business .level-table {
+        max-height: 142px;
+      }
+
+      .level-head {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        padding: 0 13px;
+        color: #354156;
+        background: #fafbfd;
+      }
+
+      .level-head strong {
+        font-size: 13px;
+      }
+
+      .level-count {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .relation-path {
+        padding-left: 14px;
+        margin-left: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        border-left: 1px solid var(--line);
+      }
+
+      .relation-path strong {
+        color: var(--blue-ink);
+      }
+
+      .level-table {
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .level-table table {
+        min-width: 1350px;
+      }
+
+      .level-table td {
+        height: 44px;
+      }
+
+      .level-table th:first-child,
+      .level-table td:first-child {
+        width: auto;
+        padding: 0 12px;
+        text-align: left;
+      }
+
+      .level-table th:nth-child(2),
+      .level-table td:nth-child(2) {
+        position: static;
+      }
+
+      .related-row td {
+        background: #f1f7ff;
+      }
+
+      .related-row td:first-child {
+        box-shadow: inset 3px 0 0 var(--blue);
+      }
+
+      .review-tabs {
+        display: flex;
+        gap: 24px;
+        align-items: end;
+        padding: 0 17px;
+        background: #fafbfd;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .review-tab {
+        height: 42px;
+        padding: 0 3px;
+        color: #657084;
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+      }
+
+      .review-tab.active {
+        font-weight: 800;
+        color: var(--blue-ink);
+        border-bottom-color: var(--blue);
+      }
+
+      .review-tab .tab-alert {
+        color: var(--amber);
+      }
+
+      .review-content {
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .review-pane {
+        display: none;
+        min-height: 100%;
+      }
+
+      .review-pane.active {
+        display: block;
+      }
+
+      .review-content table {
+        min-width: 1350px;
+      }
+
+      .review-content td {
+        height: 48px;
+      }
+
+      .review-content th:first-child,
+      .review-content td:first-child {
+        width: auto;
+        padding: 0 12px;
+        text-align: left;
+      }
+
+      .review-content th:nth-child(2),
+      .review-content td:nth-child(2) {
+        position: static;
+      }
+
+      .context-line {
+        display: flex;
+        align-items: center;
+        height: 42px;
+        padding: 0 13px;
+        font-size: 12px;
+        color: #566175;
+        background: #f8fbff;
+        border-bottom: 1px solid #dce8f5;
+      }
+
+      .context-line strong {
+        margin-right: 18px;
+        color: #344055;
+      }
+
+      .review-foot {
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      .record-nav {
+        display: flex;
+        gap: 7px;
+        margin-left: auto;
+      }
+
+      .empty-pane {
+        display: grid;
+        place-items: center;
+        height: 100%;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .empty-pane strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #3d485a;
+      }
+
+      .bulk-bar {
+        position: fixed;
+        bottom: 25px;
+        left: calc(74px + 50%);
+        z-index: 30;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        min-width: 470px;
+        height: 54px;
+        padding: 0 8px 0 20px;
+        color: #f4f7fc;
+        background: #18243a;
+        border-radius: 11px;
+        box-shadow: 0 18px 50px rgb(20 31 51 / 28%);
+        opacity: 0;
+        transform: translate(-50%, 130px);
+        transition:
+          transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+          opacity 0.2s ease;
+      }
+
+      .bulk-bar.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      .bulk-count strong {
+        font-size: 17px;
+      }
+
+      .bulk-total {
+        padding-left: 16px;
+        color: #c8d0dd;
+        border-left: 1px solid #48546a;
+      }
+
+      .bulk-total strong {
+        color: white;
+      }
+
+      .bulk-spacer {
+        flex: 1;
+      }
+
+      .bulk-btn {
+        height: 38px;
+        padding: 0 16px;
+        font-weight: 700;
+        color: white;
+        background: transparent;
+        border: 1px solid #526078;
+        border-radius: 7px;
+      }
+
+      .bulk-btn.pass {
+        background: #2d7ff0;
+        border-color: #2d7ff0;
+      }
+
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 39;
+        pointer-events: none;
+        background: rgb(20 30 48 / 18%);
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        display: grid;
+        grid-template-rows: 62px 1fr;
+        width: min(420px, 92vw);
+        background: var(--white);
+        box-shadow: -18px 0 50px rgb(28 40 62 / 16%);
+        transform: translateX(102%);
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .drawer.open {
+        transform: translateX(0);
+      }
+
+      .drawer.open + .drawer-backdrop {
+        pointer-events: auto;
+        opacity: 1;
+      }
+
+      .drawer-head {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .drawer-head h2 {
+        margin: 0;
+        font-size: 17px;
+      }
+
+      .drawer-head button {
+        margin-left: auto;
+      }
+
+      .drawer-body {
+        padding: 20px;
+      }
+
+      .empty-evidence {
+        display: grid;
+        place-items: center;
+        height: 190px;
+        color: var(--muted);
+        text-align: center;
+        background: #fafbfd;
+        border: 1px dashed #ccd5e2;
+        border-radius: 10px;
+      }
+
+      .empty-evidence strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #3b4659;
+      }
+
+      .toast {
+        position: fixed;
+        top: 68px;
+        left: 50%;
+        z-index: 60;
+        padding: 10px 16px;
+        color: white;
+        pointer-events: none;
+        background: #172238;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        opacity: 0;
+        transform: translate(-50%, -20px);
+        transition: 0.22s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      @media (max-width: 1100px) {
+        .field:nth-of-type(3) {
+          display: none;
+        }
+
+        .shell {
+          grid-template-columns: 58px 1fr;
+        }
+
+        .sidebar {
+          padding-inline: 4px;
+        }
+
+        .nav-item {
+          font-size: 10px;
+        }
+
+        .bulk-bar {
+          left: calc(58px + 50%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"></span><span>佳越测试</span>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" title="帮助">?</button
+          ><button class="icon-btn" title="设置">⚙</button
+          ><button class="icon-btn" title="通知">♧</button
+          ><span class="avatar">理员</span>
+        </div>
+      </header>
+
+      <div class="shell">
+        <aside class="sidebar">
+          <button class="nav-item">
+            <span class="nav-icon">⌁</span>拓客管理
+          </button>
+          <button class="nav-item">
+            <span class="nav-icon">∞</span>工作台
+          </button>
+          <button class="nav-item">
+            <span class="nav-icon">▰</span>航线管理
+          </button>
+          <button class="nav-item">
+            <span class="nav-icon">▤</span>费用管理
+          </button>
+          <button class="nav-item active">
+            <span class="nav-icon">✓</span>审核审批
+          </button>
+          <button class="nav-item">
+            <span class="nav-icon">▦</span>财务管理
+          </button>
+          <button class="nav-item">
+            <span class="nav-icon">◈</span>客户管理
+          </button>
+        </aside>
+
+        <section class="workspace">
+          <nav class="tabs">
+            <div class="tab">∞ 工作台</div>
+            <div class="tab">业务联系单</div>
+            <div class="tab active">付费申请审批　×</div>
+          </nav>
+          <main>
+            <section class="filters" id="filters">
+              <div class="field">
+                <label>任务状态</label
+                ><select class="control">
+                  <option>审核中</option>
+                  <option>已通过</option>
+                  <option>已驳回</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>编号</label
+                ><input class="control" placeholder="主提单号 / 订单号" />
+              </div>
+              <div class="field">
+                <label>申请单号</label
+                ><input class="control" placeholder="请输入" />
+              </div>
+              <div class="filter-actions">
+                <button class="btn">重置</button
+                ><button class="btn primary">搜索</button
+                ><button class="text-btn" id="toggleFilters">展开⌄</button>
+              </div>
+              <div class="more-filters">
+                <div class="field">
+                  <label>结算对象</label
+                  ><input class="control" placeholder="请输入" />
+                </div>
+                <div class="field">
+                  <label>提交日期</label><input class="control" type="date" />
+                </div>
+              </div>
+            </section>
+
+            <section class="ledger">
+              <div class="ledger-toolbar">
+                <span class="level-marker">1</span
+                ><span class="ledger-title">付费申请审批</span
+                ><span class="count">共 6 条</span>
+                <span class="toolbar-spacer"></span>
+                <span class="count" id="toolbarSelected">已选 0 条</span
+                ><button class="btn primary toolbar-audit" disabled>通过</button
+                ><button class="btn danger toolbar-reject" disabled>
+                  驳回
+                </button>
+                <button class="icon-btn" title="刷新">↻</button
+                ><button class="icon-btn" title="列设置">▦</button>
+              </div>
+
+              <div class="table-viewport">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <input
+                          type="checkbox"
+                          id="selectAll"
+                          aria-label="全选"
+                        />
+                      </th>
+                      <th>申请单号</th>
+                      <th>主提单号</th>
+                      <th>委托编号</th>
+                      <th>结算对象</th>
+                      <th>RMB申请合计</th>
+                      <th>任务状态</th>
+                      <th>我的审核状态</th>
+                      <th>提交时间</th>
+                      <th>最晚付款时间</th>
+                      <th>申请人</th>
+                      <th>审核人</th>
+                      <th>审核时间</th>
+                      <th>备注</th>
+                    </tr>
+                  </thead>
+                  <tbody id="approvalBody"></tbody>
+                </table>
+              </div>
+
+              <div class="pagination">
+                <span>共 6 条记录　20条/页</span>
+                <div class="page-controls">
+                  <button class="page">‹</button
+                  ><button class="page active">1</button
+                  ><button class="page">›</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="review-workspace" id="reviewWorkspace">
+              <header class="review-head">
+                <button class="back-btn" id="backToList">收起审核区</button>
+                <div class="review-number">
+                  <small>费用明细 · 申请单号</small
+                  ><strong id="reviewId">PY260831012</strong>
+                </div>
+                <div class="review-field">
+                  <small>结算币别</small><strong>按原币</strong>
+                </div>
+                <div class="review-field">
+                  <small>费用合计</small
+                  ><strong class="review-amount" id="reviewAmount"
+                    >RMB 300.00</strong
+                  >
+                </div>
+                <div class="review-field">
+                  <small>应收未结算</small
+                  ><strong id="reviewReceivable">USD 77,888.00</strong>
+                </div>
+                <div class="review-head-actions">
+                  <button class="btn open-evidence">附件　无数据</button>
+                </div>
+              </header>
+              <section class="level-section level-business">
+                <div class="level-head">
+                  <span class="level-marker">2</span><strong>业务分组</strong
+                  ><span class="level-count">共 1 组</span
+                  ><span class="relation-path"
+                    >当前申请单：<strong id="businessApplicationNo"
+                      >PY260831012</strong
+                    ></span
+                  >
+                </div>
+                <div class="level-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>序号</th>
+                        <th>委托编号</th>
+                        <th>主提单号</th>
+                        <th>委托单位</th>
+                        <th>结算对象</th>
+                        <th>开船日期</th>
+                        <th>会计日期</th>
+                        <th>起运港</th>
+                        <th>目的港</th>
+                        <th>销售</th>
+                        <th>操作</th>
+                        <th>客服</th>
+                        <th>RMB申请合计</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="related-row">
+                        <td>1</td>
+                        <td id="bizJob">JHTSE260830020</td>
+                        <td id="bizBl">MBL20250318001</td>
+                        <td>测试结算</td>
+                        <td id="bizTarget">迦四方速递</td>
+                        <td>2025-03-25</td>
+                        <td>2025-03</td>
+                        <td>QINGDAO, CHINA</td>
+                        <td>POD REMARK TEST</td>
+                        <td>超级管理员</td>
+                        <td>超级管理员</td>
+                        <td>超级管理员</td>
+                        <td class="amount" id="bizAmount">300.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="level-section">
+                <div class="level-head">
+                  <span class="level-marker">3</span><strong>费用项目</strong
+                  ><span class="level-count">共 1 条</span
+                  ><span class="relation-path"
+                    >关联业务：<strong id="feeContext">JHTSE260830020</strong
+                    >　<span id="feeMblContext">MBL20250318001</span></span
+                  >
+                </div>
+                <div class="level-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>序号</th>
+                        <th>收付</th>
+                        <th>费用名称</th>
+                        <th>原始币别</th>
+                        <th>原始金额</th>
+                        <th>原始汇率</th>
+                        <th>已核销金额</th>
+                        <th>本次申请金额</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>1</td>
+                        <td><span class="fee-tag">付</span></td>
+                        <td id="feeName">安检费</td>
+                        <td id="feeCurrency">RMB</td>
+                        <td class="amount" id="feeOriginal">500.00</td>
+                        <td>1</td>
+                        <td class="amount">0.00</td>
+                        <td
+                          class="amount"
+                          style="color: var(--blue-ink)"
+                          id="feeAmount"
+                        >
+                          300.00
+                        </td>
+                        <td>—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              <footer class="review-foot">
+                <span>共 1 组</span
+                ><span style="margin-left: auto"
+                  >RMB　<strong id="footerAmount">300.00</strong></span
+                >
+              </footer>
+            </section>
+          </main>
+        </section>
+      </div>
+    </div>
+
+    <aside class="drawer" id="drawer">
+      <div class="drawer-head">
+        <h2>附件</h2>
+        <button class="icon-btn" id="closeDrawer">×</button>
+      </div>
+      <div class="drawer-body">
+        <p class="muted">申请单号　PY260831012</p>
+        <div class="empty-evidence">
+          <div><strong>暂无数据</strong>申请附件、发票附件及结算附件均为空</div>
+        </div>
+      </div>
+    </aside>
+    <div class="drawer-backdrop" id="backdrop"></div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const rows = [
+        {
+          id: 'PY260831012',
+          bl: 'MBL20250318001',
+          target: '迦四方速递',
+          amount: 300,
+          currency: 'RMB',
+          receivable: 'USD 77,888.00',
+          fees: 1,
+          deadline: '2026-08-25',
+          submitted: '2026-08-31 14:41',
+          applicant: '超级管理员',
+          job: 'JHTSE260830020',
+          item: '安检费',
+          original: '500.00',
+        },
+        {
+          id: 'PY260830009',
+          bl: 'MSCU1234567',
+          target: '明港场站',
+          amount: 1554,
+          currency: 'RMB',
+          receivable: '—',
+          fees: 3,
+          deadline: '2026-09-02',
+          submitted: '2026-08-30 21:07',
+          applicant: '超级管理员',
+          job: 'JHTSE260829017',
+          item: '港杂费等 3 项',
+          original: '1,920.00',
+        },
+        {
+          id: 'PY260829014',
+          bl: 'MAEU6682031',
+          target: '青岛远洋物流',
+          amount: 2680,
+          currency: 'RMB',
+          receivable: 'RMB 12,400.00',
+          fees: 2,
+          deadline: '2026-09-05',
+          submitted: '2026-08-29 17:24',
+          applicant: '周云',
+          job: 'JHTSE260828041',
+          item: '拖车费等 2 项',
+          original: '3,100.00',
+        },
+        {
+          id: 'PY260828006',
+          bl: 'COSU8901720',
+          target: '海联国际货运',
+          amount: 835,
+          currency: 'USD',
+          receivable: 'USD 9,520.00',
+          fees: 1,
+          deadline: '2026-09-08',
+          submitted: '2026-08-28 10:18',
+          applicant: '陈晓',
+          job: 'JHTSE260827006',
+          item: '海运附加费',
+          original: '1,120.00',
+        },
+        {
+          id: 'PY260827021',
+          bl: 'OOLU7210845',
+          target: '东港集运',
+          amount: 760,
+          currency: 'RMB',
+          receivable: '—',
+          fees: 2,
+          deadline: '2026-09-10',
+          submitted: '2026-08-27 16:50',
+          applicant: '林海',
+          job: 'JHTSE260826033',
+          item: '仓储费等 2 项',
+          original: '980.00',
+        },
+        {
+          id: 'PY260826003',
+          bl: 'HLCU4189207',
+          target: '中外运华东',
+          amount: 4200,
+          currency: 'RMB',
+          receivable: 'RMB 31,800.00',
+          fees: 4,
+          deadline: '2026-09-12',
+          submitted: '2026-08-26 09:32',
+          applicant: '徐文',
+          job: 'JHTSE260825019',
+          item: '代理费等 4 项',
+          original: '5,600.00',
+        },
+      ];
+      let activeId = null;
+      const selected = new Set();
+      const body = document.getElementById('approvalBody');
+
+      function money(n) {
+        return n.toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+      function render() {
+        body.innerHTML = rows
+          .map(
+            (r) => `
+        <tr class="master-row ${activeId === r.id ? 'open' : ''}" data-id="${r.id}">
+          <td><input class="row-check" type="checkbox" aria-label="选择 ${r.id}" ${selected.has(r.id) ? 'checked' : ''}></td>
+          <td><div class="expand-cell"><span>${r.id}</span></div></td>
+          <td>${r.bl}</td><td>${r.job}</td><td>${r.target}</td><td class="amount">${r.currency === 'RMB' ? money(r.amount) : ''}</td><td><span class="status">审核中</span></td><td><span class="status">审核中</span></td><td>${r.submitted}</td><td>${r.deadline} 00:00</td><td>${r.applicant}</td><td></td><td></td><td></td>
+        </tr>
+      `,
+          )
+          .join('');
+        bindRows();
+        updateBulk();
+      }
+
+      function bindRows() {
+        document.querySelectorAll('.master-row').forEach((row) => {
+          row.addEventListener('click', (e) => {
+            if (e.target.closest('input,button')) return;
+            openReview(row.dataset.id);
+          });
+          row.querySelector('.row-check').addEventListener('change', (e) => {
+            e.target.checked
+              ? selected.add(row.dataset.id)
+              : selected.delete(row.dataset.id);
+            updateBulk();
+          });
+        });
+      }
+
+      function openReview(id) {
+        activeId = id;
+        const r = rows.find((item) => item.id === id);
+        document.getElementById('reviewId').textContent = r.id;
+        document.getElementById('reviewAmount').textContent =
+          `${r.currency} ${money(r.amount)}`;
+        document.getElementById('reviewReceivable').textContent = r.receivable;
+        document.getElementById('businessApplicationNo').textContent = r.id;
+        document.getElementById('bizJob').textContent = r.job;
+        document.getElementById('bizBl').textContent = r.bl;
+        document.getElementById('bizTarget').textContent = r.target;
+        document.getElementById('bizAmount').textContent = money(r.amount);
+        document.getElementById('feeContext').textContent = r.job;
+        document.getElementById('feeMblContext').textContent = r.bl;
+        document.getElementById('feeName').textContent = r.item;
+        document.getElementById('feeCurrency').textContent = r.currency;
+        document.getElementById('feeOriginal').textContent = r.original;
+        document.getElementById('feeAmount').textContent = money(r.amount);
+        document.getElementById('footerAmount').textContent = money(r.amount);
+        document.querySelector('main').classList.add('review-mode');
+        render();
+      }
+
+      function closeReview() {
+        document.querySelector('main').classList.remove('review-mode');
+        updateBulk();
+      }
+
+      function moveRecord(offset) {
+        const index = rows.findIndex((r) => r.id === activeId);
+        const next = Math.min(rows.length - 1, Math.max(0, index + offset));
+        openReview(rows[next].id);
+      }
+
+      function updateBulk() {
+        const items = rows.filter((r) => selected.has(r.id));
+        document.getElementById('toolbarSelected').textContent =
+          `已选 ${items.length} 条`;
+        document.querySelector('.toolbar-audit').disabled = items.length === 0;
+        document.querySelector('.toolbar-reject').disabled = items.length === 0;
+        document.getElementById('selectAll').checked =
+          items.length === rows.length;
+      }
+
+      function openDrawer() {
+        document.getElementById('drawer').classList.add('open');
+      }
+      function closeDrawer() {
+        document.getElementById('drawer').classList.remove('open');
+      }
+      document
+        .getElementById('closeDrawer')
+        .addEventListener('click', closeDrawer);
+      document
+        .getElementById('backdrop')
+        .addEventListener('click', closeDrawer);
+      document
+        .getElementById('toggleFilters')
+        .addEventListener('click', (e) => {
+          const open = document
+            .getElementById('filters')
+            .classList.toggle('expanded');
+          e.target.textContent = open ? '收起⌃' : '展开⌄';
+        });
+      document.getElementById('selectAll').addEventListener('change', (e) => {
+        selected.clear();
+        if (e.target.checked) rows.forEach((r) => selected.add(r.id));
+        render();
+      });
+      document.querySelectorAll('.view-switch button').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          document
+            .querySelectorAll('.view-switch button')
+            .forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          showToast(`已切换到${btn.textContent}`);
+        }),
+      );
+      document
+        .getElementById('backToList')
+        .addEventListener('click', closeReview);
+      document.querySelectorAll('.review-tab').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          document
+            .querySelectorAll('.review-tab')
+            .forEach((item) => item.classList.remove('active'));
+          document
+            .querySelectorAll('.review-pane')
+            .forEach((item) => item.classList.remove('active'));
+          btn.classList.add('active');
+          document
+            .getElementById(`pane-${btn.dataset.pane}`)
+            .classList.add('active');
+        }),
+      );
+      document
+        .querySelectorAll('.open-evidence')
+        .forEach((btn) => btn.addEventListener('click', openDrawer));
+      document
+        .querySelector('.toolbar-audit')
+        .addEventListener('click', () => showToast('确认通过所选任务'));
+      document
+        .querySelector('.toolbar-reject')
+        .addEventListener('click', () => showToast('确认驳回所选任务'));
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(window.toastTimer);
+        window.toastTimer = setTimeout(
+          () => toast.classList.remove('show'),
+          1800,
+        );
+      }
+      render();
+      openReview(rows[0].id);
+    </script>
+  </body>
+</html>
