@@ -70,6 +70,77 @@ const saving = ref(false); // 保存loading状态
 // 初始化数据
 const tableData = shallowRef<any[]>([]);
 
+// ✅ 联系人可选字段合法性校验规则（手机/邮箱/座机/QQ）：
+// 四者均为可选字段——留空视为合法，一旦填写则必须符合对应格式
+const CONTACT_FIELD_VALIDATORS = [
+  {
+    field: 'mobile',
+    label: '手机',
+    pattern: /^1[3-9]\d{9}$/,
+    hint: '请输入 11 位有效手机号',
+  },
+  {
+    field: 'email',
+    label: '邮箱',
+    pattern: /^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$/,
+    hint: '请输入有效邮箱地址',
+  },
+  {
+    field: 'landline',
+    label: '座机',
+    pattern: /^(?:0\d{2,3}-?)?\d{7,8}(?:-\d{1,5})?$/,
+    hint: '请输入有效座机号（可含区号/分机）',
+  },
+  {
+    field: 'qq',
+    label: 'QQ',
+    pattern: /^[1-9]\d{4,10}$/,
+    hint: '请输入 5-11 位 QQ 号',
+  },
+];
+
+// 校验单值：去除首尾空格后为空则合法（可选字段），否则按正则匹配
+function validateContactField(pattern: RegExp, value: any): boolean {
+  const text = value == null ? '' : String(value).trim();
+  if (text === '') return true;
+  return pattern.test(text);
+}
+
+// 生成 Handsontable 列 validator：非法时给单元格加 htInvalid（红框）做实时反馈
+function makeContactValidator(field: string) {
+  const rule = CONTACT_FIELD_VALIDATORS.find((item) => item.field === field);
+  return (value: any, callback: (valid: boolean) => void) => {
+    if (!rule) {
+      callback(true);
+      return;
+    }
+    callback(validateContactField(rule.pattern, value));
+  };
+}
+
+// 遍历表格，返回首个非法字段的定位信息；全部合法返回 null（用于保存前拦截）
+function findFirstInvalidContact(): {
+  field: string;
+  label: string;
+  row: number;
+  message: string;
+} | null {
+  for (let row = 0; row < tableData.value.length; row++) {
+    const rowData = tableData.value[row];
+    for (const rule of CONTACT_FIELD_VALIDATORS) {
+      if (!validateContactField(rule.pattern, rowData?.[rule.field])) {
+        return {
+          field: rule.field,
+          label: rule.label,
+          row,
+          message: `第 ${row + 1} 行【${rule.label}】${rule.hint}`,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 // Handsontable 配置
 const hotSettings = shallowRef({
   data: tableData.value,
@@ -117,12 +188,14 @@ const hotSettings = shallowRef({
       title: '手机',
       type: 'text',
       width: 120,
+      validator: makeContactValidator('mobile'),
     },
     {
       data: 'email',
       title: '邮箱',
       type: 'text',
       width: 180,
+      validator: makeContactValidator('email'),
     },
     // ✅ 删除【办公电话】(tel) 列：与【座机】(landline) 重复，仅保留座机
     {
@@ -130,6 +203,7 @@ const hotSettings = shallowRef({
       title: '座机',
       type: 'text',
       width: 120,
+      validator: makeContactValidator('landline'),
     },
     {
       data: 'position',
@@ -148,6 +222,7 @@ const hotSettings = shallowRef({
       title: 'QQ',
       type: 'text',
       width: 100,
+      validator: makeContactValidator('qq'),
     },
     {
       data: 'isDefault',
@@ -537,6 +612,19 @@ const deleteRow = async (rowIndex: number) => {
 const saveData = async () => {
   if (saving.value) return; // 防止重复提交
 
+  // ✅ 保存前合法性校验：定位首个非法字段，提示 + 选中并滚动到该单元格，拦截保存
+  const invalid = findFirstInvalidContact();
+  if (invalid) {
+    message.error(invalid.message);
+    const hotInstance = hotTableRef.value?.hotInstance;
+    if (hotInstance) {
+      const col = hotInstance.propToCol(invalid.field);
+      hotInstance.selectCell(invalid.row, col);
+      hotInstance.scrollViewportTo(invalid.row, col);
+    }
+    return;
+  }
+
   saving.value = true;
 
   try {
@@ -596,5 +684,11 @@ defineExpose({
   overflow: hidden;
   border: 1px solid #e8e8e8;
   border-radius: 4px;
+}
+
+/* ✅ 校验非法单元格：浅红底 + 红边框，配合 validator 实时反馈（覆盖 Handsontable 默认亮红） */
+:deep(.htInvalid) {
+  background-color: #fff1f0 !important;
+  border-color: #ff4d4f !important;
 }
 </style>

@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
+import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
 
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { createAbpPermission } from '#/utils/abp-permission';
 
 import Attachments from './attachments/list.vue';
 import Form from './base/form.vue';
@@ -35,20 +37,37 @@ const contactRef = ref<ContactExpose | null>(null);
 const invoiceRef = ref<InvoiceExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
 
-const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
+/** 账期独立权限：拥有 Admin.Client.BillingPeriod 或其 .Get 任一权限即可见账期 tab */
+const billingPeriodPerm = createAbpPermission('Admin.Client.BillingPeriod');
+const { hasAccessByCodes } = useAccess();
+const canAccessBillingPeriod = computed(() =>
+  hasAccessByCodes(billingPeriodPerm.pageAuthority),
+);
+
+const allTabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
   { key: 'contact', label: '联系人' },
   { key: 'payment', label: '账期' },
   { key: 'invoice', label: '开票信息' },
   { key: 'attachments', label: '附件' },
   { key: 'exceptService', label: '海运出口服务项目' },
-]);
+];
+
+/** 账期 tab 受独立权限控制：无权限则从列表移除，用户看不到也点不到 */
+const tabs = computed(() =>
+  allTabs.filter(
+    (tab) => tab.key !== 'payment' || canAccessBillingPeriod.value,
+  ),
+);
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
-  if (!tab.sectionKey) return;
+  // 先取局部常量再判空：nextTick 回调是延迟执行的闭包，直接用 tab.sectionKey 时
+  // TS 无法保持收窄（会退回 SectionKey | undefined），导致 scrollToSection 传参报错
+  const sectionKey = tab.sectionKey;
+  if (!sectionKey) return;
   nextTick(() => {
-    formRef.value?.scrollToSection?.(tab.sectionKey);
+    formRef.value?.scrollToSection?.(sectionKey);
   });
 };
 

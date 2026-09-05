@@ -13,6 +13,7 @@ import {
   getBillingPeriodPagedList,
   editBillingPeriod,
   deleteBillingPeriod,
+  syncBillingPeriod,
 } from '#/api/sea-export/billing-period-admin';
 import { useVbenModal } from '@vben/common-ui';
 import AddModal from './add-modal.vue';
@@ -23,11 +24,17 @@ import { Page } from '@vben/common-ui';
 import { Button, Space, message } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { createAbpPermission } from '#/utils/abp-permission';
 import { Modal as AntModal } from 'ant-design-vue';
 
 defineOptions({ name: 'ClientPaymentList' });
 
 const route = useRoute();
+
+/** 账期独立权限（Admin.Client.BillingPeriod.*），不再共用客户的 Edit/Get 权限 */
+const perm = createAbpPermission('Admin.Client.BillingPeriod');
+/** 同步账期是账期特有的非 CRUD 动作，直接用权限码字符串（与项目 Submit/Audit 范式一致） */
+const billingPeriodSyncCode = 'Admin.Client.BillingPeriod.Sync';
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -76,6 +83,30 @@ const handleBatchDelete = async () => {
         console.error('批量删除失败:', error);
         message.error($t('common.deleteFailed'));
       }
+    },
+  });
+};
+
+/**
+ * 同步账期：把该客户票结历史业务按当前账期规则重算应结日期与结算方式。
+ * 入参为账期 id（客户由它带出），故需选中且仅选中一条账期记录。
+ */
+const handleSync = () => {
+  const selectedRows = getSelectedRows();
+  if (selectedRows.length !== 1) {
+    message.warning('请选择一条账期记录进行同步');
+    return;
+  }
+  const row = selectedRows[0];
+  AntModal.confirm({
+    title: '同步账期',
+    content:
+      '将按当前账期规则重算该客户票结历史业务的应结日期与结算方式，是否继续？',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    onOk: async () => {
+      const changedCount = await syncBillingPeriod({ id: row.id });
+      message.success(`同步完成，共改动 ${changedCount ?? 0} 票业务`);
     },
   });
 };
@@ -342,11 +373,15 @@ const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
     <Grid :table-title="$t('seaExport.client.paymentTerms.title')">
       <template #toolbar-tools>
         <Space>
-          <Button type="primary" @click="addContact">
+          <Button v-access:code="perm.add" type="primary" @click="addContact">
             <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
             {{ $t('common.create') }}
           </Button>
-          <Button danger @click="handleBatchDelete">
+          <Button v-access:code="billingPeriodSyncCode" @click="handleSync">
+            <IconifyIcon icon="ant-design:sync-outlined" class="size-4" />
+            同步账期
+          </Button>
+          <Button v-access:code="perm.delete" danger @click="handleBatchDelete">
             <IconifyIcon icon="ant-design:delete-outlined" class="size-4" />
             {{ $t('common.batchDelete') }}
           </Button>

@@ -319,3 +319,19 @@ export const getBillingPeriodDetail = (id: number | string) => {
     { params: { Id: idStr } },
   );
 };
+
+/**
+ * 同步账期
+ * 账期规则是下单当时的快照，改规则不会自动回刷历史业务。本接口把该客户
+ * 【票结（settlementType=0）】的历史业务按当前账期规则重算应结日期与结算方式，
+ * 月结/约定天数的业务不动。客户由账期 id 带出。
+ * 权限：Admin.Client.BillingPeriod.Sync
+ * @param data id=账期id（必填）；ids 本接口不用
+ * @returns result 为实际改动的业务票数，返回 0 表示没有需要回刷的业务
+ */
+export const syncBillingPeriod = (data: BillingPeriodAdminApi.IdDto) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/SyncBillingPeriodAsync`,
+    data,
+  );
+};
