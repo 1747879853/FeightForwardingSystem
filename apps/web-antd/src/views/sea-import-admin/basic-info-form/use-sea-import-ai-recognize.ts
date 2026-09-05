@@ -49,6 +49,7 @@ export type UseSeaImportAiRecognizeDeps = {
   orderCtns: Ref<any[]>;
   entrustReadonlyInfo: Ref<Record<string, any>>;
   refreshEntrustReadonlyInfo: (values: Record<string, any>) => void;
+  syncTabTitleFromValues: (values: Record<string, any>) => void;
   syncBasicInfoHeaderFields: () => Promise<void> | void;
   /** 回填到港日期后重算转站/箱使 */
   recalcDerivedDates: () => Promise<void> | void;
@@ -62,6 +63,7 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     orderCtns,
     entrustReadonlyInfo,
     refreshEntrustReadonlyInfo,
+    syncTabTitleFromValues,
     syncBasicInfoHeaderFields,
     recalcDerivedDates,
     setCodePackageSelectedItems,
@@ -111,6 +113,7 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
       countryName: values.countryName ?? entrustReadonlyInfo.value.countryName,
       laneName: values.laneName ?? entrustReadonlyInfo.value.laneName,
     });
+    syncTabTitleFromValues(values);
     await syncBasicInfoHeaderFields();
 
     if (values.etd != null) {

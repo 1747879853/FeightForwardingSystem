@@ -6,6 +6,7 @@ import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 
 import { getOrderFeePagedList } from '#/api/sea-import/order-fee-admin';
+import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import { ContainerTrackingPanel } from '#/components/tracking';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
@@ -17,6 +18,7 @@ import attachments from './attachments/index.vue';
 import Form from './basic-info-form/form.vue';
 import changeOrder from './changeOrder/index.vue';
 import orderFee from './orderFee/index.vue';
+import { useSeaImportTabTitle } from './use-sea-import-tab-title';
 
 defineOptions({ name: 'SeaImportEdit' });
 
@@ -78,19 +80,59 @@ const emit = defineEmits<{
 /** 最近一次保存成功后的最新详情，下发给费用/更改单 Tab 联动刷新 */
 const savedDetail = shallowRef<SeaImportAdminApi.SeaImportDto>();
 
+const editId = useKeepAliveRouteParamId();
+
+/** 工作台级页签标题：不依赖基础信息 Form 是否挂载（记忆 Tab 可能落在费用等） */
+const tabMblNum = ref<string | undefined>();
+const tabCommissionNum = ref<string | undefined>();
+const isOrderSaved = computed(() => !!editId.value);
+
+function applyTabTitleFromDetail(
+  detail: SeaImportAdminApi.SeaImportDto | null | undefined,
+) {
+  const to = detail?.transportOrder;
+  tabMblNum.value = to?.mblNum?.trim() || undefined;
+  tabCommissionNum.value = to?.commissionNum?.trim() || undefined;
+}
+
 const onFormSaved = (detail: SeaImportAdminApi.SeaImportDto) => {
   savedDetail.value = detail;
+  applyTabTitleFromDetail(detail);
   emit('saved', detail);
 };
 
-const editId = useKeepAliveRouteParamId();
+useSeaImportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
+  // 关闭工作台时由路由/页签关闭清理；勿在此处随子 Form 卸载复位
+  resetOnUnmount: true,
+});
+
+async function syncTabTitleFromOrder(id: string | undefined) {
+  if (!id) {
+    tabMblNum.value = undefined;
+    tabCommissionNum.value = undefined;
+    return;
+  }
+  try {
+    const detail = await getSeaImportDetail(id);
+    // 切单过程中以最新 editId 为准，避免慢请求回写旧票
+    if (String(editId.value ?? '') !== String(id)) return;
+    applyTabTitleFromDetail(detail);
+  } catch {
+    // 详情失败时保留路由默认「海运进口」，不阻断进页
+  }
+}
 
 /** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
 const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
 
-watch(editId, (id) => {
-  activeTab.value = readStoredTab(id) ?? 'basic';
-});
+watch(
+  editId,
+  (id) => {
+    activeTab.value = readStoredTab(id) ?? 'basic';
+    void syncTabTitleFromOrder(id);
+  },
+  { immediate: true },
+);
 
 watch(activeTab, (tab) => {
   writeStoredTab(editId.value, tab);

@@ -91,6 +91,7 @@ import {
 } from '../data';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import { useSeaImportCopy } from '../use-sea-import-copy';
+import { useSeaImportTabTitle } from '../use-sea-import-tab-title';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import {
   flattenDetail,
@@ -606,6 +607,37 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
   };
 };
 
+const tabMblNum = ref('');
+const tabCommissionNum = computed(
+  () => entrustReadonlyInfo.value.commissionNum || undefined,
+);
+const isOrderSaved = computed(() => isEdit.value);
+
+useSeaImportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
+  // 工作台内嵌：切费用等 Tab 会卸载 Form，不能复位页签标题
+  resetOnUnmount: () => !props.embedded,
+});
+
+const syncTabTitleFromValues = (values: Record<string, any>) => {
+  tabMblNum.value = String(values.mblNum ?? '').trim();
+};
+
+basicInfoFormApi.updateSchema([
+  {
+    fieldName: 'mblNum',
+    componentProps: {
+      allowClear: true,
+      maxlength: 64,
+      size: 'small',
+      onChange: async () => {
+        await nextTick();
+        const values = await basicInfoFormApi.getValues();
+        tabMblNum.value = String(values.mblNum ?? '').trim();
+      },
+    },
+  },
+]);
+
 const headerOrgId = ref<null | number | undefined>();
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
 const headerCodeSourceId = ref<number | undefined>();
@@ -1002,6 +1034,7 @@ const loadEditData = async (): Promise<
     ]);
 
     refreshEntrustReadonlyInfo(formValues);
+    syncTabTitleFromValues(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
       to?.codeSourceId,
       resolveCodeSourceName(to),
@@ -1137,6 +1170,7 @@ const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
   orderCtns,
   entrustReadonlyInfo,
   refreshEntrustReadonlyInfo,
+  syncTabTitleFromValues,
   syncBasicInfoHeaderFields,
   recalcDerivedDates,
   setCodePackageSelectedItems: (items) => {
