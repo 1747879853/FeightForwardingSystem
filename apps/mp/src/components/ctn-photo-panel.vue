@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 
 import type { EditableCtn, EditablePhoto } from '@/utils/ctn-model';
 
+import { uploadAndExtractCtnNo } from '@/api/gemini';
 import { API_ORIGIN } from '@/api/request';
 import {
   chooseImages,
@@ -10,6 +11,7 @@ import {
   uploadImage,
   type ImageSource,
 } from '@/api/upload';
+import { pickCtnNoFromUpload } from '@/utils/recognized-ctn-no';
 import { resolveUploadDisplayUrl } from '@/utils/upload-display-url';
 
 const props = defineProps<{
@@ -26,8 +28,10 @@ const emit = defineEmits<{
 }>();
 
 const uploading = ref(false);
+const recognizing = ref(false);
 /** 相机返回后原生 image 常不刷新，hideLoading 后再 bump 一次强制重挂 */
 const thumbEpoch = ref(0);
+const busy = computed(() => uploading.value || recognizing.value);
 
 const groups = computed(() => props.ctn?.groups ?? []);
 const statusText = computed(() =>
@@ -61,9 +65,82 @@ function choosePhotoSource() {
   });
 }
 
+function hideLoadingThen(run: () => void) {
+  uni.hideLoading();
+  // 微信 hideLoading 会把紧接着的 Toast 吃掉，弹窗也要等原生层收完
+  setTimeout(run, 320);
+}
+
+function alertAfterLoading(title: string, content: string) {
+  hideLoadingThen(() => {
+    uni.showModal({
+      title,
+      content,
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  });
+}
+
+async function recognizeCtnNo() {
+  if (!props.editable || !props.ctn || busy.value || props.saving) return;
+
+  let sourceType: ImageSource | null;
+  try {
+    sourceType = await choosePhotoSource();
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '无法打开图片来源',
+    });
+    return;
+  }
+  if (!sourceType) return;
+
+  let paths: string[];
+  try {
+    paths = await chooseImages([sourceType], 1);
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '选择图片失败',
+    });
+    return;
+  }
+  const filePath = paths[0];
+  if (!filePath) return;
+
+  recognizing.value = true;
+  uni.showLoading({ mask: true, title: '识别箱号中' });
+  try {
+    const result = await uploadAndExtractCtnNo(filePath);
+    const ctnNo = pickCtnNoFromUpload(result);
+    if (!ctnNo) {
+      alertAfterLoading(
+        '未识别到箱号',
+        '请手工填写，或换一张更清晰的箱门照片再试',
+      );
+      return;
+    }
+    props.ctn.ctnNo = ctnNo;
+    hideLoadingThen(() => {
+      uni.showToast({ icon: 'success', title: '已填入箱号' });
+    });
+  } catch (error) {
+    alertAfterLoading(
+      '识别失败',
+      error instanceof Error && error.message
+        ? error.message
+        : '请稍后重试或手工填写箱号',
+    );
+  } finally {
+    recognizing.value = false;
+  }
+}
+
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
-  if (!group || uploading.value) return;
+  if (!group || busy.value) return;
 
   let sourceType: ImageSource | null;
   try {
@@ -146,6 +223,10 @@ function onSave() {
     uni.showToast({ icon: 'none', title: '请等待图片上传完成' });
     return;
   }
+  if (recognizing.value) {
+    uni.showToast({ icon: 'none', title: '请等待箱号识别完成' });
+    return;
+  }
   emit('save');
 }
 
@@ -196,6 +277,14 @@ function onDismiss() {
               placeholder-class="field__placeholder"
             />
             <text v-else class="field__text">{{ ctn.ctnNo || '--' }}</text>
+            <view
+              v-if="editable"
+              :class="['field__scan', { 'is-disabled': busy || saving }]"
+              @tap="recognizeCtnNo"
+            >
+              <wd-icon name="camera" size="16px" color="#327aff" />
+              <text>识别</text>
+            </view>
           </view>
           <view class="field">
             <text class="field__label">封号</text>
@@ -403,6 +492,24 @@ function onDismiss() {
 
 .field__placeholder {
   color: #c2c8d2;
+}
+
+.field__scan {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6rpx;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 16rpx;
+  margin-left: 8rpx;
+  font-size: 24rpx;
+  color: $brand-primary;
+  background: $brand-primary-soft;
+  border-radius: 28rpx;
+}
+
+.field__scan.is-disabled {
+  opacity: 0.5;
 }
 
 .field__text {
