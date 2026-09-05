@@ -1154,6 +1154,14 @@ const handleSubmit = async () => {
         reconcilerUserIds: reconcilerUserIds.value,
       };
       createdId = await editClient(editData);
+      if (createdId) {
+        message.success($t('ui.actionMessage.operationSuccess'));
+        // 编辑保存成功后重新同步脏值快照，否则未保存守卫会一直认为基础信息未保存，
+        // 从而拦截系统 tab（路由级）跳转，导致点击系统 tab 无法切换页面
+        //（与开票信息 tab 同类问题）
+        await syncFormSnapshot();
+        markListShouldRefresh('ClientList');
+      }
     } else {
       // 新增模式：使用ClientStakeholderAddDto（不需要id和clientId）
       const salesAdd = defaultOrderUsers.value

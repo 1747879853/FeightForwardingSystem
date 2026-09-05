@@ -381,6 +381,8 @@ async function isInvoiceFormDirty() {
 defineExpose({
   getFormData,
   isInvoiceFormDirty,
+  // 保存成功后由父组件调用，重新记录干净快照，避免未保存守卫误判为脏
+  syncSnapshot: syncInvoiceSnapshot,
   resetForm: () => {
     invoiceFormApi.resetForm();
     bankList.value = [];
