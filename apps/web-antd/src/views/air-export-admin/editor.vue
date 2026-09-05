@@ -16,6 +16,7 @@ import changeOrder from './changeOrder/index.vue';
 import Form from './basic-info-form/form.vue';
 import AirTrackingPanel from './modules/air-tracking-panel.vue';
 import orderFee from './orderFee/index.vue';
+import { useAirExportTabTitle } from './use-air-export-tab-title';
 
 defineOptions({ name: 'AirExportEdit' });
 
@@ -81,18 +82,75 @@ const savedDetail = shallowRef<AirExportAdminApi.AirExportDto>();
 
 const editId = useKeepAliveRouteParamId();
 
+const feeNumber = ref<string>('');
+
+/** 工作台级页签标题：不依赖基础信息 Form 是否挂载（记忆 Tab 可能落在费用等） */
+const tabMblNum = ref<string | undefined>();
+const tabCommissionNum = ref<string | undefined>();
+const isOrderSaved = computed(() => !!editId.value);
+
+function applyTabTitleFromDetail(
+  detail: AirExportAdminApi.AirExportDto | null | undefined,
+) {
+  const to = detail?.transportOrder;
+  tabMblNum.value = to?.mblNum?.trim() || undefined;
+  tabCommissionNum.value = to?.commissionNum?.trim() || undefined;
+}
+
+/** 由详情计算费用 Tab 徽标上的收 - 付计数 */
+const updateFeeNumber = (detail: AirExportAdminApi.AirExportDto) => {
+  const fees = detail.transportOrder?.orderFees ?? [];
+  const receiveCount = fees.filter((item) => item.paySide === 0).length;
+  const payCount = fees.filter((item) => item.paySide === 1).length;
+  feeNumber.value = `${receiveCount} - ${payCount}`;
+};
+
+const onFormSaved = (detail: AirExportAdminApi.AirExportDto) => {
+  savedDetail.value = detail;
+  applyTabTitleFromDetail(detail);
+  // 顺带用最新详情刷新费用 Tab 徽标，不再重复拉详情接口
+  updateFeeNumber(detail);
+  emit('saved', detail);
+};
+
+useAirExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
+  // 关闭工作台时由路由/页签关闭清理；勿在此处随子 Form 卸载复位
+  resetOnUnmount: true,
+});
+
+async function syncEditorFromOrder(id: string | undefined) {
+  if (!id) {
+    tabMblNum.value = undefined;
+    tabCommissionNum.value = undefined;
+    return;
+  }
+  try {
+    const detail = await getAirExportDetail(id);
+    // 切单过程中以最新 editId 为准，避免慢请求回写旧票
+    if (String(editId.value ?? '') !== String(id)) return;
+    applyTabTitleFromDetail(detail);
+    updateFeeNumber(detail);
+  } catch {
+    // 详情失败时保留路由默认「空运出口」，费用徽标静默
+  }
+}
+
 /** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
 const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
 
-watch(editId, (id) => {
-  activeTab.value = readStoredTab(id) ?? 'basic';
-});
+watch(
+  editId,
+  (id) => {
+    activeTab.value = readStoredTab(id) ?? 'basic';
+    void syncEditorFromOrder(id);
+  },
+  { immediate: true },
+);
 
 watch(activeTab, (tab) => {
   writeStoredTab(editId.value, tab);
 });
 
-const feeNumber = ref<string>('');
 const feeName = computed(() =>
   feeNumber.value
     ? `${$t('airExport.export.orderFee.tabTitle')} ${feeNumber.value}`
@@ -112,33 +170,6 @@ const tabs = computed<
   { key: 'attachments', label: $t('airExport.export.attachments.tabTitle') },
   { key: 'tracking', label: $t('tracking.trackingInfo') },
 ]);
-
-/** 由详情计算费用 Tab 徽标上的收 - 付计数 */
-const updateFeeNumber = (detail: AirExportAdminApi.AirExportDto) => {
-  const fees = detail.transportOrder?.orderFees ?? [];
-  const receiveCount = fees.filter((item) => item.paySide === 0).length;
-  const payCount = fees.filter((item) => item.paySide === 1).length;
-  feeNumber.value = `${receiveCount} - ${payCount}`;
-};
-
-/** 详情已带回全部费用，标签上的收 - 付计数直接由它算，不再调费用接口 */
-const loadOrderFeeNumber = async () => {
-  if (!editId.value) return;
-  try {
-    const detail = await getAirExportDetail(editId.value);
-    updateFeeNumber(detail);
-  } catch {
-    // 费用数量仅用于 Tab 标签展示，失败时静默
-  }
-};
-loadOrderFeeNumber();
-
-const onFormSaved = (detail: AirExportAdminApi.AirExportDto) => {
-  savedDetail.value = detail;
-  // 顺带用最新详情刷新费用 Tab 徽标，不再重复拉详情接口
-  updateFeeNumber(detail);
-  emit('saved', detail);
-};
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;

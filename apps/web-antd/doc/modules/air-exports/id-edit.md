@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-31
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-08-31
 # 2. 功能与操作说明 (Features & Operations)
 
 - **标签容器：** 基础信息 / 应收应付（只读）/ 附件 / 运踪信息四个标签，按委托 ID 记忆上次停留的标签。
+- **浏览器标签栏标题：** 工作台进页拉详情、基础信息 Form 回填/录入主运单号时由 `useAirExportTabTitle` 动态设置：有主运单号显示「空运出口-{主运单号}」，否则显示「空运出口-{委托编号}」；切到费用等 Tab 时 Form 未挂载，标题仍由工作台保持。
 - **基础信息：** 与新建同一组件，回显由详情接口一次性带回，各下拉的 `selectedItems` 直接由详情对象构造，避免逐个再调详情接口。收发通为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件重尺（件数与包装合并为一行）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）。航班与订舱代理在「航段信息」标题右侧，订舱代理回显写 header 表单。顶栏支持 AI 识别预填（与新建同一套 `form.vue`）。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=5000` 空运出口详情，`detailInput={id}`，`bizType=2`，按当票 `orgId` 筛模板）。后端 `GetPrintAsync` 自动取数并带公司打印信息。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」。空运无签单方式/船公司，不按这两项筛模板。应收应付费用表打印用 `1000`/`1500`，拉模板同样传 `bizType=2`。
 - **运踪订阅：** 基础信息工具栏「运踪订阅/重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。
@@ -78,6 +79,7 @@ last_updated: 2026-08-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-09-05 | `Feature` | 浏览器标签栏标题随主运单号/委托编号动态更新；有主运单号优先展示主运单号。 | 工作台 `editor.vue` 与嵌入 `form.vue` 共用 `useAirExportTabTitle`；进页详情同时刷新费用徽标。详见 `changelogs/change-log-2026-09-05-air-export-tab-title.md`。 |
 | 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、货物明细单件重量/体积改为最多 4 位小数，末尾 0 不展示；长宽高/体积重/计费重/泡比仍 6 位。 | TAPD `#1161580498001000905`。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-25 | `Feature` | 附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。 | TAPD `#1161580498001000779` 附件上传统一。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |

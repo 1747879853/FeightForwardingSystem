@@ -51,6 +51,7 @@ export type UseAirExportAiRecognizeDeps = {
     cargoReefer: AiRecognizeFormApi;
   };
   orderCtns: Ref<any[]>;
+  syncTabTitleFromValues: (values: Record<string, any>) => void;
   syncBasicInfoHeaderFields: () => Promise<void> | void;
   setCodePackageSelectedItems?: (items: any[]) => void;
   onAirPortChange?: (
@@ -64,6 +65,7 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
   const {
     formApis,
     orderCtns,
+    syncTabTitleFromValues,
     syncBasicInfoHeaderFields,
     setCodePackageSelectedItems,
     onAirPortChange,
@@ -113,6 +115,7 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
     }
 
     await syncBasicInfoHeaderFields();
+    syncTabTitleFromValues(values);
   };
 
   const applyAiExtractSelectedItems = (

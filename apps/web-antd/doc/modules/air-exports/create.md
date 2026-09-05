@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-31
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,6 +28,7 @@ last_updated: 2026-08-31
 - **货物信息：** 从左到右为唛头货描、件重尺（含泡比）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一行（`PkgsPackageInput`，比例 1:3）；货物类型切换危险品区/冻柜区（超限箱不展示任何扩展区）；毛重或体积变化时重算泡比。
 - **货物明细：** 可增删行、上下移动，体积/体积重/计费重自动带出且允许手改。
 - **保存：** 校验通过后新建并跳转编辑页，同时刷新列表与工作台。
+- **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主运单号时为「空运出口」；录入主运单号后为「空运出口-{主运单号}」；保存后无主运单号时为「空运出口-{委托编号}」。主运单号优先于委托编号。
 - **AI识别：** 顶栏上传空运单证（PDF/图片/Office/OFD），调用 `TextInAdmin/ExtractAirExportToAddDtoAsync` 预填表单；空港走机场下拉；货物明细写入 `airExportOrderCtns`；用户校对后再点保存走 `AirExportAdmin/AddAsync`。
 - **打印：** 顶栏有「打印」按钮，新建未保存时提示先保存；真正打印在跳转编辑页后按已保存 id 取数。
 
@@ -73,6 +74,7 @@ last_updated: 2026-08-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 顶部浏览器标签栏标题按主运单号/委托编号动态展示，未保存新建单默认「空运出口」。 | 逻辑收敛至 `use-air-export-tab-title.ts`，新建页与编辑工作台嵌入表单共用。详见 `changelogs/change-log-2026-09-05-air-export-tab-title.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、货物明细单件重量/体积改为最多 4 位小数，末尾 0 不展示；长宽高/体积重/计费重/泡比仍 6 位。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-23 | `Feature` | 新建页接入未保存守卫并 KeepAlive。 | `keepAliveName: AirExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |
 | 2026-08-23 | `Feature` | 顶栏增加「打印」按钮（与编辑页共用 `form.vue`）。 | 新建未保存会拦截；详见 `changelogs/change-log-2026-08-23-air-export-print.md`。 |
