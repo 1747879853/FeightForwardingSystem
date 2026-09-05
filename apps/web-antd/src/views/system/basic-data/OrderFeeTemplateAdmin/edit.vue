@@ -4,6 +4,7 @@ import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-templa
 import { ref, onMounted, nextTick, computed, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { useVbenForm } from '#/adapter/form';
 import {
   addOrderFeeTemplate,
@@ -33,6 +34,7 @@ defineOptions({ name: 'OrderFeeTemplateEditor' });
 
 const router = useRouter();
 const route = useRoute();
+const { closeTabByKey } = useTabs();
 
 // ==================== 状态定义 ====================
 
@@ -664,7 +666,13 @@ async function handleSubmit() {
       const newTemplateId = await addOrderFeeTemplate(dto);
       message.success('新建成功');
       await syncTemplateSnapshot();
-      router.replace(`/basic-data/order-fee-template/${newTemplateId}/edit`);
+      // ✅ 关闭残留的「新建」页签：vben tabbar 按 fullPath 独立维护 tab，
+      // replace 只替换路由历史不会删除原新建 tab，须显式 closeTabByKey
+      const createTabKey = route.fullPath;
+      await router.replace(
+        `/basic-data/order-fee-template/${newTemplateId}/edit`,
+      );
+      await closeTabByKey(createTabKey);
     } else {
       // 编辑
       const dto: OrderFeeTemplateAdminApi.OrderFeeTemplateEditDto = {

@@ -24,11 +24,7 @@ export function useColumns(
       field: 'mobile',
       minWidth: 150,
     },
-    {
-      title: '办公电话',
-      field: 'tel',
-      minWidth: 150,
-    },
+    // ✅ 删除【办公电话】(tel) 列：与【座机】(landline) 重复，仅保留座机
     {
       title: '座机',
       field: 'landline',
@@ -144,12 +140,7 @@ export function useAddFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.contactPerson.mobile'),
       componentProps: { allowClear: true },
     },
-    {
-      component: 'Input',
-      fieldName: 'tel',
-      label: '办公电话',
-      componentProps: { allowClear: true },
-    },
+    // ✅ 删除【办公电话】(tel) 表单项：与【座机】(landline) 重复，仅保留座机
     {
       component: 'Input',
       fieldName: 'landline',

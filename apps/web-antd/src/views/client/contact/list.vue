@@ -14,7 +14,6 @@ import {
 import { useVbenModal } from '@vben/common-ui';
 import AddModal from './add-modal.vue';
 import { computed, ref, onMounted, watch } from 'vue';
-import { Page } from '@vben/common-ui';
 import { useRoute } from 'vue-router';
 import { IconifyIcon } from '@vben/icons';
 import { Button, Space, Modal as AntModal, message } from 'ant-design-vue';
@@ -294,7 +293,10 @@ watch(
 </script>
 
 <template>
-  <Page auto-content-height>
+  <!-- ✅ 不再嵌套 Page auto-content-height：本组件已处于客户编辑页(client/editor.vue)的 Page 内，
+       嵌套 Page 会二次按全屏高度(--vben-content-height)计算，而固定高 800 的 Handsontable 会溢出该高度框，
+       形成双层滚动，导致表格表头克隆层错位消失、sticky 页签栏被破坏。改用普通 div 由外层 Page 统一滚动。 -->
+  <div class="client-contact-list p-4">
     <ContactHandsontable
       v-model:model-value="dataSource"
       :client-id="editId"
@@ -309,7 +311,7 @@ watch(
         </Space>
       </template>
     </ContactHandsontable>
-  </Page>
+  </div>
 
   <Modal @add="addContactData" @edit="editContactData" />
 </template>

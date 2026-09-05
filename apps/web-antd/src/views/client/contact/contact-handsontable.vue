@@ -26,7 +26,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, onMounted, nextTick, watchEffect } from 'vue';
+import {
+  ref,
+  shallowRef,
+  onMounted,
+  onActivated,
+  nextTick,
+  watchEffect,
+} from 'vue';
 import { HotTable } from '@handsontable/vue3';
 import { Button, Modal, message } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
@@ -117,12 +124,7 @@ const hotSettings = shallowRef({
       type: 'text',
       width: 180,
     },
-    {
-      data: 'tel',
-      title: '办公电话',
-      type: 'text',
-      width: 120,
-    },
+    // ✅ 删除【办公电话】(tel) 列：与【座机】(landline) 重复，仅保留座机
     {
       data: 'landline',
       title: '座机',
@@ -364,6 +366,23 @@ onMounted(() => {
       console.log('[Handsontable] 钩子已注册');
     } else {
       console.error('[Handsontable] 无法获取 hotInstance，钩子注册失败');
+    }
+  });
+});
+
+// ✅ KeepAlive 重激活后修复 Handsontable 尺寸失效：
+// 客户编辑页（ClientEdit 路由 keepAlive:true）外层 + 内部 <KeepAlive include="ClientContactList">
+// 构成双层缓存。切到工作台时整页 DOM 被移入离屏容器、尺寸归零，Handsontable 表头克隆层
+// (.ht_clone_top) 与单元格布局仍按旧（0）尺寸缓存；切回后不会自动重算，导致标题行/数据空白，
+// 需点击页面触发 Handsontable 事件才重绘恢复。
+// Vue 会把 onActivated 注入到所有祖先 KeepAlive 根，故两层缓存任一激活都会触发这里，
+// 主动 refreshDimensions() + render() 按当前可见 DOM 重算并重绘。
+onActivated(() => {
+  nextTick(() => {
+    const hotInstance = hotTableRef.value?.hotInstance;
+    if (hotInstance) {
+      hotInstance.refreshDimensions();
+      hotInstance.render();
     }
   });
 });
