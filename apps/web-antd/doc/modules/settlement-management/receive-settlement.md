@@ -2,7 +2,7 @@
 title: 收费核销
 module: 费用管理
 author: Cursor Agent
-last_updated: 2026-08-19
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,7 +13,7 @@ last_updated: 2026-08-19
 
 - **收费核销列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费核销单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
 - **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费核销。
-- **新建收费核销：** 可从收费核销列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费核销”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。新建须选择「归属组织」（本人直属组织，默认本人默认组织），提交 `AddAsync` / `AddByInvoiceApplicationAsync` 时必传 `orgId`。
+- **新建收费核销：** 可从收费核销列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费核销”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。新建须选择「归属组织」（本人直属组织，默认本人默认组织），提交 `AddAsync` / `AddByInvoiceApplicationAsync` 时必传 `orgId`。独立页新建成功后 `replace` 到对应编辑页并关闭新建页签；银行流水抽屉内嵌新建成功只关抽屉，不改顶栏页签。
 - **新建入口（悬浮下拉选类型）：** 收费核销列表与「银行流水」Tab 的「新建」均为鼠标悬浮下拉，可选「费用结算 / 发票结算」；主按钮点击默认费用结算。银行流水 Tab 选中一条流水后按类型分别跳 `/add` 或 `/add-by-invoice` 并带 `bankStatementId`。
 - **新建发票结算（按开票申请，type=1）：** 列表工具栏「新建」下拉选「发票结算」进入 `/add-by-invoice`。点击「添加明细」在抽屉内按开票申请分组（一组 = 一张已开票申请）展开勾选费用明细，展示收付方向、本单开票额、发票可结算余额，录入本次结算金额；「仅显示可结算」开关对应 `onlySettleable`。结算净额按收付方向计算（应付计负）。编辑走 `/edit-by-invoice/:id`，追加/删除明细分别调用 `AddItemsByInvoiceApplicationAsync` / `DeleteInvoiceItemsAsync`。列表按 `type` 双击进入对应表单，并新增「结算类型」列。添加开票结算明细抽屉改用 `NestedDataTable`，表格上方对齐付费申请选费弹窗展示「已选 N 笔」及按币别结算净额；查询按钮紧跟搜索区靠右，「确认添加」在抽屉右下角。
 - **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、**币别（只读，与流水一致）**、编号（委托编号/主提单号）、委托单位、开船日期、销售、操作、收付类型拉取可结算费用；收付类型默认「应收」，可改为应付或全部。业务行仍分列展示委托编号、主提单号；展开费用明细展示收付类别。确认后勾选费用并录入本次结算金额。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。抽屉表格同样支持拖拽调列宽。
@@ -59,10 +59,13 @@ last_updated: 2026-08-19
 
 > [!IMPORTANT] **[卡点 7：明细表里的行不都是本单的]** 明细表数据源 `tableItems = 本单 items + 其他核销单 foreignItems`，但保存、合计、超额校验、批量删除一律只遍历 `items`。改这块逻辑时不要把 `items` 换成 `tableItems`，否则会把别人的核销金额算进本单并提交。他单行以 `_isCurrent === false` 标识。
 
+> [!IMPORTANT] **[卡点 8：新建保存后必须关闭原 Tab]** `/add` 与 `/edit/:id`、`/add-by-invoice` 与 `/edit-by-invoice/:id` 都是不同 Tab key；仅 `replace` 仍会留下新建页签。独立页须先缓存 `route.fullPath`，`await replace` 后再 `closeTabByKey`。抽屉 `embedded` 新建成功只 `emit('close')`，不要关顶栏页签。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Fix` | 独立页新建费用/发票核销成功后 `replace` 进编辑并关闭新建页签。 | 抽屉内嵌仍只关抽屉。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-08-19 | `Feature` | 按费用选费检索：委托编号/主提单号合并为「编号」条件；增加委托单位、开船日期、销售、操作、收付类型（默认应收）；抽屉费用明细与结算明细展示收付类别。业务行仍分列展示委托编号、主提单号。 | `add-fee-drawer/data` 抽出 `buildFeeGroupSearchQuery`；银行流水建单面板与添加明细抽屉共用；`paySide=0` 必须下发。详见 `changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md`。 |
 | 2026-08-10 | `Fix` | 「添加开票结算明细」抽屉改用 `NestedDataTable`；修复「开票申请单号」标签换行；查询靠右、确认添加进底部；已选汇总对齐付费申请选费弹窗（已选 N 笔 + 币别金额）。 | `add-invoice-application-drawer`；`NestedDataTable` 的 `innerHeaderCell` 补传 `parentRecord` 以支持组内全选。详见 `changelogs/change-log-2026-08-10-add-invoice-drawer-nested-table.md`。 |
 | 2026-08-10 | `Fix` | 收费核销编辑保存 `EditAsync` 补传 `orgId`，与后端入参对齐。 | `ReceiveSettlementEditDto` 增加 `orgId`；费用/发票两套表单编辑保存均回传详情组织；UI 仍只读。详见 `changelogs/change-log-2026-08-10-receive-settlement-edit-orgid.md`。 |

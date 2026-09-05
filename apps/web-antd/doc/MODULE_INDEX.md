@@ -36,10 +36,10 @@
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-08-19 |
-| fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；选费支持编号/委托单位/开船日期/销售/操作/收付类型；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-08-19 |
+| fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；选费支持编号/委托单位/开船日期/销售/操作/收付类型；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-09-05 |
 | settlement-management | `/settlement-management/payment-settlement/edit/:id` | 财务管理 | 付费结算编辑：把已审核的付费申请按结算币别折算合并为付款单，维护汇率快照与三层结算明细；结算对象与币别随第一张申请锁定。 | [付费结算编辑](./modules/settlement-management/payment-settlement-id-edit.md) | 2026-08-10 |
 | settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-08-10 |
-| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-08-31 |
+| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-05 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-08-09 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-05 |
@@ -66,8 +66,8 @@
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-08-04 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
-| basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板列表；新建 `/create`、编辑 `/:id/edit`，未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-08-23 |
-| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-09-01 |
+| basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板列表；新建 `/create`、编辑 `/:id/edit`，未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-05 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-09-05 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-08-24 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken。 | [部门管理](./modules/system/dept.md) | 2026-08-28 |

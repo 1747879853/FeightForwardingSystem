@@ -12,6 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { IconifyIcon } from '@vben/icons';
 
 import coinsHandSvg from '#/assets/images/payment-coins-hand.svg';
@@ -127,6 +128,7 @@ const t = (key: string, args?: any[]) =>
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -719,10 +721,12 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   if (createdApplicationId) {
     message.success(t('addSuccess'));
     markListShouldRefresh('PaymentApplicationList');
+    const createTabKey = route.fullPath;
     await router.replace({
       path: `/fee-management/payment-application/${createdApplicationId}/edit`,
       query: { fromCreate: '1' },
     });
+    await closeTabByKey(createTabKey);
   }
 }
 
@@ -1203,10 +1207,12 @@ async function handleSave() {
       );
       message.success(t('addSuccess'));
       markListShouldRefresh('PaymentApplicationList');
-      router.replace({
+      const createTabKey = route.fullPath;
+      await router.replace({
         path: `/fee-management/payment-application/${newId}/edit`,
         query: { fromCreate: '1' },
       });
+      await closeTabByKey(createTabKey);
     }
   } finally {
     submitting.value = false;

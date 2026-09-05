@@ -17,7 +17,7 @@ last_updated: 2026-09-05
   - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等；编辑且可保存时「保存」为拆分按钮，下拉「复制新建」；待审核/通过无保存时单独显示「复制新建」）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表 6 列顺序对齐业务稿：首行委托单位 / 主提单号 / 货好时间 / 开船日期 / 船公司 / 付款方式，次行起运地 / 目的地 / 贸易条款·运输条款（合并双下拉占一列） / 备注（占剩余三列）；稿中没有的**订舱代理**排在备注后末行。其下为 **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像，选人下拉按该行 `userAttribute` 过滤。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
-- **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
+- **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后先 `syncFormSnapshot`，再 `replace` 到编辑路由、`closeTabByKey` 关掉新建页签，然后重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。点击文件打开全站附件查看器。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」后隐藏保存/提交按钮。
 - **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」，重新显示保存/提交。
@@ -115,10 +115,13 @@ last_updated: 2026-09-05
 
 > [!IMPORTANT] **[卡点 13：AI 识别是预填不是定稿]** 调用 `ExtractPreOrderToAddDtoAsync` 后只覆盖有值字段；匹配不到的 id（空 Guid / `ctnCodeId=0`）不报错，需用户补录。`bizType` 必须走 form/query。OCR 有误差，务必核对后再保存/提交。同文件二次上传可能走缓存（`isFromCache`）。
 
+> [!IMPORTANT] **[卡点 14：新建保存后必须关闭原 Tab]** `/pre-order/add` 与 `/:id/edit` 是不同 Tab key（即使共用 `keepAliveName`）；仅 `replace` 仍会留下新建页签。须先缓存 `route.fullPath`，`await replace` 后再 `closeTabByKey`。跳转前必须 `syncFormSnapshot`，否则未保存拦截会挡住 replace。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Fix` | 新建保存成功后 `replace` 进编辑并关闭新建页签。 | 跳转前已 `syncFormSnapshot`。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-09-05 | `Feature` | 点击附件改为全站弹窗预览，不再新开浏览器窗口。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-02 | `Fix` | 干系人选人、审核指派操作只列出对应用户属性，不再显示全部账号。 | TAPD `#1161580498001000928`。对齐海出：`UserSelect` 必须带行上 `userAttribute`。详见 `changelogs/change-log-2026-09-02-pre-order-user-attribute-filter.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/尺码、箱型货重改为最多 4 位小数且不展示末尾 0；费用数量只读展示同步 4 位。 | TAPD `#1161580498001000905` 后端扩 round。`PreOrderFee.Quantity` 库列仍 2 位，审核通过按 Kgs/Cbm 重算。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |

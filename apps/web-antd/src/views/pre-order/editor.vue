@@ -111,7 +111,7 @@ const { hasAccessByCodes } = useAccess();
 const canAudit = computed(() => hasAccessByCodes([auditCode]));
 const canAdd = computed(() => hasAccessByCodes([perm.add]));
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
-const { setTabTitle } = useTabs();
+const { setTabTitle, closeTabByKey } = useTabs();
 
 /** 页签标题由本页托管：tabbar 会保留历史 newTabTitle，需进页时主动写回 */
 const PRE_ORDER_TAB_TITLE = '业务联系单';
@@ -1485,7 +1485,9 @@ async function handleSave() {
       preOrderId.value = String(newId);
       // 跳转前重置基线，避免 replace 触发未保存拦截
       await syncFormSnapshot();
+      const createTabKey = route.fullPath;
       await router.replace(`/pre-order/${newId}/edit`);
+      await closeTabByKey(createTabKey);
       await loadDetail();
     }
   } finally {

@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { IconifyIcon } from '@vben/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 
@@ -94,6 +95,7 @@ interface InvoiceSettlementItem {
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 const props = defineProps<{
   embedded?: boolean;
   embeddedId?: string;
@@ -737,9 +739,11 @@ async function handleSave() {
       emit('close');
       return;
     }
-    router.replace(
+    const createTabKey = route.fullPath;
+    await router.replace(
       `/settlement-management/receive-settlement/edit-by-invoice/${id}`,
     );
+    await closeTabByKey(createTabKey);
   } catch (error: any) {
     message.error(error.message || '保存失败');
   } finally {

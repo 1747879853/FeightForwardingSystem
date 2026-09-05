@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
+import { useTabs } from '@vben/hooks';
 import { IconifyIcon } from '@vben/icons';
 
 import {
@@ -56,6 +57,7 @@ const perm = createAbpPermission('Admin.BankStatement');
 const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 const { hasAccessByCodes } = useAccess();
 
 const canEdit = computed(() => hasAccessByCodes([perm.edit]));
@@ -460,7 +462,9 @@ async function handleSave(): Promise<boolean> {
       message.success('创建成功');
       markListShouldRefresh('BankStatementList');
       savedFormFingerprint.value = formFingerprint.value;
+      const createTabKey = route.fullPath;
       await router.replace(`/bank-statement/edit/${newId}`);
+      await closeTabByKey(createTabKey);
     }
     return true;
   } catch {

@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-01
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -31,6 +31,7 @@ last_updated: 2026-09-01
 - **行内操作：** 操作列固定右侧；外露「修改 / 权限配置 / 最终权限 / 分配角色」，「银行账户 / 修改密码 / 删除」收入「更多」下拉；默认列宽 `340`。
 - **最终权限诊断：** 点击「最终权限」打开只读弹窗，调用 `GET /services/app/UserAdmin/GetUserPermissionsAsync?id=` 展示该用户最终生效权限树（角色 + 用户级授权/禁止合并结果）；默认仅显示已拥有分支，可搜索。
 - **权限配置：** 点击「权限配置」跳转 `/system/permission`，用于编辑用户级模块/数据/表/字段权限，与「最终权限」只读诊断分离。
+- **新建成功进编辑：** `/system/user/create` 保存成功后 `replace` 到 `/system/user/edit/{id}`，并 `closeTabByKey` 关掉新建页签；未返回 id 时 `replace` 回列表再关新建页签。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -61,10 +62,13 @@ last_updated: 2026-09-01
 
 > [!IMPORTANT] **[卡点 2：最终权限 vs 权限配置]** 「最终权限」= 角色 + 用户级授权/禁止后的生效结果，仅诊断；「权限配置」= 编辑用户级授权。查当前登录人自己请走 `AbpUserConfiguration/GetAll`。
 
+> [!IMPORTANT] **[卡点 3：新建保存后必须关闭原 Tab]** `/create` 与 `/edit/:id` 是不同 Tab key；仅 `push`/`replace` 都会留下新建页签。须先缓存 `route.fullPath`，`await replace` 后再 `closeTabByKey`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Fix` | 新建用户成功后 `replace` 进编辑页并关闭新建页签，顶栏不再同时留下两个 Tab。 | 原先 `push` 再关页签仍会短暂/残留双页签。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-09-01 | `Feature` | 用户管理对接开票分机号 `extensionNumber`：列表展示，新建/编辑选填维护，空值保存为 `null`。 | 列未开排序（不在 `GetUserPagedListAsync` 白名单）；保存必须显式 `null` 才能清空。详见 [变更日志](../../changelogs/change-log-2026-09-01-system-user-extension-number.md)。 |
 | 2026-08-26 | `Fix` | 用户列表顶部查询区改为一行 4 列，关键词、用户属性、角色与查询按钮同一行。 | 覆盖表格默认 `lg:grid-cols-3`。详见 [变更日志](../../changelogs/change-log-2026-08-26-system-user-query-four-columns.md)。 |
 | 2026-08-22 | `Feature` | 用户属性新增「监装」（`LoadingSupervision = 512`），并铺到所有用户属性入口：用户管理勾选、标签映射、海出干系人可配角色、港口服务项负责岗位、枚举管理角色下拉。 | TAPD #1000122。位掩码末尾追加 512，四处拷贝枚举同步；未做成销售/操作那种写死的必填固定角色，是否默认展示仍由枚举 `SeaExportUserAttribute.extra1` 决定；干系人「监装」与监装工单师傅列表两套独立、不同步。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
