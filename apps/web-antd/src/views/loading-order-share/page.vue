@@ -279,7 +279,11 @@ watch(
                 class="loading-share__photos"
               >
                 <div class="loading-share__photo-label">
-                  {{ group.attachmentDtlType?.typeName || '监装照片' }}
+                  {{
+                    group.attachmentDtlType?.name ||
+                    group.attachmentDtlType?.typeName ||
+                    '监装照片'
+                  }}
                 </div>
                 <div class="loading-share__photo-grid">
                   <button

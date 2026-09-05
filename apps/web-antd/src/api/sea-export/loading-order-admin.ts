@@ -19,6 +19,9 @@ export const LOADING_ORDER_STATUS_TEXT: Record<number, string> = {
   [LoadingOrderStatus.Completed]: '已完成',
 };
 
+/** 监装箱型附件 ModuleType，与后端 OrderCtnLoading 一致 */
+export const ORDER_CTN_LOADING_MODULE_TYPE = 160_100;
+
 export namespace LoadingOrderAdminApi {
   export interface SimpleNamedDto {
     id: number | string;
@@ -80,8 +83,13 @@ export namespace LoadingOrderAdminApi {
     isLoadingCompleted?: boolean;
     attachmentGroups?:
       | {
-          attachmentDtlTypeId?: null | number;
-          attachmentDtlType?: null | { id: number; typeName?: string };
+          attachmentDtlTypeId?: null | number | string;
+          attachmentDtlType?: null | {
+            id: number | string;
+            name?: string;
+            sortId?: number;
+            typeName?: string;
+          };
           items?: {
             id?: number;
             attachmentId?: number;

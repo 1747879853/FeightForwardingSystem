@@ -41,7 +41,13 @@ export interface AttachmentItemDto {
 }
 
 export interface AttachmentGroupDto {
-  attachmentDtlType?: null | { id: number | string; typeName?: string };
+  attachmentDtlType?: null | {
+    id: number | string;
+    name?: string;
+    sortId?: number;
+    /** 兼容误字段；后端 SimpleDto 是 name */
+    typeName?: string;
+  };
   attachmentDtlTypeId?: null | number | string;
   items?: AttachmentItemDto[];
 }

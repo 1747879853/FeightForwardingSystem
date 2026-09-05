@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-08-30
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,7 @@ last_updated: 2026-08-30
   - 待认领 → 「认领」
   - 已认领 → 「拒接」（必填原因）；箱号/封号/照片/完成状态在监装处理面板内保存
   - 已完成 → 「取消完成」
-- **监装照片：** 在「监装处理」面板按附件明细类型分组展示；先选拍照或相册，上传后先记在本地，点面板「保存」才随箱一起提交。
+- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型分组拍照/相册；上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
 - **登录：** 启动静默登录（`wx.login` → `WxOpenSilentAuthenticate`）；未绑账号时登录页展示「手机号一键登录」。开发态可用账密（`VITE_ENABLE_PASSWORD_LOGIN=true`）。
 - **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。
 
@@ -46,7 +46,7 @@ last_updated: 2026-08-30
 | **status** | 监装状态 | `LoadingOrder/GetMyPagedListAsync` | 决定详情底部按钮与箱型是否可编辑 | 师傅端只能查 1/2/3，传 0 报错 |
 | **ctnNo / sealNo** | 箱号 / 封号 | 详情 `orderCtns` | 只有已认领可在监装处理面板改 | 各最长 32 |
 | **isLoadingCompleted** | 该箱监装是否完成 | 详情 `orderCtns` | 全部箱为 true 时工单自动完成 | — |
-| **attachmentGroups** | 分组监装照片 | 详情 `orderCtns[].attachmentGroups` | **按箱全量替换**，漏传该组等于清空该组 | 先 `POST /upload/UploadFile` 拿 `attachmentId` |
+| **attachmentGroups** | 分组监装照片 | 详情 `orderCtns[].attachmentGroups` + `AttachmentDtlType/GetListByModuleTypesAsync`（`160100`） | **触发/依赖：** 先铺维护类型空槽再填已有照片；**按箱全量替换**，漏传该组等于清空该组 | 先 `POST /upload/UploadFile` 拿 `attachmentId`；空组不提交 |
 | **rejectReason** | 拒接原因 | 前端填，`RejectAsync` | 多人先后拒接只保留最后一次 | 前端必填，最长 1024 |
 | **loadingRequirements** | 监装要求 | 详情 | 师傅端只返回勾选了的明细，`isChecked` 恒 true | 师傅只读，不能改勾选 |
 | **remark** | 工单详细说明 | 详情 `remark` | 与拒接原因是两个独立字段 | 管理端维护，师傅只读 |
@@ -57,14 +57,17 @@ last_updated: 2026-08-30
 
 > [!IMPORTANT] **[卡点 2：取消完成后的假完成]** `CancelCompleteAsync` 只改工单状态，不动各箱的 `isLoadingCompleted`。师傅若只是进去改个封号就保存，工单会立刻再次自动完成。页面在取消完成后强制弹窗提示「请先打开监装处理取消至少一个箱子的勾选再保存」。
 
-> [!IMPORTANT] **[卡点 3：照片是全量替换]** `EditOrderCtnsAsync` 的 `attachmentGroups` 对每个箱是整体替换。任何一次保存都必须带上该箱当前的全部分组，否则未传的分组照片会被删掉。
+> [!IMPORTANT] **[卡点 3：照片是全量替换]** `EditOrderCtnsAsync` 的 `attachmentGroups` 对每个箱是整体替换。保存只带有照片的分组；某类删光后不传该组，等于清掉该类。
 
 > [!IMPORTANT] **[卡点 4：租户写死为 1]** 微信登录的租户取自服务端 `WxOpenConfig.TenantId`（恒为 1），前端不能传也没有输入口。多品牌需要各自的小程序 AppId 与独立打包，目前只支持一个租户。
+
+> [!IMPORTANT] **[卡点 5：类型槽位靠枚举 + 附件类型维护]** 小程序按 `ModuleType=160100` 拉默认展示类型。枚举管理的 `ModuleType` 需有 `160100`（监装箱型附件），且附件类型勾了该模块，面板才会出现对应分组。类型接口失败时仍能打开详情，只展示工单已有分组。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 监装处理先拉维护的附件类型再按类型分槽上传；未配置类型时提示并可传到未分类组 | `GetListByModuleTypesAsync(160100)` 与详情并行；`toEditableCtns` 合并空槽与已有照片；标题读 `name` 不是 `typeName` |
 | 2026-08-30 | `Feature` | 箱号/封号/照片/完成状态在监装处理面板内保存，详情底栏不再单独放保存 | 关闭未保存时还原该箱快照；接口仍整单 `EditOrderCtnsAsync` |
 | 2026-08-30 | `Fix` | 进详情时底栏按钮不再跟着系统 Tab 闪 | 进详情不再 `hideTabBar`（回来会丢底栏）；回列表补 `showTabBar`；详情底栏延后 180ms，并用 URL `status` 先画 |
 | 2026-08-30 | `Feature` | 箱号、封号改在「监装处理」面板里填 | 集装箱表只展示；保存已改到面板内 |

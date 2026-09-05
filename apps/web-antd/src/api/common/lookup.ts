@@ -1,6 +1,5 @@
 import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 
-import { PRE_ORDER_MODULE_TYPE_ID } from '#/api/pre-order/pre-order-admin';
 import { getItemsByName } from '#/api/system/enum-admin';
 
 /** 系统枚举「ModuleType」名称（system/enumeration 自定义枚举） */
@@ -8,35 +7,8 @@ export const MODULE_TYPE_ENUM_NAME = 'ModuleType';
 
 export type ModuleTypeOption = { label: string; value: number };
 
-/**
- * 代码侧已知 ModuleType 兜底文案。
- * 枚举管理未及时补齐时（如业务联系单 160050），列表/下拉仍可回显中文名。
- * 枚举已有同 value 时以枚举 displayName 为准。
- */
-export const KNOWN_MODULE_TYPE_FALLBACKS: ReadonlyArray<ModuleTypeOption> = [
-  { value: PRE_ORDER_MODULE_TYPE_ID, label: '业务联系单' },
-];
-
 let moduleTypeLabelCache: Map<number, string> | null = null;
 let moduleTypeOptionsCache: ModuleTypeOption[] | null = null;
-
-/** 将枚举未覆盖的已知模块码补进映射（不覆盖已有项） */
-function mergeKnownModuleTypeFallbacks(
-  map: Map<number, string>,
-  items: EnumerationAdminApi.EnumerationItemDto[],
-): Map<number, string> {
-  const presentValues = new Set(
-    items
-      .map((item) => Number(item.value))
-      .filter((value) => !Number.isNaN(value)),
-  );
-  for (const item of KNOWN_MODULE_TYPE_FALLBACKS) {
-    if (!presentValues.has(item.value) && !map.has(item.value)) {
-      map.set(item.value, item.label);
-    }
-  }
-  return map;
-}
 
 /** 将 ModuleType 枚举项转为 moduleType 数值 -> 显示名 映射 */
 export function buildModuleTypeLabelMap(
@@ -51,10 +23,10 @@ export function buildModuleTypeLabelMap(
     if (Number.isNaN(value)) continue;
     map.set(value, item.displayName || String(value));
   }
-  return mergeKnownModuleTypeFallbacks(map, items);
+  return map;
 }
 
-/** 将 ModuleType 枚举项转为下拉选项（仅启用项 + 已知兜底） */
+/** 将 ModuleType 枚举项转为下拉选项（仅启用项） */
 export function buildModuleTypeOptionsFromEnum(
   items: EnumerationAdminApi.EnumerationItemDto[],
 ): ModuleTypeOption[] {
@@ -76,7 +48,7 @@ export async function getModuleTypeEnumItems() {
   }
 }
 
-/** 获取 ModuleType 下拉选项（仅含已启用枚举项 + 已知兜底） */
+/** 获取 ModuleType 下拉选项（仅含已启用枚举项） */
 export async function getModuleTypeOptions(): Promise<ModuleTypeOption[]> {
   if (moduleTypeOptionsCache) {
     return moduleTypeOptionsCache;

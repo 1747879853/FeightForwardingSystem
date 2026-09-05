@@ -1,6 +1,6 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
-| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、分组拍照；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通 `:82`。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-08-30 |
+| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型分组拍照；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通 `:82`。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-05 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋。 | [登录页](./modules/_core/login.md) | 2026-08-28 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
@@ -13,7 +13,7 @@
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；货物类型默认普通货；委托单位/订舱代理标签旁展示默认联系人；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；船名/航次后有码头航次；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存切走可 KeepAlive，点 X 才丢；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-09-01 |
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；委托单位/订舱代理联系人同样挂在标签旁，保存带回联系人 Id；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/码头航次/截港等并保存；分单 Tab 支持分单头备注录入与复制分单（不带分提单号与装箱）。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-05 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
-| sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；顶栏「分享」复制免登录链接给客户；箱型/箱号/封号/是否完成只读；监装照片有 `.Edit` 时可按箱单独改（任意状态），走 `EditOrderCtnAttachmentGroupsAsync`。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-05 |
+| sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；顶栏「分享」复制免登录链接给客户；箱型/箱号/封号/是否完成只读；监装照片有 `.Edit` 时可按箱单独改（任意状态），先拉维护的附件类型分槽再保存 `EditOrderCtnAttachmentGroupsAsync`。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-05 |
 | sea-exports | `/loading-order-share` | 操作管理 / 海运出口 | 监装客户公开详情：免登录，query 传主提单号+监装工单号；展示基本信息与箱照，不展示监装要求与备注。 | [监装工单客户公开详情](./modules/sea-exports/loading-order-share.md) | 2026-09-05 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、销售/操作/备注列与筛选、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`；状态列后展示业务状态（海出服务项进度）与运踪状态（可点开详情、不订阅）。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-09-03 |
@@ -52,7 +52,7 @@
 | basic-data | `/basic-data/code-goods` | 基础资料 | 维护商品品名及规格/型号子表，支撑委托与海运进口箱表规格型号下拉。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-08-16 |
 | basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段；业务下拉全量缓存，本页增删改后即时刷新；抽屉表单可维护明细包装子表，供监装工单选明细包装。 | [包装代码](./modules/basic-data/code-package.md) | 2026-08-22 |
 | basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-05-16 |
-| basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-08-04 |
+| basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-09-05 |
 | basic-data | `/basic-data/code-source` | 基础资料 | 维护业务来源代码，支撑客户或委托来源识别。 | [来源代码](./modules/basic-data/code-source.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-frt` | 基础资料 | 维护运费相关代码，支撑费用录入和运价映射。 | [运费代码](./modules/basic-data/code-frt.md) | 2026-05-16 |
 | basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-05-16 |
@@ -74,7 +74,7 @@
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型（含业务联系单 PreOrder=8）、条件和审批节点；分支条件分「且组 / 或组」，可只配或条件。 | [工作流新建](./modules/system/workflow-create.md) | 2026-08-11 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型（含业务联系单）；分支条件分「且组 / 或组」，可只配或条件。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-08-11 |
-| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。 | [枚举管理](./modules/system/enumeration.md) | 2026-08-25 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。附件类型默认展示模块消费 `ModuleType`（含 160050 业务联系单、160100 监装箱型附件）。 | [枚举管理](./modules/system/enumeration.md) | 2026-09-05 |
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-07-14 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |

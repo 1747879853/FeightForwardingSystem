@@ -9,6 +9,7 @@ const props = defineProps<{
   ctn: EditableCtn | null;
   editable: boolean;
   saving?: boolean;
+  typesEmpty?: boolean;
   visible: boolean;
 }>();
 
@@ -177,7 +178,15 @@ function onDismiss() {
           </view>
         </view>
 
-        <view v-for="(group, gi) in groups" :key="gi" class="group">
+        <text v-if="editable && typesEmpty" class="group__empty">
+          未配置监装附件类型
+        </text>
+
+        <view
+          v-for="(group, gi) in groups"
+          :key="String(group.attachmentDtlTypeId ?? 'untyped')"
+          class="group"
+        >
           <text class="group__title">{{ group.typeName }}</text>
           <view class="group__grid">
             <view

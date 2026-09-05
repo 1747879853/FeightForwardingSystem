@@ -1044,6 +1044,7 @@
     "photoEmpty": "暂无监装照片",
     "photoNeedCtnId": "箱型尚未保存，无法编辑监装照片",
     "photoSaveSuccess": "照片保存成功",
+    "photoTypesEmpty": "未配置监装附件类型",
     "loadingStatus": "监装状态",
     "statusDone": "已完成",
     "statusPending": "待处理",

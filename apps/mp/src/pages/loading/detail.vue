@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { AttachmentDtlTypeSimpleDto } from '@/api/attachment-dtl-type';
 import type { LoadingOrderDetailDto } from '@/api/loading-order';
 import type { EditableCtn } from '@/utils/ctn-model';
 
 import { onLoad, onShow } from '@dcloudio/uni-app';
 import { computed, ref } from 'vue';
 
+import { getOrderCtnLoadingAttachmentTypes } from '@/api/attachment-dtl-type';
 import {
   cancelLoadingOrderComplete,
   claimLoadingOrder,
@@ -33,6 +35,7 @@ const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight ?? 20);
 const orderId = ref('');
 const detail = ref<LoadingOrderDetailDto | null>(null);
 const ctns = ref<EditableCtn[]>([]);
+const attachmentTypes = ref<AttachmentDtlTypeSimpleDto[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 const noPermission = ref(false);
@@ -48,6 +51,7 @@ const actionsReady = ref(false);
 const status = computed(() => detail.value?.status ?? routeStatus.value);
 /** 只有已认领能改箱；已完成需先取消完成 */
 const editable = computed(() => status.value === LoadingOrderStatus.Claimed);
+const typesEmpty = computed(() => attachmentTypes.value.length === 0);
 const activeCtn = computed(() => ctns.value[activeCtnIndex.value] ?? null);
 
 const basicRows = computed(() => {
@@ -91,9 +95,19 @@ async function fetchDetail() {
   if (!orderId.value) return;
   loading.value = true;
   try {
-    const result = await getLoadingOrderDetail(orderId.value);
+    const [result, types] = await Promise.all([
+      getLoadingOrderDetail(orderId.value),
+      getOrderCtnLoadingAttachmentTypes().catch((error) => {
+        uni.showToast({
+          icon: 'none',
+          title: error instanceof Error ? error.message : '附件类型加载失败',
+        });
+        return [] as AttachmentDtlTypeSimpleDto[];
+      }),
+    ]);
     detail.value = result;
-    ctns.value = toEditableCtns(result.orderCtns);
+    attachmentTypes.value = types;
+    ctns.value = toEditableCtns(result.orderCtns, types);
     noPermission.value = false;
   } catch (error) {
     if (isNoSupervisionError(error)) {
@@ -368,6 +382,7 @@ onShow(() => {
       :ctn="activeCtn"
       :editable="editable"
       :saving="submitting"
+      :types-empty="typesEmpty"
       :visible="photoPanelVisible"
       @close="closePhotoPanel"
       @save="onSaveFromPanel"

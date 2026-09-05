@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { LoadingOrderAdminApi } from '#/api/sea-export/loading-order-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
@@ -41,9 +42,11 @@ import {
   getLoadingOrderBySeaExportId,
   LOADING_ORDER_STATUS_TEXT,
   LoadingOrderStatus,
+  ORDER_CTN_LOADING_MODULE_TYPE,
   submitLoadingOrder,
   withdrawLoadingOrder,
 } from '#/api/sea-export/loading-order-admin';
+import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getCodePackageDetail } from '#/api/system/base-data/code-package-admin';
 import { getLoadingRequirementPagedList } from '#/api/system/base-data/loading-requirement-admin';
@@ -104,25 +107,9 @@ const photoEditCtn = ref<LoadingOrderAdminApi.LoadingOrderCtnDto | null>(null);
 const photoEditOpen = ref(false);
 const photoEditUploading = ref(false);
 const photoEditSaving = ref(false);
-
-/** 将后端 attachmentGroups 转成本地可编辑结构（带完整 URL） */
-function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
-  const groups = (ctn.attachmentGroups ?? []).map((g) => ({
-    attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
-    typeName: g.attachmentDtlType?.typeName ?? '监装照片',
-    items: (g.items ?? []).map((item) => ({
-      id: item.id,
-      attachmentId: item.attachmentId!,
-      url: buildAttachmentUrl(item.url),
-      clientVisible: item.clientVisible,
-      displayOrder: item.displayOrder,
-    })),
-  }));
-  if (groups.length === 0) {
-    groups.push({ attachmentDtlTypeId: null, typeName: '监装照片', items: [] });
-  }
-  return groups;
-}
+const attachmentTypes = ref<AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]>(
+  [],
+);
 
 type EditablePhoto = {
   id?: number | string;
@@ -140,12 +127,101 @@ type EditableGroup = {
 
 const photoEditGroups = ref<EditableGroup[]>([]);
 
-function openPhotoEdit(row: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+const DEFAULT_PHOTO_GROUP_NAME = '监装照片';
+
+function typeIdKey(id: null | number | string | undefined) {
+  if (id == null || id === '') return 'null';
+  return String(id);
+}
+
+function resolveExistingTypeName(
+  group: NonNullable<
+    LoadingOrderAdminApi.LoadingOrderCtnDto['attachmentGroups']
+  >[number],
+) {
+  return (
+    group.attachmentDtlType?.name ||
+    group.attachmentDtlType?.typeName ||
+    DEFAULT_PHOTO_GROUP_NAME
+  );
+}
+
+/** 先铺维护的附件类型空槽，再填该箱已有照片；历史未分类组追加在后 */
+function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+  const existing = ctn.attachmentGroups ?? [];
+  const itemsByType = new Map<string, EditablePhoto[]>();
+
+  for (const group of existing) {
+    itemsByType.set(
+      typeIdKey(group.attachmentDtlTypeId),
+      (group.items ?? []).map((item) => ({
+        id: item.id,
+        attachmentId: item.attachmentId!,
+        url: buildAttachmentUrl(item.url),
+        clientVisible: item.clientVisible,
+        displayOrder: item.displayOrder,
+      })),
+    );
+  }
+
+  const groups: EditableGroup[] = [];
+  const seen = new Set<string>();
+  const sortedTypes = [...attachmentTypes.value].sort(
+    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
+  );
+
+  for (const type of sortedTypes) {
+    const key = typeIdKey(type.id);
+    seen.add(key);
+    groups.push({
+      attachmentDtlTypeId: type.id,
+      typeName: type.name || String(type.id),
+      items: itemsByType.get(key) ?? [],
+    });
+  }
+
+  for (const group of existing) {
+    const key = typeIdKey(group.attachmentDtlTypeId);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    groups.push({
+      attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+      typeName: resolveExistingTypeName(group),
+      items: itemsByType.get(key) ?? [],
+    });
+  }
+
+  if (groups.length === 0) {
+    groups.push({
+      attachmentDtlTypeId: null,
+      typeName: DEFAULT_PHOTO_GROUP_NAME,
+      items: [],
+    });
+  }
+
+  return groups;
+}
+
+const loadAttachmentTypes = async () => {
+  try {
+    const result = await getAttachmentDtlTypesByModuleTypes({
+      moduleTypes: [ORDER_CTN_LOADING_MODULE_TYPE],
+    });
+    attachmentTypes.value = (result[0]?.attachmentDtlTypes ?? []).filter(
+      (type) => type.id != null && type.id !== '',
+    );
+  } catch {
+    attachmentTypes.value = [];
+  }
+};
+
+async function openPhotoEdit(row: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   if (isEmptyBizId(row.id)) {
     message.warning($t('seaExport.loadingOrder.photoNeedCtnId'));
     return;
   }
   photoEditCtn.value = row;
+  await loadAttachmentTypes();
   photoEditGroups.value = toEditableGroups(row);
   photoEditOpen.value = true;
 }
@@ -583,6 +659,7 @@ const loadDetail = async () => {
     const [result] = await Promise.all([
       getLoadingOrderBySeaExportId(seaExportId.value),
       loadOptionSources(),
+      loadAttachmentTypes(),
     ]);
     detail.value = result ?? null;
     if (!result) {
@@ -610,6 +687,7 @@ onMounted(async () => {
 onActivated(() => {
   if (!hasLoadedOnce.value) return;
   void loadOptionSources();
+  void loadAttachmentTypes();
 });
 watch(seaExportId, () => {
   void loadDetail();
@@ -806,7 +884,7 @@ const openCtnPhotos = (row: LoadingOrderAdminApi.LoadingOrderCtnDto) => {
 
 const onPhotoBtnClick = (row: LoadingOrderAdminApi.LoadingOrderCtnDto) => {
   if (canEdit.value) {
-    openPhotoEdit(row);
+    void openPhotoEdit(row);
     return;
   }
   openCtnPhotos(row);
@@ -1414,8 +1492,14 @@ const displayValue = (value: null | number | string | undefined) => {
     >
       <Spin :spinning="photoEditSaving">
         <div
+          v-if="canEdit && attachmentTypes.length === 0"
+          class="photo-edit-types-empty"
+        >
+          {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
+        </div>
+        <div
           v-for="(group, gi) in photoEditGroups"
-          :key="gi"
+          :key="String(group.attachmentDtlTypeId ?? 'untyped')"
           class="photo-edit-group"
         >
           <div class="photo-edit-group__title">{{ group.typeName }}</div>
@@ -2087,6 +2171,12 @@ const displayValue = (value: null | number | string | undefined) => {
 }
 
 /* ── 照片编辑弹窗 ── */
+.photo-edit-types-empty {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #8b95a7;
+}
+
 .photo-edit-group {
   margin-bottom: 16px;
 }

@@ -1,5 +1,6 @@
 import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 
+import { clearModuleTypeLabelCache } from '#/api/common/lookup';
 import { getItemsByName } from '#/api/system/enum-admin';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
 
@@ -183,6 +184,7 @@ export async function getEnumItems(
 export function clearEnumCache(): void {
   try {
     localStorage.removeItem(ENUM_CACHE_KEY);
+    clearModuleTypeLabelCache();
     console.log('[Enum Cache] 缓存已清除');
   } catch (error) {
     console.error('[Enum Cache] 清除缓存失败:', error);

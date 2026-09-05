@@ -1,3 +1,4 @@
+import type { AttachmentDtlTypeSimpleDto } from '@/api/attachment-dtl-type';
 import type {
   LoadingOrderCtnDto,
   LoadingOrderCtnEditItem,
@@ -29,21 +30,70 @@ export interface EditableCtn {
 
 const DEFAULT_GROUP_NAME = '监装照片';
 
-/** 详情返回的箱型转成页面可编辑模型；没有分组时补一个默认组供拍照 */
+function typeIdKey(id: null | number | string | undefined) {
+  if (id == null || id === '') return 'null';
+  return String(id);
+}
+
+function resolveExistingTypeName(
+  group: NonNullable<LoadingOrderCtnDto['attachmentGroups']>[number],
+) {
+  return (
+    group.attachmentDtlType?.name ||
+    group.attachmentDtlType?.typeName ||
+    DEFAULT_GROUP_NAME
+  );
+}
+
+/**
+ * 详情箱型转成可编辑模型。
+ * 先铺维护的附件类型空槽，再把已有照片填进去；历史未分类组追加在后。
+ */
 export function toEditableCtns(
   ctns?: LoadingOrderCtnDto[] | null,
+  configuredTypes: AttachmentDtlTypeSimpleDto[] = [],
 ): EditableCtn[] {
+  const sortedTypes = [...configuredTypes].sort(
+    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
+  );
+
   return (ctns ?? []).map((ctn) => {
-    const groups: EditableGroup[] = (ctn.attachmentGroups ?? []).map(
-      (group) => ({
-        attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
-        typeName: group.attachmentDtlType?.typeName || DEFAULT_GROUP_NAME,
-        items: (group.items ?? []).map((item) => ({
+    const existing = ctn.attachmentGroups ?? [];
+    const itemsByType = new Map<string, EditablePhoto[]>();
+
+    for (const group of existing) {
+      itemsByType.set(
+        typeIdKey(group.attachmentDtlTypeId),
+        (group.items ?? []).map((item) => ({
           attachmentId: item.attachmentId,
           url: buildAttachmentUrl(item.url),
         })),
-      }),
-    );
+      );
+    }
+
+    const groups: EditableGroup[] = [];
+    const seen = new Set<string>();
+
+    for (const type of sortedTypes) {
+      const key = typeIdKey(type.id);
+      seen.add(key);
+      groups.push({
+        attachmentDtlTypeId: type.id,
+        typeName: type.name || String(type.id),
+        items: itemsByType.get(key) ?? [],
+      });
+    }
+
+    for (const group of existing) {
+      const key = typeIdKey(group.attachmentDtlTypeId);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      groups.push({
+        attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+        typeName: resolveExistingTypeName(group),
+        items: itemsByType.get(key) ?? [],
+      });
+    }
 
     if (groups.length === 0) {
       groups.push({
@@ -66,8 +116,8 @@ export function toEditableCtns(
 }
 
 /**
- * 转回提交结构。附件是按箱全量替换，所以每次都要把当前全部分组带上，
- * 漏传某个分组等于把该组照片删掉。
+ * 转回提交结构。附件是按箱全量替换，所以每次都要把当前有照片的分组带上，
+ * 漏传某个分组等于把该组照片删掉。空组不必提交（后端也会跳过空 items）。
  */
 export function toCtnEditPayload(
   ctns: EditableCtn[],
@@ -78,14 +128,16 @@ export function toCtnEditPayload(
     ctnNo: ctn.ctnNo || null,
     sealNo: ctn.sealNo || null,
     isLoadingCompleted: ctn.isLoadingCompleted,
-    attachmentGroups: ctn.groups.map((group) => ({
-      attachmentDtlTypeId: group.attachmentDtlTypeId,
-      items: group.items.map((photo, index) => ({
-        attachmentId: photo.attachmentId,
+    attachmentGroups: ctn.groups
+      .filter((group) => group.items.length > 0)
+      .map((group) => ({
         attachmentDtlTypeId: group.attachmentDtlTypeId,
-        displayOrder: index,
+        items: group.items.map((photo, index) => ({
+          attachmentId: photo.attachmentId,
+          attachmentDtlTypeId: group.attachmentDtlTypeId,
+          displayOrder: index,
+        })),
       })),
-    })),
   }));
 }
 

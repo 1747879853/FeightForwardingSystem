@@ -817,6 +817,7 @@
     "photoEmpty": "No loading photos yet",
     "photoNeedCtnId": "Container is not saved yet; photos cannot be edited",
     "photoSaveSuccess": "Photos saved",
+    "photoTypesEmpty": "No loading photo types configured",
     "loadingStatus": "Status",
     "statusDone": "Completed",
     "statusPending": "Pending",
