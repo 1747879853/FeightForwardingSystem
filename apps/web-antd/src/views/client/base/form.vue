@@ -1257,32 +1257,27 @@ const handleSubmit = async () => {
         fullName: addData.fullName,
       });
 
-      createdId = await addClient(addData);
-      const resolvedCreatedId =
-        (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
-      const createdIdStr =
-        resolvedCreatedId === null || resolvedCreatedId === undefined
-          ? ''
-          : String(resolvedCreatedId).trim();
-      const createTabKey = route.fullPath;
-      if (createdIdStr) {
+      const createdId = await addClient(addData);
+      //const createdId = (payload as any)?.result;
+      if (createdId) {
+        message.success($t('ui.actionMessage.operationSuccess'));
         await syncFormSnapshot();
-        await router.replace(`/clients/${createdIdStr}/edit`);
-      } else {
-        await router.replace('/clients');
+        markListShouldRefresh('ClientList');
+        await router.replace(`/clients/${createdId}/edit`);
       }
-      await closeTabByKey(createTabKey);
+      // await closeTabByKey(createTabKey);
     }
 
-    if (createdId) {
-      message.success($t('ui.actionMessage.operationSuccess'));
-      markListShouldRefresh('ClientList');
+    // if (createdId) {
+    //   message.success($t('ui.actionMessage.operationSuccess'));
+    //   markListShouldRefresh('ClientList');
 
-      //router.push('/clients');
-    } else {
-      // message.success($t('ui.actionMessage.operationFailed'));
-    }
+    //   //router.push('/clients');
+    // } else {
+    //   // message.success($t('ui.actionMessage.operationFailed'));
+    // }
   } catch (error: any) {
+    message.error($t('ui.actionMessage.operationFailed'));
     console.error('提交失败:', error);
   } finally {
     submitting.value = false;
