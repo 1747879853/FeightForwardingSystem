@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -70,6 +70,7 @@ last_updated: 2026-09-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 点击申请/发票附件改为全站弹窗预览。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-04 | `Feature` | 发票改成可多行子表：每行发票号/开票日期/单附件；先票后付必填、不开票禁填。 | 提交 `paymentApplicationInvoices`，不再传主表 `invoiceNo`/`invoiceDate`。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |
 | 2026-08-31 | `Fix` | 添加费用抽屉可按客户对账单号模糊检索；展开费用行展示对账单号。 | TAPD 1000898（付费侧）；`StatementNum` 空值不传。开票抽屉此前已有。详见 `changelogs/change-log-2026-08-31-payment-add-fee-statement-num.md`。 |
 | 2026-08-30 | `Fix` | 指定结算币别预填只取汇率表「原币兑结算币」且当天有效的应付汇率，不按开船日。 | 详见 `changelogs/change-log-2026-08-30-payment-application-rate-quote-local.md`。 |

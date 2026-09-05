@@ -6,7 +6,7 @@ import { computed, ref } from 'vue';
 import { Button, Modal } from 'ant-design-vue';
 
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { markAnnouncementAsRead } from '#/utils/announcement-read-storage';
 import { renderAnnouncementHtml } from '#/utils/sanitize-html';
 
@@ -57,10 +57,7 @@ const closeModal = () => {
 };
 
 const openAttachment = (url?: string | null) => {
-  if (!url) {
-    return;
-  }
-  window.open(buildAttachmentUrl(url), '_blank', 'noopener,noreferrer');
+  openAttachmentViewer(url);
 };
 
 const handleMarkRead = () => {

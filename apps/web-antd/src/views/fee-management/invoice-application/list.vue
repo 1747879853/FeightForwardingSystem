@@ -25,6 +25,7 @@ import { $t } from '#/locales';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 
 import {
@@ -101,13 +102,9 @@ function getInvoiceTypeLabel(type?: string) {
   return typeMap[type] || type;
 }
 
-/** ✅ 新增：查看附件 */
+/** 查看附件 */
 function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
-  if (item.url) {
-    window.open(buildAttachmentUrl(item.url), '_blank', 'noopener,noreferrer');
-  } else {
-    message.warning('附件链接不存在');
-  }
+  openAttachmentViewer(item);
 }
 
 /** ✅ 新增：下载附件 */

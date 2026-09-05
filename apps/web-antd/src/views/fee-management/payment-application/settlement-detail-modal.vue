@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 
 import { Empty, Modal, Table, Tag } from 'ant-design-vue';
 
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 
 defineProps<{
   open: boolean;
@@ -37,9 +37,7 @@ function getFileName(
 }
 
 function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
-  if (item.url) {
-    window.open(buildAttachmentUrl(item.url), '_blank', 'noopener,noreferrer');
-  }
+  openAttachmentViewer(item);
 }
 
 function handleCancel() {

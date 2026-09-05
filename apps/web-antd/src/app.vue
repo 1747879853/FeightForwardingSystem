@@ -8,6 +8,7 @@ import { useAccessStore } from '@vben/stores';
 
 import { App, ConfigProvider, theme } from 'ant-design-vue';
 
+import { AttachmentViewerHost } from '#/components/attachment-viewer';
 import { JhtMascot } from '#/components/jht-mascot';
 import { shouldShowJhtMascot as resolveJhtMascotVisibility } from '#/components/jht-mascot/jht-mascot-state';
 import { PrintFormatModal } from '#/components/print-format';
@@ -61,6 +62,7 @@ const tokenTheme = computed(() => {
       <WorkflowTimelineModal />
       <TrackingMapModal />
       <VendorTrackingMapModal />
+      <AttachmentViewerHost />
       <JhtMascot v-if="shouldShowJhtMascot" />
     </App>
   </ConfigProvider>

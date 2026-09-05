@@ -15,8 +15,8 @@ import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { extractInvoice } from '#/api/sea-export/gemini-admin';
 import { addPaymentApplicationAttachments } from '#/api/settlement-management/payment-application-admin';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
 
 interface AttachmentGroupView {
   attachmentDtlTypeId: null | number;
@@ -227,7 +227,7 @@ function getFileName(
 function openAttachment(
   item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto,
 ) {
-  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+  openAttachmentViewer(item);
 }
 
 function isInvoiceGroup(group: AttachmentGroupView) {

@@ -19,10 +19,15 @@
   "filePreview": {
     "title": "文件预览",
     "openInNewWindow": "新窗口打开",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
     "download": "下载",
     "uploader": "上传人",
     "uploadTime": "上传时间",
-    "unsupported": "该文件类型暂不支持在线预览，请下载后查看"
+    "unsupported": "该文件类型暂不支持在线预览，请下载后查看",
+    "missingUrl": "附件链接不存在",
+    "officeFailed": "文档预览失败，请下载后查看",
+    "officeLegacyUnsupported": "旧版 .doc / .ppt 暂不支持在线预览，请下载后用本地 Office 打开"
   },
   "terminalSchedule": {
     "sync": "码头船舶",

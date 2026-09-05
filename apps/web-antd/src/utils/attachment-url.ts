@@ -89,6 +89,43 @@ export function buildAttachmentUrl(url?: string) {
 }
 
 /**
+ * 浏览器内 fetch / iframe 用的附件地址。
+ * 后端静态文件改走同源相对路径，走开发代理 `/Uploads` 或生产反代，避开 CORS 与 X-Frame-Options。
+ * 下载、img 仍用 `buildAttachmentUrl` 直连后端。
+ */
+export function resolveSameOriginMediaUrl(url?: string) {
+  if (!url) return '';
+  if (/^(blob:|data:)/i.test(url)) return url;
+
+  const full = buildAttachmentUrl(url);
+  if (!full) return '';
+  if (!PROTOCOL_URL_REGEXP.test(full)) {
+    return full.startsWith('/') ? full : `/${full}`;
+  }
+
+  try {
+    const parsed = new URL(full);
+    const backendOrigin = getStaticFileOrigin() || removeApiSuffix(apiURL);
+    if (backendOrigin && PROTOCOL_URL_REGEXP.test(backendOrigin)) {
+      const backend = new URL(backendOrigin);
+      if (parsed.origin === backend.origin) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    }
+    if (
+      typeof window !== 'undefined' &&
+      parsed.origin === window.location.origin
+    ) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return full;
+  }
+
+  return full;
+}
+
+/**
  * 弹窗 iframe 内嵌 PDF 预览地址。
  * - toolbar/navpanes：隐藏工具栏与左侧缩略图
  * - view=FitH：按宽度铺满，避免两侧黑边留白
@@ -98,4 +135,77 @@ export function buildPdfEmbedUrl(url?: string) {
   if (!url) return '';
   const base = url.split('#')[0] ?? url;
   return `${base}#toolbar=0&navpanes=0&view=FitH`;
+}
+
+/** Microsoft Office 在线嵌入预览 */
+export const OFFICE_EMBED_VIEWER_URL =
+  'https://view.officeapps.live.com/op/embed.aspx';
+
+/**
+ * 还原为公网可访问的素材地址（相对路径拼接当前品牌后端根）。
+ * 用于 Office 在线预览：微软服务器会拉取 src，禁止落到前端 origin / localhost。
+ */
+export function resolvePublicMediaUrl(url?: string) {
+  if (!url || typeof url !== 'string') return url || '';
+  if (/^(blob:|data:)/i.test(url)) return url;
+
+  const origin = getStaticFileOrigin();
+
+  if (PROTOCOL_URL_REGEXP.test(url)) {
+    if (!origin) return url;
+    try {
+      const parsed = new URL(url);
+      const frontendOrigin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      if (
+        frontendOrigin &&
+        parsed.origin === frontendOrigin &&
+        parsed.origin !== origin
+      ) {
+        return `${trimTrailingSlash(origin)}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      return url;
+    }
+    return url;
+  }
+
+  return buildStaticFileUrl(url);
+}
+
+/** 将素材地址补全为可访问的公网 URL */
+export function resolveMediaUrl(url?: string) {
+  return resolvePublicMediaUrl(url);
+}
+
+/** 生成 Office 在线文档嵌入预览地址 */
+export function buildOfficeEmbedUrl(fileUrl?: string) {
+  const publicUrl = resolvePublicMediaUrl(fileUrl);
+  if (!publicUrl || /^(blob:|data:)/i.test(publicUrl)) return '';
+
+  return `${OFFICE_EMBED_VIEWER_URL}?src=${encodeURIComponent(publicUrl)}`;
+}
+
+function isPdfDocument(fileUrl?: string, extension = '') {
+  if (String(extension || '').toLowerCase() === 'pdf') {
+    return true;
+  }
+
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    return false;
+  }
+
+  const normalizedUrl = fileUrl.split('?')[0]?.toLowerCase() ?? '';
+  return normalizedUrl.endsWith('.pdf');
+}
+
+/** PDF 直接预览，其他 Office 文档走微软在线嵌入 */
+export function buildDocumentPreviewUrl(fileUrl?: string, extension = '') {
+  if (!fileUrl) return '';
+
+  if (isPdfDocument(fileUrl, extension)) {
+    return resolvePublicMediaUrl(fileUrl);
+  }
+
+  return buildOfficeEmbedUrl(fileUrl);
 }

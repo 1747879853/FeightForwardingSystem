@@ -42,7 +42,7 @@ import {
   markListShouldRefresh,
   returnToListWithRefresh,
 } from '#/utils/list-refresh-flag';
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { WorkflowTimeline } from '#/components/workflow-timeline';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { AuditStatusStamp } from '#/components/audit-status-stamp';
@@ -256,7 +256,7 @@ function buildAttachmentGroupSubmit(): PaymentApplicationAdminApi.AttachmentGrou
 function openSettlementAttachment(
   item: PaymentApplicationAdminApi.AttachmentItemDto,
 ) {
-  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+  openAttachmentViewer(item);
 }
 
 const feeDetailRows = ref<FeeDetailRow[]>([]);

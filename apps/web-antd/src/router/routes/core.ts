@@ -102,6 +102,17 @@ const coreRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    name: 'AttachmentPreviewPage',
+    path: '/attachment-preview',
+    component: () => import('#/views/_core/attachment-preview/index.vue'),
+    meta: {
+      hideInMenu: true,
+      hideInTab: true,
+      hideInBreadcrumb: true,
+      title: $t('component.filePreview.title'),
+    },
+  },
 ];
 
 export { coreRoutes, fallbackNotFoundRoute };

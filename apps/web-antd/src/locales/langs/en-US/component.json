@@ -19,10 +19,15 @@
   "filePreview": {
     "title": "File Preview",
     "openInNewWindow": "Open in New Window",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
     "download": "Download",
     "uploader": "Uploaded by",
     "uploadTime": "Uploaded at",
-    "unsupported": "Online preview is not supported for this file type. Please download to view."
+    "unsupported": "Online preview is not supported for this file type. Please download to view.",
+    "missingUrl": "Attachment URL is missing",
+    "officeFailed": "Failed to preview the document. Please download it instead.",
+    "officeLegacyUnsupported": "Legacy .doc / .ppt cannot be previewed online. Please download and open with Office."
   },
   "terminalSchedule": {
     "sync": "Terminal Vessel",

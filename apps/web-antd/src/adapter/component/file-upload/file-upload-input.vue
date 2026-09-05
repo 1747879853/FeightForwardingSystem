@@ -14,9 +14,7 @@ import { $t } from '@vben/locales';
 
 import {
   Button,
-  Image,
   message,
-  Modal,
   Spin,
   Tooltip,
   Upload,
@@ -24,6 +22,7 @@ import {
 } from 'ant-design-vue';
 
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 
 /** 图片文件扩展名集合 */
@@ -85,12 +84,6 @@ const innerValue = ref<Attachment[]>([]);
 
 /** 正在上传的文件 uid 集合 */
 const uploadingUids = ref<Set<string>>(new Set());
-
-/** 图片预览弹窗是否显示 */
-const previewVisible = ref(false);
-
-/** 当前预览的图片 URL */
-const previewImageUrl = ref('');
 
 /** 是否正在上传 */
 const isUploading = computed(() => uploadingUids.value.size > 0);
@@ -258,28 +251,14 @@ const handlePreview = (file: UploadFile) => {
   );
 
   if (attachment?.url) {
-    const fullUrl = buildAttachmentUrl(attachment.url);
-
-    // picture-card / 图片扩展名：弹窗预览；编辑回显文件名可能没有扩展名
-    if (
-      isPictureCard.value ||
-      isImageFile(attachment.fileName) ||
-      isImageFile(attachment.url)
-    ) {
-      previewImageUrl.value = fullUrl;
-      previewVisible.value = true;
-    } else {
-      window.open(fullUrl, '_blank');
-    }
+    openAttachmentViewer({
+      url: attachment.url,
+      fileName: attachment.fileName,
+      friendlyFileName: attachment.friendlyFileName,
+    });
   } else {
     message.warning($t('component.fileUpload.previewFailed'));
   }
-};
-
-/** 关闭图片预览弹窗 */
-const handlePreviewClose = () => {
-  previewVisible.value = false;
-  previewImageUrl.value = '';
 };
 
 /** 处理 fileList 变化（主要用于删除操作） */
@@ -614,22 +593,6 @@ defineExpose({
         {{ $t('component.fileUpload.maxCount') }}: {{ maxCount }}
       </span>
     </div>
-
-    <!-- 图片预览弹窗 -->
-    <Modal
-      :open="previewVisible"
-      :footer="null"
-      :width="800"
-      @cancel="handlePreviewClose"
-    >
-      <div class="flex items-center justify-center">
-        <Image
-          :src="previewImageUrl"
-          :preview="false"
-          style="max-width: 100%; max-height: 60vh; object-fit: contain"
-        />
-      </div>
-    </Modal>
   </div>
 </template>
 

@@ -25,3 +25,21 @@ declare module '@handsontable/vue3' {
   export const HotTable: DefineComponent<HotTableProps>;
   export default HotTable;
 }
+
+declare module '@vue-office/docx' {
+  import type { Component } from 'vue';
+  const component: Component;
+  export default component;
+}
+
+declare module '@vue-office/excel' {
+  import type { Component } from 'vue';
+  const component: Component;
+  export default component;
+}
+
+declare module '@vue-office/pptx' {
+  import type { Component } from 'vue';
+  const component: Component;
+  export default component;
+}

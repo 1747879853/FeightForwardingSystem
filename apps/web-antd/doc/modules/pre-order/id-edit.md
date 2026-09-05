@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-09-02
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,7 +18,7 @@ last_updated: 2026-09-02
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
-- **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
+- **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。点击文件打开全站附件查看器。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」后隐藏保存/提交按钮。
 - **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」，重新显示保存/提交。
 - **审核通过 / 审核驳回：** 「待审核」状态下弹窗填写意见；通过时若缺少「操作」干系人，弹窗强制先指派。
@@ -119,6 +119,7 @@ last_updated: 2026-09-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 点击附件改为全站弹窗预览，不再新开浏览器窗口。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-02 | `Fix` | 干系人选人、审核指派操作只列出对应用户属性，不再显示全部账号。 | TAPD `#1161580498001000928`。对齐海出：`UserSelect` 必须带行上 `userAttribute`。详见 `changelogs/change-log-2026-09-02-pre-order-user-attribute-filter.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/尺码、箱型货重改为最多 4 位小数且不展示末尾 0；费用数量只读展示同步 4 位。 | TAPD `#1161580498001000905` 后端扩 round。`PreOrderFee.Quantity` 库列仍 2 位，审核通过按 Kgs/Cbm 重算。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
 | 2026-08-30 | `Change` | 费用汇率必须对上所属公司本位币；对不上当没维护留空，不再拿别的本位币记录凑。 | 缓存去掉跨本位币兜底和 `strictLocalCurrency` 开关。费用币别本身就是本位币时页面仍锁 1。详见 `changelogs/change-log-2026-08-30-exchange-rate-no-local-fallback.md`。 |

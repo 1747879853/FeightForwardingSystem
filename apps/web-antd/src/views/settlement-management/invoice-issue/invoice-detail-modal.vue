@@ -13,6 +13,7 @@ import {
 } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 import {
   getCombinedStatusColor,
@@ -103,20 +104,14 @@ function getFileExtension(fileName: string): string {
 function openAttachment(
   item: InvoiceIssueApi.AttachmentItemDto | Record<string, any>,
 ) {
-  if (item.url) {
-    window.open(buildAttachmentUrl(item.url), '_blank', 'noopener,noreferrer');
-  }
+  openAttachmentViewer(item);
 }
 
-/** 查看附件（在新窗口打开） */
+/** 查看附件 */
 function viewAttachment(
   item: InvoiceIssueApi.AttachmentItemDto | Record<string, any>,
 ) {
-  if (item.url) {
-    window.open(buildAttachmentUrl(item.url), '_blank', 'noopener,noreferrer');
-  } else {
-    message.warning('附件链接不存在');
-  }
+  openAttachmentViewer(item);
 }
 
 /** 下载附件 */

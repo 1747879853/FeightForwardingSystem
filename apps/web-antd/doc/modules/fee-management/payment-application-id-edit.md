@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-09-04
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
-- **发票明细子表：** 任意可保存状态均可维护多张发票（每行发票号/开票日期/单个附件）。保存走 `EditAsync.paymentApplicationInvoices` **全量覆盖**。行内附件可识别预填该行，**不自动保存**。申请附件区仍按 `attachmentGroup` 分组上传（与发票行附件模块不同）；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读。
+- **发票明细子表：** 任意可保存状态均可维护多张发票（每行发票号/开票日期/单个附件）。保存走 `EditAsync.paymentApplicationInvoices` **全量覆盖**。行内附件可识别预填该行，**不自动保存**。点击发票附件、申请分组附件、结算附件均打开全站附件查看器。申请附件区仍按 `attachmentGroup` 分组上传（与发票行附件模块不同）；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉可按客户对账单号模糊检索（`StatementNum`），展开行展示对账单号。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填只取汇率表「原币兑结算币」且**当天**有效的应付汇率。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
@@ -78,6 +78,7 @@ last_updated: 2026-09-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 点击发票/申请/结算附件改为全站弹窗预览。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-04 | `Feature` | 发票改成可多行子表，每行独立附件；保存全量覆盖 `paymentApplicationInvoices`。 | 主表发票字段已删除。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |
 | 2026-08-31 | `Fix` | 添加费用抽屉可按客户对账单号模糊检索；展开费用行展示对账单号。 | 与新增页共用 `add-fee-modal`；TAPD 1000898。详见 `changelogs/change-log-2026-08-31-payment-add-fee-statement-num.md`。 |
 | 2026-08-30 | `Fix` | 指定结算币别预填只取汇率表「原币兑结算币」且当天有效的应付汇率，不按开船日。 | 与新增页共用；详见 `changelogs/change-log-2026-08-30-payment-application-rate-quote-local.md`。 |

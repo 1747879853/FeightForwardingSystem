@@ -18,7 +18,7 @@ import {
 
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { extractInvoice } from '#/api/sea-export/gemini-admin';
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 
 import {
   applyExtractedInvoiceToRow,
@@ -63,8 +63,7 @@ function getFileName(row: InvoiceRowForm) {
 }
 
 function openAttachment(row: InvoiceRowForm) {
-  const url = row.attachment?.url;
-  if (url) window.open(buildAttachmentUrl(url), '_blank');
+  openAttachmentViewer(row.attachment);
 }
 
 async function handleUpload(file: UploadFile, index: number) {

@@ -46,6 +46,7 @@ import {
   getMyDefaultOrgId,
   getMyOrgCompanyNode,
 } from '#/composables/use-my-org';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
@@ -859,21 +860,7 @@ async function loadClientBankOptions() {
 function handlePreviewAttachment(
   item: PaymentSettlementAdminApi.AttachmentItemDto,
 ) {
-  if (item.url) {
-    const fullUrl = buildAttachmentUrl(item.url);
-    // 简单判断是否为图片，实际项目中可以使用更完善的判断逻辑
-    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(
-      item.friendlyFileName || '',
-    );
-
-    if (isImage) {
-      window.open(fullUrl, '_blank');
-    } else {
-      window.open(fullUrl, '_blank');
-    }
-  } else {
-    message.warning('附件链接不存在');
-  }
+  openAttachmentViewer(item);
 }
 
 /** 下载付费申请附件 */
@@ -1263,8 +1250,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-
-
 /* ==================== 响应式适配 ==================== */
 
 /* 窄屏：列间距收紧，保证不溢出 */

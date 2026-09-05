@@ -22,7 +22,6 @@ import {
   Upload,
 } from 'ant-design-vue';
 
-import AttachmentViewerModal from '#/adapter/component/file-preview/attachment-viewer-modal.vue';
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import {
@@ -37,6 +36,7 @@ import {
 } from '#/api/system/attachment-dtl-type';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 
@@ -577,24 +577,17 @@ const getFileIconColor = (row: SeaExportAdminApi.AttachmentItemDto): string => {
   return '#8c8c8c';
 };
 
-const previewOpen = ref(false);
-const previewUrl = ref('');
-const previewFileName = ref('');
-const previewUploader = ref('');
-const previewUploadTime = ref('');
-
 const handlePreview = (row: SeaExportAdminApi.AttachmentItemDto) => {
   if (!row.url) {
     message.warning($t('seaExport.export.attachments.noFileUrl'));
     return;
   }
-  previewUrl.value = row.url;
-  previewFileName.value = getFileName(row);
-  previewUploader.value = row.creatorUserName ?? '';
-  previewUploadTime.value = row.creationTime
-    ? formatDateTime(row.creationTime)
-    : '';
-  previewOpen.value = true;
+  openAttachmentViewer({
+    url: row.url,
+    fileName: getFileName(row),
+    uploader: row.creatorUserName,
+    creationTime: row.creationTime,
+  });
 };
 
 onMounted(() => {
@@ -838,14 +831,6 @@ onMounted(() => {
         />
       </div>
     </Modal>
-
-    <AttachmentViewerModal
-      v-model:open="previewOpen"
-      :file-url="previewUrl"
-      :file-name="previewFileName"
-      :uploader="previewUploader"
-      :upload-time="previewUploadTime"
-    />
   </div>
 </template>
 

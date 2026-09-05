@@ -19,10 +19,10 @@ import {
   Modal as AntModal,
 } from 'ant-design-vue';
 
-import AttachmentViewerModal from '#/adapter/component/file-preview/attachment-viewer-modal.vue';
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 
 const [paymentForm, paymentFormApi] = useVbenForm({
@@ -310,24 +310,17 @@ const handleDelete = (index: number) => {
   });
 };
 
-const previewOpen = ref(false);
-const previewUrl = ref('');
-const previewFileName = ref('');
-const previewUploader = ref('');
-const previewUploadTime = ref('');
-
 const handlePreview = (row: BillingPeriodAdminApi.AttachmentItemDto) => {
   if (!row.url) {
     message.warning($t('seaExport.export.attachments.noFileUrl'));
     return;
   }
-  previewUrl.value = row.url;
-  previewFileName.value = getFileName(row);
-  previewUploader.value = row.creatorUserName ?? '';
-  previewUploadTime.value = row.creationTime
-    ? dayjs(row.creationTime).format('YYYY-MM-DD HH:mm:ss')
-    : '';
-  previewOpen.value = true;
+  openAttachmentViewer({
+    url: row.url,
+    fileName: getFileName(row),
+    uploader: row.creatorUserName,
+    creationTime: row.creationTime,
+  });
 };
 
 const [Modal, modalApi] = useVbenModal({
@@ -560,14 +553,6 @@ const pageTitle = computed(() => {
         </Card>
       </div>
     </div>
-
-    <AttachmentViewerModal
-      v-model:open="previewOpen"
-      :file-url="previewUrl"
-      :file-name="previewFileName"
-      :uploader="previewUploader"
-      :upload-time="previewUploadTime"
-    />
   </Modal>
 </template>
 

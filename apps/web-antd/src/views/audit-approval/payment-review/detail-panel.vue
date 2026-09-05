@@ -12,9 +12,9 @@ import dayjs from 'dayjs';
 import { Card, Empty, Spin, Tag, Tooltip } from 'ant-design-vue';
 
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
 import {
   resolvePodPortDisplayName,
   resolvePolPortDisplayName,
@@ -311,7 +311,7 @@ function getAttachmentFileName(
 }
 
 function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
-  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+  openAttachmentViewer(item);
 }
 
 function formatInvoiceDate(val: null | string | undefined): string {

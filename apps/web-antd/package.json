@@ -74,6 +74,9 @@
     "@vben/styles": "workspace:*",
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
+    "@vue-office/docx": "^1.6.3",
+    "@vue-office/excel": "^1.7.14",
+    "@vue-office/pptx": "^1.0.1",
     "@vueuse/core": "catalog:",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
@@ -88,6 +91,7 @@
     "sortablejs": "catalog:",
     "three": "^0.183.2",
     "vue": "catalog:",
+    "vue-demi": "0.14.6",
     "vue-router": "catalog:",
     "xlsx": "^0.18.5"
   },

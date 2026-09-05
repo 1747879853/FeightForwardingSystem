@@ -13,7 +13,7 @@ import { Button, Empty, Spin, Upload, message } from 'ant-design-vue';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { PRE_ORDER_MODULE_TYPE_ID } from '#/api/pre-order/pre-order-admin';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 
 interface AttachmentGroupView {
   attachmentDtlTypeId: null | number;
@@ -187,7 +187,7 @@ function getFileName(item: PreOrderAdminApi.AttachmentItemInputDto) {
 }
 
 function openAttachment(item: PreOrderAdminApi.AttachmentItemInputDto) {
-  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+  openAttachmentViewer(item);
 }
 
 onMounted(loadAttachmentTypes);

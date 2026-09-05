@@ -33,6 +33,7 @@ import {
   queryIssueResult,
   queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
 
 // 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
@@ -421,12 +422,7 @@ function handleOpenInvoiceDetailModal() {
 
 /** ✅ 新增：查看附件 */
 function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
-  if (item.url) {
-    const url = buildAttachmentUrl(item.url);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  } else {
-    message.warning('附件链接不存在');
-  }
+  openAttachmentViewer(item);
 }
 
 /** ✅ 新增：下载附件 */
