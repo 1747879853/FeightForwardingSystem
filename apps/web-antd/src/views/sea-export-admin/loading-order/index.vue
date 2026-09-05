@@ -6,6 +6,7 @@ import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-ad
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Copy, IconifyIcon } from '@vben/icons';
@@ -36,7 +37,7 @@ import {
   addLoadingOrder,
   deleteLoadingOrder,
   editLoadingOrder,
-  editLoadingOrderCtnsAdmin,
+  editOrderCtnAttachmentGroups,
   getLoadingOrderBySeaExportId,
   LOADING_ORDER_STATUS_TEXT,
   LoadingOrderStatus,
@@ -60,6 +61,7 @@ defineOptions({
 });
 
 const { hasAccessByCodes } = useAccess();
+const router = useRouter();
 
 const seaExportIdRef = useKeepAliveRouteParamId();
 const seaExportId = computed(() => seaExportIdRef.value ?? '');
@@ -90,6 +92,12 @@ const photoPreviewUrls = ref<string[]>([]);
 const photoPreviewIndex = ref(0);
 const recommendOpen = ref(false);
 
+const isEmptyBizId = (id: unknown) => {
+  if (id == null || id === '') return true;
+  const text = String(id);
+  return text === '0' || text === '00000000-0000-0000-0000-000000000000';
+};
+
 // ── 照片编辑弹窗 ──────────────────────────────────────────────────
 /** 当前正在编辑照片的箱 */
 const photoEditCtn = ref<LoadingOrderAdminApi.LoadingOrderCtnDto | null>(null);
@@ -117,8 +125,8 @@ function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
 }
 
 type EditablePhoto = {
-  id?: number;
-  attachmentId: number;
+  id?: number | string;
+  attachmentId: number | string;
   url: string;
   clientVisible?: boolean;
   displayOrder?: number;
@@ -133,16 +141,36 @@ type EditableGroup = {
 const photoEditGroups = ref<EditableGroup[]>([]);
 
 function openPhotoEdit(row: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+  if (isEmptyBizId(row.id)) {
+    message.warning($t('seaExport.loadingOrder.photoNeedCtnId'));
+    return;
+  }
   photoEditCtn.value = row;
   photoEditGroups.value = toEditableGroups(row);
   photoEditOpen.value = true;
 }
 
+function buildAttachmentGroupsPayload(groups: EditableGroup[]) {
+  return groups
+    .map((g) => ({
+      attachmentDtlTypeId: g.attachmentDtlTypeId,
+      items: g.items.map((photo, idx) => ({
+        attachmentId: photo.attachmentId,
+        attachmentDtlTypeId: g.attachmentDtlTypeId,
+        clientVisible: photo.clientVisible,
+        displayOrder: idx,
+      })),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
 function removePhotoFromGroup(groupIndex: number, photoIndex: number) {
+  if (!canEdit.value) return;
   photoEditGroups.value[groupIndex]?.items.splice(photoIndex, 1);
 }
 
 async function handlePhotoUpload(file: unknown, groupIndex: number) {
+  if (!canEdit.value) return false;
   photoEditUploading.value = true;
   try {
     const formData = new FormData();
@@ -152,7 +180,7 @@ async function handlePhotoUpload(file: unknown, groupIndex: number) {
     if (!uploaded) throw new Error('上传返回为空');
     const attachment = mapResultToAttachment(uploaded);
     photoEditGroups.value[groupIndex]?.items.push({
-      attachmentId: attachment.attachmentId as number,
+      attachmentId: attachment.attachmentId,
       url: buildAttachmentUrl(attachment.url),
     });
   } catch (error) {
@@ -165,47 +193,19 @@ async function handlePhotoUpload(file: unknown, groupIndex: number) {
 
 async function savePhotoEdit() {
   const ctn = photoEditCtn.value;
-  const orderId = detail.value?.id;
-  if (!ctn || !orderId) return;
-
-  // 把工单所有箱都带上（全量替换），只改当前箱的 attachmentGroups
-  const orderCtns = (detail.value?.orderCtns ?? []).map((c) => {
-    const isCurrentCtn = String(c.id) === String(ctn.id);
-    return {
-      id: c.id,
-      ctnCodeId: c.ctnCodeId!,
-      ctnNo: c.ctnNo ?? null,
-      sealNo: c.sealNo ?? null,
-      isLoadingCompleted: c.isLoadingCompleted,
-      attachmentGroups: isCurrentCtn
-        ? photoEditGroups.value.map((g, _gi) => ({
-            attachmentDtlTypeId: g.attachmentDtlTypeId,
-            items: g.items.map((photo, idx) => ({
-              attachmentId: photo.attachmentId,
-              attachmentDtlTypeId: g.attachmentDtlTypeId,
-              clientVisible: photo.clientVisible,
-              displayOrder: idx,
-            })),
-          }))
-        : (c.attachmentGroups ?? []).map((g) => ({
-            attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
-            items: (g.items ?? []).map((item, idx) => ({
-              attachmentId: item.attachmentId!,
-              attachmentDtlTypeId: g.attachmentDtlTypeId ?? null,
-              clientVisible: item.clientVisible,
-              displayOrder: idx,
-            })),
-          })),
-    };
-  });
+  if (!ctn || isEmptyBizId(ctn.id) || !canEdit.value) return;
 
   photoEditSaving.value = true;
   try {
-    await editLoadingOrderCtnsAdmin(String(orderId), orderCtns);
-    message.success('照片保存成功');
+    await editOrderCtnAttachmentGroups({
+      id: ctn.id,
+      attachmentGroups: buildAttachmentGroupsPayload(photoEditGroups.value),
+    });
+    message.success($t('seaExport.loadingOrder.photoSaveSuccess'));
     photoEditOpen.value = false;
-    // 刷新工单数据
-    detail.value = await getLoadingOrderBySeaExportId(seaExportId.value);
+    if (!seaExportId.value) return;
+    const result = await getLoadingOrderBySeaExportId(seaExportId.value);
+    if (result) detail.value = result;
   } catch (error) {
     message.error(error instanceof Error ? error.message : '保存失败');
   } finally {
@@ -247,12 +247,6 @@ const savedCarrierId = ref('');
 const savedCarrierName = ref<string>('');
 /** KeepAlive 首次挂载由 onMounted 拉详情，之后切回 Tab 只刷新主单下拉 */
 const hasLoadedOnce = ref(false);
-
-const isEmptyBizId = (id: unknown) => {
-  if (id == null || id === '') return true;
-  const text = String(id);
-  return text === '0' || text === '00000000-0000-0000-0000-000000000000';
-};
 
 const resolveSavedCarrierId = (
   seaExport: null | SeaExportAdminApi.SeaExportDto,
@@ -810,6 +804,14 @@ const openCtnPhotos = (row: LoadingOrderAdminApi.LoadingOrderCtnDto) => {
   photoPreviewOpen.value = true;
 };
 
+const onPhotoBtnClick = (row: LoadingOrderAdminApi.LoadingOrderCtnDto) => {
+  if (canEdit.value) {
+    openPhotoEdit(row);
+    return;
+  }
+  openCtnPhotos(row);
+};
+
 const copyLoadingOrderNum = async () => {
   const num = detail.value?.loadingOrderNum;
   if (!num) return;
@@ -818,6 +820,53 @@ const copyLoadingOrderNum = async () => {
     message.success($t('seaExport.loadingOrder.copySuccess'));
   } catch {
     message.error($t('seaExport.loadingOrder.copyFailed'));
+  }
+};
+
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.append(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    textarea.remove();
+    return ok;
+  }
+};
+
+const canShare = computed(() => Boolean(detail.value?.loadingOrderNum));
+
+const copyShareUrl = async () => {
+  const orderNum = detail.value?.loadingOrderNum?.trim();
+  const mbl = String(displayMblNum.value || '').trim();
+  if (!orderNum) {
+    message.warning($t('seaExport.loadingOrder.shareNeedOrderNum'));
+    return;
+  }
+  if (!mbl) {
+    message.warning($t('seaExport.loadingOrder.shareNeedMbl'));
+    return;
+  }
+  const { href } = router.resolve({
+    name: 'LoadingOrderSharePage',
+    query: {
+      mblNum: mbl,
+      loadingOrderNum: orderNum,
+    },
+  });
+  const url = `${window.location.origin}${href}`;
+  const ok = await copyText(url);
+  if (ok) {
+    message.success($t('seaExport.loadingOrder.shareCopied'));
+  } else {
+    message.error($t('seaExport.loadingOrder.shareFailed'));
   }
 };
 
@@ -857,6 +906,20 @@ const displayValue = (value: null | number | string | undefined) => {
           </div>
 
           <div class="loading-order__actions">
+            <Tooltip
+              v-if="canShare"
+              :title="$t('seaExport.loadingOrder.shareTip')"
+            >
+              <Button
+                class="loading-order__action-button"
+                @click="copyShareUrl"
+              >
+                <template #icon>
+                  <IconifyIcon icon="lucide:share-2" />
+                </template>
+                {{ $t('seaExport.loadingOrder.share') }}
+              </Button>
+            </Tooltip>
             <template v-if="!detail && editing">
               <Button
                 v-if="canAdd"
@@ -1275,7 +1338,7 @@ const displayValue = (value: null | number | string | undefined) => {
                   :class="{
                     'is-filled': formatCtnAttachmentCount(record) > 0,
                   }"
-                  @click="openPhotoEdit(record)"
+                  @click="onPhotoBtnClick(record)"
                 >
                   <img
                     :src="cameraIcon"
@@ -1368,6 +1431,7 @@ const displayValue = (value: null | number | string | undefined) => {
                 :preview="{ src: photo.url }"
               />
               <button
+                v-if="canEdit"
                 type="button"
                 class="photo-edit-thumb__remove"
                 @click="removePhotoFromGroup(gi, pi)"
@@ -1376,6 +1440,7 @@ const displayValue = (value: null | number | string | undefined) => {
               </button>
             </div>
             <Upload
+              v-if="canEdit"
               :show-upload-list="false"
               accept="image/*"
               :multiple="true"
@@ -1394,8 +1459,11 @@ const displayValue = (value: null | number | string | undefined) => {
           </div>
         </div>
         <div class="photo-edit-footer">
-          <Button @click="photoEditOpen = false">取消</Button>
+          <Button @click="photoEditOpen = false">
+            {{ canEdit ? '取消' : '关闭' }}
+          </Button>
           <Button
+            v-if="canEdit"
             type="primary"
             :loading="photoEditSaving"
             :disabled="photoEditUploading"

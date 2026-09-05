@@ -6,7 +6,7 @@ export enum LoadingOrderStatus {
   Unsubmitted = 0,
   /** 待认领（公共池），只有该状态能撤回 */
   Pending = 1,
-  /** 已认领，管理端不可再改 */
+  /** 已认领，管理端工单主表不可再改（箱型附件分组除外） */
   Claimed = 2,
   /** 已完成 */
   Completed = 3,
@@ -70,7 +70,7 @@ export namespace LoadingOrderAdminApi {
     };
   }
 
-  /** 箱型（监装口径，管理端只读） */
+  /** 箱型（监装口径；箱型/箱号/封号/是否完成只读，附件分组可单独改） */
   export interface LoadingOrderCtnDto {
     id: number | string;
     ctnCodeId?: number | string;
@@ -180,22 +180,28 @@ export namespace LoadingOrderAdminApi {
     userName?: null | string;
   }
 
-  /** 箱型编辑入参（admin 端调师傅端接口）；attachmentGroups 按箱全量替换 */
-  export interface LoadingOrderCtnEditItem {
+  /** 单条附件（提交用） */
+  export interface LoadingOrderCtnAttachmentItemInput {
+    attachmentId: number | string;
+    attachmentDtlTypeId?: null | number | string;
+    clientVisible?: boolean;
+    displayOrder?: number;
+  }
+
+  /** 分组附件（提交用）；漏传某组等于删掉该组照片 */
+  export interface LoadingOrderCtnAttachmentGroupInput {
+    attachmentDtlTypeId?: null | number | string;
+    items: LoadingOrderCtnAttachmentItemInput[];
+  }
+
+  /**
+   * 管理端按箱型 id 改监装附件。
+   * `id` 是 OrderCtn.Id，不是工单 id；不要塞箱号/封号/是否完成。
+   */
+  export interface LoadingOrderCtnAttachmentGroupEditDto {
     id: number | string;
-    ctnCodeId: number | string;
-    ctnNo?: null | string;
-    sealNo?: null | string;
-    isLoadingCompleted?: boolean;
-    attachmentGroups?: {
-      attachmentDtlTypeId?: null | number | string;
-      items: {
-        attachmentId: number | string;
-        attachmentDtlTypeId?: null | number | string;
-        clientVisible?: boolean;
-        displayOrder?: number;
-      }[];
-    }[];
+    /** 全量替换该箱监装附件；`[]` 表示清空 */
+    attachmentGroups?: LoadingOrderCtnAttachmentGroupInput[];
   }
 }
 
@@ -247,20 +253,21 @@ export const withdrawLoadingOrder = (id: string) => {
   });
 };
 
-const MP_PREFIX = '/services/app/LoadingOrder';
-
 /**
- * 保存箱号/封号/完成勾选/附件（Admin 端调师傅侧接口）。
- * attachmentGroups 对每个箱是全量替换，漏传的分组照片会被删掉。
+ * 按箱型 id 单独改该箱监装附件分组。
+ * 只改附件，不改箱型/箱号/封号/是否完成，也不走工单状态机；任意状态可调。
+ * attachmentGroups 对该箱全量替换，漏传的分组会被删掉；传 `[]` 表示清空。
  */
-export const editLoadingOrderCtnsAdmin = (
-  id: string,
-  orderCtns: LoadingOrderAdminApi.LoadingOrderCtnEditItem[],
+export const editOrderCtnAttachmentGroups = (
+  data: LoadingOrderAdminApi.LoadingOrderCtnAttachmentGroupEditDto,
 ) => {
-  return requestClient.put<boolean>(`${MP_PREFIX}/EditOrderCtnsAsync`, {
-    id,
-    orderCtns,
-  });
+  return requestClient.put<boolean>(
+    `${ADMIN_PREFIX}/EditOrderCtnAttachmentGroupsAsync`,
+    {
+      id: String(data.id),
+      attachmentGroups: data.attachmentGroups ?? [],
+    },
+  );
 };
 
 /**
@@ -277,6 +284,32 @@ export const getLoadingOrderYardUsers = (
         estimatedArrivalDate: params.estimatedArrivalDate,
         carrierId: String(params.carrierId),
       },
+    },
+  );
+};
+
+const PUBLIC_PREFIX = '/services/app/LoadingOrder';
+
+/** 客户免登录公开详情页路径（主提单号 + 监装工单号当口令） */
+export const LOADING_ORDER_SHARE_PATH = '/loading-order-share';
+
+/**
+ * 免登录公开详情。不要带登录 token（skipAuth），也不弹全局错误 toast。
+ * 对不上时后端统一报「主提单号或监装工单号错误」。
+ */
+export const getLoadingOrderPublicDetail = (params: {
+  loadingOrderNum: string;
+  mblNum: string;
+}) => {
+  return requestClient.get<LoadingOrderAdminApi.LoadingOrderDetailDto>(
+    `${PUBLIC_PREFIX}/DetailByMblAndLoadingOrderNumAsync`,
+    {
+      params: {
+        mblNum: params.mblNum,
+        loadingOrderNum: params.loadingOrderNum,
+      },
+      skipAuth: true,
+      skipErrorMessage: true,
     },
   );
 };

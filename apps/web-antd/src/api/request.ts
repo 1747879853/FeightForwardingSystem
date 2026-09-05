@@ -78,7 +78,11 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     fulfilled: async (config) => {
       const accessStore = useAccessStore();
 
-      config.headers.Authorization = formatToken(accessStore.accessToken);
+      if (config.skipAuth) {
+        delete config.headers.Authorization;
+      } else {
+        config.headers.Authorization = formatToken(accessStore.accessToken);
+      }
       config.headers['Accept-Language'] = preferences.app.locale;
       return config;
     },
@@ -98,6 +102,11 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     rejected: async (error) => {
       const { config, response } = error;
       const responseData = response?.data;
+
+      // 免登录接口失败不能触发刷新 token / 登出，否则会把客户分享页打回登录
+      if (config?.skipAuth) {
+        throw error;
+      }
 
       // 403是权限不足，不是token过期，不应该刷新token
       if (response?.status === 403) {
@@ -163,7 +172,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
-      if ((error?.config as { skipErrorMessage?: boolean })?.skipErrorMessage) {
+      if (error?.config?.skipErrorMessage) {
         return;
       }
 

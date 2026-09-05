@@ -26,6 +26,10 @@ type ExtendOptions<T = any> = {
    * - data: 解构响应的BODY数据，只返回其中的data节点数据（会检查status和code是否为成功状态）。
    */
   responseReturn?: 'body' | 'data' | 'raw';
+  /** 免登录接口：不带 Authorization，401 也不走刷新/登出 */
+  skipAuth?: boolean;
+  /** 由调用方自行展示错误，拦截器不再弹全局 toast */
+  skipErrorMessage?: boolean;
 };
 type RequestClientConfig<T = any> = AxiosRequestConfig<T> & ExtendOptions<T>;
 

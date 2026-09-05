@@ -51,7 +51,7 @@ last_updated: 2026-09-05
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。改币别时汇率只取「费用币别兑所属公司本位币」且业务日期（海出=开船日）有效的记录，对不上留空手填；费用币别本身就是本位币则锁 1。工具栏新增「**创建付费申请**」（需 `Admin.PaymentApplication.Add`）：勾选应付且组合状态为审核通过/部分结算、同一结算对象、跳转前先 `GetOrderFeeGroupAsync` 回捞，成功后进入付费申请新增页预填（`orderFeeIds` query）。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付），拉模板列表传 `bizType=0`（海运出口，结果含通用模板）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
-- **监装工单：** Tab 文案为「监装」，位于派车与分单之间；需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 且有 `.Add` 时直接进入新建表单（不先点「新建」）；无 `.Add` 才显示空态。版式按 Figma 节点几何：工号只在基础信息第一格（带复制），顶栏仅状态 +「保存 / 提交 / 删除」；五列栅格（列间距 13px、行间距 12px），控件用默认 middle 高度；第三行预计到货/堆场/师傅各占一列，师傅为多选（人数不限）；堆场标签旁橙色「推荐」可点：先选预计到货时间且已保存船公司，弹窗调 `GetYardUsersAsync`，单选一行后回填堆场与师傅（接口只回名称，前端对本地 id）；监装要求已选标签区常驻一行高度，避免 0→1 勾选抖动；详细说明读写工单 `remark`（高 62px，最长 1024，未提交可改）；集装箱 32px 浅蓝标题条，列表头 36/行 50，照片采集按钮 123×30 用稿面相机 SVG。**明细包装与堆场的候选项只认已保存的海运出口**（基础信息未点保存不会带到监装；切回监装 Tab 会重拉堆场）。无船公司与船公司未维护堆场时下拉不禁用、打开为空列表，用不同空态文案。师傅 `userAttribute=512`，人数前后端都不卡。按状态：未提交（保存/删除/提交）、待认领（仅撤回）、已认领与已完成（全部禁用并提示联系监装师傅）。工单号由后端按 `LoadingOrder.LoadingOrderNum` 生成。干系人里的「监装」与工单师傅列表是两套，互不同步。
+- **监装工单：** Tab 文案为「监装」，位于派车与分单之间；需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。进入即调 `LoadingOrderAdmin/DetailBySeaExportIdAsync`（**传海出 id**），返回 `null` 且有 `.Add` 时直接进入新建表单（不先点「新建」）；无 `.Add` 才显示空态。版式按 Figma 节点几何：工号只在基础信息第一格（带复制），顶栏仅状态 +「保存 / 提交 / 删除」；五列栅格（列间距 13px、行间距 12px），控件用默认 middle 高度；第三行预计到货/堆场/师傅各占一列，师傅为多选（人数不限）；堆场标签旁橙色「推荐」可点：先选预计到货时间且已保存船公司，弹窗调 `GetYardUsersAsync`，单选一行后回填堆场与师傅（接口只回名称，前端对本地 id）；监装要求已选标签区常驻一行高度，避免 0→1 勾选抖动；详细说明读写工单 `remark`（高 62px，最长 1024，未提交可改）；集装箱 32px 浅蓝标题条，列表头 36/行 50，照片采集按钮 123×30 用稿面相机 SVG。有 `.Edit` 时点按钮打开分组编辑弹窗，保存调 `LoadingOrderAdmin/EditOrderCtnAttachmentGroupsAsync`（`id`=箱型 id，只改该箱监装附件，任意状态可调，全量替换）；无编辑权限则只预览。**明细包装与堆场的候选项只认已保存的海运出口**（基础信息未点保存不会带到监装；切回监装 Tab 会重拉堆场）。无船公司与船公司未维护堆场时下拉不禁用、打开为空列表，用不同空态文案。师傅 `userAttribute=512`，人数前后端都不卡。按状态：**工单主表**未提交（保存/删除/提交）、待认领（仅撤回）、已认领与已完成（主表全部禁用并提示联系监装师傅）；**箱型附件分组**不受工单状态限制。工单号由后端按 `LoadingOrder.LoadingOrderNum` 生成。干系人里的「监装」与工单师傅列表是两套，互不同步。
 - **分单处理：** Tab 内按 [Figma 分单稿](https://www.figma.com/design/6Fp1XCtTc0rfw2hLtZCOCn/Untitled?node-id=24-654) 做成页内工作台，不再用列表+弹窗。顶栏用分提单号胶囊切换已保存分单，蓝色「+」开新草稿；右侧「删除 / **复制** / 打印 / 保存」。主卡左列收发通（Shipper / Consignee / Notify Party 与第二通知人切换，二者都是下拉+地址，切过去即可改；第二通知人从主单带出，不随分单保存），右列主/分提单号、签单方式、提单份数（主单只读 `noBillEnum/copyNoBillEnum`）、运输条款、付费方式、代理及装箱明细表；主卡底部增加**分单头备注**（`remark`，最长 1024，与装箱行备注分离）。其下两张白卡：船期与港口（ETD/预抵/船名/船次及收货地·起运港·目的港·交货地代码+名称，全部主单只读）、货物明细（唛头、货描大文本底边与右侧件数/包装/毛重/体积齐平）。**新增默认**只带主单条款与装箱，不带收发通/货描；装箱标题栏「读入主单」才整包覆盖。**复制分单**（需已保存、权限同编辑）：调 `SeaExportSeparateAdmin/CopyAsync`，复制收发通/货物/条款/备注，分提单号置空、不带装箱，新单仍挂当前海出；成功后刷新胶囊并切到新分单。有未保存修改时复制基于库内源单。打印走海出 `PrintJsonType=0`。切换分单 Tab 若有未保存修改会确认丢弃。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；**可把文件拖到卡片上上传**（可多文件），空态提示「点击或拖拽上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局附件查看器（`openAttachmentViewer`）：PDF 内嵌 iframe、Office 用 vue-office 本地渲染，图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，`bizType=0`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput` + `bizType=0`。模板列表走非管理端接口并按当票签单方式/船公司/分公司/业务类型筛选（`bizType` 相等或为空）。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
@@ -83,6 +83,7 @@ last_updated: 2026-09-05
 | 费用锁定 | 用户进入更改单 | 更改单承载变更 | 更改单记录变更原因与费用列表，保留锁费状态和锁费人/时间。 |
 | 派车/分单标签 | 页内保存当前分单 | 子记录更新 | 分单以 `seaExportId` 为外键；保存后刷新 Tab 列表并停留在刚保存的分提单。 |
 | 分单 Tab（已保存） | 点击复制并确认 | 新分单 Tab | 调 `CopyAsync` 返回新 id；刷新列表并切到新胶囊；分提单号空、装箱空，备注与收发通/货物/条款随源单复制。 |
+| 监装任意状态（有 `.Edit`） | 某箱「照片采集」弹窗保存 | 工单状态不变 | `EditOrderCtnAttachmentGroupsAsync` 只替换该箱监装附件，不改箱号/封号/是否完成，也不走工单状态机。 |
 
 # 4. 核心字段说明 (Field Definitions)
 
@@ -126,6 +127,7 @@ last_updated: 2026-09-05
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 | **监装工单备注（详细说明）** | 监装 Tab 文本框；管理端新建/编辑填写。 | `LoadingOrderAdmin` 的 `remark`；`AddAsync` / `EditAsync` / `DetailBySeaExportIdAsync` | **触发/依赖：** 详情回填 `form.remark`，保存随工单提交；与拒接原因 `rejectReason`、监装要求主/子表 `remark` 无关。 | 可选，最长 1024；空串按 `null` 提交；仅未提交可改。 |
 | **监装推荐堆场/师傅** | 点「推荐」弹出该到货日该船公司已排师傅的堆场，选中回填。 | `LoadingOrderAdmin/GetYardUsersAsync` | **触发/依赖：** 要有预计到货时间 + 已保存 `carrierId`；回填覆盖当前堆场和 `userIds`。 | 接口无 id；堆场名对不上当前船公司则不回填。 |
+| **监装箱型附件分组** | 某只箱子的监装照片，按附件明细类型分组。 | `orderCtns[].attachmentGroups`；保存 `LoadingOrderAdmin/EditOrderCtnAttachmentGroupsAsync` | **触发/依赖：** 弹窗从详情原样带出该箱分组再改；上传走通用 `UploadFile` 拿 `attachmentId`。`id` 必须是 `OrderCtn.Id`。 | 需 `.Edit`；任意工单状态可调；全量替换，漏传某组等于删除，`[]` 清空。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -154,11 +156,14 @@ last_updated: 2026-09-05
 > **[卡点 12：飞驼航次是码头航次]** 码头船舶条目的 `evoyage` 必须写入 `terminalVoyno`，禁止回填 `innerVoyno`。`filteredByTerminalVoyno=false` 时不要默认取第一条。
 >
 > **[卡点 13：分单头备注与装箱行备注不是同一字段]** 主卡底部「备注」写 `SeaExportSeparate.Remark`；装箱表「备注」列写 `SeaExportSeparateCtn.Remark`。复制分单只复制主表备注，不带装箱子表。
+>
+> **[卡点 14：监装照片不是工单编辑]** 管理端改某箱监装照片走 `EditOrderCtnAttachmentGroupsAsync`，`id` 是箱型 id 不是工单 id；不要塞箱号/封号/是否完成，也不要再调师傅端 `EditOrderCtnsAsync`（那条仍要求已认领且会改箱子字段）。附件按该箱全量替换，漏传某组等于删掉该组照片。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-05 | `Feature` | 监装 Tab 可在任意状态下按箱单独改监装照片，不再走师傅端整票改箱接口。 | `EditOrderCtnAttachmentGroupsAsync`，`id`=`OrderCtn.Id`，只替换 `attachmentGroups`。详见 `changelogs/change-log-2026-09-05-loading-order-ctn-attachment-groups.md`。 |
 | 2026-09-05 | `Fix` | Office 预览改为 vue-office 本地渲染。 | 详见 `changelogs/change-log-2026-09-05-office-preview-vue-office.md`。 |
 | 2026-09-05 | `Feature` | 附件预览改为调用全站单例查看器，本页不再挂 Modal。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-03 | `Feature` | 分单 Tab 新增分单头备注录入与「复制分单」：复制收发通/货物/条款/备注，分提单号置空、不带装箱，仍挂当前海出。 | `copySeparate` → `CopyAsync`；`formData.remark` 与 `seaExportSeparateCtns[].remark` 分离提交。详见 `changelogs/change-log-2026-09-03-sea-export-separate-remark-copy.md`。 |
