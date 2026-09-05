@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 import type { EditableCtn, EditablePhoto } from '@/utils/ctn-model';
 
-import { chooseImages, uploadImage, type ImageSource } from '@/api/upload';
+import { API_ORIGIN } from '@/api/request';
+import {
+  chooseImages,
+  persistLocalImage,
+  uploadImage,
+  type ImageSource,
+} from '@/api/upload';
+import { resolveUploadDisplayUrl } from '@/utils/upload-display-url';
 
 const props = defineProps<{
   ctn: EditableCtn | null;
@@ -19,6 +26,8 @@ const emit = defineEmits<{
 }>();
 
 const uploading = ref(false);
+/** 相机返回后原生 image 常不刷新，hideLoading 后再 bump 一次强制重挂 */
+const thumbEpoch = ref(0);
 
 const groups = computed(() => props.ctn?.groups ?? []);
 const statusText = computed(() =>
@@ -81,16 +90,33 @@ async function addPhotos(groupIndex: number) {
   if (paths.length === 0) return;
 
   uploading.value = true;
-  uni.showLoading({ mask: true, title: '上传中' });
   try {
     for (const path of paths) {
-      // 逐张上传，任一张失败即停，已上传的保留在本地待保存
-      const result = await uploadImage(path);
+      // 先把本地图推进格子，避免相机页返回后只剩空白等到二次打开
+      const localPath =
+        sourceType === 'camera' ? await persistLocalImage(path) : path;
       const photo: EditablePhoto = {
-        attachmentId: result.attachmentId,
-        url: result.fileUrl || path,
+        attachmentId: '',
+        localPath,
+        url: localPath,
       };
       group.items.push(photo);
+      await nextTick();
+
+      uni.showLoading({ mask: true, title: '上传中' });
+      try {
+        const result = await uploadImage(localPath);
+        photo.attachmentId = result.attachmentId;
+        photo.url = resolveUploadDisplayUrl(
+          result.fileUrl || result.filePath,
+          localPath,
+          API_ORIGIN,
+        );
+      } catch (error) {
+        const index = group.items.indexOf(photo);
+        if (index >= 0) group.items.splice(index, 1);
+        throw error;
+      }
     }
   } catch (error) {
     uni.showToast({
@@ -100,6 +126,13 @@ async function addPhotos(groupIndex: number) {
   } finally {
     uploading.value = false;
     uni.hideLoading();
+    thumbEpoch.value += 1;
+  }
+}
+
+function onThumbError(photo: EditablePhoto) {
+  if (photo.localPath && photo.url !== photo.localPath) {
+    photo.url = photo.localPath;
   }
 }
 
@@ -191,13 +224,14 @@ function onDismiss() {
           <view class="group__grid">
             <view
               v-for="(photo, pi) in group.items"
-              :key="`${photo.attachmentId}-${pi}`"
+              :key="`${photo.attachmentId}-${photo.url}-${pi}-${thumbEpoch}`"
               class="thumb"
             >
               <image
                 class="thumb__img"
                 :src="photo.url"
                 mode="aspectFill"
+                @error="onThumbError(photo)"
                 @tap="previewGroup(gi, pi)"
               />
               <view

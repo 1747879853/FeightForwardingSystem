@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-05 小程序监装拍照后缩略图空白](./changelogs/change-log-2026-09-05-mp-loading-camera-blank-thumb.md)
 - [2026-09-05 管理端监装照片按附件类型分组](./changelogs/change-log-2026-09-05-admin-loading-photo-types.md)
 - [2026-09-05 小程序监装按附件类型分组上传](./changelogs/change-log-2026-09-05-mp-loading-attachment-types.md)
 - [2026-09-05 监装工单分享给客户免登录查看](./changelogs/change-log-2026-09-05-loading-order-share.md)

@@ -2,6 +2,26 @@ import { parseJsonSafe } from '@/utils/safe-json';
 
 import { API_ORIGIN, ApiError, getAccessToken } from './request';
 
+/**
+ * 相机临时文件在 uploadFile 后常被系统回收，先解码并 saveFile，保证缩略图还能画。
+ */
+export function persistLocalImage(tempFilePath: string) {
+  return new Promise<string>((resolve) => {
+    uni.getImageInfo({
+      src: tempFilePath,
+      success: (info) => {
+        const decoded = info.path || tempFilePath;
+        uni.saveFile({
+          tempFilePath: decoded,
+          success: (saved) => resolve(saved.savedFilePath),
+          fail: () => resolve(decoded),
+        });
+      },
+      fail: () => resolve(tempFilePath),
+    });
+  });
+}
+
 export interface UploadResultItem {
   attachmentId: number | string;
   fileName: string;

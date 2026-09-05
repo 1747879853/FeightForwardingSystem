@@ -25,7 +25,7 @@ last_updated: 2026-09-05
   - 待认领 → 「认领」
   - 已认领 → 「拒接」（必填原因）；箱号/封号/照片/完成状态在监装处理面板内保存
   - 已完成 → 「取消完成」
-- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型分组拍照/相册；上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
+- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型分组拍照/相册；拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
 - **登录：** 启动静默登录（`wx.login` → `WxOpenSilentAuthenticate`）；未绑账号时登录页展示「手机号一键登录」。开发态可用账密（`VITE_ENABLE_PASSWORD_LOGIN=true`）。
 - **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。
 
@@ -63,10 +63,13 @@ last_updated: 2026-09-05
 
 > [!IMPORTANT] **[卡点 5：类型槽位靠枚举 + 附件类型维护]** 小程序按 `ModuleType=160100` 拉默认展示类型。枚举管理的 `ModuleType` 需有 `160100`（监装箱型附件），且附件类型勾了该模块，面板才会出现对应分组。类型接口失败时仍能打开详情，只展示工单已有分组。
 
+> [!IMPORTANT] **[卡点 6：拍照缩略图必须先本地再拼完整 URL]** 上传接口返回的 `fileUrl` 常是相对路径。详情回填有 `buildAttachmentUrl`，拍照后若直接塞给 `<image>` 会空白，关掉面板或保存重进才显示。相机临时文件还会被 `uploadFile` 回收。当前流程：拍照 `saveFile` → 立刻占格 → 上传成功再换成带 origin 的地址，失败回退本地。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Fix` | 监装处理拍照后缩略图立刻显示，不必二次打开 | 相对 `fileUrl` 拼 origin；相机先 `saveFile` 占格；`hideLoading` 后重挂原生 image |
 | 2026-09-05 | `Feature` | 监装处理先拉维护的附件类型再按类型分槽上传；未配置类型时提示并可传到未分类组 | `GetListByModuleTypesAsync(160100)` 与详情并行；`toEditableCtns` 合并空槽与已有照片；标题读 `name` 不是 `typeName` |
 | 2026-08-30 | `Feature` | 箱号/封号/照片/完成状态在监装处理面板内保存，详情底栏不再单独放保存 | 关闭未保存时还原该箱快照；接口仍整单 `EditOrderCtnsAsync` |
 | 2026-08-30 | `Fix` | 进详情时底栏按钮不再跟着系统 Tab 闪 | 进详情不再 `hideTabBar`（回来会丢底栏）；回列表补 `showTabBar`；详情底栏延后 180ms，并用 URL `status` 先画 |

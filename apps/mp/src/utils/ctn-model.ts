@@ -8,6 +8,8 @@ import { buildAttachmentUrl } from '@/api/request';
 
 export interface EditablePhoto {
   attachmentId: number | string;
+  /** 相机临时路径，远程图加载失败时回退 */
+  localPath?: string;
   url: string;
 }
 
