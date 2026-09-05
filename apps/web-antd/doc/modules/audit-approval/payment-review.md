@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,8 @@ last_updated: 2026-09-04
 - **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。任务状态默认「审核中」，清空后可看全部。
 - **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接；一组付费申请可跨多票，过长省略号。组内金额字段恒为 `null`，不要拿来展示。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示「{币别}申请合计」（原币/固定币别分口径，与付款申请列表一致）；默认插在「结算对象」后；列配置仅暴露「申请合计」锚点。
-- **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示发票子表（票号/日期/附件）以及申请自身分组附件、结算附件（只读预览）。
+- **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读，业务组默认收起，需手动展开看费用行；表格占满剩余高度内部滚动，最后一行费用可完整看到），附件区展示发票子表（票号/日期/附件）以及申请自身分组附件、结算附件（只读预览）。
+- **三栏拖动：** 列表与右侧合计/附件之间、上方面板与下方费用明细之间的间隙可拖动改宽高；比例写入 `localStorage`（`payment-review-layout-split`），刷新后保留。
 - **费用合计展示：** 原币多币别时以紧凑列表展示（币别+金额一行，银行信息单行缩略，悬停看全量）；卡片底部另展示该结算对象「应收未结算」（按币别，橙色区，与本申请金额分开）；合计区按内容限高，避免挤占附件区。
 - **通过：** 对勾选中的**待审**任务弹出备注框后批量通过（`payAppAudit` → `AuditAsync`，`success: true`）。
 - **驳回：** 工具栏只留一个【驳回】。勾选「审核中」或「审核通过」可用；已驳回、部分通过不可驳。待审与整单已通过走 `AuditAsync(success: false)`；整单仍在审但本人节点已过走 `RejectAsync`（同一按钮内分流，页面不再露出「审核后驳回」）。
@@ -34,11 +35,10 @@ last_updated: 2026-09-04
 
 ```
 ┌─────────────────────┬──────────────────┐
-│  审核任务列表        │  费用合计（占满剩余高度）│
-│                     ├──────────────────┤
-│                     │  附件信息         │
+│  审核任务列表        │  费用合计         │
+│      （中间竖条拖宽） │  附件信息         │
 ├─────────────────────┴──────────────────┤
-│           费用明细（整行通铺）            │
+│     费用明细（与上方之间的横条拖高）      │
 └────────────────────────────────────────┘
 ```
 
@@ -66,7 +66,7 @@ last_updated: 2026-09-04
 | **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 | **费用合计** | 各币别申请净额（付 − 收）与结算银行。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 原币/指定币别两种展示模式 | 只读 |
 | **附件** | 先展示发票子表（票号/日期/单附件），再按附件明细类型分组展示申请附件，另含结算附件。 | `DetailAsync` → `paymentApplicationInvoices[].attachment` / `attachmentGroup` / `paymentSettlements[].attachments` | 点击打开/预览；无发票附件显示「无附件」 | 只读 |
-| **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑 | 只读 |
+| **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑与 `NestedDataTable`（`fill-height`，外层表头纵滚吸顶）；加载后 `expandedGroupKeys` 为空，默认不展开 | 只读 |
 | **审核意见** | 通过或驳回备注。 | 审核弹窗输入 | 写入 `AuditAsync`；本人节点已过的驳回写入 `RejectAsync` | 建议驳回时填写 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -87,6 +87,10 @@ last_updated: 2026-09-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-05 | `Feature` | 列表、右侧合计/附件、下方费用明细三块间隙可拖动改大小，刷新后记住。 | 分隔条交互对齐费用审核详情；尺寸存 `localStorage`。 |
+| 2026-09-05 | `Fix` | 费用明细纵滚时外层列名留在顶部。 | `NestedDataTable` 外层 `th` sticky 到 `__scroll`。 |
+| 2026-09-05 | `Fix` | 展开费用明细后最后一行费用不再被滚动条裁切。 | 去掉 Ant Table 固定 `scroll.y: 300`，改 `NestedDataTable` 占满剩余高度。 |
+| 2026-09-05 | `Fix` | 费用明细业务组默认收起，不再加载后自动全部展开。 | `loadDetail` 不再把 `orderGroups` 的 key 写入 `expandedGroupKeys`。 |
 | 2026-09-04 | `Feature` | 审批详情附件区展示发票子表：每张发票的票号、开票日期与独立附件。 | 详情改读 `paymentApplicationInvoices`，不再使用主表 `invoiceNo`/`invoiceDate`。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |
 | 2026-08-31 | `Fix` | 工具栏「驳回」与「审核后驳回」合成一个【驳回】；审核中、审核通过可驳。 | TAPD 1000908；后端 `AuditAsync(false)` 已合并整单已通过。本人节点已过、整单还在审仍走 `RejectAsync`。详见 `changelogs/change-log-2026-08-31-payment-review-merge-reject.md`。 |
 | 2026-08-31 | `Fix` | 列表「提单号」改为「主提单号」，并增加「委托编号」；多票逗号拼接，过长省略。 | TAPD 1000910（不含付费结算）；共用 `formatPayAppCommissionNums`。详见 `changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md`。 |

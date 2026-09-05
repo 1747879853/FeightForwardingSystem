@@ -13,6 +13,10 @@
 
 ## 2026-09
 
+- [2026-09-05 付费申请审核三栏可拖动改大小](./changelogs/change-log-2026-09-05-payment-review-resizable-panes.md)
+- [2026-09-05 费用明细滚动时表头吸顶](./changelogs/change-log-2026-09-05-nested-table-sticky-header.md)
+- [2026-09-05 付费申请审核费用明细最后一行被裁切](./changelogs/change-log-2026-09-05-payment-review-fee-detail-last-row.md)
+- [2026-09-05 付费申请审核费用明细默认收起](./changelogs/change-log-2026-09-05-payment-review-fee-detail-collapsed.md)
 - [2026-09-04 付费申请发票改子表并对接批量下载](./changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md)
 - [2026-09-03 港口管理接入排序号](./changelogs/change-log-2026-09-03-port-code-sort-id.md)
 - [2026-09-03 海运出口分单头备注与复制分单](./changelogs/change-log-2026-09-03-sea-export-separate-remark-copy.md)

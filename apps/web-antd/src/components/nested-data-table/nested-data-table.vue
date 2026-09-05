@@ -458,6 +458,14 @@ watch(
   background: var(--table-head);
 }
 
+/* 外层表头吸顶：滚动容器是 __scroll，th sticky 才能在纵滚时留住列名 */
+.nested-data-table__outer > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 1px solid var(--table-border);
+}
+
 .nested-data-table__resizer {
   position: absolute;
   top: 0;
@@ -480,7 +488,6 @@ watch(
   background: #fff;
 }
 
-.nested-data-table__outer > thead > tr > th,
 .nested-data-table__outer > tbody > .nested-data-table__outer-row > td,
 .nested-data-table__outer > tbody > .nested-data-table__expanded-row > td {
   border-bottom: 0;

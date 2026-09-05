@@ -41,7 +41,7 @@
 | settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-08-31 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-08-09 |
-| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表及申请/结算附件；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-04 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-05 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-08-24 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-08-22 |

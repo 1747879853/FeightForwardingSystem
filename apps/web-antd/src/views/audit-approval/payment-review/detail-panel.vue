@@ -3,15 +3,16 @@ import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { FeeDetailRow } from '#/views/fee-management/payment-application/form-data';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
 import dayjs from 'dayjs';
 
-import { Card, Empty, Spin, Table, Tag, Tooltip } from 'ant-design-vue';
+import { Card, Empty, Spin, Tag, Tooltip } from 'ant-design-vue';
 
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
 import {
@@ -108,15 +109,6 @@ const feeInnerColumns = computed(() =>
   useFeeInnerColumns(settlementCurrencyId.value !== null).filter(
     (col) => col.key !== 'checkbox',
   ),
-);
-
-/** 嵌套子表横向滚动宽度 = 列宽合计 + 100px */
-const feeInnerTableScrollX = computed(
-  () =>
-    feeInnerColumns.value.reduce(
-      (sum, col) => sum + (Number(col.width) || 0),
-      0,
-    ) + 100,
 );
 
 const appliedCurrencies = computed(() =>
@@ -266,7 +258,7 @@ async function loadDetail(id: string | undefined) {
     settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
       (ps) => ps.attachments ?? [],
     );
-    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
+    expandedGroupKeys.value = [];
     loaded.value = true;
   } finally {
     loading.value = false;
@@ -325,19 +317,152 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
 function formatInvoiceDate(val: null | string | undefined): string {
   return formatDate(val) || '-';
 }
+
+const SPLIT_STORAGE_KEY = 'payment-review-layout-split';
+const layoutRef = ref<HTMLElement | null>(null);
+const topPaneRef = ref<HTMLElement | null>(null);
+const topHeight = ref(52);
+const asideWidth = ref(360);
+const isDragging = ref(false);
+const dragDirection = ref<'horizontal' | 'vertical'>('vertical');
+
+try {
+  const saved = localStorage.getItem(SPLIT_STORAGE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved) as {
+      asideWidth?: number;
+      topHeight?: number;
+    };
+    if (typeof parsed.topHeight === 'number') {
+      topHeight.value = Math.max(22, Math.min(78, parsed.topHeight));
+    }
+    if (typeof parsed.asideWidth === 'number') {
+      asideWidth.value = Math.max(240, parsed.asideWidth);
+    }
+  }
+} catch {
+  // 本地缓存损坏时回退默认比例
+}
+
+let dragMove: ((event: MouseEvent) => void) | null = null;
+let dragUp: (() => void) | null = null;
+
+function persistSplit() {
+  localStorage.setItem(
+    SPLIT_STORAGE_KEY,
+    JSON.stringify({
+      topHeight: topHeight.value,
+      asideWidth: asideWidth.value,
+    }),
+  );
+}
+
+function notifyPanesResized() {
+  window.dispatchEvent(new Event('resize'));
+}
+
+function stopDrag() {
+  const wasDragging = isDragging.value;
+  isDragging.value = false;
+  if (dragMove) document.removeEventListener('mousemove', dragMove);
+  if (dragUp) document.removeEventListener('mouseup', dragUp);
+  dragMove = null;
+  dragUp = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (wasDragging) {
+    persistSplit();
+    notifyPanesResized();
+  }
+}
+
+function startVerticalDrag(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = layoutRef.value;
+  if (!container) return;
+
+  isDragging.value = true;
+  dragDirection.value = 'vertical';
+  const startY = event.clientY;
+  const startHeight = topHeight.value;
+
+  dragMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const height = container.getBoundingClientRect().height;
+    if (height === 0) return;
+    const next = startHeight + ((moveEvent.clientY - startY) / height) * 100;
+    topHeight.value = Math.max(22, Math.min(78, next));
+  };
+  dragUp = stopDrag;
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('mouseup', dragUp);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function startHorizontalDrag(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  const pane = topPaneRef.value;
+  if (!pane) return;
+
+  isDragging.value = true;
+  dragDirection.value = 'horizontal';
+  const startX = event.clientX;
+  const startWidth = asideWidth.value;
+
+  dragMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const width = pane.getBoundingClientRect().width;
+    if (width === 0) return;
+    const maxWidth = Math.max(240, width - 360);
+    const next = startWidth + (startX - moveEvent.clientX);
+    asideWidth.value = Math.max(240, Math.min(maxWidth, next));
+  };
+  dragUp = stopDrag;
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('mouseup', dragUp);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+}
+
+onUnmounted(stopDrag);
 </script>
 
 <template>
-  <div class="review-layout">
+  <div
+    ref="layoutRef"
+    class="review-layout"
+    :class="{ 'is-resizing': isDragging }"
+  >
     <!-- 上方两栏：左列表 + 右(费用合计 / 附件) -->
-    <div class="review-layout__top">
+    <div
+      ref="topPaneRef"
+      class="review-layout__top"
+      :style="{ flex: `${topHeight} 1 0%` }"
+    >
       <!-- 左：列表 -->
       <div class="review-layout__list">
         <slot name="list" />
       </div>
 
+      <div
+        class="drag-handle drag-handle-horizontal"
+        :class="{
+          dragging: isDragging && dragDirection === 'horizontal',
+        }"
+        title="拖动调整左右宽度"
+        @mousedown="startHorizontalDrag"
+      >
+        <div class="drag-line"></div>
+      </div>
+
       <!-- 右：费用合计 + 附件（上下排列） -->
-      <div class="review-layout__aside">
+      <div
+        class="review-layout__aside"
+        :style="{ flex: `0 0 ${asideWidth}px`, width: `${asideWidth}px` }"
+      >
         <Spin
           :spinning="loading"
           wrapper-class-name="review-layout__aside-spin"
@@ -613,8 +738,20 @@ function formatInvoiceDate(val: null | string | undefined): string {
       </div>
     </div>
 
+    <div
+      class="drag-handle drag-handle-vertical"
+      :class="{ dragging: isDragging && dragDirection === 'vertical' }"
+      title="拖动调整上下高度"
+      @mousedown="startVerticalDrag"
+    >
+      <div class="drag-line"></div>
+    </div>
+
     <!-- 下方一栏：通铺费用明细 -->
-    <div class="review-layout__bottom">
+    <div
+      class="review-layout__bottom"
+      :style="{ flex: `${100 - topHeight} 1 0%` }"
+    >
       <Card size="small" class="fee-detail-card">
         <template #title>
           <div class="flex items-center gap-3">
@@ -635,20 +772,20 @@ function formatInvoiceDate(val: null | string | undefined): string {
           </div>
           <template v-else>
             <div class="fee-group-table">
-              <Table
+              <NestedDataTable
                 :columns="allOrderGroupColumns"
                 :data-source="orderGroups"
-                :pagination="false"
-                :scroll="{ x: 'max-content', y: 300 }"
-                :children-column-name="'_none'"
+                fill-height
+                :inner-columns="feeInnerColumns"
+                inner-data-key="children"
+                inner-row-key="feeId"
                 row-key="key"
-                size="small"
                 :expanded-row-keys="expandedGroupKeys"
-                @expanded-rows-change="
+                @update:expanded-row-keys="
                   (keys) => (expandedGroupKeys = keys.map(String))
                 "
               >
-                <template #bodyCell="{ column, record, index }">
+                <template #outerBodyCell="{ column, record, index }">
                   <template v-if="column.key === 'seq'">
                     {{ index + 1 }}
                   </template>
@@ -687,85 +824,86 @@ function formatInvoiceDate(val: null | string | undefined): string {
                   </template>
                 </template>
 
-                <template #expandedRowRender="{ record: group }">
-                  <div class="expanded-fee-table p-2">
-                    <Table
-                      :columns="feeInnerColumns"
-                      :data-source="group.children"
-                      :pagination="false"
-                      :scroll="{ x: feeInnerTableScrollX }"
-                      row-key="feeId"
-                      size="small"
-                    >
-                      <template #bodyCell="{ column, record, index }">
-                        <template v-if="column.key === 'seq'">
-                          {{ index + 1 }}
-                        </template>
-                        <template v-else-if="column.key === 'paySide'">
-                          <Tag
-                            :color="record.paySide === 0 ? 'blue' : 'orange'"
-                          >
-                            {{ getPaySideLabel(record.paySide) }}
-                          </Tag>
-                        </template>
-                        <template v-else-if="column.key === 'currencyCode'">
-                          {{ record.currencyCode || record.currencyName }}
-                        </template>
-                        <template v-else-if="column.key === 'amount'">
-                          {{ formatAmount(record.amount) }}
-                        </template>
-                        <template v-else-if="column.key === 'exchangeRate'">
-                          {{ record.exchangeRate }}
-                        </template>
-                        <template v-else-if="column.key === 'settledAmount'">
-                          {{ formatAmount(record.settledAmount) }}
-                        </template>
-                        <template v-else-if="column.key === 'unSettledAmount'">
-                          {{ formatAmount(record.unSettledAmount) }}
-                        </template>
-                        <template v-else-if="column.key === 'appliedAmount'">
-                          <span class="fee-applied-amount-value">
-                            {{ formatAmount(record.appliedAmount) }}
-                          </span>
-                        </template>
-                        <template
-                          v-else-if="column.key === 'appliedAmountConverted'"
-                        >
-                          {{
-                            formatAmount(
-                              calcAppliedAmountConverted(
-                                record.appliedAmount,
-                                record.rate,
-                              ),
-                            )
-                          }}
-                        </template>
-                        <template v-else-if="column.key === 'rate'">
-                          {{ record.rate }}
-                        </template>
-                        <template v-else>
-                          {{ getCellText(record, column.dataIndex) }}
-                        </template>
-                      </template>
-                    </Table>
-                  </div>
+                <template #expandColumnTitle></template>
+                <template #expandIcon="{ expanded, record, onExpand }">
+                  <span
+                    class="expand-toggle"
+                    :class="{ 'expand-toggle--expanded': expanded }"
+                    @click="
+                      (e) => {
+                        e.stopPropagation();
+                        onExpand(record, e);
+                      }
+                    "
+                  >
+                    &#9654;
+                  </span>
                 </template>
-              </Table>
+
+                <template #innerBodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'seq'">
+                    {{ index + 1 }}
+                  </template>
+                  <template v-else-if="column.key === 'paySide'">
+                    <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
+                      {{ getPaySideLabel(record.paySide) }}
+                    </Tag>
+                  </template>
+                  <template v-else-if="column.key === 'currencyCode'">
+                    {{ record.currencyCode || record.currencyName }}
+                  </template>
+                  <template v-else-if="column.key === 'amount'">
+                    {{ formatAmount(record.amount) }}
+                  </template>
+                  <template v-else-if="column.key === 'exchangeRate'">
+                    {{ record.exchangeRate }}
+                  </template>
+                  <template v-else-if="column.key === 'settledAmount'">
+                    {{ formatAmount(record.settledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'unSettledAmount'">
+                    {{ formatAmount(record.unSettledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'appliedAmount'">
+                    <span class="fee-applied-amount-value">
+                      {{ formatAmount(record.appliedAmount) }}
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'appliedAmountConverted'">
+                    {{
+                      formatAmount(
+                        calcAppliedAmountConverted(
+                          record.appliedAmount,
+                          record.rate,
+                        ),
+                      )
+                    }}
+                  </template>
+                  <template v-else-if="column.key === 'rate'">
+                    {{ record.rate }}
+                  </template>
+                  <template v-else>
+                    {{ getCellText(record, column.dataIndex) }}
+                  </template>
+                </template>
+              </NestedDataTable>
             </div>
 
-            <div class="fee-footer">
-              <span>{{ t('groupCount', [orderGroups.length]) }}</span>
-              <div class="flex items-center gap-4">
-                <span
-                  v-for="cs in currencySummaries"
-                  :key="cs.currencyId"
-                  class="flex items-center gap-1"
-                >
-                  <Tag color="blue">{{
-                    cs.currencyCode || cs.currencyName
-                  }}</Tag>
-                  <strong>{{ formatAmount(cs.totalAmount) }}</strong>
-                </span>
+            <div class="fee-detail-bottom">
+              <div class="fee-footer">
+                <span>{{ t('groupCount', [orderGroups.length]) }}</span>
+                <div class="flex items-center gap-4">
+                  <span
+                    v-for="cs in currencySummaries"
+                    :key="cs.currencyId"
+                    class="flex items-center gap-1"
+                  >
+                    <Tag color="blue">{{
+                      cs.currencyCode || cs.currencyName
+                    }}</Tag>
+                    <strong>{{ formatAmount(cs.totalAmount) }}</strong>
+                  </span>
+                </div>
               </div>
             </div>
           </template>
@@ -776,39 +914,92 @@ function formatInvoiceDate(val: null | string | undefined): string {
 </template>
 
 <style scoped>
-@media (max-width: 1280px) {
-  .review-layout__aside {
-    flex-basis: 300px;
-  }
-}
-
 .review-layout {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   height: 100%;
   min-height: 0;
+}
+
+.review-layout.is-resizing {
+  user-select: none;
+}
+
+.review-layout.is-resizing * {
+  pointer-events: none;
+}
+
+.review-layout.is-resizing .drag-handle,
+.review-layout.is-resizing .drag-handle * {
+  pointer-events: auto;
+}
+
+.drag-handle {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.drag-handle .drag-line {
+  background-color: #e4e8ef;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.drag-handle:hover .drag-line,
+.drag-handle.dragging .drag-line {
+  background-color: #1890ff;
+  box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+}
+
+.drag-handle.dragging .drag-line {
+  box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+}
+
+.drag-handle-vertical {
+  height: 12px;
+  cursor: row-resize;
+}
+
+.drag-handle-vertical .drag-line {
+  width: 48px;
+  height: 4px;
+}
+
+.drag-handle-horizontal {
+  width: 12px;
+  cursor: col-resize;
+}
+
+.drag-handle-horizontal .drag-line {
+  width: 4px;
+  height: 48px;
 }
 
 /* 上方两栏 */
 .review-layout__top {
   display: flex;
-  flex: 1 1 52%;
-  gap: 12px;
-  min-height: 0;
+  min-width: 0;
+  min-height: 160px;
+  overflow: hidden;
 }
 
 .review-layout__list {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
   height: 100%;
 }
 
 .review-layout__aside {
-  flex: 0 0 360px;
-  min-width: 280px;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
 }
@@ -978,8 +1169,7 @@ function formatInvoiceDate(val: null | string | undefined): string {
 
 /* 下方通铺费用明细 */
 .review-layout__bottom {
-  flex: 1 1 48%;
-  min-height: 0;
+  min-height: 160px;
   overflow: hidden;
 }
 
@@ -1016,6 +1206,22 @@ function formatInvoiceDate(val: null | string | undefined): string {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.fee-group-table :deep(.nested-data-table) {
+  height: 100%;
+}
+
+.fee-group-table :deep(.nested-data-table__scroll) {
+  padding-bottom: 16px;
+}
+
+.fee-group-table :deep(.nested-data-table__inner) {
+  max-width: none;
+}
+
+.fee-detail-bottom {
+  flex-shrink: 0;
 }
 
 .currency-cards,
@@ -1129,16 +1335,6 @@ function formatInvoiceDate(val: null | string | undefined): string {
   color: #1890ff;
 }
 
-.fee-group-table :deep(.ant-table-container::before),
-.fee-group-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
-}
-
-.fee-group-table :deep(.ant-table-expanded-row > td) {
-  padding: 4px 8px;
-  background: #fff;
-}
-
 .fee-group-table :deep(.user-role-column) {
   max-width: 72px;
 }
@@ -1151,22 +1347,20 @@ function formatInvoiceDate(val: null | string | undefined): string {
   white-space: nowrap;
 }
 
-.expanded-fee-table {
-  overflow-x: auto;
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transform-origin: center;
+  transition: transform 0.15s ease;
 }
 
-.expanded-fee-table :deep(.ant-table-wrapper) {
-  width: max-content;
-  max-width: none;
-}
-
-.expanded-fee-table :deep(.ant-table-container::before),
-.expanded-fee-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
-}
-
-.expanded-fee-table :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
+.expand-toggle--expanded {
+  transform: rotate(90deg);
 }
 
 .fee-applied-amount-value {
