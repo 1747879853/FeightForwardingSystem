@@ -22,7 +22,25 @@ export function useHotColumns(
   sortState: any,
   getSortIcon: (field: string) => string,
   currentOptionsCache: any,
+  allClientsByIndustry?: Ref<Record<string, any[]>>,
 ) {
+  // ✅ 全量客户的合法取值集合（同时收录 label「编码-名称」与 name「仅名称」两种格式）。
+  // 结算对象列是 strict + allowInvalid:false 的 autocomplete，其 source 依赖仅在打开下拉
+  // 编辑器时才填充的 currentOptionsCache；而拖拽填充柄(autofill)/粘贴不会打开编辑器，此时缓存
+  // 为空会让 strict 校验把合法的复制值判为无效并取消写入（表现为“填充无效”）。用该集合兜底：
+  // 只要复制值精确命中某个客户，就纳入候选，保证填充生效。
+  const allClientValueSet = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    const grouped = allClientsByIndustry?.value || {};
+    Object.keys(grouped).forEach((key) => {
+      (grouped[key] || []).forEach((client: any) => {
+        if (client?.label) set.add(String(client.label));
+        if (client?.name) set.add(String(client.name));
+      });
+    });
+    return set;
+  });
+
   const hotColumns = computed(() => {
     const vxeColumns = useOrderFeeColumns(props.type);
 
@@ -288,6 +306,16 @@ export function useHotColumns(
             const filtered = allLabels.filter((label: string) => {
               return label.toLowerCase().includes(searchLower);
             });
+
+            // ✅ 拖拽填充/粘贴兜底：此时编辑器未打开、currentOptionsCache 往往为空，
+            // strict 校验会因候选为空把复制值判为无效并取消填充。若 query 精确命中
+            // 全量客户（label 或 name），则纳入候选，保证合法的结算对象复制生效。
+            if (
+              !filtered.includes(query) &&
+              allClientValueSet.value.has(query)
+            ) {
+              filtered.push(query);
+            }
             process(filtered);
           };
           hotCol.strict = true;

@@ -142,8 +142,12 @@ const handleSaveInvoice = async (invoiceId: string) => {
       message.success($t('common.optionsSuccess'));
     }
 
+    // 保存成功后重新同步脏值快照，否则未保存守卫会一直认为开票信息未保存，
+    // 从而拦截系统 tab（路由级）跳转，导致点击系统 tab 无法切换页面
+    await formRef.syncSnapshot?.();
+
     // 重新加载列表
-    await loadInvoiceList();
+    //await loadInvoiceList();
   } catch (error) {
     console.error('保存失败:', error);
     message.error($t('common.optionsFailed'));

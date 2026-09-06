@@ -16,7 +16,6 @@ import {
   DatePicker,
   Dropdown,
   Input,
-  InputNumber,
   Menu,
   MenuItem,
   message,
@@ -25,7 +24,6 @@ import {
   SelectOption,
   Space,
   Spin,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
@@ -37,22 +35,15 @@ import type { Attachment } from '#/api/common/upload';
 import { getFeeStatusOptions } from '#/views/air-export-admin/orderFee/data';
 import {
   ClientSelect,
-  CurrencySelect,
   MyOrgSelect,
-  MyCompanySelect,
-  UserCompanySelect,
   OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
 import {
   addStatement,
-  getOrderFeeGroup,
-  deleteStatement,
   getStatementDetail,
-  batchDeleteStatements,
   editStatement,
   addStatementFees,
   removeStatementFees,
-  getStatementPagedList,
 } from '#/api/settlement-management/statement-admin';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { addByStatement as addPaymentApplicationByStatement } from '#/api/settlement-management/payment-application-admin';
@@ -61,11 +52,8 @@ import FileUploadInput from '../../../adapter/component/file-upload/file-upload-
 import AddFeeDrawer from '../add-fee-statement-modal/index.vue';
 import FeeSummaryCard from './components/fee-summary-card.vue';
 import {
-  calcConvertedTotal,
   formatAmount,
   groupFeesByOrder,
-  summarizeByCurrency,
-  summarizeByCurrencyWithConversion,
   useFeeInnerColumns,
   useOrderGroupColumns,
   type FeeDetailRow,
@@ -123,6 +111,24 @@ function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
   return colorMap[invoiceStatus ?? -1] ?? 'default';
 }
 
+/**
+ * 币别动态列 -> 金额样式 class；非币别列返回 null。
+ *
+ * 必须用 endsWith 精确匹配且长后缀优先：列名形如 currency_1_un_receive、
+ * currency_1_rqst_receive，它们同样包含 "_receive"。早期用 includes('_receive')
+ * 判断时，「未收」「已申请收」会被「应收」分支抢先命中，永远套不上自己的样式。
+ */
+function getCurrencyAmountClass(key: unknown): null | string {
+  if (typeof key !== 'string' || !key.startsWith('currency_')) return null;
+  if (key.endsWith('_rqst_receive')) return 'rqst-receive-amount';
+  if (key.endsWith('_rqst_pay')) return 'rqst-pay-amount';
+  if (key.endsWith('_un_receive')) return 'un-receive-amount';
+  if (key.endsWith('_un_pay')) return 'un-pay-amount';
+  if (key.endsWith('_receive')) return 'receive-amount';
+  if (key.endsWith('_pay')) return 'pay-amount';
+  return null;
+}
+
 const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
@@ -153,9 +159,6 @@ const creationTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const startTime = ref<string | undefined>(undefined);
 const statementNum = ref('');
-const displayApplicationNo = computed(() =>
-  isEdit.value ? statementNum.value : t('autoGenerate'),
-);
 
 const clientId = ref<string>('');
 const clientName = ref('');
@@ -206,16 +209,21 @@ const allColumns = computed(() => [
 const feeInnerColumns = useFeeInnerColumns();
 
 // --- 过滤后的费用明细 ---
+/** 是否有生效的费用筛选条件（无筛选时 filteredFeeDetailRows 直接返回原始数据） */
+const hasActiveFilter = computed(
+  () =>
+    Boolean(
+      filterAccountDate.value ||
+      filterFeeName.value ||
+      filterReferenceNum.value ||
+      filterEtdStart.value ||
+      filterEtdEnd.value,
+    ) || filterPaySide.value !== undefined,
+);
+
 const filteredFeeDetailRows = computed(() => {
   // 如果所有过滤条件都为空，返回原始数据
-  if (
-    !filterAccountDate.value &&
-    !filterFeeName.value &&
-    !filterReferenceNum.value &&
-    !filterEtdStart.value &&
-    !filterEtdEnd.value &&
-    filterPaySide.value === undefined
-  ) {
+  if (!hasActiveFilter.value) {
     return feeDetailRows.value;
   }
 
@@ -581,7 +589,16 @@ function mapDetailToFeeRows(
         settlementName: fee?.settlement?.name ?? undefined,
         amount: fee?.amount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
-        unSettledAmount: fee?.unSettledAmount ?? 0,
+        // 未结算：优先接口 unSettledAmount，缺失时回退 amount - settledAmount。
+        // 在此单点兜底，下游（二级行展示、币别合计、汇总卡）直接用本字段即可。
+        unSettledAmount:
+          fee?.unSettledAmount ??
+          (fee?.amount ?? 0) - (fee?.settledAmount ?? 0),
+        // 已申请金额（rqstPaymentAmount：仅付费申请已申请，不含开票申请/收费结算）
+        rqstPaymentAmount: fee?.rqstPaymentAmount ?? 0,
+        // 发票/结算已占用额度（供币别汇总卡展示占用合计）
+        orderInvoiceAmount: fee?.orderInvoiceAmount ?? 0,
+        settlementOccupiedAmount: fee?.settlementOccupiedAmount ?? 0,
         exchangeRate: fee?.exchangeRate,
         itemRemark: item.remark ?? '',
         // 新增字段
@@ -822,8 +839,8 @@ const totalAmount = computed(() => {
             currencyId: fee.currencyId,
           };
         }
-        // unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
-        // unRecMap[currencyKey].totalRMBRecAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
+        // 原累加语句被注释掉，导致底部「未收」恒显示 0.00，此处恢复累加
+        unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
       } else if (fee.paySide === 1) {
         // 应付
         if (!payMap[currencyKey]) {
@@ -848,8 +865,8 @@ const totalAmount = computed(() => {
             currencyId: fee.currencyId,
           };
         }
-        // unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
-        // unPayMap[currencyKey].totalRMBPayAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
+        // 同上：恢复「未付」累加，避免底部恒显示 0.00
+        unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
       }
     });
   });
@@ -893,7 +910,8 @@ const totalAmount = computed(() => {
     id: key,
     ...total[key],
   }));
-  let list = [];
+  // 底部合计条展示项（显式标注类型，避免 let list = [] 的隐式 any[] 推断）
+  let list: { color: string; name: string; value: string }[] = [];
   // console.log("totalList", totalList);
   let totalPay = 0;
   let totalRec = 0;
@@ -970,25 +988,6 @@ async function handleSave() {
   } finally {
     submitting.value = false;
   }
-}
-
-function resetForm() {
-  startTime.value = undefined;
-  endTime.value = undefined;
-  statementDescription.value = '';
-  remark.value = '';
-  feeDetailRows.value = [];
-  selectedRowKeys.value = [];
-  expandedGroupKeys.value = [];
-  attachments.value = [];
-  creationTime.value = dayjs().format('YYYY-MM-DD HH:mm');
-  // 重置过滤条件
-  filterAccountDate.value = '';
-  filterFeeName.value = '';
-  filterReferenceNum.value = ''; // 重置编号过滤条件
-  filterEtdStart.value = '';
-  filterEtdEnd.value = '';
-  filterPaySide.value = undefined;
 }
 
 function clearFilters() {
@@ -1498,60 +1497,13 @@ function formatMonth(val: string | undefined | null): string {
                       }}
                     </Tag>
                   </template>
-                  <!-- 对账信息列醒目显示 -->
-                  <template
-                    v-else-if="
-                      column.key &&
-                      column.key.includes('currency_') &&
-                      column.key.includes('_receive')
-                    "
-                  >
-                    <span class="reconciliation-amount receive-amount">
-                      {{
-                        formatAmount(
-                          column.dataIndex ? record[column.dataIndex] : 0,
-                        )
-                      }}
-                    </span>
-                  </template>
-                  <template
-                    v-else-if="
-                      column.key &&
-                      column.key.includes('currency_') &&
-                      column.key.includes('_pay')
-                    "
-                  >
-                    <span class="reconciliation-amount pay-amount">
-                      {{
-                        formatAmount(
-                          column.dataIndex ? record[column.dataIndex] : 0,
-                        )
-                      }}
-                    </span>
-                  </template>
-                  <template
-                    v-else-if="
-                      column.key &&
-                      column.key.includes('currency_') &&
-                      column.key.includes('_un_receive')
-                    "
-                  >
-                    <span class="reconciliation-amount un-receive-amount">
-                      {{
-                        formatAmount(
-                          column.dataIndex ? record[column.dataIndex] : 0,
-                        )
-                      }}
-                    </span>
-                  </template>
-                  <template
-                    v-else-if="
-                      column.key &&
-                      column.key.includes('currency_') &&
-                      column.key.includes('_un_pay')
-                    "
-                  >
-                    <span class="reconciliation-amount un-pay-amount">
+                  <!-- 币别动态列（应收/应付/未收/未付/已申请收/已申请付）：
+                       统一由 getCurrencyAmountClass 按后缀精确取样式 -->
+                  <template v-else-if="getCurrencyAmountClass(column.key)">
+                    <span
+                      class="reconciliation-amount"
+                      :class="getCurrencyAmountClass(column.key)"
+                    >
                       {{
                         formatAmount(
                           column.dataIndex ? record[column.dataIndex] : 0,
@@ -1601,6 +1553,9 @@ function formatMonth(val: string | undefined | null): string {
                   <template v-else-if="column.key === 'amount'">
                     {{ formatAmount(record.amount) }}
                   </template>
+                  <template v-else-if="column.key === 'rqstPaymentAmount'">
+                    {{ formatAmount(record.rqstPaymentAmount) }}
+                  </template>
                   <template v-else-if="column.key === 'exchangeRate'">
                     {{ record.exchangeRate }}
                   </template>
@@ -1608,7 +1563,8 @@ function formatMonth(val: string | undefined | null): string {
                     {{ formatAmount(record.settledAmount) }}
                   </template>
                   <template v-else-if="column.key === 'unSettledAmount'">
-                    {{ formatAmount(record.amount - record.settledAmount) }}
+                    <!-- 直接用接口 unSettledAmount（已在 mapDetailToFeeRows 兜底），不再前端重算 -->
+                    {{ formatAmount(record.unSettledAmount) }}
                   </template>
                   <template v-else-if="column.key === 'invoiceStatus'">
                     <Tag :color="getInvoiceStatusColor(record.invoiceStatus)">
@@ -2149,6 +2105,18 @@ function formatMonth(val: string | undefined | null): string {
 .un-pay-amount {
   color: #ff4d4f;
   background-color: #fff1f0;
+}
+
+/* 已申请收 - 紫色 */
+.rqst-receive-amount {
+  color: #722ed1;
+  background-color: #f9f0ff;
+}
+
+/* 已申请付 - 品红 */
+.rqst-pay-amount {
+  color: #eb2f96;
+  background-color: #fff0f6;
 }
 
 .fee-footer {

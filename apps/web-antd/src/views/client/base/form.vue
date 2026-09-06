@@ -1154,6 +1154,14 @@ const handleSubmit = async () => {
         reconcilerUserIds: reconcilerUserIds.value,
       };
       createdId = await editClient(editData);
+      if (createdId) {
+        message.success($t('ui.actionMessage.operationSuccess'));
+        // 编辑保存成功后重新同步脏值快照，否则未保存守卫会一直认为基础信息未保存，
+        // 从而拦截系统 tab（路由级）跳转，导致点击系统 tab 无法切换页面
+        //（与开票信息 tab 同类问题）
+        await syncFormSnapshot();
+        markListShouldRefresh('ClientList');
+      }
     } else {
       // 新增模式：使用ClientStakeholderAddDto（不需要id和clientId）
       const salesAdd = defaultOrderUsers.value
@@ -1257,32 +1265,27 @@ const handleSubmit = async () => {
         fullName: addData.fullName,
       });
 
-      createdId = await addClient(addData);
-      const resolvedCreatedId =
-        (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
-      const createdIdStr =
-        resolvedCreatedId === null || resolvedCreatedId === undefined
-          ? ''
-          : String(resolvedCreatedId).trim();
-      const createTabKey = route.fullPath;
-      if (createdIdStr) {
+      const createdId = await addClient(addData);
+      //const createdId = (payload as any)?.result;
+      if (createdId) {
+        message.success($t('ui.actionMessage.operationSuccess'));
         await syncFormSnapshot();
-        await router.replace(`/clients/${createdIdStr}/edit`);
-      } else {
-        await router.replace('/clients');
+        markListShouldRefresh('ClientList');
+        await router.replace(`/clients/${createdId}/edit`);
       }
-      await closeTabByKey(createTabKey);
+      // await closeTabByKey(createTabKey);
     }
 
-    if (createdId) {
-      message.success($t('ui.actionMessage.operationSuccess'));
-      markListShouldRefresh('ClientList');
+    // if (createdId) {
+    //   message.success($t('ui.actionMessage.operationSuccess'));
+    //   markListShouldRefresh('ClientList');
 
-      //router.push('/clients');
-    } else {
-      // message.success($t('ui.actionMessage.operationFailed'));
-    }
+    //   //router.push('/clients');
+    // } else {
+    //   // message.success($t('ui.actionMessage.operationFailed'));
+    // }
   } catch (error: any) {
+    message.error($t('ui.actionMessage.operationFailed'));
     console.error('提交失败:', error);
   } finally {
     submitting.value = false;

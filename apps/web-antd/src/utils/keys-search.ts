@@ -8,16 +8,21 @@ import type { VbenFormSchema } from '#/adapter/form';
  * GET 传参必须用重复键名：`keys=MBL001&keys=CO20260001`
  * （ABP `[FromQuery] List<T>` 绑定要求 repeat 格式，不能用逗号拼成一个值）。
  *
- * 前端约定：搜索表单字段名统一为 `Keys`，组件为 antd Select 的 tags 模式，
- * 值天然是 `string[]`；提交前经 {@link normalizeKeysParam} 去空白、去重。
+ * 前端约定：搜索表单字段名统一为 `Keys`，组件为普通 antd Input，
+ * 值是一个字符串；用户可用分隔符一次输入多个，提交前经
+ * {@link normalizeKeysParam} 按分隔符拆分、去空白、去重后变成 `string[]`。
  */
 
-/** 多值分隔符：换行、中英文逗号、空格、制表符、分号 */
-const KEYS_SPLIT_REGEXP = /[\n\r,，;；\s]+/;
+/**
+ * 多值分隔符：中英文逗号、顿号、分号、竖线，以及空格/制表符/换行等空白字符。
+ * 覆盖手动输入与从 Excel、聊天工具粘贴两种来源。
+ */
+const KEYS_SPLIT_REGEXP = /[,，、;；|\s]+/;
 
 /**
- * 把 Keys 表单值归一化为「去空白 + 去重」后的字符串数组。
- * - 支持数组（Select tags 模式）与字符串（粘贴/兼容旧值）两种输入；
+ * 把 Keys 表单值归一化为「拆分 + 去空白 + 去重」后的字符串数组。
+ * - 支持字符串（Input 输入/粘贴，按 {@link KEYS_SPLIT_REGEXP} 拆分）
+ *   与数组（历史 Select tags 值、外部传入）两种输入；
  * - 全为空白项、空数组、null/undefined → 返回 `undefined`（后端视为不筛）。
  */
 export function normalizeKeysParam(value: unknown): string[] | undefined {
@@ -53,16 +58,18 @@ export interface KeysSearchSchemaOptions {
   label?: string;
   /** 输入占位提示 */
   placeholder?: string;
-  /** 标签旁的问号提示，用于说明该接口 keys 覆盖的精确匹配字段 */
+  /** 字段标签旁的问号提示，用于说明该接口 keys 覆盖的精确匹配字段 */
   help?: string;
-  /** 栅格占位，默认跨 2 列，便于展示多个标签 */
+  /** 栅格占位，默认跨 2 列，输入框宽一些便于粘贴多个值 */
   formItemClass?: string;
 }
 
 /**
- * 生成「Keys 精确搜索」表单字段（antd Select tags 模式）。
+ * 生成「Keys 精确搜索」表单字段（普通 antd Input）。
  *
- * 支持逐个输入回车成标签，或直接粘贴多个（逗号/空格/换行分隔自动拆分）。
+ * 单行输入框，多个值直接用分隔符（中英文逗号、顿号、分号、空格、换行）连写，
+ * 也可从 Excel 一次性粘贴；回车即提交查询，无需先「打成标签」。
+ * 值的拆分/去重在提交阶段由 {@link normalizeKeysParam} 统一完成。
  * 覆盖字段随接口不同，通过 `help` 传入模块专属说明。
  */
 export function createKeysSearchSchema(
@@ -71,28 +78,21 @@ export function createKeysSearchSchema(
   const {
     fieldName = 'Keys',
     label = '精确搜索',
-    placeholder = '输入后回车，可粘贴多个（逗号/空格/换行分隔）',
+    placeholder = '多个值用逗号/空格/分号分隔，可直接粘贴',
     help,
     formItemClass = 'col-span-2',
   } = options;
 
   return {
-    component: 'Select',
+    component: 'Input',
     fieldName,
     label,
     formItemClass,
     help,
     componentProps: {
-      mode: 'tags',
       allowClear: true,
       class: 'w-full',
       placeholder,
-      // 粘贴时按分隔符自动拆成多个标签
-      tokenSeparators: [',', '，', ';', '；', ' ', '\n', '\r', '\t'],
-      // 无候选项，纯自由输入；标签超出宽度时响应式折叠为 +N
-      options: [],
-      notFoundContent: null,
-      maxTagCount: 'responsive',
     },
   };
 }

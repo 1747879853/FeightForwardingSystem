@@ -168,6 +168,7 @@ const { hotColumns } = useHotColumns(
   sortState,
   getSortIcon,
   currentOptionsCache,
+  localAllClientsByIndustry, // ✅ 传入全量客户缓存：结算对象列拖拽填充时的 strict 校验兜底
 );
 
 // Core Table 引用（需要在 handleOpenDropdown 之前定义）

@@ -1386,10 +1386,12 @@ export function useOrderFeeLinkage(
       }
       // 结算对象变化 - 使用 _value 字段
       else if (prop === 'settlementId') {
-        // settlementId 的联动逻辑在 fillSettlementIdByIndustryCategory 中处理
-
-        if (!row['settlementId_value']) {
-          row['settlementId_value'] = getSettlementId(row['settlementId']);
+        // ✅ 始终以当前显示值（label「编码-名称」或 name「仅名称」）重新解析客户 id：
+        // 拖拽填充/粘贴覆盖已有结算对象时，若沿用旧的 settlementId_value 会导致
+        // 保存（sanitizeOrderFee 优先取 _value）写入被覆盖前的旧 id，故这里同步刷新。
+        const resolvedSettlementId = getSettlementId(row['settlementId']);
+        if (resolvedSettlementId !== undefined) {
+          row['settlementId_value'] = resolvedSettlementId;
         }
         console.log(
           '👤 [handleAfterChange] 结算对象变化:',

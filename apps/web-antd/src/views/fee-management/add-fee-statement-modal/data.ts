@@ -1,6 +1,5 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
-import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
@@ -44,6 +43,12 @@ export interface SelectedFeeItem {
   /** 已结算金额 */
   settledAmount: number;
   unSettledAmount: number;
+  /** 已申请金额（付费申请已申请，不含开票申请/收费结算） */
+  rqstPaymentAmount?: number;
+  /** 发票已占用额度（开票申请+付费申请，不含收费结算） */
+  orderInvoiceAmount?: number;
+  /** 结算已占用额度（付费申请+收费结算+开票申请） */
+  settlementOccupiedAmount?: number;
   /** 原始汇率 */
   exchangeRate?: number;
 }
@@ -363,8 +368,9 @@ export function useOrderFixedColumns() {
     },
     {
       field: 'recSettlementStatus',
-      title: '结算状态',
-      width: 100,
+      // 与编辑页一级行保持一致：取的是订单应收结算状态
+      title: '应收结算状态',
+      width: 110,
     },
   ];
 }
@@ -408,7 +414,13 @@ export function collectCurrencies(
   }));
 }
 
-/** 根据币别生成动态列（每个币别 -> 未收 + 未付） */
+/**
+ * 根据币别生成一级行动态列（编辑页与选费用弹窗共用）。
+ *
+ * 列顺序为「先各币别的应收/应付/未收/未付，再各币别的已申请收/已申请付」，
+ * 即已申请两列跨币别集中排在最后，而不是插在各币别内部。此顺序为业务要求，
+ * 修改时不要把两轮循环合并回单轮。
+ */
 export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
   const columns: Array<{
     field: string;
@@ -452,7 +464,28 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
       align: 'right',
     });
   }
-  console.log('buildDynamicCurrencyColumns', columns);
+
+  // 已申请合计（rqstPaymentAmount）：一级行按币别+收付拆分。
+  // 单独用第二轮循环，使各币别的「已申请收/已申请付」集中排在所有币别的
+  // 「应收/应付/未收/未付」之后，而不是插在各自币别内部。
+  for (const c of currencies) {
+    columns.push({
+      field: `currency_${c.currencyId}_rqst_receive`,
+      dataIndex: `currency_${c.currencyId}_rqst_receive`,
+      key: `currency_${c.currencyId}_rqst_receive`,
+      title: `${c.currencyName}已申请收`,
+      width: 90,
+      align: 'right',
+    });
+    columns.push({
+      field: `currency_${c.currencyId}_rqst_pay`,
+      dataIndex: `currency_${c.currencyId}_rqst_pay`,
+      key: `currency_${c.currencyId}_rqst_pay`,
+      title: `${c.currencyName}已申请付`,
+      width: 90,
+      align: 'right',
+    });
+  }
   return columns;
 }
 
@@ -466,6 +499,10 @@ export function calcCurrencySummary(
     .reduce((sum, f) => sum + (f.amount ?? 0), 0);
 }
 
+/**
+ * 未结算合计：优先用接口返回的 unSettledAmount，缺失时回退 amount - settledAmount。
+ * 接口自 2026-09-04 起在选费用场景返回真值，两者口径一致（unSettledAmount = amount - settledAmount）。
+ */
 export function calcCurrencyUnSummary(
   orderFees: OrderFeeAdminApi.OrderFeeDto[],
   currencyId: number,
@@ -473,7 +510,25 @@ export function calcCurrencyUnSummary(
 ): number {
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
-    .reduce((sum, f) => sum + ((f.amount ?? 0) - (f.settledAmount ?? 0)), 0);
+    .reduce(
+      (sum, f) =>
+        sum + (f.unSettledAmount ?? (f.amount ?? 0) - (f.settledAmount ?? 0)),
+      0,
+    );
+}
+
+/**
+ * 已申请金额合计（rqstPaymentAmount）：仅统计付费申请已申请部分，不含开票申请、不含收费结算。
+ * 与 orderInvoiceAmount / settlementOccupiedAmount 口径不同，不可互相加减或比大小。
+ */
+export function calcCurrencyRqstSummary(
+  orderFees: OrderFeeAdminApi.OrderFeeDto[],
+  currencyId: number,
+  paySide: number,
+): number {
+  return orderFees
+    .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
+    .reduce((sum, f) => sum + (f.rqstPaymentAmount ?? 0), 0);
 }
 
 /** 将订单数据转为表格行（含动态币别字段） */
@@ -525,6 +580,18 @@ export function buildOrderRow(
     );
 
     row[`currency_${c.currencyId}_un_pay`] = calcCurrencyUnSummary(
+      order.orderFees ?? [],
+      c.currencyId,
+      1,
+    );
+
+    row[`currency_${c.currencyId}_rqst_receive`] = calcCurrencyRqstSummary(
+      order.orderFees ?? [],
+      c.currencyId,
+      0,
+    );
+
+    row[`currency_${c.currencyId}_rqst_pay`] = calcCurrencyRqstSummary(
       order.orderFees ?? [],
       c.currencyId,
       1,

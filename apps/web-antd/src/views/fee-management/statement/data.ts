@@ -1,7 +1,6 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
 import { $t } from '#/locales';
@@ -214,6 +213,15 @@ export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto
 
   // 添加最常用的币别列（RMB、USD）
   const commonCurrencies = ['RMB', 'USD'];
+  // ✅ 每个币别在「应收/应付」之后追加的四列：发票占用收/付、结算占用收/付。
+  // 字段由后端 StatementCurrencyDto 提供（footer 当页合计已在用），收/付按费用
+  // 自身 paySide 拆分、后端已算好，前端仅按币别取值展示，勿用 balanceAmount 推算。
+  const occupiedFields = [
+    { field: 'receiveInvoiceOccupiedAmount', label: '发票占用收' },
+    { field: 'payInvoiceOccupiedAmount', label: '发票占用付' },
+    { field: 'receiveSettlementOccupiedAmount', label: '结算占用收' },
+    { field: 'paySettlementOccupiedAmount', label: '结算占用付' },
+  ] as const;
   const currencyColumns: VxeTableGridOptions<StatementAdminApi.StatementDto>['columns'] =
     [];
 
@@ -244,6 +252,22 @@ export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto
         return currencyGroup ? currencyGroup.payAmount : '';
       },
       sortable: false,
+    });
+
+    // ✅ 发票占用收/付、结算占用收/付四列（与应收/应付同样从对应币别组取值）
+    occupiedFields.forEach(({ field, label }) => {
+      currencyColumns.push({
+        field: `currency_${currencyCode}_${field}`,
+        title: `${currencyCode}${label}`,
+        minWidth: 120,
+        formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+          const currencyGroup = row.statementCurrencyGroup?.find(
+            (c) => c.currency?.code === currencyCode,
+          );
+          return currencyGroup?.[field] ?? '';
+        },
+        sortable: false,
+      });
     });
   });
 
