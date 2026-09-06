@@ -43,13 +43,13 @@ last_updated: 2026-09-05
 
 > [!IMPORTANT] **[卡点 1：删除引用校验]** 附件类型被任意 `AttachmentItem` 引用时不可删除，需先解除业务附件关联。
 
-> [!IMPORTANT] **[卡点 2：ModuleType 漏配]** 业务侧已写入的模块码（如业务联系单 `160050`、监装箱型附件 `160100`）若未在枚举管理维护，列表显示原始数字、新增下拉没有对应项。须在「枚举管理 → ModuleType」补齐，前端不再写死中文名。
+> [!IMPORTANT] **[卡点 2：ModuleType 漏配]** 业务侧已写入的模块码（如业务联系单 `160050`、监装箱型附件 `160100`）若未在枚举管理维护，列表显示原始数字、新增下拉没有对应项。须在「枚举管理 → ModuleType」补齐，前端不写死中文名。枚举编辑是全量子表替换，补项时必须带回原有子项。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-05 | `Fix` | 去掉业务联系单 `160050` 的代码兜底；默认展示模块只认枚举 `ModuleType`。监装照片类型用 `160100`。 | 删除 `KNOWN_MODULE_TYPE_FALLBACKS`；漏配显示数字。 |
+| 2026-09-05 | `Fix` | 去掉 `ModuleType` 代码兜底；监装/业务联系单须在枚举管理补 `160100`/`160050`。 | 删除 `KNOWN_MODULE_TYPE_FALLBACKS`；漏配显示数字、下拉无对应项。 |
 | 2026-08-04 | `Fix` | 默认展示模块 `160050` 回显为「业务联系单」，下拉可选。 | 当时用 `KNOWN_MODULE_TYPE_FALLBACKS`；2026-09-05 已改为枚举维护。 |
 | 2026-07-28 | `Fix` | 列表「默认展示模块」显示 ModuleType 枚举中文名（客户/海运出口/付费申请等）。 | formatter 改为读可变 `holder.map`；`autoLoad: false` 且映射就绪后再 query；勿用 CommonLookup（无业务模块码）。 |
 | 2026-06-24 | `Fix` | 默认展示模块下拉与列表显示名改为读取 system/enumeration 中 `ModuleType` 枚举。 | 通过 `getEnumItems('ModuleType')` 统一选项与标签映射，移除 `CommonLookup/GetModuleTypes` 依赖。 |
