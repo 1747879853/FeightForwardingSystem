@@ -44,6 +44,7 @@ import iconClock from './assets/icon-clock.svg';
 import iconInfo from './assets/icon-info.svg';
 import iconSearch from './assets/icon-search.svg';
 import iconSwap from './assets/icon-swap.svg';
+import { copyTextToClipboard } from './copy-text';
 import {
   type ScheduleGroup,
   compareItemEtd,
@@ -497,12 +498,12 @@ function toggleGroup(id: string) {
 }
 
 async function copyGroupName(name: string) {
-  try {
-    await navigator.clipboard.writeText(name);
+  const ok = await copyTextToClipboard(name);
+  if (ok) {
     message.success('已复制方案名称');
-  } catch {
-    message.warning('复制失败，请手动选择方案名称');
+    return;
   }
+  message.warning('复制失败，请手动选择方案名称');
 }
 
 function loadMoreGroups() {

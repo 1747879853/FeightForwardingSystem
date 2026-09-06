@@ -2,7 +2,7 @@
 title: 船期查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-02
+last_updated: 2026-09-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,7 +17,7 @@ last_updated: 2026-09-02
 | 路由名称 | `ScheduleQueryList` |
 | 页面组件 | `src/views/schedule-query/list.vue` |
 | 权限口径 | `Admin.Schedule` / `Admin.Schedule.Get` |
-| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/schedule-query/list.vue`<br/>`src/views/schedule-query/data.ts`<br/>`src/api/schedule/feituo-schedule-admin.ts` |
+| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/schedule-query/list.vue`<br/>`src/views/schedule-query/data.ts`<br/>`src/views/schedule-query/copy-text.ts`<br/>`src/api/schedule/feituo-schedule-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -27,7 +27,7 @@ last_updated: 2026-09-02
 - **前端二次筛选：** 直达/中转、船公司、起运/目的标准码头、船名/航次/航线/中转港关键词和方案排序都作用于已拉取的全量结果，不重复请求实时接口。船公司与码头多选后完整展示已选项，不收成 `+N`。默认按周一至周日排方案，同一天按最近离港。
 - **渐进展示：** 首批渲染 80 个方案，可继续按剩余数量追加；折叠方案不挂载班次表。可同时展开多组对照，查询后不自动展开。
 - **港口选择：** 起始港/目的港使用系统 `PortSelect`，选中值为 EDI 五字码，回显 `港口英文 (EDI)`；交换港口会带上已选港口对象，避免只换代码丢回显。进页不回填港口。
-- **班次比较与完整详情：** 方案卡主标题是共舱名，左侧直达/中转 Tag；下面是星期短写（只写计划班期众数一个）、班次数、码头；右侧航程、最近离港、最早截关（日期与时刻同一行）。展开后用原生表格对照船名、航次、计划离到港、截关、航程；截关时间一行显示；延误写「延误 N 天」。船名旁 i 悬停展示船名/MMSI/IMO/呼号/航次/运营方（班次行已有字段，没有船旗/建造日/箱量）。点击共舱名复制。点船名或「详情」打开船期字段弹窗（船舶航线、港口码头、中转路径、时间航程、截点、数据标识）。船舶定位已暂时下线。
+- **班次比较与完整详情：** 方案卡主标题是共舱名，左侧直达/中转 Tag；下面是星期短写（只写计划班期众数一个）、班次数、码头；右侧航程、最近离港、最早截关（日期与时刻同一行）。展开后用原生表格对照船名、航次、计划离到港、截关、航程；截关时间一行显示；延误写「延误 N 天」。船名旁 i 悬停展示船名/MMSI/IMO/呼号/航次/运营方（班次行已有字段，没有船旗/建造日/箱量）。点击共舱名复制方案名称：先 Clipboard API，失败再 `execCommand`；都失败才提示手动选择。点船名或「详情」打开船期字段弹窗（船舶航线、港口码头、中转路径、时间航程、截点、数据标识）。船舶定位已暂时下线。
 - **最近查询：** 成功查询后只把起运港、目的港记在本机 `ffs.schedule-query.recent`，最新在前、最多 6 条。不缓存离港日期；点胶囊沿用查询条当前日期再查。有结果时与方案统计同一行靠右；宽度不够就少显示，不出滚动条。不自动填进查询条。
 - **菜单归属：** 与「运价查询」同属侧边栏「航线管理」分组。
 
@@ -60,10 +60,13 @@ last_updated: 2026-09-02
 
 > [!IMPORTANT] **[卡点 2：方案接口未对接]** 本系统没有港到港方案分组接口，分组由扁平班次在前端重建。青岛→新加坡 8 周对照总数同为 62，直达/中转会差 1：飞驼中转 `CNC` 是 8 条无船名的卡车班次（扁平接口有，本地清洗丢掉）；本地直达多 `WHL(AA1)`（万海 52 天），飞驼方案列表未挂出。对方 `groupName` 用共舱 `displayName`，本地用原始 `routeCode`，会写成 `FEM2`/`FME2` 这种同组不同字。超过 1000 条时还受后端分页上限影响。
 
+> [!IMPORTANT] **[卡点 3：方案名称复制]** `navigator.clipboard.writeText` 在 HTTP、无权限或页面失焦时会抛错。复制必须在 catch 后走 `execCommand`，不能只提示手动选择。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 点击方案名称复制：Clipboard API 失败后回退 `execCommand`，减少「复制失败，请手动选择方案名称」。 | `copy-text.ts` 先 `writeText`，reject 或缺能力再隐藏 textarea 复制。详见 `changelogs/change-log-2026-09-06-schedule-copy-group-name.md`。 |
 | 2026-09-02 | `Style` | 班次表船名、航次分列；截关时间和卡片最早截关都改为一行。 | 计划离到港仍拆两行。详见 `changelogs/change-log-2026-09-02-schedule-query-vessel-voyage-cutoff-oneline.md`。 |
 | 2026-09-02 | `Feature` | 班次表船名旁悬停可看船名、MMSI、IMO、呼号、航次、运营方。 | 只用 `QueryScheduleAsync` 班次字段；没有船旗/建造日/箱量。详见 `changelogs/change-log-2026-09-02-schedule-query-vessel-hover.md`。 |
 | 2026-09-02 | `Fix` | 「按周班」卡片只显示一个星期（计划班期众数）；同一天按最近离港排，不再按共舱名字母序。 | 分组键未改。详见 `changelogs/change-log-2026-09-02-schedule-query-weekday-sort-ops.md`。 |
