@@ -10,6 +10,7 @@ import '@vben/styles';
 import '@vben/styles/antd';
 import './biz-select-readonly.css';
 import './global-font.css';
+import './handsontable-dropdown.css';
 
 import { useTitle } from '@vueuse/core';
 

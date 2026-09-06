@@ -1,0 +1,94 @@
+/**
+ * Handsontable 单元格下拉（autocomplete / dropdown / select 编辑器）全局美化
+ *
+ * 目标：让 Handsontable 的下拉浮层在视觉上对齐 ant-design-vue 的 Select 下拉，
+ *       并统一使用 vben 设计 token，自动兼容亮色 / 暗色主题。
+ *
+ * 为什么必须是全局（非 scoped）样式：
+ *   Handsontable 的下拉浮层是一个独立的浮动表格实例，被 append 到 document.body，
+ *   脱离了各业务组件的 DOM 树，因此组件内的 scoped 样式与 :deep() 都无法作用到它，
+ *   只能在全局样式中覆盖。此文件作用于所有 Handsontable 下拉（费用录入、运价批量
+ *   新增、联系人、费用模板等），即“全局优化”。
+ *
+ * 主题 token 可用性：
+ *   设计 token 定义在 :root（暗色值在 html.dark），而下拉浮层挂在 body 之下，
+ *   可正常继承，故亮 / 暗模式下均能取到正确颜色。
+ *
+ * 命中范围：
+ *   .handsontable.listbox —— 单元格编辑器（autocomplete / dropdown / select）的下拉容器，
+ *   不影响列头筛选菜单（.htDropdownMenu）与右键菜单（.htContextMenu）。
+ *
+ * 加载顺序：
+ *   本文件在 bootstrap.ts 中引入，晚于 main.ts 里的 handsontable.min.css，
+ *   配合 !important 覆盖 Handsontable 的默认下拉样式。
+ */
+
+/* 下拉容器：卡片化（内边距 + 圆角 + 边框 + antd 风格分层阴影） */
+.handsontable.listbox {
+  padding: 4px !important;
+  overflow: hidden;
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    0 6px 16px 0 rgb(0 0 0 / 8%),
+    0 3px 6px -4px rgb(0 0 0 / 12%),
+    0 9px 28px 8px rgb(0 0 0 / 5%) !important;
+}
+
+/* 内部各层：跟随容器圆角并去掉默认底色，避免直角戳破卡片圆角 */
+.handsontable.listbox .ht_master,
+.handsontable.listbox .wtHolder,
+.handsontable.listbox .wtHider,
+.handsontable.listbox .htCore {
+  overflow: hidden;
+  background-color: transparent !important;
+  border-radius: 6px !important;
+}
+
+/* 下拉选项：对齐 antd Select item（内边距 / 字号 / 行高 / 圆角 / 去除单元格边框） */
+.handsontable.listbox table tbody tr td {
+  padding: 5px 12px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px !important;
+  line-height: 22px !important;
+  color: hsl(var(--foreground)) !important;
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 6px !important;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* 去除 autocomplete 默认的奇偶行斑马纹底色，统一为透明（由 hover / 选中态区分） */
+.handsontable.autocompleteEditor tr.ht__row_even td,
+.handsontable.autocompleteEditor tr.ht__row_odd td {
+  background-color: transparent !important;
+}
+
+/* hover 与当前高亮项：主题淡色背景 + 主题色文字，对齐 antd Select 的 active / selected 观感 */
+.handsontable.listbox table tbody tr td:hover,
+.handsontable.listbox table tbody tr td.current:not([aria-expanded='true']) {
+  color: hsl(var(--primary)) !important;
+  background-color: hsl(var(--primary) / 10%) !important;
+  box-shadow: none !important;
+}
+
+/* 纤细滚动条：下拉项较多可滚动时，贴近 antd Select 的轻量滚动观感 */
+.handsontable.listbox .wtHolder::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.handsontable.listbox .wtHolder::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.handsontable.listbox .wtHolder::-webkit-scrollbar-track {
+  background-color: transparent;
+}
