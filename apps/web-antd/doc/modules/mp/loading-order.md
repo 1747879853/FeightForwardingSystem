@@ -19,13 +19,13 @@ last_updated: 2026-09-06
 - **列表（`pages/loading/list`）：** 顶部分段「新派 / 进行中 / 已完成」分别打接口状态 1/2/3；分段用 `components/skew-tabs/skew-tabs`（Canvas 2D 斜切白滑块），点击插值滑动。打开检索抽屉时卸掉 canvas；切底栏或进出详情不再控制 canvas。Tab 与卡片间距 24rpx；过渡写在列表里：`.list__fade` 为 `180deg #F9FAFD → #F0F2F8`，与选中滑块衔接，垫在内容卡片下面。视觉按 Figma「检索条件」稿：蓝渐变顶、口号渐变字、3D 插图压在 Tab 右侧、白卡片展示监装工号、状态徽标、主提单号、明细包装\*件数、船名航次、堆场、品名、下单日期与预计到货日期。支持下拉刷新、触底加载。
 - **检索：** 点顶栏放大镜从右侧弹出「检索条件」抽屉，支持监装工单号（模糊）、主提单号（模糊）、监装堆场关键字（名称/地址/备注）、起运港、船公司、品名、预计到货日；有生效条件时放大镜带红点。起运港/船公司/品名点开底部面板，可搜关键字、每页 20 条、触底加载。起运港下拉两行对齐 PC：`EDI码/英文名` + `国家英文名 / 中文名`；船公司对齐 PC：`CODE(简称)`，下拉与选中回显都带 logo（无图则只显示文字）。检索用本地 `search-drawer`（右侧遮罩，不引用 `wd-popup`，避免微信把 `node-modules/wot-design-uni` 当无依赖丢掉）。打开时把 Tab 的 `hidden` 设为 true，`v-if` 卸掉 2d canvas，关掉再挂回。
 - **详情（`pages/loading/detail`）：** 三张卡——基本信息（13 行）、监装要求（胶囊标签 + 详细说明）、集装箱要求（序号/箱型/箱号/封号/监装处理）。视觉对齐 Figma「检索条件-详情」。
-- **监装处理：** 箱行只留一个入口，展示待处理/已完成与已传张数；点开面板可改该箱箱号、封号、完成状态并按附件类型分组传图。箱号旁可「识别」：拍照/相册一张图只用来识别箱号，不进入监装照片。已认领时面板底栏点「保存」立即提交；点遮罩或关闭且未保存则还原该箱打开时的值。拍照与相册分入口，避免误开相机。
+- **监装处理：** 箱行只留一个入口，展示待处理/已完成与已传张数；点开面板可改该箱箱号、封号、完成状态并按附件类型横排传图（每类型限 1 张）。箱号旁可「识别」：拍照/相册一张图只用来识别箱号，不进入监装照片。已认领时面板底栏点「保存」立即提交；点遮罩或关闭且未保存则还原该箱打开时的值。拍照与相册分入口，避免误开相机。
 - **箱型编辑：** 只有已认领状态可在「监装处理」面板改箱号、封号、完成勾选；列表行只展示。不能加箱删箱。
 - **按状态的底部操作条：**
   - 待认领 → 「认领」
   - 已认领 → 「拒接」（必填原因）；箱号/封号/照片/完成状态在监装处理面板内保存
   - 已完成 → 「取消完成」
-- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型分组拍照/相册；拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
+- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型横排网格，每类型限 1 张；有图则隐藏添加槽，相册/拍照都只选 1 张。拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
 - **登录：** 启动静默登录（`wx.login` → `WxOpenSilentAuthenticate`）；未绑账号时登录页展示「手机号一键登录」。开发态可用账密（`VITE_ENABLE_PASSWORD_LOGIN=true`）。
 - **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。
 
@@ -47,7 +47,7 @@ last_updated: 2026-09-06
 | **列表筛选** | 工单号/提单号/堆场关键字/起运港/船公司/品名/到货日 | `GetMyPagedListAsync` 的 `LoadingOrderMyQueryDto` | 三个 Tab 共用同一套筛选，只改 `status` | 堆场关键字搜堆场表名称/地址/备注；没选堆场的工单匹配不上 |
 | **ctnNo / sealNo** | 箱号 / 封号 | 详情 `orderCtns`；箱号可走 `GeminiAdmin/UploadAndExtractCtnNoAsync` 预填 | 只有已认领可在监装处理面板改；识别只回填箱号，不改附件 | 各最长 32；识别失败 `ctnNo` 为 null 时手工填 |
 | **isLoadingCompleted** | 该箱监装是否完成 | 详情 `orderCtns` | 全部箱为 true 时工单自动完成 | — |
-| **attachmentGroups** | 分组监装照片 | 详情 `orderCtns[].attachmentGroups` + `AttachmentDtlType/GetListByModuleTypesAsync`（`160100`） | **触发/依赖：** 先铺维护类型空槽再填已有照片；**按箱全量替换**，漏传该组等于清空该组 | 先 `POST /upload/UploadFile` 拿 `attachmentId`；空组不提交 |
+| **attachmentGroups** | 分组监装照片 | 详情 `orderCtns[].attachmentGroups` + `AttachmentDtlType/GetListByModuleTypesAsync`（`160100`） | **触发/依赖：** 先铺维护类型空槽再填已有照片；类型横排；**按箱全量替换**，漏传该组等于清空该组 | 先 `POST /upload/UploadFile` 拿 `attachmentId`；**每类型最多 1 张**；空组不提交 |
 | **rejectReason** | 拒接原因 | 前端填，`RejectAsync` | 多人先后拒接只保留最后一次 | 前端必填，最长 1024 |
 | **loadingRequirements** | 监装要求 | 详情 | 师傅端只返回勾选了的明细，`isChecked` 恒 true | 师傅只读，不能改勾选 |
 | **remark** | 工单详细说明 | 详情 `remark` | 与拒接原因是两个独立字段 | 管理端维护，师傅只读 |
@@ -70,10 +70,13 @@ last_updated: 2026-09-06
 
 > [!IMPORTANT] **[卡点 8：列表堆场关键字搜堆场表]** `carrierYardKeyword` 模糊匹配 `CarrierYard.Name/Address/Remark`，不是工单备注。起运港/船公司/品名用自定义面板：关键字搜索、每页 20 条、触底加载。起运港走 `PortCodeAdmin/GetPagedListAsync`（与 PC 同一接口），下拉两行 `EDI/英文名`、`国家 / 中文名`；船公司走 `CarrierAdmin/GetPagedListAsync`，文案 `CODE(简称)`，下拉和选中回显都带 logo。
 
+> [!IMPORTANT] **[卡点 9：每类型只能一张图]** 监装处理面板类型横排；相册/拍照都只选 1 张。有图则隐藏添加槽，换图要先删。历史多图仍展示，保存不会自动截成 1 张。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 监装处理照片改为类型横排，每个类型只能上传一张；三列等大方格。 | 相册 `chooseImages` 改 count=1；有图隐藏添加槽；历史多图仍展示可删。详见 `changelogs/change-log-2026-09-06-loading-photo-one-per-type.md` |
 | 2026-09-06 | `Fix` | 检索选中船公司后回显 logo | 选中时记下 `logoUrl`；检索栏左侧图标 + `CODE(简称)`；清空/重置同步清掉 |
 | 2026-09-05 | `Fix` | 检索起运港/船公司下拉文案对齐 PC | 港口 `EDI/英文名` + `国家 / 中文名`；船公司 `CODE(简称)` + logo；港口改走 `PortCodeAdmin/GetPagedListAsync` |
 | 2026-09-05 | `Feature` | 监装列表检索增加堆场关键字、起运港、船公司、品名 | `GetMyPagedListAsync`；选择面板关键字搜索并触底分页，不再截 200 条 |

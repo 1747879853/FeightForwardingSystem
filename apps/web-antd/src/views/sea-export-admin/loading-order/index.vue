@@ -127,6 +127,10 @@ type EditableGroup = {
 const photoEditGroups = ref<EditableGroup[]>([]);
 
 const DEFAULT_PHOTO_GROUP_NAME = '监装照片';
+/** 每个附件类型只允许一张监装照片 */
+const PHOTO_PER_TYPE_MAX = 1;
+/** 采集槽固定边长，与 antd picture-card 一致，避免已传图把格子撑爆 */
+const PHOTO_TILE_PX = 104;
 
 function typeIdKey(id: null | number | string | undefined) {
   if (id == null || id === '') return 'null';
@@ -244,8 +248,17 @@ function removePhotoFromGroup(groupIndex: number, photoIndex: number) {
   photoEditGroups.value[groupIndex]?.items.splice(photoIndex, 1);
 }
 
+function canAddPhotoToGroup(group: EditableGroup | undefined) {
+  return (group?.items.length ?? 0) < PHOTO_PER_TYPE_MAX;
+}
+
 async function handlePhotoUpload(file: unknown, groupIndex: number) {
   if (!canEdit.value) return false;
+  const group = photoEditGroups.value[groupIndex];
+  if (!canAddPhotoToGroup(group)) {
+    message.warning('该类型只能上传一张图片');
+    return false;
+  }
   photoEditUploading.value = true;
   try {
     const formData = new FormData();
@@ -254,7 +267,7 @@ async function handlePhotoUpload(file: unknown, groupIndex: number) {
     const uploaded = results[0];
     if (!uploaded) throw new Error('上传返回为空');
     const attachment = mapResultToAttachment(uploaded);
-    photoEditGroups.value[groupIndex]?.items.push({
+    group?.items.push({
       attachmentId: attachment.attachmentId,
       url: buildAttachmentUrl(attachment.url),
     });
@@ -1480,7 +1493,7 @@ const displayValue = (value: null | number | string | undefined) => {
       v-model:open="photoEditOpen"
       :title="`照片采集 — 箱号 ${photoEditCtn?.ctnNo || '--'}`"
       :footer="null"
-      width="680px"
+      width="760px"
       destroy-on-close
     >
       <Spin :spinning="photoEditSaving">
@@ -1490,49 +1503,53 @@ const displayValue = (value: null | number | string | undefined) => {
         >
           {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
         </div>
-        <div
-          v-for="(group, gi) in photoEditGroups"
-          :key="String(group.attachmentDtlTypeId ?? 'untyped')"
-          class="photo-edit-group"
-        >
-          <div class="photo-edit-group__title">{{ group.typeName }}</div>
-          <div class="photo-edit-group__grid">
-            <div
-              v-for="(photo, pi) in group.items"
-              :key="`${photo.attachmentId}-${pi}`"
-              class="photo-edit-thumb"
-            >
-              <Image
-                :src="photo.url"
-                class="photo-edit-thumb__img"
-                :preview="{ src: photo.url }"
-              />
-              <button
-                v-if="canEdit"
-                type="button"
-                class="photo-edit-thumb__remove"
-                @click="removePhotoFromGroup(gi, pi)"
+        <div class="photo-edit-grid">
+          <div
+            v-for="(group, gi) in photoEditGroups"
+            :key="String(group.attachmentDtlTypeId ?? 'untyped')"
+            class="photo-edit-slot"
+          >
+            <div class="photo-edit-slot__title">{{ group.typeName }}</div>
+            <div class="photo-edit-slot__body">
+              <div
+                v-for="(photo, pi) in group.items"
+                :key="`${photo.attachmentId}-${pi}`"
+                class="photo-edit-thumb"
               >
-                ×
-              </button>
-            </div>
-            <Upload
-              v-if="canEdit"
-              :show-upload-list="false"
-              accept="image/*"
-              :multiple="true"
-              :before-upload="(file) => handlePhotoUpload(file, gi)"
-              :disabled="photoEditUploading"
-            >
-              <div class="photo-edit-add">
-                <span class="photo-edit-add__icon">{{
-                  photoEditUploading ? '…' : '+'
-                }}</span>
-                <span class="photo-edit-add__tip">{{
-                  photoEditUploading ? '上传中' : '添加图片'
-                }}</span>
+                <Image
+                  :src="photo.url"
+                  :width="PHOTO_TILE_PX"
+                  :height="PHOTO_TILE_PX"
+                  class="photo-edit-thumb__img"
+                  :preview="{ src: photo.url }"
+                />
+                <button
+                  v-if="canEdit"
+                  type="button"
+                  class="photo-edit-thumb__remove"
+                  @click="removePhotoFromGroup(gi, pi)"
+                >
+                  ×
+                </button>
               </div>
-            </Upload>
+              <Upload
+                v-if="canEdit && canAddPhotoToGroup(group)"
+                :show-upload-list="false"
+                accept="image/*"
+                :multiple="false"
+                :before-upload="(file) => handlePhotoUpload(file, gi)"
+                :disabled="photoEditUploading"
+              >
+                <div class="photo-edit-add">
+                  <span class="photo-edit-add__icon">{{
+                    photoEditUploading ? '…' : '+'
+                  }}</span>
+                  <span class="photo-edit-add__tip">{{
+                    photoEditUploading ? '上传中' : '添加图片'
+                  }}</span>
+                </div>
+              </Upload>
+            </div>
           </div>
         </div>
         <div class="photo-edit-footer">
@@ -2170,52 +2187,76 @@ const displayValue = (value: null | number | string | undefined) => {
   color: #8b95a7;
 }
 
-.photo-edit-group {
-  margin-bottom: 16px;
+.photo-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 104px);
+  gap: 14px 16px;
+  justify-content: start;
 }
 
-.photo-edit-group__title {
-  margin-bottom: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #252a31;
+.photo-edit-slot {
+  width: 104px;
+  min-width: 0;
 }
 
-.photo-edit-group__grid {
+.photo-edit-slot__title {
+  height: 22px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 22px;
+  color: #5d6c80;
+  white-space: nowrap;
+}
+
+.photo-edit-slot__body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-edit-slot :deep(.ant-upload),
+.photo-edit-slot :deep(.ant-upload-select) {
+  display: block;
+  width: 104px;
+  height: 104px;
 }
 
 .photo-edit-thumb {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 104px;
+  height: 104px;
   overflow: hidden;
-  border-radius: 6px;
+  background: #f5f7fa;
+  border-radius: 8px;
 }
 
+.photo-edit-thumb :deep(.ant-image),
+.photo-edit-thumb :deep(.ant-image-img),
 .photo-edit-thumb__img {
-  width: 100%;
-  height: 100%;
+  display: block;
+  width: 104px !important;
+  height: 104px !important;
   object-fit: cover;
-  border-radius: 6px;
 }
 
 .photo-edit-thumb__remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 14px;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
   line-height: 1;
   color: #fff;
   cursor: pointer;
-  background: rgb(0 0 0 / 55%);
+  background: rgb(0 0 0 / 45%);
   border: none;
   border-radius: 50%;
 }
@@ -2225,32 +2266,42 @@ const displayValue = (value: null | number | string | undefined) => {
 }
 
 .photo-edit-add {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
+  width: 104px;
+  height: 104px;
   cursor: pointer;
-  background: #f5f7fa;
-  border: 1px dashed #cfd6e0;
-  border-radius: 6px;
-  transition: border-color 0.2s;
+  background: #fafafa;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
 }
 
 .photo-edit-add:hover {
-  border-color: #006ce6;
+  background: #f0f9ff;
+  border-color: #1677ff;
 }
 
 .photo-edit-add__icon {
-  font-size: 24px;
-  color: #8c9caf;
+  font-size: 22px;
+  line-height: 1;
+  color: #bfbfbf;
+}
+
+.photo-edit-add:hover .photo-edit-add__icon {
+  color: #1677ff;
 }
 
 .photo-edit-add__tip {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 12px;
-  color: #8c9caf;
+  line-height: 1;
+  color: #8c8c8c;
 }
 
 .photo-edit-footer {

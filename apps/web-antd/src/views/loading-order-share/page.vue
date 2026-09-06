@@ -181,6 +181,35 @@ function collectCtnPhotos(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   );
 }
 
+function photoGroupTypeName(
+  group: NonNullable<
+    LoadingOrderAdminApi.LoadingOrderCtnDto['attachmentGroups']
+  >[number],
+) {
+  return (
+    group.attachmentDtlType?.name ||
+    group.attachmentDtlType?.typeName ||
+    t.value.photoFallback
+  );
+}
+
+function visiblePhotoSlots(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
+  return (ctn.attachmentGroups ?? []).flatMap((group, groupIndex) => {
+    const typeName = photoGroupTypeName(group);
+    const typeId = String(
+      group.attachmentDtlTypeId ?? group.attachmentDtlType?.id ?? groupIndex,
+    );
+    return (group.items ?? [])
+      .filter((item) => Boolean(item.url))
+      .map((item, photoIndex) => ({
+        key: `${typeId}-${String(item.id ?? item.attachmentId ?? photoIndex)}`,
+        typeName,
+        url: buildAttachmentUrl(item.url),
+        alt: item.friendlyFileName || typeName,
+      }));
+  });
+}
+
 function openPreview(
   ctn: LoadingOrderAdminApi.LoadingOrderCtnDto,
   url: string,
@@ -193,12 +222,6 @@ function openPreview(
 
 function onPreviewVisibleChange(visible: boolean) {
   previewOpen.value = visible;
-}
-
-function visiblePhotoGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
-  return (ctn.attachmentGroups ?? []).filter((group) =>
-    (group.items ?? []).some((item) => Boolean(item.url)),
-  );
 }
 
 async function loadDetail() {
@@ -354,7 +377,7 @@ watch(
               </div>
 
               <div
-                v-if="!visiblePhotoGroups(ctn).length"
+                v-if="!visiblePhotoSlots(ctn).length"
                 class="loading-share__photo-empty"
               >
                 <svg
@@ -371,38 +394,21 @@ watch(
                 <span>{{ t.noPhotos }}</span
                 ><span>{{ t.noPhotosHint }}</span>
               </div>
-              <div
-                v-for="group in visiblePhotoGroups(ctn)"
-                :key="
-                  String(
-                    group.attachmentDtlTypeId ??
-                      group.attachmentDtlType?.id ??
-                      '',
-                  )
-                "
-                class="loading-share__photos"
-              >
-                <div class="loading-share__photo-label">
-                  {{
-                    group.attachmentDtlType?.name ||
-                    group.attachmentDtlType?.typeName ||
-                    t.photoFallback
-                  }}
-                </div>
-                <div class="loading-share__photo-grid">
+              <div v-else class="loading-share__photo-grid">
+                <div
+                  v-for="slot in visiblePhotoSlots(ctn)"
+                  :key="slot.key"
+                  class="loading-share__photo-slot"
+                >
+                  <div class="loading-share__photo-label">
+                    {{ slot.typeName }}
+                  </div>
                   <button
-                    v-for="(item, photoIndex) in group.items ?? []"
-                    v-show="item.url"
-                    :key="`${item.id ?? item.attachmentId ?? photoIndex}`"
                     type="button"
                     class="loading-share__photo"
-                    @click="openPreview(ctn, buildAttachmentUrl(item.url))"
+                    @click="openPreview(ctn, slot.url)"
                   >
-                    <img
-                      loading="lazy"
-                      :alt="item.friendlyFileName || t.photoFallback"
-                      :src="buildAttachmentUrl(item.url)"
-                    />
+                    <img loading="lazy" :alt="slot.alt" :src="slot.url" />
                   </button>
                 </div>
               </div>
@@ -709,35 +715,45 @@ watch(
   color: #52657e;
 }
 
-.loading-share__photos {
-  margin-top: 24px;
+.loading-share__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 104px);
+  gap: 14px 16px;
+  justify-content: start;
+  margin-top: 20px;
+}
+
+.loading-share__photo-slot {
+  width: 104px;
+  min-width: 0;
 }
 
 .loading-share__photo-label {
-  margin-bottom: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #52657e;
-}
-
-.loading-share__photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 12px;
+  height: 22px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 22px;
+  color: #5d6c80;
+  white-space: nowrap;
 }
 
 .loading-share__photo {
   display: block;
-  aspect-ratio: 4 / 3;
+  width: 104px;
+  height: 104px;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  background: #edf2f8;
+  background: #f5f7fa;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .loading-share__photo img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -861,8 +877,17 @@ watch(
   }
 
   .loading-share__photo-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, 88px);
+    gap: 12px;
+  }
+
+  .loading-share__photo-slot,
+  .loading-share__photo {
+    width: 88px;
+  }
+
+  .loading-share__photo {
+    height: 88px;
   }
 }
 

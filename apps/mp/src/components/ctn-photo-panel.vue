@@ -34,9 +34,15 @@ const thumbEpoch = ref(0);
 const busy = computed(() => uploading.value || recognizing.value);
 
 const groups = computed(() => props.ctn?.groups ?? []);
+/** 每个附件类型只允许一张监装照片 */
+const PHOTO_PER_TYPE_MAX = 1;
 const statusText = computed(() =>
   props.ctn?.isLoadingCompleted ? '已完成' : '待处理',
 );
+
+function canAddPhotoToGroup(groupIndex: number) {
+  return (groups.value[groupIndex]?.items.length ?? 0) < PHOTO_PER_TYPE_MAX;
+}
 
 function toggleStatus() {
   if (!props.editable || !props.ctn) return;
@@ -141,6 +147,10 @@ async function recognizeCtnNo() {
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
   if (!group || busy.value) return;
+  if (!canAddPhotoToGroup(groupIndex)) {
+    uni.showToast({ icon: 'none', title: '该类型只能上传一张图片' });
+    return;
+  }
 
   let sourceType: ImageSource | null;
   try {
@@ -156,7 +166,7 @@ async function addPhotos(groupIndex: number) {
 
   let paths: string[];
   try {
-    paths = await chooseImages([sourceType], sourceType === 'camera' ? 1 : 9);
+    paths = await chooseImages([sourceType], 1);
   } catch (error) {
     uni.showToast({
       icon: 'none',
@@ -165,6 +175,13 @@ async function addPhotos(groupIndex: number) {
     return;
   }
   if (paths.length === 0) return;
+
+  const remaining = PHOTO_PER_TYPE_MAX - group.items.length;
+  if (remaining <= 0) {
+    uni.showToast({ icon: 'none', title: '该类型只能上传一张图片' });
+    return;
+  }
+  paths = paths.slice(0, remaining);
 
   uploading.value = true;
   try {
@@ -304,46 +321,55 @@ function onDismiss() {
           未配置监装附件类型
         </text>
 
-        <view
-          v-for="(group, gi) in groups"
-          :key="String(group.attachmentDtlTypeId ?? 'untyped')"
-          class="group"
-        >
-          <text class="group__title">{{ group.typeName }}</text>
-          <view class="group__grid">
-            <view
-              v-for="(photo, pi) in group.items"
-              :key="`${photo.attachmentId}-${photo.url}-${pi}-${thumbEpoch}`"
-              class="thumb"
-            >
-              <image
-                class="thumb__img"
-                :src="photo.url"
-                mode="aspectFill"
-                @error="onThumbError(photo)"
-                @tap="previewGroup(gi, pi)"
-              />
+        <view class="photo-grid">
+          <view
+            v-for="(group, gi) in groups"
+            :key="String(group.attachmentDtlTypeId ?? 'untyped')"
+            class="photo-slot"
+          >
+            <text class="photo-slot__title">{{ group.typeName }}</text>
+            <view class="photo-slot__body">
               <view
-                v-if="editable"
-                class="thumb__remove"
-                @tap.stop="removePhoto(gi, pi)"
+                v-for="(photo, pi) in group.items"
+                :key="`${photo.attachmentId}-${photo.url}-${pi}-${thumbEpoch}`"
+                class="thumb"
               >
-                <wd-icon name="close" size="12px" color="#fff" />
+                <image
+                  class="thumb__img"
+                  :src="photo.url"
+                  mode="aspectFill"
+                  @error="onThumbError(photo)"
+                  @tap="previewGroup(gi, pi)"
+                />
+                <view
+                  v-if="editable"
+                  class="thumb__remove"
+                  @tap.stop="removePhoto(gi, pi)"
+                >
+                  <wd-icon name="close" size="12px" color="#fff" />
+                </view>
+              </view>
+
+              <view
+                v-if="editable && canAddPhotoToGroup(gi)"
+                class="thumb thumb--add"
+                @tap="addPhotos(gi)"
+              >
+                <view class="thumb__inner">
+                  <text class="thumb__plus">+</text>
+                  <text class="thumb__tip">添加图片</text>
+                </view>
+              </view>
+              <view
+                v-else-if="!editable && group.items.length === 0"
+                class="thumb thumb--empty"
+              >
+                <view class="thumb__inner">
+                  <text class="thumb__tip">暂无照片</text>
+                </view>
               </view>
             </view>
-
-            <view v-if="editable" class="thumb thumb--add" @tap="addPhotos(gi)">
-              <wd-icon name="camera" size="26px" color="#6e7b83" />
-              <text class="thumb__tip">添加图片</text>
-            </view>
           </view>
-
-          <text
-            v-if="!editable && group.items.length === 0"
-            class="group__empty"
-          >
-            暂无照片
-          </text>
         </view>
       </scroll-view>
 
@@ -518,23 +544,6 @@ function onDismiss() {
   color: $text-title;
 }
 
-.group {
-  padding: 24rpx 0;
-}
-
-.group__title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: $text-body;
-}
-
-.group__grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20rpx;
-  margin-top: 20rpx;
-}
-
 .group__empty {
   display: block;
   margin-top: 12rpx;
@@ -542,45 +551,99 @@ function onDismiss() {
   color: $text-label;
 }
 
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20rpx 16rpx;
+  padding: 24rpx 0;
+}
+
+.photo-slot {
+  min-width: 0;
+}
+
+.photo-slot__title {
+  height: 36rpx;
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 22rpx;
+  font-weight: 400;
+  line-height: 36rpx;
+  color: $text-body;
+  white-space: nowrap;
+}
+
+.photo-slot__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
 .thumb {
   position: relative;
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: 16rpx;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  overflow: hidden;
+  background: #f5f7fa;
+  border-radius: 12rpx;
 }
 
 .thumb__img {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  border-radius: 16rpx;
+  border-radius: 12rpx;
 }
 
 .thumb__remove {
   position: absolute;
-  top: -10rpx;
-  right: -10rpx;
+  top: 8rpx;
+  right: 8rpx;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 36rpx;
   height: 36rpx;
-  background: rgb(0 0 0 / 55%);
+  background: rgb(0 0 0 / 45%);
   border-radius: 50%;
 }
 
-.thumb--add {
+.thumb--add,
+.thumb--empty {
+  box-sizing: border-box;
+  background: #fafafa;
+  border: 2rpx dashed #d9d9d9;
+}
+
+.thumb__inner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
-  border: 2rpx dashed #cfd6e0;
+}
+
+.thumb__plus {
+  font-size: 44rpx;
+  line-height: 1;
+  color: #bfbfbf;
 }
 
 .thumb__tip {
-  margin-top: 10rpx;
+  margin-top: 8rpx;
   font-size: 22rpx;
-  color: $text-label;
+  color: #8c8c8c;
 }
 
 .panel__foot {
