@@ -7,7 +7,6 @@ import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-ad
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Copy, IconifyIcon } from '@vben/icons';
@@ -54,6 +53,7 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
+import SharePreviewModal from '#/views/loading-order-share/share-preview-modal.vue';
 
 import cameraIcon from './assets/camera.svg';
 import tagCloseIcon from './assets/tag-close.svg';
@@ -64,7 +64,6 @@ defineOptions({
 });
 
 const { hasAccessByCodes } = useAccess();
-const router = useRouter();
 
 const seaExportIdRef = useKeepAliveRouteParamId();
 const seaExportId = computed(() => seaExportIdRef.value ?? '');
@@ -923,27 +922,10 @@ const copyLoadingOrderNum = async () => {
   }
 };
 
-const copyText = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.append(textarea);
-    textarea.select();
-    const ok = document.execCommand('copy');
-    textarea.remove();
-    return ok;
-  }
-};
-
 const canShare = computed(() => Boolean(detail.value?.loadingOrderNum));
+const sharePreviewOpen = ref(false);
 
-const copyShareUrl = async () => {
+const openSharePreview = () => {
   const orderNum = detail.value?.loadingOrderNum?.trim();
   const mbl = String(displayMblNum.value || '').trim();
   if (!orderNum) {
@@ -954,20 +936,7 @@ const copyShareUrl = async () => {
     message.warning($t('seaExport.loadingOrder.shareNeedMbl'));
     return;
   }
-  const { href } = router.resolve({
-    name: 'LoadingOrderSharePage',
-    query: {
-      mblNum: mbl,
-      loadingOrderNum: orderNum,
-    },
-  });
-  const url = `${window.location.origin}${href}`;
-  const ok = await copyText(url);
-  if (ok) {
-    message.success($t('seaExport.loadingOrder.shareCopied'));
-  } else {
-    message.error($t('seaExport.loadingOrder.shareFailed'));
-  }
+  sharePreviewOpen.value = true;
 };
 
 const displayValue = (value: null | number | string | undefined) => {
@@ -1012,7 +981,7 @@ const displayValue = (value: null | number | string | undefined) => {
             >
               <Button
                 class="loading-order__action-button"
-                @click="copyShareUrl"
+                @click="openSharePreview"
               >
                 <template #icon>
                   <IconifyIcon icon="lucide:share-2" />
@@ -1491,6 +1460,12 @@ const displayValue = (value: null | number | string | undefined) => {
         />
       </Image.PreviewGroup>
     </div>
+
+    <SharePreviewModal
+      v-model:open="sharePreviewOpen"
+      :loading-order-num="detail?.loadingOrderNum ?? ''"
+      :mbl-num="String(displayMblNum || '')"
+    />
 
     <RecommendModal
       v-model:open="recommendOpen"

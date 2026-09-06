@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import type { LoadingOrderAdminApi } from '#/api/sea-export/loading-order-admin';
 
+import type { LoadingShareLang } from './share-text';
+
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -9,12 +11,29 @@ import dayjs from 'dayjs';
 
 import {
   getLoadingOrderPublicDetail,
-  LOADING_ORDER_STATUS_TEXT,
+  LoadingOrderStatus,
 } from '#/api/sea-export/loading-order-admin';
 import { buildAttachmentUrl } from '#/utils';
 import { brandLogo, brandLogoText } from '#/utils/brand-assets';
 
+import { getLoadingShareText } from './share-text';
+
 defineOptions({ name: 'LoadingOrderSharePage' });
+
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+    lang?: LoadingShareLang;
+    loadingOrderNum?: string;
+    mblNum?: string;
+  }>(),
+  {
+    embedded: false,
+    lang: undefined,
+    loadingOrderNum: '',
+    mblNum: '',
+  },
+);
 
 const EMPTY = '—';
 
@@ -30,11 +49,19 @@ const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
 
 function readQuery(key: string): string {
+  if (props.embedded) return '';
   const raw = Array.isArray(route.query[key])
     ? route.query[key]?.[0]
     : route.query[key];
   return typeof raw === 'string' ? raw.trim() : '';
 }
+
+const shareLang = computed<LoadingShareLang>(() => {
+  if (props.lang === 'en' || props.lang === 'zh') return props.lang;
+  return readQuery('lang') === 'en' ? 'en' : 'zh';
+});
+
+const t = computed(() => getLoadingShareText(shareLang.value));
 
 function textOr(value?: null | number | string) {
   if (value === null || value === undefined || String(value).trim() === '') {
@@ -63,11 +90,13 @@ function extractAbpMessage(error: unknown) {
   const message = payload?.error?.message?.trim();
   if (message) return message;
   if (error instanceof Error && error.message) return error.message;
-  return '主提单号或监装工单号错误';
+  return t.value.queryError;
 }
 
-const mblNum = computed(() => readQuery('mblNum'));
-const loadingOrderNum = computed(() => readQuery('loadingOrderNum'));
+const mblNum = computed(() => props.mblNum.trim() || readQuery('mblNum'));
+const loadingOrderNum = computed(
+  () => props.loadingOrderNum.trim() || readQuery('loadingOrderNum'),
+);
 const hasQuery = computed(
   () => Boolean(mblNum.value) && Boolean(loadingOrderNum.value),
 );
@@ -76,7 +105,7 @@ const sea = computed(() => detail.value?.seaExport);
 const statusLabel = computed(() => {
   const status = detail.value?.status;
   if (status == null) return '';
-  return LOADING_ORDER_STATUS_TEXT[status] ?? '';
+  return t.value.status[status] ?? '';
 });
 
 const vesselVoyage = computed(() => {
@@ -88,7 +117,7 @@ const goodsText = computed(() => {
   const names = (sea.value?.codeGoodss ?? [])
     .map((item) => item.name)
     .filter(Boolean);
-  return names.length > 0 ? names.join('、') : EMPTY;
+  return names.length > 0 ? names.join(t.value.listJoin) : EMPTY;
 });
 
 const ctnQtyText = computed(() => {
@@ -100,37 +129,47 @@ const ctnQtyText = computed(() => {
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   return [...counts.entries()]
-    .map(([name, count]) => `${name}*${count}`)
+    .map(([name, count]) => `${name} × ${count}`)
     .join(' ');
 });
 
 const supervisorText = computed(() => {
   const names = (detail.value?.loadingOrderUsers ?? [])
-    .map((item) => item.user?.nickName)
+    .map((item) => {
+      if (shareLang.value === 'en') {
+        return item.user?.enName || item.user?.nickName;
+      }
+      return item.user?.nickName || item.user?.enName;
+    })
     .filter(Boolean);
-  return names.length > 0 ? names.join('、') : EMPTY;
+  return names.length > 0 ? names.join(t.value.listJoin) : EMPTY;
 });
+
+const completedCount = computed(
+  () =>
+    detail.value?.orderCtns?.filter((ctn) => ctn.isLoadingCompleted).length ??
+    0,
+);
 
 const basicRows = computed(() => {
   const item = detail.value;
   if (!item) return [];
+  const labels = t.value.fields;
   return [
-    { label: '监装工号', value: textOr(item.loadingOrderNum) },
-    { label: '提单号', value: textOr(sea.value?.mblNum) },
-    { label: '船名航次', value: vesselVoyage.value },
-    { label: '箱型箱量', value: ctnQtyText.value },
-    { label: '品名', value: goodsText.value },
+    { label: labels.vesselVoyage, value: vesselVoyage.value },
+    { label: labels.ctnQty, value: ctnQtyText.value },
+    { label: labels.goods, value: goodsText.value },
     {
-      label: '毛重',
-      value: sea.value?.kgs == null ? EMPTY : `${sea.value.kgs} KG`,
+      label: labels.kgs,
+      value: sea.value?.kgs == null ? EMPTY : t.value.kg(sea.value.kgs),
     },
-    { label: '件数', value: textOr(sea.value?.pkgs) },
-    { label: '包装', value: textOr(sea.value?.codePackage?.name) },
-    { label: '明细包装', value: textOr(item.codePackageItem?.name) },
-    { label: '明细包装件数', value: textOr(item.pkgs) },
-    { label: '预计到货时间', value: formatDateTime(item.estimatedArrivalTime) },
-    { label: '监装堆场', value: textOr(item.carrierYard?.name) },
-    { label: '监装师傅', value: supervisorText.value },
+    { label: labels.pkgs, value: textOr(sea.value?.pkgs) },
+    { label: labels.package, value: textOr(sea.value?.codePackage?.name) },
+    { label: labels.packageItem, value: textOr(item.codePackageItem?.name) },
+    { label: labels.packageItemQty, value: textOr(item.pkgs) },
+    { label: labels.eta, value: formatDateTime(item.estimatedArrivalTime) },
+    { label: labels.yard, value: textOr(item.carrierYard?.name) },
+    { label: labels.supervisors, value: supervisorText.value },
   ];
 });
 
@@ -165,7 +204,7 @@ function visiblePhotoGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
 async function loadDetail() {
   if (!hasQuery.value) {
     detail.value = null;
-    errorText.value = '请通过分享给您的链接访问';
+    errorText.value = '';
     return;
   }
 
@@ -191,6 +230,14 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => t.value.title,
+  (title) => {
+    if (!props.embedded) document.title = title;
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -205,23 +252,46 @@ watch(
         />
         <span v-else class="loading-share__company">{{ companyName }}</span>
       </div>
-      <span class="loading-share__title">监装信息</span>
-      <span v-if="statusLabel" class="loading-share__status">
-        {{ statusLabel }}
-      </span>
+      <span class="loading-share__title">{{ t.title }}</span>
     </header>
 
     <main class="loading-share__body">
       <Spin :spinning="loading">
         <div v-if="!detail" class="loading-share__empty">
-          <Empty :description="errorText || '请通过分享给您的链接访问'" />
+          <Empty :description="loading ? t.loading : errorText || t.needLink" />
         </div>
 
         <template v-else>
+          <section
+            class="loading-share__overview"
+            aria-labelledby="share-heading"
+          >
+            <div>
+              <div class="loading-share__eyebrow">{{ t.eyebrow }}</div>
+              <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
+              <p class="loading-share__order">
+                {{ t.mblNum }}
+                <span
+                  >{{ t.loadingOrder }}
+                  {{ textOr(detail.loadingOrderNum) }}</span
+                >
+              </p>
+            </div>
+            <span
+              v-if="statusLabel"
+              class="loading-share__status"
+              :class="{
+                'is-done': detail.status === LoadingOrderStatus.Completed,
+                'is-pending': detail.status === LoadingOrderStatus.Pending,
+                'is-active': detail.status === LoadingOrderStatus.Claimed,
+              }"
+              ><span class="loading-share__status-dot" />{{ statusLabel }}</span
+            >
+          </section>
           <section class="loading-share__card">
             <div class="loading-share__card-head">
-              <span class="loading-share__bar" />
-              <h2>基本信息</h2>
+              <span class="loading-share__section-number">01</span>
+              <h2>{{ t.basicInfo }}</h2>
             </div>
             <dl class="loading-share__rows">
               <div
@@ -237,15 +307,20 @@ watch(
 
           <section class="loading-share__card">
             <div class="loading-share__card-head">
-              <span class="loading-share__bar" />
-              <h2>集装箱</h2>
+              <span class="loading-share__section-number">02</span>
+              <h2>{{ t.containers }}</h2>
               <span class="loading-share__count">
-                共 {{ detail.orderCtns?.length ?? 0 }} 个
+                {{
+                  t.completedCount(
+                    completedCount,
+                    detail.orderCtns?.length ?? 0,
+                  )
+                }}
               </span>
             </div>
 
             <div v-if="!detail.orderCtns?.length" class="loading-share__hint">
-              暂无箱型
+              {{ t.noContainers }}
             </div>
 
             <article
@@ -254,19 +329,48 @@ watch(
               class="loading-share__ctn"
             >
               <div class="loading-share__ctn-head">
-                <strong>{{ index + 1 }}. {{ ctnTypeName(ctn.ctnCode) }}</strong>
+                <div class="loading-share__ctn-identity">
+                  <span class="loading-share__ctn-index">{{
+                    String(index + 1).padStart(2, '0')
+                  }}</span
+                  ><strong>{{ ctnTypeName(ctn.ctnCode) }}</strong>
+                </div>
                 <span
                   class="loading-share__ctn-status"
                   :class="ctn.isLoadingCompleted ? 'is-done' : 'is-pending'"
                 >
-                  {{ ctn.isLoadingCompleted ? '已完成' : '待处理' }}
+                  {{ ctn.isLoadingCompleted ? t.done : t.pending }}
                 </span>
               </div>
               <div class="loading-share__ctn-meta">
-                <span>箱号 {{ textOr(ctn.ctnNo) }}</span>
-                <span>封号 {{ textOr(ctn.sealNo) }}</span>
+                <div>
+                  <span>{{ t.ctnNo }}</span
+                  ><strong>{{ textOr(ctn.ctnNo) }}</strong>
+                </div>
+                <div>
+                  <span>{{ t.sealNo }}</span
+                  ><strong>{{ textOr(ctn.sealNo) }}</strong>
+                </div>
               </div>
 
+              <div
+                v-if="!visiblePhotoGroups(ctn).length"
+                class="loading-share__photo-empty"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <circle cx="8" cy="9" r="1.5" />
+                  <path d="m3 17 5-5 4 4 3-3 6 6" />
+                </svg>
+                <span>{{ t.noPhotos }}</span
+                ><span>{{ t.noPhotosHint }}</span>
+              </div>
               <div
                 v-for="group in visiblePhotoGroups(ctn)"
                 :key="
@@ -282,7 +386,7 @@ watch(
                   {{
                     group.attachmentDtlType?.name ||
                     group.attachmentDtlType?.typeName ||
-                    '监装照片'
+                    t.photoFallback
                   }}
                 </div>
                 <div class="loading-share__photo-grid">
@@ -295,7 +399,8 @@ watch(
                     @click="openPreview(ctn, buildAttachmentUrl(item.url))"
                   >
                     <img
-                      :alt="item.friendlyFileName || '监装照片'"
+                      loading="lazy"
+                      :alt="item.friendlyFileName || t.photoFallback"
                       :src="buildAttachmentUrl(item.url)"
                     />
                   </button>
@@ -306,6 +411,10 @@ watch(
         </template>
       </Spin>
     </main>
+
+    <footer class="loading-share__footer">
+      {{ t.footer(companyName) }}
+    </footer>
 
     <div class="loading-share__preview-host">
       <Image.PreviewGroup
@@ -327,22 +436,26 @@ watch(
 
 <style scoped>
 .loading-share {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: #f5f5f7;
+  height: 100%;
+  min-height: 100%;
+  overflow: auto;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #24344a;
+  background: #f2f5f9;
+  -webkit-font-smoothing: antialiased;
 }
 
 .loading-share__header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  flex-shrink: 0;
-  gap: 12px;
+  gap: 24px;
   align-items: center;
-  min-height: 56px;
-  padding: 8px 20px;
+  min-height: 72px;
+  padding: 12px max(24px, calc((100% - 1080px) / 2));
   background: #fff;
-  border-bottom: 1px solid rgb(60 60 67 / 10%);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  border-bottom: 1px solid #e3e9f0;
 }
 
 .loading-share__brand {
@@ -351,124 +464,169 @@ watch(
 }
 
 .loading-share__logo {
+  width: auto;
   max-width: 180px;
-  height: 32px;
+  height: 34px;
   object-fit: contain;
 }
 
 .loading-share__company {
-  font-size: 18px;
-  font-weight: 600;
-  color: rgb(0 0 0 / 88%);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .loading-share__title {
-  padding-left: 12px;
-  font-size: 15px;
-  color: rgb(60 60 67 / 60%);
-  border-left: 1px solid rgb(60 60 67 / 12%);
-}
-
-.loading-share__status {
-  padding: 2px 10px;
-  margin-left: auto;
-  font-size: 12px;
-  color: #1677ff;
-  background: #e6f4ff;
-  border-radius: 999px;
+  padding-left: 24px;
+  font-size: 14px;
+  color: #5d6c80;
+  border-left: 1px solid #dce3ec;
 }
 
 .loading-share__body {
   box-sizing: border-box;
   width: 100%;
-  max-width: 860px;
-  padding: 16px 16px 32px;
+  max-width: 1128px;
+  padding: 0 24px;
   margin: 0 auto;
 }
 
-.loading-share__empty {
+.loading-share__overview {
   display: flex;
+  gap: 20px;
   align-items: center;
-  justify-content: center;
-  min-height: 360px;
+  justify-content: space-between;
+  padding: 34px 0 28px;
+}
+
+.loading-share__eyebrow {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7b90;
+  letter-spacing: 1px;
+}
+
+.loading-share__overview h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
+}
+
+.loading-share__order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #6b7b90;
+}
+
+.loading-share__order span {
+  color: #43556d;
+}
+
+.loading-share__status,
+.loading-share__ctn-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 7px;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #53647a;
+  background: #e6ebf1;
+  border-radius: 6px;
+}
+
+.loading-share__status-dot {
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+  border-radius: 50%;
+}
+
+.loading-share .is-done,
+.loading-share .is-active {
+  color: #2160b7;
+  background: #eaf2ff;
+}
+
+.loading-share .is-pending {
+  color: #9a5d16;
+  background: #fff3df;
 }
 
 .loading-share__card {
-  padding: 16px 18px 8px;
-  margin-bottom: 12px;
+  margin-bottom: 22px;
+  overflow: hidden;
   background: #fff;
+  border: 1px solid #e1e7ef;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .loading-share__card-head {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
+  padding: 19px 24px;
+  border-bottom: 1px solid #e8edf3;
 }
 
-.loading-share__bar {
-  width: 4px;
-  height: 14px;
-  background: linear-gradient(180deg, #327aff 0%, rgb(50 122 255 / 50%) 100%);
-  border-radius: 2px;
+.loading-share__section-number {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #8292a8;
 }
 
 .loading-share__card-head h2 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
-  color: #252a31;
+  font-size: 16px;
+  font-weight: 600;
+  color: #24344a;
 }
 
 .loading-share__count {
+  margin-left: auto;
   font-size: 12px;
-  color: #8c95a3;
+  color: #6b7b90;
 }
 
 .loading-share__rows {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px 32px;
+  padding: 24px;
   margin: 0;
 }
 
 .loading-share__row {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #eef1f4;
-}
-
-.loading-share__row:last-child {
-  border-bottom: 0;
+  min-width: 0;
 }
 
 .loading-share__row dt {
-  flex: 0 0 auto;
-  font-size: 13px;
-  color: #697586;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #738096;
 }
 
 .loading-share__row dd {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: #252a31;
-  text-align: right;
-  word-break: break-all;
-}
-
-.loading-share__hint {
-  padding: 16px 0 20px;
-  font-size: 13px;
-  color: #8c95a3;
+  line-height: 1.6;
+  color: #283b53;
+  overflow-wrap: anywhere;
 }
 
 .loading-share__ctn {
-  padding: 12px 0 16px;
-  border-top: 1px solid #eef1f4;
+  padding: 22px 24px 24px;
+  border-top: 1px solid #e8edf3;
 }
 
 .loading-share__ctn:first-of-type {
@@ -477,90 +635,240 @@ watch(
 
 .loading-share__ctn-head {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
 }
 
-.loading-share__ctn-head strong {
-  font-size: 14px;
-  color: #252a31;
+.loading-share__ctn-identity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
-.loading-share__ctn-status {
-  padding: 1px 8px;
+.loading-share__ctn-index {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   font-size: 12px;
-  border-radius: 999px;
+  color: #647892;
+  background: #f0f4f9;
+  border-radius: 5px;
 }
 
-.loading-share__ctn-status.is-done {
-  color: #389e0d;
-  background: #f6ffed;
-}
-
-.loading-share__ctn-status.is-pending {
-  color: #d46b08;
-  background: #fff7e6;
+.loading-share__ctn-head strong {
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .loading-share__ctn-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  max-width: 540px;
+  margin: 20px 0;
+}
+
+.loading-share__ctn-meta div {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.loading-share__ctn-meta span {
+  flex-shrink: 0;
+  color: #738096;
+}
+
+.loading-share__ctn-meta strong {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.loading-share__photo-empty {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: #697586;
+  gap: 10px;
+  align-items: center;
+  padding: 18px;
+  font-size: 12px;
+  color: #758397;
+  background: #f7f9fc;
+  border: 1px dashed #dce4ee;
+  border-radius: 7px;
+}
+
+.loading-share__photo-empty svg {
+  width: 20px;
+  height: 20px;
+}
+
+.loading-share__photo-empty span:first-of-type {
+  color: #52657e;
 }
 
 .loading-share__photos {
-  margin-top: 10px;
+  margin-top: 24px;
 }
 
 .loading-share__photo-label {
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: #8c95a3;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #52657e;
 }
 
 .loading-share__photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
 }
 
 .loading-share__photo {
   display: block;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  background: #f5f7fa;
+  background: #edf2f8;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .loading-share__photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 180ms ease-out;
+}
+
+.loading-share__photo:hover img {
+  transform: scale(1.04);
+}
+
+.loading-share__photo:focus-visible {
+  outline: 3px solid #2160b7;
+  outline-offset: 3px;
+}
+
+.loading-share__empty {
+  display: grid;
+  place-items: center;
+  min-height: 400px;
+}
+
+.loading-share__hint {
+  padding: 24px;
+  font-size: 13px;
+  color: #738096;
+}
+
+.loading-share__footer {
+  padding: 6px 24px 28px;
+  font-size: 12px;
+  color: #7e8ba0;
+  text-align: center;
 }
 
 .loading-share__preview-host {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
+  .loading-share__rows {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
   .loading-share__header {
-    padding: 8px 12px;
+    gap: 16px;
+    min-height: 62px;
+    padding: 12px 16px;
   }
 
   .loading-share__logo {
-    max-width: 120px;
-    height: 26px;
+    max-width: 130px;
+    height: 28px;
+  }
+
+  .loading-share__title {
+    padding-left: 16px;
+    font-size: 13px;
   }
 
   .loading-share__body {
-    padding: 12px 12px 28px;
+    padding: 0 14px;
+  }
+
+  .loading-share__overview {
+    gap: 12px;
+    align-items: flex-start;
+    padding: 26px 4px 22px;
+  }
+
+  .loading-share__overview > div {
+    min-width: 0;
+  }
+
+  .loading-share__status {
+    padding: 5px 9px;
+    margin-top: 27px;
+  }
+
+  .loading-share__card {
+    margin-bottom: 16px;
+  }
+
+  .loading-share__card-head {
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .loading-share__card-head h2 {
+    font-size: 15px;
+  }
+
+  .loading-share__rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 18px;
+    padding: 20px 16px;
+  }
+
+  .loading-share__ctn {
+    padding: 18px 16px;
+  }
+
+  .loading-share__ctn-meta {
+    gap: 14px;
+  }
+
+  .loading-share__ctn-meta div {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .loading-share__photo-empty {
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .loading-share__photo-empty span:last-child {
+    flex-basis: 100%;
+    padding-left: 28px;
+  }
+
+  .loading-share__photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-share__photo img {
+    transition: none;
   }
 }
 </style>

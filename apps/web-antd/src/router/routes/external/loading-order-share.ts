@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 /**
  * 监装工单客户公开详情（免登录、无 Layout）。
  * 口令是主提单号 + 监装工单号：`/loading-order-share?mblNum=&loadingOrderNum=`
+ * 可选 `lang=en` 展示英文客户页；缺省中文。
  * 页内不展示监装要求与备注。
  */
 const routes: RouteRecordRaw[] = [

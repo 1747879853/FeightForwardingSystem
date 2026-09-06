@@ -13,6 +13,9 @@
 
 ## 2026-09
 
+- [2026-09-06 监装分享先预览再切中英文复制链接](./changelogs/change-log-2026-09-06-loading-share-preview-lang.md)
+- [2026-09-06 监装客户公开页顶栏 Logo 行吸顶](./changelogs/change-log-2026-09-06-loading-share-header-sticky.md)
+- [2026-09-06 监装客户公开页去掉「客户共享 · 只读查看」](./changelogs/change-log-2026-09-06-loading-share-header-note.md)
 - [2026-09-06 监装明细包装占位区分未填包装与无明细](./changelogs/change-log-2026-09-06-loading-package-item-placeholder.md)
 - [2026-09-06 小程序监装检索选中船公司后回显 logo](./changelogs/change-log-2026-09-06-mp-loading-carrier-selected-logo.md)
 - [2026-09-05 小程序监装检索起运港/船公司对齐 PC 下拉文案](./changelogs/change-log-2026-09-05-mp-loading-filter-select-labels.md)
