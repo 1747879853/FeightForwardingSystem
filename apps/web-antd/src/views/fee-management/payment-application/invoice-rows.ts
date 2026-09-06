@@ -33,6 +33,8 @@ export interface InvoiceRowForm {
   key: string;
   invoiceNo: string;
   invoiceDate?: string;
+  sellerHeader?: string;
+  amount?: number | null;
   attachment?: InvoiceRowAttachment | null;
 }
 
@@ -47,10 +49,12 @@ export function createEmptyInvoiceRow(
   overrides?: Partial<InvoiceRowForm>,
 ): InvoiceRowForm {
   return {
+    amount: undefined,
     attachment: null,
     invoiceDate: undefined,
     invoiceNo: '',
     key: createInvoiceRowKey(),
+    sellerHeader: '',
     ...overrides,
   };
 }
@@ -78,8 +82,10 @@ export function mapInvoicesFromDetail(
               friendlyFileName: attachment.friendlyFileName,
               url: attachment.url,
             },
+      amount: invoice.amount ?? undefined,
       invoiceDate: formatInvoiceDate(invoice.invoiceDate),
       invoiceNo: invoice.invoiceNo ?? '',
+      sellerHeader: invoice.sellerHeader ?? '',
     });
   });
 }
@@ -90,7 +96,11 @@ function hasInvoiceNo(row: InvoiceRowForm) {
 
 function isMeaningfulInvoiceRow(row: InvoiceRowForm) {
   return (
-    hasInvoiceNo(row) || Boolean(row.invoiceDate) || row.attachment != null
+    hasInvoiceNo(row) ||
+    Boolean(row.invoiceDate) ||
+    Boolean(row.sellerHeader?.trim()) ||
+    row.amount != null ||
+    row.attachment != null
   );
 }
 
@@ -119,10 +129,12 @@ export function buildInvoiceSubmitPayload(
               clientVisible: row.attachment?.clientVisible ?? false,
               displayOrder: row.attachment?.displayOrder ?? 0,
             },
+      amount: row.amount ?? null,
       invoiceDate: row.invoiceDate
         ? dayjs(row.invoiceDate).toISOString()
         : null,
       invoiceNo: row.invoiceNo.trim(),
+      sellerHeader: row.sellerHeader?.trim() || null,
       sortId: index,
     };
   });
@@ -174,6 +186,10 @@ export function validateInvoiceRows(
       return { message: '同一付费申请下发票号不可重复', ok: false };
     }
     seen.add(invoiceNo);
+    const sellerHeader = row.sellerHeader?.trim() ?? '';
+    if (sellerHeader.length > 256) {
+      return { message: '销售方抬头长度不能超过256个字符', ok: false };
+    }
   }
 
   return { ok: true };
@@ -238,48 +254,112 @@ export function formatPayAppInvoiceDates(
   return dates.join(',');
 }
 
+export function formatPayAppSellerHeaders(
+  invoices?: null | PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[],
+): string {
+  const seen = new Set<string>();
+  const headers: string[] = [];
+  for (const invoice of invoices ?? []) {
+    const value = invoice.sellerHeader?.trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    headers.push(value);
+  }
+  return headers.join(',');
+}
+
+/** 发票金额合计（前端自己算，不走后端）。全部未填返回 null。 */
+export function sumInvoiceAmounts(
+  invoices?:
+    | null
+    | InvoiceRowForm[]
+    | PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[],
+): number | null {
+  let hasValue = false;
+  let total = 0;
+  for (const invoice of invoices ?? []) {
+    if (invoice.amount == null) continue;
+    const amount = Number(invoice.amount);
+    if (!Number.isFinite(amount)) continue;
+    hasValue = true;
+    total += amount;
+  }
+  if (!hasValue) return null;
+  return Math.round(total * 100) / 100;
+}
+
+function parseExtractedAmount(value: null | number | string | undefined) {
+  if (value == null || value === '') return undefined;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : undefined;
+}
+
+function trimExtractedText(value?: null | string) {
+  const text = value?.trim() ?? '';
+  return text || undefined;
+}
+
+function mergeExtractedInvoice(
+  row: InvoiceRowForm,
+  result: GeminiInvoiceDto,
+): { message: string; next: InvoiceRowForm; ok: boolean } {
+  const nextNo = result.invoiceNo?.trim() || '';
+  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
+  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
+  const nextAmount = parseExtractedAmount(result.totalAmount);
+  const nextSellerHeader = trimExtractedText(result.sellerHeader);
+  if (!nextNo && !nextDate && nextAmount == null && !nextSellerHeader) {
+    return {
+      message: '未能识别出发票号、开票日期、抬头和金额，请手动填写',
+      next: row,
+      ok: false,
+    };
+  }
+
+  const filled: string[] = [];
+  if (nextNo) filled.push('发票号');
+  if (nextDate) filled.push('开票日期');
+  if (nextSellerHeader) filled.push('销售方抬头');
+  if (nextAmount != null) filled.push('金额');
+
+  return {
+    message: `已填入${filled.join('、')}，请核对后保存`,
+    next: {
+      ...row,
+      amount: nextAmount ?? row.amount,
+      invoiceDate: nextDate || row.invoiceDate,
+      invoiceNo: nextNo || row.invoiceNo,
+      sellerHeader: nextSellerHeader || row.sellerHeader,
+    },
+    ok: true,
+  };
+}
+
 /** 识别结果写入第一张空发票号的行；没有空行则追加一行。 */
 export function applyExtractedInvoiceToRows(
   rows: InvoiceRowForm[],
   result: GeminiInvoiceDto,
 ): { message: string; next: InvoiceRowForm[]; ok: boolean } {
-  const nextNo = result.invoiceNo?.trim() || '';
-  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
-  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
-  if (!nextNo && !nextDate) {
-    return {
-      message: '未能识别出发票号和开票日期，请手动填写',
-      next: rows,
-      ok: false,
-    };
+  const probe = mergeExtractedInvoice(createEmptyInvoiceRow(), result);
+  if (!probe.ok) {
+    return { message: probe.message, next: rows, ok: false };
   }
 
   const targetIndex = rows.findIndex((row) => !hasInvoiceNo(row));
   if (targetIndex >= 0) {
+    const applied = mergeExtractedInvoice(rows[targetIndex]!, result);
     return {
-      message: '已填入识别结果，请核对后保存',
+      message: applied.message,
       next: rows.map((row, index) =>
-        index === targetIndex
-          ? {
-              ...row,
-              invoiceDate: nextDate || row.invoiceDate,
-              invoiceNo: nextNo || row.invoiceNo,
-            }
-          : row,
+        index === targetIndex ? applied.next : row,
       ),
       ok: true,
     };
   }
 
   return {
-    message: '已填入识别结果，请核对后保存',
-    next: [
-      ...rows,
-      createEmptyInvoiceRow({
-        invoiceDate: nextDate || undefined,
-        invoiceNo: nextNo,
-      }),
-    ],
+    message: probe.message,
+    next: [...rows, probe.next],
     ok: true,
   };
 }
@@ -288,23 +368,5 @@ export function applyExtractedInvoiceToRow(
   row: InvoiceRowForm,
   result: GeminiInvoiceDto,
 ): { message: string; next: InvoiceRowForm; ok: boolean } {
-  const nextNo = result.invoiceNo?.trim() || '';
-  const parsedDate = result.invoiceDate ? dayjs(result.invoiceDate) : null;
-  const nextDate = parsedDate?.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
-  if (!nextNo && !nextDate) {
-    return {
-      message: '未能识别出发票号和开票日期，请手动填写',
-      next: row,
-      ok: false,
-    };
-  }
-  return {
-    message: '已填入识别结果，请核对后保存',
-    next: {
-      ...row,
-      invoiceDate: nextDate || row.invoiceDate,
-      invoiceNo: nextNo || row.invoiceNo,
-    },
-    ok: true,
-  };
+  return mergeExtractedInvoice(row, result);
 }

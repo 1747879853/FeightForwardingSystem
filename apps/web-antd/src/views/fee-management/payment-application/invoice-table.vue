@@ -3,7 +3,7 @@ import type { UploadFile } from 'ant-design-vue';
 
 import type { InvoiceRowForm } from './invoice-rows';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -11,6 +11,7 @@ import {
   Button,
   DatePicker,
   Input,
+  InputNumber,
   Tooltip,
   Upload,
   message,
@@ -20,9 +21,11 @@ import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { extractInvoice } from '#/api/sea-export/gemini-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 
+import { formatAmount } from './form-data';
 import {
   applyExtractedInvoiceToRow,
   createEmptyInvoiceRow,
+  sumInvoiceAmounts,
 } from './invoice-rows';
 
 const props = withDefaults(
@@ -36,6 +39,8 @@ const rows = defineModel<InvoiceRowForm[]>({ default: () => [] });
 
 const uploadingKey = ref<null | string>(null);
 const extractingKey = ref<null | string>(null);
+
+const invoiceAmountTotal = computed(() => sumInvoiceAmounts(rows.value) ?? 0);
 
 function addRow() {
   if (props.disabled) return;
@@ -159,6 +164,36 @@ async function recognizeInvoice(index: number) {
           "
         />
       </div>
+      <div class="invoice-field">
+        <Input
+          :value="row.sellerHeader"
+          :bordered="false"
+          class="invoice-field__control"
+          placeholder="销售方抬头"
+          :maxlength="256"
+          :disabled="disabled"
+          @update:value="
+            (value) => patchRow(index, { sellerHeader: value ?? '' })
+          "
+        />
+      </div>
+      <div class="invoice-field invoice-field--amount">
+        <InputNumber
+          :value="row.amount"
+          :bordered="false"
+          class="invoice-field__control invoice-field__amount"
+          placeholder="发票金额"
+          :precision="2"
+          :controls="false"
+          :disabled="disabled"
+          @change="
+            (value) =>
+              patchRow(index, {
+                amount: value == null ? undefined : Number(value),
+              })
+          "
+        />
+      </div>
       <div class="invoice-table__actions">
         <template v-if="row.attachment">
           <button
@@ -227,6 +262,10 @@ async function recognizeInvoice(index: number) {
       <IconifyIcon icon="mdi:plus" />
       添加发票
     </Button>
+    <div v-if="!disabled || rows.length > 0" class="invoice-table__total">
+      <span>总额</span>
+      <strong>{{ formatAmount(invoiceAmountTotal) }}</strong>
+    </div>
   </div>
 </template>
 
@@ -244,7 +283,9 @@ async function recognizeInvoice(index: number) {
 
 .invoice-table__row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  grid-template-columns:
+    minmax(0, 1.1fr) minmax(120px, 0.8fr) minmax(0, 1.4fr)
+    minmax(110px, 0.7fr) auto;
   gap: 12px;
   align-items: center;
 }
@@ -265,12 +306,39 @@ async function recognizeInvoice(index: number) {
 }
 
 .invoice-field :deep(.ant-input),
-.invoice-field :deep(.ant-picker) {
+.invoice-field :deep(.ant-picker),
+.invoice-field :deep(.ant-input-number) {
   height: 30px;
   padding: 0 11px;
   font-size: 12px;
   color: #4e5969;
   box-shadow: none;
+}
+
+.invoice-field :deep(.ant-input-number) {
+  width: 100%;
+}
+
+.invoice-field :deep(.ant-input-number-input) {
+  height: 30px;
+  padding: 0;
+  font-size: 12px;
+  text-align: right;
+}
+
+.invoice-table__total {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  font-size: 12px;
+  color: #4e5969;
+}
+
+.invoice-table__total strong {
+  font-size: 13px;
+  color: #111827;
 }
 
 .invoice-table__actions {

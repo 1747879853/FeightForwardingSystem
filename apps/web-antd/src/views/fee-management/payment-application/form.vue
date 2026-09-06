@@ -2565,7 +2565,7 @@ void handleSubmitAndNew;
 }
 
 .invoice-fields {
-  max-height: 180px;
+  max-height: 280px;
   margin-top: 0;
   overflow: hidden auto;
   opacity: 1;

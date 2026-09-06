@@ -372,6 +372,22 @@ function buildStaticColumns(): Array<Record<string, any>> {
       slots: { default: 'invoiceDate' },
     },
     {
+      field: 'sellerHeader',
+      title: '销售方抬头',
+      minWidth: 160,
+      showOverflow: true,
+      sortable: false,
+      slots: { default: 'sellerHeader' },
+    },
+    {
+      field: 'invoiceAmountTotal',
+      title: '发票总额',
+      minWidth: 120,
+      align: 'right',
+      sortable: false,
+      slots: { default: 'invoiceAmountTotal' },
+    },
+    {
       field: 'creatorUserName',
       title: $t('seaExport.export.paymentApplication.creatorUserName'),
       minWidth: 100,
@@ -411,7 +427,7 @@ function buildStaticColumns(): Array<Record<string, any>> {
   ];
 }
 
-const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'invoiceDate';
+const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'invoiceAmountTotal';
 
 /** 首次渲染列（申请合计组在默认位置，锚点承载首个币别） */
 export function buildColumns(

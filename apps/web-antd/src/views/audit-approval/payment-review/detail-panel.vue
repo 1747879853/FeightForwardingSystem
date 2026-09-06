@@ -33,6 +33,7 @@ import {
   useFeeInnerColumns,
   useOrderGroupColumns,
 } from '#/views/fee-management/payment-application/form-data';
+import { sumInvoiceAmounts } from '#/views/fee-management/payment-application/invoice-rows';
 
 import { formatSettlementReceivableItems } from './data';
 
@@ -94,6 +95,10 @@ const hasAttachments = computed(
     visibleAttachmentGroups.value.length > 0 ||
     settlementAttachments.value.length > 0 ||
     paymentApplicationInvoices.value.length > 0,
+);
+
+const invoiceAmountTotal = computed(() =>
+  sumInvoiceAmounts(paymentApplicationInvoices.value),
 );
 
 /** 币别 -> 已选结算银行（只读展示） */
@@ -669,8 +674,18 @@ onUnmounted(stopDrag);
                       <span class="review-invoice-row__no">
                         {{ invoice.invoiceNo || '-' }}
                       </span>
+                      <span class="review-invoice-row__header">
+                        {{ invoice.sellerHeader || '-' }}
+                      </span>
                       <span class="review-invoice-row__date">
                         {{ formatInvoiceDate(invoice.invoiceDate) }}
+                      </span>
+                      <span class="review-invoice-row__amount">
+                        {{
+                          invoice.amount == null
+                            ? '-'
+                            : formatAmount(invoice.amount)
+                        }}
                       </span>
                       <button
                         v-if="invoice.attachment"
@@ -687,6 +702,13 @@ onUnmounted(stopDrag);
                       <span v-else class="review-invoice-row__empty">
                         无附件
                       </span>
+                    </div>
+                    <div
+                      v-if="invoiceAmountTotal != null"
+                      class="review-invoice-total"
+                    >
+                      <span>总额</span>
+                      <strong>{{ formatAmount(invoiceAmountTotal) }}</strong>
                     </div>
                   </div>
                 </section>
@@ -1121,11 +1143,20 @@ onUnmounted(stopDrag);
 }
 
 .review-invoice-row__no {
-  flex: 1 1 auto;
+  flex: 1 1 80px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   color: #262626;
+  white-space: nowrap;
+}
+
+.review-invoice-row__header {
+  flex: 1 1 100px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #595959;
   white-space: nowrap;
 }
 
@@ -1134,9 +1165,30 @@ onUnmounted(stopDrag);
   color: #8c8c8c;
 }
 
+.review-invoice-row__amount {
+  flex-shrink: 0;
+  min-width: 72px;
+  color: #262626;
+  text-align: right;
+}
+
 .review-invoice-row__empty {
   flex-shrink: 0;
   color: #bfbfbf;
+}
+
+.review-invoice-total {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 4px;
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.review-invoice-total strong {
+  color: #262626;
 }
 
 .review-attachment-group__files {

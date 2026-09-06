@@ -15,7 +15,10 @@ last_updated: 2026-09-06
 >
 > **2026-08-13 更新：** 海运报价解析新增可选文字入参 `text`，前端可让用户"上传文件"或"直接粘贴文字"二选一，原有文件上传调用**不受影响、无需改动**。详见「3.2」与 `Gemini对接-报价解析支持文字输入-2026-08-13.md`。
 >
-> **2026-09-06 更新：** 新增 `ExtractBillFeesAsync`：上传单票账单，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库）。详见「7」与 `Gemini对接-账单识别费用-2026-09-06.md`。
+> **2026-09-06 更新：**
+>
+> 1. 新增 `ExtractBillFeesAsync`：上传单票账单，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库）。详见「7」与 `Gemini对接-账单识别费用-2026-09-06.md`。
+> 2. `ExtractInvoiceAsync` 出参新增 `sellerTaxNo`（销方税号）、`totalAmount`（价税合计）。付费申请把 `totalAmount` 回填到发票行 `amount`，把识别结果的 `sellerHeader` 回填到销售方抬头。详见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md`。
 >
 > **2026-09-04 更新：** 新增 `UploadAndExtractCtnNoAsync`：上传一张图片并识别箱号，出参在通用上传结果上增加 `ctnNo`，识别失败为 `null`。详见「6」。
 >
@@ -29,7 +32,7 @@ last_updated: 2026-09-06
 | 接口 | 用途 | 章节 |
 | :-- | :-- | :-- |
 | `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件**或直接传报价文字**，解析为多行价格数据并回填船公司/港口/币别/箱型Id | 见「3」 |
-| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，识别发票号与开票日期 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
+| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，识别发票号、开票日期、销方税号、价税合计 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
 | `UploadAndExtractCtnNoAsync` | 上传**一张**图片，落成附件并识别箱号 | 见「6」 |
 | `ExtractBillFeesAsync` | 上传**单票账单**，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库） | 见「7」 |
 | `ExtractBillDataAsync` | 上传提单PDF，提取提单字段（gemini-3.5-flash） | 见「4」 |

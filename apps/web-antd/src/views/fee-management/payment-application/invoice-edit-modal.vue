@@ -203,7 +203,7 @@ async function handleOk() {
     :title="applicationNo ? `维护发票信息 · ${applicationNo}` : '维护发票信息'"
     :confirm-loading="saving"
     :ok-button-props="{ disabled: loading }"
-    width="640px"
+    width="880px"
     destroy-on-close
     @cancel="handleCancel"
     @ok="handleOk"

@@ -29,7 +29,7 @@ last_updated: 2026-09-06
 - **编辑申请：** 双击行进入编辑页维护申请单明细。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示各币别「{币别}申请合计」列，承接编辑页结算币别卡片的汇总口径；列配置面板仅保留「申请合计」锚点项，其余币别跟随列自动跟随显隐与顺序。默认插在「开票日期」之后。
 - **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
-- **补录发票弹窗：** 发票流程不是「不开票」时，点击「发票流程」打开维护弹窗（发票流程 + 可增删的发票明细表 + 申请附件）；每行含发票号、开票日期、单个附件，附件可识别预填该行票号与日期，保存走 `EditInvoiceAsync`，不判断申请 status，也不要求先票后付当场有票。发票子表与 `attachmentGroup` 都是全量覆盖。
+- **补录发票弹窗：** 发票流程不是「不开票」时，点击「发票流程」打开维护弹窗（发票流程 + 可增删的发票明细表 + 申请附件）；每行含发票号、开票日期、销售方抬头、发票金额、单个附件，底部展示发票总额（前端求和）；附件可识别预填该行票号、日期、抬头与金额，保存走 `EditInvoiceAsync`，不判断申请 status，也不要求先票后付当场有票。发票子表与 `attachmentGroup` 都是全量覆盖。
 - **批量下载发票：** 勾选付费申请后点「批量下载发票」，传申请 id 调 `DownloadInvoicesAsync` 打 zip；单次最多 50 条；不开票行会先排除；部分缺附件时用 `missingInvoiceNos` 提示。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -53,6 +53,8 @@ last_updated: 2026-09-06
 | **关联结算** | 本申请关联的付费结算简要。 | `paymentSettlements[]` | **触发/依赖：** 含结算附件 `attachments`；`totalSettledPrice` 为整单金额。 | 无关联时为空数组。 |
 | **发票流程** | 先票后付 / 先付后票 / 不开票。 | `invoiceProcess`（0/1/2，必填） | **触发/依赖：** 非不开票时可点击打开发票维护弹窗；先票后付提交前也可在此补票。 | 补录保存走 `EditInvoiceAsync`；提交时先票后付必须已有发票。 |
 | **发票号 / 开票日期** | 一单可多张发票，列表逗号拼接。 | `paymentApplicationInvoices[].invoiceNo` / `invoiceDate` | **触发/依赖：** 列 `field` 仍用 `invoiceNo`/`invoiceDate` 以兼容旧列设置，展示走插槽拼接；筛选仍用 `InvoiceNo`/`InvoiceDateStart`/`InvoiceDateEnd`，命中任意一张即返回。 | 发票号最长 128，同一申请不可重复；列不可按主表字段排序。 |
+| **销售方抬头** | 开票方在发票上的名称，多张逗号拼接。 | `paymentApplicationInvoices[].sellerHeader` | **触发/依赖：** 纯文本，不关联客户表；列表走插槽拼接。 | 最长 256；可空。 |
+| **发票总额** | 本申请各张发票金额合计。 | 前端 `sumInvoiceAmounts(paymentApplicationInvoices)` | **触发/依赖：** 未填金额的行不计入；全部未填列为空；允许负数。不参与申请额度。 | 后端无此字段，不要当成接口出参。 |
 | **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -73,6 +75,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Feature` | 列表增加销售方抬头、发票总额列；补录弹窗可填抬头与金额，底部展示总额。识别回填价税合计到金额、`sellerHeader` 到抬头。 | 总额前端求和；抬头不是客户下拉。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md`。 |
 | 2026-09-06 | `Fix` | 先票后付可先建单再补票；列表提交时才要求至少一条发票。先票后付也可点发票流程补录。 | 提交只走 `SubmitAsync`；按子表票号预判。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-submit.md`。 |
 | 2026-09-04 | `Feature` | 发票号/开票日期改读发票子表并支持一单多票；列表可批量下载发票附件。 | 主表 `invoiceNo`/`invoiceDate` 已删除；展示从 `paymentApplicationInvoices` 拼接。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |
 | 2026-08-31 | `Fix` | 列表「提单号」改为「主提单号」，并增加「委托编号」；多票逗号拼接，过长省略。 | TAPD 1000910（不含付费结算）；与审批列表共用 `formatPayAppCommissionNums`。详见 `changelogs/change-log-2026-08-31-payment-app-review-mbl-commission.md`。 |

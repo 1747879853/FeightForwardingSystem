@@ -173,6 +173,12 @@ export interface GeminiInvoiceDto {
   invoiceNo?: null | string;
   /** 开票日期（ISO 8601，如 2026-08-15T00:00:00；识别不到为 null） */
   invoiceDate?: null | string;
+  /** 销售方抬头（开票方名称）；识别不到为 null */
+  sellerHeader?: null | string;
+  /** 销售方纳税人识别号（销方税号）；识别不到为 null */
+  sellerTaxNo?: null | string;
+  /** 价税合计（含税总金额）；识别不到为 null */
+  totalAmount?: null | number;
 }
 
 /**

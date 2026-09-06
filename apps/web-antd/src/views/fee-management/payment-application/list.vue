@@ -39,12 +39,15 @@ import {
   PAYMENT_APPLICATION_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
+import { formatAmount } from './form-data';
 import InvoiceEditModal from './invoice-edit-modal.vue';
 import {
   INVOICE_PROCESS,
   INVOICE_PROCESS_LABELS,
   formatPayAppInvoiceDates,
   formatPayAppInvoiceNos,
+  formatPayAppSellerHeaders,
+  sumInvoiceAmounts,
   validateInvoiceRequiredOnSubmitFromDetail,
 } from './invoice-rows';
 import SettlementDetailModal from './settlement-detail-modal.vue';
@@ -84,6 +87,13 @@ function canOpenInvoiceEdit(invoiceProcess?: number | null) {
 function getInvoiceProcessLabel(invoiceProcess?: number | null) {
   if (invoiceProcess == null) return '';
   return INVOICE_PROCESS_LABELS[invoiceProcess] ?? '';
+}
+
+function formatInvoiceAmountTotal(
+  invoices?: null | PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[],
+) {
+  const total = sumInvoiceAmounts(invoices);
+  return total == null ? '' : formatAmount(total);
 }
 
 function getStatusTagProps(status: number) {
@@ -536,6 +546,12 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
       </template>
       <template #invoiceDate="{ row }">
         {{ formatPayAppInvoiceDates(row.paymentApplicationInvoices) }}
+      </template>
+      <template #sellerHeader="{ row }">
+        {{ formatPayAppSellerHeaders(row.paymentApplicationInvoices) }}
+      </template>
+      <template #invoiceAmountTotal="{ row }">
+        {{ formatInvoiceAmountTotal(row.paymentApplicationInvoices) }}
       </template>
       <template #action="{ row }">
         <Button

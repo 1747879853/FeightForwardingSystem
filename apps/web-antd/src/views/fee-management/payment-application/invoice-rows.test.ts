@@ -7,7 +7,9 @@ import {
   createEmptyInvoiceRow,
   formatPayAppInvoiceDates,
   formatPayAppInvoiceNos,
+  formatPayAppSellerHeaders,
   mapInvoicesFromDetail,
+  sumInvoiceAmounts,
   validateInvoiceRequiredOnSubmit,
   validateInvoiceRequiredOnSubmitFromDetail,
   validateInvoiceRows,
@@ -46,9 +48,10 @@ describe('formatPayAppInvoiceDates', () => {
 });
 
 describe('mapInvoicesFromDetail / buildInvoiceSubmitPayload', () => {
-  it('详情回填后再提交，保留票号、日期和附件', () => {
+  it('详情回填后再提交，保留票号、日期、抬头、金额和附件', () => {
     const rows = mapInvoicesFromDetail([
       {
+        amount: 12800,
         attachment: {
           attachmentId: '181755750091286530',
           clientVisible: true,
@@ -58,12 +61,15 @@ describe('mapInvoicesFromDetail / buildInvoiceSubmitPayload', () => {
         },
         invoiceDate: '2026-09-01T00:00:00',
         invoiceNo: 'INV-001',
+        sellerHeader: '上海某某国际物流有限公司',
       } as any,
     ]);
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.invoiceNo).toBe('INV-001');
     expect(rows[0]?.invoiceDate).toBe('2026-09-01');
+    expect(rows[0]?.sellerHeader).toBe('上海某某国际物流有限公司');
+    expect(rows[0]?.amount).toBe(12800);
     expect(rows[0]?.attachment?.attachmentId).toBe('181755750091286530');
 
     const payload = buildInvoiceSubmitPayload(
@@ -72,6 +78,7 @@ describe('mapInvoicesFromDetail / buildInvoiceSubmitPayload', () => {
     );
     expect(payload).toEqual([
       {
+        amount: 12800,
         attachment: {
           attachmentDtlTypeId: null,
           attachmentId: '181755750091286530',
@@ -80,6 +87,7 @@ describe('mapInvoicesFromDetail / buildInvoiceSubmitPayload', () => {
         },
         invoiceDate: expect.any(String),
         invoiceNo: 'INV-001',
+        sellerHeader: '上海某某国际物流有限公司',
         sortId: 0,
       },
     ]);
@@ -122,6 +130,25 @@ describe('validateInvoiceRows', () => {
     ]);
     expect(result.ok).toBe(false);
     expect(result.message).toContain('不可重复');
+  });
+
+  it('销售方抬头超过256字符时拦截', () => {
+    const result = validateInvoiceRows(INVOICE_PROCESS.PaymentBeforeInvoice, [
+      createEmptyInvoiceRow({
+        invoiceNo: 'INV-1',
+        sellerHeader: 'A'.repeat(257),
+      }),
+    ]);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('销售方抬头');
+  });
+
+  it('发票金额允许负数，不要求等于申请金额', () => {
+    expect(
+      validateInvoiceRows(INVOICE_PROCESS.PaymentBeforeInvoice, [
+        createEmptyInvoiceRow({ amount: -100, invoiceNo: 'INV-RED' }),
+      ]).ok,
+    ).toBe(true);
   });
 });
 
@@ -167,15 +194,41 @@ describe('validateInvoiceRequiredOnSubmit', () => {
   });
 });
 
+describe('formatPayAppSellerHeaders / sumInvoiceAmounts', () => {
+  it('抬头保序去重，空值跳过', () => {
+    expect(
+      formatPayAppSellerHeaders([
+        { sellerHeader: ' 甲物流 ' } as any,
+        { sellerHeader: '乙物流' } as any,
+        { sellerHeader: '甲物流' } as any,
+        { sellerHeader: '  ' } as any,
+      ]),
+    ).toBe('甲物流,乙物流');
+  });
+
+  it('总额由前端对已填金额求和，未填返回 null，允许负数', () => {
+    expect(sumInvoiceAmounts(undefined)).toBeNull();
+    expect(sumInvoiceAmounts([])).toBeNull();
+    expect(
+      sumInvoiceAmounts([
+        { amount: 12800 } as any,
+        { amount: null } as any,
+        { amount: -800 } as any,
+      ]),
+    ).toBe(12000);
+  });
+});
+
 describe('applyExtractedInvoiceToRows', () => {
   it('填入第一张空发票号的行，没空行则追加', () => {
     const filled = applyExtractedInvoiceToRows(
       [createEmptyInvoiceRow({ invoiceNo: 'OLD' }), createEmptyInvoiceRow()],
-      { invoiceDate: '2026-09-04', invoiceNo: 'NEW' },
+      { invoiceDate: '2026-09-04', invoiceNo: 'NEW', totalAmount: 88.5 },
     );
     expect(filled.ok).toBe(true);
     expect(filled.next[1]?.invoiceNo).toBe('NEW');
     expect(filled.next[1]?.invoiceDate).toBe('2026-09-04');
+    expect(filled.next[1]?.amount).toBe(88.5);
 
     const appended = applyExtractedInvoiceToRows(
       [createEmptyInvoiceRow({ invoiceNo: 'OLD' })],
@@ -183,5 +236,31 @@ describe('applyExtractedInvoiceToRows', () => {
     );
     expect(appended.next).toHaveLength(2);
     expect(appended.next[1]?.invoiceNo).toBe('NEW');
+  });
+
+  it('价税合计回填金额，识别抬头写入销售方抬头', () => {
+    const filled = applyExtractedInvoiceToRows([createEmptyInvoiceRow()], {
+      invoiceNo: 'INV-9',
+      sellerHeader: '上海某某国际物流有限公司',
+      sellerTaxNo: '91310000MA1K35Q12X',
+      totalAmount: 1234.56,
+    });
+    expect(filled.ok).toBe(true);
+    expect(filled.next[0]?.amount).toBe(1234.56);
+    expect(filled.next[0]?.sellerHeader).toBe('上海某某国际物流有限公司');
+    expect(filled.message).toContain('金额');
+    expect(filled.message).toContain('销售方抬头');
+  });
+
+  it('销方税号不写入抬头', () => {
+    const result = applyExtractedInvoiceToRows(
+      [createEmptyInvoiceRow({ sellerHeader: '已有抬头' })],
+      {
+        invoiceNo: 'INV-9',
+        sellerTaxNo: '91310000MA1K35Q12X',
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(result.next[0]?.sellerHeader).toBe('已有抬头');
   });
 });

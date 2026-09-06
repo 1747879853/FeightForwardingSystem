@@ -919,6 +919,10 @@ export namespace PaymentApplicationAdminApi {
   export interface PaymentApplicationInvoiceInputDto {
     invoiceNo: string;
     invoiceDate?: string | null;
+    /** 销售方抬头（开票方名称），纯文本，不关联客户表 */
+    sellerHeader?: string | null;
+    /** 发票金额，允许负数；不参与申请额度计算 */
+    amount?: number | null;
     sortId?: number;
     attachment?: null | PaymentApplicationInvoiceAttachmentInputDto;
   }
@@ -929,6 +933,10 @@ export namespace PaymentApplicationAdminApi {
     paymentApplicationId: string;
     invoiceNo?: string;
     invoiceDate?: string | null;
+    /** 销售方抬头；未填时为 null */
+    sellerHeader?: string | null;
+    /** 发票金额；未填时为 null，可能为负数 */
+    amount?: number | null;
     sortId?: number;
     creationTime?: string;
     creatorUserId?: number | string | null;

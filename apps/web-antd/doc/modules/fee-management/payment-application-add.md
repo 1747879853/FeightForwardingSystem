@@ -27,7 +27,7 @@ last_updated: 2026-09-06
 - **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeCodeSelect` → `FeeCodeAdmin/GetPagedListAsync`，按 `feeCodeId`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。费用名/币别会裁剪组内 `children`（`filterOrderGroups`），只显示命中费用并重算外层申请合计。筛选栏勿用 `<label>` 包裹可搜索 Select，以免抢焦点清空远程搜索词。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。**固定结算币别**时，结算币别卡片只展示一行固定支付币别，申请金额为费用明细「申请金额折币」按付 − 收合计。
 - **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。**新建抽屉确认自动 `AddAsync` 时**须按即将写入的费用行（`nextRows`）解析币别并补默认银行再提交，不可读当时仍为空的 `feeDetailRows`，否则跳转编辑后银行空白。
-- **发票明细子表：** 发票方式下方为可增删行（发票号、开票日期、每行一个附件）。先票后付可先空着保存，提交前必须至少一条且发票号必填；不开票禁用并清空；先付后票可空。附件先通用上传拿 `attachmentId`，随 `AddAsync.paymentApplicationInvoices[].attachment` 提交。行内可识别发票预填该行，不自动保存。申请右侧 `attachmentGroup` 仍是付费申请自身附件，与发票行附件模块不同。
+- **发票明细子表：** 发票方式下方为可增删行（发票号、开票日期、销售方抬头、发票金额、每行一个附件），底部展示发票总额（前端对已填金额求和）。先票后付可先空着保存，提交前必须至少一条且发票号必填；不开票禁用并清空；先付后票可空。附件先通用上传拿 `attachmentId`，随 `AddAsync.paymentApplicationInvoices[].attachment` 提交。行内可识别发票预填该行票号、日期、抬头与金额，不自动保存。申请右侧 `attachmentGroup` 仍是付费申请自身附件，与发票行附件模块不同。
 - **申请附件分组：** 右侧附件区按附件明细类型分组上传；支持点击或拖拽；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。关联结算附件不在本页维护。
 - **提交保存：** 保存成功后 `replace` 到对应编辑页并带 `query.fromCreate=1`（供编辑页延迟拉取审核流程），再 `closeTabByKey` 关掉新建页签。抽屉确认自动建单同样走这套跳转。`AddAsync` 不再传 `status`/`submitTime`；提交审核必须另调 `SubmitAsync`。
 
@@ -55,7 +55,7 @@ last_updated: 2026-09-06
 | **申请主体** | 付款对象与业务归属。 | `payment-application-admin.ts` | **触发/依赖：** 影响审核和后续结算。 | 不能为空。 |
 | **结算银行** | 费用合计每个币别绑定的收款银行账户。 | **客户开票信息**<br/>`ClientInvoiceInfoAdmin/GetListAsync` | **触发/依赖：** 选项随结算对象与币别筛选；结算对象变更清空重载；默认选中该币别 `isDefault` 账户。 | **必填项**，原币结算每种费用币别各一条、指定币别结算仅结算币别一条；银行须属当前结算对象且主数据含开户行/账号/SWIFT。 |
 | **发票方式** | 先票后付 / 先付后票 / 不开票。 | 表单 `invoiceProcess`；添加费用抽屉 `enableInvoiceProcess` | **触发/依赖：** 抽屉确认时回写外层；新建确认费用与保存/提交前校验；未选时 toast + 控件标红。先票后付会自动补一行空发票。 | **必填项**（新建创建申请前必须选定）。 |
-| **发票明细** | 一单可多张发票，每张可挂一个附件。 | `paymentApplicationInvoices[]` → `AddAsync` | **触发/依赖：** 识别结果写入第一张空发票号的行，没空行则追加；不开票时清空。先票后付提示「可先保存，提交前再补录」。 | 录入阶段先票后付可空；提交时至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。 |
+| **发票明细** | 一单可多张发票，每张可挂一个附件。 | `paymentApplicationInvoices[]` → `AddAsync` | **触发/依赖：** 识别结果写入第一张空发票号的行，没空行则追加；不开票时清空。先票后付提示「可先保存，提交前再补录」。底部总额前端求和。 | 录入阶段先票后付可空；提交时至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。抬头最长 256；金额可空、允许负数，不与申请金额比对。 |
 | **申请汇率** | 指定结算币别时，1 原币兑多少结算币。 | 弹窗预填：`peekQuotedExchangeRate`（费用币别兑结算币 + **当天**有效 + 应付 `crValue`）；可手改 | **触发/依赖：** 添加费用确认时弹出「币别汇率折算」；同原币合并一组；写入费用 `exchangeRate`/`rate`。 | 必须 >0；当天不在有效期内则不预填，须手填。不按开船日。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -72,6 +72,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Feature` | 发票行增加销售方抬头、发票金额，明细底部展示总额（前端求和）。识别回填价税合计到金额、`sellerHeader` 到抬头。 | 抬头用文本框；金额允许负数。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md`。 |
 | 2026-09-06 | `Fix` | 先票后付可空发票保存/抽屉建单；从应收应付带费用新建同样放行。提交才要求至少一条发票。Add/Edit 不再传 status。 | `validateInvoiceRows` 与 `validateInvoiceRequiredOnSubmit` 拆时机。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-submit.md`。 |
 | 2026-09-05 | `Fix` | 新建保存 / 抽屉自动建单成功后 `replace` 进编辑并关闭新建页签。 | 提交审核、保存并新建不走这套跳转。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-09-05 | `Feature` | 点击申请/发票附件改为全站弹窗预览。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
