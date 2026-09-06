@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-04
+last_updated: 2026-09-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,7 @@ last_updated: 2026-08-04
 | **生成类型 generateEnum** | 0 自增 / 1 固定文本 / 2 用户名 / 3 yyyyMMdd / 4 yyMMdd / 5 yyyyMM / 6 yyMM / 7 业务日期 yyyyMM / 8 业务日期 yyMM。 | 子规则卡片下拉 | 切换类型时清理无效字段；AutoNum 最多 1 条；7/8 由后端按单据 ETD 取值，为空回退当前时间。 | 每条必选类型。 |
 | **固定字符串 text** | 固定前缀或中段文本。 | 子规则卡片 | **仅 Text(1) 展示与校验。** | Text 类型必填。 |
 | **长度 length** | 自增序号位数，如 4 → `0001`。 | 子规则卡片 | **仅 AutoNum(0) 展示与校验。** | AutoNum 时必填且 > 0。 |
-| **重置序号 reset** | 该段值变化时是否令 AutoNum 从 1 重新开始。 | 子规则卡片 Checkbox | **AutoNum 无效**；非 AutoNum 可配置。 | 提交时 AutoNum 固定 `false`。 |
+| **重置序号 reset** | 该段值变化时是否令 AutoNum 从 1 重新开始。 | 子规则卡片 Checkbox | **AutoNum 无效**；非 AutoNum 可配置。新增规则默认勾选；从自增切到其他类型时也默认勾选。编辑按详情回填。 | 提交时 AutoNum 固定 `false`。 |
 | **排序 sortId** | 子规则拼接顺序。 | 保存时自动生成 | **UI 隐藏**；由上移/下移决定，保存为 `0,1,2...`。 | 预览与生成均按卡片列表顺序。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -59,6 +59,7 @@ last_updated: 2026-08-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 新建规则明细时「重置序号」默认勾选；从自增序号改成日期/文本等类型时也默认勾选。编辑仍按详情回填。 | `addRule()` 默认 `reset: true`；`onGenerateEnumChange` 在离开 AutoNum 时补勾选，AutoNum 仍强制 `false`。 |
 | 2026-08-04 | `Feature` | 编号规则类型新增 `SeaImport.CommissionNum`（海运进口委托编号）、`AirExport.CommissionNum`（空运出口委托编号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护；业务日期 ETD 含义按业务区分（海进=到港、空出=起飞）。 |
 | 2026-08-02 | `Feature` | 生成类型新增 `7=ETDyyyyMM`、`8=ETDyyMM`（业务日期年月，取开船日期 ETD，为空回退当前时间）；下拉、预览与中英文文案同步。 | `GenerateEnum` 类型扩为 `0-8`；`buildGenerateNumRuleSegment` 中 7/8 与 5/6 复用 `YYYYMM`/`YYMM` 预览格式；后端由 `GetGenerateTextDto.ETD` 传入业务日期。 |
 | 2026-08-01 | `Feature` | 编号规则类型新增 `PreOrder.PreOrderNum`（业务联系单编号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护，i18n 键为 `tableNameOptions.PreOrder.PreOrderNum`。 |

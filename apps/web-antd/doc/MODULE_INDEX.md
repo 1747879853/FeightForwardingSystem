@@ -64,7 +64,7 @@
 | basic-data | `/basic-data/air-port` | 基础资料 | 维护空运机场资料（IATA 三字码、ICAO 码、城市、时区），支撑空运起运/目的机场字段；提供 `AirPortSelect` 业务下拉，国家大数 ID 字符串透传。 | [空运港口](./modules/basic-data/air-port.md) | 2026-08-05 |
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码及普柜/特种柜分类，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-08-14 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
-| basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-08-04 |
+| basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-09-06 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
 | basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板列表；新建 `/create`、编辑 `/:id/edit`，未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-05 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-09-05 |

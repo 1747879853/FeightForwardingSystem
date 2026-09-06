@@ -161,8 +161,14 @@ const [Form, formApi] = useVbenForm({
   wrapperClass: 'grid-cols-2',
 });
 
-const normalizeRuleOnTypeChange = (row: RuleRow) => {
-  if (row.generateEnum === GENERATE_ENUM.AutoNum) {
+const onGenerateEnumChange = (
+  row: RuleRow,
+  value: GenerateEnum | undefined,
+) => {
+  const previousEnum = row.generateEnum;
+  row.generateEnum = value;
+
+  if (value === GENERATE_ENUM.AutoNum) {
     row.reset = false;
     if (!Number.isInteger(row.length) || Number(row.length) <= 0) {
       row.length = 4;
@@ -170,7 +176,12 @@ const normalizeRuleOnTypeChange = (row: RuleRow) => {
     return;
   }
 
-  if (row.generateEnum !== GENERATE_ENUM.Text) {
+  // 从自增切到日期/文本等时，补回「重置序号」默认勾选
+  if (previousEnum === GENERATE_ENUM.AutoNum) {
+    row.reset = true;
+  }
+
+  if (value !== GENERATE_ENUM.Text) {
     row.text = '';
   }
 };
@@ -181,7 +192,7 @@ const addRule = () => {
     generateEnum: GENERATE_ENUM.Text,
     text: '',
     length: 4,
-    reset: false,
+    reset: true,
   });
 };
 
@@ -528,12 +539,12 @@ const [Modal, modalApi] = useVbenModal({
                   {{ $t('system.basicData.generateNum.generateEnum') }}
                 </div>
                 <Select
-                  v-model:value="row.generateEnum"
+                  :value="row.generateEnum"
                   :options="getGenerateEnumOptionsForRow(row)"
                   allow-clear
                   class="w-full"
                   size="small"
-                  @change="normalizeRuleOnTypeChange(row)"
+                  @change="(value) => onGenerateEnumChange(row, value)"
                 />
               </div>
 

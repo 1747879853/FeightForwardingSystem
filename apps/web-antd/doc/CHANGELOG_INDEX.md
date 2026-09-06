@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-06 编号生成新建规则默认勾选重置序号](./changelogs/change-log-2026-09-06-generate-num-default-reset.md)
 - [2026-09-06 监装分享先预览再切中英文复制链接](./changelogs/change-log-2026-09-06-loading-share-preview-lang.md)
 - [2026-09-06 监装客户公开页顶栏 Logo 行吸顶](./changelogs/change-log-2026-09-06-loading-share-header-sticky.md)
 - [2026-09-06 监装客户公开页去掉「客户共享 · 只读查看」](./changelogs/change-log-2026-09-06-loading-share-header-note.md)
