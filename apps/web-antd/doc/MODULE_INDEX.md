@@ -78,7 +78,7 @@
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-07-14 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
-| shared | （全站附件查看器） | 共享能力 | 附件查看器单例弹窗：`openAttachmentViewer(item)` 打开；图片/PDF 内嵌预览，Office 用 vue-office 本地渲染（不走微软）。付费申请/审批、海出附件 Tab、开票、公告等已接入。 | [全局附件查看器](./modules/shared/attachment-viewer.md) | 2026-09-05 |
+| shared | （全站附件查看器） | 共享能力 | 附件查看器单例弹窗：`openAttachmentViewer(item)` 打开；图片/PDF 内嵌预览，Office 用 vue-office 本地渲染（不走微软）。开发预览走 Vite `/Uploads` 代理，生产直连后端附件地址。付费申请/审批、海出附件 Tab、开票、公告等已接入。 | [全局附件查看器](./modules/shared/attachment-viewer.md) | 2026-09-06 |
 | shared | （全局偏好） | 共享能力 | 项目级 `preferences.ts` 覆盖：布局/主题/侧边栏/页签/Logo；默认主题圆角 `0.5`。 | [全局偏好覆盖](./modules/shared/preferences.md) | 2026-08-11 |
 | shared | （检查更新） | 共享能力 | 定时拉取 `version.json` 比对构建指纹；避免 IIS 压缩导致首页 etag 误报新版本。 | [检查更新](./modules/shared/check-updates.md) | 2026-08-13 |
 | shared | （全站根布局） | 共享能力 | 津海通品牌桌宠：Three.js 加载 OSS GLB，可拖拽/关闭并按品牌持久化。 | [津海通桌宠](./modules/shared/jht-mascot.md) | 2026-07-26 |

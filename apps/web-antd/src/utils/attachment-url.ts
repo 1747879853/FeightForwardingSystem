@@ -89,8 +89,17 @@ export function buildAttachmentUrl(url?: string) {
 }
 
 /**
+ * 当前页能否用相对路径 `/Uploads` 拿到附件。
+ * 只有 Vite 开发代理会转这路；各品牌生产是前端端口/域名一套、API 另一套，没有 `/Uploads` 反代。
+ */
+function canUseDevUploadsProxy() {
+  return Boolean(import.meta.env.DEV);
+}
+
+/**
  * 浏览器内 fetch / iframe 用的附件地址。
- * 后端静态文件改走同源相对路径，走开发代理 `/Uploads` 或生产反代，避开 CORS 与 X-Frame-Options。
+ * - 开发：改成 `/Uploads/...` 相对路径，走 Vite 代理，避开 CORS 与 X-Frame-Options
+ * - 生产：前后端不同源且无反代，保持后端绝对地址，避免先打前端站点再 404
  * 下载、img 仍用 `buildAttachmentUrl` 直连后端。
  */
 export function resolveSameOriginMediaUrl(url?: string) {
@@ -105,18 +114,24 @@ export function resolveSameOriginMediaUrl(url?: string) {
 
   try {
     const parsed = new URL(full);
+    if (
+      typeof window !== 'undefined' &&
+      parsed.origin === window.location.origin
+    ) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+
+    // 生产不要把 api.xxx.com/Uploads 改成 admin.xxx.com/Uploads
+    if (!canUseDevUploadsProxy()) {
+      return full;
+    }
+
     const backendOrigin = getStaticFileOrigin() || removeApiSuffix(apiURL);
     if (backendOrigin && PROTOCOL_URL_REGEXP.test(backendOrigin)) {
       const backend = new URL(backendOrigin);
       if (parsed.origin === backend.origin) {
         return `${parsed.pathname}${parsed.search}`;
       }
-    }
-    if (
-      typeof window !== 'undefined' &&
-      parsed.origin === window.location.origin
-    ) {
-      return `${parsed.pathname}${parsed.search}`;
     }
   } catch {
     return full;

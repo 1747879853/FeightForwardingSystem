@@ -127,7 +127,7 @@ const modalStyle = computed(() =>
 /** 完整可访问地址（下载 / 新窗口） */
 const fullUrl = computed(() => buildAttachmentUrl(props.fileUrl));
 
-/** 同源地址：开发走 `/Uploads` 代理，避免 CORS 与 X-Frame-Options */
+/** 开发走 `/Uploads` 代理；生产与后端不同源时仍是后端绝对地址 */
 const sameOriginUrl = computed(() => resolveSameOriginMediaUrl(props.fileUrl));
 
 /** PDF 弹窗预览地址（隐藏浏览器工具栏与左侧分页） */
