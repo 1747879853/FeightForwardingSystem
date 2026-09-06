@@ -141,8 +141,9 @@ watch(
 
 <template>
   <div class="bank-table">
-    <div class="mb-2 flex items-center gap-2">
-      <span class="text-sm font-medium text-gray-600">
+    <div class="bank-table__head">
+      <span class="bank-table__title">
+        <IconifyIcon icon="mdi:bank-outline" class="bank-table__title-icon" />
         {{ $t('client.invoice.bankInfo') }}
       </span>
       <Tooltip :title="$t('client.invoice.addBank')">
@@ -267,3 +268,26 @@ watch(
     </Table>
   </div>
 </template>
+
+<style scoped lang="scss">
+.bank-table__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.bank-table__title {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.bank-table__title-icon {
+  font-size: 16px;
+  color: hsl(var(--primary));
+}
+</style>

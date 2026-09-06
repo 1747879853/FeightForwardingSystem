@@ -1141,7 +1141,9 @@ onMounted(() => {
         <Card :bordered="false" size="small" class="info-card attach-card">
           <template #title>
             <div class="card-title">
-              <div class="card-title-icon icon-cyan">📎</div>
+              <span class="card-title-icon icon-blue">
+                <IconifyIcon icon="mdi:paperclip" />
+              </span>
               <span class="card-title-text">附件</span>
             </div>
           </template>

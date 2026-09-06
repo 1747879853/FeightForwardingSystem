@@ -318,21 +318,3 @@ watch(
 
   <Modal @add="addContactData" @edit="editContactData" />
 </template>
-
-<style scoped lang="scss">
-.order-fee-card {
-  :deep(.ant-card-body) {
-    padding: 0 20px 20px !important;
-  }
-
-  :deep(.ant-table-content) {
-    min-height: 270px;
-    // max-height: 500px;
-    // overflow-y: auto;
-  }
-}
-
-// .custom-table {
-//   min-height: 300px;
-// }
-</style>
