@@ -2,7 +2,7 @@
 title: 船公司资料
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-22
+last_updated: 2026-09-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-22
 
 - **列表维护：** 在 `船公司资料` 页面查询、创建、编辑和删除基础资料。列表**不做展开行**，堆场只在抽屉里看和改。
 - **抽屉表单：** `CarrierAdmin/modules/form.vue` 为 Drawer（对齐商品信息），主表字段与 Logo 上传在上，下方维护「堆场」可增删行表格（名称、地址、备注）。Logo 为单图 `picture-card`，上传后直接显示缩略图，不列文件名；换图需先删除再上传。
-- **堆场子表：** 随主表一次提交 `carrierYards`；编辑为全量覆盖（保留行带 `id`、新增 `id: null`、删除行从数组移除）；**子表不传 `sortId`**，顺序由行顺序决定。监装工单的「监装堆场」下拉即取自本子表。
+- **堆场子表：** 随主表一次提交 `carrierYards`；编辑为全量覆盖（保留行带 `id`、新增 `id: null`、删除行从数组移除）；**子表不传 `sortId`**，顺序由行顺序决定。监装工单的「监装堆场」下拉即取自本子表。地址请填完整中文（含省市路号），供监装小程序导航地理编码；不要贴地图分享短链。
 - **业务复用：** 基础资料作为业务下拉、字典或校验来源被其他模块引用。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -39,7 +39,7 @@ last_updated: 2026-08-22
 | **cnName / cnShortName / enName / code** | 船公司中英文名称与代码标识。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 被运价、委托等下游选择器复用。 | 由表单长度限制与后端必填规则共同约束。 |
 | **logo** | 船公司 Logo 附件（单图，缩略图预览）。 | `src/views/system/basic-data/CarrierAdmin/data.ts`<br/>`src/views/system/basic-data/CarrierAdmin/modules/form.vue`<br/>`src/api/system/base-data/carrier-admin.ts` | **触发/依赖：** `FileUploadInput` 使用 `listType: 'picture-card'`；上传后取 `attachmentId`，提交为 `logo.attachmentId`。无值时传 `null` 可清空。 | 限制为图片类型、**仅 1 张**、≤5MB。 |
 | **remark / otherCode / ediCode** | 业务补充说明与扩展编码信息。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 用于检索和业务识别补充。 | 文本长度受前端与后端共同限制。 |
-| **carrierYards（堆场）** | 该船公司下的堆场，含名称与地址。 | `CarrierAdmin` 列表/详情随主表返回，按 `sortId` 升序 | **触发/依赖：** 监装工单按已保存 `carrierId` 取本子表作为堆场下拉源。 | 名称**必填**、最长 128、同船公司下不重名（去空格、忽略大小写）；地址最长 512；备注最长 1024。 |
+| **carrierYards（堆场）** | 该船公司下的堆场，含名称与地址。 | `CarrierAdmin` 列表/详情随主表返回，按 `sortId` 升序 | **触发/依赖：** 监装工单按已保存 `carrierId` 取本子表作为堆场下拉源；小程序导航优先用 `address` 做腾讯地理编码。 | 名称**必填**、最长 128、同船公司下不重名（去空格、忽略大小写）；地址最长 512；备注最长 1024。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -53,6 +53,7 @@ last_updated: 2026-08-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Feature` | 约定堆场地址填完整中文，供监装小程序导航编码；不存经纬度。 | 小程序侧详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |
 | 2026-08-22 | `Feature` | Logo 改为单图缩略图卡片：上传后直接看图，不再显示文件名。 | 对齐组织 Logo：`listType: 'picture-card'` + `maxCount: 1`。`FileUploadInput` 在 picture-card 下隐藏文件名列表；回显无扩展名时仍弹窗预览。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |
 | 2026-08-22 | `Feature` | 新增「堆场」子表（名称/地址/备注）；表单由 Modal 改 Drawer；列表不做展开行。 | TAPD #1000122 监装前置改造。子表 `sortId` 后端按数组下标生成；编辑须同时带 `logo` 与全量堆场。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-05-30 | `Feature` | 基础资料列表路由统一开启 `keepAlive`；弹窗新增/编辑/删除成功后 `@success` 或 `handleRefresh` 即时刷新。 | 弹窗型列表无需 `onActivated`；全模块约定见 [列表页 keepAlive 与刷新约定](../../guides/list-page-keepalive-refresh.md)。 |

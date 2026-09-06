@@ -1,6 +1,6 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
-| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型横排且每类型一张；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通 `:82`。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-06 |
+| mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型横排且每类型一张；详情监装堆场可一键导航（腾讯地理编码 + 微信 openLocation）；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-06 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋。 | [登录页](./modules/_core/login.md) | 2026-08-28 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
@@ -45,7 +45,7 @@
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表（含抬头、金额、总额）及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-06 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-08-24 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
-| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-08-22 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场；堆场地址填完整中文供小程序导航编码。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-09-06 |
 | basic-data | `/basic-data/loading-requirement` | 基础资料 | 监装要求模板（主表要求名 + 明细子表），供监装工单勾选；列表默认按主表 `SortId` 升序。 | [监装要求](./modules/basic-data/loading-requirement.md) | 2026-08-22 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |

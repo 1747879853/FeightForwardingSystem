@@ -30,6 +30,7 @@ import {
   textOr,
   vesselVoyage,
 } from '@/utils/format';
+import { openYardNavigation } from '@/utils/yard-nav';
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight ?? 20);
 const orderId = ref('');
@@ -45,6 +46,7 @@ const activeCtnIndex = ref(-1);
 const ctnDraft = ref<EditableCtn | null>(null);
 const rejectVisible = ref(false);
 const rejectReason = ref('');
+const navigating = ref(false);
 
 const routeStatus = ref(-1);
 const actionsReady = ref(false);
@@ -53,6 +55,12 @@ const status = computed(() => detail.value?.status ?? routeStatus.value);
 const editable = computed(() => status.value === LoadingOrderStatus.Claimed);
 const typesEmpty = computed(() => attachmentTypes.value.length === 0);
 const activeCtn = computed(() => ctns.value[activeCtnIndex.value] ?? null);
+
+const canNavigateYard = computed(() => {
+  const yard = detail.value?.carrierYard;
+  if (!yard) return false;
+  return Boolean(yard.name?.trim() || yard.address?.trim());
+});
 
 const basicRows = computed(() => {
   const item = detail.value;
@@ -70,7 +78,11 @@ const basicRows = computed(() => {
     { label: '明细包装', value: textOr(item.codePackageItem?.name) },
     { label: '明细包装件数', value: textOr(item.pkgs) },
     { label: '预计送货时间', value: formatDate(item.estimatedArrivalTime) },
-    { label: '监装堆场', value: textOr(item.carrierYard?.name) },
+    {
+      label: '监装堆场',
+      nav: canNavigateYard.value,
+      value: textOr(item.carrierYard?.name),
+    },
     {
       label: '监装师傅',
       value:
@@ -125,6 +137,21 @@ async function fetchDetail() {
 
 function goBack() {
   uni.navigateBack();
+}
+
+async function onYardNav() {
+  if (navigating.value || !detail.value?.carrierYard) return;
+  navigating.value = true;
+  try {
+    await openYardNavigation(detail.value.carrierYard);
+  } catch (error) {
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '导航失败',
+    });
+  } finally {
+    navigating.value = false;
+  }
 }
 
 function cloneCtn(ctn: EditableCtn): EditableCtn {
@@ -278,7 +305,12 @@ onShow(() => {
         </view>
         <view v-for="row in basicRows" :key="row.label" class="row">
           <text class="row__label">{{ row.label }}</text>
-          <text class="row__value">{{ row.value }}</text>
+          <view class="row__right">
+            <text class="row__value">{{ row.value }}</text>
+            <text v-if="row.nav" class="row__nav" @tap.stop="onYardNav">
+              导航
+            </text>
+          </view>
         </view>
       </view>
 
@@ -514,23 +546,45 @@ onShow(() => {
 
 .row {
   display: flex;
+  gap: 16rpx;
   align-items: center;
   justify-content: space-between;
   min-height: 68rpx;
 }
 
 .row__label {
+  flex-shrink: 0;
   font-size: 28rpx;
   font-weight: 500;
   color: $text-label;
 }
 
+.row__right {
+  display: flex;
+  flex: 1;
+  gap: 16rpx;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .row__value {
-  max-width: 60%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 28rpx;
   font-weight: 500;
   color: $text-title;
   text-align: right;
+  white-space: nowrap;
+}
+
+.row__nav {
+  flex-shrink: 0;
+  padding: 4rpx 0;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #327aff;
 }
 
 .tags {

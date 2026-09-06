@@ -5,6 +5,11 @@ interface ImportMetaEnv {
   readonly VITE_API_ORIGIN: string;
   /** 'true' 时展示开发态账密登录入口 */
   readonly VITE_ENABLE_PASSWORD_LOGIN: string;
+  /**
+   * 腾讯位置服务微信小程序 Key（须绑本小程序 AppID，并开通地理编码 / WebService）
+   * 仅用于地址转经纬度，不传给 uni.openLocation
+   */
+  readonly VITE_QQMAP_KEY: string;
 }
 
 interface ImportMeta {

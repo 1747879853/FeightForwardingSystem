@@ -107,8 +107,14 @@ export interface LoadingOrderSeaExportSimpleDto {
   vessel?: null | string;
 }
 
+export interface CarrierYardSimpleDto {
+  address?: null | string;
+  id: string;
+  name?: string;
+}
+
 export interface LoadingOrderListItemDto {
-  carrierYard?: null | { id: string; name?: string };
+  carrierYard?: CarrierYardSimpleDto | null;
   codePackageItem?: null | SimpleNamedDto;
   creationTime?: string;
   estimatedArrivalTime?: null | string;
