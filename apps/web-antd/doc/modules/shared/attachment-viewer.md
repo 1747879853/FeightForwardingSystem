@@ -50,11 +50,13 @@ callers: 付费申请、付费审批、海出/海进/空出附件 Tab、客户�
 
 > [!IMPORTANT] **[卡点 6：生产没有 /Uploads 代理]** 津海通 `admin` 与 `api` 分域名，其它品牌是 `:18x` 静态站 + `:8x` API。不要把 `/Uploads` 改写到前端 origin；开发才走 Vite 代理。
 
+> [!IMPORTANT] **[卡点 7：全屏高度要打穿 sentinel]** `.ant-modal` 默认 `position: relative`，`inset` 撑不开。vc-dialog 还把 content 包在无高度的 `div` 里，必须让 `.ant-modal` 绝对铺满 wrap，并给 `> div:first-child` 明确高度，预览区才能吃满视口。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-06 | `Fix` | 全屏后预览区铺满视口，不再停在 64vh。 | Modal content 去 padding；body 走 flex 撑满；vue-office 随全屏重挂。详见 [变更日志](../../changelogs/change-log-2026-09-06-attachment-viewer-fullscreen-body.md)。 |
+| 2026-09-06 | `Fix` | 全屏后预览区铺满视口，不再停在 64vh。 | `.ant-modal` 绝对铺满；sentinel 内层也给高度；body 用 `flex:1 1 0; height:0`。详见 [变更日志](../../changelogs/change-log-2026-09-06-attachment-viewer-fullscreen-body.md)。 |
 | 2026-09-06 | `Fix` | 生产预览不再先请求前端 `/Uploads`（无反代会 404），改为直连后端附件地址。 | `resolveSameOriginMediaUrl` 仅 DEV 改写相对路径。详见 [变更日志](../../changelogs/change-log-2026-09-06-attachment-preview-no-prod-proxy.md)。 |
 | 2026-09-05 | `Fix` | 弹窗可全屏；「新窗口打开」改为独立预览页，不再把 Office 当下载。 | `/attachment-preview` 核心路由、无 Layout；下载用 `<a download>`。详见 [变更日志](../../changelogs/change-log-2026-09-05-attachment-viewer-fullscreen.md)。 |
 | 2026-09-05 | `Fix` | 旧版 `.xls`（OLE）预览前先转成 xlsx，不再误报文件损坏。 | vue-office/exceljs 只吃 zip xlsx；SheetJS 可读该文件（示例 45 行）。详见 [变更日志](../../changelogs/change-log-2026-09-05-excel-xls-ole-preview.md)。 |

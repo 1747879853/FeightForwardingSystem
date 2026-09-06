@@ -121,12 +121,13 @@ const wrapClassName = computed(() =>
 const modalStyle = computed(() =>
   isExpanded.value
     ? {
+        position: 'absolute',
         top: 0,
         right: 0,
         bottom: 0,
         left: 0,
         width: '100%',
-        maxWidth: '100%',
+        maxWidth: 'none',
         height: '100%',
         margin: 0,
         paddingBottom: 0,
@@ -138,8 +139,9 @@ const bodyStyle = computed(() =>
   isExpanded.value
     ? {
         display: 'flex',
-        flex: 1,
+        flex: '1 1 0',
         flexDirection: 'column',
+        height: 0,
         minHeight: 0,
         padding: 0,
         overflow: 'hidden',
@@ -308,6 +310,7 @@ watch(
     :title="computedTitle"
     :footer="null"
     :width="isExpanded ? '100%' : '72%'"
+    :height="isExpanded ? '100%' : undefined"
     :mask="!isPageMode"
     :closable="!isPageMode"
     :keyboard="!isPageMode"
@@ -455,7 +458,7 @@ watch(
 }
 
 .attachment-viewer-shell.is-expanded {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   height: 100%;
   min-height: 0;
 }
@@ -491,8 +494,8 @@ watch(
 }
 
 .attachment-viewer-shell.is-expanded .attachment-viewer-body {
-  flex: 1 1 auto;
-  height: auto;
+  flex: 1 1 0;
+  height: 0;
   min-height: 0;
 }
 
@@ -583,19 +586,35 @@ watch(
 }
 
 .attachment-viewer-modal--expanded .ant-modal {
+  position: absolute !important;
   inset: 0 !important;
+  display: flex !important;
+  flex-direction: column;
   width: 100% !important;
   max-width: none !important;
   height: 100% !important;
+  max-height: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
 }
 
-.attachment-viewer-modal--expanded .ant-modal-content {
+/* vc-dialog 把 content 包在无高度的 sentinel 里，百分比高度在这里断掉 */
+.attachment-viewer-modal--expanded .ant-modal > div:first-child {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   width: 100%;
   height: 100%;
+  min-height: 0;
+}
+
+.attachment-viewer-modal--expanded .ant-modal-content {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   padding: 0 !important;
   border-radius: 0;
 }
@@ -606,8 +625,9 @@ watch(
 
 .attachment-viewer-modal--expanded .ant-modal-body {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   flex-direction: column;
+  height: 0;
   min-height: 0;
   padding: 0 !important;
   overflow: hidden;
