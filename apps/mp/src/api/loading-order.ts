@@ -144,6 +144,7 @@ export interface LoadingOrderQuery {
   estimatedArrivalDate?: string;
   loadingOrderNum?: string;
   mblNum?: string;
+  carrierYardKeyword?: string;
   pageIndex?: number;
   pageSize?: number;
   polId?: number | string;

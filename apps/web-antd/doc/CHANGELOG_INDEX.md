@@ -13,6 +13,9 @@
 
 ## 2026-09
 
+- [2026-09-06 小程序监装检索选中船公司后回显 logo](./changelogs/change-log-2026-09-06-mp-loading-carrier-selected-logo.md)
+- [2026-09-05 小程序监装检索起运港/船公司对齐 PC 下拉文案](./changelogs/change-log-2026-09-05-mp-loading-filter-select-labels.md)
+- [2026-09-05 小程序监装列表对接新增查询条件](./changelogs/change-log-2026-09-05-mp-loading-list-filters.md)
 - [2026-09-05 小程序监装拍照识别箱号](./changelogs/change-log-2026-09-05-mp-loading-ctn-no-ocr.md)
 - [2026-09-05 小程序监装拍照后缩略图空白](./changelogs/change-log-2026-09-05-mp-loading-camera-blank-thumb.md)
 - [2026-09-05 管理端监装照片按附件类型分组](./changelogs/change-log-2026-09-05-admin-loading-photo-types.md)

@@ -3,6 +3,7 @@ import type {
   LoadingOrderListItemDto,
   LoadingOrderQuery,
 } from '@/api/loading-order';
+import type { NamedOption, PagedOptionQuery } from '@/utils/named-picker';
 
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { computed, ref, watch } from 'vue';
@@ -13,12 +14,41 @@ import {
   STATUS_TABS,
   STATUS_TEXT,
 } from '@/api/loading-order';
+import {
+  getCarrierPagedList,
+  getCodeGoodsPagedList,
+  getPortCodePagedList,
+} from '@/api/lookup';
+import { buildAttachmentUrl } from '@/api/request';
+import PagedSelectSheet from '@/components/paged-select-sheet/paged-select-sheet.vue';
 import { isLoggedIn } from '@/stores/auth';
 import { formatDate, joinNames, textOr, vesselVoyage } from '@/utils/format';
+import {
+  mapCarrierOptions,
+  mapGoodsOptions,
+  mapPortOptions,
+} from '@/utils/lookup-options';
 
 const tabLabels = STATUS_TABS.map((tab) => tab.label);
 
 const PAGE_SIZE = 10;
+
+const EMPTY_FILTERS = {
+  carrierId: '',
+  carrierYardKeyword: '',
+  codeGoodsId: '',
+  estimatedArrivalDate: '',
+  loadingOrderNum: '',
+  mblNum: '',
+  polId: '',
+};
+
+const EMPTY_FILTER_LABELS = {
+  carrier: '',
+  carrierLogo: '',
+  goods: '',
+  pol: '',
+};
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight ?? 20);
 const activeTab = ref(0);
@@ -28,11 +58,9 @@ const pageIndex = ref(1);
 const loading = ref(false);
 const noPermission = ref(false);
 const searchVisible = ref(false);
-const filters = ref({
-  estimatedArrivalDate: '',
-  loadingOrderNum: '',
-  mblNum: '',
-});
+const filters = ref({ ...EMPTY_FILTERS });
+const filterLabels = ref({ ...EMPTY_FILTER_LABELS });
+const selectSheet = ref<'' | 'carrier' | 'goods' | 'port'>('');
 
 const hasMore = computed(() => list.value.length < total.value);
 const hasFilter = computed(() =>
@@ -45,6 +73,7 @@ function openSearchDrawer() {
 
 function closeSearchDrawer() {
   searchVisible.value = false;
+  selectSheet.value = '';
 }
 
 function buildQuery(): LoadingOrderQuery {
@@ -55,6 +84,10 @@ function buildQuery(): LoadingOrderQuery {
     estimatedArrivalDate: filters.value.estimatedArrivalDate || undefined,
     loadingOrderNum: filters.value.loadingOrderNum || undefined,
     mblNum: filters.value.mblNum || undefined,
+    carrierYardKeyword: filters.value.carrierYardKeyword || undefined,
+    polId: filters.value.polId || undefined,
+    carrierId: filters.value.carrierId || undefined,
+    codeGoodsId: filters.value.codeGoodsId || undefined,
   };
 }
 
@@ -103,16 +136,59 @@ function applyFilter() {
 }
 
 function resetFilter() {
-  filters.value = {
-    estimatedArrivalDate: '',
-    loadingOrderNum: '',
-    mblNum: '',
-  };
+  filters.value = { ...EMPTY_FILTERS };
+  filterLabels.value = { ...EMPTY_FILTER_LABELS };
   void fetchList(true);
 }
 
 function onArrivalDateChange(event: { detail: { value: string } }) {
   filters.value.estimatedArrivalDate = event.detail.value;
+}
+
+async function loadPorts(query: PagedOptionQuery) {
+  const result = await getPortCodePagedList(query);
+  return {
+    items: mapPortOptions(result.items ?? []),
+    totalCount: result.totalCount ?? 0,
+  };
+}
+
+async function loadCarriers(query: PagedOptionQuery) {
+  const result = await getCarrierPagedList(query);
+  return {
+    items: mapCarrierOptions(result.items ?? []).map((item) => ({
+      ...item,
+      logoUrl: buildAttachmentUrl(item.logoUrl) || undefined,
+    })),
+    totalCount: result.totalCount ?? 0,
+  };
+}
+
+async function loadGoods(query: PagedOptionQuery) {
+  const result = await getCodeGoodsPagedList(query);
+  return {
+    items: mapGoodsOptions(result.items ?? []),
+    totalCount: result.totalCount ?? 0,
+  };
+}
+
+function onPickPort(option: NamedOption) {
+  filters.value.polId = option.id;
+  filterLabels.value.pol = option.name;
+  selectSheet.value = '';
+}
+
+function onPickCarrier(option: NamedOption) {
+  filters.value.carrierId = option.id;
+  filterLabels.value.carrier = option.name;
+  filterLabels.value.carrierLogo = option.logoUrl || '';
+  selectSheet.value = '';
+}
+
+function onPickGoods(option: NamedOption) {
+  filters.value.codeGoodsId = option.id;
+  filterLabels.value.goods = option.name;
+  selectSheet.value = '';
 }
 
 function goDetail(item: LoadingOrderListItemDto) {
@@ -302,7 +378,7 @@ onReachBottom(() => {
           </view>
         </view>
 
-        <view class="filter-drawer__body">
+        <scroll-view class="filter-drawer__body" scroll-y>
           <view class="filter__row">
             <text class="filter__label">监装工单号</text>
             <input
@@ -322,6 +398,48 @@ onReachBottom(() => {
             />
           </view>
           <view class="filter__row">
+            <text class="filter__label">监装堆场</text>
+            <input
+              v-model="filters.carrierYardKeyword"
+              class="filter__input"
+              placeholder="名称/地址/备注"
+              placeholder-class="filter__placeholder"
+            />
+          </view>
+          <view class="filter__row">
+            <text class="filter__label">起运港</text>
+            <view class="filter__picker" @tap="selectSheet = 'port'">
+              <text :class="['filter__value', { 'is-empty': !filters.polId }]">
+                {{ filterLabels.pol || '请选择' }}
+              </text>
+            </view>
+          </view>
+          <view class="filter__row">
+            <text class="filter__label">船公司</text>
+            <view class="filter__picker" @tap="selectSheet = 'carrier'">
+              <view v-if="filters.carrierId" class="filter__picked">
+                <image
+                  v-if="filterLabels.carrierLogo"
+                  class="filter__logo"
+                  :src="filterLabels.carrierLogo"
+                  mode="aspectFit"
+                />
+                <text class="filter__value">{{ filterLabels.carrier }}</text>
+              </view>
+              <text v-else class="filter__value is-empty">请选择</text>
+            </view>
+          </view>
+          <view class="filter__row">
+            <text class="filter__label">品名</text>
+            <view class="filter__picker" @tap="selectSheet = 'goods'">
+              <text
+                :class="['filter__value', { 'is-empty': !filters.codeGoodsId }]"
+              >
+                {{ filterLabels.goods || '请选择' }}
+              </text>
+            </view>
+          </view>
+          <view class="filter__row">
             <text class="filter__label">预计到货日</text>
             <picker
               class="filter__picker"
@@ -339,7 +457,7 @@ onReachBottom(() => {
               </text>
             </picker>
           </view>
-        </view>
+        </scroll-view>
 
         <view class="filter__actions">
           <view class="filter__btn filter__btn--ghost" @tap="resetFilter">
@@ -349,6 +467,31 @@ onReachBottom(() => {
         </view>
       </view>
     </search-drawer>
+
+    <PagedSelectSheet
+      title="起运港"
+      :visible="selectSheet === 'port'"
+      :selected-id="filters.polId"
+      :loader="loadPorts"
+      @select="onPickPort"
+      @close="selectSheet = ''"
+    />
+    <PagedSelectSheet
+      title="船公司"
+      :visible="selectSheet === 'carrier'"
+      :selected-id="filters.carrierId"
+      :loader="loadCarriers"
+      @select="onPickCarrier"
+      @close="selectSheet = ''"
+    />
+    <PagedSelectSheet
+      title="品名"
+      :visible="selectSheet === 'goods'"
+      :selected-id="filters.codeGoodsId"
+      :loader="loadGoods"
+      @select="onPickGoods"
+      @close="selectSheet = ''"
+    />
   </view>
 </template>
 
@@ -503,6 +646,9 @@ onReachBottom(() => {
 }
 
 .filter-drawer__body {
+  box-sizing: border-box;
+  flex: 1;
+  height: 0;
   padding: 8rpx 28rpx;
   margin: 24rpx 20rpx 0;
   background: $card-bg;
@@ -516,6 +662,10 @@ onReachBottom(() => {
   border-bottom: 1rpx solid $divider;
 }
 
+.filter__row:last-child {
+  border-bottom: 0;
+}
+
 .filter__label {
   width: 180rpx;
   font-size: 26rpx;
@@ -525,8 +675,35 @@ onReachBottom(() => {
 .filter__input,
 .filter__picker {
   flex: 1;
+  min-width: 0;
   font-size: 28rpx;
   color: $text-title;
+}
+
+.filter__picker {
+  display: flex;
+  align-items: center;
+}
+
+.filter__picked {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.filter__logo {
+  flex-shrink: 0;
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 12rpx;
+  border-radius: 6rpx;
+}
+
+.filter__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .filter__value.is-empty {

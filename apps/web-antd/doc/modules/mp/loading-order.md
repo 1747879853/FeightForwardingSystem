@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,7 +17,7 @@ last_updated: 2026-09-05
 
 - **底栏四个 Tab：** 首页、监装、积分兑换、个人中心。第一期只有「监装」（监装列表）与「个人中心」有内容，首页与积分兑换是占位页。
 - **列表（`pages/loading/list`）：** 顶部分段「新派 / 进行中 / 已完成」分别打接口状态 1/2/3；分段用 `components/skew-tabs/skew-tabs`（Canvas 2D 斜切白滑块），点击插值滑动。打开检索抽屉时卸掉 canvas；切底栏或进出详情不再控制 canvas。Tab 与卡片间距 24rpx；过渡写在列表里：`.list__fade` 为 `180deg #F9FAFD → #F0F2F8`，与选中滑块衔接，垫在内容卡片下面。视觉按 Figma「检索条件」稿：蓝渐变顶、口号渐变字、3D 插图压在 Tab 右侧、白卡片展示监装工号、状态徽标、主提单号、明细包装\*件数、船名航次、堆场、品名、下单日期与预计到货日期。支持下拉刷新、触底加载。
-- **检索：** 点顶栏放大镜从右侧弹出「检索条件」抽屉，支持监装工单号（模糊）、主提单号（模糊）、预计到货日；有生效条件时放大镜带红点。检索用本地 `search-drawer`（右侧遮罩，不引用 `wd-popup`，避免微信把 `node-modules/wot-design-uni` 当无依赖丢掉）。打开时把 Tab 的 `hidden` 设为 true，`v-if` 卸掉 2d canvas，关掉再挂回。
+- **检索：** 点顶栏放大镜从右侧弹出「检索条件」抽屉，支持监装工单号（模糊）、主提单号（模糊）、监装堆场关键字（名称/地址/备注）、起运港、船公司、品名、预计到货日；有生效条件时放大镜带红点。起运港/船公司/品名点开底部面板，可搜关键字、每页 20 条、触底加载。起运港下拉两行对齐 PC：`EDI码/英文名` + `国家英文名 / 中文名`；船公司对齐 PC：`CODE(简称)`，下拉与选中回显都带 logo（无图则只显示文字）。检索用本地 `search-drawer`（右侧遮罩，不引用 `wd-popup`，避免微信把 `node-modules/wot-design-uni` 当无依赖丢掉）。打开时把 Tab 的 `hidden` 设为 true，`v-if` 卸掉 2d canvas，关掉再挂回。
 - **详情（`pages/loading/detail`）：** 三张卡——基本信息（13 行）、监装要求（胶囊标签 + 详细说明）、集装箱要求（序号/箱型/箱号/封号/监装处理）。视觉对齐 Figma「检索条件-详情」。
 - **监装处理：** 箱行只留一个入口，展示待处理/已完成与已传张数；点开面板可改该箱箱号、封号、完成状态并按附件类型分组传图。箱号旁可「识别」：拍照/相册一张图只用来识别箱号，不进入监装照片。已认领时面板底栏点「保存」立即提交；点遮罩或关闭且未保存则还原该箱打开时的值。拍照与相册分入口，避免误开相机。
 - **箱型编辑：** 只有已认领状态可在「监装处理」面板改箱号、封号、完成勾选；列表行只展示。不能加箱删箱。
@@ -44,6 +44,7 @@ last_updated: 2026-09-05
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **status** | 监装状态 | `LoadingOrder/GetMyPagedListAsync` | 决定详情底部按钮与箱型是否可编辑 | 师傅端只能查 1/2/3，传 0 报错 |
+| **列表筛选** | 工单号/提单号/堆场关键字/起运港/船公司/品名/到货日 | `GetMyPagedListAsync` 的 `LoadingOrderMyQueryDto` | 三个 Tab 共用同一套筛选，只改 `status` | 堆场关键字搜堆场表名称/地址/备注；没选堆场的工单匹配不上 |
 | **ctnNo / sealNo** | 箱号 / 封号 | 详情 `orderCtns`；箱号可走 `GeminiAdmin/UploadAndExtractCtnNoAsync` 预填 | 只有已认领可在监装处理面板改；识别只回填箱号，不改附件 | 各最长 32；识别失败 `ctnNo` 为 null 时手工填 |
 | **isLoadingCompleted** | 该箱监装是否完成 | 详情 `orderCtns` | 全部箱为 true 时工单自动完成 | — |
 | **attachmentGroups** | 分组监装照片 | 详情 `orderCtns[].attachmentGroups` + `AttachmentDtlType/GetListByModuleTypesAsync`（`160100`） | **触发/依赖：** 先铺维护类型空槽再填已有照片；**按箱全量替换**，漏传该组等于清空该组 | 先 `POST /upload/UploadFile` 拿 `attachmentId`；空组不提交 |
@@ -67,10 +68,15 @@ last_updated: 2026-09-05
 
 > [!IMPORTANT] **[卡点 7：识别箱号图不进监装附件]** `UploadAndExtractCtnNoAsync` 后端仍按 `UploadFile` 落附件，但小程序忽略 `attachmentId`，只把 `ctnNo` 写入输入框。`success=true` 且 `ctnNo` 为空要弹窗「未识别到箱号」，请求失败弹「识别失败」。不要在 `hideLoading` 后立刻 Toast，微信会把提示吃掉。
 
+> [!IMPORTANT] **[卡点 8：列表堆场关键字搜堆场表]** `carrierYardKeyword` 模糊匹配 `CarrierYard.Name/Address/Remark`，不是工单备注。起运港/船公司/品名用自定义面板：关键字搜索、每页 20 条、触底加载。起运港走 `PortCodeAdmin/GetPagedListAsync`（与 PC 同一接口），下拉两行 `EDI/英文名`、`国家 / 中文名`；船公司走 `CarrierAdmin/GetPagedListAsync`，文案 `CODE(简称)`，下拉和选中回显都带 logo。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 检索选中船公司后回显 logo | 选中时记下 `logoUrl`；检索栏左侧图标 + `CODE(简称)`；清空/重置同步清掉 |
+| 2026-09-05 | `Fix` | 检索起运港/船公司下拉文案对齐 PC | 港口 `EDI/英文名` + `国家 / 中文名`；船公司 `CODE(简称)` + logo；港口改走 `PortCodeAdmin/GetPagedListAsync` |
+| 2026-09-05 | `Feature` | 监装列表检索增加堆场关键字、起运港、船公司、品名 | `GetMyPagedListAsync`；选择面板关键字搜索并触底分页，不再截 200 条 |
 | 2026-09-05 | `Feature` | 监装处理箱号旁可拍照/相册识别箱号，结果写入输入框，照片不进附件槽 | `GeminiAdmin/UploadAndExtractCtnNoAsync`；`ctnNo` 为空仍 success；失败用弹窗，勿在 hideLoading 后立刻 Toast |
 | 2026-09-05 | `Fix` | 监装处理拍照后缩略图立刻显示，不必二次打开 | 相对 `fileUrl` 拼 origin；相机先 `saveFile` 占格；`hideLoading` 后重挂原生 image |
 | 2026-09-05 | `Feature` | 监装处理先拉维护的附件类型再按类型分槽上传；未配置类型时提示并可传到未分类组 | `GetListByModuleTypesAsync(160100)` 与详情并行；`toEditableCtns` 合并空槽与已有照片；标题读 `name` 不是 `typeName` |
