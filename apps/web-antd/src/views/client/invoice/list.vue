@@ -3,13 +3,12 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
-  Card,
-  message,
-  Space,
-  Spin,
   Collapse,
   CollapsePanel,
+  Empty,
+  message,
   Modal,
+  Spin,
 } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { Page } from '@vben/common-ui';
@@ -206,48 +205,72 @@ onMounted(() => {
 <template>
   <Page auto-content-height>
     <Spin :spinning="loading">
-      <div class="invoice-list-container">
-        <!-- 操作栏 -->
-        <div
-          class="mb-1 flex items-center justify-between"
-          style="flex-direction: row-reverse"
-        >
-          <Button type="primary" @click="handleAddInvoice">
+      <div class="invoice-page">
+        <!-- 顶部工具栏 -->
+        <div class="invoice-toolbar">
+          <div class="invoice-toolbar__info">
+            <span class="invoice-toolbar__icon">
+              <IconifyIcon icon="mdi:receipt-text-outline" />
+            </span>
+            <span class="invoice-toolbar__title">
+              {{ $t('client.invoice.title') }}
+            </span>
+            <span class="invoice-toolbar__count">{{ invoiceList.length }}</span>
+          </div>
+          <Button
+            type="primary"
+            class="invoice-toolbar__add"
+            @click="handleAddInvoice"
+          >
             <Plus class="size-4" />
             {{ $t('common.create') }}
           </Button>
         </div>
 
-        <!-- 开票信息列表 -->
-        <Collapse v-model:activeKey="activeKey" :bordered="false">
+        <!-- 开票信息卡片列表 -->
+        <Collapse
+          v-model:activeKey="activeKey"
+          :bordered="false"
+          class="invoice-collapse"
+        >
           <CollapsePanel
             v-for="invoice in invoiceList"
             :key="invoice.id"
-            :style="{
-              background: '#f7f7f7',
-              borderRadius: '4px',
-              marginBottom: '16px',
-              border: 0,
-              overflow: 'hidden',
+            :class="{
+              'invoice-card--default': invoice.isDefault,
+              'invoice-card--active': activeKey.includes(invoice.id),
             }"
           >
             <template #header>
-              <div class="flex w-full items-center justify-between pr-4">
-                <Space>
-                  <span class="text-base font-medium">
-                    {{ invoice.header || $t('client.invoice.newInvoice') }}
+              <div class="invoice-card__header">
+                <div class="invoice-card__heading">
+                  <span class="invoice-card__badge">
+                    <IconifyIcon icon="mdi:file-document-outline" />
                   </span>
-                  <span v-if="invoice.isDefault" class="text-xs text-blue-500">
-                    ({{ $t('client.invoice.isDefault') }})
-                  </span>
-                </Space>
-                <Space>
+                  <div class="invoice-card__meta">
+                    <div class="invoice-card__title-row">
+                      <span class="invoice-card__title">
+                        {{ invoice.header || $t('client.invoice.newInvoice') }}
+                      </span>
+                      <span v-if="invoice.isDefault" class="invoice-card__tag">
+                        <IconifyIcon icon="mdi:check-circle" />
+                        {{ $t('client.invoice.isDefault') }}
+                      </span>
+                    </div>
+                    <span class="invoice-card__subtitle">
+                      <IconifyIcon icon="mdi:identifier" />
+                      {{ invoice.taxNum || $t('client.invoice.taxNum') }}
+                    </span>
+                  </div>
+                </div>
+                <div class="invoice-card__actions" @click.stop>
                   <Button
                     type="primary"
                     size="small"
                     :loading="submitting && activeKey.includes(invoice.id)"
                     @click.stop="handleSaveInvoice(invoice.id)"
                   >
+                    <IconifyIcon icon="mdi:content-save-outline" />
                     {{ $t('common.save') }}
                   </Button>
                   <Button
@@ -256,13 +279,14 @@ onMounted(() => {
                     size="small"
                     @click.stop="handleDeleteInvoice(invoice.id)"
                   >
+                    <IconifyIcon icon="mdi:trash-can-outline" />
                     {{ $t('common.delete') }}
                   </Button>
-                </Space>
+                </div>
               </div>
             </template>
 
-            <div class="content-section__body">
+            <div class="invoice-card__body">
               <Form
                 :ref="(el) => setFormRef(el, invoice.id)"
                 :invoice-id="invoice.id.startsWith('new_') ? '' : invoice.id"
@@ -273,11 +297,11 @@ onMounted(() => {
         </Collapse>
 
         <!-- 空状态 -->
-        <div
-          v-if="!loading && invoiceList.length === 0"
-          class="py-8 text-center text-gray-400"
-        >
-          {{ $t('common.noData') }}
+        <div v-if="!loading && invoiceList.length === 0" class="invoice-empty">
+          <Empty
+            :image="Empty.PRESENTED_IMAGE_SIMPLE"
+            :description="$t('common.noData')"
+          />
         </div>
       </div>
     </Spin>
@@ -285,20 +309,242 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-.invoice-list-container {
-  padding: 1px;
+.invoice-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.content-section__body {
-  padding: 16px;
-  background: #fff;
+/* 顶部工具栏 */
+.invoice-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
-:deep(.ant-collapse-header) {
+.invoice-toolbar__info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.invoice-toolbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 10px;
+}
+
+.invoice-toolbar__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+
+.invoice-toolbar__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+  border-radius: 11px;
+}
+
+.invoice-toolbar__add {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 折叠面板卡片化 */
+.invoice-collapse {
+  background: transparent;
+}
+
+.invoice-collapse :deep(.ant-collapse-item) {
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.invoice-collapse :deep(.ant-collapse-item:last-child) {
+  margin-bottom: 0;
+}
+
+.invoice-collapse :deep(.ant-collapse-item:hover) {
+  border-color: hsl(var(--primary) / 45%);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 8%);
+}
+
+.invoice-collapse :deep(.ant-collapse-item.invoice-card--active) {
+  border-color: hsl(var(--primary) / 55%);
+}
+
+.invoice-collapse :deep(.ant-collapse-item.invoice-card--default) {
+  border-color: hsl(var(--primary) / 45%);
+  box-shadow: 0 2px 10px hsl(var(--primary) / 12%);
+}
+
+.invoice-collapse :deep(.ant-collapse-header) {
+  display: flex;
+  align-items: center !important;
   padding: 12px 16px !important;
+  background: hsl(var(--accent) / 55%);
+  transition: background 0.2s ease;
 }
 
-:deep(.ant-collapse-content-box) {
+.invoice-collapse :deep(.ant-collapse-item-active > .ant-collapse-header) {
+  background: hsl(var(--accent));
+}
+
+.invoice-collapse :deep(.invoice-card--default > .ant-collapse-header) {
+  background: hsl(var(--primary) / 7%);
+}
+
+.invoice-collapse :deep(.ant-collapse-arrow) {
+  color: hsl(var(--muted-foreground));
+}
+
+.invoice-collapse :deep(.ant-collapse-content) {
+  border-top: none;
+}
+
+.invoice-collapse :deep(.ant-collapse-content-box) {
   padding: 0 !important;
+}
+
+/* 卡片头部内容 */
+.invoice-card__header {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.invoice-card__heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.invoice-card__badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+  border-radius: 9px;
+}
+
+.invoice-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.invoice-card__title-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.invoice-card__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+
+.invoice-card__tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 3px;
+  align-items: center;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border-radius: 9px;
+}
+
+.invoice-card__subtitle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.invoice-card__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.invoice-card__actions :deep(.ant-btn) {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* 卡片主体 */
+.invoice-card__body {
+  padding: 16px;
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* 空状态 */
+.invoice-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: hsl(var(--card));
+  border: 1px dashed hsl(var(--border));
+  border-radius: 12px;
 }
 </style>

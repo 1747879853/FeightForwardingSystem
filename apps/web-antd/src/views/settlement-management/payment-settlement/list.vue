@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -24,6 +24,36 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const router = useRouter();
 const actionLoading = ref(false);
+
+/** 当前页表格数据，用于底部按结算币别合计 */
+const currentPageData = ref<
+  PaymentSettlementAdminApi.PaymentSettlementListDto[]
+>([]);
+
+/** 按结算币别汇总当前页的结算金额合计（totalSettledPrice 已是结算币别金额） */
+const currencyTotals = computed(() => {
+  const map = new Map<
+    string,
+    { currencyCode: string; settledAmount: number }
+  >();
+  currentPageData.value.forEach((row) => {
+    const code = row.currency?.code || '未知';
+    const item = map.get(code) ?? { currencyCode: code, settledAmount: 0 };
+    item.settledAmount += Number(row.totalSettledPrice) || 0;
+    map.set(code, item);
+  });
+  // 币别按代码排序，翻页时合计胶囊顺序不跳动
+  return [...map.values()].sort((a, b) =>
+    a.currencyCode.localeCompare(b.currencyCode),
+  );
+});
+
+/** 金额格式化：千分位 + 两位小数（与开票申请列表合计样式一致） */
+const formatAmount = (value: number) =>
+  value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 /** 格式化日期时间到分钟 */
 const formatDateTime = (value: string | undefined) => {
@@ -128,6 +158,11 @@ const [Grid, gridApi] =
         ajax: {
           query: createPagedListQuery(getPaymentSettlementPagedList, {
             mapParams: normalizeQuery,
+            afterFetch: (result: any) => {
+              // 拦截当前页数据，驱动底部按币别合计
+              currentPageData.value = result?.items ?? [];
+              return result;
+            },
           }),
         },
       },
@@ -330,5 +365,104 @@ function handleExport() {
         </Tag>
       </template>
     </Grid>
+
+    <!-- 表格下方：当前页按结算币别的结算金额合计（样式参考开票申请列表） -->
+    <template #footer>
+      <div
+        v-if="currencyTotals.length > 0"
+        class="payment-settlement-footer-summary"
+      >
+        <span class="payment-settlement-footer-summary__label">当页合计：</span>
+        <div class="payment-settlement-footer-summary__list">
+          <div
+            v-for="item in currencyTotals"
+            :key="item.currencyCode"
+            class="payment-settlement-footer-summary__item"
+          >
+            <span class="payment-settlement-footer-summary__currency">
+              {{ item.currencyCode }}
+            </span>
+            <span class="payment-settlement-footer-summary__cell">
+              <span class="payment-settlement-footer-summary__cell-label">
+                结算金额
+              </span>
+              <span class="payment-settlement-footer-summary__settled">
+                {{ formatAmount(item.settledAmount) }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div
+        v-else
+        class="payment-settlement-footer-summary payment-settlement-footer-summary--empty"
+      >
+        <span class="payment-settlement-footer-summary__label">当页合计：</span>
+        <span class="text-muted-foreground">暂无数据</span>
+      </div>
+    </template>
   </Page>
 </template>
+
+<style scoped>
+/* 表格下方：当页按币别合计（样式与开票申请列表合计保持一致） */
+.payment-settlement-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+
+  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.payment-settlement-footer-summary--empty {
+  color: rgb(0 0 0 / 45%);
+}
+
+.payment-settlement-footer-summary__label {
+  font-weight: 600;
+  color: rgb(0 0 0 / 85%);
+}
+
+.payment-settlement-footer-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.payment-settlement-footer-summary__item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  background: rgb(24 144 255 / 6%);
+  border: 1px solid rgb(24 144 255 / 20%);
+  border-radius: 4px;
+}
+
+.payment-settlement-footer-summary__currency {
+  padding-right: 8px;
+  font-weight: 600;
+  color: #1890ff;
+  border-right: 1px solid rgb(24 144 255 / 20%);
+}
+
+.payment-settlement-footer-summary__cell {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.payment-settlement-footer-summary__cell-label {
+  color: rgb(0 0 0 / 45%);
+}
+
+.payment-settlement-footer-summary__settled {
+  font-weight: 600;
+  color: #cf1322;
+}
+</style>

@@ -1,12 +1,19 @@
 <template>
   <div class="contact-handsontable-container">
-    <div class="contact-table-actions mb-2">
-      <div class="actions-right">
+    <div class="contact-toolbar">
+      <div class="contact-toolbar__info">
+        <span class="contact-toolbar__icon">
+          <IconifyIcon icon="mdi:account-group-outline" />
+        </span>
+        <span class="contact-toolbar__title">联系人</span>
+      </div>
+      <div class="contact-toolbar__actions">
+        <slot name="toolbar-tools" />
         <Button type="primary" @click="addRow">
           <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
           {{ $t('common.create') }}
         </Button>
-        <Button type="primary" @click="saveData" class="ml-2" :loading="saving">
+        <Button type="primary" :loading="saving" @click="saveData">
           <IconifyIcon icon="ant-design:save-outlined" class="size-4" />
           {{ $t('common.save') }}
         </Button>
@@ -403,11 +410,9 @@ const hotSettings = shallowRef({
         td.style.textAlign = 'center';
         td.style.whiteSpace = 'nowrap';
 
-        // 创建操作按钮容器
+        // 创建操作按钮容器（视觉样式统一由 .contact-action-group 类控制）
         const buttonContainer = document.createElement('div');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.gap = '4px';
-        buttonContainer.style.justifyContent = 'center';
+        buttonContainer.className = 'contact-action-group';
 
         // 禁用/启用按钮
         const statusBtn = document.createElement('button');
@@ -416,13 +421,10 @@ const hotSettings = shallowRef({
           rowData?.isDisabled === true || rowData?.isDisabled === '禁用';
 
         statusBtn.textContent = isDisabled ? '启用' : '禁用';
-        statusBtn.style.padding = '2px 8px';
-        statusBtn.style.fontSize = '12px';
-        statusBtn.style.border = '1px solid #ccc';
-        statusBtn.style.borderRadius = '4px';
-        statusBtn.style.cursor = 'pointer';
-        statusBtn.style.backgroundColor = isDisabled ? '#d4edda' : '#f8d7da';
-        statusBtn.style.color = isDisabled ? '#155724' : '#721c24';
+        // 已禁用→按钮为「启用」(绿色系)；启用中→按钮为「禁用」(橙色系)
+        statusBtn.className = isDisabled
+          ? 'contact-action-btn contact-action-btn--enable'
+          : 'contact-action-btn contact-action-btn--disable';
 
         statusBtn.onclick = async function (e) {
           e.preventDefault();
@@ -475,13 +477,7 @@ const hotSettings = shallowRef({
         // 删除按钮
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '删除';
-        deleteBtn.style.padding = '2px 8px';
-        deleteBtn.style.fontSize = '12px';
-        deleteBtn.style.border = '1px solid #dc3545';
-        deleteBtn.style.borderRadius = '4px';
-        deleteBtn.style.cursor = 'pointer';
-        deleteBtn.style.backgroundColor = '#dc3545';
-        deleteBtn.style.color = 'white';
+        deleteBtn.className = 'contact-action-btn contact-action-btn--delete';
 
         deleteBtn.onclick = function (e) {
           e.preventDefault();
@@ -781,26 +777,133 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .contact-handsontable-container {
   width: 100%;
 }
 
-.contact-table-actions {
+/* 顶部工具栏 */
+.contact-toolbar {
   display: flex;
-  flex-direction: row-reverse;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
+.contact-toolbar__info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.contact-toolbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 10px;
+}
+
+.contact-toolbar__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+
+.contact-toolbar__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 表格容器 */
 .handsontable-wrapper {
   overflow: hidden;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+/* Handsontable 表头主题化 */
+.handsontable-wrapper :deep(.handsontable th) {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+
+.handsontable-wrapper :deep(.handsontable td) {
+  border-color: hsl(var(--border));
+}
+
+/* 操作列按钮（renderer 动态创建，无 scoped 属性，需 :deep 覆盖） */
+.handsontable-wrapper :deep(.contact-action-group) {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn) {
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--enable) {
+  color: #389e0d;
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--enable:hover) {
+  background-color: #d9f7be;
+  border-color: #95de64;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--disable) {
+  color: #d46b08;
+  background-color: #fff7e6;
+  border-color: #ffd591;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--disable:hover) {
+  background-color: #ffe7ba;
+  border-color: #ffc069;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--delete) {
+  color: #fff;
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.handsontable-wrapper :deep(.contact-action-btn--delete:hover) {
+  background-color: #ff7875;
+  border-color: #ff7875;
 }
 
 /* ✅ 校验非法单元格：浅红底 + 红边框，配合 validator 实时反馈（覆盖 Handsontable 默认亮红） */
-:deep(.htInvalid) {
+.handsontable-wrapper :deep(.htInvalid) {
   background-color: #fff1f0 !important;
   border-color: #ff4d4f !important;
 }
