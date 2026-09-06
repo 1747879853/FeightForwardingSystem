@@ -3,6 +3,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import {
   computed,
   nextTick,
+  onActivated,
   onMounted,
   onUnmounted,
   ref,
@@ -28,6 +29,8 @@ import OrderFeeTableCore from './OrderFeeTableCore.vue';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 import BatchImportFeeModal from './batch-import-fee-modal.vue';
+import AiBillFeeUploadModal from './ai-bill-fee-upload-modal.vue';
+import AiBillFeeResultModal from './ai-bill-fee-result-modal.vue';
 import { useOrderFeeData } from './composables/useOrderFeeData';
 import { useOrderFeeActions } from './composables/useOrderFeeActions';
 import { useOrderFeeLinkage } from './composables/useOrderFeeLinkage';
@@ -41,6 +44,8 @@ import { useModals } from './composables/useModals';
 import { initOrderFeeEnumCache } from '../data';
 import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
 import { useOrderFeeAdapter } from '../use-adapter';
+import { extractBillFees } from '#/api/sea-export/gemini-admin';
+import { consumePendingBillFees } from '../ai-bill-fee-pending';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -336,6 +341,99 @@ const handleBatchImportConfirm = () => {
   getTableDate();
   syncFee();
   emit('refresh-opposite-table');
+};
+
+// ==================== AI 识别账单费用（仅应付表 type===1） ====================
+
+/** 上传弹窗开关 */
+const aiUploadOpen = ref(false);
+/** 识别中：驱动上传弹窗 Spin，并防止重复提交 */
+const aiRecognizing = ref(false);
+/** 结果确认弹窗（useVbenModal，通过 modalApi 打开） */
+const aiResultModalRef = ref<InstanceType<typeof AiBillFeeResultModal>>();
+
+/** 打开结果确认弹窗 */
+const openAiBillFeeResultModal = (data: {
+  mblNum?: null | string;
+  orderFees: any[];
+  transportOrder: any;
+  transportOrderId: string;
+}) => {
+  aiResultModalRef.value?.modalApi.setData(data);
+  aiResultModalRef.value?.modalApi.open();
+};
+
+/** 打开 AI 识别上传弹窗 */
+const openAiBillFeeModal = () => {
+  if (!editId.value) {
+    message.warning('请先保存业务信息');
+    return;
+  }
+  aiUploadOpen.value = true;
+};
+
+/**
+ * 上传弹窗选中文件 → 带当前业务 id 识别。
+ * 费用页已打开某一票，传 transportOrderId，后端会校验账单主提单号须与本票一致。
+ */
+const handleAiBillFeeFile = async (file: File) => {
+  if (aiRecognizing.value) return;
+  aiRecognizing.value = true;
+  const hideLoading = message.loading({
+    content: 'AI识别中，请稍候...',
+    duration: 0,
+    key: 'ai_bill_fee_page',
+  });
+  try {
+    const result = await extractBillFees(file, editId.value);
+    hideLoading();
+    aiUploadOpen.value = false;
+    const fees = result?.orderFees ?? [];
+    if (fees.length === 0) {
+      message.info('未从账单中识别出费用行');
+      return;
+    }
+    openAiBillFeeResultModal({
+      transportOrderId: result.transportOrder?.id || editId.value || '',
+      transportOrder: result.transportOrder,
+      mblNum: result.mblNum,
+      orderFees: fees,
+    });
+  } catch (error) {
+    // 后端错误文案（如账单提单号与本票不一致）已由全局拦截器提示，此处仅关闭 loading
+    hideLoading();
+    console.error('[OrderFeeTable] 账单识别失败:', error);
+  } finally {
+    aiRecognizing.value = false;
+  }
+};
+
+/** 结果弹窗提交成功 → 刷新应付表（与批量导入一致） */
+const handleAiBillFeeResultConfirm = () => {
+  getTableDate();
+  syncFee();
+  emit('refresh-opposite-table');
+};
+
+/**
+ * 消费列表页跨页暂存的识别费用（仅应付表）。
+ * 列表页识别→跳转后，应付表挂载 / 激活 / 切票时按业务 id 精确读取并清除暂存，
+ * 命中则自动弹出确认弹窗，避免用户二次上传、二次等待 AI。
+ */
+const tryConsumePendingBillFees = () => {
+  if (props.type !== 1) return;
+  const orderId = editId.value;
+  if (!orderId) return;
+  const pending = consumePendingBillFees(orderId);
+  if (!pending || !pending.orderFees || pending.orderFees.length === 0) return;
+  nextTick(() => {
+    openAiBillFeeResultModal({
+      transportOrderId: pending.transportOrderId,
+      transportOrder: pending.transportOrder,
+      mblNum: pending.transportOrder?.mblNum,
+      orderFees: pending.orderFees,
+    });
+  });
 };
 
 // ==================== 暴露方法给父组件 ====================
@@ -669,6 +767,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 onMounted(async () => {
   initOrderFeeEnumCache();
+  // 列表页 AI 识别跳转而来：应付表挂载即消费跨页暂存，命中则自动弹出确认弹窗
+  tryConsumePendingBillFees();
   // 本次进入费用页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率（ETD+本位币匹配用）
   await ensureExchangeRateCache(true);
   await initDropdownSources();
@@ -708,6 +808,11 @@ onUnmounted(() => {
   localAllClientsByIndustry.value = {};
   feeCodeDetailCache.value.clear();
   exchangeRateCache.value.clear();
+});
+
+// KeepAlive 复用（从列表页识别跳转回已缓存的费用页）时消费跨页暂存
+onActivated(() => {
+  tryConsumePendingBillFees();
 });
 
 // 监听器
@@ -781,6 +886,8 @@ watch(
   async (newEditId, oldEditId) => {
     if (newEditId && newEditId !== oldEditId) {
       loadFinishStatus();
+      // 切换到另一票时，若存在该票的跨页暂存识别费用则消费
+      tryConsumePendingBillFees();
     }
   },
 );
@@ -860,6 +967,19 @@ watch(
               </DropdownButton>
 
               <Button
+                v-if="type === 1 && props.mode !== 'changeOrder'"
+                type="primary"
+                ghost
+                @click="openAiBillFeeModal"
+              >
+                <IconifyIcon
+                  icon="mdi:robot-outline"
+                  class="mr-1 inline-block size-3.5 align-middle"
+                />
+                <span class="align-middle">AI识别</span>
+              </Button>
+
+              <Button
                 v-show="type === 0"
                 type="default"
                 :loading="loadingFinishStatus"
@@ -916,6 +1036,19 @@ watch(
     <BatchImportFeeModal
       ref="batchImportModalRef"
       @confirm="handleBatchImportConfirm"
+    />
+
+    <AiBillFeeUploadModal
+      v-if="type === 1"
+      v-model:open="aiUploadOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiBillFeeFile"
+    />
+
+    <AiBillFeeResultModal
+      v-if="type === 1"
+      ref="aiResultModalRef"
+      @confirm="handleAiBillFeeResultConfirm"
     />
   </Card>
 </template>

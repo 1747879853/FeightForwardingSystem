@@ -43,6 +43,7 @@ import {
   setClientContactDisabled,
   deleteClientContact,
 } from '#/api/sea-export/client-contact-admin';
+import { userSimpleListCache } from '#/adapter/component/biz-select';
 
 interface Props {
   clientId?: string;
@@ -69,6 +70,50 @@ const saving = ref(false); // 保存loading状态
 
 // 初始化数据
 const tableData = shallowRef<any[]>([]);
+
+// ✅ 对接人（用户）下拉数据源：复用全量用户简易列表缓存（与 UserSelect 同源）。
+// Handsontable 单元格展示昵称(userNickName)，提交用 userId，故维护 nickName↔userId 双向映射。
+const userNameSource = ref<string[]>([]);
+const nickNameToUserId = ref<Map<string, number>>(new Map());
+const userIdToNickName = ref<Map<number, string>>(new Map());
+
+/** 加载对接人候选（昵称去重），构建 nickName↔userId 映射 */
+const loadUserOptions = async () => {
+  try {
+    const users = await userSimpleListCache.ensure();
+    const names: string[] = [];
+    const nameToId = new Map<string, number>();
+    const idToName = new Map<number, string>();
+    (users ?? []).forEach((user) => {
+      const id = Number(user?.id);
+      const nickName = (user?.nickName ?? '').trim();
+      if (!nickName || Number.isNaN(id)) return;
+      idToName.set(id, nickName);
+      // 昵称重复时以首个为准，避免下拉出现同名歧义项
+      if (!nameToId.has(nickName)) {
+        nameToId.set(nickName, id);
+        names.push(nickName);
+      }
+    });
+    // 首项空字符串 = 不指定对接人（所有人可见）
+    userNameSource.value = ['', ...names];
+    nickNameToUserId.value = nameToId;
+    userIdToNickName.value = idToName;
+  } catch (error) {
+    console.error('[ContactHandsontable] 加载对接人候选失败:', error);
+  }
+};
+
+/** 由联系人取对接人展示昵称：优先 user.nickName，缺失时按 userId 反查缓存 */
+const resolveUserNickName = (
+  contact: ClientContactAdminApi.ClientContactDto,
+): string => {
+  const fromUser = (contact.user?.nickName ?? '').trim();
+  if (fromUser) return fromUser;
+  const uid = contact.userId;
+  if (uid === null || uid === undefined || uid === 0) return '';
+  return userIdToNickName.value.get(Number(uid)) ?? '';
+};
 
 // ✅ 联系人可选字段合法性校验规则（手机/邮箱/座机/QQ）：
 // 四者均为可选字段——留空视为合法，一旦填写则必须符合对应格式
@@ -296,10 +341,47 @@ const hotSettings = shallowRef({
       },
     },
     {
+      data: 'userNickName',
+      title: '对接人',
+      type: 'autocomplete',
+      width: 120,
+      // 空串 = 不指定对接人（所有人可见）；候选来自全量用户缓存，随输入过滤
+      source: (query: string, process: (items: string[]) => void) => {
+        const list = userNameSource.value;
+        const keyword = (query ?? '').toString().trim().toLowerCase();
+        const filtered = keyword
+          ? list.filter(
+              (name) => name !== '' && name.toLowerCase().includes(keyword),
+            )
+          : [...list];
+        // 始终保留空选项，便于清空对接人
+        if (!filtered.includes('')) filtered.unshift('');
+        process(filtered);
+      },
+      strict: false,
+      filteringCaseSensitive: false,
+      trimDropdown: false,
+      visibleRows: 10,
+    },
+    {
       data: 'remark',
       title: '备注',
       type: 'text',
       width: 150,
+    },
+    {
+      data: 'creatorUserName',
+      title: '创建人',
+      type: 'text',
+      width: 100,
+      readOnly: true,
+    },
+    {
+      data: 'lastModifierUserName',
+      title: '修改人',
+      type: 'text',
+      width: 100,
+      readOnly: true,
     },
 
     {
@@ -433,6 +515,9 @@ const hotSettings = shallowRef({
 onMounted(() => {
   console.log('[Handsontable] onMounted 触发');
 
+  // 加载对接人下拉候选（用户昵称），供「对接人」列 autocomplete 使用
+  void loadUserOptions();
+
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
     console.log('[Handsontable] 获取 hotInstance:', !!hotInstance);
@@ -477,6 +562,8 @@ const updateTableData = (
     invoiceEnable: contact.invoiceEnable ? '是' : '否',
     statementEnable: contact.statementEnable ? '是' : '否',
     isDisabled: contact.isDisabled ? '禁用' : '启用',
+    // 对接人展示昵称（提交用的 userId 由 ...contact 透传保留）
+    userNickName: resolveUserNickName(contact),
   }));
 
   console.log('[Handsontable] 映射后的数据示例:', mappedData[0]);
@@ -518,6 +605,19 @@ const onAfterChange = (changes: any, source: string) => {
 
   // 同步数据到父组件（如果不是 loadData 操作）
   if (source !== 'loadData') {
+    // ✅ 对接人列编辑的是展示昵称(userNickName)，需同步回写提交用的 userId / user
+    changes.forEach(([rowIdx, prop, , newValue]: any[]) => {
+      if (prop !== 'userNickName') return;
+      const target = tableData.value[rowIdx];
+      if (!target) return;
+      const nickName = (newValue ?? '').toString().trim();
+      const matchedId = nickName
+        ? (nickNameToUserId.value.get(nickName) ?? null)
+        : null;
+      target.userId = matchedId;
+      target.user = matchedId ? { id: matchedId, nickName } : null;
+    });
+
     const updatedData = tableData.value.map((row) => ({
       ...row,
       isDefault: row.isDefault === '是',
@@ -552,6 +652,10 @@ const addRow = () => {
     invoiceEnable: '否',
     statementEnable: '否',
     isDisabled: '启用',
+    userId: null,
+    userNickName: '',
+    creatorUserName: '',
+    lastModifierUserName: '',
   };
 
   tableData.value.push(newRow);
@@ -628,13 +732,22 @@ const saveData = async () => {
   saving.value = true;
 
   try {
-    const updatedData = tableData.value.map((row) => ({
-      ...row,
-      isDefault: row.isDefault === '是',
-      invoiceEnable: row.invoiceEnable === '是',
-      statementEnable: row.statementEnable === '是',
-      isDisabled: row.isDisabled === '禁用',
-    }));
+    const updatedData = tableData.value.map((row) => {
+      // 对接人：以展示昵称回推 userId；空昵称 = 不指定（null）；
+      // 昵称不在候选（如已停用用户）时保留行上原有 userId，避免误清空
+      const nickName = (row.userNickName ?? '').toString().trim();
+      const userId = nickName
+        ? (nickNameToUserId.value.get(nickName) ?? row.userId ?? null)
+        : null;
+      return {
+        ...row,
+        isDefault: row.isDefault === '是',
+        invoiceEnable: row.invoiceEnable === '是',
+        statementEnable: row.statementEnable === '是',
+        isDisabled: row.isDisabled === '禁用',
+        userId,
+      };
+    });
 
     // 通知父组件处理保存逻辑（传递转换后的数据）
     emit('save', updatedData as ClientContactAdminApi.ClientContactDto[]);

@@ -195,3 +195,136 @@ export function extractInvoice(attachmentId: number | string) {
     },
   );
 }
+
+// ==================== 单票账单识别费用 ====================
+
+/**
+ * 账单识别 - 费用代码（展示用嵌套对象）
+ * 未匹配时 id=-1，code/cnName/enName 为账单上的费用项目原文
+ */
+export interface GeminiBillFeeCodeDto {
+  /** 费用代码 id，与外层 feeCodeId 一致；未匹配为 -1 */
+  id: number;
+  /** 费用代码，未匹配时为账单费用项目原文 */
+  code?: null | string;
+  /** 中文名称，未匹配时为账单费用项目原文 */
+  cnName?: null | string;
+  /** 英文名称，未匹配时为账单费用项目原文 */
+  enName?: null | string;
+}
+
+/**
+ * 账单识别 - 币别（展示用嵌套对象，无 id，提交用外层 currencyId）
+ */
+export interface GeminiBillCurrencyDto {
+  /** 币别代码，如 CNY */
+  code?: null | string;
+  /** 中文名称，未匹配时与 code 相同 */
+  cnName?: null | string;
+  /** 英文名称，未匹配时与 code 相同 */
+  enName?: null | string;
+}
+
+/**
+ * 账单识别 - 提单号匹配到的业务（恒有值，对不上业务时接口直接报错）
+ */
+export interface GeminiBillFeeTransportOrderDto {
+  /** 业务 id（TransportOrder.Id），也是每条费用的 transportOrderId */
+  id: string;
+  /** 业务类型：0=海运出口 1=海运进口 2=空运出口 */
+  bizType: number;
+  /** 委托编号 */
+  commissionNum?: null | string;
+  /** 主提单号（库里原值） */
+  mblNum?: null | string;
+}
+
+/**
+ * 账单识别 - 单条费用（OrderFeeEditDto 结构，id 恒为 null 表示新增）
+ * feeCode / currency 为展示用嵌套对象，提交以后端认的 feeCodeId / currencyId 为准
+ */
+export interface GeminiBillFeeOrderFeeDto {
+  /** 费用 id，恒为 null（新增） */
+  id?: null | string;
+  /** 收付类型，账单固定为 1（应付） */
+  paySide: number;
+  /** 更改单 id，恒为 null（记在主单上） */
+  changeOrderId?: null | string;
+  /** 业务 id，与 transportOrder.id 相同 */
+  transportOrderId: string;
+  /** 费用代码 id，匹配不到为 -1（须用户改完才能提交） */
+  feeCodeId: number;
+  /** 结算对象类别，解析不到为 null */
+  industryCategory?: null | number;
+  /** 结算对象 id，带不到为 null（录入状态允许为空） */
+  settlementId?: null | string;
+  /** 币别 id，匹配不到为 -1 */
+  currencyId: number;
+  /** 汇率，对不上为 0 */
+  exchangeRate: number;
+  /** 含税单价（账单 Rate / 单价列） */
+  unitPrice: number;
+  /** 不含税单价（按费用代码默认税率反算） */
+  noTaxUnitPrice: number;
+  /** 金额（unitPrice * quantity，两位小数） */
+  amount: number;
+  /** 不含税金额（按税率反算） */
+  noTaxAmount: number;
+  /** 单位（箱型名，如 40HC） */
+  unit?: null | string;
+  /** 数量（该箱型的箱量） */
+  quantity: number;
+  /** 税率(%)，未匹配为 0 */
+  taxRate: number;
+  /** 是否禁开发票，未匹配为 false */
+  invoiceBlocked: boolean;
+  /** 是否机密，未匹配为 false */
+  isConfidential: boolean;
+  /** 备注，本接口不填，为 null */
+  remark?: null | string;
+  /** 费用代码（展示） */
+  feeCode?: GeminiBillFeeCodeDto | null;
+  /** 结算对象（展示），本接口不回填，为 null */
+  settlement?: any | null;
+  /** 币别（展示） */
+  currency?: GeminiBillCurrencyDto | null;
+}
+
+/**
+ * 账单识别结果（提单号 → 匹配到的业务 → 费用列表，勿拍平）
+ */
+export interface GeminiBillFeeExtractDto {
+  /** 识别出的提单号（已去空格/横杠并转大写，成功返回时恒有值） */
+  mblNum: string;
+  /** 提单号匹配到的业务（恒有值） */
+  transportOrder: GeminiBillFeeTransportOrderDto;
+  /** 费用添加列表，可能为空数组（认到提单号但对不出费用行） */
+  orderFees: GeminiBillFeeOrderFeeDto[];
+}
+
+/**
+ * Gemini 单票账单识别费用
+ * 上传船公司/订舱代理的单票账单，识别提单号与费用行并匹配业务，返回费用添加 DTO 列表（不落库）。
+ * 本接口不写费用，由用户在前端勾选后再提交到 OrderFeeAdmin/BatchEditAsync。
+ * @param file 单票账单文件（pdf/png/jpg/jpeg/webp/heic/heif/gif/bmp/txt/xlsx/xls，上限 20MB）
+ * @param transportOrderId 当前业务 id，可选。费用页已打开某一票时传入，账单主提单号须与该票一致；
+ *                         列表页不传，由识别出的提单号去匹配业务
+ */
+export function extractBillFees(file: File, transportOrderId?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (transportOrderId) {
+    formData.append('transportOrderId', String(transportOrderId));
+  }
+
+  return requestClient.post<GeminiBillFeeExtractDto>(
+    '/services/app/GeminiAdmin/ExtractBillFeesAsync',
+    formData,
+    {
+      timeout: 180_000, // 单证解析通常 10~60 秒，后端超时 180 秒
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}

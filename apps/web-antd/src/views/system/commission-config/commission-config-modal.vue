@@ -40,8 +40,10 @@ import {
   getCargoTypeOptions,
   getConditionFieldOptions,
   getConditionOperatorOptions,
+  getPeriodTypeOptions,
   getProfitThresholdOperatorOptions,
   getSalesCommissionTypeOptions,
+  getTradeTermsTypeOptions,
 } from './data';
 
 defineOptions({ name: 'SystemCommissionConfigModal' });
@@ -51,6 +53,7 @@ const emit = defineEmits(['success']);
 const {
   CommissionConditionField,
   CommissionConditionOperator,
+  CommissionPeriodType,
   CommissionType,
   SalesCommissionType,
 } = CommissionConfigAdminApi;
@@ -110,6 +113,7 @@ const baseForm = reactive({
   isEnabled: true,
   effectiveStartDate: undefined as string | undefined,
   effectiveEndDate: undefined as string | undefined,
+  periodType: CommissionPeriodType.Month,
   userIds: [] as number[],
   orgIds: [] as number[],
   bizTypes: [] as CommissionConfigAdminApi.BizType[],
@@ -168,6 +172,7 @@ function resetDrafts() {
     isEnabled: true,
     effectiveStartDate: undefined,
     effectiveEndDate: undefined,
+    periodType: CommissionPeriodType.Month,
     userIds: [],
     orgIds: [],
     bizTypes: [],
@@ -190,7 +195,9 @@ function resetDrafts() {
 
 const bizTypeOptions = getBizTypeOptions();
 const baseSalaryModeOptions = getBaseSalaryModeOptions();
+const periodTypeOptions = getPeriodTypeOptions();
 const cargoTypeOptions = getCargoTypeOptions();
+const tradeTermsTypeOptions = getTradeTermsTypeOptions();
 const conditionFieldOptions = getConditionFieldOptions();
 const conditionOperatorOptions = getConditionOperatorOptions();
 const profitThresholdOperatorOptions = getProfitThresholdOperatorOptions();
@@ -263,6 +270,10 @@ const isAirPortField = (
 ) =>
   field === CommissionConditionField.AirDeparturePort ||
   field === CommissionConditionField.AirDestinationPort;
+
+const isTradeTermsField = (
+  field?: CommissionConfigAdminApi.CommissionConditionField,
+) => field === CommissionConditionField.TradeTerms;
 
 const isPerTicket = (
   field?: CommissionConfigAdminApi.CommissionConditionField,
@@ -457,11 +468,17 @@ function buildConditionValues(
   cond: ConditionDraft,
 ): CommissionConfigAdminApi.CommissionConditionValueInputDto[] | null {
   if (isPerTicket(cond.conditionField)) return null;
-  return cond.values.map((value) =>
-    cond.conditionField === CommissionConditionField.CargoType
-      ? { cargoId: value as CommissionConfigAdminApi.CargoType }
-      : { portId: value as number },
-  );
+  return cond.values.map((value) => {
+    if (cond.conditionField === CommissionConditionField.CargoType) {
+      return { cargoId: value as CommissionConfigAdminApi.CargoType };
+    }
+    if (cond.conditionField === CommissionConditionField.TradeTerms) {
+      return {
+        tradeTermsType: value as CommissionConfigAdminApi.TradeTermsType,
+      };
+    }
+    return { portId: value as number };
+  });
 }
 
 function buildSalesPayload(): CommissionConfigAdminApi.CommissionSalesInputDto | null {
@@ -517,6 +534,7 @@ function buildSubmitData(): CommissionConfigAdminApi.CommissionConfigAddDto {
     effectiveEndDate: baseForm.effectiveEndDate
       ? `${baseForm.effectiveEndDate}-01`
       : null,
+    periodType: baseForm.periodType,
     userIds: baseForm.userIds.length > 0 ? baseForm.userIds : null,
     orgIds: baseForm.orgIds.length > 0 ? baseForm.orgIds : null,
     bizTypes: baseForm.bizTypes.length > 0 ? baseForm.bizTypes : null,
@@ -536,6 +554,7 @@ async function fillFromDetail(id: string) {
   baseForm.isEnabled = detail.isEnabled;
   baseForm.effectiveStartDate = detail.effectiveStartDate?.slice(0, 7);
   baseForm.effectiveEndDate = detail.effectiveEndDate?.slice(0, 7);
+  baseForm.periodType = detail.periodType ?? CommissionPeriodType.Month;
   baseForm.userIds = detail.applyUsers.map((user) => user.id);
   baseForm.orgIds = detail.applyOrgs.map((org) => org.id);
   baseForm.bizTypes = [...detail.bizTypes];
@@ -573,7 +592,10 @@ async function fillFromDetail(id: string) {
           values: cond.values
             .map(
               (value) =>
-                value.seaPort?.id ?? value.airPort?.id ?? value.cargoId,
+                value.seaPort?.id ??
+                value.airPort?.id ??
+                value.cargoId ??
+                value.tradeTermsType,
             )
             .filter((value): value is number => value != null),
         })),
@@ -683,6 +705,16 @@ const [Modal, modalApi] = useVbenModal({
                 class="w-44"
               />
             </div>
+          </FormItem>
+          <FormItem
+            :label="$t('commission.periodType')"
+            :extra="$t('commission.periodTypeHint')"
+          >
+            <Select
+              v-model:value="baseForm.periodType"
+              :options="periodTypeOptions"
+              class="w-44"
+            />
           </FormItem>
           <FormItem
             :label="$t('commission.bizTypes')"
@@ -981,6 +1013,20 @@ const [Modal, modalApi] = useVbenModal({
                       "
                       :model-value="getConditionValueBinding(cond)"
                       :options="cargoTypeOptions"
+                      :mode="
+                        isMultipleOperator(cond.operator)
+                          ? 'multiple'
+                          : undefined
+                      "
+                      :placeholder="$t('commission.conditionValues')"
+                      @update:value="
+                        (value) => onConditionValuesChange(cond, value)
+                      "
+                    />
+                    <Select
+                      v-else-if="isTradeTermsField(cond.conditionField)"
+                      :model-value="getConditionValueBinding(cond)"
+                      :options="tradeTermsTypeOptions"
                       :mode="
                         isMultipleOperator(cond.operator)
                           ? 'multiple'

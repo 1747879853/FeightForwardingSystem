@@ -48,6 +48,41 @@ export const getCargoTypeOptions = (): Option[] => [
   },
 ];
 
+export const getTradeTermsTypeOptions = (): Option[] => [
+  {
+    label: $t('commission.tradeTermsCif'),
+    value: CommissionConfigAdminApi.TradeTermsType.Cif,
+  },
+  {
+    label: $t('commission.tradeTermsFob'),
+    value: CommissionConfigAdminApi.TradeTermsType.Fob,
+  },
+  {
+    label: $t('commission.tradeTermsExw'),
+    value: CommissionConfigAdminApi.TradeTermsType.Exw,
+  },
+  {
+    label: $t('commission.tradeTermsFca'),
+    value: CommissionConfigAdminApi.TradeTermsType.Fca,
+  },
+  {
+    label: $t('commission.tradeTermsDdp'),
+    value: CommissionConfigAdminApi.TradeTermsType.Ddp,
+  },
+  {
+    label: $t('commission.tradeTermsDdu'),
+    value: CommissionConfigAdminApi.TradeTermsType.Ddu,
+  },
+  {
+    label: $t('commission.tradeTermsDap'),
+    value: CommissionConfigAdminApi.TradeTermsType.Dap,
+  },
+  {
+    label: $t('commission.tradeTermsCAndF'),
+    value: CommissionConfigAdminApi.TradeTermsType.CAndF,
+  },
+];
+
 export const getConditionFieldOptions = (): Option[] => [
   {
     label: $t('commission.conditionFieldSeaPol'),
@@ -72,6 +107,10 @@ export const getConditionFieldOptions = (): Option[] => [
   {
     label: $t('commission.conditionFieldPerTicket'),
     value: CommissionConfigAdminApi.CommissionConditionField.PerTicket,
+  },
+  {
+    label: $t('commission.conditionFieldTradeTerms'),
+    value: CommissionConfigAdminApi.CommissionConditionField.TradeTerms,
   },
 ];
 
@@ -131,6 +170,25 @@ export const getBaseSalaryModeOptions = (): Option[] => [
   },
 ];
 
+export const getPeriodTypeOptions = (): Option[] => [
+  {
+    label: $t('commission.periodMonth'),
+    value: CommissionConfigAdminApi.CommissionPeriodType.Month,
+  },
+  {
+    label: $t('commission.periodQuarter'),
+    value: CommissionConfigAdminApi.CommissionPeriodType.Quarter,
+  },
+  {
+    label: $t('commission.periodHalfYear'),
+    value: CommissionConfigAdminApi.CommissionPeriodType.HalfYear,
+  },
+  {
+    label: $t('commission.periodYear'),
+    value: CommissionConfigAdminApi.CommissionPeriodType.Year,
+  },
+];
+
 /** 是否启用选项（查询表单用） */
 export const getIsEnabledOptions = (): {
   label: string;
@@ -159,11 +217,28 @@ export const getBaseSalaryModeLabel = (
   return map.get(mode as number) ?? '';
 };
 
+export const getPeriodTypeLabel = (
+  periodType?: CommissionConfigAdminApi.CommissionPeriodType | null,
+): string => {
+  const map = new Map(getPeriodTypeOptions().map((o) => [o.value, o.label]));
+  // 后端不传时默认月度
+  return map.get((periodType ?? 0) as number) ?? $t('commission.periodMonth');
+};
+
 export const getCargoTypeLabel = (
   cargoId?: CommissionConfigAdminApi.CargoType | null,
 ): string => {
   const map = new Map(getCargoTypeOptions().map((o) => [o.value, o.label]));
   return map.get(cargoId as number) ?? String(cargoId ?? '');
+};
+
+export const getTradeTermsTypeLabel = (
+  tradeTermsType?: CommissionConfigAdminApi.TradeTermsType | null,
+): string => {
+  const map = new Map(
+    getTradeTermsTypeOptions().map((o) => [o.value, o.label]),
+  );
+  return map.get(tradeTermsType as number) ?? String(tradeTermsType ?? '');
 };
 
 export const getConditionFieldLabel = (
@@ -288,6 +363,9 @@ export const buildConditionDescription = (
         v.airPort.enName ||
         String(v.airPort.id)
       );
+    }
+    if (v.tradeTermsType != null) {
+      return getTradeTermsTypeLabel(v.tradeTermsType);
     }
     return getCargoTypeLabel(v.cargoId);
   });
@@ -417,6 +495,17 @@ export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConf
       formatter: ({ row }) =>
         formatEffectivePeriod(
           row as CommissionConfigAdminApi.CommissionConfigDto,
+        ),
+    },
+    {
+      field: 'periodType',
+      title: $t('commission.periodType'),
+      width: 90,
+      align: 'center',
+      sortable: false,
+      formatter: ({ cellValue }) =>
+        getPeriodTypeLabel(
+          cellValue as CommissionConfigAdminApi.CommissionPeriodType,
         ),
     },
     {

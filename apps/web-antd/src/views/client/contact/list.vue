@@ -87,7 +87,8 @@ const contactSnapshot = ref<null | string>(null);
 
 function contactDirtyPayload() {
   return JSON.stringify(
-    (dataSource.value ?? []).map(({ _rowKey: _k, ...rest }) => rest),
+    // dataSource 行由 normalizeWithRowKey 注入了 _rowKey（非 DTO 字段），此处按宽松类型剔除
+    (dataSource.value ?? []).map(({ _rowKey: _k, ...rest }: any) => rest),
   );
 }
 
@@ -247,6 +248,8 @@ const saveContacts = async (
         invoiceEnable: contact.invoiceEnable,
         statementEnable: contact.statementEnable,
         isDisabled: contact.isDisabled,
+        // 对接人：未指定（空/0/null）时不传，由后端视为“所有人可见”
+        userId: contact.userId || undefined,
       };
 
       return item;

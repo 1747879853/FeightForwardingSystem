@@ -79,6 +79,8 @@ import {
   resolveOrderLabel,
   useYundangOceanTrack,
 } from './use-yundang-ocean-track';
+import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-upload-modal.vue';
+import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
@@ -106,6 +108,18 @@ const canViewYundangTracking = computed(() =>
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
+
+/** AI 识别账单费用（列表页）：上传 → 识别 → 按提单号定位业务 → 跳转到费用页确认添加 */
+const { recognizing: aiRecognizing, recognizeAndLocate } = useAiBillFeeLocate();
+const aiUploadOpen = ref(false);
+const onAiBillFee = () => {
+  aiUploadOpen.value = true;
+};
+const handleAiBillFeeFile = async (file: File) => {
+  const ok = await recognizeAndLocate(file);
+  // 仅在识别并跳转成功后关闭上传弹窗；失败时保持打开，便于用户重新选择文件
+  if (ok) aiUploadOpen.value = false;
+};
 
 /** 服务项类型枚举 label 映射（用于「业务状态」列展示服务名称） */
 const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
@@ -551,6 +565,14 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
+        <span v-access:code="externalApiUseCode" class="mr-2 inline-flex">
+          <Button :loading="aiRecognizing" @click="onAiBillFee">
+            <template #icon>
+              <IconifyIcon icon="mdi:robot-outline" class="size-4" />
+            </template>
+            AI识别
+          </Button>
+        </span>
         <span
           v-if="isLegacyOceanExportTracking"
           v-access:code="externalApiUseCode"
@@ -716,6 +738,11 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
       <VendorResultModal />
       <VendorTrackingModal />
     </template>
+    <AiBillFeeUploadModal
+      v-model:open="aiUploadOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiBillFeeFile"
+    />
   </Page>
 </template>
 

@@ -39,6 +39,18 @@ export namespace CommissionConfigAdminApi {
     MaxOfBoth = 1,
   }
 
+  /** 提成周期（决定一张提成单覆盖几个月） */
+  export enum CommissionPeriodType {
+    /** 月度 */
+    Month = 0,
+    /** 季度 */
+    Quarter = 1,
+    /** 半年度 */
+    HalfYear = 2,
+    /** 年度 */
+    Year = 3,
+  }
+
   /** 业务类型 */
   export enum BizType {
     /** 海运出口 */
@@ -61,6 +73,26 @@ export namespace CommissionConfigAdminApi {
     OverSize = 3,
   }
 
+  /** 贸易条款（与海运出口、订单费用模板共用同一套后端枚举值） */
+  export enum TradeTermsType {
+    /** CIF */
+    Cif = 0,
+    /** FOB */
+    Fob = 1,
+    /** EXW */
+    Exw = 2,
+    /** FCA */
+    Fca = 3,
+    /** DDP */
+    Ddp = 4,
+    /** DDU */
+    Ddu = 5,
+    /** DAP */
+    Dap = 6,
+    /** C&F */
+    CAndF = 7,
+  }
+
   /** 条件字段 */
   export enum CommissionConditionField {
     /** 海运起运港 */
@@ -75,6 +107,8 @@ export namespace CommissionConfigAdminApi {
     CargoType = 4,
     /** 按票（不需要比较符也不需要比较值，必须独占整个条件项） */
     PerTicket = 5,
+    /** 贸易条款 */
+    TradeTerms = 6,
   }
 
   /** 条件比较符 */
@@ -193,11 +227,13 @@ export namespace CommissionConfigAdminApi {
     portId?: number | null;
     /** 货物类型。ConditionField 为 4 时必填 */
     cargoId?: CargoType | null;
+    /** 贸易条款。ConditionField 为 6 时必填 */
+    tradeTermsType?: TradeTermsType | null;
   }
 
   /** 条件入参 */
   export interface CommissionConditionInputDto {
-    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票 */
+    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票 6贸易条款 */
     conditionField: CommissionConditionField;
     /** 比较符：0等于 1不等于 2包含于 3不包含于。字段为 5（按票）时不参与判定，传什么都存 0 */
     operator?: CommissionConditionOperator | null;
@@ -245,6 +281,8 @@ export namespace CommissionConfigAdminApi {
     effectiveStartDate?: string | null;
     /** 生效截止会计期间，只取年月，含当月。不传=不限截止 */
     effectiveEndDate?: string | null;
+    /** 提成周期：0月度 1季度 2半年度 3年度，不传=月度。决定一张提成单覆盖几个月；配成季度及以上时 baseSalary 要填一整个周期的底薪 */
+    periodType?: CommissionPeriodType | null;
     /** 适用人id集合，多选，与 orgIds 至少填一个，不允许重复 */
     userIds?: number[] | null;
     /** 适用组织id集合，多选，与 userIds 至少填一个，不允许重复 */
@@ -336,6 +374,8 @@ export namespace CommissionConfigAdminApi {
     airPort?: AirPortSimpleDto | null;
     /** 货物类型，仅 ConditionField 为 4 时有值 */
     cargoId?: CargoType | null;
+    /** 贸易条款，仅 ConditionField 为 6 时有值 */
+    tradeTermsType?: TradeTermsType | null;
     /** 排序id，从1开始 */
     sortId: number;
   }
@@ -400,6 +440,8 @@ export namespace CommissionConfigAdminApi {
     effectiveStartDate?: string | null;
     /** 生效截止会计期间，恒为当月1号，含当月，null=不限截止 */
     effectiveEndDate?: string | null;
+    /** 提成周期：0月度 1季度 2半年度 3年度 */
+    periodType: CommissionPeriodType;
     /** 适用业务类型，升序。空列表 = 全部业务类型 */
     bizTypes: BizType[];
     /** 底薪金额 */

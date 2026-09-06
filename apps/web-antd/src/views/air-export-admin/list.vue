@@ -53,6 +53,8 @@ import {
   useGridFormSchema,
 } from './data';
 import { useAirExportCopy } from './use-air-export-copy';
+import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-upload-modal.vue';
+import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
 const perm = createAbpPermission('Admin.AirExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
@@ -66,6 +68,18 @@ const canViewTracking = computed(() => hasAccessByCodes([externalApiGetCode]));
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
+
+/** AI 识别账单费用（列表页）：上传 → 识别 → 按提单号定位业务 → 跳转到费用页确认添加 */
+const { recognizing: aiRecognizing, recognizeAndLocate } = useAiBillFeeLocate();
+const aiUploadOpen = ref(false);
+const onAiBillFee = () => {
+  aiUploadOpen.value = true;
+};
+const handleAiBillFeeFile = async (file: File) => {
+  const ok = await recognizeAndLocate(file);
+  // 仅在识别并跳转成功后关闭上传弹窗；失败时保持打开，便于用户重新选择文件
+  if (ok) aiUploadOpen.value = false;
+};
 
 /** 分组设置持久化 key（与列表 listKey 对齐，路由名 AirExportList） */
 const GROUP_CONFIG_NAME = 'group_config_AirExportList';
@@ -519,6 +533,14 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
+        <span v-access:code="externalApiUseCode" class="mr-2 inline-flex">
+          <Button :loading="aiRecognizing" @click="onAiBillFee">
+            <template #icon>
+              <IconifyIcon icon="mdi:robot-outline" class="size-4" />
+            </template>
+            AI识别
+          </Button>
+        </span>
         <span
           v-access:code="externalApiUseCode"
           class="mr-2 inline-flex items-center gap-1"
@@ -613,6 +635,11 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
     </Grid>
     <ResultModal />
     <TrackingModal />
+    <AiBillFeeUploadModal
+      v-model:open="aiUploadOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiBillFeeFile"
+    />
   </Page>
 </template>
 

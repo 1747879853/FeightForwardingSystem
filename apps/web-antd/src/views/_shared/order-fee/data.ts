@@ -368,6 +368,82 @@ export const getIndustryCategoryOptions = () => [
   },
 ];
 
+/**
+ * 行业类别字母码 → 订单详情中的结算往来单位（id + 名称）。
+ *
+ * 费用录入与「AI 识别账单费用」弹窗共用同一映射：应付取费用代码的付费客户类型
+ * (defaultCreditName)、应收取收费客户类型(defaultDebitName)得到字母码，再据此从订单详情
+ * 带出对应往来单位作为结算对象。字段路径与 getDetail 返回结构一致：发货人/收货人/报关行等
+ * 挂在 transportOrder 上，场站/船代/订舱代理/国外代理挂在详情根节点。
+ *
+ * @param orderDetail adapter.api.getDetail 返回的订单详情
+ * @param categoryLetter 行业类别字母码（如 'n' 船代、'p' 委托单位）
+ * @returns 命中且订单存在该往来单位时返回 { id, name }，否则返回 null
+ */
+export const resolveSettlementByIndustryCategory = (
+  orderDetail: any,
+  categoryLetter: string,
+): { id: number | string; name: string } | null => {
+  if (!orderDetail || !categoryLetter) return null;
+  const to = orderDetail.transportOrder ?? {};
+  let id: number | string | undefined;
+  let name: string | undefined;
+  switch (categoryLetter.toLowerCase()) {
+    case 'b': // 发货人
+      id = to.shipperId;
+      name = to.shipper?.name;
+      break;
+    case 'c': // 场站
+      id = orderDetail.yardId;
+      name = orderDetail.yard?.name;
+      break;
+    case 'e': // 收货人
+      id = to.consigneeId;
+      name = to.consignee?.name;
+      break;
+    case 'f': // 报关行
+      id = to.custBrokerId;
+      name = to.custBroker?.name;
+      break;
+    case 'h': // 通知人
+      id = to.notifierId;
+      name = to.notifier?.name;
+      break;
+    case 'i': // 车队
+      id = to.teamId;
+      name = to.team?.name;
+      break;
+    case 'n': // 船代
+      id = orderDetail.shipAgentId;
+      name = orderDetail.shipAgent?.name;
+      break;
+    case 'o': // 订舱代理
+      id = orderDetail.bookingAgentId;
+      name = orderDetail.bookingAgent?.name;
+      break;
+    case 'p': // 委托单位
+      id = to.clientId;
+      name = to.client?.name;
+      break;
+    case 'q': // 仓库
+      id = to.warehouseId;
+      name = to.warehouse?.name;
+      break;
+    case 'r': // 保险公司
+      id = to.insuranceId;
+      name = to.insurance?.name;
+      break;
+    case 's': // 国外代理
+      id = orderDetail.podAgentId;
+      name = orderDetail.podAgent?.name;
+      break;
+    default:
+      return null;
+  }
+  if (id === undefined || id === null || id === '') return null;
+  return { id, name: name || '' };
+};
+
 // --------------------------------------------------------
 // 客户性质
 // --------------------------------------------------------

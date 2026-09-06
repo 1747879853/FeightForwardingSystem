@@ -7,6 +7,7 @@ import {
   ensureRowEditOriginals,
   getIndustryCategoryOptions,
   markLinkedCell,
+  resolveSettlementByIndustryCategory,
 } from '../../data';
 import { useOrderFeeAdapter } from '../../use-adapter';
 
@@ -360,93 +361,28 @@ export function useOrderFeeLinkage(
       }
 
       const orderDetail = await loadOrderDetailCached(transportOrderId);
-      let settlementId: string | number | undefined;
-      let settlementName: string | undefined;
-
-      console.log(
-        '🔍 [fillSettlementIdByIndustryCategory] 订单详情:',
-        {
-          transportOrder: orderDetail.transportOrder ? '存在' : '不存在',
-          yard: orderDetail.yard ? '存在' : '不存在',
-          shipAgent: orderDetail.shipAgent ? '存在' : '不存在',
-          bookingAgent: orderDetail.bookingAgent ? '存在' : '不存在',
-          podAgent: orderDetail.podAgent ? '存在' : '不存在',
-        },
+      // 行业类别字母码 → 结算往来单位（与 AI 识别账单弹窗共用同一映射）
+      const settlement = resolveSettlementByIndustryCategory(
         orderDetail,
+        industryCategoryValue,
       );
 
-      switch (industryCategoryValue.toLowerCase()) {
-        case 'b': // 发货人
-          settlementId = orderDetail.transportOrder?.shipperId;
-          // 从订单详情中获取发货人名称
-          settlementName = orderDetail.transportOrder?.shipper?.name || '';
-          break;
-        case 'c': // 场站
-          settlementId = orderDetail.yardId;
-          settlementName = orderDetail.yard?.name || '';
+      if (settlement && settlement.name) {
+        // 主字段存储 label（客户名称，用于显示）
+        row['settlementId'] = settlement.name;
+        // _value 字段存储 ID（用于联动和保存）
+        row['settlementId_value'] = settlement.id;
+        // __settlementName 缓存一份，供表格 label 回显
+        row['__settlementName'] = settlement.name;
 
-          break;
-        case 'e': // 收货人
-          settlementId = orderDetail.transportOrder?.consigneeId;
-          settlementName = orderDetail.transportOrder?.consignee?.name || '';
-          break;
-        case 'f': // 报关行
-          settlementId = orderDetail.transportOrder?.custBrokerId;
-          settlementName = orderDetail.transportOrder?.custBroker?.name || '';
-          break;
-        case 'h': // 通知人
-          settlementId = orderDetail.transportOrder?.notifierId;
-          settlementName = orderDetail.transportOrder?.notifier?.name || '';
-          break;
-        case 'i': // 车队
-          settlementId = orderDetail.transportOrder?.teamId;
-          settlementName = orderDetail.transportOrder?.team?.name || '';
-          break;
-        case 'n': // 船代
-          settlementId = orderDetail.shipAgentId;
-          settlementName = orderDetail.shipAgent?.name || '';
-          break;
-        case 'o': // 订舱代理
-          settlementId = orderDetail.bookingAgentId;
-          settlementName = orderDetail.bookingAgent?.name || '';
-          break;
-        case 'p': // 委托单位
-          settlementId = orderDetail.transportOrder?.clientId;
-          settlementName = orderDetail.transportOrder?.client?.name || '';
-          break;
-        case 'q': // 仓库
-          settlementId = orderDetail.transportOrder?.warehouseId;
-          settlementName = orderDetail.transportOrder?.warehouse?.name || '';
-          break;
-        case 'r': // 保险公司
-          settlementId = orderDetail.transportOrder?.insuranceId;
-          settlementName = orderDetail.transportOrder?.insurance?.name || '';
-          break;
-        case 's': // 国外代理
-          settlementId = orderDetail.podAgentId;
-          settlementName = orderDetail.podAgent?.name || '';
-          break;
-      }
-
-      if (settlementId !== undefined && settlementId !== null) {
-        // ✅ 缓存客户名称到 __settlementName 字段
-        if (settlementName) {
-          // 主字段存储 label（客户名称，用于显示）
-          row['settlementId'] = settlementName;
-          // _value 字段存储 ID（用于联动和保存）
-          row['settlementId_value'] = settlementId;
-          // __settlementName 缓存一份，供表格 label 回显
-          row['__settlementName'] = settlementName;
-
-          console.log(
-            '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
-            industryCategoryValue,
-            '结算对象ID:',
-            settlementId,
-            '名称:',
-            settlementName,
-          );
-        }
+        console.log(
+          '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
+          industryCategoryValue,
+          '结算对象ID:',
+          settlement.id,
+          '名称:',
+          settlement.name,
+        );
       } else {
         console.warn(
           '⚠️ [fillSettlementIdByIndustryCategory] 未找到对应的结算对象:',
