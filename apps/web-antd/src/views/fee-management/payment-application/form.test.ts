@@ -19,6 +19,9 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@vben/stores', () => ({
+  useTabbarStore: () => ({
+    closeTabByKey: vi.fn(),
+  }),
   useUserStore: () => ({ userInfo: { realName: 'Test User' } }),
 }));
 
@@ -188,7 +191,6 @@ describe('payment application add form', () => {
           }),
         ],
         settlementId: 'client-1',
-        status: 0,
         invoiceProcess: 1,
         paymentApplicationInvoices: [],
       }),
@@ -199,7 +201,7 @@ describe('payment application add form', () => {
     });
   });
 
-  it('does not create an application for 先票后付 until at least one invoice is entered', async () => {
+  it('creates an application for 先票后付 even without invoices', async () => {
     const wrapper = shallowMount(PaymentApplicationForm, {
       global: {
         stubs: {
@@ -218,7 +220,16 @@ describe('payment application add form', () => {
       .trigger('click');
     await flushPromises();
 
-    expect(mocks.addPaymentApplication).not.toHaveBeenCalled();
+    expect(mocks.addPaymentApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoiceProcess: 0,
+        paymentApplicationInvoices: [],
+      }),
+    );
+    expect(mocks.replace).toHaveBeenCalledWith({
+      path: '/fee-management/payment-application/application-1/edit',
+      query: { fromCreate: '1' },
+    });
   });
 
   it('includes default bank accounts when auto-saving on first fee confirm', async () => {

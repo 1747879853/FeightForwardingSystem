@@ -45,6 +45,7 @@ import {
   INVOICE_PROCESS_LABELS,
   formatPayAppInvoiceDates,
   formatPayAppInvoiceNos,
+  validateInvoiceRequiredOnSubmitFromDetail,
 } from './invoice-rows';
 import SettlementDetailModal from './settlement-detail-modal.vue';
 
@@ -75,9 +76,9 @@ function canOpenSettlementDetail(status: number) {
   );
 }
 
-/** 仅「先付后票」可从列表点击维护发票信息（走 EditInvoiceAsync，不限 status） */
+/** 不开票以外均可从列表点开补录/改发票（EditInvoiceAsync 不限 status）。 */
 function canOpenInvoiceEdit(invoiceProcess?: number | null) {
-  return invoiceProcess === INVOICE_PROCESS.PaymentBeforeInvoice;
+  return invoiceProcess != null && invoiceProcess !== INVOICE_PROCESS.NoInvoice;
 }
 
 function getInvoiceProcessLabel(invoiceProcess?: number | null) {
@@ -339,13 +340,31 @@ function handleSubmit() {
       `选中的 ${rows.length} 条中，仅 ${eligible.length} 条可提交（未提交/驳回）`,
     );
   }
+
+  const ready = eligible.filter(
+    (row) =>
+      validateInvoiceRequiredOnSubmitFromDetail(
+        row.invoiceProcess,
+        row.paymentApplicationInvoices,
+      ).ok,
+  );
+  if (ready.length === 0) {
+    message.warning('发票流程为先票后付时，提交前必须录入发票信息');
+    return;
+  }
+  if (ready.length < eligible.length) {
+    message.warning(
+      `有 ${eligible.length - ready.length} 条先票后付申请尚未录入发票，已跳过`,
+    );
+  }
+
   Modal.confirm({
     title: '确认提交',
-    content: `确定要提交选中的 ${eligible.length} 条付费申请吗？提交后将进入审批流程。`,
+    content: `确定要提交选中的 ${ready.length} 条付费申请吗？提交后将进入审批流程。`,
     onOk: async () => {
       actionLoading.value = true;
       try {
-        for (const row of eligible) {
+        for (const row of ready) {
           await submitPaymentApplication(row.id);
         }
         message.success('提交成功');

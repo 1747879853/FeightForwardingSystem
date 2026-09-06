@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,7 +28,7 @@ last_updated: 2026-09-05
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉可按客户对账单号模糊检索（`StatementNum`），展开行展示对账单号。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填只取汇率表「原币兑结算币」且**当天**有效的应付汇率。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
-- **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，调用 `SubmitAsync` 重新进入审核链路。
+- **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，先保存再调 `SubmitAsync`。先票后付且发票为空时前端提示「提交前必须录入发票信息」，不会只改状态。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -60,7 +60,7 @@ last_updated: 2026-09-05
 
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
-| **发票明细** | 一单可多张发票，每张可挂一个附件。 | 详情 `paymentApplicationInvoices[]`；识别走 `GeminiAdmin/ExtractInvoiceAsync` | **触发/依赖：** 编辑全量覆盖；识别结果写入当前行或第一张空行，不自动保存；不开票时清空。 | 先票后付至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。 |
+| **发票明细** | 一单可多张发票，每张可挂一个附件。 | 详情 `paymentApplicationInvoices[]`；识别走 `GeminiAdmin/ExtractInvoiceAsync` | **触发/依赖：** 编辑全量覆盖；识别结果写入当前行或第一张空行，不自动保存；不开票时清空。 | 保存时先票后付可空；提交时至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。 |
 
 | **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
 
@@ -74,10 +74,13 @@ last_updated: 2026-09-05
 
 > [!IMPORTANT] **[卡点 4：发票识别不落库]** 点「识别发票」只回填对应发票行的票号/日期；未点页面「保存」则刷新后丢失。识别超时须 180 秒，勿用默认 20 秒。编辑提交必须带回全部发票行，漏传会被删除。
 
+> [!IMPORTANT] **[卡点 5：提交必须走 SubmitAsync]** 编辑页「提交」先 `EditAsync` 再 `SubmitAsync`。`EditAsync` 不再接收 `status`；继续传 `status=1` 会静默停在录入且没有审核任务。先票后付空发票可以保存，点提交才拦。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 先票后付可空发票保存；点提交才要求至少一条发票。提交先保存再走 `SubmitAsync`。 | 不再向 `EditAsync` 传 `status`/`submitTime`。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-submit.md`。 |
 | 2026-09-05 | `Feature` | 点击发票/申请/结算附件改为全站弹窗预览。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-04 | `Feature` | 发票改成可多行子表，每行独立附件；保存全量覆盖 `paymentApplicationInvoices`。 | 主表发票字段已删除。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |
 | 2026-08-31 | `Fix` | 添加费用抽屉可按客户对账单号模糊检索；展开费用行展示对账单号。 | 与新增页共用 `add-fee-modal`；TAPD 1000898。详见 `changelogs/change-log-2026-08-31-payment-add-fee-statement-num.md`。 |

@@ -8,6 +8,8 @@ import {
   formatPayAppInvoiceDates,
   formatPayAppInvoiceNos,
   mapInvoicesFromDetail,
+  validateInvoiceRequiredOnSubmit,
+  validateInvoiceRequiredOnSubmitFromDetail,
   validateInvoiceRows,
 } from './invoice-rows';
 
@@ -100,12 +102,12 @@ describe('mapInvoicesFromDetail / buildInvoiceSubmitPayload', () => {
 });
 
 describe('validateInvoiceRows', () => {
-  it('先票后付必须至少一条发票', () => {
+  it('先票后付在录入阶段允许空发票', () => {
     expect(
       validateInvoiceRows(INVOICE_PROCESS.InvoiceBeforePayment, [
         createEmptyInvoiceRow(),
       ]).ok,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       validateInvoiceRows(INVOICE_PROCESS.InvoiceBeforePayment, [
         createEmptyInvoiceRow({ invoiceNo: 'INV-1' }),
@@ -120,6 +122,48 @@ describe('validateInvoiceRows', () => {
     ]);
     expect(result.ok).toBe(false);
     expect(result.message).toContain('不可重复');
+  });
+});
+
+describe('validateInvoiceRequiredOnSubmit', () => {
+  it('先票后付提交时必须至少一条发票', () => {
+    const empty = validateInvoiceRequiredOnSubmit(
+      INVOICE_PROCESS.InvoiceBeforePayment,
+      [createEmptyInvoiceRow()],
+    );
+    expect(empty.ok).toBe(false);
+    expect(empty.message).toContain('提交前必须录入发票信息');
+    expect(
+      validateInvoiceRequiredOnSubmit(INVOICE_PROCESS.InvoiceBeforePayment, [
+        createEmptyInvoiceRow({ invoiceNo: 'INV-1' }),
+      ]).ok,
+    ).toBe(true);
+  });
+
+  it('先付后票与不开票提交时不要求发票', () => {
+    expect(
+      validateInvoiceRequiredOnSubmit(INVOICE_PROCESS.PaymentBeforeInvoice, [
+        createEmptyInvoiceRow(),
+      ]).ok,
+    ).toBe(true);
+    expect(
+      validateInvoiceRequiredOnSubmit(INVOICE_PROCESS.NoInvoice, []).ok,
+    ).toBe(true);
+  });
+
+  it('列表按子表票号判断，不把先票后付当成已有票', () => {
+    expect(
+      validateInvoiceRequiredOnSubmitFromDetail(
+        INVOICE_PROCESS.InvoiceBeforePayment,
+        [],
+      ).ok,
+    ).toBe(false);
+    expect(
+      validateInvoiceRequiredOnSubmitFromDetail(
+        INVOICE_PROCESS.InvoiceBeforePayment,
+        [{ invoiceNo: 'INV-1' } as any],
+      ).ok,
+    ).toBe(true);
   });
 });
 

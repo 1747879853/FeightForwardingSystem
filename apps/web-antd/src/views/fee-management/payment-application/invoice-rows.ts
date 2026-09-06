@@ -133,8 +133,18 @@ export interface InvoiceRowsValidation {
   ok: boolean;
 }
 
+export const INVOICE_REQUIRED_ON_SUBMIT_MESSAGE =
+  '发票流程为先票后付时，提交前必须录入发票信息';
+
+function hasPersistedInvoiceNo(
+  invoices?: null | PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[],
+) {
+  return (invoices ?? []).some((invoice) => Boolean(invoice.invoiceNo?.trim()));
+}
+
 /**
- * 与后端 ValidatePaymentApplicationInvoices 对齐。
+ * 与后端 ValidatePaymentApplicationInvoices 对齐（新增 / 编辑 / 仅编辑发票）。
+ * 先票后付允许空票：正常节奏是先建单再补票。不开票不能有票由切流程时清空保证。
  * 空行提交前会剥掉，所以这里按剥掉后的结果校验。
  */
 export function validateInvoiceRows(
@@ -151,16 +161,6 @@ export function validateInvoiceRows(
 
   const payload = buildInvoiceSubmitPayload(invoiceProcess, rows);
 
-  if (
-    invoiceProcess === INVOICE_PROCESS.InvoiceBeforePayment &&
-    payload.length === 0
-  ) {
-    return {
-      message: '发票流程为先票后付时，请至少录入一条发票',
-      ok: false,
-    };
-  }
-
   const seen = new Set<string>();
   for (const row of payload) {
     const invoiceNo = row.invoiceNo?.trim() ?? '';
@@ -176,6 +176,37 @@ export function validateInvoiceRows(
     seen.add(invoiceNo);
   }
 
+  return { ok: true };
+}
+
+/**
+ * 与后端 ValidateInvoiceRequiredOnSubmit 对齐，只在 SubmitAsync 前调用。
+ * 先票后付必须有发票；录入阶段不要用这个方法。
+ */
+export function validateInvoiceRequiredOnSubmit(
+  invoiceProcess: number | undefined,
+  rows: InvoiceRowForm[],
+): InvoiceRowsValidation {
+  if (invoiceProcess !== INVOICE_PROCESS.InvoiceBeforePayment) {
+    return { ok: true };
+  }
+  if (buildInvoiceSubmitPayload(invoiceProcess, rows).length === 0) {
+    return { message: INVOICE_REQUIRED_ON_SUBMIT_MESSAGE, ok: false };
+  }
+  return { ok: true };
+}
+
+/** 列表已落库发票：先票后付提交前按子表有无票号判断，不能看 InvoiceProcess。 */
+export function validateInvoiceRequiredOnSubmitFromDetail(
+  invoiceProcess: number | undefined,
+  invoices?: null | PaymentApplicationAdminApi.PaymentApplicationInvoiceDto[],
+): InvoiceRowsValidation {
+  if (invoiceProcess !== INVOICE_PROCESS.InvoiceBeforePayment) {
+    return { ok: true };
+  }
+  if (!hasPersistedInvoiceNo(invoices)) {
+    return { message: INVOICE_REQUIRED_ON_SUBMIT_MESSAGE, ok: false };
+  }
   return { ok: true };
 }
 

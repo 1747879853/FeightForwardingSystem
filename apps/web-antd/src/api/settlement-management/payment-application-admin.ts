@@ -1056,13 +1056,15 @@ export namespace PaymentApplicationAdminApi {
     clientInvoiceBankId: string;
   }
 
-  /** 付费申请新增 DTO */
+  /**
+   * 付费申请新增 DTO。
+   * 不再传 status / submitTime：AddAsync 一律录入中；
+   * 提交必须另调 SubmitAsync。继续传 status=1 会被静默丢弃，单据停在录入。
+   */
   export interface PaymentApplicationAddDto {
     id?: string;
     /** 归属组织id */
     orgId: number;
-    status?: PaymentApplicationStatus;
-    submitTime?: string | null;
     endTime?: string | null;
     settlementId: string;
     currencyId?: number | null;
@@ -1072,18 +1074,19 @@ export namespace PaymentApplicationAdminApi {
     paymentApplicationBanks?: PaymentApplicationBankAddDto[];
     /** 发票流程，必填：0=先票后付、1=先付后票、2=不开票 */
     invoiceProcess: number;
-    /** 发票子表；先票后付至少一条，不开票必须空，先付后票不限 */
+    /** 发票子表；不开票必须空；先票后付允许空，提交时才校验至少一条 */
     paymentApplicationInvoices?: PaymentApplicationInvoiceInputDto[];
     attachmentGroup?: AttachmentGroupInputDto[];
   }
 
-  /** 付费申请编辑 DTO（主表 + 银行/附件全量替换） */
+  /**
+   * 付费申请编辑 DTO（主表 + 银行/附件全量替换）。
+   * 不再传 status / submitTime，也不再支持「保存并提交」。
+   */
   export interface PaymentApplicationEditDto {
     id: string;
     /** 归属组织id */
     orgId?: number;
-    status?: PaymentApplicationStatus;
-    submitTime?: string | null;
     endTime?: string | null;
     require?: string;
     remark?: string;
@@ -1237,7 +1240,8 @@ export async function editPaymentApplication(
 
 /**
  * 仅编辑发票流程、发票子表与分组附件。
- * 不判断 status；发票子表与 attachmentGroup 都是全量覆盖，须带回当前详情以免被清空。
+ * 不判断 status，也不校验先票后付必须有发票（事后补票入口）。
+ * 发票子表与 attachmentGroup 都是全量覆盖，须带回当前详情以免被清空。
  */
 export async function editPaymentApplicationInvoice(
   data: PaymentApplicationAdminApi.PaymentApplicationInvoiceEditDto,
@@ -1271,7 +1275,10 @@ export async function payAppItemDel(
   return requestClient.put(`${API_PREFIX}/PayAppItemDelAsync`, data);
 }
 
-/** 提交付费申请 */
+/**
+ * 提交付费申请。先票后付且无发票时后端报错。
+ * 这是唯一会创建审核任务与工作流的入口，不要再用 Add/Edit 传 status=1。
+ */
 export async function submitPaymentApplication(id: string) {
   return requestClient.post(`${API_PREFIX}/SubmitAsync`, { id });
 }

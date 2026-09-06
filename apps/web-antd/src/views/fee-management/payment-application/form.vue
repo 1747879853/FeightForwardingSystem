@@ -74,6 +74,7 @@ import {
   buildInvoiceSubmitPayload,
   createEmptyInvoiceRow,
   mapInvoicesFromDetail,
+  validateInvoiceRequiredOnSubmit,
   validateInvoiceRows,
 } from './invoice-rows';
 import {
@@ -688,7 +689,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
       const currencies = resolveBankCurrencies(nextRows);
       applyDefaultBankSelections(currencies);
       createdApplicationId = await addPaymentApplication(
-        buildSubmitData(PaymentApplicationStatus.Entering, nextRows),
+        buildSubmitData(nextRows),
       );
     } catch {
       message.error('保存失败');
@@ -821,7 +822,7 @@ function ensureSettlementSelected() {
   return true;
 }
 
-/** 新建付费申请必须明确选择发票方式；先付后票可在结算后补录票号和日期。 */
+/** 新建必须先选发票方式。先票后付可先建单再补票；先付后票可在结算后补录。 */
 function ensureInvoiceProcessSelected() {
   if (invoiceProcess.value == null) {
     invoiceProcessError.value = true;
@@ -831,10 +832,23 @@ function ensureInvoiceProcessSelected() {
   return true;
 }
 
-/** 发票流程 + 子表校验，与后端 ValidatePaymentApplicationInvoices 对齐。 */
+/** 录入阶段：流程必选、票号合法。先票后付允许空票。 */
 function ensureInvoiceRowsValid() {
   if (!ensureInvoiceProcessSelected()) return false;
   const result = validateInvoiceRows(invoiceProcess.value, invoiceRows.value);
+  if (!result.ok) {
+    message.warning(result.message);
+    return false;
+  }
+  return true;
+}
+
+/** 提交阶段：先票后付必须已有发票。抽屉确认/保存不走这里。 */
+function ensureInvoiceRequiredOnSubmit() {
+  const result = validateInvoiceRequiredOnSubmit(
+    invoiceProcess.value,
+    invoiceRows.value,
+  );
   if (!result.ok) {
     message.warning(result.message);
     return false;
@@ -1077,7 +1091,6 @@ onMounted(async () => {
 // --- Submit ---
 
 function buildSubmitData(
-  status: PaymentApplicationStatus,
   rows: FeeDetailRow[] = feeDetailRows.value,
 ): PaymentApplicationAdminApi.PaymentApplicationAddDto {
   const items: PaymentApplicationAdminApi.PaymentApplicationItemAddDto[] =
@@ -1096,8 +1109,6 @@ function buildSubmitData(
   return {
     id: editId.value || undefined,
     orgId: (orgId.value ?? getMyDefaultOrgId())!,
-    status,
-    submitTime: dayjs().toISOString(),
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
     settlementId: settlementId.value,
     currencyId: settlementCurrencyId.value,
@@ -1125,8 +1136,6 @@ async function saveEditMode() {
   await editPaymentApplication({
     id,
     orgId: orgId.value ?? undefined,
-    status: PaymentApplicationStatus.Entering,
-    submitTime: dayjs().toISOString(),
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
@@ -1202,9 +1211,7 @@ async function handleSave() {
       markListShouldRefresh('PaymentApplicationList');
       await loadEditData();
     } else {
-      const newId = await addPaymentApplication(
-        buildSubmitData(PaymentApplicationStatus.Entering),
-      );
+      const newId = await addPaymentApplication(buildSubmitData());
       message.success(t('addSuccess'));
       markListShouldRefresh('PaymentApplicationList');
       const createTabKey = route.fullPath;
@@ -1226,15 +1233,17 @@ async function handleSubmit() {
   if (!ensureInvoiceRowsValid()) {
     return;
   }
+  if (!ensureInvoiceRequiredOnSubmit()) {
+    return;
+  }
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
   }
   submitting.value = true;
   try {
-    await addPaymentApplication(
-      buildSubmitData(PaymentApplicationStatus.Auditing),
-    );
+    const newId = await addPaymentApplication(buildSubmitData());
+    await submitPaymentApplication(String(newId));
     message.success(t('submitSuccess'));
     returnToListWithRefresh('PaymentApplicationList', () => {
       router.push('/fee-management/payment-application');
@@ -1251,15 +1260,17 @@ async function handleSubmitAndNew() {
   if (!ensureInvoiceRowsValid()) {
     return;
   }
+  if (!ensureInvoiceRequiredOnSubmit()) {
+    return;
+  }
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
   }
   submitting.value = true;
   try {
-    await addPaymentApplication(
-      buildSubmitData(PaymentApplicationStatus.Auditing),
-    );
+    const newId = await addPaymentApplication(buildSubmitData());
+    await submitPaymentApplication(String(newId));
     message.success(t('submitSuccess'));
     markListShouldRefresh('PaymentApplicationList');
     resetForm();
@@ -1272,6 +1283,7 @@ async function handleSubmitApplication() {
   if (!editId.value) return;
   if (!ensureSettlementSelected()) return;
   if (!ensureInvoiceRowsValid()) return;
+  if (!ensureInvoiceRequiredOnSubmit()) return;
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1522,6 +1534,14 @@ void handleSubmitAndNew;
                   </div>
                 </template>
                 <div class="invoice-card__content">
+                  <div
+                    v-if="
+                      invoiceProcess === INVOICE_PROCESS.InvoiceBeforePayment
+                    "
+                    class="invoice-hint"
+                  >
+                    可先保存申请，提交前再补录发票
+                  </div>
                   <div
                     class="invoice-fields"
                     :class="{ 'invoice-fields--collapsed': isNoInvoice }"
@@ -2489,6 +2509,12 @@ void handleSubmitAndNew;
 
 .invoice-card__content {
   display: block;
+}
+
+.invoice-hint {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .invoice-process-title {
