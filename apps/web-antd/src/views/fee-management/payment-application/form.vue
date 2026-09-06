@@ -1634,6 +1634,7 @@ void handleSubmitAndNew;
                                 :value="bankSelections[cs.currencyId]"
                                 :options="getBankOptions(cs.currencyId)"
                                 :loading="bankLoading"
+                                :popup-match-select-width="false"
                                 size="small"
                                 class="bank-block__select"
                                 placeholder="请选择银行账户"
@@ -1688,8 +1689,8 @@ void handleSubmitAndNew;
                           <col style="width: 97px" />
                           <col style="width: 96px" />
                           <col style="width: 96px" />
-                          <col style="width: 193px" />
-                          <col style="width: 118px" />
+                          <col style="width: 320px" />
+                          <col style="width: 220px" />
                         </colgroup>
                         <thead>
                           <tr>
@@ -1727,6 +1728,7 @@ void handleSubmitAndNew;
                                   :value="settlementBankValue"
                                   :options="settlementBankOptions"
                                   :loading="bankLoading"
+                                  :popup-match-select-width="false"
                                   size="small"
                                   class="settlement-table__bank-select"
                                   placeholder="请选择银行账户"
@@ -1747,8 +1749,14 @@ void handleSubmitAndNew;
                                 </div>
                               </div>
                             </td>
-                            <td>
-                              <span class="settlement-table__account">
+                            <td class="settlement-table__account-cell">
+                              <span
+                                class="settlement-table__account"
+                                :class="{
+                                  'settlement-table__account--empty':
+                                    !settlementSelectedBank?.bankAccount,
+                                }"
+                              >
                                 {{
                                   settlementSelectedBank?.bankAccount ||
                                   '请输入'
@@ -2693,7 +2701,7 @@ void handleSubmitAndNew;
 }
 
 .currency-table {
-  overflow: hidden;
+  overflow-x: auto;
   border: 1px solid #edf1f5;
   border-radius: 10px;
 }
@@ -2701,7 +2709,7 @@ void handleSubmitAndNew;
 .currency-table__head,
 .currency-card {
   display: grid;
-  grid-template-columns: 80px 100px 100px minmax(180px, 1fr);
+  grid-template-columns: 80px 100px 100px minmax(320px, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -2770,19 +2778,27 @@ void handleSubmitAndNew;
 
 .bank-block__content {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 8px 20px;
   align-items: center;
   min-width: 0;
 }
 
 .bank-block__select {
-  flex: 0 0 260px;
-  width: 260px;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 320px;
+}
+
+.bank-block__select :deep(.ant-select-dropdown) {
+  min-width: 360px;
 }
 
 .bank-detail {
   display: flex;
-  gap: 20px;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 8px 20px;
   align-items: center;
   min-width: 0;
 }
@@ -2793,7 +2809,7 @@ void handleSubmitAndNew;
 
 .settlement-table__native {
   width: 100%;
-  min-width: 837px;
+  min-width: 960px;
   table-layout: fixed;
   border-spacing: 0;
   border-collapse: separate;
@@ -2818,7 +2834,8 @@ void handleSubmitAndNew;
 }
 
 .settlement-table__native td {
-  height: 52px;
+  height: auto;
+  min-height: 52px;
   font-size: 12px;
   color: #1f2937;
 }
@@ -2834,32 +2851,50 @@ void handleSubmitAndNew;
   align-items: center;
 }
 
+.settlement-table__account-cell {
+  overflow: visible;
+  text-overflow: unset;
+}
+
 .settlement-table__account {
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 30px;
   padding: 0 10px;
-  color: #9ca3af;
+  overflow: visible;
+  color: #1f2937;
   background: #fbfcfd;
   border: 1px solid #e4e8ee;
   border-radius: 8px;
 }
 
+.settlement-table__account--empty {
+  color: #9ca3af;
+}
+
 .settlement-table__bank-cell {
+  overflow: visible;
   white-space: normal;
 }
 
 .settlement-table__bank-field {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
   min-width: 0;
   padding: 6px 0;
 }
 
 .settlement-table__bank-select {
-  flex: 1 1 120px;
-  min-width: 120px;
+  flex: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.settlement-table__bank-select :deep(.ant-select-dropdown) {
+  min-width: 360px;
 }
 
 .settlement-table__native :deep(.ant-select) {
@@ -2881,8 +2916,7 @@ void handleSubmitAndNew;
 }
 
 .bank-detail__value {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   color: #262626;
   white-space: nowrap;
 }

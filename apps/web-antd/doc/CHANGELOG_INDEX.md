@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-06 付费申请银行账户加宽以完整显示](./changelogs/change-log-2026-09-06-payment-application-bank-account-width.md)
 - [2026-09-06 监装小程序详情支持堆场一键导航](./changelogs/change-log-2026-09-06-mp-loading-yard-nav.md)
 - [2026-09-06 付费申请发票增加销售方抬头、金额与前端总额](./changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md)
 - [2026-09-06 船期查询方案名称复制失败时回退 execCommand](./changelogs/change-log-2026-09-06-schedule-copy-group-name.md)
