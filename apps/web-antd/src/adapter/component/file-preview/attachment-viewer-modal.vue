@@ -120,8 +120,31 @@ const wrapClassName = computed(() =>
 
 const modalStyle = computed(() =>
   isExpanded.value
-    ? { top: 0, margin: 0, maxWidth: '100%', paddingBottom: 0 }
+    ? {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        maxWidth: '100%',
+        height: '100%',
+        margin: 0,
+        paddingBottom: 0,
+      }
     : { top: '24px', paddingBottom: 0 },
+);
+
+const bodyStyle = computed(() =>
+  isExpanded.value
+    ? {
+        display: 'flex',
+        flex: 1,
+        flexDirection: 'column',
+        minHeight: 0,
+        padding: 0,
+        overflow: 'hidden',
+      }
+    : { padding: 0 },
 );
 
 /** 完整可访问地址（下载 / 新窗口） */
@@ -291,6 +314,7 @@ watch(
     :mask-closable="!isPageMode"
     :wrap-class-name="wrapClassName"
     :style="modalStyle"
+    :body-style="bodyStyle"
     :destroy-on-close="!isPageMode"
     @cancel="handleCancel"
   >
@@ -375,7 +399,11 @@ watch(
               </Button>
             </Empty>
           </div>
-          <div v-else-if="officeSrc" class="attachment-viewer-office">
+          <div
+            v-else-if="officeSrc"
+            :key="`${officeKind}-${isExpanded}`"
+            class="attachment-viewer-office"
+          >
             <VueOfficeExcel
               v-if="officeKind === 'excel'"
               :src="officeSrc"
@@ -427,8 +455,9 @@ watch(
 }
 
 .attachment-viewer-shell.is-expanded {
-  flex: 1;
+  flex: 1 1 auto;
   height: 100%;
+  min-height: 0;
 }
 
 .attachment-viewer-toolbar {
@@ -462,7 +491,7 @@ watch(
 }
 
 .attachment-viewer-shell.is-expanded .attachment-viewer-body {
-  flex: 1;
+  flex: 1 1 auto;
   height: auto;
   min-height: 0;
 }
@@ -482,8 +511,15 @@ watch(
   object-fit: contain;
 }
 
+.attachment-viewer-shell.is-expanded .attachment-viewer-image {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-viewer-shell.is-expanded .attachment-viewer-image :deep(.ant-image),
 .attachment-viewer-shell.is-expanded .attachment-viewer-image :deep(img) {
-  max-height: calc(100% - 32px);
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .attachment-viewer-iframe {
@@ -501,6 +537,12 @@ watch(
 }
 
 .attachment-viewer-office-inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-viewer-office-inner :deep(> div) {
   width: 100%;
   height: 100%;
 }
@@ -523,21 +565,38 @@ watch(
 </style>
 
 <style>
+.attachment-viewer-modal .ant-modal-content {
+  padding: 0;
+}
+
+.attachment-viewer-modal .ant-modal-header {
+  padding: 12px 16px;
+  margin-bottom: 0;
+}
+
 .attachment-viewer-modal .ant-modal-body {
   padding: 0;
 }
 
+.attachment-viewer-modal--expanded {
+  overflow: hidden !important;
+}
+
 .attachment-viewer-modal--expanded .ant-modal {
-  top: 0 !important;
-  max-width: 100% !important;
-  padding-bottom: 0;
-  margin: 0;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .attachment-viewer-modal--expanded .ant-modal-content {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
+  padding: 0 !important;
   border-radius: 0;
 }
 
@@ -547,10 +606,11 @@ watch(
 
 .attachment-viewer-modal--expanded .ant-modal-body {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  padding: 0;
+  padding: 0 !important;
+  overflow: hidden;
 }
 
 .attachment-viewer-modal--page {

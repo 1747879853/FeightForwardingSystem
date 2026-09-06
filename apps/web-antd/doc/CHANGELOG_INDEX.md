@@ -14,6 +14,7 @@
 ## 2026-09
 
 - [2026-09-06 船期查询方案名称复制失败时回退 execCommand](./changelogs/change-log-2026-09-06-schedule-copy-group-name.md)
+- [2026-09-06 附件预览全屏后内容区铺满视口](./changelogs/change-log-2026-09-06-attachment-viewer-fullscreen-body.md)
 - [2026-09-06 附件预览生产环境不再先打前端 /Uploads](./changelogs/change-log-2026-09-06-attachment-preview-no-prod-proxy.md)
 - [2026-09-06 付费申请先票后付发票改到提交时校验](./changelogs/change-log-2026-09-06-payment-application-invoice-submit.md)
 - [2026-09-06 监装照片每类型限一张并横排](./changelogs/change-log-2026-09-06-loading-photo-one-per-type.md)

@@ -14,7 +14,7 @@ callers: 付费申请、付费审批、海出/海进/空出附件 Tab、客户�
 
 - **打开预览：** 任意页面调用 `openAttachmentViewer(item)` 或传入 URL 字符串；`app.vue` 中的 `AttachmentViewerHost` 弹出查看器。
 - **类型分流：** 图片直接展示；PDF 内嵌 iframe（同源地址，隐藏浏览器工具栏）；`.xlsx/.xls/.csv/.docx/.pptx` 用 vue-office 本地渲染（旧版 OLE `.xls` 与 `.csv` 会先经 SheetJS 转成 xlsx）；旧版 `.doc/.ppt` 与其它类型提示下载。
-- **工具栏：** 展示上传人、上传时间（有值才显示）；弹窗可全屏、新窗口打开独立预览页、下载原文件。独立页只保留下载。
+- **工具栏：** 展示上传人、上传时间（有值才显示）；弹窗可全屏（外壳与预览区都铺满视口）、新窗口打开独立预览页、下载原文件。独立页只保留下载。
 - **地址补全：** 下载仍拼后端根。`resolveSameOriginMediaUrl` 仅在开发把附件改成 `/Uploads/...` 走 Vite 代理；生产保持后端绝对地址，避免先请求前端站点。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -54,6 +54,7 @@ callers: 付费申请、付费审批、海出/海进/空出附件 Tab、客户�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-06 | `Fix` | 全屏后预览区铺满视口，不再停在 64vh。 | Modal content 去 padding；body 走 flex 撑满；vue-office 随全屏重挂。详见 [变更日志](../../changelogs/change-log-2026-09-06-attachment-viewer-fullscreen-body.md)。 |
 | 2026-09-06 | `Fix` | 生产预览不再先请求前端 `/Uploads`（无反代会 404），改为直连后端附件地址。 | `resolveSameOriginMediaUrl` 仅 DEV 改写相对路径。详见 [变更日志](../../changelogs/change-log-2026-09-06-attachment-preview-no-prod-proxy.md)。 |
 | 2026-09-05 | `Fix` | 弹窗可全屏；「新窗口打开」改为独立预览页，不再把 Office 当下载。 | `/attachment-preview` 核心路由、无 Layout；下载用 `<a download>`。详见 [变更日志](../../changelogs/change-log-2026-09-05-attachment-viewer-fullscreen.md)。 |
 | 2026-09-05 | `Fix` | 旧版 `.xls`（OLE）预览前先转成 xlsx，不再误报文件损坏。 | vue-office/exceljs 只吃 zip xlsx；SheetJS 可读该文件（示例 45 行）。详见 [变更日志](../../changelogs/change-log-2026-09-05-excel-xls-ole-preview.md)。 |
