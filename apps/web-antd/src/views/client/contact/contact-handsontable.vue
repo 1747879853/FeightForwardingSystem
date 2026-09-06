@@ -19,7 +19,7 @@
         </Button>
       </div>
     </div>
-    <div class="handsontable-wrapper">
+    <div ref="wrapperRef" class="handsontable-wrapper">
       <HotTable
         ref="hotTableRef"
         :settings="hotSettings"
@@ -38,6 +38,7 @@ import {
   shallowRef,
   onMounted,
   onActivated,
+  onBeforeUnmount,
   nextTick,
   watchEffect,
 } from 'vue';
@@ -73,7 +74,19 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const hotTableRef = ref();
+const wrapperRef = ref<HTMLDivElement>();
 const saving = ref(false); // 保存loading状态
+
+/**
+ * 表格底部到视口底的预留量：需涵盖列表容器下内边距(list.vue 的 p-4 ≈ 16) + 表格容器上下边框(2)，
+ * 即临界值 18；再留安全余量取 24，确保 .client-contact-list 底部不超出视口
+ * （否则外层 Page 内容区会滚动），同时表格收在屏幕底部上方、留约 22px 边距。
+ */
+const TABLE_BOTTOM_GAP = 24;
+/** 表格最小高度，避免极小视口下塌缩到不可用 */
+const TABLE_MIN_HEIGHT = 240;
+/** 初始高度的上方占位粗略估算（header/tabbar/tab栏/工具栏/内边距），onMounted 后按实测精确修正 */
+const APPROX_ABOVE_OFFSET = 240;
 
 // 初始化数据
 const tableData = shallowRef<any[]>([]);
@@ -493,7 +506,7 @@ const hotSettings = shallowRef({
       },
     },
   ],
-  height: 800,
+  height: Math.max(TABLE_MIN_HEIGHT, window.innerHeight - APPROX_ABOVE_OFFSET),
   width: '100%',
   rowHeaders: true,
   colHeaders: true,
@@ -506,6 +519,28 @@ const hotSettings = shallowRef({
   columnSorting: true,
   licenseKey: 'non-commercial-and-evaluation',
 });
+
+/**
+ * 动态计算 Handsontable 高度：让表格底部收在视口底部上方（留边距），
+ * 避免固定高度在小屏溢出、需滚动外层 Page 才能看到表格底部。
+ * 直接测量表格容器距视口顶部的实际位置，天然涵盖 tab 栏 / 工具栏 / 各级内边距，
+ * 无需硬编码上方高度；窗口 resize 与 KeepAlive 重激活时重新计算。
+ */
+const updateTableHeight = () => {
+  const el = wrapperRef.value;
+  const hot = hotTableRef.value?.hotInstance;
+  if (!el || !hot) return;
+  const top = el.getBoundingClientRect().top;
+  const available = Math.floor(window.innerHeight - top - TABLE_BOTTOM_GAP);
+  hot.updateSettings({ height: Math.max(TABLE_MIN_HEIGHT, available) });
+};
+
+/** resize 用 requestAnimationFrame 节流，避免高频重排 */
+let resizeRafId = 0;
+const handleResize = () => {
+  cancelAnimationFrame(resizeRafId);
+  resizeRafId = requestAnimationFrame(updateTableHeight);
+};
 
 // 添加 beforeOnCellMouseDown 钩子 - 在组件挂载后通过 hotInstance.addHook 添加
 onMounted(() => {
@@ -520,10 +555,15 @@ onMounted(() => {
 
     if (hotInstance) {
       console.log('[Handsontable] 钩子已注册');
+      // 按实测可用高度设置表格高度，使其收在屏幕底部上方
+      updateTableHeight();
     } else {
       console.error('[Handsontable] 无法获取 hotInstance，钩子注册失败');
     }
   });
+
+  // 视口尺寸变化时重算表格高度
+  window.addEventListener('resize', handleResize);
 });
 
 // ✅ KeepAlive 重激活后修复 Handsontable 尺寸失效：
@@ -537,10 +577,17 @@ onActivated(() => {
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
     if (hotInstance) {
+      // 重激活时视口/布局可能已变，先按当前实测重算高度再重绘
+      updateTableHeight();
       hotInstance.refreshDimensions();
       hotInstance.render();
     }
   });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+  cancelAnimationFrame(resizeRafId);
 });
 
 // 更新表格数据
