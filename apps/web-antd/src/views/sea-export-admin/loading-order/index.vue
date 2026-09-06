@@ -318,6 +318,7 @@ const form = ref<{
  */
 const packageItems = ref<CodePackageAdminApi.CodePackageItemDto[]>([]);
 const carrierYards = ref<CarrierAdminApi.CarrierYardDto[]>([]);
+const savedPackageId = ref('');
 const savedPackageName = ref<string>('');
 const savedCarrierId = ref('');
 const savedCarrierName = ref<string>('');
@@ -396,6 +397,18 @@ const isFormEditable = computed(() => {
 });
 
 const packageDisabled = computed(() => packageItems.value.length === 0);
+const packageEmptyText = computed(() => {
+  if (packageItems.value.length > 0) return undefined;
+  if (!savedPackageId.value) {
+    return $t('seaExport.loadingOrder.packageMissing');
+  }
+  return $t('seaExport.loadingOrder.packageItemEmpty', [
+    savedPackageName.value || savedPackageId.value,
+  ]);
+});
+const packagePlaceholder = computed(
+  () => packageEmptyText.value || $t('ui.placeholder.select'),
+);
 const yardEmptyText = computed(() => {
   if (carrierYards.value.length > 0) return undefined;
   if (!savedCarrierId.value) {
@@ -564,6 +577,7 @@ const onPhotoPreviewVisibleChange = (visible: boolean) => {
 const loadOptionSources = async () => {
   packageItems.value = [];
   carrierYards.value = [];
+  savedPackageId.value = '';
   savedPackageName.value = '';
   savedCarrierId.value = '';
   savedCarrierName.value = '';
@@ -572,19 +586,27 @@ const loadOptionSources = async () => {
 
   const seaExport = await getSeaExportDetail(seaExportId.value);
   seaExportDetail.value = seaExport ?? null;
-  const codePackageId = seaExport?.transportOrder?.codePackageId;
+  const transportOrder = seaExport?.transportOrder;
+  const codePackageId =
+    transportOrder?.codePackageId ?? transportOrder?.codePackage?.id;
   const carrierId = resolveSavedCarrierId(seaExport);
-  savedPackageName.value = seaExport?.transportOrder?.codePackage?.name ?? '';
+  savedPackageId.value = isEmptyBizId(codePackageId)
+    ? ''
+    : String(codePackageId);
+  savedPackageName.value = transportOrder?.codePackage?.name ?? '';
   savedCarrierId.value = carrierId;
   savedCarrierName.value =
     seaExport?.carrier?.cnShortName || seaExport?.carrier?.cnName || '';
 
   const tasks: Promise<void>[] = [];
-  if (codePackageId) {
+  if (savedPackageId.value) {
     tasks.push(
-      getCodePackageDetail(String(codePackageId))
+      getCodePackageDetail(savedPackageId.value)
         .then((pkg) => {
           packageItems.value = pkg?.codePackageItems ?? [];
+          if (!savedPackageName.value && pkg?.name) {
+            savedPackageName.value = pkg.name;
+          }
         })
         .catch(() => {
           packageItems.value = [];
@@ -1176,11 +1198,7 @@ const displayValue = (value: null | number | string | undefined) => {
                 v-model:value="form.codePackageItemId"
                 :options="packageOptions"
                 :disabled="!isFormEditable || packageDisabled"
-                :placeholder="
-                  packageDisabled
-                    ? $t('seaExport.loadingOrder.packageMissing')
-                    : $t('ui.placeholder.select')
-                "
+                :placeholder="packagePlaceholder"
                 allow-clear
                 show-search
                 option-filter-prop="label"

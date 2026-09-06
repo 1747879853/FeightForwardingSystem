@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-06 监装明细包装占位区分未填包装与无明细](./changelogs/change-log-2026-09-06-loading-package-item-placeholder.md)
 - [2026-09-06 小程序监装检索选中船公司后回显 logo](./changelogs/change-log-2026-09-06-mp-loading-carrier-selected-logo.md)
 - [2026-09-05 小程序监装检索起运港/船公司对齐 PC 下拉文案](./changelogs/change-log-2026-09-05-mp-loading-filter-select-labels.md)
 - [2026-09-05 小程序监装列表对接新增查询条件](./changelogs/change-log-2026-09-05-mp-loading-list-filters.md)

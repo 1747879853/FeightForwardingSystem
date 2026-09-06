@@ -785,6 +785,7 @@
     "recommendFilled": "Filled recommended yard and supervisors",
     "arrivalTimePlaceholder": "Select time",
     "packageMissing": "This sea export has no package, package item cannot be selected",
+    "packageItemEmpty": "Package \"{0}\" has no package items; add them in Basic Data > Package",
     "carrierMissing": "Save the carrier on basic info first (unsaved changes are ignored)",
     "yardEmpty": "Carrier \"{0}\" has no yards; add them in Basic Data > Carrier",
     "savedPackage": "From saved package: {0}",

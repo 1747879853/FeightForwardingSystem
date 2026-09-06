@@ -1012,6 +1012,7 @@
     "recommendFilled": "已回填推荐堆场与监装师傅",
     "arrivalTimePlaceholder": "请选择时间",
     "packageMissing": "该海运出口未填写包装，不能选择明细包装",
+    "packageItemEmpty": "包装「{0}」未维护明细包装，请到基础数据-包装代码里添加",
     "carrierMissing": "请先在基础信息保存船公司（未点保存不会带到监装）",
     "yardEmpty": "船公司「{0}」未维护堆场，请到基础数据-船公司里添加",
     "savedPackage": "取自已保存的包装：{0}",
