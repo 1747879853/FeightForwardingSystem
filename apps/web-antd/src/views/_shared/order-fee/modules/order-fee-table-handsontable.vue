@@ -18,6 +18,7 @@ import {
   MenuItem,
   Menu,
   Card,
+  Modal,
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
@@ -373,8 +374,18 @@ const openAiBillFeeModal = () => {
 };
 
 /**
+ * 提单号规范化：去空格 / 横杠并转大写。
+ * 后端返回的 result.mblNum 已是此口径，而 transportOrder.mblNum 为库里原值，
+ * 比对前需统一规范化，避免因格式差异误判「不一致」。
+ */
+const normalizeMblNum = (val?: null | string) =>
+  (val || '').replace(/[\s-]/g, '').toUpperCase();
+
+/**
  * 上传弹窗选中文件 → 带当前业务 id 识别。
- * 费用页已打开某一票，传 transportOrderId，后端会校验账单主提单号须与本票一致。
+ * 费用页已打开某一票，传 transportOrderId：据 Gemini 对接文档 7.5，后端此时
+ * 不再核对比单号（业务存在即返回费用），改由前端用返回的 mblNum 与本票主提单号
+ * 比对，对不上只提示用户、由用户确认是否引入，接口本身不会报错。
  */
 const handleAiBillFeeFile = async (file: File) => {
   if (aiRecognizing.value) return;
@@ -393,14 +404,39 @@ const handleAiBillFeeFile = async (file: File) => {
       message.info('未从账单中识别出费用行');
       return;
     }
-    openAiBillFeeResultModal({
-      transportOrderId: result.transportOrder?.id || editId.value || '',
-      transportOrder: result.transportOrder,
-      mblNum: result.mblNum,
-      orderFees: fees,
+
+    // 进入结果确认弹窗（由用户勾选要添加的费用行）
+    const openResult = () =>
+      openAiBillFeeResultModal({
+        transportOrderId: result.transportOrder?.id || editId.value || '',
+        transportOrder: result.transportOrder,
+        mblNum: result.mblNum,
+        orderFees: fees,
+      });
+
+    // 账单识别提单号 vs 当前业务主提单号（均规范化后比对）
+    const billMbl = normalizeMblNum(result.mblNum);
+    const currentMbl = normalizeMblNum(result.transportOrder?.mblNum);
+
+    // 一致：直接进入结果确认
+    if (billMbl && billMbl === currentMbl) {
+      openResult();
+      return;
+    }
+
+    // 对不上（不一致 / 账单未识别到提单号）：仅提示，由用户确认是否引入
+    const currentMblText = result.transportOrder?.mblNum || '空';
+    Modal.confirm({
+      title: '提单号不一致',
+      content: billMbl
+        ? `账单识别的提单号为【${result.mblNum}】，与当前业务主提单号【${currentMblText}】不一致，是否确认将识别出的费用引入当前票？`
+        : '未能从账单中识别到提单号，无法自动核对，是否确认将识别出的费用引入当前票？',
+      okText: '确认引入',
+      cancelText: '取消',
+      onOk: openResult,
     });
   } catch (error) {
-    // 后端错误文案（如账单提单号与本票不一致）已由全局拦截器提示，此处仅关闭 loading
+    // 后端错误文案已由全局拦截器提示，此处仅关闭 loading
     hideLoading();
     console.error('[OrderFeeTable] 账单识别失败:', error);
   } finally {

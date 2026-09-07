@@ -300,8 +300,12 @@ export interface GeminiBillFeeOrderFeeDto {
  * 账单识别结果（提单号 → 匹配到的业务 → 费用列表，勿拍平）
  */
 export interface GeminiBillFeeExtractDto {
-  /** 识别出的提单号（已去空格/横杠并转大写，成功返回时恒有值） */
-  mblNum: string;
+  /**
+   * 识别出的提单号（已去空格/横杠并转大写）。
+   * 未传 transportOrderId 时恒有值（认不出会报错）；传了 transportOrderId 时
+   * 认不出为 null 且不报错（文档 7.3.1 / 7.5），故此处可空，前端比对需容错。
+   */
+  mblNum: null | string;
   /** 提单号匹配到的业务（恒有值） */
   transportOrder: GeminiBillFeeTransportOrderDto;
   /** 费用添加列表，可能为空数组（认到提单号但对不出费用行） */
@@ -313,7 +317,9 @@ export interface GeminiBillFeeExtractDto {
  * 上传船公司/订舱代理的单票账单，识别提单号与费用行并匹配业务，返回费用添加 DTO 列表（不落库）。
  * 本接口不写费用，由用户在前端勾选后再提交到 OrderFeeAdmin/BatchEditAsync。
  * @param file 单票账单文件（pdf/png/jpg/jpeg/webp/heic/heif/gif/bmp/txt/xlsx/xls，上限 20MB）
- * @param transportOrderId 当前业务 id，可选。费用页已打开某一票时传入，账单主提单号须与该票一致；
+ * @param transportOrderId 当前业务 id，可选。费用页已打开某一票时传入：后端只校验业务存在，
+ *                         不再核对比单号——认不出或与本票对不上都不报错（文档 7.5），
+ *                         由前端用返回的 mblNum 与本票主提单号自行比对、提示用户确认；
  *                         列表页不传，由识别出的提单号去匹配业务
  */
 export function extractBillFees(file: File, transportOrderId?: string) {

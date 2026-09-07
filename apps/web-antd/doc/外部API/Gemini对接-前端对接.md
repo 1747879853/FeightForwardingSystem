@@ -2,7 +2,7 @@
 title: Gemini 对接 - 前端对接
 module: 外部Api对接 / Gemini
 author: 系统
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 ---
 
 # 1. 说明
@@ -15,10 +15,9 @@ last_updated: 2026-09-06
 >
 > **2026-08-13 更新：** 海运报价解析新增可选文字入参 `text`，前端可让用户"上传文件"或"直接粘贴文字"二选一，原有文件上传调用**不受影响、无需改动**。详见「3.2」与 `Gemini对接-报价解析支持文字输入-2026-08-13.md`。
 >
-> **2026-09-06 更新：**
+> **2026-09-07 更新：** `ExtractBillFeesAsync` 传了 `transportOrderId` 时不再核对比单号：业务存在即返回；认不出提单号、或识别提单号与当前票对不上，都不报错，费用挂到该业务上。前端用返回的 `mblNum` 自己判断是否对得上。详见「7」。
 >
-> 1. 新增 `ExtractBillFeesAsync`：上传单票账单，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库）。详见「7」与 `Gemini对接-账单识别费用-2026-09-06.md`。
-> 2. `ExtractInvoiceAsync` 出参新增 `sellerTaxNo`（销方税号）、`totalAmount`（价税合计）。付费申请把 `totalAmount` 回填到发票行 `amount`，把识别结果的 `sellerHeader` 回填到销售方抬头。详见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md`。
+> **2026-09-06 更新：** 新增 `ExtractBillFeesAsync`：上传单票账单，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库）。费用行的 `settlement` 按行业类别从业务带回完整客户对象，不只是 id。详见「7」。
 >
 > **2026-09-04 更新：** 新增 `UploadAndExtractCtnNoAsync`：上传一张图片并识别箱号，出参在通用上传结果上增加 `ctnNo`，识别失败为 `null`。详见「6」。
 >
@@ -32,7 +31,7 @@ last_updated: 2026-09-06
 | 接口 | 用途 | 章节 |
 | :-- | :-- | :-- |
 | `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件**或直接传报价文字**，解析为多行价格数据并回填船公司/港口/币别/箱型Id | 见「3」 |
-| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，识别发票号、开票日期、销方税号、价税合计 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
+| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，识别发票号与开票日期 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
 | `UploadAndExtractCtnNoAsync` | 上传**一张**图片，落成附件并识别箱号 | 见「6」 |
 | `ExtractBillFeesAsync` | 上传**单票账单**，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库） | 见「7」 |
 | `ExtractBillDataAsync` | 上传提单PDF，提取提单字段（gemini-3.5-flash） | 见「4」 |
@@ -285,7 +284,10 @@ const res = await axios.post(
 
 # 7. 单票账单识别费用 (ExtractBillFeesAsync)
 
-上传船公司/订舱代理的**单票账单**（Invoice / Debit Note），识别提单号和费用行。提单号能匹配到系统业务时，返回费用添加 DTO 列表，**由用户决定是否添加**。本接口**不写费用**。
+上传船公司/订舱代理的**单票账单**（Invoice / Debit Note），识别提单号和费用行，返回费用添加 DTO 列表，**由用户决定是否添加**。本接口**不写费用**。
+
+- **未传 `transportOrderId`：** 必须识别到提单号，并按主提单号唯一匹配到业务，否则报错。
+- **传了 `transportOrderId`：** 先校验该业务存在；认不出提单号、或识别提单号与该票对不上，**都不报错**。费用挂到传入的业务上。前端用返回的 `mblNum` 自己判断是否对得上。
 
 ## 7.1 接口
 
@@ -304,7 +306,7 @@ const res = await axios.post(
 
 | 字段名 | 类型 | 含义 | 必填 | 说明 |
 | :-- | :-- | :-- | :-- | :-- |
-| **transportOrderId** | Guid | 当前业务id | 否 | 费用页已打开某一票时传入。**有值时必须与账单主提单号为同一票**，对不上报 `账单提单号与当前业务主提单号不一致`。不传则按识别出的提单号去匹配业务 |
+| **transportOrderId** | Guid | 当前业务id | 否 | 费用页已打开某一票时传入。**有值时只校验业务存在**，不核对比单号。认不出提单号、或识别提单号与该票对不上，都不报错，费用 `transportOrderId` 填这个值。不传则必须识别到提单号并唯一匹配业务 |
 | **（文件）** | File | 单票账单 | **是** | 支持 pdf / png / jpg / jpeg / webp / heic / heif / gif / bmp / txt / xlsx / xls。超过 **20MB** 报错。0 张报 `请上传账单文件` |
 
 `transportOrderId` 的传参方式与发票识别的 `attachmentId` 相同：用 **form 字段**或 **query**，不要放 JSON body。
@@ -325,30 +327,30 @@ const res = await axios.post(
 
 ## 7.3 返回结构 (`GeminiBillFeeExtractDto`)
 
-识别结果按「提单号 → 匹配到的业务 → 费用列表」嵌套，不要把业务字段和费用字段拍平。
+识别结果按「提单号 → 业务 → 费用列表」嵌套，不要把业务字段和费用字段拍平。
 
 ### 7.3.1 行级 `GeminiBillFeeExtractDto`
 
 | 字段名 | 类型 | 含义 | 说明 |
 | :-- | :-- | :-- | :-- |
-| **mblNum** | string | 识别出的提单号 | 已去掉空格/横杠并转大写。能走到成功返回时恒有值 |
-| **transportOrder** | object | 提单号匹配到的业务 | 见「7.3.2」，恒有值 |
+| **mblNum** | string | 识别出的提单号 | 已去掉空格/横杠并转大写。未传业务id时恒有值（认不出会报错）。**传了业务id 时认不出为 null，不报错** |
+| **transportOrder** | object | 用于组装费用的业务 | 见「7.3.2」，恒有值 |
 | **orderFees** | object[] | 费用添加列表 | 见「7.3.3」。可能为空数组（认到提单号但对不出费用行） |
 
 ### 7.3.2 嵌套对象 `transportOrder`（`GeminiBillFeeTransportOrderDto`）
 
-恒有值（对不上业务时接口会报错，不会返回）。
+恒有值。传了 `transportOrderId` 时就是该票；未传时是按识别提单号匹配到的那票。
 
 | 字段名 | 类型 | 含义 | 说明 |
 | :-- | :-- | :-- | :-- |
 | **id** | Guid | 业务id | 即 `TransportOrder.Id`，也是下面每条费用的 `transportOrderId` |
 | **bizType** | enum | 业务类型 | 海运出口/海运进口/空运出口等 |
 | **commissionNum** | string | 委托编号 |  |
-| **mblNum** | string | 主提单号 | 库里原值，可能与外层识别值大小写/空格不同 |
+| **mblNum** | string | 主提单号 | 库里原值。可能与外层识别值不同（传了业务id 且对不上时，外层是账单上的，这里是当前票的） |
 
 ### 7.3.3 嵌套数组 `orderFees[]`（`OrderFeeEditDto`）
 
-每条就是费用批量编辑的新增项，`id` 恒为 `null`。`feeCode` / `currency` 是展示用嵌套对象，提交时以后端认的 `feeCodeId` / `currencyId` 为准。
+每条就是费用批量编辑的新增项，`id` 恒为 `null`。`feeCode` / `currency` / `settlement` 是展示用嵌套对象，提交时以后端认的 `feeCodeId` / `currencyId` / `settlementId` 为准。
 
 | 字段名 | 类型 | 含义 | 说明 |
 | :-- | :-- | :-- | :-- |
@@ -372,7 +374,7 @@ const res = await axios.post(
 | **isConfidential** | bool | 是否机密 | 取自费用代码，未匹配为 false |
 | **remark** | string | 备注 | 本接口不填，为 null |
 | **feeCode** | object | 费用代码（展示） | 见「7.3.4」。未匹配时 `id=-1`，`code`/`cnName`/`enName` 为账单上的费用项目原文 |
-| **settlement** | object | 结算对象（展示） | 本接口不回填，为 null；提交只用 `settlementId` |
+| **settlement** | object | 结算对象（展示） | 见「7.3.6」。`settlementId` 由 `ResolveSettlementByIndustryCategory` 按费用代码默认付费客户类型从业务上带出，再查客户表回填本对象；带不到为 null。提交仍以 `settlementId` 为准 |
 | **currency** | object | 币别（展示） | 见「7.3.5」。未匹配时用账单币种代码填 `code`/`cnName`/`enName` |
 
 ### 7.3.4 嵌套对象 `orderFees[].feeCode`（`FeeCodeSimpleDto`）
@@ -401,6 +403,25 @@ const res = await axios.post(
 | **cnName** | string | 中文名称 | 未匹配时与 code 相同 |
 | **enName** | string | 英文名称 | 未匹配时与 code 相同 |
 
+### 7.3.6 嵌套对象 `orderFees[].settlement`（`ClientSimpleDto`）
+
+有 `settlementId` 时恒有值（客户已删则仍为 null）。提交费用只用外层 `settlementId`，本对象给表格展示简称/代码/失信标记。
+
+| 字段名              | 类型     | 含义       | 说明                       |
+| :------------------ | :------- | :--------- | :------------------------- |
+| **id**              | Guid     | 客户id     | 与外层 `settlementId` 一致 |
+| **name**            | string   | 客户简称   |                            |
+| **code**            | string   | 客户代码   |                            |
+| **fullName**        | string   | 客户全称   |                            |
+| **enName**          | string   | 客户英文名 |                            |
+| **isDishonest**     | bool     | 是否失信   |                            |
+| **dishonestRemark** | string   | 失信备注   | 未失信时为 null            |
+| **enterpriseType**  | int?     | 企业类型   | 前端自定义枚举             |
+| **clientType**      | enum?    | 客户类型   | 0 同行 / 1 直客            |
+| **isShared**        | bool     | 是否共享   |                            |
+| **orgId**           | long?    | 归属公司id |                            |
+| **orgs**            | object[] | 归属组织串 | 本接口不填，为 null        |
+
 ## 7.4 返回示例
 
 ```json
@@ -420,8 +441,8 @@ const res = await axios.post(
         "changeOrderId": null,
         "transportOrderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "feeCodeId": 12,
-        "industryCategory": 1,
-        "settlementId": null,
+        "industryCategory": 15,
+        "settlementId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
         "currencyId": 1,
         "exchangeRate": 1,
         "unitPrice": 1190,
@@ -440,7 +461,20 @@ const res = await axios.post(
           "cnName": "码头操作费",
           "enName": "Terminal Handling Charge"
         },
-        "settlement": null,
+        "settlement": {
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "name": "某某订舱代理",
+          "code": "BK001",
+          "fullName": "某某订舱代理有限公司",
+          "enName": null,
+          "isDishonest": false,
+          "dishonestRemark": null,
+          "enterpriseType": null,
+          "clientType": 0,
+          "isShared": false,
+          "orgId": 1,
+          "orgs": null
+        },
         "currency": { "code": "CNY", "cnName": "人民币", "enName": "CNY" }
       }
     ]
@@ -453,13 +487,15 @@ const res = await axios.post(
 > `unit` 示例为 `40HQ`：账单原文可能是 `40HC`，匹配到系统箱型后改用系统箱型名。未匹配到箱型时保留账单原文。
 >
 > `paySide=1` 为应付。`feeCodeId=-1` 的行必须让用户手工选费用代码。
+>
+> `industryCategory=15` 为订舱代理。示例里 `settlementId` 与 `settlement.id` 相同；类别带不出往来单位（如船公司）时两者都为 null。
 
 ## 7.5 前端处理要点
 
-1. 先展示 `transportOrder.commissionNum` / `mblNum`，确认对上了哪票业务。
-2. 用表格展示 `orderFees`，让用户勾选要添加的行。
+1. 传了 `transportOrderId` 时，用返回的 `mblNum` 和当前业务主提单号比对；对不上只提示用户，**接口不会报错**。`mblNum` 为 null 表示账单上没认出提单号，同样不报错。
+2. 用表格展示 `orderFees`，让用户勾选要添加的行。费用已挂在传入的业务上（`orderFees[].transportOrderId` = 入参）。
 3. `feeCodeId` 或 `currencyId` 为 **-1** 的行标红，下拉改成系统费用代码/币别后再允许勾选提交。
-4. `settlementId` 为空不拦录入保存；提交审核时现有费用接口仍会要求结算对象。
+4. `settlementId` 为空不拦录入保存；提交审核时现有费用接口仍会要求结算对象。有值时用 `settlement.name` 展示，不要只显示 id。
 5. **不要把本接口成功当成费用已保存。**
 
 ## 7.6 失败文案
@@ -468,10 +504,9 @@ const res = await axios.post(
 | :-- | :-- |
 | `请上传账单文件` | 没传文件或文件是空的 |
 | `账单文件大小 xMB，超过 20MB 上限，无法识别` | 文件过大 |
-| `未能识别到提单号` | 账单上找不到提单号（发票号不会被当成提单号） |
+| `未能识别到提单号` | **未传** `transportOrderId`，且账单上找不到提单号 |
 | `业务不存在` | 传了 `transportOrderId` 但该业务不存在或已删除 |
-| `账单提单号与当前业务主提单号不一致` | 传了 `transportOrderId`，但账单上的提单号对不上该票的主提单号 |
-| `未找到提单号对应的业务` | 未传业务id，认到了提单号，但当前租户没有主提单号相同的业务 |
-| `提单号对应多条业务，请人工核对` | 同一个主提单号命中多票 |
+| `未找到提单号对应的业务` | **未传** 业务id，认到了提单号，但当前租户没有主提单号相同的业务 |
+| `提单号对应多条业务，请人工核对` | **未传** 业务id，同一个主提单号命中多票 |
 | `AI识别账单结果无法解析` | 模型返回不是合法 JSON，已重试仍失败 |
 | `AI识别失败：…` | 外网服务器/模型调用失败（文案已中性化，不含供应商名） |
