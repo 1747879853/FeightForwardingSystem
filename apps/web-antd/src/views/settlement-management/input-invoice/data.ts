@@ -228,14 +228,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     align: 'left',
     showOverflow: true,
   },
-  {
-    title: '操作',
-    field: 'actions',
-    width: 80,
-    fixed: 'right',
-    align: 'center',
-    slots: { default: 'actions' },
-  },
 ];
 
 /**

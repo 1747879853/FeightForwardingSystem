@@ -258,10 +258,6 @@ const onGroupFieldChange = (value: number | undefined) => {
         <Tag v-if="row.isUsed" color="processing">已使用</Tag>
         <span v-else class="text-gray-400">未使用</span>
       </template>
-
-      <template #actions="{ row }">
-        <Button type="link" size="small" @click="openDetail(row)">查看</Button>
-      </template>
     </Grid>
 
     <DetailModal v-model:open="detailOpen" :id="detailId" />
