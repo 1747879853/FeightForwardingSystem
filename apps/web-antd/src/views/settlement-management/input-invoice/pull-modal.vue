@@ -3,6 +3,8 @@ import type { Dayjs } from 'dayjs';
 
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 
+import { IconifyIcon } from '@vben/icons';
+
 import {
   Alert,
   DatePicker,
@@ -156,136 +158,241 @@ async function handleOk() {
     ok-text="开始拉取"
     cancel-text="取消"
     destroy-on-close
+    :body-style="{ maxHeight: '68vh', overflowY: 'auto', paddingRight: '8px' }"
     @ok="handleOk"
   >
-    <Alert
+    <!-- <Alert
       class="mb-4"
       type="info"
       show-icon
       message="按公司现查开票接口发票池并写入本地"
       description="不填筛选条件将按该公司发票池分页全量拉取，可能较慢；填写发票号码 / 代码 / 数电号码时只查这些票，不再按页扫池。开票时间、更新时间的起止需成对且起不晚于止（用日期区间选择即可保证）。"
-    />
-    <Form ref="formRef" :model="model" :rules="rules" layout="vertical">
-      <div class="grid grid-cols-2 gap-x-4">
-        <FormItem label="所属公司" name="companyId">
-          <MyCompanySelect
-            v-model="model.companyId"
-            placeholder="请选择所属公司"
-          />
-        </FormItem>
-        <FormItem label="含税总金额" name="totalAmount">
-          <InputNumber
-            v-model:value="model.totalAmount"
-            :min="0"
-            :precision="2"
-            class="w-full"
-            placeholder="精确匹配"
-          />
-        </FormItem>
-        <FormItem label="发票号码" name="invoiceNo">
-          <Input
-            v-model:value="model.invoiceNo"
-            allow-clear
-            placeholder="有值时按号码查"
-          />
-        </FormItem>
-        <FormItem label="发票代码" name="invoiceCode">
-          <Input
-            v-model:value="model.invoiceCode"
-            allow-clear
-            placeholder="数电票不填"
-          />
-        </FormItem>
-        <FormItem label="数电号码" name="elecInvoiceNumber">
-          <Input
-            v-model:value="model.elecInvoiceNumber"
-            allow-clear
-            placeholder="数电号码"
-          />
-        </FormItem>
-        <FormItem label="销方名称" name="sellerHeader">
-          <Input
-            v-model:value="model.sellerHeader"
-            allow-clear
-            placeholder="销售方抬头"
-          />
-        </FormItem>
-        <FormItem label="销方税号" name="sellerTaxNo">
-          <Input
-            v-model:value="model.sellerTaxNo"
-            allow-clear
-            placeholder="销方税号"
-          />
-        </FormItem>
-        <FormItem label="发票种类" name="invoiceLine">
-          <Select
-            v-model:value="model.invoiceLine"
-            :options="invoiceLineOptions"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-            placeholder="全部"
-          />
-        </FormItem>
-        <FormItem label="发票状态" name="invoiceStatus">
-          <Select
-            v-model:value="model.invoiceStatus"
-            :options="invoiceStatusOptions"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-            placeholder="全部"
-          />
-        </FormItem>
-        <FormItem label="查验筛选" name="checkedStatus">
-          <Select
-            v-model:value="model.checkedStatus"
-            :options="poolCheckedFilterOptions"
-            allow-clear
-            placeholder="未查验 / 已查验"
-          />
-        </FormItem>
-        <FormItem label="报销状态" name="reimbursementStatus">
-          <Select
-            v-model:value="model.reimbursementStatus"
-            :options="reimbursementStatusOptions"
-            allow-clear
-            placeholder="全部"
-          />
-        </FormItem>
-        <FormItem label="签收状态" name="signStatus">
-          <Select
-            v-model:value="model.signStatus"
-            :options="signStatusOptions"
-            allow-clear
-            placeholder="全部"
-          />
-        </FormItem>
-        <FormItem label="入账状态" name="enterAccountStatus">
-          <Select
-            v-model:value="model.enterAccountStatus"
-            :options="enterAccountStatusOptions"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-            placeholder="全部"
-          />
-        </FormItem>
-        <FormItem label="开票时间" name="invoiceTimeRange" class="col-span-2">
-          <DatePicker.RangePicker
-            v-model:value="model.invoiceTimeRange"
-            class="w-full"
-            :placeholder="['开票时间起', '开票时间止']"
-          />
-        </FormItem>
-        <FormItem label="更新时间" name="updateTimeRange" class="col-span-2">
-          <DatePicker.RangePicker
-            v-model:value="model.updateTimeRange"
-            class="w-full"
-            :placeholder="['更新时间起', '更新时间止']"
-          />
-        </FormItem>
-      </div>
+    /> -->
+    <Form
+      ref="formRef"
+      :model="model"
+      :rules="rules"
+      layout="vertical"
+      class="pull-form"
+    >
+      <!-- 拉取范围 -->
+      <section class="form-section">
+        <div class="section-title">
+          <span class="section-title-icon">
+            <IconifyIcon icon="mdi:target" />
+          </span>
+          <span class="section-title-text">拉取范围</span>
+        </div>
+        <div class="grid grid-cols-3 gap-x-4">
+          <FormItem label="所属公司" name="companyId">
+            <MyCompanySelect
+              v-model="model.companyId"
+              placeholder="请选择所属公司"
+            />
+          </FormItem>
+          <FormItem label="含税总金额" name="totalAmount">
+            <InputNumber
+              v-model:value="model.totalAmount"
+              :min="0"
+              :precision="2"
+              class="w-full"
+              placeholder="精确匹配"
+            />
+          </FormItem>
+        </div>
+      </section>
+
+      <!-- 票面信息 -->
+      <section class="form-section">
+        <div class="section-title">
+          <span class="section-title-icon">
+            <IconifyIcon icon="mdi:receipt-text-outline" />
+          </span>
+          <span class="section-title-text">票面信息</span>
+        </div>
+        <div class="grid grid-cols-3 gap-x-4">
+          <FormItem label="发票号码" name="invoiceNo">
+            <Input
+              v-model:value="model.invoiceNo"
+              allow-clear
+              placeholder="有值时按号码查"
+            />
+          </FormItem>
+          <FormItem label="发票代码" name="invoiceCode">
+            <Input
+              v-model:value="model.invoiceCode"
+              allow-clear
+              placeholder="数电票不填"
+            />
+          </FormItem>
+          <FormItem label="数电号码" name="elecInvoiceNumber">
+            <Input
+              v-model:value="model.elecInvoiceNumber"
+              allow-clear
+              placeholder="数电号码"
+            />
+          </FormItem>
+          <FormItem label="销方名称" name="sellerHeader">
+            <Input
+              v-model:value="model.sellerHeader"
+              allow-clear
+              placeholder="销售方抬头"
+            />
+          </FormItem>
+          <FormItem label="销方税号" name="sellerTaxNo">
+            <Input
+              v-model:value="model.sellerTaxNo"
+              allow-clear
+              placeholder="销方税号"
+            />
+          </FormItem>
+        </div>
+      </section>
+
+      <!-- 状态筛选 -->
+      <section class="form-section">
+        <div class="section-title">
+          <span class="section-title-icon">
+            <IconifyIcon icon="mdi:filter-variant" />
+          </span>
+          <span class="section-title-text">状态筛选</span>
+        </div>
+        <div class="grid grid-cols-3 gap-x-4">
+          <FormItem label="发票种类" name="invoiceLine">
+            <Select
+              v-model:value="model.invoiceLine"
+              :options="invoiceLineOptions"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              placeholder="全部"
+            />
+          </FormItem>
+          <FormItem label="发票状态" name="invoiceStatus">
+            <Select
+              v-model:value="model.invoiceStatus"
+              :options="invoiceStatusOptions"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              placeholder="全部"
+            />
+          </FormItem>
+          <FormItem label="查验筛选" name="checkedStatus">
+            <Select
+              v-model:value="model.checkedStatus"
+              :options="poolCheckedFilterOptions"
+              allow-clear
+              placeholder="未查验 / 已查验"
+            />
+          </FormItem>
+          <FormItem label="报销状态" name="reimbursementStatus">
+            <Select
+              v-model:value="model.reimbursementStatus"
+              :options="reimbursementStatusOptions"
+              allow-clear
+              placeholder="全部"
+            />
+          </FormItem>
+          <FormItem label="签收状态" name="signStatus">
+            <Select
+              v-model:value="model.signStatus"
+              :options="signStatusOptions"
+              allow-clear
+              placeholder="全部"
+            />
+          </FormItem>
+          <FormItem label="入账状态" name="enterAccountStatus">
+            <Select
+              v-model:value="model.enterAccountStatus"
+              :options="enterAccountStatusOptions"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              placeholder="全部"
+            />
+          </FormItem>
+        </div>
+      </section>
+
+      <!-- 时间范围 -->
+      <section class="form-section">
+        <div class="section-title">
+          <span class="section-title-icon">
+            <IconifyIcon icon="mdi:calendar-range" />
+          </span>
+          <span class="section-title-text">时间范围</span>
+        </div>
+        <div class="grid grid-cols-2 gap-x-4">
+          <FormItem label="开票时间" name="invoiceTimeRange">
+            <DatePicker.RangePicker
+              v-model:value="model.invoiceTimeRange"
+              class="w-full"
+              :placeholder="['开票时间起', '开票时间止']"
+            />
+          </FormItem>
+          <FormItem label="更新时间" name="updateTimeRange">
+            <DatePicker.RangePicker
+              v-model:value="model.updateTimeRange"
+              class="w-full"
+              :placeholder="['更新时间起', '更新时间止']"
+            />
+          </FormItem>
+        </div>
+      </section>
     </Form>
   </Modal>
 </template>
+
+<style scoped>
+/* 分组卡片：圆角 + 1px 边框 + 轻阴影，赋予表单层次感（颜色走设计 token，兼容暗色） */
+.form-section {
+  padding: 14px 16px 2px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+}
+
+.form-section + .form-section {
+  margin-top: 14px;
+}
+
+/* 分组标题：图标徽章 + 加粗文字 + 底部分隔线 */
+.section-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.section-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 15px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 7px;
+}
+
+.section-title-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* 收紧表单项间距，配合分组卡片保持紧凑 */
+.pull-form :deep(.ant-form-item) {
+  margin-bottom: 16px;
+}
+
+.pull-form :deep(.ant-form-item-label > label) {
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+</style>
