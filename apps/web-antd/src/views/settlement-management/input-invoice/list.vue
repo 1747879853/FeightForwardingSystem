@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { nextTick, onActivated, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -25,9 +26,9 @@ import {
   getInvoiceStatusLabel,
   searchFormSchema,
 } from './data';
-import DetailModal from './detail-modal.vue';
 import PullModal from './pull-modal.vue';
 
+const router = useRouter();
 const perm = createAbpPermission('Admin.InputInvoice');
 const tableConfigStore = useTableConfigStore();
 
@@ -116,13 +117,9 @@ const normalizeQuery = (
   return grouping.decorateListParams(baseParams) as Api.InputInvoiceQueryDto;
 };
 
-// ==================== 详情弹窗 ====================
-const detailOpen = ref(false);
-const detailId = ref<string>('');
-
+// ==================== 详情页（新 tab 打开） ====================
 const openDetail = (row: Api.InputInvoiceListDto) => {
-  detailId.value = row.id;
-  detailOpen.value = true;
+  router.push(`/settlement-management/input-invoice/detail/${row.id}`);
 };
 
 const handleRowDblclick = ({ row }: { row: Api.InputInvoiceListDto }) => {
@@ -260,7 +257,6 @@ const onGroupFieldChange = (value: number | undefined) => {
       </template>
     </Grid>
 
-    <DetailModal v-model:open="detailOpen" :id="detailId" />
     <PullModal v-model:open="pullOpen" @success="handlePullSuccess" />
   </Page>
 </template>

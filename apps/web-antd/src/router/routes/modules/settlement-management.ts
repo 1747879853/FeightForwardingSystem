@@ -112,6 +112,19 @@ const routes: RouteRecordRaw[] = [
           import('#/views/settlement-management/input-invoice/list.vue'),
       },
       {
+        path: 'input-invoice/detail/:id',
+        name: 'InputInvoiceDetail',
+        meta: {
+          icon: 'mdi:receipt-outline',
+          title: '进项发票详情',
+          authority: abpPageAuthority('Admin.InputInvoice.Get'),
+          hideInMenu: true,
+          activePath: '/settlement-management/input-invoice',
+        },
+        component: () =>
+          import('#/views/settlement-management/input-invoice/detail.vue'),
+      },
+      {
         path: 'commission-grant',
         name: 'CommissionGrantList',
         meta: {

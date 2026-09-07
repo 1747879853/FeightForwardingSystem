@@ -1,11 +1,16 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+
+import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
+import { IconifyIcon } from '@vben/icons';
 
 import {
+  Button,
   Descriptions,
   DescriptionsItem,
   Empty,
-  Modal,
   Spin,
   Table,
   Tag,
@@ -36,12 +41,14 @@ import {
 import { getInvoiceStatusColor } from './data';
 import { buildNestedTables } from './detail-columns';
 
-const props = defineProps<{ open: boolean; id?: string }>();
-const emit = defineEmits<{ 'update:open': [boolean] }>();
+const route = useRoute();
+const { closeCurrentTab } = useTabs();
 
-const visible = computed({
-  get: () => props.open,
-  set: (value: boolean) => emit('update:open', value),
+/** 详情主键来自路由参数，支持在多个详情 tab 间切换时重新加载 */
+const detailId = computed<string | undefined>(() => {
+  const id = route.params.id;
+  if (Array.isArray(id)) return id[0] ? String(id[0]) : undefined;
+  return id ? String(id) : undefined;
 });
 
 const loading = ref(false);
@@ -126,32 +133,44 @@ async function loadDetail(id: string) {
   }
 }
 
-watch(
-  () => [props.open, props.id] as const,
-  ([open, id]) => {
-    if (open && id) {
-      void loadDetail(id);
-    } else if (!open) {
-      detail.value = null;
-    }
-  },
-  { immediate: true },
-);
+/** 关闭当前详情 tab */
+function handleClose() {
+  void closeCurrentTab();
+}
+
+onMounted(() => {
+  if (detailId.value) {
+    void loadDetail(detailId.value);
+  }
+});
+
+watch(detailId, (id) => {
+  if (id) {
+    void loadDetail(id);
+  } else {
+    detail.value = null;
+  }
+});
 </script>
 
 <template>
-  <Modal
-    v-model:open="visible"
-    title="进项发票详情"
-    :width="1000"
-    :footer="null"
-    wrap-class-name="input-invoice-detail-modal"
-    destroy-on-close
-  >
+  <Page title="进项发票详情" auto-content-height>
+    <template #extra>
+      <Button @click="handleClose">关闭</Button>
+    </template>
+
     <Spin :spinning="loading">
-      <div v-if="detail" class="max-h-[70vh] overflow-y-auto pr-2">
+      <div v-if="detail" class="pr-2">
         <!-- 票面概要 -->
-        <Descriptions title="票面概要" bordered size="small" :column="3">
+        <Descriptions bordered size="small" :column="3">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:receipt-text-outline" />
+              </span>
+              <span class="section-title-text">票面概要</span>
+            </div>
+          </template>
           <DescriptionsItem label="发票号码">
             {{ text(detail.invoiceNo) }}
           </DescriptionsItem>
@@ -212,13 +231,15 @@ watch(
         </Descriptions>
 
         <!-- 金额信息 -->
-        <Descriptions
-          title="金额信息"
-          bordered
-          size="small"
-          :column="4"
-          class="mt-4"
-        >
+        <Descriptions bordered size="small" :column="4" class="mt-4">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:cash-multiple" />
+              </span>
+              <span class="section-title-text">金额信息</span>
+            </div>
+          </template>
           <DescriptionsItem label="含税总金额">
             {{ fmtMoney(detail.totalAmount) }}
           </DescriptionsItem>
@@ -234,13 +255,15 @@ watch(
         </Descriptions>
 
         <!-- 销方 / 购方 -->
-        <Descriptions
-          title="销方 / 购方"
-          bordered
-          size="small"
-          :column="2"
-          class="mt-4"
-        >
+        <Descriptions bordered size="small" :column="2" class="mt-4">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:account-multiple-outline" />
+              </span>
+              <span class="section-title-text">销方 / 购方</span>
+            </div>
+          </template>
           <DescriptionsItem label="销方名称">
             {{ text(detail.sellerHeader) }}
           </DescriptionsItem>
@@ -274,13 +297,15 @@ watch(
         </Descriptions>
 
         <!-- 状态与查验 -->
-        <Descriptions
-          title="状态与查验"
-          bordered
-          size="small"
-          :column="3"
-          class="mt-4"
-        >
+        <Descriptions bordered size="small" :column="3" class="mt-4">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:clipboard-check-outline" />
+              </span>
+              <span class="section-title-text">状态与查验</span>
+            </div>
+          </template>
           <DescriptionsItem label="查验状态">
             {{ getCheckedStatusLabel(detail.checkedInvoiceStatus) }}
           </DescriptionsItem>
@@ -329,13 +354,15 @@ watch(
         </Descriptions>
 
         <!-- 票据与凭证 -->
-        <Descriptions
-          title="票据与凭证"
-          bordered
-          size="small"
-          :column="3"
-          class="mt-4"
-        >
+        <Descriptions bordered size="small" :column="3" class="mt-4">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:shield-check-outline" />
+              </span>
+              <span class="section-title-text">票据与凭证</span>
+            </div>
+          </template>
           <DescriptionsItem label="发票流水号">
             {{ text(detail.serialNo) }}
           </DescriptionsItem>
@@ -393,12 +420,19 @@ watch(
         <!-- 机动车 / 二手车 -->
         <Descriptions
           v-if="hasVehicleInfo"
-          title="机动车 / 二手车信息"
           bordered
           size="small"
           :column="3"
           class="mt-4"
         >
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:car-outline" />
+              </span>
+              <span class="section-title-text">机动车 / 二手车信息</span>
+            </div>
+          </template>
           <DescriptionsItem label="车辆类型">
             {{ text(detail.vehicleType) }}
           </DescriptionsItem>
@@ -470,12 +504,19 @@ watch(
         <!-- 航空票 -->
         <Descriptions
           v-if="hasAirInfo"
-          title="航空票信息"
           bordered
           size="small"
           :column="3"
           class="mt-4"
         >
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:airplane" />
+              </span>
+              <span class="section-title-text">航空票信息</span>
+            </div>
+          </template>
           <DescriptionsItem label="旅客姓名">
             {{ text(detail.passengerName) }}
           </DescriptionsItem>
@@ -521,13 +562,15 @@ watch(
         </Descriptions>
 
         <!-- 组织与系统信息 -->
-        <Descriptions
-          title="组织与系统信息"
-          bordered
-          size="small"
-          :column="3"
-          class="mt-4"
-        >
+        <Descriptions bordered size="small" :column="3" class="mt-4">
+          <template #title>
+            <div class="section-title">
+              <span class="section-title-icon">
+                <IconifyIcon icon="mdi:sitemap-outline" />
+              </span>
+              <span class="section-title-text">组织与系统信息</span>
+            </div>
+          </template>
           <DescriptionsItem label="所属公司">
             {{ text(detail.company?.displayName) }}
           </DescriptionsItem>
@@ -553,7 +596,12 @@ watch(
 
         <!-- 版式文件附件 -->
         <div class="mt-4">
-          <div class="mb-2 text-base font-medium">版式文件附件</div>
+          <div class="section-title mb-3">
+            <span class="section-title-icon">
+              <IconifyIcon icon="mdi:paperclip" />
+            </span>
+            <span class="section-title-text">版式文件附件</span>
+          </div>
           <div
             v-if="attachments.length > 0"
             class="flex flex-col gap-1 rounded border border-gray-200 p-3"
@@ -576,7 +624,12 @@ watch(
 
         <!-- 商品明细 / 特定业务嵌套数组 -->
         <div v-for="table in nestedTables" :key="table.key" class="mt-4">
-          <div class="mb-2 text-base font-medium">{{ table.title }}</div>
+          <div class="section-title mb-3">
+            <span class="section-title-icon">
+              <IconifyIcon icon="mdi:table" />
+            </span>
+            <span class="section-title-text">{{ table.title }}</span>
+          </div>
           <Table
             :columns="table.columns"
             :data-source="table.data"
@@ -590,5 +643,96 @@ watch(
       </div>
       <Empty v-else-if="!loading" description="暂无数据" />
     </Spin>
-  </Modal>
+  </Page>
 </template>
+
+<style scoped>
+/* 区块标题：图标徽章 + 加粗文字，强化与内容的区分度（颜色统一走设计 token，兼容暗色） */
+.section-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 15px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 7px;
+}
+
+.section-title-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: hsl(var(--foreground));
+}
+
+/* 收紧描述列表头部与内容的间距，使徽章标题与表格更贴合 */
+:deep(.ant-descriptions-header) {
+  margin-bottom: 10px;
+}
+
+/* ===== 描述列表（票面信息表）紧凑化 ===== */
+:deep(.ant-descriptions-view) {
+  border-color: hsl(var(--border));
+}
+
+:deep(.ant-descriptions-bordered .ant-descriptions-item-label),
+:deep(.ant-descriptions-bordered .ant-descriptions-item-content) {
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-color: hsl(var(--border));
+}
+
+:deep(.ant-descriptions-bordered .ant-descriptions-item-label) {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  background: hsl(var(--muted) / 55%);
+}
+
+:deep(.ant-descriptions-bordered .ant-descriptions-item-content) {
+  color: hsl(var(--foreground));
+  word-break: break-all;
+}
+
+/* ===== 明细表格紧凑化 ===== */
+:deep(.ant-table) {
+  font-size: 13px;
+}
+
+:deep(.ant-table-container) {
+  border-color: hsl(var(--border));
+}
+
+:deep(.ant-table-thead > tr > th) {
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 55%);
+  border-color: hsl(var(--border));
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  padding: 6px 10px;
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+/* 隔行微底色 + hover 主色高亮，提升可读性 */
+:deep(.ant-table-tbody > tr:nth-child(even) > td) {
+  background: hsl(var(--muted) / 25%);
+}
+
+:deep(.ant-table-tbody > tr:hover > td) {
+  background: hsl(var(--primary) / 8%);
+}
+</style>
