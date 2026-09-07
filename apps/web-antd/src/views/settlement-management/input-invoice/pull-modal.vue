@@ -6,7 +6,6 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { IconifyIcon } from '@vben/icons';
 
 import {
-  Alert,
   DatePicker,
   Form,
   FormItem,
@@ -153,12 +152,16 @@ async function handleOk() {
     v-model:open="visible"
     title="手动拉取进项发票"
     :width="820"
+    centered
     :mask-closable="false"
     :confirm-loading="submitting"
     ok-text="开始拉取"
     cancel-text="取消"
     destroy-on-close
-    :body-style="{ maxHeight: '68vh', overflowY: 'auto', paddingRight: '8px' }"
+    :body-style="{
+      maxHeight: '670px',
+      overflowY: 'auto',
+    }"
     @ok="handleOk"
   >
     <!-- <Alert
@@ -347,7 +350,7 @@ async function handleOk() {
 <style scoped>
 /* 分组卡片：圆角 + 1px 边框 + 轻阴影，赋予表单层次感（颜色走设计 token，兼容暗色） */
 .form-section {
-  padding: 14px 16px 2px;
+  padding: 10px 14px 0;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 12px;
@@ -355,7 +358,7 @@ async function handleOk() {
 }
 
 .form-section + .form-section {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 /* 分组标题：图标徽章 + 加粗文字 + 底部分隔线 */
@@ -363,8 +366,8 @@ async function handleOk() {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding-bottom: 10px;
-  margin-bottom: 14px;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
   border-bottom: 1px solid hsl(var(--border));
 }
 
@@ -372,12 +375,12 @@ async function handleOk() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  font-size: 15px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 10%);
-  border-radius: 7px;
+  border-radius: 6px;
 }
 
 .section-title-text {
@@ -386,12 +389,17 @@ async function handleOk() {
   color: hsl(var(--foreground));
 }
 
-/* 收紧表单项间距，配合分组卡片保持紧凑 */
+/* 收紧表单项与标签间距，让内容在 670px 内尽量不出滚动条 */
 .pull-form :deep(.ant-form-item) {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
+}
+
+.pull-form :deep(.ant-form-item-label) {
+  padding-bottom: 2px;
 }
 
 .pull-form :deep(.ant-form-item-label > label) {
+  height: auto;
   font-weight: 500;
   color: hsl(var(--muted-foreground));
 }
