@@ -188,8 +188,11 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid :table-title="$t('seaExport.export.statement.list')">
+  <Page auto-content-height content-class="flex flex-col overflow-hidden">
+    <Grid
+      class="min-h-0 flex-1"
+      :table-title="$t('seaExport.export.statement.list')"
+    >
       <template #toolbar-tools>
         <Button class="mr-2" type="primary" @click="handleCreate">
           <Plus class="size-5" />
@@ -211,8 +214,12 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
       </template>
     </Grid>
 
-    <!-- 表格下方：当前页按币种的应收/应付合计 -->
-    <template #footer>
+    <!-- 当页合计：从 #footer 插槽移入内容区底部。
+         Page 的 auto-content-height 只在挂载时测一次 footer 高度，而本合计随币种数量动态增高，
+         过期的高度会让内容区算高溢出、出现竖向滚动条。改为内容区 flex 布局：Grid flex-1 填充、
+         合计 flex-shrink-0 占自然高度；-mx-4 -mb-4 抵消内容区 p-4，使其仍贴底通栏，
+         任何数据量都精确收在可视区内、不再滚动。 -->
+    <div class="-mx-4 -mb-4 flex flex-shrink-0 items-center bg-card px-6 py-4">
       <div v-if="currencyTotals.length > 0" class="statement-footer-summary">
         <span class="statement-footer-summary__label">当页合计：</span>
         <div class="statement-footer-summary__list">
@@ -278,7 +285,7 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
         <span class="statement-footer-summary__label">当页合计：</span>
         <span class="text-muted-foreground">暂无数据</span>
       </div>
-    </template>
+    </div>
   </Page>
 </template>
 

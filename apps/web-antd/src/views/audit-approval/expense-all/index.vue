@@ -414,8 +414,15 @@ const changeTableType = (type: string) => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid class="expense-task-grid mb-[10px] h-[445px]">
+  <!-- 内容区改为 flex 纵向布局：顶部任务列表与下方费用明细按高度自适应分配，
+       不再使用固定像素高，整页正好收在可视区内，不同分辨率下都不出现纵向滚动条。
+       注意：Page 内容 div 默认有 p-4 padding，auto-content-height 已给出确定高度，flex 子项据此精确填满。 -->
+  <Page auto-content-height content-class="flex flex-col overflow-hidden">
+    <!-- 顶部任务列表：由固定 h-[445px] 改为占比高度(42%)并加 min/max 守卫，随屏幕自适应；
+         flex-shrink-0 保证其不被压缩，vxe-grid height:'auto' 据此填满。 -->
+    <Grid
+      class="expense-task-grid mb-[10px] h-[42%] max-h-[440px] min-h-[240px] flex-shrink-0"
+    >
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
       <template #toolbar-actions>
         <GroupingTabs
@@ -465,7 +472,9 @@ const changeTableType = (type: string) => {
         />
       </template>
     </Grid>
+    <!-- 费用明细：占据剩余全部高度(flex-1)，min-h-0 允许内部表格按需收缩，避免撑出滚动条 -->
     <Detail
+      class="min-h-0 flex-1"
       :orderName="orderName"
       :transportOrderId="transportOrderId"
       :entityId="entityId"

@@ -1125,7 +1125,7 @@ function formatMonth(val: string | undefined | null): string {
 
 <template>
   <Page auto-content-height>
-    <Spin :spinning="pageLoading">
+    <Spin :spinning="pageLoading" wrapper-class-name="statement-editor-spin">
       <div class="payment-app-form">
         <!-- 顶部操作栏 -->
         <div class="action-bar">
@@ -1689,6 +1689,7 @@ function formatMonth(val: string | undefined | null): string {
 
 .total-amount {
   display: flex;
+  flex-shrink: 0; // 合计行固定在费用明细底部，不随表格高度变化被压缩
   flex-wrap: wrap;
   background: #fff;
 
@@ -1750,6 +1751,18 @@ function formatMonth(val: string | undefined | null): string {
   color: #fff;
   background-color: #389e0d;
   border-color: #389e0d;
+}
+
+/* Page 内容区高度经 Spin 透传到 .payment-app-form：
+   AntD Spin 的 wrapper(.ant-spin-nested-loading) 与 .ant-spin-container 默认 auto 高，
+   会截断 .payment-app-form 的 height:100% 链，导致内部 flex 高度失效、
+   费用明细表格按内容撑开、整页溢出出现竖向滚动条。用 wrapper-class-name 精确限定本页 Spin。 */
+:deep(.statement-editor-spin) {
+  height: 100%;
+}
+
+:deep(.statement-editor-spin > .ant-spin-container) {
+  height: 100%;
 }
 
 .payment-app-form {
@@ -1817,6 +1830,7 @@ function formatMonth(val: string | undefined | null): string {
     display: flex;
     flex: 1;
     flex-direction: column;
+    min-height: 0; // 关键：允许 body 在 flex 链中收缩，配合内部表格 fill-height 精确填充
     padding: 12px; // 保持内边距
     overflow: hidden; // 防止内容溢出
   }
