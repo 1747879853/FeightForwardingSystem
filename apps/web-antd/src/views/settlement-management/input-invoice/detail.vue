@@ -14,23 +14,15 @@ import { buildAttachmentUrl } from '#/utils';
 
 import {
   getCheckedStatusLabel,
-  getEnterAccountDealStatusLabel,
-  getEnterAccountStatusLabel,
-  getGeneralTypeLabel,
   getInternationalSignLabel,
   getInvoiceLineLabel,
   getInvoiceProcessLabel,
   getInvoiceStatusLabel,
   getInvoiceTypeLabel,
-  getLevelLabel,
-  getManagementStatusLabel,
   getPaymentApplicationStatusLabel,
-  getReimbursementStatusLabel,
-  getSignStatusLabel,
   getSpecialTypeLabel,
-  getVoucherSourceLabel,
 } from './constants';
-import { getInvoiceStatusColor } from './data';
+import { getInvoiceStatusColor, getInvoiceTypeColor } from './data';
 import { buildNestedTables } from './detail-columns';
 
 const route = useRoute();
@@ -104,16 +96,6 @@ const hasAirInfo = computed(() => {
   ].some((v) => v !== null && v !== undefined && v !== '');
 });
 
-/** 组织串（顶→底）拼接展示 */
-const orgsText = computed(() => {
-  const orgs = detail.value?.orgs;
-  if (!orgs || orgs.length === 0) return '-';
-  return orgs
-    .map((org) => org.name)
-    .filter(Boolean)
-    .join(' / ');
-});
-
 async function loadDetail(id: string) {
   loading.value = true;
   try {
@@ -167,16 +149,6 @@ watch(detailId, (id) => {
               <span class="field-value">{{ text(detail.invoiceNo) }}</span>
             </div>
             <div class="field">
-              <span class="field-label">数电号码：</span>
-              <span class="field-value">{{
-                text(detail.elecInvoiceNumber)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">发票代码：</span>
-              <span class="field-value">{{ text(detail.invoiceCode) }}</span>
-            </div>
-            <div class="field">
               <span class="field-label">发票种类：</span>
               <span class="field-value">{{
                 getInvoiceLineLabel(detail.invoiceLine)
@@ -184,9 +156,15 @@ watch(detailId, (id) => {
             </div>
             <div class="field">
               <span class="field-label">蓝/红：</span>
-              <span class="field-value">{{
-                getInvoiceTypeLabel(detail.invoiceType)
-              }}</span>
+              <span class="field-value">
+                <Tag
+                  v-if="detail.invoiceType"
+                  :color="getInvoiceTypeColor(detail.invoiceType)"
+                >
+                  {{ getInvoiceTypeLabel(detail.invoiceType) }}
+                </Tag>
+                <template v-else>-</template>
+              </span>
             </div>
             <div class="field">
               <span class="field-label">发票状态：</span>
@@ -207,10 +185,6 @@ watch(detailId, (id) => {
               }}</span>
             </div>
             <div class="field">
-              <span class="field-label">精确等级：</span>
-              <span class="field-value">{{ getLevelLabel(detail.level) }}</span>
-            </div>
-            <div class="field">
               <span class="field-label">特定业务：</span>
               <span class="field-value">{{
                 getSpecialTypeLabel(detail.specialInvoiceType)
@@ -226,6 +200,24 @@ watch(detailId, (id) => {
                 <Tag v-if="detail.isUsed" color="processing">已使用</Tag>
                 <template v-else>未使用</template>
               </span>
+            </div>
+            <div class="field">
+              <span class="field-label">查验状态：</span>
+              <span class="field-value">{{
+                getCheckedStatusLabel(detail.checkedInvoiceStatus)
+              }}</span>
+            </div>
+            <div class="field">
+              <span class="field-label">发票流水号：</span>
+              <span class="field-value">{{ text(detail.serialNo) }}</span>
+            </div>
+            <div class="field">
+              <span class="field-label">收款人：</span>
+              <span class="field-value">{{ text(detail.payee) }}</span>
+            </div>
+            <div class="field">
+              <span class="field-label">复核人：</span>
+              <span class="field-value">{{ text(detail.checker) }}</span>
             </div>
             <div class="field field--span2">
               <span class="field-label">关联付费申请：</span>
@@ -246,6 +238,10 @@ watch(detailId, (id) => {
                 </template>
                 <template v-else>-</template>
               </span>
+            </div>
+            <div class="field field--full">
+              <span class="field-label">备注：</span>
+              <span class="field-value">{{ text(detail.remark) }}</span>
             </div>
           </div>
         </section>
@@ -336,194 +332,6 @@ watch(detailId, (id) => {
               <span class="field-value">{{
                 text(detail.payerAccount || detail.buyerBankAccount)
               }}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- 状态与查验 -->
-        <section class="detail-band">
-          <div class="section-title">
-            <span class="section-title-icon">
-              <IconifyIcon icon="mdi:clipboard-check-outline" />
-            </span>
-            <span class="section-title-text">状态与查验</span>
-          </div>
-          <div class="field-grid field-grid--4">
-            <div class="field">
-              <span class="field-label">查验状态：</span>
-              <span class="field-value">{{
-                getCheckedStatusLabel(detail.checkedInvoiceStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">查验状态(新)：</span>
-              <span class="field-value">{{
-                getCheckedStatusLabel(detail.checkedInvoiceStatusNew)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">查验时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.checkTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">报销状态：</span>
-              <span class="field-value">{{
-                getReimbursementStatusLabel(detail.reimbursementStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">报销时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.reimbursementDate)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">报销人：</span>
-              <span class="field-value">{{
-                text(detail.reimbursementName)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">签收状态：</span>
-              <span class="field-value">{{
-                getSignStatusLabel(detail.signStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">签收时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.signTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">签收人：</span>
-              <span class="field-value">{{ text(detail.signUserName) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">入账状态：</span>
-              <span class="field-value">{{
-                getEnterAccountStatusLabel(detail.enterAccountStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">入账处理状态：</span>
-              <span class="field-value">{{
-                getEnterAccountDealStatusLabel(detail.enterAccountDealStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">入账时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.enterAccountTime)
-              }}</span>
-            </div>
-            <div class="field field--span2">
-              <span class="field-label">入账失败原因：</span>
-              <span class="field-value">{{
-                text(detail.enterAccountFailReason)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">风险等级：</span>
-              <span class="field-value">{{
-                getManagementStatusLabel(detail.managementStatus)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">计算抵扣种类：</span>
-              <span class="field-value">{{
-                getGeneralTypeLabel(detail.generalType)
-              }}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- 票据与凭证 -->
-        <section class="detail-band">
-          <div class="section-title">
-            <span class="section-title-icon">
-              <IconifyIcon icon="mdi:shield-check-outline" />
-            </span>
-            <span class="section-title-text">票据与凭证</span>
-          </div>
-          <div class="field-grid field-grid--3">
-            <div class="field">
-              <span class="field-label">发票流水号：</span>
-              <span class="field-value">{{ text(detail.serialNo) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">收款人：</span>
-              <span class="field-value">{{ text(detail.payee) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">复核人：</span>
-              <span class="field-value">{{ text(detail.checker) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">机器编码：</span>
-              <span class="field-value">{{ text(detail.machineCode) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">校验码：</span>
-              <span class="field-value">{{ text(detail.checkCode) }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">电子凭证来源：</span>
-              <span class="field-value">{{
-                getVoucherSourceLabel(detail.voucherSource)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">归集时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.collectionTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">发票池更新时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.poolUpdateTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">提示信息：</span>
-              <span class="field-value">{{
-                text(detail.promptInformation)
-              }}</span>
-            </div>
-            <div class="field field--full">
-              <span class="field-label">密文区：</span>
-              <span class="field-value">{{ text(detail.cipherText) }}</span>
-            </div>
-            <div class="field field--full">
-              <span class="field-label">版式文件：</span>
-              <span class="field-value">
-                <a
-                  v-if="detail.pdfUrl"
-                  :href="detail.pdfUrl"
-                  target="_blank"
-                  class="field-link"
-                >
-                  {{ detail.pdfUrl }}
-                </a>
-                <template v-else>-</template>
-              </span>
-            </div>
-            <div class="field field--full">
-              <span class="field-label">发票图片：</span>
-              <span class="field-value">
-                <a
-                  v-if="detail.pictureUrl"
-                  :href="detail.pictureUrl"
-                  target="_blank"
-                  class="field-link"
-                >
-                  {{ detail.pictureUrl }}
-                </a>
-                <template v-else>-</template>
-              </span>
             </div>
           </div>
         </section>
@@ -724,56 +532,6 @@ watch(detailId, (id) => {
             <div class="field field--span2">
               <span class="field-label">二维码：</span
               ><span class="field-value">{{ text(detail.qrCode) }}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- 组织与系统信息 -->
-        <section class="detail-band">
-          <div class="section-title">
-            <span class="section-title-icon">
-              <IconifyIcon icon="mdi:sitemap-outline" />
-            </span>
-            <span class="section-title-text">组织与系统信息</span>
-          </div>
-          <div class="field-grid field-grid--3">
-            <div class="field">
-              <span class="field-label">所属公司：</span>
-              <span class="field-value">{{
-                text(detail.company?.displayName)
-              }}</span>
-            </div>
-            <div class="field field--span2">
-              <span class="field-label">组织串：</span>
-              <span class="field-value">{{ orgsText }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">落入本地时间：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.creationTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">创建人：</span>
-              <span class="field-value">{{
-                text(detail.creatorUserName)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">最近更新：</span>
-              <span class="field-value">{{
-                fmtDateTime(detail.lastModificationTime)
-              }}</span>
-            </div>
-            <div class="field">
-              <span class="field-label">修改人：</span>
-              <span class="field-value">{{
-                text(detail.lastModifierUserName)
-              }}</span>
-            </div>
-            <div class="field field--full">
-              <span class="field-label">备注：</span>
-              <span class="field-value">{{ text(detail.remark) }}</span>
             </div>
           </div>
         </section>

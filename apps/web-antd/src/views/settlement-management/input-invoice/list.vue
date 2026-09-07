@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, onActivated, onMounted, ref } from 'vue';
+import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -137,6 +137,33 @@ const handlePullSuccess = () => {
   gridApi.query();
 };
 
+// ==================== 底部当页合计 ====================
+/** 当前页表格数据，用于底部含税/不含税/税额合计 */
+const currentPageData = ref<Api.InputInvoiceListDto[]>([]);
+
+/** 当页三个金额字段合计（进项发票均为人民币，无需按币别分组） */
+const pageTotals = computed(() => {
+  let totalAmount = 0;
+  let exTaxAmount = 0;
+  let taxAmount = 0;
+  currentPageData.value.forEach((row) => {
+    totalAmount += Number(row.totalAmount) || 0;
+    exTaxAmount += Number(row.exTaxAmount) || 0;
+    taxAmount += Number(row.taxAmount) || 0;
+  });
+  return { exTaxAmount, taxAmount, totalAmount };
+});
+
+/** 合计金额格式化：千分位 + 两位小数 */
+const formatTotalAmount = (value: number) =>
+  value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+/** 当前页是否有数据（控制合计区空态） */
+const hasPageData = computed(() => currentPageData.value.length > 0);
+
 const [Grid, gridApi] = useVbenVxeGrid<Api.InputInvoiceListDto>({
   formOptions: {
     schema: searchFormSchema,
@@ -172,6 +199,11 @@ const [Grid, gridApi] = useVbenVxeGrid<Api.InputInvoiceListDto>({
             invoiceTime: 'InvoiceTime',
             totalAmount: 'TotalAmount',
             creationTime: 'CreationTime',
+          },
+          afterFetch: (result: any) => {
+            // 拦截当前页数据，驱动底部含税/不含税/税额合计
+            currentPageData.value = result?.items ?? [];
+            return result;
           },
         }),
       },
@@ -269,6 +301,94 @@ const onGroupFieldChange = (value: number | undefined) => {
       </template>
     </Grid>
 
+    <!-- 表格下方：当前页含税/不含税/税额合计 -->
+    <template #footer>
+      <div v-if="hasPageData" class="input-invoice-footer-summary">
+        <span class="input-invoice-footer-summary__label">当页合计：</span>
+        <div class="input-invoice-footer-summary__list">
+          <span class="input-invoice-footer-summary__item">
+            <span class="input-invoice-footer-summary__cell-label">
+              含税总金额
+            </span>
+            <span class="input-invoice-footer-summary__value">
+              {{ formatTotalAmount(pageTotals.totalAmount) }}
+            </span>
+          </span>
+          <span class="input-invoice-footer-summary__item">
+            <span class="input-invoice-footer-summary__cell-label">
+              不含税总金额
+            </span>
+            <span class="input-invoice-footer-summary__value">
+              {{ formatTotalAmount(pageTotals.exTaxAmount) }}
+            </span>
+          </span>
+          <span class="input-invoice-footer-summary__item">
+            <span class="input-invoice-footer-summary__cell-label"> 税额 </span>
+            <span class="input-invoice-footer-summary__value">
+              {{ formatTotalAmount(pageTotals.taxAmount) }}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div
+        v-else
+        class="input-invoice-footer-summary input-invoice-footer-summary--empty"
+      >
+        <span class="input-invoice-footer-summary__label">当页合计：</span>
+        <span class="text-muted-foreground">暂无数据</span>
+      </div>
+    </template>
+
     <PullModal v-model:open="pullOpen" @success="handlePullSuccess" />
   </Page>
 </template>
+
+<style scoped>
+/* 表格下方：当页含税/不含税/税额合计（颜色走设计 token，兼容暗色） */
+.input-invoice-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+
+  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.input-invoice-footer-summary--empty {
+  color: hsl(var(--muted-foreground));
+}
+
+.input-invoice-footer-summary__label {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.input-invoice-footer-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.input-invoice-footer-summary__item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 12px;
+  background: hsl(var(--primary) / 6%);
+  border: 1px solid hsl(var(--primary) / 20%);
+  border-radius: 4px;
+}
+
+.input-invoice-footer-summary__cell-label {
+  color: hsl(var(--muted-foreground));
+}
+
+.input-invoice-footer-summary__value {
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+</style>
