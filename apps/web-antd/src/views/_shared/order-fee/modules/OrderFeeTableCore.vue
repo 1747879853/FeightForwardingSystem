@@ -44,12 +44,11 @@ const hotTableRef = ref<any>(null);
 // 用 ResizeObserver 测量其实际高度并覆盖 hotSettings.height，
 // 使 Handsontable 始终填满可用空间并启用内部虚拟滚动。
 const fillRef = ref<HTMLElement | null>(null);
-// 初始高度设 0（而非固定值）：F5 刷新时布局的 --vben-content-height 变量尚未被其防抖
-// ResizeObserver 赋值（该 CSS 变量无默认值，且仅在挂载后约一帧才写入），Page 的
-// height: calc(var(--vben-content-height) - …) 首屏会失效并回退成「内容高度」，若此时
-// Handsontable 以固定高度渲染就会把页面撑高、出现滚动条，待变量就绪后再被本组件的 RO
-// 逐帧拉回，表现为「初始过高 + 滚动条 + 缓慢回缩 + 突然适配」。初始 0 让表格在测得真实
-// 高度前不占位，首次测得 .hot-fill 有效高度（>50）后再渲染，从根源避免 F5 首屏过高。
+// 初始高度设 0（而非固定值）：F5 直达时布局的 --vben-content-height 首屏可能尚未就绪，Page 的
+// height: calc(var(--vben-content-height) - …) 会短暂失效、回退成「内容高度」。该根因已在框架层
+// use-layout-style.ts（挂载时同步算一次该变量，早于子组件测量与首帧绘制）修复；此处初始 0 作为
+// 兜底——即便变量偶发延迟，表格在测得 .hot-fill 有效高度（>50）前也不占位，避免以固定高度把
+// 页面撑高、出现滚动条，待高度就绪后再由本组件的 ResizeObserver 渲染到真实高度。
 const dynHeight = ref(0);
 const mergedSettings = computed(() => ({
   ...props.hotSettings,
