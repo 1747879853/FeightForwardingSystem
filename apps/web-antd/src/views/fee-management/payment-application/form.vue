@@ -74,6 +74,7 @@ import {
   buildInvoiceSubmitPayload,
   createEmptyInvoiceRow,
   mapInvoicesFromDetail,
+  resolveClientInvoiceInfoId,
   validateInvoiceRequiredOnSubmit,
   validateInvoiceRows,
 } from './invoice-rows';
@@ -178,6 +179,7 @@ const submitTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const companyName = ref('-');
 const orgId = ref<number | undefined>(getMyDefaultOrgId());
+const orgs = ref<PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]>([]);
 const applicationNo = ref('');
 const displayApplicationNo = computed(() =>
   isEdit.value ? applicationNo.value : t('autoGenerate'),
@@ -460,6 +462,21 @@ const settlementSelectedBank = computed(() =>
     ? undefined
     : getSelectedBank(settlementCurrencyId.value!),
 );
+
+/** 结算币别已选银行时，用该开票信息的税号去拉进项发票；多币别优先人民币 */
+const clientInvoiceInfoId = computed(() =>
+  resolveClientInvoiceInfoId(
+    bankCurrencies.value.map((row) => {
+      const bank = getSelectedBank(row.currencyId);
+      if (!bank) return undefined;
+      return {
+        clientInvoiceInfoId: bank.clientInvoiceInfoId,
+        currencyCode: row.currencyCode || bank.currency?.code,
+      };
+    }),
+  ),
+);
+
 function onSettlementBankChange(val: unknown) {
   if (isOriginalCurrencyApplication(settlementCurrencyId.value)) return;
   onBankChange(settlementCurrencyId.value!, val);
@@ -496,7 +513,12 @@ async function loadClientBanks(force = false) {
     const list = await getClientInvoiceInfoList({ ClientId: clientId });
     const banks: ClientInvoiceInfoAdminApi.ClientInvoiceBankDto[] = [];
     for (const info of list ?? []) {
-      for (const b of info.clientInvoiceBanks ?? []) banks.push(b);
+      for (const b of info.clientInvoiceBanks ?? []) {
+        banks.push({
+          ...b,
+          clientInvoiceInfoId: b.clientInvoiceInfoId || info.id,
+        });
+      }
     }
     clientBanks.value = banks;
     loadedBankClientId.value = clientId;
@@ -982,6 +1004,7 @@ async function loadEditData() {
     remark.value = detail.remark ?? '';
 
     orgId.value = detail.orgId ?? undefined;
+    orgs.value = detail.orgs ?? [];
     if (detail.orgs?.length) {
       companyName.value = formatOrgPathLabel(detail.orgs) || '-';
     }
@@ -1331,6 +1354,7 @@ function resetForm() {
   currencySettledAmountMap.value = {};
   applicationCreatorName.value = '';
   submitTime.value = dayjs().format('YYYY-MM-DD HH:mm');
+  orgs.value = [];
 }
 
 function handleExportMenuClick({ key }: any) {
@@ -1549,6 +1573,10 @@ void handleSubmitAndNew;
                     <InvoiceTable
                       v-model="invoiceRows"
                       :disabled="isNoInvoice"
+                      :org-id="orgId"
+                      :orgs="orgs"
+                      :settlement-id="settlementId"
+                      :client-invoice-info-id="clientInvoiceInfoId"
                     />
                   </div>
                 </div>
@@ -3001,15 +3029,15 @@ void handleSubmitAndNew;
 .fee-filter-bar {
   display: grid;
   flex-shrink: 0;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px 32px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px 12px;
   padding: 0 0 16px;
 }
 
 .fee-filter-field {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 0;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0 6px;
   align-items: center;
   min-width: 0;
   min-height: 32px;
@@ -3017,9 +3045,12 @@ void handleSubmitAndNew;
   color: #657286;
 }
 
-.fee-filter-field:nth-child(1),
-.fee-filter-field:nth-child(4) {
-  grid-template-columns: 54px minmax(0, 1fr);
+.fee-filter-field > span {
+  white-space: nowrap;
+}
+
+.fee-filter-field:first-child {
+  grid-template-columns: 32px minmax(0, 1fr);
 }
 
 .fee-filter-field :deep(.ant-input),

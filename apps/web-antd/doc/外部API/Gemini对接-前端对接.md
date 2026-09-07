@@ -2,7 +2,7 @@
 title: Gemini 对接 - 前端对接
 module: 外部Api对接 / Gemini
 author: 系统
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 ---
 
 # 1. 说明
@@ -14,6 +14,10 @@ last_updated: 2026-09-06
 > 后端架构说明见：`Gemini对接-外网服务器拆分-2026-07-25.md`、`Gemini模块总逻辑文档.md`
 >
 > **2026-08-13 更新：** 海运报价解析新增可选文字入参 `text`，前端可让用户"上传文件"或"直接粘贴文字"二选一，原有文件上传调用**不受影响、无需改动**。详见「3.2」与 `Gemini对接-报价解析支持文字输入-2026-08-13.md`。
+>
+> **2026-09-07 更新：**
+>
+> 1. 新增 `UploadAndExtractInvoiceAsync`：上传一个发票文件(PDF或图片)，**一次请求完成落附件 + 识别发票**，出参在通用上传结果上增加嵌套的 `invoice` 对象，识别失败为 `null`。原 `ExtractInvoiceAsync`（只识别不落库）**保持不变**。付费申请上传发票走此接口，不必再手动点识别。详见「8」。
 >
 > **2026-09-06 更新：**
 >
@@ -32,7 +36,8 @@ last_updated: 2026-09-06
 | 接口 | 用途 | 章节 |
 | :-- | :-- | :-- |
 | `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件**或直接传报价文字**，解析为多行价格数据并回填船公司/港口/币别/箱型Id | 见「3」 |
-| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，识别发票号、开票日期、销方税号、价税合计 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
+| `ExtractInvoiceAsync` | 上传发票文件**或传已上传附件的 attachmentId**，只识别不落库 | 见 `Gemini对接-发票识别-前端对接文档-2026-08-17.md` |
+| `UploadAndExtractInvoiceAsync` | 上传**一个**发票文件(PDF或图片)，落成附件并识别发票信息 | 见「8」 |
 | `UploadAndExtractCtnNoAsync` | 上传**一张**图片，落成附件并识别箱号 | 见「6」 |
 | `ExtractBillFeesAsync` | 上传**单票账单**，识别提单号与费用并匹配业务，返回费用添加 DTO 列表（不落库） | 见「7」 |
 | `ExtractBillDataAsync` | 上传提单PDF，提取提单字段（gemini-3.5-flash） | 见「4」 |
@@ -43,7 +48,7 @@ last_updated: 2026-09-06
 | 项目 | 内容 |
 | :-- | :-- |
 | 方法 | `POST` |
-| 请求格式 | `multipart/form-data`，**取第一个文件**（文件字段名不限）；`ExtractSeFreiPriceByPromptAsync` 另支持只传文字（见「3.2」），`ExtractInvoiceAsync` 另支持只传 `attachmentId`；`UploadAndExtractCtnNoAsync` **只允许一张图片**；`ExtractBillFeesAsync` 只收文件、上限 20MB，可选 `transportOrderId` |
+| 请求格式 | `multipart/form-data`，**取第一个文件**（文件字段名不限）；`ExtractSeFreiPriceByPromptAsync` 另支持只传文字（见「3.2」），`ExtractInvoiceAsync` 另支持只传 `attachmentId`；`UploadAndExtractCtnNoAsync` **只允许一张图片**，`UploadAndExtractInvoiceAsync` **只允许一个 PDF 或图片**；`ExtractBillFeesAsync` 只收文件、上限 20MB，可选 `transportOrderId` |
 | 权限 | 需登录（类级 `[AbpAuthorize]`，无额外权限点） |
 | 返回包装 | ABP 统一包一层 `result` |
 | 失败 | 统一抛 `UserFriendlyException`，前端按常规错误提示展示即可 |
@@ -475,3 +480,59 @@ const res = await axios.post(
 | `提单号对应多条业务，请人工核对` | 同一个主提单号命中多票 |
 | `AI识别账单结果无法解析` | 模型返回不是合法 JSON，已重试仍失败 |
 | `AI识别失败：…` | 外网服务器/模型调用失败（文案已中性化，不含供应商名） |
+
+---
+
+# 8. 上传文件识别发票 (UploadAndExtractInvoiceAsync)
+
+上传一个发票文件（PDF 或图片），一次请求同时落成附件并用 AI 识别。识别不出时不会把整次上传打成失败。
+
+付费申请发票行、发票附件分组优先走本接口：上传即回填，不必再点识别。已有附件要重新识别时仍用 `ExtractInvoiceAsync`。
+
+## 8.1 接口
+
+| 项目   | 内容                                                         |
+| :----- | :----------------------------------------------------------- |
+| 方法   | `POST`                                                       |
+| 地址   | `/api/services/app/GeminiAdmin/UploadAndExtractInvoiceAsync` |
+| 请求体 | `multipart/form-data`，只能一个文件（字段名不限）            |
+| 返回   | `GeminiInvoiceUploadDto`                                     |
+| 超时   | 前端须设 **180 秒**                                          |
+
+## 8.2 请求参数
+
+只支持 **一个** PDF 或图片（png / jpg / jpeg / webp / heic / heif / gif / bmp）。图片 5MB、PDF 10MB。0 个报 `请上传发票文件`，多于 1 个报 `只支持上传一个发票文件`，其它格式报 `只支持上传PDF或图片`。
+
+```javascript
+const formData = new FormData();
+formData.append('file', selectedFile);
+const res = await axios.post(
+  '/api/services/app/GeminiAdmin/UploadAndExtractInvoiceAsync',
+  formData,
+);
+```
+
+## 8.3 返回结构 (`GeminiInvoiceUploadDto`)
+
+继承通用上传结果，额外嵌套 `invoice`：
+
+| 字段名 | 类型 | 含义 |
+| :-- | :-- | :-- |
+| `filePath` / `fileUrl` / `fileName` | string | 与通用上传相同口径 |
+| `attachmentId` | long | 已写入附件表；大数 ID 原样透传 |
+| `invoice` | object / null | 识别结果，字段同 `ExtractInvoiceAsync`。**整体识别失败为 `null`**，此时附件字段仍有值 |
+
+`invoice` 内：`invoiceNo`、`invoiceDate`、`sellerTaxNo`、`sellerHeader`、`totalAmount`。付费申请把 `sellerHeader` 回填抬头、`totalAmount` 回填发票行 `amount`。
+
+> 识别失败不报错，接口 success 仍为 true，只是 `invoice` 为 null。要区分：`invoice === null` 是整体失败；`invoice` 有值但某字段为 null 表示发票上找不到该项。
+
+## 8.4 与 ExtractInvoiceAsync 的区别
+
+| 项目         | `UploadAndExtractInvoiceAsync` | `ExtractInvoiceAsync`  |
+| :----------- | :----------------------------- | :--------------------- |
+| 是否落成附件 | 会                             | 不会                   |
+| 入参         | 只收一个 PDF/图片              | 文件或 `attachmentId`  |
+| 识别失败     | 不报错，`invoice` 为 null      | 报错                   |
+| 适用场景     | 当场选文件，既要存档又要预填   | 附件已存在只想重新识别 |
+
+两者共享识别缓存（按文件内容去重）。

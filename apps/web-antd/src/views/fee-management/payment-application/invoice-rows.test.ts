@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import {
   INVOICE_PROCESS,
+  applyExtractedInvoiceToRow,
   applyExtractedInvoiceToRows,
+  applyInputInvoicesToRows,
   buildInvoiceSubmitPayload,
+  collectExcludeInvoiceNos,
   createEmptyInvoiceRow,
   formatPayAppInvoiceDates,
   formatPayAppInvoiceNos,
   formatPayAppSellerHeaders,
+  mapInputInvoiceToRow,
   mapInvoicesFromDetail,
+  resolveClientInvoiceInfoId,
+  resolveCompanyOrgIdFromOrgs,
   sumInvoiceAmounts,
   validateInvoiceRequiredOnSubmit,
   validateInvoiceRequiredOnSubmitFromDetail,
@@ -252,6 +258,20 @@ describe('applyExtractedInvoiceToRows', () => {
     expect(filled.message).toContain('销售方抬头');
   });
 
+  it('回填当前行时保留已挂附件', () => {
+    const row = createEmptyInvoiceRow({
+      attachment: { attachmentId: '50011', url: '/invoice.pdf' },
+    });
+    const applied = applyExtractedInvoiceToRow(row, {
+      invoiceNo: 'INV-1',
+      totalAmount: 10,
+    });
+    expect(applied.ok).toBe(true);
+    expect(applied.next.attachment?.attachmentId).toBe('50011');
+    expect(applied.next.invoiceNo).toBe('INV-1');
+    expect(applied.next.amount).toBe(10);
+  });
+
   it('销方税号不写入抬头', () => {
     const result = applyExtractedInvoiceToRows(
       [createEmptyInvoiceRow({ sellerHeader: '已有抬头' })],
@@ -262,5 +282,152 @@ describe('applyExtractedInvoiceToRows', () => {
     );
     expect(result.ok).toBe(true);
     expect(result.next[0]?.sellerHeader).toBe('已有抬头');
+  });
+});
+
+describe('collectExcludeInvoiceNos', () => {
+  it('只收集已填票号，去空白并保序去重', () => {
+    expect(collectExcludeInvoiceNos([])).toEqual([]);
+    expect(
+      collectExcludeInvoiceNos([
+        createEmptyInvoiceRow(),
+        createEmptyInvoiceRow({ invoiceNo: ' INV-1 ' }),
+        createEmptyInvoiceRow({ invoiceNo: 'INV-2' }),
+        createEmptyInvoiceRow({ invoiceNo: 'INV-1' }),
+        createEmptyInvoiceRow({ invoiceNo: '  ' }),
+      ]),
+    ).toEqual(['INV-1', 'INV-2']);
+  });
+});
+
+describe('resolveCompanyOrgIdFromOrgs', () => {
+  it('取组织串上第一个公司节点', () => {
+    expect(resolveCompanyOrgIdFromOrgs(undefined)).toBeUndefined();
+    expect(
+      resolveCompanyOrgIdFromOrgs([
+        { id: 1, isCompany: false },
+        { id: 88, isCompany: true },
+        { id: 99, isCompany: true },
+      ]),
+    ).toBe(88);
+  });
+});
+
+describe('resolveClientInvoiceInfoId', () => {
+  it('没有银行账户时不传开票信息 id', () => {
+    expect(resolveClientInvoiceInfoId(undefined)).toBeUndefined();
+    expect(resolveClientInvoiceInfoId([])).toBeUndefined();
+    expect(
+      resolveClientInvoiceInfoId([undefined, { clientInvoiceInfoId: '  ' }]),
+    ).toBeUndefined();
+  });
+
+  it('结算币别已选银行时取所属开票信息 id', () => {
+    expect(
+      resolveClientInvoiceInfoId([
+        undefined,
+        { clientInvoiceInfoId: '  info-1 ' },
+        { clientInvoiceInfoId: 'info-2' },
+      ]),
+    ).toBe('info-1');
+  });
+
+  it('多币别只能取一个时优先人民币银行', () => {
+    expect(
+      resolveClientInvoiceInfoId([
+        { clientInvoiceInfoId: 'usd-info', currencyCode: 'USD' },
+        { clientInvoiceInfoId: ' rmb-info ', currencyCode: 'rmb' },
+        { clientInvoiceInfoId: 'eur-info', currencyCode: 'EUR' },
+      ]),
+    ).toBe('rmb-info');
+  });
+
+  it('多币别没有人民币时退回第一条有开票信息的银行', () => {
+    expect(
+      resolveClientInvoiceInfoId([
+        { clientInvoiceInfoId: 'usd-info', currencyCode: 'USD' },
+        { clientInvoiceInfoId: 'eur-info', currencyCode: 'EUR' },
+      ]),
+    ).toBe('usd-info');
+  });
+
+  it('CNY 与 RMB 同等视为人民币', () => {
+    expect(
+      resolveClientInvoiceInfoId([
+        { clientInvoiceInfoId: 'usd-info', currencyCode: 'USD' },
+        { clientInvoiceInfoId: 'cny-info', currencyCode: 'CNY' },
+      ]),
+    ).toBe('cny-info');
+  });
+});
+
+describe('mapInputInvoiceToRow / applyInputInvoicesToRows', () => {
+  const inputInvoice = {
+    attachment: {
+      attachmentId: '181755750091286530',
+      friendlyFileName: '253120000000123.pdf',
+      url: '/invoices/a.pdf',
+    },
+    id: '11111111-1111-1111-1111-111111111111',
+    invoiceNo: ' 253120000000123 ',
+    invoiceTime: '2026-09-01T10:20:30',
+    sellerHeader: '上海某某国际物流有限公司',
+    sellerTaxNo: '91310000MA1K35Q12X',
+    totalAmount: 12800.5,
+  } as any;
+
+  it('进项发票回填票号、日期、抬头、价税合计和 pdf 附件，不提交进项 id', () => {
+    const row = mapInputInvoiceToRow(inputInvoice);
+    expect(row.invoiceNo).toBe('253120000000123');
+    expect(row.invoiceDate).toBe('2026-09-01');
+    expect(row.sellerHeader).toBe('上海某某国际物流有限公司');
+    expect(row.amount).toBe(12800.5);
+    expect(row.attachment?.attachmentId).toBe('181755750091286530');
+    expect(row.attachment?.clientVisible).toBe(false);
+    expect(row).not.toHaveProperty('id');
+  });
+
+  it('先填空发票号行，再追加其余进项；已填未保存的票号不覆盖', () => {
+    const existingKey = createEmptyInvoiceRow({ invoiceNo: 'OLD' }).key;
+    const empty = createEmptyInvoiceRow();
+    const filled = createEmptyInvoiceRow({ invoiceNo: 'OLD' });
+    filled.key = existingKey;
+
+    const applied = applyInputInvoicesToRows(
+      [filled, empty],
+      [
+        inputInvoice,
+        {
+          id: '22222222-2222-2222-2222-222222222222',
+          invoiceNo: 'OLD',
+          totalAmount: 1,
+        } as any,
+        {
+          attachment: null,
+          id: '33333333-3333-3333-3333-333333333333',
+          invoiceNo: '253120000000999',
+          invoiceTime: '2026-09-02T00:00:00',
+          sellerHeader: '乙物流',
+          totalAmount: 88,
+        } as any,
+      ],
+    );
+
+    expect(applied.ok).toBe(true);
+    expect(applied.next).toHaveLength(3);
+    expect(applied.next[0]?.invoiceNo).toBe('OLD');
+    expect(applied.next[0]?.key).toBe(existingKey);
+    expect(applied.next[1]?.invoiceNo).toBe('253120000000123');
+    expect(applied.next[1]?.amount).toBe(12800.5);
+    expect(applied.next[2]?.invoiceNo).toBe('253120000000999');
+    expect(applied.next[2]?.sellerHeader).toBe('乙物流');
+    expect(applied.message).toContain('2张');
+  });
+
+  it('勾选结果都已在明细里时不改现有行', () => {
+    const rows = [createEmptyInvoiceRow({ invoiceNo: '253120000000123' })];
+    const applied = applyInputInvoicesToRows(rows, [inputInvoice]);
+    expect(applied.ok).toBe(false);
+    expect(applied.next).toEqual(rows);
   });
 });

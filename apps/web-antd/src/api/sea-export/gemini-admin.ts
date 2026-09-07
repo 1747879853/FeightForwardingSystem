@@ -202,6 +202,62 @@ export function extractInvoice(attachmentId: number | string) {
   );
 }
 
+/** 上传并识别发票：仅 PDF / 图片（与后端 UploadAndExtractInvoiceAsync 一致） */
+export const INVOICE_UPLOAD_ACCEPT =
+  '.pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.gif,.bmp';
+
+const INVOICE_UPLOAD_EXT = /\.(pdf|png|jpe?g|webp|heic|heif|gif|bmp)$/i;
+const INVOICE_UPLOAD_MIME = new Set([
+  'application/pdf',
+  'image/bmp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
+
+export function isInvoiceUploadFile(file: { name?: string; type?: string }) {
+  if (INVOICE_UPLOAD_EXT.test(String(file.name ?? ''))) return true;
+  return INVOICE_UPLOAD_MIME.has(String(file.type ?? '').toLowerCase());
+}
+
+/**
+ * 上传发票并识别结果
+ * 一次请求落成附件并返回识别字段；识别失败时 invoice 为 null，附件字段仍有值
+ */
+export interface GeminiInvoiceUploadDto {
+  filePath: string;
+  fileUrl: string;
+  fileName: string;
+  /** 附件表主键，大数 ID 原样透传 */
+  attachmentId: number | string;
+  /** 整体识别失败为 null；有值时个别字段仍可能为 null */
+  invoice?: GeminiInvoiceDto | null;
+}
+
+/**
+ * Gemini 上传发票并识别
+ * 只收一个 PDF 或图片；图片 ≤5MB、PDF ≤10MB
+ */
+export function uploadAndExtractInvoice(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return requestClient.post<GeminiInvoiceUploadDto>(
+    '/services/app/GeminiAdmin/UploadAndExtractInvoiceAsync',
+    formData,
+    {
+      timeout: 180_000,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}
+
 // ==================== 单票账单识别费用 ====================
 
 /**

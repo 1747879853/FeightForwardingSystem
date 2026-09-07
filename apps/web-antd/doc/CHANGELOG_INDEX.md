@@ -13,6 +13,9 @@
 
 ## 2026-09
 
+- [2026-09-08 付费申请从进项发票选择并回填](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md)
+- [2026-09-07 付费申请费用明细筛选改为一行五列](./changelogs/change-log-2026-09-07-payment-application-fee-filter-five-cols.md)
+- [2026-09-07 付费申请上传发票自动识别回填](./changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md)
 - [2026-09-07 监装处理弹层滚动不再穿透详情页](./changelogs/change-log-2026-09-07-mp-loading-photo-panel-scroll.md)
 - [2026-09-06 付费申请银行账户加宽以完整显示](./changelogs/change-log-2026-09-06-payment-application-bank-account-width.md)
 - [2026-09-06 监装小程序详情支持堆场一键导航](./changelogs/change-log-2026-09-06-mp-loading-yard-nav.md)

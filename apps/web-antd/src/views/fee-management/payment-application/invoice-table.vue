@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import type { UploadFile } from 'ant-design-vue';
+import type { UploadResultItem } from '#/api/common/upload';
 
+import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { InvoiceRowForm } from './invoice-rows';
 
 import { computed, ref } from 'vue';
@@ -17,20 +19,34 @@ import {
   message,
 } from 'ant-design-vue';
 
-import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
-import { extractInvoice } from '#/api/sea-export/gemini-admin';
+import { mapResultToAttachment } from '#/api/common/upload';
+import {
+  INVOICE_UPLOAD_ACCEPT,
+  extractInvoice,
+  isInvoiceUploadFile,
+  uploadAndExtractInvoice,
+} from '#/api/sea-export/gemini-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { getMyOrgCompanyNode } from '#/composables/use-my-org';
 
 import { formatAmount } from './form-data';
+import InputInvoicePickerModal from './input-invoice-picker-modal.vue';
 import {
   applyExtractedInvoiceToRow,
+  applyInputInvoicesToRows,
+  collectExcludeInvoiceNos,
   createEmptyInvoiceRow,
+  resolveCompanyOrgIdFromOrgs,
   sumInvoiceAmounts,
 } from './invoice-rows';
 
 const props = withDefaults(
   defineProps<{
+    clientInvoiceInfoId?: null | string;
     disabled?: boolean;
+    orgId?: null | number;
+    orgs?: null | PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    settlementId?: null | string;
   }>(),
   { disabled: false },
 );
@@ -39,8 +55,47 @@ const rows = defineModel<InvoiceRowForm[]>({ default: () => [] });
 
 const uploadingKey = ref<null | string>(null);
 const extractingKey = ref<null | string>(null);
+const pickerOpen = ref(false);
+const pickerOrgId = ref<number | string | undefined>(undefined);
 
 const invoiceAmountTotal = computed(() => sumInvoiceAmounts(rows.value) ?? 0);
+const excludeInvoiceNos = computed(() => collectExcludeInvoiceNos(rows.value));
+
+function resolveCompanyOrgId() {
+  return (
+    resolveCompanyOrgIdFromOrgs(props.orgs) ??
+    getMyOrgCompanyNode(props.orgId)?.id ??
+    props.orgId ??
+    undefined
+  );
+}
+
+function openInputInvoicePicker() {
+  if (props.disabled) return;
+  if (!props.settlementId) {
+    message.warning('请先选择结算对象');
+    return;
+  }
+  const companyOrgId = resolveCompanyOrgId();
+  if (companyOrgId == null) {
+    message.warning('请先选择所属组织');
+    return;
+  }
+  pickerOrgId.value = companyOrgId;
+  pickerOpen.value = true;
+}
+
+function onPickInputInvoices(
+  invoices: PaymentApplicationAdminApi.InputInvoiceSimpleDto[],
+) {
+  const applied = applyInputInvoicesToRows(rows.value, invoices);
+  if (!applied.ok) {
+    message.warning(applied.message);
+    return;
+  }
+  rows.value = applied.next;
+  message.success(applied.message);
+}
 
 function addRow() {
   if (props.disabled) return;
@@ -71,30 +126,54 @@ function openAttachment(row: InvoiceRowForm) {
   openAttachmentViewer(row.attachment);
 }
 
+function toRowAttachment(uploaded: {
+  attachmentId: number | string;
+  fileName: string;
+  filePath: string;
+  fileUrl: string;
+}): InvoiceRowForm['attachment'] {
+  const mapped = mapResultToAttachment(uploaded as UploadResultItem);
+  return {
+    attachmentId: mapped.attachmentId,
+    clientVisible: false,
+    displayOrder: 0,
+    friendlyFileName: mapped.friendlyFileName || mapped.fileName,
+    url: mapped.url,
+  };
+}
+
 async function handleUpload(file: UploadFile, index: number) {
   if (props.disabled) return false;
   const row = rows.value[index];
   if (!row) return false;
   const rawFile = file as unknown as File;
+  if (!isInvoiceUploadFile(rawFile)) {
+    message.warning('发票只支持上传 PDF 或图片');
+    return false;
+  }
   uploadingKey.value = row.key;
+  const hideLoading = message.loading('正在上传并识别发票，请稍候...', 0);
   try {
-    const formData = new FormData();
-    formData.append('file', rawFile);
-    const uploaded = (await uploadFile(formData))[0];
-    if (!uploaded) throw new Error('Upload returned no file.');
-    const attachment = mapResultToAttachment(uploaded);
-    patchRow(index, {
-      attachment: {
-        attachmentId: attachment.attachmentId,
-        clientVisible: false,
-        displayOrder: 0,
-        friendlyFileName: attachment.friendlyFileName || attachment.fileName,
-        url: attachment.url,
-      },
-    });
-  } catch (error: any) {
-    message.error(error?.message || '上传失败');
+    const uploaded = await uploadAndExtractInvoice(rawFile);
+    const attachment = toRowAttachment(uploaded);
+    const rowWithFile = { ...row, attachment };
+    if (!uploaded.invoice) {
+      patchRow(index, { attachment });
+      message.warning('附件已保存，未能识别发票信息，请手动填写或点重新识别');
+      return false;
+    }
+    const applied = applyExtractedInvoiceToRow(rowWithFile, uploaded.invoice);
+    if (!applied.ok) {
+      patchRow(index, { attachment });
+      message.warning(applied.message);
+      return false;
+    }
+    patchRow(index, applied.next);
+    message.success(applied.message);
+  } catch {
+    // UserFriendlyException 由全局拦截器展示
   } finally {
+    hideLoading();
     uploadingKey.value = null;
   }
   return false;
@@ -205,14 +284,14 @@ async function recognizeInvoice(index: number) {
             <IconifyIcon icon="mdi:file-outline" />
             <span>{{ getFileName(row) }}</span>
           </button>
-          <Tooltip title="识别发票">
+          <Tooltip title="重新识别">
             <Button
               type="text"
               size="small"
               class="invoice-table__icon-btn"
               :loading="extractingKey === row.key"
               :disabled="disabled || extractingKey != null"
-              aria-label="识别发票"
+              aria-label="重新识别"
               @click="recognizeInvoice(index)"
             >
               <IconifyIcon icon="mdi:text-recognition" />
@@ -231,6 +310,7 @@ async function recognizeInvoice(index: number) {
         </template>
         <Upload
           v-else-if="!disabled"
+          :accept="INVOICE_UPLOAD_ACCEPT"
           :before-upload="(file) => handleUpload(file, index)"
           :disabled="uploadingKey === row.key"
           :show-upload-list="false"
@@ -252,20 +332,38 @@ async function recognizeInvoice(index: number) {
         </Button>
       </div>
     </div>
-    <Button
-      v-if="!disabled"
-      type="dashed"
-      size="small"
-      class="invoice-table__add"
-      @click="addRow"
-    >
-      <IconifyIcon icon="mdi:plus" />
-      添加发票
-    </Button>
+    <div v-if="!disabled" class="invoice-table__toolbar">
+      <Button
+        type="dashed"
+        size="small"
+        class="invoice-table__add"
+        @click="addRow"
+      >
+        <IconifyIcon icon="mdi:plus" />
+        添加发票
+      </Button>
+      <Button
+        type="dashed"
+        size="small"
+        class="invoice-table__add"
+        @click="openInputInvoicePicker"
+      >
+        <IconifyIcon icon="mdi:file-document-plus-outline" />
+        从进项发票选择
+      </Button>
+    </div>
     <div v-if="!disabled || rows.length > 0" class="invoice-table__total">
       <span>总额</span>
       <strong>{{ formatAmount(invoiceAmountTotal) }}</strong>
     </div>
+    <InputInvoicePickerModal
+      v-model:open="pickerOpen"
+      :org-id="pickerOrgId"
+      :settlement-id="settlementId || undefined"
+      :client-invoice-info-id="clientInvoiceInfoId || undefined"
+      :exclude-invoice-nos="excludeInvoiceNos"
+      @confirm="onPickInputInvoices"
+    />
   </div>
 </template>
 
@@ -392,6 +490,13 @@ async function recognizeInvoice(index: number) {
   padding: 4px 0;
   font-size: 12px;
   color: #94a3b8;
+}
+
+.invoice-table__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .invoice-table__add {

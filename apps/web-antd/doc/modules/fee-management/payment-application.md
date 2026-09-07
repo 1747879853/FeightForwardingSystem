@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -29,7 +29,7 @@ last_updated: 2026-09-06
 - **编辑申请：** 双击行进入编辑页维护申请单明细。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示各币别「{币别}申请合计」列，承接编辑页结算币别卡片的汇总口径；列配置面板仅保留「申请合计」锚点项，其余币别跟随列自动跟随显隐与顺序。默认插在「开票日期」之后。
 - **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
-- **补录发票弹窗：** 发票流程不是「不开票」时，点击「发票流程」打开维护弹窗（发票流程 + 可增删的发票明细表 + 申请附件）；每行含发票号、开票日期、销售方抬头、发票金额、单个附件，底部展示发票总额（前端求和）；附件可识别预填该行票号、日期、抬头与金额，保存走 `EditInvoiceAsync`，不判断申请 status，也不要求先票后付当场有票。发票子表与 `attachmentGroup` 都是全量覆盖。
+- **补录发票弹窗：** 发票流程不是「不开票」时，点击「发票流程」打开维护弹窗（发票流程 + 可增删的发票明细表 + 申请附件）；每行含发票号、开票日期、销售方抬头、发票金额、单个附件，底部展示发票总额（前端求和）；可从进项发票勾选回填（已填票号排除，详情已绑银行时带 `clientInvoiceInfoId`）；上传 PDF/图片即自动识别预填该行票号、日期、抬头与金额，已有附件可重新识别；保存走 `EditInvoiceAsync`，不判断申请 status，也不要求先票后付当场有票。发票子表与 `attachmentGroup` 都是全量覆盖。
 - **批量下载发票：** 勾选付费申请后点「批量下载发票」，传申请 id 调 `DownloadInvoicesAsync` 打 zip；单次最多 50 条；不开票行会先排除；部分缺附件时用 `missingInvoiceNos` 提示。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -75,6 +75,8 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Feature` | 补录弹窗可从进项发票勾选回填；详情已绑银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | 与编辑页共用 `InvoiceTable`。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
+| 2026-09-07 | `Feature` | 补录弹窗上传发票后自动识别回填，不必再点识别。 | 与编辑页共用 `InvoiceTable` / `attachment-groups.vue`。详见 `changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md`。 |
 | 2026-09-06 | `Feature` | 列表增加销售方抬头、发票总额列；补录弹窗可填抬头与金额，底部展示总额。识别回填价税合计到金额、`sellerHeader` 到抬头。 | 总额前端求和；抬头不是客户下拉。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md`。 |
 | 2026-09-06 | `Fix` | 先票后付可先建单再补票；列表提交时才要求至少一条发票。先票后付也可点发票流程补录。 | 提交只走 `SubmitAsync`；按子表票号预判。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-submit.md`。 |
 | 2026-09-04 | `Feature` | 发票号/开票日期改读发票子表并支持一单多票；列表可批量下载发票附件。 | 主表 `invoiceNo`/`invoiceDate` 已删除；展示从 `paymentApplicationInvoices` 拼接。详见 `changelogs/change-log-2026-09-04-payment-application-invoice-subtable.md`。 |

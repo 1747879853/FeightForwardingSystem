@@ -957,6 +957,40 @@ export namespace PaymentApplicationAdminApi {
     missingInvoiceNos?: string[];
   }
 
+  /** 拉取可选用进项发票的查询入参 */
+  export interface PayAppInputInvoiceQueryDto {
+    /** 所属公司 id，与进项 OrgId 直接相等；传部门会空列表 */
+    orgId: number | string;
+    /** 结算对象 id，用开票信息税号匹配进项销方税号 */
+    settlementId: string;
+    /**
+     * 客户开票信息 id。结算币别已选银行时传该银行所属开票信息，
+     * 只用这一条的税号匹配；不传则用结算对象名下全部开票信息
+     */
+    clientInvoiceInfoId?: string;
+    /** 当前申请已填（含未保存）的发票号，避免重复挑到 */
+    excludeInvoiceNos?: string[];
+  }
+
+  /** 进项发票简要，供付费申请挑票后回填发票行 */
+  export interface InputInvoiceSimpleDto {
+    /** 进项发票 id，只用于勾选标识，不要提交给付费申请 */
+    id: string;
+    invoiceNo?: string;
+    invoiceCode?: string;
+    elecInvoiceNumber?: string;
+    invoiceTime?: null | string;
+    sellerHeader?: string;
+    sellerTaxNo?: string;
+    totalAmount?: null | number;
+    exTaxAmount?: null | number;
+    taxAmount?: null | number;
+    invoiceLine?: null | number;
+    invoiceStatus?: null | number;
+    /** 首个 pdf；没有 pdf 时为 null */
+    attachment?: AttachmentItemDto | null;
+  }
+
   /** 运输单简要信息 */
   export interface TransportOrderSimpleDto {
     id: string;
@@ -1267,6 +1301,33 @@ export async function downloadPaymentApplicationInvoices(
     `${API_PREFIX}/DownloadInvoicesAsync`,
     data,
   );
+}
+
+/**
+ * 拉取当前公司+结算对象近一个月内、未被占用的进项发票。
+ * excludeInvoiceNos 须带上页面已填（含未保存）的票号。
+ * 结算币别已选银行时传 clientInvoiceInfoId，只用该开票信息的税号。
+ */
+export async function getPaymentApplicationInputInvoiceList(
+  params: PaymentApplicationAdminApi.PayAppInputInvoiceQueryDto,
+) {
+  const query: Recordable<any> = {
+    orgId: params.orgId,
+    settlementId: params.settlementId,
+  };
+  if (params.clientInvoiceInfoId) {
+    query.clientInvoiceInfoId = params.clientInvoiceInfoId;
+  }
+  if (params.excludeInvoiceNos?.length) {
+    query.excludeInvoiceNos = params.excludeInvoiceNos;
+  }
+  const list = await requestClient.get<
+    PaymentApplicationAdminApi.InputInvoiceSimpleDto[]
+  >(`${API_PREFIX}/GetInputInvoiceListAsync`, {
+    params: query,
+    paramsSerializer: 'repeat',
+  });
+  return Array.isArray(list) ? list : [];
 }
 
 /** 添加费用关联 */

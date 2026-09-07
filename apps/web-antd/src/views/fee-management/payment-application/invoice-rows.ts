@@ -370,3 +370,130 @@ export function applyExtractedInvoiceToRow(
 ): { message: string; next: InvoiceRowForm; ok: boolean } {
   return mergeExtractedInvoice(row, result);
 }
+
+export function collectExcludeInvoiceNos(rows: InvoiceRowForm[]): string[] {
+  const seen = new Set<string>();
+  const invoiceNos: string[] = [];
+  for (const row of rows) {
+    const invoiceNo = row.invoiceNo?.trim() ?? '';
+    if (!invoiceNo || seen.has(invoiceNo)) continue;
+    seen.add(invoiceNo);
+    invoiceNos.push(invoiceNo);
+  }
+  return invoiceNos;
+}
+
+export function resolveCompanyOrgIdFromOrgs(
+  orgs?: null | Array<{ id?: number | string; isCompany?: boolean }>,
+): number | string | undefined {
+  const company = orgs?.find((org) => org.isCompany);
+  return company?.id;
+}
+
+/** 结算币别已选银行时，取其所属客户开票信息 id，用来收窄进项发票税号。
+ * 多币别只能传一个：优先取人民币（RMB/CNY）银行，没有再取第一条。 */
+export function resolveClientInvoiceInfoId(
+  banks?: null | Array<
+    | {
+        clientInvoiceInfoId?: null | string;
+        currencyCode?: null | string;
+      }
+    | null
+    | undefined
+  >,
+): string | undefined {
+  const withId: { clientInvoiceInfoId: string; currencyCode: string }[] = [];
+  for (const bank of banks ?? []) {
+    const id = bank?.clientInvoiceInfoId?.trim();
+    if (!id) continue;
+    withId.push({
+      clientInvoiceInfoId: id,
+      currencyCode: bank?.currencyCode?.trim().toUpperCase() ?? '',
+    });
+  }
+  if (withId.length === 0) return undefined;
+  const rmb = withId.find(
+    (item) => item.currencyCode === 'RMB' || item.currencyCode === 'CNY',
+  );
+  return (rmb ?? withId[0])?.clientInvoiceInfoId;
+}
+
+function mapInputInvoiceAttachment(
+  attachment?: null | PaymentApplicationAdminApi.AttachmentItemDto,
+): InvoiceRowForm['attachment'] {
+  const attachmentId = toPositiveAttachmentId(attachment?.attachmentId);
+  if (attachmentId == null) return null;
+  return {
+    attachmentDtlTypeId: attachment?.attachmentDtlTypeId ?? null,
+    attachmentId,
+    clientVisible: false,
+    displayOrder: 0,
+    friendlyFileName: attachment?.friendlyFileName,
+    url: attachment?.url,
+  };
+}
+
+export function mapInputInvoiceToRow(
+  invoice: PaymentApplicationAdminApi.InputInvoiceSimpleDto,
+): InvoiceRowForm {
+  return createEmptyInvoiceRow({
+    amount: parseExtractedAmount(invoice.totalAmount),
+    attachment: mapInputInvoiceAttachment(invoice.attachment),
+    invoiceDate: formatInvoiceDate(invoice.invoiceTime),
+    invoiceNo: invoice.invoiceNo?.trim() ?? '',
+    sellerHeader: invoice.sellerHeader?.trim() ?? '',
+  });
+}
+
+/** 把勾选的进项发票填进发票行：先占空发票号行，其余追加；已有票号不覆盖。 */
+export function applyInputInvoicesToRows(
+  rows: InvoiceRowForm[],
+  invoices: PaymentApplicationAdminApi.InputInvoiceSimpleDto[],
+): { message: string; next: InvoiceRowForm[]; ok: boolean } {
+  const existingNos = new Set(collectExcludeInvoiceNos(rows));
+  const incoming = invoices
+    .map((invoice) => mapInputInvoiceToRow(invoice))
+    .filter((row) => {
+      const invoiceNo = row.invoiceNo.trim();
+      if (!invoiceNo || existingNos.has(invoiceNo)) return false;
+      existingNos.add(invoiceNo);
+      return true;
+    });
+
+  if (incoming.length === 0) {
+    return {
+      message: '没有可填入的进项发票',
+      next: rows,
+      ok: false,
+    };
+  }
+
+  const next = [...rows];
+  let cursor = 0;
+  for (
+    let index = 0;
+    index < next.length && cursor < incoming.length;
+    index += 1
+  ) {
+    if (hasInvoiceNo(next[index]!)) continue;
+    const mapped = incoming[cursor]!;
+    next[index] = {
+      ...next[index]!,
+      amount: mapped.amount,
+      attachment: mapped.attachment ?? next[index]!.attachment,
+      invoiceDate: mapped.invoiceDate,
+      invoiceNo: mapped.invoiceNo,
+      sellerHeader: mapped.sellerHeader,
+    };
+    cursor += 1;
+  }
+  if (cursor < incoming.length) {
+    next.push(...incoming.slice(cursor));
+  }
+
+  return {
+    message: `已填入${incoming.length}张进项发票，请核对后保存`,
+    next,
+    ok: true,
+  };
+}

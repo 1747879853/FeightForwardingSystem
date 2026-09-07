@@ -20,6 +20,7 @@ import {
   buildInvoiceSubmitPayload,
   createEmptyInvoiceRow,
   mapInvoicesFromDetail,
+  resolveClientInvoiceInfoId,
   validateInvoiceRows,
 } from './invoice-rows';
 
@@ -38,6 +39,10 @@ const loading = ref(false);
 const saving = ref(false);
 const invoiceProcess = ref<number | undefined>(undefined);
 const invoiceRows = ref<InvoiceRowForm[]>([]);
+const orgId = ref<number | undefined>(undefined);
+const orgs = ref<PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]>([]);
+const settlementId = ref('');
+const clientInvoiceInfoId = ref<string | undefined>(undefined);
 const attachmentGroup = ref<
   PaymentApplicationAdminApi.AttachmentGroupInputDto[]
 >([]);
@@ -56,6 +61,10 @@ function resetForm() {
   invoiceProcess.value = undefined;
   invoiceRows.value = [];
   attachmentGroup.value = [];
+  orgId.value = undefined;
+  orgs.value = [];
+  settlementId.value = '';
+  clientInvoiceInfoId.value = undefined;
 }
 
 function mapAttachmentGroupFromDetail(
@@ -134,6 +143,19 @@ async function loadDetail(id: string) {
     ) {
       invoiceRows.value = [createEmptyInvoiceRow()];
     }
+    orgId.value = detail.orgId ?? undefined;
+    orgs.value = detail.orgs ?? [];
+    settlementId.value = detail.settlementId ?? '';
+    clientInvoiceInfoId.value = resolveClientInvoiceInfoId(
+      (detail.currencyGroup ?? []).flatMap((group) =>
+        (group.paymentApplicationBank?.clientInvoiceBanks ?? []).map(
+          (bank) => ({
+            clientInvoiceInfoId: bank.clientInvoiceInfoId,
+            currencyCode: group.code ?? bank.currencyCode,
+          }),
+        ),
+      ),
+    );
     attachmentGroup.value = mapAttachmentGroupFromDetail(
       detail.attachmentGroup,
     );
@@ -222,7 +244,14 @@ async function handleOk() {
         </div>
         <div class="invoice-edit-invoices">
           <div class="invoice-edit-invoices__title">发票明细</div>
-          <InvoiceTable v-model="invoiceRows" :disabled="isNoInvoice" />
+          <InvoiceTable
+            v-model="invoiceRows"
+            :disabled="isNoInvoice"
+            :org-id="orgId"
+            :orgs="orgs"
+            :settlement-id="settlementId"
+            :client-invoice-info-id="clientInvoiceInfoId"
+          />
         </div>
         <div class="invoice-edit-attachments">
           <div class="invoice-edit-attachments__title">附件</div>

@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import type { UploadFile } from 'ant-design-vue';
-import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
+import type { UploadResultItem } from '#/api/common/upload';
+import type {
+  GeminiInvoiceDto,
+  GeminiInvoiceUploadDto,
+} from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 
@@ -12,7 +16,12 @@ import { Button, Empty, Spin, Tooltip, Upload, message } from 'ant-design-vue';
 
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
-import { extractInvoice } from '#/api/sea-export/gemini-admin';
+import {
+  INVOICE_UPLOAD_ACCEPT,
+  extractInvoice,
+  isInvoiceUploadFile,
+  uploadAndExtractInvoice,
+} from '#/api/sea-export/gemini-admin';
 import { addPaymentApplicationAttachments } from '#/api/settlement-management/payment-application-admin';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
@@ -168,6 +177,66 @@ async function loadAttachmentTypes() {
   }
 }
 
+function isInvoiceGroup(group: AttachmentGroupView) {
+  return /发票|invoice/i.test(group.name ?? '');
+}
+
+function toAttachmentItem(
+  uploaded: GeminiInvoiceUploadDto | UploadResultItem,
+  group: AttachmentGroupView,
+  displayOrder: number,
+): PaymentApplicationAdminApi.AttachmentItemForItemInputDto {
+  const attachment = mapResultToAttachment(uploaded as UploadResultItem);
+  return {
+    attachmentId: attachment.attachmentId,
+    attachmentDtlTypeId: group.attachmentDtlTypeId,
+    clientVisible: false,
+    displayOrder,
+    friendlyFileName: attachment.friendlyFileName || attachment.fileName,
+    url: attachment.url,
+  };
+}
+
+async function persistUploadedItem(
+  group: AttachmentGroupView,
+  item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto,
+) {
+  const currentItems = getGroupItems(group.attachmentDtlTypeId);
+  const nextItem = { ...item, displayOrder: currentItems.length };
+  if (canAppendRemote.value) {
+    await addPaymentApplicationAttachments({
+      id: props.applicationId!,
+      attachments: [nextItem],
+    });
+  }
+  updateGroup(group.attachmentDtlTypeId, [...currentItems, nextItem]);
+}
+
+/** 发票分组：一次请求落附件并识别，结果交给父级回填发票行 */
+async function handleInvoiceUpload(rawFile: File, group: AttachmentGroupView) {
+  if (!isInvoiceUploadFile(rawFile)) {
+    message.warning('发票附件只支持上传 PDF 或图片');
+    return false;
+  }
+  uploadingTypeId.value = group.attachmentDtlTypeId;
+  const hideLoading = message.loading('正在上传并识别发票，请稍候...', 0);
+  try {
+    const uploaded = await uploadAndExtractInvoice(rawFile);
+    await persistUploadedItem(group, toAttachmentItem(uploaded, group, 0));
+    if (uploaded.invoice) {
+      emit('extracted', uploaded.invoice);
+    } else {
+      message.warning('附件已保存，未能识别发票信息，请手动填写或点重新识别');
+    }
+  } catch {
+    // UserFriendlyException 由全局拦截器展示
+  } finally {
+    hideLoading();
+    uploadingTypeId.value = null;
+  }
+  return false;
+}
+
 /**
  * 1) 通用上传拿 attachmentId
  * 2) 可编辑 → 只写入本地 attachmentGroup，等 Add/Edit
@@ -176,32 +245,19 @@ async function loadAttachmentTypes() {
 async function handleUpload(file: UploadFile, group: AttachmentGroupView) {
   if (!canUpload.value) return false;
   const rawFile = file as unknown as File;
+  if (isInvoiceGroup(group)) {
+    return handleInvoiceUpload(rawFile, group);
+  }
   uploadingTypeId.value = group.attachmentDtlTypeId;
   try {
     const formData = new FormData();
     formData.append('file', rawFile);
     const uploaded = (await uploadFile(formData))[0];
     if (!uploaded) throw new Error('Upload returned no file.');
-    const attachment = mapResultToAttachment(uploaded);
-    const currentItems = getGroupItems(group.attachmentDtlTypeId);
-    const item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto = {
-      attachmentId: Number(attachment.attachmentId),
-      attachmentDtlTypeId: group.attachmentDtlTypeId,
-      clientVisible: false,
-      displayOrder: currentItems.length,
-      friendlyFileName: attachment.friendlyFileName || attachment.fileName,
-      url: attachment.url,
-    };
-
+    await persistUploadedItem(group, toAttachmentItem(uploaded, group, 0));
     if (canAppendRemote.value) {
-      await addPaymentApplicationAttachments({
-        id: props.applicationId!,
-        attachments: [item],
-      });
       message.success('附件已追加');
     }
-
-    updateGroup(group.attachmentDtlTypeId, [...currentItems, item]);
   } catch (error: any) {
     message.error(error?.message || '上传失败');
   } finally {
@@ -228,10 +284,6 @@ function openAttachment(
   item: PaymentApplicationAdminApi.AttachmentItemForItemInputDto,
 ) {
   openAttachmentViewer(item);
-}
-
-function isInvoiceGroup(group: AttachmentGroupView) {
-  return /发票|invoice/i.test(group.name ?? '');
 }
 
 function isExtracting(
@@ -294,6 +346,7 @@ onMounted(loadAttachmentTypes);
         <Upload
           v-if="canUpload"
           class="attachment-group__upload"
+          :accept="isInvoiceGroup(group) ? INVOICE_UPLOAD_ACCEPT : undefined"
           :before-upload="(file) => handleUpload(file, group)"
           :disabled="uploadingTypeId === group.attachmentDtlTypeId"
           :show-upload-list="false"
@@ -326,7 +379,7 @@ onMounted(loadAttachmentTypes);
               />
               <span class="attachment-file__text">{{ getFileName(item) }}</span>
             </button>
-            <Tooltip v-if="isInvoiceGroup(group)" title="识别发票">
+            <Tooltip v-if="isInvoiceGroup(group)" title="重新识别">
               <span class="attachment-file__recognize-wrap">
                 <Button
                   type="text"
@@ -334,7 +387,7 @@ onMounted(loadAttachmentTypes);
                   class="attachment-file__recognize"
                   :loading="isExtracting(item)"
                   :disabled="extractingAttachmentId != null"
-                  aria-label="识别发票"
+                  aria-label="重新识别"
                   @click="recognizeInvoice(item)"
                 >
                   <IconifyIcon icon="mdi:text-recognition" />
