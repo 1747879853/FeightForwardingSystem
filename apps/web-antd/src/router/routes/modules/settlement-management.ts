@@ -13,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       authority: abpPageAuthority([
         'Admin.PaymentSettlement',
         'Admin.InvoiceIssue.Get',
+        'Admin.InputInvoice.Get',
         'Admin.BankStatement',
         'Admin.OrderFee.Lock',
         'Admin.ExchangeRate',
@@ -97,6 +98,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/settlement-management/invoice-issue/form.vue'),
+      },
+      {
+        path: 'input-invoice',
+        name: 'InputInvoiceList',
+        meta: {
+          icon: 'mdi:receipt-outline',
+          keepAlive: true,
+          title: '进项发票',
+          authority: abpPageAuthority('Admin.InputInvoice.Get'),
+        },
+        component: () =>
+          import('#/views/settlement-management/input-invoice/list.vue'),
       },
       {
         path: 'commission-grant',
