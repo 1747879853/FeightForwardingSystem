@@ -4,15 +4,11 @@ import type { OnActionClickParams } from '#/adapter/vxe-table';
 import { useColumns } from './data';
 import type { ClientContactAdminApi } from '#/api/sea-export/client-contact-admin';
 import {
-  addClientContact,
   getClientContactPagedList,
-  editClientContact,
   deleteClientContact,
   setClientContactDisabled,
   batchSaveClientContacts,
 } from '#/api/sea-export/client-contact-admin';
-import { useVbenModal } from '@vben/common-ui';
-import AddModal from './add-modal.vue';
 import { computed, ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { IconifyIcon } from '@vben/icons';
@@ -114,10 +110,6 @@ const handleActionClick = ({
       delContact(row);
       break;
     }
-    case 'edit': {
-      editContact(row);
-      break;
-    }
     case 'toggleDisable': {
       toggleContactDisable(row);
       break;
@@ -130,33 +122,6 @@ const fetchClientContactPagedList = (params: Record<string, any>) =>
     ...params,
     ClientId: editId.value,
   });
-
-const [Modal, modalApi] = useVbenModal({
-  // 连接抽离的组件
-  connectedComponent: AddModal,
-});
-
-const addContactData = async (
-  data: ClientContactAdminApi.ClientContactEditDto,
-) => {
-  data.clientId = editId.value || '';
-  await addClientContact(data);
-  queryTableData(); // 重新加载数据
-};
-const editContactData = async (
-  data: ClientContactAdminApi.ClientContactEditDto,
-) => {
-  data.clientId = editId.value || '';
-  await editClientContact(data);
-  queryTableData(); // 重新加载数据
-};
-
-const addContact = () => {
-  modalApi.setData(null).open();
-};
-const editContact = (data: ClientContactAdminApi.ClientContactEditDto) => {
-  modalApi.setData(data).open();
-};
 
 const delContact = async (data: ClientContactAdminApi.IdDto) => {
   await deleteClientContact(data);
@@ -315,6 +280,4 @@ watch(
       </template>
     </ContactHandsontable>
   </div>
-
-  <Modal @add="addContactData" @edit="editContactData" />
 </template>

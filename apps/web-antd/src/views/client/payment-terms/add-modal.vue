@@ -345,7 +345,8 @@ const [Modal, modalApi] = useVbenModal({
       emits('edit', paymentValues);
     }
 
-    modalApi.close();
+    // 不在此处关闭弹窗：关闭时机交由父组件根据保存结果决定，
+    // 保存成功才关闭，保存失败保持打开以保留用户已填写的内容
   },
   onOpenChange(isOpen: boolean) {
     if (isOpen) {

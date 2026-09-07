@@ -341,16 +341,39 @@ const addContactData = async (
   data: BillingPeriodAdminApi.BillingPeriodEditDto,
 ) => {
   data.clientId = editId.value || '';
-  await addBillingPeriod(data);
-  gridApi.query();
+  // 提交期间锁定弹窗（确认按钮 loading、禁止手动关闭），避免重复提交
+  modalApi.lock();
+  try {
+    await addBillingPeriod(data);
+    message.success($t('ui.actionMessage.operationSuccess'));
+    gridApi.query();
+    // 仅保存成功才关闭弹窗
+    modalApi.close();
+  } catch (error) {
+    // 保存失败：全局拦截器已弹出错误提示，保持弹窗打开以保留用户已填写内容
+    console.error('新增账期失败:', error);
+  } finally {
+    modalApi.unlock();
+  }
 };
 const editContactData = async (
   data: BillingPeriodAdminApi.BillingPeriodEditDto,
 ) => {
-  console.log('editContactData', data);
   data.clientId = editId.value || '';
-  await editBillingPeriod(data);
-  gridApi.query();
+  // 提交期间锁定弹窗（确认按钮 loading、禁止手动关闭），避免重复提交
+  modalApi.lock();
+  try {
+    await editBillingPeriod(data);
+    message.success($t('ui.actionMessage.operationSuccess'));
+    gridApi.query();
+    // 仅保存成功才关闭弹窗
+    modalApi.close();
+  } catch (error) {
+    // 保存失败：全局拦截器已弹出错误提示，保持弹窗打开以保留用户已填写内容
+    console.error('编辑账期失败:', error);
+  } finally {
+    modalApi.unlock();
+  }
 };
 
 const addContact = () => {
@@ -369,7 +392,11 @@ const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
 </script>
 
 <template>
-  <Page auto-content-height>
+  <!-- 本组件作为「账期」tab 嵌在客户编辑页(client/editor.vue)的 Page auto-content-height 内。
+       嵌套的 Page 会按全局视口高度(--vben-content-height)计算内容高，但它实际位于 editor 的
+       内容 tab 栏(50px) + gap-2(8px) 下方，导致底部分页被挤出可视区、需滚动才能看到。
+       用 height-offset 扣除这段被 tab 栏占用的高度(58px)，使表格+分页正好收在屏幕内、无滚动条。 -->
+  <Page auto-content-height :height-offset="58">
     <Grid :table-title="$t('seaExport.client.paymentTerms.title')">
       <template #toolbar-tools>
         <Space>
