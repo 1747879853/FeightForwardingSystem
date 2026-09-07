@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-08 付费申请附件卡片铺满右侧剩余高度](./changelogs/change-log-2026-09-08-payment-application-attachment-card-fill.md)
+- [2026-09-08 付费申请附件分组上传不再识别回填](./changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md)
 - [2026-09-08 付费申请从进项发票选择并回填](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md)
 - [2026-09-07 付费申请费用明细筛选改为一行五列](./changelogs/change-log-2026-09-07-payment-application-fee-filter-five-cols.md)
 - [2026-09-07 付费申请上传发票自动识别回填](./changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md)

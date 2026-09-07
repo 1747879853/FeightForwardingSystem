@@ -23,8 +23,8 @@ last_updated: 2026-09-08
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
-- **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
-- **发票明细子表：** 任意可保存状态均可维护多张发票（每行发票号/开票日期/销售方抬头/发票金额/单个附件，底部展示总额）。可点「从进项发票选择」勾选关联进项票并回填；已填票号（含未保存）进 `excludeInvoiceNos`，结算币别已选银行时传 `clientInvoiceInfoId`。保存走 `EditAsync.paymentApplicationInvoices` **全量覆盖**。发票行上传 PDF/图片即自动识别回填该行，**不自动保存**；已有附件可点「重新识别」。点击发票附件、申请分组附件、结算附件均打开全站附件查看器。申请附件区仍按 `attachmentGroup` 分组上传（与发票行附件模块不同）；名称含「发票」的分组同样上传即识别。关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读。
+- **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。右侧附件卡片随左侧内容撑开，铺满审核流程下方剩余高度。
+- **发票明细子表：** 任意可保存状态均可维护多张发票（每行发票号/开票日期/销售方抬头/发票金额/单个附件，底部展示总额）。可点「从进项发票选择」勾选关联进项票并回填；已填票号（含未保存）进 `excludeInvoiceNos`，结算币别已选银行时传 `clientInvoiceInfoId`。保存走 `EditAsync.paymentApplicationInvoices` **全量覆盖**。发票行上传 PDF/图片即自动识别回填该行，**不自动保存**；已有发票行附件可点「重新识别」。点击发票附件、申请分组附件、结算附件均打开全站附件查看器。申请附件区仍按 `attachmentGroup` 分组上传（与发票行附件模块不同），上传不识别、不回填发票行；名称含「发票」的分组仍可对已有附件点「重新识别」。关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。费用合计银行下拉与账号列加宽，户名、账号完整显示。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉可按客户对账单号模糊检索（`StatementNum`），展开行展示对账单号。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。指定结算币别且原币不同时弹出折算窗，预填只取汇率表「原币兑结算币」且**当天**有效的应付汇率。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选，五个条件同一行。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
@@ -60,7 +60,7 @@ last_updated: 2026-09-08
 
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
-| **发票明细** | 一单可多张发票，每张可挂一个附件。 | 详情 `paymentApplicationInvoices[]`；上传识别走 `GeminiAdmin/UploadAndExtractInvoiceAsync`，重新识别走 `ExtractInvoiceAsync`；挑票走 `PaymentApplicationAdmin/GetInputInvoiceListAsync` | **触发/依赖：** 编辑全量覆盖；「从进项发票选择」回填票号/日期/抬头/金额/PDF，已填票号进 `excludeInvoiceNos`，已选银行传 `clientInvoiceInfoId`；上传 PDF/图片即回填当前行，发票分组回填第一张空行（含价税合计→金额），不自动保存；不开票时清空。底部总额前端求和。 | 保存时先票后付可空；提交时至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。抬头最长 256；金额可空、允许负数。只支持 PDF/图片。 |
+| **发票明细** | 一单可多张发票，每张可挂一个附件。 | 详情 `paymentApplicationInvoices[]`；上传识别走 `GeminiAdmin/UploadAndExtractInvoiceAsync`，重新识别走 `ExtractInvoiceAsync`；挑票走 `PaymentApplicationAdmin/GetInputInvoiceListAsync` | **触发/依赖：** 编辑全量覆盖；「从进项发票选择」回填票号/日期/抬头/金额/PDF，已填票号进 `excludeInvoiceNos`，已选银行传 `clientInvoiceInfoId`；发票**行**上传 PDF/图片即回填当前行；申请附件分组上传不识别、不回填。不自动保存；不开票时清空。底部总额前端求和。 | 保存时先票后付可空；提交时至少一条；不开票必须空；发票号必填、最长 128、同一申请不可重复。抬头最长 256；金额可空、允许负数。发票行只支持 PDF/图片。 |
 
 | **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
 
@@ -72,7 +72,7 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 3：提交/撤销后审核流时序]** 提交或撤销提交后后端审核流可能尚未更新；须在详情刷新后通过递增 key 重挂载 `WorkflowTimeline` 并延迟 2s 再拉，避免读到旧流程。
 
-> [!IMPORTANT] **[卡点 4：发票识别不落库]** 上传发票即回填对应行的票号/日期/抬头（`sellerHeader`）/金额；「重新识别」只对已有附件再调一次。未点页面「保存」则刷新后丢失。识别超时须 180 秒，勿用默认 20 秒。编辑提交必须带回全部发票行，漏传会被删除。只支持 PDF/图片。
+> [!IMPORTANT] **[卡点 4：发票识别不落库]** 仅发票**行**上传即回填该行票号/日期/抬头（`sellerHeader`）/金额；申请附件分组上传不识别。发票行或申请附件发票分组可对已有附件点「重新识别」。未点页面「保存」则刷新后丢失。识别超时须 180 秒，勿用默认 20 秒。编辑提交必须带回全部发票行，漏传会被删除。发票行只支持 PDF/图片。
 
 > [!IMPORTANT] **[卡点 5：提交必须走 SubmitAsync]** 编辑页「提交」先 `EditAsync` 再 `SubmitAsync`。`EditAsync` 不再接收 `status`；继续传 `status=1` 会静默停在录入且没有审核任务。先票后付空发票可以保存，点提交才拦。
 
@@ -82,6 +82,8 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Style` | 右侧附件卡片随左侧内容撑开，铺满审核流程下方剩余高度。 | 与新增页共用 `form.vue`。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-card-fill.md`。 |
+| 2026-09-08 | `Fix` | 申请附件名称含「发票」的分组改为普通上传，不再识别、不再回填空发票行。 | 仅发票行仍走 `UploadAndExtractInvoiceAsync`。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md`。 |
 | 2026-09-08 | `Feature` | 发票明细可从进项发票勾选回填；已填票号排除，结算币别已选银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | 与新增页共用 `InvoiceTable`。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
 | 2026-09-07 | `Style` | 费用明细筛选五个条件改为一行五列。 | 与新增页共用 `form.vue`。详见 `changelogs/change-log-2026-09-07-payment-application-fee-filter-five-cols.md`。 |
 | 2026-09-07 | `Feature` | 上传发票附件后自动识别回填，不必再点识别。 | `UploadAndExtractInvoiceAsync`；详见 `changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md`。 |

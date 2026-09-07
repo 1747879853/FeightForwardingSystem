@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import type { UploadFile } from 'ant-design-vue';
 import type { UploadResultItem } from '#/api/common/upload';
-import type {
-  GeminiInvoiceDto,
-  GeminiInvoiceUploadDto,
-} from '#/api/sea-export/gemini-admin';
+import type { GeminiInvoiceDto } from '#/api/sea-export/gemini-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 
@@ -16,12 +13,7 @@ import { Button, Empty, Spin, Tooltip, Upload, message } from 'ant-design-vue';
 
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
-import {
-  INVOICE_UPLOAD_ACCEPT,
-  extractInvoice,
-  isInvoiceUploadFile,
-  uploadAndExtractInvoice,
-} from '#/api/sea-export/gemini-admin';
+import { extractInvoice } from '#/api/sea-export/gemini-admin';
 import { addPaymentApplicationAttachments } from '#/api/settlement-management/payment-application-admin';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
@@ -182,11 +174,11 @@ function isInvoiceGroup(group: AttachmentGroupView) {
 }
 
 function toAttachmentItem(
-  uploaded: GeminiInvoiceUploadDto | UploadResultItem,
+  uploaded: UploadResultItem,
   group: AttachmentGroupView,
   displayOrder: number,
 ): PaymentApplicationAdminApi.AttachmentItemForItemInputDto {
-  const attachment = mapResultToAttachment(uploaded as UploadResultItem);
+  const attachment = mapResultToAttachment(uploaded);
   return {
     attachmentId: attachment.attachmentId,
     attachmentDtlTypeId: group.attachmentDtlTypeId,
@@ -212,31 +204,6 @@ async function persistUploadedItem(
   updateGroup(group.attachmentDtlTypeId, [...currentItems, nextItem]);
 }
 
-/** 发票分组：一次请求落附件并识别，结果交给父级回填发票行 */
-async function handleInvoiceUpload(rawFile: File, group: AttachmentGroupView) {
-  if (!isInvoiceUploadFile(rawFile)) {
-    message.warning('发票附件只支持上传 PDF 或图片');
-    return false;
-  }
-  uploadingTypeId.value = group.attachmentDtlTypeId;
-  const hideLoading = message.loading('正在上传并识别发票，请稍候...', 0);
-  try {
-    const uploaded = await uploadAndExtractInvoice(rawFile);
-    await persistUploadedItem(group, toAttachmentItem(uploaded, group, 0));
-    if (uploaded.invoice) {
-      emit('extracted', uploaded.invoice);
-    } else {
-      message.warning('附件已保存，未能识别发票信息，请手动填写或点重新识别');
-    }
-  } catch {
-    // UserFriendlyException 由全局拦截器展示
-  } finally {
-    hideLoading();
-    uploadingTypeId.value = null;
-  }
-  return false;
-}
-
 /**
  * 1) 通用上传拿 attachmentId
  * 2) 可编辑 → 只写入本地 attachmentGroup，等 Add/Edit
@@ -245,9 +212,6 @@ async function handleInvoiceUpload(rawFile: File, group: AttachmentGroupView) {
 async function handleUpload(file: UploadFile, group: AttachmentGroupView) {
   if (!canUpload.value) return false;
   const rawFile = file as unknown as File;
-  if (isInvoiceGroup(group)) {
-    return handleInvoiceUpload(rawFile, group);
-  }
   uploadingTypeId.value = group.attachmentDtlTypeId;
   try {
     const formData = new FormData();
@@ -346,7 +310,6 @@ onMounted(loadAttachmentTypes);
         <Upload
           v-if="canUpload"
           class="attachment-group__upload"
-          :accept="isInvoiceGroup(group) ? INVOICE_UPLOAD_ACCEPT : undefined"
           :before-upload="(file) => handleUpload(file, group)"
           :disabled="uploadingTypeId === group.attachmentDtlTypeId"
           :show-upload-list="false"
@@ -416,14 +379,18 @@ onMounted(loadAttachmentTypes);
 
 <style scoped>
 .payment-attachment-groups {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .attachment-type-grid {
   display: grid;
+  flex: 1;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  max-height: 97px;
+  min-height: 97px;
   overflow-y: auto;
 }
 
@@ -431,14 +398,13 @@ onMounted(loadAttachmentTypes);
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 97px;
+  min-height: 97px;
   padding: 8px;
   overflow: hidden;
   background: #fff;
   border: 1px solid #e5e9ef;
   border-radius: 8px;
   transition:
-    height 0.28s ease,
     background-color 0.15s ease,
     border-color 0.15s ease;
 }
@@ -478,9 +444,12 @@ onMounted(loadAttachmentTypes);
 
 .attachment-group__files {
   display: grid;
+  flex: 1;
   gap: 2px;
   min-width: 0;
+  min-height: 0;
   margin-top: 2px;
+  overflow-y: auto;
 }
 
 .attachment-file {

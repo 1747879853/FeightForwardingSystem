@@ -2259,7 +2259,9 @@ void handleSubmitAndNew;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: stretch;
   width: 356px;
+  min-height: 0;
 }
 
 .fee-detail-card {
@@ -2509,6 +2511,7 @@ void handleSubmitAndNew;
 
 .workflow-card {
   position: relative;
+  flex-shrink: 0;
   height: 296px;
   overflow: hidden;
 }
@@ -2632,10 +2635,13 @@ void handleSubmitAndNew;
 
 .attachment-card {
   display: flex;
-  flex: 0 0 200px;
+  flex: 1 1 auto;
   flex-direction: column;
-  height: 200px;
-  min-height: 0;
+  min-height: 200px;
+}
+
+.attachment-card :deep(.ant-card-head) {
+  flex-shrink: 0;
 }
 
 .attachment-card :deep(.ant-card-body) {
@@ -2660,15 +2666,12 @@ void handleSubmitAndNew;
 
 .attachment-card__content :deep(.attachment-type-grid) {
   flex: 1;
-  height: 100%;
   min-height: 0;
   max-height: none;
 }
 
 .attachment-card__content :deep(.attachment-group) {
-  height: 100%;
-  min-height: 0;
-  transition: height 0.28s ease;
+  min-height: 97px;
 }
 
 .settlement-attachments {
