@@ -15,12 +15,8 @@
       "ignoreUploadUnusedFiles": false
     },
     "usingComponents": true,
-    "permission": {
-      "scope.userLocation": {
-        "desc": "用于打开堆场位置并导航"
-      }
-    },
-    "requiredPrivateInfos": ["openLocation"]
+    "permission": {},
+    "requiredPrivateInfos": []
   },
   "h5": {
     "router": {

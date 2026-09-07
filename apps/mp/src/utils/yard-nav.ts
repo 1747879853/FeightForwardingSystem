@@ -1,7 +1,3 @@
-import type { QqMapGeocoderResult } from '@/libs/qqmap-wx-jssdk.min.js';
-
-import QQMapWX from '@/libs/qqmap-wx-jssdk.min.js';
-
 export interface YardNavTarget {
   /** 堆场名称，openLocation 的 name */
   name?: null | string;
@@ -14,23 +10,24 @@ interface GeoPoint {
   longitude: number;
 }
 
-const geoCache = new Map<string, GeoPoint>();
-
-let qqmapSdk: null | QQMapWX = null;
-
-function getQqMapKey() {
-  return String(import.meta.env.VITE_QQMAP_KEY ?? '').trim();
+interface QqMapGeocoderResponse {
+  status: number;
+  message: string;
+  result?: {
+    location?: {
+      lat: number;
+      lng: number;
+    };
+  };
 }
 
-function getSdk() {
-  const key = getQqMapKey();
-  if (!key) {
-    throw new Error('未配置腾讯地图 Key（VITE_QQMAP_KEY）');
-  }
-  if (!qqmapSdk) {
-    qqmapSdk = new QQMapWX({ key });
-  }
-  return qqmapSdk;
+const geoCache = new Map<string, GeoPoint>();
+
+/** 编译期注入；改 .env 后须重启 uni/vite */
+const QQMAP_KEY = String(import.meta.env.VITE_QQMAP_KEY ?? '').trim();
+
+function getQqMapKey() {
+  return QQMAP_KEY;
 }
 
 function resolveGeocodeQuery(yard: YardNavTarget): {
@@ -52,39 +49,46 @@ function geocodeAddress(address: string): Promise<GeoPoint> {
   const cached = geoCache.get(address);
   if (cached) return Promise.resolve(cached);
 
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const settleOk = (point: GeoPoint) => {
-      if (settled) return;
-      settled = true;
-      geoCache.set(address, point);
-      resolve(point);
-    };
-    const settleFail = (message: string) => {
-      if (settled) return;
-      settled = true;
-      reject(new Error(message));
-    };
+  const key = getQqMapKey();
+  if (!key) {
+    throw new Error(
+      '未配置腾讯地图 Key，请检查 apps/mp/.env 的 VITE_QQMAP_KEY 并重启编译',
+    );
+  }
 
-    try {
-      getSdk().geocoder({
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: 'https://apis.map.qq.com/ws/geocoder/v1/',
+      method: 'GET',
+      data: {
         address,
-        success(res: QqMapGeocoderResult) {
-          const lat = res.result?.location?.lat;
-          const lng = res.result?.location?.lng;
-          if (res.status === 0 && lat != null && lng != null) {
-            settleOk({ latitude: lat, longitude: lng });
-            return;
-          }
-          settleFail(res.message || '地址解析失败');
-        },
-        fail(err) {
-          settleFail(err?.message || '地址解析失败');
-        },
-      });
-    } catch (error) {
-      settleFail(error instanceof Error ? error.message : '地址解析失败');
-    }
+        key,
+      },
+      success: (res) => {
+        const data = (res.data ?? {}) as QqMapGeocoderResponse;
+        const lat = data.result?.location?.lat;
+        const lng = data.result?.location?.lng;
+        if (data.status === 0 && lat != null && lng != null) {
+          const point = { latitude: lat, longitude: lng };
+          geoCache.set(address, point);
+          resolve(point);
+          return;
+        }
+        reject(
+          new Error(
+            data.message ||
+              `地址解析失败(status=${String(data.status ?? res.statusCode)})`,
+          ),
+        );
+      },
+      fail: (err) => {
+        reject(
+          new Error(
+            err?.errMsg || '地址解析请求失败，请确认合法域名含 apis.map.qq.com',
+          ),
+        );
+      },
+    });
   });
 }
 
@@ -111,7 +115,7 @@ function openMap(point: GeoPoint, yard: YardNavTarget, displayAddress: string) {
 
 /**
  * 用腾讯地理编码把堆场中文地址转成经纬度，再调微信 openLocation。
- * Key 只给腾讯 SDK，不传给微信导航。
+ * Key 只给腾讯 WebService，不传给微信导航；不依赖 qqmap CJS SDK（避免 Vite 导出问题）。
  */
 export async function openYardNavigation(
   yard: YardNavTarget | null | undefined,

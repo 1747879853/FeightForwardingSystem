@@ -251,11 +251,19 @@ function onDismiss() {
   if (props.saving) return;
   emit('close');
 }
+
+/** 遮罩 catchtouchmove，挡住背后页面跟着滚 */
+function lockMaskScroll() {}
 </script>
 
 <template>
-  <view v-if="visible" class="mask" @tap="onDismiss">
-    <view class="panel" @tap.stop>
+  <view
+    v-if="visible"
+    class="mask"
+    @tap="onDismiss"
+    @touchmove.stop.prevent="lockMaskScroll"
+  >
+    <view class="panel" @tap.stop @touchmove.stop>
       <view class="panel__head">
         <text class="panel__title">监装处理</text>
         <text class="panel__sub"> 箱号 {{ ctn?.ctnNo || '--' }} </text>
@@ -264,7 +272,7 @@ function onDismiss() {
         </view>
       </view>
 
-      <scroll-view class="panel__body" scroll-y>
+      <scroll-view class="panel__body" scroll-y :show-scrollbar="true">
         <view class="status-card">
           <text class="status-card__label">监装状态</text>
           <view
@@ -404,6 +412,9 @@ function onDismiss() {
   display: flex;
   flex-direction: column;
   width: 100%;
+
+  /* 微信 scroll-view 必须有确定高度；只用 max-height 时内部滚不动、会穿透到页面 */
+  height: 78vh;
   max-height: 78vh;
   background: $card-bg;
   border-radius: 28rpx 28rpx 0 0;
@@ -411,6 +422,7 @@ function onDismiss() {
 
 .panel__head {
   position: relative;
+  flex-shrink: 0;
   padding: 32rpx 32rpx 20rpx;
   border-bottom: 2rpx solid $divider;
 }
@@ -435,7 +447,10 @@ function onDismiss() {
 }
 
 .panel__body {
+  box-sizing: border-box;
   flex: 1;
+  height: 0;
+  min-height: 0;
   padding: 8rpx 32rpx;
 }
 
@@ -647,6 +662,7 @@ function onDismiss() {
 }
 
 .panel__foot {
+  flex-shrink: 0;
   padding: 20rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
   border-top: 2rpx solid $divider;
 }

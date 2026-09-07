@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -73,12 +73,14 @@ last_updated: 2026-09-06
 
 > [!IMPORTANT] **[卡点 9：每类型只能一张图]** 监装处理面板类型横排；相册/拍照都只选 1 张。有图则隐藏添加槽，换图要先删。历史多图仍展示，保存不会自动截成 1 张。
 
-> [!IMPORTANT] **[卡点 10：堆场导航靠腾讯编码 + 微信 openLocation]** Key 配在 `VITE_QQMAP_KEY`，只给腾讯 `geocoder`；微信 `openLocation` 不吃 Key。微信后台须加 `https://apis.map.qq.com`，隐私指引声明位置用途。地址越完整编码越准；本期不存经纬度。
+> [!IMPORTANT] **[卡点 10：堆场导航靠腾讯编码 + 微信 openLocation]** Key 配在 `VITE_QQMAP_KEY`，`uni.request` 调 WebService 地理编码；`openLocation` 不吃 Key，也不进 `requiredPrivateInfos`。微信后台须加 `https://apis.map.qq.com`。控台须给该 Key **分配地址解析日配额**（`limit_pv=0` 会误报每日上限）。地址越完整编码越准；本期不存经纬度。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-07 | `Fix` | 监装处理弹层内滚动不再带动背后详情页。 | 遮罩 catchtouchmove + 面板固定高度。详见 `changelogs/change-log-2026-09-07-mp-loading-photo-panel-scroll.md`。 |
+| 2026-09-07 | `Fix` | 堆场导航改为直调腾讯地理编码；补齐 manifest / Key 配额说明。 | 去掉运行时对 qqmap CJS SDK 依赖。详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |
 | 2026-09-06 | `Feature` | 详情监装堆场可一键导航到地图。 | 腾讯 geocoder + `uni.openLocation`；Key 见 `VITE_QQMAP_KEY`。详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |
 | 2026-09-06 | `Fix` | 监装处理照片改为类型横排，每个类型只能上传一张；三列等大方格。 | 相册 `chooseImages` 改 count=1；有图隐藏添加槽；历史多图仍展示可删。详见 `changelogs/change-log-2026-09-06-loading-photo-one-per-type.md` |
 | 2026-09-06 | `Fix` | 检索选中船公司后回显 logo | 选中时记下 `logoUrl`；检索栏左侧图标 + `CODE(简称)`；清空/重置同步清掉 |
