@@ -908,13 +908,13 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
     {
       component: 'DatePicker',
       fieldName: 'supplierCoopSince',
-      label: '供应商首次合作时间',
+      label: '首次合作时间',
       componentProps: { class: 'w-full', disabled: true },
     },
     {
       component: 'DatePicker',
       fieldName: 'supplierLastTxnTime',
-      label: '供应商最近交易时间',
+      label: '最近交易时间',
       componentProps: { class: 'w-full', disabled: true },
     },
     {
