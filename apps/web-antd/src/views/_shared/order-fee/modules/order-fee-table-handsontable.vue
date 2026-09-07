@@ -907,7 +907,7 @@ watch(
       <img v-show="type === 0" :src="yiwanjie" alt="已完结" class="w-46 h-46" />
     </div> -->
 
-    <div class="px-1">
+    <div class="flex min-h-0 flex-1 flex-col px-1">
       <div class="order-ctn-table">
         <div class="handsontable-container">
           <div class="table-header">
@@ -1056,22 +1056,30 @@ watch(
 <style scoped lang="scss">
 .order-fee-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 
   :deep(.ant-card-body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
     padding: 0 2px 12px !important;
   }
 
   .order-ctn-table {
     display: flex;
+    flex: 1;
     flex-direction: column;
-    height: 515px;
+    min-height: 0;
   }
 
   .handsontable-container {
     display: flex;
+    flex: 1;
     flex-direction: column;
-    height: 100%;
-    min-height: 500px;
+    min-height: 0;
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;

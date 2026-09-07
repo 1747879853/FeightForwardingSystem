@@ -1,7 +1,14 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+} from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 interface Props {
@@ -31,6 +38,45 @@ const emit = defineEmits([
 ]);
 
 const hotTableRef = ref<any>(null);
+
+// ==================== 动态高度自适应 ====================
+// 外层 .hot-fill 的高度由 flex 父级分配（overflow:hidden，非内容驱动），
+// 用 ResizeObserver 测量其实际高度并覆盖 hotSettings.height，
+// 使 Handsontable 始终填满可用空间并启用内部虚拟滚动。
+const fillRef = ref<HTMLElement | null>(null);
+const dynHeight = ref(458);
+const mergedSettings = computed(() => ({
+  ...props.hotSettings,
+  height: dynHeight.value,
+}));
+
+let resizeObserver: null | ResizeObserver = null;
+let measureRafId = 0;
+
+const measureHeight = () => {
+  const el = fillRef.value;
+  if (!el) return;
+  const h = Math.floor(el.getBoundingClientRect().height);
+  // 仅在有效高度且发生变化时更新，避免抖动与无效重渲染
+  if (h > 50 && h !== dynHeight.value) {
+    dynHeight.value = h;
+  }
+};
+
+const scheduleMeasure = () => {
+  if (measureRafId) return;
+  measureRafId = requestAnimationFrame(() => {
+    measureRafId = 0;
+    measureHeight();
+  });
+};
+
+const setupResizeObserver = () => {
+  if (resizeObserver || !fillRef.value) return;
+  if (typeof ResizeObserver === 'undefined') return;
+  resizeObserver = new ResizeObserver(scheduleMeasure);
+  resizeObserver.observe(fillRef.value);
+};
 
 // ✅ 新增：跟踪当前编辑的单元格
 const currentEditingCell = ref<{
@@ -187,6 +233,12 @@ const handleAddNewRowEvent = (event: Event) => {
 };
 
 onMounted(() => {
+  // 动态高度：首次测量 + 启动 ResizeObserver 持续跟随容器尺寸变化
+  nextTick(() => {
+    measureHeight();
+    setupResizeObserver();
+  });
+
   // 延迟监听，确保 hotInstance 已完全初始化
   setTimeout(() => {
     if (hotTableRef.value?.hotInstance) {
@@ -206,7 +258,25 @@ onMounted(() => {
   }, 100);
 });
 
+// KeepAlive 重新激活时容器尺寸可能已变化，重新测量并恢复 ResizeObserver
+onActivated(() => {
+  nextTick(() => {
+    measureHeight();
+    setupResizeObserver();
+  });
+});
+
 onBeforeUnmount(() => {
+  // 清理动态高度的 ResizeObserver 与 rAF
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (measureRafId) {
+    cancelAnimationFrame(measureRafId);
+    measureRafId = 0;
+  }
+
   // 清理事件监听器
   if (hotTableRef.value?.hotInstance) {
     const container = hotTableRef.value.hotInstance.rootElement;
@@ -226,29 +296,31 @@ defineExpose({
 </script>
 
 <template>
-  <HotTable
-    ref="hotTableRef"
-    :settings="hotSettings"
-    class="handsontable-wrapper"
-    @after-selection="handleAfterSelection"
-  />
+  <div ref="fillRef" class="hot-fill">
+    <HotTable
+      ref="hotTableRef"
+      :settings="mergedSettings"
+      class="handsontable-wrapper"
+      @after-selection="handleAfterSelection"
+    />
+  </div>
 </template>
 
 <style scoped lang="scss">
+.hot-fill {
+  // 高度由 flex 父级分配（overflow:hidden，非内容驱动），供 ResizeObserver 稳定测量
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .handsontable-wrapper {
-  flex: 1; // ✅ 使用 flex 布局自动填充剩余空间
-  height: 500px; // ✅ 新增:固定容器高度,与 hotSettings.height 保持一致
-  min-height: 0; // ✅ 防止 flex 子项溢出
-  overflow: hidden; // ✅ 修复:改为 hidden,由 Handsontable 内部处理滚动
+  // 实际高度由 Handsontable settings.height（动态测量值）驱动，此处仅裁剪溢出
+  overflow: hidden;
 
   :deep(.htCore) {
     width: 100% !important;
-  }
-
-  :deep(.ht_master) {
-    // ✅ 修复:设置固定高度,避免滚动时高度变化
-    height: 600px !important;
-    overflow: auto !important;
   }
 
   :deep(::-webkit-scrollbar) {

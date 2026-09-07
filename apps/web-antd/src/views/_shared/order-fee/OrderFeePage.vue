@@ -4,6 +4,7 @@ import {
   computed,
   nextTick,
   onActivated,
+  onBeforeUnmount,
   onMounted,
   provide,
   ref,
@@ -112,6 +113,79 @@ onActivated(() => {
 const editId = useKeepAliveRouteParamId();
 
 const isEdit = computed(() => !!editId.value);
+
+// ==================== 应收/应付上下拖拽分割 ====================
+// 两个费用表格按 flex-grow 比例分配高度，中间拖拽条可手动调整；
+// 高度变化会被 OrderFeeTableCore 内部的 ResizeObserver 感知，
+// 从而动态重设 Handsontable 高度，无需额外联动代码。
+const SPLIT_STORAGE_KEY = 'order-fee-rec-pay-split';
+const splitAreaRef = ref<HTMLElement | null>(null);
+const recRatio = ref(50); // 应收区占比（%），默认上下均分
+const isDragging = ref(false);
+let dragMove: ((event: MouseEvent) => void) | null = null;
+let dragUp: (() => void) | null = null;
+
+// 恢复用户上次调整的比例（跨会话记忆）
+try {
+  const saved = Number(localStorage.getItem(SPLIT_STORAGE_KEY));
+  if (!Number.isNaN(saved) && saved > 0) {
+    recRatio.value = Math.max(20, Math.min(80, saved));
+  }
+} catch {
+  // 本地缓存不可用时回退默认均分
+}
+
+const persistSplit = () => {
+  try {
+    localStorage.setItem(SPLIT_STORAGE_KEY, String(recRatio.value));
+  } catch {
+    // 忽略写入失败（如隐私模式）
+  }
+};
+
+const stopSplitDrag = () => {
+  const wasDragging = isDragging.value;
+  isDragging.value = false;
+  if (dragMove) document.removeEventListener('mousemove', dragMove);
+  if (dragUp) document.removeEventListener('mouseup', dragUp);
+  dragMove = null;
+  dragUp = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (wasDragging) persistSplit();
+};
+
+const startSplitDrag = (event: MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = splitAreaRef.value;
+  if (!container) return;
+
+  isDragging.value = true;
+  const startY = event.clientY;
+  const startRatio = recRatio.value;
+
+  dragMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const height = container.getBoundingClientRect().height;
+    if (height === 0) return;
+    const next = startRatio + ((moveEvent.clientY - startY) / height) * 100;
+    recRatio.value = Math.max(20, Math.min(80, next));
+  };
+  dragUp = stopSplitDrag;
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('mouseup', dragUp);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+};
+
+// 双击拖拽条恢复上下均分
+const resetSplit = () => {
+  recRatio.value = 50;
+  persistSplit();
+};
+
+onBeforeUnmount(stopSplitDrag);
 
 const pageLoading = ref(false);
 const submitting = ref(false);
@@ -836,11 +910,19 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <Page class="order-fee-page">
-    <Spin :spinning="pageLoading || clientsLoading">
-      <div class="mx-2 flex items-stretch gap-6">
+  <Page
+    class="order-fee-page"
+    auto-content-height
+    :height-offset="58"
+    content-class="flex flex-col overflow-hidden"
+  >
+    <Spin
+      :spinning="pageLoading || clientsLoading"
+      wrapper-class-name="order-fee-spin"
+    >
+      <div class="mx-2 flex h-full min-h-0 items-stretch gap-6">
         <!-- 垂直方向撑满 -->
-        <Card class="flex w-[280px] shrink-0 flex-col">
+        <Card class="form-info-card flex min-h-0 w-[280px] shrink-0 flex-col">
           <template #title>
             <span class="flex items-center justify-between gap-2">
               <span class="flex items-center gap-2">
@@ -884,9 +966,9 @@ onMounted(async () => {
         </Card>
 
         <!-- 外层容器：包含应收应付表格和操作按钮 -->
-        <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <!-- 右侧操作按钮区域 -->
-          <div class="flex justify-end gap-2 px-1">
+          <div class="flex shrink-0 justify-end gap-2 px-1">
             <Space>
               <!-- 调试信息 -->
               <span class="text-sm text-gray-500">
@@ -931,35 +1013,59 @@ onMounted(async () => {
             </Space>
           </div>
 
-          <!-- 应收费用表格 -->
-          <OrderFeeTable
-            ref="recOrderFeeTableRef"
-            :type="0"
-            :rec-amount-map="recAmountMap"
-            :pay-amount-map="payAmountMap"
-            :order-detail="formValues"
-            :all-clients-by-industry="allClientsByIndustry"
-            @update-amount="handleAmountUpdate"
-            @sync-fee="handleFeeSync"
-            @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
-            @selection-change="handleSelectionChange"
-          />
+          <!-- 应收/应付可上下拖拽分割区 -->
+          <div
+            ref="splitAreaRef"
+            class="split-area flex min-h-0 flex-1 flex-col"
+            :class="{ 'is-resizing': isDragging }"
+          >
+            <!-- 应收费用表格 -->
+            <OrderFeeTable
+              class="min-h-0"
+              :style="{ flex: `${recRatio} 1 0%` }"
+              ref="recOrderFeeTableRef"
+              :type="0"
+              :rec-amount-map="recAmountMap"
+              :pay-amount-map="payAmountMap"
+              :order-detail="formValues"
+              :all-clients-by-industry="allClientsByIndustry"
+              @update-amount="handleAmountUpdate"
+              @sync-fee="handleFeeSync"
+              @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
+              @selection-change="handleSelectionChange"
+            />
 
-          <!-- 应付费用表格 -->
-          <OrderFeeTable
-            ref="payOrderFeeTableRef"
-            :type="1"
-            :rec-amount-map="recAmountMap"
-            :pay-amount-map="payAmountMap"
-            :order-detail="formValues"
-            :all-clients-by-industry="allClientsByIndustry"
-            @update-amount="handleAmountUpdate"
-            @sync-fee="handleFeeSync"
-            @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
-            @selection-change="handleSelectionChange"
-          />
+            <!-- 上下拖拽条：拖动调整应收/应付高度，双击恢复均分 -->
+            <div
+              class="drag-handle drag-handle-vertical"
+              :class="{ dragging: isDragging }"
+              title="拖动调整应收/应付高度，双击恢复均分"
+              @mousedown="startSplitDrag"
+              @dblclick="resetSplit"
+            >
+              <div class="drag-line"></div>
+            </div>
 
-          <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
+            <!-- 应付费用表格 -->
+            <OrderFeeTable
+              class="min-h-0"
+              :style="{ flex: `${100 - recRatio} 1 0%` }"
+              ref="payOrderFeeTableRef"
+              :type="1"
+              :rec-amount-map="recAmountMap"
+              :pay-amount-map="payAmountMap"
+              :order-detail="formValues"
+              :all-clients-by-industry="allClientsByIndustry"
+              @update-amount="handleAmountUpdate"
+              @sync-fee="handleFeeSync"
+              @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
+              @selection-change="handleSelectionChange"
+            />
+          </div>
+
+          <div
+            class="total-amount flex shrink-0 flex-wrap rounded-md px-4 py-1 shadow"
+          >
             <div
               v-for="(item, index) in totalAmount"
               class="mr-4 flex"
@@ -992,8 +1098,77 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+/* Spin 会截断 height:100% 高度链：内容区是 flex-col，故 Spin 外层 flex:1、内层 container 撑满 */
+:deep(.order-fee-spin) {
+  flex: 1;
+  min-height: 0;
+}
+
+:deep(.order-fee-spin > .ant-spin-container) {
+  height: 100%;
+}
+
+/* 左侧信息卡：填满行高，内容超出时卡片内部滚动，不影响右侧表格自适应 */
+.form-info-card {
+  min-height: 0;
+
+  :deep(.ant-card-body) {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
 .select-name {
   flex-direction: row-reverse;
+}
+
+/* 应收/应付上下拖拽分割条 */
+.split-area.is-resizing {
+  user-select: none;
+}
+
+/* 拖拽时禁用表格卡片指针事件，避免 Handsontable 捕获鼠标干扰拖拽；拖拽条仍可交互 */
+.split-area.is-resizing :deep(.order-fee-card) {
+  pointer-events: none;
+}
+
+.drag-handle {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.drag-handle .drag-line {
+  background-color: #e4e8ef;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.drag-handle:hover .drag-line,
+.drag-handle.dragging .drag-line {
+  background-color: #1890ff;
+  box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+}
+
+.drag-handle.dragging .drag-line {
+  box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+}
+
+.drag-handle-vertical {
+  height: 12px;
+  cursor: row-resize;
+}
+
+.drag-handle-vertical .drag-line {
+  width: 48px;
+  height: 4px;
 }
 
 .total-amount {

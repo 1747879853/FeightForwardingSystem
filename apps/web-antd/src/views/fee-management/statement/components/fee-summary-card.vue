@@ -223,7 +223,9 @@ function getCurrencyLabel(currencyId: number): string {
   .fee-summary-container {
     flex-direction: column;
     align-items: stretch;
+    height: auto;
     padding: 10px 5px;
+    overflow-x: hidden;
   }
 
   .currency-card {
@@ -244,19 +246,21 @@ function getCurrencyLabel(currencyId: number): string {
   color: white;
 }
 
-/* 费用汇总容器 - 横向排列 */
+/* 费用汇总容器 - 横向单行排列：不换行；币别多时横向滚动 */
 .fee-summary-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-wrap: nowrap; /* 不换行 */
+  gap: 12px;
   align-items: flex-start;
   padding: 10px 5px;
+  overflow: auto hidden; /* 币别 >2 时横向滚动 */ /* 防止 overflow-x:auto 连带出现纵向滚动条 */
 }
 
 .currency-card {
   display: flex;
+  flex: 0 0 auto; /* 固定宽度、不伸缩（不做自适应压缩） */
   flex-direction: column;
-  min-width: 280px;
+  min-width: 200px; /* 由 280px 收窄，保证「原币折算合计 + 2 个币别」一行放得下、无需滚动 */
   padding: 10px;
   margin: 0; /* 移除margin，使用gap控制间距 */
   background: linear-gradient(
