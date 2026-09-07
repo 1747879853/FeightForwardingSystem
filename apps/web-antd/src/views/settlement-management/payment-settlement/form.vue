@@ -954,7 +954,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page :title="isEdit ? '编辑结算单' : '新建结算单'">
+  <!-- auto-content-height 让 Page 自动测量并扣除标题头高度，内容区得到确定高度；
+       content-class 建立 flex 纵向容器，配合下方 .ps-page flex-1 精确填满，整页不再溢出滚动。
+       保留默认 p-4 外边距，与 .ps-page 自身 16px padding 一起维持原有留白。 -->
+  <Page
+    :title="isEdit ? '编辑结算单' : '新建结算单'"
+    auto-content-height
+    content-class="flex flex-col overflow-hidden"
+  >
     <template #extra>
       <Space>
         <!-- 结算单号（设计稿展示于页面标题栏） -->
@@ -1267,12 +1274,14 @@ onMounted(() => {
   }
 }
 
-/* 页面纵向弹性布局：申请明细撑满屏幕剩余高度 */
+/* 页面纵向弹性布局：由 Page(auto-content-height) 给出确定高度，
+   .ps-page 用 flex-1 填满内容区，替代原先脆弱的 calc(100vh - 104px) + min-height:720px
+   （魔数未计入标题头/内边距，且 min-height 在小屏强制溢出，导致纵向滚动条）。 */
 .ps-page {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  height: calc(100vh - 104px);
-  min-height: 720px;
+  min-height: 0;
   padding: 16px;
 }
 
@@ -1557,12 +1566,13 @@ onMounted(() => {
 
 /* ==================== 申请明细卡片 ==================== */
 
-/* 申请明细撑满剩余高度：内部表格随高度自适应滚动 */
+/* 申请明细撑满剩余高度：min-height:0 允许在小屏收缩，
+   内部 NestedDataTable(fill-height) 自带 overflow:auto 纵向滚动，内容不会被裁掉 */
 .detail-card {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 300px;
+  min-height: 0;
 }
 
 :deep(.detail-card.ant-card-small > .ant-card-body) {

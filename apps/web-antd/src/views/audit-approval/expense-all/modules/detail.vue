@@ -817,7 +817,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div :class="isStandalone ? 'expense-detail-standalone' : ''">
+  <div
+    :class="
+      isStandalone ? 'expense-detail-standalone' : 'expense-detail-nested'
+    "
+  >
     <div v-if="isStandalone" class="standalone-toolbar mb-2 flex items-center">
       <Button @click="router.back()">
         <ArrowLeft class="size-4" />
@@ -838,10 +842,10 @@ onMounted(() => {
         {{ $t('auditApproval.tableType.horizontal') }}
       </Button>
     </div>
-    <div class="flex items-stretch">
+    <div class="flex min-h-0 flex-1 items-stretch">
       <!--  -->
-      <div class="flex min-w-0 flex-1 flex-col gap-2">
-        <Card class="fee-detail-card">
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+        <Card class="fee-detail-card min-h-0 flex-1">
           <template #title>
             <div class="flex items-center">
               <span class="fee-detail-title mr-2 flex items-center gap-2">
@@ -964,7 +968,7 @@ onMounted(() => {
             </div>
           </div>
         </Card>
-        <div class="total-amount flex rounded-lg px-4 py-2">
+        <div class="total-amount flex flex-shrink-0 rounded-lg px-4 py-2">
           <div
             v-for="(item, index) in totalAmount"
             class="mr-4 flex items-center"
@@ -988,7 +992,6 @@ onMounted(() => {
   flex-direction: row-reverse;
   padding: 2px 10px;
   color: #52607a;
-  background: #f0f5ff;
   border-radius: 6px;
 }
 
@@ -1091,23 +1094,18 @@ onMounted(() => {
   border-color: #389e0d;
 }
 
-// 分隔容器
+// 分隔容器：仅定义基础布局；具体高度由「内嵌 / 独立」两种模式分别驱动（见下方）
 .split-container {
   position: relative;
   display: flex;
 
   &.flex-col {
     flex-direction: column;
-    height: calc(100vh - 300px);
-    min-height: 580px;
-    max-height: calc(100vh - 200px);
   }
 
   &.flex-row {
     flex-direction: row;
     width: 100%;
-    // ✅ 左右布局时固定高度为 400px
-    height: 400px;
   }
 
   .left-top-section,
@@ -1122,6 +1120,55 @@ onMounted(() => {
       flex: 1;
       min-width: 0;
       min-height: 0;
+    }
+  }
+}
+
+// 内嵌模式（费用审核页 index.vue 下方）：整条高度链由父级 flex 驱动。
+// 卡片与分隔容器填满父级分配的剩余空间，费用明细表格高度随分辨率自适应，
+// 页面不再出现纵向滚动条（此前固定 400px / calc(100vh) 会在小屏溢出）。
+.expense-detail-nested {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  .fee-detail-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    // 卡片头部（标题 + 审核按钮）不参与压缩，始终完整显示
+    :deep(.ant-card-head) {
+      flex-shrink: 0;
+    }
+
+    :deep(.ant-card-body) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+  }
+
+  .split-container {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+// 独立路由模式（ExpenseDetail）：根节点直接位于带 padding 的布局内容区、无 flex 高度父级，
+// 沿用视口高度(100vh)驱动，保持原有行为不变。
+.expense-detail-standalone {
+  .split-container {
+    &.flex-col {
+      height: calc(100vh - 300px);
+      min-height: 580px;
+      max-height: calc(100vh - 200px);
+    }
+
+    &.flex-row {
+      // ✅ 左右布局时固定高度为 400px
+      height: 400px;
     }
   }
 }

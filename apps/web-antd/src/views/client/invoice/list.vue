@@ -203,7 +203,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page auto-content-height>
+  <!-- 本组件作为「开票信息」tab 嵌在客户编辑页(client/editor.vue)的 Page auto-content-height 内。
+       嵌套的 Page 会按全局视口高度(--vben-content-height)计算内容高，但它实际位于 editor 的
+       内容 tab 栏(50px) + gap-2(8px) 下方，底部内容会被挤出可视区、需外层滚动才能看到。
+       用 height-offset 扣除这段被 tab 栏占用的高度(58px)，使内容区正好收在屏幕内、无外层滚动条。 -->
+  <Page auto-content-height :height-offset="58">
     <Spin :spinning="loading">
       <div class="invoice-page">
         <!-- 顶部工具栏 -->

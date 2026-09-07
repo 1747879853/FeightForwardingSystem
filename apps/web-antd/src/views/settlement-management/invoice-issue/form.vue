@@ -616,13 +616,26 @@ onMounted(() => {
       <Spin :spinning="loading">
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
-          <div style="flex-shrink: 0; width: 400px">
-            <Card title="基础配置" size="small">
+          <div
+            style="
+              display: flex;
+              flex-shrink: 0;
+              flex-direction: column;
+              width: 400px;
+            "
+          >
+            <Card
+              title="基础配置"
+              size="small"
+              class="left-config-card"
+              style="display: flex; flex: 1; flex-direction: column"
+            >
               <Form
                 :model="formData"
                 layout="vertical"
                 :label-col="{ span: 8 }"
                 :wrapper-col="{ span: 22 }"
+                style="display: flex; flex: 1; flex-direction: column"
               >
                 <Form.Item label="归属组织" required>
                   <MyOrgSelect
@@ -694,7 +707,7 @@ onMounted(() => {
                   <Input.TextArea
                     v-model:value="formData.require"
                     placeholder="请输入其他备注信息..."
-                    :rows="4"
+                    :rows="1"
                     :disabled="invoiceStatus.editLocked"
                   />
                 </Form.Item>
@@ -1527,5 +1540,11 @@ onMounted(() => {
 
 .mt-4 {
   margin-top: 16px;
+}
+
+/* 基础信息（左侧卡片）每个表单项下边距收窄到 18px，
+   使左侧表单整体高度与右侧发票信息卡片对齐 */
+:deep(.left-config-card .ant-form-item) {
+  margin-bottom: 18px;
 }
 </style>
