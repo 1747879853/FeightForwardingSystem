@@ -24,6 +24,8 @@ import {
   columns,
   getInvoiceStatusColor,
   getInvoiceStatusLabel,
+  getInvoiceTypeColor,
+  getInvoiceTypeLabel,
   searchFormSchema,
 } from './data';
 import PullModal from './pull-modal.vue';
@@ -254,6 +256,16 @@ const onGroupFieldChange = (value: number | undefined) => {
       <template #isUsed="{ row }">
         <Tag v-if="row.isUsed" color="processing">已使用</Tag>
         <span v-else class="text-gray-400">未使用</span>
+      </template>
+
+      <template #invoiceType="{ row }">
+        <Tag
+          v-if="row.invoiceType"
+          :color="getInvoiceTypeColor(row.invoiceType)"
+        >
+          {{ getInvoiceTypeLabel(row.invoiceType) }}
+        </Tag>
+        <span v-else class="text-gray-400">-</span>
       </template>
     </Grid>
 

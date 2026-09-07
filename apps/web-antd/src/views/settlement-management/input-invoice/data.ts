@@ -14,7 +14,6 @@ import {
   getLevelLabel,
   getReimbursementStatusLabel,
   getSignStatusLabel,
-  getSpecialTypeLabel,
   invoiceLineOptions,
   invoiceStatusOptions,
   invoiceTypeOptions,
@@ -56,14 +55,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     align: 'left',
   },
   {
-    title: '数电号码',
-    field: 'elecInvoiceNumber',
-    width: 180,
-    align: 'left',
-    showOverflow: true,
-  },
-  { title: '发票代码', field: 'invoiceCode', width: 130, align: 'left' },
-  {
     title: '发票种类',
     field: 'invoiceLine',
     width: 160,
@@ -75,7 +66,7 @@ export const columns: VxeTableGridOptions['columns'] = [
     field: 'invoiceType',
     width: 80,
     align: 'center',
-    formatter: ({ cellValue }) => getInvoiceTypeLabel(cellValue),
+    slots: { default: 'invoiceType' },
   },
   {
     title: '发票状态',
@@ -172,13 +163,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     formatter: ({ cellValue }) => getLevelLabel(cellValue),
   },
   {
-    title: '特定业务',
-    field: 'specialInvoiceType',
-    width: 160,
-    align: 'left',
-    formatter: ({ cellValue }) => getSpecialTypeLabel(cellValue),
-  },
-  {
     title: '已使用',
     field: 'isUsed',
     width: 90,
@@ -191,13 +175,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     width: 90,
     align: 'center',
     formatter: ({ cellValue }) => formatBool(cellValue),
-  },
-  {
-    title: '归集时间',
-    field: 'collectionTime',
-    width: 160,
-    align: 'left',
-    formatter: ({ cellValue }) => formatDateTime(cellValue),
   },
   {
     title: '发票池更新时间',
@@ -527,4 +504,21 @@ export const getInvoiceStatusColor = (
   }
 };
 
-export { getInvoiceStatusLabel };
+/** 列表蓝/红列的 Tag 颜色：蓝票蓝色、红票红色 */
+export const getInvoiceTypeColor = (
+  type: null | number | undefined,
+): string => {
+  switch (type) {
+    case 1: {
+      return 'blue'; // 蓝票
+    }
+    case 2: {
+      return 'red'; // 红票
+    }
+    default: {
+      return 'default';
+    }
+  }
+};
+
+export { getInvoiceStatusLabel, getInvoiceTypeLabel };
