@@ -22,6 +22,7 @@ import { IconifyIcon } from '@vben/icons';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { $t } from '#/locales';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
@@ -306,13 +307,6 @@ const handleRowDblclick = ({
   }
 };
 
-/** 转换日期为 ISO 字符串 */
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 /** 获取范围值 */
 const getRangeValue = (
   value: unknown,
@@ -332,8 +326,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     ...formValues,
     // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
     keys: normalizeKeysParam(formValues.keys),
-    applyTimeStart: toIsoString(applyTimeStart),
-    applyTimeEnd: toIsoString(applyTimeEnd),
+    applyTimeStart: toIsoStartOfDay(applyTimeStart),
+    applyTimeEnd: toIsoEndOfDay(applyTimeEnd),
     applyTimeRange: undefined,
   };
 };

@@ -40,6 +40,7 @@ import {
 } from '#/api/system/base-data/se-service-config-admin';
 import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
 import { isJhtBrand, isLongshanBrand } from '#/utils/brand-assets';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
   collectRequiredAttachmentTypeIds,
@@ -797,12 +798,6 @@ function mapPreOrderTaskToBusinessRow(
   };
 }
 
-function toIsoString(value: unknown): string | undefined {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-}
-
 function getRangeValue(
   value: unknown,
 ): [unknown | undefined, unknown | undefined] {
@@ -821,8 +816,8 @@ async function loadReviewWorkbench() {
         BizType: appliedArApReviewFilterModel.bizType,
         Keyword: appliedArApReviewFilterModel.keyword.trim() || undefined,
         ClientId: appliedArApReviewFilterModel.clientId,
-        ETDStart: toIsoString(appliedArApReviewFilterModel.etdStart),
-        ETDEnd: toIsoString(appliedArApReviewFilterModel.etdEnd),
+        ETDStart: toIsoStartOfDay(appliedArApReviewFilterModel.etdStart),
+        ETDEnd: toIsoEndOfDay(appliedArApReviewFilterModel.etdEnd),
         SaleId: appliedArApReviewFilterModel.saleId,
         OperatorId: appliedArApReviewFilterModel.operatorId,
         PageIndex: 1,
@@ -845,8 +840,8 @@ async function loadReviewWorkbench() {
         CurrencyId: appliedPaymentReviewFilterModel.currencyId,
         Keyword: appliedPaymentReviewFilterModel.keyword.trim() || undefined,
         SettlementId: appliedPaymentReviewFilterModel.settlementId,
-        SubmitTimeEnd: toIsoString(submitTimeEnd),
-        SubmitTimeStart: toIsoString(submitTimeStart),
+        SubmitTimeEnd: toIsoEndOfDay(submitTimeEnd),
+        SubmitTimeStart: toIsoStartOfDay(submitTimeStart),
         PageIndex: 1,
         PageSize: 200,
       });
@@ -864,8 +859,8 @@ async function loadReviewWorkbench() {
         Keyword: appliedPreOrderReviewFilterModel.keyword.trim() || undefined,
         ClientId: appliedPreOrderReviewFilterModel.clientId,
         POLId: appliedPreOrderReviewFilterModel.polId,
-        ETDStart: toIsoString(appliedPreOrderReviewFilterModel.etdStart),
-        ETDEnd: toIsoString(appliedPreOrderReviewFilterModel.etdEnd),
+        ETDStart: toIsoStartOfDay(appliedPreOrderReviewFilterModel.etdStart),
+        ETDEnd: toIsoEndOfDay(appliedPreOrderReviewFilterModel.etdEnd),
         PageIndex: 1,
         PageSize: 200,
       });

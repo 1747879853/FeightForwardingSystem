@@ -22,6 +22,7 @@ import {
 } from '#/api/settlement-management/receive-settlement-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 
 import {
   buildInvoiceGroupRow,
@@ -216,12 +217,8 @@ async function fetchData(formValues?: Record<string, any>) {
       currencyId: props.currencyId,
       applicationNo: values.applicationNo || undefined,
       invoiceNo: values.invoiceNo || undefined,
-      applyTimeStart: applyTimeStart
-        ? dayjs(applyTimeStart).toISOString()
-        : undefined,
-      applyTimeEnd: applyTimeEnd
-        ? dayjs(applyTimeEnd).toISOString()
-        : undefined,
+      applyTimeStart: toIsoStartOfDay(applyTimeStart),
+      applyTimeEnd: toIsoEndOfDay(applyTimeEnd),
       onlySettleable: true,
       pageIndex: currentPage.value,
       pageSize: pageSize.value,

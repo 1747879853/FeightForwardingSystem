@@ -3,8 +3,6 @@ import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-
 
 import { computed, h, nextTick, ref, watch } from 'vue';
 
-import dayjs from 'dayjs';
-
 import { Page } from '@vben/common-ui';
 
 import { Button, message, Modal, Space, Textarea } from 'ant-design-vue';
@@ -17,6 +15,7 @@ import {
   TaskStatus,
 } from '#/api/audit-approval/payment-review-admin';
 import { $t } from '#/locales';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
@@ -117,12 +116,6 @@ async function rebuildDefaultColumns() {
   }
 }
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const getRangeValue = (
   value: unknown,
 ): [unknown | undefined, unknown | undefined] => {
@@ -144,12 +137,12 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     ...formValues,
     // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
     Keys: normalizeKeysParam(formValues.Keys),
-    SubmitTimeStart: toIsoString(submitTimeStart),
-    SubmitTimeEnd: toIsoString(submitTimeEnd),
-    EndTimeStart: toIsoString(endTimeStart),
-    EndTimeEnd: toIsoString(endTimeEnd),
-    AuditTimeStart: toIsoString(auditTimeStart),
-    AuditTimeEnd: toIsoString(auditTimeEnd),
+    SubmitTimeStart: toIsoStartOfDay(submitTimeStart),
+    SubmitTimeEnd: toIsoEndOfDay(submitTimeEnd),
+    EndTimeStart: toIsoStartOfDay(endTimeStart),
+    EndTimeEnd: toIsoEndOfDay(endTimeEnd),
+    AuditTimeStart: toIsoStartOfDay(auditTimeStart),
+    AuditTimeEnd: toIsoEndOfDay(auditTimeEnd),
     SubmitTimeRange: undefined,
     EndTimeRange: undefined,
     AuditTimeRange: undefined,

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 
-import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -12,6 +11,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { TaskType } from '#/api/audit-approval/payment-review-admin';
 import { getPreOrderTaskList } from '#/api/pre-order/pre-order-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { usePreOrderReviewColumns, usePreOrderReviewFormSchema } from './data';
@@ -23,20 +23,14 @@ const auditCode = 'Admin.PreOrder.Audit';
 const router = useRouter();
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const normalizeQuery = (formValues: Record<string, unknown>) => {
   const range = Array.isArray(formValues.AuditTimeRange)
     ? formValues.AuditTimeRange
     : [];
   return {
     ...formValues,
-    AuditTimeStart: toIsoString(range[0]),
-    AuditTimeEnd: toIsoString(range[1]),
+    AuditTimeStart: toIsoStartOfDay(range[0]),
+    AuditTimeEnd: toIsoEndOfDay(range[1]),
     AuditTimeRange: undefined,
   };
 };

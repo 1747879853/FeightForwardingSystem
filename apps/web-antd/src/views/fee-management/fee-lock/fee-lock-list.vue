@@ -1,8 +1,6 @@
 <script lang="ts" setup>
 import type { FeeLockAdminApi } from '#/api/sea-export/fee-lock-admin';
 
-import dayjs from 'dayjs';
-
 import { Page } from '@vben/common-ui';
 
 import { Button, message, Modal } from 'ant-design-vue';
@@ -15,6 +13,12 @@ import {
 } from '#/api/sea-export/fee-lock-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import {
+  toIsoEndOfDay,
+  toIsoEndOfMonth,
+  toIsoStartOfDay,
+  toIsoStartOfMonth,
+} from '#/utils/date-range-iso';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import {
@@ -24,12 +28,6 @@ import {
 } from './fee-lock-data';
 
 const perm = createAbpPermission('Admin.OrderFee.Lock');
-
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
 
 const getRangeValue = (
   value: unknown,
@@ -47,10 +45,10 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
   return {
     ...formValues,
-    AccountDateStart: toIsoString(accountDateStart),
-    AccountDateEnd: toIsoString(accountDateEnd),
-    ETDStart: toIsoString(etdStart),
-    ETDEnd: toIsoString(etdEnd),
+    AccountDateStart: toIsoStartOfMonth(accountDateStart),
+    AccountDateEnd: toIsoEndOfMonth(accountDateEnd),
+    ETDStart: toIsoStartOfDay(etdStart),
+    ETDEnd: toIsoEndOfDay(etdEnd),
     AccountDateRange: undefined,
     BizDateRange: undefined,
   };

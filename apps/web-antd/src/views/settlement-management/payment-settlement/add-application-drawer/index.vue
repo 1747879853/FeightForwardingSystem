@@ -22,6 +22,11 @@ import { getPaymentApplicationPagedListByCurrencyForSettlement } from '#/api/sea
 // ❌ 已删除：2026-08-10起，不再需要汇率录入弹窗，汇率由后端从付费申请自动获取
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 import { normalizeKeysParam } from '#/utils/keys-search';
+import {
+  toIsoEndOfDay,
+  toIsoStartOfDay,
+  toIsoString,
+} from '#/utils/date-range-iso';
 
 import { useSearchSchema, getStatusTagProps } from './data';
 interface Props {
@@ -212,16 +217,10 @@ async function fetchData() {
         settlementCurrencyId: formValues.currencyId,
         //settlementCurrencyId: settlementCurrencyId, // ✅ 可选：如果未传则不过滤结算币别
         creatorUserId: formValues.creatorUserId,
-        submitTimeStart: submitTimeStart
-          ? dayjs(submitTimeStart).toISOString()
-          : undefined,
-        submitTimeEnd: submitTimeEnd
-          ? dayjs(submitTimeEnd).toISOString()
-          : undefined,
-        endTimeStart: endTimeStart
-          ? dayjs(endTimeStart).toISOString()
-          : undefined,
-        endTimeEnd: endTimeEnd ? dayjs(endTimeEnd).toISOString() : undefined,
+        submitTimeStart: toIsoString(submitTimeStart),
+        submitTimeEnd: toIsoString(submitTimeEnd),
+        endTimeStart: toIsoStartOfDay(endTimeStart),
+        endTimeEnd: toIsoEndOfDay(endTimeEnd),
         pageIndex: currentPage.value,
         pageSize: pageSize.value,
       };

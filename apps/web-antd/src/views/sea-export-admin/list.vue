@@ -3,7 +3,6 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
-import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -48,6 +47,11 @@ import {
   createPagedListQuery,
   isTicketEditable,
   normalizeKeysParam,
+  toIsoEndOfDay,
+  toIsoEndOfMonth,
+  toIsoStartOfDay,
+  toIsoStartOfMonth,
+  toIsoString,
 } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -208,14 +212,6 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
   },
 ];
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const getRangeValue = (
   value: unknown,
 ): [unknown | undefined, unknown | undefined] => {
@@ -258,20 +254,12 @@ const normalizeQuery = (
       typeof rest.Keyword === 'string' ? rest.Keyword.trim() : rest.Keyword,
     // Keys 精确搜索：去空白去重后作为 List<string> 传后端（repeat 序列化）
     Keys: normalizeKeysParam(rest.Keys),
-    ETDStart: toIsoString(etdStart),
-    ETDEnd: toIsoString(etdEnd),
+    ETDStart: toIsoStartOfDay(etdStart),
+    ETDEnd: toIsoEndOfDay(etdEnd),
     CloseDocTimeStart: toIsoString(closeDocTimeStart),
     CloseDocTimeEnd: toIsoString(closeDocTimeEnd),
-    AccountDateStart: accountDateStart
-      ? dayjs(accountDateStart as string | Date)
-          .startOf('month')
-          .toISOString()
-      : undefined,
-    AccountDateEnd: accountDateEnd
-      ? dayjs(accountDateEnd as string | Date)
-          .endOf('month')
-          .toISOString()
-      : undefined,
+    AccountDateStart: toIsoStartOfMonth(accountDateStart),
+    AccountDateEnd: toIsoEndOfMonth(accountDateEnd),
   };
 
   return grouping.decorateListParams(

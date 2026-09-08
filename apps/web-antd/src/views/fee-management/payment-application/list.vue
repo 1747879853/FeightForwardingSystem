@@ -2,7 +2,6 @@
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
 import { nextTick, ref, watch } from 'vue';
-import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -24,6 +23,7 @@ import {
   resolvePaymentApplicationStatusTag,
 } from '#/constants/application-status';
 import { $t } from '#/locales';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { buildAttachmentUrl } from '#/utils';
 import { downloadFileByUrl } from '#/utils/download-file';
@@ -189,12 +189,6 @@ const handleRowDblclick = ({
   router.push(`/fee-management/payment-application/${row.id}/edit`);
 };
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const getRangeValue = (
   value: unknown,
 ): [unknown | undefined, unknown | undefined] => {
@@ -214,12 +208,12 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
   return {
     ...formValues,
-    SubmitTimeStart: toIsoString(submitTimeStart),
-    SubmitTimeEnd: toIsoString(submitTimeEnd),
-    EndTimeStart: toIsoString(endTimeStart),
-    EndTimeEnd: toIsoString(endTimeEnd),
-    InvoiceDateStart: toIsoString(invoiceDateStart),
-    InvoiceDateEnd: toIsoString(invoiceDateEnd),
+    SubmitTimeStart: toIsoStartOfDay(submitTimeStart),
+    SubmitTimeEnd: toIsoEndOfDay(submitTimeEnd),
+    EndTimeStart: toIsoStartOfDay(endTimeStart),
+    EndTimeEnd: toIsoEndOfDay(endTimeEnd),
+    InvoiceDateStart: toIsoStartOfDay(invoiceDateStart),
+    InvoiceDateEnd: toIsoEndOfDay(invoiceDateEnd),
     SubmitTimeRange: undefined,
     EndTimeRange: undefined,
     InvoiceDateRange: undefined,

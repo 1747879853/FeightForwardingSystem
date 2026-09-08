@@ -21,6 +21,7 @@ import { useVbenForm } from '#/adapter/form';
 import { NestedDataTable } from '#/components/nested-data-table';
 
 import { getOrderFeeGroup } from '#/api/settlement-management/statement-admin';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { formatAmount } from '#/views/settlement-management/receive-settlement/form-data';
 
@@ -483,8 +484,8 @@ async function fetchData(formValues?: Record<string, any>) {
     Keyword: values.Keyword,
     // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
     Keys: normalizeKeysParam(values.Keys),
-    ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
-    ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
+    ETDStart: toIsoStartOfDay(etdStart),
+    ETDEnd: toIsoEndOfDay(etdEnd),
     CurrencyId: values.CurrencyId,
     FeeCodeIds:
       feeCodeMode === 'include' && hasFeeCodes ? feeCodeIds : undefined,
