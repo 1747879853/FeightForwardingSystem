@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-08 客户新建成功后关闭原新建页签](./changelogs/change-log-2026-09-08-client-create-tab-close.md)
 - [2026-09-08 付费申请从进项发票选择按钮位置与弹窗表头对齐](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md)
 - [2026-09-08 列表数据变更后同步刷新分组统计](./changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md)
 - [2026-09-08 无时分日期筛选统一按自然日闭区间提交](./changelogs/change-log-2026-09-08-date-range-start-end-of-day.md)

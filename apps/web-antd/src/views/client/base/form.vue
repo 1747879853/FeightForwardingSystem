@@ -1266,24 +1266,16 @@ const handleSubmit = async () => {
       });
 
       const createdId = await addClient(addData);
-      //const createdId = (payload as any)?.result;
       if (createdId) {
         message.success($t('ui.actionMessage.operationSuccess'));
         await syncFormSnapshot();
         markListShouldRefresh('ClientList');
+        // replace 只替换路由历史不会删除原新建 tab，须显式 closeTabByKey
+        const createTabKey = route.fullPath;
         await router.replace(`/clients/${createdId}/edit`);
+        await closeTabByKey(createTabKey);
       }
-      // await closeTabByKey(createTabKey);
     }
-
-    // if (createdId) {
-    //   message.success($t('ui.actionMessage.operationSuccess'));
-    //   markListShouldRefresh('ClientList');
-
-    //   //router.push('/clients');
-    // } else {
-    //   // message.success($t('ui.actionMessage.operationFailed'));
-    // }
   } catch (error: any) {
     message.error($t('ui.actionMessage.operationFailed'));
     console.error('提交失败:', error);
