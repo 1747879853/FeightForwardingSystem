@@ -75,7 +75,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-08 | `Fix` | 补录弹窗申请附件分组上传不再识别回填空发票行。 | 仅发票行上传仍识别。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md`。 |
+| 2026-09-08 | `Fix` | 开票日期、提交时间、最晚付款筛选改为自然日闭区间。 | 三个条件都无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-08 | `Feature` | 补录弹窗可从进项发票勾选回填；详情已绑银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | 与编辑页共用 `InvoiceTable`。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
 | 2026-09-07 | `Feature` | 补录弹窗上传发票后自动识别回填，不必再点识别。 | 与编辑页共用 `InvoiceTable` / `attachment-groups.vue`。详见 `changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md`。 |
 | 2026-09-06 | `Feature` | 列表增加销售方抬头、发票总额列；补录弹窗可填抬头与金额，底部展示总额。识别回填价税合计到金额、`sellerHeader` 到抬头。 | 总额前端求和；抬头不是客户下拉。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md`。 |

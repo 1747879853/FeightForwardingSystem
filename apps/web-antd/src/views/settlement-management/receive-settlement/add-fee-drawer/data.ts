@@ -1,7 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
-import dayjs from 'dayjs';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 
 import { formatAmount } from '../form-data';
 
@@ -49,12 +49,6 @@ export const ADD_FEE_SEARCH_DEFAULTS = {
   paySide: 0 as number | '',
 };
 
-function toIsoDate(value: unknown): string | undefined {
-  if (!value) return undefined;
-  const date = dayjs(value as string);
-  return date.isValid() ? date.toISOString() : undefined;
-}
-
 function toIdList(value: unknown): Array<number | string> | undefined {
   if (Array.isArray(value) && value.length > 0) return value;
   if (value !== undefined && value !== null && value !== '') {
@@ -73,8 +67,8 @@ export function buildFeeGroupSearchQuery(values: Record<string, any>) {
   return {
     keyword: values.keyword || undefined,
     clientId: values.clientId || undefined,
-    etdStart: toIsoDate(etdStart),
-    etdEnd: toIsoDate(etdEnd),
+    etdStart: toIsoStartOfDay(etdStart),
+    etdEnd: toIsoEndOfDay(etdEnd),
     saleIds: toIdList(values.saleIds),
     operatorIds: toIdList(values.operatorIds),
     paySide: paySide === 0 || paySide === 1 ? paySide : undefined,

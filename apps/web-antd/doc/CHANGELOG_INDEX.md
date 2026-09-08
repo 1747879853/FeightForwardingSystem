@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-08 无时分日期筛选统一按自然日闭区间提交](./changelogs/change-log-2026-09-08-date-range-start-end-of-day.md)
+- [2026-09-08 海运出口开船日期筛选按自然日闭区间提交](./changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md)
 - [2026-09-08 付费申请附件卡片铺满右侧剩余高度](./changelogs/change-log-2026-09-08-payment-application-attachment-card-fill.md)
 - [2026-09-08 付费申请附件分组上传不再识别回填](./changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md)
 - [2026-09-08 付费申请从进项发票选择并回填](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md)

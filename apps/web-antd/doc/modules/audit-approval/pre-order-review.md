@@ -2,7 +2,7 @@
 title: 业务联系单审核
 module: 审核审批
 author: 前端团队
-last_updated: 2026-08-24
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,7 @@ last_updated: 2026-08-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-24 | `Fix` | 「审核流程」弹窗驳回意见改为红色「驳回原因：」换行展示 | TAPD `#1161580498001000871`。共用 `workflow-timeline`。详见 `changelogs/change-log-2026-08-24-workflow-reject-reason-wrap.md` |
+| 2026-09-08 | `Fix` | 审核时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-11 | `Fix` | 「我的审核状态」默认「审核中」，首屏只看待办 | `MyStatus` `defaultValue: 0`。详见 `changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md` |
 | 2026-07-26 | `Feature` | 「打开单据」/ 双击改回 `/pre-order/:id/edit`（取消独立详情页） | 审核动作仍在单据编辑页；待审核态隐藏保存按钮 |
 | 2026-07-26 | `Feature` | 「打开单据」/ 双击改为跳转 `/pre-order/:id/detail`（不再进 edit） | （已废弃）曾走独立详情路由 |

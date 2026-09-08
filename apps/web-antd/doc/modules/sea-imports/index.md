@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-01
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -55,7 +55,7 @@ last_updated: 2026-09-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-01 | `Feature` | 列表增加「码头航次」列与筛选，排在航次后面。 | 字段 `terminalVoyno`；关键字不含码头航次。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
+| 2026-09-08 | `Fix` | 到港日期及换单/提货/报关/转站/箱使日期筛选改为自然日闭区间。 | 无时分 RangePicker 不再直接 `toISOString()`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按到港日期（ETD）降序；列头显示降序箭头。 | 与海出共用 `TransportOrder.Etd DESC`；箭头丢失由列持久化 `refreshColumn` 冲掉 `column.order` 引起。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |
 | 2026-08-25 | `Fix` | 贸易方式筛选项与列文案改为枚举中心 `TradeMode`，不再写死。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |

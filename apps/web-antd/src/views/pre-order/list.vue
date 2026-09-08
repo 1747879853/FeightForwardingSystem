@@ -3,7 +3,6 @@ import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
 import { computed, onActivated, onMounted, ref } from 'vue';
-import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -35,7 +34,7 @@ import {
   useContainerTrackingDetail,
 } from '#/components/tracking';
 import { useTableConfigStore } from '#/store/table-config';
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, toIsoEndOfDay, toIsoStartOfDay } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
@@ -133,12 +132,6 @@ const PRE_ORDER_GROUP_FIELDS: GroupFieldDef[] = [
   { value: 11, label: '业务类型', paramKey: 'BizType' },
 ];
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) return undefined;
-  const parsed = dayjs(value as string | Date);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const grouping = useListGrouping({
   fields: PRE_ORDER_GROUP_FIELDS,
   getGridApi: () => gridApi,
@@ -167,8 +160,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     typeof formValues.Remark === 'string' ? formValues.Remark.trim() : '';
   const baseParams = {
     ...formValues,
-    ETDStart: toIsoString(range[0]),
-    ETDEnd: toIsoString(range[1]),
+    ETDStart: toIsoStartOfDay(range[0]),
+    ETDEnd: toIsoEndOfDay(range[1]),
     ETDRange: undefined,
     SaleIds: normalizeMultiIds(formValues.SaleIds),
     OperatorIds: normalizeMultiIds(formValues.OperatorIds),

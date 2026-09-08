@@ -2,7 +2,7 @@
 title: 银行流水编辑
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-09-05
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,7 +53,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-05 | `Fix` | 新建流水保存成功后 `replace` 进编辑并关闭新建页签。 | 详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
+| 2026-09-08 | `Fix` | 按开票申请建单的申请时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-31 | `Fix` | 按费用核销业务行增加勾选：表头全选当前页费用明细，行勾选该票全部费用；展开后组内全选仍可用。 | TAPD 1000914；勾选列只加在面板本地 `feeOrderColumns`，不改共享 `orderColumns`。详见 `changelogs/change-log-2026-08-31-bank-statement-fee-select-all.md`。 |
 | 2026-08-19 | `Feature` | 按费用新建核销选费区：编号合并检索，补委托单位/开船日期/销售/操作/收付类型（默认应收）；费用明细展示收付类别。业务行仍分列委托编号、主提单号。 | 检索 schema 与 `GetOrderFeeGroupAsync` 参数仍落在收费核销 `add-fee-drawer/data`，`create-settlement-fee-panel` 只隐藏结算对象/币别。详见 `changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md`。 |
 | 2026-08-11 | `Refactor` | 编辑页顶部左右分栏（左流水基础信息、右核销进度，等高）；基础信息 4 列「到账信息」，补充字段并入；锁定后纯文本只读。 | `form.vue`：`top-panels--split` + 卡片 `height:100%`；`canEditStatement` 为假时渲染 `form-text`。详见 `changelogs/change-log-2026-08-11-bank-statement-edit-split-layout.md`。 |

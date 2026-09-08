@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -88,7 +88,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-19 | `Fix` | 完成任务缺附件先弹窗，点「前往上传」后再打开海出编辑页附件 Tab。 | pending Tab + `?tab=attachments` + `fullPathKey: false`，避免页签重挂回落到基础信息。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
+| 2026-09-08 | `Fix` | 应收应付/业务联系单审核的 ETD、付费申请审核的提交时间改为自然日起止。 | 海出服务任务 ETD 原先已切日界。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 完成任务确认框按当前服务项配置提示必传附件类型。 | 名称对照 `AttachmentDtlType/GetListAsync`；工作台列表不含 requireValues，读配置详情。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-11 | `Fix` | 龙山打包环境工作台隐藏「紧急处理任务」「异常业务」 | 与 jht 共用 `hideWorkbenchMockSidePanels = isJhtBrand \|\| isLongshanBrand`。详见 `changelogs/change-log-2026-08-11-longshan-hide-workbench-mock-panels.md` |
 | 2026-08-10 | `Refactor` | 工作台航线/付费任务/预报任务改读港口与结算币别对象。 | `pol/pod.portName`、`currency.code`、`settlement.name`、`preOrder.client.name`；服务列签单方式读 `codeIssueType.billType`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |

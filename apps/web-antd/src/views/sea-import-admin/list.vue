@@ -16,8 +16,6 @@ import {
 
 import { useAccess } from '@vben/access';
 
-import dayjs from 'dayjs';
-
 import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -48,6 +46,10 @@ import {
   buildAttachmentUrl,
   createPagedListQuery,
   isTicketEditable,
+  toIsoEndOfDay,
+  toIsoEndOfMonth,
+  toIsoStartOfDay,
+  toIsoStartOfMonth,
 } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -166,14 +168,6 @@ const SEA_IMPORT_GROUP_FIELDS: GroupFieldDef[] = [
   },
 ];
 
-const toIsoString = (value: unknown): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const parsed = dayjs(value as Date | string);
-  return parsed.isValid() ? parsed.toISOString() : undefined;
-};
-
 const getRangeValue = (
   value: unknown,
 ): [undefined | unknown, undefined | unknown] => {
@@ -208,8 +202,8 @@ const normalizeQuery = (
   for (const [rangeField, startKey, endKey] of DATE_RANGE_FIELDS) {
     const [start, end] = getRangeValue(rest[rangeField]);
     delete rest[rangeField];
-    dateParams[startKey] = toIsoString(start);
-    dateParams[endKey] = toIsoString(end);
+    dateParams[startKey] = toIsoStartOfDay(start);
+    dateParams[endKey] = toIsoEndOfDay(end);
   }
 
   const { AccountDateRange, ...others } = rest;
@@ -222,16 +216,8 @@ const normalizeQuery = (
       typeof others.Keyword === 'string'
         ? others.Keyword.trim()
         : others.Keyword,
-    AccountDateStart: accountDateStart
-      ? dayjs(accountDateStart as Date | string)
-          .startOf('month')
-          .toISOString()
-      : undefined,
-    AccountDateEnd: accountDateEnd
-      ? dayjs(accountDateEnd as Date | string)
-          .endOf('month')
-          .toISOString()
-      : undefined,
+    AccountDateStart: toIsoStartOfMonth(accountDateStart),
+    AccountDateEnd: toIsoEndOfMonth(accountDateEnd),
   };
 
   return grouping.decorateListParams(

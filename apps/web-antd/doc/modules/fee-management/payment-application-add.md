@@ -76,7 +76,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-08 | `Style` | 右侧附件卡片随左侧内容撑开，铺满审核流程下方剩余高度。 | 去掉写死 `200px`，改 `flex: 1`。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-card-fill.md`。 |
+| 2026-09-08 | `Fix` | 添加费用抽屉业务日期筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-08 | `Fix` | 申请附件名称含「发票」的分组改为普通上传，不再识别、不再回填空发票行。 | 仅发票行仍走 `UploadAndExtractInvoiceAsync`。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md`。 |
 | 2026-09-08 | `Feature` | 发票明细可从进项发票勾选回填；已填票号排除，结算币别已选银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | `GetInputInvoiceListAsync`；`orgId` 传公司节点。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
 | 2026-09-07 | `Style` | 费用明细筛选五个条件改为一行五列。 | `.fee-filter-bar` 由三列改 `repeat(5, minmax(0, 1fr))`。详见 `changelogs/change-log-2026-09-07-payment-application-fee-filter-five-cols.md`。 |

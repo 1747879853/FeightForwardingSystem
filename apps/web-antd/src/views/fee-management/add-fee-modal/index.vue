@@ -23,6 +23,7 @@ import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { getStatementNumsText } from '#/views/_shared/order-fee/data';
 
@@ -343,8 +344,8 @@ async function fetchData(formValues?: Record<string, any>) {
     StatementNum: statementNum || undefined,
     PaySide: values.PaySide ?? undefined,
     BizType: values.BizType ?? undefined,
-    ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
-    ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
+    ETDStart: toIsoStartOfDay(etdStart),
+    ETDEnd: toIsoEndOfDay(etdEnd),
     CurrencyId: values.CurrencyId,
     FeeCodeIds:
       feeCodeMode === 'include' && hasFeeCodes ? feeCodeIds : undefined,
