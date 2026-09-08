@@ -329,13 +329,11 @@ function handleResetFilter() {
 
 /** ✅ 处理结算单位选择变化 */
 function handleSettlementChange(value: string) {
-  console.log('🔄 结算单位变更:', value);
   selectedSettlementId.value = value;
 
   // ✅ 选择后立即固定，不允许再修改
   if (value) {
     isSettlementFixed.value = true;
-    console.log('✅ 结算单位已固定，不可再编辑');
 
     // ✅ 清空之前的回显数据（用户新选择的值会在ClientSelect内部处理）
     selectedSettlementItems.value = [];
@@ -380,13 +378,6 @@ function handleApplyTimeRangeChange(
 
 /** 打开费用选择抽屉 */
 async function handleOpenFeeDrawer() {
-  console.log('📂 打开费用选择抽屉');
-  console.log('  - settlementId:', props.settlementId);
-  console.log('  - currencyId:', props.currencyId);
-  console.log('  - headerId:', props.headerId);
-  console.log('  - addedAppIds:', props.addedAppIds);
-  console.log('  - invoiceExchangeRate (props):', props.invoiceExchangeRate);
-
   // ✅ 重置筛选条件
   keyWord.value = '';
   filterApplyTimeStart.value = '';
@@ -409,7 +400,6 @@ async function handleOpenFeeDrawer() {
     // ✅ 首次添加时，如果传入了汇率值，则使用该值，否则保持默认值1.0
     if (props.invoiceExchangeRate !== undefined) {
       invoiceExchangeRate.value = props.invoiceExchangeRate;
-      console.log('✅ 首次添加：使用传入的开票汇率', props.invoiceExchangeRate);
     }
   } else {
     // 非首次添加（编辑态），固定已有的值
@@ -420,13 +410,11 @@ async function handleOpenFeeDrawer() {
 
     // ✅ 关键修复：将 props.currencyId 赋值给 filterCurrencyId，使筛选项显示正确的币别
     filterCurrencyId.value = props.currencyId;
-    console.log('✅ 编辑模式：设置发票币别筛选', filterCurrencyId.value);
 
     // ✅ 编辑模式：设置发票抬头筛选
     if (props.headerId && props.headerName) {
       // 优先使用传入的 headerName
       filterHeader.value = props.headerName;
-      console.log('✅ 编辑模式：使用传入的发票抬头名称', filterHeader.value);
     } else if (
       props.headerId &&
       props.applicationGroupsData &&
@@ -438,10 +426,6 @@ async function handleOpenFeeDrawer() {
         firstApp?.header || firstApp?.clientInvoiceInfo?.header || '';
       if (headerName) {
         filterHeader.value = headerName;
-        console.log(
-          '✅ 编辑模式：从 applicationGroupsData 获取发票抬头名称',
-          filterHeader.value,
-        );
       } else {
         console.warn(
           '⚠️ 编辑模式：无法从 applicationGroupsData 中获取抬头名称，将使用 headerId 进行筛选',
@@ -473,10 +457,6 @@ async function handleOpenFeeDrawer() {
           name: props.settlementName,
         },
       ];
-      console.log(
-        '✅ 编辑模式：使用传入的结算单位名称',
-        selectedSettlementItems.value,
-      );
     } else if (props.settlementId) {
       // 如果没有名称，至少保证ID正确
       selectedSettlementItems.value = [
@@ -491,7 +471,6 @@ async function handleOpenFeeDrawer() {
     // ✅ 编辑模式：使用传入的开票汇率作为默认值
     if (props.invoiceExchangeRate !== undefined) {
       invoiceExchangeRate.value = props.invoiceExchangeRate;
-      console.log('✅ 编辑模式：使用传入的开票汇率', props.invoiceExchangeRate);
     } else if (props.currencyId && props.currencyId !== 1) {
       // 如果没有传入汇率值，但币别是外币，则加载默认汇率
       await loadDefaultExchangeRate(props.currencyId);
@@ -502,7 +481,6 @@ async function handleOpenFeeDrawer() {
 
   nextTick(() => {
     // ✅ 始终从接口加载数据（但不包含假删的数据）
-    console.log('🔄 从接口加载申请数据...');
     loadApplicationGroupData();
   });
 }
@@ -562,8 +540,6 @@ async function handleSaveFeeSelection() {
       console.error('❌ 校验失败，申请之间不一致:', inconsistentApps);
       return;
     }
-
-    console.log('✅ 本次选择的申请之间一致性校验通过');
   }
 
   // ✅ 校验2：仅当 props.headerId 或 props.currencyId 有值时（即非首次添加），才需要与首次选择的一致性校验
@@ -630,7 +606,6 @@ async function handleSaveFeeSelection() {
       return;
     }
   } else {
-    console.log('✅ 首次添加，跳过与历史数据的一致性校验');
   }
 
   // ✅ 校验3：检查所有选中申请的发票状态（code）
@@ -718,8 +693,6 @@ async function handleSaveFeeSelection() {
     return;
   }
 
-  console.log('✅ 所有选中申请的发票状态校验通过');
-
   const firstApp = selectedApplications[0];
   // ✅ 使用用户选择的结算单位ID，而不是从申请中获取
   const settlementId = selectedSettlementId.value || firstApp.settlementId;
@@ -734,17 +707,6 @@ async function handleSaveFeeSelection() {
     message.warning('请先选择结算单位');
     return;
   }
-
-  console.log('✅ FeeSelectionDrawerForIssue 准备保存数据:');
-  console.log('  - 选中申请数量:', selectedApplications.length);
-  console.log('  - 结算单位ID:', settlementId);
-  console.log('  - 币别ID:', currencyId);
-  console.log('  - 发票抬头ID:', headerId);
-  console.log('  - 开票汇率（优先使用用户输入）:', appInvoiceExchangeRate);
-  console.log(
-    '  - applicationGroupsData 数量:',
-    applicationGroupsData.value.length,
-  );
 
   emit('save', {
     selectedApplications,
@@ -802,40 +764,15 @@ async function loadApplicationGroupData() {
       params.applyUserId = filterApplyUserId.value;
     }
 
-    console.log('📥 查询参数:', {
-      settlementId: params.settlementId,
-      currencyId: params.currencyId,
-      filterCurrencyId: filterCurrencyId.value,
-      selectedCurrencyId: selectedCurrencyId.value,
-    });
-
     const result = await getSubmittedApplicationList(params);
-
-    console.log('📥 从接口加载的申请数据:', {
-      接口返回数量: result?.length || 0,
-    });
 
     // ✅ 详细检查接口返回的数据结构
     if (result && result.length > 0) {
       const firstApp = result[0]!;
-      console.log('🔍 第一条申请的关键字段:', {
-        id: firstApp.id,
-        applicationNo: firstApp.applicationNo,
-        companyName: firstApp.company?.name,
-        header: firstApp.clientInvoiceInfo?.header,
-        currencyCode: firstApp.currency?.code,
-        totalAppliedAmount: firstApp.totalAppliedAmount,
-        invoiceApplicationItems数量:
-          firstApp.invoiceApplicationItems?.length || 0,
-      });
     }
 
     // ✅ 转换为树状结构
     const treeData = transformToTreeData(result || []);
-
-    console.log('✅ 接口数据转换完成:', {
-      数量: treeData.length,
-    });
 
     applicationGroupsData.value = treeData;
   } catch (error) {
@@ -858,10 +795,6 @@ function transformToTreeData(
 ): any[] {
   const treeData: any[] = [];
   const addedAppIds = getAddedAppIds();
-
-  console.log('📊 transformToTreeData 被调用:', {
-    总申请数量: applications.length,
-  });
 
   applications.forEach((app) => {
     const childrenList: any[] = [];
@@ -1283,18 +1216,9 @@ async function handleUpdateInvoice() {
       try {
         feeDrawerLoading.value = true;
 
-        console.log('🔄 开始更新发票商品明细:', {
-          更新的申请数量: selectedIds.length,
-        });
-
         // ✅ 调用 syncApplicationGoodsDtlByExchangeRate 接口
         const result = await syncApplicationGoodsDtlByExchangeRate({
           invoiceApplicationIds: selectedIds,
-        });
-
-        console.log('✅ 发票更新成功:', {
-          实际修正的申请数量: result.updatedApplicationIds?.length || 0,
-          无需修正的申请数量: result.unchangedApplicationIds?.length || 0,
         });
 
         message.success(

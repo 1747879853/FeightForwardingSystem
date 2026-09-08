@@ -55,8 +55,9 @@ import { useLoadDetail } from './composables/use-load-detail';
 
 // 导入子组件
 import FeeSelectionDrawerForIssue from './components/FeeSelectionDrawerForIssue.vue';
-import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
-import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
+import RemarkTemplateModal from '#/views/_shared/invoice-remark-template/RemarkTemplateModal.vue';
+import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/SelectRemarkTemplateModal.vue';
+import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
 
 const route = useRoute();
@@ -133,13 +134,6 @@ const headerNameForDrawer = computed(() => {
   );
 
   const name = info?.header || '';
-  console.log('🔍 计算 headerNameForDrawer:', {
-    fixedHeaderId: fixedHeaderId.value,
-    hasList: !!clientInvoiceInfoList.value,
-    listLength: clientInvoiceInfoList.value?.length || 0,
-    found: !!info,
-    header: name,
-  });
 
   return name;
 });
@@ -443,7 +437,6 @@ function downloadAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
 
 /** 处理发票明细删除后的刷新 */
 async function handleInvoiceDetailRefresh() {
-  console.log('🔄 发票明细已删除，重新加载数据...');
   if (editId.value) {
     await refreshInvoiceStatus(); // 确保状态也是最新的
     await loadDetailWithoutGoods();
@@ -453,13 +446,10 @@ async function handleInvoiceDetailRefresh() {
 
 /** 处理商品明细更新（删除时调用） */
 function handleUpdateGoodsDetails(newGoodsDetails: any[]) {
-  console.log('📦 收到新的商品明细数据:', newGoodsDetails.length, '条');
-
   // ✅ 直接更新父组件的商品明细
   goodsDetails.value = [];
   nextTick(() => {
     goodsDetails.value = newGoodsDetails;
-    console.log('✅ 商品明细已更新:', goodsDetails.value.length, '条');
   });
 }
 
@@ -515,21 +505,11 @@ function handleInvoiceTypeChange({ key }: any) {
   formData.value.invoiceType = key;
 }
 
-/** 发票类型选项 */
-const invoiceTypeOptions = [
-  {
-    label: '普通发票(电票)',
-    value: 'p',
-  },
-  {
-    label: '普通发票(纸票)',
-    value: 'c',
-  },
-  {
-    label: '专用发票',
-    value: 's',
-  },
-];
+/** 发票类型选项（与开票申请/选费抽屉共用） */
+const invoiceTypeOptions = getInvoiceTypeOptions().map(({ label, value }) => ({
+  label,
+  value,
+}));
 
 /** 税率选项 */
 const taxRateOptions = [

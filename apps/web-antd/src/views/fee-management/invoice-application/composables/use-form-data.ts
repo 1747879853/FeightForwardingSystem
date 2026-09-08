@@ -95,7 +95,6 @@ export function useFormData() {
     }
     if (!formData.value.orgId) {
       formData.value.orgId = getMyDefaultOrgId() ?? 0;
-      console.log('getMyDefaultOrgId', getMyDefaultOrgId());
     }
     applyOrgCompanyInfo();
   }

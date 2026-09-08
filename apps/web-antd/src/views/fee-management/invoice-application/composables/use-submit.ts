@@ -60,11 +60,6 @@ export function useSubmit(
         remark: item.remark,
       }),
     );
-    console.log(
-      '✅ 已同步商品明细数据到 formData:',
-      formData.value.invoiceApplicationGoodsDtls.length,
-      '条',
-    );
   }
 
   /**

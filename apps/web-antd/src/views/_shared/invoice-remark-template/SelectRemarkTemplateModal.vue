@@ -104,36 +104,17 @@ function generateExampleText(template: string): string {
 function generateRemarkFromFeeDetails(template: string): string {
   if (!template) return '';
 
-  console.log(
-    '🔍 SelectRemarkTemplateModal.generateRemarkFromFeeDetails - 输入:',
-    {
-      templateLength: template.length,
-      hasTemplateData: !!props.templateData,
-      feeDetailsCount: props.feeDetails?.length || 0,
-    },
-  );
-
   let result = template;
   const items = props.feeDetails || [];
 
   // 优先使用传入的 templateData（动态计算的数据）
   if (props.templateData) {
-    console.log('✅ 使用 templateData:', {
-      commissionNum: props.templateData.commissionNum,
-      mblNum: props.templateData.mblNum,
-    });
-
     // 委托编号 - 使用字符串替换方法，避免正则转义问题
     if (props.templateData.commissionNum) {
       const beforeReplace = result;
       result = result
         .split('<委托编号>')
         .join(props.templateData.commissionNum);
-      console.log('✅ 委托编号替换:', {
-        before: beforeReplace.includes('<委托编号>'),
-        after: result.includes('<委托编号>'),
-        value: props.templateData.commissionNum,
-      });
     } else {
       console.warn('⚠️ templateData.commissionNum 为空');
     }
@@ -142,11 +123,6 @@ function generateRemarkFromFeeDetails(template: string): string {
     if (props.templateData.mblNum) {
       const beforeReplace = result;
       result = result.split('<主提单号>').join(props.templateData.mblNum);
-      console.log('✅ 主提单号替换:', {
-        before: beforeReplace.includes('<主提单号>'),
-        after: result.includes('<主提单号>'),
-        value: props.templateData.mblNum,
-      });
     } else {
       console.warn('⚠️ templateData.mblNum 为空');
     }
@@ -264,7 +240,7 @@ async function loadTemplateList() {
 
     // 如果有传入归属组织和币别，进行筛选
     if (props.settlementId) {
-      params.orgId = getCompanyIdByOrgId(Number(props.settlementId));
+      params.orgId = getCompanyIdByOrgId(props.settlementId);
     }
     if (props.currencyId) {
       params.currencyId = props.currencyId;
@@ -272,8 +248,6 @@ async function loadTemplateList() {
 
     const result = await InvoiceRemarkTemplateApi.getPagedListAsync(params);
     templateList.value = result.items || [];
-
-    console.log('加载的模板列表:', templateList.value);
   } catch (error) {
     console.error('加载模板列表失败:', error);
     message.error('加载模板列表失败');

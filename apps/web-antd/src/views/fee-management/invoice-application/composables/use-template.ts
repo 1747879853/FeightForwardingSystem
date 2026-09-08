@@ -117,34 +117,15 @@ export function useTemplate(
     const commissionNums = new Set<string>();
     const mblNums = new Set<string>();
 
-    console.log(
-      '🔍 remarkTemplateData 计算 - invoiceApplicationItems 数量:',
-      items.length,
-    );
-    console.log(
-      '🔍 remarkTemplateData 计算 - feeGroupsData 数量:',
-      feeGroupsData.value?.length || 0,
-    );
-
     if (feeGroupsData.value && feeGroupsData.value.length > 0) {
       const allFees = flattenTreeData(feeGroupsData.value);
-      console.log('🔍 flattenTreeData 结果数量:', allFees.length);
 
       items.forEach((item: any, index: number) => {
-        console.log(
-          `🔍 处理第 ${index + 1} 个费用项 - orderFeeId:`,
-          item.orderFeeId,
-        );
-
         const fee = allFees.find(
           (f: any) => f.orderFee?.id === item.orderFeeId,
         );
 
         if (fee) {
-          console.log('  ✅ 找到匹配的费用');
-          console.log('  - commissionNum:', fee.transportOrder?.commissionNum);
-          console.log('  - mblNum:', fee.transportOrder?.mblNum);
-
           if (fee.transportOrder?.commissionNum) {
             commissionNums.add(fee.transportOrder.commissionNum);
           }
@@ -177,11 +158,6 @@ export function useTemplate(
       orgBankName: orgBank?.bankName || '',
       orgBankAccount: orgBank?.bankAccount || '',
     };
-
-    console.log('✅ remarkTemplateData 最终结果:', {
-      commissionNum: result.commissionNum,
-      mblNum: result.mblNum,
-    });
 
     return result;
   });

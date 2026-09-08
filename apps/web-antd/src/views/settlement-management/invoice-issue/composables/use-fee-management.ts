@@ -25,7 +25,6 @@ export function useFeeManagement(
     });
 
     if (newApps.length === 0) {
-      console.log('⚠️ 所有选择的申请都已存在，无需重复添加');
       message.warning('所选申请已全部添加，无新增申请');
       return;
     }
@@ -43,9 +42,6 @@ export function useFeeManagement(
 
     formData.value.invoiceIssueItems.push(...items);
 
-    console.log(
-      `✅ 添加了 ${items.length} 条新申请明细（已过滤 ${selectedApps.length - newApps.length} 条重复申请）`,
-    );
     message.success(`成功添加 ${items.length} 条新申请`);
   }
 
@@ -61,8 +57,6 @@ export function useFeeManagement(
    * 处理删除选中的发票
    */
   async function handleDeleteSelectedInvoices(selectedIds: string[]) {
-    console.log('🗑️ 准备删除的发票ID:', selectedIds);
-
     if (!editId.value) {
       message.error('发票ID不存在');
       return;
@@ -105,11 +99,6 @@ export function useFeeManagement(
               !selectedIds.includes(String(item.invoiceApplicationId)),
           );
       }
-
-      console.log(
-        '✅ 删除完成，剩余申请组数量:',
-        applicationGroupsData.value.length,
-      );
     } catch (error) {
       console.error('❌ 删除发票失败:', error);
       message.error('删除发票失败');
@@ -123,7 +112,6 @@ export function useFeeManagement(
   async function recalculateGoodsDetails() {
     // 这个方法会在主页面中通过 useGoodsDetails 调用
     // 这里保留作为接口，实际逻辑在 use-goods-details.ts 中
-    console.log('⚠️ recalculateGoodsDetails 应该在 use-goods-details 中实现');
   }
 
   return {

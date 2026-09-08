@@ -99,18 +99,20 @@ export function getMyDefaultOrgId(): number | undefined {
 }
 
 /** 取某直属组织所在的完整组织路径（从顶到底）。
- * 优先按路径末端（直属组织）匹配；未命中时兼容匹配路径中的任意节点（如公司级组织）。 */
+ * 优先按路径末端（直属组织）匹配；未命中时兼容匹配路径中的任意节点（如公司级组织）。
+ * orgId 保持 string|number 透传，禁止 Number() 以免雪花丢精度。 */
 export function getMyOrgPath(
-  orgId?: null | number,
+  orgId?: null | number | string,
 ): SystemOrganizationUnitApi.OrganizationUnitDto[] {
-  if (orgId === undefined || orgId === null) return [];
+  if (orgId === undefined || orgId === null || orgId === '') return [];
+  const key = String(orgId);
   const orgList = getMyOrganizations();
   const found =
     orgList.find(
-      (o) => pickDirectOrgNode(o.oneOrganizationPath)?.id === orgId,
+      (o) => String(pickDirectOrgNode(o.oneOrganizationPath)?.id ?? '') === key,
     ) ??
     orgList.find((o) =>
-      o.oneOrganizationPath?.some((node) => node.id === orgId),
+      o.oneOrganizationPath?.some((node) => String(node.id) === key),
     );
   return found?.oneOrganizationPath ?? [];
 }
@@ -121,7 +123,7 @@ export function getMyOrgPath(
  * 不传 orgId 时使用默认组织。
  */
 export function getMyOrgCompanyNode(
-  orgId?: null | number,
+  orgId?: null | number | string,
 ): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
   const targetOrgId = orgId ?? getMyDefaultOrgId();
   const path = getMyOrgPath(targetOrgId);
@@ -134,7 +136,7 @@ export function getMyOrgCompanyNode(
  * 用于加载「我司银行」选项等场景。
  */
 export function getMyCompanyBankAccounts(
-  orgId?: null | number,
+  orgId?: null | number | string,
 ): SystemOrganizationUnitApi.OrgBankAccountDto[] {
   const companyNode = getMyOrgCompanyNode(orgId);
   return Array.isArray(companyNode?.orgBankAccounts)
@@ -179,11 +181,13 @@ export function resolveOrderUserCompanyIds(
 
 /**
  * 根据组织id获取对应的公司id（一级组织id）
- * @param orgId 组织id
+ * @param orgId 组织id（字符串透传，兼容雪花）
  * @returns 公司id，如果找不到则返回undefined
  */
-export function getCompanyIdByOrgId(orgId: number): number | undefined {
-  if (!orgId) return undefined;
+export function getCompanyIdByOrgId(
+  orgId: number | string,
+): number | string | undefined {
+  if (orgId === undefined || orgId === null || orgId === '') return undefined;
   const path = getMyOrgPath(orgId);
   const companyNode = pickCompanyNodeFromPath(path);
   return companyNode?.id;

@@ -168,7 +168,6 @@ function applyFilter() {
   }
 
   filteredFeeDetails.value = result;
-  console.log('✅ 筛选结果:', filteredFeeDetails.value.length, '个订单组');
 }
 
 /** 应用筛选 */
@@ -204,11 +203,6 @@ function handleParentSelectionChange(selectedRowKeys: any[]) {
   selectedRowKeys.forEach((key) => {
     selectedParentIds.value.add(String(key));
   });
-
-  console.log(
-    '✅ 当前选中的父节点（票）ID列表:',
-    Array.from(selectedParentIds.value),
-  );
 }
 
 /** 获取已选中的父节点keys */
@@ -233,15 +227,7 @@ function handleChildSelectionChange(
     selectedFeeIds.value.add(String(key));
   });
 
-  console.log('✅ 当前选中的费用ID列表:', Array.from(selectedFeeIds.value));
   if (parentRecord.feeDetails) {
-    console.log(
-      '📋 子节点的ID示例:',
-      parentRecord.feeDetails.map((c) => ({
-        id: c.id,
-        orderFeeId: c.orderFee?.id,
-      })),
-    );
   }
 }
 
@@ -304,26 +290,13 @@ async function handleBatchDelete() {
       // ✅ 收集所有要删除的 invoiceApplicationItemId
       const allItemIds: string[] = [];
 
-      console.log('🔍 开始收集 itemIds...');
-      console.log('selectedFeeIds:', Array.from(selectedFeeIds.value));
-      console.log('selectedParentIds:', Array.from(selectedParentIds.value));
-      console.log('filteredFeeDetails:', filteredFeeDetails.value);
-
       // 添加选中的子节点对应的 itemId
       selectedFeeIds.value.forEach((feeId) => {
-        console.log('处理选中的 feeId:', feeId);
         // 在所有父节点的 feeDetails 中查找对应的子节点
         filteredFeeDetails.value.forEach((parent) => {
           if (parent.feeDetails) {
             const child = parent.feeDetails.find((c) => c.id === feeId);
-            console.log('找到子节点:', child);
             if (child) {
-              console.log('📋 子节点完整结构:', JSON.stringify(child, null, 2));
-              console.log(
-                '📋 child.invoiceApplicationItemId:',
-                child.invoiceApplicationItemId,
-              );
-              console.log('📋 child.id (费用ID):', child.id);
             }
             if (child) {
               // ✅ 关键修复：必须使用 invoiceApplicationItemId 作为删除ID
@@ -331,10 +304,6 @@ async function handleBatchDelete() {
                 console.error('❌ 子节点缺少 invoiceApplicationItemId:', child);
                 return;
               }
-              console.log(
-                '✅ 找到 invoiceApplicationItemId:',
-                child.invoiceApplicationItemId,
-              );
               allItemIds.push(child.invoiceApplicationItemId);
             } else {
               console.warn('⚠️ 未找到子节点');
@@ -346,28 +315,19 @@ async function handleBatchDelete() {
       // 添加选中父节点下的所有费用对应的 itemId
       filteredFeeDetails.value.forEach((parent) => {
         if (selectedParentIds.value.has(parent.id) && parent.feeDetails) {
-          console.log('处理选中的父节点:', parent.id);
           parent.feeDetails.forEach((child) => {
-            console.log('父节点下的子节点:', child);
             // ✅ 关键修复：必须使用 invoiceApplicationItemId 作为删除ID
             if (!child.invoiceApplicationItemId) {
               console.error('❌ 子节点缺少 invoiceApplicationItemId:', child);
               return;
             }
-            console.log(
-              '✅ 找到 invoiceApplicationItemId:',
-              child.invoiceApplicationItemId,
-            );
             allItemIds.push(child.invoiceApplicationItemId);
           });
         }
       });
 
-      console.log('收集到的所有 itemIds:', allItemIds);
-
       // ✅ 去重
       const uniqueItemIds = [...new Set(allItemIds)];
-      console.log('去重后的 itemIds:', uniqueItemIds);
 
       if (uniqueItemIds.length === 0) {
         message.error('未找到可删除的费用');
@@ -389,9 +349,7 @@ async function handleBatchDelete() {
             invoiceApplicationGoodsDtls: undefined,
           };
 
-        console.log('🗑️ 开始删除费用，参数:', removeData);
         await InvoiceApplicationAdminApi.removeItems(removeData);
-        console.log('✅ 费用明细删除成功');
 
         message.success(`成功删除 ${uniqueItemIds.length} 条费用`);
 
@@ -413,8 +371,6 @@ async function handleBatchDelete() {
 watch(
   () => props.feeDetails,
   (newVal) => {
-    console.log(' FeeDetailModal 接收到数据:', newVal);
-    console.log('📊 父节点数量:', newVal.length);
     // 数据变化时重新应用筛选
     filteredFeeDetails.value = [...newVal];
 
