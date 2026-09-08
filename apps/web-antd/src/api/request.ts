@@ -16,6 +16,8 @@ import { cloneDeep } from '@vben/utils';
 import { message } from 'ant-design-vue';
 import JSONBigInt from 'json-bigint';
 
+import { convertPayloadToBeijingTime } from '#/utils/beijing-datetime';
+
 import { useAuthStore } from '#/store';
 
 import { refreshTokenApi } from './core';
@@ -72,6 +74,22 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   function formatToken(token: null | string) {
     return token ? `Bearer ${token}` : null;
   }
+
+  // 出站时间口径统一：后端时间约定为不带时区标记的北京时间墙钟字符串，
+  // 而历史代码普遍用 toISOString()（UTC Z 串）或直接传 Date/dayjs 对象提交，
+  // 会导致后端存储/回显时间早 8 小时。这里在请求体与查询参数出站前
+  // 统一转换为北京时间字符串（返回副本，不改动表单模型）。
+  client.addRequestInterceptor({
+    fulfilled: (config) => {
+      if (config.data !== undefined && config.data !== null) {
+        config.data = convertPayloadToBeijingTime(config.data);
+      }
+      if (config.params !== undefined && config.params !== null) {
+        config.params = convertPayloadToBeijingTime(config.params);
+      }
+      return config;
+    },
+  });
 
   // 请求头处理
   client.addRequestInterceptor({
