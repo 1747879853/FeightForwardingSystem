@@ -28,7 +28,8 @@
     "unsupported": "该文件类型暂不支持在线预览，请下载后查看",
     "missingUrl": "附件链接不存在",
     "officeFailed": "文档预览失败，请下载后查看",
-    "officeLegacyUnsupported": "旧版 .doc / .ppt 暂不支持在线预览，请下载后用本地 Office 打开"
+    "officeLegacyUnsupported": "旧版 .doc / .ppt 暂不支持在线预览，请下载后用本地 Office 打开",
+    "ofdFailed": "OFD 预览失败，请下载后查看"
   },
   "terminalSchedule": {
     "sync": "码头船舶",

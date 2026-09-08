@@ -14,14 +14,16 @@ import {
   buildPdfEmbedUrl,
   resolveSameOriginMediaUrl,
 } from '#/utils';
+import {
+  getAttachmentFileExtension,
+  resolveAttachmentPreviewCategory,
+  resolveOfficePreviewKind,
+} from '#/utils/attachment-preview-category';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { prepareExcelPreviewBuffer } from '#/utils/prepare-excel-preview';
 
 import '@vue-office/docx/lib/index.css';
 import '@vue-office/excel/lib/index.css';
-
-type FileCategory = 'image' | 'office' | 'other' | 'pdf';
-type OfficeKind = 'docx' | 'excel' | 'pptx' | '';
 
 interface Props {
   /** 是否显示 */
@@ -57,31 +59,6 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-const IMAGE_EXTENSIONS = new Set([
-  'apng',
-  'avif',
-  'bmp',
-  'gif',
-  'ico',
-  'jfif',
-  'jpeg',
-  'jpg',
-  'png',
-  'svg',
-  'tif',
-  'tiff',
-  'webp',
-]);
-const OFFICE_EXTENSIONS = new Set([
-  'csv',
-  'doc',
-  'docx',
-  'ppt',
-  'pptx',
-  'xls',
-  'xlsx',
-]);
-
 const VueOfficeDocx = defineAsyncComponent(
   () => import('@vue-office/docx') as Promise<{ default: Component }>,
 );
@@ -91,11 +68,17 @@ const VueOfficeExcel = defineAsyncComponent(
 const VueOfficePptx = defineAsyncComponent(
   () => import('@vue-office/pptx') as Promise<{ default: Component }>,
 );
+const OfdPreviewPanel = defineAsyncComponent(
+  () => import('./ofd-preview-panel.vue'),
+);
 
 const iframeLoading = ref(true);
 const officeLoading = ref(false);
 const officeError = ref('');
 const officeSrc = ref<ArrayBuffer | string>('');
+const ofdSrc = ref<ArrayBuffer | null>(null);
+const ofdError = ref('');
+const ofdLoading = ref(false);
 const fullscreen = ref(false);
 
 const isPageMode = computed(() => props.mode === 'page');
@@ -162,30 +145,19 @@ const pdfEmbedUrl = computed(() =>
 );
 
 /** 文件扩展名 */
-const extension = computed(() => {
-  const source = props.fileName || props.fileUrl;
-  const match = source.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
-  return match ? match[1].toLowerCase() : '';
-});
+const extension = computed(() =>
+  getAttachmentFileExtension(props.fileName || props.fileUrl),
+);
 
-const category = computed<FileCategory>(() => {
-  const ext = extension.value;
-  if (ext === 'pdf') return 'pdf';
-  if (IMAGE_EXTENSIONS.has(ext)) return 'image';
-  if (OFFICE_EXTENSIONS.has(ext)) return 'office';
-  return 'other';
-});
+const category = computed(() =>
+  resolveAttachmentPreviewCategory(props.fileName, props.fileUrl),
+);
 
 /** vue-office 可解析的格式；旧版 .doc / .ppt 不支持 */
-const officeKind = computed<OfficeKind>(() => {
-  const ext = extension.value;
-  if (ext === 'docx') return 'docx';
-  if (['csv', 'xls', 'xlsx'].includes(ext)) return 'excel';
-  if (ext === 'pptx') return 'pptx';
-  return '';
-});
+const officeKind = computed(() => resolveOfficePreviewKind(extension.value));
 
 const canLocalOfficePreview = computed(() => officeKind.value !== '');
+const canOfdPreview = computed(() => category.value === 'ofd');
 
 const computedTitle = computed(
   () => props.title || props.fileName || $t('component.filePreview.title'),
@@ -202,6 +174,15 @@ const handleOfficeRendered = () => {
 const handleOfficeError = () => {
   officeLoading.value = false;
   officeError.value = $t('component.filePreview.officeFailed');
+};
+
+const handleOfdRendered = () => {
+  ofdLoading.value = false;
+};
+
+const handleOfdError = () => {
+  ofdLoading.value = false;
+  ofdError.value = $t('component.filePreview.ofdFailed');
 };
 
 const handleCancel = () => {
@@ -236,15 +217,7 @@ const handleOpenInNewWindow = () => {
   window.open(resolved.href, '_blank', 'noopener,noreferrer');
 };
 
-async function loadOfficeBuffer() {
-  officeSrc.value = '';
-  officeError.value = '';
-  if (!props.open || !canLocalOfficePreview.value || !props.fileUrl) {
-    officeLoading.value = false;
-    return;
-  }
-
-  officeLoading.value = true;
+async function fetchPreviewBuffer() {
   const candidates = [
     ...new Set([sameOriginUrl.value, fullUrl.value].filter(Boolean)),
   ];
@@ -255,43 +228,94 @@ async function loadOfficeBuffer() {
       const response = await fetch(candidate);
       if (!response.ok) continue;
       // eslint-disable-next-line no-await-in-loop
-      const rawBuffer = await response.arrayBuffer();
-      try {
-        officeSrc.value =
-          officeKind.value === 'excel'
-            ? prepareExcelPreviewBuffer(rawBuffer, extension.value)
-            : rawBuffer;
-      } catch {
-        officeLoading.value = false;
-        officeError.value = $t('component.filePreview.officeFailed');
-        return;
-      }
-      window.setTimeout(() => {
-        officeLoading.value = false;
-      }, 8000);
-      return;
+      return await response.arrayBuffer();
     } catch {
       // 尝试下一个地址
     }
   }
 
-  officeLoading.value = false;
-  officeError.value = $t('component.filePreview.officeFailed');
+  return null;
+}
+
+async function loadOfficeBuffer() {
+  officeSrc.value = '';
+  officeError.value = '';
+  if (!modelOpen.value || !canLocalOfficePreview.value || !props.fileUrl) {
+    officeLoading.value = false;
+    return;
+  }
+
+  officeLoading.value = true;
+  const rawBuffer = await fetchPreviewBuffer();
+  if (!rawBuffer) {
+    officeLoading.value = false;
+    officeError.value = $t('component.filePreview.officeFailed');
+    return;
+  }
+
+  try {
+    officeSrc.value =
+      officeKind.value === 'excel'
+        ? prepareExcelPreviewBuffer(rawBuffer, extension.value)
+        : rawBuffer;
+  } catch {
+    officeLoading.value = false;
+    officeError.value = $t('component.filePreview.officeFailed');
+    return;
+  }
+
+  window.setTimeout(() => {
+    officeLoading.value = false;
+  }, 8000);
+}
+
+async function loadOfdBuffer() {
+  ofdSrc.value = null;
+  ofdError.value = '';
+  if (!modelOpen.value || !canOfdPreview.value || !props.fileUrl) {
+    ofdLoading.value = false;
+    return;
+  }
+
+  ofdLoading.value = true;
+  const rawBuffer = await fetchPreviewBuffer();
+  if (!rawBuffer) {
+    ofdLoading.value = false;
+    ofdError.value = $t('component.filePreview.ofdFailed');
+    return;
+  }
+
+  ofdSrc.value = rawBuffer;
+  window.setTimeout(() => {
+    ofdLoading.value = false;
+  }, 12_000);
 }
 
 watch(
-  () => [modelOpen.value, props.fileUrl, officeKind.value] as const,
+  () =>
+    [
+      modelOpen.value,
+      props.fileUrl,
+      officeKind.value,
+      canOfdPreview.value,
+    ] as const,
   ([open]) => {
     if (!open) {
       officeSrc.value = '';
       officeError.value = '';
       officeLoading.value = false;
+      ofdSrc.value = null;
+      ofdError.value = '';
+      ofdLoading.value = false;
       fullscreen.value = false;
       return;
     }
     iframeLoading.value = category.value === 'pdf';
     if (canLocalOfficePreview.value) {
       void loadOfficeBuffer();
+    }
+    if (canOfdPreview.value) {
+      void loadOfdBuffer();
     }
   },
   { immediate: true },
@@ -425,6 +449,37 @@ watch(
           </div>
         </template>
 
+        <!-- OFD：浏览器内 vue-liteofd 渲染 -->
+        <template v-else-if="canOfdPreview">
+          <Spin
+            v-if="ofdLoading"
+            class="attachment-viewer-loading"
+            size="large"
+          />
+          <div
+            v-if="ofdError && !ofdLoading"
+            class="attachment-viewer-unsupported"
+          >
+            <Empty :description="ofdError">
+              <Button type="primary" @click="handleDownload">
+                {{ $t('component.filePreview.download') }}
+              </Button>
+            </Empty>
+          </div>
+          <div
+            v-else-if="ofdSrc"
+            :key="`ofd-${isExpanded}`"
+            class="attachment-viewer-ofd"
+          >
+            <OfdPreviewPanel
+              :src="ofdSrc"
+              class="attachment-viewer-ofd-inner"
+              @rendered="handleOfdRendered"
+              @error="handleOfdError"
+            />
+          </div>
+        </template>
+
         <!-- 旧版 .doc / .ppt 或不支持的格式 -->
         <div v-else class="attachment-viewer-unsupported">
           <Empty
@@ -540,6 +595,19 @@ watch(
 }
 
 .attachment-viewer-office-inner :deep(> div) {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-viewer-ofd {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #525659;
+}
+
+.attachment-viewer-ofd-inner {
+  display: block;
   width: 100%;
   height: 100%;
 }

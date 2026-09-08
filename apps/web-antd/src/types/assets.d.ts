@@ -43,3 +43,14 @@ declare module '@vue-office/pptx' {
   const component: Component;
   export default component;
 }
+
+declare module 'vue-liteofd' {
+  export class LiteOfd {
+    parse(file: ArrayBuffer | Blob | File | string): Promise<unknown>;
+    render(container?: HTMLElement, pageWrapStyle?: string): HTMLElement;
+    getTotalPages(): number;
+  }
+
+  const LiteOfdDefault: typeof LiteOfd;
+  export default LiteOfdDefault;
+}

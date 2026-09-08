@@ -66,7 +66,7 @@ function pickFileName(target: AttachmentViewerTarget) {
 
 /**
  * 打开全站附件查看器。可传入附件 DTO、部分字段，或直接传 URL 字符串。
- * 相对路径会按当前品牌后端根补全；Office 走微软在线嵌入，PDF/图片在弹窗内预览。
+ * 相对路径会按当前品牌后端根补全；图片/PDF/OFD/Office 在弹窗内预览。
  */
 export function openAttachmentViewer(
   target?: AttachmentViewerTarget | null | string,

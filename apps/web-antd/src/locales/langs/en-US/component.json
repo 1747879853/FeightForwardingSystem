@@ -28,7 +28,8 @@
     "unsupported": "Online preview is not supported for this file type. Please download to view.",
     "missingUrl": "Attachment URL is missing",
     "officeFailed": "Failed to preview the document. Please download it instead.",
-    "officeLegacyUnsupported": "Legacy .doc / .ppt cannot be previewed online. Please download and open with Office."
+    "officeLegacyUnsupported": "Legacy .doc / .ppt cannot be previewed online. Please download and open with Office.",
+    "ofdFailed": "Failed to preview the OFD file. Please download it instead."
   },
   "terminalSchedule": {
     "sync": "Terminal Vessel",

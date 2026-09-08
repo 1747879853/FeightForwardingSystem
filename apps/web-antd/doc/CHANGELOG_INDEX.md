@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-09 OFD 预览去掉裁切与图层错位](./changelogs/change-log-2026-09-09-attachment-ofd-preview-clip.md)
+- [2026-09-09 通用附件查看器支持 OFD 在线预览](./changelogs/change-log-2026-09-09-attachment-ofd-preview.md)
 - [2026-09-09 全站附件统一预览与友好文件名下载](./changelogs/change-log-2026-09-09-attachment-preview-download-unify.md)
 - [2026-09-08 附件下载改用友好文件名](./changelogs/change-log-2026-09-08-attachment-download-friendly-filename.md)
 - [2026-09-08 客户新建成功后关闭原新建页签](./changelogs/change-log-2026-09-08-client-create-tab-close.md)
