@@ -13,7 +13,7 @@ last_updated: 2026-09-08
 
 - **检索：** 支持关键字（业务编号 / 主提单号）、状态、委托单位、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
 - **列表列：** 除业务主字段外，展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度（色块对齐海出列表），海进/空出/未通过为 `-`；运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
-- **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
+- **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。删除/工具栏刷新/表单返回走 `handleRefresh`，会同步 `refreshGroupData()`。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
 - **删除：** 支持多选删除；仅「录入状态」与「驳回」可删，前端先拦截再请求。
@@ -51,7 +51,7 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 2：复制只能单选]** 勾选 0 条或多条时点「复制」-> 提示「请选择一条业务联系单进行复制」。
 
-> [!IMPORTANT] **[卡点 3：分组数据刷新时机]** 点击分组 Tab 只重查列表；顶部搜索条件变更才重拉 `GetGroupedListAsync`。重新进入 keepAlive 列表会 `refreshGroupData()`。
+> [!IMPORTANT] **[卡点 3：分组数据刷新时机]** 点击分组 Tab 只重查列表；顶部搜索条件变更才重拉 `GetGroupedListAsync`。重新进入 keepAlive 列表会 `refreshGroupData()`。删除/工具栏刷新/表单返回走 `handleRefresh`，必须在 `gridApi.query()` 后再调 `refreshGroupData()`，否则 Tab 条数过期。
 
 > [!IMPORTANT] **[卡点 4：运踪只在列表嵌套里]** `transportOrder` 仅 `GetPagedListAsync` 返回；详情另走 `TransportOrderDetailAsync`。未通过或业务表已删时为 null，两列都是 `-`。
 
@@ -59,6 +59,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间。 | 无时分 RangePicker 点「今天」不再把起止打成同一时刻。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-14 | `Fix` | 列表增加销售/操作/备注列，并支持按销售、操作、备注筛选（TAPD #1000794） | 对齐后端 `saleNames`/`operatorNames` 与 `SaleIds`/`OperatorIds`/`Remark`；筛选交互参考结算拉费用弹窗。详见 `changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md` |
 | 2026-08-12 | `Fix` | 列表委托单位筛选补齐 `industryCategory: 'p'` | 与新建页、海出列表对齐；空类别时通用客户接口不下发。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |

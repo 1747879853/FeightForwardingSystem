@@ -22,7 +22,7 @@ last_updated: 2026-09-08
 # 2. 功能与操作说明 (Features & Operations)
 
 - **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、委托编号 5 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
-- **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。
+- **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
 - **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则 Tooltip 说明订阅单号=主运单号、航司系统自动识别。
 - **运踪状态列：** 付费状态列后展示四态文案（未订阅/订阅失败/等待数据/节点描述）；有 `Admin.ExternalApi.Get` 时可点击打开运踪详情 Modal。
@@ -56,10 +56,13 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 4：能看 ≠ 能改]** 列表删除看 `row.isEditable`；复制与进详情不拦。缺字段按不可编辑。
 
+> [!IMPORTANT] **[卡点 5：分组数据刷新时机]** 删除/工具栏刷新/表单返回走 `handleRefresh`，须在 `gridApi.query()` 后再调 `refreshGroupData()`，否则分组 Tab 条数过期。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开航/实际开航/预抵/货好/应结/创建时间及报关、送仓日期筛选统一按自然日闭区间。 | 与海出开船日期同类：无时分选择器不再带当前时钟。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Fix` | 列表业务来源、运输条款、包装改为读嵌套对象，不再空白。 | 与海出台账同类：`codeSource.cnName` / `codeService.cnName` / `codePackage.name`。见 `changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md`。 |

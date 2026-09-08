@@ -393,6 +393,7 @@ const handleCopy = () => {
 
 const handleRefresh = () => {
   gridApi.query();
+  grouping.refreshGroupData();
 };
 
 const handleSubscribeTracking = async () => {

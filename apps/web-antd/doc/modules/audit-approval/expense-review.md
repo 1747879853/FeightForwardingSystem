@@ -2,7 +2,7 @@
 title: 费用审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-08-09
 # 2. 功能与操作说明 (Features & Operations)
 
 - **审核任务查询：** 按任务状态、任务类型、编号（主提单号/订舱编号/委托编号，`TrimInput` 自动去空格）等筛选费用审核任务。
+- **分组统计：** 装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式、场站。审核通过/驳回成功后在 `gridApi.reload()` 后同步 `refreshGroupData()`。
 - **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
 - **审核处理：** 进入详情查看费用变更并通过或驳回。
 
@@ -44,10 +45,13 @@ last_updated: 2026-08-09
 
 > [!IMPORTANT] **[卡点 1：费用审核一致性]** 费用审核会改变订单费用状态，驳回与通过都要保持任务、费用行和原始单据一致。
 
+> [!IMPORTANT] **[卡点 2：审核后必须刷分组]** 审核成功只 `gridApi.reload()` 会让分组 Tab 条数停留在审核前，须同时 `grouping.refreshGroupData()`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 审核成功后同步刷新分组 Tab 条数。 | `gridApi.reload()` 后追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-08-09 | `Fix` | 嵌套详情不再用全局 `route.params.id` 兜底，避免 keepAlive 切到付费申请编辑时误打 `OrderFeeTaskDetailAsync`。 | 仅 `route.name === 'ExpenseDetail'` 读路由参数。详见 `changelogs/change-log-2026-08-09-expense-detail-route-id-fallback.md`。 |
 | 2026-07-12 | `Fix` | 查询「单号」改为「编号」，placeholder 统一为「主提单号/订舱编号/委托编号」；改用 `TrimInput` 自动去空格。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-12 | `Feature` | 工作台应收应付筛选对齐本页搜索条件；`GetPagedListParams` 补充业务筛选字段类型。 | 本页列表仍内嵌详情；工作台深链走独立 `ExpenseDetail` 路由，见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`。 |

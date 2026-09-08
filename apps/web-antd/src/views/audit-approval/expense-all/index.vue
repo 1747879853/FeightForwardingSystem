@@ -315,6 +315,7 @@ const OrderFeeAudit = (
       key: 'action_process_msg',
     });
     gridApi.reload();
+    grouping.refreshGroupData();
     if (detailRef.value) {
       detailRef.value.getTableDate();
     }

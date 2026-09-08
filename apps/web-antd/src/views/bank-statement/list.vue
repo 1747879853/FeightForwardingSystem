@@ -238,6 +238,7 @@ function handleCreate() {
 
 function handleRefresh() {
   gridApi.query();
+  grouping.refreshGroupData();
 }
 
 useRefreshListOnFormReturn('BankStatementList', handleRefresh);
@@ -262,7 +263,7 @@ async function handleDelete() {
       try {
         await deleteBankStatement({ id: row.id });
         message.success('删除成功');
-        gridApi.query();
+        handleRefresh();
       } catch (error: any) {
         message.error(error.message || '删除失败');
       }

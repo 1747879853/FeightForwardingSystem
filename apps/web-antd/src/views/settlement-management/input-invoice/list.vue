@@ -135,6 +135,7 @@ const openPull = () => {
 };
 const handlePullSuccess = () => {
   gridApi.query();
+  grouping.refreshGroupData();
 };
 
 // ==================== 底部当页合计 ====================

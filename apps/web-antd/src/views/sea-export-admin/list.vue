@@ -474,6 +474,7 @@ const handleDelete = () => {
 
 const handleRefresh = () => {
   gridApi.query();
+  grouping.refreshGroupData();
 };
 
 const handleYundangSubscribe = async () => {

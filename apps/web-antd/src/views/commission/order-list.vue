@@ -389,6 +389,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
 
 const handleRefresh = () => {
   gridApi.query();
+  grouping.refreshGroupData();
 };
 
 onMounted(async () => {

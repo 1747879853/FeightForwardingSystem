@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-08 列表数据变更后同步刷新分组统计](./changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md)
 - [2026-09-08 无时分日期筛选统一按自然日闭区间提交](./changelogs/change-log-2026-09-08-date-range-start-end-of-day.md)
 - [2026-09-08 海运出口开船日期筛选按自然日闭区间提交](./changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md)
 - [2026-09-08 付费申请附件卡片铺满右侧剩余高度](./changelogs/change-log-2026-09-08-payment-application-attachment-card-fill.md)

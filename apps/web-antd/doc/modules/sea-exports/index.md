@@ -37,7 +37,7 @@ last_updated: 2026-09-08
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
 - **分组 Tab 船公司 Logo：** 当分组维度为「船公司」时，分组 Tab 在名称前展示对应船司 Logo（与列表船公司列「Logo + 名称」一致）。Logo 来源于 `GetGroupedListAsync` 船公司分组返回的 `logo` 附件；`list.vue` 的 `fetchGroups` 用 `buildAttachmentUrl` 将相对路径解析为完整地址注入通用 `GroupItem.logoUrl`，通用组件 `grouping-tabs.vue` 仅在 `logoUrl` 有值时渲染图片。其他分组维度或「未填写」项无 Logo。
 - **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。**工具栏左侧 `#toolbar-actions` 插槽始终挂载**（未分组显示列表标题，分组显示 Tab），避免与 `table-title` prop 联动切换导致 vxe 列配置被重置。
-- **分组数据不缓存（每次进入都拉取）：** 列表 `keepAlive`，但分组统计不做缓存——`onActivated` 每次重新进入列表都会调用 `grouping.refreshGroupData()`（复用最近一次列表查询参数）重新拉取分组条数，仅刷新分组、不改选中项、不重查列表；首次激活（与 `onMounted` 首查重合）刻意跳过以免重复请求。首屏若持久化过默认分组字段，`onMounted` 会先 `restorePersistedField()` 恢复分组字段状态（不查询），再由 `submitForm` 首查在同一次查询中拉取分组数据，避免「恢复 vs 首查」竞态导致分组只剩「全部」。
+- **分组数据不缓存（每次进入都拉取）：** 列表 `keepAlive`，但分组统计不做缓存——`onActivated` 每次重新进入列表都会调用 `grouping.refreshGroupData()`（复用最近一次列表查询参数）重新拉取分组条数，仅刷新分组、不改选中项、不重查列表；首次激活（与 `onMounted` 首查重合）刻意跳过以免重复请求。删除、工具栏刷新、从表单返回等走 `handleRefresh` 的路径也会在 `gridApi.query()` 后同步 `refreshGroupData()`，避免分组 Tab 条数过期。首屏若持久化过默认分组字段，`onMounted` 会先 `restorePersistedField()` 恢复分组字段状态（不查询），再由 `submitForm` 首查在同一次查询中拉取分组数据，避免「恢复 vs 首查」竞态导致分组只剩「全部」。
 - **搜索项持久化与折叠布局：** 搜索字段顺序/显隐由用户设置 `search_form_config_SeaExportList` 持久化（登录后全局预拉取）。折叠态显示几个搜索项由 `@core/form-ui` 的 `useExpandable` 按当前 DOM 布局动态计算（`keepIndex = 首行实际项数 - 1`，为按钮组留格）；持久化重排后须触发重新测量，否则会出现第一行留白（旧布局测得的保留数与新顺序不匹配）。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -96,7 +96,7 @@ last_updated: 2026-09-08
 >
 > **[卡点 4：分组与搜索互斥]** 启用某分组字段后，对应搜索项（如 `POLId`）会被禁用并清空；切换分组或关闭分组时恢复。勿在分组启用期间通过搜索项传入同维度条件，否则与分组 Tab 语义冲突。
 >
-> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；用户点「查询」提交搜索条件时会重新调用 `GetGroupedListAsync` 并重置 Tab 选中态（条件变更本身不触发）。此外分组统计不做缓存：`onActivated` 每次重新进入列表都会 `refreshGroupData()` 刷新分组（跳过首次激活）。
+> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；用户点「查询」提交搜索条件时会重新调用 `GetGroupedListAsync` 并重置 Tab 选中态（条件变更本身不触发）。此外分组统计不做缓存：`onActivated` 每次重新进入列表都会 `refreshGroupData()` 刷新分组（跳过首次激活）。删除/工具栏刷新/表单返回走 `handleRefresh`，必须在 `gridApi.query()` 后再调 `refreshGroupData()`，否则 Tab 条数过期。
 >
 > **[卡点 6：分组恢复必须先于首查且不自查]** 首屏恢复持久化分组字段用 `restorePersistedField()`（内部 `applyField(..., skipQuery: true)`）只设状态、不触发查询，首查统一由 `submitForm` 完成，确保首查即带分组维度并拉到分组数据。若让恢复自行 `query()` 会与首查竞速、重复请求，且可能出现分组只剩「全部」。`useListGrouping` 已移除内部自动 `onMounted` 恢复，新接入列表须在挂载时机显式调用 `restorePersistedField()`。
 >
@@ -108,6 +108,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间：开始当天 00:00、结束当天 23:59:59.999。 | 点「今天」时 RangePicker 会带当前时分，原先直接 `toISOString()` 会把起止都打成同一时刻。详见 `changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md`。 |
 | 2026-09-01 | `Feature` | 列表增加「码头航次」列与筛选，排在航次后面。 | 字段 `terminalVoyno`；关键字不含码头航次。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按开船日期降序；列头显示降序箭头。 | `defaultSort` 用 `TransportOrder.Etd DESC`；列持久化 `refreshColumn` 会冲掉箭头，由 `use-vxe-grid` 补 `setSort`。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |

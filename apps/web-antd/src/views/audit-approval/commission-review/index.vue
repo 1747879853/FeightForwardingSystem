@@ -311,6 +311,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CommissionReviewRow>({
 
 const reloadGrid = async () => {
   await gridApi.reload();
+  grouping.refreshGroupData();
   syncSelectedRows();
 };
 

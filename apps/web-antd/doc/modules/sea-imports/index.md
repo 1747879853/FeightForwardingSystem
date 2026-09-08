@@ -22,7 +22,7 @@ last_updated: 2026-09-08
 # 2. 功能与操作说明 (Features & Operations)
 
 - **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。进入列表**不预填会计期间**；默认按到港日期（`transportOrder.etd` / `TransportOrder.ETD`）降序，与海出开船日期同一字段。搜索条件变更不自动查询，需点「查询」；重置清空全部条件且不自动重查。
-- **分组统计：** 支持列表分组 Tabs。
+- **分组统计：** 支持列表分组 Tabs。点分组 Tab 只重查列表；删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选复制费用）、删除。删除需 `Admin.SeaImport.Delete` **且** `row.isEditable === true`；复制与进详情不看 `isEditable`。
 - **进入编辑：** 进入 `/sea-imports/:id/edit`。
 - **进入新建：** 进入 `/sea-imports/create`。
@@ -51,10 +51,13 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 2：能看 ≠ 能改]** 列表删除看 `row.isEditable`；缺字段按不可编辑。复制与双击进详情不拦。不要读 `transportOrder.isEditable`。
 
+> [!IMPORTANT] **[卡点 3：分组数据刷新时机]** 删除/工具栏刷新/表单返回走 `handleRefresh`，须在 `gridApi.query()` 后再调 `refreshGroupData()`，否则分组 Tab 条数过期。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 到港日期及换单/提货/报关/转站/箱使日期筛选改为自然日闭区间。 | 无时分 RangePicker 不再直接 `toISOString()`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按到港日期（ETD）降序；列头显示降序箭头。 | 与海出共用 `TransportOrder.Etd DESC`；箭头丢失由列持久化 `refreshColumn` 冲掉 `column.order` 引起。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |
 | 2026-08-25 | `Fix` | 贸易方式筛选项与列文案改为枚举中心 `TradeMode`，不再写死。 | TAPD `#1161580498001000779`。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |

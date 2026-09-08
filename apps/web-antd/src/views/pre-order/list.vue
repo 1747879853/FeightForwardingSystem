@@ -239,6 +239,7 @@ function getSelectedRows(): PreOrderAdminApi.PreOrderDto[] {
 
 function handleRefresh() {
   gridApi.query();
+  grouping.refreshGroupData();
 }
 
 function handleCreate() {

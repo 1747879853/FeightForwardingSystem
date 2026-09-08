@@ -2,7 +2,7 @@
 title: 银行流水列表
 module: 财务管理
 author: Cursor Agent
-last_updated: 2026-08-10
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,8 +12,9 @@ last_updated: 2026-08-10
 # 2. 功能与操作说明 (Features & Operations)
 
 - **查询列表：** `/bank-statement` 调用 `BankStatementAdmin/GetPagedListAsync`，支持流水号、结算对象、币别、核销状态、交易时间、创建人、组织等筛选。
+- **分组统计：** 付款方、我司银行、对方银行、核销状态。删除与工具栏刷新走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **新建/编辑：** 顶部「新建」进入新增页；双击行或从编辑页返回后列表自动刷新。
-- **删除：** 选中单行后点击「删除」，调用 `DeleteAsync`。
+- **删除：** 选中单行后点击「删除」，调用 `DeleteAsync`；成功后走 `handleRefresh`（不要只 `gridApi.query()`）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -36,10 +37,13 @@ last_updated: 2026-08-10
 
 > [!IMPORTANT] **[卡点 1：操作人名称可能不在列表 DTO 中]** `GetPagedListAsync` 的 `bankStatementUsers` 可能只返回 `operationId`，前端需在列表 enrichment 阶段调用 `GetUserAsync` 补齐姓名，不可用数字 ID 作为列展示。
 
+> [!IMPORTANT] **[卡点 2：删除后必须刷分组]** 删除成功不能只 `gridApi.query()`，须走 `handleRefresh` 才能同步分组 Tab 条数。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 刷新/删除后同步刷新分组 Tab 条数。 | `handleRefresh` 追加 `grouping.refreshGroupData()`；删除成功改为调用 `handleRefresh()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-08-10 | `Refactor` | 列表币别/我司银行改读 `currency` / `orgBankAccount` 对象。 | 列 field 改为 `currency.code`、`orgBankAccount.bankName`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-07-25 | `Refactor` | 「付款方」列改读结算对象对象化后的 `settlement.name`，接口不再返回 `settlementName`。 | 列 `field` 保留 `settlementName` 以维持排序字段映射与列配置持久化，取值改由 `formatter` 读 `row.settlement?.name`。 |
 | 2026-07-11 | `Refactor` | 侧边栏从独立顶级菜单迁入「财务管理」分组；路由定义移至 `settlement-management.ts`，path `/bank-statement` 不变。 | 删除独立 `bank-statement.ts` 模块文件，以嵌套子路由挂载在财务管理下。 |
