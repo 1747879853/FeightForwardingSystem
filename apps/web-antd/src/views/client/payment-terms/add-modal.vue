@@ -255,7 +255,7 @@ const handleBeforeUpload = async (file: UploadFile) => {
 
     const uploaded = mapResultToAttachment(resultList[0]);
     const newAttachment: BillingPeriodAdminApi.AttachmentItemDto = {
-      attachmentId: Number(uploaded.attachmentId),
+      attachmentId: uploaded.attachmentId,
       attachmentDtlTypeId: contractAttachmentDtlTypeId.value ?? undefined,
       clientVisible: false,
       displayOrder: attachments.value.length,

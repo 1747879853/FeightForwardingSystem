@@ -3,8 +3,8 @@ import { requestClient } from '#/api/request';
 export namespace ClientContactAdminApi {
   /** 对接人（用户）简易对象，字段见接口文档 0.1 */
   export interface UserSimpleDto {
-    /** 用户id */
-    id: number;
+    /** 用户id（雪花，字符串透传） */
+    id: number | string;
     /** 昵称（展示用这个） */
     nickName?: null | string;
     /** 英文名 */
@@ -63,7 +63,7 @@ export namespace ClientContactAdminApi {
     /** 是否禁用，默认 false */
     isDisabled?: boolean;
     /** 对接人id；不传/传 0/传 null = 不指定（所有人可见），传了必须是存在的用户 */
-    userId?: null | number;
+    userId?: null | number | string;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -106,7 +106,7 @@ export namespace ClientContactAdminApi {
     /** 是否禁用 */
     isDisabled?: boolean;
     /** 对接人id；传新id=改对接人，传 null/0=清空对接人（改回所有人可见） */
-    userId?: null | number;
+    userId?: null | number | string;
   }
 
   /** 联系人详情/列表输出 */
@@ -140,7 +140,7 @@ export namespace ClientContactAdminApi {
     /** 对账可用 */
     statementEnable: boolean;
     /** 对接人id，为空=不限定，所有人可见 */
-    userId?: null | number;
+    userId?: null | number | string;
     /** 对接人对象，userId 为空时为 null，展示用 user.nickName */
     user?: null | UserSimpleDto;
     isDeleted: boolean;
@@ -238,7 +238,7 @@ export namespace ClientContactAdminApi {
     /** 是否禁用 */
     isDisabled?: boolean;
     /** 对接人id；规则同新增/编辑 */
-    userId?: null | number;
+    userId?: null | number | string;
   }
 }
 

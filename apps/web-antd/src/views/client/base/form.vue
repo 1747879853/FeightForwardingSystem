@@ -16,7 +16,6 @@ import {
   Spin,
   Checkbox,
   CheckboxGroup,
-  Select,
   Tag,
 } from 'ant-design-vue';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
@@ -261,14 +260,9 @@ const formatBusinessTerm = (
  * 打开风鸟企业查询弹窗
  */
 const openRiskbirdSearch = async () => {
-  console.log('openRiskbirdSearch - 开始');
-
   // 获取当前表单中的全称
   const values = await baseFormApi.getValues();
   const fullName = values.fullName;
-
-  console.log('openRiskbirdSearch - fullName:', fullName);
-  console.log('openRiskbirdSearch - editId.value:', editId.value);
 
   if (!fullName) {
     message.warning('请先输入客户全称');
@@ -276,10 +270,6 @@ const openRiskbirdSearch = async () => {
   }
 
   // 设置搜索关键字为当前全称，并传入clientId（编辑模式用于回写）
-  console.log('准备打开弹窗，传递数据:', {
-    searchKeyword: fullName,
-    clientId: editId.value,
-  });
 
   riskbirdModalApi
     .setData({
@@ -287,8 +277,6 @@ const openRiskbirdSearch = async () => {
       clientId: editId.value, // 编辑模式传入clientId用于回写
     })
     .open();
-
-  console.log('弹窗已打开');
 };
 
 /**
@@ -301,36 +289,28 @@ const handleRiskbirdImport = async (
     // 构建要更新的字段
     const updateData: Record<string, any> = {};
 
-    console.log('开始导入风鸟数据:', detail);
-
     // 1. 统一社会信用代码 -> taxNo（新字段：creditCode）
     if (detail.creditCode) {
       updateData.taxNo = detail.creditCode;
-      console.log('导入税号:', detail.creditCode);
     } else if (detail.uniscid) {
       // 兼容旧字段
       updateData.taxNo = detail.uniscid;
-      console.log('导入税号(旧字段):', detail.uniscid);
     }
 
     // 2. 法定代表人 -> legalPerson（新字段：legalPerson）
     if (detail.legalPerson) {
       updateData.legalPerson = detail.legalPerson;
-      console.log('导入法人:', detail.legalPerson);
     } else if (detail.personName) {
       // 兼容旧字段
       updateData.legalPerson = detail.personName;
-      console.log('导入法人(旧字段):', detail.personName);
     }
 
     // 3. 注册资本 -> registeredCapital（新字段：raw.regCap）
     if (detail.raw?.regCap) {
       updateData.registeredCapital = detail.raw.regCap;
-      console.log('导入注册资本:', detail.raw.regCap);
     } else if (detail.regConcat) {
       // 兼容旧字段
       updateData.registeredCapital = detail.regConcat;
-      console.log('导入注册资本(旧字段):', detail.regConcat);
     }
 
     // 4. 成立日期 -> establishmentDate（新字段：raw.esDate）
@@ -339,7 +319,6 @@ const handleRiskbirdImport = async (
       const establishmentDate = parseRiskbirdDate(esDate);
       if (establishmentDate) {
         updateData.establishmentDate = dayjs(establishmentDate);
-        console.log('导入成立日期:', establishmentDate);
       }
     }
 
@@ -359,66 +338,45 @@ const handleRiskbirdImport = async (
       if (fromDate) {
         const businessTerm = `${fromDate} 至 ${toDate}`;
         updateData.businessTerm = businessTerm;
-        console.log(
-          '导入营业期限:',
-          businessTerm,
-          '(from:',
-          operateFrom,
-          ', to:',
-          operateTo,
-          ')',
-        );
       }
     }
 
     // 6. 注册地址 -> address（新字段：address）
     if (detail.address) {
       updateData.address = detail.address;
-      console.log('导入地址:', detail.address);
     } else if (detail.dom || detail.regAddr) {
       // 兼容旧字段
       updateData.address = detail.dom || detail.regAddr;
-      console.log('导入地址(旧字段):', detail.dom || detail.regAddr);
     }
 
     // 7. 英文名称 -> enName
     if (detail.raw?.entNameEn || detail.enterpriseNameEng) {
       updateData.enName = detail.raw?.entNameEn || detail.enterpriseNameEng;
-      console.log(
-        '导入英文名称:',
-        detail.raw?.entNameEn || detail.enterpriseNameEng,
-      );
     }
 
     // 8. 电话 -> phone（新字段：phone）
     if (detail.phone) {
       updateData.phone = detail.phone;
-      console.log('导入电话:', detail.phone);
     } else if (detail.tel) {
       // 兼容旧字段
       updateData.phone = detail.tel;
-      console.log('导入电话(旧字段):', detail.tel);
     }
 
     // 9. 官网 -> url
     if (detail.website) {
       updateData.url = detail.website;
-      console.log('导入官网:', detail.website);
     }
 
     // 10. 邮箱 -> email
     if (detail.email) {
       updateData.email = detail.email;
-      console.log('导入邮箱:', detail.email);
     }
 
     // 11. 名称 -> name
     if (detail.name) {
       //updateData.name = detail.name;
       updateData.fullName = detail.name; // 同步更新全称
-      console.log('导入名称:', detail.name);
     }
-    console.log('准备更新的字段:', updateData);
 
     // 更新基础信息表单
     if (Object.keys(updateData).length > 0) {
@@ -461,8 +419,6 @@ const handleRiskbirdImport = async (
         remark: '',
       };
 
-      console.log('导入地址信息:', newAddress);
-
       // 如果设置为默认地址，先取消其他地址的默认状态
       if (shouldSetDefault) {
         addressList.value.forEach((item) => {
@@ -472,7 +428,6 @@ const handleRiskbirdImport = async (
 
       // 添加地址到列表
       addressList.value.push(newAddress);
-      console.log('地址已添加到列表，当前地址数量:', addressList.value.length);
 
       //message.success('地址信息导入成功');
     }
@@ -559,7 +514,6 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   industryCategoriesArray = industryCategoriesArray.filter(
     (item, index) => industryCategoriesArray.indexOf(item) === index,
   );
-  console.log('industryCategoriesArray', industryCategoriesArray);
   // 区分客户和供应商的行业类别
   const isCustomer = detail.isClient;
   const isSupplierDetail = detail.isSupplier;
@@ -703,9 +657,7 @@ const loadEditData = async () => {
     pageLoading.value = false;
   }
 };
-const handleClientTypeChange = (checkedValues: any[]) => {
-  console.log('handleClientTypeChange', checkedValues);
-};
+const handleClientTypeChange = (checkedValues: any[]) => {};
 
 const handleIsClientChange = (e: any) => {
   const checked = e.includes(1);
@@ -714,8 +666,6 @@ const handleIsClientChange = (e: any) => {
     // 取消客户类型时，清空客户的行业类别选择
     customerType.value = [];
   }
-  console.log('isClient.value', isClient.value);
-  console.log('customerType.value', customerType.value);
 };
 
 const handleIsSupplierChange = (e: any) => {
@@ -725,8 +675,6 @@ const handleIsSupplierChange = (e: any) => {
     // 取消供应商类型时，清空供应商的行业类别选择
     supplierType.value = [];
   }
-  console.log('isSupplier.value', isSupplier.value);
-  console.log('supplierType.value', supplierType.value);
 };
 
 /**
@@ -794,14 +742,6 @@ const updateStakeholders = async (
             await baseFormApi.setValues({
               orgId: companyOrg.id,
             });
-
-            console.log(
-              '✅ [销售联动] 已自动设置所属公司为:',
-              companyOrg.name,
-              '(ID:',
-              companyOrg.id,
-              ')',
-            );
           } else {
             console.warn(
               '⚠️ [销售联动] 该销售人员的默认组织路径中未找到公司节点',
@@ -926,13 +866,6 @@ const handleSubmit = async () => {
     // 如果是客户类型，额外校验客户性质是否已选择
     if (isClient.value) {
       const clientValuesCheck = await clientFormApi.getValues();
-      console.log('🔍 客户表单值:', clientValuesCheck);
-      console.log(
-        '🔍 clientType 值:',
-        clientValuesCheck.clientType,
-        '类型:',
-        typeof clientValuesCheck.clientType,
-      );
 
       if (
         clientValuesCheck.clientType === undefined ||
@@ -946,7 +879,6 @@ const handleSubmit = async () => {
         });
         return;
       }
-      console.log('✅ 客户性质已选择:', clientValuesCheck.clientType);
     }
 
     // 【新增】校验客户属性和供应商属性的必填规则
@@ -995,15 +927,6 @@ const handleSubmit = async () => {
       ? await supplierFormApi.getValues()
       : {};
 
-    console.log('📋 表单值汇总:', {
-      baseValues,
-      businessValues,
-      clientValues,
-      supplierValues,
-      isClient: isClient.value,
-      isSupplier: isSupplier.value,
-    });
-
     let createdId: any;
 
     // 处理行业类别：将数组转换为字符串
@@ -1013,9 +936,6 @@ const handleSubmit = async () => {
         ...(supplierType.value || []),
       ]),
     ].join('');
-    console.log('customerType.value', customerType.value);
-    console.log('supplierType.value', supplierType.value);
-    console.log('industryCategories', industryCategories);
 
     // 构建地址列表（编辑模式保留id，新增模式不包含id）
     const addresses = addressList.value.map((item) => {
@@ -1258,13 +1178,6 @@ const handleSubmit = async () => {
         reconcilerUserIds: reconcilerUserIds.value,
       };
 
-      console.log('新增模式提交数据:', {
-        clientType: addData.clientType,
-        isClient: addData.isClient,
-        name: addData.name,
-        fullName: addData.fullName,
-      });
-
       const createdId = await addClient(addData);
       //const createdId = (payload as any)?.result;
       if (createdId) {
@@ -1502,8 +1415,6 @@ const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
     }
     return item;
   });
-
-  console.log('edit-addressList.value', addressList.value);
 };
 
 /**
@@ -1566,11 +1477,7 @@ onMounted(() => {
   // 在表单初始化后，为fullName字段添加onChange监听和查询按钮
   // 使用setTimeout确保表单完全渲染后再添加按钮
   setTimeout(() => {
-    console.log('isEdit.value:', isEdit.value);
-    console.log('editId.value:', editId.value);
-
     if (!isEdit.value) {
-      console.log('新增模式：添加风鸟查询按钮');
       baseFormApi.updateSchema([
         {
           fieldName: 'fullName',
@@ -1593,14 +1500,12 @@ onMounted(() => {
             onChange: (e: any) => {
               const newFullName = e.target?.value || '';
               currentFullName.value = newFullName;
-              console.log('newFullName', newFullName);
             },
           },
         },
       ]);
     } else {
       // 编辑模式也添加查询按钮，但不需要onChange监听
-      console.log('编辑模式：添加风鸟查询按钮');
       baseFormApi.updateSchema([
         {
           fieldName: 'fullName',

@@ -4,7 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 
 import { $t } from '#/locales';
 import { createClientSelectSchema } from '#/views/client/base/data';
-import { BusinessTypeOptions } from '#/views/client/payment-terms/data/';
+import { BusinessTypeOptions } from '#/utils/business-type-options';
 
 const getFeeLockedOptions = () => [
   {

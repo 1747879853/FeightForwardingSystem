@@ -6,7 +6,7 @@ import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-adm
 import dayjs from 'dayjs';
 
 import { $t } from '#/locales';
-import { BusinessTypeOptions } from '#/views/client/payment-terms/data';
+import { BusinessTypeOptions } from '#/utils/business-type-options';
 import { getFeeStatusOptions } from '#/views/sea-export-admin/orderFee/data';
 
 /** 费用审核状态（列表筛选项） */
@@ -193,7 +193,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'changeOrder.reason',
       title: '更改原因',
       minWidth: 150,
-      formatter: ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+      formatter: ({
+        row,
+      }: {
+        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
+      }) => {
         if (!row.changeOrderId && !row.changeOrder) return '--';
         return row.changeOrder?.reason || '--';
       },
@@ -212,7 +216,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.POLPortName',
       title: $t('seaExport.export.polId'),
       minWidth: 100,
-      formatter: ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+      formatter: ({
+        row,
+      }: {
+        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
+      }) => {
         const to = row.transportOrder;
         if (to?.bizType === 0) return to.seaExport?.pol?.portName || '--';
         if (to?.bizType === 1) return to.seaImport?.pol?.portName || '--';
@@ -224,7 +232,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.PODPortName',
       title: $t('seaExport.export.podId'),
       minWidth: 100,
-      formatter: ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+      formatter: ({
+        row,
+      }: {
+        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
+      }) => {
         const to = row.transportOrder;
         if (to?.bizType === 0) return to.seaExport?.pod?.portName || '--';
         if (to?.bizType === 1) return to.seaImport?.pod?.portName || '--';
@@ -236,7 +248,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.seaExportVessel',
       title: $t('seaExport.export.vessel'),
       minWidth: 100,
-      formatter: ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+      formatter: ({
+        row,
+      }: {
+        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
+      }) => {
         const to = row.transportOrder;
         if (to?.bizType === 0) return to.seaExport?.carrier?.code || '--';
         if (to?.bizType === 1) return to.seaImport?.carrier?.code || '--';
@@ -258,7 +274,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.codePackageName',
       title: $t('seaExport.export.orderCodeGoodss'),
       minWidth: 100,
-      formatter: ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+      formatter: ({
+        row,
+      }: {
+        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
+      }) => {
         return row.transportOrder?.codePackage?.name || '--';
       },
     },

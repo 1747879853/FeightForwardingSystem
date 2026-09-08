@@ -14,7 +14,7 @@ import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
-import { BusinessTypeOptions } from '#/views/client/payment-terms/data';
+import { BusinessTypeOptions } from '#/utils/business-type-options';
 
 export interface ArApReviewFilterModel {
   bizType?: number;

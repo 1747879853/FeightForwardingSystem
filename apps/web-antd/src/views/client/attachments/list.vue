@@ -400,7 +400,7 @@ const handleBeforeUpload = async (
       id: clientId.value,
       attachments: [
         {
-          attachmentId: Number(uploaded.attachmentId),
+          attachmentId: uploaded.attachmentId,
           attachmentDtlTypeId: group.attachmentDtlTypeId ?? undefined,
           displayOrder: group.items.length,
           url: uploaded.url,
