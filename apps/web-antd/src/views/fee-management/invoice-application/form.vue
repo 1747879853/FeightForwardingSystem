@@ -43,8 +43,8 @@ import {
 } from '#/utils/list-refresh-flag';
 
 // 导入子组件
-import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
-import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
+import RemarkTemplateModal from '#/views/_shared/invoice-remark-template/RemarkTemplateModal.vue';
+import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/SelectRemarkTemplateModal.vue';
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import ClientInvoiceInfoSelector from './components/ClientInvoiceInfoSelector.vue';
@@ -165,12 +165,7 @@ const {
   totalAppliedAmount,
   hasAmountDifference,
   foreignCurrencyAmount,
-} = useComputed(
-  goodsDetails,
-  formData,
-  invoiceExchangeRate,
-  selectedCurrencyCode,
-);
+} = useComputed(goodsDetails, formData, invoiceExchangeRate);
 
 const { submitLoading, handleSubmit, handleDirectSubmit, handleCancel } =
   useSubmit(formData, goodsDetails, isEdit, editId);
@@ -193,7 +188,6 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   orgBankAccounts, // ✅ 传递销售方银行账号列表，用于替换占位符
   (ids: string[]) => {
     // ✅ 新增开票申请成功后的回调 - 打开所有开票申请的tab页
-    console.log('✅ 开票申请创建成功，IDs:', ids);
 
     if (ids && ids.length > 0) {
       const createTabKey = route.fullPath;
@@ -214,7 +208,6 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
               router.push({
                 path: `/fee-management/invoice-application/${id}/edit`,
               });
-              console.log('📑 已打开开票申请tab:', id);
             });
           }, 300); // 延迟300ms，确保第一个tab已经打开
         }
@@ -243,7 +236,6 @@ const { loadDetail } = useLoadDetail(
 
 // ✅ 新增：处理费用明细刷新（删除后重新加载）
 async function handleFeeDetailRefresh() {
-  console.log('🔄 费用明细已删除，重新加载数据...');
   if (editId.value) {
     // 先关闭弹窗
     feeDetailModalVisible.value = false;
@@ -252,9 +244,7 @@ async function handleFeeDetailRefresh() {
     await loadDetail();
 
     // ✅ 关键修复：删除费用后，根据剩余的费用重新生成商品明细
-    console.log('🔄 开始重新计算商品明细...');
     await recalculateGoodsDetails();
-    console.log('✅ 商品明细重新计算完成');
 
     // 重新构建费用明细数据
     const items = formData.value.invoiceApplicationItems || [];
@@ -428,7 +418,6 @@ async function handleOpenFeeDetailModal() {
             if (f.id === `parent_${orderId}`) return true;
             return false;
           });
-          console.log('parentFee', parentFee);
           if (parentFee) {
             const parentNode: any = {
               id: parentFee.id,
@@ -504,13 +493,11 @@ function handleOpenSelectRemarkTemplateModalWrapper() {
 async function loadDefaultRemarkTemplate() {
   // 检查是否有必要的参数
   if (!formData.value.orgId || !formData.value.currencyId) {
-    console.log('⚠️ 缺少归属组织或币别ID，无法加载默认备注模板');
     return;
   }
 
   // 如果备注字段已经有内容，不覆盖用户已输入的内容
   if (formData.value.remark && formData.value.remark.trim()) {
-    console.log('⚠️ 备注字段已有内容，跳过自动填充');
     return;
   }
 
@@ -527,7 +514,6 @@ async function loadDefaultRemarkTemplate() {
       formData.value.remark = template;
       message.success('已自动应用默认备注模板');
     } else {
-      console.log('ℹ️ 未找到默认备注模板');
     }
   } catch (error) {
     console.error('加载默认备注模板失败:', error);

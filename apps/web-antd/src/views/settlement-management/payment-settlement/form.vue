@@ -87,6 +87,8 @@ const clientInvoiceBankId = ref<string | undefined>(undefined);
 const clientBankName = ref('');
 const clientBankAccount = ref('');
 const transactionFee = ref<number | undefined>(undefined);
+/** 手续费币别（默认可跟结算币别，允许单独改） */
+const transactionFeeCurrencyId = ref<number | undefined>(undefined);
 const remark = ref('');
 const attachments = ref<Attachment[]>([]);
 // 付费申请附件列表（只读展示）
@@ -138,25 +140,28 @@ const applicationItems = ref<
 // ✅ 选中的行 keys（用于批量删除）
 const selectedRowKeys = ref<string[]>([]);
 
-// 计算是否已有费用
+// ✅ 计算是否已有费用
 const hasExistingFees = computed(() => applicationItems.value.length > 0);
 
-// ✅ 计算结算总金额（所有申请明细的 settledPrice 总和）
+/** 已在结算单中的「申请+原币」行 key，供选择抽屉禁用已选组合 */
+const existingSettlementRowKeys = computed(() =>
+  applicationItems.value
+    .map((item) => item.rowKey)
+    .filter((key): key is string => !!key),
+);
+
+// 结算总金额：仅各「申请+原币」行 settledPrice 之和，不含手续费
 const totalSettledAmount = computed(() => {
-  let total = applicationItems.value.reduce((sum, item) => {
+  return applicationItems.value.reduce((sum, item) => {
     return sum + (item.settledPrice || 0);
   }, 0);
+});
 
-  console.log('💰 结算总金额计算:', {
-    申请明细数量: applicationItems.value.length,
-    '各项 settledPrice': applicationItems.value.map((item) => ({
-      applicationNo: item.applicationNo,
-      settledPrice: item.settledPrice,
-    })),
-    总金额: total,
-  });
-  total = total + (transactionFee.value ?? 0);
-  return total;
+/** 结算币别确定后，手续费币别为空则默认跟随 */
+watch(currencyId, (id) => {
+  if (id != null && transactionFeeCurrencyId.value == null) {
+    transactionFeeCurrencyId.value = id;
+  }
 });
 
 // 抽屉引用
@@ -340,6 +345,7 @@ async function handleCreateSettlementAndRedirect(
       orgBankAccountId: undefined,
       clientInvoiceBankId: undefined,
       transactionFee: 0,
+      transactionFeeCurrencyId: selectedCurrencyId,
       remark: '',
       paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段，包含 settledPrice
       attachments: attachments.value.map((a, idx) => ({
@@ -556,6 +562,7 @@ async function handleSave() {
         orgBankAccountId: orgBankAccountId.value,
         clientInvoiceBankId: clientInvoiceBankId.value,
         transactionFee: transactionFee.value,
+        transactionFeeCurrencyId: transactionFeeCurrencyId.value,
         remark: remark.value,
         // paymentSettlementRates 已删除，汇率由后端从付费申请获取
         attachments: attachments.value.map((a, idx) => ({
@@ -641,6 +648,8 @@ async function loadEditData() {
     currencyId.value = detail.currencyId;
     currencyCode.value = detail.currency?.code || '';
     transactionFee.value = detail.transactionFee;
+    transactionFeeCurrencyId.value =
+      detail.transactionFeeCurrencyId ?? detail.currencyId;
     remark.value = detail.remark || '';
 
     console.log('✅ 基本信息赋值完成');
@@ -651,8 +660,15 @@ async function loadEditData() {
     // detail.paymentSettlementRates 已删除，汇率信息现在在每个 paymentApplicationCurrencies 行的 rate 字段中
     // rateList 已不再使用，无需清空
 
-    // ✅ 从详情接口加载申请明细（新的二级结构：paymentApplicationCurrencies）
-    applicationItems.value = detail.paymentApplicationCurrencies || [];
+    // ✅ 从详情接口加载申请明细（按「申请+原币」扁平行）
+    applicationItems.value = (detail.paymentApplicationCurrencies || []).map(
+      (item) => ({
+        ...item,
+        rowKey:
+          item.rowKey ||
+          `${item.paymentApplicationId}_${item.originalCurrencyId}`,
+      }),
+    );
 
     console.log('✅ 申请明细赋值完成');
     console.log('applicationItems 数量:', applicationItems.value.length);
@@ -1043,7 +1059,7 @@ onMounted(() => {
               <Input :value="currentUserName" disabled />
             </div>
 
-            <!-- 手续费（汇率设置已移除：2026-08-10起，汇率由后端从付费申请自动获取） -->
+            <!-- 手续费 + 币别 -->
             <div class="form-item form-col-3">
               <div class="form-label">手续费</div>
               <div class="fee-row">
@@ -1052,9 +1068,14 @@ onMounted(() => {
                   placeholder="0.00"
                   :min="0"
                   :precision="2"
-                  style="flex: 1"
+                  style="flex: 1; min-width: 0"
                 />
-                <span class="fee-unit">RMB</span>
+                <CurrencySelect
+                  v-model="transactionFeeCurrencyId"
+                  placeholder="币别"
+                  allow-clear
+                  class="fee-currency"
+                />
               </div>
             </div>
 
@@ -1251,7 +1272,7 @@ onMounted(() => {
         :settlement-id="settlementId"
         :currency-id="currencyId"
         :has-existing-fees="hasExistingFees"
-        :existing-application-ids="[]"
+        :existing-row-keys="existingSettlementRowKeys"
         @confirm="handleConfirmApplications"
       />
     </div>
@@ -1516,7 +1537,7 @@ onMounted(() => {
   color: #ff9b54;
 }
 
-/* 手续费：输入框 + 币种单位 */
+/* 手续费：金额 + 币别选择 */
 .fee-row {
   display: flex;
   flex: 1;
@@ -1525,10 +1546,9 @@ onMounted(() => {
   min-width: 0;
 }
 
-.fee-unit {
-  font-size: 12px;
-  color: #8c95a3;
-  white-space: nowrap;
+.fee-currency {
+  flex-shrink: 0;
+  width: 110px;
 }
 
 /* ==================== 附件卡片 ==================== */

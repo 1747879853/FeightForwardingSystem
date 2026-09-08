@@ -33,6 +33,11 @@ defineOptions({
   name: 'ReportHotTable',
 });
 
+/** 与 CSS 行高一致，供 Handsontable rowHeights 使用 */
+const REPORT_ROW_HEIGHT = 32;
+/** cells() 普通行复用，避免每次 new 对象 */
+const EMPTY_CELL_PROPS = Object.freeze({});
+
 // Props and emits
 const props = defineProps<{
   originalData: Record<string, any>[];
@@ -281,27 +286,49 @@ const hotSettings = computed(() => {
   // const fixedColumnsLeft = leftFixedColumns.length;
   // const fixedColumnsRight = rightFixedColumns.length;
 
+  // 列定义快照：供 colHeaders / cells 闭包使用，避免滚动时反复读 props
+  const columnsForSettings = visibleColumns.map((col) => {
+    const isNumeric = numericColumns.value.has(col.data);
+    return {
+      ...col,
+      // 数值列右对齐；非数值列优先保留列配置自带的 className（如 htRight）
+      className: isNumeric ? 'htRight' : col.className || 'htLeft',
+      // 固定宽度，避免 autoColumnSize / stretchH 在横向滚动时反复测宽
+      width: col.width || 150,
+    };
+  });
+
   return {
     data: tableData.value,
-    columns: visibleColumns.map((col) => {
-      const isNumeric = numericColumns.value.has(col.data);
-      return {
-        ...col,
-        // 数值列右对齐；非数值列优先保留列配置自带的 className（如 htRight）
-        className: isNumeric ? 'htRight' : col.className || 'htLeft',
-        // ✅ 分组时确保每列都有明确的宽度，防止自适应
-        width:
-          col.width || (localGroupColumns.value.length > 0 ? 150 : undefined),
-      };
-    }),
+    columns: columnsForSettings,
     rowHeaders: true,
-    colHeaders: true,
+    // 排序箭头写进表头文案，避免 afterGetColHeader 里对 textContent 做 replace
+    colHeaders: (col: number) => {
+      const colConfig = columnsForSettings[col];
+      if (!colConfig) return '';
+      const title = colConfig.title || '';
+      const data = colConfig.data;
+      if (
+        data &&
+        data !== '_groupDisplay' &&
+        sortState.value?.column === data
+      ) {
+        return `${title} ${sortState.value.order === 'asc' ? '▲' : '▼'}`;
+      }
+      return title;
+    },
     height: '100%', // 使用百分比高度，配合 CSS 实现自适应
     width: '100%',
-    // ✅ 分组时禁用 stretchH，防止列宽度根据内容自适应
-    stretchH: localGroupColumns.value.length > 0 ? 'none' : 'all',
+    // 固定列宽场景下禁用拉伸，减少横向滚动时的布局计算
+    stretchH: 'none',
     manualColumnResize: true,
-    manualRowResize: true,
+    manualRowResize: false,
+    autoColumnSize: false,
+    autoRowSize: false,
+    renderAllRows: false,
+    // 预渲染少量行列，降低竖/横滚时离屏绘制量
+    viewportColumnRenderingOffset: 6,
+    viewportRowRenderingOffset: 8,
 
     // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
     manualColumnMove: true,
@@ -417,119 +444,78 @@ const hotSettings = computed(() => {
     readOnly: true,
     licenseKey: 'non-commercial-and-evaluation',
     className: 'htCenter htMiddle',
-    rowHeight: 28,
+    // 固定行高：避免滚动时测高；与 CSS 中 td/行头高度保持一致
+    rowHeights: REPORT_ROW_HEIGHT,
     autoWrapRow: false,
     autoWrapCol: false,
 
     // ✅ 移除固定列以提高滚动性能
-    fixedColumnsLeft: 0, // Math.min(fixedColumnsLeft, visibleColumns.length - 1), // 确保不超过总列数
-    fixedColumnsRight: 0, // Math.min(
-    // fixedColumnsRight,
-    // visibleColumns.length - fixedColumnsLeft,
-    // ),
+    fixedColumnsLeft: 0,
+    fixedColumnsRight: 0,
 
-    afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-      TH.style.backgroundColor = '#1890ff';
-      TH.style.color = '#ffffff';
-      TH.style.fontWeight = '600';
-      TH.style.textAlign = 'center';
-
-      // ✅ 如果是分组列或序号列，不显示任何特殊功能
-      const isGroupColumn = localGroupColumns.value.length > 0 && col === 0;
-      const isRowHeaderColumn = col === -1; // Handsontable 的序号列索引为 -1
-
-      if (isGroupColumn || isRowHeaderColumn) {
-        TH.style.cursor = 'default';
-        TH.title = '';
-        return;
-      }
-
-      // ✅ 移除拖拽手柄创建逻辑，只保留提示信息
-      TH.style.position = 'relative';
-
-      // 提示用户可以使用排序和右键菜单功能
-      TH.style.cursor = 'pointer';
-      TH.title = '左键单击排序 | 右键菜单可进行分组操作';
-
-      // 排序指示箭头：先移除可能残留的指示，避免多次渲染时重复累积
-      TH.textContent = TH.textContent
-        .replaceAll('▲', '')
-        .replaceAll('▼', '')
-        .trimEnd();
-      const colConfig = currentColumnsRef.value[col];
-      const currentSort = sortState.value;
-      if (colConfig?.data && currentSort?.column === colConfig.data) {
-        TH.textContent = `${TH.textContent} ${
-          currentSort?.order === 'asc' ? '▲' : '▼'
-        }`;
-      }
-    },
-    //afterOnCellMouseDown: onAfterOnCellMouseDown,
-    afterDblClick: onAfterOnCellDblClick, // 添加双击事件处理
-    // 列头左键单击：自定义排序（排序作用于原始数据源，合计行始终保持在最后一行）
-    afterOnCellMouseDown: (event: MouseEvent, coords: any) => {
-      if (event?.button === 0 && coords?.row === -1 && coords?.col >= 0) {
-        handleColumnHeaderClick(coords.col);
-      }
-    },
-    // 添加单元格渲染后的事件处理（用于分组列的点击和悬浮提示）
-    afterRenderer: (
-      TD: HTMLTableCellElement,
-      row: number,
-      col: number,
-      _prop: string,
-      value: any,
-      _cellProperties: any,
-    ) => {
+    // 合计/分组行样式走 className；普通数据行快速返回空对象
+    cells: (row: number, col: number) => {
+      if (row == null || row < 0) return EMPTY_CELL_PROPS;
       const rowData = tableData.value[row];
+      if (!rowData) return EMPTY_CELL_PROPS;
 
-      // 为合计行添加data属性
-      if (rowData?._isTotalRow) {
-        if (!TD.parentElement?.hasAttribute('data-total-row')) {
-          TD.parentElement?.setAttribute('data-total-row', 'true');
-        }
-        if (TD.style.fontWeight !== 'bold') {
-          TD.style.fontWeight = 'bold';
-        }
-        // 合计行背景色设在 td 上（而非仅 tr）：td 在滚动渲染中会被复用，
-        // 若不显式设置，样式会残留到数据行或丢失，造成视觉重叠
-        if (TD.style.backgroundColor !== '#f0f0f0') {
-          TD.style.backgroundColor = '#f0f0f0';
-        }
+      let rowClass = '';
+      if (rowData._isTotalRow) {
+        rowClass = 'report-total-cell';
+      } else if (rowData._isGroupRow) {
+        rowClass =
+          columnsForSettings[col]?.data === '_groupDisplay'
+            ? 'report-group-cell report-group-label'
+            : 'report-group-cell';
+      } else if (rowData._isDetailRow) {
+        rowClass = 'report-detail-cell';
+      } else {
+        return EMPTY_CELL_PROPS;
+      }
+
+      const base = columnsForSettings[col]?.className || '';
+      return { className: base ? `${base} ${rowClass}` : rowClass };
+    },
+
+    afterDblClick: onAfterOnCellDblClick,
+    // 列头排序 + 分组行展开（事件委托，避免分组列 renderer 反复绑 click）
+    afterOnCellMouseDown: (event: MouseEvent, coords: any) => {
+      if (event?.button !== 0) return;
+      if (coords?.row === -1 && coords?.col >= 0) {
+        handleColumnHeaderClick(coords.col);
         return;
       }
-
-      // 单元格复用清理：非分组行清除合计行残留的背景色，避免滚动时样式错位
-      if (!rowData?._isGroupRow && TD.style.backgroundColor) {
-        TD.style.backgroundColor = '';
-      }
-
-      // ✅ 优化：只在必要时设置 title
-      const cellValue = value?.toString() || '';
-      if (cellValue && cellValue !== '-' && cellValue.trim() !== '') {
-        if (TD.title !== cellValue) {
-          TD.title = cellValue;
-        }
-      } else if (TD.title) {
-        TD.title = '';
-      }
-
-      // 移除分组列的点击事件处理（现在在renderer中处理）
-      if (col === 0 && localGroupColumns.value.length > 0) {
-        if (rowData?._isGroupRow) {
-          if (TD.style.cursor !== 'pointer') {
-            TD.style.cursor = 'pointer';
-          }
-          // 点击事件现在在renderer中处理，这里不再处理
-        } else if (TD.style.cursor === 'pointer') {
-          TD.style.cursor = 'default';
-        }
-      } else if (
-        TD.style.cursor === 'pointer' &&
-        !(rowData?._isGroupRow && col === 0)
+      if (
+        coords?.row >= 0 &&
+        coords?.col === 0 &&
+        localGroupColumns.value.length > 0
       ) {
-        TD.style.cursor = 'default';
+        const rowData = tableData.value[coords.row];
+        if (rowData?._isGroupRow && rowData._groupKey) {
+          toggleGroupExpand(rowData._groupKey);
+        }
       }
+    },
+    // title 推迟到悬停，避免每个可见单元格在滚动渲染时写 DOM 属性
+    afterOnCellMouseOver: (
+      _event: MouseEvent,
+      coords: { row: number; col: number },
+      TD: HTMLTableCellElement,
+    ) => {
+      if (coords.row < 0 || coords.col < 0) return;
+      const value =
+        tableData.value[coords.row]?.[columnsForSettings[coords.col]?.data];
+      const cellValue = value == null ? '' : String(value);
+      if (cellValue && cellValue !== '-' && cellValue.trim() !== '') {
+        TD.title = cellValue;
+      }
+    },
+    afterOnCellMouseOut: (
+      _event: MouseEvent,
+      _coords: { row: number; col: number },
+      TD: HTMLTableCellElement,
+    ) => {
+      if (TD.title) TD.title = '';
     },
     // ✅ 添加右键菜单事件处理，捕获点击位置
     afterOnCellContextMenu: (_event: MouseEvent, coords: any) => {
@@ -767,13 +753,13 @@ onUnmounted(() => {
   // document.querySelector('.group-area-tags')?.classList.remove('sortable-over');
 });
 
-// 创建分组列配置
+// 创建分组列配置（轻量 renderer：无 innerHTML / inline style / 事件绑定）
 function createGroupColumn() {
   return {
     data: '_groupDisplay',
     title: '分组',
     width: 250,
-    className: 'htLeft', // 分组列左对齐
+    className: 'htLeft',
     renderer: (
       _instance: any,
       td: HTMLTableCellElement,
@@ -784,75 +770,28 @@ function createGroupColumn() {
       _cellProperties: any,
     ) => {
       const rowData = tableData.value[row];
-      if (rowData?._isTotalRow) {
-        // 合计行：显示「合计」并保持与合计行一致的背景色
-        td.innerHTML = '合计';
-        td.style.backgroundColor = '#f0f0f0';
-        td.style.fontWeight = 'bold';
-        td.style.cursor = 'default';
-
-        const existingHandler = (td as any)._groupClickHandler;
-        if (existingHandler) {
-          td.removeEventListener('click', existingHandler);
-          delete (td as any)._groupClickHandler;
-        }
+      if (!rowData) {
+        td.textContent = '';
         return td;
       }
-
-      if (rowData?._isGroupRow) {
-        // 分组行：显示分组信息和展开/折叠图标
-        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(
-          rowData._groupLevel || 0,
-        );
-        const isExpanded = localExpandedGroups.value.has(rowData._groupKey);
-        const expandIcon = isExpanded ? 'v ​' : '> ';
-        td.innerHTML = `${indent}${expandIcon} <strong>${rowData._groupName}</strong>`;
-        td.style.backgroundColor = '#e6f7ff';
-        //td.style.fontWeight = 'bold';
-        td.style.cursor = 'pointer';
-
-        // ✅ 直接在renderer中处理点击事件，避免闭包问题
-        // 移除之前的事件处理器（如果存在）
-        const existingHandler = (td as any)._groupClickHandler;
-        if (existingHandler) {
-          td.removeEventListener('click', existingHandler);
-        }
-
-        // 创建新的点击处理器
-        const handleClick = () => {
-          toggleGroupExpand(rowData._groupKey);
-        };
-
-        // 绑定点击事件
-        td.addEventListener('click', handleClick);
-        (td as any)._groupClickHandler = handleClick;
-      } else if (rowData?._isDataRow) {
-        // 数据行：显示缩进
-        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(
-          (rowData._groupLevel || 0) + 1,
-        );
-        td.innerHTML = `${indent}•`;
-        td.style.backgroundColor = '#fafafa';
-        td.style.cursor = 'default';
-
-        // 移除可能存在的点击事件
-        const existingHandler = (td as any)._groupClickHandler;
-        if (existingHandler) {
-          td.removeEventListener('click', existingHandler);
-          delete (td as any)._groupClickHandler;
-        }
-      } else {
-        // 晧行
-        td.innerHTML = '';
-        td.style.cursor = 'default';
-
-        // 移除可能存在的点击事件
-        const existingHandler = (td as any)._groupClickHandler;
-        if (existingHandler) {
-          td.removeEventListener('click', existingHandler);
-          delete (td as any)._groupClickHandler;
-        }
+      if (rowData._isTotalRow) {
+        td.textContent = '合计';
+        return td;
       }
+      if (rowData._isGroupRow) {
+        const level = rowData._groupLevel || 0;
+        const icon = localExpandedGroups.value.has(rowData._groupKey)
+          ? '▼ '
+          : '▶ ';
+        td.textContent = `${'  '.repeat(level)}${icon}${rowData._groupName || ''}`;
+        return td;
+      }
+      if (rowData._isDataRow) {
+        const level = (rowData._groupLevel || 0) + 1;
+        td.textContent = `${'  '.repeat(level)}•`;
+        return td;
+      }
+      td.textContent = '';
       return td;
     },
   };
@@ -860,13 +799,6 @@ function createGroupColumn() {
 
 // 应用分组逻辑
 function applyGrouping(data: any[]) {
-  console.log(
-    '应用分组，分组列:',
-    localGroupColumns.value,
-    '数据长度:',
-    data.length,
-  );
-
   // ✅ 修复：缓存键必须包含展开状态，否则展开/折叠操作不会生效
   const expandedGroupsKey = Array.from(localExpandedGroups.value)
     .sort()
@@ -929,14 +861,10 @@ function applyGrouping(data: any[]) {
       ...item,
       _isDataRow: true,
     }));
-    console.log('无分组，显示原始数据');
   } else {
     // 构建树状结构
     const treeData = buildTreeStructure(data, localGroupColumns.value);
     tableData.value = treeData;
-
-    console.log('分组后的数据长度:', treeData.length);
-    console.log('前5条数据:', treeData.slice(0, 5));
   }
 
   // 添加合计行（只要有数据就显示）
@@ -950,19 +878,9 @@ function applyGrouping(data: any[]) {
     if (hotTableRef.value && hotTableRef.value.hotInstance) {
       try {
         hotTableRef.value.hotInstance.loadData(tableData.value);
-        // 强制重新渲染，确保折叠/展开操作正确显示
-        //hotTableRef.value.hotInstance.render();
-        // 不再手动更新列配置，由计算属性处理
-
-        console.log(
-          'Handsontable 更新完成，当前行数:',
-          hotTableRef.value.hotInstance.countRows(),
-        );
       } catch (error) {
         console.error('Handsontable 更新失败:', error);
       }
-    } else {
-      console.warn('HotTable 实例未找到');
     }
   });
 
@@ -2051,45 +1969,76 @@ function handleExport() {
 
     .htCore {
       td {
-        padding: 6px 2px;
+        box-sizing: border-box;
+        height: 32px;
+        padding: 4px 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         vertical-align: middle;
         white-space: nowrap;
-      }
-
-      tr:not([data-group-row='true']) td {
         cursor: pointer;
       }
 
+      td.report-total-cell {
+        font-weight: bold !important;
+        background-color: #f0f0f0 !important;
+      }
+
+      td.report-group-cell {
+        font-weight: bold;
+        cursor: pointer;
+        background-color: #fafafa29 !important;
+      }
+
+      td.report-group-label {
+        background-color: #e6f7ff !important;
+      }
+
+      td.report-detail-cell {
+        background-color: #fafafa29 !important;
+      }
+
+      td.report-days-early {
+        color: #52c41a;
+      }
+
+      td.report-days-due {
+        color: #faad14;
+      }
+
+      td.report-days-overdue {
+        color: #f5222d;
+      }
+
       th {
-        padding: 6px 4px;
+        box-sizing: border-box;
+        height: 32px;
+        padding: 4px;
         font-weight: 600;
         vertical-align: middle;
-        cursor: pointer; /* 默认指针，表示可点击排序 */
+        color: #fff;
+        text-align: center;
+        cursor: pointer;
+        background-color: #1890ff !important;
+      }
+
+      /* 序号列表头不可排序 */
+      thead th:first-child {
+        cursor: default;
       }
     }
 
-    /* 修复序号列与数据行垂直错位：Handsontable 渲染行头克隆层（ht_clone_inline_start）时
-       会按行高缓存强制给行头单元格设置 inline height（41px，含边框补偿），而主表行保持
-       自然高度（40.67px），每行累积 0.33px 偏差导致序号列与数据行不对齐；
-       让行头单元格高度自适应（与主表行一致），消除累积偏差 */
+    /* 固定行头高度与 rowHeights 对齐，避免 height:auto 在竖滚时反复测高 */
     .ht_clone_inline_start .htCore tbody th {
-      height: auto !important;
+      box-sizing: border-box;
+      height: 32px !important;
     }
 
-    :deep(tr[data-group-row='true']) {
-      font-weight: bold;
-      background-color: #fafafa29 !important;
-    }
-
-    :deep(tr[data-detail-row='true']) {
-      background-color: #fafafa29 !important;
-    }
-
-    :deep(tr[data-total-row='true']) {
-      font-weight: bold !important;
-      background-color: #f0f0f0 !important;
+    /* 克隆表头与主表头同色，避免横滚时露白 */
+    .ht_clone_top th,
+    .ht_clone_top_inline_start_corner th {
+      color: #fff;
+      background-color: #1890ff !important;
     }
   }
 }

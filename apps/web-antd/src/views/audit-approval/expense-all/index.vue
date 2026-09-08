@@ -1,15 +1,25 @@
 <script lang="ts" setup>
-import {
-  OrderFeeTaskBatchAudit,
-  ExpenseSubmissionAdminApi,
-} from '#/api/audit-approval/expense-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
-import { useRouter } from 'vue-router';
+
+import { onMounted, ref } from 'vue';
+
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+
+import {
+  Button,
+  DropdownButton,
+  Menu,
+  MenuItem,
+  message,
+} from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  getOrderFeeTaskList,
+  ExpenseSubmissionAdminApi,
   getOrderFeeTaskGroupedList,
+  getOrderFeeTaskList,
+  OrderFeeTaskBatchAudit,
 } from '#/api/audit-approval/expense-admin';
 import {
   GroupingSettings,
@@ -18,22 +28,10 @@ import {
 } from '#/components/list-grouping';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
-import { useExpenseAllColumns, useGridFormSchema } from '../data';
-import { Plus, ArrowDown, ArrowLeft } from '@vben/icons';
-import { IconifyIcon } from '@vben/icons';
-import { computed, onMounted, ref, h } from 'vue';
-import {
-  Button,
-  message,
-  DropdownButton,
-  Textarea,
-  MenuItem,
-  Menu,
-  Modal,
-} from 'ant-design-vue';
 
+import { openAuditRemarkConfirm } from '../composables/use-audit-remark-confirm';
+import { useExpenseAllColumns, useGridFormSchema } from '../data';
 import Detail from './modules/detail.vue';
-const router = useRouter();
 
 // ==================== 分组统计配置 ====================
 
@@ -109,24 +107,16 @@ const grouping = useListGrouping({
   fields: ORDER_FEE_TASK_GROUP_FIELDS,
   getGridApi: () => gridApi,
   fetchGroups: async (baseParams, field) => {
-    // 构建分组查询参数
     const groupParams: any = {
       ...baseParams,
       groupField: field as ExpenseSubmissionAdminApi.SeaExportGroupField,
     };
 
-    console.log(
-      '📊 [费用任务分组统计] 调用 getOrderFeeTaskGroupedList，参数:',
-      groupParams,
-    );
-
     const items = await getOrderFeeTaskGroupedList(groupParams);
-    console.log('📊 [费用任务分组统计] 返回结果:', items);
 
-    // ✅ 关键变更：处理港口分组的 isSea 字段，生成组合 Key
+    // 港口分组用 isSea_id 组合 key，避免海港/空港 ID 冲突
     return (items ?? []).map((item) => ({
       ...item,
-      // 如果是港口分组且 isSea 有值，则使用 isSea_id 作为 id，防止海港和空港 ID 冲突
       id:
         (field === ExpenseSubmissionAdminApi.SeaExportGroupField.POL ||
           field === ExpenseSubmissionAdminApi.SeaExportGroupField.POD) &&
@@ -140,13 +130,11 @@ const grouping = useListGrouping({
 
 // 默认按委托单位分组（在组件挂载后执行）
 onMounted(() => {
-  // 延迟执行，确保 gridApi 已初始化
   setTimeout(() => {
     const clientIdField = ORDER_FEE_TASK_GROUP_FIELDS.find(
       (field) => field.paramKey === 'ClientId',
     );
     if (clientIdField && !grouping.enabledField.value) {
-      console.log('📊 [默认分组] 自动启用委托单位分组');
       grouping.enableField(clientIdField.value as number);
     }
   }, 100);
@@ -172,8 +160,6 @@ const handleRowDblclick = ({
 }: {
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
-  console.log('row', row);
-  // 设置当前行为选中状态，显示选中色
   const grid = gridApi.grid as any;
   if (grid && grid.setRadioRow) {
     grid.setRadioRow(row);
@@ -184,7 +170,7 @@ const handleRowDblclick = ({
   const mblNum = row.transportOrder.mblNum || '--';
   orderName.value = `当前选中: ${mblNum}(${row.transportOrder.client?.name ?? ''})`;
 
-  // ✅ 关键变更：点行进详情时，必须把该行的 changeOrderId 原样回传
+  // 点行进详情时，必须把该行的 changeOrderId 原样回传
   if (detailRef.value) {
     detailRef.value.getTableDate(row.changeOrderId || null);
   }
@@ -225,14 +211,12 @@ const [Grid, gridApi] =
         ajax: {
           query: createPagedListQuery(getOrderFeeTaskList, {
             mapParams: (formValues) => {
-              // 每次查询前清空选中状态，确保费用明细列表不会显示旧数据
-              console.log('📋 [费用任务列表查询] 查询前清空选中状态');
+              // 每次查询前清空选中，避免费用明细残留旧数据
               clearSelectedOrder();
 
-              // 使用 grouping.decorateListParams 处理分组筛选条件
               let params = grouping.decorateListParams(formValues);
 
-              // ✅ 关键变更：处理港口分组的 isSea 参数回传
+              // 港口分组：把 isSea_id 拆回 IsSea + 真实港口 ID
               const field = grouping.enabledField.value;
               if (
                 field &&
@@ -252,14 +236,12 @@ const [Grid, gridApi] =
                       IsSea: isSea,
                       [field.paramKey]: realId,
                     };
-                    // 移除原始的 paramKey（如果 decorateListParams 已经添加了）
                     delete params[field.paramKey];
                     params[field.paramKey] = realId;
                   }
                 }
               }
 
-              console.log('📋 [费用任务列表查询] 查询参数:', params);
               return params;
             },
           }),
@@ -282,34 +264,25 @@ const onGroupFieldChange = (value: number | undefined) => {
   }
 };
 
-const SubmittedOther = async (key: any) => {
-  console.log('SubmittedOther', key);
+const SubmittedOther = async (key: string) => {
   showConfirmWithRemark(true, key);
 };
 
 const detailRef = ref<any>(null);
 
-/**
- * ✅ 关键变更：批量审核改用 items 参数，按行精确审核
- * @param approve - 是否通过
- * @param modalRemark - 审核备注
- * @param items - 要审核的行列表（包含 transportOrderId 和 changeOrderId）
- */
+/** 批量审核：按行精确传 items（transportOrderId + changeOrderId） */
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
   items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[],
 ) => {
-  let OrderFeeTaskBatchAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto =
-    {
-      success: approve,
-      remark: modalRemark,
-      items: items, // ✅ 使用 items 参数进行精确审核
-    };
+  const dto: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto = {
+    success: approve,
+    remark: modalRemark,
+    items,
+  };
 
-  console.log('📋 [批量审核] 审核参数:', OrderFeeTaskBatchAuditDto);
-
-  OrderFeeTaskBatchAudit(OrderFeeTaskBatchAuditDto).then(() => {
+  OrderFeeTaskBatchAudit(dto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
       key: 'action_process_msg',
@@ -322,32 +295,23 @@ const OrderFeeAudit = (
   });
 };
 
-/**
- * 审核选中的行
- */
 const selectPass = (approve: boolean, modalRemark: string) => {
-  let list =
+  const list =
     gridApi?.grid.getCheckboxRecords() as ExpenseSubmissionAdminApi.OrderFeeTaskListDto[];
 
-  // ✅ 构建 items 数组，包含 entityId 和 changeOrderId
   const items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[] =
     list.map((item) => ({
       transportOrderId: item.entityId || '',
       changeOrderId: item.changeOrderId || null,
     }));
 
-  console.log('📋 [选中审核] 选中的行:', items);
   OrderFeeAudit(approve, modalRemark, items);
 };
 
-/**
- * 审核所有行
- */
 const allPass = (approve: boolean, modalRemark: string) => {
-  let tableData = gridApi.grid.getTableData()
+  const tableData = gridApi.grid.getTableData()
     .tableData as ExpenseSubmissionAdminApi.OrderFeeTaskListDto[];
 
-  // ✅ 构建 items 数组，包含 entityId 和 changeOrderId
   const items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[] = (
     tableData ?? []
   ).map((item) => ({
@@ -355,36 +319,16 @@ const allPass = (approve: boolean, modalRemark: string) => {
     changeOrderId: item.changeOrderId || null,
   }));
 
-  console.log('📋 [全部审核] 所有行:', items);
   OrderFeeAudit(approve, modalRemark, items);
 };
-const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
-  let modalRemark = '';
-  // 创建弹窗实例
-  const modal = Modal.confirm({
+
+const showConfirmWithRemark = (approve = true, type = '') => {
+  openAuditRemarkConfirm({
     title: approve
       ? $t('auditApproval.task.okPass')
       : $t('auditApproval.task.noPass'),
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    async onOk() {
+    danger: !approve,
+    onConfirm: (modalRemark) => {
       switch (type) {
         case 'all': {
           allPass(approve, modalRemark);
@@ -396,16 +340,7 @@ const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
         }
       }
     },
-    onCancel() {
-      modalRemark = '';
-    },
   });
-};
-const getSelectedRow = ():
-  | ExpenseSubmissionAdminApi.OrderFeeTaskListDto
-  | undefined => {
-  const grid = gridApi.grid as any;
-  return grid?.getRadioRecord?.() ?? undefined;
 };
 
 const feeTableType = ref('horizontal');

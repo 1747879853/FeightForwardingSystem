@@ -135,7 +135,6 @@ const manageAttachments = (
   row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
 ) => {
   // 这里可以打开附件管理模态框或跳转到附件管理页面
-  console.log('Manage attachments for billing period:', row);
   AntModal.info({
     title: '附件管理',
     content: `账期ID: ${row.id} 的附件管理功能待开发`,
@@ -326,9 +325,7 @@ const [Grid, gridApi] =
         row,
       }: {
         row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto;
-      }) => {
-        console.log('单选选中:', row);
-      },
+      }) => {},
     },
   });
 

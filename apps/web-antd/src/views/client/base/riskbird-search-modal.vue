@@ -28,19 +28,15 @@ const detailLoading = ref(false);
  */
 const [Modal, modalApi] = useVbenModal({
   onOpenChange(isOpen) {
-    console.log('onOpenChange - isOpen:', isOpen);
-
     if (isOpen) {
       // 使用 modalApi.getData() 获取传递的数据
       const data = modalApi.getData<{
         searchKeyword?: string;
         clientId?: string;
       }>();
-      console.log('onOpenChange - data:', data);
 
       if (data?.searchKeyword) {
         // 弹窗打开时，自动执行搜索
-        console.log('准备执行搜索，关键字:', data.searchKeyword);
         nextTick(() => {
           handleSearch(data.searchKeyword || '');
         });
@@ -88,8 +84,6 @@ const formatBusinessTerm = (
  * 搜索企业
  */
 const handleSearch = async (keyword: string) => {
-  console.log('handleSearch - keyword:', keyword);
-
   if (!keyword) {
     message.warning('请输入搜索关键字');
     return;
@@ -100,17 +94,14 @@ const handleSearch = async (keyword: string) => {
   selectedCompanyDetail.value = null;
 
   try {
-    console.log('开始调用API，参数:', { Keyword: keyword, pageSize: 50 });
     const response = await searchCompanyAsync({
       Keyword: keyword,
       pageSize: 50,
     });
-    console.log('API响应:', response);
 
     // 后端直接返回 PagedList 结构 { items: [...] }，没有外层包装
     if (response?.items) {
       searchResults.value = response.items;
-      console.log('搜索结果数量:', searchResults.value.length);
 
       if (searchResults.value.length === 0) {
         message.info('未找到相关企业');

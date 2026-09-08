@@ -115,13 +115,6 @@ export function useFeeSelectionSave(
       existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
       existingItem.taxAmount =
         (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
-
-      console.log('✅ 商品明细金额已重新计算:', {
-        totalRmbAmount,
-        taxRate,
-        noTaxAmount: existingItem.noTaxAmount,
-        taxAmount: existingItem.taxAmount,
-      });
     } else {
       message.warning('商品明细与当前币别不匹配，请手动调整或重新填充');
     }
@@ -144,8 +137,6 @@ export function useFeeSelectionSave(
       invoiceExchangeRate: rate,
       feeGroupsData: groupsData,
     } = data;
-
-    console.log('✅ 收到费用选择数据:', selectedFees.length, '条费用');
 
     // 设置结算单位和币别
     formData.value.settlementId = settlementId;
@@ -188,9 +179,6 @@ export function useFeeSelectionSave(
 
       if (newGroups.length > 0) {
         feeGroupsData.value = [...feeGroupsData.value, ...newGroups];
-        console.log(
-          `✅ 已合并费用数据到 feeGroupsData: 新增 ${newGroups.length} 个订单组`,
-        );
       }
     }
 
@@ -212,24 +200,9 @@ export function useFeeSelectionSave(
     if (!isEdit) {
       // 新增状态：调用add方法创建开票申请
       try {
-        console.log('📋 新增前 - 当前表单数据状态:', {
-          orgId: formData.value.orgId,
-          settlementId: formData.value.settlementId,
-          currencyId: formData.value.currencyId,
-          invoiceType: formData.value.invoiceType,
-          orgBankAccountId: formData.value.orgBankAccountId,
-          clientInvoiceBankId: formData.value.clientInvoiceBankId,
-          require: formData.value.require,
-          remark: formData.value.remark,
-        });
-
         // ✅ 关键修复：先将费用添加到表单，确保 invoiceApplicationItems 有数据
         // 这样 loadDefaultRemarkTemplate 才能从费用数据中提取主提单号和委托编号
         addSelectedFeesToForm(selectedFees);
-        console.log(
-          '✅ 费用已添加到表单，invoiceApplicationItems 数量:',
-          formData.value.invoiceApplicationItems?.length || 0,
-        );
 
         // 记录用户是否已手工填写备注（用户输入优先，默认模板不覆盖）
         const hasUserRemark = !!(
@@ -239,21 +212,10 @@ export function useFeeSelectionSave(
         // ✅ 在新增前，先加载默认备注模板（如果备注为空）
         // 此时 invoiceApplicationItems 已有数据，可以正确提取主提单号和委托编号
         if (loadDefaultRemarkTemplate && !hasUserRemark) {
-          console.log('📝 加载默认备注模板...');
           await loadDefaultRemarkTemplate();
         }
 
         // ✅ 再次确认所有字段都已正确设置
-        console.log('📋 加载默认信息后 - 最终表单数据状态:', {
-          orgId: formData.value.orgId,
-          settlementId: formData.value.settlementId,
-          currencyId: formData.value.currencyId,
-          invoiceType: formData.value.invoiceType,
-          orgBankAccountId: formData.value.orgBankAccountId,
-          clientInvoiceBankId: formData.value.clientInvoiceBankId,
-          require: formData.value.require,
-          remark: formData.value.remark,
-        });
 
         // ✅ 验证费用明细不为空（关键：必须至少有一条费用明细）
         if (newFees.length === 0) {
@@ -261,8 +223,6 @@ export function useFeeSelectionSave(
           message.error('费用明细不能为空，请重新选择费用');
           return;
         }
-
-        console.log('✅ 费用明细数量验证通过:', newFees.length);
 
         // ✅ 关键修改：按币别分组费用，每个币别生成一个currencyGroup
         // 首先统计所有选中的费用涉及哪些币别
@@ -280,26 +240,16 @@ export function useFeeSelectionSave(
           currencyMap.get(feeCurrencyId)!.push(fee);
         });
 
-        console.log(
-          '📊 检测到',
-          currencyMap.size,
-          '个币别:',
-          Array.from(currencyMap.keys()),
-        );
-
         // ✅ 为每个币别构建currencyGroup
         const currencyGroups: InvoiceApplicationAdminApi.InvoiceApplicationCurrencyGroupDto[] =
           [];
 
         for (const [currencyId, fees] of currencyMap.entries()) {
-          console.log(`📦 处理币别 ${currencyId} 的 ${fees.length} 条费用`);
-
           // 获取币别详情
           let currencyCode = '';
           try {
             const currencyDetail = await getCurrencyDetail(currencyId);
             currencyCode = currencyDetail.code || '';
-            console.log('🔍 币别详情 - ID:', currencyId, '代码:', currencyCode);
           } catch (error) {
             console.error('❌ 获取币别详情失败:', error);
             continue; // 跳过该币别，继续处理下一个
@@ -342,12 +292,6 @@ export function useFeeSelectionSave(
                 const bestRate = validRates[0];
                 if (bestRate && bestRate.invoiceValue !== undefined) {
                   currentCurrencyExchangeRate = bestRate.invoiceValue;
-                  console.log(
-                    '✅ 获取币别',
-                    currencyCode,
-                    '的发票汇率:',
-                    currentCurrencyExchangeRate,
-                  );
                 } else {
                   console.warn(
                     '⚠️ 币别',
@@ -400,12 +344,6 @@ export function useFeeSelectionSave(
                   clientInvoiceBankIdForCurrency = defaultBank.id;
                   clientBankNameForCurrency = defaultBank.bankName || '';
                   clientBankAccountForCurrency = defaultBank.bankAccount || '';
-                  console.log(
-                    '✅ 为币别',
-                    currencyCode,
-                    '找到默认银行账户:',
-                    defaultBank.bankName,
-                  );
                 }
               }
             } catch (error) {
@@ -520,9 +458,6 @@ export function useFeeSelectionSave(
                 }
 
                 currencyRemark = templateContent;
-                console.log(
-                  `✅ 为币别 ${currencyCode} 加载并替换了默认备注模板`,
-                );
               } else {
                 currencyRemark = formData.value.remark || '';
               }
@@ -547,13 +482,6 @@ export function useFeeSelectionSave(
             continue;
           }
 
-          console.log(
-            '✅ 找到币别',
-            currencyCode,
-            '的默认商品编码:',
-            defaultCodeInvoice.name,
-          );
-
           // 计算该币别下所有费用的总金额（转换为人民币）
           let totalRmbAmount = 0;
           fees.forEach((fee: any) => {
@@ -571,13 +499,6 @@ export function useFeeSelectionSave(
               totalRmbAmount += appliedAmount;
             }
           });
-
-          console.log(
-            '📊 币别',
-            currencyCode,
-            '的商品明细总金额（人民币）:',
-            totalRmbAmount.toFixed(2),
-          );
 
           // 构建商品明细
           const taxRate = defaultCodeInvoice.taxRate || 0;
@@ -598,12 +519,6 @@ export function useFeeSelectionSave(
               },
             ];
 
-          console.log('✅ 商品明细构建成功:', {
-            codeInvoiceId: invoiceApplicationGoodsDtls[0]?.codeInvoiceId,
-            amount: invoiceApplicationGoodsDtls[0]?.amount,
-            taxRate: invoiceApplicationGoodsDtls[0]?.taxRate,
-          });
-
           // 构建该币别的currencyGroup
           const currencyGroup: InvoiceApplicationAdminApi.InvoiceApplicationCurrencyGroupDto =
             {
@@ -622,7 +537,6 @@ export function useFeeSelectionSave(
             };
 
           currencyGroups.push(currencyGroup);
-          console.log('✅ 币别', currencyCode, '的currencyGroup构建完成');
         }
 
         // ✅ 验证是否成功构建了currencyGroups
@@ -632,21 +546,8 @@ export function useFeeSelectionSave(
           return;
         }
 
-        console.log(
-          '✅ 成功构建',
-          currencyGroups.length,
-          '个币别的currencyGroup',
-        );
-
         // ✅ 再次验证构建后的费用明细数量
-        currencyGroups.forEach((group, index) => {
-          console.log(`📊 currencyGroup[${index}] 详情:`, {
-            currencyId: group.currencyId,
-            invoiceType: group.invoiceType,
-            itemCount: group.invoiceApplicationItems.length,
-            goodsCount: group.invoiceApplicationGoodsDtls?.length || 0,
-          });
-        });
+        currencyGroups.forEach((group, index) => {});
 
         const addData: InvoiceApplicationAdminApi.InvoiceApplicationBatchAddDto =
           {
@@ -656,31 +557,9 @@ export function useFeeSelectionSave(
             currencyGroups, // ✅ currencyGroups 内部已经包含了各自的 remark
           };
 
-        console.log('📤 新增开票申请完整数据:', {
-          settlementId: addData.settlementId,
-          orgId: addData.orgId,
-          require: addData.require,
-          currencyGroups: currencyGroups.map((g) => ({
-            currencyId: g.currencyId,
-            invoiceType: g.invoiceType,
-            orgBankAccountId: g.orgBankAccountId,
-            clientInvoiceBankId: g.clientInvoiceBankId,
-            itemCount: g.invoiceApplicationItems.length,
-            goodsCount: g.invoiceApplicationGoodsDtls?.length || 0,
-            remark: g.remark, // ✅ 打印每个币别的备注信息
-          })),
-        });
-
         const ids = await InvoiceApplicationAdminApi.add(addData);
 
         if (ids && ids.length > 0) {
-          console.log(
-            '✅ 开票申请创建成功，生成了',
-            ids.length,
-            '个申请单，IDs:',
-            ids,
-          );
-
           // 设置第一个申请单ID到表单，进入编辑模式
           const firstId = ids[0];
           formData.value.id = firstId;
@@ -715,12 +594,10 @@ export function useFeeSelectionSave(
           };
 
         await InvoiceApplicationAdminApi.addItems(addItemsData);
-        console.log('✅ 费用明细添加成功');
         message.success(`成功添加 ${newFees.length} 条新费用`);
 
         // ✅ 关键修复：追加费用后重新加载详情，确保发票汇率等数据同步
         if (onRefresh) {
-          console.log('🔄 追加费用后重新加载详情...');
           await onRefresh();
         }
       } catch (error) {

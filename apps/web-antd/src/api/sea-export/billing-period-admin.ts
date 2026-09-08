@@ -6,7 +6,7 @@ export namespace BillingPeriodAdminApi {
   /** 附件项输入DTO */
   export interface AttachmentItemForItemInputDto {
     /** 附件id */
-    attachmentId?: number;
+    attachmentId?: number | string;
     /** 附件详细类型id（托书/提单/发票等） */
     attachmentDtlTypeId?: number;
     /** 客户是否可见 */
@@ -22,7 +22,7 @@ export namespace BillingPeriodAdminApi {
     /** 关联id */
     id?: number;
     /** 附件id */
-    attachmentId?: number;
+    attachmentId?: number | string;
     /** 附件详细类型id */
     attachmentDtlTypeId?: number;
     /** 附件详细类型简易对象 */

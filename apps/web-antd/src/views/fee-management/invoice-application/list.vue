@@ -34,7 +34,6 @@ import {
   useGridFormSchema,
   invoiceApplicationStatusOptions,
 } from './data';
-import InvoiceDetailModal from '#/views/settlement-management/invoice-issue/invoice-detail-modal.vue';
 
 const router = useRouter();
 const actionLoading = ref(false);

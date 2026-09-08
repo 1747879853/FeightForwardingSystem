@@ -1,16 +1,14 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
+import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { getPreOrderStatusOptions } from '#/views/pre-order/data';
 
-/** 我这一步 / 整个任务的审核状态 */
-export const TASK_STATUS_OPTIONS = [
-  { label: '审核中', value: 0, color: 'processing' },
-  { label: '已驳回', value: 1, color: 'error' },
-  { label: '已通过', value: 2, color: 'success' },
-  { label: '部分通过', value: 3, color: 'warning' },
-];
-
 export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
+  const taskStatusOptions = getTaskStatusOptions().map(({ label, value }) => ({
+    label,
+    value,
+  }));
+
   return [
     {
       component: 'Input',
@@ -30,10 +28,7 @@ export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
       componentProps: {
         allowClear: true,
         class: 'w-full',
-        options: TASK_STATUS_OPTIONS.map(({ label, value }) => ({
-          label,
-          value,
-        })),
+        options: taskStatusOptions,
       },
     },
     {
@@ -75,6 +70,8 @@ export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
 }
 
 export function usePreOrderReviewColumns(): Array<Record<string, any>> {
+  const taskStatusOptions = getTaskStatusOptions();
+
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     { type: 'seq', width: 50, fixed: 'left' },
@@ -94,13 +91,13 @@ export function usePreOrderReviewColumns(): Array<Record<string, any>> {
       field: 'myStatus',
       title: '我的审核状态',
       minWidth: 120,
-      cellRender: { name: 'CellTag', options: TASK_STATUS_OPTIONS },
+      cellRender: { name: 'CellTag', options: taskStatusOptions },
     },
     {
       field: 'taskStatus',
       title: '任务状态',
       minWidth: 100,
-      cellRender: { name: 'CellTag', options: TASK_STATUS_OPTIONS },
+      cellRender: { name: 'CellTag', options: taskStatusOptions },
     },
     {
       field: 'preOrder.clientName',

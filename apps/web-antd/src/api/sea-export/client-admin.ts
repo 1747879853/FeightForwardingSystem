@@ -66,7 +66,7 @@ export namespace ClientAdminApi {
   /** 附件项输入DTO */
   export interface AttachmentItemForItemInputDto {
     /** 附件id */
-    attachmentId?: number;
+    attachmentId?: number | string;
     /** 附件详细类型id（托书/提单/发票等） */
     attachmentDtlTypeId?: number;
     /** 客户是否可见 */
@@ -481,7 +481,7 @@ export namespace ClientAdminApi {
     /** 关联id */
     id?: number;
     /** 附件id */
-    attachmentId?: number;
+    attachmentId?: number | string;
     /** 附件详细类型id */
     attachmentDtlTypeId?: number;
     /** 附件详细类型简易对象 */
@@ -740,7 +740,7 @@ export namespace ClientAdminApi {
   /** 删除客户附件参数 */
   export interface ClientAttachmentsDeleteDto {
     id: string;
-    attachmentIds?: number[] | null;
+    attachmentIds?: Array<number | string> | null;
   }
 
   /** 获取客户所有账期附件列表响应（扁平列表） */
@@ -748,7 +748,7 @@ export namespace ClientAdminApi {
     /** 关联id */
     id?: number;
     /** 附件id */
-    attachmentId?: number;
+    attachmentId?: number | string;
     /** 附件详细类型id */
     attachmentDtlTypeId?: number;
     /** 附件详细类型简易对象 */

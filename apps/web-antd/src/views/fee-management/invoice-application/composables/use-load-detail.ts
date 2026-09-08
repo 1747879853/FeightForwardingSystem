@@ -64,7 +64,6 @@ export function useLoadDetail(
 
         const bestRate = validRates[0];
         if (bestRate && bestRate.invoiceValue) {
-          console.log('✅ 查询到币别发票汇率:', bestRate.invoiceValue);
           return bestRate.invoiceValue;
         }
       }
@@ -84,18 +83,11 @@ export function useLoadDetail(
     invoiceApplicationItems: any[],
   ) {
     try {
-      console.log('🔄 开始生成默认商品明细...', {
-        settlementId,
-        currencyId,
-        itemsCount: invoiceApplicationItems.length,
-      });
-
       // 1. 获取币别代码
       let currencyCode = '';
       try {
         const currencyDetail = await getCurrencyDetail(currencyId);
         currencyCode = currencyDetail.code || '';
-        console.log('✅ 获取币别代码:', currencyCode);
       } catch (error) {
         console.error('获取币别详情失败:', error);
         message.warning('获取币别信息失败');
@@ -115,7 +107,6 @@ export function useLoadDetail(
           PageSize: 1000,
         });
         codeInvoiceList = result.items || [];
-        console.log('✅ 加载发票商品编码列表:', codeInvoiceList.length, '条');
       } catch (error) {
         console.error('加载发票商品编码失败:', error);
         message.warning('加载发票商品编码失败');
@@ -134,8 +125,6 @@ export function useLoadDetail(
         );
         return;
       }
-
-      console.log('✅ 找到默认商品编码:', defaultCodeInvoice.name);
 
       // 4. 计算所有费用的申请金额总和（转换为人民币）
       let totalRmbAmount = 0;
@@ -164,16 +153,10 @@ export function useLoadDetail(
           const convertedAmount =
             appliedAmount * (invoiceExchangeRate.value || 1);
           totalRmbAmount += convertedAmount;
-          console.log(
-            `💰 外币转换: ${appliedAmount.toFixed(2)} × ${invoiceExchangeRate.value} = ${convertedAmount.toFixed(2)} RMB`,
-          );
         } else {
           totalRmbAmount += appliedAmount;
-          console.log(`💰 同币别累加: ${appliedAmount.toFixed(2)}`);
         }
       });
-
-      console.log('📊 总申请金额（人民币）:', totalRmbAmount.toFixed(2));
 
       // 5. 创建默认商品明细
       const taxRate = defaultCodeInvoice.taxRate || 0;
@@ -197,13 +180,6 @@ export function useLoadDetail(
       // 6. 设置商品明细
       goodsDetails.value = [defaultGoodsDetail];
       await nextTick();
-
-      console.log('✅ 成功生成默认商品明细:', {
-        codeInvoiceId: defaultCodeInvoice.id,
-        name: defaultCodeInvoice.name,
-        amount: totalRmbAmount.toFixed(2),
-        taxRate: taxRate,
-      });
 
       message.success('已根据结算对象自动生成默认商品明细');
     } catch (error) {
@@ -271,10 +247,6 @@ export function useLoadDetail(
       }
 
       // ✅ 修改：在设置currencyId之后，再加载客户开票信息
-      console.log(
-        '🔄 开始加载客户开票信息，此时currencyId已设置为:',
-        formData.value.currencyId,
-      );
       await loadClientInvoiceInfo(detail.settlementId);
 
       // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
@@ -296,15 +268,7 @@ export function useLoadDetail(
         !selectedClientInvoiceInfo.value.id
       ) {
         selectedClientInvoiceInfo.value = detail.clientInvoiceInfo;
-        console.log('📋 使用后端返回的客户开票信息:', {
-          id: selectedClientInvoiceInfo.value?.id,
-          header: selectedClientInvoiceInfo.value?.header,
-        });
       } else {
-        console.log('📋 保持已自动选中的客户开票信息:', {
-          id: selectedClientInvoiceInfo.value?.id,
-          header: selectedClientInvoiceInfo.value?.header,
-        });
       }
 
       // 从 feeGroups 中提取 invoiceApplicationItems
@@ -314,11 +278,6 @@ export function useLoadDetail(
           if (group.items && group.items.length > 0) {
             group.items.forEach((item: any) => {
               // ✅ 调试日志：检查 item 的结构
-              console.log('📋 useLoadDetail - 提取 invoiceApplicationItem:', {
-                id: item.id,
-                orderFeeId: item.orderFeeId,
-                appliedAmount: item.appliedAmount,
-              });
 
               invoiceApplicationItems.push({
                 id: item.id, // ✅ 关键修复：保存 invoiceApplicationItem 的 ID
@@ -364,11 +323,6 @@ export function useLoadDetail(
           if (group.items && group.items.length > 0) {
             group.items.forEach((item: any) => {
               // ✅ 调试日志：检查 item 的结构
-              console.log('📋 useLoadDetail - 构建 childNode, item:', {
-                id: item.id,
-                orderFeeId: item.orderFeeId,
-                appliedAmount: item.appliedAmount,
-              });
 
               const childNode: any = {
                 id: item.id,
@@ -422,7 +376,6 @@ export function useLoadDetail(
           detail.settlementId &&
           detail.currencyId
         ) {
-          console.log('⚠️ 商品明细为空，准备生成默认商品明细...');
           await generateDefaultGoodsDetail(
             detail.settlementId,
             detail.currencyId,

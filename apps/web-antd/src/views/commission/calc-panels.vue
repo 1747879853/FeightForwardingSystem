@@ -18,8 +18,13 @@ const props = defineProps<{
   belowCount?: number;
   /** 计算结果，命中不到配置/汇率缺失时为 null */
   calculation?: CommissionOrderAdminApi.CommissionCalculationDto | null;
-  /** 是否可新建/提交 */
+  /** 是否可新建/提交（详情态可改用 headTag 展示单据状态） */
   canSubmit?: boolean;
+  /**
+   * 左上角状态标签；传入后覆盖 canSubmit 的「可提交/不可提交」文案
+   * （详情弹窗用于展示草稿/已审核等单据状态）
+   */
+  headTag?: null | { color: string; label: string };
   /** 是否销售提成（统计磁贴与亏损汇总仅销售有值） */
   isSales?: boolean;
   /** 提成月，用于面板标题 */
@@ -92,7 +97,14 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
     <section class="panel panel--process">
       <header class="panel__head">
         <span class="panel__month">{{ monthLabel }}</span>
-        <Tag :color="canSubmit ? 'success' : 'error'" class="panel__tag">
+        <Tag v-if="headTag" :color="headTag.color" class="panel__tag">
+          {{ headTag.label }}
+        </Tag>
+        <Tag
+          v-else-if="canSubmit !== undefined"
+          :color="canSubmit ? 'success' : 'error'"
+          class="panel__tag"
+        >
           {{
             canSubmit
               ? $t('commissionOrder.create.canSubmit')

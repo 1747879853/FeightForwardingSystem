@@ -89,7 +89,6 @@ export function useFeeManagement(
         };
 
       await InvoiceApplicationAdminApi.removeItems(removeData);
-      console.log('✅ 费用明细删除成功');
 
       // 过滤掉这些费用（前端显示）
 

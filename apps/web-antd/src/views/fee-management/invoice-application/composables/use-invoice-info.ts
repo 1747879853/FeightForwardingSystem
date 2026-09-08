@@ -25,10 +25,8 @@ export function useInvoiceInfo(
     }
 
     try {
-      console.log('📥 开始加载客户开票信息, settlementId:', settlementId);
       const list = await getClientInvoiceInfoList({ ClientId: settlementId });
       clientInvoiceInfoList.value = list;
-      console.log('✅ 客户开票信息加载成功，数量:', list.length);
 
       // ✅ 修改：如果已有选中的开票信息，保持不变；否则选择默认或第一项
       if (
@@ -40,14 +38,6 @@ export function useInvoiceInfo(
         selectedClientInvoiceInfo.value =
           defaultInfo || (list.length > 0 ? list[0] : undefined);
 
-        console.log('📋 自动选中客户开票信息:', {
-          id: selectedClientInvoiceInfo.value?.id,
-          header: selectedClientInvoiceInfo.value?.header,
-          isDefault: selectedClientInvoiceInfo.value?.isDefault,
-          banks:
-            selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
-        });
-
         // ✅ 新增：自动填充客户开票要求（仅当开票要求字段为空时）
         if (
           selectedClientInvoiceInfo.value &&
@@ -57,10 +47,6 @@ export function useInvoiceInfo(
             selectedClientInvoiceInfo.value.require || '';
         }
       } else {
-        console.log('📋 保持已选中的客户开票信息:', {
-          id: selectedClientInvoiceInfo.value?.id,
-          header: selectedClientInvoiceInfo.value?.header,
-        });
       }
 
       // ✅ 修改：如果购买方名称（header）未赋值，自动使用选中的开票信息
@@ -69,10 +55,6 @@ export function useInvoiceInfo(
         selectedClientInvoiceInfo.value
       ) {
         // 根据币别选择银行
-        console.log(
-          '🔄 准备根据币别更新客户银行, currencyId:',
-          formData.value.currencyId,
-        );
         updateClientBankByCurrency();
 
         // ✅ 新增：如果银行ID仍未赋值且有可用银行，自动选择第一个匹配的银行
@@ -82,17 +64,7 @@ export function useInvoiceInfo(
         ) {
           formData.value.clientInvoiceBankId =
             filteredClientBanks.value[0].value;
-          console.log('✅ 自动选择第一个客户银行:', {
-            id: formData.value.clientInvoiceBankId,
-            bankName: filteredClientBanks.value[0].bankName,
-            bankAccount: filteredClientBanks.value[0].bankAccount,
-          });
         }
-
-        console.log(
-          '✅ 客户银行ID已设置为:',
-          formData.value.clientInvoiceBankId,
-        );
       }
     } catch (error) {
       console.error('❌ 加载客户开票信息失败:', error);
@@ -121,10 +93,6 @@ export function useInvoiceInfo(
    * 根据币别更新销售方银行
    */
   function updateOrgBankByCurrency() {
-    console.log('🔄 开始更新销售方银行');
-    console.log('  - orgBankAccounts数量:', orgBankAccounts.value.length);
-    console.log('  - currencyId:', formData.value.currencyId);
-
     if (!orgBankAccounts.value.length || !formData.value.currencyId) {
       console.warn('⚠️ 缺少银行列表或币别，清空销售方银行选择');
       formData.value.orgBankAccountId = undefined;
@@ -140,12 +108,6 @@ export function useInvoiceInfo(
 
     if (defaultBank) {
       formData.value.orgBankAccountId = defaultBank.id;
-      console.log('✅ 找到默认银行:', {
-        id: defaultBank.id,
-        bankName: defaultBank.bankName,
-        bankAccount: defaultBank.bankAccount,
-        currencyId: defaultBank.currencyId,
-      });
     } else {
       // ✅ 修改：如果没有默认银行，自动选择第一个匹配的银行
       const firstMatchedBank = orgBankAccounts.value.find(
@@ -154,12 +116,6 @@ export function useInvoiceInfo(
 
       if (firstMatchedBank) {
         formData.value.orgBankAccountId = firstMatchedBank.id;
-        console.log('✅ 自动选择第一个销售方银行:', {
-          id: firstMatchedBank.id,
-          bankName: firstMatchedBank.bankName,
-          bankAccount: firstMatchedBank.bankAccount,
-          currencyId: firstMatchedBank.currencyId,
-        });
       } else {
         formData.value.orgBankAccountId = undefined;
         console.warn('⚠️ 未找到匹配币别的银行，清空选择');
@@ -180,12 +136,6 @@ export function useInvoiceInfo(
       return;
     }
 
-    console.log('✅ 新组件选中开票信息:', {
-      id: info.id,
-      header: info.header,
-      taxNum: info.taxNum,
-    });
-
     selectedClientInvoiceInfo.value = info;
 
     // 自动填充开票要求（仅当为空时）
@@ -205,10 +155,6 @@ export function useInvoiceInfo(
       filteredClientBanks.value.length > 0
     ) {
       formData.value.clientInvoiceBankId = filteredClientBanks.value[0].value;
-      console.log('✅ 自动选择第一个客户银行:', {
-        id: formData.value.clientInvoiceBankId,
-        bankName: filteredClientBanks.value[0].bankName,
-      });
     }
   }
 

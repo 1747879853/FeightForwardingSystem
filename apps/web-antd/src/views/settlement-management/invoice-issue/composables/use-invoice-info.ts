@@ -69,14 +69,8 @@ export function useInvoiceInfo(
 
     if (defaultBank) {
       formData.value.orgBankAccountId = defaultBank.id;
-      console.log(
-        '✅ 自动选择销售方默认银行:',
-        defaultBank.bankName,
-        defaultBank.bankAccount,
-      );
     } else {
       formData.value.orgBankAccountId = undefined;
-      console.log('⚠️ 未找到销售方默认银行，清空选择');
     }
   }
 

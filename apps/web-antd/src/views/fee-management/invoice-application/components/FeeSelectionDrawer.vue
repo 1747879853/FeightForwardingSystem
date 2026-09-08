@@ -120,7 +120,6 @@ watch(
   () => props.currencyId,
   async (newCurrencyId) => {
     if (newCurrencyId && drawerVisible.value) {
-      console.log('🔄 检测到 currencyId 变化，加载对应汇率:', newCurrencyId);
       await loadDefaultExchangeRate(newCurrencyId);
     }
   },
@@ -464,13 +463,6 @@ async function handleSaveFeeSelection() {
     message.warning('无法获取结算单位信息');
     return;
   }
-
-  console.log('✅ FeeSelectionDrawer 准备保存数据:');
-  console.log('  - 选中费用数量:', selectedFees.length);
-  console.log('  - 结算单位ID:', settlementId);
-  console.log('  - 币别ID:', selectedCurrencyId.value);
-  console.log('  - 汇率:', invoiceExchangeRate.value);
-  console.log('  - feeGroupsData 数量:', feeGroupsData.value.length);
 
   emit('save', {
     selectedFees,

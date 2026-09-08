@@ -2,40 +2,17 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { $t } from '#/locales';
-import form from 'ant-design-vue/es/form';
+import { BusinessTypeOptions } from '#/utils/business-type-options';
 
-import { useVbenForm, z } from '#/adapter/form';
-import {
-  getMyPermissionCompanies,
-  type SystemOrganizationUnitApi,
-} from '#/api/system/organization-unit';
+import { z } from '#/adapter/form';
+import { getMyPermissionCompanies } from '#/api/system/organization-unit';
 import { UserAttribute } from '#/api/system/user-admin';
-import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
-import { color } from 'three/tsl';
 
-/**
- * 业务类型枚举
- */
-export const BusinessTypeOptions = [
-  {
-    value: 0,
-    label: $t('seaExport.client.paymentTerms.BizTypeOptions.seaExport'),
-    color: '#1890ff',
-  },
-  {
-    value: 1,
-    label: $t('seaExport.client.paymentTerms.BizTypeOptions.seaImport'),
-    color: '#52c41a',
-  },
-  {
-    value: 2,
-    label: $t('seaExport.client.paymentTerms.BizTypeOptions.airExport'),
-    color: '#fa8c16',
-  },
-];
+export { BusinessTypeOptions };
 
 /**
  * 结算方式枚举选项
@@ -382,9 +359,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         options: SettlementTypeOptions,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
-        onChange: (value: number) => {
-          console.log('Selected settlement type:', value);
-        },
+        onChange: (value: number) => {},
       },
     },
     {
@@ -542,7 +517,6 @@ export function useColumns(): VxeTableGridOptions<BillingPeriodAdminApi.ClientBi
       field: 'bizTypes',
       minWidth: 150,
       formatter: (row) => {
-        console.log('row', row);
         const labels = row.row.bizTypes
           ?.map((item) => {
             return BusinessTypeOptions.find((option) => option.value === item)

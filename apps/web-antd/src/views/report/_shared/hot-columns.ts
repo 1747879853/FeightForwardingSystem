@@ -20,7 +20,8 @@ export function textRenderer(fallback = '-') {
     value: any,
     _cellProperties: any,
   ) => {
-    td.innerHTML = value || fallback;
+    // 竖向滚动时每个可见单元格都会走这里：只写文本，不做 style/listener 清理
+    td.textContent = value || fallback;
     return td;
   };
 }

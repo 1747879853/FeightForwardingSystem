@@ -286,13 +286,6 @@ export function useGoodsDetails(
     existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
     existingItem.taxAmount =
       (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
-
-    console.log('✅ 商品明细金额已重新计算（基于所有费用）:', {
-      totalRmbAmount,
-      taxRate,
-      noTaxAmount: existingItem.noTaxAmount,
-      taxAmount: existingItem.taxAmount,
-    });
   }
 
   /**

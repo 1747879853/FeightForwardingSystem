@@ -54,8 +54,6 @@ export function useFeeSelection(
       applicationGroupsData: groupsData,
     } = data;
 
-    console.log('✅ 收到费用选择数据:', selectedApplications.length, '条申请');
-
     // 设置结算单位
     formData.value.settlementId = settlementId;
     formData.value.currencyId = currencyId;
@@ -66,10 +64,6 @@ export function useFeeSelection(
       selectedApplications[0].settlementName
     ) {
       formData.value.settlementName = selectedApplications[0].settlementName;
-      console.log(
-        '✅ 设置结算单位名称:',
-        selectedApplications[0].settlementName,
-      );
     }
 
     // 设置发票抬头
@@ -77,7 +71,6 @@ export function useFeeSelection(
       if (!fixedHeaderId.value) {
         fixedHeaderId.value = headerId;
         fixedCurrencyId.value = currencyId;
-        console.log('✅ 首次选择，固定发票抬头和币别:', headerId, currencyId);
       }
 
       formData.value.clientInvoiceBankId = headerId;
@@ -86,7 +79,6 @@ export function useFeeSelection(
     // 设置发票汇率
     if (rate !== undefined) {
       invoiceExchangeRate.value = rate;
-      console.log('✅ 从费用选择抽屉中获取发票汇率:', rate);
     }
 
     // 自动设置归属组织为当前用户默认组织
@@ -119,11 +111,7 @@ export function useFeeSelection(
           ...applicationGroupsData.value,
           ...newGroups,
         ];
-        console.log(
-          `✅ 已合并申请数据到 applicationGroupsData: 新增 ${newGroups.length} 个申请组`,
-        );
       } else {
-        console.log('⚠️ 所有申请组都已存在，无需重复添加');
       }
     }
 
@@ -136,26 +124,17 @@ export function useFeeSelection(
       return !existingAppIds.has(app.id);
     });
 
-    console.log('📊 申请过滤结果:', {
-      抽屉返回总数: selectedApplications.length,
-      已存在数量: selectedApplications.length - newApplications.length,
-      实际新增数量: newApplications.length,
-    });
-
     // 如果没有新申请，直接返回
     if (newApplications.length === 0) {
-      console.log('⚠️ 没有新申请需要处理');
       message.warning('所选申请已全部添加，无新增申请');
       return;
     }
 
     // 如果是新增状态（还没有发票ID），先创建发票
     if (!isEdit.value || !editId.value) {
-      console.log('🆕 新增状态，先创建发票...');
       await createInvoiceWithApplications(newApplications);
     } else {
       // 编辑状态，直接添加申请到现有发票
-      console.log('✏️ 编辑状态，添加申请到现有发票...');
       await addApplicationsToExistingInvoice(newApplications);
     }
   }
@@ -204,14 +183,10 @@ export function useFeeSelection(
         })),
       };
 
-      console.log('📤 创建发票数据:', submitData);
-
       // 调用创建接口
       const res = await addInvoiceIssue(submitData);
       const newId = res.id; // 保存新创建的发票ID
       message.success('发票创建成功');
-
-      console.log('✅ 发票创建成功，ID:', res.id);
 
       // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
       if (newId) {
@@ -234,21 +209,12 @@ export function useFeeSelection(
   async function addApplicationsToExistingInvoice(selectedApplications: any[]) {
     try {
       // ✅ 编辑状态下，只处理新增的申请商品明细，避免重复添加
-      console.log(
-        '✅ 编辑状态：只处理新增申请的商品明细，数量:',
-        selectedApplications.length,
-      );
 
       // ✅ 使用合并逻辑处理新增申请的商品明细
       await mergeGoodsDetailsFromApplications(selectedApplications);
 
       // ✅ 更新 invoiceIssueItems，确保合计中的申请金额正确显示
-      console.log('🔄 更新 invoiceIssueItems...');
       addSelectedApplicationsToForm(selectedApplications);
-      console.log(
-        '✅ invoiceIssueItems 已更新，当前数量:',
-        formData.value.invoiceIssueItems?.length || 0,
-      );
 
       // ✅ 合并申请组数据（包括已有的和新增的）
       if (selectedApplications.length > 0) {
@@ -268,9 +234,6 @@ export function useFeeSelection(
             ...applicationGroupsData.value,
             ...newGroups,
           ];
-          console.log(
-            `✅ 已合并申请数据到 applicationGroupsData: 新增 ${newGroups.length} 个申请组`,
-          );
         }
       }
 
@@ -295,19 +258,9 @@ export function useFeeSelection(
         })),
       };
 
-      console.log('📤 发送添加申请请求:', {
-        新增申请数量: selectedApplications.length,
-        商品明细数量: goodsDetails.value.length,
-        总金额: goodsDetails.value
-          .reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
-          .toFixed(2),
-      });
-
       // 调用添加申请接口
       await addApplicationsToInvoiceIssue(addData);
       message.success('申请添加成功');
-
-      console.log('✅ 申请添加成功');
     } catch (error) {
       console.error('❌ 添加申请失败:', error);
       message.error('添加申请失败');

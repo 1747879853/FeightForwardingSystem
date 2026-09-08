@@ -48,7 +48,7 @@ export namespace InvoiceRemarkTemplateApi {
     id: string;
     name: string;
     /** 归属组织id（备注模板必填，恒为有效组织id） */
-    orgId: number;
+    orgId: number | string;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
     /** 本位币id：单据所属公司配置的本位币，不要自己从 orgs 里找 */
@@ -73,7 +73,7 @@ export namespace InvoiceRemarkTemplateApi {
   export interface InvoiceRemarkTemAddDto {
     name: string;
     /** 归属组织id */
-    orgId: number;
+    orgId: number | string;
     currencyId: number;
     template?: string;
     default: boolean;
@@ -102,7 +102,7 @@ export namespace InvoiceRemarkTemplateApi {
     default?: boolean;
     template?: string;
     creatorUserId?: number;
-    orgId?: number;
+    orgId?: number | string;
     pageIndex: number;
     pageSize: number;
     sorting?: string;

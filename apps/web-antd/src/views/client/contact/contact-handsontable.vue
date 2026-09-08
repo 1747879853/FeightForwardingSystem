@@ -94,20 +94,20 @@ const tableData = shallowRef<any[]>([]);
 // ✅ 对接人（用户）下拉数据源：复用全量用户简易列表缓存（与 UserSelect 同源）。
 // Handsontable 单元格展示昵称(userNickName)，提交用 userId，故维护 nickName↔userId 双向映射。
 const userNameSource = ref<string[]>([]);
-const nickNameToUserId = ref<Map<string, number>>(new Map());
-const userIdToNickName = ref<Map<number, string>>(new Map());
+const nickNameToUserId = ref<Map<string, string>>(new Map());
+const userIdToNickName = ref<Map<string, string>>(new Map());
 
-/** 加载对接人候选（昵称去重），构建 nickName↔userId 映射 */
+/** 加载对接人候选（昵称去重），构建 nickName↔userId 映射（id 保持字符串，避免雪花精度丢失） */
 const loadUserOptions = async () => {
   try {
     const users = await userSimpleListCache.ensure();
     const names: string[] = [];
-    const nameToId = new Map<string, number>();
-    const idToName = new Map<number, string>();
+    const nameToId = new Map<string, string>();
+    const idToName = new Map<string, string>();
     (users ?? []).forEach((user) => {
-      const id = Number(user?.id);
+      const id = user?.id == null || user.id === '' ? '' : String(user.id);
       const nickName = (user?.nickName ?? '').trim();
-      if (!nickName || Number.isNaN(id)) return;
+      if (!nickName || !id) return;
       idToName.set(id, nickName);
       // 昵称重复时以首个为准，避免下拉出现同名歧义项
       if (!nameToId.has(nickName)) {
@@ -131,8 +131,8 @@ const resolveUserNickName = (
   const fromUser = (contact.user?.nickName ?? '').trim();
   if (fromUser) return fromUser;
   const uid = contact.userId;
-  if (uid === null || uid === undefined || uid === 0) return '';
-  return userIdToNickName.value.get(Number(uid)) ?? '';
+  if (uid === null || uid === undefined || uid === 0 || uid === '') return '';
+  return userIdToNickName.value.get(String(uid)) ?? '';
 };
 
 // ✅ 联系人可选字段合法性校验规则（手机/邮箱/座机/QQ）：
@@ -544,17 +544,13 @@ const handleResize = () => {
 
 // 添加 beforeOnCellMouseDown 钩子 - 在组件挂载后通过 hotInstance.addHook 添加
 onMounted(() => {
-  console.log('[Handsontable] onMounted 触发');
-
   // 加载对接人下拉候选（用户昵称），供「对接人」列 autocomplete 使用
   void loadUserOptions();
 
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
-    console.log('[Handsontable] 获取 hotInstance:', !!hotInstance);
 
     if (hotInstance) {
-      console.log('[Handsontable] 钩子已注册');
       // 按实测可用高度设置表格高度，使其收在屏幕底部上方
       updateTableHeight();
     } else {
@@ -594,11 +590,6 @@ onBeforeUnmount(() => {
 const updateTableData = (
   contacts: ClientContactAdminApi.ClientContactDto[],
 ) => {
-  console.log(
-    '[Handsontable] updateTableData 被调用 - 数据量:',
-    contacts.length,
-  );
-
   const mappedData = contacts.map((contact) => ({
     ...contact,
     isDefault: contact.isDefault ? '是' : '否',
@@ -609,15 +600,12 @@ const updateTableData = (
     userNickName: resolveUserNickName(contact),
   }));
 
-  console.log('[Handsontable] 映射后的数据示例:', mappedData[0]);
-
   tableData.value = mappedData;
 
   // 更新Handsontable实例数据
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
     if (hotInstance) {
-      console.log('[Handsontable] 执行 loadData');
       hotInstance.loadData(tableData.value);
     } else {
       console.warn('[Handsontable] hotInstance 不存在，无法执行 loadData');
@@ -627,24 +615,14 @@ const updateTableData = (
 
 // 监听数据变化
 watchEffect(() => {
-  console.log(
-    '[Handsontable] watchEffect 触发 - modelValue 长度:',
-    props.modelValue?.length,
-  );
   updateTableData(props.modelValue || []);
 });
 
 // 监听表格数据变化并同步到父组件
 const onAfterChange = (changes: any, source: string) => {
-  console.log('[Handsontable] onAfterChange 触发 - source:', source);
-
   if (!changes || changes.length === 0) {
-    console.log('[Handsontable] onAfterChange - 无变化数据');
     return;
   }
-
-  console.log('[Handsontable] onAfterChange - 变化数量:', changes.length);
-  console.log('[Handsontable] onAfterChange - 变化详情:', changes);
 
   // 同步数据到父组件（如果不是 loadData 操作）
   if (source !== 'loadData') {
@@ -669,7 +647,6 @@ const onAfterChange = (changes: any, source: string) => {
       isDisabled: row.isDisabled === '禁用',
     }));
 
-    console.log('[Handsontable] 同步数据到父组件');
     emit(
       'update:modelValue',
       updatedData as ClientContactAdminApi.ClientContactDto[],
@@ -804,17 +781,11 @@ const saveData = async () => {
 };
 
 // 行操作事件
-const onAfterCreateRow = (index: number, amount: number) => {
-  console.log(`Added ${amount} row(s) at index ${index}`);
-};
+const onAfterCreateRow = (index: number, amount: number) => {};
 
-const onAfterRemoveRow = (index: number, amount: number) => {
-  console.log(`Removed ${amount} row(s) starting from index ${index}`);
-};
+const onAfterRemoveRow = (index: number, amount: number) => {};
 
-const onBeforeRemoveRow = (index: number, amount: number) => {
-  console.log(`About to remove ${amount} row(s) starting from index ${index}`);
-};
+const onBeforeRemoveRow = (index: number, amount: number) => {};
 
 defineExpose({
   addRow,

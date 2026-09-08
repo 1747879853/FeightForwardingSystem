@@ -157,9 +157,15 @@ export function useColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'transactionFee',
       title: '手续费',
-      width: 100,
+      width: 140,
       align: 'right',
-      formatter: ({ cellValue }) => formatAmount(cellValue),
+      formatter: ({ row }) => {
+        const amount = formatAmount(row.transactionFee);
+        if (amount === '-' || amount === '') return amount;
+        const code =
+          row.transactionFeeCurrency?.code || row.currency?.code || '';
+        return code ? `${amount} ${code}` : amount;
+      },
     },
     {
       field: 'creatorUserName',

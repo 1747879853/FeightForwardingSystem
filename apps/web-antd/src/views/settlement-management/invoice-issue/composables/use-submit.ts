@@ -6,7 +6,6 @@ import {
   addInvoiceIssue,
   editInvoiceIssue,
   InvoiceIssueApi,
-  addApplicationsToInvoiceIssue,
   syncApplicationGoodsDtlByExchangeRate,
 } from '#/api/Invoice/InvoiceIssue';
 
@@ -160,7 +159,6 @@ export function useSubmit(
       } else {
         // ✅ 新增模式：调用 AddAsync
         const result = await addInvoiceIssue(submitData);
-        console.log('✅ 创建成功，ID:', result);
         // ✅ 处理汇率校验结果
         // const shouldContinue = await handleExchangeRateCheck(result, true);
 

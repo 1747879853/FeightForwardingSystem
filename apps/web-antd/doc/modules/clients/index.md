@@ -17,7 +17,7 @@ last_updated: 2026-07-12
 | 路由名称 | `ClientList` |
 | 页面组件 | `src/views/client/list.vue` |
 | 权限口径 | 未在路由中声明独立权限 |
-| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/contact/data.ts`<br/>`src/views/client/payment-terms/data.ts`<br/>`src/views/client/invoice/data.ts`<br/>`src/api/sea-export/client-admin.ts`<br/>`src/api/sea-export/client-contact-admin.ts` |
+| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/base/options.ts`<br/>`src/views/client/payment-terms/list.vue`<br/>`src/utils/business-type-options.ts`<br/>`src/api/sea-export/client-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 

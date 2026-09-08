@@ -137,10 +137,6 @@ async function loadTemplateList() {
       pageIndex: 1,
       pageSize: 1000,
     };
-    console.log('加载模板列表 - 筛选条件:', {
-      filterCompanyId: filterCompanyId.value,
-      filterCurrencyId: filterCurrencyId.value,
-    });
     if (filterCompanyId.value) {
       params.orgId = filterCompanyId.value;
     }
@@ -168,7 +164,7 @@ function autoLoadDefaultTemplate(settlementId: string, currencyId: number) {
   // 查找匹配结算单位（orgId）和币别的默认模板
   const defaultTemplate = templateList.value.find(
     (t) =>
-      t.orgId === Number(settlementId) &&
+      String(t.orgId) === String(settlementId) &&
       t.currencyId === currencyId &&
       t.default,
   );
@@ -188,7 +184,7 @@ function autoLoadDefaultTemplate(settlementId: string, currencyId: number) {
     );
   } else {
     // 如果没有找到默认模板，只填充公司和币别
-    formData.value.orgId = Number(settlementId);
+    formData.value.orgId = settlementId;
     formData.value.currencyId = currencyId;
   }
 }
@@ -548,12 +544,6 @@ async function getDefaultRemarkTemplate(
   try {
     // 备注模板按公司维度维护，需先把归属组织换算成公司ID再查询，否则查不到默认模板导致备注为空
     const templateOrgId = getCompanyIdByOrgId(orgId) ?? orgId;
-    console.log(
-      '🔍 查询默认备注模板 - 公司ID:',
-      templateOrgId,
-      '币别ID:',
-      currencyId,
-    );
 
     const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
       pageIndex: 1,
@@ -571,21 +561,12 @@ async function getDefaultRemarkTemplate(
         // ✅ 如果有 templateData，进行占位符替换
         if (templateData) {
           templateContent = replacePlaceholders(templateContent, templateData);
-          console.log(
-            '✅ 已获取并替换默认备注模板:',
-            templateContent.substring(0, 50),
-          );
         } else {
-          console.log(
-            '✅ 已获取默认备注模板（未替换占位符）:',
-            templateContent.substring(0, 50),
-          );
         }
 
         return templateContent;
       }
     } else {
-      console.log('ℹ️ 未找到默认备注模板');
     }
     return '';
   } catch (error) {
@@ -611,23 +592,12 @@ function replacePlaceholders(
 ): string {
   if (!template) return '';
 
-  console.log('🔍 replacePlaceholders - 输入数据:', {
-    commissionNum: templateData.commissionNum,
-    mblNum: templateData.mblNum,
-    templateLength: template.length,
-  });
-
   let result = template;
 
   // 委托编号 - 使用字符串替换方法，避免正则转义问题
   if (templateData.commissionNum) {
     const beforeReplace = result;
     result = result.split('<委托编号>').join(templateData.commissionNum);
-    console.log('✅ 委托编号替换:', {
-      before: beforeReplace.includes('<委托编号>'),
-      after: result.includes('<委托编号>'),
-      value: templateData.commissionNum,
-    });
   } else {
     console.warn('⚠️ 委托编号为空，跳过替换');
   }
@@ -636,11 +606,6 @@ function replacePlaceholders(
   if (templateData.mblNum) {
     const beforeReplace = result;
     result = result.split('<主提单号>').join(templateData.mblNum);
-    console.log('✅ 主提单号替换:', {
-      before: beforeReplace.includes('<主提单号>'),
-      after: result.includes('<主提单号>'),
-      value: templateData.mblNum,
-    });
   } else {
     console.warn('⚠️ 主提单号为空，跳过替换');
   }

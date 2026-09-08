@@ -2,7 +2,7 @@
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { computed, ref, h } from 'vue';
+import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 
 import {
@@ -17,9 +17,8 @@ import {
 } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import { CurrencySelect } from '#/adapter/component';
 import { getPaymentApplicationPagedListByCurrencyForSettlement } from '#/api/sea-export/payment-settlement-admin';
-// ❌ 已删除：2026-08-10起，不再需要汇率录入弹窗，汇率由后端从付费申请自动获取
+// CurrencySelect 独立结算币别选择暂注释，结算币别由父表单 / 选中行推导
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import {
@@ -30,27 +29,35 @@ import {
 
 import { useSearchSchema, getStatusTagProps } from './data';
 interface Props {
-  /** 付费结算ID（编辑时传入，用于排除已选择的申请） */
+  /** 付费结算ID（编辑时传入，用于排除该结算单已关联的组合） */
   paymentSettlementId?: string;
   /** 结算对象ID */
   settlementId?: string;
-  /** 结算币别ID */
+  /**
+   * 结算单的结算币别ID。
+   * 对应接口 `settlementCurrencyId`：建单/加明细场景必传，用于后端过滤可选行。
+   */
   currencyId?: number;
   /** 是否已有费用（用于控制筛选条件是否可修改） */
   hasExistingFees?: boolean;
-  /** 已存在的申请ID列表（用于禁用这些申请的输入框） */
-  existingApplicationIds?: string[];
+  /**
+   * 已在结算单中的「申请+原币」行 key（`paymentApplicationId_originalCurrencyId`），
+   * 用于禁用已选组合；同一申请的其他原币仍可选。
+   */
+  existingRowKeys?: string[];
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  existingRowKeys: () => [],
+});
 
 const emit = defineEmits<{
   confirm: [
     applications: Array<{
       application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
-      settledPrice: number; // 本行结算的净额（原币）
+      settledPrice: number; // 本行结算净额（结算币别）
     }>,
-    selectedCurrencyId?: number, // 用户在抽屉中选择的结算币别ID
+    selectedCurrencyId?: number, // 结算币别ID
   ];
 }>();
 
@@ -98,13 +105,12 @@ async function openDrawer() {
   // 设置默认值
   await searchFormApi.resetForm();
 
-  // ✅ 先设置结算对象和结算币别的值，并加载客户信息用于回显
-  const formValues: any = {};
+  // 结算对象回显；结算币别走 selectedCurrencyId（≠ 搜索表单 currencyId/原币过滤）
+  const formValues: Record<string, unknown> = {};
 
   if (props.settlementId) {
     formValues.settlementId = props.settlementId;
 
-    // ✅ 加载结算对象信息用于 ClientSelect 回显
     try {
       const { getClientDetail } = await import('#/api/sea-export/client-admin');
       const detail = await getClientDetail(props.settlementId);
@@ -115,14 +121,9 @@ async function openDrawer() {
           fullName: detail.fullName || '',
         },
       ];
-      console.log('✅ 加载结算对象信息成功:', settlementSelectedItems.value);
     } catch (error) {
-      console.error('❌ 加载结算对象信息失败:', error);
+      console.error('加载结算对象信息失败:', error);
     }
-  }
-
-  if (props.currencyId) {
-    formValues.currencyId = props.currencyId;
   }
 
   await searchFormApi.setValues(formValues);
@@ -195,7 +196,19 @@ function closeDrawer() {
   visible.value = false;
 }
 
-/** 获取数据 */
+/** 调用选择列表接口；失败时自动再试 1 次 */
+async function requestSettlementApplicationList(
+  params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams,
+) {
+  try {
+    return await getPaymentApplicationPagedListByCurrencyForSettlement(params);
+  } catch (firstError) {
+    console.warn('选择付费申请列表检索失败，自动重试 1 次', firstError);
+    return await getPaymentApplicationPagedListByCurrencyForSettlement(params);
+  }
+}
+
+/** 获取数据（按「付费申请+原币」扁平行） */
 async function fetchData() {
   loading.value = true;
   try {
@@ -203,19 +216,19 @@ async function fetchData() {
     const [submitTimeStart, submitTimeEnd] = formValues.submitTimeRange || [];
     const [endTimeStart, endTimeEnd] = formValues.endTimeRange || [];
 
-    // ✅ 确定结算币别：优先使用用户选择的，如果没有则使用props传入的
+    // 结算币别 ≠ 搜索表单「原币币别」过滤；建单/加明细有结算币别时必传
     const settlementCurrencyId = selectedCurrencyId.value ?? props.currencyId;
 
     const params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams =
       {
         paymentSettlementId: props.paymentSettlementId,
         keyword: formValues.keyword,
-        // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
         keys: normalizeKeysParam(formValues.keys),
         applicationNo: formValues.applicationNo,
         settlementId: formValues.settlementId,
-        settlementCurrencyId: formValues.currencyId,
-        //settlementCurrencyId: settlementCurrencyId, // ✅ 可选：如果未传则不过滤结算币别
+        // 原币币别过滤（不传=全部；0=仅原币申请；>0=只返回该原币行）
+        currencyId: formValues.currencyId,
+        settlementCurrencyId,
         creatorUserId: formValues.creatorUserId,
         submitTimeStart: toIsoString(submitTimeStart),
         submitTimeEnd: toIsoString(submitTimeEnd),
@@ -225,65 +238,32 @@ async function fetchData() {
         pageSize: pageSize.value,
       };
 
-    console.log('📤 调用选择付费申请列表接口:', {
-      settlementCurrencyId: settlementCurrencyId ?? '未设置（显示所有）',
-      params,
-    });
+    const result = await requestSettlementApplicationList(params);
 
-    const result =
-      await getPaymentApplicationPagedListByCurrencyForSettlement(params);
-
-    // ✅ 新接口返回的是扁平化的「申请+原币」组合，直接赋值
-    dataSource.value = (result.items || []).map((row: any, index: number) => {
-      console.log('📋 处理数据行:', {
-        index,
-        rowKey: row.rowKey,
-        applicationNo: row.applicationNo,
-        originalCurrencyId: row.originalCurrencyId,
-        currencyId: row.currencyId,
-        settleableUpperLimit: row.settleableUpperLimit,
-        settleableLowerLimit: row.settleableLowerLimit,
-        settleablePriceUpperLimit: row.settleablePriceUpperLimit,
-        settleablePriceLowerLimit: row.settleablePriceLowerLimit,
-      });
-
-      // ✅ 初始化 settledPrice 字段（前端临时字段，用于用户输入）
-      // 注意：2026-08-10起，用户输入的是结算币别金额（settledPrice），不是原币金额
-      // 这里初始化为可结算上限和下限的总和（结算币别口径）
-      const totalUnSettledPrice = row.totalUnSettledPrice ?? 0;
-      row.settledPrice = totalUnSettledPrice;
-      // ✅ 如果currency.code是"原币"，则用originalCurrencyCode替代
+    dataSource.value = (result.items || []).map((row: any) => {
+      // 结满一行时直接用 totalUnSettledPrice 作为 settledPrice（结算币别）
+      row.settledPrice = row.totalUnSettledPrice ?? 0;
       if (row.currency == null) {
-        row.currency = { code: row.originalCurrencyCode };
+        row.currency = {
+          code: row.originalCurrency?.code || row.originalCurrencyCode,
+        };
       }
 
-      // ✅ 设置rowKey用于NestedDataTable的行标识 - 使用组合键确保唯一性
-      // 格式：paymentApplicationId_originalCurrencyId
-      // 这样可以区分同一个申请的不同原币组合
-      const uniqueKey = [
-        row.paymentApplicationId,
-        row.originalCurrencyId ?? 'null',
-      ].join('_');
-      row.rowKey = uniqueKey;
+      // 行 key：优先后端 rowKey，否则本地拼「申请id_原币id」
+      row.rowKey =
+        row.rowKey ||
+        [row.paymentApplicationId, row.originalCurrencyId ?? 'null'].join('_');
 
-      // ✅ 确保orderFees字段存在（即使为空数组）
       if (!row.orderFees) {
         row.orderFees = [];
       }
-
-      console.log('✅ 数据行:', {
-        rowKey: row.rowKey,
-        applicationNo: row.applicationNo,
-        hasOrderFees: Array.isArray(row.orderFees),
-        orderFeesLength: row.orderFees?.length || 0,
-      });
 
       return row;
     });
 
     total.value = result.totalCount || 0;
   } catch (error: any) {
-    message.error(error.message || '获取数据失败');
+    message.error(error?.message || '获取数据失败');
   } finally {
     loading.value = false;
   }
@@ -336,85 +316,53 @@ async function handleConfirm() {
     return;
   }
 
-  // ✅ 收集所有已选行中的申请币别ID（currencyId）
-  const applicationCurrencyIds = new Set<number | undefined>();
-  selectedRows.forEach((row) => {
-    applicationCurrencyIds.add(row.currencyId);
-  });
+  // 结算币别：优先已锁定（编辑/已有明细），否则从选中行推导
+  let settlementCurrency =
+    selectedCurrencyId.value ?? props.currencyId ?? undefined;
 
-  // 检查是否有多种申请币别
-  if (applicationCurrencyIds.size > 1) {
-    // 有多种申请币别，提示用户
-    const currencyList = Array.from(applicationCurrencyIds)
-      .map((id) => {
-        if (id === undefined || id === null) {
-          // 原币申请，显示对应的原币币别
-          const originalCode = selectedRows.find(
-            (r) => r.currencyId === undefined || r.currencyId === null,
-          )?.originalCurrencyCode;
-          return `原币(${originalCode || '-'})`;
-        }
-        return (
-          selectedRows.find((r) => r.currencyId === id)?.currency?.code ||
-          `币别${id}`
-        );
-      })
-      .filter((val, idx, arr) => arr.indexOf(val) === idx); // 去重
-
-    message.warning(
-      `选择的费用包含多种申请币别：${currencyList.join('、')}。请选择申请币别一致的费用进行结算。`,
-    );
-    return;
-  }
-
-  // ✅ 确定唯一的申请币别作为结算币别
-  const singleApplicationCurrencyId = Array.from(applicationCurrencyIds)[0];
-
-  if (
-    singleApplicationCurrencyId === undefined ||
-    singleApplicationCurrencyId === null
-  ) {
-    // 原币申请：结算币别应该与原币币别一致
-    // 收集所有原币币别
-    const originalCurrencyIds = new Set<number>();
-    selectedRows.forEach((row) => {
-      if (row.originalCurrencyId) {
-        originalCurrencyIds.add(row.originalCurrencyId);
+  if (settlementCurrency == null) {
+    const derivedIds = new Set<number>();
+    for (const row of selectedRows) {
+      // 固定币别申请 → 申请币别；原币申请 → 本行原币
+      const id =
+        row.currencyId != null && row.currencyId !== undefined
+          ? Number(row.currencyId)
+          : Number(row.originalCurrencyId);
+      if (!Number.isFinite(id)) {
+        message.warning('选中行缺少有效币别，无法确定结算币别');
+        return;
       }
-    });
-
-    if (originalCurrencyIds.size > 1) {
-      // 原币申请但有多种原币币别，提示用户
-      const currencyCodes = Array.from(originalCurrencyIds)
-        .map(
-          (id) =>
-            selectedRows.find((r) => r.originalCurrencyId === id)
-              ?.originalCurrencyCode,
-        )
-        .filter(Boolean);
+      derivedIds.add(id);
+    }
+    if (derivedIds.size !== 1) {
       message.warning(
-        `原币申请中包含多种原币币别：${currencyCodes.join('、')}。请选择原币币别一致的费用进行结算。`,
+        '选中行无法推导出唯一结算币别，请只选择同一结算币别下可结算的行',
       );
       return;
     }
-
-    // 单一原币币别，设置为结算币别
-    selectedCurrencyId.value = Array.from(originalCurrencyIds)[0];
-    console.log(
-      '原币申请，自动设置结算币别为原币币别:',
-      selectedCurrencyId.value,
-    );
-  } else {
-    // 固定币别申请，使用申请币别作为结算币别
-    selectedCurrencyId.value = singleApplicationCurrencyId;
-    console.log(
-      '固定币别申请，自动设置结算币别为申请币别:',
-      selectedCurrencyId.value,
-    );
+    settlementCurrency = Array.from(derivedIds)[0];
   }
 
-  // ✅ 2026-08-10起，不再需要汇率录入，直接返回选中的申请
-  // 汇率由后端从付费申请明细自动获取
+  // 校验每行是否可在该结算币别下结算（与后端规则一致）
+  for (const row of selectedRows) {
+    const isOriginalApp =
+      row.currencyId == null || row.currencyId === undefined;
+    if (isOriginalApp) {
+      if (Number(row.originalCurrencyId) !== Number(settlementCurrency)) {
+        message.warning(
+          `付费申请【${row.applicationNo}】是原币申请，只能结算原币为结算币别的费用`,
+        );
+        return;
+      }
+    } else if (Number(row.currencyId) !== Number(settlementCurrency)) {
+      message.warning(
+        `付费申请【${row.applicationNo}】的申请币别与结算币别不一致，不能结算`,
+      );
+      return;
+    }
+  }
+
+  selectedCurrencyId.value = settlementCurrency;
   returnSelectedApplications(selectedRows);
 }
 
@@ -534,44 +482,42 @@ function getsettledPriceMax(record: any): number {
   return record.settleablePriceUpperLimit ?? record.settleableUpperLimit ?? 0;
 }
 
-// ✅ 格式化原币金额（用于提示，现在直接使用settleablePrice字段）
-function formatOriginalAmount(record: any): string {
-  const settledPrice = (record as any).settledPrice || 0;
-  return formatAmount(settledPrice);
-}
-
-// ✅ 获取币别显示文本
 function getCurrencyCodeDisplay(record: any): string {
-  // 如果申请币别是原币（currencyId为null），显示原币的币别code
-  if (!record.currencyId) {
-    return record.originalCurrency?.code || '-';
+  // 原币申请：展示本行原币；固定币别申请：展示申请币别
+  if (record.currencyId == null || record.currencyId === undefined) {
+    return record.originalCurrency?.code || record.originalCurrencyCode || '-';
   }
-  // 否则显示申请币别的code
   return record.currency?.code || '-';
 }
 
-// ✅ 全选状态计算
+// ✅ 全选状态计算（仅针对可选行）
 const isAllSelected = computed(() => {
+  const selectable = dataSource.value.filter(
+    (item) => !props.existingRowKeys?.includes(item.rowKey),
+  );
   return (
-    dataSource.value.length > 0 &&
-    dataSource.value.every((item) =>
-      selectedRowKeys.value.includes(item.rowKey),
-    )
+    selectable.length > 0 &&
+    selectable.every((item) => selectedRowKeys.value.includes(item.rowKey))
   );
 });
 
 // ✅ 半选状态计算
 const isIndeterminate = computed(() => {
-  const selectedCount = dataSource.value.filter((item) =>
+  const selectable = dataSource.value.filter(
+    (item) => !props.existingRowKeys?.includes(item.rowKey),
+  );
+  const selectedCount = selectable.filter((item) =>
     selectedRowKeys.value.includes(item.rowKey),
   ).length;
-  return selectedCount > 0 && selectedCount < dataSource.value.length;
+  return selectedCount > 0 && selectedCount < selectable.length;
 });
 
-// ✅ 全选/取消全选
+// ✅ 全选/取消全选（跳过已在结算单中的组合）
 function toggleAllSelection(checked: boolean) {
   if (checked) {
-    selectedRowKeys.value = dataSource.value.map((item) => item.rowKey);
+    selectedRowKeys.value = dataSource.value
+      .filter((item) => !props.existingRowKeys?.includes(item.rowKey))
+      .map((item) => item.rowKey);
   } else {
     selectedRowKeys.value = [];
   }
@@ -644,8 +590,8 @@ const outerColumns = [
   // },
   {
     title: '申请人',
-    dataIndex: 'auditUserNickName',
-    key: 'auditUserNickName',
+    dataIndex: 'creatorUserName',
+    key: 'creatorUserName',
     width: 100,
     ellipsis: true,
   },
@@ -833,6 +779,7 @@ const innerColumns = [
           <span class="table-sequence-cell">
             <Checkbox
               :checked="selectedRowKeys.includes(record.rowKey)"
+              :disabled="props.existingRowKeys?.includes(record.rowKey)"
               @change="
                 (e) => toggleRowSelection(record.rowKey, e.target.checked)
               "
@@ -844,15 +791,11 @@ const innerColumns = [
           <div style="display: flex; gap: 4px; align-items: center">
             <a>{{ record.applicationNo }}</a>
             <Tag
-              v-if="
-                props.existingApplicationIds?.includes(
-                  record.paymentApplicationId,
-                )
-              "
+              v-if="props.existingRowKeys?.includes(record.rowKey)"
               color="orange"
               size="small"
             >
-              已有费用
+              已选
             </Tag>
           </div>
         </template>
@@ -878,6 +821,9 @@ const innerColumns = [
         </template>
         <template v-else-if="column.key === 'originalCurrencyCode'">
           {{ record.originalCurrency.code || '-' }}
+        </template>
+        <template v-else-if="column.key === 'creatorUserName'">
+          {{ record.creatorUserName || '-' }}
         </template>
         <template v-else-if="column.key === 'auditUserNickName'">
           {{ record.auditUserNickName || '-' }}
@@ -910,10 +856,7 @@ const innerColumns = [
               !selectedRowKeys.includes(record.rowKey) ||
               (record.settleableUpperLimit === 0 &&
                 record.settleableLowerLimit === 0) ||
-              (props.existingApplicationIds?.includes(
-                record.paymentApplicationId,
-              ) ??
-                false)
+              (props.existingRowKeys?.includes(record.rowKey) ?? false)
             "
           />
         </template>

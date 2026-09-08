@@ -86,10 +86,6 @@ export function useLoadDetail(
       if (detail.clientInvoiceBankId) {
         fixedHeaderId.value = detail.clientInvoiceBankId;
         fixedCurrencyId.value = detail.currencyId || undefined;
-        console.log('✅ 编辑模式：初始化 fixedHeaderId 和 fixedCurrencyId', {
-          fixedHeaderId: fixedHeaderId.value,
-          fixedCurrencyId: fixedCurrencyId.value,
-        });
       }
 
       // 设置开票汇率
@@ -100,11 +96,6 @@ export function useLoadDetail(
 
       // 从 invoiceIssueItems 中构建 applicationGroupsData
       if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
-        console.log(
-          '✅ 已加载申请明细:',
-          detail.invoiceIssueItems.length,
-          '条',
-        );
         await loadFullApplicationData(detail.invoiceIssueItems);
       }
 
@@ -125,10 +116,7 @@ export function useLoadDetail(
         goodsDetails.value = [];
         await nextTick();
         goodsDetails.value = newGoodsDetails;
-
-        console.log('✅ 加载商品明细:', goodsDetails.value.length, '条');
       } else {
-        console.log('⚠️ 详情中没有商品明细数据');
       }
     } catch (error) {
       console.error('加载详情失败:', error);
@@ -206,23 +194,11 @@ export function useLoadDetail(
 
       // 从 invoiceIssueItems 中构建 applicationGroupsData
       if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
-        console.log(
-          '✅ 已加载申请明细:',
-          detail.invoiceIssueItems.length,
-          '条',
-        );
         await loadFullApplicationData(detail.invoiceIssueItems);
       } else {
         // 如果没有申请明细，清空 applicationGroupsData
         applicationGroupsData.value = [];
-        console.log('⚠️ 没有申请明细，已清空 applicationGroupsData');
       }
-
-      console.log(
-        '✅ 基础数据已更新，商品明细保持不变:',
-        goodsDetails.value.length,
-        '条',
-      );
     } catch (error) {
       console.error('加载详情失败:', error);
       message.error('加载详情失败');
@@ -238,19 +214,11 @@ export function useLoadDetail(
         (item: any) => item.invoiceApplicationId,
       );
 
-      console.log('🔍 需要加载的申请ID列表:', applicationIds);
-
       const groupsData: any[] = [];
 
       for (const appItemId of applicationIds) {
         try {
-          console.log('📥 正在加载申请详情:', appItemId);
           const appDetail = await InvoiceApplicationAdminApi.detail(appItemId);
-
-          console.log('✅ 成功加载申请详情:', {
-            id: appDetail.id,
-            applicationNo: appDetail.applicationNo,
-          });
 
           // 构建扁平化的费用明细列表
           const flatItems: any[] = [];
@@ -318,11 +286,6 @@ export function useLoadDetail(
       }
 
       applicationGroupsData.value = groupsData;
-      console.log(
-        '✅ applicationGroupsData 已加载完成，共',
-        groupsData.length,
-        '个申请组',
-      );
     } catch (error) {
       console.error('加载完整申请数据失败:', error);
       message.error('加载申请详情失败，占位符可能无法正确替换');

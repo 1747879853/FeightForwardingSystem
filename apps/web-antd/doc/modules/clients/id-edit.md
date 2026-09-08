@@ -17,7 +17,7 @@ last_updated: 2026-09-08
 | 路由名称 | `ClientEdit` |
 | 页面组件 | `src/views/client/editor.vue` |
 | 权限口径 | 未在路由中声明独立权限 |
-| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/except-service/index.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/contact/data.ts`<br/>`src/views/client/payment-terms/data.ts`<br/>`src/views/client/invoice/data.ts`<br/>`src/api/sea-export/client-admin.ts`<br/>`src/api/sea-export/client-contact-admin.ts`<br/>`src/api/sea-export/client-except-service-admin.ts` |
+| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/base/options.ts`<br/>`src/views/client/editor.vue`<br/>`src/views/client/contact/list.vue`<br/>`src/views/client/payment-terms/list.vue`<br/>`src/views/client/payment-terms/add-modal.vue`<br/>`src/views/client/except-service/index.vue`<br/>`src/utils/business-type-options.ts`<br/>`src/api/sea-export/client-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -37,7 +37,7 @@ last_updated: 2026-09-08
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **客户 ID** | 编辑上下文的主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载客户及其子资料。 | 必须是有效 GUID。 |
-| **联系人** | 客户沟通对象。 | `src/views/client/contact/data.ts` / `client-contact-admin.ts` | **触发/依赖：** 依赖当前客户 ID。 | 删除和编辑需保持父客户上下文。 |
+| **联系人** | 客户沟通对象。 | `contact/list.vue` + Handsontable / `client-contact-admin.ts` | **触发/依赖：** 依赖当前客户 ID。 | 删除和编辑需保持父客户上下文。 |
 | **付款条件** | 客户账期与结算约定。 | `src/views/client/payment-terms/data.ts` / `billing-period-admin.ts` | **触发/依赖：** 影响费用、付款和结算口径。 | 删除时 `row.id` 可能为大数 string，须原样透传，禁止 `Number()`。 |
 | **排除服务项** | 委托单位在各起运港（含默认港口配置）禁用的海运出口服务项。 | `ClientExceptServiceAdmin` | **触发/依赖：** 依赖客户为委托单位；展示数据来自全局 `SeServiceConfig` 与 `ClientExceptService` 合并计算 `isChecked`；`polId` 为空的分组表示默认模板。 | 非委托单位不可查看/修改；保存默认分组排除项时 `polId` 传 `null`。 |
 
@@ -50,6 +50,7 @@ last_updated: 2026-09-08
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-09-08 | `Fix` | 从新建页保存进来时，顶栏只保留本编辑页签，不再残留新建页签。 | 关页签发生在新建表单提交里，编辑容器本身不负责关旧 tab。详见 `changelogs/change-log-2026-09-08-client-create-tab-close.md`。 |
+| 2026-09-08 | `Refactor` | 清理孤儿账期/附件弹窗与联系人旧 VXE data；附件与对接人 id 字符串透传。 | `BusinessTypeOptions` 外提到 `utils/business-type-options.ts`；客户枚举拆至 `base/options.ts`；`base/data.ts` 去掉死 `useFormSchema`。 |
 | 2026-08-25 | `Feature` | 供应商行业类别新增「码头」（字母 `t`，数字 `20`）。 | 与后端 `IndustryCategory.码头` 对齐。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-07-12 | `Fix` | 客户账期删除不再对 `row.id` 使用 `Number()`，避免大数主键删错记录。 | `BillingPeriodAdminApi.IdDto.id` 改为 `number \| string`，与 json-bigint 响应一致。 |
 | 2026-06-09 | `Feature` | 客户「海运出口服务项目」Tab 支持展示默认港口配置分组，保存排除项时 `polId` 传 `null`。 | `formatPolLabel` / `buildEditPayload` / `getPortGroupKey` 统一空 `polId` 口径，文案复用基础资料 `defaultPolConfig`。 |

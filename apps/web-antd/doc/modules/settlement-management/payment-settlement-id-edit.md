@@ -7,14 +7,14 @@ last_updated: 2026-09-08
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 付费结算是把已审核通过的「付费申请」按结算币别折算后合并成一张对外付款单。页面维护结算时间、付款方式、结算对象、结算币别、双方银行与手续费，并按「付费申请 → 原币币别 → 费用」三层展开维护本次结算量；结算对象与币别一经确定即随第一张付费申请锁定，不允许在本页自由更改。
+**白话解释：** 付费结算是把已审核通过的「付费申请」按结算币别折算后合并成一张对外付款单。页面维护结算时间、付款方式、结算对象、结算币别、双方银行与手续费；结算粒度是「付费申请 + 原币币别」一行，详情与选择列表结构一致。结算对象与币别一经确定即随第一张付费申请锁定。
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **新建结算：** `/settlement-management/payment-settlement/add`，先通过「选择付费申请」抽屉挑选审核通过的申请；首次添加后自动带出结算对象与结算币别。抽屉内外层/内层表格支持表头拖拽调列宽（`NestedDataTable` 内置）。
-- **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailAsync` 回填主信息、汇率明细与 `paymentApplications` 分组；结算对象下拉只读并按详情 `settlement` 回显。
-- **汇率维护：** 按涉及的原币币别维护汇率快照，原币与结算币别相同时强制为 1。
-- **金额结算：** 第二层按币别展示本次结算量与结算金额，第三层展示费用明细及剩余可结算额度。
+- **新建结算：** `/settlement-management/payment-settlement/add`，抽屉调 `GetPagedListByCurrencyForSettlementAsync`（有结算币别时传 `settlementCurrencyId`）；确认后走 `AddByCurrencyAsync`。
+- **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailByCurrencyAsync` 回填主信息与 `paymentApplicationCurrencies[]`；追加 `AddItemsByCurrencyAsync`，删除 `DeleteItemsByCurrencyAsync`。
+- **汇率：** 前端不录入；后端从付费申请明细快照到行上 `rate`（原币申请恒为 1）。
+- **金额：** 每行填 `settledPrice`（结算币别）；结满一行直接用列表返回的 `totalUnSettledPrice`。
 - **锁定/解锁与删除：** 在列表页按结算单执行；锁定后不允许进入编辑。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -29,24 +29,25 @@ last_updated: 2026-09-08
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **结算对象** | 本次付款的往来单位。 | **付费结算**<br/>`PaymentSettlementAdmin/DetailAsync` → `settlement`（`id`/`name`/`fullName`/`address`） | 新建时取第一张付费申请的 `settlementId`；编辑用详情 `settlement` 构造 `ClientSelect` 的 `selected-items` 回显，命中缓存则不再拉客户详情；变更后清空对方银行并重载结算银行选项。 | 保存前必填；页面内下拉只读。 |
-| **结算币别** | 结算与付款使用的币别。 | **付费结算**<br/>`DetailAsync` → `currencyId` / `currencyCode` | 与汇率明细联动，原币等于结算币别时汇率固定为 1。 | 保存前必填。 |
-| **付费申请分组** | 本次结算包含的付费申请及其费用明细。 | **付费结算**<br/>`DetailAsync` → `paymentApplications[]`（含 `settlement`、`currencyGroup`） | 分组重建 `mockApplication` 时，`clientName` 优先取分组 `settlement?.name`，回退到主表 `settlement?.name`。 | 至少添加一张付费申请。 |
-| **对方银行** | 结算对象的收款银行。 | **客户开票信息**<br/>`GetClientInvoiceInfoList` | 依赖结算对象；结算对象变化即清空并重新加载选项。 | 结算对象为空时禁用。 |
-| **手续费** | 付款产生的银行手续费。 | **付费结算**<br/>`AddAsync` / `EditAsync` | — | 选填。 |
+| **结算对象** | 本次付款的往来单位。 | `DetailByCurrencyAsync` → `settlement` | 新建取第一张付费申请；编辑用详情回显。 | 保存前必填；页面内下拉只读。 |
+| **结算币别** | 结算与付款使用的币别。 | `DetailByCurrencyAsync` → `currencyId` / `currency` | 选择列表传 `settlementCurrencyId` 过滤。 | 保存前必填。 |
+| **结算行** | 「付费申请+原币」组合。 | `paymentApplicationCurrencies[]`（含 `rowKey`、`settledPrice`、`rate`、`orderFees`） | 追加/删除按组合键。 | 至少一行。 |
+| **对方银行** | 结算对象的收款银行。 | `GetClientInvoiceInfoList` | 依赖结算对象。 | 结算对象为空时禁用。 |
+| **手续费** | 付款银行手续费及币别。 | `transactionFee` + `transactionFeeCurrencyId` | 币别默认可跟结算币别，可单独改。结算总金额**不含**手续费。 | 选填。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
-> [!IMPORTANT] **[卡点 1：结算对象与币别随第一张付费申请锁定]** 首次添加付费申请后即写入 `settlementId` 与 `currencyId`，页面内不提供修改入口；换结算对象需重开结算单。
+> [!IMPORTANT] **[卡点 1：粒度是申请+原币]** 同一付费申请可拆多行；删明细、判重、选择列表禁用都以 `rowKey`（`paymentApplicationId_originalCurrencyId`）为准。
 
-> [!IMPORTANT] **[卡点 2：`settlementName` 已被删除]** 详情与列表只返回 `settlement` 对象，任何展示都必须走 `settlement?.name` 并做空值兜底；费用行上的 `orderFee.settlementName` 是费用维度字段，与主表结算对象无关。
+> [!IMPORTANT] **[卡点 2：三类币别勿混]** `originalCurrencyId`=费用原币；申请行 `currencyId`=申请币别（null=原币申请）；结算单 `currencyId`=结算币别。选择列表的搜索「原币币别」对应查询参数 `currencyId`，结算币别对应 `settlementCurrencyId`。
 
-> [!IMPORTANT] **[卡点 3：ClientSelect 无通用详情接口]** 结算对象下拉的编辑回显必须由外部传 `selected-items`，否则目标客户不在首页分页结果内时会显示空白。
+> [!IMPORTANT] **[卡点 3：固定币别与原币申请可同单]** 固定币别申请要求申请币别=结算币别；原币申请只能挂 `originalCurrencyId`=结算币别的行。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-08 | `Fix` | 「选择付费申请」最晚付款时间按自然日闭区间；提交时间仍带时分。 | 提交时间控件有 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
-| 2026-08-09 | `Refactor` | 付费申请展开行、以及「添加付费申请」抽屉展开的费用明细，「费用名称」「币别」改读嵌套对象。 | `PaymentSettlementAdminApi.OrderFeeDto` 与 `OrderFeeForSelectionDto` 均已对象化——后者虽名字不同，但接口文档写明 `orderFees: List<OrderFeeDto>`，属同一后端 DTO。`application-items-table.vue` 与 `add-application-drawer/index.vue` 的内层 a-table `dataIndex` 改数组路径 `['feeCode','cnName']`/`['currency','code']`，`key` 保持不变以免影响既有 `#bodyCell` 分支。注意这两处列绑定是无类型的字符串，`vue-tsc` 查不出来，只能靠接口文档比对。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
-| 2026-07-25 | `Refactor` | 结算对象改读对象化后的 `settlement`；编辑进入时下拉直接回显结算对象，列表「结算对象」列同步取对象值。 | 详情/列表删除 `settlementName`，类型复用 `PaymentApplicationAdminApi.ClientSimpleDtoForOrder`；列 `field` 保留 `settlementName` 以维持列持久化与排序映射，展示走 `formatter`；`watch(settlementId)` 命中 `selected-items` 缓存时跳过 `getClientDetail`。 |
+| 2026-09-08 | `Refactor` | 对接按原币+付费申请一套接口；选择列表检索失败自动重试 1 次。 | 抽屉修正 `settlementCurrencyId`/`currencyId` 传参；`existingRowKeys` 禁用已选组合。详见 `doc/付费结算/付费结算-按原币和付费申请-接口文档.md`。 |
+| 2026-09-08 | `Fix` | 「选择付费申请」最晚付款时间按自然日闭区间；提交时间仍带时分。 | 提交时间控件有 `showTime`。 |
+| 2026-08-09 | `Refactor` | 费用明细「费用名称」「币别」改读嵌套对象。 | `OrderFeeDto` / `OrderFeeForSelectionDto` 对象化。 |
+| 2026-07-25 | `Refactor` | 结算对象改读对象化后的 `settlement`。 | 删除 `settlementName` 标量字段。 |

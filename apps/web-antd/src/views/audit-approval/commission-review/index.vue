@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { computed, h, onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
-import { Button, message, Modal, Space, Textarea } from 'ant-design-vue';
+import { Button, message, Space } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -26,6 +26,7 @@ import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import DetailModal from '#/views/commission/detail-modal.vue';
 
 import {
@@ -367,40 +368,20 @@ const openRemarkConfirm = (options: {
   remarkRequired: boolean;
   title: string;
 }) => {
-  let modalRemark = '';
-  Modal.confirm({
+  openAuditRemarkConfirm({
     title: options.title,
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-          },
-          rows: 3,
-          maxlength: 1024,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    okButtonProps: options.danger ? { danger: true } : undefined,
-    async onOk() {
-      if (options.remarkRequired && !modalRemark.trim()) {
-        message.warning($t('commissionOrder.action.rejectRemarkRequired'));
-        return Promise.reject(new Error('remark required'));
-      }
+    danger: options.danger,
+    remarkRequired: options.remarkRequired,
+    remarkRequiredMessage: $t('commissionOrder.action.rejectRemarkRequired'),
+    maxlength: 1024,
+    onConfirm: async (modalRemark) => {
       const rows = options.pickRows();
       if (rows.length === 0) {
         message.warning(options.emptyMessage);
         return Promise.reject(new Error(options.emptyMessage));
       }
       await options.onConfirm(
-        modalRemark.trim(),
+        modalRemark,
         rows.map((r) => r.id),
       );
     },

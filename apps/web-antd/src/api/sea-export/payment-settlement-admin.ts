@@ -70,6 +70,8 @@ export namespace PaymentSettlementAdminApi {
     clientInvoiceBankId?: string;
     /** 手续费 */
     transactionFee?: number;
+    /** 手续费币别ID */
+    transactionFeeCurrencyId?: number;
     /** 备注 */
     remark?: string;
     /** 付费申请结算列表 */
@@ -78,7 +80,7 @@ export namespace PaymentSettlementAdminApi {
     attachments?: AttachmentItemForItemInputDto[];
   }
 
-  /** 修改付费结算参数DTO */
+  /** 修改付费结算参数DTO（主表；明细增删走 *ByCurrency） */
   export interface PaymentSettlementEditDto {
     /** 付费结算ID */
     id: string;
@@ -94,6 +96,8 @@ export namespace PaymentSettlementAdminApi {
     clientInvoiceBankId?: string;
     /** 手续费 */
     transactionFee?: number;
+    /** 手续费币别ID */
+    transactionFeeCurrencyId?: number;
     /** 备注 */
     remark?: string;
     /** 附件列表（全量替换） */
@@ -283,6 +287,10 @@ export namespace PaymentSettlementAdminApi {
     clientInvoiceBankId?: string;
     /** 手续费 */
     transactionFee?: number;
+    /** 手续费币别ID */
+    transactionFeeCurrencyId?: number;
+    /** 手续费币别对象（编码读 code） */
+    transactionFeeCurrency?: CurrencySimpleDto | null;
     /** 备注 */
     remark?: string;
     /** 结算对象（客户简易对象，无则为 null） */
@@ -525,7 +533,7 @@ export namespace PaymentSettlementAdminApi {
     originalCurrencyId: number;
   }
 
-  /** 新增付费结算参数DTO（按原币） */
+  /** 新增付费结算参数DTO（按原币）→ AddByCurrencyAsync */
   export interface PaymentSettlementAddByCurrencyDto {
     settlementTime: string;
     payType?: number;
@@ -535,6 +543,8 @@ export namespace PaymentSettlementAdminApi {
     orgBankAccountId?: string;
     clientInvoiceBankId?: string;
     transactionFee?: number;
+    /** 手续费币别ID */
+    transactionFeeCurrencyId?: number;
     remark?: string;
     paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
     attachments?: AttachmentItemForItemInputDto[];
@@ -631,6 +641,10 @@ export namespace PaymentSettlementAdminApi {
     orgBankAccountId?: string;
     clientInvoiceBankId?: string;
     transactionFee?: number;
+    /** 手续费币别ID */
+    transactionFeeCurrencyId?: number;
+    /** 手续费币别对象（编码读 code） */
+    transactionFeeCurrency?: CurrencySimpleDto | null;
     remark?: string;
 
     settlement?: PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
@@ -639,7 +653,12 @@ export namespace PaymentSettlementAdminApi {
     creatorUserName?: string;
     lastModifierUserName?: string;
     userName?: string;
+    /**
+     * 结算行列表（「付费申请+原币」一维行）。
+     * 合计 `totalSettledPrice` 仅为各行 settledPrice 之和，**不含手续费**。
+     */
     paymentApplicationCurrencies: PaymentSettlementPayAppCurrencyDto[];
+    /** 结算金额合计（结算币别）= 各行 settledPrice 之和，不含手续费 */
     totalSettledPrice: number;
     attachments: AttachmentItemDto[];
     /** 本结算单关联的所有付费申请的附件 */
@@ -649,28 +668,28 @@ export namespace PaymentSettlementAdminApi {
 
 // ==================== API 函数 ====================
 
-/** 新增付费结算 */
+/** 新增付费结算（旧：AddAsync，已停用，请用 addPaymentSettlementByCurrency） */
 export const addPaymentSettlement = (
   data: PaymentSettlementAdminApi.PaymentSettlementAddDto,
 ) => {
   return requestClient.post<string>(`${API_PREFIX}/AddAsync`, data);
 };
 
-/** 修改主表和汇率 */
+/** 修改主表（附件/手续费/银行等；汇率不再维护） */
 export const editPaymentSettlement = (
   data: PaymentSettlementAdminApi.PaymentSettlementEditDto,
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
 };
 
-/** 添加结算明细 */
+/** 添加结算明细（旧：AddItemsAsync，已停用，请用 addItemsToSettlementByCurrency） */
 export const addItemsToSettlement = (
   data: PaymentSettlementAdminApi.PaymentSettlementAddItemsDto,
 ) => {
   return requestClient.post<boolean>(`${API_PREFIX}/AddItemsAsync`, data);
 };
 
-/** 删除结算明细 */
+/** 删除结算明细（旧：按付费申请整单删；新粒度请用 deleteItemsFromSettlementByCurrency） */
 export const deleteItemsFromSettlement = (
   data: PaymentSettlementAdminApi.PaymentSettlementDeleteItemsDto,
 ) => {
