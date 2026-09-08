@@ -9,6 +9,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:bar-chart-3',
       order: 300,
       title: '报表',
+      authority: abpPageAuthority('Admin.Report'),
     },
     name: 'Report',
     path: '/report',
@@ -29,7 +30,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           keepAlive: true,
           title: '欠费报表',
-          // authority: abpPageAuthority('Admin.Report.Arrears.Get'),
+          authority: abpPageAuthority('Admin.Report.Arrears.Get'),
         },
         component: () => import('#/views/report/arrears-report/index.vue'),
       },
