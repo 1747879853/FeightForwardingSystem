@@ -6,18 +6,16 @@ import type { Dayjs } from 'dayjs';
 import { computed, reactive, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Alert,
   Button,
-  Card,
   DatePicker,
   Form,
   FormItem,
-  Input,
   Modal as AntModal,
   Table,
-  Tag,
   message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
@@ -31,9 +29,9 @@ import {
 } from '#/api/commission/commission-order-admin';
 import { $t } from '#/locales';
 
-import CalcView from './calc-view.vue';
+import CalcPanels from './calc-panels.vue';
 import {
-  formatMonth,
+  formatAmount,
   ticketRowKey,
   useOperationTicketColumns,
   useSalesTicketColumns,
@@ -43,11 +41,10 @@ defineOptions({ name: 'CommissionOrderCreateModal' });
 
 const emit = defineEmits<{ success: [] }>();
 
-const { CommissionType } = CommissionOrderAdminApi;
+const { CommissionItemProfitType, CommissionType } = CommissionOrderAdminApi;
 
 const [Modal, modalApi] = useVbenModal({
   class: 'w-[1300px]',
-  footer: false,
   async onOpenChange(isOpen) {
     if (!isOpen) {
       preview.value = null;
@@ -152,22 +149,6 @@ watch(
   },
 );
 
-const salesMonths = computed(() =>
-  isSales.value
-    ? ((
-        preview.value as CommissionOrderAdminApi.CommissionSalesPreviewDto | null
-      )?.months ?? [])
-    : [],
-);
-
-const operationMonths = computed(() =>
-  !isSales.value
-    ? ((
-        preview.value as CommissionOrderAdminApi.CommissionOperationPreviewDto | null
-      )?.months ?? [])
-    : [],
-);
-
 const onPreview = async () => {
   try {
     await formRef.value?.validate();
@@ -194,6 +175,60 @@ const onPreview = async () => {
   }
 };
 
+// ==================== 预览结果归一化 ====================
+
+interface MonthBlock {
+  accountDate: string;
+  calculation: CommissionOrderAdminApi.CommissionCalculationDto | null;
+  canSubmit: boolean;
+  cannotSubmitReasons: string[];
+  settled: CommissionOrderAdminApi.CommissionTicketDto[];
+  unsettled: CommissionOrderAdminApi.CommissionTicketDto[];
+}
+
+/** 销售/操作两种月结构归一为同一形状，模板只需一次循环 */
+const monthBlocks = computed<MonthBlock[]>(() => {
+  const current = preview.value;
+  if (!current) return [];
+  return current.months.map((month): MonthBlock => {
+    if (isSales.value) {
+      const sales = month as CommissionOrderAdminApi.CommissionSalesMonthDto;
+      return {
+        accountDate: sales.accountDate,
+        calculation: sales.calculation ?? null,
+        canSubmit: sales.canSubmit,
+        cannotSubmitReasons: sales.cannotSubmitReasons,
+        settled: sales.settledTickets,
+        unsettled: sales.unsettledTickets,
+      };
+    }
+    const operation =
+      month as CommissionOrderAdminApi.CommissionOperationMonthDto;
+    return {
+      accountDate: operation.accountDate,
+      calculation: operation.calculation ?? null,
+      canSubmit: operation.canSubmit,
+      cannotSubmitReasons: operation.cannotSubmitReasons,
+      settled: operation.tickets,
+      unsettled: [],
+    };
+  });
+});
+
+/** 未达门槛票数（销售），供「达标票数」磁贴副文案 */
+const belowCountOf = (block: MonthBlock) =>
+  block.settled.filter(
+    (ticket) => ticket.profitType === CommissionItemProfitType.BelowThreshold,
+  ).length;
+
+/** 应发合计：各月最终应发求和 */
+const totalFinal = computed(() =>
+  monthBlocks.value.reduce(
+    (sum, block) => sum + (block.calculation?.finalAmount ?? 0),
+    0,
+  ),
+);
+
 // ==================== 票表格列 ====================
 
 const ticketColumns = computed(() =>
@@ -209,8 +244,8 @@ const unsettledTicketColumns = computed(() =>
 const canCreate = computed(
   () =>
     preview.value !== null &&
-    preview.value.months.length > 0 &&
-    preview.value.months.every((month) => month.canSubmit),
+    monthBlocks.value.length > 0 &&
+    monthBlocks.value.every((block) => block.canSubmit),
 );
 
 const onConfirmCreate = () => {
@@ -239,19 +274,29 @@ const onConfirmCreate = () => {
 
 <template>
   <Modal :title="modalTitle">
-    <div class="space-y-4">
-      <!-- 查询条件 -->
+    <div class="space-y-3">
+      <!-- 基础信息筛选条 -->
       <Form
         ref="formRef"
         :model="formState"
         :rules="formRules"
-        layout="vertical"
+        :colon="false"
+        layout="horizontal"
+        class="filter-card"
       >
-        <div class="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-4">
-          <FormItem :label="$t('commissionOrder.create.user')" name="userId">
+        <div class="filter-row">
+          <FormItem
+            :label="$t('commissionOrder.create.user')"
+            name="userId"
+            class="filter-item"
+          >
             <UserSelect v-model="formState.userId" allow-clear class="w-full" />
           </FormItem>
-          <FormItem :label="$t('commissionOrder.create.org')" name="orgId">
+          <FormItem
+            :label="$t('commissionOrder.create.org')"
+            name="orgId"
+            class="filter-item"
+          >
             <UserOrgSelect
               v-model="formState.orgId"
               :user-id="formState.userId"
@@ -261,7 +306,7 @@ const onConfirmCreate = () => {
           <FormItem
             :label="$t('commissionOrder.create.monthRange')"
             name="monthRange"
-            :extra="$t('commissionOrder.create.monthRangeHint')"
+            class="filter-item filter-item--wide"
           >
             <DatePicker.RangePicker
               v-model:value="formState.monthRange"
@@ -270,25 +315,20 @@ const onConfirmCreate = () => {
               class="w-full"
             />
           </FormItem>
-          <div class="flex items-end pb-0">
-            <Button type="primary" :loading="previewing" @click="onPreview">
-              {{
-                preview
-                  ? $t('commissionOrder.create.repreview')
-                  : $t('commissionOrder.create.preview')
-              }}
-            </Button>
-          </div>
+          <Button
+            type="primary"
+            :loading="previewing"
+            class="filter-btn"
+            @click="onPreview"
+          >
+            <IconifyIcon icon="mdi:refresh" class="mr-1 size-3.5" />
+            {{
+              preview
+                ? $t('commissionOrder.create.repreview')
+                : $t('commissionOrder.create.preview')
+            }}
+          </Button>
         </div>
-        <FormItem :label="$t('commissionOrder.create.remark')" name="remark">
-          <Input.TextArea
-            v-model:value="formState.remark"
-            :maxlength="1024"
-            :rows="2"
-            show-count
-            :placeholder="$t('commissionOrder.create.remarkPlaceholder')"
-          />
-        </FormItem>
       </Form>
 
       <Alert
@@ -298,165 +338,232 @@ const onConfirmCreate = () => {
         :message="$t('commissionOrder.create.noPreview')"
       />
 
-      <!-- 预览结果：销售提成 -->
-      <div v-if="isSales && salesMonths.length > 0" class="space-y-3">
-        <Card
-          v-for="month in salesMonths"
-          :key="month.accountDate"
-          size="small"
-        >
-          <template #title>
-            <div class="flex items-center gap-2">
-              <span>{{ formatMonth(month.accountDate) }}</span>
-              <Tag :color="month.canSubmit ? 'success' : 'error'">
-                {{
-                  month.canSubmit
-                    ? $t('commissionOrder.create.canSubmit')
-                    : $t('commissionOrder.create.cannotSubmit')
-                }}
-              </Tag>
-            </div>
-          </template>
-          <div class="space-y-3">
-            <Alert
-              v-if="!month.canSubmit"
-              type="error"
-              show-icon
-              :message="$t('commissionOrder.create.cannotSubmitReasons')"
-            >
-              <ul class="list-disc pl-4">
-                <li v-for="(reason, i) in month.cannotSubmitReasons" :key="i">
-                  {{ reason }}
-                </li>
-              </ul>
-            </Alert>
-
-            <CalcView :calculation="month.calculation" />
-
-            <div>
-              <div class="mb-2 font-medium">
-                {{
-                  $t('commissionOrder.create.part1Title', {
-                    count: month.settledTickets.length,
-                  })
-                }}
-              </div>
-              <Table
-                bordered
-                size="small"
-                :scroll="{ x: 'max-content' }"
-                :columns="ticketColumns"
-                :data-source="month.settledTickets"
-                :pagination="false"
-                :row-key="ticketRowKey"
-              />
-            </div>
-
-            <template v-if="month.unsettledTickets.length > 0">
-              <Alert
-                type="warning"
-                show-icon
-                :message="$t('commissionOrder.create.part2Warning')"
-              />
-              <div>
-                <div class="mb-2 font-medium">
-                  {{
-                    $t('commissionOrder.create.part2Title', {
-                      count: month.unsettledTickets.length,
-                    })
-                  }}
-                </div>
-                <Table
-                  bordered
-                  size="small"
-                  :scroll="{ x: 'max-content' }"
-                  :columns="unsettledTicketColumns"
-                  :data-source="month.unsettledTickets"
-                  :pagination="false"
-                  :row-key="ticketRowKey"
-                />
-              </div>
-            </template>
-          </div>
-        </Card>
-      </div>
-
-      <!-- 预览结果：操作提成 -->
-      <div v-else-if="!isSales && operationMonths.length > 0" class="space-y-3">
-        <Card
-          v-for="month in operationMonths"
-          :key="month.accountDate"
-          size="small"
-        >
-          <template #title>
-            <div class="flex items-center gap-2">
-              <span>{{ formatMonth(month.accountDate) }}</span>
-              <Tag :color="month.canSubmit ? 'success' : 'error'">
-                {{
-                  month.canSubmit
-                    ? $t('commissionOrder.create.canSubmit')
-                    : $t('commissionOrder.create.cannotSubmit')
-                }}
-              </Tag>
-            </div>
-          </template>
-          <div class="space-y-3">
-            <Alert
-              v-if="!month.canSubmit"
-              type="error"
-              show-icon
-              :message="$t('commissionOrder.create.cannotSubmitReasons')"
-            >
-              <ul class="list-disc pl-4">
-                <li v-for="(reason, i) in month.cannotSubmitReasons" :key="i">
-                  {{ reason }}
-                </li>
-              </ul>
-            </Alert>
-
-            <CalcView :calculation="month.calculation" />
-
-            <div>
-              <div class="mb-2 font-medium">
-                {{
-                  $t('commissionOrder.create.ticketsTitle', {
-                    count: month.tickets.length,
-                  })
-                }}
-              </div>
-              <Table
-                bordered
-                size="small"
-                :scroll="{ x: 'max-content' }"
-                :columns="ticketColumns"
-                :data-source="month.tickets"
-                :pagination="false"
-                :row-key="ticketRowKey"
-              />
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <!-- 底部操作 -->
+      <!-- 按月预览结果 -->
       <div
-        v-if="preview && preview.months.length > 0"
-        class="flex items-center justify-end gap-2 border-t pt-3"
+        v-for="block in monthBlocks"
+        :key="block.accountDate"
+        class="space-y-3"
       >
         <Alert
-          v-if="!canCreate"
-          type="warning"
+          v-if="!block.canSubmit"
+          type="error"
           show-icon
-          :message="$t('commissionOrder.create.notAllCanSubmit')"
-          class="mr-auto border-none"
+          :message="$t('commissionOrder.create.cannotSubmitReasons')"
+        >
+          <template #description>
+            <ul class="list-disc pl-4">
+              <li v-for="(reason, i) in block.cannotSubmitReasons" :key="i">
+                {{ reason }}
+              </li>
+            </ul>
+          </template>
+        </Alert>
+
+        <CalcPanels
+          :calculation="block.calculation"
+          :month="block.accountDate"
+          :can-submit="block.canSubmit"
+          :is-sales="isSales"
+          :below-count="belowCountOf(block)"
         />
-        <Button :disabled="!canCreate" @click="modalApi.close()">
-          {{ $t('common.cancel') }}
-        </Button>
-        <Button type="primary" :disabled="!canCreate" @click="onConfirmCreate">
-          {{ $t('commissionOrder.create.confirmCreate') }}
-        </Button>
+
+        <!-- 参与计算的票 -->
+        <section class="ticket-card">
+          <template v-if="block.unsettled.length > 0">
+            <Alert
+              type="warning"
+              show-icon
+              :message="$t('commissionOrder.create.part2Warning')"
+              class="my-3"
+            />
+            <header class="ticket-card__head">
+              {{
+                $t('commissionOrder.create.part2Title', {
+                  count: block.unsettled.length,
+                })
+              }}
+            </header>
+            <Table
+              class="design-table"
+              size="small"
+              :scroll="{ x: 'max-content' }"
+              :columns="unsettledTicketColumns"
+              :data-source="block.unsettled"
+              :pagination="false"
+              :row-key="ticketRowKey"
+            />
+          </template>
+
+          <header class="ticket-card__head">
+            {{
+              $t('commissionOrder.create.ticketsTitle', {
+                count: block.settled.length,
+              })
+            }}
+          </header>
+          <Table
+            class="design-table"
+            size="small"
+            :scroll="{ x: 'max-content' }"
+            :columns="ticketColumns"
+            :data-source="block.settled"
+            :pagination="false"
+            :row-key="ticketRowKey"
+          />
+        </section>
       </div>
     </div>
+
+    <!-- 底部操作栏 -->
+    <template #footer>
+      <div class="modal-footer">
+        <div class="modal-footer__left">
+          <template v-if="preview">
+            <span class="modal-footer__gen">
+              {{
+                $t('commissionOrder.create.willGenerate', {
+                  count: monthBlocks.length,
+                })
+              }}
+            </span>
+            <span class="modal-footer__total-label">
+              {{ $t('commissionOrder.create.finalTotal') }}
+            </span>
+            <span class="modal-footer__total">
+              ¥{{ formatAmount(totalFinal) }}
+            </span>
+            <span v-if="!canCreate" class="modal-footer__warn">
+              {{ $t('commissionOrder.create.notAllCanSubmit') }}
+            </span>
+          </template>
+        </div>
+        <div class="modal-footer__right">
+          <Button @click="modalApi.close()">
+            {{ $t('common.cancel') }}
+          </Button>
+          <Button
+            type="primary"
+            :disabled="!canCreate"
+            @click="onConfirmCreate"
+          >
+            {{ $t('commissionOrder.create.confirmCreate') }}
+          </Button>
+        </div>
+      </div>
+    </template>
   </Modal>
 </template>
+
+<style scoped>
+/* ---------- 筛选条 ---------- */
+.filter-card {
+  padding: 16px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.filter-item--wide {
+  flex: 1.5;
+}
+
+.filter-btn {
+  flex-shrink: 0;
+}
+
+.filter-remark {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+/* ---------- 票卡片 ---------- */
+.ticket-card {
+  padding: 16px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.ticket-card__head {
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* 表格贴合设计稿：浅灰表头、圆角、细分隔线 */
+.design-table :deep(.ant-table) {
+  background: transparent;
+}
+
+.design-table :deep(.ant-table-thead > tr > th) {
+  font-weight: 600;
+  color: #3d3d3d;
+  background: #f5f7fa;
+}
+
+.design-table :deep(.ant-table-thead > tr > th::before) {
+  display: none;
+}
+
+.design-table :deep(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid #f2f2f2;
+}
+
+/* ---------- 底部操作栏 ---------- */
+.modal-footer {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.modal-footer__left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.modal-footer__gen {
+  font-size: 13px;
+  color: #8c95a3;
+}
+
+.modal-footer__total-label {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #3d3d3d;
+}
+
+.modal-footer__total {
+  font-size: 16px;
+  font-weight: 700;
+  color: #006ce6;
+}
+
+.modal-footer__warn {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #faad14;
+}
+
+.modal-footer__right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+</style>

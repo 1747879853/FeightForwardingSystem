@@ -86,7 +86,9 @@
     "noPreview": "填写提成人与提成月后，点击「确认预览」查看计算明细",
     "notAllCanSubmit": "存在不可新建的月份，请处理后再新建",
     "creating": "新建中…",
-    "createConfirm": "将按所选月份共生成 {count} 张提成单，确定新建？"
+    "createConfirm": "将按所选月份共生成 {count} 张提成单，确定新建？",
+    "willGenerate": "本次将生成 {count} 张提成单",
+    "finalTotal": "应发合计："
   },
   "ticket": {
     "commissionNum": "委托编号",
@@ -158,7 +160,18 @@
     "stepTypeNegativeDeduction": "负利润扣减",
     "stepTypeRuleHit": "条件项命中",
     "stepTypeBaseSalary": "底薪",
-    "stepTypeTotal": "合计"
+    "stepTypeTotal": "合计",
+    "commissionRate": "提成比例",
+    "processTitle": "提成计算过程",
+    "countedSub": "{count}票达标计入",
+    "belowSub": "未达标{count}票",
+    "salesTypeFixedRate": "固定比例",
+    "salesTypeLadderSegment": "阶梯内分段计费",
+    "salesTypeLadderWhole": "达标后整体到档",
+    "baseSalaryGuaranteed": "保底底薪",
+    "payHintMaxCommission": "提成高于底薪，按提成金额发放",
+    "payHintMaxBase": "底薪高于提成，按底薪发放",
+    "payHintDirectAdd": "提成与底薪相加发放"
   },
   "detail": {
     "title": "提成单详情",

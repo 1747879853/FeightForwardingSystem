@@ -86,7 +86,9 @@
     "noPreview": "Select the commissioner and months, then click Preview",
     "notAllCanSubmit": "Some months are blocked. Resolve the issues before creating.",
     "creating": "Creating…",
-    "createConfirm": "{count} commission orders will be created for the selected months. Continue?"
+    "createConfirm": "{count} commission orders will be created for the selected months. Continue?",
+    "willGenerate": "{count} commission order(s) will be created",
+    "finalTotal": "Total Payable:"
   },
   "ticket": {
     "commissionNum": "Ref No",
@@ -158,7 +160,18 @@
     "stepTypeNegativeDeduction": "Negative Deduction",
     "stepTypeRuleHit": "Rule Hit",
     "stepTypeBaseSalary": "Base Salary",
-    "stepTypeTotal": "Total"
+    "stepTypeTotal": "Total",
+    "commissionRate": "Commission Rate",
+    "processTitle": "Calculation Process",
+    "countedSub": "{count} qualified",
+    "belowSub": "{count} below threshold",
+    "salesTypeFixedRate": "Fixed Rate",
+    "salesTypeLadderSegment": "Ladder Segment",
+    "salesTypeLadderWhole": "Ladder Whole",
+    "baseSalaryGuaranteed": "Guaranteed Base",
+    "payHintMaxCommission": "Commission exceeds base salary; paid by commission",
+    "payHintMaxBase": "Base salary exceeds commission; paid by base salary",
+    "payHintDirectAdd": "Commission plus base salary"
   },
   "detail": {
     "title": "Commission Order Detail",

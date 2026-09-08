@@ -120,6 +120,14 @@ export const formatMonth = (value?: null | string): string => {
   return text.length >= 7 ? text.slice(0, 7) : text;
 };
 
+/** 月份中文文案：`2026-08-27T22:38:03` → `2026年8月` */
+export const formatMonthCn = (value?: null | string): string => {
+  const text = formatMonth(value);
+  if (text === '-') return '-';
+  const [year, month] = text.split('-');
+  return `${year}年${Number(month)}月`;
+};
+
 /** 日期时间文案：`2026-08-27 22:38:03`，空值显示 `-` */
 export const formatDateTimeText = (value?: null | string): string => {
   if (!value) return '-';
