@@ -107,7 +107,12 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
         value: any,
         _cellProperties: any,
       ) => {
-        td.innerHTML =
+        td.classList.remove(
+          'report-days-early',
+          'report-days-due',
+          'report-days-overdue',
+        );
+        td.textContent =
           value != null
             ? `${(Number.parseFloat(value) * 100).toFixed(2)}%`
             : '-';

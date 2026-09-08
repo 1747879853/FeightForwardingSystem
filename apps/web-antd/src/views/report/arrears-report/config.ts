@@ -252,19 +252,25 @@ export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
           value: any,
           _cellProperties: any,
         ) => {
+          // textContent + class，避免 innerHTML；滚动复用时清掉颜色 class
+          td.classList.remove(
+            'report-days-early',
+            'report-days-due',
+            'report-days-overdue',
+          );
           if (value == null || value === '') {
-            td.innerHTML = '-';
+            td.textContent = '-';
           } else {
             const days = Number.parseInt(value);
             if (days < 0) {
-              td.innerHTML = `-${Math.abs(days)}天`;
-              td.style.color = '#52c41a';
+              td.textContent = `-${Math.abs(days)}天`;
+              td.classList.add('report-days-early');
             } else if (days === 0) {
-              td.innerHTML = '0天';
-              td.style.color = '#faad14';
+              td.textContent = '0天';
+              td.classList.add('report-days-due');
             } else {
-              td.innerHTML = `${days}天`;
-              td.style.color = '#f5222d';
+              td.textContent = `${days}天`;
+              td.classList.add('report-days-overdue');
             }
           }
           return td;
@@ -284,7 +290,7 @@ export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
           value: any,
           _cellProperties: any,
         ) => {
-          td.innerHTML =
+          td.textContent =
             Array.isArray(value) && value.length > 0 ? value.join(', ') : '-';
           return td;
         },
@@ -303,7 +309,7 @@ export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
           value: any,
           _cellProperties: any,
         ) => {
-          td.innerHTML = value ? '是' : '否';
+          td.textContent = value ? '是' : '否';
           return td;
         },
       },
