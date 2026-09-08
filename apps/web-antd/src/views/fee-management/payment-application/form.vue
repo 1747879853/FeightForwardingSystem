@@ -199,6 +199,9 @@ const paymentRequire = ref('');
 const remark = ref('');
 const invoiceProcess = ref<number | undefined>(undefined);
 const invoiceRows = ref<InvoiceRowForm[]>([]);
+const invoiceTableRef = ref<{ openInputInvoicePicker: () => void } | null>(
+  null,
+);
 /** 发票方式未选时标红 */
 const invoiceProcessError = ref(false);
 /** 不开票 */
@@ -1533,27 +1536,39 @@ void handleSubmitAndNew;
                         <span class="invoice-process-title__required">*</span>
                       </span>
                     </div>
-                    <div
-                      class="invoice-tabs"
-                      :class="{ 'invoice-tabs--error': invoiceProcessError }"
-                    >
-                      <button
-                        v-for="option in [
-                          { label: '先票后付', value: 0 },
-                          { label: '先付后票', value: 1 },
-                          { label: '不开票', value: 2 },
-                        ]"
-                        :key="option.value"
-                        type="button"
-                        class="invoice-tab"
-                        :class="{
-                          'invoice-tab--active':
-                            invoiceProcess === option.value,
-                        }"
-                        @click="onInvoiceProcessChange(option.value)"
+                    <div class="invoice-process-actions">
+                      <div
+                        class="invoice-tabs"
+                        :class="{ 'invoice-tabs--error': invoiceProcessError }"
                       >
-                        {{ option.label }}
-                      </button>
+                        <button
+                          v-for="option in [
+                            { label: '先票后付', value: 0 },
+                            { label: '先付后票', value: 1 },
+                            { label: '不开票', value: 2 },
+                          ]"
+                          :key="option.value"
+                          type="button"
+                          class="invoice-tab"
+                          :class="{
+                            'invoice-tab--active':
+                              invoiceProcess === option.value,
+                          }"
+                          @click="onInvoiceProcessChange(option.value)"
+                        >
+                          {{ option.label }}
+                        </button>
+                      </div>
+                      <Button
+                        v-if="!isNoInvoice"
+                        type="dashed"
+                        size="small"
+                        class="invoice-pick-btn"
+                        @click="invoiceTableRef?.openInputInvoicePicker()"
+                      >
+                        <IconifyIcon icon="mdi:file-document-plus-outline" />
+                        从进项发票选择
+                      </Button>
                     </div>
                   </div>
                 </template>
@@ -1571,8 +1586,10 @@ void handleSubmitAndNew;
                     :class="{ 'invoice-fields--collapsed': isNoInvoice }"
                   >
                     <InvoiceTable
+                      ref="invoiceTableRef"
                       v-model="invoiceRows"
                       :disabled="isNoInvoice"
+                      :show-pick-button="false"
                       :org-id="orgId"
                       :orgs="orgs"
                       :settlement-id="settlementId"
@@ -2566,6 +2583,23 @@ void handleSubmitAndNew;
   color: #ef4444;
 }
 
+.invoice-process-actions {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.invoice-pick-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
+}
+
 .invoice-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2623,6 +2657,13 @@ void handleSubmitAndNew;
   .invoice-tabs {
     flex: 1;
     width: auto;
+    min-width: 220px;
+  }
+
+  .invoice-pick-btn {
+    justify-content: center;
+    width: 100%;
+    margin-left: 0;
   }
 }
 

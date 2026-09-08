@@ -37,6 +37,9 @@ function onSelectChange(keys: (number | string)[]) {
   selectedRowKeys.value = keys.map(String);
 }
 
+/** 列宽合计对齐弹窗内容区，避免仅开纵向滚动时表头与表体错位 */
+const TABLE_SCROLL_X = 848;
+
 const columns = [
   { title: '发票号', dataIndex: 'invoiceNo', key: 'invoiceNo', width: 180 },
   {
@@ -50,6 +53,7 @@ const columns = [
     dataIndex: 'sellerHeader',
     key: 'sellerHeader',
     ellipsis: true,
+    width: 220,
   },
   {
     title: '金额',
@@ -58,7 +62,13 @@ const columns = [
     width: 120,
     align: 'right' as const,
   },
-  { title: '附件', dataIndex: 'attachment', key: 'attachment', width: 140 },
+  {
+    title: '附件',
+    dataIndex: 'attachment',
+    key: 'attachment',
+    width: 160,
+    ellipsis: true,
+  },
 ];
 
 function formatInvoiceTime(value?: null | string) {
@@ -138,57 +148,72 @@ function handleOk() {
         description="暂无可用进项发票。请确认结算对象已维护纳税人识别号，且发票在最近一个月内、未被其他付费申请占用。"
         :image="Empty.PRESENTED_IMAGE_SIMPLE"
       />
-      <Table
-        v-else
-        :columns="columns"
-        :data-source="invoices"
-        :pagination="false"
-        :row-selection="{
-          selectedRowKeys,
-          onChange: onSelectChange,
-        }"
-        size="small"
-        bordered
-        row-key="id"
-        :scroll="{ y: 420 }"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'invoiceNo'">
-            {{ record.invoiceNo || '-' }}
+      <div v-else class="input-invoice-picker-table">
+        <Table
+          :columns="columns"
+          :data-source="invoices"
+          :pagination="false"
+          :row-selection="{
+            selectedRowKeys,
+            onChange: onSelectChange,
+            columnWidth: 48,
+          }"
+          size="small"
+          bordered
+          row-key="id"
+          table-layout="fixed"
+          :scroll="{ x: TABLE_SCROLL_X, y: 420 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'invoiceNo'">
+              {{ record.invoiceNo || '-' }}
+            </template>
+            <template v-else-if="column.key === 'invoiceTime'">
+              {{ formatInvoiceTime(record.invoiceTime) }}
+            </template>
+            <template v-else-if="column.key === 'sellerHeader'">
+              {{ record.sellerHeader || '-' }}
+            </template>
+            <template v-else-if="column.key === 'totalAmount'">
+              {{
+                record.totalAmount == null
+                  ? '-'
+                  : formatAmount(record.totalAmount)
+              }}
+            </template>
+            <template v-else-if="column.key === 'attachment'">
+              <button
+                v-if="record.attachment"
+                type="button"
+                class="input-invoice-file"
+                :title="getFileName(record.attachment)"
+                @click="openAttachmentViewer(record.attachment)"
+              >
+                {{ getFileName(record.attachment) }}
+              </button>
+              <span v-else class="input-invoice-file-empty">无 PDF</span>
+            </template>
           </template>
-          <template v-else-if="column.key === 'invoiceTime'">
-            {{ formatInvoiceTime(record.invoiceTime) }}
-          </template>
-          <template v-else-if="column.key === 'sellerHeader'">
-            {{ record.sellerHeader || '-' }}
-          </template>
-          <template v-else-if="column.key === 'totalAmount'">
-            {{
-              record.totalAmount == null
-                ? '-'
-                : formatAmount(record.totalAmount)
-            }}
-          </template>
-          <template v-else-if="column.key === 'attachment'">
-            <button
-              v-if="record.attachment"
-              type="button"
-              class="input-invoice-file"
-              @click="openAttachmentViewer(record.attachment)"
-            >
-              {{ getFileName(record.attachment) }}
-            </button>
-            <span v-else class="input-invoice-file-empty">无 PDF</span>
-          </template>
-        </template>
-      </Table>
+        </Table>
+      </div>
     </Spin>
   </Modal>
 </template>
 
 <style scoped>
+.input-invoice-picker-table :deep(.ant-table-header) {
+  /* 与表体滚动条占位对齐，避免「附件」列表头右侧留白错位 */
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
+}
+
+.input-invoice-picker-table :deep(.ant-table-body) {
+  scrollbar-gutter: stable;
+}
+
 .input-invoice-file {
-  max-width: 120px;
+  display: block;
+  max-width: 100%;
   padding: 0;
   overflow: hidden;
   text-overflow: ellipsis;

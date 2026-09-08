@@ -47,8 +47,10 @@ const props = withDefaults(
     orgId?: null | number;
     orgs?: null | PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
     settlementId?: null | string;
+    /** 为 false 时由外层（如发票方式旁）放置「从进项发票选择」 */
+    showPickButton?: boolean;
   }>(),
-  { disabled: false },
+  { disabled: false, showPickButton: true },
 );
 
 const rows = defineModel<InvoiceRowForm[]>({ default: () => [] });
@@ -84,6 +86,10 @@ function openInputInvoicePicker() {
   pickerOrgId.value = companyOrgId;
   pickerOpen.value = true;
 }
+
+defineExpose({
+  openInputInvoicePicker,
+});
 
 function onPickInputInvoices(
   invoices: PaymentApplicationAdminApi.InputInvoiceSimpleDto[],
@@ -343,6 +349,7 @@ async function recognizeInvoice(index: number) {
         添加发票
       </Button>
       <Button
+        v-if="showPickButton"
         type="dashed"
         size="small"
         class="invoice-table__add"

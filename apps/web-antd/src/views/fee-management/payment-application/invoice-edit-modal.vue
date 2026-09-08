@@ -5,7 +5,8 @@ import type { InvoiceRowForm } from './invoice-rows';
 
 import { computed, ref, watch } from 'vue';
 
-import { Modal, Select, Spin, message } from 'ant-design-vue';
+import { Button, Modal, Select, Spin, message } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   editPaymentApplicationInvoice,
@@ -39,6 +40,9 @@ const loading = ref(false);
 const saving = ref(false);
 const invoiceProcess = ref<number | undefined>(undefined);
 const invoiceRows = ref<InvoiceRowForm[]>([]);
+const invoiceTableRef = ref<{ openInputInvoicePicker: () => void } | null>(
+  null,
+);
 const orgId = ref<number | undefined>(undefined);
 const orgs = ref<PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]>([]);
 const settlementId = ref('');
@@ -234,19 +238,33 @@ async function handleOk() {
       <div class="invoice-edit-form">
         <div class="invoice-edit-row">
           <span class="invoice-edit-label">发票流程</span>
-          <Select
-            :value="invoiceProcess"
-            :options="invoiceProcessOptions"
-            class="invoice-edit-control"
-            placeholder="请选择"
-            @update:value="onInvoiceProcessChange"
-          />
+          <div class="invoice-edit-process">
+            <Select
+              :value="invoiceProcess"
+              :options="invoiceProcessOptions"
+              class="invoice-edit-control"
+              placeholder="请选择"
+              @update:value="onInvoiceProcessChange"
+            />
+            <Button
+              v-if="!isNoInvoice"
+              type="dashed"
+              size="small"
+              class="invoice-edit-pick-btn"
+              @click="invoiceTableRef?.openInputInvoicePicker()"
+            >
+              <IconifyIcon icon="mdi:file-document-plus-outline" />
+              从进项发票选择
+            </Button>
+          </div>
         </div>
         <div class="invoice-edit-invoices">
           <div class="invoice-edit-invoices__title">发票明细</div>
           <InvoiceTable
+            ref="invoiceTableRef"
             v-model="invoiceRows"
             :disabled="isNoInvoice"
+            :show-pick-button="false"
             :org-id="orgId"
             :orgs="orgs"
             :settlement-id="settlementId"
@@ -288,9 +306,26 @@ async function handleOk() {
   color: rgb(0 0 0 / 65%);
 }
 
+.invoice-edit-process {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
 .invoice-edit-control {
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
+}
+
+.invoice-edit-pick-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
 }
 
 .invoice-edit-invoices__title,
