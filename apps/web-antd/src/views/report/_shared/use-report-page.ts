@@ -138,8 +138,16 @@ export function useReportPage(config: ReportPageConfig) {
    * 流程：取值 → beforeQuery 参数加工（可中止） → 请求接口 → 行数据转换 → 渲染
    */
   async function handleQuery(formData?: Record<string, any>) {
+    // 防连点：进行中的查询未完成前忽略后续触发
+    if (loading.value) return;
+
     try {
       loading.value = true;
+      formApi.setState({
+        submitButtonOptions: { loading: true },
+        resetButtonOptions: { disabled: true },
+      });
+
       await ensureFieldPermission();
       const values = formData || (await formApi.getValues());
 
@@ -168,6 +176,10 @@ export function useReportPage(config: ReportPageConfig) {
       message.error('查询失败，请稍后重试');
     } finally {
       loading.value = false;
+      formApi.setState({
+        submitButtonOptions: { loading: false },
+        resetButtonOptions: { disabled: false },
+      });
     }
   }
 
