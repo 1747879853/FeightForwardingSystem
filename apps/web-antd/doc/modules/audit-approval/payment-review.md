@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -87,7 +87,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-06 | `Feature` | 审批附件区发票行增加销售方抬头、发票金额，有金额时显示总额。 | 总额前端求和，不走后端字段。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-seller-amount.md`。 |
+| 2026-09-08 | `Fix` | 提交时间、最晚付款、审核时间筛选改为自然日闭区间。 | 控件无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-05 | `Fix` | Office 附件改为 vue-office 本地预览，不再走微软在线嵌入。 | 详见 `changelogs/change-log-2026-09-05-office-preview-vue-office.md`。 |
 | 2026-09-05 | `Feature` | 点击发票/申请/结算附件改为全站弹窗预览，不再新开浏览器窗口。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |
 | 2026-09-05 | `Feature` | 列表、右侧合计/附件、下方费用明细三块间隙可拖动改大小，刷新后记住。 | 分隔条交互对齐费用审核详情；尺寸存 `localStorage`。 |

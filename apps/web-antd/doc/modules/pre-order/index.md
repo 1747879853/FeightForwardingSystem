@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-09-03
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -59,7 +59,7 @@ last_updated: 2026-09-03
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-03 | `Fix` | 状态列后增加业务状态、运踪状态；通过单可看海出服务进度与运踪，录入/驳回为 `-`；有权限可点运踪详情，列表不订阅。 | TAPD `#1161580498001000922`。数据在 `transportOrder` 嵌套，不在根上。详见 `changelogs/change-log-2026-09-03-pre-order-list-business-tracking-status.md`。 |
+| 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间。 | 无时分 RangePicker 点「今天」不再把起止打成同一时刻。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-14 | `Fix` | 列表增加销售/操作/备注列，并支持按销售、操作、备注筛选（TAPD #1000794） | 对齐后端 `saleNames`/`operatorNames` 与 `SaleIds`/`OperatorIds`/`Remark`；筛选交互参考结算拉费用弹窗。详见 `changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md` |
 | 2026-08-12 | `Fix` | 列表委托单位筛选补齐 `industryCategory: 'p'` | 与新建页、海出列表对齐；空类别时通用客户接口不下发。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-02 | `Feature` | 侧边栏从「操作管理」子项提升为一级菜单「业务联系单」 | 路由迁至独立模块 `router/routes/modules/pre-order.ts`，`order: 194`、`hideChildrenInMenu: true`；页面 path 不变 |

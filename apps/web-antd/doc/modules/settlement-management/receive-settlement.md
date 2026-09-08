@@ -2,7 +2,7 @@
 title: 收费核销
 module: 费用管理
 author: Cursor Agent
-last_updated: 2026-09-05
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -65,7 +65,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-05 | `Fix` | 独立页新建费用/发票核销成功后 `replace` 进编辑并关闭新建页签。 | 抽屉内嵌仍只关抽屉。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
+| 2026-09-08 | `Fix` | 选费开船日期、选开票申请的申请时间改为自然日闭区间。 | 银行流水建单选开票申请同步。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 按费用选费检索：委托编号/主提单号合并为「编号」条件；增加委托单位、开船日期、销售、操作、收付类型（默认应收）；抽屉费用明细与结算明细展示收付类别。业务行仍分列展示委托编号、主提单号。 | `add-fee-drawer/data` 抽出 `buildFeeGroupSearchQuery`；银行流水建单面板与添加明细抽屉共用；`paySide=0` 必须下发。详见 `changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md`。 |
 | 2026-08-10 | `Fix` | 「添加开票结算明细」抽屉改用 `NestedDataTable`；修复「开票申请单号」标签换行；查询靠右、确认添加进底部；已选汇总对齐付费申请选费弹窗（已选 N 笔 + 币别金额）。 | `add-invoice-application-drawer`；`NestedDataTable` 的 `innerHeaderCell` 补传 `parentRecord` 以支持组内全选。详见 `changelogs/change-log-2026-08-10-add-invoice-drawer-nested-table.md`。 |
 | 2026-08-10 | `Fix` | 收费核销编辑保存 `EditAsync` 补传 `orgId`，与后端入参对齐。 | `ReceiveSettlementEditDto` 增加 `orgId`；费用/发票两套表单编辑保存均回传详情组织；UI 仍只读。详见 `changelogs/change-log-2026-08-10-receive-settlement-edit-orgid.md`。 |

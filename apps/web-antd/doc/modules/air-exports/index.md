@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -60,7 +60,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-08-19 | `Fix` | 列表「业务来源」改为直接展示 `transportOrder.codeSource.cnName`；费用侧栏摘要同步。 | 列 `field` 从废弃的 `codeSourceName` 改到对象路径，避免列持久化丢掉 formatter 后仍为空。见 `changelogs/change-log-2026-08-19-air-export-code-source-cn-name.md`。 |
+| 2026-09-08 | `Fix` | 开航/实际开航/预抵/货好/应结/创建时间及报关、送仓日期筛选统一按自然日闭区间。 | 与海出开船日期同类：无时分选择器不再带当前时钟。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |
 | 2026-08-19 | `Fix` | 列表业务来源、运输条款、包装改为读嵌套对象，不再空白。 | 与海出台账同类：`codeSource.cnName` / `codeService.cnName` / `codePackage.name`。见 `changelogs/change-log-2026-08-19-sea-export-list-dates-and-object-names.md`。 |
 | 2026-08-17 | `Fix` | 筛选空港选中后只回显三字码；列表列改为「三字码/英文名」。 | 搜索区 `labelKey=iataCode`；列走 `formatAirPortLabel`。详见 `changelogs/change-log-2026-08-17-air-export-airport-code-remark.md`。 |

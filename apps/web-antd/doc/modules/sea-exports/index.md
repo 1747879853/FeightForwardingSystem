@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-01
+last_updated: 2026-09-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-09-01
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
-- **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
+- **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；按钮旁有规则说明（船公司、主提单号/箱号）。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
@@ -57,7 +57,7 @@ last_updated: 2026-09-01
 | :-- | :-- | :-- | :-- | :-- |
 | **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；需点「查询」触发表格刷新；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
 | **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
-| **开船日期** | 按运输单 ETD 时间过滤海出委托；列表默认按该字段降序。 | 筛 `ETDRange` -> `ETDStart` / `ETDEnd`；列 `transportOrder.etd`；`sorting`=`TransportOrder.ETD` | **触发/依赖：** 前端拆分日期区间并转 ISO；`defaultSort` 写成 `TransportOrder.Etd DESC` 才能把列头箭头落到本列。 | RangePicker 可为空；开始/结束均可由组件约束。 |
+| **开船日期** | 按运输单 ETD 过滤海出委托；列表默认按该字段降序。 | 筛 `ETDRange` -> `ETDStart` / `ETDEnd`；列 `transportOrder.etd`；`sorting`=`TransportOrder.ETD` | **触发/依赖：** 前端拆分日期区间：开始 `startOf('day')`、结束 `endOf('day')` 再转 ISO，避免点「今天」带上当前时分。`defaultSort` 写成 `TransportOrder.Etd DESC` 才能把列头箭头落到本列。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **货好 / 实际开船 / 预抵 / 截港 / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截港/截关在海出根级；`formatDate`。 | 无值时空。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
@@ -90,7 +90,7 @@ last_updated: 2026-09-01
 >
 > [!IMPORTANT] **[卡点 1：列表字段跨 SeaExport 与 TransportOrder 两层 DTO]** 表格大量字段来自 `row.transportOrder.*`，例如委托编号、客户、件毛体、锁费状态；另一些字段来自海出主表，例如船公司、港口、船名航次。改列配置或接口 DTO 时要确认字段层级，否则会出现列表空值。
 >
-> **[卡点 2：日期区间不是原样提交]** `ETDRange`、`CloseDocTimeRange`、`AccountDateRange` 只存在于前端查询表单，接口实际接收拆分后的开始/结束字段（会计期间为整月 ISO）。后端或接口联调时不能直接查找 `*Range` 参数。
+> **[卡点 2：日期区间不是原样提交]** `ETDRange`、`CloseDocTimeRange`、`AccountDateRange` 只存在于前端查询表单，接口实际接收拆分后的开始/结束字段。开船日期是自然日闭区间（开始 00:00、结束 23:59:59.999）；截单时间带时分原样转 ISO；会计期间为整月 ISO。点「今天」时 RangePicker 会带当前时钟，不能直接 `toISOString()`。后端或接口联调时不能直接查找 `*Range` 参数。
 >
 > **[卡点 3：操作模式依赖多选行]** 编辑/删除/复制要求恰好选中 1 行；运踪订阅支持多选。双击行会勾选该行；勿假设仍为 radio 单选。
 >
@@ -108,6 +108,7 @@ last_updated: 2026-09-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间：开始当天 00:00、结束当天 23:59:59.999。 | 点「今天」时 RangePicker 会带当前时分，原先直接 `toISOString()` 会把起止都打成同一时刻。详见 `changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md`。 |
 | 2026-09-01 | `Feature` | 列表增加「码头航次」列与筛选，排在航次后面。 | 字段 `terminalVoyno`；关键字不含码头航次。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按开船日期降序；列头显示降序箭头。 | `defaultSort` 用 `TransportOrder.Etd DESC`；列持久化 `refreshColumn` 会冲掉箭头，由 `use-vxe-grid` 补 `setSort`。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |
 | 2026-08-19 | `Fix` | 台账无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列（含顺序/显隐/固定/列宽）；列设置可勾回隐藏列。 | 有用户 `table_config_SeaExportList` 仍优先；load 无命中不带 id，避免写成用户设置。恢复默认尊重列定义快照。对应 TAPD #0824。见 `changelogs/change-log-2026-08-19-sea-export-list-default-columns.md`。 |
