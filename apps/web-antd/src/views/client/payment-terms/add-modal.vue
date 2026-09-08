@@ -24,6 +24,7 @@ import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 const [paymentForm, paymentFormApi] = useVbenForm({
   layout: 'vertical',
@@ -279,12 +280,11 @@ const handleBeforeUpload = async (file: UploadFile) => {
 };
 
 const handleDownload = (row: BillingPeriodAdminApi.AttachmentItemDto) => {
-  const url = row.url ? buildAttachmentUrl(row.url) : '';
-  if (!url) {
+  if (!row.url) {
     message.warning($t('seaExport.export.attachments.noFileUrl'));
     return;
   }
-  window.open(url, '_blank');
+  void downloadAttachmentWithFriendlyName(row.url, getFileName(row));
 };
 
 const handleDelete = (index: number) => {
@@ -318,6 +318,7 @@ const handlePreview = (row: BillingPeriodAdminApi.AttachmentItemDto) => {
   openAttachmentViewer({
     url: row.url,
     fileName: getFileName(row),
+    friendlyFileName: row.friendlyFileName,
     uploader: row.creatorUserName,
     creationTime: row.creationTime,
   });

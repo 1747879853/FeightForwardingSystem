@@ -22,6 +22,7 @@
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
     "download": "Download",
+    "downloadFailed": "Could not download with the display name; opened the file directly instead",
     "uploader": "Uploaded by",
     "uploadTime": "Uploaded at",
     "unsupported": "Online preview is not supported for this file type. Please download to view.",

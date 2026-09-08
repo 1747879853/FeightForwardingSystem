@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -75,6 +75,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 批量下载发票 zip 改为 blob 保存，跨域也能用后端返回的包名。 | `downloadAttachmentWithFriendlyName`。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 开票日期、提交时间、最晚付款筛选改为自然日闭区间。 | 三个条件都无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-08 | `Feature` | 补录弹窗可从进项发票勾选回填；详情已绑银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | 与编辑页共用 `InvoiceTable`。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
 | 2026-09-07 | `Feature` | 补录弹窗上传发票后自动识别回填，不必再点识别。 | 与编辑页共用 `InvoiceTable` / `attachment-groups.vue`。详见 `changelogs/change-log-2026-09-07-payment-application-invoice-auto-extract.md`。 |

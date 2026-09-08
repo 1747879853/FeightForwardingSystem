@@ -34,7 +34,7 @@ import {
   queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
-import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 // 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
 import {
@@ -419,20 +419,16 @@ function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
   openAttachmentViewer(item);
 }
 
-/** ✅ 新增：下载附件 */
+/** 下载附件：blob + 友好文件名 */
 function downloadAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
-  if (item.url) {
-    const url = buildAttachmentUrl(item.url);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = item.friendlyFileName || 'attachment';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
+  if (!item.url) {
     message.warning('附件链接不存在');
+    return;
   }
+  void downloadAttachmentWithFriendlyName(
+    item.url,
+    item.friendlyFileName || 'attachment',
+  );
 }
 
 /** 处理发票明细删除后的刷新 */

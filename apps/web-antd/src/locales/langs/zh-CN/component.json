@@ -22,6 +22,7 @@
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏",
     "download": "下载",
+    "downloadFailed": "无法按指定文件名下载，已尝试直接打开",
     "uploader": "上传人",
     "uploadTime": "上传时间",
     "unsupported": "该文件类型暂不支持在线预览，请下载后查看",

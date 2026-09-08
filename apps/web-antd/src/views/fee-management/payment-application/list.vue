@@ -25,8 +25,7 @@ import {
 import { $t } from '#/locales';
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
-import { buildAttachmentUrl } from '#/utils';
-import { downloadFileByUrl } from '#/utils/download-file';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import {
   applyDefaultSortable,
   createPagedListQuery,
@@ -481,7 +480,7 @@ async function handleDownloadInvoices() {
     } else {
       message.success(`已下载 ${result.fileCount} 个发票附件`);
     }
-    downloadFileByUrl(buildAttachmentUrl(result.url), result.fileName);
+    await downloadAttachmentWithFriendlyName(result.url, result.fileName);
   } catch (error: any) {
     message.error(error?.message || '下载失败');
   } finally {

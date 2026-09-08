@@ -14,7 +14,7 @@ import {
 
 import { IconifyIcon } from '@vben/icons';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
-import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import {
   getCombinedStatusColor,
   getCombinedStatusLabel,
@@ -118,18 +118,14 @@ function viewAttachment(
 function downloadAttachment(
   item: InvoiceIssueApi.AttachmentItemDto | Record<string, any>,
 ) {
-  if (item.url) {
-    const url = buildAttachmentUrl(item.url);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = item.friendlyFileName || 'attachment';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
+  if (!item.url) {
     message.warning('附件链接不存在');
+    return;
   }
+  void downloadAttachmentWithFriendlyName(
+    item.url,
+    item.friendlyFileName || 'attachment',
+  );
 }
 
 function handleCancel() {

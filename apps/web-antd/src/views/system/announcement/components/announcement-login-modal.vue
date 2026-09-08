@@ -56,8 +56,11 @@ const closeModal = () => {
   resetIndex();
 };
 
-const openAttachment = (url?: string | null) => {
-  openAttachmentViewer(url);
+const openAttachment = (item: AnnouncementAdminApi.AttachmentItemDto) => {
+  openAttachmentViewer({
+    url: item.url,
+    friendlyFileName: item.friendlyFileName,
+  });
 };
 
 const handleMarkRead = () => {
@@ -115,7 +118,7 @@ defineExpose({
             :key="item.id || item.attachmentId"
             type="button"
             class="text-left text-sm text-primary hover:underline"
-            @click="openAttachment(item.url)"
+            @click="openAttachment(item)"
           >
             {{
               item.friendlyFileName ||

@@ -55,9 +55,10 @@ function pickFileUrl(target: AttachmentViewerTarget) {
   return String(target.fileUrl || target.url || '').trim();
 }
 
+/** 下载/标题优先友好名，避免落到存储侧 fileName（如 GUID） */
 function pickFileName(target: AttachmentViewerTarget) {
   return (
-    String(target.fileName || target.friendlyFileName || '').trim() ||
+    String(target.friendlyFileName || target.fileName || '').trim() ||
     pickFileUrl(target).split('/').pop()?.split('?')[0] ||
     ''
   );

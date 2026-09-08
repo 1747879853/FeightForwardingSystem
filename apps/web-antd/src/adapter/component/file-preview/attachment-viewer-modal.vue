@@ -14,6 +14,7 @@ import {
   buildPdfEmbedUrl,
   resolveSameOriginMediaUrl,
 } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { prepareExcelPreviewBuffer } from '#/utils/prepare-excel-preview';
 
 import '@vue-office/docx/lib/index.css';
@@ -213,16 +214,9 @@ const toggleFullscreen = () => {
   fullscreen.value = !fullscreen.value;
 };
 
-const handleDownload = () => {
-  if (!fullUrl.value) return;
-  const link = document.createElement('a');
-  link.href = fullUrl.value;
-  link.download = props.fileName || 'download';
-  link.rel = 'noopener';
-  link.target = '_blank';
-  document.body.append(link);
-  link.click();
-  link.remove();
+/** 下载走统一 blob + 友好文件名，避免跨域落到存储名 */
+const handleDownload = async () => {
+  await downloadAttachmentWithFriendlyName(props.fileUrl, props.fileName);
 };
 
 const handleOpenInNewWindow = () => {

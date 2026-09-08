@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 客户附件与账期附件：预览走全站查看器；下载保存名为 `friendlyFileName`。 | 去掉 `window.open` 直链。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 从新建页保存进来时，顶栏只保留本编辑页签，不再残留新建页签。 | 关页签发生在新建表单提交里，编辑容器本身不负责关旧 tab。详见 `changelogs/change-log-2026-09-08-client-create-tab-close.md`。 |
 | 2026-09-08 | `Refactor` | 清理孤儿账期/附件弹窗与联系人旧 VXE data；附件与对接人 id 字符串透传。 | `BusinessTypeOptions` 外提到 `utils/business-type-options.ts`；客户枚举拆至 `base/options.ts`；`base/data.ts` 去掉死 `useFormSchema`。 |
 | 2026-08-25 | `Feature` | 供应商行业类别新增「码头」（字母 `t`，数字 `20`）。 | 与后端 `IndustryCategory.码头` 对齐。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |

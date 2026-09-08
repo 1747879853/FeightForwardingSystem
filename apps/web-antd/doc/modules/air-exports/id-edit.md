@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -79,6 +79,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-05 | `Feature` | 浏览器标签栏标题随主运单号/委托编号动态更新；有主运单号优先展示主运单号。 | 工作台 `editor.vue` 与嵌入 `form.vue` 共用 `useAirExportTabTitle`；进页详情同时刷新费用徽标。详见 `changelogs/change-log-2026-09-05-air-export-tab-title.md`。 |
 | 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、货物明细单件重量/体积改为最多 4 位小数，末尾 0 不展示；长宽高/体积重/计费重/泡比仍 6 位。 | TAPD `#1161580498001000905`。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |

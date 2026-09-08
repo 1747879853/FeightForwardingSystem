@@ -10,7 +10,7 @@ import { Button, Empty, Spin, Table, Tag } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { InputInvoiceAdminApi as Api } from '#/api/settlement-management/input-invoice-admin';
-import { buildAttachmentUrl } from '#/utils';
+import { openAttachmentViewer } from '#/components/attachment-viewer';
 
 import {
   getCheckedStatusLabel,
@@ -65,6 +65,15 @@ const nestedTables = computed(() =>
 );
 
 const attachments = computed(() => detail.value?.attachments ?? []);
+
+function openAttachment(att: Api.AttachmentItemDto) {
+  openAttachmentViewer({
+    url: att.url,
+    friendlyFileName: att.friendlyFileName,
+    uploader: att.creatorUserName,
+    creationTime: att.creationTime,
+  });
+}
 
 /** 机动车/二手车票头：任一字段有值才展示该区 */
 const hasVehicleInfo = computed(() => {
@@ -545,18 +554,18 @@ watch(detailId, (id) => {
             <span class="section-title-text">版式文件附件</span>
           </div>
           <div v-if="attachments.length > 0" class="attach-list">
-            <a
+            <button
               v-for="att in attachments"
               :key="att.id"
-              :href="buildAttachmentUrl(att.url)"
-              target="_blank"
+              type="button"
               class="field-link inline-flex items-center gap-2"
+              @click="openAttachment(att)"
             >
               <span>{{ att.friendlyFileName || '附件' }}</span>
               <span v-if="att.fileLength" class="text-xs opacity-60">
                 （{{ att.fileLength }} 字节）
               </span>
-            </a>
+            </button>
           </div>
           <Empty v-else description="暂无附件" />
         </section>
@@ -675,7 +684,11 @@ watch(detailId, (id) => {
 }
 
 .field-link {
+  padding: 0;
   color: hsl(var(--primary));
+  cursor: pointer;
+  background: transparent;
+  border: 0;
 }
 
 .field-link:hover {

@@ -38,6 +38,7 @@ import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-par
 import { $t } from '#/locales';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { createAbpPermission } from '#/utils/abp-permission';
 
 defineOptions({
@@ -504,12 +505,11 @@ const onDrop = async (group: AttachmentTypeGroup, event: DragEvent) => {
 };
 
 const handleDownload = (row: AirExportAdminApi.AttachmentItemDto) => {
-  const url = row.url ? buildAttachmentUrl(row.url) : '';
-  if (!url) {
+  if (!row.url) {
     message.warning($t('airExport.export.attachments.noFileUrl'));
     return;
   }
-  window.open(url, '_blank');
+  void downloadAttachmentWithFriendlyName(row.url, getFileName(row));
 };
 
 const handleDelete = (row: AirExportAdminApi.AttachmentItemDto) => {
@@ -586,6 +586,7 @@ const handlePreview = (row: AirExportAdminApi.AttachmentItemDto) => {
   openAttachmentViewer({
     url: row.url,
     fileName: getFileName(row),
+    friendlyFileName: row.friendlyFileName,
     uploader: row.creatorUserName,
     creationTime: row.creationTime,
   });

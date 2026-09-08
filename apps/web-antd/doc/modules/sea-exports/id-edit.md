@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-09
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -165,6 +165,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | `downloadAttachmentWithFriendlyName`。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-06 | `Fix` | 应收应付「创建付费申请」选先票后付也可先建单；提交付费申请时才要求发票。 | 与付费申请新增/编辑同一套校验时机。详见 `changelogs/change-log-2026-09-06-payment-application-invoice-submit.md`。 |
 | 2026-09-06 | `Fix` | 监装照片采集改为类型横排网格，每个类型只能上传一张；分享页、PC、小程序一致。槽位固定 104px 方格，已传图与空槽等大。 | 有图隐藏添加槽；历史多图仍展示可删，保存不自动截断。格子不要用 `1fr` 拉满。详见 `changelogs/change-log-2026-09-06-loading-photo-one-per-type.md`。 |
 | 2026-09-06 | `Feature` | 监装「分享」改为先预览客户页，可切换中英文再复制对应链接。 | 预览复用公开页组件；英文链接带 `lang=en`，不跟系统语言。详见 `changelogs/change-log-2026-09-06-loading-share-preview-lang.md`。 |

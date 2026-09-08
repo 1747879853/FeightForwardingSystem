@@ -11,7 +11,7 @@ import type {
   UploadProps,
 } from 'ant-design-vue';
 
-import type { Component, Ref } from 'vue';
+import type { Component } from 'vue';
 
 import type { BaseFormComponentType } from '@vben/common-ui';
 import type { Recordable } from '@vben/types';
@@ -22,7 +22,6 @@ import {
   h,
   ref,
   render,
-  unref,
   watch,
 } from 'vue';
 
@@ -37,6 +36,8 @@ import { $t } from '@vben/locales';
 import { isEmpty } from '@vben/utils';
 
 import { message, Modal, notification } from 'ant-design-vue';
+
+import { openAttachmentViewer } from '#/components/attachment-viewer/use-attachment-viewer';
 
 const AutoComplete = defineAsyncComponent(
   () => import('ant-design-vue/es/auto-complete'),
@@ -86,10 +87,6 @@ const Cascader = defineAsyncComponent(
   () => import('ant-design-vue/es/cascader'),
 );
 const Upload = defineAsyncComponent(() => import('ant-design-vue/es/upload'));
-const Image = defineAsyncComponent(() => import('ant-design-vue/es/image'));
-const PreviewGroup = defineAsyncComponent(() =>
-  import('ant-design-vue/es/image').then((res) => res.ImagePreviewGroup),
-);
 
 const withDefaultPlaceholder = <T extends Component>(
   component: T,
@@ -181,96 +178,31 @@ const withPreviewUpload = () => {
       }
     }
   };
-  // 构建预览图片组
-  const previewImage = async (
-    file: UploadFile,
-    visible: Ref<boolean>,
-    fileList: Ref<UploadProps['fileList']>,
-  ) => {
-    // 如果当前文件不是图片，直接打开
-    if (!isImageFile(file)) {
-      if (file.url) {
-        window.open(file.url, '_blank');
-      } else if (file.preview) {
-        window.open(file.preview, '_blank');
-      } else {
-        message.error($t('ui.formRules.previewWarning'));
-      }
+  const readLocalFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.addEventListener('load', () =>
+        resolve(String(reader.result || '')),
+      );
+      reader.addEventListener('error', (error) => reject(error));
+    });
+
+  /** 表单 Upload 预览一律走全站查看器（含图片），下载才能用友好名 */
+  const previewImage = async (file: UploadFile) => {
+    let url = file.url || file.preview;
+    if (!url && file.originFileObj) {
+      url = await readLocalFileAsDataUrl(file.originFileObj);
+    }
+    if (url) {
+      openAttachmentViewer({
+        url,
+        fileName: file.name,
+        friendlyFileName: file.name,
+      });
       return;
     }
-
-    // 对于图片文件，继续使用预览组
-    const [ImageComponent, PreviewGroupComponent] = await Promise.all([
-      Image,
-      PreviewGroup,
-    ]);
-
-    const getBase64 = (file: File) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.addEventListener('load', () => resolve(reader.result));
-        reader.addEventListener('error', (error) => reject(error));
-      });
-    };
-    // 从fileList中过滤出所有图片文件
-    const imageFiles = (unref(fileList) || []).filter((element) =>
-      isImageFile(element),
-    );
-
-    // 为所有没有预览地址的图片生成预览
-    for (const imgFile of imageFiles) {
-      if (!imgFile.url && !imgFile.preview && imgFile.originFileObj) {
-        imgFile.preview = (await getBase64(imgFile.originFileObj)) as string;
-      }
-    }
-    const container: HTMLElement | null = document.createElement('div');
-    document.body.append(container);
-
-    // 用于追踪组件是否已卸载
-    let isUnmounted = false;
-
-    const PreviewWrapper = {
-      setup() {
-        return () => {
-          if (isUnmounted) return null;
-          return h(
-            PreviewGroupComponent,
-            {
-              class: 'hidden',
-              preview: {
-                visible: visible.value,
-                // 设置初始显示的图片索引
-                current: imageFiles.findIndex((f) => f.uid === file.uid),
-                onVisibleChange: (value: boolean) => {
-                  visible.value = value;
-                  if (!value) {
-                    // 延迟清理，确保动画完成
-                    setTimeout(() => {
-                      if (!isUnmounted && container) {
-                        isUnmounted = true;
-                        render(null, container);
-                        container.remove();
-                      }
-                    }, 300);
-                  }
-                },
-              },
-            },
-            () =>
-              // 渲染所有图片文件
-              imageFiles.map((imgFile) =>
-                h(ImageComponent, {
-                  key: imgFile.uid,
-                  src: imgFile.url || imgFile.preview,
-                }),
-              ),
-          );
-        };
-      },
-    };
-
-    render(h(PreviewWrapper), container);
+    message.error($t('ui.formRules.previewWarning'));
   };
 
   // 图片裁剪操作
@@ -380,8 +312,6 @@ const withPreviewUpload = () => {
       props: any,
       { attrs, slots, emit }: { attrs: any; emit: any; slots: any },
     ) => {
-      const previewVisible = ref<boolean>(false);
-
       const placeholder = attrs?.placeholder || $t(`ui.placeholder.upload`);
 
       const listType = attrs?.listType || attrs?.['list-type'] || 'text';
@@ -444,8 +374,7 @@ const withPreviewUpload = () => {
       };
 
       const handlePreview = async (file: UploadFile) => {
-        previewVisible.value = true;
-        await previewImage(file, previewVisible, fileList);
+        await previewImage(file);
       };
 
       const renderUploadButton = (): any => {

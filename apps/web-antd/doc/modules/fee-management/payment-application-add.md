@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -76,6 +76,8 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 全站附件预览/下载统一：查看器 + blob 友好文件名；打印除外。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
+| 2026-09-08 | `Fix` | 附件预览下载保存名改为 `friendlyFileName`（与列表展示一致）。 | 全站 `openAttachmentViewer`；详见 `changelogs/change-log-2026-09-08-attachment-download-friendly-filename.md`。 |
 | 2026-09-08 | `Style` | 「从进项发票选择」挪到发票方式「不开票」右侧；挑票弹窗表头与表体右侧对齐。 | `showPickButton=false` + `expose.openInputInvoicePicker`；表头预留滚动条槽。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md`。 |
 | 2026-09-08 | `Fix` | 添加费用抽屉业务日期筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-08 | `Fix` | 申请附件名称含「发票」的分组改为普通上传，不再识别、不再回填空发票行。 | 仅发票行仍走 `UploadAndExtractInvoiceAsync`。详见 `changelogs/change-log-2026-09-08-payment-application-attachment-no-auto-extract.md`。 |

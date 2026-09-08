@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -71,6 +71,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-05 | `Feature` | 浏览器标签栏标题随主提单号/委托编号动态更新；有主提单号优先展示主提单号。 | 工作台 `editor.vue` 与嵌入 `form.vue` 共用 `useSeaImportTabTitle`；切费用等子 Tab 仍保持标题。详见 `changelogs/change-log-2026-09-05-sea-import-tab-title.md`。 |
 | 2026-09-01 | `Feature` | 基础信息新增「码头航次」；码头船舶引入把 `ivoyage` 写入码头航次，不再改船公司航次。 | 共享 `buildTerminalScheduleFormPatch`。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |

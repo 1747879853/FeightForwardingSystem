@@ -13,6 +13,8 @@ import {
 } from 'ant-design-vue';
 
 import { buildPdfEmbedUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
+import { openAttachmentViewer } from '#/components/attachment-viewer/use-attachment-viewer';
 
 interface Props {
   // 控制显示
@@ -166,20 +168,21 @@ const handleCancel = () => {
   emit('close');
 };
 
-// 新窗口打开
+// 新窗口：改走全站附件查看器独立预览页能力（由查看器打开）
 const openInNewWindow = () => {
-  window.open(previewUrl.value, '_blank', 'noopener,noreferrer');
+  openAttachmentViewer({
+    url: props.fileUrl,
+    fileName: props.fileName,
+    friendlyFileName: props.fileName,
+  });
 };
 
-// 下载文件
-const downloadFile = () => {
-  const link = document.createElement('a');
-  link.href = props.fileUrl;
-  link.download = props.fileName || `download.${fileExtension.value}`;
-  link.target = '_blank';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+// 下载文件（blob + 友好名，避免跨域落到存储名）
+const downloadFile = async () => {
+  await downloadAttachmentWithFriendlyName(
+    props.fileUrl,
+    props.fileName || `download.${fileExtension.value}`,
+  );
   emit('download', props.fileUrl);
 };
 

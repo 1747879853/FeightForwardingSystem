@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-09 全站附件统一预览与友好文件名下载](./changelogs/change-log-2026-09-09-attachment-preview-download-unify.md)
+- [2026-09-08 附件下载改用友好文件名](./changelogs/change-log-2026-09-08-attachment-download-friendly-filename.md)
 - [2026-09-08 客户新建成功后关闭原新建页签](./changelogs/change-log-2026-09-08-client-create-tab-close.md)
 - [2026-09-08 付费申请从进项发票选择按钮位置与弹窗表头对齐](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md)
 - [2026-09-08 出站时间口径统一为北京时间](./changelogs/change-log-2026-09-08-request-datetime-beijing-time.md)

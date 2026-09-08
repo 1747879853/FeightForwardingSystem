@@ -546,7 +546,14 @@ defineExpose({
         <div
           v-for="file in innerValue"
           :key="file.attachmentId"
-          class="flex items-center justify-between rounded px-2 py-1.5 hover:bg-gray-50"
+          class="flex cursor-pointer items-center justify-between rounded px-2 py-1.5 hover:bg-gray-50"
+          @click="
+            openAttachmentViewer({
+              url: file.url,
+              fileName: file.fileName,
+              friendlyFileName: file.friendlyFileName,
+            })
+          "
         >
           <div class="flex min-w-0 flex-1 items-center gap-2">
             <IconifyIcon
@@ -573,7 +580,7 @@ defineExpose({
             type="text"
             danger
             size="small"
-            @click="handleRemove({ uid: String(file.attachmentId) })"
+            @click.stop="handleRemove({ uid: String(file.attachmentId) })"
           >
             <IconifyIcon icon="mdi:close" class="size-4" />
           </Button>

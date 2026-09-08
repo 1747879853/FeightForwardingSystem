@@ -2,7 +2,7 @@
 title: 付费结算编辑
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -47,6 +47,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 付费申请附件下载改为 blob + `friendlyFileName`。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Refactor` | 对接按原币+付费申请一套接口；选择列表检索失败自动重试 1 次。 | 抽屉修正 `settlementCurrencyId`/`currencyId` 传参；`existingRowKeys` 禁用已选组合。详见 `doc/付费结算/付费结算-按原币和付费申请-接口文档.md`。 |
 | 2026-09-08 | `Fix` | 「选择付费申请」最晚付款时间按自然日闭区间；提交时间仍带时分。 | 提交时间控件有 `showTime`。 |
 | 2026-08-09 | `Refactor` | 费用明细「费用名称」「币别」改读嵌套对象。 | `OrderFeeDto` / `OrderFeeForSelectionDto` 对象化。 |

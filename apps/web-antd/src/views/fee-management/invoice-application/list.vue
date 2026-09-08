@@ -27,7 +27,7 @@ import { normalizeKeysParam } from '#/utils/keys-search';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
-import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 import {
   useColumns,
@@ -107,20 +107,16 @@ function viewAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
   openAttachmentViewer(item);
 }
 
-/** ✅ 新增：下载附件 */
+/** 下载附件 */
 function downloadAttachment(item: InvoiceIssueApi.AttachmentItemDto) {
-  if (item.url) {
-    const url = buildAttachmentUrl(item.url);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = item.friendlyFileName || 'attachment';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
+  if (!item.url) {
     message.warning('附件链接不存在');
+    return;
   }
+  void downloadAttachmentWithFriendlyName(
+    item.url,
+    item.friendlyFileName || 'attachment',
+  );
 }
 
 /** ✅ 新增：获取状态标签颜色 */

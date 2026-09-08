@@ -36,6 +36,7 @@ import {
 import { $t } from '#/locales';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { createAbpPermission } from '#/utils/abp-permission';
 
 defineOptions({
@@ -421,12 +422,11 @@ const handleBeforeUpload = async (
 };
 
 const handleDownload = (row: ClientAdminApi.ClientAttachmentItemDto) => {
-  const url = row.url ? buildAttachmentUrl(row.url) : '';
-  if (!url) {
+  if (!row.url) {
     message.warning($t('client.attachment.noFileUrl'));
     return;
   }
-  window.open(url, '_blank');
+  void downloadAttachmentWithFriendlyName(row.url, getFileName(row));
 };
 
 const handleDelete = (row: ClientAdminApi.ClientAttachmentItemDto) => {
@@ -549,6 +549,7 @@ const handlePreview = (row: ClientAdminApi.ClientAttachmentItemDto) => {
   openAttachmentViewer({
     url: row.url,
     fileName: getFileName(row),
+    friendlyFileName: row.friendlyFileName,
     uploader: row.creatorUserName,
     creationTime: row.creationTime,
   });
@@ -563,6 +564,7 @@ const handleBillingPeriodPreview = (row: BillingPeriodAttachmentItem) => {
   openAttachmentViewer({
     url: row.url,
     fileName: getBillingPeriodFileName(row),
+    friendlyFileName: row.friendlyFileName,
     uploader: row.creatorUserName,
     creationTime: row.creationTime,
   });

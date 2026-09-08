@@ -2,7 +2,7 @@
 title: 公告管理
 module: 公告管理
 author: auto-doc-sync
-last_updated: 2026-07-14
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,6 +54,7 @@ last_updated: 2026-07-14
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | 修复 | 登录弹窗附件预览传入 `friendlyFileName`，走全站查看器下载。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-07-14 | 修复 | 新增与批量删除按钮按角色动作权限显示，无权限时隐藏 | 复用 `createAbpPermission('Admin.Announcement')`，与系统管理其他列表保持一致 |
 | 2026-07-12 | Style | 一级菜单图标改为 `streamline-plump-color:announcement-megaphone-flat` | 与其它一级业务菜单同步更换语义化 Iconify 图标 |
 | 2026-07-11 | 重构 | 侧边栏从「系统管理」子项提升为独立顶级「公告管理」 | 新增 `announcement.ts` 路由模块，`order: 9998`；`system.ts` 移除公告子路由 |

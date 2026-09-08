@@ -47,7 +47,7 @@ import {
   getMyOrgCompanyNode,
 } from '#/composables/use-my-org';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
-import { buildAttachmentUrl } from '#/utils';
+import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
 import ApplicationItemsTable from './application-items-table.vue'; // ✅ 新增：申请明细表格子组件
@@ -883,18 +883,14 @@ function handlePreviewAttachment(
 function handleDownloadAttachment(
   item: PaymentSettlementAdminApi.AttachmentItemDto,
 ) {
-  if (item.url) {
-    const fullUrl = buildAttachmentUrl(item.url);
-    const link = document.createElement('a');
-    link.href = fullUrl;
-    link.download = item.friendlyFileName || 'download';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
+  if (!item.url) {
     message.warning('附件链接不存在');
+    return;
   }
+  void downloadAttachmentWithFriendlyName(
+    item.url,
+    item.friendlyFileName || 'download',
+  );
 }
 
 /** 监听结算对象变化，更新名称并清空银行信息 */
