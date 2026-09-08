@@ -17,7 +17,7 @@ last_updated: 2026-07-12
 | 路由名称 | `ExpenseDetail` |
 | 页面组件 | `src/views/audit-approval/expense-all/modules/detail.vue` |
 | 权限口径 | Admin.OrderFee.Audit / Admin.OrderFee.Audit.Get |
-| 关键源码 | `src/router/routes/modules/audit-approval.ts`<br/>`src/views/audit-approval/data.ts`<br/>`src/views/audit-approval/expense-all/index.vue`<br/>`src/views/audit-approval/expense-all/list.vue`<br/>`src/views/audit-approval/expense-all/modules/detail.vue`<br/>`src/views/audit-approval/payment-review/index.vue`<br/>`src/views/audit-approval/payment-review/data.ts`<br/>`src/api/audit-approval/expense-admin.ts`<br/>`src/api/audit-approval/payment-review-admin.ts` |
+| 关键源码 | `src/router/routes/modules/audit-approval.ts`<br/>`src/views/audit-approval/data.ts`<br/>`src/views/audit-approval/expense-all/index.vue`<br/>`src/views/audit-approval/expense-all/modules/detail.vue`<br/>`src/api/audit-approval/expense-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 

@@ -1,45 +1,35 @@
 <script lang="ts" setup>
-import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
-import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-  getCurrencyEnumOptions,
-  getCurrencyEnumSymbolOptions,
-  getFeeStatusValueByLabel,
-} from '#/views/_shared/order-fee/data';
-import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+
+import { ArrowLeft, Package } from '@vben/icons';
+
 import {
   Button,
-  Space,
-  Textarea,
-  message,
-  DropdownButton,
-  MenuItem,
-  Menu,
-  Modal,
   Card,
+  DropdownButton,
+  Menu,
+  MenuItem,
+  message,
+  Space,
 } from 'ant-design-vue';
 
-import { $t } from '#/locales';
-
-import OrderFeeTable from '#/views/_shared/order-fee/modules/all-order-fee-table.vue';
 import {
   OrderFeeAuditAsync,
   OrderFeeRejectedAsync,
 } from '#/api/audit-approval/expense-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+import { $t } from '#/locales';
 import {
-  ArrowLeft,
-  FileText,
-  MapPin,
-  Package,
-  Save,
-  Ship,
-  Users,
-} from '@vben/icons';
+  getCurrencyEnumSymbolOptions,
+  getFeeStatusValueByLabel,
+} from '#/views/_shared/order-fee/data';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/all-order-fee-table.vue';
+
+import { openAuditRemarkConfirm } from '../../composables/use-audit-remark-confirm';
 
 const dataSourceRec = ref<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>([]);
 const dataSourcePay = ref<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>([]);
@@ -69,7 +59,6 @@ const toNumberAmount = (value: unknown): number => {
 };
 
 const totalFeeRec = computed(() => {
-  console.log(dataSourceRec.value);
   return dataSourceRec.value.reduce(
     (acc, cur) => acc + toNumberAmount(cur.amount),
     0,
@@ -227,92 +216,35 @@ const resolvedEntityId = computed(() => {
 });
 const standaloneTableType = ref<string>('horizontal');
 
-const totalFee = (
-  dataSource: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
-) => {
-  console.log('totalFee', dataSource);
-};
-
-const SubmittedOther = async (e: any) => {
-  console.log('SubmittedOther', e);
+const SubmittedOther = async (e: { key: string }) => {
   showConfirmWithRemark(true, e.key);
 };
-const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
-  let modalRemark = '';
-  if (approve) {
-    switch (type) {
-      case 'all': {
-        allPass(approve, modalRemark);
-        break;
-      }
-      case 'selectPass': {
-        selectPass(approve, modalRemark);
-        break;
-      }
-      case 'recPass': {
-        recPass(approve, modalRemark);
-        break;
-      }
-      case 'payPass': {
-        payPass(approve, modalRemark);
-        break;
-      }
-    }
 
-    return;
+/** 通过：不弹备注窗，直接按类型执行；驳回走下方 showRejectWithRemark */
+const showConfirmWithRemark = (approve = true, type = '') => {
+  if (!approve) return;
+
+  switch (type) {
+    case 'all': {
+      allPass(approve, '');
+      break;
+    }
+    case 'selectPass': {
+      selectPass(approve, '');
+      break;
+    }
+    case 'recPass': {
+      recPass(approve, '');
+      break;
+    }
+    case 'payPass': {
+      payPass(approve, '');
+      break;
+    }
   }
-  // 创建弹窗实例
-  Modal.confirm({
-    title: approve
-      ? $t('auditApproval.task.okPass')
-      : $t('auditApproval.task.noPass'),
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    async onOk() {
-      switch (type) {
-        case 'all': {
-          allPass(approve, modalRemark);
-          break;
-        }
-        case 'selectPass': {
-          selectPass(approve, modalRemark);
-          break;
-        }
-        case 'recPass': {
-          recPass(approve, modalRemark);
-          break;
-        }
-        case 'payPass': {
-          payPass(approve, modalRemark);
-          break;
-        }
-      }
-    },
-    onCancel() {
-      modalRemark = '';
-    },
-  });
 };
 
 const showRejectWithRemark = () => {
-  // 检查是否有选中的费用
   if (!selectedRowKeys.value.length) {
     message.warning({
       content: $t('auditApproval.task.noPassSelect'),
@@ -326,12 +258,10 @@ const showRejectWithRemark = () => {
     keysSet.has((row as any)._rowKey),
   );
 
-  // 检查选中的费用是否包含已审核通过的费用
   const hasPassedFees = selectedList.some(
     (item) => item.combinedFeeStatus === getFeeStatusValueByLabel('Passed'),
   );
 
-  // 检查选中的费用是否包含待审核的费用
   const hasPendingFees = selectedList.some(
     (item) =>
       item.combinedFeeStatus === getFeeStatusValueByLabel('Submitted') ||
@@ -339,7 +269,6 @@ const showRejectWithRemark = () => {
       item.combinedFeeStatus === getFeeStatusValueByLabel('Deletion'),
   );
 
-  // 如果同时包含已审核和待审核的费用，提示用户不能混合操作
   if (hasPassedFees && hasPendingFees) {
     message.warning({
       content: '不能同时驳回已审核和待审核的费用，请分别选择',
@@ -348,7 +277,6 @@ const showRejectWithRemark = () => {
     return;
   }
 
-  // 如果没有任何可驳回的费用
   if (!hasPassedFees && !hasPendingFees) {
     message.warning({
       content: '选中的费用中没有可驳回的费用',
@@ -357,48 +285,18 @@ const showRejectWithRemark = () => {
     return;
   }
 
-  let modalRemark = '';
-
-  // 根据费用状态确定驳回类型和使用的接口
   const rejectType = hasPassedFees ? '审核后驳回' : '费用驳回';
-  const useRejectApi = hasPassedFees; // true: 使用OrderFeeRejectedAsync, false: 使用OrderFeeAuditAsync
+  const useRejectApi = hasPassedFees;
 
-  // 创建弹窗实例
-  const modal = Modal.confirm({
-    title: `${rejectType}`,
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    async onOk() {
-      await nextTick(); // 等待 Vue 响应式更新完成
-
-      // 根据费用状态调用不同的接口
+  openAuditRemarkConfirm({
+    title: rejectType,
+    danger: true,
+    onConfirm: (modalRemark) => {
       if (useRejectApi) {
-        // 已审核通过的费用，使用OrderFeeRejectedAsync接口（审核后驳回）
         Rejected(modalRemark, selectedList);
       } else {
-        // 待审核的费用，使用OrderFeeAuditAsync接口（费用驳回）
         RejectPending(modalRemark, selectedList);
       }
-    },
-    onCancel() {
-      modalRemark = '';
     },
   });
 };
@@ -479,10 +377,7 @@ const OrderFeeAuditByStatus = async (
 ) => {
   if (!ids.length) return;
 
-  console.log('审核费用ID列表:', ids);
-
   try {
-    // 统一调用 OrderFeeAuditAsync 接口
     const dto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
       success: approve,
       remark: modalRemark,
@@ -516,7 +411,6 @@ const selectPass = (approve: boolean, modalRemark: string) => {
 };
 
 const allPass = (approve: boolean, modalRemark: string) => {
-  console.log('dataSource.value', dataSource.value);
   const ids = (dataSource.value ?? [])
     .filter(
       (item) =>
@@ -631,20 +525,18 @@ const totalAmount = computed(() => {
         '人民币',
     };
   });
-  // 转换为对象数组
   const totalList = Object.keys(total).map((key) => ({
     id: key,
     ...total[key],
   }));
-  let list = [];
-  console.log(totalList);
+  const list: Array<{ name: string; color: string; value: string }> = [];
   let totalPay = 0;
   let totalRec = 0;
 
   totalList.forEach((item) => {
-    let recName = `应收${item.currencyName}:`;
-    let recColor = 'green';
-    let recAmount = (Number(item.totalRecAmount) || 0).toFixed(2);
+    const recName = `应收${item.currencyName}:`;
+    const recColor = 'green';
+    const recAmount = (Number(item.totalRecAmount) || 0).toFixed(2);
     list.push({
       name: recName,
       color: recColor,
@@ -652,9 +544,9 @@ const totalAmount = computed(() => {
     });
     totalRec += Number(item.totalRMBRecAmount) || 0;
 
-    let payName = `应付${item.currencyName}:`;
-    let payColor = 'yellow';
-    let payAmount = (Number(item.totalPayAmount) || 0).toFixed(2);
+    const payName = `应付${item.currencyName}:`;
+    const payColor = 'yellow';
+    const payAmount = (Number(item.totalPayAmount) || 0).toFixed(2);
     list.push({
       name: payName,
       color: payColor,
@@ -662,9 +554,9 @@ const totalAmount = computed(() => {
     });
     totalPay += Number(item.totalRMBPayAmount) || 0;
 
-    let profitName = `${item.currencyName}利润:`;
-    let profitColor = 'blue';
-    let profitAmount = (
+    const profitName = `${item.currencyName}利润:`;
+    const profitColor = 'blue';
+    const profitAmount = (
       (Number(item.totalRecAmount) || 0) - (Number(item.totalPayAmount) || 0)
     ).toFixed(2);
     list.push({
@@ -685,7 +577,6 @@ const totalAmount = computed(() => {
       ? (((totalRec - totalPay) / totalPay) * 100).toFixed(1) + '%'
       : '--',
   });
-  console.log(list);
   return list;
 });
 const handleReceivableTableUpdate = (
@@ -722,7 +613,6 @@ const handleReceivableTableUpdate = (
       currencyName,
       currencyId,
     };
-    console.log('recAmountMap', recAmountMap);
   });
 };
 
@@ -760,7 +650,6 @@ const handlePayableTableUpdate = (
       currencyName,
       currencyId,
     };
-    console.log('payAmountMap', payAmountMap);
   });
 };
 
@@ -791,11 +680,9 @@ const loadCurrencySymbols = async () => {
         }
       });
       currencySymbolMap.value = symbolMap;
-      console.log('✅ 已加载币别符号映射:', symbolMap);
     }
   } catch (error) {
-    console.error('❌ 加载币别符号失败:', error);
-    // 失败时使用默认的硬编码映射
+    console.error('加载币别符号失败:', error);
     const defaultOptions = getCurrencyEnumSymbolOptions();
     const symbolMap: Record<number, string> = {};
     defaultOptions.forEach((opt) => {

@@ -46,14 +46,6 @@ export const getCommissionTypeOptions = () => [
   },
 ];
 
-export const getCommissionTypeLabel = (value?: null | number): string => {
-  if (value == null) return '-';
-  return (
-    getCommissionTypeOptions().find((o) => o.value === value)?.label ??
-    String(value)
-  );
-};
-
 // ==================== 搜索表单 ====================
 
 export function useCommissionReviewFormSchema(): VbenFormSchema[] {

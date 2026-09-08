@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { computed, h, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space, Textarea } from 'ant-design-vue';
+import { Button, message, Space } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -18,6 +18,7 @@ import { $t } from '#/locales';
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 
 import DetailPanel from './detail-panel.vue';
 import {
@@ -294,29 +295,10 @@ const openRemarkConfirm = (options: {
   pickRows: () => PaymentReviewAdminApi.PayAppTaskItemDto[];
   emptyMessage: string;
 }) => {
-  let modalRemark = '';
-  Modal.confirm({
+  openAuditRemarkConfirm({
     title: options.title,
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    okButtonProps: options.danger ? { danger: true } : undefined,
-    async onOk() {
+    danger: options.danger,
+    onConfirm: async (modalRemark) => {
       const rows = options.pickRows();
       if (rows.length === 0) {
         message.warning(options.emptyMessage);

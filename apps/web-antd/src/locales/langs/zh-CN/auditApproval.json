@@ -85,10 +85,6 @@
     "noPendingAudit": "请选择待审核的任务",
     "noRejectable": "请选择审核中或审核通过的任务"
   },
-  "expenseSubmission": {
-    "title": "费用提交审核",
-    "detail": "费用提交审核详情"
-  },
   "commissionReview": {
     "title": "提成审核",
     "commissionType": "提成类型",
