@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-09 海运出口分单代理旁备注与件数大写](./changelogs/change-log-2026-09-09-sea-export-separate-agent-remark-pkgs-say.md)
 - [2026-09-09 付费申请列表增加当页申请合计](./changelogs/change-log-2026-09-09-payment-application-page-total.md)
 - [2026-09-09 OFD 预览去掉裁切与图层错位](./changelogs/change-log-2026-09-09-attachment-ofd-preview-clip.md)
 - [2026-09-09 通用附件查看器支持 OFD 在线预览](./changelogs/change-log-2026-09-09-attachment-ofd-preview.md)

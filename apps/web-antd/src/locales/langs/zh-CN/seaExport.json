@@ -356,6 +356,7 @@
       "consigneeLabel": "Consignee(收货人)",
       "notifierLabel": "Notify Party(通知人)",
       "agentLabel": "代理",
+      "pkgsSay": "件数大写",
       "marksLabel": "Marks(唛头)",
       "goodsDesLabel": "Description of Goods (包装种类与货名)",
       "etdLabel": "EDT",

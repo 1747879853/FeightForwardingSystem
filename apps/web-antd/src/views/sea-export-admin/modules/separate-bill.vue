@@ -43,6 +43,7 @@ import {
 } from '#/utils/weight-volume-precision';
 
 import addTabIcon from './assets/separate-bill-add.svg';
+import { formatPkgsSay } from './separate-bill-pkgs-say';
 
 defineOptions({
   name: 'SeaExportSeparateBill',
@@ -475,37 +476,60 @@ const removeCtnRows = () => {
   const keysSet = new Set(selectedCtnKeys.value);
   ctnList.value = ctnList.value.filter((row) => !keysSet.has(row._rowKey));
   selectedCtnKeys.value = [];
+  syncCargoPkgsFromCtn();
 };
 
-const updateCargoTotalsFromCtn = () => {
-  const sum = (key: 'grossWeight' | 'pkgs' | 'volume') =>
-    ctnList.value.reduce((acc, row) => {
-      const n = Number(row[key]);
-      return acc + (Number.isFinite(n) ? n : 0);
-    }, 0);
+const sumCtn = (key: 'grossWeight' | 'pkgs' | 'volume') =>
+  ctnList.value.reduce((acc, row) => {
+    const n = Number(row[key]);
+    return acc + (Number.isFinite(n) ? n : 0);
+  }, 0);
 
-  formData.value.pkgs = sum('pkgs') || undefined;
-  formData.value.kgs = sum('grossWeight') || undefined;
-  formData.value.cbm = sum('volume') || undefined;
-
+const applyCtnPackageToCargo = () => {
   const firstPkg = ctnList.value.find((row) => row.codePackageId);
   if (firstPkg?.codePackageId) {
     formData.value.codePackageId = firstPkg.codePackageId;
     formData.value.codePackageName = firstPkg.codePackageName;
   }
+};
+
+const syncCargoPkgsFromCtn = () => {
+  formData.value.pkgs = sumCtn('pkgs') || undefined;
+};
+
+const updateCargoTotalsFromCtn = () => {
+  syncCargoPkgsFromCtn();
+  formData.value.kgs = sumCtn('grossWeight') || undefined;
+  formData.value.cbm = sumCtn('volume') || undefined;
+  applyCtnPackageToCargo();
   message.success($t('seaExport.export.separate.updateTotalSuccess'));
 };
 
-const updateCtnRow = (index: number, field: string, value: any) => {
+const updateCtnRow = (
+  index: number,
+  field: string,
+  value: any,
+  extra?: Record<string, unknown>,
+) => {
   const list = [...ctnList.value];
   if (!list[index]) {
     list[index] = {
       _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
     };
   }
-  list[index] = { ...list[index], [field]: value };
+  list[index] = { ...list[index], [field]: value, ...extra };
   ctnList.value = list;
+  if (field === 'pkgs') syncCargoPkgsFromCtn();
+  if (field === 'codePackageId') applyCtnPackageToCargo();
 };
+
+const onCargoPackageChange = (_value: any, option?: { label?: string }) => {
+  formData.value.codePackageName = option?.label;
+};
+
+const pkgsSayText = computed(() =>
+  formatPkgsSay(formData.value.pkgs, formData.value.codePackageName),
+);
 
 const buildCtnPayload = () =>
   ctnList.value
@@ -1033,8 +1057,11 @@ watch(seaExportId, () => {
                   :placeholder="$t('ui.placeholder.select')"
                 />
               </div>
-              <div class="inline-field meta-grid__span">
-                <label class="inline-label">
+            </div>
+
+            <div class="agent-remark-row">
+              <div class="agent-block">
+                <label class="stack-label">
                   {{ $t('seaExport.export.separate.agentLabel') }}
                 </label>
                 <ClientSelect
@@ -1044,20 +1071,32 @@ watch(seaExportId, () => {
                   "
                   industry-category="q"
                   size="small"
-                  class="flex-1"
+                  class="w-full"
                   :placeholder="$t('ui.placeholder.select')"
+                />
+                <Input.TextArea
+                  :value="formData.podAgentContent"
+                  :maxlength="1024"
+                  :rows="3"
+                  class="agent-textarea"
+                  allow-clear
+                  @update:value="(v) => (formData.podAgentContent = v)"
+                />
+              </div>
+              <div class="agent-remark-field">
+                <label class="stack-label">
+                  {{ $t('seaExport.export.separate.remark') }}
+                </label>
+                <Input.TextArea
+                  :value="formData.remark"
+                  :maxlength="1024"
+                  :rows="3"
+                  class="header-remark-textarea"
+                  allow-clear
+                  @update:value="(v) => (formData.remark = v)"
                 />
               </div>
             </div>
-
-            <Input.TextArea
-              :value="formData.podAgentContent"
-              :maxlength="1024"
-              :rows="5"
-              class="agent-textarea"
-              allow-clear
-              @update:value="(v) => (formData.podAgentContent = v)"
-            />
 
             <div class="ctn-block">
               <div class="ctn-head">
@@ -1178,8 +1217,11 @@ watch(seaExportId, () => {
                       size="small"
                       class="w-full min-w-[72px]"
                       :placeholder="$t('ui.placeholder.select')"
-                      @update:model-value="
-                        (v) => updateCtnRow(index, 'codePackageId', v)
+                      @change="
+                        (v, option) =>
+                          updateCtnRow(index, 'codePackageId', v, {
+                            codePackageName: option?.label,
+                          })
                       "
                     />
                   </template>
@@ -1236,20 +1278,6 @@ watch(seaExportId, () => {
               </Table>
             </div>
           </div>
-        </div>
-
-        <div class="header-remark">
-          <label class="inline-label">
-            {{ $t('seaExport.export.separate.remark') }}
-          </label>
-          <Input.TextArea
-            :value="formData.remark"
-            :maxlength="1024"
-            :rows="2"
-            class="header-remark-textarea"
-            allow-clear
-            @update:value="(v) => (formData.remark = v)"
-          />
         </div>
       </section>
 
@@ -1439,6 +1467,7 @@ watch(seaExportId, () => {
                 size="small"
                 class="w-full"
                 :placeholder="$t('ui.placeholder.select')"
+                @change="onCargoPackageChange"
               />
             </div>
             <div class="cargo-field">
@@ -1472,6 +1501,17 @@ watch(seaExportId, () => {
               />
             </div>
           </div>
+        </div>
+        <div class="cargo-pkgs-say">
+          <label class="stack-label">
+            {{ $t('seaExport.export.separate.pkgsSay') }}
+          </label>
+          <Input
+            size="small"
+            readonly
+            class="readonly-input"
+            :value="pkgsSayText"
+          />
         </div>
       </section>
     </Spin>
@@ -1565,18 +1605,6 @@ watch(seaExportId, () => {
   height: 10px;
 }
 
-.header-remark {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.header-remark .inline-label {
-  padding-top: 6px;
-  text-align: left;
-}
-
 .header-remark-textarea {
   flex: 1;
   min-width: 0;
@@ -1599,6 +1627,46 @@ watch(seaExportId, () => {
 .header-remark-textarea :deep(textarea:focus) {
   border-color: #1677ff;
   box-shadow: 0 0 0 2px rgb(5 145 255 / 10%);
+}
+
+.agent-remark-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.agent-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.agent-block .inline-field {
+  width: 100%;
+}
+
+.agent-block .stack-label {
+  margin-bottom: 0;
+}
+
+.agent-textarea {
+  width: 100%;
+}
+
+.agent-remark-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-remark-field .stack-label {
+  margin-bottom: 6px;
+}
+
+.agent-remark-field .header-remark-textarea {
+  flex: 1;
 }
 
 .separate-btn-print {
@@ -1682,9 +1750,18 @@ watch(seaExportId, () => {
   color: #3389eb;
 }
 
-.party-textarea :deep(textarea),
-.agent-textarea :deep(textarea) {
+.party-textarea :deep(textarea) {
   min-height: 85px;
+  font-size: 12px;
+  line-height: 18px;
+  resize: vertical;
+  background: #fcfdfe;
+  border-color: #e4e8ef;
+  border-radius: 5px;
+}
+
+.agent-textarea :deep(textarea) {
+  min-height: 52px;
   font-size: 12px;
   line-height: 18px;
   resize: vertical;
@@ -1747,12 +1824,14 @@ watch(seaExportId, () => {
 
 .party-textarea :deep(textarea:hover),
 .agent-textarea :deep(textarea:hover),
+.header-remark-textarea :deep(textarea:hover),
 .cargo-textarea :deep(textarea:hover) {
   border-color: #4096ff;
 }
 
 .party-textarea :deep(textarea:focus),
 .agent-textarea :deep(textarea:focus),
+.header-remark-textarea :deep(textarea:focus),
 .cargo-textarea :deep(textarea:focus) {
   border-color: #1677ff;
   box-shadow: 0 0 0 2px rgb(5 145 255 / 10%);
@@ -1887,6 +1966,31 @@ watch(seaExportId, () => {
   flex: none;
 }
 
+.cargo-pkgs-say {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 12px;
+}
+
+.cargo-pkgs-say .stack-label {
+  flex-shrink: 0;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.cargo-pkgs-say .readonly-input,
+.cargo-pkgs-say .readonly-input.ant-input[readonly] {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: #252a31;
+  letter-spacing: 0.02em;
+  cursor: default;
+  background: #fcfdfe;
+}
+
 .separate-bill :deep(.ant-table-tbody > tr.ant-table-row-selected > td),
 .separate-bill :deep(.ant-table-tbody > tr.ant-table-row-selected:hover > td) {
   background: hsl(var(--primary) / 15%) !important;
@@ -1896,7 +2000,8 @@ watch(seaExportId, () => {
   .main-split,
   .meta-grid,
   .voyage-grid,
-  .cargo-grid {
+  .cargo-grid,
+  .agent-remark-row {
     grid-template-columns: 1fr;
   }
 }

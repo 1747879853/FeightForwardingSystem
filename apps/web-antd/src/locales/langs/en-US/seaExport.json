@@ -419,6 +419,7 @@
       "consigneeLabel": "Consignee",
       "notifierLabel": "Notify Party",
       "agentLabel": "Agent",
+      "pkgsSay": "Quantity in Words",
       "marksLabel": "Marks",
       "goodsDesLabel": "Description of Goods",
       "etdLabel": "EDT",
