@@ -500,6 +500,20 @@ const switchFeeTab = (tab: 'receivable' | 'payable') => {
   });
 };
 
+/** 订单信息展开/收起后，等过渡结束再重测费用表高度 */
+const remeasureFeeTables = () => {
+  RecOrderFeeRef.value?.remasureTable?.();
+  PayOrderFeeRef.value?.remasureTable?.();
+};
+
+const ORDER_INFO_EXPAND_MS = 260;
+
+watch(orderInfoExpanded, () => {
+  nextTick(() => {
+    window.setTimeout(remeasureFeeTables, ORDER_INFO_EXPAND_MS);
+  });
+});
+
 // 处理刷新对立表格事件（收付互生后调用）
 const handleRefreshOppositeTable = (type: number) => {
   console.log('🔄 [changeOrder] 收到刷新对立表格事件，当前类型:', type);
@@ -895,13 +909,18 @@ onBeforeUnmount(unbindGlobalListeners);
 </script>
 
 <template>
+  <!-- 本页嵌在 editor.vue 的 Page auto-content-height 内。
+       嵌套 Page 会按全局 --vben-content-height 计算内容高，但它实际位于内容 tab 栏下方。
+       与应收应付 OrderFeePage 相同：用 height-offset 扣除 tab 栏（约 58px），
+       让费用表吃满剩余视口、表内滚动，避免把利润汇总顶出屏幕。 -->
   <Page
     class="change-order-page"
     auto-content-height
+    :height-offset="58"
     content-class="flex flex-col overflow-hidden"
   >
     <Spin :spinning="pageLoading" wrapper-class-name="change-order-spin">
-      <div class="mx-2 flex h-full min-h-0 flex-col gap-4">
+      <div class="mx-2 flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <!-- 顶部通铺：订单信息（默认关键字段，点击展开；字段值单行不换行） -->
         <section
           class="order-info-bar"
@@ -918,7 +937,10 @@ onBeforeUnmount(unbindGlobalListeners);
               {{ $t('seaExport.export.formCardInfo') }}
             </span>
 
-            <span v-if="!orderInfoExpanded" class="order-info-bar__summary">
+            <span
+              class="order-info-bar__summary"
+              :aria-hidden="orderInfoExpanded"
+            >
               <template v-if="keyOrderInfo.length">
                 <span
                   v-for="item in keyOrderInfo"
@@ -965,45 +987,53 @@ onBeforeUnmount(unbindGlobalListeners);
             </span>
           </button>
 
-          <div v-if="orderInfoExpanded" class="order-info-bar__body">
-            <div class="order-info-bar__grid">
-              <div
-                v-for="item in expandedOrderInfo"
-                :key="item.key"
-                class="order-info-field"
-                :class="{
-                  'order-info-field--empty': !item.value || item.value === '--',
-                }"
-              >
-                <span class="order-info-field__label">{{ item.name }}</span>
-                <span
-                  class="order-info-field__value"
-                  :title="String(item.value || '--')"
+          <div
+            class="order-info-bar__body-wrap"
+            :class="{
+              'order-info-bar__body-wrap--expanded': orderInfoExpanded,
+            }"
+          >
+            <div class="order-info-bar__body">
+              <div class="order-info-bar__grid">
+                <div
+                  v-for="item in expandedOrderInfo"
+                  :key="item.key"
+                  class="order-info-field"
+                  :class="{
+                    'order-info-field--empty':
+                      !item.value || item.value === '--',
+                  }"
                 >
-                  <img
-                    v-if="
-                      item.key === 'carrierName' &&
-                      (formValues?.carrierLogo?.url ||
-                        formValues?.carrier?.logo?.url)
-                    "
-                    :src="
-                      buildAttachmentUrl(
-                        formValues?.carrierLogo?.url ||
-                          formValues?.carrier?.logo?.url,
-                      )
-                    "
-                    :alt="formValues?.carrier?.cnName || 'carrier-logo'"
-                    class="order-info-chip__logo"
-                  />
-                  {{ item.value || '--' }}
-                </span>
+                  <span class="order-info-field__label">{{ item.name }}</span>
+                  <span
+                    class="order-info-field__value"
+                    :title="String(item.value || '--')"
+                  >
+                    <img
+                      v-if="
+                        item.key === 'carrierName' &&
+                        (formValues?.carrierLogo?.url ||
+                          formValues?.carrier?.logo?.url)
+                      "
+                      :src="
+                        buildAttachmentUrl(
+                          formValues?.carrierLogo?.url ||
+                            formValues?.carrier?.logo?.url,
+                        )
+                      "
+                      :alt="formValues?.carrier?.cnName || 'carrier-logo'"
+                      class="order-info-chip__logo"
+                    />
+                    {{ item.value || '--' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <div
-          class="w-change-order-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4"
+          class="w-change-order-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden"
         >
           <section class="change-order-editor">
             <div class="editor-header">
@@ -1475,15 +1505,31 @@ onBeforeUnmount(unbindGlobalListeners);
 .change-order-page {
   height: 100%;
   overflow: hidden;
+
+  // Page 挂载约 30ms 后会给内容区写 inline overflow-y:auto，盖掉 content-class 的 overflow-hidden。
+  // 费用表必须吃满剩余高度、内部滚动，不能让整页再出现纵向滚动条。
+  :deep(> .h-full) {
+    overflow: hidden !important;
+  }
 }
 
+/* Spin 默认 auto 高会截断 height:100% 链，费用表按内容撑开、利润汇总被顶出视口 */
 :deep(.change-order-spin) {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 :deep(.change-order-spin > .ant-spin-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .change-order-basic-form {
@@ -1747,6 +1793,7 @@ onBeforeUnmount(unbindGlobalListeners);
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
@@ -1796,6 +1843,7 @@ onBeforeUnmount(unbindGlobalListeners);
   background: linear-gradient(180deg, #fafbfc 0%, #f7f8fa 100%);
   border: 1px solid #eef0f3;
   border-radius: 8px;
+  transition: box-shadow 0.25s ease;
 }
 
 .order-info-bar__toggle {
@@ -1809,7 +1857,10 @@ onBeforeUnmount(unbindGlobalListeners);
   cursor: pointer;
   background: transparent;
   border: 0;
-  transition: background 0.15s;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.25s ease;
 
   &:hover {
     background: rgb(0 0 0 / 2%);
@@ -1817,7 +1868,7 @@ onBeforeUnmount(unbindGlobalListeners);
 }
 
 .order-info-bar--expanded .order-info-bar__toggle {
-  border-bottom: 1px solid #eef0f3;
+  border-bottom-color: #eef0f3;
 }
 
 .order-info-bar__title {
@@ -1834,11 +1885,25 @@ onBeforeUnmount(unbindGlobalListeners);
 
 .order-info-bar__summary {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 4px 0;
   align-items: center;
   min-width: 0;
+  max-height: 48px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease,
+    flex 0.25s ease;
+}
+
+.order-info-bar--expanded .order-info-bar__summary {
+  flex: 0 0 0;
+  max-height: 0;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .order-info-chip {
@@ -1923,8 +1988,32 @@ onBeforeUnmount(unbindGlobalListeners);
   }
 }
 
+.order-info-bar__body-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+
+  &--expanded {
+    grid-template-rows: 1fr;
+  }
+}
+
 .order-info-bar__body {
+  min-height: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    padding 0.25s ease;
+}
+
+.order-info-bar__body-wrap--expanded .order-info-bar__body {
   padding: 10px 12px 8px;
+  opacity: 1;
+  transition:
+    opacity 0.2s ease 0.05s,
+    padding 0.25s ease;
 }
 
 .order-info-bar__grid {
@@ -1975,10 +2064,12 @@ onBeforeUnmount(unbindGlobalListeners);
   flex-direction: column;
   min-height: 0;
   padding: 0 16px 8px;
+  overflow: hidden;
 
   > :deep(.order-fee-card) {
     flex: 1;
     min-height: 0;
+    overflow: hidden;
   }
 }
 

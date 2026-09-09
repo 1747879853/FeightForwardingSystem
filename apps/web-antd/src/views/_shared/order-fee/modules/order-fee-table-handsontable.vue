@@ -1383,11 +1383,13 @@ watch(
 }
 
 .change-order-fee-table {
+  overflow: hidden;
   border: 0;
   box-shadow: none;
 
   :deep(.ant-card-body) {
     padding: 0 0 8px !important;
+    overflow: hidden;
   }
 }
 </style>
