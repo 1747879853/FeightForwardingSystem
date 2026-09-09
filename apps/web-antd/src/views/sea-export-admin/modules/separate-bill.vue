@@ -30,11 +30,6 @@ import {
   editSeparate,
   getSeparatePagedList,
 } from '#/api/sea-export/sea-export-separate-admin';
-import {
-  PrintFormatBizType,
-  PrintJsonType,
-  usePrintFormat,
-} from '#/components/print-format';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import {
@@ -70,12 +65,10 @@ const DRAFT_KEY = '__draft__';
 
 const seaExportIdRef = useKeepAliveRouteParamId();
 const seaExportId = computed(() => seaExportIdRef.value ?? '');
-const { openPrint } = usePrintFormat();
 
 const loading = ref(false);
 const submitting = ref(false);
 const copying = ref(false);
-const printing = ref(false);
 const dataSource = ref<SeaExportSeparateAdminApi.SeparateDto[]>([]);
 const activeTabKey = ref<string>(DRAFT_KEY);
 const editingId = ref<string | undefined>();
@@ -664,26 +657,6 @@ const handleDelete = () => {
   });
 };
 
-const handlePrint = () => {
-  if (!seaExportId.value) return;
-  printing.value = true;
-  try {
-    const se = masterDetail.value;
-    openPrint({
-      printJsonType: PrintJsonType.SeaExportDetail,
-      codeIssueTypeId: formData.value.codeIssueTypeId ?? se?.codeIssueTypeId,
-      carrierId: se?.carrierId,
-      orgId: se?.orgId,
-      bizType: PrintFormatBizType.SeaExport,
-      detailInput: { id: seaExportId.value },
-    });
-  } catch {
-    message.error($t('seaExport.export.separate.printFailed'));
-  } finally {
-    printing.value = false;
-  }
-};
-
 const ctnColumns = [
   {
     title: $t('seaExport.export.separate.seq'),
@@ -803,14 +776,6 @@ watch(seaExportId, () => {
               @click="handleCopy"
             >
               {{ $t('seaExport.export.separate.copy') }}
-            </Button>
-            <Button
-              size="small"
-              class="separate-btn-print"
-              :loading="printing"
-              @click="handlePrint"
-            >
-              {{ $t('seaExport.export.separate.print') }}
             </Button>
             <Button
               size="small"
@@ -1667,13 +1632,6 @@ watch(seaExportId, () => {
 
 .agent-remark-field .header-remark-textarea {
   flex: 1;
-}
-
-.separate-btn-print {
-  min-width: 52px;
-  color: #252a31;
-  background: #fff;
-  border-color: #e4e8ef;
 }
 
 .separate-btn-save {

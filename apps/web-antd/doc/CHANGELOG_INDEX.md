@@ -16,6 +16,7 @@
 - [2026-09-09 费用表序号与开票状态拆成独立列](./changelogs/change-log-2026-09-09-order-fee-seq-column.md)
 - [2026-09-09 更改单费用页签一次只展示并保存一侧](./changelogs/change-log-2026-09-09-change-order-fee-tab-save-one-payside.md)
 - [2026-09-09 海出更改单费用表对齐应收应付 Handsontable](./changelogs/change-log-2026-09-09-change-order-fee-handsontable.md)
+- [2026-09-09 海运出口分单去掉打印按钮](./changelogs/change-log-2026-09-09-sea-export-separate-remove-print.md)
 - [2026-09-09 海运出口分单代理旁备注与件数大写](./changelogs/change-log-2026-09-09-sea-export-separate-agent-remark-pkgs-say.md)
 - [2026-09-09 付费申请列表增加当页申请合计](./changelogs/change-log-2026-09-09-payment-application-page-total.md)
 - [2026-09-09 OFD 预览去掉裁切与图层错位](./changelogs/change-log-2026-09-09-attachment-ofd-preview-clip.md)
