@@ -21,16 +21,7 @@ import { ORDER_FEE_ADAPTER_KEY, type OrderFeeModuleAdapter } from './types';
 import { useOrderFeeI18n } from './use-adapter';
 import { Page } from '@vben/common-ui';
 
-import {
-  ArrowLeft,
-  FileText,
-  MapPin,
-  Package,
-  Save,
-  Ship,
-  Users,
-  Settings,
-} from '@vben/icons';
+import { FileText, Settings } from '@vben/icons';
 
 import {
   Button,
@@ -59,6 +50,13 @@ import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
 // ✅ 新增：导入下拉框数据源管理
 import { useDropdownSources } from './modules/composables/useDropdownSources';
+import {
+  DISPLAY_FIELD_GROUP_ICONS,
+  DISPLAY_FIELD_GROUP_LABELS,
+  DISPLAY_FIELD_GROUP_ORDER,
+  resolveDisplayFieldMeta,
+  type DisplayFieldGroupId,
+} from './display-field-groups';
 import {
   tryOpenPaymentApplicationFromSelectedFees,
   collectOrderFeesForPaymentNav,
@@ -237,29 +235,23 @@ watch(
 
 // 根据配置生成显示列表
 const displayList = computed(() => {
-  console.log('=== displayList 计算 ===');
-  console.log('formValues.value:', formValues.value);
-  console.log('to.value:', to.value);
-  console.log('displayFieldConfig.length:', displayFieldConfig.value.length);
-  console.log(
-    '可见字段数:',
-    displayFieldConfig.value.filter((f) => f.visible).length,
-  );
-
   if (!formValues.value || !to.value) {
-    console.warn('⚠️ 数据未加载完成，返回空列表');
     return [];
   }
 
-  const result: Array<{ key: string; name: string; value: any }> = [];
+  const result: Array<{
+    key: string;
+    name: string;
+    value: any;
+    group: DisplayFieldGroupId;
+    emphasis: boolean;
+  }> = [];
 
   displayFieldConfig.value.forEach((field) => {
     if (!field.visible) return;
 
-    let value: any = '--';
-
-    // 根据 key 获取对应的值（差异收敛到适配器）
-    value = props.adapter.getDisplayValue(
+    const meta = resolveDisplayFieldMeta(field.key);
+    const value = props.adapter.getDisplayValue(
       field.key,
       formValues.value,
       to.value,
@@ -269,16 +261,39 @@ const displayList = computed(() => {
       key: field.key,
       name: field.label,
       value,
+      group: meta.group,
+      emphasis: !!meta.emphasis,
     });
   });
 
-  console.log('✅ displayList 生成完成:', result.length, '个可见字段');
-  console.log(
-    '字段列表:',
-    result.map((r) => r.name),
-  );
   return result;
 });
+
+/** 按业务分组后的订单信息（保持用户配置的字段顺序） */
+const displayGroups = computed(() => {
+  const buckets = new Map<
+    DisplayFieldGroupId,
+    (typeof displayList.value)[number][]
+  >();
+
+  displayList.value.forEach((item) => {
+    const list = buckets.get(item.group) || [];
+    list.push(item);
+    buckets.set(item.group, list);
+  });
+
+  return DISPLAY_FIELD_GROUP_ORDER.filter(
+    (id) => (buckets.get(id)?.length || 0) > 0,
+  ).map((id) => ({
+    id,
+    label: DISPLAY_FIELD_GROUP_LABELS[id],
+    icon: DISPLAY_FIELD_GROUP_ICONS[id],
+    items: buckets.get(id) || [],
+  }));
+});
+
+const isEmptyDisplayValue = (value: unknown) =>
+  value === undefined || value === null || value === '' || value === '--';
 
 const transCurrency = (currencyId: number) => {
   const option = getCurrencyEnumOptions().find((o) => o.value === currencyId);
@@ -922,46 +937,72 @@ onMounted(async () => {
     >
       <div class="mx-2 flex h-full min-h-0 items-stretch gap-6">
         <!-- 垂直方向撑满 -->
-        <Card class="form-info-card flex min-h-0 w-[280px] shrink-0 flex-col">
+        <Card class="form-info-card flex min-h-0 w-[300px] shrink-0 flex-col">
           <template #title>
-            <span class="flex items-center justify-between gap-2">
-              <span class="flex items-center gap-2">
-                <Users class="size-4" />
+            <span class="form-info-card__title">
+              <span class="form-info-card__title-main">
+                <span class="form-info-card__title-icon">
+                  <FileText class="size-3.5" />
+                </span>
                 {{ t('formCardInfo') }}
               </span>
               <Button
                 type="text"
                 size="small"
+                class="form-info-card__config-btn"
                 @click="openConfigModal"
-                class="text-gray-500 hover:text-blue-600"
               >
                 <Settings class="size-4" />
               </Button>
             </span>
           </template>
-          <div
-            class="flex flex-1 px-1 py-1"
-            v-for="item in displayList"
-            :key="item.key"
-          >
-            <span class="flex w-[85px] font-semibold">
-              {{ `${item.name} : ` }}</span
+
+          <div class="form-info-body">
+            <section
+              v-for="group in displayGroups"
+              :key="group.id"
+              class="info-group"
+              :data-group="group.id"
             >
-            <span class="flex w-[145px]">
-              <span
-                v-if="item.key === 'carrierName'"
-                class="inline-flex items-center gap-1"
-              >
-                <img
-                  v-if="formValues?.carrierLogo?.url"
-                  :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
-                  :alt="formValues?.carrier?.cnName || 'carrier-logo'"
-                  class="h-8 w-8 rounded object-contain"
-                />
-                <span>{{ item.value || '--' }}</span>
-              </span>
-              <span v-else>{{ item.value || '--' }}</span>
-            </span>
+              <header class="info-group__head">
+                <component :is="group.icon" class="info-group__head-icon" />
+                <span>{{ group.label }}</span>
+              </header>
+
+              <div class="info-group__list">
+                <div
+                  v-for="item in group.items"
+                  :key="item.key"
+                  class="info-field"
+                  :class="{
+                    'info-field--emphasis': item.emphasis,
+                    'info-field--empty': isEmptyDisplayValue(item.value),
+                  }"
+                >
+                  <div class="info-field__label">{{ item.name }}</div>
+                  <div class="info-field__value">
+                    <template v-if="item.key === 'carrierName'">
+                      <span class="info-field__carrier">
+                        <img
+                          v-if="formValues?.carrierLogo?.url"
+                          :src="
+                            buildAttachmentUrl(formValues?.carrierLogo?.url)
+                          "
+                          :alt="formValues?.carrier?.cnName || 'carrier-logo'"
+                          class="info-field__carrier-logo"
+                        />
+                        <span>{{ item.value || '--' }}</span>
+                      </span>
+                    </template>
+                    <template v-else>{{ item.value || '--' }}</template>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div v-if="displayGroups.length === 0" class="form-info-empty">
+              暂无展示字段
+            </div>
           </div>
         </Card>
 
@@ -1108,15 +1149,169 @@ onMounted(async () => {
   height: 100%;
 }
 
-/* 左侧信息卡：填满行高，内容超出时卡片内部滚动，不影响右侧表格自适应 */
+/* 左侧信息卡：分区层次 + 重点字段强化 */
 .form-info-card {
   min-height: 0;
+  overflow: hidden;
+  border: 1px solid #e4e8ef;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+
+  :deep(.ant-card-head) {
+    min-height: 48px;
+    padding: 0 14px;
+    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+    border-bottom: 1px solid #e8ecf3;
+  }
+
+  :deep(.ant-card-head-title) {
+    padding: 10px 0;
+  }
 
   :deep(.ant-card-body) {
+    display: flex;
     flex: 1;
+    flex-direction: column;
     min-height: 0;
+    padding: 0;
     overflow-y: auto;
   }
+}
+
+.form-info-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.form-info-card__title-main {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.form-info-card__title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: #006ce6;
+  background: #eaf2ff;
+  border-radius: 7px;
+}
+
+.form-info-card__config-btn {
+  color: #8c95a3;
+
+  &:hover {
+    color: #006ce6;
+  }
+}
+
+.form-info-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 12px;
+}
+
+.info-group {
+  padding: 8px 6px 10px;
+  border-bottom: 1px dashed #e8ecf3;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-group__head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8c95a3;
+  letter-spacing: 0.04em;
+}
+
+.info-group__head-icon {
+  width: 12px;
+  height: 12px;
+  color: #6b7785;
+}
+
+.info-group__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-field {
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.info-field__label {
+  margin-bottom: 2px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #9aa3af;
+}
+
+.info-field__value {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #252a31;
+  overflow-wrap: break-word;
+}
+
+.info-field--emphasis .info-field__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f1c2e;
+}
+
+.info-group[data-group='identity'] .info-field--emphasis .info-field__value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #006ce6;
+  letter-spacing: -0.01em;
+}
+
+.info-field--empty .info-field__value {
+  font-weight: 400;
+  color: #c0c6d0;
+}
+
+.info-field__carrier {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.info-field__carrier-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #eef1f6;
+  border-radius: 4px;
+}
+
+.form-info-empty {
+  padding: 24px 8px;
+  font-size: 12px;
+  color: #9aa3af;
+  text-align: center;
 }
 
 .select-name {

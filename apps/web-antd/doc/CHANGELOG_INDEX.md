@@ -20,6 +20,7 @@
 - [2026-09-08 客户新建成功后关闭原新建页签](./changelogs/change-log-2026-09-08-client-create-tab-close.md)
 - [2026-09-08 付费申请从进项发票选择按钮位置与弹窗表头对齐](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md)
 - [2026-09-08 出站时间口径统一为北京时间](./changelogs/change-log-2026-09-08-request-datetime-beijing-time.md)
+- [2026-09-09 费用录入订单信息卡分区样式](./changelogs/change-log-2026-09-09-order-fee-info-card-layout.md)
 - [2026-09-09 付费结算编辑页结构整理](./changelogs/change-log-2026-09-09-payment-settlement-form-refactor.md)
 - [2026-09-09 开票申请查看页撤回成功后进入编辑页](./changelogs/change-log-2026-09-09-invoice-application-withdraw-to-edit.md)
 - [2026-09-09 开票申请编辑页提交成功后进入查看页](./changelogs/change-log-2026-09-09-invoice-application-submit-to-view.md)
