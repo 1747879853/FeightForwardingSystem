@@ -254,3 +254,38 @@ export const extractSettlementNameFromOrder = (
 
   return null;
 };
+
+/**
+ * 空数据时 Handsontable 往往不会按列宽累加内容总宽（scrollWidth≈视口），
+ * 表现为：横滚拖动只裁切表头、松手滚动条回弹。强制把 master/clone 的
+ * wtHider/wtSpreader 撑到列宽之和，使真实横向滚动生效。
+ */
+export function ensureEmptyTableHorizontalScroll(hot: any) {
+  if (!hot?.rootElement || hot.isDestroyed) return;
+
+  const targets = hot.rootElement.querySelectorAll(
+    '.wtHider, .wtSpreader',
+  ) as NodeListOf<HTMLElement>;
+
+  if (hot.countRows() > 0) {
+    targets.forEach((el) => {
+      if (el.style.minWidth) el.style.minWidth = '';
+    });
+    return;
+  }
+
+  const colCount = hot.countCols();
+  if (colCount <= 0) return;
+
+  let total = 0;
+  for (let i = 0; i < colCount; i++) {
+    total += Number(hot.getColWidth(i)) || 100;
+  }
+  // 列边框约 1px
+  total += colCount;
+
+  const minWidth = `${total}px`;
+  targets.forEach((el) => {
+    el.style.minWidth = minWidth;
+  });
+}

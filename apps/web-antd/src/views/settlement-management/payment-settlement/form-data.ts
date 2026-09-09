@@ -5,6 +5,32 @@ import type { PaymentApplicationAdminApi } from '#/api/settlement-management/pay
 
 import dayjs from 'dayjs';
 
+/** 我司/对方银行下拉选项 */
+export interface BankOption {
+  id: string;
+  label: string;
+  bankName?: string;
+  bankAccount?: string;
+  currencyId: number;
+}
+
+/** 抽屉确认回传的「申请+原币」选中项 */
+export interface SelectedApplicationForSettlement {
+  application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
+  settledPrice: number;
+}
+
+/** 抽屉选中项 → 按原币接口明细入参 */
+export function mapApplicationsToCurrencyItems(
+  applications: SelectedApplicationForSettlement[],
+): PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] {
+  return applications.map((app) => ({
+    paymentApplicationId: app.application.paymentApplicationId,
+    originalCurrencyId: app.application.originalCurrencyId,
+    settledPrice: app.settledPrice,
+  }));
+}
+
 /** 格式化金额 */
 export function formatAmount(value: number | undefined | null): string {
   if (value === undefined || value === null) return '0.00';

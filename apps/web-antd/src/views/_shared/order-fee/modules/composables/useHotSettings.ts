@@ -6,6 +6,7 @@ import {
   isFeeStatemented,
   markUserEditedCell,
 } from '../../data';
+import { ensureEmptyTableHorizontalScroll } from '../utils/helpers';
 
 /** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
 const USER_EDIT_SOURCES = new Set([
@@ -87,7 +88,13 @@ export function useHotSettings(
     contextMenu: true,
     manualColumnResize: true,
     manualRowMove: false,
-    stretchH: 'all',
+    // 列已带固定 width；空数据时 stretchH:'all' 会算错总宽，横滚时克隆表头错位/消失
+    stretchH: 'none',
+    // 显式列宽：空表无行时 Walkontable 仍能按列宽计算内容总宽
+    colWidths: (index: number) => {
+      const col = hotColumns.value?.[index];
+      return col?.width || 100;
+    },
     autoRowSize: false,
     autoColumnSize: false,
     renderAllRows: false,
@@ -559,6 +566,15 @@ export function useHotSettings(
         container.appendChild(checkbox);
         TH.appendChild(container);
       }
+    },
+
+    // 空表：强制内容总宽 = 列宽之和，避免假横滚（拖一下表头被裁、松手回弹）
+    afterRender: function (this: any) {
+      ensureEmptyTableHorizontalScroll(this);
+    },
+    afterLoadData: function (this: any) {
+      // 等 Walkontable 算完一帧再撑宽
+      requestAnimationFrame(() => ensureEmptyTableHorizontalScroll(this));
     },
 
     afterChange: function (this: any, changes: any, source: string) {

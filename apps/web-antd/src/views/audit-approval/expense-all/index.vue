@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { onMounted, ref } from 'vue';
+import { onActivated, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -32,6 +32,8 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '../composables/use-audit-remark-confirm';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
 import Detail from './modules/detail.vue';
+
+defineOptions({ name: 'ExpenseAll' });
 
 // ==================== 分组统计配置 ====================
 
@@ -128,17 +130,11 @@ const grouping = useListGrouping({
   },
 });
 
-// 默认按委托单位分组（在组件挂载后执行）
-onMounted(() => {
-  setTimeout(() => {
-    const clientIdField = ORDER_FEE_TASK_GROUP_FIELDS.find(
-      (field) => field.paramKey === 'ClientId',
-    );
-    if (clientIdField && !grouping.enabledField.value) {
-      grouping.enableField(clientIdField.value as number);
-    }
-  }, 100);
-});
+/**
+ * 费用审核状态默认「未处理」(Processed=false)。
+ * 仅在默认值尚未写入「最近提交值」的早期查询里兜底；用户改成「全部」(null) 或清空后不再回填。
+ */
+let processedDefaultApplied = false;
 
 const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
@@ -199,7 +195,7 @@ const [Grid, gridApi] =
         trigger: 'default',
       },
       rowConfig: {
-        // ✅ 关键变更：行 key 从 entityId 改为 entityId + changeOrderId 组合
+        // ✅ 接口变更：行 key 从 entityId 改为 entityId + changeOrderId 组合
         // 同一票会出现多行（主单 + 各更改单），只用 entityId 会导致选中态串行、详情打开错行
         keyField: 'entityId + changeOrderId',
         isCurrent: true,
@@ -208,13 +204,25 @@ const [Grid, gridApi] =
         enabled: true,
       },
       proxyConfig: {
+        // 关闭自动加载：挂载后先默认分组再 submitForm 首查，
+        // 保证「费用审核状态」默认值写入最近提交值，避免首查漏 Processed=false
+        autoLoad: false,
         ajax: {
           query: createPagedListQuery(getOrderFeeTaskList, {
             mapParams: (formValues) => {
               // 每次查询前清空选中，避免费用明细残留旧数据
               clearSelectedOrder();
 
-              let params = grouping.decorateListParams(formValues);
+              const nextValues = { ...formValues };
+              if (
+                !processedDefaultApplied &&
+                nextValues.Processed === undefined
+              ) {
+                nextValues.Processed = false;
+              }
+              processedDefaultApplied = true;
+
+              let params = grouping.decorateListParams(nextValues);
 
               // 港口分组：把 isSea_id 拆回 IsSea + 真实港口 ID
               const field = grouping.enabledField.value;
@@ -255,6 +263,29 @@ const [Grid, gridApi] =
       },
     },
   });
+
+onMounted(async () => {
+  // 默认按委托单位分组：只设状态不查询，再由 submitForm 统一首查
+  const clientIdField = ORDER_FEE_TASK_GROUP_FIELDS.find(
+    (field) => field.paramKey === 'ClientId',
+  );
+  if (clientIdField && !grouping.enabledField.value) {
+    grouping.prepareField(clientIdField.value as number);
+  }
+  // submitForm 把表单默认值（含 Processed=false）写入「最近提交值」，
+  // 后续分页/排序/分组切换走 query 时才能带上同一套条件
+  await gridApi.formApi.submitForm();
+});
+
+// 列表页 keepAlive，分组统计不做缓存：每次重新进入都拉一遍分组条数
+let firstActivate = true;
+onActivated(() => {
+  if (firstActivate) {
+    firstActivate = false;
+    return;
+  }
+  grouping.refreshGroupData();
+});
 
 const onGroupFieldChange = (value: number | undefined) => {
   if (value === undefined) {

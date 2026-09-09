@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,7 @@ last_updated: 2026-09-08
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。任务状态默认「审核中」，清空后可看全部。
+- **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。任务状态默认「审核中」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认状态写入「最近提交值」（翻页/刷新不丢）。清空后可看全部。
 - **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接；一组付费申请可跨多票，过长省略号。组内金额字段恒为 `null`，不要拿来展示。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示「{币别}申请合计」（原币/固定币别分口径，与付款申请列表一致）；默认插在「结算对象」后；列配置仅暴露「申请合计」锚点。
 - **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读，业务组默认收起，需手动展开看费用行；表格占满剩余高度内部滚动，最后一行费用可完整看到），附件区展示发票子表（票号/抬头/日期/金额/附件，有金额时显示总额）以及申请自身分组附件、结算附件；点击附件打开全站附件查看器（图片/PDF 弹窗预览，Office 用 vue-office 本地渲染）。
@@ -83,10 +83,13 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 6：业务分组与行根金额同名不同层]** 列表 `payAppFeeBySeaExportGroup` 只填 `transportOrder`。组内 `currencyGroup` / `totalPayPrice` / `totalReceivePrice` 恒为 `null`；金额仍读 `PayAppTaskItemDto` 根上的同名字段。主提单号取 `transportOrder.mblNum`，委托编号取 `transportOrder.commissionNum`。
 
+> [!IMPORTANT] **[卡点 7：首查须 `submitForm` 写入「最近提交值」]** `TaskStatus` 默认值为 `0`（审核中），不可当空值丢掉；`autoLoad: false` + `onMounted` `submitForm`。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 进入付费审批首查与翻页稳定带上「任务状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `TaskStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-09-08 | `Fix` | 提交时间、最晚付款、审核时间筛选改为自然日闭区间。 | 控件无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-05 | `Fix` | Office 附件改为 vue-office 本地预览，不再走微软在线嵌入。 | 详见 `changelogs/change-log-2026-09-05-office-preview-vue-office.md`。 |
 | 2026-09-05 | `Feature` | 点击发票/申请/结算附件改为全站弹窗预览，不再新开浏览器窗口。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |

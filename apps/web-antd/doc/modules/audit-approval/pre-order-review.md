@@ -2,7 +2,7 @@
 title: 业务联系单审核
 module: 审核审批
 author: 前端团队
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,7 +12,7 @@ last_updated: 2026-09-08
 # 2. 功能与操作说明 (Features & Operations)
 
 - **任务列表：** 调 `PreOrderAdmin/PreOrderTaskListAsync`，行上同时展示任务信息（我的审核状态、任务状态、审核人、审核时间）与单据信息（业务编号、委托单位、起运港 / 目的港、ETD）。
-- **检索：** 关键字、我的审核状态（**默认「审核中」**）、单据状态、委托单位、起运港、审核时间区间。
+- **检索：** 关键字、我的审核状态（**默认「审核中」**）、单据状态、委托单位、起运港、审核时间区间。关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认状态写入「最近提交值」。
 - **进入单据：** 双击行，或勾选后点「打开单据」，跳转 `/pre-order/:id/edit`；审核动作在单据编辑页完成，不在本页直接审。
 - **审核流程：** 勾选行后点「审核流程」，复用 `workflow-timeline`（`taskType = TaskType.PreOrder`）查看各级审批人与意见。驳回意见单独红色换行展示「驳回原因：」+ 原文。
 
@@ -40,10 +40,13 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 2：菜单权限]** 入口受 `Admin.PreOrder.Audit` 控制；「审核审批」父菜单的权限白名单已同步追加该权限码。
 
+> [!IMPORTANT] **[卡点 3：首查须 `submitForm` 写入「最近提交值」]** `MyStatus` 默认值为 `0`（审核中），不可当空值丢掉；`autoLoad: false` + `onMounted` `submitForm`。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 进入业务联系单审核首查与翻页稳定带上「我的审核状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `MyStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-09-08 | `Fix` | 审核时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-11 | `Fix` | 「我的审核状态」默认「审核中」，首屏只看待办 | `MyStatus` `defaultValue: 0`。详见 `changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md` |
 | 2026-07-26 | `Feature` | 「打开单据」/ 双击改回 `/pre-order/:id/edit`（取消独立详情页） | 审核动作仍在单据编辑页；待审核态隐藏保存按钮 |

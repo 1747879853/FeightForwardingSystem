@@ -43,10 +43,13 @@ last_updated: 2026-09-09
 
 > [!IMPORTANT] **[卡点 3：固定币别与原币申请可同单]** 固定币别申请要求申请币别=结算币别；原币申请只能挂 `originalCurrencyId`=结算币别的行。
 
+> [!IMPORTANT] **[卡点 4：详情回填勿清空银行]** 加载详情时用 `isHydrating` 跳过结算对象/币别 watch 副作用，先加载银行选项再写回选中值。详见 `changelogs/change-log-2026-09-09-payment-settlement-form-refactor.md`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Refactor` | 编辑页结构整理：回填守护、去重复错误提示与死代码；保存校验至少一行明细。 | 拆 `use-form-state` / `use-bank-options` / `use-load-detail` / `use-form-effects` / `use-submit`。详见 `changelogs/change-log-2026-09-09-payment-settlement-form-refactor.md`。 |
 | 2026-09-09 | `Fix` | 付费申请附件下载改为 blob + `friendlyFileName`。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Refactor` | 对接按原币+付费申请一套接口；选择列表检索失败自动重试 1 次。 | 抽屉修正 `settlementCurrencyId`/`currencyId` 传参；`existingRowKeys` 禁用已选组合。详见 `doc/付费结算/付费结算-按原币和付费申请-接口文档.md`。 |
 | 2026-09-08 | `Fix` | 「选择付费申请」最晚付款时间按自然日闭区间；提交时间仍带时分。 | 提交时间控件有 `showTime`。 |

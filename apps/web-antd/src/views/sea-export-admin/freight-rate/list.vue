@@ -257,25 +257,35 @@ function onActionClick(e: OnActionClickParams<SeFreiPriceOutDto>) {
   }
 }
 
+/** 有效状态默认 [已生效, 未生效]。仅默认值尚未写入「最近提交值」时兜底。 */
+let isValidDefaultApplied = false;
+const DEFAULT_IS_VALID = [0, 1];
+
 const mapFreightRateParams = (
   formValues: Record<string, any>,
   sortParams?: Record<string, any>,
 ) => {
+  const nextValues = { ...formValues };
+  if (!isValidDefaultApplied && nextValues.isValid === undefined) {
+    nextValues.isValid = [...DEFAULT_IS_VALID];
+  }
+  isValidDefaultApplied = true;
+
   const queryParams: Record<string, any> = {
     laneId: selectedLineId.value,
   };
 
   // 处理表单查询参数
-  Object.keys(formValues).forEach((key) => {
+  Object.keys(nextValues).forEach((key) => {
     // 特殊处理：录入时间范围需要拆分为开始和结束时间
     if (key === 'creationTimeRange') {
-      const rangeValue = formValues[key];
+      const rangeValue = nextValues[key];
       if (rangeValue && Array.isArray(rangeValue) && rangeValue.length === 2) {
         queryParams.creationTimeStart = rangeValue[0];
         queryParams.creationTimeEnd = rangeValue[1];
       }
     } else if (key === 'isValid') {
-      const value = formValues[key];
+      const value = nextValues[key];
       if (Array.isArray(value)) {
         if (value.length > 0) {
           queryParams[key] = value;
@@ -283,8 +293,8 @@ const mapFreightRateParams = (
       } else if (value !== null && value !== undefined) {
         queryParams[key] = value;
       }
-    } else if (formValues[key] !== null && formValues[key] !== undefined) {
-      queryParams[key] = formValues[key];
+    } else if (nextValues[key] !== null && nextValues[key] !== undefined) {
+      queryParams[key] = nextValues[key];
     }
   });
 
@@ -327,6 +337,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       enabled: true,
     },
     proxyConfig: {
+      // 关闭自动加载：挂载后 submitForm 首查，保证 isValid 默认值写入最近提交值
+      // （切航线 Tab 会走 gridApi.query，必须先有最近提交值）
+      autoLoad: false,
       sort: true, // 启用代理排序
       ajax: {
         query: createPagedListQuery(getSeFreiPriceList, {
@@ -953,6 +966,8 @@ onMounted(async () => {
 
   await nextTick();
   bindLaneTabScrollObserver();
+  // submitForm 把默认 isValid=[已生效,未生效] 写入「最近提交值」，翻页/切航线/刷新才能带上
+  await gridApi.formApi.submitForm();
 });
 
 onUnmounted(() => {

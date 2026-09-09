@@ -2,7 +2,7 @@
 title: 提成审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-09-08
 # 2. 功能与操作说明 (Features & Operations)
 
 - **任务列表：** `CommissionOrderAdmin/GetTaskListAsync`（前端 `getCommissionOrderTaskList`）；筛选与分组统计同一套条件。
+- **当页合计：** 列表底部展示当前页「提成金额 / 底薪 / 最终应发」合计；空数据时显示「暂无数据」。
 - **分组统计：** 提成类型、提成人、提成月；持久化 `group_config_CommissionReview`。提成月分组项 id 为该月 1 号日期。
 - **批量审核：** 全部校验通过才执行，有一张不满足就整批报错。通过/驳回成功走 `reloadGrid`：重载表格并 `refreshGroupData()`。
 - **详情 / 时间轴：** 复用提成模块详情弹窗与 `workflow-timeline`。
@@ -46,9 +47,12 @@ last_updated: 2026-09-08
 > [!IMPORTANT] **[卡点 1：整批失败一条都不改]** 批量审核先校验再请求，不要假设部分成功后列表已变。
 >
 > **[卡点 2：分组数据刷新时机]** 点分组 Tab 只重查列表。审核成功必须走 `reloadGrid` 才会 `refreshGroupData()`，否则 Tab 条数过期。
+>
+> **[卡点 3：当页合计只加当前页]** 底部合计读查询返回的当前页 `items`，翻页后随页变化；不要跨页累加。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Feature` | 列表底部增加当页「提成金额 / 底薪 / 最终应发」合计。 | `fetchList` 写入 `currentPageData`；`Page` `#footer` 样式对齐进项发票。详见 `changelogs/change-log-2026-09-09-commission-review-page-footer-summary.md`。 |
 | 2026-09-08 | `Fix` | 审核后重载列表时同步刷新分组 Tab 条数。 | `reloadGrid` 在 `await gridApi.reload()` 后调用 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

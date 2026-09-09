@@ -22,6 +22,7 @@ last_updated: 2026-09-09
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础信息维护：** 编辑客户主数据。未保存切走可 KeepAlive；点 X 关闭才丢。脏检查含基础信息、联系人 Handsontable、开票表单。
+- **开票信息：** 卡片标题展示抬头与税号；首次保存走 `AddAsync`，成功后把临时 `new_*` id 换成返回的真实 id 并回写标题，再次保存走 `EditAsync`。
 - **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件；内部 Tab 使用 KeepAlive，页内切换不销毁未保存块。
 - **海运出口服务项目：** 仅委托单位（`industryCategories` 含 `p`）可配置按起运港排除的服务项；开关关闭表示排除，保存后写入 `ClientExceptService`；全局模板含默认港口配置（`polId` 为空）时，Tab 以「默认港口配置」Card 展示。
 - **业务引用：** 客户资料会被海运委托、费用、对账等业务模块引用。
@@ -45,10 +46,13 @@ last_updated: 2026-09-09
 
 > [!IMPORTANT] **[卡点 1：客户编辑一致性]** 客户子资料依赖父级客户 ID，刷新或切换 Tab 时要避免丢失编辑上下文。
 
+> [!IMPORTANT] **[卡点 2：开票新增必须回写真实 id]** 列表用 `new_*` 临时 id 判断新增；`AddAsync` 成功后若不替换 id，标题不回显且下次仍走新增。应就地回写返回 id + 抬头/税号，勿只注释掉整表重载。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 开票信息首次保存后标题回显税号/抬头，再次保存走编辑接口。 | `AddAsync` 返回 id 就地替换 `new_*` 并回写列表项；不再依赖被注释的整表重载。详见 `changelogs/change-log-2026-09-09-client-invoice-save-id-echo.md`。 |
 | 2026-09-09 | `Fix` | 客户附件与账期附件：预览走全站查看器；下载保存名为 `friendlyFileName`。 | 去掉 `window.open` 直链。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 从新建页保存进来时，顶栏只保留本编辑页签，不再残留新建页签。 | 关页签发生在新建表单提交里，编辑容器本身不负责关旧 tab。详见 `changelogs/change-log-2026-09-08-client-create-tab-close.md`。 |
 | 2026-09-08 | `Refactor` | 清理孤儿账期/附件弹窗与联系人旧 VXE data；附件与对接人 id 字符串透传。 | `BusinessTypeOptions` 外提到 `utils/business-type-options.ts`；客户枚举拆至 `base/options.ts`；`base/data.ts` 去掉死 `useFormSchema`。 |

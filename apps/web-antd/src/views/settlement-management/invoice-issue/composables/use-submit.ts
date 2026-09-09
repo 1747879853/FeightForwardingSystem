@@ -155,7 +155,6 @@ export function useSubmit(
 
         await editInvoiceIssue(editData);
         message.success('保存成功');
-        router.back();
       } else {
         // ✅ 新增模式：调用 AddAsync
         const result = await addInvoiceIssue(submitData);
@@ -177,7 +176,7 @@ export function useSubmit(
       }
     } catch (error) {
       console.error('保存失败:', error);
-      message.error('保存失败，请重试');
+      // message.error('保存失败，请重试');
     } finally {
       submitLoading.value = false;
     }

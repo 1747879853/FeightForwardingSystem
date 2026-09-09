@@ -107,6 +107,35 @@ const handleAddInvoice = () => {
 };
 
 /**
+ * 用表单最新值回写列表卡片标题区（抬头 / 税号等），避免保存成功后仍显示空占位
+ */
+const patchInvoiceListItem = (
+  invoiceId: string,
+  patch: Partial<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto>,
+  nextId?: string,
+) => {
+  const index = invoiceList.value.findIndex((item) => item.id === invoiceId);
+  if (index < 0) {
+    return;
+  }
+  const current = invoiceList.value[index]!;
+  const resolvedId = nextId || invoiceId;
+  invoiceList.value[index] = {
+    ...current,
+    ...patch,
+    id: resolvedId,
+  };
+
+  if (nextId && nextId !== invoiceId) {
+    // 临时 new_* id 换成真实 id：同步展开态，并丢掉旧 formRef（面板会因 :key 变化重建）
+    activeKey.value = activeKey.value.map((key) =>
+      key === invoiceId ? nextId : key,
+    );
+    delete formRefs.value[invoiceId];
+  }
+};
+
+/**
  * 保存开票信息
  */
 const handleSaveInvoice = async (invoiceId: string) => {
@@ -126,27 +155,38 @@ const handleSaveInvoice = async (invoiceId: string) => {
     }
 
     const isNew = invoiceId.startsWith('new_');
+    const titlePatch: Partial<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto> =
+      {
+        address: formData.address ?? '',
+        header: formData.header ?? '',
+        isDefault: formData.isDefault ?? false,
+        mobile: formData.mobile ?? '',
+        require: formData.require ?? '',
+        sortId: formData.sortId ?? 0,
+        taxNum: formData.taxNum ?? '',
+        tel: formData.tel ?? '',
+      };
 
     if (isNew) {
-      // 新增
-      await addClientInvoiceInfo(
+      // AddAsync 返回新建开票信息 id；必须写回列表，否则标题仍空且下次保存还会再走新增
+      const createdId = await addClientInvoiceInfo(
         formData as ClientInvoiceInfoAdminApi.ClientInvoiceInfoAddDto,
       );
+      if (!createdId) {
+        message.error($t('common.optionsFailed'));
+        return;
+      }
+      patchInvoiceListItem(invoiceId, titlePatch, String(createdId));
       message.success($t('common.optionsSuccess'));
     } else {
-      // 编辑
       await editClientInvoiceInfo(
         formData as ClientInvoiceInfoAdminApi.ClientInvoiceInfoEditDto,
       );
+      patchInvoiceListItem(invoiceId, titlePatch);
       message.success($t('common.optionsSuccess'));
+      // 编辑成功后重新同步脏值快照；新增场景面板会重建并由详情加载同步快照
+      await formRef.syncSnapshot?.();
     }
-
-    // 保存成功后重新同步脏值快照，否则未保存守卫会一直认为开票信息未保存，
-    // 从而拦截系统 tab（路由级）跳转，导致点击系统 tab 无法切换页面
-    await formRef.syncSnapshot?.();
-
-    // 重新加载列表
-    //await loadInvoiceList();
   } catch (error) {
     console.error('保存失败:', error);
     message.error($t('common.optionsFailed'));
@@ -179,11 +219,13 @@ const handleDeleteInvoice = (invoiceId: string) => {
 };
 
 /**
- * 设置表单ref
+ * 设置表单ref（卸载时清掉，避免 new_* → 真实 id 后残留脏引用）
  */
 const setFormRef = (el: any, invoiceId: string) => {
   if (el) {
     formRefs.value[invoiceId] = el;
+  } else {
+    delete formRefs.value[invoiceId];
   }
 };
 

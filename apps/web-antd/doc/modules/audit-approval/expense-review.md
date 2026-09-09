@@ -2,7 +2,7 @@
 title: 费用审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,12 +17,12 @@ last_updated: 2026-09-08
 | 路由名称 | `ExpenseAll` |
 | 页面组件 | `src/views/audit-approval/expense-all/index.vue` |
 | 权限口径 | Admin.OrderFee.Audit / Admin.OrderFee.Audit.Get |
-| 关键源码 | `src/router/routes/modules/audit-approval.ts`<br/>`src/views/audit-approval/data.ts`<br/>`src/views/audit-approval/expense-all/index.vue`<br/>`src/views/audit-approval/expense-all/modules/detail.vue`<br/>`src/views/audit-approval/composables/use-audit-remark-confirm.ts`<br/>`src/api/audit-approval/expense-admin.ts` |
+| 关键源码 | `src/router/routes/modules/audit-approval.ts`<br/>`src/views/audit-approval/data.ts`<br/>`src/views/audit-approval/expense-all/index.vue`<br/>`src/views/audit-approval/expense-all/modules/detail.vue`<br/>`src/views/audit-approval/composables/use-audit-remark-confirm.ts`<br/>`src/api/audit-approval/expense-admin.ts`<br/>`src/components/list-grouping/use-list-grouping.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **审核任务查询：** 按任务状态、任务类型、编号（主提单号/订舱编号/委托编号，`TrimInput` 自动去空格）等筛选费用审核任务。
-- **分组统计：** 装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式、场站。审核通过/驳回成功后在 `gridApi.reload()` 后同步 `refreshGroupData()`。
+- **审核任务查询：** 按费用审核状态（默认「未处理」`Processed=false`）、业务类型、编号（主提单号/订舱编号/委托编号，`TrimInput` 自动去空格）等筛选费用审核任务。关闭 `autoLoad`，挂载后先 `prepareField` 默认按委托单位分组，再 `submitForm` 首查，保证默认状态写入「最近提交值」。
+- **分组统计：** 装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式、场站。审核通过/驳回成功后在 `gridApi.reload()` 后同步 `refreshGroupData()`；keepAlive 重新进入列表时 `onActivated` 再刷分组条数。
 - **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
 - **审核处理：** 进入详情查看费用变更并通过或驳回。
 
@@ -47,10 +47,13 @@ last_updated: 2026-09-08
 
 > [!IMPORTANT] **[卡点 2：审核后必须刷分组]** 审核成功只 `gridApi.reload()` 会让分组 Tab 条数停留在审核前，须同时 `grouping.refreshGroupData()`。
 
+> [!IMPORTANT] **[卡点 3：首查必须 `submitForm` 写入「最近提交值」]** `gridApi.query()` / `enableField` 读最近提交值而非表单当前值。默认「费用审核状态」与默认分组不能靠 `autoLoad` + 延时 `enableField`；须 `autoLoad: false` → `prepareField` → `submitForm`。详见 `changelogs/change-log-2026-09-09-expense-review-processed-default-race.md`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 进入费用审核页首查稳定带上「费用审核状态=未处理」。 | `autoLoad: false` + `prepareField` 默认委托单位分组 + `submitForm`；`mapParams` 对未写入默认值的早期查询兜底 `Processed=false`。详见 `changelogs/change-log-2026-09-09-expense-review-processed-default-race.md`。 |
 | 2026-09-08 | `Fix` | 审核成功后同步刷新分组 Tab 条数。 | `gridApi.reload()` 后追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Refactor` | 删除无路由的 `expense-submission`、`expense-all/list.vue`；瘦身 `data.ts`；抽 `openAuditRemarkConfirm`。 | 审核备注弹窗统一入口；任务状态选项与 payment/commission 共用 `getTaskStatusOptions`。 |
 | 2026-08-09 | `Fix` | 嵌套详情不再用全局 `route.params.id` 兜底，避免 keepAlive 切到付费申请编辑时误打 `OrderFeeTaskDetailAsync`。 | 仅 `route.name === 'ExpenseDetail'` 读路由参数。详见 `changelogs/change-log-2026-08-09-expense-detail-route-id-fallback.md`。 |
