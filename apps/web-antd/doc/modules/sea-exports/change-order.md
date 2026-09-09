@@ -3,7 +3,7 @@ title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
 last_updated: 2026-09-09
-last_change: change-order-fee-tab-save-one-payside
+last_change: change-order-top-info-expand-transition-height-fill
 ---
 
 # 1. 业务背景说明 (Background)
@@ -219,6 +219,7 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-09-09 | `Fix` | 更改单顶部订单信息展开/收起过渡并修复费用表高度自适应（利润汇总不再被顶出）。详见 `changelogs/change-log-2026-09-09-change-order-top-info-expand-transition-height-fill.md`。 | 订单信息展开/收起使用 `grid-template-rows` + `opacity` 动画；过渡后延时调用 `remasureTable`，让 Handsontable 以实际可视高度重算 `settings.height`，避免测量到偏小高度或整页内容撑开。 |
 | 2026-09-09 | `Fix` | 费用表序号与开票状态拆成独立列。详见 `changelogs/change-log-2026-09-09-order-fee-seq-column.md`。 | 共用 `useHotColumns`，应收应付一并改。 |
 | 2026-09-09 | `Fix` | 更改单费用改回页签一次只显示应收或应付；保存只提交当前侧。详见 `changelogs/change-log-2026-09-09-change-order-fee-tab-save-one-payside.md`。 | 后端 `EditAsync` 混传两种 `paySide` 会报「一次只能保存一种收付类型的费用」。 |
 | 2026-09-09 | `Feature` | 海出更改单费用表改用与应收应付相同的 Handsontable。详见 `changelogs/change-log-2026-09-09-change-order-fee-handsontable.md`。 | 海进/空出更改单仍用 VXE；Handsontable 展示 label，保存必须 `getSanitizedFees`。 |
