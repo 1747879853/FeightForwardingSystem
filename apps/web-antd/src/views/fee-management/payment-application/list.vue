@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -34,6 +34,7 @@ import {
 import {
   buildColumns,
   buildColumnsWithRuntime,
+  collectPageAppliedTotals,
   isAppliedTotalChildField,
   PAYMENT_APPLICATION_LIST_TABLE_ID,
   useGridFormSchema,
@@ -60,6 +61,18 @@ const { open: openWorkflowTimeline } = useWorkflowTimeline();
 const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
 /** 防止重建过程中的重入 */
 let rebuildingAppliedTotal = false;
+
+/** 当前页各币别申请合计，口径与列表「{币别}申请合计」列一致 */
+const currencyTotals = computed(() =>
+  collectPageAppliedTotals(tableData.value),
+);
+
+/** 底部合计：千分位 + 两位小数（对齐客户对账/发票当页合计） */
+const formatPageTotal = (value: number) =>
+  value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 const settlementModalOpen = ref(false);
 const settlementModalApplicationNo = ref('');
@@ -266,6 +279,9 @@ const [Grid, gridApi] =
       },
       pagerConfig: {
         enabled: true,
+        slots: {
+          left: 'pagerLeft',
+        },
       },
       proxyConfig: {
         ajax: {
@@ -556,6 +572,23 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           审批流程
         </Button>
       </template>
+      <template #pagerLeft>
+        <span v-if="currencyTotals.length > 0" class="pay-app-pager-summary">
+          <span class="pay-app-pager-summary__label">当页合计</span>
+          <span
+            v-for="item in currencyTotals"
+            :key="item.currencyId"
+            class="pay-app-pager-summary__item"
+          >
+            <span class="pay-app-pager-summary__currency">{{
+              item.currencyCode
+            }}</span>
+            <span class="pay-app-pager-summary__amount">{{
+              formatPageTotal(item.amount)
+            }}</span>
+          </span>
+        </span>
+      </template>
     </Grid>
 
     <SettlementDetailModal
@@ -595,5 +628,70 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 
 .invoice-process-clickable:hover {
   text-decoration: underline;
+}
+
+/* 当页合计嵌在分页行：插在「共 xx 条 / 每页条数」和翻页按钮之间 */
+:deep(.vxe-pager--wrapper) {
+  justify-content: flex-start;
+}
+
+:deep(.vxe-pager--total) {
+  order: 1;
+}
+
+:deep(.vxe-pager--sizes) {
+  order: 2;
+  margin-right: 0 !important;
+}
+
+:deep(.vxe-pager--left-wrapper) {
+  display: inline-flex;
+  align-items: center;
+  order: 3;
+  min-width: 0;
+  margin-right: auto;
+  margin-left: 8px;
+}
+
+:deep(
+  .vxe-pager--wrapper
+    > *:not(.vxe-pager--total):not(.vxe-pager--sizes):not(
+      .vxe-pager--left-wrapper
+    )
+) {
+  order: 4;
+}
+
+.pay-app-pager-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 22px;
+  color: hsl(var(--foreground));
+}
+
+.pay-app-pager-summary__label {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.pay-app-pager-summary__item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.pay-app-pager-summary__currency {
+  font-weight: 600;
+  color: hsl(var(--foreground) / 75%);
+}
+
+.pay-app-pager-summary__amount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
 }
 </style>

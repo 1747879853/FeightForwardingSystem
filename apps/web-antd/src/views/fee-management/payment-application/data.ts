@@ -90,6 +90,60 @@ function calcRowAppliedTotal(
   return (group.payAmount ?? 0) - (group.receiveAmount ?? 0);
 }
 
+export interface PageAppliedTotal {
+  amount: number;
+  currencyCode: string;
+  currencyId: number;
+}
+
+/**
+ * 当前页各币别申请合计（与列表列同一套 `calcRowAppliedTotal`）：
+ * 只汇总列上会显示的值；固定币别行不计入其它币别。
+ */
+export function collectPageAppliedTotals(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[],
+): PageAppliedTotal[] {
+  const currencyMap = new Map<number, AppliedTotalCurrency>();
+  for (const currency of collectAppliedTotalCurrencies(rows)) {
+    currencyMap.set(currency.currencyId, currency);
+  }
+  // 固定币别列不来自 currencyGroup，补上结算币别，否则当页只有固定币别单时合计是空的
+  for (const row of rows) {
+    if (
+      !isSpecifiedCurrencyApplication(row.currencyId) ||
+      row.currencyId == null ||
+      currencyMap.has(row.currencyId)
+    ) {
+      continue;
+    }
+    currencyMap.set(row.currencyId, {
+      currencyId: row.currencyId,
+      currencyCode: row.currency?.code ?? '',
+    });
+  }
+  const currencies = [...currencyMap.values()].sort(
+    (a, b) => a.currencyId - b.currencyId,
+  );
+  const result: PageAppliedTotal[] = [];
+  for (const currency of currencies) {
+    let amount = 0;
+    let hasValue = false;
+    for (const row of rows) {
+      const val = calcRowAppliedTotal(row, currency.currencyId);
+      if (val == null) continue;
+      hasValue = true;
+      amount += val;
+    }
+    if (!hasValue) continue;
+    result.push({
+      amount,
+      currencyCode: currency.currencyCode || '未知',
+      currencyId: currency.currencyId,
+    });
+  }
+  return result;
+}
+
 /** 申请合计列（锚点列与币别跟随列）的公共属性 */
 function appliedTotalColumnBase() {
   return {

@@ -28,6 +28,7 @@ last_updated: 2026-09-09
 - **撤销申请：** 勾选已提交且审批尚未开始的申请，点工具栏「撤销」，走 `UnSubmitAsync`，状态回到未提交并删除工作流。
 - **编辑申请：** 双击行进入编辑页维护申请单明细。
 - **申请合计列：** 列表按当前页 `currencyGroup` 动态展示各币别「{币别}申请合计」列，承接编辑页结算币别卡片的汇总口径；列配置面板仅保留「申请合计」锚点项，其余币别跟随列自动跟随显隐与顺序。默认插在「开票日期」之后。
+- **当页合计：** 嵌在表格分页行，按币别汇总当前页申请净额（付 − 收），与列口径一致；只算当前页，翻页会变。固定币别申请只计入结算币别。无数据时不显示合计。
 - **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
 - **补录发票弹窗：** 发票流程不是「不开票」时，点击「发票流程」打开维护弹窗（发票流程 + 可增删的发票明细表 + 申请附件）；每行含发票号、开票日期、销售方抬头、发票金额、单个附件，底部展示发票总额（前端求和）；可从进项发票勾选回填（已填票号排除，详情已绑银行时带 `clientInvoiceInfoId`）；发票**行**上传 PDF/图片即自动识别预填该行；申请附件分组上传不识别、不回填。已有发票行附件或申请附件发票分组可点「重新识别」；保存走 `EditInvoiceAsync`，不判断申请 status，也不要求先票后付当场有票。发票子表与 `attachmentGroup` 都是全量覆盖。
 - **批量下载发票：** 勾选付费申请后点「批量下载发票」，传申请 id 调 `DownloadInvoicesAsync` 打 zip；单次最多 50 条；不开票行会先排除；部分缺附件时用 `missingInvoiceNos` 提示。
@@ -56,6 +57,7 @@ last_updated: 2026-09-09
 | **销售方抬头** | 开票方在发票上的名称，多张逗号拼接。 | `paymentApplicationInvoices[].sellerHeader` | **触发/依赖：** 纯文本，不关联客户表；列表走插槽拼接。 | 最长 256；可空。 |
 | **发票总额** | 本申请各张发票金额合计。 | 前端 `sumInvoiceAmounts(paymentApplicationInvoices)` | **触发/依赖：** 未填金额的行不计入；全部未填列为空；允许负数。不参与申请额度。 | 后端无此字段，不要当成接口出参。 |
 | **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
+| **当页合计** | 当前页各币别申请净额加总。 | 前端 `collectPageAppliedTotals`，复用列上 `calcRowAppliedTotal` | **触发/依赖：** `tableData` 变化后重算；固定币别补结算币别。展示在分页行 `pagerLeft`。 | 只算当前页；人民币与美元分开展示，不加总。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -75,6 +77,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Feature` | 列表分页行嵌入当页按币别的申请合计（付 − 收）。 | TAPD 1000938。`collectPageAppliedTotals` 复用列口径；`pagerConfig.slots.left` 插在条数和翻页按钮之间。详见 `changelogs/change-log-2026-09-09-payment-application-page-total.md`。 |
 | 2026-09-09 | `Fix` | 批量下载发票 zip 改为 blob 保存，跨域也能用后端返回的包名。 | `downloadAttachmentWithFriendlyName`。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 开票日期、提交时间、最晚付款筛选改为自然日闭区间。 | 三个条件都无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-08 | `Feature` | 补录弹窗可从进项发票勾选回填；详情已绑银行时带 `clientInvoiceInfoId`，多币别优先人民币。 | 与编辑页共用 `InvoiceTable`。详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick.md`。 |
