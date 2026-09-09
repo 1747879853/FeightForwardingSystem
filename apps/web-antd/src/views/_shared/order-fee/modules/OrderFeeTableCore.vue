@@ -324,13 +324,20 @@ defineExpose({
   // 实际高度由 Handsontable settings.height（动态测量值）驱动，此处仅裁剪溢出
   overflow: hidden;
 
-  :deep(.htCore) {
-    width: 100% !important;
+  /* 勿强制 htCore width:100%：空数据横滚时会压扁列总宽，导致 ht_clone_top 与主表错位/表头「消失」 */
+
+  :deep(.handsontable) {
+    /* 与全局/报表一致：避免 scrollbar-color 非 auto 时标准条宽度与 HOT 预留不一致 */
+    scrollbar-color: auto;
+
+    .wtHolder {
+      scrollbar-color: auto;
+    }
   }
 
   :deep(::-webkit-scrollbar) {
-    width: 16px;
-    height: 16px;
+    width: 10px;
+    height: 10px;
   }
 
   :deep(::-webkit-scrollbar-track) {
@@ -339,8 +346,6 @@ defineExpose({
   }
 
   :deep(::-webkit-scrollbar-thumb) {
-    min-width: 40px;
-    min-height: 40px;
     background: #c1c1c1;
     border-radius: 8px;
 
@@ -351,6 +356,12 @@ defineExpose({
     &:active {
       background: #8a8a8a;
     }
+  }
+
+  /* 空表时保证顶栏克隆层可见，不被布局裁切 */
+  :deep(.ht_clone_top),
+  :deep(.ht_clone_top_inline_start_corner) {
+    z-index: 101;
   }
 }
 
