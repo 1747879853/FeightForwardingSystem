@@ -368,8 +368,8 @@ export function useOrderFeeData(
   /**
    * 获取表格数据（对外暴露的方法）
    */
-  const getTableDate = async (id = '') => {
-    if (id) {
+  const getTableDate = async (id?: string) => {
+    if (id !== undefined && id !== null) {
       changeOrderId.value = id;
     }
     await queryTableData();
@@ -580,7 +580,9 @@ export function useOrderFeeData(
         } catch (error) {
           console.error('❌ [watch editId] 加载订单详情失败:', error);
         }
-        getTableDate();
+        if (props.mode !== 'changeOrder') {
+          getTableDate();
+        }
       }
     },
   );

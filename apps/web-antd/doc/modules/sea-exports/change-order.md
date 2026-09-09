@@ -2,8 +2,8 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-08
-last_change: edit-workspace-saved-detail-sync
+last_updated: 2026-09-09
+last_change: change-order-fee-tab-save-one-payside
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,7 +18,7 @@ last_change: edit-workspace-saved-detail-sync
 | 海引进口 | `/sea-imports/:id/edit` → Tab「更改单」 |
 | 海出页面 | `src/views/sea-export-admin/changeOrder/index.vue` + `table.vue` |
 | 海进页面 | `src/views/sea-import-admin/changeOrder/index.vue` + `table.vue` |
-| 费用表（复用） | `orderFee/modules/order-fee-table.vue`，`mode='changeOrder'` |
+| 费用表（复用） | 海出：`order-fee-table-handsontable.vue`，`mode='changeOrder'`；海进/空出仍为 `order-fee-table.vue` |
 | API | `/services/app/ChangeOrderAdmin`（海出/海进各一份封装，路径相同） |
 | 锁费入口 | `/settlement-management/fee-lock`（树形：主单 + 子级更改单） |
 
@@ -46,9 +46,9 @@ last_change: edit-workspace-saved-detail-sync
 └── 更改单编辑区
     ├── 标题栏：当前更改单选择器 + 状态标签 + 新建（非草稿时）/ 保存
     ├── 基本信息：会计期间 / 更改原因 / 备注
-    ├── 费用表（mode=changeOrder）
-    │   ├── 工具栏左侧：应收 / 应付分段切换（含条数 Badge）
-    │   └── 工具栏右侧：新增 / 打印 / 删除等
+    ├── 费用表（海出 Handsontable，mode=changeOrder）
+    │   ├── 工具栏左侧：应收 / 应付页签切换（含条数 Badge），一次只展示一侧
+    │   └── 工具栏右侧：新增 / 打印 / 删除 / 历史引入（批量引入弹「暂不支持更改单」，下拉可收付互生）
     └── 底部利润汇总：应收 / 应付 / 利润 / 利润率（+ 原币分币种）
 ```
 
@@ -63,7 +63,7 @@ last_change: edit-workspace-saved-detail-sync
 | 列表加载 | 进入 Tab | `GetPagedListAsync`（分页，**不含费用**）→ `changeOrderList` | `GET .../GetPagedListAsync` |
 | 新建 | 点「新建」（草稿态隐藏） | 本地进入草稿，默认 `accountDate=当前年月`，无服务端 id | — |
 | 选中 | 选择器 / 历史抽屉 | `setCurrentChangeOrder` → 加载该更改单下应收/应付费用 | `GET .../DetailAsync?id=` |
-| 保存 | 点标题栏「保存更改单」或 `Ctrl/Cmd+S` | 组装当前更改单 + 两侧费用表数据，`EditAsync` | `PUT .../EditAsync` |
+| 保存 | 点标题栏「保存更改单」或 `Ctrl/Cmd+S` | 组装当前更改单 + **当前页签**这一侧费用，`EditAsync` | `PUT .../EditAsync` |
 
 **保存载荷要点（`ChangeOrderEditDto`）：**
 
@@ -71,7 +71,7 @@ last_change: edit-workspace-saved-detail-sync
 - `transportOrderId`：当前票的运输单 id（来自海出/海进详情 `detail.transportOrder.id`，**不是**路由上的海出/海进 id）
 - `accountDate`：会计期间（前端展示/编辑为 `YYYY-MM`）
 - `reason` / `remark`：更改原因、备注（表格内可编辑）
-- `orderFees`：当前应收表 + 应付表全部行；每行补 `changeOrderId`、`paySide`（0 应收 / 1 应付）
+- `orderFees`：**仅当前页签**一侧费用（`paySide` 0 应收 / 1 应付）。后端 `EditAsync` 一次只能一种收付类型，混传会报「一次只能保存一种收付类型的费用」。空列表会报「更改单费用不能为空」。保存后刷新两侧表以拿回新 id。
 
 返回值为新建/更新后的更改单 `Guid`。
 
@@ -81,13 +81,16 @@ last_change: edit-workspace-saved-detail-sync
 
 | 能力 | 更改单模式表现 |
 | :-- | :-- |
+| 表格实现 | **海出** Handsontable（与应收应付同一套列/录入：勾选、序号、开票状态分列）；海进/空出仍为 VXE |
+| 布局 | 海出应收/应付页签切换，一次只展示一侧；两表 `v-show` 保挂载 |
 | 加载数据 | 不走 `OrderFee` 分页；调 `ChangeOrderAdmin/DetailAsync`，按 `paySide` 过滤 |
-| 费用表「保存」按钮 | **隐藏**；费用随更改单 `EditAsync` 一并提交 |
-| 删除费用行 | **仅本地移除**，不立刻调 `batchDeleteOrderFee`；真正落库靠下次更改单保存（或需与后端约定删除语义） |
+| 费用表「保存」按钮 | **隐藏**；点更改单「保存」只提交**当前页签**一侧（`getSanitizedFees` 还原 ID） |
+| 删除费用行 | **仅本地移除**，不立刻调 `batchDeleteOrderFee`；真正落库靠下次更改单保存 |
 | 打印 | 支持；`isChangeOrderPrint=true` + `detailInput={ id: 更改单id, ids?: 勾选费用 }` |
-| 收付互生 | 仍可用；入参可带 `changeOrderId`（见卡点：当前父组件未传 `parentChangeOrderId`） |
-| 批量引入 | UI 仍展示，但弹窗内 `changeOrderId: undefined`，**暂不支持引入到更改单** |
-| 提交审核 / 申请修改删除 / 撤回 | 与主单费用相同，走费用审核任务链路 |
+| 收付互生 | 仍可用（历史引入下拉）；入参带 `changeOrderId` |
+| 批量引入 | 点主按钮提示「暂不支持更改单」 |
+| 设为完结 / AI 识别 | 更改单模式隐藏（属主单费用） |
+| 提交审核 / 申请修改删除 / 撤回 | 与主单费用相同，走费用审核任务链路（入口在应收应付页） |
 
 ## 2.4 费用锁定（财务侧）
 
@@ -150,7 +153,7 @@ last_change: edit-workspace-saved-detail-sync
 
 > [!IMPORTANT] **[卡点 2：主单锁费 ≠ 更改单锁费]** 主单锁定后，更改单仍可新建并录费用（业务上用于锁费后的变更）。但若**该更改单自身**已锁定，则对该更改单的费用操作会被后端拒绝（如「更改单已费用锁定不可操作」）。
 
-> [!IMPORTANT] **[卡点 3：费用保存路径不同]** 更改单模式下费用表隐藏「保存」；只点费用表操作不会把费用持久化到更改单。必须点更改单工具栏「保存」，走 `EditAsync` 整包提交。
+> [!IMPORTANT] **[卡点 3：费用保存路径不同，且一次只能一种收付]** 更改单模式下费用表隐藏「保存」；必须点更改单工具栏「保存」，走 `EditAsync`。后端一次只接受一种 `paySide`，前端只提交当前页签这一侧。另一侧要切过去再保存。
 
 > [!NOTE] **[卡点 4：列表查询应带 TransportOrderId]（海出已修复 2026-07-21）** 海出 `changeOrder/table.vue` 的 `GetPagedList` 已补传 `TransportOrderId`，父组件监听 `transportOrderId` 就绪后加载列表。海进 `sea-import-admin` 同名页仍待同步。
 
@@ -216,6 +219,9 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-09-09 | `Fix` | 费用表序号与开票状态拆成独立列。详见 `changelogs/change-log-2026-09-09-order-fee-seq-column.md`。 | 共用 `useHotColumns`，应收应付一并改。 |
+| 2026-09-09 | `Fix` | 更改单费用改回页签一次只显示应收或应付；保存只提交当前侧。详见 `changelogs/change-log-2026-09-09-change-order-fee-tab-save-one-payside.md`。 | 后端 `EditAsync` 混传两种 `paySide` 会报「一次只能保存一种收付类型的费用」。 |
+| 2026-09-09 | `Feature` | 海出更改单费用表改用与应收应付相同的 Handsontable。详见 `changelogs/change-log-2026-09-09-change-order-fee-handsontable.md`。 | 海进/空出更改单仍用 VXE；Handsontable 展示 label，保存必须 `getSanitizedFees`。 |
 | 2026-08-08 | `Fix` | 海出/海进更改单接收编辑页 `latest-detail`，保存基础信息后联动刷新订单信息卡片。 | 与费用 Tab 同构 props/`watch`；详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-07-25 | `Fix` | 订单信息条船公司 Logo 经 `buildAttachmentUrl` 拼接，修复相对路径落到前端域名导致 404。详见 `changelogs/change-log-2026-07-25-change-order-carrier-logo-url.md`。 | 与 `orderFee/index.vue`、列表页一致；折叠/展开两处 `:src` 均需处理。 |
 | 2026-07-24 | `Refactor` | 订单信息摘要委托单位/车队/船公司改读对象字段（`client?.name`、`team?.name`、`carrier?.cnShortName`）。 | 与 `SeaExportDto`/`TransportOrderDto` 对象化对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |

@@ -47,7 +47,7 @@ import {
 } from '#/views/_shared/order-fee/data';
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table.vue';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table-handsontable.vue';
 import type { DisplayFieldConfig } from '#/views/_shared/order-fee/modules/display-fields-config-modal.vue';
 import { useDisplayFieldConfig } from '#/views/_shared/order-fee/composables/use-display-field-config';
 import { seaExportAdapter } from '#/views/_shared/order-fee/adapter/sea-export';
@@ -88,7 +88,7 @@ const editId = useKeepAliveRouteParamId();
 const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<string>();
-const activeFeeTab = ref('receivable');
+const activeFeeTab = ref<'receivable' | 'payable'>('receivable');
 const hasUnsavedChanges = ref(false);
 const lastSavedAt = ref<string>();
 const isLoadingChangeOrder = ref(false);
@@ -491,6 +491,15 @@ const currentChangeOrderLabel = computed(() => {
 const PayOrderFeeRef = ref<any>(null);
 const RecOrderFeeRef = ref<any>(null);
 
+const switchFeeTab = (tab: 'receivable' | 'payable') => {
+  activeFeeTab.value = tab;
+  nextTick(() => {
+    const tableRef =
+      tab === 'receivable' ? RecOrderFeeRef.value : PayOrderFeeRef.value;
+    tableRef?.remasureTable?.();
+  });
+};
+
 // 处理刷新对立表格事件（收付互生后调用）
 const handleRefreshOppositeTable = (type: number) => {
   console.log('🔄 [changeOrder] 收到刷新对立表格事件，当前类型:', type);
@@ -637,6 +646,22 @@ const saveRow = async (): Promise<boolean> => {
     return false;
   }
   showReasonError.value = false;
+  const isRec = activeFeeTab.value === 'receivable';
+  const rawFees = isRec
+    ? (RecOrderFeeRef.value?.getSanitizedFees?.() ?? RecFeeList.value)
+    : (PayOrderFeeRef.value?.getSanitizedFees?.() ?? PayFeeList.value);
+  const paySide = isRec ? 0 : 1;
+  const orderFees = rawFees
+    .filter((item: OrderFeeAdminApi.OrderFeeEditDto) => item.feeCodeId)
+    .map((item: OrderFeeAdminApi.OrderFeeEditDto) => ({
+      ...item,
+      changeOrderId: changeOrder.value.id,
+      paySide,
+    }));
+  if (!orderFees.length) {
+    message.warning(`请至少录入一条${isRec ? '应收' : '应付'}费用后再保存`);
+    return false;
+  }
   submitting.value = true;
   const data = {
     id: changeOrder.value.id,
@@ -644,22 +669,7 @@ const saveRow = async (): Promise<boolean> => {
     accountDate: dayjs(changeOrder.value.accountDate).format('YYYY-MM'),
     reason: changeOrder.value.reason,
     remark: changeOrder.value.remark,
-    orderFees: [
-      ...RecFeeList.value.map((item) => {
-        return {
-          ...item,
-          changeOrderId: changeOrder.value.id,
-          paySide: 0,
-        };
-      }),
-      ...PayFeeList.value.map((item) => {
-        return {
-          ...item,
-          changeOrderId: changeOrder.value.id,
-          paySide: 1,
-        };
-      }),
-    ],
+    orderFees,
   };
   try {
     const id = await EditAsync(data);
@@ -667,7 +677,10 @@ const saveRow = async (): Promise<boolean> => {
     hasUnsavedChanges.value = false;
     lastSavedAt.value = dayjs().format('HH:mm');
     await loadChangeOrderList();
-    message.success('更改单及全部应收、应付费用已保存');
+    await nextTick();
+    RecOrderFeeRef.value?.getTableDate(changeOrder.value.id);
+    PayOrderFeeRef.value?.getTableDate(changeOrder.value.id);
+    message.success(`更改单及${isRec ? '应收' : '应付'}费用已保存`);
     return true;
   } catch {
     // 保存失败：保留用户输入，不清空、不切换
@@ -783,10 +796,10 @@ const foreignCurrencyBreakdown = computed(() =>
 
 /** 存在非本位币且缺少汇率时，本位币利润无法完整计算 */
 const hasMissingRate = computed(() =>
-  [...RecFeeList.value, ...PayFeeList.value].some(
-    (fee: any) =>
-      fee.currencyId && Number(fee.currencyId) !== 1 && !fee.exchangeRate,
-  ),
+  [...RecFeeList.value, ...PayFeeList.value].some((fee: any) => {
+    const currencyId = Number(fee.currencyId_value ?? fee.currencyId);
+    return currencyId && currencyId !== 1 && !fee.exchangeRate;
+  }),
 );
 
 /** 汇总栏（本位币） */
@@ -882,9 +895,13 @@ onBeforeUnmount(unbindGlobalListeners);
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Spin :spinning="pageLoading">
-      <div class="mx-2 flex flex-col gap-4">
+  <Page
+    class="change-order-page"
+    auto-content-height
+    content-class="flex flex-col overflow-hidden"
+  >
+    <Spin :spinning="pageLoading" wrapper-class-name="change-order-spin">
+      <div class="mx-2 flex h-full min-h-0 flex-col gap-4">
         <!-- 顶部通铺：订单信息（默认关键字段，点击展开；字段值单行不换行） -->
         <section
           class="order-info-bar"
@@ -985,7 +1002,9 @@ onBeforeUnmount(unbindGlobalListeners);
           </div>
         </section>
 
-        <div class="w-change-order-auto flex min-w-0 flex-1 flex-col gap-4">
+        <div
+          class="w-change-order-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4"
+        >
           <section class="change-order-editor">
             <div class="editor-header">
               <div class="editor-head-left min-w-0">
@@ -1186,15 +1205,18 @@ onBeforeUnmount(unbindGlobalListeners);
               </Form>
             </template>
 
-            <!-- 应收/应付：页签切换置于费用表 toolbar 左侧 -->
+            <!-- 应收/应付：页签切换，一次只展示一侧（后端一次只能保存一种收付） -->
             <div v-if="changeOrder" class="fee-tables">
               <OrderFeeTable
                 v-show="activeFeeTab === 'receivable'"
+                class="min-h-0 flex-1"
                 :type="0"
                 mode="changeOrder"
                 :readonly="isChangeOrderLocked"
                 :parent-change-order-id="changeOrder?.id"
                 :order-detail="formValues"
+                :rec-amount-map="recAmountMap"
+                :pay-amount-map="payAmountMap"
                 ref="RecOrderFeeRef"
                 @sync-fee="syncFee"
                 @change="markUnsaved"
@@ -1210,7 +1232,7 @@ onBeforeUnmount(unbindGlobalListeners);
                         'fee-tab-switch__item--active':
                           activeFeeTab === 'receivable',
                       }"
-                      @click="activeFeeTab = 'receivable'"
+                      @click="switchFeeTab('receivable')"
                     >
                       应收费用
                       <Badge
@@ -1226,7 +1248,7 @@ onBeforeUnmount(unbindGlobalListeners);
                         'fee-tab-switch__item--active':
                           activeFeeTab === 'payable',
                       }"
-                      @click="activeFeeTab = 'payable'"
+                      @click="switchFeeTab('payable')"
                     >
                       应付费用
                       <Badge
@@ -1240,11 +1262,14 @@ onBeforeUnmount(unbindGlobalListeners);
               </OrderFeeTable>
               <OrderFeeTable
                 v-show="activeFeeTab === 'payable'"
+                class="min-h-0 flex-1"
                 :type="1"
                 mode="changeOrder"
                 :readonly="isChangeOrderLocked"
                 :parent-change-order-id="changeOrder?.id"
                 :order-detail="formValues"
+                :rec-amount-map="recAmountMap"
+                :pay-amount-map="payAmountMap"
                 ref="PayOrderFeeRef"
                 @sync-fee="syncFee"
                 @change="markUnsaved"
@@ -1260,7 +1285,7 @@ onBeforeUnmount(unbindGlobalListeners);
                         'fee-tab-switch__item--active':
                           activeFeeTab === 'receivable',
                       }"
-                      @click="activeFeeTab = 'receivable'"
+                      @click="switchFeeTab('receivable')"
                     >
                       应收费用
                       <Badge
@@ -1276,7 +1301,7 @@ onBeforeUnmount(unbindGlobalListeners);
                         'fee-tab-switch__item--active':
                           activeFeeTab === 'payable',
                       }"
-                      @click="activeFeeTab = 'payable'"
+                      @click="switchFeeTab('payable')"
                     >
                       应付费用
                       <Badge
@@ -1447,8 +1472,23 @@ onBeforeUnmount(unbindGlobalListeners);
   }
 }
 
+.change-order-page {
+  height: 100%;
+  overflow: hidden;
+}
+
+:deep(.change-order-spin) {
+  flex: 1;
+  min-height: 0;
+}
+
+:deep(.change-order-spin > .ant-spin-container) {
+  height: 100%;
+}
+
 .change-order-basic-form {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns:
     180px minmax(320px, 1.4fr)
     minmax(280px, 1fr);
@@ -1472,7 +1512,9 @@ onBeforeUnmount(unbindGlobalListeners);
 .profit-summary {
   position: sticky;
   bottom: 0;
+  z-index: 2;
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
@@ -1702,7 +1744,9 @@ onBeforeUnmount(unbindGlobalListeners);
 
 .change-order-editor {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
@@ -1710,6 +1754,7 @@ onBeforeUnmount(unbindGlobalListeners);
 
 .editor-header {
   display: flex;
+  flex-shrink: 0;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
@@ -1746,6 +1791,7 @@ onBeforeUnmount(unbindGlobalListeners);
 }
 
 .order-info-bar {
+  flex-shrink: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #fafbfc 0%, #f7f8fa 100%);
   border: 1px solid #eef0f3;
@@ -1924,8 +1970,16 @@ onBeforeUnmount(unbindGlobalListeners);
 }
 
 .fee-tables {
-  /* 与顶部基本信息表单、标题栏同一水平边距 16px */
-  padding: 0 16px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 16px 8px;
+
+  > :deep(.order-fee-card) {
+    flex: 1;
+    min-height: 0;
+  }
 }
 
 .fee-tab-switch {

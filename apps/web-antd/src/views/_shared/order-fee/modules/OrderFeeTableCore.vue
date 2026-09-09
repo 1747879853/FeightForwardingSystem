@@ -27,6 +27,8 @@ interface Props {
     field: string | null;
     order: 'asc' | 'desc' | null;
   }; // 排序状态
+  /** 更改单锁定等场景：整表只读 */
+  readOnly?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -53,6 +55,7 @@ const dynHeight = ref(0);
 const mergedSettings = computed(() => ({
   ...props.hotSettings,
   height: dynHeight.value,
+  readOnly: Boolean(props.readOnly || props.hotSettings?.readOnly),
 }));
 
 let resizeObserver: null | ResizeObserver = null;
@@ -297,6 +300,7 @@ onBeforeUnmount(() => {
 defineExpose({
   hotTableRef,
   clearEditingState, // ✅ 暴露给父组件
+  remasure: scheduleMeasure,
 });
 </script>
 

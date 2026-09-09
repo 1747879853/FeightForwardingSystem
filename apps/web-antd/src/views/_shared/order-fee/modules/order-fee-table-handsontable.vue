@@ -52,11 +52,15 @@ const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
   mode?: string; // changeOrder 更改单
   parentChangeOrderId?: string;
+  readonly?: boolean; // 当前更改单费用锁定时统一只读
   recAmountMap?: Record<string, any>;
   payAmountMap?: Record<string, any>;
   orderDetail?: any | null;
   allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
 }>();
+
+const isChangeOrderMode = computed(() => props.mode === 'changeOrder');
+const isTableReadonly = computed(() => Boolean(props.readonly));
 
 const adapter = useOrderFeeAdapter();
 
@@ -65,6 +69,7 @@ const emit = defineEmits([
   'update-amount',
   'refresh-opposite-table',
   'selection-change',
+  'change',
 ]);
 
 // ==================== 使用 Composables ====================
@@ -76,6 +81,7 @@ const {
   orderBaseData,
   orderCtnList,
   editId,
+  changeOrderId,
   getTableDate,
   isFeeDirty,
   syncFee,
@@ -315,6 +321,10 @@ const ImportOther = async (e: any) => {
 // ==================== 批量导入功能 ====================
 
 const openBatchImportModal = async () => {
+  if (isChangeOrderMode.value) {
+    message.warning('批量引入暂不支持更改单');
+    return;
+  }
   if (!editId.value) {
     message.warning('请先保存业务信息');
     return;
@@ -564,6 +574,10 @@ const getAllFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
     });
 };
 
+/** 更改单整包保存：含未落库新行，并还原下拉 ID */
+const getSanitizedFees = (): OrderFeeAdminApi.OrderFeeEditDto[] =>
+  sanitizeOrderFee(dataSource.value);
+
 // 监听选中行变化，发射事件通知父组件
 watch(
   () => selectedRowKeys.value,
@@ -582,8 +596,10 @@ defineExpose({
   getSelectedFeeIds,
   getSelectedFees,
   getAllFees, // 新增：获取所有费用
+  getSanitizedFees,
   isFeeDirty,
   openModifyModal,
+  remasureTable: () => coreTableRef.value?.remasure?.(),
 });
 
 // ==================== ID 到 Label 转换辅助函数 ====================
@@ -769,6 +785,7 @@ const scrollToLastAndSelectFeeName = async () => {
 const extendedActions = {
   ...actions,
   addRow: async () => {
+    if (isTableReadonly.value) return;
     console.log('🚀 [extendedActions.addRow] 开始执行新增行操作');
     actions.addRow();
     // 在添加新行后延迟执行滚动和选中操作
@@ -784,27 +801,20 @@ const extendedActions = {
  * 处理键盘快捷键 Ctrl+S 保存
  */
 const handleKeyDown = (event: KeyboardEvent) => {
-  // 检查是否按下了 Ctrl+S (或 Cmd+S on Mac)
+  // 更改单由父页 Ctrl/Cmd+S 整包保存，这里不走费用表 OrderFeeAdmin
+  if (isChangeOrderMode.value) return;
   if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-    event.preventDefault(); // 阻止浏览器默认的保存行为
+    event.preventDefault();
     actions.saveRow();
-    // 只有在有选中行且不是只读模式时才执行保存
-    // const isReadonly = props.mode === 'changeOrder' && props.parentChangeOrderId;
-    // if (!isReadonly && selectedRowKeys.value.length > 0) {
-    //   console.log('⌨️ [键盘快捷键] 检测到 Ctrl+S，执行保存操作');
-    //   actions.saveRow();
-    // } else if (isReadonly) {
-    //   message.warning('当前为只读模式，无法保存');
-    // } else {
-    //   message.warning('请先选择要保存的费用行');
-    // }
   }
 };
 
 onMounted(async () => {
   initOrderFeeEnumCache();
   // 列表页 AI 识别跳转而来：应付表挂载即消费跨页暂存，命中则自动弹出确认弹窗
-  tryConsumePendingBillFees();
+  if (!isChangeOrderMode.value) {
+    tryConsumePendingBillFees();
+  }
   // 本次进入费用页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率（ETD+本位币匹配用）
   await ensureExchangeRateCache(true);
   await initDropdownSources();
@@ -827,8 +837,16 @@ onMounted(async () => {
     `✅ [onMounted] 已初始化单位列表，共 ${dropdownSources.value.unitList.length} 个选项`,
   );
 
-  getTableDate();
-  loadFinishStatus();
+  // 更改单：等下拉源就绪后再拉费用，避免父页 nextTick 早于下拉初始化导致 ID 无法转成标签
+  if (isChangeOrderMode.value) {
+    const id = changeOrderId.value || props.parentChangeOrderId || '';
+    if (id) {
+      await getTableDate(id);
+    }
+  } else {
+    getTableDate();
+    loadFinishStatus();
+  }
 
   // 添加键盘事件监听器
   document.addEventListener('keydown', handleKeyDown);
@@ -848,7 +866,9 @@ onUnmounted(() => {
 
 // KeepAlive 复用（从列表页识别跳转回已缓存的费用页）时消费跨页暂存
 onActivated(() => {
-  tryConsumePendingBillFees();
+  if (!isChangeOrderMode.value) {
+    tryConsumePendingBillFees();
+  }
 });
 
 // 监听器
@@ -884,6 +904,8 @@ watch(
         coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
       }
     });
+
+    emit('change');
   },
   { deep: true },
 );
@@ -921,7 +943,9 @@ watch(
   () => editId.value,
   async (newEditId, oldEditId) => {
     if (newEditId && newEditId !== oldEditId) {
-      loadFinishStatus();
+      if (!isChangeOrderMode.value) {
+        loadFinishStatus();
+      }
       // 切换到另一票时，若存在该票的跨页暂存识别费用则消费
       tryConsumePendingBillFees();
     }
@@ -930,8 +954,15 @@ watch(
 </script>
 
 <template>
-  <Card class="order-fee-card">
-    <div v-if="!isFinished" class="finish-status-badge" title="业务未完结">
+  <Card
+    class="order-fee-card"
+    :class="{ 'change-order-fee-table': isChangeOrderMode }"
+  >
+    <div
+      v-if="!isChangeOrderMode && !isFinished"
+      class="finish-status-badge"
+      title="业务未完结"
+    >
       <img
         v-show="type === 0"
         :src="weiwanjie"
@@ -947,26 +978,32 @@ watch(
       <div class="order-ctn-table">
         <div class="handsontable-container">
           <div class="table-header">
-            <span class="table-title">
-              {{
-                type === 0
-                  ? orderFeeDataT('receivableCharges')
-                  : orderFeeDataT('payableCharges')
-              }}
-            </span>
+            <div class="table-header__left">
+              <slot name="toolbar-actions">
+                <span class="table-title">
+                  {{
+                    type === 0
+                      ? orderFeeDataT('receivableCharges')
+                      : orderFeeDataT('payableCharges')
+                  }}
+                </span>
+              </slot>
+            </div>
             <Space class="toolbar-actions">
-              <Button type="primary" @click="extendedActions.addRow">{{
-                $t('common.create')
-              }}</Button>
+              <Button
+                type="primary"
+                :disabled="isTableReadonly"
+                @click="extendedActions.addRow"
+                >{{ $t('common.create') }}</Button
+              >
               <Button
                 type="primary"
                 @click="actions.saveRow"
-                v-show="props.mode !== 'changeOrder'"
+                v-show="!isChangeOrderMode"
               >
                 {{ $t('common.save') }}
               </Button>
               <Button
-                v-show="props.mode !== 'changeOrder'"
                 :loading="printing"
                 @click="
                   handlePrint({
@@ -974,6 +1011,10 @@ watch(
                     transportOrderId: editId,
                     orderDetail: orderBaseData,
                     selectedFeeIds,
+                    isChangeOrderPrint: isChangeOrderMode,
+                    changeOrderId: isChangeOrderMode
+                      ? changeOrderId || parentChangeOrderId
+                      : undefined,
                   })
                 "
               >
@@ -985,13 +1026,17 @@ watch(
               </Button>
               <Button
                 danger
-                :disabled="!selectedRowKeys.length"
+                :disabled="isTableReadonly || !selectedRowKeys.length"
                 @click="actions.removeSelectedRows"
               >
                 {{ $t('common.delete') }}
               </Button>
 
-              <DropdownButton @click="openBatchImportModal" type="primary">
+              <DropdownButton
+                :disabled="isTableReadonly"
+                @click="openBatchImportModal"
+                type="primary"
+              >
                 {{ orderFeeDataT('batchImport') }}
                 <template #overlay>
                   <Menu @click="ImportOther">
@@ -1003,7 +1048,7 @@ watch(
               </DropdownButton>
 
               <Button
-                v-if="type === 1 && props.mode !== 'changeOrder'"
+                v-if="type === 1 && !isChangeOrderMode"
                 type="primary"
                 ghost
                 @click="openAiBillFeeModal"
@@ -1016,7 +1061,7 @@ watch(
               </Button>
 
               <Button
-                v-show="type === 0"
+                v-show="type === 0 && !isChangeOrderMode"
                 type="default"
                 :loading="loadingFinishStatus"
                 @click="toggleFinishStatus"
@@ -1036,10 +1081,16 @@ watch(
             :order-detail="orderBaseData"
             :sortable-fields="sortableFieldsSet"
             :sort-state="sortState"
+            :read-only="isTableReadonly"
             @update:selected-row-keys="selectedRowKeys = $event"
             @column-sort="handleColumnSort"
             @add-new-row="extendedActions.addRow"
           />
+          <div
+            v-if="isTableReadonly"
+            class="readonly-fee-mask"
+            title="该更改单已锁定，费用仅可查看"
+          ></div>
 
           <!-- 费用合计显示 -->
           <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
@@ -1112,6 +1163,7 @@ watch(
   }
 
   .handsontable-container {
+    position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -1129,6 +1181,12 @@ watch(
     padding: 12px 16px;
     background: #fafafa;
     border-bottom: 1px solid #e8e8e8;
+
+    .table-header__left {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
 
     .table-title {
       font-size: 14px;
@@ -1313,6 +1371,23 @@ watch(
         transform: scale(1.05);
       }
     }
+  }
+}
+
+.readonly-fee-mask {
+  position: absolute;
+  inset: 49px 0 0;
+  z-index: 5;
+  cursor: not-allowed;
+  background: rgb(255 255 255 / 25%);
+}
+
+.change-order-fee-table {
+  border: 0;
+  box-shadow: none;
+
+  :deep(.ant-card-body) {
+    padding: 0 0 8px !important;
   }
 }
 </style>
