@@ -2,8 +2,8 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-09
-last_change: change-order-top-info-expand-transition-height-fill
+last_updated: 2026-09-10
+last_change: sea-import-change-order-align-export
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,9 +16,9 @@ last_change: change-order-top-info-expand-transition-height-fill
 | :-- | :-- |
 | 海出入口 | `/sea-exports/:id/edit` → Tab「更改单」（内部 key=`party`） |
 | 海引进口 | `/sea-imports/:id/edit` → Tab「更改单」 |
-| 海出页面 | `src/views/sea-export-admin/changeOrder/index.vue` + `table.vue` |
-| 海进页面 | `src/views/sea-import-admin/changeOrder/index.vue` + `table.vue` |
-| 费用表（复用） | 海出：`order-fee-table-handsontable.vue`，`mode='changeOrder'`；海进/空出仍为 `order-fee-table.vue` |
+| 海出页面 | `src/views/sea-export-admin/changeOrder/index.vue` |
+| 海进页面 | `src/views/sea-import-admin/changeOrder/index.vue` |
+| 费用表（复用） | 海出/海进：`order-fee-table-handsontable.vue`，`mode='changeOrder'`；空出仍为 `order-fee-table.vue` |
 | API | `/services/app/ChangeOrderAdmin`（海出/海进各一份封装，路径相同） |
 | 锁费入口 | `/settlement-management/fee-lock`（树形：主单 + 子级更改单） |
 
@@ -81,8 +81,8 @@ last_change: change-order-top-info-expand-transition-height-fill
 
 | 能力 | 更改单模式表现 |
 | :-- | :-- |
-| 表格实现 | **海出** Handsontable（与应收应付同一套列/录入：勾选、序号、开票状态分列）；海进/空出仍为 VXE |
-| 布局 | 海出应收/应付页签切换，一次只展示一侧；两表 `v-show` 保挂载 |
+| 表格实现 | **海出/海进** Handsontable（与应收应付同一套列/录入：勾选、序号、开票状态分列）；空出仍为 VXE |
+| 布局 | 海出/海进应收/应付页签切换，一次只展示一侧；两表 `v-show` 保挂载 |
 | 加载数据 | 不走 `OrderFee` 分页；调 `ChangeOrderAdmin/DetailAsync`，按 `paySide` 过滤 |
 | 费用表「保存」按钮 | **隐藏**；点更改单「保存」只提交**当前页签**一侧（`getSanitizedFees` 还原 ID） |
 | 删除费用行 | **仅本地移除**，不立刻调 `batchDeleteOrderFee`；真正落库靠下次更改单保存 |
@@ -155,9 +155,9 @@ last_change: change-order-top-info-expand-transition-height-fill
 
 > [!IMPORTANT] **[卡点 3：费用保存路径不同，且一次只能一种收付]** 更改单模式下费用表隐藏「保存」；必须点更改单工具栏「保存」，走 `EditAsync`。后端一次只接受一种 `paySide`，前端只提交当前页签这一侧。另一侧要切过去再保存。
 
-> [!NOTE] **[卡点 4：列表查询应带 TransportOrderId]（海出已修复 2026-07-21）** 海出 `changeOrder/table.vue` 的 `GetPagedList` 已补传 `TransportOrderId`，父组件监听 `transportOrderId` 就绪后加载列表。海进 `sea-import-admin` 同名页仍待同步。
+> [!NOTE] **[卡点 4：列表查询应带 TransportOrderId]（海出/海进已对齐 2026-09-10）** 更改单列表由 `index.vue` 统一 `GetPagedList` 并传 `TransportOrderId`；旧 VXE `table.vue` 已移除。
 
-> [!NOTE] **[卡点 5：收付互生的 changeOrderId]（海出已修复 2026-07-21）** 海出更改单页已向应收/应付费用表透传 `:parent-change-order-id="changeOrder?.id"`，收付互生可正确带上更改单 id。海进侧仍待同步，且后端落库语义建议联调确认。
+> [!NOTE] **[卡点 5：收付互生的 changeOrderId]（海出/海进已对齐）** 更改单页向费用表透传 `:parent-change-order-id="changeOrder?.id"`，收付互生可正确带上更改单 id。
 
 > [!WARNING] **[卡点 6：批量引入暂不支持更改单]** `batch-import-fee-modal` 固定 `changeOrderId: undefined`；后端接口本身支持目标更改单。
 
@@ -219,6 +219,7 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-09-10 | `Feature` | 海运进口更改单样式与交互对齐海出：Handsontable、页签一次只保存一侧、订单信息通栏/选择器/利润汇总。详见 `changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md`。 | 删除海进旧 `table.vue`；订单信息字段走 `seaImportAdapter.getDisplayValue`。 |
 | 2026-09-09 | `Fix` | 更改单顶部订单信息展开/收起过渡并修复费用表高度自适应（利润汇总不再被顶出）。详见 `changelogs/change-log-2026-09-09-change-order-top-info-expand-transition-height-fill.md`。 | 订单信息展开/收起使用 `grid-template-rows` + `opacity` 动画；过渡后延时调用 `remasureTable`，让 Handsontable 以实际可视高度重算 `settings.height`，避免测量到偏小高度或整页内容撑开。 |
 | 2026-09-09 | `Fix` | 费用表序号与开票状态拆成独立列。详见 `changelogs/change-log-2026-09-09-order-fee-seq-column.md`。 | 共用 `useHotColumns`，应收应付一并改。 |
 | 2026-09-09 | `Fix` | 更改单费用改回页签一次只显示应收或应付；保存只提交当前侧。详见 `changelogs/change-log-2026-09-09-change-order-fee-tab-save-one-payside.md`。 | 后端 `EditAsync` 混传两种 `paySide` 会报「一次只能保存一种收付类型的费用」。 |
