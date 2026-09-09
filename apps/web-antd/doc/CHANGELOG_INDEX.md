@@ -20,6 +20,8 @@
 - [2026-09-08 客户新建成功后关闭原新建页签](./changelogs/change-log-2026-09-08-client-create-tab-close.md)
 - [2026-09-08 付费申请从进项发票选择按钮位置与弹窗表头对齐](./changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md)
 - [2026-09-08 出站时间口径统一为北京时间](./changelogs/change-log-2026-09-08-request-datetime-beijing-time.md)
+- [2026-09-09 列表搜索默认值首查漏带（付费审批/业务联系单审核/提成发放/运价）](./changelogs/change-log-2026-09-09-list-search-default-submit-form.md)
+- [2026-09-09 费用审核首查漏带费用审核状态默认值](./changelogs/change-log-2026-09-09-expense-review-processed-default-race.md)
 - [2026-09-08 列表数据变更后同步刷新分组统计](./changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md)
 - [2026-09-08 无时分日期筛选统一按自然日闭区间提交](./changelogs/change-log-2026-09-08-date-range-start-end-of-day.md)
 - [2026-09-08 海运出口开船日期筛选按自然日闭区间提交](./changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md)

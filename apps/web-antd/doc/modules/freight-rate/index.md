@@ -2,7 +2,7 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-07-26
+last_updated: 2026-09-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,7 @@ last_updated: 2026-07-26
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。
+- **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。有效状态默认「已生效 + 未生效」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认值写入「最近提交值」（切航线 Tab / 翻页 / 刷新不丢）。
 - **搜索项设置：** 可通过列表工具栏入口调整搜索字段的显示与顺序，设置弹层显示在工具栏下方。
 - **列配置持久化：** 列表与批量新增/编辑弹窗表格各自在 `gridOptions.id` 声明独立 id，列显隐/顺序/固定/列宽互不覆盖。
 - **航线 Tab 筛选：** 列表工具栏左侧展示「全部 + 各航线」Tab；超出可视区域时可点击左右箭头平滑滚动浏览，并与右侧操作按钮保持固定间距。
@@ -48,10 +48,13 @@ last_updated: 2026-07-26
 
 > [!IMPORTANT] **[卡点 1：运价管理一致性]** 运价管理与海运出口业务耦合较强，更新费率时需确认是否影响历史委托或仅影响后续业务。
 
+> [!IMPORTANT] **[卡点 2：首查须 `submitForm` 写入「最近提交值」]** 有效状态默认 `[0,1]`；切航线走 `gridApi.query`，必须先 `submitForm`。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-09 | `Fix` | 进入运价列表首查与切航线/翻页稳定带上有效状态默认「已生效+未生效」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `isValid === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-07-26 | `Fix` | 列表、批量编辑、批量新增三表分别声明 `gridOptions.id`，避免同路由下列配置互相覆盖。 | 此前均回退为路由名 `FreightRateList`；常量集中在 `data.ts`，由 adapter 写入 `columnPersist.tableId`。 |
 | 2026-07-16 | `Refactor` | 「航线管理」下并列「运价查询」「船期查询」；删除独立「船期管理」顶级菜单。 | 父级 `authority` 聚合 `Admin.SeFreiPrice`+`Admin.Schedule`；船期子路由绝对 path `/schedule`。 |
 | 2026-07-12 | `Fix` | 修复点击「搜索项设置」后弹层被工具栏裁剪、看似无响应的问题。 | 工具栏允许溢出显示，航线 Tab 仍由自身容器负责横向裁剪与滚动。 |

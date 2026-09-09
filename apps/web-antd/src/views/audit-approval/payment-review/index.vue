@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -29,7 +29,15 @@ import {
   usePaymentReviewFormSchema,
 } from './data';
 
+defineOptions({ name: 'PaymentReview' });
+
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
+
+/**
+ * 任务状态默认「审核中」。仅在默认值尚未写入「最近提交值」的早期查询里兜底；
+ * 用户清空后不再回填（Auditing 值为 0，不可用 !value 判断）。
+ */
+let taskStatusDefaultApplied = false;
 
 /** 通过：仅待审任务走 AuditAsync(success: true) */
 function isPendingAudit(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
@@ -126,18 +134,24 @@ const getRangeValue = (
 };
 
 const normalizeQuery = (formValues: Record<string, unknown>) => {
+  const nextValues = { ...formValues };
+  if (!taskStatusDefaultApplied && nextValues.TaskStatus === undefined) {
+    nextValues.TaskStatus = TaskStatus.Auditing;
+  }
+  taskStatusDefaultApplied = true;
+
   const [submitTimeStart, submitTimeEnd] = getRangeValue(
-    formValues.SubmitTimeRange,
+    nextValues.SubmitTimeRange,
   );
-  const [endTimeStart, endTimeEnd] = getRangeValue(formValues.EndTimeRange);
+  const [endTimeStart, endTimeEnd] = getRangeValue(nextValues.EndTimeRange);
   const [auditTimeStart, auditTimeEnd] = getRangeValue(
-    formValues.AuditTimeRange,
+    nextValues.AuditTimeRange,
   );
 
   return {
-    ...formValues,
+    ...nextValues,
     // Keys 精确搜索：去空白去重后作为 List<string>（repeat 序列化）
-    Keys: normalizeKeysParam(formValues.Keys),
+    Keys: normalizeKeysParam(nextValues.Keys),
     SubmitTimeStart: toIsoStartOfDay(submitTimeStart),
     SubmitTimeEnd: toIsoEndOfDay(submitTimeEnd),
     EndTimeStart: toIsoStartOfDay(endTimeStart),
@@ -214,6 +228,8 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
         enabled: true,
       },
       proxyConfig: {
+        // 关闭自动加载：挂载后 submitForm 首查，保证 TaskStatus 默认值写入最近提交值
+        autoLoad: false,
         ajax: {
           query: createPagedListQuery(getPayAppTaskList, {
             // 与后端任务实体可排序字段对齐；默认 CreationTime
@@ -242,6 +258,10 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
     },
   },
 );
+
+onMounted(async () => {
+  await gridApi.formApi.submitForm();
+});
 
 watch(
   tableData,

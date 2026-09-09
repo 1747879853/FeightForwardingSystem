@@ -245,6 +245,15 @@ export function useListGrouping<TField extends number = number>(
   }
 
   /**
+   * 仅设置分组字段状态，不触发列表查询、不写持久化。
+   * 用于无 persist、但挂载时仍要默认开启某分组的场景：
+   * 先 prepareField，再由页面 `submitForm` 统一首查，避免 `query()` 读空「最近提交值」。
+   */
+  function prepareField(value: TField) {
+    applyField(value, false, true);
+  }
+
+  /**
    * 恢复已持久化的分组字段（仅设置状态，不触发列表查询）。
    * 由列表页在挂载时于「写入表单默认值之后、首次查询之前」调用，
    * 使首次查询即带上分组字段，从而在同一次查询中拉取分组数据。
@@ -307,6 +316,7 @@ export function useListGrouping<TField extends number = number>(
     loading,
     decorateListParams,
     enableField,
+    prepareField,
     disable,
     selectItem,
     refreshGroupData,

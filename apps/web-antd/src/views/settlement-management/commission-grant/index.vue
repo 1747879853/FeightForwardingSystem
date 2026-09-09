@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, h, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
@@ -29,6 +29,9 @@ defineOptions({ name: 'CommissionGrant' });
 type OrderRow = CommissionOrderAdminApi.CommissionOrderDto;
 
 const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
+
+/** 提成状态默认「审核通过」；仅早期查询兜底，用户清空后不再回填 */
+let statusDefaultApplied = false;
 
 // ==================== 弹窗（复用提成单模块组件） ====================
 
@@ -255,7 +258,13 @@ const toMonth = (value: unknown): string | undefined => {
 };
 
 const mapParams = (formValues: Record<string, any>) => {
-  const { accountDateRange, ...rest } = formValues;
+  const nextValues = { ...formValues };
+  if (!statusDefaultApplied && nextValues.status === undefined) {
+    nextValues.status = Status.Approved;
+  }
+  statusDefaultApplied = true;
+
+  const { accountDateRange, ...rest } = nextValues;
   const [start, end] = getRangeValue(accountDateRange);
   return {
     ...rest,
@@ -301,6 +310,8 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
       enabled: true,
     },
     proxyConfig: {
+      // 关闭自动加载：挂载后 submitForm 首查，保证 status 默认「审核通过」写入最近提交值
+      autoLoad: false,
       ajax: {
         query: createPagedListQuery(fetchList, {
           defaultSort: 'AccountDate DESC, CreationTime DESC',
@@ -320,6 +331,10 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
       zoom: true,
     },
   },
+});
+
+onMounted(async () => {
+  await gridApi.formApi.submitForm();
 });
 </script>
 
