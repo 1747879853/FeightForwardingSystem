@@ -522,7 +522,8 @@ async function loadDefaultRemarkTemplate() {
 }
 
 /**
- * 撤回开票申请
+ * 撤回开票申请。
+ * 成功：关闭当前查看/编辑页签，打开该单编辑页；失败：留在当前页。
  */
 async function handleWithdraw() {
   if (!editId.value) return;
@@ -532,13 +533,19 @@ async function handleWithdraw() {
     content: `确定要撤回申请单 "${formData.value.applicationNo}" 吗？`,
     onOk: async () => {
       try {
-        await InvoiceApplicationApi.withdrawAsync({ id: editId.value! });
+        const applicationId = editId.value!;
+        await InvoiceApplicationApi.withdrawAsync({ id: applicationId });
         message.success('撤回成功');
-        // 撤回后刷新详情
-        router.push(`/fee-management/invoice-application/${editId.value}/edit`);
-        // ✅ 新增：标记列表需要刷新
-        markListShouldRefresh('invoice-application-list');
+        markListShouldRefresh('InvoiceApplicationList');
+        const currentTabKey = route.fullPath;
+        await router.replace(
+          `/fee-management/invoice-application/${applicationId}/edit`,
+        );
+        if (currentTabKey !== route.fullPath) {
+          await closeTabByKey(currentTabKey);
+        }
       } catch (error) {
+        // 撤回失败留在当前页，不跳转
         console.error('撤回失败:', error);
       }
     },

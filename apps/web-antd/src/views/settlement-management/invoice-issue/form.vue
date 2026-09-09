@@ -584,7 +584,6 @@ onMounted(() => {
         >
           {{ isEdit ? '保存' : '创建' }}
         </Button>
-        <Button @click="handleCancel">关闭</Button>
       </Space>
     </div>
 

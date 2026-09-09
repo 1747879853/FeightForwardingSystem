@@ -5,10 +5,7 @@ import { useTabs } from '@vben/hooks';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 // ✅ 新增：导入刷新标记工具函数
-import {
-  markListShouldRefresh,
-  returnToListWithRefresh,
-} from '#/utils/list-refresh-flag';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 /**
  * 提交和保存相关逻辑
@@ -127,6 +124,22 @@ export function useSubmit(
   }
 
   /**
+   * 提交成功后关闭当前编辑/新建页签，打开该开票申请的只读查看页。
+   * 失败时不调用本函数，留在当前页。
+   */
+  async function navigateToViewAfterSubmit(applicationId: string) {
+    markListShouldRefresh('InvoiceApplicationList');
+    const currentTabKey = route.fullPath;
+    await router.replace(
+      `/fee-management/invoice-application/${applicationId}/view`,
+    );
+    // 与新建保存进编辑同一套路：replace 后关掉旧 fullPath 残留页签
+    if (currentTabKey !== route.fullPath) {
+      await closeTabByKey(currentTabKey);
+    }
+  }
+
+  /**
    * 直接提交（先保存再提交）
    */
   async function handleDirectSubmit() {
@@ -164,17 +177,10 @@ export function useSubmit(
       if (applicationId) {
         await submitAsync({ id: applicationId });
         message.success('提交成功');
-        // ✅ 设置刷新标记并返回列表页面（使用路由名称）
-        returnToListWithRefresh('InvoiceApplicationList', () => {
-          if (isEdit.value) {
-            router.push('/fee-management/invoice-application');
-          } else {
-            // 新建模式下 replace 回列表，避免残留新建页签
-            router.replace('/fee-management/invoice-application');
-          }
-        });
+        await navigateToViewAfterSubmit(applicationId);
       }
     } catch (error) {
+      // 提交失败留在当前编辑/新建页，不跳转
       console.error('提交失败:', error);
     } finally {
       submitLoading.value = false;
@@ -202,25 +208,22 @@ export function useSubmit(
         const ids = await addAsync(batchData);
 
         if (ids && ids.length > 0) {
-          await submitAsync({ id: ids[0]! });
+          const applicationId = ids[0]!;
+          await submitAsync({ id: applicationId });
           message.success('创建并提交成功');
-          // ✅ 设置刷新标记并返回列表页面（新建模式 replace 避免残留新建页签）
-          returnToListWithRefresh('InvoiceApplicationList', () => {
-            router.replace('/fee-management/invoice-application');
-          });
+          await navigateToViewAfterSubmit(applicationId);
         }
       } else {
         // ✅ 编辑模式下，先同步最新的商品明细
         syncGoodsDetailsToFormData();
 
-        await submitAsync({ id: editId.value! });
+        const applicationId = editId.value!;
+        await submitAsync({ id: applicationId });
         message.success('提交成功');
-        // ✅ 设置刷新标记并返回列表页面（使用路由名称）
-        returnToListWithRefresh('InvoiceApplicationList', () => {
-          router.push('/fee-management/invoice-application');
-        });
+        await navigateToViewAfterSubmit(applicationId);
       }
     } catch (error) {
+      // 提交失败留在当前页
       console.error('提交失败:', error);
       message.error('提交失败');
     } finally {
