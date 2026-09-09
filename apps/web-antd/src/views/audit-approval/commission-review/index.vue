@@ -29,6 +29,8 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import DetailModal from '#/views/commission/detail-modal.vue';
 
+import { formatAmount } from '#/views/commission/data';
+
 import {
   type CommissionReviewRow,
   useCommissionReviewColumns,
@@ -47,6 +49,26 @@ const auditCode = 'Admin.CommissionOrder.Audit';
 const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
 
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
+
+// ==================== 底部当页合计 ====================
+
+/** 当前页表格数据，驱动底部提成金额 / 底薪 / 最终应发合计 */
+const currentPageData = ref<CommissionReviewRow[]>([]);
+
+/** 当页三个金额字段合计（提成单均为同一本位币口径，直接加总） */
+const pageTotals = computed(() => {
+  let commissionAmount = 0;
+  let baseSalary = 0;
+  let finalAmount = 0;
+  currentPageData.value.forEach((row) => {
+    commissionAmount += Number(row.commissionAmount) || 0;
+    baseSalary += Number(row.baseSalary) || 0;
+    finalAmount += Number(row.finalAmount) || 0;
+  });
+  return { baseSalary, commissionAmount, finalAmount };
+});
+
+const hasPageData = computed(() => currentPageData.value.length > 0);
 
 // ==================== 弹窗（复用提成单模块组件） ====================
 
@@ -250,8 +272,11 @@ const mapTaskRow = (
 const fetchList = async (params: Record<string, any>) => {
   const result = await getCommissionOrderTaskList(params);
   selectedRows.value = [];
+  const items = (result.items ?? []).map(mapTaskRow);
+  // 拦截当前页数据，驱动底部当页合计
+  currentPageData.value = items;
   return {
-    items: (result.items ?? []).map(mapTaskRow),
+    items,
     totalCount: result.totalCount ?? 0,
   };
 };
@@ -504,6 +529,96 @@ const handleViewWorkflow = () => {
       </template>
     </Grid>
 
+    <!-- 表格下方：当前页提成金额 / 底薪 / 最终应发合计 -->
+    <template #footer>
+      <div v-if="hasPageData" class="commission-review-footer-summary">
+        <span class="commission-review-footer-summary__label">当页合计：</span>
+        <div class="commission-review-footer-summary__list">
+          <span class="commission-review-footer-summary__item">
+            <span class="commission-review-footer-summary__cell-label">
+              {{ $t('commissionOrder.columns.commissionAmount') }}
+            </span>
+            <span class="commission-review-footer-summary__value">
+              {{ formatAmount(pageTotals.commissionAmount) }}
+            </span>
+          </span>
+          <span class="commission-review-footer-summary__item">
+            <span class="commission-review-footer-summary__cell-label">
+              {{ $t('commissionOrder.columns.baseSalary') }}
+            </span>
+            <span class="commission-review-footer-summary__value">
+              {{ formatAmount(pageTotals.baseSalary) }}
+            </span>
+          </span>
+          <span class="commission-review-footer-summary__item">
+            <span class="commission-review-footer-summary__cell-label">
+              {{ $t('commissionOrder.columns.finalAmount') }}
+            </span>
+            <span class="commission-review-footer-summary__value">
+              {{ formatAmount(pageTotals.finalAmount) }}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div
+        v-else
+        class="commission-review-footer-summary commission-review-footer-summary--empty"
+      >
+        <span class="commission-review-footer-summary__label">当页合计：</span>
+        <span class="text-muted-foreground">暂无数据</span>
+      </div>
+    </template>
+
     <DetailModalComp />
   </Page>
 </template>
+
+<style scoped>
+/* 表格下方：当页金额合计（样式对齐进项发票列表，颜色走设计 token） */
+.commission-review-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+
+  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.commission-review-footer-summary--empty {
+  color: hsl(var(--muted-foreground));
+}
+
+.commission-review-footer-summary__label {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.commission-review-footer-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.commission-review-footer-summary__item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 12px;
+  background: hsl(var(--primary) / 6%);
+  border: 1px solid hsl(var(--primary) / 20%);
+  border-radius: 4px;
+}
+
+.commission-review-footer-summary__cell-label {
+  color: hsl(var(--muted-foreground));
+}
+
+.commission-review-footer-summary__value {
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+</style>
