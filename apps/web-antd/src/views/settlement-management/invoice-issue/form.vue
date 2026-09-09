@@ -591,181 +591,216 @@ onMounted(() => {
       <Spin :spinning="loading">
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
-          <div
-            style="
-              display: flex;
-              flex-shrink: 0;
-              flex-direction: column;
-              width: 400px;
-            "
-          >
-            <Card
-              title="基础配置"
-              size="small"
-              class="left-config-card"
-              style="display: flex; flex: 1; flex-direction: column"
-            >
+          <aside class="basic-config">
+            <Card size="small" class="basic-config__card">
+              <template #title>
+                <div class="basic-config__title">
+                  <span class="basic-config__title-mark"></span>
+                  <span class="basic-config__title-icon">
+                    <IconifyIcon icon="mdi:tune-variant" />
+                  </span>
+                  基础配置
+                </div>
+              </template>
               <Form
                 :model="formData"
                 layout="vertical"
-                :label-col="{ span: 8 }"
-                :wrapper-col="{ span: 22 }"
-                style="display: flex; flex: 1; flex-direction: column"
+                class="basic-config__form"
               >
-                <Form.Item label="归属组织" required>
-                  <MyOrgSelect
-                    v-model="formData.orgId"
-                    placeholder="请选择归属组织"
-                    style="width: 100%"
-                    :disabled="invoiceStatus.editLocked"
-                  />
-                </Form.Item>
-
-                <Form.Item label="结算单位">
-                  <Input
-                    :value="formData.settlementName"
-                    disabled
-                    placeholder="从申请发票中自动获取"
-                  />
-                </Form.Item>
-
-                <Form.Item label="开票人">
-                  <Input :value="applicantName" disabled />
-                </Form.Item>
-
-                <Form.Item label="开票日期">
-                  <Input :value="invoiceIssueTime" disabled />
-                </Form.Item>
-
-                <Form.Item label="发票币别" required>
-                  <CurrencySelect
-                    v-model:value="formData.currencyId"
-                    placeholder="从申请发票中自动获取"
-                    style="width: 100%"
-                    disabled
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  label="开票汇率"
-                  v-if="formData.currencyId && formData.currencyId !== 1"
-                >
-                  <InputNumber
-                    v-model:value="invoiceExchangeRate"
-                    :min="0"
-                    :precision="4"
-                    disabled
-                    style="width: 100%"
-                  />
-                </Form.Item>
-
-                <Form.Item label="开票方式" required>
-                  <Select
-                    v-model:value="formData.invoiceIssueType"
-                    :options="[
-                      {
-                        label: '接口开票',
-                        value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
-                      },
-                      {
-                        label: '手动开票',
-                        value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
-                      },
-                    ]"
-                    style="width: 100%"
-                    placeholder="请选择开票方式"
-                    :disabled="invoiceStatus.editLocked"
-                  />
-                </Form.Item>
-
-                <Form.Item label="其他备注">
-                  <Input.TextArea
-                    v-model:value="formData.require"
-                    placeholder="请输入其他备注信息..."
-                    :rows="1"
-                    :disabled="invoiceStatus.editLocked"
-                  />
-                </Form.Item>
-
-                <!-- ✅ 发票状态（开票状态与冲红状态合并，编辑已保存记录时始终显示） -->
-                <Form.Item v-if="editId" label="发票状态">
-                  <Tag
-                    :color="
-                      getCombinedStatusColor(invoiceStatus.combinedStatus)
-                    "
-                  >
-                    {{ getCombinedStatusLabel(invoiceStatus.combinedStatus) }}
-                  </Tag>
-                </Form.Item>
-
-                <!-- ✅ 新增：冲红信息（发票已冲红时显示） -->
-                <template v-if="isRedInvolved">
-                  <Form.Item label="冲红状态">
-                    <Tag :color="getRedStatusColor(invoiceStatus.redStatus)">
-                      {{ getRedStatusLabel(invoiceStatus.redStatus) }}
-                    </Tag>
-                  </Form.Item>
-
-                  <Form.Item label="冲红原因">
-                    <Input
-                      :value="getRedReasonLabel(invoiceStatus.redReason)"
-                      disabled
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="关联冲红发票号码">
-                    <Input
-                      :value="invoiceStatus.redInvoiceNo || '-'"
-                      disabled
-                    />
-                  </Form.Item>
-                </template>
-
-                <!-- 附件显示区域 -->
-                <div v-if="attachments && attachments.length > 0" class="mt-8">
-                  <div
-                    style="margin-bottom: 8px; font-weight: 500; color: #262626"
-                  >
-                    发票附件 ({{ attachments.length }})
-                  </div>
-                  <div class="attachment-list">
-                    <div
-                      v-for="(item, index) in attachments"
-                      :key="index"
-                      class="attachment-item"
-                    >
+                <!-- 单据信息 -->
+                <section class="basic-config__section">
+                  <div class="basic-config__section-head">单据信息</div>
+                  <div class="basic-config__meta">
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">结算单位</span>
                       <span
-                        class="attachment-name"
-                        :title="item.friendlyFileName"
+                        class="basic-config__meta-value"
+                        :class="{
+                          'basic-config__meta-value--muted':
+                            !formData.settlementName,
+                        }"
                       >
-                        {{ item.friendlyFileName }}
+                        {{ formData.settlementName || '从申请发票中自动获取' }}
                       </span>
-                      <div class="attachment-actions">
-                        <a-button
-                          type="link"
-                          size="small"
-                          class="attachment-btn"
-                          @click="viewAttachment(item)"
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">开票人</span>
+                      <span class="basic-config__meta-value">
+                        {{ applicantName || '-' }}
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">开票日期</span>
+                      <span class="basic-config__meta-value">
+                        {{ invoiceIssueTime || '-' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div v-if="editId" class="basic-config__status">
+                    <span class="basic-config__meta-label">发票状态</span>
+                    <Tag
+                      :color="
+                        getCombinedStatusColor(invoiceStatus.combinedStatus)
+                      "
+                    >
+                      {{ getCombinedStatusLabel(invoiceStatus.combinedStatus) }}
+                    </Tag>
+                  </div>
+                </section>
+
+                <!-- 开票要素 -->
+                <section
+                  class="basic-config__section basic-config__section--accent"
+                >
+                  <div class="basic-config__section-head">开票要素</div>
+                  <Form.Item label="归属组织" required>
+                    <MyOrgSelect
+                      v-model="formData.orgId"
+                      placeholder="请选择归属组织"
+                      style="width: 100%"
+                      :disabled="invoiceStatus.editLocked"
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="发票币别" required>
+                    <CurrencySelect
+                      v-model:value="formData.currencyId"
+                      placeholder="从申请发票中自动获取"
+                      style="width: 100%"
+                      disabled
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    v-if="formData.currencyId && formData.currencyId !== 1"
+                    label="开票汇率"
+                  >
+                    <InputNumber
+                      v-model:value="invoiceExchangeRate"
+                      :min="0"
+                      :precision="4"
+                      disabled
+                      style="width: 100%"
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="开票方式" required>
+                    <Select
+                      v-model:value="formData.invoiceIssueType"
+                      :options="[
+                        {
+                          label: '接口开票',
+                          value:
+                            InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
+                        },
+                        {
+                          label: '手动开票',
+                          value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
+                        },
+                      ]"
+                      style="width: 100%"
+                      placeholder="请选择开票方式"
+                      :disabled="invoiceStatus.editLocked"
+                    />
+                  </Form.Item>
+                </section>
+
+                <!-- 冲红信息 -->
+                <section v-if="isRedInvolved" class="basic-config__section">
+                  <div class="basic-config__section-head">冲红信息</div>
+                  <div class="basic-config__meta">
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">冲红状态</span>
+                      <span class="basic-config__meta-value">
+                        <Tag
+                          :color="getRedStatusColor(invoiceStatus.redStatus)"
                         >
-                          <IconifyIcon icon="ant-design:eye-outlined" />
-                          查看
-                        </a-button>
-                        <a-button
-                          type="link"
-                          size="small"
-                          class="attachment-btn"
-                          @click="downloadAttachment(item)"
+                          {{ getRedStatusLabel(invoiceStatus.redStatus) }}
+                        </Tag>
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">冲红原因</span>
+                      <span class="basic-config__meta-value">
+                        {{ getRedReasonLabel(invoiceStatus.redReason) || '-' }}
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">关联红票</span>
+                      <span class="basic-config__meta-value">
+                        {{ invoiceStatus.redInvoiceNo || '-' }}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- 补充说明 -->
+                <section class="basic-config__section">
+                  <div class="basic-config__section-head">其他备注</div>
+                  <Form.Item>
+                    <Input.TextArea
+                      v-model:value="formData.require"
+                      placeholder="请输入其他备注信息..."
+                      :rows="3"
+                      :disabled="invoiceStatus.editLocked"
+                    />
+                  </Form.Item>
+
+                  <!-- 附件显示区域 -->
+                  <div
+                    v-if="attachments && attachments.length > 0"
+                    class="basic-config__attachments"
+                  >
+                    <div
+                      style="
+                        margin-bottom: 8px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                      "
+                    >
+                      发票附件 ({{ attachments.length }})
+                    </div>
+                    <div class="attachment-list">
+                      <div
+                        v-for="(item, index) in attachments"
+                        :key="index"
+                        class="attachment-item"
+                      >
+                        <span
+                          class="attachment-name"
+                          :title="item.friendlyFileName"
                         >
-                          <IconifyIcon icon="ant-design:download-outlined" />
-                          下载
-                        </a-button>
+                          {{ item.friendlyFileName }}
+                        </span>
+                        <div class="attachment-actions">
+                          <a-button
+                            type="link"
+                            size="small"
+                            class="attachment-btn"
+                            @click="viewAttachment(item)"
+                          >
+                            <IconifyIcon icon="ant-design:eye-outlined" />
+                            查看
+                          </a-button>
+                          <a-button
+                            type="link"
+                            size="small"
+                            class="attachment-btn"
+                            @click="downloadAttachment(item)"
+                          >
+                            <IconifyIcon icon="ant-design:download-outlined" />
+                            下载
+                          </a-button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
               </Form>
             </Card>
-          </div>
+          </aside>
 
           <!-- 右侧发票区域 -->
           <div style="flex: 1; min-width: 0">
@@ -1450,6 +1485,10 @@ onMounted(() => {
   </Page>
 </template>
 
+<style lang="scss">
+@import '#/views/_shared/invoice-basic-config/basic-config.scss';
+</style>
+
 <style scoped>
 /* 附件列表样式 */
 .attachment-list {
@@ -1515,11 +1554,5 @@ onMounted(() => {
 
 .mt-4 {
   margin-top: 16px;
-}
-
-/* 基础信息（左侧卡片）每个表单项下边距收窄到 18px，
-   使左侧表单整体高度与右侧发票信息卡片对齐 */
-:deep(.left-config-card .ant-form-item) {
-  margin-bottom: 18px;
 }
 </style>

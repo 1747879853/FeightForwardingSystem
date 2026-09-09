@@ -1,0 +1,175 @@
+/* 开票申请 / 发票开出 左侧「基础配置」共享样式 */
+
+.basic-config {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  width: 400px;
+}
+
+.basic-config__card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.basic-config__card .ant-card-head {
+  min-height: 48px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, hsl(var(--card)) 100%);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.basic-config__card .ant-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+}
+
+.basic-config__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.basic-config__title-mark {
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, #0f87ff, #006ce6);
+  border-radius: 2px;
+}
+
+.basic-config__title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  color: #006ce6;
+  background: #e8f3ff;
+  border-radius: 8px;
+}
+
+.basic-config__form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.basic-config__section {
+  padding: 14px 16px 4px;
+}
+
+.basic-config__section + .basic-config__section {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.basic-config__section--accent {
+  background: linear-gradient(180deg, #f3f8ff 0%, transparent 100%);
+}
+
+.basic-config__section-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.basic-config__section-head::before {
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: #94a3b8;
+  border-radius: 50%;
+}
+
+.basic-config__section--accent .basic-config__section-head {
+  color: #006ce6;
+}
+
+.basic-config__section--accent .basic-config__section-head::before {
+  background: #006ce6;
+}
+
+.basic-config__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.basic-config__meta-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.basic-config__meta-label {
+  padding-top: 1px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #8c95a3;
+}
+
+.basic-config__meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--foreground));
+  word-break: break-all;
+}
+
+.basic-config__meta-value--muted {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.basic-config__form .ant-form-item {
+  margin-bottom: 14px;
+}
+
+.basic-config__form .ant-form-item-label > label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.basic-config__form
+  .ant-form-item-label
+  > label.ant-form-item-required::before {
+  color: #f5222d;
+}
+
+.basic-config__form .ant-input[disabled],
+.basic-config__form .ant-input-number-disabled,
+.basic-config__form .ant-select-disabled .ant-select-selector {
+  color: #475569;
+  background: #f8fafc;
+}
+
+.basic-config__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.basic-config__attachments {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}

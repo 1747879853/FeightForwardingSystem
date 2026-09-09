@@ -635,57 +635,76 @@ onMounted(async () => {
         <!-- UI内容保持不变，只是更简洁 -->
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
-          <div
-            style="
-              display: flex;
-              flex-shrink: 0;
-              flex-direction: column;
-              width: 400px;
-            "
-          >
-            <Card
-              title="基础配置"
-              size="small"
-              style="display: flex; flex: 1; flex-direction: column"
-            >
-              <template #default>
-                <Form
-                  :model="formData"
-                  layout="vertical"
-                  :label-col="{ span: 8 }"
-                  :wrapper-col="{ span: 22 }"
-                  style="display: flex; flex: 1; flex-direction: column"
+          <aside class="basic-config">
+            <Card size="small" class="basic-config__card">
+              <template #title>
+                <div class="basic-config__title">
+                  <span class="basic-config__title-mark"></span>
+                  <span class="basic-config__title-icon">
+                    <IconifyIcon icon="mdi:tune-variant" />
+                  </span>
+                  基础配置
+                </div>
+              </template>
+              <Form
+                :model="formData"
+                layout="vertical"
+                class="basic-config__form"
+              >
+                <!-- 单据信息（只读摘要，突出身份） -->
+                <section class="basic-config__section">
+                  <div class="basic-config__section-head">单据信息</div>
+                  <div class="basic-config__meta">
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">申请单号</span>
+                      <span
+                        class="basic-config__meta-value"
+                        :class="{
+                          'basic-config__meta-value--muted':
+                            !formData.applicationNo,
+                        }"
+                      >
+                        {{ formData.applicationNo || '保存后自动生成' }}
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">结算对象</span>
+                      <span
+                        class="basic-config__meta-value"
+                        :class="{
+                          'basic-config__meta-value--muted':
+                            !settlementObjectName,
+                        }"
+                      >
+                        {{ settlementObjectName || '从费用中自动获取' }}
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">开票申请人</span>
+                      <span class="basic-config__meta-value">
+                        {{ applicantName || '-' }}
+                      </span>
+                    </div>
+                    <div class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">申请日期</span>
+                      <span class="basic-config__meta-value">
+                        {{ applicationDate || '-' }}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- 开票要素（可编辑重点区） -->
+                <section
+                  class="basic-config__section basic-config__section--accent"
                 >
-                  <!-- ✅ 新增：申请单号和结算对象 -->
-                  <Form.Item label="申请单号">
-                    <span>{{ formData.applicationNo || '自动生成' }}</span>
-                  </Form.Item>
-                  <Form.Item label="结算对象">
-                    <Input
-                      :value="settlementObjectName"
-                      disabled
-                      placeholder="从费用中自动获取"
-                    />
-                  </Form.Item>
+                  <div class="basic-config__section-head">开票要素</div>
                   <Form.Item label="归属组织" required>
                     <MyOrgSelect
                       v-model="formData.orgId"
                       placeholder="请选择归属组织"
                       style="width: 100%"
                     />
-                  </Form.Item>
-                  <!-- <Form.Item label="开票公司">
-                    <Input
-                      :value="applicantCompanyName"
-                      disabled
-                      placeholder="根据归属组织自动获取"
-                    />
-                  </Form.Item> -->
-                  <Form.Item label="开票申请人">
-                    <Input :value="applicantName" disabled />
-                  </Form.Item>
-                  <Form.Item label="开票申请日期">
-                    <Input :value="applicationDate" disabled />
                   </Form.Item>
                   <Form.Item label="发票币别" required>
                     <CurrencySelect
@@ -696,8 +715,8 @@ onMounted(async () => {
                     />
                   </Form.Item>
                   <Form.Item
-                    label="发票汇率"
                     v-if="formData.currencyId && formData.currencyId !== 1"
+                    label="发票汇率"
                   >
                     <InputNumber
                       v-model:value="invoiceExchangeRate"
@@ -706,18 +725,23 @@ onMounted(async () => {
                       style="width: 100%"
                     />
                   </Form.Item>
-                  <Form.Item label="客户开票要求">
+                </section>
+
+                <!-- 补充说明 -->
+                <section class="basic-config__section">
+                  <div class="basic-config__section-head">客户开票要求</div>
+                  <Form.Item>
                     <Input.TextArea
                       v-model:value="formData.require"
                       placeholder="请输入客户的特殊开票要求..."
-                      :rows="3"
+                      :rows="4"
                       :disabled="isReadOnly"
                     />
                   </Form.Item>
-                </Form>
-              </template>
+                </section>
+              </Form>
             </Card>
-          </div>
+          </aside>
 
           <!-- 右侧发票区域（保持原有UI结构，不做任何修改） -->
           <div style="flex: 1; min-width: 0">
@@ -1330,3 +1354,7 @@ onMounted(async () => {
     </Card>
   </Page>
 </template>
+
+<style lang="scss">
+@import '#/views/_shared/invoice-basic-config/basic-config.scss';
+</style>

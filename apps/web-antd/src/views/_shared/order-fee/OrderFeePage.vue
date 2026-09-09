@@ -1006,16 +1006,23 @@ onMounted(async () => {
           </div>
         </Card>
 
-        <!-- 外层容器：包含应收应付表格和操作按钮 -->
-        <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-          <!-- 右侧操作按钮区域 -->
-          <div class="flex shrink-0 justify-end gap-2 px-1">
-            <Space>
-              <!-- 调试信息 -->
-              <span class="text-sm text-gray-500">
-                已选中: {{ selectedFeeIds.length }} 条费用
+        <!-- 右侧费用录入：统一面板背景与分区 -->
+        <div class="fee-entry-panel">
+          <header class="fee-entry-panel__toolbar">
+            <div class="fee-entry-panel__toolbar-left">
+              <span class="fee-entry-panel__toolbar-mark"></span>
+              <span class="fee-entry-panel__toolbar-title">费用录入</span>
+              <span
+                class="fee-entry-panel__selection"
+                :class="{
+                  'fee-entry-panel__selection--active':
+                    selectedFeeIds.length > 0,
+                }"
+              >
+                已选 {{ selectedFeeIds.length }} 条
               </span>
-
+            </div>
+            <Space class="fee-entry-panel__toolbar-actions">
               <Button
                 v-access:code="invoiceApplicationPerm.add"
                 :disabled="selectedFeeIds.length === 0"
@@ -1034,7 +1041,6 @@ onMounted(async () => {
                 创建付费申请
               </Button>
 
-              <!-- 更多操作下拉菜单 -->
               <DropdownButton type="primary" @click="handleSubmitAllFees">
                 整票提交
                 <template #overlay>
@@ -1052,12 +1058,12 @@ onMounted(async () => {
                 </template>
               </DropdownButton>
             </Space>
-          </div>
+          </header>
 
           <!-- 应收/应付可上下拖拽分割区 -->
           <div
             ref="splitAreaRef"
-            class="split-area flex min-h-0 flex-1 flex-col"
+            class="fee-entry-panel__body split-area"
             :class="{ 'is-resizing': isDragging }"
           >
             <!-- 应收费用表格 -->
@@ -1104,23 +1110,21 @@ onMounted(async () => {
             />
           </div>
 
-          <div
-            class="total-amount flex shrink-0 flex-wrap rounded-md px-4 py-1 shadow"
-          >
+          <footer class="fee-entry-panel__footer total-amount">
             <div
               v-for="(item, index) in totalAmount"
-              class="mr-4 flex"
+              class="total-amount__item"
               :key="item.name"
             >
-              <span class="flex">{{ item.name }}</span>
-              <span class="ml-2 flex font-medium" :class="item.color">{{
+              <span class="total-amount__label">{{ item.name }}</span>
+              <span class="total-amount__value" :class="item.color">{{
                 item.value
               }}</span>
-              <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
-                >|
+              <span class="total-amount__split" v-show="(index + 1) % 3 === 0">
+                |
               </span>
             </div>
-          </div>
+          </footer>
         </div>
       </div>
     </Spin>
@@ -1318,6 +1322,118 @@ onMounted(async () => {
   flex-direction: row-reverse;
 }
 
+/* ---------- 右侧费用录入统一面板 ---------- */
+.fee-entry-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e4e8ef;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.fee-entry-panel__toolbar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+  border-bottom: 1px solid #e8ecf3;
+}
+
+.fee-entry-panel__toolbar-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.fee-entry-panel__toolbar-mark {
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(180deg, #0f87ff, #006ce6);
+  border-radius: 2px;
+}
+
+.fee-entry-panel__toolbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.fee-entry-panel__selection {
+  padding: 1px 8px;
+  font-size: 12px;
+  color: #8c95a3;
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.fee-entry-panel__selection--active {
+  color: #006ce6;
+  background: #e8f3ff;
+}
+
+.fee-entry-panel__toolbar-actions {
+  flex-shrink: 0;
+}
+
+.fee-entry-panel__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 12px;
+  background: #f5f7fb;
+}
+
+/* 面板内应收/应付卡片：白底卡片浮在统一灰蓝底上 */
+.fee-entry-panel :deep(.order-fee-card) {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e4e8ef;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(16 42 83 / 4%);
+}
+
+.fee-entry-panel :deep(.order-fee-card > .ant-card-body) {
+  padding: 0 !important;
+}
+
+.fee-entry-panel :deep(.order-fee-card .handsontable-container) {
+  border: none;
+  border-radius: 0;
+}
+
+.fee-entry-panel :deep(.order-fee-card .table-header) {
+  padding: 10px 14px;
+  background: #fafbfd;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.fee-entry-panel :deep(.order-fee-card .table-title) {
+  font-size: 13px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.fee-entry-panel__footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  align-items: center;
+  padding: 8px 16px;
+  background: #fff;
+  border-top: 1px solid #e8ecf3;
+}
+
 /* 应收/应付上下拖拽分割条 */
 .split-area.is-resizing {
   user-select: none;
@@ -1339,7 +1455,7 @@ onMounted(async () => {
 }
 
 .drag-handle .drag-line {
-  background-color: #e4e8ef;
+  background-color: #cdd5e0;
   border-radius: 999px;
   transition:
     background-color 0.2s ease,
@@ -1366,14 +1482,26 @@ onMounted(async () => {
   height: 4px;
 }
 
-.total-amount {
-  display: flex;
-  flex-wrap: wrap;
-  background: #fff;
+.total-amount__item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-right: 12px;
+}
 
-  .split {
-    color: #33333345;
-  }
+.total-amount__label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.total-amount__value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.total-amount__split {
+  margin: 0 8px 0 4px;
+  color: #e2e8f0;
 }
 
 .green {

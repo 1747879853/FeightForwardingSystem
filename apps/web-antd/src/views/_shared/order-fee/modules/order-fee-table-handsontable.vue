@@ -943,7 +943,7 @@ watch(
       <img v-show="type === 0" :src="yiwanjie" alt="已完结" class="w-46 h-46" />
     </div> -->
 
-    <div class="flex min-h-0 flex-1 flex-col px-1">
+    <div class="flex min-h-0 flex-1 flex-col">
       <div class="order-ctn-table">
         <div class="handsontable-container">
           <div class="table-header">
@@ -1101,7 +1101,7 @@ watch(
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding: 0 2px 12px !important;
+    padding: 0 !important;
   }
 
   .order-ctn-table {
