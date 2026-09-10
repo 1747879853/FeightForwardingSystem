@@ -411,7 +411,13 @@ const [BankAccountModalComponent, bankAccountModalApi] = useVbenModal({
 function onAddBankAccount() {
   const orgId = selectedKeys.value[0];
   if (!orgId) return;
-  bankAccountModalApi.setData({ organizationUnitId: orgId }).open();
+  const accountName =
+    selectedOrgDetail.value?.displayName ??
+    selectedOrg.value?.displayName ??
+    '';
+  bankAccountModalApi
+    .setData({ organizationUnitId: orgId, accountName })
+    .open();
 }
 
 function onEditBankAccount(

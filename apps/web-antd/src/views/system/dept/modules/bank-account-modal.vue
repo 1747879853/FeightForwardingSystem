@@ -83,6 +83,7 @@ const [Modal, modalApi] = useVbenModal({
     const data = modalApi.getData<{
       organizationUnitId: number;
       id?: string;
+      accountName?: string;
     }>();
 
     organizationUnitId.value = data?.organizationUnitId ?? 0;
@@ -109,7 +110,11 @@ const [Modal, modalApi] = useVbenModal({
       }
     } else {
       editId.value = undefined;
-      formApi.resetForm();
+      await formApi.resetForm();
+      const accountName = data?.accountName?.trim();
+      if (accountName) {
+        await formApi.setValues({ accountName });
+      }
     }
   },
 });

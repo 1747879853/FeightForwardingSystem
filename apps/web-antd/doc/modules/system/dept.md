@@ -2,7 +2,7 @@
 title: 部门管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-28
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,6 +28,7 @@ last_updated: 2026-08-28
 - **公司 Logo：** 组织类型为「公司」时，编辑弹窗以缩略图卡片（`picture-card`）上传单张 Logo；保存后详情页在标题与「组织名称」旁直接展示 Logo，不再单独占一行。部门不展示、不维护该字段。
 - **开票应用凭据：** 组织类型为「公司」时，新增/编辑弹窗可维护 `invoiceAppKey`、`invoiceAppSecret`（密码框）、`invoiceAccessToken`（密码框）。每家公司在开票服务商侧独立配置，与统一社会信用代码（销方税号）一起用于接口开票。Token 是固定值，向服务商索取后填入，系统不会自动获取或刷新。编辑必须先调 `GetOrganizationUnitAsync` 回显后再整体提交。详情页展示 AppKey，AppSecret / Token 只显示「已配置/未配置」。部门不展示、不维护。
 - **组织人数展示：** 左侧树中公司节点同时展示本级人数与含下级总人数，普通组织节点仅展示本级人数；组织信息区域不展示组织编码。
+- **公司银行账户：** 仅公司节点展示「银行账户」Tab。新增时「账户名称」默认带出当前公司名称（`displayName`），可改；编辑按已有账户回填。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -61,6 +62,7 @@ last_updated: 2026-08-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 公司新增银行账户时，「账户名称」默认带出当前公司名称，编辑仍按详情回填。 | 新建弹窗传入 `displayName`，`resetForm` 后再写 `accountName`。详见 `changelogs/change-log-2026-09-10-dept-bank-account-name-default.md`。 |
 | 2026-08-28 | `Feature` | 公司级组织编辑增加开票令牌 Token（密码框）；详情页只显示是否已配置。 | Token 与 AppKey/AppSecret 同属全量覆盖字段；固定值、不自动刷新。详见 `changelogs/change-log-2026-08-28-dept-company-invoice-access-token.md`。 |
 | 2026-08-22 | `Fix` | 公司 Logo 上传后只显示缩略图，不再附带文件名列表。 | 与船公司共用 `FileUploadInput` 的 `picture-card`：隐藏自定义文件名列表与 Ant Design 文件名。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |
 | 2026-08-18 | `Feature` | 公司级组织支持维护开票应用 AppKey / AppSecret；详情页密钥不明文展示。 | 更新接口全量覆盖这两个字段；编辑必须走 `GetOrganizationUnitAsync` 回显，不能用列表数据。详见 `changelogs/change-log-2026-08-18-dept-company-invoice-app.md`。 |
