@@ -1565,9 +1565,7 @@ onMounted(() => {
               <!-- 客户：一级勾选 + 二级属性（同行样式，增强区分） -->
               <div class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow">
                 <div class="type-row__primary">
-                  <span class="type-row__label">{{
-                    $t('seaExport.client.smallTitle.customerType')
-                  }}</span>
+   
                   <div
                     class="role-chip"
                     :class="{
@@ -1603,9 +1601,7 @@ onMounted(() => {
               <!-- 供应商：一级勾选 + 二级属性 -->
               <div class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow">
                 <div class="type-row__primary">
-                  <span class="type-row__label">{{
-                    $t('seaExport.client.smallTitle.supplierType')
-                  }}</span>
+   
                   <div
                     class="role-chip"
                     :class="{

@@ -230,6 +230,11 @@ export const getIndustryCategoryOptions = () => [
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
+  {
+    key: 22,
+    value: 'v',
+    label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
+  },
 ];
 
 export const getCustomerIndustryCategoryOptions = () => [
@@ -253,6 +258,7 @@ export const getCustomerIndustryCategoryOptions = () => [
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
+
 ];
 
 export const getSupplierIndustryCategoryOptions = () => [
@@ -313,6 +319,11 @@ export const getSupplierIndustryCategoryOptions = () => [
     key: 19,
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
+  },
+  {
+    key: 22,
+    value: 'v',
+    label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
   },
 ];
 
