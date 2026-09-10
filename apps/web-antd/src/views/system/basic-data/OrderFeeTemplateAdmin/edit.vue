@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 <template>
   <Page
     auto-content-height
-    content-class="oft-editor-page flex flex-col overflow-auto"
+    content-class="oft-editor-page flex min-h-0 flex-col overflow-auto"
   >
     <div v-loading="loading" class="oft-editor">
       <!-- 页头：标题 + 主操作 -->
@@ -832,6 +832,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .oft-editor {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 16px;
   min-height: 100%;
@@ -852,6 +853,7 @@ onBeforeUnmount(() => {
 
 .oft-editor__hero {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   gap: 12px 16px;
   align-items: center;
@@ -921,11 +923,24 @@ onBeforeUnmount(() => {
 
 .oft-panel--form {
   /* 表单区允许内容完整展示，避免最后一行被 overflow 裁切 */
+  flex-shrink: 0;
   overflow: visible;
 }
 
 .oft-panel--table {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
+
+  :deep(.ant-card-body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0 !important;
+  }
 
   :deep(.order-fee-template-table .handsontable-container) {
     border: none;
@@ -935,6 +950,7 @@ onBeforeUnmount(() => {
 
 .oft-panel__head {
   display: flex;
+  flex-shrink: 0;
   gap: 12px;
   align-items: center;
   justify-content: space-between;
@@ -1030,6 +1046,13 @@ onBeforeUnmount(() => {
 }
 
 .oft-panel__body--table {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+
+  /* 固定可视高度：行多时由 Handsontable 内部竖滚，避免被父级 overflow 裁切 */
+  height: clamp(280px, calc(100vh - 380px), 720px);
+  min-height: 280px;
   padding: 0;
 }
 </style>

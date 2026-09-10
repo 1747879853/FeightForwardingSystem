@@ -315,13 +315,17 @@ function handleDeleteSelectedRows() {
             </div>
           </div>
         </template>
-        <OrderFeeTemplateTable
-          ref="hotTableRef"
-          v-model:data-source="feeItems"
-          :dropdown-sources="dropdownSources"
-          :all-clients-by-industry="dropdownSources.allClientsByIndustry.value"
-          :form-api="formApi"
-        />
+        <div class="modal-fee-table-wrap">
+          <OrderFeeTemplateTable
+            ref="hotTableRef"
+            v-model:data-source="feeItems"
+            :dropdown-sources="dropdownSources"
+            :all-clients-by-industry="
+              dropdownSources.allClientsByIndustry.value
+            "
+            :form-api="formApi"
+          />
+        </div>
       </Card>
     </div>
   </Modal>
@@ -337,5 +341,12 @@ function handleDeleteSelectedRows() {
   max-height: none !important;
   padding: 12px;
   overflow: visible !important;
+}
+
+.modal-fee-table-wrap {
+  display: flex;
+  flex-direction: column;
+  height: min(480px, 60vh);
+  min-height: 280px;
 }
 </style>

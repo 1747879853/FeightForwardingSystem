@@ -713,8 +713,11 @@ export function useHotSettings(
     licenseKey: 'non-commercial-and-evaluation',
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     minSpareRows: 0, // ✅ 修改为0，删除后不会自动新增行
-    autoWrapRow: true,
-    autoWrapCol: true,
+    autoWrapRow: false,
+    autoWrapCol: false,
+    autoRowSize: false,
+    autoColumnSize: false,
+    renderAllRows: false,
     manualColumnResize: true,
     // 列已带固定 width；stretchH:'all' 空数据时易算错总宽
     stretchH: 'none' as const,

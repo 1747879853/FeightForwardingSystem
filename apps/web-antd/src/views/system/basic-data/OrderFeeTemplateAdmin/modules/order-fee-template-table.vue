@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch, shallowRef, nextTick, onMounted } from 'vue';
+import { ref, watch, shallowRef, nextTick, onMounted, onUnmounted } from 'vue';
 import Handsontable from 'handsontable';
 import { useDropdownSources } from './composables/useDropdownSources';
 import { useFieldLinkage } from './composables/useFieldLinkage';
@@ -137,7 +137,40 @@ const { hotSettings } = useHotSettings(
 
 // Handsontable 实例引用
 const hotContainer = ref<HTMLDivElement>();
+const fillRef = ref<HTMLDivElement | null>(null);
 const hotInstance = ref<Handsontable | null>(null);
+
+/** 动态高度：填满父级剩余空间，由 HOT 内部竖向滚动，避免行多时被 overflow 裁切 */
+const dynHeight = ref(420);
+let resizeObserver: ResizeObserver | null = null;
+let measureRafId = 0;
+
+const measureHeight = () => {
+  const el = fillRef.value;
+  if (!el) return;
+  const h = Math.floor(el.getBoundingClientRect().height);
+  if (h < 160) return;
+  if (h === dynHeight.value) return;
+  dynHeight.value = h;
+  if (hotInstance.value && !hotInstance.value.isDestroyed) {
+    hotInstance.value.updateSettings({ height: h }, false);
+  }
+};
+
+const scheduleMeasure = () => {
+  if (measureRafId) return;
+  measureRafId = requestAnimationFrame(() => {
+    measureRafId = 0;
+    measureHeight();
+  });
+};
+
+const setupResizeObserver = () => {
+  if (resizeObserver || !fillRef.value) return;
+  if (typeof ResizeObserver === 'undefined') return;
+  resizeObserver = new ResizeObserver(scheduleMeasure);
+  resizeObserver.observe(fillRef.value);
+};
 
 // ==================== Handsontable 初始化 ====================
 
@@ -152,10 +185,13 @@ function initHotTable() {
     hotInstance.value.destroy();
   }
 
+  measureHeight();
+
   // 创建新实例
   hotInstance.value = new Handsontable(hotContainer.value, {
     ...hotSettings.value,
     data: props.dataSource,
+    height: dynHeight.value,
 
     // ✅ 新增：监听选中事件
     afterSelectionEnd(
@@ -164,8 +200,6 @@ function initHotTable() {
       row2: number,
       column2: number,
     ) {
-      //console.log('📍 [afterSelectionEnd] 选中区域:', { row, column, row2, column2 });
-
       // 清空之前的选中
       selectedRows.value.clear();
 
@@ -177,12 +211,8 @@ function initHotTable() {
       for (let i = minRow; i <= maxRow; i++) {
         selectedRows.value.add(i);
       }
-
-      // console.log('✅ [afterSelectionEnd] 当前选中的行:', Array.from(selectedRows.value));
     },
   });
-
-  // console.log('✅ [initHotTable] Handsontable 初始化完成');
 }
 
 // ==================== 数据同步 ====================
@@ -457,11 +487,19 @@ watch(
 // 组件挂载后初始化 Handsontable
 nextTick(() => {
   initHotTable();
+  setupResizeObserver();
+  scheduleMeasure();
 });
 
-// 组件卸载时销毁 Handsontable
-import { onUnmounted } from 'vue';
 onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (measureRafId) {
+    cancelAnimationFrame(measureRafId);
+    measureRafId = 0;
+  }
   if (hotInstance.value) {
     hotInstance.value.destroy();
     hotInstance.value = null;
@@ -688,18 +726,25 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="order-fee-template-table">
+  <div ref="fillRef" class="order-fee-template-table">
     <div ref="hotContainer" class="handsontable-container"></div>
   </div>
 </template>
 
 <style scoped lang="scss">
-/* 对齐费用录入 OrderFeeTableCore / order-fee-card 的表格观感 */
+/* 对齐费用录入 OrderFeeTableCore：填满父级高度，内部竖向滚动 */
 .order-fee-template-table {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   width: 100%;
+  min-height: 0;
 
   .handsontable-container {
     position: relative;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-top: none;
@@ -708,6 +753,11 @@ onMounted(() => {
 
   :deep(.handsontable) {
     font-size: 13px;
+    scrollbar-color: auto;
+
+    .wtHolder {
+      scrollbar-color: auto;
+    }
 
     .htCore {
       border-collapse: collapse;
