@@ -93,13 +93,22 @@ export function useInvoiceInfo(
    * 根据币别更新销售方银行
    */
   function updateOrgBankByCurrency() {
-    if (!orgBankAccounts.value.length || !formData.value.currencyId) {
-      console.warn('⚠️ 缺少银行列表或币别，清空销售方银行选择');
-      formData.value.orgBankAccountId = undefined;
+    if (!formData.value.currencyId) return;
+    if (!orgBankAccounts.value.length) {
       return;
     }
 
     const currencyId = formData.value.currencyId;
+    const currentId = formData.value.orgBankAccountId;
+    if (
+      currentId &&
+      orgBankAccounts.value.some(
+        (b: any) =>
+          String(b.id) === String(currentId) && b.currencyId === currencyId,
+      )
+    ) {
+      return;
+    }
 
     // 先查找默认的银行
     const defaultBank = orgBankAccounts.value.find(
@@ -109,7 +118,6 @@ export function useInvoiceInfo(
     if (defaultBank) {
       formData.value.orgBankAccountId = defaultBank.id;
     } else {
-      // ✅ 修改：如果没有默认银行，自动选择第一个匹配的银行
       const firstMatchedBank = orgBankAccounts.value.find(
         (b: any) => b.currencyId === currencyId,
       );

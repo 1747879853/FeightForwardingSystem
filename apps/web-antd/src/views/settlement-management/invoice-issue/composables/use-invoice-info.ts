@@ -55,14 +55,23 @@ export function useInvoiceInfo(
    * 根据币别更新销售方银行
    */
   function updateOrgBankByCurrency() {
-    if (!orgBankAccounts.value.length || !formData.value.currencyId) {
-      formData.value.orgBankAccountId = undefined;
+    if (!formData.value.currencyId) return;
+    if (!orgBankAccounts.value.length) {
       return;
     }
 
     const currencyId = formData.value.currencyId;
+    const currentId = formData.value.orgBankAccountId;
+    if (
+      currentId &&
+      orgBankAccounts.value.some(
+        (b: any) =>
+          String(b.id) === String(currentId) && b.currencyId === currencyId,
+      )
+    ) {
+      return;
+    }
 
-    // 先查找默认的银行
     const defaultBank = orgBankAccounts.value.find(
       (b: any) => b.currencyId === currencyId && b.default,
     );

@@ -2,7 +2,7 @@
 title: 业务选择组件
 module: shared
 author: 前端团队
-last_updated: 2026-09-02
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,7 +14,7 @@ last_updated: 2026-09-02
 - **可编辑选择：** 通过下拉检索、分页加载或级联选择维护业务字段；关键词搜索默认 300ms 防抖后再打接口。
 - **编辑回显：** 使用选项缓存、已选对象或详情接口，将业务 ID 还原为可读名称。`selectedItems` 可只带精简字段做关闭态 label；有关键词搜索时已选项不注入候选列表，完整展示依赖分页/详情数据，完整 option 不会被精简回显项覆盖。
 - **禁用只读：** 组件整体 `disabled` 时保留名称解析能力，但以无边框、无箭头且垂直居中的纯文本外观展示；无值时显示 `-` 而非 placeholder。
-- **归属组织录入（`MyOrgSelect`）：** 数据权限单据录入 `orgId` 专用下拉，选项来自本人**直属组织**（`use-my-org` 从 `GetMy.organizations` 派生），挂载时未选值自动填默认组织；区别于 `OrganizationSelect`（全量组织树，用于筛选/系统管理）。
+- **归属组织录入（`MyOrgSelect`）：** 数据权限单据录入 `orgId` 专用下拉，选项来自本人**直属组织**（`use-my-org` 从 `GetMy.organizations` 派生，label 展示所属公司名、value 仍是部门 id），挂载时未选值自动填默认组织；已选值不在本人选项时按所属公司名回显，避免裸显 id。区别于 `OrganizationSelect`（全量组织树，用于筛选/系统管理）。
 - **指定用户所属组织（`UserOrgSelect`）：** 「先选人、再选该人所属组织」场景（如海出选定销售后选 `orgId`）；数据来自 `GetAllUserOrganizationsAsync` 全量缓存（`use-all-user-org`）；`userId` 变化时选项刷新，默认填该用户默认组织，越范围旧值自动清空。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -31,7 +31,7 @@ last_updated: 2026-09-02
 | **modelValue/value** | 当前选中的业务主键或主键数组 | 各业务主数据接口 | 由 options、selectedItems 或详情接口解析显示名称 | 雪花主键经 json-bigint 为 **string**，表单校验与提交须原样透传，禁止 `Number()` |
 | **disabled** | 是否整体禁止编辑 | 页面权限或业务状态 | 为 `true` 时切换为只读文本外观 | 只控制交互和视觉，不替代后端权限 |
 | **selectedItems** | 编辑回显对象（可精简字段，至少能解析 label） | 页面详情数据 | 无关键词时 pin 进选项缓存；有关键词时不注入候选列表；字段齐全的接口数据优先 | 分页选择组件按需传入；字段不齐时组件应拉详情补全 |
-| **orgId (MyOrgSelect)** | 数据权限单据的归属组织 id | `GetMy.organizations` → `use-my-org` 直属组织 | 选中后可经 `getMyOrgCompanyNode` 派生本位币/税号/开票公司/公司银行账户 | 除客户/自动费用模板外**必填**；须为本人直属组织（后端完全相等校验） |
+| **orgId (MyOrgSelect)** | 数据权限单据的归属组织 id | `GetMy.organizations` → `use-my-org` 直属组织 | 选中后可经 `getMyOrgCompanyNode` / `resolveMyOrgCompanyNode` 派生本位币/税号/开票公司/公司银行账户；跨部门回显走所属公司名 | 除客户/自动费用模板外**必填**；提交值为本人或单据所属人直属组织（后端完全相等校验），不是公司 id |
 | **orgId (UserOrgSelect)** | 指定用户（如销售）的归属组织 id | `UserAdmin/GetAllUserOrganizationsAsync` → `use-all-user-org` | 依赖 `userId`；换人后选项刷新；可经 `getUserOrgCompanyNode(userId, orgId)` 取公司节点 | 须先有 `userId`；值为该用户直属组织 id |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -46,6 +46,7 @@ last_updated: 2026-09-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | `MyOrgSelect` 已选部门不在本人下拉里时，关闭态用所属公司名回显，提交值仍是该部门 id。 | 回显项只补 Select 关闭态 label，不进入下拉候选，也不把 `orgId` 改成公司 id。详见 `changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md`。 |
 | 2026-09-02 | `Fix` | `PortSelect` 按 EDI 回填时不再把五字码当港口 Id 去打详情。 | `ensureSelectedLoaded` 仅在 `valueKey=id` 时调 `DetailAsync`。详见 `changelogs/change-log-2026-09-02-port-select-edi-not-id.md`。 |
 | 2026-08-05 | `Fix` | 分页下拉：搜索不固定注入已选项；完整 option 不被精简 selectedItems 覆盖；关键词搜索默认 300ms 防抖；PortSelect 字段不齐时仍拉详情补全。 | 收敛在 `usePagedSelect`（`completeValues` / `searchDebounce` / 搜索态不 restore pin）；`PortSelect.isDisplayComplete` 避免残缺回显阻断详情。详见 change-log-2026-08-05-paged-select-pin-search-debounce。 |
 | 2026-07-12 | `Fix` | 港口/费用代码/汇率/客户账期等页面统一大数 ID 字符串校验与透传约定。 | 与 `request.ts` json-bigint `storeAsString` 对齐；biz-select 内 `parseIdToSafeString` 仅用于缓存键，不意味着表单可 coerce 为 number。 |

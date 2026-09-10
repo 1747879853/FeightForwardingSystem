@@ -7,7 +7,7 @@ import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-
 import type { CodeInvoiceAdminApi } from '#/api/system/base-data/code-invoice-admin';
 import {
   getMyDefaultOrgId,
-  getMyOrgCompanyNode,
+  resolveMyOrgCompanyNode,
 } from '#/composables/use-my-org';
 
 /**
@@ -80,25 +80,26 @@ export function useFormData() {
   const fixedHeaderId = ref<string>('');
   const fixedCurrencyId = ref<number | undefined>(undefined);
 
+  let applyOrgCompanySeq = 0;
+
   /**
    * 初始化申请人信息
    */
-  function initApplicantInfo() {
+  async function initApplicantInfo() {
     const userInfo = userStore.userInfo;
     if (userInfo) {
       applicantName.value = userInfo.realName || userInfo.username || '';
     }
+    if (isEdit.value) return;
     if (!formData.value.orgId) {
       formData.value.orgId = getMyDefaultOrgId() ?? 0;
     }
-    applyOrgCompanyInfo();
+    await applyOrgCompanyInfo();
   }
 
-  /**
-   * 根据归属组织填充开票公司信息
-   */
-  function applyOrgCompanyInfo() {
-    const companyNode = getMyOrgCompanyNode(formData.value.orgId);
+  function applyCompanyNode(
+    companyNode: Awaited<ReturnType<typeof resolveMyOrgCompanyNode>>,
+  ) {
     if (companyNode) {
       applicantCompany.value = companyNode.id;
       applicantCompanyName.value = companyNode.displayName || '';
@@ -108,13 +109,24 @@ export function useFormData() {
       orgBankAccounts.value = Array.isArray(companyNode.orgBankAccounts)
         ? companyNode.orgBankAccounts
         : [];
-    } else {
-      applicantCompany.value = 0;
-      applicantCompanyName.value = '';
-      applicantTaxNumber.value = '';
-      applicantAddress.value = '';
-      orgBankAccounts.value = [];
+      return;
     }
+    applicantCompany.value = 0;
+    applicantCompanyName.value = '';
+    applicantTaxNumber.value = '';
+    applicantAddress.value = '';
+    orgBankAccounts.value = [];
+  }
+
+  /**
+   * 根据归属组织填充开票公司信息。
+   * orgId 是部门 id；销售方名称/税号/银行按该部门所属公司拉取。
+   */
+  async function applyOrgCompanyInfo() {
+    const seq = ++applyOrgCompanySeq;
+    const companyNode = await resolveMyOrgCompanyNode(formData.value.orgId);
+    if (seq !== applyOrgCompanySeq) return;
+    applyCompanyNode(companyNode);
   }
 
   /**
@@ -156,13 +168,7 @@ export function useFormData() {
   watch(
     () => formData.value.orgId,
     () => {
-      applyOrgCompanyInfo();
-      // 如果币别已存在，立即更新银行选择
-      if (formData.value.currencyId) {
-        // 这里会在 use-invoice-info 中处理
-      } else {
-        formData.value.orgBankAccountId = undefined;
-      }
+      void applyOrgCompanyInfo();
     },
   );
 

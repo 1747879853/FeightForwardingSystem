@@ -79,6 +79,7 @@ const {
   feeGroupsData,
   selectedCurrencyCode,
   initApplicantInfo,
+  applyOrgCompanyInfo,
   getAddedFeeIdsArray,
   flattenTreeData,
 } = useFormData();
@@ -93,6 +94,12 @@ const settlementObjectName = computed(() => {
     }
   }
   return '-';
+});
+
+/** 跨部门回显：下拉选项是本人部门 id，已选值用所属公司名兜底 */
+const orgSelectEchoItems = computed(() => {
+  if (!formData.value.orgId || !applicantCompanyName.value) return [];
+  return [{ value: formData.value.orgId, label: applicantCompanyName.value }];
 });
 
 const {
@@ -232,6 +239,7 @@ const { loadDetail } = useLoadDetail(
   applicationDate,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  applyOrgCompanyInfo,
 );
 
 // ✅ 新增：处理费用明细刷新（删除后重新加载）
@@ -555,7 +563,7 @@ async function handleWithdraw() {
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
-  initApplicantInfo();
+  await initApplicantInfo();
   loadCodeInvoiceList();
 
   if (isEdit.value) {
@@ -711,6 +719,7 @@ onMounted(async () => {
                       placeholder="请选择归属组织"
                       style="width: 100%"
                       :disabled="isReadOnly"
+                      :selected-items="orgSelectEchoItems"
                     />
                   </Form.Item>
                   <Form.Item label="发票币别" required>

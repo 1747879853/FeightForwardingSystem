@@ -85,6 +85,7 @@ const {
   fixedHeaderId,
   fixedCurrencyId,
   initApplicantInfo,
+  applyOrgCompanyInfo,
   getAddedAppIdsArray,
   flattenTreeData,
 } = useFormData();
@@ -112,6 +113,11 @@ const invoiceStatus = ref<{
 const isRedInvolved = computed(() => {
   const { redStatus } = invoiceStatus.value;
   return !!redStatus && redStatus !== 0;
+});
+
+const orgSelectEchoItems = computed(() => {
+  if (!formData.value.orgId || !applicantCompanyName.value) return [];
+  return [{ value: formData.value.orgId, label: applicantCompanyName.value }];
 });
 
 // ✅ 新增：发票是否已通过接口开出——开票完成(2) 或签章失败(24)。
@@ -246,6 +252,7 @@ const { loadDetail, loadDetailWithoutGoods } = useLoadDetail(
   fixedCurrencyId, // ✅ 新增：传入 fixedCurrencyId
   invoiceStatus, // ✅ 新增：传入 invoiceStatus，用于在加载详情时同步更新状态
   attachments, // ✅ 新增：传入 attachments，用于在加载详情时同步更新附件列表
+  applyOrgCompanyInfo,
 );
 
 // ==================== UI 状态 ====================
@@ -519,7 +526,7 @@ const taxRateOptions = [
 
 onMounted(() => {
   // 初始化申请人信息
-  initApplicantInfo();
+  void initApplicantInfo();
 
   // 加载发票商品编码列表
   loadCodeInvoiceList();
@@ -660,6 +667,7 @@ onMounted(() => {
                       placeholder="请选择归属组织"
                       style="width: 100%"
                       :disabled="invoiceStatus.editLocked"
+                      :selected-items="orgSelectEchoItems"
                     />
                   </Form.Item>
 

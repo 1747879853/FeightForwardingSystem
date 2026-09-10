@@ -330,10 +330,65 @@ export interface OrganizationLocalCurrency {
   localCurrencyId: null | number;
 }
 
-/** 全量组织列表缓存，供本位币解析复用（组织配置在一次会话内基本不变） */
+/** 全量组织列表缓存，供公司/本位币解析复用（组织配置在一次会话内基本不变） */
 let allOrganizationUnitsPromise: null | Promise<
   SystemOrganizationUnitApi.OrganizationUnitDto[]
 > = null;
+
+async function getCachedOrganizationUnits(): Promise<
+  null | SystemOrganizationUnitApi.OrganizationUnitDto[]
+> {
+  allOrganizationUnitsPromise ||= getOrganizationUnits().catch((error) => {
+    allOrganizationUnitsPromise = null;
+    throw error;
+  });
+  try {
+    return await allOrganizationUnitsPromise;
+  } catch {
+    return null;
+  }
+}
+
+function findCompanyInOrganizationList(
+  list: SystemOrganizationUnitApi.OrganizationUnitDto[],
+  organizationId: number | string,
+): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
+  const nodeMap = new Map(list.map((item) => [String(item.id), item]));
+  let current = nodeMap.get(String(organizationId));
+  const visited = new Set<string>();
+
+  while (current && !visited.has(String(current.id))) {
+    visited.add(String(current.id));
+    if (current.isCompany) return current;
+    current =
+      current.parentId === undefined || current.parentId === null
+        ? undefined
+        : nodeMap.get(String(current.parentId));
+  }
+  return undefined;
+}
+
+/**
+ * 解析某组织所属公司节点。
+ *
+ * 与后端 `SetDataPermissionPropsAsync` 同口径：沿组织串向上找**最近的公司节点**。
+ * `organizationId` 可以是部门 id（单据 orgId 常用）或公司 id。
+ * 列表接口不含银行账户；税号/开票地址若列表有则可用，银行需再调单个组织接口。
+ */
+async function resolveOrganizationCompany(
+  organizationId?: null | number | string,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitDto | undefined> {
+  if (
+    organizationId === undefined ||
+    organizationId === null ||
+    organizationId === ''
+  ) {
+    return undefined;
+  }
+  const list = await getCachedOrganizationUnits();
+  if (!list) return undefined;
+  return findCompanyInOrganizationList(list, organizationId);
+}
 
 /**
  * 解析某组织所属公司的本位币。
@@ -352,41 +407,12 @@ async function resolveOrganizationLocalCurrency(
     localCurrencyId: null,
     localCurrencyCode: null,
   };
-  if (organizationId === undefined || organizationId === null) {
-    return empty;
-  }
-
-  allOrganizationUnitsPromise ||= getOrganizationUnits().catch((error) => {
-    allOrganizationUnitsPromise = null;
-    throw error;
-  });
-
-  let list: SystemOrganizationUnitApi.OrganizationUnitDto[];
-  try {
-    list = await allOrganizationUnitsPromise;
-  } catch {
-    return empty;
-  }
-
-  const nodeMap = new Map(list.map((item) => [String(item.id), item]));
-  let current = nodeMap.get(String(organizationId));
-  const visited = new Set<string>();
-
-  while (current && !visited.has(String(current.id))) {
-    visited.add(String(current.id));
-    if (current.isCompany) {
-      return {
-        localCurrencyId: current.localCurrencyId ?? null,
-        localCurrencyCode: current.localCurrencyCode ?? null,
-      };
-    }
-    current =
-      current.parentId === undefined || current.parentId === null
-        ? undefined
-        : nodeMap.get(String(current.parentId));
-  }
-
-  return empty;
+  const company = await resolveOrganizationCompany(organizationId);
+  if (!company) return empty;
+  return {
+    localCurrencyId: company.localCurrencyId ?? null,
+    localCurrencyCode: company.localCurrencyCode ?? null,
+  };
 }
 
 /**
@@ -440,7 +466,7 @@ async function getOrganizationUnitsWithLevel(
  * 获取单个组织单元
  */
 async function getOrganizationUnit(
-  id: number,
+  id: number | string,
 ): Promise<SystemOrganizationUnitApi.OrganizationUnitDto> {
   return requestClient.get(
     '/services/app/OrganizationUnit/GetOrganizationUnitAsync',
@@ -739,6 +765,7 @@ export {
   getUserPagingListForOu,
   moveOrganizationUnit,
   removeUserFromOrganizationUnit,
+  resolveOrganizationCompany,
   resolveOrganizationCompanyName,
   resolveOrganizationLocalCurrency,
   updateOrgBankAccount,

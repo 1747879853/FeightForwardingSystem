@@ -2,7 +2,7 @@
 title: 开票申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -41,6 +41,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 不同部门的人打开编辑/查看页时，归属组织回显所属公司名（值仍是部门 id），销售方按该公司拉取税号/地址/银行。 | `MyOrgSelect` 对不在本人选项中的部门 id 用公司名兜底；`resolveMyOrgCompanyNode` 先部门换公司再取开票资料。详见 `changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md`。 |
 | 2026-09-10 | `Fix` | 查看页禁用控件文字对比度提高，避免灰字难读。 | 只读根类 `invoice-application-form--readonly` 覆盖 Ant disabled 字色。详见 `changelogs/change-log-2026-09-10-invoice-application-readonly-contrast.md`。 |
 | 2026-09-09 | `Fix` | 查看页撤回成功后关闭查看并打开该单编辑页；失败留在查看页。 | `handleWithdraw`：`replace` edit + `closeTabByKey`；刷新键改为 `InvoiceApplicationList`。详见 `changelogs/change-log-2026-09-09-invoice-application-withdraw-to-edit.md`。 |
 | 2026-09-09 | `Fix` | 编辑页提交成功后关闭编辑并打开该单查看页；失败留在编辑页。 | `navigateToViewAfterSubmit`：`markListShouldRefresh` + `replace` view + `closeTabByKey`。详见 `changelogs/change-log-2026-09-09-invoice-application-submit-to-view.md`。 |

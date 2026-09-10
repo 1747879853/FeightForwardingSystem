@@ -4,6 +4,7 @@ import {
   getCompanyIdByOrgId,
   getMyDefaultOrgId,
 } from '#/composables/use-my-org';
+import { resolveOrganizationCompany } from '#/api/system/organization-unit';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 // ✅ 修改：导入汇率缓存工具（含人民币本位币判断）
@@ -359,7 +360,10 @@ export function useFeeSelectionSave(
           try {
             const rawOrgId = formData.value.orgId || getMyDefaultOrgId() || 0;
             // 备注模板按公司维度维护，需先把归属组织换算成公司ID再查询，否则查不到默认模板导致备注为空
-            const orgId = getCompanyIdByOrgId(rawOrgId) ?? rawOrgId;
+            const orgId =
+              getCompanyIdByOrgId(rawOrgId) ??
+              (await resolveOrganizationCompany(rawOrgId))?.id ??
+              rawOrgId;
             if (hasUserRemark) {
               // 用户已手工填写备注：优先使用用户输入，不用默认模板覆盖
               currencyRemark = formData.value.remark || '';

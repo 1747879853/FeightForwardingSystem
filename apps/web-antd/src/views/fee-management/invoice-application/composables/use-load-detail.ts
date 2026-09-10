@@ -31,6 +31,7 @@ export function useLoadDetail(
   applicationDate: Ref<string>,
   loadClientInvoiceInfo: (settlementId: string) => Promise<void>,
   updateOrgBankByCurrency: () => void,
+  applyOrgCompanyInfo?: () => Promise<void>,
   loadDefaultRemarkTemplate?: () => Promise<void>,
 ) {
   const router = useRouter();
@@ -293,7 +294,12 @@ export function useLoadDetail(
       // ✅ 更新formData中的invoiceApplicationItems
       formData.value.invoiceApplicationItems = invoiceApplicationItems;
 
-      // 根据币别更新销售方银行
+      // 销售方按所属公司拉取（orgId 是部门 id，需换算公司后再填税号/银行）
+      if (applyOrgCompanyInfo) {
+        await applyOrgCompanyInfo();
+      }
+
+      // 根据币别更新销售方银行（已保存的银行优先保留）
       updateOrgBankByCurrency();
 
       // 从 feeGroups 中构建 feeGroupsData

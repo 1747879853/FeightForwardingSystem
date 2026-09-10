@@ -4,6 +4,11 @@ import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 import { useUserStore } from '@vben/stores';
 
 import {
+  getOrganizationUnit,
+  resolveOrganizationCompany,
+} from '#/api/system/organization-unit';
+
+import {
   formatCompanyPathLabel,
   formatOrgPathLabel,
   getUserOrgCompanyNode,
@@ -191,4 +196,30 @@ export function getCompanyIdByOrgId(
   const path = getMyOrgPath(orgId);
   const companyNode = pickCompanyNodeFromPath(path);
   return companyNode?.id;
+}
+
+/**
+ * 解析任意组织 id 对应的开票公司节点（含税号、开票地址、公司银行账户）。
+ *
+ * 单据 `orgId` 存的是部门 id。当前登录人不在该部门时，`getMyOrgCompanyNode(deptId)`
+ * 会落空；先把部门换算成公司，再从本人组织缓存或单个组织接口取公司开票资料。
+ */
+export async function resolveMyOrgCompanyNode(
+  orgId?: null | number | string,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitDto | undefined> {
+  const direct = getMyOrgCompanyNode(orgId);
+  if (direct) return direct;
+
+  const company = await resolveOrganizationCompany(orgId);
+  if (company?.id == null) return undefined;
+
+  const byCompany = getMyOrgCompanyNode(company.id);
+  if (byCompany) return byCompany;
+
+  try {
+    return await getOrganizationUnit(company.id);
+  } catch (error) {
+    console.error('加载开票公司信息失败:', error);
+    return company;
+  }
 }

@@ -12,6 +12,7 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
+import { resolveOrganizationCompany } from '#/api/system/organization-unit';
 import {
   getCompanyIdByOrgId,
   getMyTrueCompanyOptions,
@@ -543,7 +544,10 @@ async function getDefaultRemarkTemplate(
 ): Promise<string> {
   try {
     // 备注模板按公司维度维护，需先把归属组织换算成公司ID再查询，否则查不到默认模板导致备注为空
-    const templateOrgId = getCompanyIdByOrgId(orgId) ?? orgId;
+    const templateOrgId =
+      getCompanyIdByOrgId(orgId) ??
+      (await resolveOrganizationCompany(orgId))?.id ??
+      orgId;
 
     const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
       pageIndex: 1,

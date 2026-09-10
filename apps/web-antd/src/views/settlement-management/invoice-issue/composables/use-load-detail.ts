@@ -21,6 +21,7 @@ export function useLoadDetail(
   fixedCurrencyId: any, // ✅ 新增：发票币别ID
   invoiceStatus?: any, // ✅ 新增：发票状态（可选）
   attachments?: any, // ✅ 新增：附件列表（可选）
+  applyOrgCompanyInfo?: () => Promise<void>,
 ) {
   /**
    * 加载详情数据
@@ -90,6 +91,10 @@ export function useLoadDetail(
 
       // 设置开票汇率
       invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
+
+      if (applyOrgCompanyInfo) {
+        await applyOrgCompanyInfo();
+      }
 
       // 根据币别更新销售方银行
       updateOrgBankByCurrency();
@@ -188,6 +193,10 @@ export function useLoadDetail(
 
       // 设置开票汇率
       invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
+
+      if (applyOrgCompanyInfo) {
+        await applyOrgCompanyInfo();
+      }
 
       // 根据币别更新销售方银行
       updateOrgBankByCurrency();
