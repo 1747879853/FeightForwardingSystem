@@ -2,7 +2,7 @@
 title: 提成单列表
 module: 提成管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-09-08
 
 - **分页检索：** 按提成类型（路由固定）、提成人、提成月、状态等筛选；点「查询」才请求。
 - **分组统计：** 维度为提成人、提成月；本页提成类型已由路由固定，故不提供「提成类型」分组。分组设置按路由名分别持久化（`group_config_CommissionSalesList` / `group_config_CommissionOperationList`）。提成月分组项 id 为该月 1 号日期，点击后回填提成月起止再查列表。
-- **新建 / 动作弹窗：** 新建、提交、撤销、删除成功后走 `handleRefresh`，同时刷新列表与分组条数。
+- **新建 / 动作弹窗：** 新建、提交、撤销、删除成功后走 `handleRefresh`，同时刷新列表与分组条数。销售提成新建弹窗为浅灰底：筛选条件标签内嵌在白色圆角控件内；不可新建原因与未结清提示用独立色条；未结清票与参与计算票分卡，后者精简为业务信息+金额+状态。
 - **返回刷新：** keepAlive；重新进入会 `refreshGroupData()`（跳过首次激活）。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -52,4 +52,5 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Style` | 销售提成新建弹窗对齐设计稿：筛选标签内嵌、浅灰底、原因/未结清独立色条、未结清票全列与参与计算票精简列分卡。 | `create-modal.vue` 用 `contentClass` 铺灰底；`useSalesTicketColumns({ compact, showUnsettled })` 拆两套列。详见 `changelogs/change-log-2026-09-10-commission-create-modal-layout.md`。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（提交/撤销/删除后不再显示过期条数）。 | `handleRefresh` 在 `gridApi.query()` 后调用 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

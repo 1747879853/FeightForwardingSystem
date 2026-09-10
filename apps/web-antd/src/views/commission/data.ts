@@ -420,15 +420,31 @@ export const getStepTypeLabel = (stepType?: number | null): string => {
   return STEP_TYPE_LABELS[stepType] ?? String(stepType);
 };
 
-/** 金额单元格：右对齐，负数红色 */
-const amountCell = (text: unknown) =>
+/** 金额单元格：右对齐，负数红色；可附加强调色（如提成金额） */
+const amountCell = (text: unknown, extraClass?: string) =>
   h(
     'span',
     {
-      class: typeof text === 'number' && text < 0 ? 'text-red-500' : undefined,
+      class: [
+        typeof text === 'number' && text < 0 ? 'text-red-500' : undefined,
+        extraClass,
+      ],
     },
     formatAmount(text as number | null | undefined),
   );
+
+/** 业务信息文案：`海运出口  2026-07 · 青岛 --` */
+export const formatBizInfo = (
+  ticket: CommissionOrderAdminApi.CommissionTicketDto,
+): string => {
+  const order = ticket.transportOrder;
+  const biz = getBizTypeLabel(order?.bizType);
+  const date = formatMonth(order?.bizDate);
+  const ports = formatPolPod(order)
+    .replace(' → ', ' -- ')
+    .replace(/\s--\s-$/, ' --');
+  return `${biz}  ${date} · ${ports}`;
+};
 
 const ticketTitle = (key: string) => $t(`commissionOrder.ticket.${key}`);
 
@@ -557,15 +573,93 @@ const ticketBaseColumns = (options: {
   return columns;
 };
 
-/** 销售提成票表格列（第一部分与第二部分共用；第二部分加未结清费用与欠款明细两列、无提成金额列） */
+/** 销售提成票表格列。
+ * compact：新建弹窗「参与计算的票」精简列；
+ * showUnsettled：未结清票只保留催款列，不含应收/应付/利润。 */
 export function useSalesTicketColumns(
   options: {
+    compact?: boolean;
     showUnsettled?: boolean;
   } = {},
 ): TicketColumns {
   const showUnsettled = options.showUnsettled ?? false;
+  const compact = options.compact ?? false;
+
+  if (showUnsettled) {
+    return ticketBaseColumns({ showUnsettled: true });
+  }
+
+  if (compact) {
+    return [
+      {
+        title: ticketTitle('commissionNum'),
+        key: 'commissionNum',
+        width: 140,
+        customRender: ({ record }) =>
+          (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
+            ?.commissionNum ?? '-',
+      },
+      {
+        title: ticketTitle('bizInfo'),
+        key: 'bizInfo',
+        ellipsis: true,
+        customRender: ({ record }) =>
+          formatBizInfo(record as CommissionOrderAdminApi.CommissionTicketDto),
+      },
+      {
+        title: ticketTitle('totalReceivable'),
+        dataIndex: 'totalReceivable',
+        key: 'totalReceivable',
+        width: 110,
+        align: 'right',
+        customRender: ({ text }) => amountCell(text),
+      },
+      {
+        title: ticketTitle('totalPayable'),
+        dataIndex: 'totalPayable',
+        key: 'totalPayable',
+        width: 110,
+        align: 'right',
+        customRender: ({ text }) => amountCell(text),
+      },
+      {
+        title: ticketTitle('profit'),
+        dataIndex: 'profit',
+        key: 'profit',
+        width: 100,
+        align: 'right',
+        customRender: ({ text }) => amountCell(text),
+      },
+      {
+        title: ticketTitle('amount'),
+        dataIndex: 'amount',
+        key: 'amount',
+        width: 110,
+        align: 'right',
+        customRender: ({ text }) =>
+          amountCell(text, 'font-semibold text-[#006ce6]'),
+      },
+      {
+        title: ticketTitle('status'),
+        dataIndex: 'profitType',
+        key: 'profitType',
+        width: 100,
+        customRender: ({ text }) => {
+          const value = text as number | null;
+          if (value == null) return '-';
+          const option = getProfitTypeOptions().find((o) => o.value === value);
+          return h(
+            Tag,
+            { color: option?.color ?? 'default' },
+            () => option?.label ?? String(value),
+          );
+        },
+      },
+    ];
+  }
+
   const columns: TicketColumns = [
-    ...ticketBaseColumns({ showUnsettled }),
+    ...ticketBaseColumns({ showUnsettled: false }),
     {
       title: ticketTitle('totalReceivable'),
       dataIndex: 'totalReceivable',
@@ -606,18 +700,16 @@ export function useSalesTicketColumns(
         );
       },
     },
-  ];
-  if (!showUnsettled) {
-    // 提成金额（分摊）：第二部分未参与计算恒为 null，不展示
-    columns.splice(columns.length, 0, {
+    {
       title: ticketTitle('amount'),
       dataIndex: 'amount',
       key: 'amount',
       width: 110,
       align: 'right',
-      customRender: ({ text }) => amountCell(text),
-    });
-  }
+      customRender: ({ text }) =>
+        amountCell(text, 'font-semibold text-[#006ce6]'),
+    },
+  ];
   return columns;
 }
 

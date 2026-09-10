@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-10 销售提成新建弹窗对齐设计稿](./changelogs/change-log-2026-09-10-commission-create-modal-layout.md)
 - [2026-09-10 开票申请编辑页跨部门回显所属公司与销售方](./changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md)
 - [2026-09-10 海运进口更改单对齐海运出口 Handsontable 与页签保存](./changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md)
 - [2026-09-09 更改单顶部订单信息展开过渡并修复高度自适应费用表](./changelogs/change-log-2026-09-09-change-order-top-info-expand-transition-height-fill.md)

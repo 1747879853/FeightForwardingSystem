@@ -153,14 +153,18 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 
         <div class="tile tile--orange">
           <span class="tile__icon tile__icon--orange">
-            <IconifyIcon icon="mdi:wallet" />
+            <IconifyIcon icon="mdi:file-document-multiple-outline" />
           </span>
           <div class="tile__body">
             <div class="tile__label">
               {{ $t('commissionOrder.calc.countedItems') }}
             </div>
             <div class="tile__value">
-              {{ calculation.countedItemCount ?? 0 }}
+              {{
+                $t('commissionOrder.calc.countedValue', {
+                  count: calculation.countedItemCount ?? 0,
+                })
+              }}
             </div>
             <div class="tile__sub">
               {{
@@ -418,7 +422,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 
 .step {
   display: grid;
-  grid-template-columns: 28px 96px minmax(0, 1fr) auto;
+  grid-template-columns: 28px 108px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 10px 0;

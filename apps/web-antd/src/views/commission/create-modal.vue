@@ -9,7 +9,6 @@ import { useVbenModal } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
 
 import {
-  Alert,
   Button,
   DatePicker,
   Form,
@@ -44,7 +43,11 @@ const emit = defineEmits<{ success: [] }>();
 const { CommissionItemProfitType, CommissionType } = CommissionOrderAdminApi;
 
 const [Modal, modalApi] = useVbenModal({
-  class: 'w-[1300px]',
+  bordered: true,
+  class: 'w-[1400px] !max-h-[90%]',
+  contentClass: 'commission-create-body !bg-[#f5f7fa] !px-5 !py-4',
+  footerClass: 'px-5 py-3',
+  fullscreenButton: false,
   async onOpenChange(isOpen) {
     if (!isOpen) {
       preview.value = null;
@@ -232,7 +235,9 @@ const totalFinal = computed(() =>
 // ==================== 票表格列 ====================
 
 const ticketColumns = computed(() =>
-  isSales.value ? useSalesTicketColumns() : useOperationTicketColumns(),
+  isSales.value
+    ? useSalesTicketColumns({ compact: true })
+    : useOperationTicketColumns(),
 );
 
 const unsettledTicketColumns = computed(() =>
@@ -274,46 +279,56 @@ const onConfirmCreate = () => {
 
 <template>
   <Modal :title="modalTitle">
-    <div class="space-y-3">
-      <!-- 基础信息筛选条 -->
+    <div class="create-body">
+      <!-- 基础信息筛选条：标签内嵌在白色圆角控件内 -->
       <Form
         ref="formRef"
         :model="formState"
         :rules="formRules"
         :colon="false"
-        layout="horizontal"
-        class="filter-card"
+        class="filter-form"
       >
         <div class="filter-row">
-          <FormItem
-            :label="$t('commissionOrder.create.user')"
-            name="userId"
-            class="filter-item"
-          >
-            <UserSelect v-model="formState.userId" allow-clear class="w-full" />
+          <FormItem name="userId" class="filter-item">
+            <div class="filter-field">
+              <span class="filter-field__label">
+                <i class="filter-field__req">*</i>
+                {{ $t('commissionOrder.create.user') }}
+              </span>
+              <UserSelect
+                v-model="formState.userId"
+                allow-clear
+                class="filter-field__control"
+              />
+            </div>
           </FormItem>
-          <FormItem
-            :label="$t('commissionOrder.create.org')"
-            name="orgId"
-            class="filter-item"
-          >
-            <UserOrgSelect
-              v-model="formState.orgId"
-              :user-id="formState.userId"
-              class="w-full"
-            />
+          <FormItem name="orgId" class="filter-item">
+            <div class="filter-field">
+              <span class="filter-field__label">
+                <i class="filter-field__req">*</i>
+                {{ $t('commissionOrder.create.org') }}
+              </span>
+              <UserOrgSelect
+                v-model="formState.orgId"
+                :user-id="formState.userId"
+                class="filter-field__control"
+              />
+            </div>
           </FormItem>
-          <FormItem
-            :label="$t('commissionOrder.create.monthRange')"
-            name="monthRange"
-            class="filter-item filter-item--wide"
-          >
-            <DatePicker.RangePicker
-              v-model:value="formState.monthRange"
-              picker="month"
-              :disabled-date="disabledMonth"
-              class="w-full"
-            />
+          <FormItem name="monthRange" class="filter-item filter-item--wide">
+            <div class="filter-field">
+              <span class="filter-field__label">
+                <i class="filter-field__req">*</i>
+                {{ $t('commissionOrder.create.monthRange') }}
+              </span>
+              <DatePicker.RangePicker
+                v-model:value="formState.monthRange"
+                picker="month"
+                :disabled-date="disabledMonth"
+                :bordered="false"
+                class="filter-field__control"
+              />
+            </div>
           </FormItem>
           <Button
             type="primary"
@@ -331,33 +346,33 @@ const onConfirmCreate = () => {
         </div>
       </Form>
 
-      <Alert
-        v-if="!preview"
-        type="info"
-        show-icon
-        :message="$t('commissionOrder.create.noPreview')"
-      />
+      <div v-if="!preview" class="hint-banner">
+        {{ $t('commissionOrder.create.noPreview') }}
+      </div>
 
       <!-- 按月预览结果 -->
       <div
         v-for="block in monthBlocks"
         :key="block.accountDate"
-        class="space-y-3"
+        class="create-body__month"
       >
-        <Alert
-          v-if="!block.canSubmit"
-          type="error"
-          show-icon
-          :message="$t('commissionOrder.create.cannotSubmitReasons')"
-        >
-          <template #description>
-            <ul class="list-disc pl-4">
-              <li v-for="(reason, i) in block.cannotSubmitReasons" :key="i">
-                {{ reason }}
-              </li>
-            </ul>
-          </template>
-        </Alert>
+        <div v-if="!block.canSubmit" class="reason-banner">
+          <span class="reason-banner__icon">
+            <IconifyIcon icon="mdi:close-circle" />
+          </span>
+          <div class="reason-banner__content">
+            <div class="reason-banner__title">
+              {{ $t('commissionOrder.create.cannotSubmitReasons') }}
+            </div>
+            <p
+              v-for="(reason, i) in block.cannotSubmitReasons"
+              :key="i"
+              class="reason-banner__text"
+            >
+              {{ reason }}
+            </p>
+          </div>
+        </div>
 
         <CalcPanels
           :calculation="block.calculation"
@@ -367,33 +382,33 @@ const onConfirmCreate = () => {
           :below-count="belowCountOf(block)"
         />
 
-        <!-- 参与计算的票 -->
-        <section class="ticket-card">
-          <template v-if="block.unsettled.length > 0">
-            <Alert
-              type="warning"
-              show-icon
-              :message="$t('commissionOrder.create.part2Warning')"
-              class="my-3"
-            />
-            <header class="ticket-card__head">
-              {{
-                $t('commissionOrder.create.part2Title', {
-                  count: block.unsettled.length,
-                })
-              }}
-            </header>
-            <Table
-              class="design-table"
-              size="small"
-              :scroll="{ x: 'max-content' }"
-              :columns="unsettledTicketColumns"
-              :data-source="block.unsettled"
-              :pagination="false"
-              :row-key="ticketRowKey"
-            />
-          </template>
+        <div v-if="block.unsettled.length > 0" class="warn-banner">
+          <span class="warn-banner__icon">
+            <IconifyIcon icon="mdi:alert-circle" />
+          </span>
+          <span>{{ $t('commissionOrder.create.part2Warning') }}</span>
+        </div>
 
+        <section v-if="block.unsettled.length > 0" class="ticket-card">
+          <header class="ticket-card__head">
+            {{
+              $t('commissionOrder.create.part2Title', {
+                count: block.unsettled.length,
+              })
+            }}
+          </header>
+          <Table
+            class="design-table"
+            size="small"
+            :scroll="{ x: 'max-content' }"
+            :columns="unsettledTicketColumns"
+            :data-source="block.unsettled"
+            :pagination="false"
+            :row-key="ticketRowKey"
+          />
+        </section>
+
+        <section class="ticket-card">
           <header class="ticket-card__head">
             {{
               $t('commissionOrder.create.ticketsTitle', {
@@ -404,7 +419,7 @@ const onConfirmCreate = () => {
           <Table
             class="design-table"
             size="small"
-            :scroll="{ x: 'max-content' }"
+            :scroll="{ x: isSales ? undefined : 'max-content' }"
             :columns="ticketColumns"
             :data-source="block.settled"
             :pagination="false"
@@ -455,17 +470,30 @@ const onConfirmCreate = () => {
 </template>
 
 <style scoped>
-/* ---------- 筛选条 ---------- */
-.filter-card {
-  padding: 16px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
+.create-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.create-body :deep(.panel) {
+  border: none;
+}
+
+.create-body__month {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 筛选条：标签内嵌 ---------- */
+.filter-form {
+  margin: 0;
 }
 
 .filter-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-start;
 }
 
@@ -475,35 +503,159 @@ const onConfirmCreate = () => {
   margin-bottom: 0;
 }
 
+.filter-item :deep(.ant-form-item-control-input) {
+  min-height: 40px;
+}
+
 .filter-item--wide {
-  flex: 1.5;
+  flex: 1.4;
+}
+
+.filter-field {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+}
+
+.filter-field__label {
+  flex-shrink: 0;
+  padding-right: 12px;
+  margin-right: 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: #8c95a3;
+  white-space: nowrap;
+  border-right: 1px solid #e8edf3;
+}
+
+.filter-field__req {
+  margin-right: 2px;
+  font-style: normal;
+  color: #ff4d4f;
+}
+
+.filter-field__control {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-field :deep(.ant-select),
+.filter-field :deep(.ant-picker) {
+  width: 100%;
+}
+
+.filter-field :deep(.ant-select-selector),
+.filter-field :deep(.ant-picker) {
+  padding-inline: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.filter-field :deep(.ant-select-focused .ant-select-selector),
+.filter-field :deep(.ant-picker-focused) {
+  box-shadow: none !important;
 }
 
 .filter-btn {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  font-weight: 500;
+  background: #006ce6;
+  border-color: #006ce6;
+  border-radius: 8px;
 }
 
-.filter-remark {
-  margin-top: 12px;
-  margin-bottom: 0;
+.filter-btn:hover,
+.filter-btn:focus {
+  background: #0059c2;
+  border-color: #0059c2;
+}
+
+/* ---------- 提示条 ---------- */
+.hint-banner {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #8c95a3;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.reason-banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  background: #fff1f0;
+  border-radius: 8px;
+}
+
+.reason-banner__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  font-size: 20px;
+  line-height: 1;
+  color: #ff4d4f;
+}
+
+.reason-banner__content {
+  min-width: 0;
+}
+
+.reason-banner__title {
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cf1322;
+}
+
+.reason-banner__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #a8071a;
+}
+
+.warn-banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #d48806;
+  background: #fffbe6;
+  border-radius: 8px;
+}
+
+.warn-banner__icon {
+  display: flex;
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #faad14;
 }
 
 /* ---------- 票卡片 ---------- */
 .ticket-card {
   padding: 16px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  background: #fff;
   border-radius: 8px;
 }
 
 .ticket-card__head {
-  margin-top: 12px;
+  margin-bottom: 12px;
   font-size: 14px;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
 
-/* 表格贴合设计稿：浅灰表头、圆角、细分隔线 */
 .design-table :deep(.ant-table) {
   background: transparent;
 }
@@ -520,6 +672,10 @@ const onConfirmCreate = () => {
 
 .design-table :deep(.ant-table-tbody > tr > td) {
   border-bottom: 1px solid #f2f2f2;
+}
+
+.design-table :deep(.ant-table-container) {
+  border-radius: 8px;
 }
 
 /* ---------- 底部操作栏 ---------- */
