@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -32,6 +32,7 @@ last_updated: 2026-09-05
 - **最终权限诊断：** 点击「最终权限」打开只读弹窗，调用 `GET /services/app/UserAdmin/GetUserPermissionsAsync?id=` 展示该用户最终生效权限树（角色 + 用户级授权/禁止合并结果）；默认仅显示已拥有分支，可搜索。
 - **权限配置：** 点击「权限配置」跳转 `/system/permission`，用于编辑用户级模块/数据/表/字段权限，与「最终权限」只读诊断分离。
 - **新建成功进编辑：** `/system/user/create` 保存成功后 `replace` 到 `/system/user/edit/{id}`，并 `closeTabByKey` 关掉新建页签；未返回 id 时 `replace` 回列表再关新建页签。
+- **编辑页已选组织：** 新建/编辑基础信息区用自定义芯片展示已选组织（名称 + 默认徽标或「设为默认」+ 关闭），不再用 Ant `Tag closable`，避免关闭符号换行。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -68,6 +69,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 用户编辑页「已选组织」改为单行芯片，关闭按钮用矢量图标，默认组织用蓝色徽标。 | Ant `Tag closable` 内套块级 flex 会把关闭符挤到下一行；默认态单独着色会压过 `:hover`。详见 [变更日志](../../changelogs/change-log-2026-09-10-user-form-org-chip.md)。 |
 | 2026-09-05 | `Fix` | 新建用户成功后 `replace` 进编辑页并关闭新建页签，顶栏不再同时留下两个 Tab。 | 原先 `push` 再关页签仍会短暂/残留双页签。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-09-01 | `Feature` | 用户管理对接开票分机号 `extensionNumber`：列表展示，新建/编辑选填维护，空值保存为 `null`。 | 列未开排序（不在 `GetUserPagedListAsync` 白名单）；保存必须显式 `null` 才能清空。详见 [变更日志](../../changelogs/change-log-2026-09-01-system-user-extension-number.md)。 |
 | 2026-08-26 | `Fix` | 用户列表顶部查询区改为一行 4 列，关键词、用户属性、角色与查询按钮同一行。 | 覆盖表格默认 `lg:grid-cols-3`。详见 [变更日志](../../changelogs/change-log-2026-08-26-system-user-query-four-columns.md)。 |

@@ -706,7 +706,7 @@
     "onlyOneDefaultOrganization": "只能设置一个默认组织",
     "organizations": "所属组织",
     "selectedOrganizations": "已选组织",
-    "setDefault": "设为默认组织",
+    "setDefault": "设为默认",
     "isDefault": "默认",
     "organizationSelectorTip": "勾选组织进行选择，点击[设为默认]指定默认组织（最多一个）"
   },

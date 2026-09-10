@@ -9,7 +9,7 @@ import { Page } from '@vben/common-ui';
 import { useTabs } from '@vben/hooks';
 import { FileText, IconifyIcon, Save } from '@vben/icons';
 
-import { Button, message, Radio, Space, Tag, Tree } from 'ant-design-vue';
+import { Button, message, Space, Tree } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
@@ -779,39 +779,41 @@ onMounted(async () => {
         </div>
         <div class="user-section__body">
           <!-- 已选组织展示 -->
-          <div v-if="selectedOrganizations.length > 0" class="mb-3">
-            <div class="mb-2 text-sm text-gray-600">
+          <div v-if="selectedOrganizations.length > 0" class="selected-orgs">
+            <div class="selected-orgs__label">
               {{ $t('system.user.selectedOrganizations') || '已选组织' }}
             </div>
-            <div class="flex flex-wrap gap-2">
-              <Tag
+            <div class="selected-orgs__list">
+              <div
                 v-for="org in selectedOrganizations"
                 :key="org.id"
-                closable
-                :color="org.default ? 'blue' : 'default'"
-                class="text-sm"
-                @close="removeOrg(org.id)"
+                class="org-chip"
+                :class="{ 'is-default': org.default }"
               >
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="truncate">{{ getOrgDisplayName(org.id) }}</span>
-                  <template v-if="!org.default">
-                    <Radio
-                      :checked="false"
-                      size="small"
-                      class="ml-1"
-                      @click.stop="setDefaultOrg(org.id)"
-                    >
-                      {{ $t('system.user.setDefault') || '设为默认' }}
-                    </Radio>
-                  </template>
-                  <span
-                    v-else
-                    class="ml-1 whitespace-nowrap text-xs font-medium text-blue-600"
-                  >
-                    ✓ {{ $t('system.user.isDefault') || '默认' }}
-                  </span>
-                </div>
-              </Tag>
+                <span class="org-chip__name" :title="getOrgDisplayName(org.id)">
+                  {{ getOrgDisplayName(org.id) }}
+                </span>
+                <button
+                  v-if="!org.default"
+                  type="button"
+                  class="org-chip__set-default"
+                  @click="setDefaultOrg(org.id)"
+                >
+                  {{ $t('system.user.setDefault') || '设为默认' }}
+                </button>
+                <span v-else class="org-chip__badge">
+                  {{ $t('system.user.isDefault') || '默认' }}
+                </span>
+                <button
+                  type="button"
+                  class="org-chip__close"
+                  :aria-label="`移除 ${getOrgDisplayName(org.id)}`"
+                  title="移除"
+                  @click="removeOrg(org.id)"
+                >
+                  <IconifyIcon icon="mdi:close" class="size-3" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -880,5 +882,108 @@ onMounted(async () => {
 
 .user-section__body {
   padding: 12px 18px 4px;
+}
+
+.selected-orgs {
+  margin-bottom: 12px;
+}
+
+.selected-orgs__label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+.selected-orgs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.org-chip {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 100%;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  font-size: 13px;
+  line-height: 1;
+  color: #434343;
+  background: #f5f7fa;
+  border: 1px solid #e6e8eb;
+  border-radius: 6px;
+}
+
+.org-chip.is-default {
+  color: #1677ff;
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.org-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.org-chip__badge {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #fff;
+  background: #1677ff;
+  border-radius: 4px;
+}
+
+.org-chip__set-default {
+  flex-shrink: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #1677ff;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.org-chip__set-default:hover {
+  color: #4096ff;
+}
+
+.org-chip__close {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: #8c8c8c;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.org-chip__close :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.org-chip__close:hover,
+.org-chip.is-default .org-chip__close:hover {
+  color: #ff4d4f;
+  background: rgb(255 77 79 / 10%);
+}
+
+.org-chip__close:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 1px;
 }
 </style>
