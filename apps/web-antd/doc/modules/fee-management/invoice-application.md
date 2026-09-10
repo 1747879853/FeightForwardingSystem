@@ -41,6 +41,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 查看页禁用控件文字对比度提高，避免灰字难读。 | 只读根类 `invoice-application-form--readonly` 覆盖 Ant disabled 字色。详见 `changelogs/change-log-2026-09-10-invoice-application-readonly-contrast.md`。 |
 | 2026-09-09 | `Fix` | 查看页撤回成功后关闭查看并打开该单编辑页；失败留在查看页。 | `handleWithdraw`：`replace` edit + `closeTabByKey`；刷新键改为 `InvoiceApplicationList`。详见 `changelogs/change-log-2026-09-09-invoice-application-withdraw-to-edit.md`。 |
 | 2026-09-09 | `Fix` | 编辑页提交成功后关闭编辑并打开该单查看页；失败留在编辑页。 | `navigateToViewAfterSubmit`：`markListShouldRefresh` + `replace` view + `closeTabByKey`。详见 `changelogs/change-log-2026-09-09-invoice-application-submit-to-view.md`。 |
 | 2026-09-09 | `Fix` | 发票附件「下载」保存名为 `friendlyFileName`（blob，跨域可用）。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |

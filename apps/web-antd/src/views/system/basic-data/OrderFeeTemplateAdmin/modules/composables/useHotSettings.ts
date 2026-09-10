@@ -188,12 +188,11 @@ export function useHotSettings(
     },
     {
       data: 'feeCodeId_value',
-      title: '费用代码_value',
+      title: '',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
+      className: 'htDimmed htLeft',
       readOnly: true,
-      visible: false,
     },
     {
       data: 'industryCategory',
@@ -265,12 +264,11 @@ export function useHotSettings(
     },
     {
       data: 'industryCategory_value',
-      title: '行业类别_value',
+      title: '',
       type: 'text',
       width: 1,
-      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
+      className: 'htDimmed htLeft',
       readOnly: true,
-      visible: false,
     },
     {
       data: 'settlementId',
@@ -512,12 +510,11 @@ export function useHotSettings(
     },
     {
       data: 'settlementId_value',
-      title: '结算对象_value',
+      title: '',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
+      className: 'htDimmed htLeft',
       readOnly: true,
-      visible: false,
     },
     {
       data: 'currencyId',
@@ -572,12 +569,11 @@ export function useHotSettings(
     },
     {
       data: 'currencyId_value',
-      title: '币别_value',
+      title: '',
       type: 'numeric',
       width: 1,
-      className: 'htDimmed htLeft', // ✅ 修改：隐藏列也使用左对齐
+      className: 'htDimmed htLeft',
       readOnly: true,
-      visible: false,
     },
     {
       data: 'unitPrice',
@@ -696,19 +692,37 @@ export function useHotSettings(
     },
   ]);
 
+  /** Handsontable 不认 column.visible；用 HiddenColumns 隐藏 *_value 内部列 */
+  const hiddenValueColumnIndexes = computed(() =>
+    columns.value
+      .map((col, index) =>
+        typeof col.data === 'string' && col.data.endsWith('_value')
+          ? index
+          : -1,
+      )
+      .filter((index) => index >= 0),
+  );
+
   // Handsontable 配置
   const hotSettings = shallowRef({
     data: dataSource.value,
     columns: columns.value,
     rowHeaders: true,
     colHeaders: true,
-    height: 300,
-    rowHeights: 30, // ✅ 新增：设置固定的行高，避免行高异常
+    height: 420,
     licenseKey: 'non-commercial-and-evaluation',
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     minSpareRows: 0, // ✅ 修改为0，删除后不会自动新增行
     autoWrapRow: true,
     autoWrapCol: true,
+    manualColumnResize: true,
+    // 列已带固定 width；stretchH:'all' 空数据时易算错总宽
+    stretchH: 'none' as const,
+    hiddenColumns: {
+      columns: hiddenValueColumnIndexes.value,
+      indicators: false,
+      copyPasteEnabled: false,
+    },
 
     // ✅ 关键修复：启用多选模式，支持框选和Ctrl+点击多选
     selectionMode: 'multiple' as const,

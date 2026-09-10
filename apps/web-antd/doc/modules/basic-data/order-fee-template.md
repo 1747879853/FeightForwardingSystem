@@ -22,7 +22,7 @@ last_updated: 2026-09-05
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表：** 检索、新建、双击编辑、删除模板。
-- **新建 / 编辑：** 表头条件 + Handsontable 费用明细。未保存切走可 KeepAlive，点 X 才销毁。
+- **新建 / 编辑：** 统一页头与分区面板；表头条件 + Handsontable 费用明细（样式对齐费用录入）；未保存切走可 KeepAlive，点 X 才销毁。
 - **旧地址：** `/basic-data/order-fee-template/edit?mode=&id=` 重定向到新路由。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -48,5 +48,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Style` | 编辑页整体：页头标题区、分区面板、背景与表单控件观感统一；恢复返回列表。 | `oft-editor` / `oft-panel` 结构。详见 `changelogs/change-log-2026-09-10-order-fee-template-editor-layout.md`。 |
+| 2026-09-10 | `Style` | 编辑页费用明细表对齐费用录入的面板与 Handsontable 观感；隐藏 `*_value` 列。 | 详见 `changelogs/change-log-2026-09-10-order-fee-template-table-style.md`。 |
 | 2026-09-05 | `Fix` | 新建模板保存成功后 `replace` 进编辑并关闭新建页签。 | 详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-08-23 | `Feature` | 拆成 `/create` 与 `/:id/edit`；对齐未保存提示 + KeepAlive。 | 组件名 `OrderFeeTemplateEditor`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |

@@ -19,12 +19,8 @@ import {
 } from '#/api/common/client';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
-import { Button, message, Tabs, Card, Space } from 'ant-design-vue';
-import PortSelect from '#/adapter/component/biz-select/port-select.vue';
-import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
-import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
-import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
-import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
+import { Button, message, Card, Space } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import OrderFeeTemplateTable from './modules/order-fee-template-table.vue';
 import { useDropdownSources } from './modules/composables/useDropdownSources';
 import { getFormSchema } from './modules/data';
@@ -64,10 +60,10 @@ const [Form, formApi] = useVbenForm({
   layout: 'horizontal',
   showDefaultActions: false,
   commonConfig: {
-    labelWidth: 90,
-    wrapperClass: 'gap-x-1 gap-y-3',
+    labelWidth: 100,
+    wrapperClass: 'gap-x-3 gap-y-3',
   },
-  wrapperClass: 'grid-cols-4',
+  wrapperClass: 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4',
 });
 
 /**
@@ -750,53 +746,290 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <div v-loading="loading">
-      <!-- 页面标题和操作按钮 -->
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-medium">
-          {{ mode === 'create' ? '新建自动费用模板' : '编辑自动费用模板' }}
-        </h2>
-        <Space>
-          <!-- <Button @click="handleBack">返回列表</Button> -->
-          <Button type="primary" @click="handleSubmit">
+  <Page
+    auto-content-height
+    content-class="oft-editor-page flex flex-col overflow-auto"
+  >
+    <div v-loading="loading" class="oft-editor">
+      <!-- 页头：标题 + 主操作 -->
+      <header class="oft-editor__hero">
+        <div class="oft-editor__hero-main">
+          <span class="oft-editor__hero-icon" aria-hidden="true">
+            <IconifyIcon icon="mdi:file-document-edit-outline" />
+          </span>
+          <div class="oft-editor__hero-text">
+            <h1 class="oft-editor__title">
+              {{ mode === 'create' ? '新建自动费用模板' : '编辑自动费用模板' }}
+            </h1>
+            <p class="oft-editor__subtitle">
+              配置匹配条件与费用明细，满足条件的订单可自动带出费用行
+            </p>
+          </div>
+        </div>
+        <Space class="oft-editor__actions">
+          <Button @click="handleBack">返回列表</Button>
+          <Button type="primary" :loading="loading" @click="handleSubmit">
             {{ mode === 'create' ? '保存' : '更新' }}
           </Button>
         </Space>
-      </div>
+      </header>
 
       <!-- 基础信息 -->
-      <Card title="基础信息" class="mb-4">
-        <Form />
+      <Card class="oft-panel oft-panel--form" :bordered="false">
+        <div class="oft-panel__head">
+          <div class="oft-panel__head-left">
+            <span class="oft-panel__mark"></span>
+            <span class="oft-panel__head-icon">
+              <IconifyIcon icon="mdi:tune-variant" />
+            </span>
+            <span class="oft-panel__head-title">基础信息</span>
+            <span class="oft-panel__head-hint truncate">
+              匹配条件，下拉留空表示不限
+            </span>
+          </div>
+        </div>
+        <div class="oft-panel__body oft-panel__body--form">
+          <Form />
+        </div>
       </Card>
 
       <!-- 费用明细 -->
-      <Card>
-        <template #title>
-          <div class="flex items-center justify-between">
-            <span>费用明细</span>
-            <div class="space-x-2">
-              <Button type="primary" @click="handleAddRow"> 新增行 </Button>
-              <Button danger @click="handleDeleteSelectedRows">
-                删除选中行
-              </Button>
-            </div>
+      <Card class="oft-panel oft-panel--table" :bordered="false">
+        <div class="oft-panel__head oft-panel__head--toolbar">
+          <div class="oft-panel__head-left">
+            <span class="oft-panel__mark"></span>
+            <span class="oft-panel__head-icon">
+              <IconifyIcon icon="mdi:table-large" />
+            </span>
+            <span class="oft-panel__head-title">费用明细</span>
+            <span class="oft-panel__head-hint truncate">
+              共 {{ feeItems.length }} 行
+            </span>
           </div>
-        </template>
-        <OrderFeeTemplateTable
-          ref="hotTableRef"
-          v-model:data-source="feeItems"
-          :dropdown-sources="dropdownSources"
-          :all-clients-by-industry="dropdownSources.allClientsByIndustry.value"
-          :form-api="formApi"
-        />
+          <Space class="oft-panel__toolbar">
+            <Button type="primary" @click="handleAddRow">新增行</Button>
+            <Button danger @click="handleDeleteSelectedRows">
+              删除选中行
+            </Button>
+          </Space>
+        </div>
+        <div class="oft-panel__body oft-panel__body--table">
+          <OrderFeeTemplateTable
+            ref="hotTableRef"
+            v-model:data-source="feeItems"
+            :dropdown-sources="dropdownSources"
+            :all-clients-by-industry="
+              dropdownSources.allClientsByIndustry.value
+            "
+            :form-api="formApi"
+          />
+        </div>
       </Card>
     </div>
   </Page>
 </template>
 
-<style scoped>
-:deep(.ant-card-body) {
-  padding: 12px;
+<style scoped lang="scss">
+.oft-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+  padding: 16px;
+  background:
+    radial-gradient(
+      1200px 480px at 0% -10%,
+      rgb(15 135 255 / 7%),
+      transparent 55%
+    ),
+    radial-gradient(
+      900px 420px at 100% 0%,
+      rgb(0 108 230 / 5%),
+      transparent 50%
+    ),
+    #f5f7fb;
+}
+
+.oft-editor__hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, #fff 0%, #f8fbff 55%, #fff 100%);
+  border: 1px solid #e4e8ef;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.oft-editor__hero-main {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.oft-editor__hero-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  color: #006ce6;
+  background: linear-gradient(135deg, #eaf2ff 0%, #f4f8ff 100%);
+  border: 1px solid #d6e6ff;
+  border-radius: 10px;
+}
+
+.oft-editor__hero-text {
+  min-width: 0;
+}
+
+.oft-editor__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1a2332;
+  letter-spacing: -0.01em;
+}
+
+.oft-editor__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8c95a3;
+}
+
+.oft-editor__actions {
+  flex-shrink: 0;
+}
+
+.oft-panel {
+  background: #fff;
+  border: 1px solid #e4e8ef !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+
+  :deep(.ant-card-body) {
+    padding: 0 !important;
+  }
+}
+
+.oft-panel--form {
+  /* 表单区允许内容完整展示，避免最后一行被 overflow 裁切 */
+  overflow: visible;
+}
+
+.oft-panel--table {
+  overflow: hidden;
+
+  :deep(.order-fee-template-table .handsontable-container) {
+    border: none;
+    border-radius: 0;
+  }
+}
+
+.oft-panel__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+  border-bottom: 1px solid #e8ecf3;
+}
+
+.oft-panel__head--toolbar {
+  padding: 10px 14px;
+}
+
+.oft-panel__head-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.oft-panel__mark {
+  flex-shrink: 0;
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, #0f87ff, #006ce6);
+  border-radius: 2px;
+}
+
+.oft-panel__head-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  color: #006ce6;
+  background: #eaf2ff;
+  border-radius: 8px;
+}
+
+.oft-panel__head-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
+  white-space: nowrap;
+}
+
+.oft-panel__head-hint {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #9aa3af;
+}
+
+.oft-panel__toolbar {
+  flex-shrink: 0;
+}
+
+.oft-panel__body--form {
+  padding: 16px 16px 20px;
+
+  :deep(.ant-form-item) {
+    margin-bottom: 12px;
+  }
+
+  /* 最后一行表单项留足底部空间，避免控件/校验提示被贴边裁切 */
+  :deep(.ant-form-item:last-child) {
+    margin-bottom: 4px;
+  }
+
+  :deep(.ant-form-item-label > label) {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  :deep(.ant-input),
+  :deep(.ant-select-selector),
+  :deep(.ant-picker),
+  :deep(.ant-input-number),
+  :deep(.ant-input-affix-wrapper),
+  :deep(textarea.ant-input) {
+    border-color: #e4e8ef;
+    border-radius: 8px;
+  }
+
+  :deep(.ant-input:focus),
+  :deep(.ant-input-focused),
+  :deep(.ant-select-focused .ant-select-selector),
+  :deep(.ant-picker-focused) {
+    border-color: #40a9ff;
+    box-shadow: 0 0 0 2px rgb(24 144 255 / 12%);
+  }
+}
+
+.oft-panel__body--table {
+  padding: 0;
 }
 </style>

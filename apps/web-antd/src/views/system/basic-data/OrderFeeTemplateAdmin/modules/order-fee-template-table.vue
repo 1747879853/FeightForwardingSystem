@@ -694,40 +694,66 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+/* 对齐费用录入 OrderFeeTableCore / order-fee-card 的表格观感 */
 .order-fee-template-table {
   width: 100%;
 
   .handsontable-container {
-    :deep(.htCore) {
-      th,
-      td {
-        height: 30px !important;
-        min-height: 30px !important;
-        max-height: 30px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        // ✅ 关键修复：移除 text-align: center，让各列使用自己的对齐方式
-        line-height: 3px !important;
-        vertical-align: middle !important;
-      }
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e8e8e8;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+  }
 
-      // ✅ 普通列左对齐
-      :deep(.htLeft) {
-        text-align: left !important;
-      }
+  :deep(.handsontable) {
+    font-size: 13px;
 
-      // ✅ 数值列右对齐
-      :deep(.htRight) {
-        text-align: right !important;
-      }
+    .htCore {
+      border-collapse: collapse;
+    }
 
-      // ✅ 确保span元素不会影响行高
-      span {
-        display: block !important;
-        height: 30px !important;
-        max-height: 30px !important;
-        line-height: 30px !important;
-      }
+    th {
+      font-weight: 500;
+      color: #262626;
+      background: #fafafa;
+      border-color: #e8e8e8;
+    }
+
+    td {
+      border-color: #e8e8e8;
+    }
+
+    .htLeft {
+      text-align: left !important;
+    }
+
+    .htRight {
+      text-align: right !important;
+    }
+
+    .htSelected {
+      background: #e6f7ff !important;
+    }
+
+    .htCurrent {
+      outline: 2px solid #1890ff !important;
+      outline-offset: -2px;
+    }
+
+    .handsontableEditor,
+    .htAutocompleteEditor {
+      z-index: 9999 !important;
+      background: white !important;
+      border: 1px solid #1890ff !important;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
+    }
+
+    .htAutocompleteList {
+      z-index: 10000 !important;
+      background: white !important;
+      border: 1px solid #d9d9d9 !important;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
     }
   }
 }

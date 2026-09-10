@@ -587,7 +587,7 @@ onMounted(async () => {
 
 <template>
   <Page auto-content-height>
-    <Card>
+    <Card :class="{ 'invoice-application-form--readonly': isReadOnly }">
       <template #title>
         <div
           style="
@@ -597,7 +597,13 @@ onMounted(async () => {
             width: 100%;
           "
         >
-          <span>{{ isEdit ? '编辑开票申请' : '新建开票申请' }}</span>
+          <span>{{
+            isReadOnly
+              ? '查看开票申请'
+              : isEdit
+                ? '编辑开票申请'
+                : '新建开票申请'
+          }}</span>
           <Space>
             <Button
               type="primary"
@@ -704,6 +710,7 @@ onMounted(async () => {
                       v-model="formData.orgId"
                       placeholder="请选择归属组织"
                       style="width: 100%"
+                      :disabled="isReadOnly"
                     />
                   </Form.Item>
                   <Form.Item label="发票币别" required>
@@ -756,12 +763,15 @@ onMounted(async () => {
                         gap: '8px',
                         alignItems: 'center',
                         fontSize: '24px',
-                        color: isReadOnly ? '#999' : '#c41e3a',
-                        cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                        color: '#c41e3a',
+                        cursor: isReadOnly ? 'default' : 'pointer',
                       }"
                     >
                       {{ getInvoiceTitle(formData.invoiceType) }}
-                      <IconifyIcon icon="ant-design:down-outlined" />
+                      <IconifyIcon
+                        v-if="!isReadOnly"
+                        icon="ant-design:down-outlined"
+                      />
                     </span>
                     <template #overlay>
                       <Menu @click="handleInvoiceTypeChange">
@@ -1357,4 +1367,53 @@ onMounted(async () => {
 
 <style lang="scss">
 @import '#/views/_shared/invoice-basic-config/basic-config.scss';
+
+/*
+ * 查看页：控件仍用 disabled 防误改，但 Ant 默认禁用色过浅。
+ * 提高正文对比度，保留浅底表示不可编辑。
+ */
+.invoice-application-form--readonly {
+  --invoice-readonly-text: rgb(37 42 49 / 92%);
+  --invoice-readonly-bg: #f5f7fa;
+  --invoice-readonly-border: #e4e8ef;
+
+  .ant-input-disabled,
+  .ant-input[disabled],
+  textarea.ant-input[disabled],
+  .ant-input-number-disabled .ant-input-number-input,
+  .ant-input-number-disabled input,
+  .ant-select-disabled .ant-select-selection-item,
+  .ant-select-disabled .ant-select-selection-placeholder,
+  .ant-picker-input > input[disabled] {
+    color: var(--invoice-readonly-text) !important;
+    -webkit-text-fill-color: var(--invoice-readonly-text);
+    opacity: 1;
+  }
+
+  .ant-input-disabled,
+  .ant-input[disabled],
+  textarea.ant-input[disabled],
+  .ant-input-number-disabled,
+  .ant-select-disabled .ant-select-selector,
+  .ant-picker-disabled {
+    color: var(--invoice-readonly-text);
+    cursor: default;
+    background: var(--invoice-readonly-bg) !important;
+    border-color: var(--invoice-readonly-border) !important;
+  }
+
+  .ant-select-disabled .ant-select-arrow,
+  .ant-select-disabled .ant-select-clear {
+    color: rgb(140 149 163 / 55%);
+  }
+
+  /* 表格内嵌输入（商品明细） */
+  .ant-table .ant-input-disabled,
+  .ant-table .ant-input[disabled],
+  .ant-table .ant-input-number-disabled .ant-input-number-input,
+  .ant-table .ant-select-disabled .ant-select-selection-item {
+    color: var(--invoice-readonly-text) !important;
+    -webkit-text-fill-color: var(--invoice-readonly-text);
+  }
+}
 </style>
