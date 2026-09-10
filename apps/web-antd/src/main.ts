@@ -11,7 +11,11 @@ import 'handsontable/styles/handsontable.min.css';
 import 'handsontable/styles/ht-theme-main.min.css';
 
 import { registerAllModules } from 'handsontable/registry';
+
+import { patchHandsontableAutocompleteIme } from '#/utils/handsontable-ime-autocomplete';
+
 registerAllModules();
+patchHandsontableAutocompleteIme();
 
 // numeric 单元格类型在 Handsontable 中已经内置,无需手动注册
 
