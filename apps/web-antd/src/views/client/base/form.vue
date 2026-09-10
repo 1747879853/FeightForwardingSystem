@@ -1561,52 +1561,81 @@ onMounted(() => {
             </span>
           </div>
           <div class="content-section__body">
-            <div class="mb-2">
-              <div class="my-2 rounded-lg bg-gray-50 py-2 shadow">
-                <span class="ml-3 mr-6 font-extrabold">{{
-                  $t('seaExport.client.smallTitle.customerType')
-                }}</span>
-                <CheckboxGroup
-                  name="CheckboxGroup"
-                  v-model:value="isCustomerType"
-                  :onChange="handleIsClientChange"
-                  class="mr-5"
-                >
-                  <Checkbox :value="1" class="lineheight-32">
-                    {{ $t('seaExport.client.clientTypeOptions.customer') }}
-                  </Checkbox>
-                </CheckboxGroup>
-                <CheckboxGroup
-                  name="CheckboxGroup"
+            <div class="mb-2 px-3">
+              <!-- 客户：一级勾选 + 二级属性（同行样式，增强区分） -->
+              <div class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow">
+                <div class="type-row__primary">
+                  <span class="type-row__label">{{
+                    $t('seaExport.client.smallTitle.customerType')
+                  }}</span>
+                  <div
+                    class="role-chip"
+                    :class="{
+                      'role-chip--active': isCustomerType?.includes(1),
+                    }"
+                  >
+                    <CheckboxGroup
+                      name="customerTypePrimary"
+                      v-model:value="isCustomerType"
+                      :onChange="handleIsClientChange"
+                    >
+                      <Checkbox :value="1">
+                        {{ $t('seaExport.client.clientTypeOptions.customer') }}
+                      </Checkbox>
+                    </CheckboxGroup>
+                  </div>
+                </div>
+                <div
                   v-if="isCustomerType?.includes(1)"
-                  v-model:value="customerType"
-                  :options="
-                    ClientConstants.getCustomerIndustryCategoryOptions()
-                  "
-                />
-              </div>
-              <div class="mb-4 mt-2 rounded-lg bg-gray-50 py-2 shadow">
-                <span class="mx-3 font-extrabold">{{
-                  $t('seaExport.client.smallTitle.supplierType')
-                }}</span>
-                <CheckboxGroup
-                  name="CheckboxGroup"
-                  class="mr-1"
-                  v-model:value="isSupplierType"
-                  :onChange="handleIsSupplierChange"
+                  class="type-row__secondary"
                 >
-                  <Checkbox :value="2" class="lineheight-32">
-                    {{ $t('seaExport.client.clientTypeOptions.supplier') }}
-                  </Checkbox>
-                </CheckboxGroup>
-                <CheckboxGroup
-                  name="CheckboxGroup"
+                  <CheckboxGroup
+                    name="customerIndustry"
+                    class="type-row__attr-group"
+                    v-model:value="customerType"
+                    :options="
+                      ClientConstants.getCustomerIndustryCategoryOptions()
+                    "
+                  />
+                </div>
+              </div>
+
+              <!-- 供应商：一级勾选 + 二级属性 -->
+              <div class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow">
+                <div class="type-row__primary">
+                  <span class="type-row__label">{{
+                    $t('seaExport.client.smallTitle.supplierType')
+                  }}</span>
+                  <div
+                    class="role-chip"
+                    :class="{
+                      'role-chip--active': isSupplierType?.includes(2),
+                    }"
+                  >
+                    <CheckboxGroup
+                      name="supplierTypePrimary"
+                      v-model:value="isSupplierType"
+                      :onChange="handleIsSupplierChange"
+                    >
+                      <Checkbox :value="2">
+                        {{ $t('seaExport.client.clientTypeOptions.supplier') }}
+                      </Checkbox>
+                    </CheckboxGroup>
+                  </div>
+                </div>
+                <div
                   v-if="isSupplierType?.includes(2)"
-                  v-model:value="supplierType"
-                  :options="
-                    ClientConstants.getSupplierIndustryCategoryOptions()
-                  "
-                />
+                  class="type-row__secondary"
+                >
+                  <CheckboxGroup
+                    name="supplierIndustry"
+                    class="type-row__attr-group"
+                    v-model:value="supplierType"
+                    :options="
+                      ClientConstants.getSupplierIndustryCategoryOptions()
+                    "
+                  />
+                </div>
               </div>
             </div>
             <BaseForm class="mx-4" />
@@ -1839,6 +1868,108 @@ onMounted(() => {
 
 .lineheight-32 {
   line-height: 32px;
+}
+
+/* 客户/供应商两行布局：一级勾选加粗高亮，二级属性弱化区分 */
+.type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 6px 10px;
+}
+
+.type-row__primary {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.type-row__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a2332;
+  white-space: nowrap;
+}
+
+/* 一级：客户 / 供应商 胶囊芯片 */
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 1px 10px;
+  user-select: none;
+  background: #fff;
+  border: 1.5px solid #d0d7e2;
+  border-radius: 999px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    border-color: #91caff;
+  }
+
+  :deep(.ant-checkbox-wrapper) {
+    font-size: 13px;
+    font-weight: 600;
+    color: #252a31;
+  }
+
+  :deep(.ant-checkbox-inner) {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+
+  :deep(.ant-checkbox + span) {
+    padding-inline: 6px;
+  }
+}
+
+.role-chip--active {
+  background: linear-gradient(135deg, #eaf2ff 0%, #f4f8ff 100%);
+  border-color: #006ce6;
+  box-shadow: 0 0 0 2px rgb(0 108 230 / 12%);
+
+  :deep(.ant-checkbox-wrapper) {
+    color: #006ce6;
+  }
+
+  :deep(.ant-checkbox-checked .ant-checkbox-inner) {
+    background-color: #006ce6;
+    border-color: #006ce6;
+  }
+}
+
+.type-row__secondary {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 8px;
+  margin-left: 4px;
+  background: #fff;
+  border: 1px dashed #d9e2ec;
+  border-radius: 4px;
+}
+
+.type-row__attr-group {
+  :deep(.ant-checkbox-wrapper) {
+    margin-inline-end: 10px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 24px;
+    color: #64748b;
+  }
+
+  :deep(.ant-checkbox-inner) {
+    width: 13px;
+    height: 13px;
+  }
 }
 
 .center-column {
