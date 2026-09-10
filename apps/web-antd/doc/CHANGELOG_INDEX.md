@@ -13,6 +13,9 @@
 
 ## 2026-09
 
+- [2026-09-10 站点名强制跟构建期 VITE_APP_TITLE](./changelogs/change-log-2026-09-10-app-name-prefer-overrides.md)
+- [2026-09-10 青港站点对外文案改为青港国际](./changelogs/change-log-2026-09-10-qinggang-title-international.md)
+- [2026-09-10 新增青港、青岛海鼎、山东金冠独立打包与本地发布](./changelogs/change-log-2026-09-10-qinggang-qdhd-sdjg-brand-pack.md)
 - [2026-09-10 销售提成新建弹窗对齐设计稿](./changelogs/change-log-2026-09-10-commission-create-modal-layout.md)
 - [2026-09-10 开票申请编辑页跨部门回显所属公司与销售方](./changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md)
 - [2026-09-10 海运进口更改单对齐海运出口 Handsontable 与页签保存](./changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md)

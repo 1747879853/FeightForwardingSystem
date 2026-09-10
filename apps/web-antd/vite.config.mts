@@ -20,6 +20,9 @@ const BRAND_IMG_BY_APP_BRAND: Record<string, string> = {
   jht: 'jht',
   jiayue: 'jiayue',
   longshan: 'longshan',
+  qdhd: 'qdhd',
+  qinggang: 'qinggang',
+  sdjg: 'sdjg',
   sjtd: 'sjtd',
 };
 
@@ -94,6 +97,15 @@ function resolveApiTarget(mode: string) {
   }
   if (brand === 'longshan') {
     return 'http://175.178.101.30:86';
+  }
+  if (brand === 'qinggang') {
+    return 'http://47.104.86.183:86';
+  }
+  if (brand === 'qdhd') {
+    return 'http://47.104.99.3:86';
+  }
+  if (brand === 'sdjg') {
+    return 'http://47.104.99.109:86';
   }
   // 默认开发代理：佳越测试后端 :88
   return 'http://43.138.14.122:88';

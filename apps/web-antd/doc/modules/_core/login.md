@@ -2,7 +2,7 @@
 title: 登录页
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-08-28
+last_updated: 2026-09-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,6 +52,9 @@ last_updated: 2026-08-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 青港登录后页签不再粘住旧标题「青港」，改为始终显示「青港国际」 | `initPreferences` 强制 `overrides.app.name`；浏览器硬刷新即可，不必清整个 localStorage |
+| 2026-09-10 | `Chore` | 青港登录页/浏览器标题改为「青港国际」 | 读 `.env.qinggang` 的 `VITE_APP_TITLE`（`preferences.ts` `app.name`）；须重启 `dev:antd:qinggang` 或重新 `build:antd:qinggang` 后生效 |
+| 2026-09-10 | `Feature` | 新增青港 / 青岛海鼎 / 山东金冠打包环境，登录页标题与 Logo 随对应 `.env.*` 与素材目录切换 | 别名 `qinggang` / `qdhd` / `sdjg`；API `:86`；Logo 目录先占位。详见 `changelogs/change-log-2026-09-10-qinggang-qdhd-sdjg-brand-pack.md` |
 | 2026-08-28 | `Chore` | 本地 `pnpm dev` / `dev:antd` 接口改到浩瀚远洋 `47.105.61.173:84`，标题/Logo 仍为佳越测试 | 仅 `.env.development` 与默认代理；`jytest`/`jiayue`/`demo` 按 mode 保留各自后端 |
 | 2026-08-26 | `Chore` | 登录页/浏览器标题在对接 `:88` 时展示「佳越测试」并使用佳越 Logo | 本地 `pnpm dev:antd` 与可打包 `jytest` 均读 `VITE_APP_TITLE`；须 `build:antd:jytest` 后线上才生效 |
 | 2026-08-26 | `Chore` | 浩瀚远洋登录接口改为 `http://47.105.61.173:84/api` | 登录仍读 `_app.config.js` 的 `VITE_GLOB_API_URL`，须重新 `build:hhyy` 后才生效 |

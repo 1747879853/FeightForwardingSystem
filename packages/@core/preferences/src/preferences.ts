@@ -100,6 +100,12 @@ class PreferenceManager {
       };
     }
 
+    // 构建期站点名不得被 localStorage 旧值粘住，
+    // 否则改 VITE_APP_TITLE 后页签/侧栏仍显示上一包品牌名（如「青港」）。
+    if (overrides?.app?.name !== undefined) {
+      mergedPreference.app.name = overrides.app.name;
+    }
+
     // 更新偏好设置
     this.updatePreferences(mergedPreference);
 

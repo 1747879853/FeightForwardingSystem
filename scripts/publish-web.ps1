@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [ValidateSet('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'demo')]
+  [ValidateSet('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'qinggang', 'qdhd', 'sdjg', 'demo')]
   [string]$Environment,
   [string]$ConfigPath = '',
   [switch]$InstallDeps,
@@ -110,8 +110,11 @@ function Select-Environment {
   Write-Host '  4. jytest'
   Write-Host '  5. sjtd'
   Write-Host '  6. longshan'
-  Write-Host '  7. demo'
-  $selection = Read-Host 'Enter 1-7 or environment name'
+  Write-Host '  7. qinggang'
+  Write-Host '  8. qdhd'
+  Write-Host '  9. sdjg'
+  Write-Host ' 10. demo'
+  $selection = Read-Host 'Enter 1-10 or environment name'
   switch ($selection.ToLowerInvariant()) {
     '1' { return 'hhyy' }
     '2' { return 'jht' }
@@ -119,13 +122,19 @@ function Select-Environment {
     '4' { return 'jytest' }
     '5' { return 'sjtd' }
     '6' { return 'longshan' }
-    '7' { return 'demo' }
+    '7' { return 'qinggang' }
+    '8' { return 'qdhd' }
+    '9' { return 'sdjg' }
+    '10' { return 'demo' }
     'hhyy' { return 'hhyy' }
     'jht' { return 'jht' }
     'jiayue' { return 'jiayue' }
     'jytest' { return 'jytest' }
     'sjtd' { return 'sjtd' }
     'longshan' { return 'longshan' }
+    'qinggang' { return 'qinggang' }
+    'qdhd' { return 'qdhd' }
+    'sdjg' { return 'sdjg' }
     'demo' { return 'demo' }
     default { throw "Unsupported environment: $selection" }
   }

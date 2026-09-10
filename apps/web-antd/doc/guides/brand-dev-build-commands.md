@@ -13,6 +13,9 @@
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
 | 世纪通达 | `pnpm dev:antd:sjtd` | `pnpm build:antd:sjtd` | `sjtd` | `src/assets/img/sjtd/` |
 | 龙山 | `pnpm dev:antd:longshan` | `pnpm build:antd:longshan` | `longshan` | `src/assets/img/longshan/` |
+| 青港 | `pnpm dev:antd:qinggang` | `pnpm build:antd:qinggang` | `qinggang` | `src/assets/img/qinggang/` |
+| 青岛海鼎 | `pnpm dev:antd:qdhd` | `pnpm build:antd:qdhd` | `qdhd` | `src/assets/img/qdhd/` |
+| 山东金冠 | `pnpm dev:antd:sdjg` | `pnpm build:antd:sdjg` | `sdjg` | `src/assets/img/sdjg/` |
 | 演示环境 | `pnpm dev:antd:demo` | `pnpm build:antd:demo` | `demo` | `src/assets/img/jiayue/`（复用佳越素材） |
 
 `pnpm build:antd` 与 `pnpm build:antd:hhyy` 等价（浩瀚远洋）。
@@ -52,6 +55,9 @@ pnpm deploy:antd:jiayue
 pnpm deploy:antd:jytest
 pnpm deploy:antd:sjtd
 pnpm deploy:antd:longshan
+pnpm deploy:antd:qinggang
+pnpm deploy:antd:qdhd
+pnpm deploy:antd:sdjg
 pnpm deploy:antd:demo
 ```
 
@@ -60,6 +66,8 @@ pnpm deploy:antd:demo
 佳越测试目标：服务器 `43.138.14.122`，IIS 站点 **`jiayue-web-test`**；`pnpm deploy:antd:jytest` 发到该站点，接口仍是 `:88`。
 
 龙山目标（与 `龙山.pubxml` 一致）：服务器 `175.178.101.30`，站点 `longshan-web`；密码也可设环境变量 `IIS_LONGSHAN_PWD`（优先于配置文件）。
+
+青港 / 青岛海鼎 / 山东金冠与后端 `qinggang` / `qdhd` / `sdjg` 别名对齐：独立机 API 均为 `:86`，Web 约定 `:186`，IIS 站点分别为 `qinggang-web`、`qdhd-web`、`sdjg-web`。密码也可设 `IIS_QINGGANG_PWD` / `IIS_QDHD_PWD` / `IIS_SDJG_PWD`。
 
 常用参数：
 
@@ -93,6 +101,9 @@ pnpm deploy:antd:demo
 | `.env.jht` | 津海通 |
 | `.env.sjtd` | 世纪通达 |
 | `.env.longshan` | 龙山 |
+| `.env.qinggang` | 青港国际 |
+| `.env.qdhd` | 青岛海鼎 |
+| `.env.sdjg` | 山东金冠 |
 | `.env.demo` | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材） |
 | `.env.production` | 与 `hhyy` 保持一致（兼容旧 `production` mode） |
 
@@ -106,6 +117,9 @@ pnpm deploy:antd:demo
 | 佳越测试 (jytest) | `.env.jytest` | `http://43.138.14.122:88/api` |
 | 佳越标准库 (jiayue) | `.env.jiayue` | `http://43.138.14.122:85/api` |
 | 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
+| 青港 (qinggang) | `.env.qinggang` | `http://47.104.86.183:86/api` |
+| 青岛海鼎 (qdhd) | `.env.qdhd` | `http://47.104.99.3:86/api` |
+| 山东金冠 (sdjg) | `.env.sdjg` | `http://47.104.99.109:86/api` |
 | 演示环境 (demo) | `.env.demo` | `http://43.138.14.122:86/api` |
 
 运行时生产环境通过 `dist/_app.config.js` 注入 API（`useAppConfig` → `window._VBEN_ADMIN_PRO_APP_CONF_`），**不是** `import.meta.env`。打包后可用以下命令校验：
@@ -141,6 +155,7 @@ Get-Content dist/_app.config.js
 | hhyy | `hhyy-login-back.mp4` | `src/assets/img/hhyy/hhyy-login-back.mp4` |
 | jiayue / jytest / demo | `jht-login-back.mp4`（与 jht 共用；原 `login-back.mp4` 已从 OSS 下线） | — |
 | longshan | `longshan.mp4` | — |
+| qinggang / qdhd / sdjg | `hhyy-login-back.mp4`（暂复用浩瀚远洋） | — |
 
 全局字体 6 个字重同理，Key 为根路径文件名（如 `Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf`）。上传时请保持与代码中 `objectNames` 一致。
 
@@ -157,6 +172,9 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Fix` | 改 `VITE_APP_TITLE` 后页签不再被 localStorage 旧站点名粘住 | `initPreferences` 强制回写 `overrides.app.name`，与 Logo 同源处理 |
+| 2026-09-10 | `Chore` | 青港站点对外文案改为「青港国际」 | `.env.qinggang` 的 `VITE_APP_TITLE` 与 `scripts/sites.json` 的 `title`/`name` 同步；须重启 `dev:antd:qinggang` 或重新 `build:antd:qinggang` 后浏览器标签/登录页/侧栏才生效 |
+| 2026-09-10 | `Feature` | 新增青港 / 青岛海鼎 / 山东金冠独立开发、打包与本地 MSDeploy 发布 | 别名对齐后端 `qinggang` / `qdhd` / `sdjg`；API `:86`、Web `:186`；IIS 站点 `qinggang-web` / `qdhd-web` / `sdjg-web`；Logo 目录先占位，须换成正式素材 |
 | 2026-08-31 | `Chore` | 站点健康检查脚本入库 `scripts/`，发布探测不再依赖本机 Cursor skill | `check-sites.ps1` 与 `sites.json` 随仓库提供；`invoke-site-health-check.ps1` 只调同目录脚本 |
 | 2026-08-28 | `Chore` | 本地默认 `pnpm dev` / `dev:antd` 后端改到浩瀚远洋 `http://47.105.61.173:84` | 仅 `.env.development` 静态根与 `vite.config.mts` 默认代理；标题/Logo 仍为佳越测试；`jytest`/`jiayue`/`demo` 按 mode 保留各自后端 |
 | 2026-08-26 | `Chore` | 本地发布成功后自动跑 `site-health-check`，核对标题与后端 API | 单品牌 `publish-web.ps1` 发完测该站；`deploy:antd:all` 子进程跳过探测，全部 SUCCESS 后再测全集；`-SkipHealthCheck` 可关 |

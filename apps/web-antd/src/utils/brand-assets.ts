@@ -6,10 +6,26 @@ import jhtLogoText from '#/assets/img/jht/logo-text.png';
 import jhtLoginLogo from '#/assets/img/jht/logo-login.png';
 import longshanLogoText from '#/assets/img/longshan/logo-text.png';
 import longshanLoginLogo from '#/assets/img/longshan/logo-login.png';
+import qdhdLogoText from '#/assets/img/qdhd/logo-text.png';
+import qdhdLoginLogo from '#/assets/img/qdhd/logo-login.png';
+import qinggangLogoText from '#/assets/img/qinggang/logo-text.png';
+import qinggangLoginLogo from '#/assets/img/qinggang/logo-login.png';
+import sdjgLogoText from '#/assets/img/sdjg/logo-text.png';
+import sdjgLoginLogo from '#/assets/img/sdjg/logo-login.png';
 import sjtdLogoText from '#/assets/img/sjtd/logo-text.png';
 import sjtdLoginLogo from '#/assets/img/sjtd/logo-login.png';
 
 const appBrand = import.meta.env.VITE_APP_BRAND;
+
+type AppBrand =
+  | 'jht'
+  | 'hhyy'
+  | 'jiayue'
+  | 'sjtd'
+  | 'longshan'
+  | 'qinggang'
+  | 'qdhd'
+  | 'sdjg';
 
 /** 津海通 */
 export const isJhtBrand = appBrand === 'jht';
@@ -26,20 +42,21 @@ export const isSjtdBrand = appBrand === 'sjtd';
 /** 龙山 */
 export const isLongshanBrand = appBrand === 'longshan';
 
+/** 青港 */
+export const isQinggangBrand = appBrand === 'qinggang';
+
+/** 青岛海鼎 */
+export const isQdhdBrand = appBrand === 'qdhd';
+
+/** 山东金冠 */
+export const isSdjgBrand = appBrand === 'sdjg';
+
 function pickBrandAsset<T>(
-  jht: T,
-  hhyy: T,
-  jiayue: T,
-  sjtd: T,
-  longshan: T,
+  byBrand: Partial<Record<AppBrand, T>>,
   fallback: T,
 ): T {
-  if (isJhtBrand) return jht;
-  if (isHhyyBrand) return hhyy;
-  if (isJiayueBrand) return jiayue;
-  if (isSjtdBrand) return sjtd;
-  if (isLongshanBrand) return longshan;
-  return fallback;
+  const value = byBrand[appBrand as AppBrand];
+  return value === undefined ? fallback : value;
 }
 
 /**
@@ -48,31 +65,46 @@ function pickBrandAsset<T>(
  * 避免 preferences 缓存 `/png/logo-<hash>.png` 后换包 404。
  */
 export const brandLogo = pickBrandAsset(
-  '/logo.png',
-  '/logo.png',
-  '/logo.webp',
-  '/logo.png',
-  '/logo.png',
+  {
+    jht: '/logo.png',
+    hhyy: '/logo.png',
+    jiayue: '/logo.webp',
+    sjtd: '/logo.png',
+    longshan: '/logo.png',
+    qinggang: '/logo.png',
+    qdhd: '/logo.png',
+    sdjg: '/logo.png',
+  },
   '/logo.webp',
 );
 
 /** 首屏与路由 Loading 使用的横版文字 Logo */
 export const brandLogoText = pickBrandAsset(
-  jhtLogoText,
-  hhyyLogoText,
-  jiayueLogoText,
-  sjtdLogoText,
-  longshanLogoText,
+  {
+    jht: jhtLogoText,
+    hhyy: hhyyLogoText,
+    jiayue: jiayueLogoText,
+    sjtd: sjtdLogoText,
+    longshan: longshanLogoText,
+    qinggang: qinggangLogoText,
+    qdhd: qdhdLogoText,
+    sdjg: sdjgLogoText,
+  },
   jiayueLogoText,
 );
 
 /** 登录页背景视频（jiayue/jytest/demo 与 jht 共用 jht-login-back.mp4；原 login-back.mp4 已从 OSS 下线） */
 const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
-  'https://oss.jiayuebetter.com/jht-login-back.mp4',
-  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-  'https://oss.jiayuebetter.com/jht-login-back.mp4',
-  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-  'https://oss.jiayuebetter.com/longshan.mp4',
+  {
+    jht: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
+    hhyy: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+    jiayue: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
+    sjtd: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+    longshan: 'https://oss.jiayuebetter.com/longshan.mp4',
+    qinggang: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+    qdhd: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+    sdjg: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+  },
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );
 
@@ -81,11 +113,16 @@ export let brandLoginBackVideo = defaultBrandLoginBackVideoOssUrl;
 
 /** 登录页 auth-title-logo 横版 Logo */
 export const brandLoginTitleLogo = pickBrandAsset(
-  jhtLoginLogo,
-  hhyyLoginLogo,
-  jiayueLoginLogo,
-  sjtdLoginLogo,
-  longshanLoginLogo,
+  {
+    jht: jhtLoginLogo,
+    hhyy: hhyyLoginLogo,
+    jiayue: jiayueLoginLogo,
+    sjtd: sjtdLoginLogo,
+    longshan: longshanLoginLogo,
+    qinggang: qinggangLoginLogo,
+    qdhd: qdhdLoginLogo,
+    sdjg: sdjgLoginLogo,
+  },
   undefined,
 );
 

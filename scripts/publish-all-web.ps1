@@ -158,7 +158,7 @@ function Write-TailLog {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publishScriptPath = Join-Path $PSScriptRoot 'publish-web.ps1'
-$environments = @('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'demo')
+$environments = @('hhyy', 'jht', 'jiayue', 'jytest', 'sjtd', 'longshan', 'qinggang', 'qdhd', 'sdjg', 'demo')
 if ($ThrottleLimit -le 0) {
   $ThrottleLimit = [Math]::Max(1, $environments.Count)
 }

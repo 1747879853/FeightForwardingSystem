@@ -2,7 +2,7 @@
 title: 货物轨迹独立静态页
 module: 共享能力
 author: 自动生成
-last_updated: 2026-08-20
+last_updated: 2026-09-10
 route: /tracking-map/:mblNo?
 ---
 
@@ -16,7 +16,7 @@ route: /tracking-map/:mblNo?
 - **免登录：** 未登录也可直接访问（`meta.ignoreAccess: true`），适合分享给外部客户。
 - **英文分享：** 链接带 `?lang=en`（如 `/tracking-map/MBL123?lang=en`）时，**页头文案 + 空态 + 地图内嵌页**均为英文；缺省或非 `en` 按中文。
 - **空态：** 不带订阅号（`/tracking-map`）时按语言展示对应空态提示。
-- **品牌自适应：** 页头 logo 随打包品牌 `VITE_APP_BRAND` 自动切换（hhyy/jht/sjtd/jiayue/longshan）。
+- **品牌自适应：** 页头 logo 随打包品牌 `VITE_APP_BRAND` 自动切换（hhyy/jht/sjtd/jiayue/longshan/qinggang/qdhd/sdjg）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -46,6 +46,7 @@ route: /tracking-map/:mblNo?
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Feature` | 品牌列表补充青港 / 青岛海鼎 / 山东金冠，页头 Logo 随新打包环境切换 | `brand-assets.ts` 按 `qinggang` / `qdhd` / `sdjg` 注册素材；详见 `changelogs/change-log-2026-09-10-qinggang-qdhd-sdjg-brand-pack.md` |
 | 2026-08-20 | `Fix` | 页头补展示单号（取路径 `mblNo`），与登录后地图弹窗、新服务商分享页口径一致 | URL 里本来就有订阅号，页头却只渲染品牌与标题。标签走本地 `pageText`，不依赖全局 i18n。详见 `changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md` |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：其他品牌海出分享须白标（本系统独立页内嵌后端加密链接，不直出服务商 URL，页面文案不出现服务商名）；sjtd 海出分享维持现状。见 [运踪能力品牌分流](./feituo-tracking-brand-split.md)。 |
 | 2026-08-11 | `Feature` | 品牌列表补充龙山（longshan），页头 Logo 随新打包环境切换 | `brand-assets.ts` 注册 longshan 素材；详见 `changelogs/change-log-2026-08-11-longshan-brand-pack.md` |

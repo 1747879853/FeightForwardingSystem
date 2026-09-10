@@ -54,7 +54,10 @@
     "vitepress",
     "vnode",
     "vueuse",
-    "yxxx"
+    "yxxx",
+    "qinggang",
+    "qdhd",
+    "sdjg"
   ],
   "ignorePaths": [
     "**/node_modules/**",

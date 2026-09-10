@@ -47,6 +47,30 @@
     "password": "",
     "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
   },
+  "qinggang": {
+    "serverIp": "47.104.86.183",
+    "endpoint": "",
+    "siteName": "qinggang-web",
+    "userName": "IISUSER",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "qdhd": {
+    "serverIp": "47.104.99.3",
+    "endpoint": "",
+    "siteName": "qdhd-web",
+    "userName": "IISUSER",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "sdjg": {
+    "serverIp": "47.104.99.109",
+    "endpoint": "",
+    "siteName": "sdjg-web",
+    "userName": "IISUSER",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
   "demo": {
     "serverIp": "192.168.1.13",
     "endpoint": "",

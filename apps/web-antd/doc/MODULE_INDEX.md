@@ -2,7 +2,7 @@
 | --- | --- | --- | --- | --- | --- |
 | mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情三卡、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型横排且每类型一张；详情监装堆场可一键导航（腾讯地理编码 + 微信 openLocation）；微信静默登录 + 手机号绑定；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通。默认 `pnpm build` 不带该包。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-06 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
-| \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋。 | [登录页](./modules/_core/login.md) | 2026-08-28 |
+| \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋；青港标题为「青港国际」，青岛海鼎/山东金冠按各自 mode 切换标题与 Logo。 | [登录页](./modules/_core/login.md) | 2026-09-10 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
 | dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-09-08 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为 `/analytics`。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-08-14 |
@@ -84,13 +84,13 @@
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
 | shared | （全站附件查看器） | 共享能力 | 附件查看器单例弹窗：`openAttachmentViewer(item)` 打开；图片/PDF 内嵌预览，OFD 用 vue-liteofd 本地渲染，Office 用 vue-office 本地渲染（不走微软）。下载走 blob + `friendlyFileName`。开发预览走 Vite `/Uploads` 代理，生产直连后端附件地址。付费申请/审批、海出附件 Tab、开票、公告等已接入。打印除外。 | [全局附件查看器](./modules/shared/attachment-viewer.md) | 2026-09-09 |
-| shared | （全局偏好） | 共享能力 | 项目级 `preferences.ts` 覆盖：布局/主题/侧边栏/页签/Logo；默认主题圆角 `0.5`。 | [全局偏好覆盖](./modules/shared/preferences.md) | 2026-08-11 |
+| shared | （全局偏好） | 共享能力 | 项目级 `preferences.ts` 覆盖：布局/主题/侧边栏/页签/Logo；默认主题圆角 `0.5`；`app.name` 与 Logo 启动时强制跟构建期 overrides。 | [全局偏好覆盖](./modules/shared/preferences.md) | 2026-09-10 |
 | shared | （检查更新） | 共享能力 | 定时拉取 `version.json` 比对构建指纹；避免 IIS 压缩导致首页 etag 误报新版本。 | [检查更新](./modules/shared/check-updates.md) | 2026-08-13 |
 | shared | （全站根布局） | 共享能力 | 津海通品牌桌宠：Three.js 加载 OSS GLB，可拖拽/关闭并按品牌持久化。 | [津海通桌宠](./modules/shared/jht-mascot.md) | 2026-07-26 |
 | shared | （顶栏布局） | 共享能力 | 顶栏「进入会议」按品牌带入会议号：津海通 999999，hhyy/佳越 123456。 | [顶栏在线会议](./modules/shared/layout-meeting.md) | 2026-07-12 |
 | shared | （全站业务表单） | 共享能力 | 统一客户、港口、船公司、币别等业务选择组件的分页检索、标签回显与禁用只读展示；雪花 ID 禁止 Number 转换；`MyOrgSelect`（本人组织）与 `UserOrgSelect`（指定用户组织）均可录入多组织 `orgId`；禁用无值只读态显示 `-`；分页下拉搜索不固定注入精简已选项且关键词默认防抖；`PortSelect` 按 EDI 取值时不把五字码当 Id 打详情。 | [业务选择组件](./modules/shared/biz-select.md) | 2026-09-02 |
 | shared | （全站全局弹窗） | 共享能力 | 货物轨迹全局单例弹窗：`useTrackingMap().open({ mblNo })` 打开，iframe 内嵌 trackingeyes 地图；工具栏展示白标品牌 Logo；企业编号与地址收敛到 env；支持中英文切换（英文分享链接带 `lang=en`）；运踪信息/运踪详情弹窗已接入「查看轨迹地图」入口。 | [全局货物轨迹弹窗](./modules/shared/tracking-map-modal.md) | 2026-07-16 |
-| shared | `/tracking-map/:mblNo?` | 共享能力 | 货物轨迹独立静态页：免登录、URL 传订阅号、iframe 内嵌轨迹地图、页头展示品牌 logo 与单号，随 VITE_APP_BRAND 自动切换；支持 `?lang=en` 英文分享；可分享给外部客户。 | [货物轨迹独立静态页](./modules/shared/tracking-map-page.md) | 2026-08-20 |
+| shared | `/tracking-map/:mblNo?` | 共享能力 | 货物轨迹独立静态页：免登录、URL 传订阅号、iframe 内嵌轨迹地图、页头展示品牌 logo 与单号，随 VITE_APP_BRAND 自动切换（含青港/青岛海鼎/山东金冠）；支持 `?lang=en` 英文分享；可分享给外部客户。 | [货物轨迹独立静态页](./modules/shared/tracking-map-page.md) | 2026-09-10 |
 | shared | `/cargo-tracking/air`、`/cargo-tracking/ocean` | 共享能力 / 运踪 | 新服务商货物轨迹独立静态页：免登录、可分享给外部客户；空运按航司单号前端拼装地址，海运按编码令牌还原轨迹链接；页头展示品牌 logo、单号（`?no=`）与中性标题，支持 `?lang=en`。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-20 |
 | shared | （运踪品牌分流） | 共享能力 / 运踪 | 按品牌×业务线分流：sjtd 海出保留现有运踪，其余海进/空出/非 sjtd 海出走新服务商；含接口清单、列表预警字段、白标分享、地图 URL 来源与用户侧去品牌化要求。 | [运踪能力品牌分流](./modules/shared/feituo-tracking-brand-split.md) | 2026-08-16 |
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入；搜索或重置后恢复默认排序箭头。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-09-03 |

@@ -207,6 +207,22 @@ describe('preferences', () => {
     expect(preferenceManager.getPreferences()).toEqual(expected);
   });
 
+  it('forces app.name from overrides over cached preferences', async () => {
+    const namespace = 'test-app-name-override';
+    localStorage.setItem(
+      `${namespace}-preferences`,
+      JSON.stringify({ value: { app: { name: '青港' } } }),
+    );
+
+    const manager = new PreferenceManager();
+    await manager.initPreferences({
+      namespace,
+      overrides: { app: { name: '青港国际' } },
+    });
+
+    expect(manager.getPreferences().app.name).toBe('青港国际');
+  });
+
   it('applies updates immediately after initialization', async () => {
     const overrides: any = {
       app: {
