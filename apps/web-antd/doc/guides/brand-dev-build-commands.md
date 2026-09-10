@@ -88,7 +88,7 @@ pnpm deploy:antd:demo
 
 脚本会校验 `dist-<环境>/_app.config.js` 中的 API 与对应 `.env.<环境>` 一致，避免错发品牌产物；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。详见 `scripts/本地打包发布说明.md`。
 
-`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌**全量并行**构建到 `apps/web-antd/dist-<品牌>` 并同时 MSDeploy（默认不限并发，有几套发几路）。全部 SUCCESS 后自动跑 `scripts/check-sites.ps1`（经 `invoke-site-health-check.ps1`），对照 `scripts/sites.json` 核对各站标题和 `_app.config.js` 后端地址。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`。
+`pnpm deploy:antd:all` 会先共享 prebuild，再按品牌构建到 `apps/web-antd/dist-<品牌>` 并 MSDeploy（**默认 5 路并行**）。全部 SUCCESS 后自动跑 `scripts/check-sites.ps1`（经 `invoke-site-health-check.ps1`），对照 `scripts/sites.json` 核对各站标题和 `_app.config.js` 后端地址。GitHub 的 hhyy workflow 仅手动触发，产物仍写默认 `dist`。机器吃紧时可 `.\scripts\publish-all-web.ps1 -ThrottleLimit 2`；确认扛得住再用 `-ThrottleLimit 0` 全开。
 
 ## 环境文件
 
@@ -172,6 +172,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-10 | `Chore` | `deploy:antd:all` 默认改为 5 路并行，避免 10 路同时 Vite 在 Windows 上报 realpath UNKNOWN | 仍可用 `-ThrottleLimit 0` 全开；`-ThrottleLimit 2` 再降 |
 | 2026-09-10 | `Fix` | 改 `VITE_APP_TITLE` 后页签不再被 localStorage 旧站点名粘住 | `initPreferences` 强制回写 `overrides.app.name`，与 Logo 同源处理 |
 | 2026-09-10 | `Chore` | 青港站点对外文案改为「青港国际」 | `.env.qinggang` 的 `VITE_APP_TITLE` 与 `scripts/sites.json` 的 `title`/`name` 同步；须重启 `dev:antd:qinggang` 或重新 `build:antd:qinggang` 后浏览器标签/登录页/侧栏才生效 |
 | 2026-09-10 | `Feature` | 新增青港 / 青岛海鼎 / 山东金冠独立开发、打包与本地 MSDeploy 发布 | 别名对齐后端 `qinggang` / `qdhd` / `sdjg`；API `:86`、Web `:186`；IIS 站点 `qinggang-web` / `qdhd-web` / `sdjg-web`；Logo 目录先占位，须换成正式素材 |

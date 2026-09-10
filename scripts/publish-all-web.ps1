@@ -6,9 +6,10 @@ param(
   [switch]$ForcePrebuild,
   [switch]$SkipConnectivityCheck,
   [switch]$SkipHealthCheck,
-  # 0 = 不限制，环境列表有几套就并行几路
+  # 0 = 不限制（有几套发几路）。默认 5：Windows 上 10 路同时 Vite
+  # 会 realpath UNKNOWN / 内存打满。机器宽裕可显式 -ThrottleLimit 0
   [ValidateRange(0, 32)]
-  [int]$ThrottleLimit = 0
+  [int]$ThrottleLimit = 5
 )
 
 $ErrorActionPreference = 'Stop'
