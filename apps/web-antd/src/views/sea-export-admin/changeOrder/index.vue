@@ -265,7 +265,7 @@ const allDisplayFields: DisplayFieldConfig[] = [
   {
     key: 'terminalVoyno',
     label: $t('seaExport.export.terminalVoyno'),
-    visible: true,
+    visible: false,
   },
   { key: 'polName', label: $t('seaExport.export.polId'), visible: true },
   { key: 'podName', label: $t('seaExport.export.podId'), visible: true },

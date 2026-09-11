@@ -248,7 +248,7 @@ const allDisplayFields: DisplayFieldConfig[] = [
   {
     key: 'terminalVoyno',
     label: $t('seaImport.import.terminalVoyno'),
-    visible: true,
+    visible: false,
   },
   {
     key: 'carrierName',

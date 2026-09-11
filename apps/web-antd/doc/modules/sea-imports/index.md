@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -43,7 +43,7 @@ last_updated: 2026-09-08
 | **客户** | 委托关联的客户主体。 | 客户选择组件与客户 API | **触发/依赖：** 影响账期、付款、对账等后续链路。 | 必须选择有效客户。 |
 | **锁费状态** | 费用是否允许继续改动。 | 运输单详情字段 | **触发/依赖：** 影响订单费用、费用审核和锁费页面。 | 锁定后费用编辑能力受限。 |
 | **贸易方式** | 列表筛选与列展示。 | 枚举中心 `TradeMode` | 筛选项与列文案均读枚举子项 `displayName`。 | 未配置枚举时筛选项为空，列回退显示数字。 |
-| **码头航次** | 港区航次；与船公司航次是两套编号。 | 筛 `TerminalVoyno`；列 `terminalVoyno` | **触发/依赖：** 不进 `Keyword` 模糊范围。 | 可清空；进口上限 32。 |
+| **码头航次** | 港区航次；与船公司航次是两套编号；界面不展示。 | 筛 `TerminalVoyno`（hidden）；列表不再定义该列 | **触发/依赖：** 不进 `Keyword` 模糊范围。 | 可清空；进口上限 32。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -57,6 +57,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Fix` | 列表不再展示「码头航次」列，筛选也隐藏。 | `useColumns` 去掉该列。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 到港日期及换单/提货/报关/转站/箱使日期筛选改为自然日闭区间。 | 无时分 RangePicker 不再直接 `toISOString()`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-28 | `Fix` | 进入列表不再默认当月会计期间；默认按到港日期（ETD）降序；列头显示降序箭头。 | 与海出共用 `TransportOrder.Etd DESC`；箭头丢失由列持久化 `refreshColumn` 冲掉 `column.order` 引起。见 `changelogs/change-log-2026-08-28-sea-list-etd-default-sort.md`。 |

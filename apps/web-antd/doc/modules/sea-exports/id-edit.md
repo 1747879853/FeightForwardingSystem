@@ -24,8 +24,8 @@ last_updated: 2026-09-11
 # 2. 功能与操作说明 (Features & Operations)
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、**监装**、分单、运踪信息。「监装」需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
-- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/码头航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；`filteredByTerminalVoyno=false` 时提示这是该船在该港的全部挂靠计划。点「确定引入」后前端回填 `atd`（实际开船）、**`terminalVoyno`（出口 `evoyage`，码头航次）**、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。**不要把 `evoyage` 写进 `innerVoyno`。** 无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
-- **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/码头航次/船代/订舱代理（车队落到下一行）（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；码头航次是独立输入框 `terminalVoyno`；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
+- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/码头航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；`filteredByTerminalVoyno=false` 时提示这是该船在该港的全部挂靠计划。弹窗**不展示码头航次列**。点「确定引入」后前端回填 `atd`（实际开船）、**`terminalVoyno`（出口 `evoyage`，码头航次，界面隐藏）**、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。**不要把 `evoyage` 写进 `innerVoyno`。** 无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
+- **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/船代/订舱代理（车队落到下一行）（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；码头航次 `terminalVoyno` 表单 `hidden`，保存与码头计划引入仍写该字段；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。仅恢复当前可见且有对应面板的 Tab key；关闭浏览器标签后会话清空，下次默认回到「基础信息」。工作台「前往上传」会先写 pending Tab，再带 `?tab=attachments`；二者都优先于会话记忆。路由 `fullPathKey: false`，避免 query 变化整页重挂。命中后会立刻写入记忆并 `replace` 掉 `tab` 参数。基础信息表单内滚动**不再**改写工作台 `activeTab`（已移除分区 Tab 双向联动）。
 - **缓存页冻结委托 id：** 编辑工作台及费用/更改单/附件/派车/监装/分单从路由取 id 时走 `useKeepAliveRouteParamId`。本页可见才同步地址栏；KeepAlive 藏起来后冻结上次 id，避免海进等同名 `:id` 页把海出缓存页带去打进口详情（或反过来）。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
@@ -113,7 +113,7 @@ last_updated: 2026-09-11
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
 | **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgent?.name`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`（名称取自 `bookingAgent?.name`）。改选后带出默认联系人，提交 `bookingAgentContactId`。 | 可选；须为含订舱代理属性的客户。 |
-| **码头航次** | 港区航次，与船公司航次 `innerVoyno` 是两套编号。 | `SeaExportDto.terminalVoyno` | **触发/依赖：** 排在船名/航次后；码头船舶引入写这里（`evoyage`），不写 `innerVoyno`。 | 可空；上限 64。 |
+| **码头航次** | 港区航次，与船公司航次 `innerVoyno` 是两套编号；界面不展示。 | `SeaExportDto.terminalVoyno` | **触发/依赖：** 表单 `hidden`；码头船舶引入写这里（`evoyage`），不写 `innerVoyno`。 | 可空；上限 64。 |
 | **起运预计离开（运踪）** | 非 sjtd 运踪摘要：接货地预计离开。 | 详情 `feituoTracking.polEtd` ← 库 `ReceiptEtd` ← 飞驼 `result.receipt.etd` | **触发/依赖：** `SeaExportAdmin` 详情；`FeituoTrackingQueryManager` 把 `ReceiptEtd` 映成 `PolEtd`。勿与基础信息 `transportOrder.etd` 混用。 | 只读字符串；空显示 `--`。 |
 | **目的预计到达（运踪）** | 非 sjtd 运踪摘要：交货地预计到达。 | 详情 `feituoTracking.podEta`（空则 `podSta`）← 库 `DeliveryEta` / `DeliverySta` ← 飞驼 `result.delivery.eta` / `sta` | **触发/依赖：** 前端 `podEta \|\| podSta`；`podSta` 是首次预计。sjtd 云当面板对应格子是 `shipment.etd` / `eta`，文案为 ETD/ETA。 | 只读字符串；都空显示 `--`。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参；委托单位亦为干系人默认来源。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync`；`Client/GetDishonestStakeholdersAsync` | **触发/依赖：** 任一变更触发服务项联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。新建态 `clientId` 变更额外触发干系人默认回填；编辑态改委托单位只更新业务来源。 | **必填项**（`selectRequired`）；与新建页同一套 `form.vue` 逻辑。 |
@@ -168,6 +168,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗也不出该列，引入后仍写入并保存。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-11 | `Feature` | 分单 Tab 恢复打印：按当前分单 id 走数据源 500，不再打整票。 | `PrintJsonType.SeaExportSeparateDetail`；草稿禁用；未保存修改只提示打库内数据。详见 `changelogs/change-log-2026-09-11-sea-export-separate-print.md`。 |
 | 2026-09-09 | `Fix` | 应收应付费用表序号与开票状态拆成独立列。 | 共用 `useHotColumns`。详见 `changelogs/change-log-2026-09-09-order-fee-seq-column.md`。 |
 | 2026-09-09 | `Fix` | 分单 Tab 去掉打印按钮（原先复用主单数据源，打不出分单）。 | 顶栏现为删除 / 复制 / 保存。详见 `changelogs/change-log-2026-09-09-sea-export-separate-remove-print.md`。 |

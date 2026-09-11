@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -50,7 +50,7 @@ last_updated: 2026-09-05
 | **集装箱规格/型号** | 品名子表 id。 | 品名详情 `codeGoodsSpecs` / `codeGoodsModels` | 先选品名；切换品名清空这两列。 | 未选品名或 id 不属于该品名会被后端拦下。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **干系人** | 订单协同角色。 | `use-order-users.ts` | 右侧面板；销售必填且唯一。 | 保存前校验销售与必填角色人员。 |
-| **码头航次** | 港区航次，与船公司航次是两套编号。 | `terminalVoyno`；`EnglishUpperInput` | **触发/依赖：** 排在船名/航次之后。 | 可空；上限 32。 |
+| **码头航次** | 港区航次，与船公司航次是两套编号；界面不展示。 | `terminalVoyno`；隐藏 `EnglishUpperInput` | **触发/依赖：** 表单 `hidden` 仍随保存提交。 | 可空；上限 32。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -62,6 +62,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-05 | `Feature` | 顶部浏览器标签栏标题按主提单号/委托编号动态展示，未保存新建单默认「海运进口」。 | 逻辑收敛至 `use-sea-import-tab-title.ts`，新建页与编辑工作台嵌入表单共用。详见 `changelogs/change-log-2026-09-05-sea-import-tab-title.md`。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 32）。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积/净重合计、集装箱毛重/皮重/净重/体积改为最多 4 位小数，末尾 0 不展示。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |

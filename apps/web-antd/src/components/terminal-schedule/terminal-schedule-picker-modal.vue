@@ -10,7 +10,6 @@ import { $t } from '#/locales';
 import {
   type TerminalScheduleItem,
   type TerminalSchedulePickerRow,
-  TERMINAL_SCHEDULE_BIZ_TYPE,
 } from './use-terminal-schedule-sync';
 
 interface Props {
@@ -72,10 +71,6 @@ const STATUS_COLORS: Record<string, string> = {
   预报: 'blue',
 };
 
-const isImport = computed(
-  () => props.queryInfo?.bizType === TERMINAL_SCHEDULE_BIZ_TYPE.SeaImport,
-);
-
 /** 船期状态仅上海港返回，全为空时不展示该列 */
 const hasStatus = computed(() =>
   props.items.some((item) => Boolean(item.status)),
@@ -93,7 +88,6 @@ const columns = computed(() => {
       title: t('vessel'),
       width: 170,
     },
-    { dataIndex: 'evoyage', key: 'voyage', title: t('voyage'), width: 110 },
     { dataIndex: 'terminal', key: 'terminal', title: t('terminal'), width: 86 },
     { dataIndex: 'etd', key: 'etd', title: t('etd'), width: 126 },
     { dataIndex: 'atd', key: 'atd', title: t('atd'), width: 126 },
@@ -153,10 +147,6 @@ const pickerDescription = computed(() => {
     ? `${convertedTip.value} ${multipleTip}`
     : multipleTip;
 });
-
-function getVoyage(record: TerminalScheduleItem): string {
-  return (isImport.value ? record.ivoyage : record.evoyage) || '-';
-}
 
 function getCallingPorts(record: TerminalScheduleItem): string[] {
   return (record.portsCn || record.portsEn || '')
@@ -259,9 +249,6 @@ function handleCancel() {
               {{ record.vesselNameCn }}
             </div>
           </div>
-        </template>
-        <template v-else-if="column.key === 'voyage'">
-          {{ getVoyage(record) }}
         </template>
         <template v-else-if="isTimeColumn(column.key)">
           {{ getTimeCellText(record, column.dataIndex) }}

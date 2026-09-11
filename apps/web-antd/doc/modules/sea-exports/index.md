@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -64,7 +64,7 @@ last_updated: 2026-09-08
 | **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
 | **航线** | 目的港所属航线名称。 | 列 `laneName`；展示 `pod.lane.laneName` | **触发/依赖：** 列表 DTO 无顶层 `laneName`，单元格用 `formatter` 读目的港对象；列头排序仍走 `fieldMap` 的 `POD.Lane.LaneName`。 | 目的港无航线时为空。 |
 | **船名 / 航次** | 船期检索字段；航次是船公司航次。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
-| **码头航次** | 港区航次；与船公司航次是两套编号。 | 筛 `TerminalVoyno`；列 `terminalVoyno` | **触发/依赖：** 不进 `Keyword` 模糊范围；查码头船舶计划用这个。 | 可清空；出口上限 64。 |
+| **码头航次** | 港区航次；与船公司航次是两套编号；界面不展示。 | 筛 `TerminalVoyno`（hidden）；列表不再定义该列 | **触发/依赖：** 不进 `Keyword` 模糊范围；查码头船舶计划仍用该字段。 | 可清空；出口上限 64。 |
 | **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示 `carrierLogo` + `carrier?.code`（英文简称）；订舱代理/场站/委托单位等走对象字段 `bookingAgent?.name`、`yard?.name`、`transportOrder.client?.name`（列 `field`/`fieldMap` 仍保留旧键名以便排序与列持久化）。 | 需选择有效基础资料或客户资料；对象为空显示 `--`。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
 | **所属公司（列表列）** | 委托所属公司名称（组织串首节点）。 | 列 `orgs`；i18n `seaExport.export.organizationUnits` | **触发/依赖：** `formatter` 取 `orgs?.[0]?.name`；勿与归属组织末端 `orgs.at(-1)` 混淆。 | 无则空串。 |
@@ -108,6 +108,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Fix` | 列表不再展示「码头航次」列，筛选也隐藏。 | `useColumns` 去掉该列，避免用户列设置再勾出。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间：开始当天 00:00、结束当天 23:59:59.999。 | 点「今天」时 RangePicker 会带当前时分，原先直接 `toISOString()` 会把起止都打成同一时刻。详见 `changelogs/change-log-2026-09-08-sea-export-etd-range-start-end-of-day.md`。 |
 | 2026-09-01 | `Feature` | 列表增加「码头航次」列与筛选，排在航次后面。 | 字段 `terminalVoyno`；关键字不含码头航次。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |

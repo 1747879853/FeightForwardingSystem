@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-01
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,7 @@ last_updated: 2026-09-01
 # 2. 功能与操作说明 (Features & Operations)
 
 - **AI 识别辅助：** 顶栏「AI识别」点击后弹出拖拽上传区（`ai-extract-upload-modal.vue`），支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf）；拖入或点击选文件后自动调用 TextIn `ExtractSeaExportToAddDtoAsync`，由后端完成名称→id 匹配并回填表单；六段港口 Id 与对应 `*Remark` 一并映射进港口表单（空值、`0`、空 Guid 不回填）。识别成功自动关窗；失败可在弹窗内重试。
-- **基础信息 6 列顺序：** 第 1 行委托单位、船公司、船名/航次、码头航次、船代、订舱代理；车队落到下一行。由 `BASIC_INFO_FIELD_ORDER` 控制；头部委托编号/会计期间/应结日期/归属组织/业务来源/装运方式/订单类型不占栅格。
+- **基础信息 6 列顺序：** 第 1 行委托单位、船公司、船名/航次、船代、订舱代理；车队落到下一行。码头航次 `terminalVoyno` 仍在 schema 里、保存会带上，但界面 `hidden`。由 `BASIC_INFO_FIELD_ORDER` 控制；头部委托编号/会计期间/应结日期/归属组织/业务来源/装运方式/订单类型不占栅格。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后调用 `Client/GetDishonestStakeholdersAsync`（登录即可）按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。干系人 `UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户所属各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回的人不受过滤限制、始终显示昵称。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
@@ -58,7 +58,7 @@ last_updated: 2026-09-01
 | **订舱代理** | 订舱服务执行方客户。 | `bookingAgentId`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与船公司/船代/场站一并迁入基础信息区，排在船代后、车队前；与服务流水线解耦，始终展示。标签右侧展示默认联系人，提交 `bookingAgentContactId`；清空代理则联系人传 `null`。 | 可选；须为含订舱代理属性的客户。 |
 | **委托单位 / 订舱代理联系人** | 标签旁只读展示的客户联系人。 | `ClientContactAdmin/GetPagedListAsync`；保存 `clientContactId` / `bookingAgentContactId` | **触发/依赖：** 选客户后优先 `isDefault`，否则第一条未禁用；悬停邮箱/手机/电话。 | UI 只读；无联系人显示 `-`。 |
 | **船名航次** | 船名和船公司航次；海出侧船名:船次宽度 **3:2**。 | `VesselVoyageInput` -> `vessel`、`innerVoyno`（`mainRatio:3` / `secondRatio:2`） | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
-| **码头航次** | 港区航次，与船公司航次是两套编号。 | `terminalVoyno`；`EnglishUpperInput` | **触发/依赖：** 排在船名/航次之后；飞驼 `evoyage` 写入这里。 | 可空；上限 64。 |
+| **码头航次** | 港区航次，与船公司航次是两套编号；界面不展示。 | `terminalVoyno`；隐藏 `EnglishUpperInput` | **触发/依赖：** 表单 `hidden` 仍随保存提交；飞驼 `evoyage` 写入这里。 | 可空；上限 64。 |
 | **签单地点 / 签单日期** | 签单港与签单时间。 | `signingPortId`、`signingTime` | **触发/依赖：** 表单当前 `hidden`，模型保留可提交。 | - |
 | **业务锁定** | 业务资料是否锁定。 | `transportOrder.isBusinessLocking`；后端默认未锁定 | - | 禁止手动修改。 |
 | **费用锁定** | 费用是否锁定。 | `transportOrder.feeLocked`；后端默认未锁定 | - | 禁止手动修改。 |
@@ -90,6 +90,7 @@ last_updated: 2026-09-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 64）。 | 与编辑页共用 `form.vue`；详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-31 | `Fix` | 委托单位、订舱代理标签旁按场站同款展示联系人；选客户带出默认联系人并随保存提交 Id。 | TAPD 1000904。详见 `changelogs/change-log-2026-08-31-sea-export-party-contact-label.md`。 |
 | 2026-08-31 | `Fix` | 新建时货物类型默认「普通货」，可改可清。 | TAPD 1000913；`cargoId` 用 `CARGO_TYPE.S`（值为 0），提交须用 `??` 不能用逻辑或。编辑仍走详情回填。详见 `changelogs/change-log-2026-08-31-sea-export-default-cargo-normal.md`。 |

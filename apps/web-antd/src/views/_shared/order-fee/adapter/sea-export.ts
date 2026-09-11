@@ -71,7 +71,7 @@ const displayFields: DisplayFieldConfig[] = [
   {
     key: 'terminalVoyno',
     label: $t('seaExport.export.terminalVoyno'),
-    visible: true,
+    visible: false,
   },
   {
     key: 'carrierName',

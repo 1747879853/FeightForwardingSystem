@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 海运进出口隐藏码头航次](./changelogs/change-log-2026-09-11-hide-terminal-voyno.md)
 - [2026-09-11 浩瀚远洋顶栏改为整图 logo-text](./changelogs/change-log-2026-09-11-hhyy-header-logo-text.md)
 - [2026-09-11 海运出口分单对接独立打印数据源](./changelogs/change-log-2026-09-11-sea-export-separate-print.md)
 - [2026-09-11 客户税率与费用录入税率联动](./changelogs/change-log-2026-09-11-client-tax-rate-fee-linkage.md)
