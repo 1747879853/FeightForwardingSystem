@@ -252,7 +252,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-1',
       componentProps: {
         class: 'w-full',
-        disabled: false, // 默认不禁用，根据需要调整
+        disabled: false,
       },
     },
     {
@@ -262,7 +262,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       defaultValue: false,
       formItemClass: 'col-span-1',
     },
-    // 第二行：组织机构 、用户、业务类型
+    // 第二行：组织机构、销售、业务类型
     {
       component: 'ApiTreeSelect',
       fieldName: 'organizationUnitIds',
@@ -270,9 +270,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-2',
       componentProps: {
         api: async () => {
-          // 调用接口获取有权限的公司列表
           const companies = await getMyPermissionCompanies();
-          // 转换为树形选择器需要的格式（虽然是扁平列表，但ApiTreeSelect也能处理）
           return companies.map(
             (company: SystemOrganizationUnitApi.OrganizationUnitSimpleDto) => ({
               id: company.id,
@@ -281,7 +279,6 @@ export function useBillFormSchema(): VbenFormSchema[] {
             }),
           );
         },
-        // 字段映射配置
         fieldNames: {
           label: 'displayName',
           value: 'id',
@@ -291,7 +288,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
-        treeCheckable: false, // 禁用树形勾选，作为普通多选下拉使用
+        treeCheckable: false,
       },
     },
     {
@@ -322,7 +319,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       },
       defaultValue: [0],
     },
-    // 第三行：业务来源 、 备注
+    // 第三行：业务来源、备注
     {
       component: 'CodeSourceSelect',
       fieldName: 'codeSourceIds',
@@ -347,7 +344,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         rows: 1,
       },
     },
-    // 第四行：结算方式 、间隔月份（动态显示）、结算日（动态显示）、天数（动态显示）
+    // 第四行：结算方式 + 动态字段
     {
       component: 'Select',
       fieldName: 'settlementType',
@@ -359,7 +356,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         options: SettlementTypeOptions,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
-        onChange: (value: number) => {},
+        onChange: (_value: number) => {},
       },
     },
     {
@@ -402,7 +399,6 @@ export function useBillFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      // 票结加的天数，仅票结（settlementType=0）显示；默认结算方式为票结故默认可见
       component: 'InputNumber',
       hide: false,
       fieldName: 'addDays',
@@ -415,7 +411,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         precision: 0,
       },
     },
-    // 第五行：授信币别、授信额度、预警额度（固定在最后一行）
+    // 第五行：授信币别、授信额度、预警额度
     {
       component: 'CurrencySelect',
       fieldName: 'creditCurrencyId',
@@ -453,10 +449,6 @@ export function useBillFormSchema(): VbenFormSchema[] {
     },
   ];
 }
-
-/**
- * 列表列配置（无操作列，第一列为 radio 单选列）
- */
 
 export function useColumns(): VxeTableGridOptions<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>['columns'] {
   return [

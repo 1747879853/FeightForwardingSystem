@@ -2047,6 +2047,12 @@ onMounted(() => {
   padding: 12px 18px 8px;
   padding-bottom: 5px;
   margin-bottom: 5px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e8e8e8;
 }
 
@@ -2067,7 +2073,7 @@ onMounted(() => {
   align-items: center;
   font-size: 13px;
   font-weight: 600;
-  color: #1677ff;
+  color: hsl(var(--primary));
 }
 
 .card-body {
@@ -2075,11 +2081,15 @@ onMounted(() => {
 }
 
 .address-card {
-  border: #1677ff00 1px solid;
+  border: 1px solid transparent;
 
   &:hover {
-    background: linear-gradient(to right, #1677ff18, #fff);
-    border: #0668f1 1px solid;
+    background: linear-gradient(
+      to right,
+      hsl(var(--primary) / 9%),
+      hsl(var(--background))
+    );
+    border: 1px solid hsl(var(--primary) / 55%);
   }
 
   .address-heard {
@@ -2088,6 +2098,10 @@ onMounted(() => {
 }
 
 .address-card-default {
-  background: linear-gradient(to right, #1677ff18, #fff);
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary) / 9%),
+    hsl(var(--background))
+  );
 }
 </style>

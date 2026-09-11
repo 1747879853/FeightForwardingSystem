@@ -317,7 +317,8 @@ const hotSettings = computed(() => {
       }
       return title;
     },
-    height: '100%', // 使用百分比高度，配合 CSS 实现自适应
+    // 高度由 updateTableHeight 以像素写入，勿在此写 height:'100%'：
+    // hotSettings 重算时会把已适配的像素高度重置掉，多次折叠检索后表现为不再填满。
     width: '100%',
     // 固定列宽场景下禁用拉伸，减少横向滚动时的布局计算
     stretchH: 'none',
@@ -574,8 +575,11 @@ const hotSettings = computed(() => {
  * 更新表格高度
  */
 let resizeObserver: ResizeObserver | null = null;
+/** 仅观察查询卡片内部 class 变化（折叠字段 hidden），避免再监听 document.body */
+let queryCardMutationObserver: MutationObserver | null = null;
 let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
 let heightDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let heightFollowUpTimer: ReturnType<typeof setTimeout> | null = null;
 /** 观察器是否已启动。onMounted 与 onActivated 都会调用启动函数，需要幂等 */
 let layoutWatching = false;
 
@@ -595,21 +599,23 @@ function updateTableHeight() {
       return;
     }
 
-    // 1. 获取视口总高度
-    const viewportHeight = window.innerHeight;
+    // 优先用 flex 分配给容器的实际高度；回退到视口估算
+    const available = container.clientHeight;
+    let targetHeight =
+      available >= 200
+        ? available
+        : window.innerHeight - container.getBoundingClientRect().top - 24;
 
-    // 2. 获取容器相对于视口的位置
-    const rect = container.getBoundingClientRect();
-
-    // 3. 计算目标高度：视口高度 - 容器顶部距离视口顶部的距离 - 底部缓冲(防止出现垂直滚动条)
-    let targetHeight = viewportHeight - rect.top - 24;
-
-    // 确保高度不小于 200
     if (targetHeight < 200) {
       targetHeight = 200;
     }
 
-    // 4. 更新 Handsontable 高度
+    const currentHeight = hotInstance.getSettings()?.height;
+    if (currentHeight === targetHeight) {
+      heightUpdateTimer = null;
+      return;
+    }
+
     hotInstance.updateSettings({ height: targetHeight }, false);
 
     heightUpdateTimer = null;
@@ -627,8 +633,23 @@ function scheduleHeightUpdate(delay = 50) {
   }, delay);
 }
 
+/**
+ * 折叠检索后布局可能分两帧完成：先立刻重算，再补一次兜底。
+ * 第二次用独立 timer，避免被 scheduleHeightUpdate 的防抖清掉。
+ */
+function scheduleHeightUpdateWithFollowUp() {
+  scheduleHeightUpdate(50);
+  if (heightFollowUpTimer) {
+    clearTimeout(heightFollowUpTimer);
+  }
+  heightFollowUpTimer = setTimeout(() => {
+    heightFollowUpTimer = null;
+    updateTableHeight();
+  }, 200);
+}
+
 function handleWindowResize() {
-  scheduleHeightUpdate(100);
+  scheduleHeightUpdateWithFollowUp();
 }
 
 /**
@@ -656,6 +677,15 @@ function startLayoutWatchers() {
     const queryCard = pageWrapper.querySelector('.query-card');
     if (queryCard) {
       resizeObserver.observe(queryCard);
+      // 折叠只改子项 class 时，个别环境下卡片尺寸事件会丢；限定在 query-card 内监听 class
+      queryCardMutationObserver = new MutationObserver(() =>
+        scheduleHeightUpdateWithFollowUp(),
+      );
+      queryCardMutationObserver.observe(queryCard, {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true,
+      });
     }
   }
 
@@ -675,6 +705,8 @@ function stopLayoutWatchers() {
   window.removeEventListener('resize', handleWindowResize);
   resizeObserver?.disconnect();
   resizeObserver = null;
+  queryCardMutationObserver?.disconnect();
+  queryCardMutationObserver = null;
 
   if (heightDebounceTimer) {
     clearTimeout(heightDebounceTimer);
@@ -683,6 +715,10 @@ function stopLayoutWatchers() {
   if (heightUpdateTimer) {
     clearTimeout(heightUpdateTimer);
     heightUpdateTimer = null;
+  }
+  if (heightFollowUpTimer) {
+    clearTimeout(heightFollowUpTimer);
+    heightFollowUpTimer = null;
   }
 }
 

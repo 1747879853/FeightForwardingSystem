@@ -3,15 +3,15 @@ import type { UploadFile } from 'ant-design-vue';
 import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
 
 import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 import { useVbenForm } from '#/adapter/form';
 import { useBillFormSchema } from './data';
 import dayjs from 'dayjs';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 
 import {
   Button,
-  Card,
   message,
   Spin,
   Upload,
@@ -27,9 +27,11 @@ import { buildAttachmentUrl } from '#/utils';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 const [paymentForm, paymentFormApi] = useVbenForm({
+  compact: true,
   layout: 'vertical',
   schema: useBillFormSchema(),
   showDefaultActions: false,
+  // 左栏约 2/3 宽，5 列是账期表单的既定布局
   wrapperClass: 'grid-cols-5',
   handleValuesChange: (values) => {
     if (values.settlementType !== undefined) {
@@ -444,36 +446,77 @@ const pageTitle = computed(() => {
 });
 </script>
 <template>
-  <Modal :title="pageTitle" width="1200px">
-    <div class="grid grid-cols-3 gap-4">
-      <div class="col-span-2">
-        <paymentForm></paymentForm>
-      </div>
-      <div class="col-span-1">
-        <Card size="small" class="h-full">
-          <template #title>
-            <div class="flex items-center gap-2">
-              <span class="font-medium">
-                {{ $t('seaExport.export.attachments.title') }}
-              </span>
-              <span class="text-xs font-normal text-gray-400">
-                {{
-                  $t('seaExport.export.attachments.fileCount', [
-                    attachments.length,
-                  ])
-                }}
-              </span>
-            </div>
-          </template>
+  <Modal :title="pageTitle" class="billing-period-modal w-[1200px]">
+    <div class="billing-modal">
+      <section class="billing-panel billing-panel--form">
+        <header class="billing-panel__head">
+          <span class="billing-panel__mark" aria-hidden="true"></span>
+          <span class="billing-panel__icon">
+            <IconifyIcon icon="mdi:file-document-edit-outline" class="size-4" />
+          </span>
+          <div class="billing-panel__head-text">
+            <span class="billing-panel__title">账期配置</span>
+            <span class="billing-panel__subtitle"
+              >填写合同、结算与授信规则</span
+            >
+          </div>
+        </header>
+        <div class="billing-panel__body">
+          <paymentForm />
+        </div>
+      </section>
 
-          <Spin :spinning="loading || uploading">
-            <div v-if="attachments.length === 0" class="py-6 text-center">
+      <section class="billing-panel billing-panel--attach">
+        <header class="billing-panel__head">
+          <span class="billing-panel__mark" aria-hidden="true"></span>
+          <span class="billing-panel__icon">
+            <IconifyIcon icon="mdi:paperclip" class="size-4" />
+          </span>
+          <div class="billing-panel__head-text">
+            <span class="billing-panel__title">
+              {{ $t('seaExport.export.attachments.title') }}
+            </span>
+            <span class="billing-panel__subtitle">
+              {{
+                $t('seaExport.export.attachments.fileCount', [
+                  attachments.length,
+                ])
+              }}
+            </span>
+          </div>
+        </header>
+
+        <div class="billing-panel__body billing-panel__body--attach">
+          <Spin class="billing-attach-spin" :spinning="loading || uploading">
+            <Upload
+              :before-upload="handleBeforeUpload"
+              :show-upload-list="false"
+              :disabled="uploading"
+              drag
+              multiple
+            >
+              <div
+                class="billing-upload"
+                :class="{ 'is-uploading': uploading }"
+              >
+                <span class="billing-upload__icon">
+                  <IconifyIcon icon="mdi:cloud-upload-outline" class="size-7" />
+                </span>
+                <p class="billing-upload__title">点击或拖拽文件到此处上传</p>
+                <p class="billing-upload__hint">
+                  {{ $t('seaExport.export.attachments.uploadTip') }}
+                </p>
+              </div>
+            </Upload>
+
+            <div v-if="attachments.length === 0" class="billing-empty">
               <Empty
+                :image-style="{ height: '48px' }"
                 :description="$t('seaExport.export.attachments.emptyType')"
               />
             </div>
 
-            <div class="attachment-card-list">
+            <div v-else class="attachment-card-list">
               <div
                 v-for="(item, index) in attachments"
                 :key="item.attachmentId"
@@ -486,34 +529,43 @@ const pageTitle = computed(() => {
                   class="attachment-file-thumb"
                   alt=""
                 />
-                <IconifyIcon
-                  v-else
-                  :icon="getFileIcon(item)"
-                  :style="{ color: getFileIconColor(item) }"
-                  class="size-8 shrink-0"
-                />
+                <span v-else class="attachment-file-icon">
+                  <IconifyIcon
+                    :icon="getFileIcon(item)"
+                    :style="{ color: getFileIconColor(item) }"
+                    class="size-7"
+                  />
+                </span>
 
                 <div class="min-w-0 flex-1">
-                  <div class="truncate text-sm" :title="getFileName(item)">
+                  <div
+                    class="attachment-file-name truncate"
+                    :title="getFileName(item)"
+                  >
                     {{ getFileName(item) }}
                   </div>
-                  <div class="attachment-file-meta text-xs text-gray-400">
+                  <div class="attachment-file-meta">
                     <span>{{ formatFileSize(item.fileLength) }}</span>
                     <span v-if="item.creationTime">
-                      {{ $t('seaExport.export.attachments.uploadTime') }}：{{
-                        dayjs(item.creationTime).format('YYYY-MM-DD HH:mm:ss')
-                      }}
+                      {{ dayjs(item.creationTime).format('YYYY-MM-DD HH:mm') }}
                     </span>
                   </div>
                 </div>
 
                 <div class="attachment-file-actions" @click.stop>
-                  <Button type="text" size="small" @click="handlePreview(item)">
+                  <Button
+                    type="text"
+                    size="small"
+                    class="attachment-action-btn"
+                    title="预览"
+                    @click="handlePreview(item)"
+                  >
                     <IconifyIcon icon="mdi:eye-outline" />
                   </Button>
                   <Button
                     type="text"
                     size="small"
+                    class="attachment-action-btn"
                     @click="handleDownload(item)"
                   >
                     <IconifyIcon icon="mdi:download" />
@@ -522,6 +574,7 @@ const pageTitle = computed(() => {
                     type="text"
                     size="small"
                     danger
+                    class="attachment-action-btn"
                     @click="handleDelete(index)"
                   >
                     <IconifyIcon icon="mdi:delete" />
@@ -529,80 +582,271 @@ const pageTitle = computed(() => {
                 </div>
               </div>
             </div>
-
-            <div class="mt-4">
-              <Upload
-                :before-upload="handleBeforeUpload"
-                :show-upload-list="false"
-                :disabled="uploading"
-                drag
-                multiple
-              >
-                <div
-                  class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-8 transition-colors hover:border-primary"
-                >
-                  <IconifyIcon
-                    icon="mdi:upload"
-                    class="mb-2 size-8 text-gray-400"
-                  />
-                  <span class="text-sm text-gray-600">
-                    {{ $t('seaExport.export.attachments.uploadTip') }}
-                  </span>
-                </div>
-              </Upload>
-            </div>
           </Spin>
-        </Card>
-      </div>
+        </div>
+      </section>
     </div>
   </Modal>
 </template>
 
-<style scoped>
-.attachment-card-list {
+<style scoped lang="scss">
+/* 左 2 右 1；行高取较高一侧，两侧卡片 stretch 同高 */
+.billing-modal {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.billing-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 100%;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgb(16 42 83 / 4%);
+}
+
+.billing-panel__head {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    hsl(var(--background)) 100%
+  );
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.billing-panel__mark {
+  flex-shrink: 0;
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 85%),
+    hsl(var(--primary))
+  );
+  border-radius: 2px;
+}
+
+.billing-panel__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 8px;
+}
+
+.billing-panel__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.billing-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: hsl(var(--foreground));
+}
+
+.billing-panel__subtitle {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #8c95a3;
+}
+
+.billing-panel__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 16px 16px;
+}
+
+.billing-panel__body--attach {
+  gap: 12px;
+}
+
+.billing-attach-spin {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.billing-panel__body--attach :deep(.ant-spin-nested-loading),
+.billing-panel__body--attach :deep(.ant-spin-container) {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.billing-panel__body--attach :deep(.ant-upload-wrapper),
+.billing-panel__body--attach :deep(.ant-upload) {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* 仅做控件宽度兜底，不覆盖 Vben Form 的 grid 列定义 */
+.billing-panel--form :deep(.ant-input),
+.billing-panel--form :deep(.ant-input-affix-wrapper),
+.billing-panel--form :deep(.ant-select),
+.billing-panel--form :deep(.ant-select-selector),
+.billing-panel--form :deep(.ant-picker),
+.billing-panel--form :deep(.ant-input-number),
+.billing-panel--form :deep(textarea.ant-input) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.billing-panel--attach :deep(.ant-upload.ant-upload-drag) {
+  background: transparent;
+  border: none;
+}
+
+.billing-panel--attach :deep(.ant-upload-btn) {
+  padding: 0;
+}
+
+.billing-upload {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 300px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 5%) 0%,
+    hsl(var(--background)) 100%
+  );
+  border: 1.5px dashed hsl(var(--primary) / 35%);
+  border-radius: 10px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.billing-upload:hover,
+.billing-upload.is-uploading {
+  background: hsl(var(--primary) / 8%);
+  border-color: hsl(var(--primary) / 65%);
+}
+
+.billing-upload__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+  border-radius: 10px;
+}
+
+.billing-upload__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.billing-upload__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.billing-empty {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 12px;
+  background: hsl(var(--muted) / 35%);
+  border-radius: 8px;
+}
+
+.attachment-card-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
   overflow-y: auto;
 }
 
 .attachment-file-item {
   display: flex;
-  flex: 0 0 54px;
   gap: 10px;
   align-items: center;
-  padding: 8px;
+  min-height: 52px;
+  padding: 8px 10px;
   cursor: pointer;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .attachment-file-item:hover {
-  background-color: hsl(var(--accent));
-  border-color: hsl(var(--border));
+  background: hsl(var(--primary) / 5%);
+  border-color: hsl(var(--primary) / 35%);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 8%);
 }
 
-.attachment-file-thumb {
+.attachment-file-thumb,
+.attachment-file-icon {
+  display: inline-flex;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
-  border-radius: 4px;
+  background: hsl(var(--primary) / 6%);
+  border-radius: 8px;
+}
+
+.attachment-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
 }
 
 .attachment-file-meta {
   display: flex;
-  gap: 0;
+  margin-top: 2px;
   overflow: hidden;
+  font-size: 11px;
+  color: #94a3b8;
   white-space: nowrap;
-}
-
-.attachment-file-meta > span {
-  flex-shrink: 0;
 }
 
 .attachment-file-meta > span + span::before {
@@ -612,13 +856,21 @@ const pageTitle = computed(() => {
 
 .attachment-file-actions {
   display: flex;
-  gap: 2px;
   align-items: center;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 
 .attachment-file-item:hover .attachment-file-actions {
   opacity: 1;
+}
+
+.attachment-action-btn {
+  color: #64748b;
+}
+
+.attachment-action-btn:hover {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
 }
 </style>

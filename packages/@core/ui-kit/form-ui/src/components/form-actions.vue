@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRaw, unref, watch } from 'vue';
+import { computed, toRaw, unref, watch, nextTick } from 'vue';
 
 import { useSimpleLocale } from '@vben-core/composables';
 import { VbenExpandableArrow } from '@vben-core/shadcn-ui';
@@ -67,11 +67,16 @@ async function handleReset(e: Event) {
 
 watch(
   () => collapsed.value,
-  () => {
+  async () => {
     const props = unref(rootProps);
-    if (props.collapseTriggerResize) {
-      triggerWindowResize();
+    if (!props.collapseTriggerResize) {
+      return;
     }
+    // 等字段 hidden class 落到 DOM 后再触发，避免量到折叠前的高度
+    await nextTick();
+    requestAnimationFrame(() => {
+      triggerWindowResize();
+    });
   },
 );
 

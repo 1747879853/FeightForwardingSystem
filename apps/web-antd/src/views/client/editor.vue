@@ -99,25 +99,6 @@ const contentTabsStyle = {
   border: '1px solid #e8e8e8',
   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
 } as const;
-
-const contentTabStyle = {
-  padding: '6px 10px',
-  fontSize: '12px',
-  color: '#595959',
-  cursor: 'pointer',
-  borderBottom: '2px solid transparent',
-  whiteSpace: 'nowrap',
-} as const;
-
-const getContentTabStyle = (isActive: boolean) =>
-  isActive
-    ? {
-        ...contentTabStyle,
-        fontWeight: 600,
-        color: '#1677ff',
-        borderBottomColor: '#1677ff',
-      }
-    : contentTabStyle;
 </script>
 
 <template>
@@ -129,7 +110,6 @@ const getContentTabStyle = (isActive: boolean) =>
           :key="tab.key"
           class="content-tab"
           :class="{ 'content-tab--active': activeTab === tab.key }"
-          :style="getContentTabStyle(activeTab === tab.key)"
           @click="onTabClick(tab)"
         >
           {{ tab.label }}
@@ -165,3 +145,20 @@ const getContentTabStyle = (isActive: boolean) =>
     </div>
   </Page>
 </template>
+
+<style scoped>
+.content-tab {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #595959;
+  white-space: nowrap;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.content-tab--active {
+  font-weight: 600;
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+}
+</style>

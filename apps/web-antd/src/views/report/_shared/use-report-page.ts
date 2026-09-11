@@ -99,6 +99,8 @@ export function useReportPage(config: ReportPageConfig) {
     wrapperClass: 'grid-cols-5',
     showCollapseButton: true,
     collapsed: true,
+    // 与 VXE 列表查询一致：折叠切换后触发 resize，驱动 Handsontable 重算高度
+    collapseTriggerResize: true,
     submitButtonOptions: {
       content: '查询',
     },
