@@ -21,6 +21,7 @@ import { useBatchAddDropdownSources } from './composables/useBatchAddDropdownSou
 import { useBatchAddColumns } from './composables/useBatchAddColumns';
 import { useBatchAddSettings } from './composables/useBatchAddSettings';
 import { useBatchAddActions } from './composables/useBatchAddActions';
+import { usePortRemoteAutocomplete } from './composables/usePortRemoteAutocomplete';
 
 // 导入核心表格组件
 import BatchAddTableCore from './BatchAddTableCore.vue';
@@ -127,19 +128,23 @@ async function handleAIData(aiDataList: any[]) {
   await nextTick();
   await nextTick();
 
+  // Port labels: prefer nested DTO, otherwise detail-by-id into remote cache
+  await ensurePortLabelsByIds(
+    aiDataList.flatMap((row) => [row.polId, row.podId, row.poT1Id, row.poT2Id]),
+  );
+
   // ⚠️ 关键修复：辅助函数 - 将 ID 转换为显示名称（用于 Handsontable 下拉框）
   const convertIdToLabel = (
     id: any,
     type: 'carriers' | 'ports' | 'currencies' | 'clients',
   ): string => {
     if (!id) return '';
-    const key = String(id);
 
     switch (type) {
       case 'carriers':
         return getCarrierName(id);
       case 'ports':
-        return getPortName(id);
+        return getCachedPortLabel(id) || getPortName(id, portIdToLabel.value);
       case 'currencies':
         return getCurrencyName(id);
       case 'clients':
@@ -158,12 +163,20 @@ async function handleAIData(aiDataList: any[]) {
 
     // ⚠️ 关键修复：将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
     const carrierName = convertIdToLabel(row.carrierId, 'carriers');
-    const polName = convertIdToLabel(row.polId, 'ports');
-    const podName = convertIdToLabel(row.podId, 'ports');
+    const polName =
+      resolvePortLabelFromRow(row, 'pol') ||
+      convertIdToLabel(row.polId, 'ports');
+    const podName =
+      resolvePortLabelFromRow(row, 'pod') ||
+      convertIdToLabel(row.podId, 'ports');
     const currencyName = convertIdToLabel(row.currencyId, 'currencies');
     const bookingAgentName = convertIdToLabel(row.bookingAgentId, 'clients');
-    const poT1Name = convertIdToLabel(row.poT1Id, 'ports');
-    const poT2Name = convertIdToLabel(row.poT2Id, 'ports');
+    const poT1Name =
+      resolvePortLabelFromRow(row, 'poT1') ||
+      convertIdToLabel(row.poT1Id, 'ports');
+    const poT2Name =
+      resolvePortLabelFromRow(row, 'poT2') ||
+      convertIdToLabel(row.poT2Id, 'ports');
 
     // 构建行对象，包含所有字段（使用名称而非 ID）
     const transformedRow: any = {
@@ -256,6 +269,43 @@ const {
   initDropdownSources,
 } = useBatchAddDropdownSources();
 
+const {
+  portLabelToId,
+  portIdToLabel,
+  createPortSource,
+  resolvePortLabelFromRow,
+  ensurePortLabelsByIds,
+  clearPortCache,
+  getCachedPortLabel,
+} = usePortRemoteAutocomplete();
+
+interface BatchAddTableCoreInstance {
+  hotTableRef: any;
+  handleOpenDropdown: (
+    rowIndex: number,
+    colIndex: number,
+    field: string,
+    source: string[],
+  ) => void;
+}
+
+const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
+
+const portSource = createPortSource(() => {
+  const table = coreTableRef.value?.hotTableRef;
+  const hot =
+    table?.hotInstance ??
+    table?.value?.hotInstance ??
+    table?.hot?.hotInstance ??
+    null;
+  const editor = hot?.getActiveEditor?.() ?? null;
+  // 仅返回已打开下拉的 autocomplete 编辑器
+  if (editor?.htEditor && editor?.updateChoicesList) {
+    return editor;
+  }
+  return null;
+});
+
 const actions = useBatchAddActions(
   dataSource,
   selectedRowKeys,
@@ -303,33 +353,40 @@ const dropdownSourceCache = computed(() => {
   return result;
 });
 
-// Label 到 ID 的反向映射（用于将用户选择的 Label 转换回 ID）
-const labelToIdMap = computed(() => ({
-  carriers: new Map<string, string>(
-    Array.from(labelCache.value.carriers.entries()).map(([id, name]) => [
-      name,
-      id,
-    ]),
-  ),
-  ports: new Map<string, string>(
+// Label 到 ID 的反向映射（港口优先用远程搜索运行时缓存）
+const labelToIdMap = computed(() => {
+  const ports = new Map<string, string>(
     Array.from(labelCache.value.ports.entries()).map(([id, name]) => [
       name,
       id,
     ]),
-  ),
-  currencies: new Map<string, string>(
-    Array.from(labelCache.value.currencies.entries()).map(([id, code]) => [
-      code,
-      id,
-    ]),
-  ),
-  clients: new Map<string, string>(
-    Array.from(labelCache.value.clients.entries()).map(([id, name]) => [
-      name,
-      id,
-    ]),
-  ),
-}));
+  );
+  // 远程搜索命中的 label 覆盖/补充 store（store 已不再预载全量港口）
+  for (const [label, id] of portLabelToId.value.entries()) {
+    ports.set(label, id);
+  }
+  return {
+    carriers: new Map<string, string>(
+      Array.from(labelCache.value.carriers.entries()).map(([id, name]) => [
+        name,
+        id,
+      ]),
+    ),
+    ports,
+    currencies: new Map<string, string>(
+      Array.from(labelCache.value.currencies.entries()).map(([id, code]) => [
+        code,
+        id,
+      ]),
+    ),
+    clients: new Map<string, string>(
+      Array.from(labelCache.value.clients.entries()).map(([id, name]) => [
+        name,
+        id,
+      ]),
+    ),
+  };
+});
 
 const sortableFieldsSet = new Set<string>([
   'carrierId',
@@ -401,6 +458,7 @@ const { hotColumns } = useBatchAddColumns(
   getColumnIndex,
   handleOpenDropdown,
   linkage,
+  portSource,
 );
 
 const { hotSettings: rawHotSettings } = useBatchAddSettings(
@@ -539,19 +597,6 @@ const saveColumnConfig = (config: any[]) => {
 };
 
 // 定义 BatchAddTableCore 组件的类型
-interface BatchAddTableCoreInstance {
-  hotTableRef: any;
-  handleOpenDropdown: (
-    rowIndex: number,
-    colIndex: number,
-    field: string,
-    source: string[],
-  ) => void;
-}
-
-const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
-
-// 将 loading 解包为普通值，避免类型错误
 const loading = computed(() => actions.loading.value);
 const customRowCountVisible = computed({
   get: () => actions.customRowCountVisible.value,
@@ -669,6 +714,9 @@ const [Modal, modalApi] = useVbenModal({
     isEditMode.value = data.isEditMode || false; // 设置编辑模式标志
     console.log('当前 AI 数据:', aiData.value);
     console.log('是否为编辑模式:', isEditMode.value);
+
+    // Clear port remote-search cache each open
+    clearPortCache();
 
     // ✅ 关键修复：确保下拉选项已加载
     if (allCtnOptions.value.length === 0) {

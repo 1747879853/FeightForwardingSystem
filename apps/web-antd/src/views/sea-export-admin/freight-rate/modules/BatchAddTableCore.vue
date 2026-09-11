@@ -102,7 +102,9 @@ const handleAfterChange = (changes: any, source: string) => {
           prop === 'poT1Id' ||
           prop === 'poT2Id'
         ) {
-          labelMap = props.labelToIdMap.ports;
+          // 港口列保留「名称/国家」展示文案，提交时经 labelToIdMap 映射；
+          // 若此处写成 id，远程搜索场景下回显会变成纯数字且提交映射失效。
+          return;
         } else if (prop === 'currencyId') {
           labelMap = props.labelToIdMap.currencies;
         } else if (prop === 'bookingAgentId') {
@@ -167,10 +169,11 @@ watch(
 
   :deep(.handsontable) {
     // ✅ 所有单元格不换行，超出部分用省略号显示
-    td, th {
-      white-space: nowrap !important;
+    td,
+    th {
       overflow: hidden !important;
       text-overflow: ellipsis !important;
+      white-space: nowrap !important;
     }
 
     .htCenter {

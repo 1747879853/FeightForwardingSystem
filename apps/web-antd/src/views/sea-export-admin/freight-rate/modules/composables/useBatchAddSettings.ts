@@ -230,18 +230,10 @@ export function useBatchAddSettings(
         cellProperties.className = 'disabled-cell';
       }
 
-      // 为需要下拉框的字段设置 source
+      // 船公司/币别/订舱代理仍用本地缓存；港口列用列配置里的远程 source，勿在此覆盖为全量数组
       if (prop === 'carrierId') {
         const carriers = dropdownSourceCache?.value?.carriers || [];
         cellProperties.source = carriers;
-      } else if (
-        prop === 'polId' ||
-        prop === 'podId' ||
-        prop === 'poT1Id' ||
-        prop === 'poT2Id'
-      ) {
-        const ports = dropdownSourceCache?.value?.ports || [];
-        cellProperties.source = ports;
       } else if (prop === 'currencyId') {
         const currencies = dropdownSourceCache?.value?.currencies || [];
         cellProperties.source = currencies;

@@ -53,7 +53,11 @@ interface BaseState {
    * 箱型列表缓存
    * 数据来源: getBaseCtnCodes
    */
-  ctnOptions: Array<{ ctnCodeId: string | number; ctnName: string; isDefault: boolean | undefined }>;
+  ctnOptions: Array<{
+    ctnCodeId: string | number;
+    ctnName: string;
+    isDefault: boolean | undefined;
+  }>;
 
   /**
    * 船公司缓存（Map格式：id -> name）
@@ -63,7 +67,7 @@ interface BaseState {
 
   /**
    * 港口缓存（Map格式：id -> name）
-   * 数据来源: getPortCodeList
+   * 运价批量新增已改为远程分页搜索，不再预载全量；此 Map 仅作零星回显兜底。
    */
   ports: Map<string, string>;
 
@@ -199,7 +203,13 @@ export const useBaseStore = defineStore('core-base', {
      * 设置箱型列表缓存
      * @param ctns 箱型列表数据
      */
-    setCtnOptions(ctns: Array<{ ctnCodeId: string | number; ctnName: string ; isDefault: boolean }>) {
+    setCtnOptions(
+      ctns: Array<{
+        ctnCodeId: string | number;
+        ctnName: string;
+        isDefault: boolean;
+      }>,
+    ) {
       this.ctnOptions = ctns;
     },
 
@@ -237,7 +247,7 @@ export const useBaseStore = defineStore('core-base', {
 
     /**
      * 从API获取并设置运价批量新增所需的所有下拉框数据
-     * 
+     *
      * 使用示例:
      * ```typescript
      * const store = useBaseStore();
@@ -245,16 +255,21 @@ export const useBaseStore = defineStore('core-base', {
      * ```
      */
     async fetchFreightRateDropdownData() {
-      console.log('🚀 [fetchFreightRateDropdownData] 开始加载运价下拉框数据...');
+      console.log(
+        '🚀 [fetchFreightRateDropdownData] 开始加载运价下拉框数据...',
+      );
       this.freightRateDropdownLoading = true;
 
       try {
         // 动态导入 API 函数，避免循环依赖
-        const { getCtnCodePagedList } = await import('#/api/system/base-data/ctn-code-admin');
-        const { getCurrencyPagedList } = await import('#/api/system/base-data/currency-admin');
-        const { getPortCodeList } = await import('#/api/system/base-data/port-code-admin');
-        const { getCarrierPagedList } = await import('#/api/system/base-data/carrier-admin');
-        const { getClientGroupedByIndustryCategory } = await import('#/api/common/client');
+        const { getCtnCodePagedList } =
+          await import('#/api/system/base-data/ctn-code-admin');
+        const { getCurrencyPagedList } =
+          await import('#/api/system/base-data/currency-admin');
+        const { getCarrierPagedList } =
+          await import('#/api/system/base-data/carrier-admin');
+        const { getClientGroupedByIndustryCategory } =
+          await import('#/api/common/client');
 
         // 1. 加载箱型列表
         console.log('📦 [fetchFreightRateDropdownData] 正在加载箱型列表...');
@@ -264,13 +279,16 @@ export const useBaseStore = defineStore('core-base', {
           Sorting: 'OrderNo',
         });
 
-        const ctnOptions = ctns?.items?.map((item) => ({
-          ctnCodeId: item.id,
-          ctnName: item.ctnName || '',
-          isDefault: item.isDefault,
-        })) || [];
+        const ctnOptions =
+          ctns?.items?.map((item) => ({
+            ctnCodeId: item.id,
+            ctnName: item.ctnName || '',
+            isDefault: item.isDefault,
+          })) || [];
         this.setCtnOptions(ctnOptions);
-        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${ctnOptions.length} 个箱型`);
+        console.log(
+          `✅ [fetchFreightRateDropdownData] 已缓存 ${ctnOptions.length} 个箱型`,
+        );
 
         // 2. 加载币别列表
         console.log('💰 [fetchFreightRateDropdownData] 正在加载币别列表...');
@@ -286,22 +304,17 @@ export const useBaseStore = defineStore('core-base', {
           }
         });
         this.setCurrencies(currencyMap);
-        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${currencyMap.size} 个币别`);
+        console.log(
+          `✅ [fetchFreightRateDropdownData] 已缓存 ${currencyMap.size} 个币别`,
+        );
 
-        // 3. 加载港口列表
-        console.log('🚢 [fetchFreightRateDropdownData] 正在加载港口列表...');
-        const ports = await getPortCodeList();
-
-        const portMap = new Map<string, string>();
-        ports?.forEach((port) => {
-          if (port.i) {
-            const countryEnName = (port.e ?? '').toString().trim();
-            const portName = `${port.p}/${countryEnName}`;
-            portMap.set(String(port.i), portName);
-          }
-        });
-        this.setPorts(portMap);
-        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${portMap.size} 个港口`);
+        // 3. 港口改为 Handsontable 远程分页搜索，不再全量 GetListAsync（几万条卡顿且可能截断）
+        console.log(
+          '🚢 [fetchFreightRateDropdownData] 跳过港口全量加载（改用远程搜索）',
+        );
+        if (this.ports.size === 0) {
+          this.setPorts(new Map());
+        }
 
         // 4. 加载船公司列表
         console.log('🏢 [fetchFreightRateDropdownData] 正在加载船公司列表...');
@@ -314,16 +327,24 @@ export const useBaseStore = defineStore('core-base', {
         carriers?.items?.forEach((carrier) => {
           if (carrier.id) {
             const code = carrier.code || '';
-            const cnShortName = carrier.cnShortName || carrier.cnName || carrier.enName || '';
-            const carrierName = code && cnShortName ? `${code}(${cnShortName})` : (cnShortName || code);
+            const cnShortName =
+              carrier.cnShortName || carrier.cnName || carrier.enName || '';
+            const carrierName =
+              code && cnShortName
+                ? `${code}(${cnShortName})`
+                : cnShortName || code;
             carrierMap.set(String(carrier.id), carrierName);
           }
         });
         this.setCarriers(carrierMap);
-        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${carrierMap.size} 个船公司`);
+        console.log(
+          `✅ [fetchFreightRateDropdownData] 已缓存 ${carrierMap.size} 个船公司`,
+        );
 
         // 5. 加载订舱代理列表（行业类型为 'o' 的客户）
-        console.log('👥 [fetchFreightRateDropdownData] 正在加载订舱代理列表...');
+        console.log(
+          '👥 [fetchFreightRateDropdownData] 正在加载订舱代理列表...',
+        );
         const clientGroups = await getClientGroupedByIndustryCategory();
 
         const bookingAgentMap = new Map<string, string>();
@@ -338,9 +359,13 @@ export const useBaseStore = defineStore('core-base', {
               bookingAgentMap.set(String(client.id), clientName);
             }
           });
-          console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${bookingAgentMap.size} 个订舱代理`);
+          console.log(
+            `✅ [fetchFreightRateDropdownData] 已缓存 ${bookingAgentMap.size} 个订舱代理`,
+          );
         } else {
-          console.warn('⚠️ [fetchFreightRateDropdownData] 未找到行业类型为 "o" 的订舱代理数据');
+          console.warn(
+            '⚠️ [fetchFreightRateDropdownData] 未找到行业类型为 "o" 的订舱代理数据',
+          );
         }
         this.setBookingAgents(bookingAgentMap);
 
@@ -348,12 +373,14 @@ export const useBaseStore = defineStore('core-base', {
         console.log('📊 [fetchFreightRateDropdownData] 缓存统计:');
         console.log('  - 箱型:', this.ctnOptions.length);
         console.log('  - 船公司:', this.carriers.size);
-        console.log('  - 港口:', this.ports.size);
+        console.log('  - 港口(远程搜索):', this.ports.size);
         console.log('  - 币别:', this.currencies.size);
         console.log('  - 订舱代理:', this.bookingAgents.size);
-
       } catch (error) {
-        console.error('❌ [fetchFreightRateDropdownData] 加载运价下拉框数据失败:', error);
+        console.error(
+          '❌ [fetchFreightRateDropdownData] 加载运价下拉框数据失败:',
+          error,
+        );
         throw error;
       } finally {
         this.freightRateDropdownLoading = false;
@@ -374,7 +401,7 @@ export const useBaseStore = defineStore('core-base', {
       this.companyOrganizations = [];
       this.clientsLoading = false;
       this.companyOrganizationsLoading = false;
-      
+
       // 清空运价下拉框数据
       this.ctnOptions = [];
       this.carriers = new Map();
@@ -389,7 +416,7 @@ export const useBaseStore = defineStore('core-base', {
     companyOrganizations: [],
     clientsLoading: false,
     companyOrganizationsLoading: false,
-    
+
     // 运价批量新增下拉框数据初始值
     ctnOptions: [],
     carriers: new Map(),

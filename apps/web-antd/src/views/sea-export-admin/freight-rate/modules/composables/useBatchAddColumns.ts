@@ -22,6 +22,8 @@ export function useBatchAddColumns(
     source: string[],
   ) => void,
   linkage: any,
+  /** 港口远程搜索 source；不传则回退到全量 ports（不推荐） */
+  portSource?: (query: string, process: (items: string[]) => void) => void,
 ) {
   /**
    * 构建动态列配置
@@ -68,22 +70,23 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        // 远程分页：关掉本地二次过滤/重排，保留接口顺序，便于滚动加载
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.ports || [],
-        // renderer: (
-        //   instance: any,
-        //   td: any,
-        //   row: number,
-        //   col: number,
-        //   prop: string,
-        //   value: any,
-        //   cellProperties: any,
-        // ) => {
-        //   const displayValue = value ? dropdownSources.getPortName(value) : '';
-        //   td.innerHTML = displayValue;
-        //   td.className = 'htLeft';
-        //   return td;
-        // },
+        source:
+          portSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const ports = dropdownSourceCache.value.ports || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? ports.filter((p: string) => p.toLowerCase().includes(keyword))
+                : ports,
+            );
+          }),
       },
       {
         data: 'podId',
@@ -92,22 +95,22 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.ports || [],
-        // renderer: (
-        //   instance: any,
-        //   td: any,
-        //   row: number,
-        //   col: number,
-        //   prop: string,
-        //   value: any,
-        //   cellProperties: any,
-        // ) => {
-        //   const displayValue = value ? dropdownSources.getPortName(value) : '';
-        //   td.innerHTML = displayValue;
-        //   td.className = 'htLeft';
-        //   return td;
-        // },
+        source:
+          portSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const ports = dropdownSourceCache.value.ports || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? ports.filter((p: string) => p.toLowerCase().includes(keyword))
+                : ports,
+            );
+          }),
       },
       {
         data: 'currencyId',
@@ -196,35 +199,22 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.ports || [],
-        // renderer: (
-        //   instance: any,
-        //   td: any,
-        //   row: number,
-        //   col: number,
-        //   prop: string,
-        //   value: any,
-        //   cellProperties: any,
-        // ) => {
-        //   const rowData = instance.getDataAtRow(row);
-        //   const isDirect = rowData?.isDirect;
-
-        //   // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
-        //   const isDirectValue = isDirect === '是' || isDirect === true;
-
-        //   if (isDirectValue) {
-        //     td.innerHTML = '';
-        //     td.className = 'htCenter disabled-cell';
-        //   } else {
-        //     // const displayValue = value
-        //     //   ? dropdownSources.getPortName(value)
-        //     //   : '';
-        //     // td.innerHTML = displayValue;
-        //     // td.className = 'htLeft';
-        //   }
-        //   return td;
-        // },
+        source:
+          portSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const ports = dropdownSourceCache.value.ports || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? ports.filter((p: string) => p.toLowerCase().includes(keyword))
+                : ports,
+            );
+          }),
       },
       {
         data: 'poT2Id',
@@ -233,33 +223,22 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.ports || [],
-        // renderer: (
-        //   instance: any,
-        //   td: any,
-        //   row: number,
-        //   col: number,
-        //   prop: string,
-        //   value: any,
-        //   cellProperties: any,
-        // ) => {
-        //   const rowData = instance.getDataAtRow(row);
-        //   const isDirect = rowData?.isDirect;
-
-        //   // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
-        //   const isDirectValue = isDirect === '是' || isDirect === true;
-
-        //   if (isDirectValue) {
-        //     td.innerHTML = '';
-        //     td.className = 'htCenter disabled-cell';
-        //   } else {
-        //     // const displayValue = dropdownSources.getPortName(value);
-        //     // td.innerHTML = displayValue;
-        //     // td.className = 'htLeft';
-        //   }
-        //   return td;
-        // },
+        source:
+          portSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const ports = dropdownSourceCache.value.ports || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? ports.filter((p: string) => p.toLowerCase().includes(keyword))
+                : ports,
+            );
+          }),
       },
       {
         data: 'polFreeDays',

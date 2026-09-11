@@ -4,7 +4,7 @@ import { useBaseStore } from '#/store/base';
 
 /**
  * 批量新增运价 - 下拉框数据源管理 Composable
- * 
+ *
  * 注意：所有下拉框数据现在从 baseStore 中获取，不再单独请求 API
  */
 export function useBatchAddDropdownSources() {
@@ -32,7 +32,9 @@ export function useBatchAddDropdownSources() {
     id: number | string,
     label: string,
   ) {
-    console.warn('⚠️ [updateLabelCache] 不应直接调用此方法，数据应从 store 中获取');
+    console.warn(
+      '⚠️ [updateLabelCache] 不应直接调用此方法，数据应从 store 中获取',
+    );
     // 这里保留方法签名以保持接口兼容，但实际不再使用
   }
 
@@ -46,12 +48,15 @@ export function useBatchAddDropdownSources() {
   }
 
   /**
-   * 获取港口名称
+   * 获取港口名称（优先运行时远程搜索缓存，其次 store）
    */
-  function getPortName(portId: number | string | undefined): string {
+  function getPortName(
+    portId: number | string | undefined,
+    runtimeCache?: Map<string, string>,
+  ): string {
     if (!portId) return '-';
     const key = String(portId);
-    return baseStore.ports.get(key) || `-`;
+    return runtimeCache?.get(key) || baseStore.ports.get(key) || `-`;
   }
 
   /**
@@ -78,13 +83,12 @@ export function useBatchAddDropdownSources() {
    */
   async function initDropdownSources(defaultCurrencyIdRef: any) {
     console.log('🚀 [initDropdownSources] 检查下拉框数据源...');
-    
+
     try {
-      // 检查 store 中是否已有数据
-      const hasData = 
+      // 检查 store 中是否已有数据（港口改为远程搜索，不再要求全量缓存）
+      const hasData =
         baseStore.ctnOptions.length > 0 &&
         baseStore.carriers.size > 0 &&
-        baseStore.ports.size > 0 &&
         baseStore.currencies.size > 0 &&
         baseStore.bookingAgents.size > 0;
 
@@ -93,7 +97,7 @@ export function useBatchAddDropdownSources() {
         console.log('📊 [initDropdownSources] 缓存统计:');
         console.log('  - 箱型:', baseStore.ctnOptions.length);
         console.log('  - 船公司:', baseStore.carriers.size);
-        console.log('  - 港口:', baseStore.ports.size);
+        console.log('  - 港口(远程搜索，不预载):', baseStore.ports.size);
         console.log('  - 币别:', baseStore.currencies.size);
         console.log('  - 订舱代理:', baseStore.bookingAgents.size);
       } else {

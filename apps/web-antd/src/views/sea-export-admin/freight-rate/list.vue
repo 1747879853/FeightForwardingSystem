@@ -623,6 +623,11 @@ function onBatchEditModal() {
       isDirect: row.isDirect,
       poT1Id: row.poT1Id,
       poT2Id: row.poT2Id,
+      // 嵌套港口对象：批量弹窗远程搜索回显用，避免再依赖全量港口缓存
+      pol: row.pol,
+      pod: row.pod,
+      poT1: row.poT1,
+      poT2: row.poT2,
       polFreeDays: row.polFreeDays,
       podFreeDays: row.podFreeDays,
       poddem: row.poddem,
