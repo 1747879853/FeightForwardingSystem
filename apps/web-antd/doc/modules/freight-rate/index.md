@@ -41,7 +41,7 @@ last_updated: 2026-09-11
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **航线/港口** | 运价适用范围。 | `src/views/freight-rate/data.ts` | **触发/依赖：** 影响委托匹配运价。 | 需选择有效基础资料。 |
-| **箱型费用** | 不同箱型的费率明细。 | `freight-rate/modules/add-ctn-modal.vue` | **触发/依赖：** 与运价主记录关联。 | 金额和币种需合法。 |
+| **箱型费用** | 不同箱型的费率明细。 | `freight-rate/modules/freight-rate-form.vue`（箱型费率区） | **触发/依赖：** 与运价主记录关联。 | 金额和币种需合法。 |
 | **运价 API** | 运价后端契约。 | `src/api/sea-export/freight-rate-admin.ts` | **触发/依赖：** 列表、保存、同步更新均依赖该契约。 | 接口字段变化需同步文档。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -54,7 +54,8 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-11 | `Style` | 新增/编辑弹窗附加费表：序号与费用基础/箱型价分区、条件态反馈。 | `edit-form.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md`。 |
+| 2026-09-11 | `Refactor` | 删除未接线弹窗；按功能重命名剩余 modules 组件。 | 删 `add-ctn`/`batch-edit`/旧 `batch-add`/旧 `sync-update`；`form`→`sync-update-form`，`*-handsontable`→`batch-add-modal`，`edit-form`→`freight-rate-form`，`column-config`→`batch-add-column-config-modal`。详见 `changelogs/change-log-2026-09-11-freight-rate-modules-cleanup-rename.md`。 |
+| 2026-09-11 | `Style` | 新增/编辑弹窗附加费表：序号与费用基础/箱型价分区、条件态反馈。 | `freight-rate-form.vue`（原 `edit-form`）。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md`。 |
 | 2026-09-11 | `Feature` | 批量新增列配置支持分区内拖拽排序，去掉上移/下移按钮。 | `column-config-modal.vue` + `sortablejs`。详见 `changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md`。 |
 | 2026-09-11 | `Style` | 批量新增弹窗主色顶栏与运价明细分区卡片对齐单条编辑风格。 | `batch-add-modal-handsontable.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-batch-add-modal-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价列表清理死代码；复制改为编辑表单预填新增；厘清「更新」与「批量更改」入口。 | `list.vue` + `data.ts` + `edit-form` 的 `copyId`。详见 `changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md`。 |

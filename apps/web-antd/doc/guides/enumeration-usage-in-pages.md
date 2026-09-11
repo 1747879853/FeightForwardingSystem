@@ -122,7 +122,7 @@ onMounted(async () => {
 </template>
 ```
 
-**项目内参考：** `src/views/freight-rate/list.vue`、`modules/form.vue`。
+**项目内参考：** `src/views/freight-rate/list.vue`、`modules/sync-update-form.vue`。
 
 ### 3.2 表单 schema（`data.ts` 模块级预加载）
 

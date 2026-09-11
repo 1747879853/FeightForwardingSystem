@@ -12,5 +12,5 @@
 
 ## 避坑指南
 
-- 线上入口为 `batch-add-modal-handsontable.vue`，勿改未接线的 `batch-add-modal.vue` 误以为已生效。
+- 线上入口为 `batch-add-modal.vue`（由原 `batch-add-modal-handsontable.vue` 重命名；旧 Vxe 版已删除）。
 - 分区头同时承载新增行操作与添加箱型，编辑模式仅隐藏行操作区。
