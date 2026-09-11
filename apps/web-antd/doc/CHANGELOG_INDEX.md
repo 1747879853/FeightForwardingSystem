@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-11 运价批量新增列配置改为拖拽排序](./changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md)
+- [2026-09-11 运价批量新增弹窗视觉分区优化](./changelogs/change-log-2026-09-11-freight-rate-batch-add-modal-polish.md)
 - [2026-09-11 运价列表页代码清理与结构规范化](./changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md)
 - [2026-09-11 客户编辑「是否共享」挪到所属公司标题右侧](./changelogs/change-log-2026-09-11-client-is-shared-beside-org.md)
 - [2026-09-11 运价新增/编辑弹窗视觉分区优化](./changelogs/change-log-2026-09-11-freight-rate-edit-form-polish.md)

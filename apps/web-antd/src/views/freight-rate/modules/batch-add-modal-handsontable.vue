@@ -1,18 +1,18 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
-import { Plus, Copy } from '@vben/icons';
+import { Plus, Copy, IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 import {
   Button,
   message,
   Select,
-  Space,
   Modal as AntModal,
   InputNumber,
   DropdownButton,
   Menu,
   MenuItem,
+  Popover,
 } from 'ant-design-vue';
 
 // 导入 composables
@@ -1007,126 +1007,164 @@ defineExpose({
 <template>
   <Modal
     :title="isEditMode ? '编辑数据' : '批量新增运价'"
-    class="w-[1400px]"
+    class="freight-batch-add-modal w-[1400px]"
     :confirm-loading="loading"
   >
-    <div class="batch-add-container">
-      <!-- 仅在新增模式下显示操作按钮 -->
-      <div v-if="!isEditMode" class="mb-4 flex items-center justify-between">
-        <Space>
-          <DropdownButton type="primary" @click="addRow(1)">
-            <template #icon><Plus class="size-4" /></template>
-            新增行
-            <template #overlay>
-              <Menu>
-                <MenuItem @click="addRow(5)">新增 5 行</MenuItem>
-                <MenuItem @click="addRow(10)">新增 10 行</MenuItem>
-                <MenuItem @click="actions.showCustomRowCountModal"
-                  >新增自定义行数</MenuItem
-                >
-              </Menu>
+    <div class="batch-add">
+      <header class="batch-add__hero">
+        <div class="batch-add__hero-main">
+          <span class="batch-add__hero-icon" aria-hidden="true">
+            <IconifyIcon
+              :icon="isEditMode ? 'mdi:table-edit' : 'mdi:table-plus'"
+            />
+          </span>
+          <div class="batch-add__hero-text">
+            <div class="batch-add__hero-title">
+              {{ isEditMode ? '批量编辑运价明细' : '批量新增运价' }}
+            </div>
+            <p class="batch-add__hero-sub">
+              {{
+                isEditMode
+                  ? '每一行独立修改后统一提交；带 * 的列为必填'
+                  : '可一次录入多行运价；支持复制行、追加箱型列与列配置'
+              }}
+            </p>
+          </div>
+        </div>
+        <div class="batch-add__hero-meta">
+          <span class="batch-add__count-chip">
+            当前
+            <em>{{ dataSource.length }}</em>
+            行
+          </span>
+          <span
+            v-if="selectedRowKeys.length > 0"
+            class="batch-add__count-chip batch-add__count-chip--selected"
+          >
+            已选
+            <em>{{ selectedRowKeys.length }}</em>
+          </span>
+          <Popover placement="bottomRight">
+            <template #content>
+              <ul class="batch-add__tips">
+                <li v-if="!isEditMode">「新增行」可一次追加 1 / 5 / 10 行</li>
+                <li v-if="!isEditMode">选中行后可复制或删除</li>
+                <li>「添加箱型」可为表格追加箱型成本列</li>
+                <li>齿轮按钮可配置列显隐与顺序</li>
+              </ul>
             </template>
-          </DropdownButton>
-          <Button
-            :disabled="selectedRowKeys.length === 0"
-            @click="actions.handleCopyRows(copySelectedRows)"
-          >
-            <Copy class="size-4" />复制选中行
-          </Button>
-          <Button
-            danger
-            :disabled="selectedRowKeys.length === 0"
-            @click="actions.handleDeleteRows(deleteSelectedRows)"
-          >
-            删除选中行
-          </Button>
-        </Space>
-        <Space>
-          <span class="text-gray-600">添加箱型：</span>
-          <Select
-            v-model:value="selectedCtnId"
-            style="width: 200px"
-            placeholder="选择箱型"
-            show-search
-            :filter-option="actions.filterCtnOption"
-            :options="availableCtnOptions"
-            :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
-            @change="actions.handleAddCtnType"
-          />
-          <div class="column-config-container" style="position: relative">
-            <Button
-              shape="circle"
-              @click="columnConfigVisible = !columnConfigVisible"
-              class="column-config-btn"
-              title="表格列配置"
-            >
-              <span class="icon-[ant-design--setting-outlined]"></span>
-            </Button>
-            <ColumnConfigModal
-              v-model="columnConfigVisible"
-              :columns="currentColumnConfig"
-              @save="saveColumnConfig"
-            />
-          </div>
-        </Space>
-      </div>
+            <button type="button" class="batch-add__help-btn" title="操作说明">
+              <IconifyIcon icon="mdi:help-circle-outline" />
+            </button>
+          </Popover>
+        </div>
+      </header>
 
-      <!-- 编辑模式下只显示添加箱型和列配置 -->
-      <div v-else class="mb-4 flex items-center justify-end">
-        <Space>
-          <span class="text-gray-600">添加箱型：</span>
-          <Select
-            v-model:value="selectedCtnId"
-            style="width: 200px"
-            placeholder="选择箱型"
-            show-search
-            :filter-option="actions.filterCtnOption"
-            :options="availableCtnOptions"
-            :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
-            @change="actions.handleAddCtnType"
-          />
-          <div class="column-config-container" style="position: relative">
-            <Button
-              shape="circle"
-              @click="columnConfigVisible = !columnConfigVisible"
-              class="column-config-btn"
-              title="表格列配置"
-            >
-              <span class="icon-[ant-design--setting-outlined]"></span>
-            </Button>
-            <ColumnConfigModal
-              v-model="columnConfigVisible"
-              :columns="currentColumnConfig"
-              @save="saveColumnConfig"
-            />
+      <section class="batch-add__section">
+        <header class="batch-add__section-head">
+          <div class="batch-add__section-title">
+            <span class="batch-add__section-icon">
+              <IconifyIcon icon="mdi:view-list-outline" />
+            </span>
+            <span class="batch-add__section-text">运价明细</span>
+            <span class="batch-add__section-hint">
+              共 {{ addedCtnTypes.length }} 个箱型列
+            </span>
           </div>
-        </Space>
-      </div>
 
-      <BatchAddTableCore
-        ref="coreTableRef"
-        v-model:selected-row-keys="selectedRowKeys"
-        :data-source="dataSource"
-        :hot-settings="hotSettings"
-        :label-to-id-map="labelToIdMap"
-      />
+          <div class="batch-add__section-actions">
+            <template v-if="!isEditMode">
+              <DropdownButton type="primary" size="small" @click="addRow(1)">
+                <template #icon><Plus class="size-4" /></template>
+                新增行
+                <template #overlay>
+                  <Menu>
+                    <MenuItem @click="addRow(5)">新增 5 行</MenuItem>
+                    <MenuItem @click="addRow(10)">新增 10 行</MenuItem>
+                    <MenuItem @click="actions.showCustomRowCountModal">
+                      新增自定义行数
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
+              <Button
+                size="small"
+                :disabled="selectedRowKeys.length === 0"
+                @click="actions.handleCopyRows(copySelectedRows)"
+              >
+                <Copy class="size-4" />
+                复制选中行
+              </Button>
+              <Button
+                danger
+                size="small"
+                :disabled="selectedRowKeys.length === 0"
+                @click="actions.handleDeleteRows(deleteSelectedRows)"
+              >
+                删除选中行
+              </Button>
+              <span class="batch-add__action-divider" aria-hidden="true" />
+            </template>
+
+            <span class="batch-add__action-label">添加箱型</span>
+            <Select
+              v-model:value="selectedCtnId"
+              class="batch-add__ctn-select"
+              placeholder="选择箱型"
+              show-search
+              size="small"
+              :filter-option="actions.filterCtnOption"
+              :options="availableCtnOptions"
+              :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
+              @change="actions.handleAddCtnType"
+            />
+            <div class="batch-add__column-config">
+              <Button
+                shape="circle"
+                size="small"
+                class="batch-add__column-config-btn"
+                title="表格列配置"
+                @click="columnConfigVisible = !columnConfigVisible"
+              >
+                <span class="icon-[ant-design--setting-outlined]"></span>
+              </Button>
+              <ColumnConfigModal
+                v-model="columnConfigVisible"
+                :columns="currentColumnConfig"
+                @save="saveColumnConfig"
+              />
+            </div>
+          </div>
+        </header>
+
+        <div class="batch-add__section-body">
+          <BatchAddTableCore
+            ref="coreTableRef"
+            v-model:selected-row-keys="selectedRowKeys"
+            :data-source="dataSource"
+            :hot-settings="hotSettings"
+            :label-to-id-map="labelToIdMap"
+          />
+        </div>
+      </section>
     </div>
 
     <AntModal
       v-model:open="customRowCountVisible"
       title="设置新增行数"
+      :mask-closable="false"
       @ok="actions.handleConfirmCustomRowCount(addRow)"
     >
-      <div class="py-4">
-        <label class="mb-2 block text-sm font-medium text-gray-700"
-          >请输入要新增的行数：</label
-        >
+      <div class="batch-add__custom-rows">
+        <label class="batch-add__custom-rows-label">
+          请输入要新增的行数（1–100）
+        </label>
         <InputNumber
           v-model:value="customRowCount"
           :min="1"
           :max="100"
-          style="width: 100%"
-          placeholder="请输入行数（1-100）"
+          class="batch-add__custom-rows-input"
+          placeholder="请输入行数"
         />
       </div>
     </AntModal>
@@ -1134,35 +1172,308 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
-.batch-add-container {
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.batch-add {
   display: flex;
   flex-direction: column;
+  gap: 14px;
   height: 600px;
+  padding: 2px 2px 4px;
+}
 
-  .handsontable-container {
+.batch-add__hero {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 12%) 0%,
+    hsl(var(--primary) / 4%) 55%,
+    #fff 100%
+  );
+  border: 1px solid hsl(var(--primary) / 22%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 8%);
+  animation: fade-in 0.35s ease;
+}
+
+.batch-add__hero-main {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.batch-add__hero-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  color: #006ce6;
+  background: #fff;
+  border: 1px solid hsl(var(--primary) / 20%);
+  border-radius: 10px;
+}
+
+.batch-add__hero-text {
+  min-width: 0;
+}
+
+.batch-add__hero-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #1a2332;
+}
+
+.batch-add__hero-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8c95a3;
+}
+
+.batch-add__hero-meta {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.batch-add__count-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #006ce6;
+  background: #eaf2ff;
+  border: 1px solid #d6e6ff;
+  border-radius: 999px;
+
+  em {
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  &--selected {
+    color: #0d9488;
+    background: #e6fffa;
+    border-color: #99f6e4;
+  }
+}
+
+.batch-add__help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  color: #8c95a3;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e4e8ef;
+  border-radius: 8px;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+
+  &:hover {
+    color: #006ce6;
+    background: #f4f8ff;
+    border-color: #c9dcff;
+  }
+}
+
+.batch-add__tips {
+  padding: 0 0 0 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #64748b;
+  list-style: disc;
+}
+
+.batch-add__section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8ecf3;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+  transition: box-shadow 0.25s ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgb(16 42 83 / 8%);
+  }
+}
+
+.batch-add__section-head {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+  border-bottom: 1px solid #e4e8ef;
+}
+
+.batch-add__section-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.batch-add__section-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  color: #006ce6;
+  background: #eaf2ff;
+  border-radius: 8px;
+}
+
+.batch-add__section-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
+  white-space: nowrap;
+}
+
+.batch-add__section-hint {
+  font-size: 12px;
+  color: #9aa3af;
+}
+
+.batch-add__section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.batch-add__action-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.batch-add__action-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: #e4e8ef;
+}
+
+.batch-add__ctn-select {
+  width: 180px;
+}
+
+.batch-add__column-config {
+  position: relative;
+  display: inline-block;
+}
+
+.batch-add__column-config-btn {
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    color: #006ce6;
+    background: #f4f8ff;
+    border-color: #c9dcff;
+    transform: rotate(45deg);
+  }
+
+  span[class^='icon-'] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    font-size: 16px;
+  }
+}
+
+.batch-add__section-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+
+  :deep(.handsontable-container) {
     flex: 1;
     overflow: hidden;
+    border: 1px solid #e4e8ef;
+    border-radius: 8px;
   }
 
-  .column-config-container {
-    display: inline-block;
-
-    .column-config-btn {
-      //transition: all 0.3s ease;
-
-      // &:hover {
-      //   transform: rotate(90deg);
-      //   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
-      // }
-
-      span[class^='icon-'] {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 2px;
-        font-size: 18px;
-      }
-    }
+  :deep(.ht_master .wtHolder),
+  :deep(.ht_clone_top .wtHolder) {
+    border-radius: 8px;
   }
+
+  :deep(.handsontable thead th) {
+    font-weight: 600;
+    color: #252a31;
+    background: #f4f8ff !important;
+  }
+
+  :deep(.handsontable tbody tr:hover td) {
+    background: #fafbfd;
+  }
+}
+
+.batch-add__custom-rows {
+  padding: 8px 0 4px;
+}
+
+.batch-add__custom-rows-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.batch-add__custom-rows-input {
+  width: 100%;
 }
 </style>
