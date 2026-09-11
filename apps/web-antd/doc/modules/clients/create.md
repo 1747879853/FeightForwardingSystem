@@ -2,7 +2,7 @@
 title: 客户新建
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-09-08
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础资料录入：** 填写客户基础字段并提交创建接口。未保存切走可 KeepAlive，点 X 才丢。
+- **是否共享：** 位于基础信息「所属公司」标题右侧，问号提示「共享后全集团可见」。
 - **创建后流转：** 保存成功后 `replace` 进入 `/clients/:id/edit`，并 `closeTabByKey` 关掉原新建页签。保存前先刷新脏基线，避免未保存拦截挡住跳转或关页签。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -34,6 +35,7 @@ last_updated: 2026-09-08
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
+| **isShared** | 是否共享；共享后全集团可见。 | Add/Edit/Detail `isShared` | UI 挂在所属公司标题右侧。 | 默认 false |
 | **供应商行业类别** | 勾选供应商后可选的属性，含「码头」（字母 `t`，数字 `20`）。 | `getSupplierIndustryCategoryOptions()` | 海运进口码头下拉只筛此属性。 | 可多选字母拼进 `IndustryCategory`。 |
 | **页面根节点** | 表单页面必须保持单元素根。 | `src/views/client/base/form.vue` | **触发/依赖：** 受 `RouterView` 外层 `Transition` 影响。 | 禁止退化为多根 Fragment。 |
 
@@ -47,6 +49,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Style` | 「是否共享」挪到所属公司标题右侧并加问号提示。 | 详见 `changelogs/change-log-2026-09-11-client-is-shared-beside-org.md`。 |
 | 2026-09-08 | `Fix` | 新建保存成功后关闭原新建页签，只保留编辑页签。 | vben tabbar 按 fullPath 维护页签；关页签调用曾被注释。详见 `changelogs/change-log-2026-09-08-client-create-tab-close.md`。 |
 | 2026-08-25 | `Feature` | 供应商行业类别新增「码头」（字母 `t`，数字 `20`）。 | 与后端 `IndustryCategory.码头` 对齐。详见 `changelogs/change-log-2026-08-25-sea-import-tapd-1000779.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/create` 对应组件 `src/views/client/base/form.vue`，权限口径为 未在路由中声明独立权限。 |

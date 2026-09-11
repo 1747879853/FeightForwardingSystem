@@ -337,6 +337,8 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       component: 'UserCompanySelect',
       fieldName: 'orgId',
       label: '所属公司',
+      // 标签行占满宽度，供 form.vue 把「是否共享」渲在标题右侧
+      labelClass: 'w-full',
       rules: 'required',
       componentProps: {
         allowClear: true,
@@ -345,6 +347,16 @@ export function useBaseFormSchema(): VbenFormSchema[] {
         // autoDefault: true, // 移除自动默认值，确保用户必须手动选择
         // userId 会在 form.vue 中通过 updateSchema 动态设置
       },
+    },
+    {
+      // 实际 UI 在所属公司标题右侧；此字段仅参与表单取值/脏检查/提交
+      component: 'Switch',
+      fieldName: 'isShared',
+      label: '是否共享',
+      help: '共享后全集团可见',
+      defaultValue: false,
+      hideLabel: true,
+      formItemClass: '!hidden',
     },
     {
       component: 'Textarea',
@@ -458,12 +470,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
         allowClear: true,
         disabled: true, // 只读计算字段
       },
-    },
-    {
-      component: 'Switch',
-      fieldName: 'isShared',
-      label: '是否共享',
-      defaultValue: false,
     },
     {
       component: 'Textarea',

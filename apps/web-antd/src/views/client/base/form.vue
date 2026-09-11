@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watch, markRaw, h } from 'vue';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+  markRaw,
+  h,
+  defineComponent,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -24,6 +33,7 @@ import { useVbenForm } from '#/adapter/form';
 import { getAreaAndParents } from '#/api/common/area';
 import AddressModal from './address-modal.vue';
 import RiskbirdSearchModal from './riskbird-search-modal.vue';
+import OrgSharedLabel from './org-shared-label.vue';
 import { useVbenModal } from '@vben/common-ui';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
@@ -168,6 +178,33 @@ const [BaseForm, baseFormApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-4',
 });
+
+/** 是否共享：UI 挂在所属公司标题右侧，值写入基础表单 isShared */
+const isSharedChecked = ref(false);
+
+function bindOrgSharedLabel() {
+  baseFormApi.updateSchema([
+    {
+      fieldName: 'orgId',
+      labelClass: 'w-full',
+      label: markRaw(
+        defineComponent({
+          name: 'ClientOrgSharedLabelBinder',
+          setup() {
+            return () =>
+              h(OrgSharedLabel, {
+                checked: isSharedChecked.value,
+                'onUpdate:checked': async (checked: boolean) => {
+                  isSharedChecked.value = checked;
+                  await baseFormApi.setFieldValue('isShared', checked);
+                },
+              });
+          },
+        }),
+      ),
+    },
+  ]);
+}
 
 const [BusinessForm, businessFormApi] = useVbenForm({
   layout: 'vertical',
@@ -588,6 +625,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     url: detail.url,
     enterpriseType: detail.enterpriseType, // 添加企业类型字段
     orgId: detail.orgId, // 归属组织字段
+    isShared: detail.isShared ?? false,
     remark: detail.remark,
     country: detail.countryId,
     areaId: areaIdPath,
@@ -637,6 +675,7 @@ const loadEditData = async () => {
 
     // 设置各个表单的值
     await baseFormApi.setValues(formValues);
+    isSharedChecked.value = Boolean(formValues.isShared);
     await businessFormApi.setValues(formValues);
 
     // 根据客户类型设置对应的表单
@@ -1029,6 +1068,7 @@ const handleSubmit = async () => {
 
         enterpriseType: baseValues.enterpriseType, // 企业类型字段
         orgId: baseValues.orgId, // 归属组织字段
+        isShared: Boolean(baseValues.isShared),
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1134,6 +1174,7 @@ const handleSubmit = async () => {
 
         enterpriseType: baseValues.enterpriseType, // 添加企业类型字段
         orgId: baseValues.orgId, // 归属组织字段
+        isShared: Boolean(baseValues.isShared),
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1465,6 +1506,7 @@ defineExpose({ isFormDirty });
 
 onMounted(() => {
   loadEditData();
+  bindOrgSharedLabel();
 
   // 在表单初始化后，为fullName字段添加onChange监听和查询按钮
   // 使用setTimeout确保表单完全渲染后再添加按钮
@@ -1565,7 +1607,6 @@ onMounted(() => {
               <!-- 客户：一级勾选 + 二级属性（同行样式，增强区分） -->
               <div class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow">
                 <div class="type-row__primary">
-   
                   <div
                     class="role-chip"
                     :class="{
@@ -1601,7 +1642,6 @@ onMounted(() => {
               <!-- 供应商：一级勾选 + 二级属性 -->
               <div class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow">
                 <div class="type-row__primary">
-   
                   <div
                     class="role-chip"
                     :class="{

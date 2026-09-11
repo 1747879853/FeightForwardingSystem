@@ -623,6 +623,8 @@ export namespace ClientAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织），可空 */
     orgs?: null | OrganizationUnitSimpleDto[];
+    /** 是否共享（共享后全集团可见） */
+    isShared?: boolean;
 
     /** 是否失信 */
     isDishonest?: boolean;
