@@ -28,7 +28,7 @@ import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
-import { useGridFormSchema, useListColumns } from './data';
+import { formatAmount, useGridFormSchema, useListColumns } from './data';
 import ActionModal from './action-modal.vue';
 import CreateModal from './create-modal.vue';
 import DetailModal from './detail-modal.vue';
@@ -327,6 +327,68 @@ const mapParams = (formValues: Record<string, any>) => {
   return decorated;
 };
 
+// ==================== 底部当页合计 ====================
+
+/** 当前页表格数据，驱动提成金额 / 底薪 / 最终应发 / 实发金额 / 票数合计 */
+const currentPageData = ref<OrderRow[]>([]);
+
+const pageTotals = computed(() => {
+  let commissionAmount = 0;
+  let baseSalary = 0;
+  let finalAmount = 0;
+  let grantAmount = 0;
+  let itemCount = 0;
+  currentPageData.value.forEach((row) => {
+    commissionAmount += Number(row.commissionAmount) || 0;
+    baseSalary += Number(row.baseSalary) || 0;
+    finalAmount += Number(row.finalAmount) || 0;
+    grantAmount += Number(row.grantAmount) || 0;
+    itemCount += Number(row.itemCount) || 0;
+  });
+  return {
+    baseSalary,
+    commissionAmount,
+    finalAmount,
+    grantAmount,
+    itemCount,
+  };
+});
+
+/**
+ * 底部合计扁平项（对齐开票申请列表：
+ * 「标签: 着色金额」，项间用分隔符）。
+ */
+const summaryItems = computed(() => {
+  if (currentPageData.value.length === 0) return [];
+  return [
+    {
+      color: 'commission',
+      name: `${$t('commissionOrder.columns.commissionAmount')}:`,
+      value: formatAmount(pageTotals.value.commissionAmount),
+    },
+    {
+      color: 'salary',
+      name: `${$t('commissionOrder.columns.baseSalary')}:`,
+      value: formatAmount(pageTotals.value.baseSalary),
+    },
+    {
+      color: 'final',
+      name: `${$t('commissionOrder.columns.finalAmount')}:`,
+      value: formatAmount(pageTotals.value.finalAmount),
+    },
+    {
+      color: 'grant',
+      name: `${$t('commissionOrder.columns.grantAmount')}:`,
+      value: formatAmount(pageTotals.value.grantAmount),
+    },
+    {
+      color: 'count',
+      name: `${$t('commissionOrder.columns.itemCount')}:`,
+      value: String(pageTotals.value.itemCount),
+    },
+  ];
+});
+
 const fetchList = async (params: Record<string, any>) => {
   const result = await getCommissionOrderPagedList({
     ...params,
@@ -334,6 +396,8 @@ const fetchList = async (params: Record<string, any>) => {
   });
   // 数据刷新（查询/刷新/翻页）后勾选会被清空，同步清空选中行，避免工具栏按钮状态与实际勾选不一致
   selectedRows.value = [];
+  // 拦截当前页数据，驱动底部当页合计
+  currentPageData.value = (result?.items ?? []) as OrderRow[];
   return result;
 };
 
@@ -359,7 +423,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderRow>({
       trigger: 'row',
     },
     columns: useListColumns(),
-    height: 'auto',
+    height: '100%',
     keepSource: true,
     pagerConfig: {
       enabled: true,
@@ -414,8 +478,8 @@ onActivated(() => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid>
+  <Page auto-content-height content-class="flex flex-col">
+    <Grid class="min-h-0 flex-1">
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算 -->
       <template #toolbar-actions>
         <GroupingTabs
@@ -470,8 +534,109 @@ onActivated(() => {
       </template>
     </Grid>
 
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div v-if="summaryItems.length > 0" class="commission-order-footer-summary">
+      <div
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="commission-order-footer-summary__pair"
+      >
+        <span class="commission-order-footer-summary__name">{{
+          item.name
+        }}</span>
+        <span
+          class="commission-order-footer-summary__value"
+          :class="`commission-order-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="index < summaryItems.length - 1"
+          class="commission-order-footer-summary__split"
+        >
+          |
+        </span>
+      </div>
+    </div>
+    <div
+      v-else
+      class="commission-order-footer-summary commission-order-footer-summary--empty"
+    >
+      <span class="commission-order-footer-summary__name">当页合计：</span>
+      <span class="commission-order-footer-summary__empty-text">暂无数据</span>
+    </div>
+
     <CreateModalComp @success="handleRefresh" />
     <DetailModalComp />
     <ActionModalComp @success="handleRefresh" />
   </Page>
 </template>
+
+<style scoped>
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
+.commission-order-footer-summary {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.commission-order-footer-summary--empty {
+  color: #94a3b8;
+}
+
+.commission-order-footer-summary__pair {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.commission-order-footer-summary__name {
+  flex-shrink: 0;
+}
+
+.commission-order-footer-summary__value {
+  font-weight: 600;
+}
+
+.commission-order-footer-summary__value--commission {
+  color: #00a862;
+}
+
+.commission-order-footer-summary__value--salary {
+  color: #f59e0b;
+}
+
+.commission-order-footer-summary__value--final {
+  color: #1890ff;
+}
+
+.commission-order-footer-summary__value--grant {
+  color: #eb2f96;
+}
+
+.commission-order-footer-summary__value--count {
+  color: #6366f1;
+}
+
+.commission-order-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
+}
+
+.commission-order-footer-summary__empty-text {
+  color: #94a3b8;
+}
+</style>
