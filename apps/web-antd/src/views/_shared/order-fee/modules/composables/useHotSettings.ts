@@ -644,6 +644,19 @@ export function useHotSettings(
 
               return [row, prop, oldValue, newValue];
             }
+
+            // 行业类别允许清空：清空时同步去掉 _value，避免仍用旧枚举值联动/提交
+            if (
+              prop === 'industryCategory' &&
+              (newValue === null || newValue === undefined || newValue === '')
+            ) {
+              const actualDataSource = getDataSource();
+              if (actualDataSource[row]) {
+                (actualDataSource[row] as any)[prop] = '';
+                (actualDataSource[row] as any)[`${prop}_value`] = undefined;
+              }
+              return [row, prop, oldValue, ''];
+            }
           }
 
           return change;

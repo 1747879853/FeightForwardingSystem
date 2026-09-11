@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 费用录入行业类别补「个人」且可清空](./changelogs/change-log-2026-09-11-order-fee-industry-category-personal-nullable.md)
 - [2026-09-11 自动费用模板明细表小屏高度裁切](./changelogs/change-log-2026-09-11-order-fee-template-table-height-fill.md)
 - [2026-09-11 useVbenModal 默认可拖动且点遮罩不关闭](./changelogs/change-log-2026-09-11-modal-default-draggable-no-mask-close.md)
 - [2026-09-10 全量发布默认并发改为 5 路](./changelogs/change-log-2026-09-10-publish-all-throttle-5.md)
