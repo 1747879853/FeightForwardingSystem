@@ -1,6 +1,10 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import type { SortableEvent } from 'sortablejs';
+
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { message, Checkbox, Button } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
+import Sortable from 'sortablejs';
 
 interface ColumnConfig {
   data: string;
@@ -9,6 +13,8 @@ interface ColumnConfig {
   fixed?: 'left' | 'right' | false;
   order: number;
 }
+
+type FixedSection = 'left' | 'normal' | 'right';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -20,10 +26,15 @@ const emit = defineEmits<{
   (e: 'save', columns: ColumnConfig[]): void;
 }>();
 
-// 本地模态框状态
 const modalOpen = ref(props.modelValue);
+const localColumns = ref<ColumnConfig[]>([]);
 
-// 监听外部modelValue变化
+const leftListRef = ref<HTMLElement | null>(null);
+const normalListRef = ref<HTMLElement | null>(null);
+const rightListRef = ref<HTMLElement | null>(null);
+
+const sortableInstances: Sortable[] = [];
+
 watch(
   () => props.modelValue,
   (newVal) => {
@@ -31,155 +42,176 @@ watch(
   },
 );
 
-// 监听本地状态变化并同步到父组件
 watch(modalOpen, (newVal) => {
   if (newVal !== props.modelValue) {
     emit('update:modelValue', newVal);
   }
 });
 
-// 本地列配置副本，用于编辑
-const localColumns = ref<ColumnConfig[]>([]);
+function cloneColumns(columns: ColumnConfig[]): ColumnConfig[] {
+  return columns
+    .map((col) => ({
+      ...col,
+      order: col.order ?? 999,
+      visible: col.visible ?? true,
+      fixed: col.fixed ?? false,
+    }))
+    .sort((a, b) => a.order - b.order);
+}
 
-// 初始化本地列配置
 watch(
   () => props.columns,
   (newColumns) => {
-    if (newColumns && newColumns.length > 0) {
-      // 创建深拷贝，避免直接修改props
-      localColumns.value = newColumns
-        .map((col) => ({
-          ...col,
-          // 确保order字段存在
-          order: col.order ?? 999,
-          // 确保visible字段存在，默认为true
-          visible: col.visible ?? true,
-          // 确保fixed字段存在，默认为false
-          fixed: col.fixed ?? false,
-        }))
-        .sort((a, b) => a.order - b.order);
+    if (newColumns?.length) {
+      localColumns.value = cloneColumns(newColumns);
     }
   },
   { immediate: true },
 );
 
-// 所有列（包括隐藏列）
-const allColumns = computed(() => {
-  return localColumns.value;
+function getSectionColumns(section: FixedSection): ColumnConfig[] {
+  if (section === 'left') {
+    return localColumns.value.filter((col) => col.fixed === 'left');
+  }
+  if (section === 'right') {
+    return localColumns.value.filter((col) => col.fixed === 'right');
+  }
+  return localColumns.value.filter((col) => col.fixed === false);
+}
+
+const leftFixedColumns = computed(() => getSectionColumns('left'));
+const nonFixedColumns = computed(() => getSectionColumns('normal'));
+const rightFixedColumns = computed(() => getSectionColumns('right'));
+
+function rebuildLocalColumns(
+  left: ColumnConfig[],
+  normal: ColumnConfig[],
+  right: ColumnConfig[],
+) {
+  const merged = [...left, ...normal, ...right];
+  merged.forEach((col, index) => {
+    col.order = index;
+  });
+  localColumns.value = merged;
+}
+
+function handleSectionSort(section: FixedSection, evt: SortableEvent) {
+  const { oldIndex, newIndex } = evt;
+  if (
+    oldIndex === undefined ||
+    newIndex === undefined ||
+    oldIndex === newIndex
+  ) {
+    return;
+  }
+
+  const left = getSectionColumns('left');
+  const normal = getSectionColumns('normal');
+  const right = getSectionColumns('right');
+  const target =
+    section === 'left' ? left : section === 'right' ? right : normal;
+
+  const [moved] = target.splice(oldIndex, 1);
+  if (!moved) return;
+  target.splice(newIndex, 0, moved);
+
+  rebuildLocalColumns(
+    section === 'left' ? target : left,
+    section === 'normal' ? target : normal,
+    section === 'right' ? target : right,
+  );
+}
+
+function destroySortables() {
+  while (sortableInstances.length > 0) {
+    sortableInstances.pop()?.destroy();
+  }
+}
+
+async function initSortables() {
+  destroySortables();
+  await nextTick();
+
+  const configs: Array<{ el: HTMLElement | null; section: FixedSection }> = [
+    { el: leftListRef.value, section: 'left' },
+    { el: normalListRef.value, section: 'normal' },
+    { el: rightListRef.value, section: 'right' },
+  ];
+
+  configs.forEach(({ el, section }) => {
+    if (!el) return;
+    const instance = Sortable.create(el, {
+      animation: 200,
+      handle: '.drag-handle',
+      ghostClass: 'column-item--ghost',
+      chosenClass: 'column-item--chosen',
+      dragClass: 'column-item--drag',
+      onEnd: (evt) => handleSectionSort(section, evt),
+    });
+    sortableInstances.push(instance);
+  });
+}
+
+watch(modalOpen, async (open) => {
+  if (open) {
+    await initSortables();
+  } else {
+    destroySortables();
+  }
 });
 
-// 固定左侧列（包括隐藏列）
-const leftFixedColumnsAll = computed(() => {
-  return allColumns.value.filter((col) => col.fixed === 'left');
+// 固定状态变化后分区 DOM 会重建，需重新绑定拖拽
+watch(
+  () =>
+    [
+      leftFixedColumns.value.length,
+      nonFixedColumns.value.length,
+      rightFixedColumns.value.length,
+    ].join(','),
+  async () => {
+    if (modalOpen.value) {
+      await initSortables();
+    }
+  },
+);
+
+onBeforeUnmount(() => {
+  destroySortables();
 });
 
-// 固定右侧列（包括隐藏列）
-const rightFixedColumnsAll = computed(() => {
-  return allColumns.value.filter((col) => col.fixed === 'right');
-});
-
-// 非固定列（包括隐藏列）
-const nonFixedColumnsAll = computed(() => {
-  return allColumns.value.filter((col) => col.fixed === false);
-});
-
-// 切换列可见性
-const toggleColumnVisibility = (data: string, checked: boolean) => {
+function toggleColumnVisibility(data: string, checked: boolean) {
   const column = localColumns.value.find((col) => col.data === data);
   if (column) {
     column.visible = checked;
   }
-};
+}
 
-// 设置列固定位置
-const setColumnFixed = (data: string, position: 'left' | 'right' | false) => {
+function setColumnFixed(data: string, position: 'left' | 'right' | false) {
   const column = localColumns.value.find((col) => col.data === data);
-  if (column) {
-    column.fixed = position;
-  }
-};
+  if (!column) return;
 
-// 取消列固定
-const unsetColumnFixed = (data: string) => {
-  const column = localColumns.value.find((col) => col.data === data);
-  if (column) {
-    column.fixed = false;
-  }
-};
+  column.fixed = position;
 
-// 上移列位置
-const moveColumnUp = (section: 'left' | 'normal' | 'right', index: number) => {
-  let sectionColumns: ColumnConfig[] = [];
+  // 固定变更后将该列移到对应分区末尾，并重排 order
+  const rest = localColumns.value.filter((col) => col.data !== data);
+  const left = rest.filter((col) => col.fixed === 'left');
+  const normal = rest.filter((col) => col.fixed === false);
+  const right = rest.filter((col) => col.fixed === 'right');
 
-  if (section === 'left') {
-    sectionColumns = leftFixedColumnsAll.value;
-  } else if (section === 'normal') {
-    sectionColumns = nonFixedColumnsAll.value;
-  } else {
-    sectionColumns = rightFixedColumnsAll.value;
-  }
+  if (position === 'left') left.push(column);
+  else if (position === 'right') right.push(column);
+  else normal.push(column);
 
-  if (index <= 0 || index >= sectionColumns.length) return;
+  rebuildLocalColumns(left, normal, right);
+}
 
-  const currentColumn = sectionColumns[index];
-  const prevColumn = sectionColumns[index - 1];
+function getPinColor(fixed: 'left' | 'right' | false | undefined) {
+  if (fixed === 'left') return '#1890ff';
+  if (fixed === 'right') return '#52c41a';
+  return '#bfbfbf';
+}
 
-  if (!currentColumn || !prevColumn) return;
-
-  // 交换order值
-  const tempOrder = currentColumn.order;
-  currentColumn.order = prevColumn.order;
-  prevColumn.order = tempOrder;
-
-  // 重新排序本地列
-  localColumns.value.sort((a, b) => a.order - b.order);
-};
-
-// 下移列位置
-const moveColumnDown = (
-  section: 'left' | 'normal' | 'right',
-  index: number,
-) => {
-  let sectionColumns: ColumnConfig[] = [];
-
-  if (section === 'left') {
-    sectionColumns = leftFixedColumnsAll.value;
-  } else if (section === 'normal') {
-    sectionColumns = nonFixedColumnsAll.value;
-  } else {
-    sectionColumns = rightFixedColumnsAll.value;
-  }
-
-  if (index < 0 || index >= sectionColumns.length - 1) return;
-
-  const currentColumn = sectionColumns[index];
-  const nextColumn = sectionColumns[index + 1];
-
-  if (!currentColumn || !nextColumn) return;
-
-  // 交换order值
-  const tempOrder = currentColumn.order;
-  currentColumn.order = nextColumn.order;
-  nextColumn.order = tempOrder;
-
-  // 重新排序本地列
-  localColumns.value.sort((a, b) => a.order - b.order);
-};
-
-// 获取固定图标的颜色
-const getPinColor = (fixed: 'left' | 'right' | false | undefined) => {
-  if (fixed === 'left') {
-    return '#1890ff'; // 蓝色表示左侧固定
-  } else if (fixed === 'right') {
-    return '#52c41a'; // 绿色表示右侧固定
-  } else {
-    return '#bfbfbf'; // 灰色表示未固定
-  }
-};
-
-// 保存配置
-const handleSave = () => {
-  // 验证是否有可见列
+function handleSave() {
   const visibleCount = localColumns.value.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
@@ -188,280 +220,178 @@ const handleSave = () => {
 
   emit('save', [...localColumns.value]);
   handleClose();
-};
+}
 
-// 重置配置
-const handleReset = () => {
-  // 重置为原始配置
-  if (props.columns && props.columns.length > 0) {
-    localColumns.value = props.columns
-      .map((col) => ({
-        ...col,
-        order: col.order ?? 999,
-        visible: col.visible ?? true,
-        fixed: col.fixed ?? false,
-      }))
-      .sort((a, b) => a.order - b.order);
+function handleReset() {
+  if (props.columns?.length) {
+    localColumns.value = cloneColumns(props.columns);
   }
-};
+}
 
-// 关闭弹窗
-const handleClose = () => {
+function handleClose() {
   emit('update:modelValue', false);
-};
+}
 </script>
 
 <template>
   <div v-if="modelValue" class="column-config-dropdown">
     <div class="config-header">
       <span class="header-title">表格列配置</span>
+      <span class="header-hint">拖拽调整顺序</span>
     </div>
 
     <div class="columns-list">
-      <!-- 固定左侧列（包括隐藏列） -->
-      <div v-if="leftFixedColumnsAll.length > 0" class="fixed-section">
+      <div v-if="leftFixedColumns.length > 0" class="fixed-section">
         <div class="section-title">固定在左侧</div>
-        <div
-          v-for="(column, index) in leftFixedColumnsAll"
-          :key="column.data"
-          class="column-item"
-        >
-          <Checkbox
-            :checked="column.visible"
-            @change="
-              (e: any) => toggleColumnVisibility(column.data, e.target.checked)
-            "
+        <div ref="leftListRef" class="column-sortable">
+          <div
+            v-for="column in leftFixedColumns"
+            :key="column.data"
+            class="column-item"
           >
-            <span class="column-name">{{ column.title }}</span>
-          </Checkbox>
-          <div class="column-actions">
-            <div class="pin-buttons">
-              <span
-                class="pin-icon active"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'left')"
-                title="固定在左侧"
-              >
-                <!-- 左固定图标 - 向左箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon active"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="unsetColumnFixed(column.data)"
-                title="取消固定"
-              >
-                <!-- 取消固定图标 - 图钉带斜线 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'right')"
-                title="固定在右侧"
-              >
-                <!-- 右固定图标 - 向右箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
-                  />
-                </svg>
-              </span>
-            </div>
-            <div class="move-buttons">
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === 0"
-                @click="moveColumnUp('left', index)"
-              >
-                ↑
-              </Button>
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === leftFixedColumnsAll.length - 1"
-                @click="moveColumnDown('left', index)"
-              >
-                ↓
-              </Button>
+            <span class="drag-handle" title="拖拽排序">
+              <IconifyIcon icon="mdi:drag-vertical" class="size-4" />
+            </span>
+            <Checkbox
+              :checked="column.visible"
+              @change="
+                (e: any) =>
+                  toggleColumnVisibility(column.data, e.target.checked)
+              "
+            >
+              <span class="column-name">{{ column.title }}</span>
+            </Checkbox>
+            <div class="column-actions">
+              <div class="pin-buttons">
+                <span
+                  class="pin-icon active"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在左侧"
+                  @click="setColumnFixed(column.data, 'left')"
+                >
+                  <IconifyIcon icon="mdi:chevron-left" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon active"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="取消固定"
+                  @click="setColumnFixed(column.data, false)"
+                >
+                  <IconifyIcon icon="mdi:pin-off-outline" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在右侧"
+                  @click="setColumnFixed(column.data, 'right')"
+                >
+                  <IconifyIcon icon="mdi:chevron-right" class="size-4" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 非固定列（包括隐藏列） -->
-      <div v-if="nonFixedColumnsAll.length > 0" class="normal-section">
+      <div v-if="nonFixedColumns.length > 0" class="normal-section">
         <div class="section-title">普通列</div>
-        <div
-          v-for="(column, index) in nonFixedColumnsAll"
-          :key="column.data"
-          class="column-item"
-        >
-          <Checkbox
-            :checked="column.visible"
-            @change="
-              (e: any) => toggleColumnVisibility(column.data, e.target.checked)
-            "
+        <div ref="normalListRef" class="column-sortable">
+          <div
+            v-for="column in nonFixedColumns"
+            :key="column.data"
+            class="column-item"
           >
-            <span class="column-name">{{ column.title }}</span>
-          </Checkbox>
-          <div class="column-actions">
-            <div class="pin-buttons">
-              <span
-                class="pin-icon"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'left')"
-                title="固定在左侧"
-              >
-                <!-- 左固定图标 - 向左箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon active"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="unsetColumnFixed(column.data)"
-                title="取消固定"
-              >
-                <!-- 取消固定图标 - 图钉带斜线 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'right')"
-                title="固定在右侧"
-              >
-                <!-- 右固定图标 - 向右箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
-                  />
-                </svg>
-              </span>
-            </div>
-            <div class="move-buttons">
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === 0"
-                @click="moveColumnUp('normal', index)"
-              >
-                ↑
-              </Button>
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === nonFixedColumnsAll.length - 1"
-                @click="moveColumnDown('normal', index)"
-              >
-                ↓
-              </Button>
+            <span class="drag-handle" title="拖拽排序">
+              <IconifyIcon icon="mdi:drag-vertical" class="size-4" />
+            </span>
+            <Checkbox
+              :checked="column.visible"
+              @change="
+                (e: any) =>
+                  toggleColumnVisibility(column.data, e.target.checked)
+              "
+            >
+              <span class="column-name">{{ column.title }}</span>
+            </Checkbox>
+            <div class="column-actions">
+              <div class="pin-buttons">
+                <span
+                  class="pin-icon"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在左侧"
+                  @click="setColumnFixed(column.data, 'left')"
+                >
+                  <IconifyIcon icon="mdi:chevron-left" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon active"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="取消固定"
+                  @click="setColumnFixed(column.data, false)"
+                >
+                  <IconifyIcon icon="mdi:pin-off-outline" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在右侧"
+                  @click="setColumnFixed(column.data, 'right')"
+                >
+                  <IconifyIcon icon="mdi:chevron-right" class="size-4" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 固定右侧列（包括隐藏列） -->
-      <div v-if="rightFixedColumnsAll.length > 0" class="fixed-section">
+      <div v-if="rightFixedColumns.length > 0" class="fixed-section">
         <div class="section-title">固定在右侧</div>
-        <div
-          v-for="(column, index) in rightFixedColumnsAll"
-          :key="column.data"
-          class="column-item"
-        >
-          <Checkbox
-            :checked="column.visible"
-            @change="
-              (e: any) => toggleColumnVisibility(column.data, e.target.checked)
-            "
+        <div ref="rightListRef" class="column-sortable">
+          <div
+            v-for="column in rightFixedColumns"
+            :key="column.data"
+            class="column-item"
           >
-            <span class="column-name">{{ column.title }}</span>
-          </Checkbox>
-          <div class="column-actions">
-            <div class="pin-buttons">
-              <span
-                class="pin-icon"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'left')"
-                title="固定在左侧"
-              >
-                <!-- 左固定图标 - 向左箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon active"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="unsetColumnFixed(column.data)"
-                title="取消固定"
-              >
-                <!-- 取消固定图标 - 图钉带斜线 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
-                  />
-                </svg>
-              </span>
-              <span
-                class="pin-icon active"
-                :style="{ color: getPinColor(column.fixed) }"
-                @click="setColumnFixed(column.data, 'right')"
-                title="固定在右侧"
-              >
-                <!-- 右固定图标 - 向右箭头 -->
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
-                  />
-                </svg>
-              </span>
-            </div>
-            <div class="move-buttons">
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === 0"
-                @click="moveColumnUp('right', index)"
-              >
-                ↑
-              </Button>
-              <Button
-                size="small"
-                type="link"
-                :disabled="index === rightFixedColumnsAll.length - 1"
-                @click="moveColumnDown('right', index)"
-              >
-                ↓
-              </Button>
+            <span class="drag-handle" title="拖拽排序">
+              <IconifyIcon icon="mdi:drag-vertical" class="size-4" />
+            </span>
+            <Checkbox
+              :checked="column.visible"
+              @change="
+                (e: any) =>
+                  toggleColumnVisibility(column.data, e.target.checked)
+              "
+            >
+              <span class="column-name">{{ column.title }}</span>
+            </Checkbox>
+            <div class="column-actions">
+              <div class="pin-buttons">
+                <span
+                  class="pin-icon"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在左侧"
+                  @click="setColumnFixed(column.data, 'left')"
+                >
+                  <IconifyIcon icon="mdi:chevron-left" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon active"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="取消固定"
+                  @click="setColumnFixed(column.data, false)"
+                >
+                  <IconifyIcon icon="mdi:pin-off-outline" class="size-4" />
+                </span>
+                <span
+                  class="pin-icon active"
+                  :style="{ color: getPinColor(column.fixed) }"
+                  title="固定在右侧"
+                  @click="setColumnFixed(column.data, 'right')"
+                >
+                  <IconifyIcon icon="mdi:chevron-right" class="size-4" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -473,20 +403,20 @@ const handleClose = () => {
         <Button
           size="small"
           type="default"
-          @click="handleReset"
           class="reset-btn"
+          @click="handleReset"
         >
           重置
         </Button>
         <div class="footer-buttons">
-          <Button size="small" @click="handleClose" class="cancel-btn mr-2">
+          <Button size="small" class="cancel-btn mr-2" @click="handleClose">
             取消
           </Button>
           <Button
             size="small"
             type="primary"
-            @click="handleSave"
             class="save-btn"
+            @click="handleSave"
           >
             确定
           </Button>
@@ -502,54 +432,112 @@ const handleClose = () => {
   top: 100%;
   right: 0;
   z-index: 1000;
-  width: 270px;
-  max-height: 500px;
+  width: 300px;
+  max-height: 360px;
   overflow-y: auto;
   background-color: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgb(16 42 83 / 12%);
 
   .config-header {
     display: flex;
+    flex-direction: column;
+    gap: 2px;
     align-items: center;
     justify-content: center;
     padding: 12px 16px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #e8e8e8;
-    border-radius: 4px 4px 0 0;
+    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+    border-bottom: 1px solid #e4e8ef;
+    border-radius: 10px 10px 0 0;
 
     .header-title {
       font-size: 14px;
-      font-weight: bold;
-      color: #333;
+      font-weight: 600;
+      color: #252a31;
+    }
+
+    .header-hint {
+      font-size: 11px;
+      color: #9aa3af;
     }
   }
 
   .columns-list {
-    max-height: 380px;
-    padding: 12px 0;
+    max-height: 240px;
+    padding: 8px 0 12px;
     overflow-y: auto;
   }
 
   .section-title {
     padding-left: 8px;
-    margin: 12px 16px 8px;
+    margin: 10px 16px 6px;
     font-size: 12px;
-    font-weight: bold;
-    color: #666;
-    border-left: 3px solid #1890ff;
+    font-weight: 600;
+    color: #64748b;
+    border-left: 3px solid #006ce6;
+  }
+
+  .column-sortable {
+    min-height: 4px;
   }
 
   .column-item {
     display: flex;
+    gap: 6px;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 16px;
+    padding: 8px 12px 8px 8px;
+    background: #fff;
     border-bottom: 1px solid #f0f0f0;
+    transition:
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
 
     &:last-child {
       border-bottom: none;
+    }
+
+    &:hover {
+      background: #f8fafc;
+    }
+
+    &--ghost {
+      background: #eaf2ff;
+      opacity: 0.65;
+    }
+
+    &--chosen {
+      background: #f4f8ff;
+    }
+
+    &--drag {
+      background: #fff;
+      box-shadow: 0 4px 12px rgb(16 42 83 / 12%);
+      opacity: 1;
+    }
+
+    .drag-handle {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      color: #94a3b8;
+      cursor: grab;
+      border-radius: 4px;
+      transition:
+        color 0.15s ease,
+        background-color 0.15s ease;
+
+      &:hover {
+        color: #006ce6;
+        background: #eaf2ff;
+      }
+
+      &:active {
+        cursor: grabbing;
+      }
     }
 
     .ant-checkbox-wrapper {
@@ -582,31 +570,32 @@ const handleClose = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 16px;
-          height: 16px;
+          width: 18px;
+          height: 18px;
           cursor: pointer;
+          border-radius: 4px;
+          transition:
+            opacity 0.15s ease,
+            background-color 0.15s ease,
+            transform 0.15s ease;
 
           &.active {
             opacity: 1;
           }
 
           &:hover {
-            opacity: 0.8;
-            transform: scale(1.1);
+            background: #f1f5f9;
+            opacity: 0.9;
+            transform: scale(1.08);
           }
         }
-      }
-
-      .move-buttons {
-        display: flex;
-        gap: 4px;
       }
     }
   }
 
   .config-footer {
     padding: 12px 16px;
-    border-top: 1px solid #e8e8e8;
+    border-top: 1px solid #e8ecf3;
 
     .footer-actions {
       display: flex;

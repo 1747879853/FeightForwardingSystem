@@ -54,6 +54,8 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Feature` | 批量新增列配置支持分区内拖拽排序，去掉上移/下移按钮。 | `column-config-modal.vue` + `sortablejs`。详见 `changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md`。 |
+| 2026-09-11 | `Style` | 批量新增弹窗主色顶栏与运价明细分区卡片对齐单条编辑风格。 | `batch-add-modal-handsontable.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-batch-add-modal-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价列表清理死代码；复制改为编辑表单预填新增；厘清「更新」与「批量更改」入口。 | `list.vue` + `data.ts` + `edit-form` 的 `copyId`。详见 `changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md`。 |
 | 2026-09-11 | `Style` | 运价新增/编辑弹窗分区卡片与有效期横幅对齐系统风格。 | `edit-form.vue`：主色浅底横幅、图标标题栏、chip 模式切换、sticky 底栏。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-form-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价查询视图从海运出口目录抽出为独立模块。 | 页面迁至 `src/views/freight-rate/`；路由组件路径同步；API 仍在 `api/sea-export/freight-rate-admin.ts`。 |
