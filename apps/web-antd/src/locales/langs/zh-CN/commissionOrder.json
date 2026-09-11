@@ -109,6 +109,8 @@
     "unsettledCount": "未结清费用",
     "unsettledCountValue": "{count}条",
     "unsettledDetails": "欠款明细",
+    "unsettledSettlement": "结算对象",
+    "unsettledCurrency": "币别",
     "unsettledSettlementNone": "未指定结算对象",
     "receivable": "应收",
     "payable": "应付",

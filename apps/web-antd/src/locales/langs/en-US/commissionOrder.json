@@ -109,6 +109,8 @@
     "unsettledCount": "Unsettled Fees",
     "unsettledCountValue": "{count}",
     "unsettledDetails": "Unsettled Details",
+    "unsettledSettlement": "Settlement Party",
+    "unsettledCurrency": "Currency",
     "unsettledSettlementNone": "No settlement party",
     "receivable": "Recv",
     "payable": "Pay",
