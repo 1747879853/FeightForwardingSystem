@@ -1,15 +1,10 @@
 <script lang="ts" setup>
 import type {
-  OnActionClickParams,
-  VxeTableGridOptions,
-} from '#/adapter/vxe-table';
-import type {
   SeFreiPriceOutDto,
   LaneCodeDto,
 } from '#/api/sea-export/freight-rate-admin';
 
 import { nextTick, ref, watch, onMounted, onUnmounted, computed } from 'vue';
-import { getEnumItems } from '#/utils/init-enum';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import {
@@ -20,6 +15,7 @@ import {
   ChevronRight,
   IconifyIcon,
 } from '@vben/icons';
+import { useAccessStore } from '@vben/stores';
 
 import {
   Button,
@@ -30,191 +26,70 @@ import {
   Menu,
   Tooltip,
   Tag,
-  Collapse,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   changeRecommendStatus,
   deleteSeFreiPrice,
-  getSeFreiPriceDetail,
   getSeFreiPriceList,
   getAllLaneCodes,
 } from '#/api/sea-export/freight-rate-admin';
 import { extractSeFreiPriceByGemini } from '#/api/sea-export/gemini-admin';
-import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
-import { useUserStore, useAccessStore } from '@vben/stores';
 import { useBaseStore } from '#/store/base';
-import { editPropPermission } from '#/api/system/permission';
+import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
+import {
+  getCurrentUserMaskedFields,
+  FrightModule,
+} from '#/api/system/permission';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
-
+import EditForm from './modules/edit-form.vue';
+import SyncUpdateForm from './modules/form.vue';
+import BatchAddModal from './modules/batch-add-modal-handsontable.vue';
+import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
   useColumns,
   useGridFormSchema,
-  formatSurchargeFees,
+  getSurchargeFeeNames,
+  getSurchargeFeeTooltip,
 } from './data';
-import AddCtnModal from './modules/add-ctn-modal.vue';
-import Form from './modules/form.vue';
-import EditForm from './modules/edit-form.vue';
-import BatchAddModal from './modules/batch-add-modal-handsontable.vue';
-import BatchEditModal from './modules/batch-edit-modal.vue';
-import SyncUpdateForm from './modules/form.vue';
-import CtnEditableCell from './modules/ctn-editable-cell.vue';
-import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
-import { getCurrentUserMaskedFields } from '#/api/system/permission';
-import { FrightModule } from '#/api/system/permission';
 
-// 创建运价管理的 ABP 权限对象
+// ==================== 权限 ====================
+
 const perm = createAbpPermission('Admin.SeFreiPrice');
-
-// 获取用户store
-const userStore = useUserStore();
-// 获取权限store
 const accessStore = useAccessStore();
-// 获取基础数据 store
 const baseStore = useBaseStore();
 
-// 存储表格数据用于生成动态列
-const tableData = ref<SeFreiPriceOutDto[]>([]);
-
-// 当前选中的航线ID
-const selectedLineId = ref<number | undefined>(undefined);
-
-// 订单状态下拉框
-const freightConditionItemOptions = ref<any[]>([]);
-const conditionComparisonTypeOptions = ref<any[]>([]);
-
-// 被屏蔽的字段列表（PascalCase 格式）
-const maskedFields = ref<string[]>([]);
-
-// 用户功能权限
-const userFunctionPermissions = ref<string[]>([]);
-const loadingPermissions = ref(false);
-
-// 计算属性：判断用户是否有特定权限
+const accessCodes = computed(() => accessStore.accessCodes || []);
 const hasAddPermission = computed(() =>
-  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Add'),
+  accessCodes.value.includes('Admin.SeFreiPrice.Add'),
 );
-
 const hasEditPermission = computed(() =>
-  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Edit'),
+  accessCodes.value.includes('Admin.SeFreiPrice.Edit'),
 );
-
 const hasDeletePermission = computed(() =>
-  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Delete'),
+  accessCodes.value.includes('Admin.SeFreiPrice.Delete'),
 );
 
-// AI批量新增上传弹窗相关状态
+// ==================== 列表状态 ====================
+
+const tableData = ref<SeFreiPriceOutDto[]>([]);
+const selectedLineId = ref<number | undefined>(undefined);
+const maskedFields = ref<string[]>([]);
+const lines = ref<LaneCodeDto[]>([]);
+
 const aiExtractModalOpen = ref(false);
 const aiRecognizing = ref(false);
 
-// 获取费用名称
-function getFeeName(fee: any): string {
-  return fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`;
-}
+/** 有效状态默认 [已生效, 未生效]。仅默认值尚未写入「最近提交值」时兜底。 */
+let isValidDefaultApplied = false;
+const DEFAULT_IS_VALID = [0, 1];
 
-// 获取币别名称
-function getCurrencyName(fee: any): string {
-  return fee.currency?.name || fee.currency?.code || `币种${fee.currencyId}`;
-}
-
-// 获取费用详情（箱型和价格）
-function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
-  // 如果是按票计费，直接显示统一价格
-  if (fee.priceFeeType === 1 && fee.price !== undefined && fee.price !== null) {
-    return [`按票: ${fee.price}`];
-  }
-
-  // 按集装箱计费，显示每个箱型的价格
-  if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
-    return [];
-  }
-
-  const details: string[] = [];
-
-  fee.seFreiPriceCtnFees.forEach((ctnFee: any) => {
-    // 通过 seFreiPriceCtnId 查找对应的箱型信息
-    const ctnInfo = row.seFreiPriceCtns?.find(
-      (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
-    );
-    const ctnName =
-      ctnInfo?.ctnCode?.ctnName || `箱型${ctnInfo?.ctnCodeId || '?'}`;
-
-    // 检查是否有条件费用
-    if (ctnFee.value !== undefined && ctnFee.value !== null) {
-      // 有条件费用
-      const matchedOperator = conditionComparisonTypeOptions.value.find(
-        (o: any) => o.value === ctnFee.operatorType,
-      );
-      const matchedCondition = freightConditionItemOptions.value.find(
-        (o: any) => o.value === ctnFee.conditionType,
-      );
-      const operator = matchedOperator ? matchedOperator.label : '';
-      const condition = matchedCondition ? matchedCondition.label : '';
-
-      if (ctnFee.otherPrice !== null) {
-        details.push(
-          `${ctnName}:(毛重>=${ctnFee.value}${condition}) ${ctnFee.price}/${ctnFee.otherPrice}`,
-        );
-      } else {
-        details.push(
-          `${ctnName}:(毛重>=${ctnFee.value}${condition}) ${ctnFee.price}`,
-        );
-      }
-    } else {
-      // 简单模式
-      details.push(`${ctnName}: ${ctnFee.price}`);
-    }
-  });
-
-  return details;
-}
-
-// 获取所有附加费名称（用逗号分隔）
-function getSurchargeFeeNames(row: SeFreiPriceOutDto): string {
-  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
-    return '-';
-  }
-
-  const feeNames = row.seFreiPriceFees.map((fee: any) => getFeeName(fee));
-  return feeNames.join(', ');
-}
-
-// 获取附加费详情文本（用于tooltip显示）
-function getSurchargeFeeTooltip(row: SeFreiPriceOutDto): string {
-  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
-    return '无附加费';
-  }
-
-  const details: string[] = [];
-
-  row.seFreiPriceFees.forEach((fee: any) => {
-    const feeName = getFeeName(fee);
-    const currency = getCurrencyName(fee);
-    const feeDetails = getFeeDetails(fee, row);
-
-    // 构建该费用的完整描述
-    let feeDesc = `${feeName} (${currency})`;
-    if (feeDetails.length > 0) {
-      // 所有箱型价格在同一行，用逗号分隔
-      feeDesc += ': ' + feeDetails.join(', ');
-    }
-
-    details.push(feeDesc);
-  });
-
-  // 每条费用之间用换行分隔
-  return details.join('\n');
-}
-
-const [FormModal, formModalApi] = useVbenModal({
-  connectedComponent: Form,
-  destroyOnClose: true,
-});
+// ==================== 弹窗 ====================
 
 const [EditFormModal, editFormModalApi] = useVbenModal({
   connectedComponent: EditForm,
@@ -226,45 +101,17 @@ const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const [AddCtnModalComponent, addCtnModalApi] = useVbenModal({
-  connectedComponent: AddCtnModal,
-  destroyOnClose: true,
-});
-
 const [BatchAddModalComponent, batchAddModalApi] = useVbenModal({
   connectedComponent: BatchAddModal,
   destroyOnClose: true,
 });
 
-const [BatchEditModalComponent, batchEditModalApi] = useVbenModal({
-  connectedComponent: BatchEditModal,
-  destroyOnClose: true,
-});
+// ==================== 查询 / 表格 ====================
 
-/**
- * 操作按钮点击事件
- */
-function onActionClick(e: OnActionClickParams<SeFreiPriceOutDto>) {
-  switch (e.code) {
-    case 'edit': {
-      onEdit(e.row);
-      break;
-    }
-    case 'addCtn': {
-      onAddCtn(e.row);
-      break;
-    }
-  }
-}
-
-/** 有效状态默认 [已生效, 未生效]。仅默认值尚未写入「最近提交值」时兜底。 */
-let isValidDefaultApplied = false;
-const DEFAULT_IS_VALID = [0, 1];
-
-const mapFreightRateParams = (
+function mapFreightRateParams(
   formValues: Record<string, any>,
   sortParams?: Record<string, any>,
-) => {
+) {
   const nextValues = { ...formValues };
   if (!isValidDefaultApplied && nextValues.isValid === undefined) {
     nextValues.isValid = [...DEFAULT_IS_VALID];
@@ -275,42 +122,40 @@ const mapFreightRateParams = (
     laneId: selectedLineId.value,
   };
 
-  // 处理表单查询参数
   Object.keys(nextValues).forEach((key) => {
-    // 特殊处理：录入时间范围需要拆分为开始和结束时间
     if (key === 'creationTimeRange') {
       const rangeValue = nextValues[key];
-      if (rangeValue && Array.isArray(rangeValue) && rangeValue.length === 2) {
+      if (Array.isArray(rangeValue) && rangeValue.length === 2) {
         queryParams.creationTimeStart = rangeValue[0];
         queryParams.creationTimeEnd = rangeValue[1];
       }
-    } else if (key === 'isValid') {
+      return;
+    }
+
+    if (key === 'isValid') {
       const value = nextValues[key];
       if (Array.isArray(value)) {
-        if (value.length > 0) {
-          queryParams[key] = value;
-        }
+        if (value.length > 0) queryParams[key] = value;
       } else if (value !== null && value !== undefined) {
         queryParams[key] = value;
       }
-    } else if (nextValues[key] !== null && nextValues[key] !== undefined) {
+      return;
+    }
+
+    if (nextValues[key] !== null && nextValues[key] !== undefined) {
       queryParams[key] = nextValues[key];
     }
   });
 
-  // 处理排序参数
   if (sortParams && Object.keys(sortParams).length > 0) {
-    // 将排序参数转换为后端需要的格式，例如 "Id DESC"
-    const sortField = sortParams.field;
-    const sortOrder = sortParams.order; // asc | desc
-
+    const { field: sortField, order: sortOrder } = sortParams;
     if (sortField && sortOrder) {
       queryParams.sorting = `${sortField} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
     }
   }
 
   return queryParams;
-};
+}
 
 const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   formOptions: {
@@ -325,22 +170,21 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   },
   gridOptions: {
     id: FREIGHT_RATE_LIST_TABLE_ID,
-    columns: useColumns(onActionClick, []), // 初始化为空数组
+    columns: useColumns([]),
     height: 'auto',
     keepSource: true,
-    showOverflow: false, // 覆盖全局配置，允许内容完整显示
+    showOverflow: false,
     sortConfig: {
-      remote: true, // 启用远程排序
-      defaultSort: { field: 'creationTime', order: 'desc' }, // 默认按创建时间降序排序
+      remote: true,
+      defaultSort: { field: 'creationTime', order: 'desc' },
     },
     pagerConfig: {
       enabled: true,
     },
     proxyConfig: {
       // 关闭自动加载：挂载后 submitForm 首查，保证 isValid 默认值写入最近提交值
-      // （切航线 Tab 会走 gridApi.query，必须先有最近提交值）
       autoLoad: false,
-      sort: true, // 启用代理排序
+      sort: true,
       ajax: {
         query: createPagedListQuery(getSeFreiPriceList, {
           defaultSort: 'CreationTime DESC',
@@ -354,14 +198,12 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
             isDirect: 'IsDirect',
           },
           afterFetch: (result: any) => {
-            const items = result.items || [];
-            tableData.value = items;
+            tableData.value = result.items || [];
             return result;
           },
         }),
       },
     },
-
     rowConfig: {
       keyField: 'id',
       isHover: true,
@@ -369,10 +211,6 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     checkboxConfig: {
       highlight: true,
       reserve: true,
-      checkMethod: ({ row }: { row: SeFreiPriceOutDto }) => {
-        // 确保复选框可以正常选中
-        return true;
-      },
     },
     toolbarConfig: {
       custom: true,
@@ -382,240 +220,76 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
   },
   gridEvents: {
-    cellDblclick: ({ row }: any) => {
-      // 双击任意单元格时打开编辑弹窗
+    cellDblclick: ({ row }: { row: SeFreiPriceOutDto }) => {
       onEditByDblClick(row);
     },
   },
 });
 
-// 监听表格数据和字段权限变化，动态更新列配置
 watch(
   [tableData, maskedFields],
   async ([newData, newMaskedFields]) => {
-    if (newData && newData.length > 0) {
-      await nextTick();
-      const newColumns = useColumns(onActionClick, newData, newMaskedFields);
-      // 使用gridApi更新列配置
-      gridApi.setGridOptions({
-        columns: newColumns,
-      });
-    }
+    if (!newData?.length) return;
+    await nextTick();
+    gridApi.setGridOptions({
+      columns: useColumns(newData, newMaskedFields),
+    });
   },
   { deep: true },
 );
 
-/**
- * 获取选中的行
- */
+// ==================== 行操作 ====================
+
 function getCheckboxRecords() {
-  const grid = gridApi.grid;
-  if (!grid) return [];
-  return grid.getCheckboxRecords() as SeFreiPriceOutDto[];
+  return (gridApi.grid?.getCheckboxRecords() || []) as SeFreiPriceOutDto[];
 }
 
-/**
- * 编辑运价
- */
-function onEdit(row: SeFreiPriceOutDto, onlySurchargeFees = true) {
-  formModalApi
-    .setData({
-      id: row.id,
-      onlySurchargeFees,
-      permission: hasEditPermission.value,
-    })
-    .open();
-}
-
-/**
- * 添加箱型
- */
-function onAddCtn(row: SeFreiPriceOutDto) {
-  addCtnModalApi.setData({ row }).open();
-}
-
-/**
- * 复制运价（基于选中的第一条记录）
- */
-async function onCopy() {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择一条要复制的运价记录');
-    return;
-  }
-
-  // 取第一条记录进行复制
-  const row = records[0];
-  if (!row) {
-    message.warning('未找到有效的运价记录');
-    return;
-  }
-
-  try {
-    const hideLoading = message.loading({
-      content: '正在加载运价详情...',
-      duration: 0,
-      key: 'action_process_msg',
-    });
-
-    // 获取完整详情
-    const detail = await getSeFreiPriceDetail(row.id);
-    hideLoading();
-
-    // 清除ID和时间戳字段，作为新记录打开
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const {
-      id,
-      creationTime,
-      creatorUserId,
-      lastModificationTime,
-      lastModifierUserId,
-      ...newData
-    } = detail;
-
-    console.log('c-detail:', newData);
-    formModalApi.setData(newData).open();
-  } catch (error) {
-    message.error('加载运价详情失败');
-    console.error(error);
-  }
-}
-
-/**
- * 批量编辑运价
- */
-function onBatchEdit() {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择要批量编辑的运价记录');
-    return;
-  }
-  syncUpdateModalApi
-    .setData({
-      ids: records.map((r) => r.id),
-    })
-    .open();
-}
-
-/**
- * 批量改变推荐状态
- */
-async function onBatchRecommend(recommend: boolean) {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择要操作的运价记录');
-    return;
-  }
-
-  const hideLoading = message.loading({
-    content: `正在批量${recommend ? '推荐' : '取消推荐'}...`,
-    duration: 0,
-    key: 'action_process_msg',
-  });
-
-  try {
-    // 批量调用接口
-    await Promise.all(
-      records.map((row) => changeRecommendStatus({ id: row.id, recommend })),
-    );
-    message.success({
-      content: `批量${recommend ? '推荐' : '取消推荐'}成功`,
-      key: 'action_process_msg',
-    });
-    onRefresh();
-  } catch {
-    hideLoading();
-  }
-}
-
-/**
- * 批量删除运价
- */
-function onBatchDelete() {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择要删除的运价记录');
-    return;
-  }
-
-  Modal.confirm({
-    title: '确认批量删除',
-    content: `确定要删除选中的 ${records.length} 条运价记录吗？`,
-    onOk() {
-      const hideLoading = message.loading({
-        content: '正在批量删除...',
-        duration: 0,
-        key: 'action_process_msg',
-      });
-      deleteSeFreiPrice({ ids: records.map((r) => r.id) })
-        .then(() => {
-          message.success({
-            content: '批量删除成功',
-            key: 'action_process_msg',
-          });
-          onRefresh();
-        })
-        .catch(() => {
-          hideLoading();
-        });
-    },
-  });
-}
-
-/**
- * 刷新列表
- */
 function onRefresh() {
   gridApi.query();
-  getLines();
+  void getLines();
 }
 
-/**
- * 新增运价
- */
 function onCreate() {
   editFormModalApi.setData({ permission: hasAddPermission.value }).open();
 }
 
-/**
- * 编辑运价（双击单元格触发）
- */
 function onEditByDblClick(row: SeFreiPriceOutDto) {
   editFormModalApi
     .setData({ id: row.id, permission: hasEditPermission.value })
     .open();
 }
 
-/**
- * 批量新增运价
- */
-function onBatchAdd() {
-  if (!hasAddPermission.value) {
-    message.warning('您没有批量新增运价的权限');
+/** 复制选中第一条：打开新增表单并预填原单数据 */
+async function onCopy() {
+  const records = getCheckboxRecords();
+  const row = records[0];
+  if (!row) {
+    message.warning('请先选择一条要复制的运价记录');
     return;
   }
-  batchAddModalApi.open();
+
+  editFormModalApi
+    .setData({
+      copyId: row.id,
+      permission: hasAddPermission.value,
+    })
+    .open();
 }
 
-/**
- * 批量编辑运价（弹窗方式）
- */
-function onBatchEditModal() {
+/** 工具栏「更新」：Handsontable 批量编辑选中行 */
+function onBatchUpdate() {
   const records = getCheckboxRecords();
   if (records.length === 0) {
     message.warning('请先选择要更新的运价');
     return;
   }
 
-  // 将选中的数据传递给 batch-add-modal-handsontable 组件
-  // 需要将数据转换为 AI 数据的格式
   const editData = records.map((row) => {
-    // 从子表读取日期时间数据（取第一项）
     const dayData = row.seFreiPriceDays?.[0];
     const weekDayData = row.seFreiPriceWeekDays?.[0];
 
     return {
-      id: row.id, // 保留 ID 用于编辑
+      id: row.id,
       recommend: row.recommend,
       carrierId: row.carrierId,
       polId: row.polId,
@@ -623,7 +297,6 @@ function onBatchEditModal() {
       isDirect: row.isDirect,
       poT1Id: row.poT1Id,
       poT2Id: row.poT2Id,
-      // 嵌套对象：批量弹窗远程搜索回显用，避免再依赖全量缓存
       pol: row.pol,
       pod: row.pod,
       poT1: row.poT1,
@@ -660,21 +333,138 @@ function onBatchEditModal() {
   batchAddModalApi.setData({ aiData: editData, isEditMode: true }).open();
 }
 
-const lines = ref<LaneCodeDto[]>([]);
-const getLines = async function () {
+/** 菜单「批量更改」：同步字段到多条记录 */
+function onBatchSyncUpdate() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要批量编辑的运价记录');
+    return;
+  }
+  syncUpdateModalApi.setData({ ids: records.map((r) => r.id) }).open();
+}
+
+function onBatchAdd() {
+  if (!hasAddPermission.value) {
+    message.warning('您没有批量新增运价的权限');
+    return;
+  }
+  batchAddModalApi.open();
+}
+
+async function onBatchRecommend(recommend: boolean) {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要操作的运价记录');
+    return;
+  }
+
+  const hideLoading = message.loading({
+    content: `正在批量${recommend ? '推荐' : '取消推荐'}...`,
+    duration: 0,
+    key: 'action_process_msg',
+  });
+
+  try {
+    await Promise.all(
+      records.map((row) => changeRecommendStatus({ id: row.id, recommend })),
+    );
+    message.success({
+      content: `批量${recommend ? '推荐' : '取消推荐'}成功`,
+      key: 'action_process_msg',
+    });
+    onRefresh();
+  } catch {
+    hideLoading();
+  }
+}
+
+function onBatchDelete() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要删除的运价记录');
+    return;
+  }
+
+  Modal.confirm({
+    title: '确认批量删除',
+    content: `确定要删除选中的 ${records.length} 条运价记录吗？`,
+    onOk() {
+      const hideLoading = message.loading({
+        content: '正在批量删除...',
+        duration: 0,
+        key: 'action_process_msg',
+      });
+      return deleteSeFreiPrice({ ids: records.map((r) => r.id) })
+        .then(() => {
+          message.success({
+            content: '批量删除成功',
+            key: 'action_process_msg',
+          });
+          onRefresh();
+        })
+        .catch(() => {
+          hideLoading();
+        });
+    },
+  });
+}
+
+async function handleRecommendClick(row: SeFreiPriceOutDto) {
+  const newRecommend = !row.recommend;
+  try {
+    await changeRecommendStatus({ id: row.id, recommend: newRecommend });
+    message.success(newRecommend ? '推荐成功' : '取消推荐成功');
+    onRefresh();
+  } catch {
+    message.error('操作失败');
+  }
+}
+
+// ==================== 有效状态展示 ====================
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getIsValidText(row: SeFreiPriceOutDto): string {
+  const today = startOfLocalDay(new Date());
+
+  if (row.validTimeStart) {
+    const startDay = startOfLocalDay(new Date(row.validTimeStart));
+    if (startDay > today) return '未生效';
+  }
+
+  if (row.validTimeEnd) {
+    const endDay = startOfLocalDay(new Date(row.validTimeEnd));
+    if (endDay < today) return '已过期';
+  }
+
+  if (!row.isValid) return '无效';
+  return '已生效';
+}
+
+function getIsValidColor(row: SeFreiPriceOutDto): string {
+  switch (getIsValidText(row)) {
+    case '已生效':
+      return '#389e0d';
+    case '未生效':
+      return '#faad14';
+    default:
+      return '#cf1322';
+  }
+}
+
+// ==================== 航线 Tab ====================
+
+async function getLines() {
   const res = await getAllLaneCodes();
   if (res) {
     lines.value = res.laneCodes || [];
   }
-  console.log('getLines', res);
-};
+}
 
-/**
- * 点击航线标签
- */
 function handleLineClick(lineId?: number) {
   selectedLineId.value = lineId;
-  // 重新查询列表
   gridApi.query();
 }
 
@@ -687,10 +477,8 @@ const LANE_TAB_SCROLL_STEP = 240;
 const LANE_TAB_SCROLL_DURATION = 280;
 let laneTabResizeObserver: ResizeObserver | null = null;
 let laneTabScrollAnimationId: number | null = null;
-let laneTabScrollIdleTimer:
-  | ReturnType<typeof setTimeout>
-  | NodeJS.Timeout
-  | null = null;
+let laneTabScrollIdleTimer: ReturnType<typeof setTimeout> | number | null =
+  null;
 let isLaneTabAnimating = false;
 
 function updateLaneTabScrollState() {
@@ -710,15 +498,13 @@ function updateLaneTabScrollState() {
 
 function onLaneTabScroll() {
   if (isLaneTabAnimating) return;
-
   if (laneTabScrollIdleTimer) {
     window.clearTimeout(laneTabScrollIdleTimer);
   }
-
   laneTabScrollIdleTimer = window.setTimeout(() => {
     laneTabScrollIdleTimer = null;
     updateLaneTabScrollState();
-  }, 120) as any;
+  }, 120);
 }
 
 function stopLaneTabScrollAnimation() {
@@ -784,7 +570,6 @@ function scrollLaneTabs(direction: 'left' | 'right') {
   );
 
   if (Math.abs(targetLeft - el.scrollLeft) < 1) return;
-
   animateLaneTabScroll(targetLeft);
 }
 
@@ -816,206 +601,37 @@ watch(
   },
 );
 
-/**
- * 点击推荐星星切换推荐状态
- */
-async function handleRecommendClick(row: SeFreiPriceOutDto) {
-  const newRecommend = !row.recommend;
-  try {
-    await changeRecommendStatus({ id: row.id, recommend: newRecommend });
-    message.success(newRecommend ? '推荐成功' : '取消推荐成功');
-    onRefresh();
-  } catch (error) {
-    message.error('操作失败');
-    console.error(error);
+// ==================== AI 批量新增 ====================
+
+function safeIdToString(
+  id: string | number | undefined | null,
+): string | undefined {
+  if (id === undefined || id === null) return undefined;
+  if (typeof id === 'string') {
+    return /^\d+$/.test(id) ? id : undefined;
   }
+  if (typeof id === 'number' && Number.isFinite(id)) {
+    return String(id);
+  }
+  return undefined;
 }
 
-/**
- * 获取有效状态文本
- */
-function getIsValidText(row: SeFreiPriceOutDto): string {
-  // 如果isValid为false，直接返回无效
-
-  //console.log('row.validTimeStart', new Date(row.validTimeStart));
-  //console.log('row.validTimeEnd', new Date(row.validTimeEnd));
-
-  // 如果isValid为true，检查有效期
-  const now = new Date();
-  // 获取当前日期的零点时间，用于日期比较
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // 检查有效起始日期 - 如果还没开始，显示未生效
-  if (row.validTimeStart) {
-    // ISO 8601格式的日期字符串，直接解析即可
-    const startDate = new Date(row.validTimeStart);
-    // 将起始日期转换为零点时间进行比较（使用本地时间）
-    const startDay = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      startDate.getDate(),
-    );
-    // console.log('startDay:', startDay);
-    // console.log('today:', today);
-    if (startDay > today) {
-      return '未生效';
-    }
-  }
-
-  // 检查有效截止日期 - 如果已过期，显示已过期
-  if (row.validTimeEnd) {
-    // ISO 8601格式的日期字符串，直接解析即可
-    const endDate = new Date(row.validTimeEnd);
-    // 将截止日期转换为零点时间进行比较（使用本地时间）
-    const endDay = new Date(
-      endDate.getFullYear(),
-      endDate.getMonth(),
-      endDate.getDate(),
-    );
-    if (endDay < today) {
-      return '已过期';
-    }
-  }
-
-  if (!row.isValid) {
-    return '无效';
-  }
-
-  return '已生效';
-}
-
-/**
- * 获取有效状态颜色
- */
-function getIsValidColor(row: SeFreiPriceOutDto): string {
-  const text = getIsValidText(row);
-  //console.log('isValidText:', text);
-  switch (text) {
-    case '已生效':
-      return '#389e0d'; // 绿色
-    case '未生效':
-      return '#faad14'; // 橙色
-    case '已过期':
-      return '#cf1322'; // 红色
-    default:
-      return '#cf1322'; // 红色（无效）
-  }
-}
-
-onMounted(async () => {
-  getLines();
-
-  // 初始化运价批量新增所需的下拉框数据（缓存到 store）
-  try {
-    console.log('🚀 [list.vue] 开始初始化运价下拉框数据...');
-    await baseStore.fetchFreightRateDropdownData();
-    console.log('✅ [list.vue] 运价下拉框数据初始化完成');
-  } catch (error) {
-    console.error('❌ [list.vue] 运价下拉框数据初始化失败:', error);
-  }
-
-  // 从 Pinia store 中获取当前用户的功能权限
-  try {
-    loadingPermissions.value = true;
-    const accessCodes = accessStore.accessCodes || [];
-    userFunctionPermissions.value = accessCodes;
-    console.log(
-      '[功能权限] 当前用户的功能权限:',
-      userFunctionPermissions.value,
-    );
-  } catch (error) {
-    console.error('[功能权限] 获取用户功能权限失败:', error);
-  } finally {
-    loadingPermissions.value = false;
-  }
-
-  // 获取当前用户的字段权限
-  try {
-    const maskedFieldsData = await getCurrentUserMaskedFields();
-    // 查找运价模块（SeFreiPrice = 7）的屏蔽字段
-    const freightRateModule = maskedFieldsData.find(
-      (module) => module.frightModule === FrightModule.SeFreiPrice,
-    );
-    if (freightRateModule && freightRateModule.fields) {
-      // 只有 alwaysMasked = true（存在无条件规则）的字段才能整列隐藏；
-      // 条件规则（alwaysMasked = false）只能逐行判定，不能隐藏整列（见字段权限设计文档坑点 F8）
-      maskedFields.value = freightRateModule.fields
-        .filter((f) => f.alwaysMasked)
-        .map((f) => f.propName);
-      console.log('[字段权限] 运价模块被屏蔽的字段:', maskedFields.value);
-    } else {
-      console.log('[字段权限] 运价模块没有屏蔽字段');
-    }
-  } catch (error) {
-    console.error('[字段权限] 获取字段权限失败:', error);
-  }
-
-  // 加载枚举项用于条件费用显示
-  freightConditionItemOptions.value = await getEnumItems(
-    'freightConditionItem',
-  );
-  freightConditionItemOptions.value = freightConditionItemOptions.value.map(
-    (item: any) => ({
-      label: item.displayName,
-      value: item.value,
-      description: item.description,
-    }),
-  );
-
-  conditionComparisonTypeOptions.value = await getEnumItems(
-    'ConditionComparisonType',
-  );
-  conditionComparisonTypeOptions.value =
-    conditionComparisonTypeOptions.value.map((item: any) => ({
-      label: item.displayName,
-      value: item.value,
-    }));
-
-  await nextTick();
-  bindLaneTabScrollObserver();
-  // submitForm 把默认 isValid=[已生效,未生效] 写入「最近提交值」，翻页/切航线/刷新才能带上
-  await gridApi.formApi.submitForm();
-});
-
-onUnmounted(() => {
-  laneTabBarRef.value?.removeEventListener('scroll', onLaneTabScroll);
-  if (laneTabScrollIdleTimer) {
-    window.clearTimeout(laneTabScrollIdleTimer);
-  }
-  stopLaneTabScrollAnimation();
-  laneTabResizeObserver?.disconnect();
-});
-
-/**
- * AI识别批量新增运价 - 打开上传弹窗
- */
 function onAIBatchAdd() {
   if (!hasAddPermission.value) {
     message.warning('您没有AI批量新增运价的权限');
     return;
   }
-
-  // 打开AI上传弹窗
   aiExtractModalOpen.value = true;
 }
 
-/**
- * 处理AI上传的文件并进行识别
- */
 async function handleAiExtractFile(file: File) {
   await performAiRecognition({ file });
 }
 
-/**
- * 处理AI粘贴的文本并进行识别
- */
 async function handleAiExtractText(text: string) {
   await performAiRecognition({ text });
 }
 
-/**
- * 执行 AI 识别逻辑（支持文件或文本）
- */
 async function performAiRecognition(params: { file?: File; text?: string }) {
   if (aiRecognizing.value) return;
 
@@ -1028,134 +644,119 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
       key: 'ai_recognition_msg',
     });
 
-    // 调用 Gemini AI识别接口（支持文件或文本）
     const recognitionResult = await extractSeFreiPriceByGemini(
       params.file,
       params.text,
     );
-    console.log('识别结果:', recognitionResult);
     hideLoading();
 
     if (!recognitionResult || recognitionResult.length === 0) {
       message.warning('未能从内容中识别出有效的运价数据');
-      aiRecognizing.value = false;
       return;
     }
 
-    // 转换识别结果为批量新增弹窗所需的数据格式
-    const convertedData = recognitionResult.map((item, index) => {
-      // 将ID安全地转换为字符串，避免大数精度丢失
-      const safeIdToString = (
-        id: string | number | undefined,
-      ): string | undefined => {
-        if (id === undefined || id === null) return undefined;
+    const convertedData = recognitionResult.map((item, index) => ({
+      _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 11)}`,
+      _isCopied: false,
+      recommend: false,
+      carrierId: undefined,
+      polId: undefined,
+      podId: safeIdToString(item.podId),
+      isDirect: item.isDirect ?? true,
+      poT1Id: safeIdToString(item.pot1Id),
+      poT2Id: safeIdToString(item.pot2Id),
+      polFreeDays: undefined,
+      podFreeDays: undefined,
+      poddem: undefined,
+      poddet: undefined,
+      voyage: '',
+      contractNo: '',
+      etd: '',
+      closeDocTime: '',
+      closingTime: '',
+      etdDayOfWeek: undefined,
+      etdDayTime: '',
+      closeDocDayOfWeek: undefined,
+      closeDocDayTime: '',
+      closingDayOfWeek: undefined,
+      closingDayTime: '',
+      validTimeStart: item.validTimeStart || '',
+      validTimeEnd: item.validTimeEnd || '',
+      remark: item.remark || '',
+      currencyId: safeIdToString(item.currencyId),
+      bookingAgentId: undefined,
+      seFreiPriceCtns: item.seFreiPriceCtns
+        ? item.seFreiPriceCtns
+            .map((ctn) => {
+              const ctnCodeId = safeIdToString(ctn.ctnCodeId);
+              const cost =
+                ctn.price !== undefined && ctn.price !== null
+                  ? Number(ctn.price)
+                  : 0;
+              return { ctnCodeId, cost };
+            })
+            .filter((ctn) => ctn.ctnCodeId)
+        : [],
+    }));
 
-        // 如果已经是字符串类型，直接返回
-        if (typeof id === 'string') {
-          // 验证是否为有效的数字字符串
-          if (/^\d+$/.test(id)) {
-            return id;
-          }
-          console.warn(`[AI识别] ID字符串格式无效: ${id}`);
-          return undefined;
-        }
-
-        // 如果是数字类型，转换为字符串
-        if (typeof id === 'number') {
-          // 检查是否为有效数字
-          if (!isNaN(id) && isFinite(id)) {
-            return id.toString();
-          }
-          console.warn(`[AI识别] ID数值无效: ${id}`);
-          return undefined;
-        }
-
-        return undefined;
-      };
-
-      return {
-        _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
-        _isCopied: false,
-        recommend: false, // 默认不推荐
-        carrierId: undefined, // 暂时设为undefined，让用户手动选择
-        polId: undefined, // 起运港需要手动匹配
-        podId: safeIdToString(item.podId), // 目的港ID（字符串）
-        isDirect: item.isDirect ?? true, // 默认为直达
-        poT1Id: safeIdToString(item.pot1Id), // 中转港1（字符串）
-        poT2Id: safeIdToString(item.pot2Id), // 中转港2（字符串）
-        polFreeDays: undefined,
-        podFreeDays: undefined,
-        poddem: undefined,
-        poddet: undefined,
-        voyage: '',
-        contractNo: '',
-        etd: '',
-        closeDocTime: '',
-        closingTime: '',
-        etdDayOfWeek: undefined,
-        etdDayTime: '',
-        closeDocDayOfWeek: undefined,
-        closeDocDayTime: '',
-        closingDayOfWeek: undefined,
-        closingDayTime: '',
-        validTimeStart: item.validTimeStart || '',
-        validTimeEnd: item.validTimeEnd || '',
-        remark: item.remark || '',
-        currencyId: safeIdToString(item.currencyId), // 币别ID（字符串）
-        bookingAgentId: undefined,
-        seFreiPriceCtns: item.seFreiPriceCtns
-          ? item.seFreiPriceCtns
-              .map((ctn) => {
-                // 将箱型ID转换为字符串，避免大数精度丢失
-                const ctnCodeId = safeIdToString(ctn.ctnCodeId);
-                // AI返回的是 price，但批量新增需要的是 cost
-                const cost =
-                  ctn.price !== undefined && ctn.price !== null
-                    ? Number(ctn.price)
-                    : 0;
-
-                return {
-                  ctnCodeId, // 箱型ID（字符串）
-                  cost, // 成本（从price转换）
-                };
-              })
-              .filter((ctn) => ctn.ctnCodeId) // 只保留有效箱型ID的数据
-          : [],
-      };
-    });
-
-    // 调试日志：验证转换后的数据
-    console.log('[AI识别] 转换后的数据:', convertedData);
-    if (convertedData.length > 0 && convertedData[0]) {
-      console.log(
-        '[AI识别] 第一条数据的箱型信息:',
-        convertedData[0].seFreiPriceCtns,
-      );
-    }
-
-    // 关闭上传弹窗并打开批量新增模态框
     aiExtractModalOpen.value = false;
     batchAddModalApi.setData({ aiData: convertedData }).open();
-
     message.success(
       `AI识别完成，共识别出 ${recognitionResult.length} 条运价数据`,
     );
-  } catch (error) {
-    console.error('AI识别失败:', error);
+  } catch {
     message.error('AI识别失败，请稍后重试');
   } finally {
     aiRecognizing.value = false;
   }
 }
+
+// ==================== 生命周期 ====================
+
+onMounted(async () => {
+  void getLines();
+
+  try {
+    await baseStore.fetchFreightRateDropdownData();
+  } catch {
+    // 下拉缓存失败不阻塞列表
+  }
+
+  try {
+    const maskedFieldsData = await getCurrentUserMaskedFields();
+    const freightRateModule = maskedFieldsData.find(
+      (module) => module.frightModule === FrightModule.SeFreiPrice,
+    );
+    if (freightRateModule?.fields) {
+      // only alwaysMasked 字段可整列隐藏（条件规则只能逐行判定）
+      maskedFields.value = freightRateModule.fields
+        .filter((f) => f.alwaysMasked)
+        .map((f) => f.propName);
+    }
+  } catch {
+    // 字段权限失败时按全量列展示
+  }
+
+  await nextTick();
+  bindLaneTabScrollObserver();
+  await gridApi.formApi.submitForm();
+});
+
+onUnmounted(() => {
+  laneTabBarRef.value?.removeEventListener('scroll', onLaneTabScroll);
+  if (laneTabScrollIdleTimer) {
+    window.clearTimeout(laneTabScrollIdleTimer);
+  }
+  stopLaneTabScrollAnimation();
+  laneTabResizeObserver?.disconnect();
+});
 </script>
 
 <template>
   <Page auto-content-height>
     <Grid>
-      <!-- 船公司自定义渲染插槽 -->
       <template #carrierId="{ row }">
         <div class="flex items-center gap-2 px-2 py-1">
-          <!-- 船公司 Logo -->
           <img
             v-if="row.carrier?.logo?.url"
             :src="buildAttachmentUrl(row.carrier.logo.url)"
@@ -1167,7 +768,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
             "
             class="carrier-logo"
           />
-          <!-- 船公司名称 -->
           <span>{{
             row.carrier?.code
               ? `${row.carrier.code}(${row.carrier.cnShortName || row.carrier.cnName || row.carrier.enName || ''})`
@@ -1179,41 +779,38 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
         </div>
       </template>
 
-      <!-- 起运港自定义渲染插槽 -->
       <template #polId="{ row }">
         <div class="px-2 py-1">
           {{
-            `${row.pol?.portName},${row.pol?.country.countryEnName || ''}` ||
-            '-'
+            row.pol?.portName
+              ? `${row.pol.portName},${row.pol?.country?.countryEnName || ''}`
+              : '-'
           }}
         </div>
       </template>
 
-      <!-- 目的港自定义渲染插槽 -->
       <template #podId="{ row }">
         <div class="px-2 py-1">
           {{
-            `${row.pod?.portName},${row.pod?.country.countryEnName || ''}` ||
-            '-'
+            row.pod?.portName
+              ? `${row.pod.portName},${row.pod?.country?.countryEnName || ''}`
+              : '-'
           }}
         </div>
       </template>
 
-      <!-- 币别自定义渲染插槽 -->
       <template #currencyId="{ row }">
         <div class="px-2 py-1">
           {{ row.currency?.code || '-' }}
         </div>
       </template>
 
-      <!-- 币别自定义渲染插槽 -->
       <template #bookingAgentId="{ row }">
         <div class="px-2 py-1">
           {{ row.bookingAgent?.name || '-' }}
         </div>
       </template>
 
-      <!-- 约号自定义渲染插槽 -->
       <template #contractNo="{ row }">
         <div
           class="overflow-hidden text-ellipsis whitespace-nowrap px-2 py-1 text-blue-600"
@@ -1223,7 +820,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
         </div>
       </template>
 
-      <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
         <div class="flex items-center justify-center">
           <IconifyIcon
@@ -1235,18 +831,14 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
         </div>
       </template>
 
-      <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
         <div class="surcharge-fees-container px-2 py-1">
-          <!-- 无附加费时显示占位符 -->
           <div
             v-if="!row.seFreiPriceFees || row.seFreiPriceFees.length === 0"
             class="text-gray-300"
           >
             -
           </div>
-
-          <!-- 有附加费时显示名称列表，悬浮显示详情 -->
           <Tooltip
             v-else
             placement="topLeft"
@@ -1264,71 +856,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
         </div>
       </template>
 
-      <!-- 目的港免箱使天数自定义渲染插槽 -->
-      <template #podFreeDaysCombined="{ row }">
-        <div class="flex items-center justify-center gap-2 p-2">
-          <!-- 免堆期 (DEM) -->
-          <div
-            v-if="row.poddem !== null && row.poddem !== undefined"
-            class="inline-flex min-w-[40px] items-center justify-center rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            {{ row.poddem }}
-          </div>
-          <div
-            v-else
-            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
-          >
-            <span class="text-xs font-medium text-gray-300">DEM</span>
-          </div>
-
-          <span class="text-gray-400">+</span>
-
-          <!-- 免用箱期 (DET) -->
-          <div
-            v-if="row.podFreeDays !== null && row.podFreeDays !== undefined"
-            class="inline-flex min-w-[40px] items-center justify-center rounded border border-gray-300 px-2 py-1 text-sm"
-          >
-            {{ row.podFreeDays }}
-          </div>
-          <div
-            v-else
-            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
-          >
-            <span class="text-xs font-medium text-gray-300">DET</span>
-          </div>
-
-          <span class="text-gray-400">=</span>
-
-          <!-- 免箱使期 -->
-          <div
-            v-if="row.poddet !== null && row.poddet !== undefined"
-            class="inline-flex min-w-[40px] items-center justify-center rounded border border-blue-300 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700"
-          >
-            {{ row.poddet }}
-          </div>
-          <div
-            v-else
-            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
-          >
-            <span class="text-xs font-medium text-gray-300">-</span>
-          </div>
-        </div>
-      </template>
-
-      <!-- 目的港免箱使天数列头插槽 -->
-      <!-- <template #podFreeDaysCombinedHeader>
-        <div class="flex">
-          <span>目的港免箱使天数</span>
-          <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
-            <IconifyIcon
-              icon="mdi:information-outline"
-              class="size-4 cursor-help text-gray-500"
-            />
-          </Tooltip>
-        </div>
-      </template> -->
-
-      <!-- 是否有效自定义渲染插槽 -->
       <template #isValid="{ row }">
         <div class="flex items-center justify-center">
           <Tag :color="getIsValidColor(row)">
@@ -1337,7 +864,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
         </div>
       </template>
 
-      <!-- 箱型费用可编辑单元格插槽 -->
       <template #ctnEditableCell="{ row, column }">
         <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
       </template>
@@ -1354,7 +880,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
               ref="laneTabTrackRef"
               class="lane-tab-track inline-flex flex-nowrap items-center gap-1"
             >
-              <!-- 全部选项 -->
               <div
                 class="lane-tab-item cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-all duration-200"
                 :class="
@@ -1366,8 +891,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
               >
                 全部
               </div>
-
-              <!-- 航线选项 -->
               <div
                 v-for="line in lines"
                 :key="line.id"
@@ -1414,7 +937,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
-          <!-- 新增按钮    v-access:code="perm.add"-->
           <Button
             type="primary"
             :disabled="!hasAddPermission"
@@ -1424,7 +946,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
             {{ $t('ui.actionTitle.create') }}
           </Button>
 
-          <!-- AI批量新增按钮（Gemini） -->
           <Button
             type="primary"
             ghost
@@ -1435,19 +956,16 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
             AI批量新增
           </Button>
 
-          <!-- 批量编辑按钮 -->
-          <Button :disabled="!hasEditPermission" @click="onBatchEditModal">
+          <Button :disabled="!hasEditPermission" @click="onBatchUpdate">
             <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
             {{ $t('seaExport.freightRate.update') }}
           </Button>
 
-          <!-- 复制按钮 -->
           <Button :disabled="!hasAddPermission" @click="onCopy">
             <Copy class="size-5" />
             {{ $t('seaExport.freightRate.copy') }}
           </Button>
 
-          <!-- 批量操作下拉菜单 -->
           <Dropdown
             v-access:code="perm.edit"
             :disabled="!hasEditPermission && !hasDeletePermission"
@@ -1458,10 +976,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
             </Button>
             <template #overlay>
               <Menu>
-                <!-- <Menu.Item key="create" @click="onCreate">
-                  {{ $t('seaExport.freightRate.create') }}
-                </Menu.Item>
-                <Menu.Divider /> -->
                 <Menu.Item
                   key="batchAdd"
                   :disabled="!hasAddPermission"
@@ -1473,7 +987,7 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
                 <Menu.Item
                   key="edit"
                   :disabled="!hasEditPermission"
-                  @click="onBatchEdit"
+                  @click="onBatchSyncUpdate"
                 >
                   {{ $t('seaExport.freightRate.batchEdit') }}
                 </Menu.Item>
@@ -1503,40 +1017,21 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
                       'text-red-600': hasDeletePermission,
                       'text-gray-400': !hasDeletePermission,
                     }"
-                    >{{ $t('seaExport.freightRate.batchDelete') }}</span
                   >
+                    {{ $t('seaExport.freightRate.batchDelete') }}
+                  </span>
                 </Menu.Item>
               </Menu>
             </template>
           </Dropdown>
-
-          <!-- 批量删除按钮 -->
-          <!-- <Button v-access:code="perm.delete" danger @click="onBatchDelete">
-            {{ $t('seaExport.freightRate.batchDelete') }}
-          </Button> -->
         </Space>
       </template>
     </Grid>
 
-    <!-- 运价表单弹窗（旧版，保留用于批量编辑附加费） -->
-    <FormModal @success="onRefresh" />
-
-    <!-- 运价新增/编辑弹窗（新版） -->
     <EditFormModal @success="onRefresh" />
-
-    <!-- 同步更新弹窗 -->
     <SyncUpdateModal @success="onRefresh" />
-
-    <!-- 添加箱型弹窗 -->
-    <AddCtnModalComponent @success="onRefresh" />
-
-    <!-- 批量新增弹窗 -->
     <BatchAddModalComponent @success="onRefresh" />
 
-    <!-- 批量编辑弹窗 -->
-    <BatchEditModalComponent @success="onRefresh" />
-
-    <!-- AI批量新增上传弹窗 -->
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"
       :recognizing="aiRecognizing"
@@ -1547,7 +1042,6 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
 </template>
 
 <style scoped>
-/* 航线 tab 靠左展示，超出时横向滚动，不挤压右侧操作按钮 */
 :deep(.vxe-toolbar) {
   flex-wrap: nowrap;
   overflow: visible;
@@ -1625,12 +1119,10 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
   cursor: not-allowed;
 }
 
-/* 附加费容器样式 */
 .surcharge-fees-container {
   position: relative;
 }
 
-/* 船公司 Logo 样式 */
 .carrier-logo {
   width: auto;
   height: 24px;
