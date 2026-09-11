@@ -116,9 +116,6 @@ const columns = computed(() => {
 const queryTip = computed(() =>
   $t('component.terminalSchedule.queryTip', {
     vessel: props.queryInfo?.vessel || '-',
-    voyage:
-      props.queryInfo?.terminalVoyno ||
-      $t('component.terminalSchedule.queryVoyageAll'),
     port: props.queryInfo?.portName || props.queryInfo?.portCode || '-',
   }),
 );
@@ -129,24 +126,13 @@ const showUnfilteredTip = computed(
     props.queryInfo?.filteredByTerminalVoyno === false,
 );
 
-const convertedTip = computed(() => {
-  if (!props.queryInfo?.terminalVoynoConverted) return '';
-  const voyage = props.queryInfo?.terminalVoyno;
-  if (!voyage) return '';
-  return $t('component.terminalSchedule.convertedTip', { voyage });
-});
-
-const unfilteredMessage = computed(
-  () =>
-    props.queryInfo?.message || $t('component.terminalSchedule.unfilteredTip'),
+const unfilteredMessage = computed(() =>
+  $t('component.terminalSchedule.unfilteredTip'),
 );
 
-const pickerDescription = computed(() => {
-  const multipleTip = $t('component.terminalSchedule.multipleTip');
-  return convertedTip.value
-    ? `${convertedTip.value} ${multipleTip}`
-    : multipleTip;
-});
+const pickerDescription = computed(() =>
+  $t('component.terminalSchedule.multipleTip'),
+);
 
 function getCallingPorts(record: TerminalScheduleItem): string[] {
   return (record.portsCn || record.portsEn || '')

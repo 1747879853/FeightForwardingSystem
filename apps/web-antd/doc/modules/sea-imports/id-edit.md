@@ -71,7 +71,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗也不出该列，引入后仍写入并保存。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
+| 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗不出该列，提示文案也不再提码头航次。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-10 | `Feature` | 更改单样式与交互对齐海运出口：Handsontable、页签只保存一侧、订单信息通栏。 | 详见 `changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md`；专题活文档见 `modules/sea-exports/change-order.md`。 |
 | 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-05 | `Feature` | 浏览器标签栏标题随主提单号/委托编号动态更新；有主提单号优先展示主提单号。 | 工作台 `editor.vue` 与嵌入 `form.vue` 共用 `useSeaImportTabTitle`；切费用等子 Tab 仍保持标题。详见 `changelogs/change-log-2026-09-05-sea-import-tab-title.md`。 |

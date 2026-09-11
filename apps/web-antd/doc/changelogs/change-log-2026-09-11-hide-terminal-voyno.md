@@ -12,7 +12,7 @@ module: sea-exports / sea-imports
 
 1. **表单仍提交：** 海出/海进基础信息把 `terminalVoyno` 做成隐藏项（`formItemClass: 'hidden'`），详情回填、AI 识别、`buildSeaExportDto` / `buildSeaImportDto` 与码头计划 `setFieldValue` 不变。
 2. **列表不展示：** 海出/海进 `useColumns` 去掉 `terminalVoyno` 列，避免用户列设置再勾出来；筛选框 `hidden`；海出台账默认列配置同步去掉。
-3. **选计划弹窗：** `terminal-schedule-picker-modal` 去掉「码头航次」列；选中后仍把 `evoyage`/`ivoyage` 写入隐藏的 `terminalVoyno` 并保存。
+3. **选计划弹窗：** `terminal-schedule-picker-modal` 去掉「码头航次」列；换算提示、查询条件与操作说明也不再出现「码头航次」。选中后仍把 `evoyage`/`ivoyage` 写入隐藏的 `terminalVoyno` 并保存。
 4. **费用/更改单摘要：** 默认不再展示码头航次。
 
 # 避坑指南
