@@ -265,6 +265,30 @@ const useOrderFeeDetailColumns = () => {
   ];
 };
 
+/**
+ * 申请修改 diff 展示时排除的字段。
+ * task.info 常带完整费用快照，录入人/创建时间等系统字段在修改提交里多为 null，
+ * 若参与对比会误显示为「超级管理员 => [null]」。
+ */
+const MODIFY_DIFF_EXCLUDE_FIELDS = new Set([
+  'combinedFeeStatus',
+  'id',
+  'transportOrderId',
+  'creationTime',
+  'lastModificationTime',
+  'creatorUserId',
+  'lastModifierUserId',
+  'isDeleted',
+  'deleterUserId',
+  'deletionTime',
+  'creatorUserName',
+  'creatorUserNickName',
+  'dataEntryMethod',
+  'orgId',
+  'orgs',
+  'userId',
+]);
+
 const handleModifyTask = (
   orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
 ) => {
@@ -279,7 +303,7 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (key === 'combinedFeeStatus') return;
+      if (MODIFY_DIFF_EXCLUDE_FIELDS.has(key)) return;
       const current = item[key];
       const next = info[key];
       // 嵌套对象（如 feeCode / settlement / currency）不参与 "原值 => [新值]" 改写，
