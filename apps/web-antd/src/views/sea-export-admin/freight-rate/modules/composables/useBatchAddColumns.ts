@@ -24,6 +24,13 @@ export function useBatchAddColumns(
   linkage: any,
   /** 港口远程搜索 source；不传则回退到全量 ports（不推荐） */
   portSource?: (query: string, process: (items: string[]) => void) => void,
+  /** 船公司远程搜索 source */
+  carrierSource?: (query: string, process: (items: string[]) => void) => void,
+  /** 订舱代理远程搜索 source */
+  bookingAgentSource?: (
+    query: string,
+    process: (items: string[]) => void,
+  ) => void,
 ) {
   /**
    * 构建动态列配置
@@ -43,25 +50,24 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.carriers || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          // 显示 Label，空值显示为空字符串
-          const displayValue = value
-            ? dropdownSources.getCarrierName(value)
-            : '';
-          td.innerHTML = displayValue;
-          td.className = 'htLeft';
-          return td;
-        },
+        source:
+          carrierSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const carriers = dropdownSourceCache.value.carriers || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? carriers.filter((p: string) =>
+                    p.toLowerCase().includes(keyword),
+                  )
+                : carriers,
+            );
+          }),
       },
       {
         data: 'polId',
@@ -129,24 +135,24 @@ export function useBatchAddColumns(
         type: 'autocomplete',
         strict: false,
         allowInvalid: true,
+        filter: false,
+        sortByRelevance: true,
+        filteringCaseSensitive: false,
+        trimDropdown: false,
         visibleRows: 10,
-        source: dropdownSourceCache.value.clients || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const displayValue = value
-            ? dropdownSources.getClientName(value)
-            : '';
-          td.innerHTML = displayValue;
-          td.className = 'htLeft';
-          return td;
-        },
+        source:
+          bookingAgentSource ||
+          ((query: string, process: (items: string[]) => void) => {
+            const clients = dropdownSourceCache.value.clients || [];
+            const keyword = (query ?? '').toString().trim().toLowerCase();
+            process(
+              keyword
+                ? clients.filter((p: string) =>
+                    p.toLowerCase().includes(keyword),
+                  )
+                : clients,
+            );
+          }),
       },
       {
         data: 'isDirect',

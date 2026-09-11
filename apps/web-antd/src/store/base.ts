@@ -266,10 +266,6 @@ export const useBaseStore = defineStore('core-base', {
           await import('#/api/system/base-data/ctn-code-admin');
         const { getCurrencyPagedList } =
           await import('#/api/system/base-data/currency-admin');
-        const { getCarrierPagedList } =
-          await import('#/api/system/base-data/carrier-admin');
-        const { getClientGroupedByIndustryCategory } =
-          await import('#/api/common/client');
 
         // 1. 加载箱型列表
         console.log('📦 [fetchFreightRateDropdownData] 正在加载箱型列表...');
@@ -316,66 +312,29 @@ export const useBaseStore = defineStore('core-base', {
           this.setPorts(new Map());
         }
 
-        // 4. 加载船公司列表
-        console.log('🏢 [fetchFreightRateDropdownData] 正在加载船公司列表...');
-        const carriers = await getCarrierPagedList({
-          PageIndex: 1,
-          PageSize: 1000,
-        });
-
-        const carrierMap = new Map<string, string>();
-        carriers?.items?.forEach((carrier) => {
-          if (carrier.id) {
-            const code = carrier.code || '';
-            const cnShortName =
-              carrier.cnShortName || carrier.cnName || carrier.enName || '';
-            const carrierName =
-              code && cnShortName
-                ? `${code}(${cnShortName})`
-                : cnShortName || code;
-            carrierMap.set(String(carrier.id), carrierName);
-          }
-        });
-        this.setCarriers(carrierMap);
+        // 4. 船公司改为远程分页搜索
         console.log(
-          `✅ [fetchFreightRateDropdownData] 已缓存 ${carrierMap.size} 个船公司`,
+          '🏢 [fetchFreightRateDropdownData] 跳过船公司全量加载（改用远程搜索）',
         );
-
-        // 5. 加载订舱代理列表（行业类型为 'o' 的客户）
-        console.log(
-          '👥 [fetchFreightRateDropdownData] 正在加载订舱代理列表...',
-        );
-        const clientGroups = await getClientGroupedByIndustryCategory();
-
-        const bookingAgentMap = new Map<string, string>();
-        const bookingAgentGroup = clientGroups?.find(
-          (group) => group.key === 'o',
-        );
-
-        if (bookingAgentGroup && bookingAgentGroup.value) {
-          bookingAgentGroup.value.forEach((client) => {
-            if (client.id) {
-              const clientName = client.name || client.fullName || '';
-              bookingAgentMap.set(String(client.id), clientName);
-            }
-          });
-          console.log(
-            `✅ [fetchFreightRateDropdownData] 已缓存 ${bookingAgentMap.size} 个订舱代理`,
-          );
-        } else {
-          console.warn(
-            '⚠️ [fetchFreightRateDropdownData] 未找到行业类型为 "o" 的订舱代理数据',
-          );
+        if (this.carriers.size === 0) {
+          this.setCarriers(new Map());
         }
-        this.setBookingAgents(bookingAgentMap);
+
+        // 5. 订舱代理改为远程分页搜索（行业类型 'o'）
+        console.log(
+          '👥 [fetchFreightRateDropdownData] 跳过订舱代理全量加载（改用远程搜索）',
+        );
+        if (this.bookingAgents.size === 0) {
+          this.setBookingAgents(new Map());
+        }
 
         // 输出最终缓存统计
         console.log('📊 [fetchFreightRateDropdownData] 缓存统计:');
         console.log('  - 箱型:', this.ctnOptions.length);
-        console.log('  - 船公司:', this.carriers.size);
+        console.log('  - 船公司(远程搜索):', this.carriers.size);
         console.log('  - 港口(远程搜索):', this.ports.size);
         console.log('  - 币别:', this.currencies.size);
-        console.log('  - 订舱代理:', this.bookingAgents.size);
+        console.log('  - 订舱代理(远程搜索):', this.bookingAgents.size);
       } catch (error) {
         console.error(
           '❌ [fetchFreightRateDropdownData] 加载运价下拉框数据失败:',

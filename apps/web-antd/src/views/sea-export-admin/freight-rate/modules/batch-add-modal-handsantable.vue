@@ -22,6 +22,8 @@ import { useBatchAddColumns } from './composables/useBatchAddColumns';
 import { useBatchAddSettings } from './composables/useBatchAddSettings';
 import { useBatchAddActions } from './composables/useBatchAddActions';
 import { usePortRemoteAutocomplete } from './composables/usePortRemoteAutocomplete';
+import { useCarrierRemoteAutocomplete } from './composables/useCarrierRemoteAutocomplete';
+import { useBookingAgentRemoteAutocomplete } from './composables/useBookingAgentRemoteAutocomplete';
 
 // 导入核心表格组件
 import BatchAddTableCore from './BatchAddTableCore.vue';
@@ -128,10 +130,14 @@ async function handleAIData(aiDataList: any[]) {
   await nextTick();
   await nextTick();
 
-  // Port labels: prefer nested DTO, otherwise detail-by-id into remote cache
+  // 港口/船公司：嵌套 DTO 优先，否则按 id 拉详情写入远程缓存
   await ensurePortLabelsByIds(
     aiDataList.flatMap((row) => [row.polId, row.podId, row.poT1Id, row.poT2Id]),
   );
+  await ensureCarrierLabelsByIds(aiDataList.map((row) => row.carrierId));
+  for (const row of aiDataList) {
+    resolveBookingAgentLabelFromRow(row);
+  }
 
   // ⚠️ 关键修复：辅助函数 - 将 ID 转换为显示名称（用于 Handsontable 下拉框）
   const convertIdToLabel = (
@@ -142,13 +148,13 @@ async function handleAIData(aiDataList: any[]) {
 
     switch (type) {
       case 'carriers':
-        return getCarrierName(id);
+        return getCachedCarrierLabel(id) || getCarrierName(id);
       case 'ports':
         return getCachedPortLabel(id) || getPortName(id, portIdToLabel.value);
       case 'currencies':
         return getCurrencyName(id);
       case 'clients':
-        return getClientName(id);
+        return getCachedBookingAgentLabel(id) || getClientName(id);
       default:
         return String(id);
     }
@@ -162,7 +168,9 @@ async function handleAIData(aiDataList: any[]) {
     });
 
     // ⚠️ 关键修复：将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
-    const carrierName = convertIdToLabel(row.carrierId, 'carriers');
+    const carrierName =
+      resolveCarrierLabelFromRow(row) ||
+      convertIdToLabel(row.carrierId, 'carriers');
     const polName =
       resolvePortLabelFromRow(row, 'pol') ||
       convertIdToLabel(row.polId, 'ports');
@@ -170,7 +178,9 @@ async function handleAIData(aiDataList: any[]) {
       resolvePortLabelFromRow(row, 'pod') ||
       convertIdToLabel(row.podId, 'ports');
     const currencyName = convertIdToLabel(row.currencyId, 'currencies');
-    const bookingAgentName = convertIdToLabel(row.bookingAgentId, 'clients');
+    const bookingAgentName =
+      resolveBookingAgentLabelFromRow(row) ||
+      convertIdToLabel(row.bookingAgentId, 'clients');
     const poT1Name =
       resolvePortLabelFromRow(row, 'poT1') ||
       convertIdToLabel(row.poT1Id, 'ports');
@@ -279,6 +289,23 @@ const {
   getCachedPortLabel,
 } = usePortRemoteAutocomplete();
 
+const {
+  carrierLabelToId,
+  createCarrierSource,
+  resolveCarrierLabelFromRow,
+  ensureCarrierLabelsByIds,
+  clearCarrierCache,
+  getCachedCarrierLabel,
+} = useCarrierRemoteAutocomplete();
+
+const {
+  bookingAgentLabelToId,
+  createBookingAgentSource,
+  resolveBookingAgentLabelFromRow,
+  clearBookingAgentCache,
+  getCachedBookingAgentLabel,
+} = useBookingAgentRemoteAutocomplete();
+
 interface BatchAddTableCoreInstance {
   hotTableRef: any;
   handleOpenDropdown: (
@@ -291,7 +318,7 @@ interface BatchAddTableCoreInstance {
 
 const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 
-const portSource = createPortSource(() => {
+function resolveActiveAutocompleteEditor() {
   const table = coreTableRef.value?.hotTableRef;
   const hot =
     table?.hotInstance ??
@@ -299,12 +326,17 @@ const portSource = createPortSource(() => {
     table?.hot?.hotInstance ??
     null;
   const editor = hot?.getActiveEditor?.() ?? null;
-  // 仅返回已打开下拉的 autocomplete 编辑器
   if (editor?.htEditor && editor?.updateChoicesList) {
     return editor;
   }
   return null;
-});
+}
+
+const portSource = createPortSource(resolveActiveAutocompleteEditor);
+const carrierSource = createCarrierSource(resolveActiveAutocompleteEditor);
+const bookingAgentSource = createBookingAgentSource(
+  resolveActiveAutocompleteEditor,
+);
 
 const actions = useBatchAddActions(
   dataSource,
@@ -353,7 +385,7 @@ const dropdownSourceCache = computed(() => {
   return result;
 });
 
-// Label 到 ID 的反向映射（港口优先用远程搜索运行时缓存）
+// Label 到 ID 的反向映射（港口/船公司/订舱代理优先用远程搜索运行时缓存）
 const labelToIdMap = computed(() => {
   const ports = new Map<string, string>(
     Array.from(labelCache.value.ports.entries()).map(([id, name]) => [
@@ -361,17 +393,32 @@ const labelToIdMap = computed(() => {
       id,
     ]),
   );
-  // 远程搜索命中的 label 覆盖/补充 store（store 已不再预载全量港口）
   for (const [label, id] of portLabelToId.value.entries()) {
     ports.set(label, id);
   }
+
+  const carriers = new Map<string, string>(
+    Array.from(labelCache.value.carriers.entries()).map(([id, name]) => [
+      name,
+      id,
+    ]),
+  );
+  for (const [label, id] of carrierLabelToId.value.entries()) {
+    carriers.set(label, id);
+  }
+
+  const clients = new Map<string, string>(
+    Array.from(labelCache.value.clients.entries()).map(([id, name]) => [
+      name,
+      id,
+    ]),
+  );
+  for (const [label, id] of bookingAgentLabelToId.value.entries()) {
+    clients.set(label, id);
+  }
+
   return {
-    carriers: new Map<string, string>(
-      Array.from(labelCache.value.carriers.entries()).map(([id, name]) => [
-        name,
-        id,
-      ]),
-    ),
+    carriers,
     ports,
     currencies: new Map<string, string>(
       Array.from(labelCache.value.currencies.entries()).map(([id, code]) => [
@@ -379,12 +426,7 @@ const labelToIdMap = computed(() => {
         id,
       ]),
     ),
-    clients: new Map<string, string>(
-      Array.from(labelCache.value.clients.entries()).map(([id, name]) => [
-        name,
-        id,
-      ]),
-    ),
+    clients,
   };
 });
 
@@ -459,6 +501,8 @@ const { hotColumns } = useBatchAddColumns(
   handleOpenDropdown,
   linkage,
   portSource,
+  carrierSource,
+  bookingAgentSource,
 );
 
 const { hotSettings: rawHotSettings } = useBatchAddSettings(
@@ -715,8 +759,10 @@ const [Modal, modalApi] = useVbenModal({
     console.log('当前 AI 数据:', aiData.value);
     console.log('是否为编辑模式:', isEditMode.value);
 
-    // Clear port remote-search cache each open
+    // Clear remote-search caches each open
     clearPortCache();
+    clearCarrierCache();
+    clearBookingAgentCache();
 
     // ✅ 关键修复：确保下拉选项已加载
     if (allCtnOptions.value.length === 0) {

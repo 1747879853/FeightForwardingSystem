@@ -85,21 +85,21 @@ export function useBatchAddDropdownSources() {
     console.log('🚀 [initDropdownSources] 检查下拉框数据源...');
 
     try {
-      // 检查 store 中是否已有数据（港口改为远程搜索，不再要求全量缓存）
+      // 港口/船公司/订舱代理改为远程搜索，仅要求箱型与币别已预载
       const hasData =
-        baseStore.ctnOptions.length > 0 &&
-        baseStore.carriers.size > 0 &&
-        baseStore.currencies.size > 0 &&
-        baseStore.bookingAgents.size > 0;
+        baseStore.ctnOptions.length > 0 && baseStore.currencies.size > 0;
 
       if (hasData) {
         console.log('✅ [initDropdownSources] 使用 store 中的缓存数据');
         console.log('📊 [initDropdownSources] 缓存统计:');
         console.log('  - 箱型:', baseStore.ctnOptions.length);
-        console.log('  - 船公司:', baseStore.carriers.size);
+        console.log('  - 船公司(远程搜索，不预载):', baseStore.carriers.size);
         console.log('  - 港口(远程搜索，不预载):', baseStore.ports.size);
         console.log('  - 币别:', baseStore.currencies.size);
-        console.log('  - 订舱代理:', baseStore.bookingAgents.size);
+        console.log(
+          '  - 订舱代理(远程搜索，不预载):',
+          baseStore.bookingAgents.size,
+        );
       } else {
         console.log('⚠️ [initDropdownSources] store 中无数据，开始加载...');
         await baseStore.fetchFreightRateDropdownData();

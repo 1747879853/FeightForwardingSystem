@@ -230,16 +230,10 @@ export function useBatchAddSettings(
         cellProperties.className = 'disabled-cell';
       }
 
-      // 船公司/币别/订舱代理仍用本地缓存；港口列用列配置里的远程 source，勿在此覆盖为全量数组
-      if (prop === 'carrierId') {
-        const carriers = dropdownSourceCache?.value?.carriers || [];
-        cellProperties.source = carriers;
-      } else if (prop === 'currencyId') {
+      // 币别仍用本地缓存；港口/船公司/订舱代理用列配置里的远程 source，勿在此覆盖为全量数组
+      if (prop === 'currencyId') {
         const currencies = dropdownSourceCache?.value?.currencies || [];
         cellProperties.source = currencies;
-      } else if (prop === 'bookingAgentId') {
-        const clients = dropdownSourceCache?.value?.clients || [];
-        cellProperties.source = clients;
       }
 
       return cellProperties;

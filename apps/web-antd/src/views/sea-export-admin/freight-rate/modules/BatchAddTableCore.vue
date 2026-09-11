@@ -95,7 +95,8 @@ const handleAfterChange = (changes: any, source: string) => {
         // 确定字段类型和对应的映射表
         let labelMap: Map<string, string> | undefined;
         if (prop === 'carrierId') {
-          labelMap = props.labelToIdMap.carriers;
+          // 船公司列保留展示文案，提交时经 labelToIdMap 映射
+          return;
         } else if (
           prop === 'polId' ||
           prop === 'podId' ||
@@ -108,7 +109,8 @@ const handleAfterChange = (changes: any, source: string) => {
         } else if (prop === 'currencyId') {
           labelMap = props.labelToIdMap.currencies;
         } else if (prop === 'bookingAgentId') {
-          labelMap = props.labelToIdMap.clients;
+          // 订舱代理列保留展示文案，提交时经 labelToIdMap 映射
+          return;
         }
 
         // 如果找到映射表，将 Label 转换为 ID
