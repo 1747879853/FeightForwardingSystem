@@ -583,13 +583,16 @@ let heightFollowUpTimer: ReturnType<typeof setTimeout> | null = null;
 /** 观察器是否已启动。onMounted 与 onActivated 都会调用启动函数，需要幂等 */
 let layoutWatching = false;
 
+/**
+ * 更新表格高度：按「视口底部 − 容器顶」估算，不依赖 container.clientHeight。
+ * 原因：未定高 flex 时 clientHeight ≈ Handsontable 已设像素高，折叠检索后会锁死不再长高。
+ */
 function updateTableHeight() {
   // 清除之前的定时器，避免重复调用
   if (heightUpdateTimer) {
     clearTimeout(heightUpdateTimer);
   }
 
-  // 使用 requestAnimationFrame 确保在下一帧执行，避免布局抖动
   heightUpdateTimer = setTimeout(() => {
     const container = containerRef.value;
     const hotInstance = hotTableRef.value?.hotInstance;
@@ -599,18 +602,14 @@ function updateTableHeight() {
       return;
     }
 
-    // 优先用 flex 分配给容器的实际高度；回退到视口估算
-    const available = container.clientHeight;
-    let targetHeight =
-      available >= 200
-        ? available
-        : window.innerHeight - container.getBoundingClientRect().top - 24;
+    const rect = container.getBoundingClientRect();
+    let targetHeight = Math.floor(window.innerHeight - rect.top - 24);
 
     if (targetHeight < 200) {
       targetHeight = 200;
     }
 
-    const currentHeight = hotInstance.getSettings()?.height;
+    const currentHeight = Number(hotInstance.getSettings()?.height);
     if (currentHeight === targetHeight) {
       heightUpdateTimer = null;
       return;
@@ -619,7 +618,7 @@ function updateTableHeight() {
     hotInstance.updateSettings({ height: targetHeight }, false);
 
     heightUpdateTimer = null;
-  }, 16); // 约1帧的时间（60fps）
+  }, 16);
 }
 
 /** 防抖调度一次高度重算 */
@@ -655,12 +654,8 @@ function handleWindowResize() {
 /**
  * 启动布局观察。
  *
- * 只观察本页面的表格容器、页面容器与查询卡片：它们的尺寸变化会改变表格顶部
- * 位置，需要重算 Handsontable 高度。视口变化由 window resize 覆盖，因此不再
- * 观察 document.body，也不再用 MutationObserver 监听全站 DOM 的 class/style。
- *
- * 目标节点从 containerRef 向上 closest 查找，避免命中其它 keepAlive 缓存页里
- * 的同名节点。
+ * Page 组件没有 .vben-page-wrapper，需从 .report-page / .report-page__content
+ * 定位查询卡。折叠改的是表单项 class，故在 query-card 子树监听 class。
  */
 function startLayoutWatchers() {
   if (layoutWatching) return;
@@ -671,22 +666,28 @@ function startLayoutWatchers() {
   resizeObserver = new ResizeObserver(() => scheduleHeightUpdate(50));
   resizeObserver.observe(container);
 
-  const pageWrapper = container.closest('.vben-page-wrapper');
-  if (pageWrapper) {
-    resizeObserver.observe(pageWrapper);
-    const queryCard = pageWrapper.querySelector('.query-card');
-    if (queryCard) {
-      resizeObserver.observe(queryCard);
-      // 折叠只改子项 class 时，个别环境下卡片尺寸事件会丢；限定在 query-card 内监听 class
-      queryCardMutationObserver = new MutationObserver(() =>
-        scheduleHeightUpdateWithFollowUp(),
-      );
-      queryCardMutationObserver.observe(queryCard, {
-        attributes: true,
-        attributeFilter: ['class'],
-        subtree: true,
-      });
-    }
+  const pageRoot = container.closest('.report-page');
+  const pageContent =
+    container.closest('.report-page__content') ||
+    (pageRoot?.querySelector('.report-page__content') as HTMLElement | null);
+
+  if (pageContent) {
+    resizeObserver.observe(pageContent);
+  }
+
+  const queryCard = pageRoot?.querySelector(
+    '.query-card',
+  ) as HTMLElement | null;
+  if (queryCard) {
+    resizeObserver.observe(queryCard);
+    queryCardMutationObserver = new MutationObserver(() =>
+      scheduleHeightUpdateWithFollowUp(),
+    );
+    queryCardMutationObserver.observe(queryCard, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    });
   }
 
   window.addEventListener('resize', handleWindowResize);

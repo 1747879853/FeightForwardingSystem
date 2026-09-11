@@ -41,7 +41,11 @@ const {
 </script>
 
 <template>
-  <Page class="report-page">
+  <Page
+    class="report-page"
+    auto-content-height
+    content-class="report-page__content !p-0"
+  >
     <Card class="query-card mb-3" :bordered="false">
       <component :is="QueryForm" />
       <slot name="form-extra" />
@@ -69,29 +73,14 @@ const {
 </template>
 
 <style scoped lang="scss">
-.report-page {
-  display: flex;
-  flex-direction: column;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
-:deep(.vben-page-wrapper) {
+/*
+ * Page 实际结构是外层 root + 内层 content（无 .vben-page-wrapper）。
+ * auto-content-height 给 content 明确高度后，检索区收缩才能把剩余高度交给表格。
+ */
+:deep(.report-page__content) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
-:deep(.vben-page-wrapper-content) {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0 !important;
-  margin: 0 !important;
   overflow: hidden !important;
 }
 

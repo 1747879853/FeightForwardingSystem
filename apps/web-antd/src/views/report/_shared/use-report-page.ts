@@ -101,6 +101,12 @@ export function useReportPage(config: ReportPageConfig) {
     collapsed: true,
     // 与 VXE 列表查询一致：折叠切换后触发 resize，驱动 Handsontable 重算高度
     collapseTriggerResize: true,
+    handleCollapsedChange: () => {
+      // 再补一发：form-actions 已 triggerWindowResize，这里延后一帧防止量到旧布局
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
+    },
     submitButtonOptions: {
       content: '查询',
     },
