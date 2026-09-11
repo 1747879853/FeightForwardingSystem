@@ -1061,6 +1061,12 @@
   font-size: 11px;
 }
 
+.service-pipeline--inline .chevron-step__pending {
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+}
+
 .service-pipeline--inline .chevron-step__label {
   font-size: 10px;
   font-weight: 600;
@@ -1194,6 +1200,23 @@
   align-items: center;
   min-width: 0;
   max-width: 100%;
+}
+
+.chevron-step__pending {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #d97706;
+  border-radius: 3px;
 }
 
 .chevron-step__icon {

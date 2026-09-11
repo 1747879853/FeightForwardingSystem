@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -41,6 +41,7 @@ last_updated: 2026-09-08
 - **任务分组展示：**
   - 头部按起运港（POL）切换，并展示该港口任务数 Badge
   - 内容区按服务项（ServiceType）分组展示任务，支持“指派任务”汇总组
+  - 待处理页签下，服务项 chevron 显示橙色「待」字；已处理页签不显示
 - **海运出口业务列表动态列：**
   - 列由当前 chevron 服务项的 `seServiceShows`（`SeaExportPropEnum`）驱动，严格 1 枚举 1 列，顺序与配置数组一致
   - 固定列始终显示：委托单号、处理人；「转交任务」节点额外显示转交备注列；`seServiceShows` 为空时不展示业务列
@@ -88,6 +89,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Feature` | 待处理页签下服务项节点显示「待」字，已处理页签不显示。 | `WorkbenchBusinessTable.showPendingMark` 仅海出服务 Tab 传入。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-08 | `Fix` | 应收应付/业务联系单审核的 ETD、付费申请审核的提交时间改为自然日起止。 | 海出服务任务 ETD 原先已切日界。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 完成任务确认框按当前服务项配置提示必传附件类型。 | 名称对照 `AttachmentDtlType/GetListAsync`；工作台列表不含 requireValues，读配置详情。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-11 | `Fix` | 龙山打包环境工作台隐藏「紧急处理任务」「异常业务」 | 与 jht 共用 `hideWorkbenchMockSidePanels = isJhtBrand \|\| isLongshanBrand`。详见 `changelogs/change-log-2026-08-11-longshan-hide-workbench-mock-panels.md` |

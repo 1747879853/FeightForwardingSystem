@@ -3429,7 +3429,17 @@ defineExpose({
                                       ]"
                                     >
                                       <div class="chevron-step__inner">
+                                        <span
+                                          v-if="
+                                            getServicePipelineState(node) ===
+                                            'active'
+                                          "
+                                          class="chevron-step__pending"
+                                        >
+                                          待
+                                        </span>
                                         <IconifyIcon
+                                          v-else
                                           :icon="getServiceTypeNodeIcon(node)"
                                           class="chevron-step__icon"
                                         />

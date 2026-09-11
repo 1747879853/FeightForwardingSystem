@@ -32,6 +32,8 @@ interface Props {
   selectedRowKeys: string[];
   stageSteps: StageStep[];
   activeStageKey?: string;
+  /** 待处理页签下，服务项节点展示「待」标记 */
+  showPendingMark?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -253,6 +255,9 @@ function handlePaginationChange(page: number, pageSize: number) {
             @click="selectStage(step.key)"
           >
             <div class="chevron-step__inner">
+              <span v-if="showPendingMark" class="chevron-step__pending">
+                待
+              </span>
               <span class="chevron-step__label">{{ step.label }}</span>
               <span v-if="step.count > 0" class="chevron-step__count">
                 {{ step.count }}
@@ -515,6 +520,23 @@ function handlePaginationChange(page: number, pageSize: number) {
   min-width: 0;
   max-width: 100%;
   height: 16px;
+}
+
+.chevron-step__pending {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #d97706;
+  border-radius: 3px;
 }
 
 .chevron-step__label {

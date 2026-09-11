@@ -9,6 +9,7 @@
 - `rows: BusinessRow[]` 表格数据
 - `stageSteps: StageStep[]` 顶部流程节点
 - `selectedRowKeys: string[]` 受控选中项
+- `showPendingMark?: boolean` 待处理页签下，服务项节点展示「待」标记
 
 ## Emits
 

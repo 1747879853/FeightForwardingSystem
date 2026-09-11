@@ -1128,6 +1128,7 @@ onMounted(() => {
             :selected-row-keys="selectedRowKeys"
             :stage-steps="displayStageSteps"
             :active-stage-key="activeStageKey"
+            :show-pending-mark="activeProcessingTab === 'processing'"
             @update:selected-row-keys="selectedRowKeys = $event"
             @update:active-stage-key="handleStageChange"
             @pagination-change="handleSeaExportPaginationChange"
