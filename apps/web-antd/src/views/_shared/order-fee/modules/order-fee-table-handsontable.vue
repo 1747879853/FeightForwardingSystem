@@ -1349,25 +1349,25 @@ watch(
     .summary-item {
       padding: 4px 10px;
       font-weight: 600;
-      color: #1890ff;
+      color: hsl(var(--primary));
       white-space: nowrap;
       background: linear-gradient(
         135deg,
-        rgb(24 144 255 / 8%) 0%,
-        rgb(24 144 255 / 4%) 100%
+        hsl(var(--primary) / 8%) 0%,
+        hsl(var(--primary) / 4%) 100%
       );
-      border: 1px solid rgb(24 144 255 / 15%);
+      border: 1px solid hsl(var(--primary) / 15%);
       border-radius: 4px;
       transition: all 0.2s ease;
 
       &:hover {
         background: linear-gradient(
           135deg,
-          rgb(24 144 255 / 15%) 0%,
-          rgb(24 144 255 / 8%) 100%
+          hsl(var(--primary) / 15%) 0%,
+          hsl(var(--primary) / 8%) 100%
         );
-        border-color: rgb(24 144 255 / 30%);
-        box-shadow: 0 2px 8px rgb(24 144 255 / 20%);
+        border-color: hsl(var(--primary) / 30%);
+        box-shadow: 0 2px 8px hsl(var(--primary) / 20%);
         transform: scale(1.05);
       }
     }

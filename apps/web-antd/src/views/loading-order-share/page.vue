@@ -557,8 +557,8 @@ watch(
 
 .loading-share .is-done,
 .loading-share .is-active {
-  color: #2160b7;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
 }
 
 .loading-share .is-pending {

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
@@ -892,7 +892,12 @@ onMounted(() => {
     0 4px 12px rgb(16 42 83 / 5%);
 
   :deep(.ant-card-head) {
-    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 60%, #fff 100%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 3%) 60%,
+      hsl(var(--background)) 100%
+    );
     border-bottom: 1px solid #e8ecf3;
   }
 
@@ -906,7 +911,7 @@ onMounted(() => {
     color: #1f2d3d;
 
     :deep(svg) {
-      color: #1890ff;
+      color: hsl(var(--primary));
     }
   }
 }
@@ -917,7 +922,12 @@ onMounted(() => {
   align-items: center;
   font-size: 13px;
   color: #52607a;
-  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--background)) 55%,
+    hsl(var(--primary) / 6%) 100%
+  );
   border: 1px solid #e8ecf3;
   box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 
@@ -935,7 +945,7 @@ onMounted(() => {
 }
 
 .blue {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 :deep(.green-btn) {
@@ -1071,14 +1081,14 @@ onMounted(() => {
 
   &.dragging {
     .drag-line {
-      background-color: #1890ff;
-      box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+      background-color: hsl(var(--primary));
+      box-shadow: 0 0 8px hsl(var(--primary) / 40%);
     }
   }
 
   &:hover .drag-line {
-    background-color: #1890ff;
-    box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+    background-color: hsl(var(--primary));
+    box-shadow: 0 0 6px hsl(var(--primary) / 30%);
   }
 
   .drag-line {

@@ -745,7 +745,7 @@ export function useSalesTicketColumns(
         width: 110,
         align: 'right',
         customRender: ({ text }) =>
-          amountCell(text, 'font-semibold text-[#006ce6]'),
+          amountCell(text, 'font-semibold text-[hsl(var(--primary))]'),
       },
       {
         title: ticketTitle('status'),
@@ -815,7 +815,7 @@ export function useSalesTicketColumns(
       width: 110,
       align: 'right',
       customRender: ({ text }) =>
-        amountCell(text, 'font-semibold text-[#006ce6]'),
+        amountCell(text, 'font-semibold text-[hsl(var(--primary))]'),
     },
   ];
   return columns;

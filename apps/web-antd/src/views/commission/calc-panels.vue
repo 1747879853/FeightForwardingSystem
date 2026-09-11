@@ -338,7 +338,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 }
 
 .tile--blue {
-  background: #f2f8fe;
+  background: hsl(var(--primary) / 6%);
 }
 
 .tile--green {
@@ -361,8 +361,8 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 }
 
 .tile__icon--blue {
-  color: #0f87ff;
-  background: #d2e8ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 18%);
 }
 
 .tile__icon--green {
@@ -441,8 +441,8 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
   height: 24px;
   font-size: 10px;
   font-weight: 600;
-  color: #006ce6;
-  background: #d2e8ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 18%);
   border-radius: 50%;
 }
 
@@ -474,7 +474,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
   gap: 12px;
   align-items: center;
   padding: 10px 16px;
-  background: #f2f8fe;
+  background: hsl(var(--primary) / 6%);
   border-radius: 8px;
 }
 
@@ -499,7 +499,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 .final__amount {
   font-size: 32px;
   font-weight: 800;
-  color: #006ce6;
+  color: hsl(var(--primary));
   letter-spacing: 0.5px;
 }
 
@@ -530,7 +530,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
   gap: 10px;
   align-items: flex-start;
   padding: 12px;
-  background: #f2f8fe;
+  background: hsl(var(--primary) / 6%);
   border-radius: 8px;
 }
 
@@ -543,7 +543,11 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
   height: 28px;
   font-size: 16px;
   color: #fff;
-  background: linear-gradient(135deg, #0f87ff, #69b4ff);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 65%)
+  );
   border-radius: 50%;
 }
 
@@ -557,7 +561,7 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 .final__callout-text {
   font-size: 12px;
   font-weight: 600;
-  color: #006ce6;
+  color: hsl(var(--primary));
 }
 
 .final__callout-formula {
@@ -580,8 +584,8 @@ const stepNo = (sortId: number) => String(sortId).padStart(2, '0');
 .final__config-badge {
   padding: 2px 8px;
   font-size: 12px;
-  color: #006ce6;
-  background: rgb(0 108 230 / 10%);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 4px;
 }
 </style>

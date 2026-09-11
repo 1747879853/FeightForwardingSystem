@@ -457,7 +457,7 @@ const typeText = computed(() =>
 .modal-footer__total {
   font-size: 16px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
 }
 
 .modal-footer__right {

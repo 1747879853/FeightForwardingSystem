@@ -976,12 +976,12 @@ onUnmounted(stopDrag);
 
 .drag-handle:hover .drag-line,
 .drag-handle.dragging .drag-line {
-  background-color: #1890ff;
-  box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 30%);
 }
 
 .drag-handle.dragging .drag-line {
-  box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+  box-shadow: 0 0 8px hsl(var(--primary) / 40%);
 }
 
 .drag-handle-vertical {
@@ -1313,7 +1313,7 @@ onUnmounted(stopDrag);
 .currency-card__amount {
   font-size: 15px;
   font-weight: 700;
-  color: #1890ff;
+  color: hsl(var(--primary));
   word-break: keep-all;
 }
 
@@ -1332,7 +1332,7 @@ onUnmounted(stopDrag);
   margin-left: auto;
   font-size: 12px;
   font-weight: 600;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .bank-meta {
@@ -1384,7 +1384,7 @@ onUnmounted(stopDrag);
 .conversion-total-bar__amount {
   font-size: 18px;
   font-weight: 700;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .fee-group-table :deep(.user-role-column) {

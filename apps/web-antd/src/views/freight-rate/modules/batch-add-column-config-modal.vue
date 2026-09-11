@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type { SortableEvent } from 'sortablejs';
 
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -447,7 +447,12 @@ function handleClose() {
     align-items: center;
     justify-content: center;
     padding: 12px 16px;
-    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 3%) 55%,
+      hsl(var(--background)) 100%
+    );
     border-bottom: 1px solid #e4e8ef;
     border-radius: 10px 10px 0 0;
 
@@ -475,7 +480,7 @@ function handleClose() {
     font-size: 12px;
     font-weight: 600;
     color: #64748b;
-    border-left: 3px solid #006ce6;
+    border-left: 3px solid hsl(var(--primary));
   }
 
   .column-sortable {
@@ -502,12 +507,12 @@ function handleClose() {
     }
 
     &--ghost {
-      background: #eaf2ff;
+      background: hsl(var(--primary) / 10%);
       opacity: 0.65;
     }
 
     &--chosen {
-      background: #f4f8ff;
+      background: hsl(var(--primary) / 8%);
     }
 
     &--drag {
@@ -531,8 +536,8 @@ function handleClose() {
         background-color 0.15s ease;
 
       &:hover {
-        color: #006ce6;
-        background: #eaf2ff;
+        color: hsl(var(--primary));
+        background: hsl(var(--primary) / 10%);
       }
 
       &:active {

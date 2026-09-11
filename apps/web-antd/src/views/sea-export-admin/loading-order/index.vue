@@ -1755,7 +1755,7 @@ const displayValue = (value: null | number | string | undefined) => {
 }
 
 .loading-order__input-copy:hover {
-  color: #006ce6;
+  color: hsl(var(--primary));
 }
 
 .loading-order__card {
@@ -2137,9 +2137,9 @@ const displayValue = (value: null | number | string | undefined) => {
 }
 
 .loading-order__photo-btn.is-filled {
-  color: #006ce6;
-  background: #edf4ff;
-  border-color: #b6d8ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 8%);
+  border-color: hsl(var(--primary) / 30%);
 }
 
 .loading-order__status {
