@@ -51,6 +51,8 @@
     "name": "Client",
     "operation": "Operation",
     "phone": "Phone",
+    "taxNo": "Tax ID",
+    "taxRate": "Tax Rate",
     "remark": "Remark",
     "title": "Client Management",
     "exceptService": {

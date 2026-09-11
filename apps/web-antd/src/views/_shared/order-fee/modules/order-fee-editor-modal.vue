@@ -11,6 +11,7 @@ import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
   getIndustryCategoryOptions,
+  resolveSettlementByIndustryCategory,
 } from '../data';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { resolveExchangeRateOnDate } from '#/utils/exchange-rate-cache';
@@ -20,6 +21,10 @@ import {
 } from '#/utils/weight-volume-precision';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { orderCtnListRef } from '../data';
+import { resolveFeeTaxRate } from './utils/helpers';
+
+/** 弹窗内最近一次结算对象税率（ClientSelect change / 订单往来单位带出） */
+const lastSettlementTaxRate = ref<null | number | undefined>(undefined);
 
 // 定义Props
 const props = defineProps<{
@@ -550,6 +555,27 @@ const setupIndustryCategoryChangeListener = async () => {
               console.log('行业类别value:', industryCategoryValue);
               // 根据行业类别自动切换结算对象
               await fillSettlementIdByIndustryCategory(industryCategoryValue);
+              // 结算对象变化后按结算对象/费用名称刷新税率
+              const values = await orderFeeFormApi.getValues();
+              let feeCodeTaxRate: null | number | undefined;
+              if (values.feeCodeId) {
+                try {
+                  const feeCodeDetail = await getFeeCodeDetail(
+                    values.feeCodeId,
+                  );
+                  feeCodeTaxRate = feeCodeDetail?.taxRate;
+                } catch {
+                  /* ignore */
+                }
+              }
+              const resolved = resolveFeeTaxRate(
+                lastSettlementTaxRate.value,
+                feeCodeTaxRate,
+              );
+              if (resolved !== undefined) {
+                await orderFeeFormApi.setFieldValue('taxRate', resolved);
+                await handleFieldChange('taxRate');
+              }
             }
           },
         },
@@ -570,57 +596,19 @@ const fillSettlementIdByIndustryCategory = async (industryCategory: string) => {
       return;
     }
 
-    const orderDetail = orderBaseData.value;
-    let settlementId: string | number | undefined;
+    const settlement = resolveSettlementByIndustryCategory(
+      orderBaseData.value,
+      industryCategory,
+    );
 
-    // 根据行业类别映射到对应的字段
-    switch (industryCategory.toLowerCase()) {
-      case 'b': // 发货人
-        settlementId = orderDetail.transportOrder?.shipperId;
-        break;
-      case 'c': // 场站
-        settlementId = orderDetail.yardId;
-        break;
-      case 'e': // 收货人
-        settlementId = orderDetail.transportOrder?.consigneeId;
-        break;
-      case 'f': // 报关行
-        settlementId = orderDetail.transportOrder?.custBrokerId;
-        break;
-      case 'h': // 通知人
-        settlementId = orderDetail.transportOrder?.notifierId;
-        break;
-      case 'i': // 车队
-        settlementId = orderDetail.transportOrder?.teamId;
-        break;
-      case 'n': // 船代
-        settlementId = orderDetail.shipAgentId;
-        break;
-      case 'o': // 订舱代理
-        settlementId = orderDetail.bookingAgentId;
-        break;
-      case 'p': // 委托单位
-        settlementId = orderDetail.transportOrder?.clientId;
-        break;
-      case 'q': // 仓库
-        settlementId = orderDetail.transportOrder?.warehouseId;
-        break;
-      case 'r': // 保险公司
-        settlementId = orderDetail.transportOrder?.insuranceId;
-        break;
-      case 's': // 国外代理
-        settlementId = orderDetail.podAgentId;
-        break;
-      default:
-        console.warn(`未识别的行业类别: ${industryCategory}`);
-        return;
-    }
-
-    // 如果找到了对应的结算对象ID，则填充
-    if (settlementId !== undefined && settlementId !== null) {
-      await orderFeeFormApi.setFieldValue('settlementId', String(settlementId));
+    if (settlement) {
+      lastSettlementTaxRate.value = settlement.taxRate ?? null;
+      await orderFeeFormApi.setFieldValue(
+        'settlementId',
+        String(settlement.id),
+      );
       console.log(
-        `✅ 自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+        `✅ 自动填充结算对象: ${settlement.id} (行业类别: ${industryCategory}, 税率: ${settlement.taxRate})`,
       );
     } else {
       console.warn(`订单中未找到行业类别 ${industryCategory} 对应的结算对象`);
@@ -1159,15 +1147,15 @@ const setupFeeCodeChangeListener = async () => {
                 }
               }
 
-              // 3. 自动填充税率
-              if (
-                feeCodeDetail.taxRate !== undefined &&
-                feeCodeDetail.taxRate !== null
-              ) {
-                await orderFeeFormApi.setFieldValue(
-                  'taxRate',
+              // 3. 自动填充税率：优先结算对象，否则费用名称
+              {
+                const resolved = resolveFeeTaxRate(
+                  lastSettlementTaxRate.value,
                   feeCodeDetail.taxRate,
                 );
+                if (resolved !== undefined) {
+                  await orderFeeFormApi.setFieldValue('taxRate', resolved);
+                }
               }
 
               // 4. 自动填充单位和数量
@@ -1234,70 +1222,7 @@ function getCategoryNumber(category: string): number | undefined {
 const fillSettlementIdByIndustryCategoryForFeeCode = async (
   industryCategory: string,
 ) => {
-  try {
-    if (!orderBaseData.value) {
-      console.warn('订单基础数据未加载');
-      return;
-    }
-
-    const orderDetail = orderBaseData.value;
-    let settlementId: string | number | undefined;
-
-    // 根据行业类别映射到对应的字段
-    switch (industryCategory.toLowerCase()) {
-      case 'b': // 发货人
-        settlementId = orderDetail.transportOrder?.shipperId;
-        break;
-      case 'c': // 场站
-        settlementId = orderDetail.yardId;
-        break;
-      case 'e': // 收货人
-        settlementId = orderDetail.transportOrder?.consigneeId;
-        break;
-      case 'f': // 报关行
-        settlementId = orderDetail.transportOrder?.custBrokerId;
-        break;
-      case 'h': // 通知人
-        settlementId = orderDetail.transportOrder?.notifierId;
-        break;
-      case 'i': // 车队
-        settlementId = orderDetail.transportOrder?.teamId;
-        break;
-      case 'n': // 船代
-        settlementId = orderDetail.shipAgentId;
-        break;
-      case 'o': // 订舱代理
-        settlementId = orderDetail.bookingAgentId;
-        break;
-      case 'p': // 委托单位
-        settlementId = orderDetail.transportOrder?.clientId;
-        break;
-      case 'q': // 仓库
-        settlementId = orderDetail.transportOrder?.warehouseId;
-        break;
-      case 'r': // 保险公司
-        settlementId = orderDetail.transportOrder?.insuranceId;
-        break;
-      case 's': // 国外代理
-        settlementId = orderDetail.podAgentId;
-        break;
-      default:
-        console.warn(`未识别的行业类别: ${industryCategory}`);
-        return;
-    }
-
-    // 如果找到了对应的结算对象ID，则填充
-    if (settlementId !== undefined && settlementId !== null) {
-      await orderFeeFormApi.setFieldValue('settlementId', String(settlementId));
-      console.log(
-        `✅ 自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
-      );
-    } else {
-      console.warn(`订单中未找到行业类别 ${industryCategory} 对应的结算对象`);
-    }
-  } catch (error) {
-    console.error('填充结算对象失败:', error);
-  }
+  return fillSettlementIdByIndustryCategory(industryCategory);
 };
 
 /**
@@ -1406,6 +1331,27 @@ function useOrderFeeFormSchema() {
           currentFeeData.value?.settlement?.name ||
             currentFeeData.value?.settlementId,
         ),
+        onChange: async (_value: any, option: any) => {
+          lastSettlementTaxRate.value = option?.taxRate ?? null;
+          const values = await orderFeeFormApi.getValues();
+          let feeCodeTaxRate: null | number | undefined;
+          if (values.feeCodeId) {
+            try {
+              const feeCodeDetail = await getFeeCodeDetail(values.feeCodeId);
+              feeCodeTaxRate = feeCodeDetail?.taxRate;
+            } catch {
+              /* ignore */
+            }
+          }
+          const resolved = resolveFeeTaxRate(
+            lastSettlementTaxRate.value,
+            feeCodeTaxRate,
+          );
+          if (resolved !== undefined) {
+            await orderFeeFormApi.setFieldValue('taxRate', resolved);
+            await handleFieldChange('taxRate');
+          }
+        },
       },
     },
     {

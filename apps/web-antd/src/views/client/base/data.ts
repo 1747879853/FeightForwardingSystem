@@ -283,6 +283,19 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true },
     },
     {
+      component: 'InputNumber',
+      fieldName: 'taxRate',
+      label: $t('seaExport.client.taxRate'),
+      componentProps: {
+        min: 0,
+        max: 100,
+        precision: 4,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.input'),
+        addonAfter: '%',
+      },
+    },
+    {
       component: 'CodeSourceSelect',
       fieldName: 'codeSourceId',
       label: $t('seaExport.client.codeSource'),
@@ -663,8 +676,20 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
     },
     {
       field: 'taxNo',
-      title: '纳税人识别号',
+      title: $t('seaExport.client.taxNo'),
       minWidth: 150,
+      showOverflow: true,
+    },
+    {
+      field: 'taxRate',
+      title: $t('seaExport.client.taxRate'),
+      minWidth: 100,
+      formatter: ({ cellValue }) => {
+        if (cellValue === undefined || cellValue === null || cellValue === '') {
+          return '';
+        }
+        return `${cellValue}%`;
+      },
     },
     {
       field: 'sales',

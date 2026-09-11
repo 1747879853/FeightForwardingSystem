@@ -383,65 +383,78 @@ export const getIndustryCategoryOptions = () => [
 export const resolveSettlementByIndustryCategory = (
   orderDetail: any,
   categoryLetter: string,
-): { id: number | string; name: string } | null => {
+): { id: number | string; name: string; taxRate?: null | number } | null => {
   if (!orderDetail || !categoryLetter) return null;
   const to = orderDetail.transportOrder ?? {};
   let id: number | string | undefined;
   let name: string | undefined;
+  let taxRate: null | number | undefined;
   switch (categoryLetter.toLowerCase()) {
     case 'b': // 发货人
       id = to.shipperId;
       name = to.shipper?.name;
+      taxRate = to.shipper?.taxRate;
       break;
     case 'c': // 场站
       id = orderDetail.yardId;
       name = orderDetail.yard?.name;
+      taxRate = orderDetail.yard?.taxRate;
       break;
     case 'e': // 收货人
       id = to.consigneeId;
       name = to.consignee?.name;
+      taxRate = to.consignee?.taxRate;
       break;
     case 'f': // 报关行
       id = to.custBrokerId;
       name = to.custBroker?.name;
+      taxRate = to.custBroker?.taxRate;
       break;
     case 'h': // 通知人
       id = to.notifierId;
       name = to.notifier?.name;
+      taxRate = to.notifier?.taxRate;
       break;
     case 'i': // 车队
       id = to.teamId;
       name = to.team?.name;
+      taxRate = to.team?.taxRate;
       break;
     case 'n': // 船代
       id = orderDetail.shipAgentId;
       name = orderDetail.shipAgent?.name;
+      taxRate = orderDetail.shipAgent?.taxRate;
       break;
     case 'o': // 订舱代理
       id = orderDetail.bookingAgentId;
       name = orderDetail.bookingAgent?.name;
+      taxRate = orderDetail.bookingAgent?.taxRate;
       break;
     case 'p': // 委托单位
       id = to.clientId;
       name = to.client?.name;
+      taxRate = to.client?.taxRate;
       break;
     case 'q': // 仓库
       id = to.warehouseId;
       name = to.warehouse?.name;
+      taxRate = to.warehouse?.taxRate;
       break;
     case 'r': // 保险公司
       id = to.insuranceId;
       name = to.insurance?.name;
+      taxRate = to.insurance?.taxRate;
       break;
     case 's': // 国外代理
       id = orderDetail.podAgentId;
       name = orderDetail.podAgent?.name;
+      taxRate = orderDetail.podAgent?.taxRate;
       break;
     default:
       return null;
   }
   if (id === undefined || id === null || id === '') return null;
-  return { id, name: name || '' };
+  return { id, name: name || '', taxRate };
 };
 
 // --------------------------------------------------------

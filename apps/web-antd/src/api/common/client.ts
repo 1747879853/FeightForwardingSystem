@@ -45,6 +45,8 @@ export namespace ClientAppApi {
     enterpriseType?: number;
     /** 是否共享 */
     isShared?: boolean;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
     /** 归属组织id */
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织），可空 */

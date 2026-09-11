@@ -75,6 +75,8 @@ const mapClientToOption = (client: ClientAppApi.ClientSimpleDto) => {
     label,
     /** 用于懒加载缓存的label值 */
     rawLabel: label,
+    /** 客户税率(%)，费用录入联动用 */
+    taxRate: client.taxRate ?? null,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };

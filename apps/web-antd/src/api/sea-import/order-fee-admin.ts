@@ -32,6 +32,8 @@ export namespace OrderFeeAdminApi {
     code?: string | null;
     fullName?: string | null;
     enName?: string | null;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
   }
 
   /** 费用代码简单信息 */
