@@ -1301,8 +1301,13 @@ export function useOrderFeeLinkage(
         const feeCodeValue = row['feeCodeId_value'] || newValue;
         handleFeeCodeChange(rowIndex, feeCodeValue, hotInstance);
       }
-      // 行业类别变化 - 使用 _value 字段
+      // 行业类别变化 - 使用 _value 字段；清空时去掉 _value
       else if (prop === 'industryCategory') {
+        if (newValue === null || newValue === undefined || newValue === '') {
+          row['industryCategory'] = '';
+          row['industryCategory_value'] = undefined;
+          return;
+        }
         const industryCategoryValue = row['industryCategory_value'] || newValue;
         handleIndustryCategoryChange(
           rowIndex,

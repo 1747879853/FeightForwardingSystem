@@ -265,6 +265,20 @@ export function useHotColumns(
         };
         hotCol.strict = true;
         hotCol.allowInvalid = false;
+        // 允许清空：strict 下默认空串会被判无效，显式放行 null/空
+        hotCol.validator = function (
+          value: any,
+          callback: (valid: boolean) => void,
+        ) {
+          if (value === null || value === undefined || value === '') {
+            callback(true);
+            return;
+          }
+          const labels = dropdownSources.value.industryCategoryList.map(
+            (item: any) => item.label,
+          );
+          callback(labels.includes(value));
+        };
         hotCol.filteringCaseSensitive = false;
         hotCol.trimDropdown = false;
         hotCol.visibleRows = 10;

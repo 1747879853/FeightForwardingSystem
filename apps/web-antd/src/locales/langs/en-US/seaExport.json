@@ -43,7 +43,8 @@
       "trader": "Trader",
       "warehouse": "Warehouse",
       "wharf": "Wharf",
-      "factory": "Factory"
+      "factory": "Factory",
+      "personnelAgent": "Individual"
     },
     "keyword": "Keyword",
     "list": "Client List",
