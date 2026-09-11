@@ -34,6 +34,7 @@ import {
   getSeServiceTaskWorkbenchPagedList,
   transferSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
+import { showGeneratedFeesIfAny } from '#/views/_shared/se-service-task/show-generated-fees';
 import {
   getSeServiceConfigDetail,
   getSeServiceConfigPagedList,
@@ -1010,13 +1011,17 @@ async function handleComplete(ids: string[]) {
     content: `确定完成选中的 ${ids.length} 条任务吗？`,
     async onOk() {
       try {
-        await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
+        const completeResults = await Promise.all(
+          ids.map((id) => completeSeServiceTask({ id })),
+        );
         message.success('任务已完成');
         if (isSeaExportTab.value) {
           await refreshSeaExportAfterAction();
+          showGeneratedFeesIfAny(completeResults);
           return;
         }
         await loadWorkbench();
+        showGeneratedFeesIfAny(completeResults);
       } catch (error) {
         if (getAbpErrorMessage(error).includes('附件') && firstSeaExportId) {
           confirmGoUploadAttachments(

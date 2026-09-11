@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 完成服务项后展示自动生成费用](./changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)
 - [2026-09-11 海运出口无编辑权限时仅禁用保存](./changelogs/change-log-2026-09-11-sea-export-readonly-save-only.md)
 - [2026-09-11 待处理服务项目显示「待」标记](./changelogs/change-log-2026-09-11-service-item-pending-mark.md)
 - [2026-09-11 海运进出口隐藏码头航次](./changelogs/change-log-2026-09-11-hide-terminal-voyno.md)

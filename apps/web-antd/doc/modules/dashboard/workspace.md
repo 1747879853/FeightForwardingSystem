@@ -49,7 +49,7 @@ last_updated: 2026-09-11
 - **行选中：** 海运出口服务业务列表**仅点击 checkbox 才选中**，单击行不切换选中；双击行仍进入编辑。
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
-  - 单条/批量完成：`CompleteAsync`（批量为逐条调用）；点完成先按当前服务项配置预检本票附件。缺则弹出「请先上传附件」，点「前往上传」后再跳到对应海出编辑页附件 Tab（pending Tab + `?tab=attachments`，批量打开第一条缺附件的票）；点取消留在工作台。已传齐才弹出「确认完成」。后端仍报缺附件时同样先弹窗，前往上传后再跳转
+  - 单条/批量完成：`CompleteAsync`（批量为逐条调用）；点完成先按当前服务项配置预检本票附件。缺则弹出「请先上传附件」，点「前往上传」后再跳到对应海出编辑页附件 Tab（pending Tab + `?tab=attachments`，批量打开第一条缺附件的票）；点取消留在工作台。已传齐才弹出「确认完成」。后端仍报缺附件时同样先弹窗，前往上传后再跳转。完成成功后若返回 `generatedFeeCount > 0`，汇总本次自动生成的费用并弹窗展示（费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型）
 - **业务列表行跳转：**
   - 单击委托单号或双击整行：进入对应业务编辑/详情（海运出口编辑页、应收应付费用详情、付费申请编辑页）
 - **保留 mock 区域：**
@@ -74,6 +74,7 @@ last_updated: 2026-09-11
 | **assigneeUserId** | 被转交人 ID。 | `SeServiceTaskDto.assigneeUserId` | **触发/依赖：** 转交后在任务行展示被转交人。 | 转交时由 `TransferAsync` 校验权限与状态。 |
 | **ids + assigneeUserId** | 批量转交入参。 | `TransferAsync` | **触发/依赖：** 由表格勾选行 + 转交弹窗用户选择组装。 | 被转交人不能为空，任务需可转交。 |
 | **id** | 完成任务入参。 | `CompleteAsync` | **触发/依赖：** 行内完成或批量完成逐条提交。 | 任务需处于待处理且当前用户有处理权限。 |
+| **generatedFeeCount / generatedFees** | 完成任务后本次按自动费用模板生成的费用。 | `SeServiceTaskAdmin/CompleteAsync` | **触发/依赖：** 条数大于 0 才弹窗；批量完成会把各任务返回的费用合并成一张表。 | 为 0 或旧接口返回 `true` 时不弹窗。 |
 | **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `SeServiceConfigAdmin/DetailAsync`（按起运港 `polId` 查配置） | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 指派任务不展示动态列；为空时不展示业务列。 |
 | **Keyword（编号）** | 按主提单号 / 订舱编号 / 委托编号统一模糊检索。 | `GetWorkbenchCountAsync` / `GetWorkbenchPagedListAsync` 参数 `Keyword` | **触发/依赖：** 筛选栏输入即时 trim；Count 与 PagedList 共用同一过滤参数。 | 可清空；已替代原 `MblNum`。 |
 
@@ -89,6 +90,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Feature` | 完成任务后若自动生成了费用，弹窗展示费用明细；批量完成会汇总各任务费用。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Feature` | 待处理页签下服务项节点显示「待」字，已处理页签不显示。 | `WorkbenchBusinessTable.showPendingMark` 仅海出服务 Tab 传入。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-08 | `Fix` | 应收应付/业务联系单审核的 ETD、付费申请审核的提交时间改为自然日起止。 | 海出服务任务 ETD 原先已切日界。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 完成任务确认框按当前服务项配置提示必传附件类型。 | 名称对照 `AttachmentDtlType/GetListAsync`；工作台列表不含 requireValues，读配置详情。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |

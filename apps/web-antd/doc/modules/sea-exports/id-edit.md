@@ -58,7 +58,7 @@ last_updated: 2026-09-11
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。`isEditable === false` 或无 `Edit` 权限时保存禁用，表单不锁；复制拆成独立按钮以免被一起禁用。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。提交仅 `seaExportIds`，字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪信息：** 按打包品牌分流。非 sjtd 用 `container-tracking-panel.vue`（`load-detail` 自取详情拿 `feituoTracking` 摘要与全量预警，另读本地快照补箱清单与轨迹页）；摘要上「起运预计离开」取 `feituoTracking.polEtd`，「目的预计到达」取 `podEta`（空则 `podSta`），不是业务单 `transportOrder.etd/eta`。sjtd 仍走 `yundang-tracking-panel.vue`：调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**里程碑**节点「已完成」仅看 `actualityTime` 是否有值，不再用 `isCurrent` 标「进行中」。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
-- **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
+- **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。`CompleteAsync` 若返回 `generatedFeeCount > 0`，刷新详情后再弹窗展示本次自动生成的费用（费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型）。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
 - **保存重建二次确认：** 编辑保存时，若 `polId` 或勾选 `serviceType` 集合相对详情发生变化，**且本票已存在任意服务任务**，弹确认「将清空全部服务任务进度并重新生成」，取消则中止保存。配置弹窗「确定」后直接应用勾选并保存，重建确认统一由保存流程处理。
 - **服务责任角色预校验：** 保存前复用 `validateServiceBoundOrderUsers`，按当前勾选服务项的 `userAttribute` 校验干系人（每服务至少一个绑定角色已选人）；编辑态因已取到 POL 配置的 `userAttribute` 而生效。
@@ -118,6 +118,7 @@ last_updated: 2026-09-11
 | **目的预计到达（运踪）** | 非 sjtd 运踪摘要：交货地预计到达。 | 详情 `feituoTracking.podEta`（空则 `podSta`）← 库 `DeliveryEta` / `DeliverySta` ← 飞驼 `result.delivery.eta` / `sta` | **触发/依赖：** 前端 `podEta \|\| podSta`；`podSta` 是首次预计。sjtd 云当面板对应格子是 `shipment.etd` / `eta`，文案为 ETD/ETA。 | 只读字符串；都空显示 `--`。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参；委托单位亦为干系人默认来源。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync`；`Client/GetDishonestStakeholdersAsync` | **触发/依赖：** 任一变更触发服务项联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。新建态 `clientId` 变更额外触发干系人默认回填；编辑态改委托单位只更新业务来源。 | **必填项**（`selectRequired`）；与新建页同一套 `form.vue` 逻辑。 |
 | **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点范围与优先级来自 `GetServiceTypesByPOLAsync` / `seaExportServices`；label 与主流程标记来自 `ServiceType` 枚举，其中 `extra1=true` 表示主流程。配置弹窗按主/非主流程分组，任务顺序仍按 `sortId`。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选；缺失 `extra1` 按非主流程。 |
+| **generatedFeeCount / generatedFees** | 完成服务后本次按自动费用模板生成的费用条数与列表。 | `SeServiceTaskAdmin/CompleteAsync` | **触发/依赖：** 条数大于 0 才弹窗；费用名称/结算对象/币别读 `feeCode.cnName`、`settlement.name`、`currency.code`；收付 `0` 收、`1` 付。 | 为 0 或旧接口返回 `true` 时不弹窗。 |
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
@@ -168,6 +169,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-11 | `Feature` | 完成服务后若自动生成了费用，弹窗展示费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Fix` | 无编辑权限时不再锁表单，只禁用保存；复制仍可用。 | 去掉 `setFormApisDisabled` 与只读 pointer-events。详见 [变更日志](../../changelogs/change-log-2026-09-11-sea-export-readonly-save-only.md)。 |
 | 2026-09-11 | `Feature` | 服务项目当前待处理节点显示橙色「待」字，替换原先的时钟图标。 | `active` 态渲染 `.chevron-step__pending`。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗不出该列，提示文案也不再提码头航次。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |

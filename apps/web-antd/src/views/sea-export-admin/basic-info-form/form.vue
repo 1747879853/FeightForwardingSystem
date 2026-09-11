@@ -83,6 +83,7 @@ import {
   cancelCompleteSeServiceTask,
   completeSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
+import { showGeneratedFeesIfAny } from '#/views/_shared/se-service-task/show-generated-fees';
 import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
 import { $t } from '#/locales';
 import {
@@ -1284,9 +1285,10 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
   }
   completingServiceType.value = node.serviceType;
   try {
-    await completeSeServiceTask({ id: taskId });
+    const completeResult = await completeSeServiceTask({ id: taskId });
     message.success(`${node.label}已完成`);
     await loadEditData();
+    showGeneratedFeesIfAny(completeResult);
   } catch {
     // UserFriendlyException 由全局拦截器展示
   } finally {

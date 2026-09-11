@@ -1,0 +1,8 @@
+.se-service-generated-fees-modal .ant-modal-confirm-body {
+  display: block;
+}
+
+.se-service-generated-fees-modal .ant-modal-confirm-paragraph,
+.se-service-generated-fees-modal .ant-modal-confirm-content {
+  max-width: none;
+}

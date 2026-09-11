@@ -4,7 +4,7 @@
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋；青港标题为「青港国际」，青岛海鼎/山东金冠按各自 mode 切换标题与 Logo。 | [登录页](./modules/_core/login.md) | 2026-09-10 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
-| dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；待处理服务项显示「待」；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-09-11 |
+| dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；待处理服务项显示「待」；完成任务若自动生成费用则弹窗展示；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-09-11 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为 `/analytics`。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-08-14 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-11 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料；「是否共享」在所属公司标题右侧；未保存切走可缓存。保存成功后 replace 进编辑并关闭原新建页签。 | [客户新建](./modules/clients/create.md) | 2026-09-11 |

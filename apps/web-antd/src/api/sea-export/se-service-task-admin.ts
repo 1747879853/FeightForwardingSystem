@@ -1,3 +1,4 @@
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { requestClient } from '#/api/request';
@@ -105,6 +106,39 @@ export namespace SeServiceTaskAdminApi {
   export interface CancelCompleteInput {
     id: string;
   }
+
+  /** 完成任务返回：本次按自动费用模板生成的费用 */
+  export interface SeServiceTaskCompleteResultDto {
+    /** 本次自动生成的费用条数，没生成时为 0 */
+    generatedFeeCount: number;
+    /** 本次自动生成的费用列表，没生成时为空数组 */
+    generatedFees?: SeServiceTaskGeneratedFeeDto[] | null;
+  }
+
+  /**
+   * 自动生成的费用简易信息。
+   * 外键与业务费用(OrderFee)口径一致：feeCode / settlement / currency 以对象返回。
+   */
+  export interface SeServiceTaskGeneratedFeeDto {
+    id: string;
+    /** 收付类型：0 收、1 付 */
+    paySide: number;
+    feeCodeId: number | string;
+    feeCode?: OrderFeeAdminApi.FeeCodeSimpleDto | null;
+    settlementId?: null | string;
+    settlement?: OrderFeeAdminApi.ClientSimpleDto | null;
+    currencyId: number | string;
+    currency?: OrderFeeAdminApi.CurrencySimpleDto | null;
+    exchangeRate: number;
+    /** 含税单价 */
+    unitPrice: number;
+    /** 含税金额 */
+    amount: number;
+    unit?: null | string;
+    quantity: number;
+    /** 税率(%) */
+    taxRate: number;
+  }
 }
 
 const API_PREFIX = '/services/app/SeServiceTaskAdmin';
@@ -136,7 +170,10 @@ export const transferSeServiceTask = (
 export const completeSeServiceTask = (
   data: SeServiceTaskAdminApi.CompleteInput,
 ) => {
-  return requestClient.post<boolean>(`${API_PREFIX}/CompleteAsync`, data);
+  return requestClient.post<SeServiceTaskAdminApi.SeServiceTaskCompleteResultDto>(
+    `${API_PREFIX}/CompleteAsync`,
+    data,
+  );
 };
 
 export const cancelCompleteSeServiceTask = (
