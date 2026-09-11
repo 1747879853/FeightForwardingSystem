@@ -1894,16 +1894,35 @@ onMounted(() => {
       </section>
 
       <!-- 附加费明细 -->
-      <section class="form-section">
+      <section class="form-section form-section--surcharge">
         <header class="section-header">
           <div class="section-title">
             <div class="section-title-icon icon-violet">
               <IconifyIcon icon="mdi:cash-plus" class="size-4" />
             </div>
-            <span class="section-title-text">附加费明细</span>
+            <div class="section-title-stack">
+              <div class="section-title-row">
+                <span class="section-title-text">附加费明细</span>
+                <span
+                  v-if="surchargeFees.length > 0"
+                  class="section-count-badge"
+                >
+                  {{ surchargeFees.length }}
+                </span>
+              </div>
+              <span class="section-subtitle"
+                >先选费用与计费方式，再按箱型填写单价；可按条件拆分报价</span
+              >
+            </div>
           </div>
           <div class="section-actions">
-            <Button type="primary" size="small" ghost @click="addSurchargeFee">
+            <Button
+              type="primary"
+              size="small"
+              ghost
+              class="surcharge-action-btn"
+              @click="addSurchargeFee"
+            >
               <IconifyIcon icon="mdi:plus" class="size-3.5" />
               添加
             </Button>
@@ -1911,65 +1930,59 @@ onMounted(() => {
               danger
               size="small"
               ghost
+              class="surcharge-action-btn"
               :disabled="surchargeFees.length === 0"
               @click="surchargeFees.length > 0 && surchargeFees.pop()"
             >
               <IconifyIcon icon="mdi:minus" class="size-3.5" />
-              删除
+              删除末行
             </Button>
           </div>
         </header>
 
-        <div class="section-body">
-          <div v-if="surchargeFees.length === 0" class="empty-tip">
-            暂无附加费，点击「添加」按钮添加附加费
+        <div class="section-body section-body--surcharge">
+          <div
+            v-if="surchargeFees.length === 0"
+            class="empty-tip empty-tip--surcharge"
+          >
+            <div class="empty-tip-icon">
+              <IconifyIcon icon="mdi:cash-plus" class="size-6" />
+            </div>
+            <div class="empty-tip-title">暂无附加费</div>
+            <div class="empty-tip-desc">
+              点击右上角「添加」录入 THC、DOC 等附加费用
+            </div>
           </div>
 
-          <div v-else class="overflow-x-auto">
-            <table
-              class="w-full border-collapse border border-gray-300"
-              style="min-width: max-content"
-            >
+          <div v-else class="surcharge-table-wrap">
+            <table class="surcharge-table">
               <thead>
-                <tr class="bg-gray-100">
-                  <th
-                    class="border border-gray-300 px-3 py-2 text-center"
-                    style="width: 150px; min-width: 150px"
-                  >
-                    费用名称
-                  </th>
-                  <th
-                    class="border border-gray-300 px-3 py-2 text-center"
-                    style="width: 100px; min-width: 100px"
-                  >
-                    币别
-                  </th>
-                  <th
-                    class="border border-gray-300 px-3 py-2 text-center"
-                    style="width: 120px; min-width: 120px"
-                  >
-                    计费方式
-                  </th>
+                <tr>
+                  <th class="col-index">#</th>
+                  <th class="col-meta col-fee">费用名称</th>
+                  <th class="col-meta col-currency">币别</th>
+                  <th class="col-meta col-billing">计费方式</th>
                   <th
                     v-for="ctn in dynamicCtnTypes"
                     :key="ctn.ctnCodeId"
-                    class="border border-gray-300 px-3 py-2 text-center"
-                    style="min-width: 220px"
+                    class="col-price"
                   >
-                    {{ ctn.name }}
+                    <span class="ctn-chip">{{ ctn.name }}</span>
                   </th>
-                  <th
-                    class="border border-gray-300 px-3 py-2 text-center"
-                    style="width: 80px; min-width: 80px"
-                  >
-                    操作
-                  </th>
+                  <th class="col-action">操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(surcharge, index) in surchargeFees" :key="index">
-                  <!-- 费用名称选择 -->
-                  <td class="border border-gray-300 px-2 py-2">
+                <tr
+                  v-for="(surcharge, index) in surchargeFees"
+                  :key="index"
+                  class="surcharge-row"
+                >
+                  <td class="col-index">
+                    <span class="row-index">{{ index + 1 }}</span>
+                  </td>
+
+                  <td class="col-meta col-fee">
                     <Select
                       v-model:value="surcharge.feeCodeId"
                       class="fee-name-select w-full"
@@ -2005,8 +2018,7 @@ onMounted(() => {
                     </Select>
                   </td>
 
-                  <!-- 币别选择 -->
-                  <td class="border border-gray-300 px-2 py-2">
+                  <td class="col-meta col-currency">
                     <Select
                       v-model:value="surcharge.currencyId"
                       class="currency-select-fixed w-full"
@@ -2023,7 +2035,7 @@ onMounted(() => {
                             .includes(input.toLowerCase());
                         }
                       "
-                      placeholder="请选择币别"
+                      placeholder="币别"
                       allow-clear
                     >
                       <Select.Option
@@ -2037,11 +2049,10 @@ onMounted(() => {
                     </Select>
                   </td>
 
-                  <!-- 计费方式 -->
-                  <td class="border border-gray-300 px-2 py-2">
+                  <td class="col-meta col-billing">
                     <Select
                       v-model:value="surcharge.priceFeeType"
-                      class="w-full"
+                      class="billing-select w-full"
                       placeholder="计费方式"
                       :options="[
                         { label: '按集装箱', value: 0 },
@@ -2053,24 +2064,29 @@ onMounted(() => {
                     />
                   </td>
 
-                  <!-- 箱型价格列 -->
                   <td
                     v-for="ctn in dynamicCtnTypes"
                     :key="`fee${ctn.ctnCodeId}`"
-                    class="relative border border-gray-300 py-2 pl-4 pr-3"
+                    class="col-price"
+                    :class="{
+                      'col-price--order': surcharge.priceFeeType === 1,
+                      'col-price--condition':
+                        surcharge.priceFeeType !== 1 &&
+                        getConditionalConfig(
+                          String(index),
+                          String(ctn.ctnCodeId),
+                        ).enabled,
+                    }"
                   >
-                    <!-- 按票计费模式：只显示第一个箱型列的输入框 -->
+                    <!-- 按票计费：仅首个箱型列录入 -->
                     <div
                       v-if="surcharge.priceFeeType === 1"
-                      class="relative mt-2"
+                      class="price-cell price-cell--order"
                     >
-                      <!-- 只在第一个箱型列显示价格输入框 -->
                       <template
-                        v-if="
-                          index === 0 ||
-                          ctn.ctnCodeId === dynamicCtnTypes[0]?.ctnCodeId
-                        "
+                        v-if="ctn.ctnCodeId === dynamicCtnTypes[0]?.ctnCodeId"
                       >
+                        <span class="price-mode-tag">按票统一价</span>
                         <Input
                           :value="surcharge.prices['order']?.price"
                           @input="
@@ -2082,30 +2098,27 @@ onMounted(() => {
                             )
                           "
                           type="number"
-                          class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                          class="price-input"
                           placeholder="请输入按票价格"
                         />
-                        <div class="mt-1 text-center text-xs text-gray-500">
-                          按票计费（所有箱型统一价格）
-                        </div>
                       </template>
-                      <!-- 其他箱型列显示提示 -->
                       <template v-else>
-                        <div
-                          class="flex h-full items-center justify-center text-gray-400"
-                        >
-                          <span class="text-sm">-</span>
-                        </div>
+                        <div class="price-placeholder">同左</div>
                       </template>
                     </div>
 
-                    <!-- 按集装箱计费模式：每个箱型独立输入 -->
-                    <div v-else class="relative mt-2">
-                      <!-- 条件模式图标 -->
-                      <div class="top-f1 absolute z-10">
+                    <!-- 按集装箱计费 -->
+                    <div v-else class="price-cell">
+                      <div class="condition-trigger">
                         <button
                           type="button"
-                          class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
+                          class="condition-btn"
+                          :class="{
+                            'condition-btn--active': getConditionalConfig(
+                              String(index),
+                              String(ctn.ctnCodeId),
+                            ).enabled,
+                          }"
                           @click="
                             showConditionPopup($event, index, ctn.ctnCodeId)
                           "
@@ -2117,19 +2130,16 @@ onMounted(() => {
                           />
                         </button>
 
-                        <!-- 条件配置弹窗 -->
                         <div
                           v-if="
                             conditionPopupVisible &&
                             currentConditionCell?.feeIndex === index &&
                             currentConditionCell?.ctnCodeId === ctn.ctnCodeId
                           "
-                          class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-xl"
+                          class="condition-popup"
                           @click.stop
                         >
-                          <label
-                            class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
-                          >
+                          <label class="condition-popup-item">
                             <input
                               type="checkbox"
                               :checked="
@@ -2145,14 +2155,11 @@ onMounted(() => {
                               "
                               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <span class="text-sm font-medium text-gray-700"
-                              >启用条件模式</span
-                            >
+                            <span>启用条件模式</span>
                           </label>
                         </div>
                       </div>
 
-                      <!-- 条件模式内容 -->
                       <div
                         v-if="
                           getConditionalConfig(
@@ -2160,10 +2167,9 @@ onMounted(() => {
                             String(ctn.ctnCodeId),
                           ).enabled
                         "
-                        class="mt-6 space-y-2"
+                        class="condition-panel"
                       >
-                        <!-- 条件配置行 -->
-                        <div class="flex items-center gap-1.5">
+                        <div class="condition-rule-row">
                           <Select
                             size="small"
                             :value="
@@ -2184,14 +2190,13 @@ onMounted(() => {
                             placeholder="条件类型"
                           />
 
-                          <!-- 算符切换按钮 -->
                           <button
                             type="button"
-                            class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                            class="operator-btn"
                             @click="
                               toggleOperator(index, String(ctn.ctnCodeId))
                             "
-                            :title="'点击切换算符'"
+                            title="点击切换算符"
                           >
                             {{
                               getOperatorSymbol(
@@ -2219,13 +2224,12 @@ onMounted(() => {
                             placeholder="阈值"
                           />
 
-                          <!-- 条件说明（单位） -->
                           <span
                             v-if="
                               surcharge.prices[String(ctn.ctnCodeId)]
                                 ?.conditionType
                             "
-                            class="whitespace-nowrap text-xs text-gray-500"
+                            class="condition-unit"
                           >
                             {{
                               freightConditionItemOptions.find(
@@ -2238,18 +2242,10 @@ onMounted(() => {
                           </span>
                         </div>
 
-                        <!-- 价格输入区域 -->
-                        <div
-                          class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
-                        >
-                          <!-- 满足条件的价格 (70%) -->
-                          <div class="w-[70%]">
-                            <div
-                              class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
-                            >
-                              是
-                            </div>
-                            <div class="px-2 py-1">
+                        <div class="condition-price-split">
+                          <div class="split-yes">
+                            <div class="split-label split-label--yes">是</div>
+                            <div class="split-input">
                               <Input
                                 size="small"
                                 :value="
@@ -2269,17 +2265,11 @@ onMounted(() => {
                               />
                             </div>
                           </div>
-
-                          <!-- ELSE 分隔线 (30%) -->
-                          <div
-                            class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
-                          >
-                            <div
-                              class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
-                            >
+                          <div class="split-else">
+                            <div class="split-label split-label--else">
                               否则
                             </div>
-                            <div class="px-2 py-1">
+                            <div class="split-input">
                               <Input
                                 size="small"
                                 :value="
@@ -2303,8 +2293,7 @@ onMounted(() => {
                         </div>
                       </div>
 
-                      <!-- 普通模式（无条件） -->
-                      <div v-else class="relative mt-6">
+                      <div v-else class="price-simple">
                         <Input
                           :value="
                             surcharge.prices[String(ctn.ctnCodeId)]?.price
@@ -2318,23 +2307,22 @@ onMounted(() => {
                             )
                           "
                           type="number"
-                          class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                          class="price-input"
                           placeholder="0"
                         />
                       </div>
                     </div>
                   </td>
 
-                  <!-- 删除按钮 -->
-                  <td class="border border-gray-300 px-2 py-2 text-center">
-                    <Button
-                      type="link"
-                      danger
-                      size="small"
+                  <td class="col-action">
+                    <button
+                      type="button"
+                      class="row-delete-btn"
+                      title="删除此行"
                       @click="removeSurchargeFee(index)"
                     >
                       <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-                    </Button>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -2386,11 +2374,6 @@ onMounted(() => {
   .banner-fields {
     flex-wrap: wrap;
   }
-}
-
-.top-f1 {
-  top: -1.5rem;
-  left: -0.5rem;
 }
 
 .edit-form-container {
@@ -2530,6 +2513,38 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
   margin: 0;
+}
+
+.section-title-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.section-title-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-subtitle {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.section-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 999px;
 }
 
 .section-title-icon {
@@ -2711,6 +2726,25 @@ table {
   background: #fafbfd;
 }
 
+.section-body--surcharge .surcharge-table {
+  overflow: visible;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.section-body--surcharge :deep(th),
+.section-body--surcharge :deep(td) {
+  border-color: #e8ecf3 !important;
+}
+
+.section-body--surcharge :deep(thead tr) {
+  background: transparent !important;
+}
+
+.section-body--surcharge :deep(tbody tr:hover) {
+  background: transparent;
+}
+
 button[title='设置条件费用'] {
   transition:
     color 0.2s ease,
@@ -2884,5 +2918,490 @@ input[type='text']:focus {
 
 .section-body :deep(.ant-form) {
   margin-bottom: 0;
+}
+
+/* —— 附加费表格分区 —— */
+.form-section--surcharge .section-title {
+  align-items: flex-start;
+}
+
+.form-section--surcharge .section-title-icon {
+  margin-top: 1px;
+}
+
+.form-section--surcharge .section-header {
+  align-items: flex-start;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.section-body--surcharge {
+  padding-top: 12px;
+}
+
+.surcharge-action-btn {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.surcharge-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.empty-tip--surcharge {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 36px 20px;
+}
+
+.empty-tip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 12px;
+}
+
+.empty-tip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.empty-tip-desc {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.surcharge-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e4e8ef;
+  border-radius: 10px;
+}
+
+.surcharge-table {
+  width: 100%;
+  min-width: max-content;
+  border-spacing: 0;
+  border-collapse: separate;
+}
+
+.surcharge-table th,
+.surcharge-table td {
+  vertical-align: middle;
+  border-right: 1px solid #e8ecf3;
+  border-bottom: 1px solid #e8ecf3;
+}
+
+.surcharge-table th:last-child,
+.surcharge-table td:last-child {
+  border-right: none;
+}
+
+.surcharge-table thead th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-align: center;
+  letter-spacing: 0.2px;
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+  border-bottom: 1px solid #dbe3f0;
+}
+
+.surcharge-table .col-index {
+  width: 44px;
+  min-width: 44px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.surcharge-table thead .col-index {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+}
+
+.surcharge-table .col-meta {
+  background: #fafbfd;
+}
+
+.surcharge-table thead .col-meta {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+}
+
+.surcharge-table .col-fee {
+  width: 180px;
+  min-width: 180px;
+  padding: 10px 12px;
+}
+
+.surcharge-table .col-currency {
+  width: 110px;
+  min-width: 110px;
+  padding: 10px;
+}
+
+.surcharge-table .col-billing {
+  width: 120px;
+  min-width: 120px;
+  padding: 10px;
+}
+
+.surcharge-table .col-price {
+  min-width: 228px;
+  padding: 10px 12px;
+  background: #fff;
+  transition: background-color 0.15s ease;
+}
+
+.surcharge-table .col-price--order {
+  background: #f8fbff;
+}
+
+.surcharge-table .col-price--condition {
+  background: #f5f7ff;
+}
+
+.surcharge-table .col-action {
+  width: 64px;
+  min-width: 64px;
+  text-align: center;
+  background: #fafbfd;
+}
+
+.surcharge-table thead .col-action {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+}
+
+.ctn-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #006ce6;
+  background: #eaf2ff;
+  border-radius: 999px;
+}
+
+.row-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background: #e2e8f0;
+  border-radius: 6px;
+}
+
+.surcharge-row {
+  transition: background-color 0.15s ease;
+  animation: fade-in 0.28s ease;
+}
+
+.surcharge-row:hover .col-meta,
+.surcharge-row:hover .col-index,
+.surcharge-row:hover .col-action {
+  background: #f1f5f9;
+}
+
+.surcharge-row:hover .col-price {
+  background: #f8fafc;
+}
+
+.surcharge-row:hover .col-price--order {
+  background: #eef6ff;
+}
+
+.surcharge-row:hover .col-price--condition {
+  background: #eef0ff;
+}
+
+.surcharge-row:hover .row-index {
+  color: #fff;
+  background: #006ce6;
+}
+
+.price-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.price-cell--order {
+  gap: 6px;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.price-mode-tag {
+  align-self: flex-start;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0369a1;
+  background: #e0f2fe;
+  border-radius: 4px;
+}
+
+.price-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  font-size: 12px;
+  color: #94a3b8;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.price-simple {
+  padding-top: 2px;
+}
+
+.price-cell :deep(.ant-input.price-input),
+.price-cell :deep(input.price-input),
+.price-input.ant-input {
+  width: 100%;
+  height: 36px;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.price-cell :deep(.ant-input:hover),
+.price-cell :deep(input.price-input:hover) {
+  border-color: hsl(var(--primary) / 55%);
+}
+
+.price-cell :deep(.ant-input:focus),
+.price-cell :deep(input.price-input:focus) {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 14%);
+}
+
+.condition-trigger {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  z-index: 2;
+}
+
+.condition-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #94a3b8;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(16 42 83 / 6%);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.condition-btn:hover {
+  color: #006ce6;
+  border-color: #93c5fd;
+  box-shadow: 0 2px 6px rgb(0 108 230 / 16%);
+  transform: scale(1.06);
+}
+
+.condition-btn--active {
+  color: #fff;
+  background: #4f46e5;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 6px rgb(79 70 229 / 28%);
+}
+
+.condition-btn--active:hover {
+  color: #fff;
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.condition-popup {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  z-index: 50;
+  min-width: 168px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgb(16 42 83 / 14%);
+  animation: fade-in 0.18s ease;
+}
+
+.condition-popup-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.condition-popup-item:hover {
+  background: #f1f5f9;
+}
+
+.condition-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px 4px 18px;
+}
+
+.condition-rule-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.condition-unit {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.operator-btn {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #006ce6;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.operator-btn:hover {
+  background: #eaf2ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.condition-price-split {
+  display: flex;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+}
+
+.split-yes {
+  width: 70%;
+}
+
+.split-else {
+  display: flex;
+  flex-direction: column;
+  width: 30%;
+  background: #f8fafc;
+  border-left: 1px solid #e2e8f0;
+}
+
+.split-label {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 1px solid #e8ecf3;
+}
+
+.split-label--yes {
+  color: #1d4ed8;
+  background: linear-gradient(90deg, #eff6ff, #dbeafe);
+}
+
+.split-label--else {
+  color: #64748b;
+  background: linear-gradient(90deg, #f1f5f9, #e2e8f0);
+}
+
+.split-input {
+  padding: 4px 6px;
+}
+
+.row-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #94a3b8;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.row-delete-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+  border-color: #fecaca;
+  transform: scale(1.05);
+}
+
+.billing-select :deep(.ant-select-selector) {
+  border-radius: 8px !important;
+}
+
+.section-body--surcharge :deep(.ant-select-selector) {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease !important;
+}
+
+.section-body--surcharge :deep(.ant-select-focused .ant-select-selector),
+.section-body--surcharge :deep(.ant-select-selector:hover) {
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%) !important;
 }
 </style>
