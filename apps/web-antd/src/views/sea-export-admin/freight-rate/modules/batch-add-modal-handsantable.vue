@@ -576,6 +576,8 @@ const availableCtnOptions = computed(() => actions.availableCtnOptions.value);
 const [Modal, modalApi] = useVbenModal({
   title: '批量新增运价', // 标题将在模板中动态设置
   confirmLoading: false,
+  closeOnClickModal: false,
+  draggable: true,
   onConfirm: async () => {
     // ⚠️ 关键修复：在提交前，先从 Handsontable 同步最新数据到 dataSource
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
@@ -645,13 +647,14 @@ const [Modal, modalApi] = useVbenModal({
       }
     }
 
-    // 根据模式调用不同的提交逻辑
+    // 根据模式调用不同的提交逻辑；仅成功时关弹窗
     if (isEditMode.value) {
       await handleEditSubmit(labelToIdMap.value);
     } else {
-      await actions.handleSubmit(labelToIdMap.value);
-      // 新增成功后关闭弹窗（编辑模式在 handleEditSubmit 中已处理）
-      modalApi.close();
+      const ok = await actions.handleSubmit(labelToIdMap.value);
+      if (ok) {
+        modalApi.close();
+      }
     }
   },
   onCancel: () => {

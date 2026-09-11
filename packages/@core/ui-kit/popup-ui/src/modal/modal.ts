@@ -39,7 +39,7 @@ export interface ModalProps {
   closable?: boolean;
   /**
    * 点击弹窗遮罩是否关闭弹窗
-   * @default true
+   * @default false
    */
   closeOnClickModal?: boolean;
   /**
@@ -71,7 +71,7 @@ export interface ModalProps {
   destroyOnClose?: boolean;
   /**
    * 是否可拖拽
-   * @default false
+   * @default true
    */
   draggable?: boolean;
   /**

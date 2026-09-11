@@ -3,6 +3,7 @@
     title="选择角色"
     :open="visibleDialog"
     :width="600"
+    :mask-closable="false"
     @cancel="closeDialog"
   >
     <div class="person_body clear">

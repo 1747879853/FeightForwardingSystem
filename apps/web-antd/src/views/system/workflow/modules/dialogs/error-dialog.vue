@@ -3,6 +3,7 @@
     title="提示"
     :open="visibleDialog"
     :width="520"
+    :mask-closable="false"
     @cancel="visibleDialog = false"
   >
     <div class="ant-confirm-body">

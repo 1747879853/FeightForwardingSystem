@@ -129,16 +129,16 @@ export function useBatchAddActions(
         ctnCodeId: ctn.ctnCodeId,
         cost: undefined,
       });
-      
+
       // 添加动态字段
       const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
       if (!(dynamicField in row)) {
         row[dynamicField] = undefined;
       }
-      
+
       return row;
     });
-    
+
     // 更新 dataSource 引用，触发 shallowRef 响应式
     dataSource.value = updatedDataSource;
 
@@ -171,15 +171,16 @@ export function useBatchAddActions(
 
   /**
    * 提交表单
+   * @returns 是否提交成功（校验失败或接口失败返回 false，调用方据此决定是否关弹窗）
    */
   async function handleSubmit(labelToIdMap?: {
     carriers: Map<string, string>;
     ports: Map<string, string>;
     currencies: Map<string, string>;
     clients: Map<string, string>;
-  }) {
+  }): Promise<boolean> {
     if (!validateForm()) {
-      return;
+      return false;
     }
 
     loading.value = true;
@@ -192,9 +193,11 @@ export function useBatchAddActions(
 
       message.success('批量新增成功');
       emit('success');
+      return true;
     } catch (error) {
       console.error('批量新增失败:', error);
       message.error('批量新增失败');
+      return false;
     } finally {
       loading.value = false;
     }
