@@ -46,9 +46,9 @@ import {
 } from '#/api/system/permission';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
-import EditForm from './modules/edit-form.vue';
-import SyncUpdateForm from './modules/form.vue';
-import BatchAddModal from './modules/batch-add-modal-handsontable.vue';
+import FreightRateForm from './modules/freight-rate-form.vue';
+import SyncUpdateForm from './modules/sync-update-form.vue';
+import BatchAddModal from './modules/batch-add-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
@@ -92,7 +92,7 @@ const DEFAULT_IS_VALID = [0, 1];
 // ==================== 弹窗 ====================
 
 const [EditFormModal, editFormModalApi] = useVbenModal({
-  connectedComponent: EditForm,
+  connectedComponent: FreightRateForm,
   destroyOnClose: true,
 });
 

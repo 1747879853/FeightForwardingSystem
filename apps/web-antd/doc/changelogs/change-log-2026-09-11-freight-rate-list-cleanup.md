@@ -13,5 +13,5 @@
 
 ## 避坑指南
 
-- `batch-edit-modal.vue` / `add-ctn-modal.vue` 文件仍保留，只是列表页不再挂载；若要启用需重新接线。
+- ~~`batch-edit-modal.vue` / `add-ctn-modal.vue` 文件仍保留~~：已于 `change-log-2026-09-11-freight-rate-modules-cleanup-rename.md` 删除。
 - 字段权限仍只对 `alwaysMasked` 整列隐藏。
