@@ -96,7 +96,7 @@ import {
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
 import { createAbpPermission } from '#/utils/abp-permission';
-import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
+import { isTicketEditable } from '#/utils/ticket-editable';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
@@ -1925,28 +1925,6 @@ const [CargoReeferForm, cargoReeferFormApi] = useVbenForm({
   wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
 });
 
-const orderFormApis = [
-  partyInfoFormApi,
-  basicInfoFormApi,
-  shipmentFormApi,
-  portFormApi,
-  cargoTypeInlineFormApi,
-  cargoRemarkFormApi,
-  cargoMainFormApi,
-  cargoMetricsFormApi,
-  cargoDgFormApi,
-  cargoReeferFormApi,
-];
-
-const applyOrderReadonlyState = () => {
-  setFormApisDisabled(orderFormApis, isOrderReadonly.value);
-  if (!isOrderReadonly.value && isEdit.value) {
-    applyServiceLockedFields();
-  }
-};
-
-watch(isOrderReadonly, () => applyOrderReadonlyState(), { immediate: true });
-
 watch(currentCargoId, async (nextCargoId, prevCargoId) => {
   if (prevCargoId === CARGO_TYPE.D && nextCargoId !== CARGO_TYPE.D) {
     await cargoDgFormApi.setValues(createEmptyDgValues());
@@ -2225,7 +2203,7 @@ const { aiRecognizing, recognizeAiFile } = useSeaExportAiRecognize({
 
 const aiExtractModalOpen = ref(false);
 const handleAiRecognize = () => {
-  if (isOrderReadonly.value || aiRecognizing.value) return;
+  if (aiRecognizing.value) return;
   aiExtractModalOpen.value = true;
 };
 const handleAiExtractFile = async (file: File) => {
@@ -2237,9 +2215,6 @@ const handleAiExtractFile = async (file: File) => {
 const briefingModalOpen = ref(false);
 
 const handleOpenBriefing = async () => {
-  if (isOrderReadonly.value) return;
-  // 不再需要获取表单数据，直接打开弹窗
-  // briefingFormData.value = await getBriefingFormData();
   briefingModalOpen.value = true;
 };
 const handleBriefingConfirm = async (content: string) => {
@@ -3135,10 +3110,7 @@ defineExpose({
 <template>
   <component :is="pageWrapperTag" v-bind="pageWrapperProps">
     <Spin :spinning="pageLoading">
-      <div
-        class="sea-export-form-page"
-        :class="{ 'is-order-readonly': isOrderReadonly }"
-      >
+      <div class="sea-export-form-page">
         <div class="main-layout">
           <!-- 中间主表单 -->
           <div class="center-column">
@@ -3526,7 +3498,6 @@ defineExpose({
                     <Button
                       size="small"
                       class="flex items-center justify-center"
-                      :disabled="isOrderReadonly"
                       @click="handleOpenBriefing"
                     >
                       <IconifyIcon
@@ -3539,7 +3510,6 @@ defineExpose({
                       size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
-                      :disabled="isOrderReadonly"
                       @click="handleAiRecognize"
                     >
                       <IconifyIcon
@@ -3770,7 +3740,6 @@ defineExpose({
                         :auto-default="true"
                         allow-clear
                         size="small"
-                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--org"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderOrgChange"
@@ -3787,7 +3756,6 @@ defineExpose({
                         :selected-items="headerCodeSourceSelectedItems"
                         allow-clear
                         size="small"
-                        :disabled="isOrderReadonly"
                         class="basic-info-header__select basic-info-header__select--source"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:model-value="handleHeaderCodeSourceChange"
@@ -3803,7 +3771,6 @@ defineExpose({
                         :value="headerBlType"
                         allow-clear
                         size="small"
-                        :disabled="isOrderReadonly"
                         class="basic-info-header__select"
                         :options="blTypeOptions"
                         :placeholder="$t('ui.placeholder.select')"
@@ -3820,7 +3787,6 @@ defineExpose({
                         :value="headerBillType"
                         allow-clear
                         size="small"
-                        :disabled="isOrderReadonly"
                         class="basic-info-header__select"
                         :options="billTypeOptions"
                         :placeholder="$t('ui.placeholder.select')"

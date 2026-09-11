@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 海运出口无编辑权限时仅禁用保存](./changelogs/change-log-2026-09-11-sea-export-readonly-save-only.md)
 - [2026-09-11 待处理服务项目显示「待」标记](./changelogs/change-log-2026-09-11-service-item-pending-mark.md)
 - [2026-09-11 海运进出口隐藏码头航次](./changelogs/change-log-2026-09-11-hide-terminal-voyno.md)
 - [2026-09-11 浩瀚远洋顶栏改为整图 logo-text](./changelogs/change-log-2026-09-11-hhyy-header-logo-text.md)
