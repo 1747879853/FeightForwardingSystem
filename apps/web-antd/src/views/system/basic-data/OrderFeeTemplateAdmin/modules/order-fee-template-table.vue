@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { ref, watch, shallowRef, nextTick, onMounted, onUnmounted } from 'vue';
+import {
+  ref,
+  watch,
+  shallowRef,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  onActivated,
+} from 'vue';
 import Handsontable from 'handsontable';
 import { useDropdownSources } from './composables/useDropdownSources';
 import { useFieldLinkage } from './composables/useFieldLinkage';
@@ -141,7 +149,8 @@ const fillRef = ref<HTMLDivElement | null>(null);
 const hotInstance = ref<Handsontable | null>(null);
 
 /** 动态高度：填满父级剩余空间，由 HOT 内部竖向滚动，避免行多时被 overflow 裁切 */
-const dynHeight = ref(420);
+// 初始 0：首屏布局高度未就绪前不占位，避免固定高度把页面撑出滚动条
+const dynHeight = ref(0);
 let resizeObserver: ResizeObserver | null = null;
 let measureRafId = 0;
 
@@ -149,8 +158,8 @@ const measureHeight = () => {
   const el = fillRef.value;
   if (!el) return;
   const h = Math.floor(el.getBoundingClientRect().height);
-  if (h < 160) return;
-  if (h === dynHeight.value) return;
+  // 仅在有效高度且变化时更新（对齐 OrderFeeTableCore）
+  if (h <= 50 || h === dynHeight.value) return;
   dynHeight.value = h;
   if (hotInstance.value && !hotInstance.value.isDestroyed) {
     hotInstance.value.updateSettings({ height: h }, false);
@@ -489,6 +498,17 @@ nextTick(() => {
   initHotTable();
   setupResizeObserver();
   scheduleMeasure();
+});
+
+// KeepAlive 切回时容器高度可能已变，重新测量
+onActivated(() => {
+  nextTick(() => {
+    setupResizeObserver();
+    scheduleMeasure();
+    if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      hotInstance.value.render();
+    }
+  });
 });
 
 onUnmounted(() => {

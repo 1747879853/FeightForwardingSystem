@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 <template>
   <Page
     auto-content-height
-    content-class="oft-editor-page flex min-h-0 flex-col overflow-auto"
+    content-class="oft-editor-page flex h-full min-h-0 flex-col overflow-hidden"
   >
     <div v-loading="loading" class="oft-editor">
       <!-- 页头：标题 + 主操作 -->
@@ -830,13 +830,72 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
+
+
+/* 矮屏 / 窄屏：压标题行，把高度留给费用明细 */
+@media (max-height: 900px), (max-width: 1280px) {
+  .oft-editor {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .oft-editor__hero {
+    gap: 8px 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+
+  .oft-editor__hero-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+    border-radius: 7px;
+  }
+
+  .oft-editor__title {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .oft-editor__subtitle {
+    display: none;
+  }
+
+  .oft-panel__head {
+    padding: 8px 12px;
+  }
+
+  .oft-panel__head--toolbar {
+    padding: 6px 12px;
+  }
+
+  .oft-panel__head-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .oft-panel__head-hint {
+    display: none;
+  }
+
+  .oft-panel__body--form {
+    padding: 12px;
+  }
+}
+
 .oft-editor {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 16px;
-  min-height: 100%;
+
+  /* 吃满 Page 内容区高度，由明细区 flex 吃剩余空间；勿用 min-height:100% + 固定 vh 明细高，小屏会被 overflow 裁切 */
+  height: 100%;
+  min-height: 0;
   padding: 16px;
+  overflow: hidden;
   background:
     radial-gradient(
       1200px 480px at 0% -10%,
@@ -854,7 +913,7 @@ onBeforeUnmount(() => {
 .oft-editor__hero {
   display: flex;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px 16px;
   align-items: center;
   justify-content: space-between;
@@ -922,16 +981,18 @@ onBeforeUnmount(() => {
 }
 
 .oft-panel--form {
-  /* 表单区允许内容完整展示，避免最后一行被 overflow 裁切 */
-  flex-shrink: 0;
-  overflow: visible;
+  /* 可收缩：空间紧时自身滚动，给明细区让位；空间够时按内容高度 */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 50%;
+  overflow: hidden auto;
 }
 
 .oft-panel--table {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-height: 0;
+  min-height: 240px;
   overflow: hidden;
 
   :deep(.ant-card-body) {
@@ -1050,9 +1111,8 @@ onBeforeUnmount(() => {
   flex: 1;
   flex-direction: column;
 
-  /* 固定可视高度：行多时由 Handsontable 内部竖滚，避免被父级 overflow 裁切 */
-  height: clamp(280px, calc(100vh - 380px), 720px);
-  min-height: 280px;
+  /* 高度跟 flex 剩余空间走，供 ResizeObserver 测真实可视高；勿再用 100vh 估算 */
+  min-height: 0;
   padding: 0;
 }
 </style>

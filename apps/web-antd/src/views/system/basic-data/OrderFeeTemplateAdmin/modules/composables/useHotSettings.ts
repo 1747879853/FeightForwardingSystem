@@ -709,7 +709,7 @@ export function useHotSettings(
     columns: columns.value,
     rowHeaders: true,
     colHeaders: true,
-    height: 420,
+    height: 0,
     licenseKey: 'non-commercial-and-evaluation',
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     minSpareRows: 0, // ✅ 修改为0，删除后不会自动新增行

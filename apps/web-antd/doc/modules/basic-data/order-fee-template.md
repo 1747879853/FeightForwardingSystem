@@ -2,7 +2,7 @@
 title: 自动费用模板
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,6 +48,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Fix` | 小分辨率下费用明细可滚全行；标题行/分区头在小屏紧凑化，多留给表格高度。 | 去掉 `100vh` 估高 + 小屏媒体查询压 hero。详见 `changelogs/change-log-2026-09-11-order-fee-template-table-height-fill.md`。 |
 | 2026-09-10 | `Style` | 编辑页整体：页头标题区、分区面板、背景与表单控件观感统一；恢复返回列表。 | `oft-editor` / `oft-panel` 结构。详见 `changelogs/change-log-2026-09-10-order-fee-template-editor-layout.md`。 |
 | 2026-09-10 | `Style` | 编辑页费用明细表对齐费用录入的面板与 Handsontable 观感；隐藏 `*_value` 列。 | 详见 `changelogs/change-log-2026-09-10-order-fee-template-table-style.md`。 |
 | 2026-09-05 | `Fix` | 新建模板保存成功后 `replace` 进编辑并关闭新建页签。 | 详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |

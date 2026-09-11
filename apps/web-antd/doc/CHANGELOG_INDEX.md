@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 自动费用模板明细表小屏高度裁切](./changelogs/change-log-2026-09-11-order-fee-template-table-height-fill.md)
 - [2026-09-10 全量发布默认并发改为 5 路](./changelogs/change-log-2026-09-10-publish-all-throttle-5.md)
 - [2026-09-10 用户编辑页已选组织标签与关闭按钮样式](./changelogs/change-log-2026-09-10-user-form-org-chip.md)
 - [2026-09-10 公司银行账户新增时账户名称默认带出公司名称](./changelogs/change-log-2026-09-10-dept-bank-account-name-default.md)
