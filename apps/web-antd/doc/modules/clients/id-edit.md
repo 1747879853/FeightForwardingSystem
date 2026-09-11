@@ -52,6 +52,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Feature` | 基础信息可维护可空「税率」；费用录入优先取结算对象税率。 | 详见 `changelogs/change-log-2026-09-11-client-tax-rate-fee-linkage.md`。 |
 | 2026-09-11 | `Style` | 「是否共享」挪到所属公司标题右侧并加问号提示；提交补传 `isShared`。 | 详见 `changelogs/change-log-2026-09-11-client-is-shared-beside-org.md`。 |
 | 2026-09-09 | `Fix` | 开票信息首次保存后标题回显税号/抬头，再次保存走编辑接口。 | `AddAsync` 返回 id 就地替换 `new_*` 并回写列表项；不再依赖被注释的整表重载。详见 `changelogs/change-log-2026-09-09-client-invoice-save-id-echo.md`。 |
 | 2026-09-09 | `Fix` | 客户附件与账期附件：预览走全站查看器；下载保存名为 `friendlyFileName`。 | 去掉 `window.open` 直链。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |

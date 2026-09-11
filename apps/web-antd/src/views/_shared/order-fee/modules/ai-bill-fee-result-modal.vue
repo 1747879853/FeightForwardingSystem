@@ -19,6 +19,7 @@ import {
   resolveSettlementByIndustryCategory,
 } from '../data';
 import { useOrderFeeAdapter } from '../use-adapter';
+import { resolveFeeTaxRate } from './utils/helpers';
 
 /**
  * AI 识别账单费用 - 结果确认弹窗（仅用于费用页应付表）
@@ -167,7 +168,7 @@ async function loadOrderDetail(transportOrderId: string) {
 async function applySettlementByFeeCode(row: any, feeCodeRaw: any) {
   try {
     const categoryLetter = feeCodeRaw?.defaultCreditName;
-    if (!categoryLetter) return;
+    if (!categoryLetter) return undefined;
 
     // 行业类别（数值 key）——与费用录入保持一致，供提交/展示
     const categoryOption = getIndustryCategoryOptions().find(
@@ -182,17 +183,23 @@ async function applySettlementByFeeCode(row: any, feeCodeRaw: any) {
       row.transportOrderId || transportOrder.value?.id || '',
     );
     const orderDetail = await loadOrderDetail(transportOrderId);
-    if (!orderDetail) return;
+    if (!orderDetail) return undefined;
     const settlement = resolveSettlementByIndustryCategory(
       orderDetail,
       categoryLetter,
     );
-    if (!settlement) return;
+    if (!settlement) return undefined;
     row.settlementId = settlement.id;
     // 结算列展示读取 settlement.name
-    row.settlement = { id: settlement.id, name: settlement.name };
+    row.settlement = {
+      id: settlement.id,
+      name: settlement.name,
+      taxRate: settlement.taxRate,
+    };
+    return settlement.taxRate ?? null;
   } catch (error) {
     console.error('[AiBillFeeResultModal] 带出结算对象失败:', error);
+    return undefined;
   }
 }
 
@@ -201,6 +208,7 @@ async function applySettlementByFeeCode(row: any, feeCodeRaw: any) {
  * 带出默认税率 / 禁开发票 / 机密，并按公式重算不含税单价与金额
  *（后端 BatchEdit 直接存储前端传入的不含税值，故须前端算好）；
  * 同时参考费用录入，按费用代码带出行业类别与结算对象。
+ * 税率：优先结算对象，否则费用名称。
  */
 async function handleFeeCodeChange(row: any, value: any, option: any) {
   row.feeCodeId = Number(value);
@@ -213,11 +221,14 @@ async function handleFeeCodeChange(row: any, value: any, option: any) {
       cnName: raw.cnName,
       enName: raw.enName,
     };
-    if (raw.taxRate !== undefined && raw.taxRate !== null) {
-      row.taxRate = Number(raw.taxRate);
-    }
     row.invoiceBlocked = !!raw.isInvoiceProhibit;
     row.isConfidential = !!raw.isConfidential;
+    // ✅ 先带出结算对象，再按「结算对象 > 费用名称」生成税率
+    const settlementTaxRate = await applySettlementByFeeCode(row, raw);
+    const resolved = resolveFeeTaxRate(settlementTaxRate, raw.taxRate);
+    if (resolved !== undefined) {
+      row.taxRate = resolved;
+    }
     const unitPrice = Number(row.unitPrice) || 0;
     const quantity = Number(row.quantity) || 0;
     row.noTaxUnitPrice = calcNoTaxUnitPrice(
@@ -225,8 +236,6 @@ async function handleFeeCodeChange(row: any, value: any, option: any) {
       Number(row.taxRate) || 0,
     );
     row.noTaxAmount = Number((row.noTaxUnitPrice * quantity).toFixed(2));
-    // ✅ 参考费用录入：按费用代码的付费客户类型带出行业类别与结算对象
-    await applySettlementByFeeCode(row, raw);
   }
   autoSelectIfValid(row);
 }

@@ -75,6 +75,50 @@ const formatAmount = (value: number) =>
     maximumFractionDigits: 2,
   });
 
+/**
+ * 底部合计扁平项（对齐开票申请列表：
+ * 「标签: 着色金额」，每两组后用分隔符）。
+ */
+const summaryItems = computed(() => {
+  const list: Array<{ color: string; name: string; value: string }> = [];
+  currencyTotals.value.forEach((item) => {
+    const code = item.currencyCode;
+    list.push(
+      {
+        color: 'receive',
+        name: `${code}应收:`,
+        value: formatAmount(item.receiveAmount),
+      },
+      {
+        color: 'pay',
+        name: `${code}应付:`,
+        value: formatAmount(item.payAmount),
+      },
+      {
+        color: 'occupied',
+        name: `${code}发票占用收:`,
+        value: formatAmount(item.receiveInvoiceOccupiedAmount),
+      },
+      {
+        color: 'occupied',
+        name: `${code}发票占用付:`,
+        value: formatAmount(item.payInvoiceOccupiedAmount),
+      },
+      {
+        color: 'occupied',
+        name: `${code}结算占用收:`,
+        value: formatAmount(item.receiveSettlementOccupiedAmount),
+      },
+      {
+        color: 'occupied',
+        name: `${code}结算占用付:`,
+        value: formatAmount(item.paySettlementOccupiedAmount),
+      },
+    );
+  });
+  return list;
+});
+
 const handleRowDblclick = ({
   row,
 }: {
@@ -102,7 +146,7 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
   },
   gridOptions: {
     columns: useColumns(),
-    height: 'auto',
+    height: '100%',
     keepSource: true,
     checkboxConfig: {
       highlight: true,
@@ -188,7 +232,7 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
 </script>
 
 <template>
-  <Page auto-content-height content-class="flex flex-col overflow-hidden">
+  <Page auto-content-height content-class="flex flex-col">
     <Grid
       class="min-h-0 flex-1"
       :table-title="$t('seaExport.export.statement.list')"
@@ -214,151 +258,95 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
       </template>
     </Grid>
 
-    <!-- 当页合计：从 #footer 插槽移入内容区底部。
-         Page 的 auto-content-height 只在挂载时测一次 footer 高度，而本合计随币种数量动态增高，
-         过期的高度会让内容区算高溢出、出现竖向滚动条。改为内容区 flex 布局：Grid flex-1 填充、
-         合计 flex-shrink-0 占自然高度；-mx-4 -mb-4 抵消内容区 p-4，使其仍贴底通栏，
-         任何数据量都精确收在可视区内、不再滚动。 -->
-    <div class="-mx-4 -mb-4 flex flex-shrink-0 items-center bg-card px-6 py-4">
-      <div v-if="currencyTotals.length > 0" class="statement-footer-summary">
-        <span class="statement-footer-summary__label">当页合计：</span>
-        <div class="statement-footer-summary__list">
-          <div
-            v-for="item in currencyTotals"
-            :key="item.currencyCode"
-            class="statement-footer-summary__item"
-          >
-            <span class="statement-footer-summary__currency">
-              {{ item.currencyCode }}
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label">应收</span>
-              <span class="statement-footer-summary__receive">
-                {{ formatAmount(item.receiveAmount) }}
-              </span>
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label">应付</span>
-              <span class="statement-footer-summary__pay">
-                {{ formatAmount(item.payAmount) }}
-              </span>
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label"
-                >发票占用收</span
-              >
-              <span class="statement-footer-summary__invoice-occupied">
-                {{ formatAmount(item.receiveInvoiceOccupiedAmount) }}
-              </span>
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label"
-                >发票占用付</span
-              >
-              <span class="statement-footer-summary__invoice-occupied">
-                {{ formatAmount(item.payInvoiceOccupiedAmount) }}
-              </span>
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label"
-                >结算占用收</span
-              >
-              <span class="statement-footer-summary__settlement-occupied">
-                {{ formatAmount(item.receiveSettlementOccupiedAmount) }}
-              </span>
-            </span>
-            <span class="statement-footer-summary__cell">
-              <span class="statement-footer-summary__cell-label"
-                >结算占用付</span
-              >
-              <span class="statement-footer-summary__settlement-occupied">
-                {{ formatAmount(item.paySettlementOccupiedAmount) }}
-              </span>
-            </span>
-          </div>
-        </div>
-      </div>
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div v-if="summaryItems.length > 0" class="statement-footer-summary">
       <div
-        v-else
-        class="statement-footer-summary statement-footer-summary--empty"
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="statement-footer-summary__pair"
       >
-        <span class="statement-footer-summary__label">当页合计：</span>
-        <span class="text-muted-foreground">暂无数据</span>
+        <span class="statement-footer-summary__name">{{ item.name }}</span>
+        <span
+          class="statement-footer-summary__value"
+          :class="`statement-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="(index + 1) % 2 === 0 && index < summaryItems.length - 1"
+          class="statement-footer-summary__split"
+        >
+          |
+        </span>
       </div>
+    </div>
+    <div
+      v-else
+      class="statement-footer-summary statement-footer-summary--empty"
+    >
+      <span class="statement-footer-summary__name">当页合计：</span>
+      <span class="statement-footer-summary__empty-text">暂无数据</span>
     </div>
   </Page>
 </template>
 
 <style scoped>
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
 .statement-footer-summary {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0 4px;
   align-items: center;
   width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
   font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .statement-footer-summary--empty {
-  color: rgb(0 0 0 / 45%);
+  color: #94a3b8;
 }
 
-.statement-footer-summary__label {
-  font-weight: 600;
-  color: rgb(0 0 0 / 85%);
-}
-
-.statement-footer-summary__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-.statement-footer-summary__item {
+.statement-footer-summary__pair {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  padding: 4px 12px;
-  background: rgb(24 144 255 / 6%);
-  border: 1px solid rgb(24 144 255 / 20%);
-  border-radius: 4px;
+  margin-right: 12px;
 }
 
-.statement-footer-summary__currency {
-  padding-right: 8px;
+.statement-footer-summary__name {
+  flex-shrink: 0;
+}
+
+.statement-footer-summary__value {
   font-weight: 600;
+}
+
+.statement-footer-summary__value--receive {
+  color: #00a862;
+}
+
+.statement-footer-summary__value--pay {
+  color: #f59e0b;
+}
+
+.statement-footer-summary__value--occupied {
   color: #1890ff;
-  border-right: 1px solid rgb(24 144 255 / 20%);
 }
 
-.statement-footer-summary__cell {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
+.statement-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
 }
 
-.statement-footer-summary__cell-label {
-  color: rgb(0 0 0 / 45%);
-}
-
-.statement-footer-summary__receive {
-  font-weight: 600;
-  color: #cf1322;
-}
-
-.statement-footer-summary__pay {
-  font-weight: 600;
-  color: #389e0d;
-}
-
-.statement-footer-summary__invoice-occupied {
-  font-weight: 600;
-  color: #722ed1;
-}
-
-.statement-footer-summary__settlement-occupied {
-  font-weight: 600;
-  color: #13c2c2;
+.statement-footer-summary__empty-text {
+  color: #94a3b8;
 }
 </style>

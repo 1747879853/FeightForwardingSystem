@@ -2108,58 +2108,16 @@ onMounted(() => {
                     </div>
 
                     <!-- 按集装箱计费 -->
-                    <div v-else class="price-cell">
-                      <div class="condition-trigger">
-                        <button
-                          type="button"
-                          class="condition-btn"
-                          :class="{
-                            'condition-btn--active': getConditionalConfig(
-                              String(index),
-                              String(ctn.ctnCodeId),
-                            ).enabled,
-                          }"
-                          @click="
-                            showConditionPopup($event, index, ctn.ctnCodeId)
-                          "
-                          title="设置条件费用"
-                        >
-                          <IconifyIcon
-                            icon="mdi:filter-outline"
-                            class="h-3.5 w-3.5"
-                          />
-                        </button>
-
-                        <div
-                          v-if="
-                            conditionPopupVisible &&
-                            currentConditionCell?.feeIndex === index &&
-                            currentConditionCell?.ctnCodeId === ctn.ctnCodeId
-                          "
-                          class="condition-popup"
-                          @click.stop
-                        >
-                          <label class="condition-popup-item">
-                            <input
-                              type="checkbox"
-                              :checked="
-                                getConditionalConfig(
-                                  String(index),
-                                  String(ctn.ctnCodeId),
-                                ).enabled
-                              "
-                              @change="
-                                toggleConditionEnabled(
-                                  ($event.target as HTMLInputElement).checked,
-                                )
-                              "
-                              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span>启用条件模式</span>
-                          </label>
-                        </div>
-                      </div>
-
+                    <div
+                      v-else
+                      class="price-cell"
+                      :class="{
+                        'price-cell--conditioned': getConditionalConfig(
+                          String(index),
+                          String(ctn.ctnCodeId),
+                        ).enabled,
+                      }"
+                    >
                       <div
                         v-if="
                           getConditionalConfig(
@@ -2169,6 +2127,73 @@ onMounted(() => {
                         "
                         class="condition-panel"
                       >
+                        <div class="condition-panel__toolbar">
+                          <div
+                            class="condition-trigger condition-trigger--inline"
+                          >
+                            <button
+                              type="button"
+                              class="condition-btn condition-btn--active"
+                              @click="
+                                showConditionPopup($event, index, ctn.ctnCodeId)
+                              "
+                              title="设置条件费用"
+                            >
+                              <IconifyIcon
+                                icon="mdi:filter-outline"
+                                class="h-3.5 w-3.5"
+                              />
+                            </button>
+                            <div
+                              v-if="
+                                conditionPopupVisible &&
+                                currentConditionCell?.feeIndex === index &&
+                                currentConditionCell?.ctnCodeId ===
+                                  ctn.ctnCodeId
+                              "
+                              class="condition-popup"
+                              @click.stop
+                            >
+                              <label class="condition-popup-item">
+                                <input
+                                  type="checkbox"
+                                  :checked="
+                                    getConditionalConfig(
+                                      String(index),
+                                      String(ctn.ctnCodeId),
+                                    ).enabled
+                                  "
+                                  @change="
+                                    toggleConditionEnabled(
+                                      ($event.target as HTMLInputElement)
+                                        .checked,
+                                    )
+                                  "
+                                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span>启用条件模式</span>
+                              </label>
+                            </div>
+                          </div>
+                          <span class="condition-panel__title">条件计价</span>
+                          <span
+                            v-if="
+                              surcharge.prices[String(ctn.ctnCodeId)]
+                                ?.conditionType
+                            "
+                            class="condition-panel__unit"
+                          >
+                            {{
+                              freightConditionItemOptions.find(
+                                (o) =>
+                                  o.value ===
+                                  surcharge.prices[String(ctn.ctnCodeId)]
+                                    ?.conditionType,
+                              )?.description
+                            }}
+                          </span>
+                        </div>
+
                         <div class="condition-rule-row">
                           <Select
                             size="small"
@@ -2177,7 +2202,7 @@ onMounted(() => {
                                 ?.conditionType
                             "
                             :options="freightConditionItemOptions"
-                            class="flex-1"
+                            class="condition-select"
                             @change="
                               (val) =>
                                 updateSurchargePriceValue(
@@ -2187,7 +2212,7 @@ onMounted(() => {
                                   String(val),
                                 )
                             "
-                            placeholder="条件类型"
+                            placeholder="条件"
                           />
 
                           <button
@@ -2220,97 +2245,116 @@ onMounted(() => {
                               )
                             "
                             type="number"
-                            class="flex-1"
+                            class="condition-threshold"
                             placeholder="阈值"
                           />
-
-                          <span
-                            v-if="
-                              surcharge.prices[String(ctn.ctnCodeId)]
-                                ?.conditionType
-                            "
-                            class="condition-unit"
-                          >
-                            {{
-                              freightConditionItemOptions.find(
-                                (o) =>
-                                  o.value ===
-                                  surcharge.prices[String(ctn.ctnCodeId)]
-                                    ?.conditionType,
-                              )?.description
-                            }}
-                          </span>
                         </div>
 
                         <div class="condition-price-split">
-                          <div class="split-yes">
-                            <div class="split-label split-label--yes">是</div>
-                            <div class="split-input">
-                              <Input
-                                size="small"
-                                :value="
-                                  surcharge.prices[String(ctn.ctnCodeId)]?.price
-                                "
-                                @input="
-                                  updateSurchargePriceValue(
-                                    index,
-                                    String(ctn.ctnCodeId),
-                                    'price',
-                                    ($event.target as HTMLInputElement).value,
-                                  )
-                                "
-                                type="number"
-                                class="h-9 w-full rounded-none text-center"
-                                placeholder="0"
-                              />
-                            </div>
+                          <div class="split-item split-item--yes">
+                            <div class="split-label">是</div>
+                            <Input
+                              size="small"
+                              :value="
+                                surcharge.prices[String(ctn.ctnCodeId)]?.price
+                              "
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  String(ctn.ctnCodeId),
+                                  'price',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="condition-amount"
+                              placeholder="0"
+                            />
                           </div>
-                          <div class="split-else">
-                            <div class="split-label split-label--else">
-                              否则
-                            </div>
-                            <div class="split-input">
-                              <Input
-                                size="small"
-                                :value="
-                                  surcharge.prices[String(ctn.ctnCodeId)]
-                                    ?.otherPrice
-                                "
-                                @input="
-                                  updateSurchargePriceValue(
-                                    index,
-                                    String(ctn.ctnCodeId),
-                                    'otherPrice',
-                                    ($event.target as HTMLInputElement).value,
-                                  )
-                                "
-                                type="number"
-                                class="h-9 w-full rounded-none text-center"
-                                placeholder="0"
-                              />
-                            </div>
+                          <div class="split-item split-item--else">
+                            <div class="split-label">否则</div>
+                            <Input
+                              size="small"
+                              :value="
+                                surcharge.prices[String(ctn.ctnCodeId)]
+                                  ?.otherPrice
+                              "
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  String(ctn.ctnCodeId),
+                                  'otherPrice',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="condition-amount"
+                              placeholder="0"
+                            />
                           </div>
                         </div>
                       </div>
 
-                      <div v-else class="price-simple">
-                        <Input
-                          :value="
-                            surcharge.prices[String(ctn.ctnCodeId)]?.price
-                          "
-                          @input="
-                            updateSurchargePriceValue(
-                              index,
-                              String(ctn.ctnCodeId),
-                              'price',
-                              ($event.target as HTMLInputElement).value,
-                            )
-                          "
-                          type="number"
-                          class="price-input"
-                          placeholder="0"
-                        />
-                      </div>
+                      <template v-else>
+                        <div class="condition-trigger">
+                          <button
+                            type="button"
+                            class="condition-btn"
+                            @click="
+                              showConditionPopup($event, index, ctn.ctnCodeId)
+                            "
+                            title="设置条件费用"
+                          >
+                            <IconifyIcon
+                              icon="mdi:filter-outline"
+                              class="h-3.5 w-3.5"
+                            />
+                          </button>
+
+                          <div
+                            v-if="
+                              conditionPopupVisible &&
+                              currentConditionCell?.feeIndex === index &&
+                              currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                            "
+                            class="condition-popup"
+                            @click.stop
+                          >
+                            <label class="condition-popup-item">
+                              <input
+                                type="checkbox"
+                                :checked="false"
+                                @change="
+                                  toggleConditionEnabled(
+                                    ($event.target as HTMLInputElement).checked,
+                                  )
+                                "
+                                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span>启用条件模式</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div class="price-simple">
+                          <Input
+                            :value="
+                              surcharge.prices[String(ctn.ctnCodeId)]?.price
+                            "
+                            @input="
+                              updateSurchargePriceValue(
+                                index,
+                                String(ctn.ctnCodeId),
+                                'price',
+                                ($event.target as HTMLInputElement).value,
+                              )
+                            "
+                            type="number"
+                            class="price-input"
+                            placeholder="0"
+                          />
+                        </div>
+                      </template>
                     </div>
                   </td>
 
@@ -3065,6 +3109,9 @@ input[type='text']:focus {
 }
 
 .surcharge-table .col-price--condition {
+  width: 180px;
+  min-width: 168px;
+  max-width: 196px;
   background: #f5f7ff;
 }
 
@@ -3145,6 +3192,10 @@ input[type='text']:focus {
   justify-content: center;
 }
 
+.price-cell--conditioned {
+  min-height: 0;
+}
+
 .price-mode-tag {
   align-self: flex-start;
   padding: 1px 8px;
@@ -3204,6 +3255,12 @@ input[type='text']:focus {
   top: -2px;
   left: -2px;
   z-index: 2;
+}
+
+.condition-trigger--inline {
+  position: relative;
+  top: auto;
+  left: auto;
 }
 
 .condition-btn {
@@ -3281,19 +3338,75 @@ input[type='text']:focus {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 8px 4px 18px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(16 42 83 / 4%);
 }
 
-.condition-rule-row {
+.condition-panel__toolbar {
   display: flex;
   gap: 6px;
   align-items: center;
+  min-height: 20px;
 }
 
-.condition-unit {
+.condition-panel__title {
   font-size: 11px;
+  font-weight: 600;
+  color: #4338ca;
+  letter-spacing: 0.02em;
+}
+
+.condition-panel__unit {
+  padding: 0 6px;
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
   color: #64748b;
-  white-space: nowrap;
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.condition-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(48px, 0.72fr);
+  gap: 4px;
+  align-items: center;
+}
+
+.condition-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.condition-threshold {
+  width: 100%;
+  min-width: 0;
+}
+
+.condition-panel :deep(.condition-select .ant-select-selector),
+.condition-panel :deep(.condition-threshold.ant-input),
+.condition-panel :deep(input.condition-threshold) {
+  height: 28px !important;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.condition-panel :deep(.condition-select .ant-select-selection-item),
+.condition-panel :deep(.condition-select .ant-select-selection-placeholder) {
+  line-height: 26px !important;
+}
+
+.condition-panel :deep(.condition-select .ant-select-selector) {
+  display: flex;
+  align-items: center;
+  padding-inline: 4px !important;
+}
+
+.condition-panel :deep(.condition-select .ant-select-arrow) {
+  inset-inline-end: 4px;
 }
 
 .operator-btn {
@@ -3301,15 +3414,16 @@ input[type='text']:focus {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  font-size: 13px;
+  width: 24px;
+  height: 28px;
+  padding: 0;
+  font-size: 12px;
   font-weight: 700;
   color: #006ce6;
   cursor: pointer;
-  background: #fff;
+  background: #f8fbff;
   border: 1px solid #d0d7e2;
-  border-radius: 8px;
+  border-radius: 6px;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,
@@ -3324,44 +3438,71 @@ input[type='text']:focus {
 
 .condition-price-split {
   display: flex;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #dbe3f0;
-  border-radius: 8px;
-}
-
-.split-yes {
-  width: 70%;
-}
-
-.split-else {
-  display: flex;
   flex-direction: column;
-  width: 30%;
+  gap: 6px;
+}
+
+.split-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.split-item--yes {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.split-item--else {
   background: #f8fafc;
-  border-left: 1px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
 }
 
 .split-label {
-  padding: 4px 8px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.2;
   text-align: center;
-  border-bottom: 1px solid #e8ecf3;
 }
 
-.split-label--yes {
+.split-item--yes .split-label {
   color: #1d4ed8;
-  background: linear-gradient(90deg, #eff6ff, #dbeafe);
 }
 
-.split-label--else {
+.split-item--else .split-label {
   color: #64748b;
-  background: linear-gradient(90deg, #f1f5f9, #e2e8f0);
 }
 
-.split-input {
-  padding: 4px 6px;
+.condition-amount {
+  width: 100%;
+}
+
+.condition-panel :deep(.condition-amount.ant-input),
+.condition-panel :deep(input.condition-amount) {
+  height: 28px !important;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #d0d7e2;
+  border-radius: 5px;
+}
+
+.condition-panel :deep(.condition-amount.ant-input:hover),
+.condition-panel :deep(input.condition-amount:hover) {
+  border-color: hsl(var(--primary) / 55%);
+}
+
+.condition-panel :deep(.condition-amount.ant-input:focus),
+.condition-panel :deep(input.condition-amount:focus) {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 14%);
 }
 
 .row-delete-btn {

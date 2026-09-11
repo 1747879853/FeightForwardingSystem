@@ -686,6 +686,7 @@
     "phone": "公司电话",
     "mobile": "手机号",
     "taxNo": "纳税人识别号",
+    "taxRate": "税率",
     "fullName": "客户全称",
     "enName": "英文全称",
     "email": "邮箱",

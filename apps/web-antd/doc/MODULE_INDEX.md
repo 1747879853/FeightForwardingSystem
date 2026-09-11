@@ -6,7 +6,7 @@
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
 | dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-09-08 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为 `/analytics`。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-08-14 |
-| clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-07-12 |
+| clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-11 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料；「是否共享」在所属公司标题右侧；未保存切走可缓存。保存成功后 replace 进编辑并关闭原新建页签。 | [客户新建](./modules/clients/create.md) | 2026-09-11 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护客户完整资料；基础信息「是否共享」在所属公司标题旁；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-09-11 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；开船日期筛选按自然日闭区间提交；支持多选后运踪批量订阅（按打包品牌分流：sjtd 用现有运踪、其他品牌用新服务商），主提单号前带异常预警叹号，并可按权限删除单条勾选委托。无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-09-08 |

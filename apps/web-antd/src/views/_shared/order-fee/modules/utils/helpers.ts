@@ -256,6 +256,57 @@ export const extractSettlementNameFromOrder = (
 };
 
 /**
+ * 税率是否已设置（含 0；null/undefined/空串视为未设置）
+ */
+export function isTaxRateSet(value: unknown): value is number {
+  if (value === null || value === undefined || value === '') return false;
+  const n = Number(value);
+  return !Number.isNaN(n);
+}
+
+/**
+ * 费用行税率：优先结算对象税率，否则费用名称（费用代码）税率
+ */
+export function resolveFeeTaxRate(
+  settlementTaxRate?: null | number,
+  feeCodeTaxRate?: null | number,
+): number | undefined {
+  if (isTaxRateSet(settlementTaxRate)) return Number(settlementTaxRate);
+  if (isTaxRateSet(feeCodeTaxRate)) return Number(feeCodeTaxRate);
+  return undefined;
+}
+
+/**
+ * 从按行业类别缓存的客户列表中取结算对象税率
+ * - 未找到客户 → undefined
+ * - 找到客户 → 返回其 taxRate（可能为 null）
+ */
+export function findClientTaxRateFromCache(
+  settlementId: unknown,
+  allClientsByIndustry?: Record<string, Array<any>>,
+): null | number | undefined {
+  if (
+    settlementId === null ||
+    settlementId === undefined ||
+    settlementId === '' ||
+    !allClientsByIndustry
+  ) {
+    return undefined;
+  }
+  const idStr = String(settlementId);
+  for (const clients of Object.values(allClientsByIndustry)) {
+    if (!clients?.length) continue;
+    const matched = clients.find(
+      (c) => String(c.value) === idStr || String(c.id) === idStr,
+    );
+    if (matched) {
+      return matched.taxRate ?? null;
+    }
+  }
+  return undefined;
+}
+
+/**
  * 空数据时 Handsontable 往往不会按列宽累加内容总宽（scrollWidth≈视口），
  * 表现为：横滚拖动只裁切表头、松手滚动条回弹。强制把 master/clone 的
  * wtHider/wtSpreader 撑到列宽之和，使真实横向滚动生效。

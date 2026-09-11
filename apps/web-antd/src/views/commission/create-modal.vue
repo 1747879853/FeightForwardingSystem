@@ -31,6 +31,7 @@ import { $t } from '#/locales';
 import CalcPanels from './calc-panels.vue';
 import {
   formatAmount,
+  flattenUnsettledTickets,
   ticketRowKey,
   useOperationTicketColumns,
   useSalesTicketColumns,
@@ -44,8 +45,9 @@ const { CommissionItemProfitType, CommissionType } = CommissionOrderAdminApi;
 
 const [Modal, modalApi] = useVbenModal({
   bordered: true,
-  class: 'w-[1400px] !max-h-[90%]',
-  contentClass: 'commission-create-body !bg-[#f5f7fa] !px-5 !py-4',
+  class: 'w-[1400px] !max-h-[78vh]',
+  contentClass:
+    'commission-create-body !max-h-[calc(78vh-120px)] !overflow-y-auto !bg-[#f5f7fa] !px-5 !py-4',
   footerClass: 'px-5 py-3',
   fullscreenButton: false,
   async onOpenChange(isOpen) {
@@ -402,9 +404,9 @@ const onConfirmCreate = () => {
             size="small"
             :scroll="{ x: 'max-content' }"
             :columns="unsettledTicketColumns"
-            :data-source="block.unsettled"
+            :data-source="flattenUnsettledTickets(block.unsettled)"
             :pagination="false"
-            :row-key="ticketRowKey"
+            :row-key="(row) => row._flatKey"
           />
         </section>
 

@@ -19,7 +19,11 @@ import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useTableConfigStore } from '#/store/table-config';
-import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
+import {
+  getIndustryCategoryOptions,
+  resolveSettlementByIndustryCategory,
+} from '#/views/sea-export-admin/orderFee/data';
+import { resolveFeeTaxRate } from '#/views/_shared/order-fee/modules/utils/helpers';
 
 import { objectOmit } from '@vueuse/core';
 import {
@@ -556,12 +560,16 @@ setupVbenVxeTable({
               }
             }
 
-            // 3. 自动填充税率
-            if (
-              feeCodeDetail.taxRate !== undefined &&
-              feeCodeDetail.taxRate !== null
-            ) {
-              row['taxRate'] = feeCodeDetail.taxRate;
+            // 3. 自动填充税率：优先结算对象，否则费用名称
+            {
+              const settlementTaxRate = row['__settlementTaxRate'];
+              const resolved = resolveFeeTaxRate(
+                settlementTaxRate,
+                feeCodeDetail.taxRate,
+              );
+              if (resolved !== undefined) {
+                row['taxRate'] = resolved;
+              }
             }
 
             // 4. 自动填充单位和数量
@@ -759,56 +767,17 @@ setupVbenVxeTable({
               return;
             }
 
-            let settlementId: string | number | undefined;
-
-            // 根据行业类别映射到对应的字段
-            switch (industryCategory.toLowerCase()) {
-              case 'b': // 发货人
-                settlementId = orderDetail.transportOrder?.shipperId;
-                break;
-              case 'c': // 场站
-                settlementId = orderDetail.yardId;
-                break;
-              case 'e': // 收货人
-                settlementId = orderDetail.transportOrder?.consigneeId;
-                break;
-              case 'f': // 报关行
-                settlementId = orderDetail.transportOrder?.custBrokerId;
-                break;
-              case 'h': // 通知人
-                settlementId = orderDetail.transportOrder?.notifierId;
-                break;
-              case 'i': // 车队
-                settlementId = orderDetail.transportOrder?.teamId;
-                break;
-              case 'n': // 船代
-                settlementId = orderDetail.shipAgentId;
-                break;
-              case 'o': // 订舱代理
-                settlementId = orderDetail.bookingAgentId;
-                break;
-              case 'p': // 委托单位
-                settlementId = orderDetail.transportOrder?.clientId;
-                break;
-              case 'q': // 仓库
-                settlementId = orderDetail.transportOrder?.warehouseId;
-                break;
-              case 'r': // 保险公司
-                settlementId = orderDetail.transportOrder?.insuranceId;
-                break;
-              case 's': // 国外代理
-                settlementId = orderDetail.podAgentId;
-                break;
-              default:
-                console.warn(`未识别的行业类别: ${industryCategory}`);
-                return;
-            }
+            const settlement = resolveSettlementByIndustryCategory(
+              orderDetail,
+              industryCategory,
+            );
 
             // 如果找到了对应的结算对象ID，则填充
-            if (settlementId !== undefined && settlementId !== null) {
-              row['settlementId'] = String(settlementId);
+            if (settlement) {
+              row['settlementId'] = String(settlement.id);
+              row['__settlementTaxRate'] = settlement.taxRate ?? null;
               console.log(
-                `自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+                `自动填充结算对象: ${settlement.id} (行业类别: ${industryCategory}, 税率: ${settlement.taxRate})`,
               );
             } else {
               console.warn(
@@ -831,6 +800,7 @@ setupVbenVxeTable({
           ...props,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
+          onChange: onClientChange,
         };
 
         // 如果 disabled 是函数，则调用它并传入 row
@@ -851,6 +821,26 @@ setupVbenVxeTable({
           if (column.field === 'settlementId' && row['industryCategory']) {
             console.log('结算对象变化，检查是否需要自动切换');
             // 这里可以添加额外的逻辑，比如验证结算对象是否与行业类别匹配
+          }
+        }
+
+        async function onClientChange(newVal: any, option: any) {
+          if (column.field !== 'settlementId') return;
+          const settlementTaxRate = option?.taxRate;
+          row['__settlementTaxRate'] = settlementTaxRate ?? null;
+          let feeCodeTaxRate: null | number | undefined;
+          const feeCodeId = row['feeCodeId'];
+          if (feeCodeId) {
+            try {
+              const feeCodeDetail = await getFeeCodeDetail(feeCodeId);
+              feeCodeTaxRate = feeCodeDetail?.taxRate;
+            } catch {
+              /* ignore */
+            }
+          }
+          const resolved = resolveFeeTaxRate(settlementTaxRate, feeCodeTaxRate);
+          if (resolved !== undefined) {
+            row['taxRate'] = resolved;
           }
         }
         return h(ClientSelect, finalProps);
@@ -896,6 +886,23 @@ setupVbenVxeTable({
               row,
               industryCategoryValue,
             );
+            // 结算对象变化后按结算对象/费用名称刷新税率
+            let feeCodeTaxRate: null | number | undefined;
+            if (row['feeCodeId']) {
+              try {
+                const feeCodeDetail = await getFeeCodeDetail(row['feeCodeId']);
+                feeCodeTaxRate = feeCodeDetail?.taxRate;
+              } catch {
+                /* ignore */
+              }
+            }
+            const resolved = resolveFeeTaxRate(
+              row['__settlementTaxRate'],
+              feeCodeTaxRate,
+            );
+            if (resolved !== undefined) {
+              row['taxRate'] = resolved;
+            }
           }
         }
 
@@ -920,59 +927,17 @@ setupVbenVxeTable({
               return;
             }
 
-            let settlementId: string | number | undefined;
+            const settlement = resolveSettlementByIndustryCategory(
+              orderDetail,
+              industryCategory,
+            );
 
-            // 根据行业类别映射到对应的字段
-            switch (industryCategory.toLowerCase()) {
-              case 'p': // 委托单位
-                settlementId = orderDetail.transportOrder?.clientId;
-                break;
-              case 'b': // 发货人
-                settlementId = orderDetail.transportOrder?.shipperId;
-                break;
-              case 'e': // 收货人
-                settlementId = orderDetail.transportOrder?.consigneeId;
-                break;
-              case 'h': // 通知人
-                settlementId = orderDetail.transportOrder?.notifierId;
-                break;
-              case 'c': // 场站
-                settlementId = orderDetail.yardId;
-                break;
-              case 'q': // 仓库
-                settlementId = orderDetail.transportOrder?.warehouseId;
-                break;
-              case 'i': // 车队
-                settlementId = orderDetail.transportOrder?.teamId;
-                break;
-              case 'f': // 报关行
-                settlementId = orderDetail.transportOrder?.custBrokerId;
-                break;
-              case 'r': // 保险公司
-                settlementId = orderDetail.transportOrder?.insuranceId;
-                break;
-              case 'o': // 订舱代理
-                settlementId = orderDetail.bookingAgentId;
-                break;
-              case 'n': // 船代
-                settlementId = orderDetail.shipAgentId;
-                break;
-              case 's': // 目的港代理
-                settlementId = orderDetail.podAgentId;
-                break;
-              default:
-                console.warn(`未识别的行业类别: ${industryCategory}`);
-                return;
-            }
-
-            // 如果找到了对应的结算对象ID，则填充
-            if (settlementId !== undefined && settlementId !== null) {
-              row['settlementId'] = String(settlementId);
+            if (settlement) {
+              row['settlementId'] = String(settlement.id);
+              row['__settlementTaxRate'] = settlement.taxRate ?? null;
               console.log(
-                `自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+                `自动填充结算对象: ${settlement.id} (行业类别: ${industryCategory}, 税率: ${settlement.taxRate})`,
               );
-
-              // 触发表格重新渲染
               if (attrs?.onIndustryCategoryChange) {
                 await attrs.onIndustryCategoryChange(industryCategory, row);
               }

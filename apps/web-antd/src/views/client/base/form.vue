@@ -618,6 +618,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     code: detail.code,
     enName: detail.enName,
     taxNo: detail.taxNo,
+    taxRate: detail.taxRate ?? undefined,
     codeSourceId: detail.codeSourceId,
     phone: detail.phone,
     mobile: detail.mobile,
@@ -1074,6 +1075,10 @@ const handleSubmit = async () => {
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
         taxNo: baseValues.taxNo,
+        taxRate:
+          baseValues.taxRate === undefined || baseValues.taxRate === null
+            ? null
+            : Number(baseValues.taxRate),
         email: baseValues.email,
         url: baseValues.url,
         clientType: isClient.value ? clientValues.clientType : undefined,
@@ -1180,6 +1185,10 @@ const handleSubmit = async () => {
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
         taxNo: baseValues.taxNo,
+        taxRate:
+          baseValues.taxRate === undefined || baseValues.taxRate === null
+            ? null
+            : Number(baseValues.taxRate),
         email: baseValues.email,
         url: baseValues.url,
         clientType: isClient.value ? clientValues.clientType : undefined,

@@ -8,7 +8,7 @@ import { CommissionOrderAdminApi } from '#/api/commission/commission-order-admin
 import { $t } from '#/locales';
 
 import type { TableColumnsType } from 'ant-design-vue';
-import { Tag, Tooltip } from 'ant-design-vue';
+import { Tag } from 'ant-design-vue';
 
 /**
  * 提成单模块共享工具：
@@ -235,6 +235,74 @@ export const formatUnsettledSettlements = (
       return details ? `${party}：${details}` : party;
     })
     .join('；');
+};
+
+/** 未结清票展开行：一票多结算对象/币别时拆成多行，便于分列展示欠款 */
+export type UnsettledTicketFlatRow =
+  CommissionOrderAdminApi.CommissionTicketDto & {
+    _flatKey: string;
+    _unsettledCurrency: string;
+    _unsettledPayable: null | number | undefined;
+    _unsettledReceivable: null | number | undefined;
+    _unsettledSettlement: string;
+    _unsettledUnPaid: null | number | undefined;
+    _unsettledUnReceived: null | number | undefined;
+  };
+
+export const flattenUnsettledTickets = (
+  tickets: CommissionOrderAdminApi.CommissionTicketDto[],
+): UnsettledTicketFlatRow[] => {
+  const rows: UnsettledTicketFlatRow[] = [];
+  tickets.forEach((ticket) => {
+    const baseKey = ticketRowKey(ticket);
+    const groups = ticket.unsettledSettlements ?? [];
+    if (groups.length === 0) {
+      rows.push({
+        ...ticket,
+        _flatKey: baseKey,
+        _unsettledCurrency: '-',
+        _unsettledPayable: undefined,
+        _unsettledReceivable: undefined,
+        _unsettledSettlement: '-',
+        _unsettledUnPaid: undefined,
+        _unsettledUnReceived: undefined,
+      });
+      return;
+    }
+    groups.forEach((group, groupIndex) => {
+      const settlementName =
+        group.settlement?.name ??
+        group.settlement?.fullName ??
+        $t('commissionOrder.ticket.unsettledSettlementNone');
+      const currencies = group.currencies ?? [];
+      if (currencies.length === 0) {
+        rows.push({
+          ...ticket,
+          _flatKey: `${baseKey}:g${groupIndex}`,
+          _unsettledCurrency: '-',
+          _unsettledPayable: undefined,
+          _unsettledReceivable: undefined,
+          _unsettledSettlement: settlementName,
+          _unsettledUnPaid: undefined,
+          _unsettledUnReceived: undefined,
+        });
+        return;
+      }
+      currencies.forEach((currency, currencyIndex) => {
+        rows.push({
+          ...ticket,
+          _flatKey: `${baseKey}:g${groupIndex}:c${currencyIndex}`,
+          _unsettledCurrency: currency.currency?.code ?? '-',
+          _unsettledPayable: currency.payable,
+          _unsettledReceivable: currency.receivable,
+          _unsettledSettlement: settlementName,
+          _unsettledUnPaid: currency.unPaid,
+          _unsettledUnReceived: currency.unReceived,
+        });
+      });
+    });
+  });
+  return rows;
 };
 
 // ==================== 列表搜索表单 ====================
@@ -549,26 +617,66 @@ const ticketBaseColumns = (options: {
       title: ticketTitle('unsettledCount'),
       dataIndex: 'unsettledFeeCount',
       key: 'unsettledFeeCount',
-      width: 110,
+      width: 100,
       customRender: ({ text }) =>
         text == null
           ? '-'
           : $t('commissionOrder.ticket.unsettledCountValue', { count: text }),
     });
-    columns.push({
-      title: ticketTitle('unsettledDetails'),
-      key: 'unsettledDetails',
-      width: 220,
-      customRender: ({ record }) => {
-        const text = formatUnsettledSettlements(
-          (record as CommissionOrderAdminApi.CommissionTicketDto)
-            .unsettledSettlements,
-        );
-        return h(Tooltip, { title: () => text, placement: 'topLeft' }, () =>
-          h('span', { class: 'block max-w-[210px] truncate' }, text),
-        );
+    columns.push(
+      {
+        title: ticketTitle('unsettledSettlement'),
+        key: 'unsettledSettlement',
+        dataIndex: '_unsettledSettlement',
+        width: 140,
+        ellipsis: true,
+        customRender: ({ text }) => (text as string) || '-',
       },
-    });
+      {
+        title: ticketTitle('unsettledCurrency'),
+        key: 'unsettledCurrency',
+        dataIndex: '_unsettledCurrency',
+        width: 72,
+        align: 'center',
+        customRender: ({ text }) => (text as string) || '-',
+      },
+      {
+        title: ticketTitle('receivable'),
+        key: 'unsettledReceivable',
+        dataIndex: '_unsettledReceivable',
+        width: 100,
+        align: 'right',
+        customRender: ({ text }) =>
+          formatAmount(text as number | null | undefined),
+      },
+      {
+        title: ticketTitle('unReceived'),
+        key: 'unsettledUnReceived',
+        dataIndex: '_unsettledUnReceived',
+        width: 100,
+        align: 'right',
+        customRender: ({ text }) =>
+          formatAmount(text as number | null | undefined),
+      },
+      {
+        title: ticketTitle('payable'),
+        key: 'unsettledPayable',
+        dataIndex: '_unsettledPayable',
+        width: 100,
+        align: 'right',
+        customRender: ({ text }) =>
+          formatAmount(text as number | null | undefined),
+      },
+      {
+        title: ticketTitle('unPaid'),
+        key: 'unsettledUnPaid',
+        dataIndex: '_unsettledUnPaid',
+        width: 100,
+        align: 'right',
+        customRender: ({ text }) =>
+          formatAmount(text as number | null | undefined),
+      },
+    );
   }
   return columns;
 };

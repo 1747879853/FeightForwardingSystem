@@ -10,6 +10,10 @@ import {
   resolveSettlementByIndustryCategory,
 } from '../../data';
 import { useOrderFeeAdapter } from '../../use-adapter';
+import {
+  findClientTaxRateFromCache,
+  resolveFeeTaxRate,
+} from '../utils/helpers';
 
 /**
  * 订单详情缓存提升到模块级：编辑页保存成功后可通过 clearOrderDetailCache
@@ -374,6 +378,8 @@ export function useOrderFeeLinkage(
         row['settlementId_value'] = settlement.id;
         // __settlementName 缓存一份，供表格 label 回显
         row['__settlementName'] = settlement.name;
+        // 订单往来单位上的客户税率（缓存未命中时兜底）
+        row['__settlementTaxRate'] = settlement.taxRate ?? null;
 
         console.log(
           '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
@@ -382,6 +388,8 @@ export function useOrderFeeLinkage(
           settlement.id,
           '名称:',
           settlement.name,
+          '税率:',
+          settlement.taxRate,
         );
       } else {
         console.warn(
@@ -543,6 +551,59 @@ export function useOrderFeeLinkage(
   }
 
   // ==================== 字段联动处理函数 ====================
+
+  /**
+   * 费用行税率：优先结算对象，否则费用名称（费用代码）
+   * @param feeCodeTaxRateHint 费用代码变更时可直接传入，避免重复查缓存
+   */
+  function applyTaxRateToRow(
+    row: any,
+    feeCodeTaxRateHint?: null | number,
+    hotInstance?: any,
+  ) {
+    const sources = getDropdownSources();
+    const settlementId =
+      row['settlementId_value'] || getSettlementId(row['settlementId']);
+
+    let settlementTaxRate = findClientTaxRateFromCache(
+      settlementId,
+      sources.allClientsByIndustry,
+    );
+    if (settlementTaxRate === undefined) {
+      settlementTaxRate = row['__settlementTaxRate'];
+    }
+
+    let feeCodeTaxRate = feeCodeTaxRateHint;
+    if (feeCodeTaxRate === undefined) {
+      const feeCodeId = row['feeCodeId_value'] || row['feeCodeId'];
+      const feeCodeDetail = feeCodeId
+        ? sources.feeCodeDetailCache?.get(String(feeCodeId))
+        : null;
+      feeCodeTaxRate = feeCodeDetail?.taxRate;
+    }
+
+    const resolved = resolveFeeTaxRate(settlementTaxRate, feeCodeTaxRate);
+    if (resolved === undefined) return;
+
+    row['taxRate'] = resolved;
+    markLinkedCell(row, 'taxRate');
+    console.log('📊 [applyTaxRateToRow] 税率:', resolved, {
+      settlementTaxRate,
+      feeCodeTaxRate,
+    });
+
+    // 已有含税单价时同步重算不含税金额
+    if (
+      row['unitPrice'] !== undefined &&
+      row['unitPrice'] !== null &&
+      row['unitPrice'] !== ''
+    ) {
+      const idx = dataContext.dataSource.value.indexOf(row);
+      if (idx >= 0) {
+        handleTaxRateChange(idx, resolved, hotInstance);
+      }
+    }
+  }
 
   /**
    * ✅ 重构：处理费用代码变化 - 使用缓存而非API调用
@@ -758,11 +819,8 @@ export function useOrderFeeLinkage(
         }
       }
 
-      // 自动填充税率
-      if (feeCodeDetail.taxRate !== undefined) {
-        row['taxRate'] = feeCodeDetail.taxRate;
-        console.log('📊 [handleFeeCodeChange] 税率:', feeCodeDetail.taxRate);
-      }
+      // 自动填充税率：优先结算对象，否则费用名称
+      applyTaxRateToRow(row, feeCodeDetail.taxRate, hotInstance);
 
       // 自动填充单位和数量
       const defaultUnitName = feeCodeDetail.defaultUnitName;
@@ -866,6 +924,9 @@ export function useOrderFeeLinkage(
           industryCategoryCode,
         );
         await fillSettlementIdByIndustryCategory(row, industryCategoryCode);
+
+        // ✅ 行业类别带出结算对象后，按结算对象/费用名称刷新税率
+        applyTaxRateToRow(row, undefined, hotInstance);
 
         // ✅ 标记联动写入的结算对象（值与原值相同不产生标记）
         markLinkedCell(row, 'settlementId');
@@ -1328,11 +1389,15 @@ export function useOrderFeeLinkage(
         const resolvedSettlementId = getSettlementId(row['settlementId']);
         if (resolvedSettlementId !== undefined) {
           row['settlementId_value'] = resolvedSettlementId;
+          // 切换结算对象时清空订单往来单位兜底税率，改走客户缓存
+          row['__settlementTaxRate'] = undefined;
         }
         console.log(
           '👤 [handleAfterChange] 结算对象变化:',
           row['settlementId_value'],
         );
+        // 结算对象变化：优先用其税率，否则回退费用名称税率
+        applyTaxRateToRow(row, undefined, hotInstance);
       }
       // 含税单价变化
       else if (prop === 'unitPrice') {

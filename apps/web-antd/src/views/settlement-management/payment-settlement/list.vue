@@ -55,6 +55,18 @@ const formatAmount = (value: number) =>
     maximumFractionDigits: 2,
   });
 
+/**
+ * 底部合计扁平项（对齐开票申请列表：
+ * 「{币别}结算金额: 着色金额」，项间用分隔符）。
+ */
+const summaryItems = computed(() =>
+  currencyTotals.value.map((item) => ({
+    color: 'settled',
+    name: `${item.currencyCode}结算金额:`,
+    value: formatAmount(item.settledAmount),
+  })),
+);
+
 /** 格式化日期时间到分钟 */
 const formatDateTime = (value: string | undefined) => {
   if (!value) return '-';
@@ -141,7 +153,7 @@ const [Grid, gridApi] =
     },
     gridOptions: {
       columns: useColumns(),
-      height: 'auto',
+      height: '100%',
       keepSource: true,
       checkboxConfig: {
         highlight: true,
@@ -337,8 +349,8 @@ function handleExport() {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid table-title="付费结算列表">
+  <Page auto-content-height content-class="flex flex-col">
+    <Grid table-title="付费结算列表" class="min-h-0 flex-1">
       <template #toolbar-tools>
         <Space>
           <Button type="primary" @click="handleCreate"> 新建 </Button>
@@ -366,103 +378,94 @@ function handleExport() {
       </template>
     </Grid>
 
-    <!-- 表格下方：当前页按结算币别的结算金额合计（样式参考开票申请列表） -->
-    <template #footer>
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div
+      v-if="summaryItems.length > 0"
+      class="payment-settlement-footer-summary"
+    >
       <div
-        v-if="currencyTotals.length > 0"
-        class="payment-settlement-footer-summary"
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="payment-settlement-footer-summary__pair"
       >
-        <span class="payment-settlement-footer-summary__label">当页合计：</span>
-        <div class="payment-settlement-footer-summary__list">
-          <div
-            v-for="item in currencyTotals"
-            :key="item.currencyCode"
-            class="payment-settlement-footer-summary__item"
-          >
-            <span class="payment-settlement-footer-summary__currency">
-              {{ item.currencyCode }}
-            </span>
-            <span class="payment-settlement-footer-summary__cell">
-              <span class="payment-settlement-footer-summary__cell-label">
-                结算金额
-              </span>
-              <span class="payment-settlement-footer-summary__settled">
-                {{ formatAmount(item.settledAmount) }}
-              </span>
-            </span>
-          </div>
-        </div>
+        <span class="payment-settlement-footer-summary__name">{{
+          item.name
+        }}</span>
+        <span
+          class="payment-settlement-footer-summary__value"
+          :class="`payment-settlement-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="index < summaryItems.length - 1"
+          class="payment-settlement-footer-summary__split"
+        >
+          |
+        </span>
       </div>
-      <div
-        v-else
-        class="payment-settlement-footer-summary payment-settlement-footer-summary--empty"
+    </div>
+    <div
+      v-else
+      class="payment-settlement-footer-summary payment-settlement-footer-summary--empty"
+    >
+      <span class="payment-settlement-footer-summary__name">当页合计：</span>
+      <span class="payment-settlement-footer-summary__empty-text"
+        >暂无数据</span
       >
-        <span class="payment-settlement-footer-summary__label">当页合计：</span>
-        <span class="text-muted-foreground">暂无数据</span>
-      </div>
-    </template>
+    </div>
   </Page>
 </template>
 
 <style scoped>
-/* 表格下方：当页按币别合计（样式与开票申请列表合计保持一致） */
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
 .payment-settlement-footer-summary {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0 4px;
   align-items: center;
   width: 100%;
-
-  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
-  min-height: 32px;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
   font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .payment-settlement-footer-summary--empty {
-  color: rgb(0 0 0 / 45%);
+  color: #94a3b8;
 }
 
-.payment-settlement-footer-summary__label {
-  font-weight: 600;
-  color: rgb(0 0 0 / 85%);
-}
-
-.payment-settlement-footer-summary__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-.payment-settlement-footer-summary__item {
+.payment-settlement-footer-summary__pair {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  padding: 4px 12px;
-  background: rgb(24 144 255 / 6%);
-  border: 1px solid rgb(24 144 255 / 20%);
-  border-radius: 4px;
+  margin-right: 12px;
 }
 
-.payment-settlement-footer-summary__currency {
-  padding-right: 8px;
+.payment-settlement-footer-summary__name {
+  flex-shrink: 0;
+}
+
+.payment-settlement-footer-summary__value {
   font-weight: 600;
-  color: #1890ff;
-  border-right: 1px solid rgb(24 144 255 / 20%);
 }
 
-.payment-settlement-footer-summary__cell {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
+.payment-settlement-footer-summary__value--settled {
+  color: #00a862;
 }
 
-.payment-settlement-footer-summary__cell-label {
-  color: rgb(0 0 0 / 45%);
+.payment-settlement-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
 }
 
-.payment-settlement-footer-summary__settled {
-  font-weight: 600;
-  color: #cf1322;
+.payment-settlement-footer-summary__empty-text {
+  color: #94a3b8;
 }
 </style>

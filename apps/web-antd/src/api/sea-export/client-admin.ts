@@ -146,6 +146,8 @@ export namespace ClientAdminApi {
     enFullName?: string;
     /** 纳税人识别号 */
     taxNo?: string;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
     /** 邮箱 */
     email?: string;
     /** 网址 */
@@ -287,6 +289,8 @@ export namespace ClientAdminApi {
     enFullName?: string;
     /** 纳税人识别号 */
     taxNo?: string;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
     /** 邮箱 */
     email?: string;
     /** 网址 */
@@ -546,6 +550,8 @@ export namespace ClientAdminApi {
     enFullName?: string;
     /** 纳税人识别号 */
     taxNo?: string;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
     /** 邮箱 */
     email?: string;
     /** 网址 */

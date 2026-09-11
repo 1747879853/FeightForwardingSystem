@@ -33,6 +33,8 @@ export namespace SeaImportAdminApi {
     fullName?: null | string;
     /** 该单位默认地址 */
     address?: null | string;
+    /** 客户税率(%)，可空表示未设置 */
+    taxRate?: null | number;
   }
 
   export interface CarrierSimpleDto {
