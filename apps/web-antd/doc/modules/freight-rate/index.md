@@ -54,6 +54,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Refactor` | 运价列表清理死代码；复制改为编辑表单预填新增；厘清「更新」与「批量更改」入口。 | `list.vue` + `data.ts` + `edit-form` 的 `copyId`。详见 `changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md`。 |
 | 2026-09-11 | `Style` | 运价新增/编辑弹窗分区卡片与有效期横幅对齐系统风格。 | `edit-form.vue`：主色浅底横幅、图标标题栏、chip 模式切换、sticky 底栏。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-form-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价查询视图从海运出口目录抽出为独立模块。 | 页面迁至 `src/views/freight-rate/`；路由组件路径同步；API 仍在 `api/sea-export/freight-rate-admin.ts`。 |
 | 2026-09-09 | `Fix` | 进入运价列表首查与切航线/翻页稳定带上有效状态默认「已生效+未生效」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `isValid === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |

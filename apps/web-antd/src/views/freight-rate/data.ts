@@ -1,11 +1,10 @@
 import type { VbenFormSchema } from '#/adapter/form';
-import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
 import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
 import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { message } from 'ant-design-vue';
-import { FrightModule } from '#/api/system/permission';
 
 /** 运价列表列配置持久化 key（与 gridOptions.id 对应） */
 export const FREIGHT_RATE_LIST_TABLE_ID = 'FreightRateList';
@@ -327,13 +326,75 @@ export function useGridFormSchema(): VbenFormSchema[] {
   ];
 }
 
+/** 附加费名称（逗号分隔，列表单元格） */
+export function getSurchargeFeeNames(row: SeFreiPriceOutDto): string {
+  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
+    return '-';
+  }
+  return row.seFreiPriceFees
+    .map(
+      (fee) =>
+        fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`,
+    )
+    .join(', ');
+}
+
+function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
+  if (fee.priceFeeType === 1 && fee.price !== undefined && fee.price !== null) {
+    return [`按票: ${fee.price}`];
+  }
+  if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
+    return [];
+  }
+
+  return fee.seFreiPriceCtnFees.map((ctnFee: any) => {
+    const ctnInfo = row.seFreiPriceCtns?.find(
+      (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
+    );
+    const ctnName =
+      ctnInfo?.ctnCode?.ctnName || `箱型${ctnInfo?.ctnCodeId || '?'}`;
+
+    if (ctnFee.value !== undefined && ctnFee.value !== null) {
+      const condition =
+        freightConditionItemOptions.find(
+          (o) => o.value === ctnFee.conditionType,
+        )?.label || '';
+      const suffix =
+        ctnFee.otherPrice !== null && ctnFee.otherPrice !== undefined
+          ? `${ctnFee.price}/${ctnFee.otherPrice}`
+          : `${ctnFee.price}`;
+      return `${ctnName}:(毛重>=${ctnFee.value}${condition}) ${suffix}`;
+    }
+    return `${ctnName}: ${ctnFee.price}`;
+  });
+}
+
+/** 附加费详情（Tooltip） */
+export function getSurchargeFeeTooltip(row: SeFreiPriceOutDto): string {
+  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
+    return '无附加费';
+  }
+
+  return row.seFreiPriceFees
+    .map((fee) => {
+      const feeName =
+        fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`;
+      const currency =
+        fee.currency?.name || fee.currency?.code || `币种${fee.currencyId}`;
+      const details = getFeeDetails(fee, row);
+      return details.length > 0
+        ? `${feeName} (${currency}): ${details.join(', ')}`
+        : `${feeName} (${currency})`;
+    })
+    .join('\n');
+}
+
 /**
  * 表格列配置
  */
-export function useColumns<T = SeFreiPriceOutDto>(
-  onActionClick: OnActionClickFn<T>,
-  data?: SeFreiPriceOutDto[], // 添加数据参数用于生成动态列
-  maskedFields?: string[], // 被屏蔽的字段列表（PascalCase 格式）
+export function useColumns(
+  data?: SeFreiPriceOutDto[],
+  maskedFields?: string[],
 ): VxeTableGridOptions['columns'] {
   // 基础固定列（不包含动态箱型列）
   const baseColumnsBeforeCtn: VxeTableGridOptions['columns'] = [
@@ -845,11 +906,6 @@ export function filterColumnsByPermission(
     return [];
   }
 
-  // 将 PascalCase 转换为 camelCase 进行匹配
-  const maskedFieldsCamelCase = maskedFields.map((field) => {
-    return field.charAt(0).toLowerCase() + field.slice(1);
-  });
-
   return columns.filter((col) => {
     if (!col || !col.field) {
       // 保留没有 field 的列（如 checkbox、操作列等）
@@ -867,12 +923,7 @@ export function filterColumnsByPermission(
       (masked) => masked.toLowerCase() === fieldNameToCheck.toLowerCase(),
     );
 
-    if (isMasked) {
-      console.log(`[字段权限] 隐藏列: ${col.field} (${fieldNameToCheck})`);
-      return false;
-    }
-
-    return true;
+    return !isMasked;
   });
 }
 

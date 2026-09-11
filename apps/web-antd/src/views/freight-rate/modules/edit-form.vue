@@ -622,6 +622,21 @@ const [Modal, modalApi] = useVbenModal({
       // 编辑模式
       id.value = data.id;
       await loadDetail(data.id);
+    } else if (data?.copyId) {
+      // 复制模式：加载原单后清除 id，按新增提交
+      id.value = undefined;
+      await loadDetail(data.copyId);
+      if (formData.value) {
+        formData.value = {
+          ...formData.value,
+          id: '',
+          creationTime: '',
+          creatorUserId: undefined as any,
+          creatorUserName: undefined as any,
+          lastModificationTime: undefined as any,
+          lastModifierUserId: undefined as any,
+        };
+      }
     } else {
       // 新增模式 - 初始化并加载默认箱型
       const defaultCtns = await loadDefaultCtns();
