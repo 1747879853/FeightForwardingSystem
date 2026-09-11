@@ -26,8 +26,7 @@ const routes: RouteRecordRaw[] = [
           title: '运价查询',
           authority: abpPageAuthority('Admin.SeFreiPrice'),
         },
-        component: () =>
-          import('#/views/sea-export-admin/freight-rate/list.vue'),
+        component: () => import('#/views/freight-rate/list.vue'),
       },
       {
         path: '/schedule',

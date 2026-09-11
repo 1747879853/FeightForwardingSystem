@@ -2,7 +2,7 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,9 +15,9 @@ last_updated: 2026-09-09
 | :-- | :-- |
 | 页面路由 | `/freight-rate` |
 | 路由名称 | `FreightRateList` |
-| 页面组件 | `src/views/sea-export-admin/freight-rate/list.vue` |
+| 页面组件 | `src/views/freight-rate/list.vue` |
 | 权限口径 | `Admin.SeFreiPrice` / `Admin.SeFreiPrice.Get`（父级另聚合 `Admin.Schedule`） |
-| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/sea-export-admin/freight-rate/list.vue`<br/>`src/views/sea-export-admin/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
+| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/freight-rate/list.vue`<br/>`src/views/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
 | 列持久化 tableId | 列表 `FreightRateList`；批量编辑 `FreightRateBatchEdit`；批量新增 `FreightRateBatchAdd`（经 `gridOptions.id` 注入，常量见 `data.ts`） |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -40,7 +40,7 @@ last_updated: 2026-09-09
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **航线/港口** | 运价适用范围。 | `src/views/sea-export-admin/freight-rate/data.ts` | **触发/依赖：** 影响委托匹配运价。 | 需选择有效基础资料。 |
+| **航线/港口** | 运价适用范围。 | `src/views/freight-rate/data.ts` | **触发/依赖：** 影响委托匹配运价。 | 需选择有效基础资料。 |
 | **箱型费用** | 不同箱型的费率明细。 | `freight-rate/modules/add-ctn-modal.vue` | **触发/依赖：** 与运价主记录关联。 | 金额和币种需合法。 |
 | **运价 API** | 运价后端契约。 | `src/api/sea-export/freight-rate-admin.ts` | **触发/依赖：** 列表、保存、同步更新均依赖该契约。 | 接口字段变化需同步文档。 |
 
@@ -54,6 +54,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Refactor` | 运价查询视图从海运出口目录抽出为独立模块。 | 页面迁至 `src/views/freight-rate/`；路由组件路径同步；API 仍在 `api/sea-export/freight-rate-admin.ts`。 |
 | 2026-09-09 | `Fix` | 进入运价列表首查与切航线/翻页稳定带上有效状态默认「已生效+未生效」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `isValid === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-07-26 | `Fix` | 列表、批量编辑、批量新增三表分别声明 `gridOptions.id`，避免同路由下列配置互相覆盖。 | 此前均回退为路由名 `FreightRateList`；常量集中在 `data.ts`，由 adapter 写入 `columnPersist.tableId`。 |
 | 2026-07-16 | `Refactor` | 「航线管理」下并列「运价查询」「船期查询」；删除独立「船期管理」顶级菜单。 | 父级 `authority` 聚合 `Admin.SeFreiPrice`+`Admin.Schedule`；船期子路由绝对 path `/schedule`。 |
@@ -61,4 +62,4 @@ last_updated: 2026-09-09
 | 2026-07-11 | `Refactor` | 侧边栏由独立「运价管理」改为「航线管理」分组下的「运价查询」子菜单；页面 path 与组件不变。 | `freight-rate.ts` 父级 `title` 为「航线管理」，`order: 190`；子路由 `FreightRateList` title 为「运价查询」。 |
 | 2026-06-12 | `Feature` | 列表航线 Tab 靠左展示，超出时可左右滚动切换，且不再挤占右侧批量操作按钮。 | Tab 区与按钮区分 slot 布局；滚动动画期间只改 DOM，结束后再更新 Vue 滚动状态。 |
 | 2026-06-12 | `Fix` | 批量新增弹窗一次新增多行时改为批量插入并增加 loading 反馈，减轻 10 行级卡顿。 | `insertRowsBatch` 合并 `getFullData` + `loadData` 替代循环 `insertAt`；复制行同步走同一路径。 |
-| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/sea-export-admin/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |
+| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |

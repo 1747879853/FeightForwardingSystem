@@ -122,7 +122,7 @@ onMounted(async () => {
 </template>
 ```
 
-**项目内参考：** `src/views/sea-export-admin/freight-rate/list.vue`、`modules/form.vue`。
+**项目内参考：** `src/views/freight-rate/list.vue`、`modules/form.vue`。
 
 ### 3.2 表单 schema（`data.ts` 模块级预加载）
 
@@ -142,7 +142,7 @@ let statusOptions: Array<{ label: string; value: number }> = [];
 })();
 ```
 
-**项目内参考：** `src/views/sea-export-admin/freight-rate/data.ts`。
+**项目内参考：** `src/views/freight-rate/data.ts`。
 
 ### 3.3 表格列：value 转展示文案
 
