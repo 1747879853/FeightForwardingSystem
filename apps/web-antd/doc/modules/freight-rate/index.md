@@ -54,6 +54,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Style` | 批量更改弹窗主色顶栏与分区卡片对齐新增/编辑风格；单层滚动防末段裁切。 | `sync-update-form.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-batch-update-form-polish.md`。 |
 | 2026-09-11 | `Refactor` | 删除未接线弹窗；按功能重命名剩余 modules 组件。 | 删 `add-ctn`/`batch-edit`/旧 `batch-add`/旧 `sync-update`；`form`→`sync-update-form`，`*-handsontable`→`batch-add-modal`，`edit-form`→`freight-rate-form`，`column-config`→`batch-add-column-config-modal`。详见 `changelogs/change-log-2026-09-11-freight-rate-modules-cleanup-rename.md`。 |
 | 2026-09-11 | `Style` | 新增/编辑弹窗附加费表：序号与费用基础/箱型价分区、条件态反馈。 | `freight-rate-form.vue`（原 `edit-form`）。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md`。 |
 | 2026-09-11 | `Feature` | 批量新增列配置支持分区内拖拽排序，去掉上移/下移按钮。 | `column-config-modal.vue` + `sortablejs`。详见 `changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md`。 |
