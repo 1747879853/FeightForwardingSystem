@@ -1696,8 +1696,8 @@ watch(seaExportId, () => {
 
 .separate-btn-save {
   min-width: 52px;
-  background: #006ce6;
-  border-color: #006ce6;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
 }
 
 .main-split {

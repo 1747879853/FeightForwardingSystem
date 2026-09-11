@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
@@ -1261,7 +1261,7 @@ defineExpose({
 }
 
 .fee-order-table :deep(.ant-table-tbody > tr:hover > td) {
-  background: #f8fbff;
+  background: hsl(var(--primary) / 6%);
 }
 
 /* 展开列样式 */
@@ -1335,7 +1335,7 @@ defineExpose({
 /* 二级表格悬停效果 */
 .fee-order-table
   :deep(.ant-table-expanded-row .ant-table-tbody > tr:hover > td) {
-  background: #f8fbff;
+  background: hsl(var(--primary) / 6%);
 }
 
 /* 收付类型标签样式 */

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
 import { nextTick, onMounted, ref } from 'vue';
@@ -468,11 +468,11 @@ onMounted(() => {
 }
 
 .ps-action-btn-primary {
-  box-shadow: 0 2px 8px rgb(24 144 255 / 30%);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 30%);
 }
 
 .ps-action-btn-primary:hover {
-  box-shadow: 0 4px 12px rgb(24 144 255 / 40%);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 40%);
 }
 
 /* 页面头部右侧：结算单号（设计稿展示于标题栏） */
@@ -497,7 +497,12 @@ onMounted(() => {
 :deep(.info-card.ant-card-small > .ant-card-head) {
   min-height: 56px;
   padding: 0 16px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 60%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 60%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e4e8ef;
 }
 
@@ -546,8 +551,8 @@ onMounted(() => {
 }
 
 .icon-blue {
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
 }
 
 .icon-cyan {
@@ -590,7 +595,7 @@ onMounted(() => {
   font-family: 'DIN Alternate', Roboto, sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
   letter-spacing: -0.3px;
 }
 
@@ -660,8 +665,8 @@ onMounted(() => {
 :deep(.info-card .ant-select-focused .ant-select-selector),
 :deep(.info-card .ant-picker-focused),
 :deep(.info-card .ant-input-number-focused) {
-  border-color: #40a9ff;
-  box-shadow: 0 0 0 2px rgb(24 144 255 / 12%);
+  border-color: hsl(var(--primary) / 75%);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
 }
 
 /* 禁用态：浅灰底 + 浅灰文字（设计稿样式） */
@@ -676,7 +681,7 @@ onMounted(() => {
 /* 银行标签用品牌色区分归属（设计稿：我司银行蓝、对方银行橙） */
 .bank-label-ours {
   font-weight: 500;
-  color: #006ce6;
+  color: hsl(var(--primary));
 }
 
 .bank-label-theirs {
@@ -751,7 +756,7 @@ onMounted(() => {
 
 .detail-btn-add {
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgb(24 144 255 / 25%);
+  box-shadow: 0 2px 6px hsl(var(--primary) / 25%);
 }
 
 /* 附件上传区域样式 */

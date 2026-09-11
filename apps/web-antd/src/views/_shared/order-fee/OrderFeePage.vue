@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import dayjs from 'dayjs';
 import {
   computed,
@@ -1164,7 +1164,12 @@ onMounted(async () => {
   :deep(.ant-card-head) {
     min-height: 48px;
     padding: 0 14px;
-    background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 3%) 70%,
+      hsl(var(--background)) 100%
+    );
     border-bottom: 1px solid #e8ecf3;
   }
 
@@ -1204,8 +1209,8 @@ onMounted(async () => {
   justify-content: center;
   width: 26px;
   height: 26px;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 7px;
 }
 
@@ -1213,7 +1218,7 @@ onMounted(async () => {
   color: #8c95a3;
 
   &:hover {
-    color: #006ce6;
+    color: hsl(var(--primary));
   }
 }
 
@@ -1286,7 +1291,7 @@ onMounted(async () => {
 .info-group[data-group='identity'] .info-field--emphasis .info-field__value {
   font-size: 15px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
   letter-spacing: -0.01em;
 }
 
@@ -1343,7 +1348,12 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e8ecf3;
 }
 
@@ -1357,7 +1367,11 @@ onMounted(async () => {
 .fee-entry-panel__toolbar-mark {
   width: 3px;
   height: 14px;
-  background: linear-gradient(180deg, #0f87ff, #006ce6);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 85%),
+    hsl(var(--primary))
+  );
   border-radius: 2px;
 }
 
@@ -1376,8 +1390,8 @@ onMounted(async () => {
 }
 
 .fee-entry-panel__selection--active {
-  color: #006ce6;
-  background: #e8f3ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
 }
 
 .fee-entry-panel__toolbar-actions {
@@ -1464,12 +1478,12 @@ onMounted(async () => {
 
 .drag-handle:hover .drag-line,
 .drag-handle.dragging .drag-line {
-  background-color: #1890ff;
-  box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 30%);
 }
 
 .drag-handle.dragging .drag-line {
-  box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+  box-shadow: 0 0 8px hsl(var(--primary) / 40%);
 }
 
 .drag-handle-vertical {

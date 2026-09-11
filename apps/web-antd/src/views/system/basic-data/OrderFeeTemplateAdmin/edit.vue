@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-template-admin';
 
 import { ref, onMounted, nextTick, computed, onBeforeUnmount } from 'vue';
@@ -830,8 +830,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
-
-
 /* 矮屏 / 窄屏：压标题行，把高度留给费用明细 */
 @media (max-height: 900px), (max-width: 1280px) {
   .oft-editor {
@@ -899,15 +897,15 @@ onBeforeUnmount(() => {
   background:
     radial-gradient(
       1200px 480px at 0% -10%,
-      rgb(15 135 255 / 7%),
+      hsl(var(--primary) / 7%),
       transparent 55%
     ),
     radial-gradient(
       900px 420px at 100% 0%,
-      rgb(0 108 230 / 5%),
+      hsl(var(--primary) / 5%),
       transparent 50%
     ),
-    #f5f7fb;
+    hsl(var(--background-deep));
 }
 
 .oft-editor__hero {
@@ -918,7 +916,12 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  background: linear-gradient(90deg, #fff 0%, #f8fbff 55%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--primary) / 6%) 55%,
+    hsl(var(--background)) 100%
+  );
   border: 1px solid #e4e8ef;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
@@ -939,9 +942,13 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 40px;
   font-size: 20px;
-  color: #006ce6;
-  background: linear-gradient(135deg, #eaf2ff 0%, #f4f8ff 100%);
-  border: 1px solid #d6e6ff;
+  color: hsl(var(--primary));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 8%) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 25%);
   border-radius: 10px;
 }
 
@@ -1016,7 +1023,12 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 70%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e8ecf3;
 }
 
@@ -1035,7 +1047,11 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   width: 3px;
   height: 16px;
-  background: linear-gradient(180deg, #0f87ff, #006ce6);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 85%),
+    hsl(var(--primary))
+  );
   border-radius: 2px;
 }
 
@@ -1047,8 +1063,8 @@ onBeforeUnmount(() => {
   width: 28px;
   height: 28px;
   font-size: 15px;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 8px;
 }
 
@@ -1101,8 +1117,8 @@ onBeforeUnmount(() => {
   :deep(.ant-input-focused),
   :deep(.ant-select-focused .ant-select-selector),
   :deep(.ant-picker-focused) {
-    border-color: #40a9ff;
-    box-shadow: 0 0 0 2px rgb(24 144 255 / 12%);
+    border-color: hsl(var(--primary) / 75%);
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
   }
 }
 

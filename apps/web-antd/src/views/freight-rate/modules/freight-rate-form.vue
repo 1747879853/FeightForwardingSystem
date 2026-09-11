@@ -2548,7 +2548,12 @@ onMounted(() => {
   justify-content: space-between;
   min-height: 52px;
   padding: 10px 16px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 55%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e4e8ef;
 }
 
@@ -2597,8 +2602,8 @@ onMounted(() => {
   justify-content: center;
   width: 30px;
   height: 30px;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 8px;
 }
 
@@ -2666,13 +2671,13 @@ onMounted(() => {
 }
 
 .mode-chip--active {
-  color: #006ce6;
+  color: hsl(var(--primary));
   background: #fff;
   box-shadow: 0 1px 3px rgb(16 42 83 / 10%);
 }
 
 .mode-chip--active:hover {
-  color: #006ce6;
+  color: hsl(var(--primary));
   background: #fff;
 }
 
@@ -2759,7 +2764,7 @@ table {
 }
 
 .section-body :deep(thead tr) {
-  background: #f4f8ff !important;
+  background: hsl(var(--primary) / 8%) !important;
 }
 
 .section-body :deep(tbody tr) {
@@ -3056,7 +3061,11 @@ input[type='text']:focus {
   color: #475569;
   text-align: center;
   letter-spacing: 0.2px;
-  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 5%) 100%
+  );
   border-bottom: 1px solid #dbe3f0;
 }
 
@@ -3068,7 +3077,11 @@ input[type='text']:focus {
 }
 
 .surcharge-table thead .col-index {
-  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 5%) 100%
+  );
 }
 
 .surcharge-table .col-meta {
@@ -3076,7 +3089,11 @@ input[type='text']:focus {
 }
 
 .surcharge-table thead .col-meta {
-  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 5%) 100%
+  );
 }
 
 .surcharge-table .col-fee {
@@ -3105,7 +3122,7 @@ input[type='text']:focus {
 }
 
 .surcharge-table .col-price--order {
-  background: #f8fbff;
+  background: hsl(var(--primary) / 6%);
 }
 
 .surcharge-table .col-price--condition {
@@ -3123,7 +3140,11 @@ input[type='text']:focus {
 }
 
 .surcharge-table thead .col-action {
-  background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 5%) 100%
+  );
 }
 
 .ctn-chip {
@@ -3132,8 +3153,8 @@ input[type='text']:focus {
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 999px;
 }
 
@@ -3175,7 +3196,7 @@ input[type='text']:focus {
 
 .surcharge-row:hover .row-index {
   color: #fff;
-  background: #006ce6;
+  background: hsl(var(--primary));
 }
 
 .price-cell {
@@ -3284,9 +3305,9 @@ input[type='text']:focus {
 }
 
 .condition-btn:hover {
-  color: #006ce6;
+  color: hsl(var(--primary));
   border-color: #93c5fd;
-  box-shadow: 0 2px 6px rgb(0 108 230 / 16%);
+  box-shadow: 0 2px 6px hsl(var(--primary) / 16%);
   transform: scale(1.06);
 }
 
@@ -3419,9 +3440,9 @@ input[type='text']:focus {
   padding: 0;
   font-size: 12px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
   cursor: pointer;
-  background: #f8fbff;
+  background: hsl(var(--primary) / 6%);
   border: 1px solid #d0d7e2;
   border-radius: 6px;
   transition:
@@ -3431,7 +3452,7 @@ input[type='text']:focus {
 }
 
 .operator-btn:hover {
-  background: #eaf2ff;
+  background: hsl(var(--primary) / 10%);
   border-color: #93c5fd;
   transform: translateY(-1px);
 }

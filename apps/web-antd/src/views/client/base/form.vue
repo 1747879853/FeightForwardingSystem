@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import {
   computed,
   nextTick,
@@ -1975,17 +1975,21 @@ onMounted(() => {
 }
 
 .role-chip--active {
-  background: linear-gradient(135deg, #eaf2ff 0%, #f4f8ff 100%);
-  border-color: #006ce6;
-  box-shadow: 0 0 0 2px rgb(0 108 230 / 12%);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 8%) 100%
+  );
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
 
   :deep(.ant-checkbox-wrapper) {
-    color: #006ce6;
+    color: hsl(var(--primary));
   }
 
   :deep(.ant-checkbox-checked .ant-checkbox-inner) {
-    background-color: #006ce6;
-    border-color: #006ce6;
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
   }
 }
 

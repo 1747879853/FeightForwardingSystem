@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { Plus, Copy, IconifyIcon } from '@vben/icons';
@@ -1227,7 +1227,7 @@ defineExpose({
   width: 40px;
   height: 40px;
   font-size: 20px;
-  color: #006ce6;
+  color: hsl(var(--primary));
   background: #fff;
   border: 1px solid hsl(var(--primary) / 20%);
   border-radius: 10px;
@@ -1265,9 +1265,9 @@ defineExpose({
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #006ce6;
-  background: #eaf2ff;
-  border: 1px solid #d6e6ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border: 1px solid hsl(var(--primary) / 25%);
   border-radius: 999px;
 
   em {
@@ -1301,8 +1301,8 @@ defineExpose({
     background 0.2s ease;
 
   &:hover {
-    color: #006ce6;
-    background: #f4f8ff;
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 8%);
     border-color: #c9dcff;
   }
 }
@@ -1341,7 +1341,12 @@ defineExpose({
   justify-content: space-between;
   min-height: 52px;
   padding: 10px 14px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 55%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e4e8ef;
 }
 
@@ -1360,8 +1365,8 @@ defineExpose({
   width: 28px;
   height: 28px;
   font-size: 15px;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 8px;
 }
 
@@ -1415,8 +1420,8 @@ defineExpose({
     transform 0.2s ease;
 
   &:hover {
-    color: #006ce6;
-    background: #f4f8ff;
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 8%);
     border-color: #c9dcff;
     transform: rotate(45deg);
   }
@@ -1453,7 +1458,7 @@ defineExpose({
   :deep(.handsontable thead th) {
     font-weight: 600;
     color: #252a31;
-    background: #f4f8ff !important;
+    background: hsl(var(--primary) / 8%) !important;
   }
 
   :deep(.handsontable tbody tr:hover td) {

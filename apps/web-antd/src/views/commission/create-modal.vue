@@ -570,15 +570,15 @@ const onConfirmCreate = () => {
   height: 40px;
   padding: 0 16px;
   font-weight: 500;
-  background: #006ce6;
-  border-color: #006ce6;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
   border-radius: 8px;
 }
 
 .filter-btn:hover,
 .filter-btn:focus {
-  background: #0059c2;
-  border-color: #0059c2;
+  background: hsl(var(--primary) / 85%);
+  border-color: hsl(var(--primary) / 85%);
 }
 
 /* ---------- 提示条 ---------- */
@@ -710,7 +710,7 @@ const onConfirmCreate = () => {
 .modal-footer__total {
   font-size: 16px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
 }
 
 .modal-footer__warn {

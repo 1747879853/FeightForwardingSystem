@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type {
   BatchEditSeFreiPriceInput,
   SeFreiPriceCtnAddDto,
@@ -1710,7 +1710,7 @@ onMounted(async () => {
   width: 40px;
   height: 40px;
   font-size: 20px;
-  color: #006ce6;
+  color: hsl(var(--primary));
   background: #fff;
   border: 1px solid hsl(var(--primary) / 20%);
   border-radius: 10px;
@@ -1741,9 +1741,9 @@ onMounted(async () => {
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #006ce6;
-  background: #eaf2ff;
-  border: 1px solid #d6e6ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border: 1px solid hsl(var(--primary) / 25%);
   border-radius: 999px;
 
   em {
@@ -1786,7 +1786,12 @@ onMounted(async () => {
   justify-content: space-between;
   min-height: 52px;
   padding: 10px 14px;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 55%,
+    hsl(var(--background)) 100%
+  );
   border-bottom: 1px solid #e4e8ef;
 }
 
@@ -1804,8 +1809,8 @@ onMounted(async () => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 8px;
 
   &.icon-teal {
@@ -1925,12 +1930,12 @@ onMounted(async () => {
   }
 
   &--active {
-    color: #006ce6;
+    color: hsl(var(--primary));
     background: #fff;
     box-shadow: 0 1px 3px rgb(16 42 83 / 10%);
 
     &:hover {
-      color: #006ce6;
+      color: hsl(var(--primary));
       background: #fff;
     }
   }
@@ -1984,7 +1989,7 @@ onMounted(async () => {
   }
 
   thead tr {
-    background: #f4f8ff;
+    background: hsl(var(--primary) / 8%);
   }
 
   th {
@@ -2028,7 +2033,7 @@ onMounted(async () => {
 
   &:focus {
     outline: none;
-    border-color: #006ce6;
+    border-color: hsl(var(--primary));
     box-shadow: 0 0 0 2px hsl(var(--primary) / 15%);
   }
 }
@@ -2107,7 +2112,7 @@ input[type='number'] {
     box-shadow 0.25s ease;
 
   &:hover {
-    border-color: #c9dcff;
+    border-color: hsl(var(--primary) / 25%);
     box-shadow: 0 4px 12px rgb(16 42 83 / 8%);
   }
 }
@@ -2119,7 +2124,11 @@ input[type='number'] {
   left: 0;
   width: 3px;
   content: '';
-  background: linear-gradient(to bottom, #006ce6, #60a5fa);
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 65%)
+  );
   border-radius: 8px 0 0 8px;
 }
 
@@ -2282,7 +2291,11 @@ input[type='number'] {
     color: #475569;
     text-align: center;
     letter-spacing: 0.2px;
-    background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 5%) 100%
+    );
     border-bottom: 1px solid #dbe3f0;
   }
 
@@ -2294,7 +2307,11 @@ input[type='number'] {
   }
 
   thead .col-index {
-    background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 5%) 100%
+    );
   }
 
   .col-meta {
@@ -2302,7 +2319,11 @@ input[type='number'] {
   }
 
   thead .col-meta {
-    background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 5%) 100%
+    );
   }
 
   .col-fee {
@@ -2331,7 +2352,7 @@ input[type='number'] {
   }
 
   .col-price--order {
-    background: #f8fbff;
+    background: hsl(var(--primary) / 6%);
   }
 
   .col-price--condition {
@@ -2349,7 +2370,11 @@ input[type='number'] {
   }
 
   thead .col-action {
-    background: linear-gradient(180deg, #f4f8ff 0%, #eef3fb 100%);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 5%) 100%
+    );
   }
 }
 
@@ -2359,8 +2384,8 @@ input[type='number'] {
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #006ce6;
-  background: #eaf2ff;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
   border-radius: 999px;
 }
 
@@ -2402,7 +2427,7 @@ input[type='number'] {
 
     .row-index {
       color: #fff;
-      background: #006ce6;
+      background: hsl(var(--primary));
     }
   }
 }
@@ -2512,9 +2537,9 @@ input[type='number'] {
     box-shadow 0.15s ease;
 
   &:hover {
-    color: #006ce6;
+    color: hsl(var(--primary));
     border-color: #93c5fd;
-    box-shadow: 0 2px 6px rgb(0 108 230 / 16%);
+    box-shadow: 0 2px 6px hsl(var(--primary) / 16%);
     transform: scale(1.06);
   }
 
@@ -2644,9 +2669,9 @@ input[type='number'] {
   padding: 0;
   font-size: 12px;
   font-weight: 700;
-  color: #006ce6;
+  color: hsl(var(--primary));
   cursor: pointer;
-  background: #f8fbff;
+  background: hsl(var(--primary) / 6%);
   border: 1px solid #d0d7e2;
   border-radius: 6px;
   transition:
@@ -2655,7 +2680,7 @@ input[type='number'] {
     transform 0.12s ease;
 
   &:hover {
-    background: #eaf2ff;
+    background: hsl(var(--primary) / 10%);
     border-color: #93c5fd;
     transform: translateY(-1px);
   }

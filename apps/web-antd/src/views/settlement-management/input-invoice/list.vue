@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -375,7 +375,12 @@ const onGroupFieldChange = (value: number | undefined) => {
   margin-top: 12px;
   font-size: 13px;
   color: #52607a;
-  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--background)) 55%,
+    hsl(var(--primary) / 6%) 100%
+  );
   border: 1px solid #e8ecf3;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
