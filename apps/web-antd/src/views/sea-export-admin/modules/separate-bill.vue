@@ -30,6 +30,11 @@ import {
   editSeparate,
   getSeparatePagedList,
 } from '#/api/sea-export/sea-export-separate-admin';
+import {
+  PrintFormatBizType,
+  PrintJsonType,
+  usePrintFormat,
+} from '#/components/print-format';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import {
@@ -69,6 +74,8 @@ const seaExportId = computed(() => seaExportIdRef.value ?? '');
 const loading = ref(false);
 const submitting = ref(false);
 const copying = ref(false);
+const printing = ref(false);
+const { openPrint } = usePrintFormat();
 const dataSource = ref<SeaExportSeparateAdminApi.SeparateDto[]>([]);
 const activeTabKey = ref<string>(DRAFT_KEY);
 const editingId = ref<string | undefined>();
@@ -642,6 +649,51 @@ const handleCopy = async () => {
   }
 };
 
+const handlePrint = async () => {
+  if (printing.value) return;
+  if (!editingId.value) {
+    message.warning($t('seaExport.export.separate.printSaveFirst'));
+    return;
+  }
+  if (isDirty()) {
+    const proceedUnsaved = await confirmModal(
+      $t('seaExport.export.separate.printUnsavedTitle'),
+      $t('seaExport.export.separate.printUnsavedContent'),
+    );
+    if (!proceedUnsaved) return;
+  }
+
+  printing.value = true;
+  const hideLoading = message.loading({
+    content: $t('seaExport.export.separate.printPreparing'),
+    duration: 0,
+    key: 'sea_export_separate_print_msg',
+  });
+  try {
+    if (!masterDetail.value && seaExportId.value) {
+      await loadMasterDetail();
+    }
+    const saved = dataSource.value.find(
+      (item) => String(item.id) === String(editingId.value),
+    );
+    const se = masterDetail.value;
+    hideLoading();
+    openPrint({
+      printJsonType: PrintJsonType.SeaExportSeparateDetail,
+      codeIssueTypeId: saved?.codeIssueTypeId ?? se?.codeIssueTypeId ?? null,
+      carrierId: se?.carrierId ?? null,
+      orgId: se?.orgId ?? null,
+      bizType: PrintFormatBizType.SeaExport,
+      detailInput: { id: String(editingId.value) },
+    });
+  } catch {
+    hideLoading();
+    message.error($t('seaExport.export.separate.printPrepareFailed'));
+  } finally {
+    printing.value = false;
+  }
+};
+
 const handleDelete = () => {
   if (!editingId.value) return;
   Modal.confirm({
@@ -776,6 +828,14 @@ watch(seaExportId, () => {
               @click="handleCopy"
             >
               {{ $t('seaExport.export.separate.copy') }}
+            </Button>
+            <Button
+              size="small"
+              :disabled="!editingId"
+              :loading="printing"
+              @click="handlePrint"
+            >
+              {{ $t('seaExport.export.separate.print') }}
             </Button>
             <Button
               size="small"

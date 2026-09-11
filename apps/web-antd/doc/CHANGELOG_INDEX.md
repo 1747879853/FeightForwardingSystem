@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 海运出口分单对接独立打印数据源](./changelogs/change-log-2026-09-11-sea-export-separate-print.md)
 - [2026-09-11 运价批量更改弹窗视觉分区优化](./changelogs/change-log-2026-09-11-freight-rate-batch-update-form-polish.md)
 - [2026-09-11 运价 modules 删除未引用组件并按功能重命名](./changelogs/change-log-2026-09-11-freight-rate-modules-cleanup-rename.md)
 - [2026-09-11 运价新增/编辑附加费表格分区样式优化](./changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md)

@@ -22,6 +22,8 @@ export enum PrintFormatBizType {
 export enum PrintJsonType {
   /** 海运出口详情 */
   SeaExportDetail = 0,
+  /** 海运出口分单详情 */
+  SeaExportSeparateDetail = 500,
   /** 应收费用列表 */
   RecOrderFeeList = 1000,
   /** 应付费用列表 */
