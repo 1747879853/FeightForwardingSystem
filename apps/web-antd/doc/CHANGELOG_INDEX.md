@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-11 运价新增/编辑附加费表格分区样式优化](./changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md)
 - [2026-09-11 运价批量新增列配置改为拖拽排序](./changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md)
 - [2026-09-11 运价批量新增弹窗视觉分区优化](./changelogs/change-log-2026-09-11-freight-rate-batch-add-modal-polish.md)
 - [2026-09-11 运价列表页代码清理与结构规范化](./changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md)

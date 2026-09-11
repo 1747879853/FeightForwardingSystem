@@ -54,6 +54,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Style` | 新增/编辑弹窗附加费表：序号与费用基础/箱型价分区、条件态反馈。 | `edit-form.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-surcharge-table-polish.md`。 |
 | 2026-09-11 | `Feature` | 批量新增列配置支持分区内拖拽排序，去掉上移/下移按钮。 | `column-config-modal.vue` + `sortablejs`。详见 `changelogs/change-log-2026-09-11-freight-rate-column-config-drag.md`。 |
 | 2026-09-11 | `Style` | 批量新增弹窗主色顶栏与运价明细分区卡片对齐单条编辑风格。 | `batch-add-modal-handsontable.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-batch-add-modal-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价列表清理死代码；复制改为编辑表单预填新增；厘清「更新」与「批量更改」入口。 | `list.vue` + `data.ts` + `edit-form` 的 `copyId`。详见 `changelogs/change-log-2026-09-11-freight-rate-list-cleanup.md`。 |
