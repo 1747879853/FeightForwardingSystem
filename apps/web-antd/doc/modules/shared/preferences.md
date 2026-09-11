@@ -2,7 +2,7 @@
 title: 全局偏好覆盖
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-09-10
+last_updated: 2026-09-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,7 +13,8 @@ last_updated: 2026-09-10
 # 2. 功能与操作说明 (Features & Operations)
 
 - **主题圆角：** `theme.radius` 控制全站组件圆角强度；当前默认 `0.5`（相对原先 `1` 更紧凑）。
-- **配置生效：** 修改本文件后，除 Logo、站点名外多数项仍可能被本地 preferences 缓存覆盖；`logo.source` 与 `app.name` 等构建期字段启动时已强制用 overrides，换品牌包/改 `VITE_APP_TITLE` 后无需再为这两项清缓存。
+- **配置生效：** 修改本文件后，除 Logo、站点名外多数项仍可能被本地 preferences 缓存覆盖；`logo.source`、`logo.fullSource` 与 `app.name` 等构建期字段启动时已强制用 overrides，换品牌包/改 `VITE_APP_TITLE` 后无需再为这几项清缓存。
+- **浩瀚远洋顶栏 Logo：** `logo.fullSource` 指向 `/logo-text.png`，顶栏只显示整张横版图，不再拼「方形 logo + 站点名」；其他品牌不设该字段，保持原拼法。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -26,15 +27,17 @@ last_updated: 2026-09-10
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **theme.radius** | 主题圆角系数 | **前端偏好**<br/>`preferences.ts` | **触发：** 影响全站 Ant/Vben 组件圆角 | 字符串数值，如 `'0.5'`、`'1'` |
+| **logo.fullSource** | 顶栏横版整图 | **品牌资源**<br/>hhyy 为 `/logo-text.png` | **触发：** 有值且未收起时不再拼方标+站点名 | 仅 hhyy 赋值，其他品牌为空 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
-> [!IMPORTANT] **[卡点 1：本地缓存覆盖默认值]** 用户本地已缓存 preferences 时 -> 仅改源码默认值可能不生效，需清缓存或重置偏好。`logo.source` 与 `app.name` 已在 `initPreferences` 强制跟 overrides，避免 hash 路径跨包 404 以及改 `VITE_APP_TITLE` 后页签仍显示旧品牌名。
+> [!IMPORTANT] **[卡点 1：本地缓存覆盖默认值]** 用户本地已缓存 preferences 时 -> 仅改源码默认值可能不生效，需清缓存或重置偏好。`logo.source`、`logo.fullSource` 与 `app.name` 已在 `initPreferences` 强制跟 overrides，避免 hash 路径跨包 404、改 `VITE_APP_TITLE` 后页签仍显示旧品牌名，以及 hhyy 顶栏整图被旧拼法粘住。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Feature` | 浩瀚远洋顶栏左上角改为整张 `logo-text.png`，不再拼方形 logo + 站点名。 | `logo.fullSource` 仅 hhyy 赋值 `/logo-text.png`；`VbenLogo` 有值且未收起时只渲染横版图。详见 [变更日志](../../changelogs/change-log-2026-09-11-hhyy-header-logo-text.md)。 |
 | 2026-09-10 | `Fix` | 改 `VITE_APP_TITLE` 后登录页/页签/侧栏不再被 localStorage 旧站点名粘住。 | defu 合并缓存优先；`initPreferences` 强制回写 `overrides.app.name`。详见 [变更日志](../../changelogs/change-log-2026-09-10-app-name-prefer-overrides.md)。 |
 | 2026-08-11 | `Fix` | 修复换品牌包后侧栏 Logo 请求旧 hash（如 `/png/logo-GZsaIQKl.png`）404。 | `brandLogo` 改为 public `/logo.png`；`initPreferences` 强制 overrides。详见 [变更日志](../../changelogs/change-log-2026-08-11-brand-logo-prefer-overrides.md)。 |
 | 2026-08-11 | `Chore` | 更新龙山品牌资源 `assets/img/longshan/logo.png` | — |

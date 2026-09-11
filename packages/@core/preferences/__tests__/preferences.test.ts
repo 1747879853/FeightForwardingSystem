@@ -223,6 +223,22 @@ describe('preferences', () => {
     expect(manager.getPreferences().app.name).toBe('青港国际');
   });
 
+  it('forces logo.fullSource from overrides over cached preferences', async () => {
+    const namespace = 'test-logo-full-source-override';
+    localStorage.setItem(
+      `${namespace}-preferences`,
+      JSON.stringify({ value: { logo: { source: '/logo.png' } } }),
+    );
+
+    const manager = new PreferenceManager();
+    await manager.initPreferences({
+      namespace,
+      overrides: { logo: { fullSource: '/logo-text.png' } },
+    });
+
+    expect(manager.getPreferences().logo.fullSource).toBe('/logo-text.png');
+  });
+
   it('applies updates immediately after initialization', async () => {
     const overrides: any = {
       app: {

@@ -271,6 +271,7 @@ const headerSlots = computed(() => {
         :collapsed="logoCollapsed"
         :src="preferences.logo.source"
         :src-dark="preferences.logo.sourceDark"
+        :full-src="preferences.logo.fullSource"
         :text="preferences.app.name"
         :theme="showHeaderNav ? headerTheme : theme"
         @click="clickLogo"
@@ -364,6 +365,7 @@ const headerSlots = computed(() => {
         :fit="preferences.logo.fit"
         :text="preferences.app.name"
         :theme="theme"
+        :full-src="preferences.logo.fullSource"
       >
         <template v-if="$slots['logo-text']" #text>
           <slot name="logo-text"></slot>

@@ -148,6 +148,10 @@ interface LogoPreferences {
   source: string;
   /** 暗色主题logo地址 (可选，若不设置则使用 source) */
   sourceDark?: string;
+  /**
+   * 横版整图 Logo。有值且未收起时只显示该图，不再拼「方形图标 + 站点名」
+   */
+  fullSource?: string;
 }
 
 interface NavigationPreferences {

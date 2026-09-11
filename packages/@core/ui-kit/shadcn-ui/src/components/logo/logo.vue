@@ -36,6 +36,10 @@ interface Props {
    * @zh_CN Logo 主题
    */
   theme?: string;
+  /**
+   * @zh_CN 横版整图 Logo。有值且未收起时只显示该图，不再拼方形图标 + 文本
+   */
+  fullSrc?: string;
 }
 
 defineOptions({
@@ -48,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
   logoSize: 32,
   src: '',
   srcDark: '',
+  fullSrc: '',
   theme: 'light',
   fit: 'cover',
 });
@@ -63,6 +68,8 @@ const logoSrc = computed(() => {
   // 否则使用默认的 src
   return props.src;
 });
+
+const showFullLogo = computed(() => Boolean(props.fullSrc) && !props.collapsed);
 </script>
 
 <template>
@@ -72,20 +79,28 @@ const logoSrc = computed(() => {
       :href="href"
       class="flex h-full items-center gap-2 overflow-hidden px-3 text-lg leading-normal transition-all duration-500"
     >
-      <VbenAvatar
-        v-if="logoSrc"
+      <img
+        v-if="showFullLogo"
         :alt="text"
-        :src="logoSrc"
-        :size="logoSize"
-        :fit="fit"
-        class="relative rounded-none bg-transparent"
+        :src="fullSrc"
+        class="h-8 w-auto max-w-[220px] object-contain object-left"
       />
-      <template v-if="!collapsed">
-        <slot name="text">
-          <span class="truncate text-nowrap font-semibold text-foreground">
-            {{ text }}
-          </span>
-        </slot>
+      <template v-else>
+        <VbenAvatar
+          v-if="logoSrc"
+          :alt="text"
+          :src="logoSrc"
+          :size="logoSize"
+          :fit="fit"
+          class="relative rounded-none bg-transparent"
+        />
+        <template v-if="!collapsed">
+          <slot name="text">
+            <span class="truncate text-nowrap font-semibold text-foreground">
+              {{ text }}
+            </span>
+          </slot>
+        </template>
       </template>
     </a>
   </div>

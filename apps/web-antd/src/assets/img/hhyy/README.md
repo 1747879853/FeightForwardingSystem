@@ -5,8 +5,8 @@
 
 | 文件             | 用途                                                      |
 | ---------------- | --------------------------------------------------------- |
-| `logo.png`       | 侧栏 / 系统偏好 Logo                                      |
-| `logo-text.png`  | 首屏 Loading、路由切换 Loading                            |
+| `logo.png`       | 侧栏折叠态 / 系统偏好方形 Logo                            |
+| `logo-text.png`  | 顶栏整图 Logo、首屏 Loading、路由切换 Loading             |
 | `logo-login.png` | 登录页 `auth-title-logo`                                  |
 | `favicon.png`    | 浏览器标签页图标（可选，缺省则回退 `public/favicon.png`） |
 

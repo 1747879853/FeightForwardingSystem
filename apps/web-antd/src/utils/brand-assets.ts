@@ -78,6 +78,12 @@ export const brandLogo = pickBrandAsset(
   '/logo.webp',
 );
 
+/**
+ * 顶栏整图 Logo（有值时不再拼「方形 logo + 站点名」）。
+ * 使用 public 稳定路径，避免 preferences 缓存 vite hash 后换包 404。
+ */
+export const brandLayoutLogoFull = isHhyyBrand ? '/logo-text.png' : undefined;
+
 /** 首屏与路由 Loading 使用的横版文字 Logo */
 export const brandLogoText = pickBrandAsset(
   {

@@ -1,6 +1,10 @@
 import { defineOverridesPreferences } from '@vben/preferences';
 
-import { brandLogo, isHhyyBrand } from '#/utils/brand-assets';
+import {
+  brandLayoutLogoFull,
+  brandLogo,
+  isHhyyBrand,
+} from '#/utils/brand-assets';
 
 /**
  * @description 项目配置文件
@@ -50,5 +54,6 @@ export const overridesPreferences = defineOverridesPreferences({
   logo: {
     source: brandLogo,
     fit: 'contain',
+    fullSource: brandLayoutLogoFull,
   },
 });
