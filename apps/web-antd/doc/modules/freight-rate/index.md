@@ -54,6 +54,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-11 | `Style` | 运价新增/编辑弹窗分区卡片与有效期横幅对齐系统风格。 | `edit-form.vue`：主色浅底横幅、图标标题栏、chip 模式切换、sticky 底栏。详见 `changelogs/change-log-2026-09-11-freight-rate-edit-form-polish.md`。 |
 | 2026-09-11 | `Refactor` | 运价查询视图从海运出口目录抽出为独立模块。 | 页面迁至 `src/views/freight-rate/`；路由组件路径同步；API 仍在 `api/sea-export/freight-rate-admin.ts`。 |
 | 2026-09-09 | `Fix` | 进入运价列表首查与切航线/翻页稳定带上有效状态默认「已生效+未生效」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `isValid === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-07-26 | `Fix` | 列表、批量编辑、批量新增三表分别声明 `gridOptions.id`，避免同路由下列配置互相覆盖。 | 此前均回退为路由名 `FreightRateList`；常量集中在 `data.ts`，由 adapter 写入 `columnPersist.tableId`。 |

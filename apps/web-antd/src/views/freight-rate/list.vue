@@ -59,8 +59,8 @@ import {
 } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
-import EditForm from './modules/editForm.vue';
-import BatchAddModal from './modules/batch-add-modal-handsantable.vue';
+import EditForm from './modules/edit-form.vue';
+import BatchAddModal from './modules/batch-add-modal-handsontable.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
@@ -607,7 +607,7 @@ function onBatchEditModal() {
     return;
   }
 
-  // 将选中的数据传递给 batch-add-modal-handsantable 组件
+  // 将选中的数据传递给 batch-add-modal-handsontable 组件
   // 需要将数据转换为 AI 数据的格式
   const editData = records.map((row) => {
     // 从子表读取日期时间数据（取第一项）

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type {
   AddSeFreiPriceInput,
   EditSeFreiPriceInput,
@@ -1412,17 +1412,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <Modal title="运价信息" class="w-[1400px]" :footer="false">
+  <Modal
+    title="运价信息"
+    class="freight-edit-form-modal w-[1400px]"
+    :footer="false"
+  >
     <div class="edit-form-container">
       <!-- 有效期醒目提示区域 -->
       <div class="validity-period-banner">
         <div class="banner-icon">
-          <IconifyIcon icon="mdi:calendar-clock" class="size-8" />
+          <IconifyIcon icon="mdi:calendar-clock" class="size-7" />
         </div>
         <div class="banner-content">
-          <div class="banner-title">请设置运价有效期</div>
+          <div class="banner-title">运价有效期</div>
           <div class="banner-subtitle">
-            有效起始日期和截止日期为必填项，请务必准确填写
+            起始与截止日期为必填项，请准确填写后再维护下方费率信息
           </div>
         </div>
         <div class="banner-fields">
@@ -1457,288 +1461,314 @@ onMounted(() => {
       </div>
 
       <!-- 基础信息 -->
-      <div class="form-section">
-        <h3 class="section-title">基础信息</h3>
-        <Form />
-      </div>
+      <section class="form-section">
+        <header class="section-header">
+          <div class="section-title">
+            <div class="section-title-icon">
+              <IconifyIcon
+                icon="mdi:card-account-details-outline"
+                class="size-4"
+              />
+            </div>
+            <span class="section-title-text">基础信息</span>
+          </div>
+        </header>
+        <div class="section-body">
+          <Form />
+        </div>
+      </section>
 
       <!-- 日期时间设置（独立模块） -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <span>日期时间设置</span>
-          <div class="flex items-center gap-2">
-            <!-- 模式切换按钮 -->
+      <section class="form-section">
+        <header class="section-header">
+          <div class="section-title">
+            <div class="section-title-icon icon-teal">
+              <IconifyIcon icon="mdi:calendar-clock-outline" class="size-4" />
+            </div>
+            <span class="section-title-text">日期时间设置</span>
+          </div>
+          <div class="section-actions">
+            <div class="mode-switch">
+              <button
+                type="button"
+                class="mode-chip"
+                :class="{ 'mode-chip--active': dateEditMode === 'date' }"
+                @click="switchToDateMode"
+              >
+                <IconifyIcon icon="mdi:calendar-range" class="size-4" />
+                日期模式
+              </button>
+              <button
+                type="button"
+                class="mode-chip"
+                :class="{ 'mode-chip--active': dateEditMode === 'week' }"
+                @click="switchToWeekMode"
+              >
+                <IconifyIcon icon="mdi:calendar-weekend" class="size-4" />
+                星期模式
+              </button>
+            </div>
             <Button
-              :type="dateEditMode === 'date' ? 'primary' : 'default'"
+              type="link"
               size="small"
-              @click="switchToDateMode"
-              :class="{
-                'mode-btn-active': dateEditMode === 'date',
-                'mode-btn-inactive': dateEditMode !== 'date',
-              }"
+              class="add-group-btn"
+              @click="addDateGroup"
             >
-              <IconifyIcon icon="mdi:calendar-range" class="mr-1 size-4" />
-              日期模式
-            </Button>
-            <Button
-              :type="dateEditMode === 'week' ? 'primary' : 'default'"
-              size="small"
-              @click="switchToWeekMode"
-              :class="{
-                'mode-btn-active': dateEditMode === 'week',
-                'mode-btn-inactive': dateEditMode !== 'week',
-              }"
-            >
-              <IconifyIcon icon="mdi:calendar-weekend" class="mr-1 size-4" />
-              星期模式
-            </Button>
-            <!-- 添加按钮 -->
-            <Button type="link" size="small" @click="addDateGroup">
-              <IconifyIcon icon="mdi:plus" class="size-4" />
+              <IconifyIcon icon="mdi:plus-circle-outline" class="size-4" />
               添加一组
             </Button>
           </div>
-        </h3>
+        </header>
 
-        <!-- 日期模式 -->
-        <div v-if="dateEditMode === 'date'">
-          <div v-if="etdList.length === 0" class="empty-tip">
-            暂无日期数据，请点击"添加一组"按钮添加
-          </div>
-          <div v-else class="sub-table">
-            <div
-              v-for="(dateGroup, index) in etdList"
-              :key="index"
-              class="sub-table-row date-group-row"
-            >
-              <div class="date-group-content">
-                <!-- 开船日期 -->
-                <div class="date-field">
-                  <label class="field-label">
-                    <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
-                    开船日期
-                  </label>
-                  <DatePicker
-                    v-model:value="dateGroup.etd"
-                    placeholder="请选择开船日期"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                    style="width: 100%"
-                  />
-                </div>
-                <!-- 截单时间 -->
-                <div class="date-field">
-                  <label class="field-label">
-                    <IconifyIcon
-                      icon="mdi:file-document-check"
-                      class="mr-1 size-4"
-                    />
-                    截单时间
-                  </label>
-                  <DatePicker
-                    v-model:value="dateGroup.closeDocTime"
-                    placeholder="请选择截单时间"
-                    format="YYYY-MM-DD HH:mm"
-                    value-format="YYYY-MM-DD HH:mm"
-                    show-time
-                    :time-picker-props="{ format: 'HH:mm' }"
-                    style="width: 100%"
-                  />
-                </div>
-                <!-- 截关时间 -->
-                <div class="date-field">
-                  <label class="field-label">
-                    <IconifyIcon
-                      icon="mdi:container-lock"
-                      class="mr-1 size-4"
-                    />
-                    截关时间
-                  </label>
-                  <DatePicker
-                    v-model:value="dateGroup.closingTime"
-                    placeholder="请选择截关时间"
-                    format="YYYY-MM-DD HH:mm"
-                    value-format="YYYY-MM-DD HH:mm"
-                    show-time
-                    :time-picker-props="{ format: 'HH:mm' }"
-                    style="width: 100%"
-                  />
-                </div>
-              </div>
-              <Button
-                type="link"
-                danger
-                size="small"
-                @click="removeDateGroup(index)"
-                class="delete-btn"
-              >
-                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-              </Button>
+        <div class="section-body">
+          <!-- 日期模式 -->
+          <div v-if="dateEditMode === 'date'">
+            <div v-if="etdList.length === 0" class="empty-tip">
+              暂无日期数据，请点击「添加一组」按钮添加
             </div>
-          </div>
-        </div>
-
-        <!-- 星期模式 -->
-        <div v-if="dateEditMode === 'week'">
-          <div v-if="etdDayList.length === 0" class="empty-tip">
-            暂无星期数据，请点击"添加一组"按钮添加
-          </div>
-          <div v-else class="sub-table">
-            <div
-              v-for="(weekGroup, index) in etdDayList"
-              :key="index"
-              class="sub-table-row week-group-row"
-            >
-              <div class="week-group-content">
-                <!-- 开船星期组 -->
-                <div class="week-pair">
-                  <div class="week-field">
+            <div v-else class="sub-table">
+              <div
+                v-for="(dateGroup, index) in etdList"
+                :key="index"
+                class="sub-table-row date-group-row"
+              >
+                <div class="date-group-content">
+                  <!-- 开船日期 -->
+                  <div class="date-field">
                     <label class="field-label">
                       <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
-                      开船星期
+                      开船日期
                     </label>
-                    <Select
-                      v-model:value="weekGroup.etdDayOfWeek"
-                      placeholder="请选择"
-                      style="width: 100%"
-                      :options="[
-                        { label: '周日', value: 0 },
-                        { label: '周一', value: 1 },
-                        { label: '周二', value: 2 },
-                        { label: '周三', value: 3 },
-                        { label: '周四', value: 4 },
-                        { label: '周五', value: 5 },
-                        { label: '周六', value: 6 },
-                      ]"
-                    />
-                  </div>
-                </div>
-
-                <!-- 截单星期组 -->
-                <div class="week-pair">
-                  <div class="week-field">
-                    <label class="field-label">
-                      <IconifyIcon
-                        icon="mdi:clock-outline"
-                        class="mr-1 size-4"
-                      />
-                      时间点
-                    </label>
-                    <TimePicker
-                      v-model:value="weekGroup.etdDayTime"
-                      placeholder="请选择"
-                      format="HH:mm"
-                      value-format="HH:mm:ss"
+                    <DatePicker
+                      v-model:value="dateGroup.etd"
+                      placeholder="请选择开船日期"
+                      format="YYYY-MM-DD"
+                      value-format="YYYY-MM-DD"
                       style="width: 100%"
                     />
                   </div>
-                </div>
-
-                <!-- 截单星期组 -->
-                <div class="week-pair">
-                  <div class="week-field">
+                  <!-- 截单时间 -->
+                  <div class="date-field">
                     <label class="field-label">
                       <IconifyIcon
                         icon="mdi:file-document-check"
                         class="mr-1 size-4"
                       />
-                      截单星期
+                      截单时间
                     </label>
-                    <Select
-                      v-model:value="weekGroup.closeDocDayOfWeek"
-                      placeholder="请选择"
-                      style="width: 100%"
-                      :options="[
-                        { label: '周日', value: 0 },
-                        { label: '周一', value: 1 },
-                        { label: '周二', value: 2 },
-                        { label: '周三', value: 3 },
-                        { label: '周四', value: 4 },
-                        { label: '周五', value: 5 },
-                        { label: '周六', value: 6 },
-                      ]"
-                    />
-                  </div>
-                  <div class="week-field">
-                    <label class="field-label">
-                      <IconifyIcon
-                        icon="mdi:clock-outline"
-                        class="mr-1 size-4"
-                      />
-                      时间点
-                    </label>
-                    <TimePicker
-                      v-model:value="weekGroup.closeDocDayTime"
-                      placeholder="请选择"
-                      format="HH:mm"
-                      value-format="HH:mm:ss"
+                    <DatePicker
+                      v-model:value="dateGroup.closeDocTime"
+                      placeholder="请选择截单时间"
+                      format="YYYY-MM-DD HH:mm"
+                      value-format="YYYY-MM-DD HH:mm"
+                      show-time
+                      :time-picker-props="{ format: 'HH:mm' }"
                       style="width: 100%"
                     />
                   </div>
-                </div>
-
-                <!-- 截关星期组 -->
-                <div class="week-pair">
-                  <div class="week-field">
+                  <!-- 截关时间 -->
+                  <div class="date-field">
                     <label class="field-label">
                       <IconifyIcon
                         icon="mdi:container-lock"
                         class="mr-1 size-4"
                       />
-                      截关星期
+                      截关时间
                     </label>
-                    <Select
-                      v-model:value="weekGroup.closingDayOfWeek"
-                      placeholder="请选择"
-                      style="width: 100%"
-                      :options="[
-                        { label: '周日', value: 0 },
-                        { label: '周一', value: 1 },
-                        { label: '周二', value: 2 },
-                        { label: '周三', value: 3 },
-                        { label: '周四', value: 4 },
-                        { label: '周五', value: 5 },
-                        { label: '周六', value: 6 },
-                      ]"
-                    />
-                  </div>
-                  <div class="week-field">
-                    <label class="field-label">
-                      <IconifyIcon
-                        icon="mdi:clock-outline"
-                        class="mr-1 size-4"
-                      />
-                      时间点
-                    </label>
-                    <TimePicker
-                      v-model:value="weekGroup.closingDayTime"
-                      placeholder="请选择"
-                      format="HH:mm"
-                      value-format="HH:mm:ss"
+                    <DatePicker
+                      v-model:value="dateGroup.closingTime"
+                      placeholder="请选择截关时间"
+                      format="YYYY-MM-DD HH:mm"
+                      value-format="YYYY-MM-DD HH:mm"
+                      show-time
+                      :time-picker-props="{ format: 'HH:mm' }"
                       style="width: 100%"
                     />
                   </div>
                 </div>
+                <Button
+                  type="link"
+                  danger
+                  size="small"
+                  @click="removeDateGroup(index)"
+                  class="delete-btn"
+                >
+                  <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+                </Button>
               </div>
-              <Button
-                type="link"
-                danger
-                size="small"
-                @click="removeWeekGroup(index)"
-                class="delete-btn"
+            </div>
+          </div>
+
+          <!-- 星期模式 -->
+          <div v-if="dateEditMode === 'week'">
+            <div v-if="etdDayList.length === 0" class="empty-tip">
+              暂无星期数据，请点击「添加一组」按钮添加
+            </div>
+            <div v-else class="sub-table">
+              <div
+                v-for="(weekGroup, index) in etdDayList"
+                :key="index"
+                class="sub-table-row week-group-row"
               >
-                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-              </Button>
+                <div class="week-group-content">
+                  <!-- 开船星期组 -->
+                  <div class="week-pair">
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:ship-wheel"
+                          class="mr-1 size-4"
+                        />
+                        开船星期
+                      </label>
+                      <Select
+                        v-model:value="weekGroup.etdDayOfWeek"
+                        placeholder="请选择"
+                        style="width: 100%"
+                        :options="[
+                          { label: '周日', value: 0 },
+                          { label: '周一', value: 1 },
+                          { label: '周二', value: 2 },
+                          { label: '周三', value: 3 },
+                          { label: '周四', value: 4 },
+                          { label: '周五', value: 5 },
+                          { label: '周六', value: 6 },
+                        ]"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- 截单星期组 -->
+                  <div class="week-pair">
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:clock-outline"
+                          class="mr-1 size-4"
+                        />
+                        时间点
+                      </label>
+                      <TimePicker
+                        v-model:value="weekGroup.etdDayTime"
+                        placeholder="请选择"
+                        format="HH:mm"
+                        value-format="HH:mm:ss"
+                        style="width: 100%"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- 截单星期组 -->
+                  <div class="week-pair">
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:file-document-check"
+                          class="mr-1 size-4"
+                        />
+                        截单星期
+                      </label>
+                      <Select
+                        v-model:value="weekGroup.closeDocDayOfWeek"
+                        placeholder="请选择"
+                        style="width: 100%"
+                        :options="[
+                          { label: '周日', value: 0 },
+                          { label: '周一', value: 1 },
+                          { label: '周二', value: 2 },
+                          { label: '周三', value: 3 },
+                          { label: '周四', value: 4 },
+                          { label: '周五', value: 5 },
+                          { label: '周六', value: 6 },
+                        ]"
+                      />
+                    </div>
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:clock-outline"
+                          class="mr-1 size-4"
+                        />
+                        时间点
+                      </label>
+                      <TimePicker
+                        v-model:value="weekGroup.closeDocDayTime"
+                        placeholder="请选择"
+                        format="HH:mm"
+                        value-format="HH:mm:ss"
+                        style="width: 100%"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- 截关星期组 -->
+                  <div class="week-pair">
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:container-lock"
+                          class="mr-1 size-4"
+                        />
+                        截关星期
+                      </label>
+                      <Select
+                        v-model:value="weekGroup.closingDayOfWeek"
+                        placeholder="请选择"
+                        style="width: 100%"
+                        :options="[
+                          { label: '周日', value: 0 },
+                          { label: '周一', value: 1 },
+                          { label: '周二', value: 2 },
+                          { label: '周三', value: 3 },
+                          { label: '周四', value: 4 },
+                          { label: '周五', value: 5 },
+                          { label: '周六', value: 6 },
+                        ]"
+                      />
+                    </div>
+                    <div class="week-field">
+                      <label class="field-label">
+                        <IconifyIcon
+                          icon="mdi:clock-outline"
+                          class="mr-1 size-4"
+                        />
+                        时间点
+                      </label>
+                      <TimePicker
+                        v-model:value="weekGroup.closingDayTime"
+                        placeholder="请选择"
+                        format="HH:mm"
+                        value-format="HH:mm:ss"
+                        style="width: 100%"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="link"
+                  danger
+                  size="small"
+                  @click="removeWeekGroup(index)"
+                  class="delete-btn"
+                >
+                  <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- 箱型费率 -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <span>箱型费率</span>
-          <div v-if="formData" class="flex items-center gap-2">
+      <section class="form-section">
+        <header class="section-header">
+          <div class="section-title">
+            <div class="section-title-icon icon-amber">
+              <IconifyIcon icon="mdi:cube-outline" class="size-4" />
+            </div>
+            <span class="section-title-text">箱型费率</span>
+          </div>
+          <div v-if="formData" class="section-actions">
             <span class="required-label"
               >币别 <span class="required-star">*</span></span
             >
@@ -1781,77 +1811,86 @@ onMounted(() => {
               @change="addCtn"
             />
           </div>
-        </h3>
+        </header>
 
-        <!-- 无箱型时的提示 -->
-        <div
-          v-if="
-            !formData?.seFreiPriceCtns || formData.seFreiPriceCtns.length === 0
-          "
-          class="empty-tip"
-        >
-          暂无箱型，请从上方下拉框选择箱型添加
-        </div>
+        <div class="section-body">
+          <!-- 无箱型时的提示 -->
+          <div
+            v-if="
+              !formData?.seFreiPriceCtns ||
+              formData.seFreiPriceCtns.length === 0
+            "
+            class="empty-tip"
+          >
+            暂无箱型，请从上方下拉框选择箱型添加
+          </div>
 
-        <!-- 箱型费率表格 - 参考 form.vue 的布局 -->
-        <div v-else class="overflow-x-auto">
-          <table class="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr class="bg-gray-100">
-                <th class="border border-gray-300 px-3 py-2 text-left">
-                  费用类型
-                </th>
-                <th
-                  v-for="ctn in formData?.seFreiPriceCtns || []"
-                  :key="ctn.ctnCodeId"
-                  class="border border-gray-300 px-3 py-2 text-center"
-                >
-                  <div class="flex items-center justify-between">
-                    <span>{{
-                      ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`
-                    }}</span>
-                    <button
-                      class="ml-2 text-red-500 hover:text-red-700"
-                      @click="removeCtnByCtnCodeId(ctn.ctnCodeId)"
-                      title="删除箱型"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="border border-gray-300 px-3 py-2 font-medium">
-                  海运费
-                </td>
-                <!-- 箱型成本输入 -->
-                <td
-                  v-for="(ctn, index) in formData?.seFreiPriceCtns || []"
-                  :key="ctn.ctnCodeId"
-                  class="border border-gray-300 px-2 py-2"
-                >
-                  <input
-                    v-model.number="ctn.cost"
-                    type="number"
-                    class="w-full rounded border border-gray-300 px-2 py-1 text-center text-sm"
-                    placeholder="-"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- 箱型费率表格 - 参考 form.vue 的布局 -->
+          <div v-else class="overflow-x-auto">
+            <table class="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="border border-gray-300 px-3 py-2 text-left">
+                    费用类型
+                  </th>
+                  <th
+                    v-for="ctn in formData?.seFreiPriceCtns || []"
+                    :key="ctn.ctnCodeId"
+                    class="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span>{{
+                        ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`
+                      }}</span>
+                      <button
+                        class="ml-2 text-red-500 hover:text-red-700"
+                        @click="removeCtnByCtnCodeId(ctn.ctnCodeId)"
+                        title="删除箱型"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="border border-gray-300 px-3 py-2 font-medium">
+                    海运费
+                  </td>
+                  <!-- 箱型成本输入 -->
+                  <td
+                    v-for="(ctn, index) in formData?.seFreiPriceCtns || []"
+                    :key="ctn.ctnCodeId"
+                    class="border border-gray-300 px-2 py-2"
+                  >
+                    <input
+                      v-model.number="ctn.cost"
+                      type="number"
+                      class="w-full rounded border border-gray-300 px-2 py-1 text-center text-sm"
+                      placeholder="-"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </section>
 
       <!-- 附加费明细 -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <span>附加费明细</span>
-          <div class="flex gap-2">
+      <section class="form-section">
+        <header class="section-header">
+          <div class="section-title">
+            <div class="section-title-icon icon-violet">
+              <IconifyIcon icon="mdi:cash-plus" class="size-4" />
+            </div>
+            <span class="section-title-text">附加费明细</span>
+          </div>
+          <div class="section-actions">
             <Button type="primary" size="small" ghost @click="addSurchargeFee">
-              + 添加
+              <IconifyIcon icon="mdi:plus" class="size-3.5" />
+              添加
             </Button>
             <Button
               danger
@@ -1860,432 +1899,446 @@ onMounted(() => {
               :disabled="surchargeFees.length === 0"
               @click="surchargeFees.length > 0 && surchargeFees.pop()"
             >
-              - 删除
+              <IconifyIcon icon="mdi:minus" class="size-3.5" />
+              删除
             </Button>
           </div>
-        </h3>
+        </header>
 
-        <div v-if="surchargeFees.length === 0" class="empty-tip">
-          暂无附加费，点击"添加"按钮添加附加费
-        </div>
+        <div class="section-body">
+          <div v-if="surchargeFees.length === 0" class="empty-tip">
+            暂无附加费，点击「添加」按钮添加附加费
+          </div>
 
-        <div v-else class="overflow-x-auto">
-          <table
-            class="w-full border-collapse border border-gray-300"
-            style="min-width: max-content"
-          >
-            <thead>
-              <tr class="bg-gray-100">
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 150px; min-width: 150px"
-                >
-                  费用名称
-                </th>
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 100px; min-width: 100px"
-                >
-                  币别
-                </th>
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 120px; min-width: 120px"
-                >
-                  计费方式
-                </th>
-                <th
-                  v-for="ctn in dynamicCtnTypes"
-                  :key="ctn.ctnCodeId"
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="min-width: 220px"
-                >
-                  {{ ctn.name }}
-                </th>
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 80px; min-width: 80px"
-                >
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(surcharge, index) in surchargeFees" :key="index">
-                <!-- 费用名称选择 -->
-                <td class="border border-gray-300 px-2 py-2">
-                  <Select
-                    v-model:value="surcharge.feeCodeId"
-                    class="fee-name-select w-full"
-                    show-search
-                    :filter-option="
-                      (input: string, option: any) => {
-                        if (!input) return true;
-                        const feeItem = feeCodeList.find(
-                          (item) => item.value === option.value,
-                        );
-                        const label = feeItem?.code
-                          ? feeItem.code + '-' + feeItem.label
-                          : feeItem?.label || '';
-                        return String(label)
-                          .toLowerCase()
-                          .includes(input.toLowerCase());
-                      }
-                    "
-                    placeholder="请选择费用名称"
-                    allow-clear
-                    :dropdown-match-select-width="false"
+          <div v-else class="overflow-x-auto">
+            <table
+              class="w-full border-collapse border border-gray-300"
+              style="min-width: max-content"
+            >
+              <thead>
+                <tr class="bg-gray-100">
+                  <th
+                    class="border border-gray-300 px-3 py-2 text-center"
+                    style="width: 150px; min-width: 150px"
                   >
-                    <Select.Option
-                      v-for="fee in feeCodeList"
-                      :key="fee.value"
-                      :value="fee.value"
-                      :title="fee.code ? fee.code + '-' + fee.label : fee.label"
-                    >
-                      {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
-                    </Select.Option>
-                  </Select>
-                </td>
-
-                <!-- 币别选择 -->
-                <td class="border border-gray-300 px-2 py-2">
-                  <Select
-                    v-model:value="surcharge.currencyId"
-                    class="currency-select-fixed w-full"
-                    show-search
-                    :filter-option="
-                      (input: string, option: any) => {
-                        if (!input) return true;
-                        const currencyItem = currencyList.find(
-                          (item) => item.value === option.value,
-                        );
-                        const label = currencyItem?.label || '';
-                        return String(label)
-                          .toLowerCase()
-                          .includes(input.toLowerCase());
-                      }
-                    "
-                    placeholder="请选择币别"
-                    allow-clear
+                    费用名称
+                  </th>
+                  <th
+                    class="border border-gray-300 px-3 py-2 text-center"
+                    style="width: 100px; min-width: 100px"
                   >
-                    <Select.Option
-                      v-for="currency in currencyList"
-                      :key="currency.value"
-                      :value="currency.value"
-                      :title="currency.label"
-                    >
-                      {{ currency.label }}
-                    </Select.Option>
-                  </Select>
-                </td>
-
-                <!-- 计费方式 -->
-                <td class="border border-gray-300 px-2 py-2">
-                  <Select
-                    v-model:value="surcharge.priceFeeType"
-                    class="w-full"
-                    placeholder="计费方式"
-                    :options="[
-                      { label: '按集装箱', value: 0 },
-                      { label: '按票', value: 1 },
-                    ]"
-                    @change="
-                      (value: any) => handlePriceFeeTypeChange(index, value)
-                    "
-                  />
-                </td>
-
-                <!-- 箱型价格列 -->
-                <td
-                  v-for="ctn in dynamicCtnTypes"
-                  :key="`fee${ctn.ctnCodeId}`"
-                  class="relative border border-gray-300 py-2 pl-4 pr-3"
-                >
-                  <!-- 按票计费模式：只显示第一个箱型列的输入框 -->
-                  <div
-                    v-if="surcharge.priceFeeType === 1"
-                    class="relative mt-2"
+                    币别
+                  </th>
+                  <th
+                    class="border border-gray-300 px-3 py-2 text-center"
+                    style="width: 120px; min-width: 120px"
                   >
-                    <!-- 只在第一个箱型列显示价格输入框 -->
-                    <template
-                      v-if="
-                        index === 0 ||
-                        ctn.ctnCodeId === dynamicCtnTypes[0]?.ctnCodeId
+                    计费方式
+                  </th>
+                  <th
+                    v-for="ctn in dynamicCtnTypes"
+                    :key="ctn.ctnCodeId"
+                    class="border border-gray-300 px-3 py-2 text-center"
+                    style="min-width: 220px"
+                  >
+                    {{ ctn.name }}
+                  </th>
+                  <th
+                    class="border border-gray-300 px-3 py-2 text-center"
+                    style="width: 80px; min-width: 80px"
+                  >
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(surcharge, index) in surchargeFees" :key="index">
+                  <!-- 费用名称选择 -->
+                  <td class="border border-gray-300 px-2 py-2">
+                    <Select
+                      v-model:value="surcharge.feeCodeId"
+                      class="fee-name-select w-full"
+                      show-search
+                      :filter-option="
+                        (input: string, option: any) => {
+                          if (!input) return true;
+                          const feeItem = feeCodeList.find(
+                            (item) => item.value === option.value,
+                          );
+                          const label = feeItem?.code
+                            ? feeItem.code + '-' + feeItem.label
+                            : feeItem?.label || '';
+                          return String(label)
+                            .toLowerCase()
+                            .includes(input.toLowerCase());
+                        }
                       "
+                      placeholder="请选择费用名称"
+                      allow-clear
+                      :dropdown-match-select-width="false"
                     >
-                      <Input
-                        :value="surcharge.prices['order']?.price"
-                        @input="
-                          updateSurchargePriceValue(
-                            index,
-                            'order',
-                            'price',
-                            ($event.target as HTMLInputElement).value,
-                          )
+                      <Select.Option
+                        v-for="fee in feeCodeList"
+                        :key="fee.value"
+                        :value="fee.value"
+                        :title="
+                          fee.code ? fee.code + '-' + fee.label : fee.label
                         "
-                        type="number"
-                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
-                        placeholder="请输入按票价格"
-                      />
-                      <div class="mt-1 text-center text-xs text-gray-500">
-                        按票计费（所有箱型统一价格）
-                      </div>
-                    </template>
-                    <!-- 其他箱型列显示提示 -->
-                    <template v-else>
-                      <div
-                        class="flex h-full items-center justify-center text-gray-400"
                       >
-                        <span class="text-sm">-</span>
-                      </div>
-                    </template>
-                  </div>
+                        {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
+                      </Select.Option>
+                    </Select>
+                  </td>
 
-                  <!-- 按集装箱计费模式：每个箱型独立输入 -->
-                  <div v-else class="relative mt-2">
-                    <!-- 条件模式图标 -->
-                    <div class="top-f1 absolute z-10">
-                      <button
-                        type="button"
-                        class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
-                        @click="
-                          showConditionPopup($event, index, ctn.ctnCodeId)
-                        "
-                        title="设置条件费用"
+                  <!-- 币别选择 -->
+                  <td class="border border-gray-300 px-2 py-2">
+                    <Select
+                      v-model:value="surcharge.currencyId"
+                      class="currency-select-fixed w-full"
+                      show-search
+                      :filter-option="
+                        (input: string, option: any) => {
+                          if (!input) return true;
+                          const currencyItem = currencyList.find(
+                            (item) => item.value === option.value,
+                          );
+                          const label = currencyItem?.label || '';
+                          return String(label)
+                            .toLowerCase()
+                            .includes(input.toLowerCase());
+                        }
+                      "
+                      placeholder="请选择币别"
+                      allow-clear
+                    >
+                      <Select.Option
+                        v-for="currency in currencyList"
+                        :key="currency.value"
+                        :value="currency.value"
+                        :title="currency.label"
                       >
-                        <IconifyIcon
-                          icon="mdi:filter-outline"
-                          class="h-3.5 w-3.5"
-                        />
-                      </button>
+                        {{ currency.label }}
+                      </Select.Option>
+                    </Select>
+                  </td>
 
-                      <!-- 条件配置弹窗 -->
-                      <div
+                  <!-- 计费方式 -->
+                  <td class="border border-gray-300 px-2 py-2">
+                    <Select
+                      v-model:value="surcharge.priceFeeType"
+                      class="w-full"
+                      placeholder="计费方式"
+                      :options="[
+                        { label: '按集装箱', value: 0 },
+                        { label: '按票', value: 1 },
+                      ]"
+                      @change="
+                        (value: any) => handlePriceFeeTypeChange(index, value)
+                      "
+                    />
+                  </td>
+
+                  <!-- 箱型价格列 -->
+                  <td
+                    v-for="ctn in dynamicCtnTypes"
+                    :key="`fee${ctn.ctnCodeId}`"
+                    class="relative border border-gray-300 py-2 pl-4 pr-3"
+                  >
+                    <!-- 按票计费模式：只显示第一个箱型列的输入框 -->
+                    <div
+                      v-if="surcharge.priceFeeType === 1"
+                      class="relative mt-2"
+                    >
+                      <!-- 只在第一个箱型列显示价格输入框 -->
+                      <template
                         v-if="
-                          conditionPopupVisible &&
-                          currentConditionCell?.feeIndex === index &&
-                          currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                          index === 0 ||
+                          ctn.ctnCodeId === dynamicCtnTypes[0]?.ctnCodeId
                         "
-                        class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-xl"
-                        @click.stop
                       >
-                        <label
-                          class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
+                        <Input
+                          :value="surcharge.prices['order']?.price"
+                          @input="
+                            updateSurchargePriceValue(
+                              index,
+                              'order',
+                              'price',
+                              ($event.target as HTMLInputElement).value,
+                            )
+                          "
+                          type="number"
+                          class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                          placeholder="请输入按票价格"
+                        />
+                        <div class="mt-1 text-center text-xs text-gray-500">
+                          按票计费（所有箱型统一价格）
+                        </div>
+                      </template>
+                      <!-- 其他箱型列显示提示 -->
+                      <template v-else>
+                        <div
+                          class="flex h-full items-center justify-center text-gray-400"
                         >
-                          <input
-                            type="checkbox"
-                            :checked="
-                              getConditionalConfig(
-                                String(index),
-                                String(ctn.ctnCodeId),
-                              ).enabled
-                            "
-                            @change="
-                              toggleConditionEnabled(
-                                ($event.target as HTMLInputElement).checked,
-                              )
-                            "
-                            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span class="text-sm font-medium text-gray-700"
-                            >启用条件模式</span
-                          >
-                        </label>
-                      </div>
+                          <span class="text-sm">-</span>
+                        </div>
+                      </template>
                     </div>
 
-                    <!-- 条件模式内容 -->
-                    <div
-                      v-if="
-                        getConditionalConfig(
-                          String(index),
-                          String(ctn.ctnCodeId),
-                        ).enabled
-                      "
-                      class="mt-6 space-y-2"
-                    >
-                      <!-- 条件配置行 -->
-                      <div class="flex items-center gap-1.5">
-                        <Select
-                          size="small"
-                          :value="
-                            surcharge.prices[String(ctn.ctnCodeId)]
-                              ?.conditionType
+                    <!-- 按集装箱计费模式：每个箱型独立输入 -->
+                    <div v-else class="relative mt-2">
+                      <!-- 条件模式图标 -->
+                      <div class="top-f1 absolute z-10">
+                        <button
+                          type="button"
+                          class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
+                          @click="
+                            showConditionPopup($event, index, ctn.ctnCodeId)
                           "
-                          :options="freightConditionItemOptions"
-                          class="flex-1"
-                          @change="
-                            (val) =>
+                          title="设置条件费用"
+                        >
+                          <IconifyIcon
+                            icon="mdi:filter-outline"
+                            class="h-3.5 w-3.5"
+                          />
+                        </button>
+
+                        <!-- 条件配置弹窗 -->
+                        <div
+                          v-if="
+                            conditionPopupVisible &&
+                            currentConditionCell?.feeIndex === index &&
+                            currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                          "
+                          class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-xl"
+                          @click.stop
+                        >
+                          <label
+                            class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
+                          >
+                            <input
+                              type="checkbox"
+                              :checked="
+                                getConditionalConfig(
+                                  String(index),
+                                  String(ctn.ctnCodeId),
+                                ).enabled
+                              "
+                              @change="
+                                toggleConditionEnabled(
+                                  ($event.target as HTMLInputElement).checked,
+                                )
+                              "
+                              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span class="text-sm font-medium text-gray-700"
+                              >启用条件模式</span
+                            >
+                          </label>
+                        </div>
+                      </div>
+
+                      <!-- 条件模式内容 -->
+                      <div
+                        v-if="
+                          getConditionalConfig(
+                            String(index),
+                            String(ctn.ctnCodeId),
+                          ).enabled
+                        "
+                        class="mt-6 space-y-2"
+                      >
+                        <!-- 条件配置行 -->
+                        <div class="flex items-center gap-1.5">
+                          <Select
+                            size="small"
+                            :value="
+                              surcharge.prices[String(ctn.ctnCodeId)]
+                                ?.conditionType
+                            "
+                            :options="freightConditionItemOptions"
+                            class="flex-1"
+                            @change="
+                              (val) =>
+                                updateSurchargePriceValue(
+                                  index,
+                                  String(ctn.ctnCodeId),
+                                  'conditionType',
+                                  String(val),
+                                )
+                            "
+                            placeholder="条件类型"
+                          />
+
+                          <!-- 算符切换按钮 -->
+                          <button
+                            type="button"
+                            class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                            @click="
+                              toggleOperator(index, String(ctn.ctnCodeId))
+                            "
+                            :title="'点击切换算符'"
+                          >
+                            {{
+                              getOperatorSymbol(
+                                surcharge.prices[String(ctn.ctnCodeId)]
+                                  ?.operatorType,
+                              )
+                            }}
+                          </button>
+
+                          <Input
+                            size="small"
+                            :value="
+                              surcharge.prices[String(ctn.ctnCodeId)]?.value
+                            "
+                            @input="
                               updateSurchargePriceValue(
                                 index,
                                 String(ctn.ctnCodeId),
-                                'conditionType',
-                                String(val),
+                                'value',
+                                ($event.target as HTMLInputElement).value,
                               )
-                          "
-                          placeholder="条件类型"
-                        />
+                            "
+                            type="number"
+                            class="flex-1"
+                            placeholder="阈值"
+                          />
 
-                        <!-- 算符切换按钮 -->
-                        <button
-                          type="button"
-                          class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
-                          @click="toggleOperator(index, String(ctn.ctnCodeId))"
-                          :title="'点击切换算符'"
-                        >
-                          {{
-                            getOperatorSymbol(
+                          <!-- 条件说明（单位） -->
+                          <span
+                            v-if="
                               surcharge.prices[String(ctn.ctnCodeId)]
-                                ?.operatorType,
-                            )
-                          }}
-                        </button>
+                                ?.conditionType
+                            "
+                            class="whitespace-nowrap text-xs text-gray-500"
+                          >
+                            {{
+                              freightConditionItemOptions.find(
+                                (o) =>
+                                  o.value ===
+                                  surcharge.prices[String(ctn.ctnCodeId)]
+                                    ?.conditionType,
+                              )?.description
+                            }}
+                          </span>
+                        </div>
 
+                        <!-- 价格输入区域 -->
+                        <div
+                          class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
+                        >
+                          <!-- 满足条件的价格 (70%) -->
+                          <div class="w-[70%]">
+                            <div
+                              class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
+                            >
+                              是
+                            </div>
+                            <div class="px-2 py-1">
+                              <Input
+                                size="small"
+                                :value="
+                                  surcharge.prices[String(ctn.ctnCodeId)]?.price
+                                "
+                                @input="
+                                  updateSurchargePriceValue(
+                                    index,
+                                    String(ctn.ctnCodeId),
+                                    'price',
+                                    ($event.target as HTMLInputElement).value,
+                                  )
+                                "
+                                type="number"
+                                class="h-9 w-full rounded-none text-center"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+
+                          <!-- ELSE 分隔线 (30%) -->
+                          <div
+                            class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                          >
+                            <div
+                              class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
+                            >
+                              否则
+                            </div>
+                            <div class="px-2 py-1">
+                              <Input
+                                size="small"
+                                :value="
+                                  surcharge.prices[String(ctn.ctnCodeId)]
+                                    ?.otherPrice
+                                "
+                                @input="
+                                  updateSurchargePriceValue(
+                                    index,
+                                    String(ctn.ctnCodeId),
+                                    'otherPrice',
+                                    ($event.target as HTMLInputElement).value,
+                                  )
+                                "
+                                type="number"
+                                class="h-9 w-full rounded-none text-center"
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 普通模式（无条件） -->
+                      <div v-else class="relative mt-6">
                         <Input
-                          size="small"
                           :value="
-                            surcharge.prices[String(ctn.ctnCodeId)]?.value
+                            surcharge.prices[String(ctn.ctnCodeId)]?.price
                           "
                           @input="
                             updateSurchargePriceValue(
                               index,
                               String(ctn.ctnCodeId),
-                              'value',
+                              'price',
                               ($event.target as HTMLInputElement).value,
                             )
                           "
                           type="number"
-                          class="flex-1"
-                          placeholder="阈值"
+                          class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                          placeholder="0"
                         />
-
-                        <!-- 条件说明（单位） -->
-                        <span
-                          v-if="
-                            surcharge.prices[String(ctn.ctnCodeId)]
-                              ?.conditionType
-                          "
-                          class="whitespace-nowrap text-xs text-gray-500"
-                        >
-                          {{
-                            freightConditionItemOptions.find(
-                              (o) =>
-                                o.value ===
-                                surcharge.prices[String(ctn.ctnCodeId)]
-                                  ?.conditionType,
-                            )?.description
-                          }}
-                        </span>
-                      </div>
-
-                      <!-- 价格输入区域 -->
-                      <div
-                        class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
-                      >
-                        <!-- 满足条件的价格 (70%) -->
-                        <div class="w-[70%]">
-                          <div
-                            class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
-                          >
-                            是
-                          </div>
-                          <div class="px-2 py-1">
-                            <Input
-                              size="small"
-                              :value="
-                                surcharge.prices[String(ctn.ctnCodeId)]?.price
-                              "
-                              @input="
-                                updateSurchargePriceValue(
-                                  index,
-                                  String(ctn.ctnCodeId),
-                                  'price',
-                                  ($event.target as HTMLInputElement).value,
-                                )
-                              "
-                              type="number"
-                              class="h-9 w-full rounded-none text-center"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-
-                        <!-- ELSE 分隔线 (30%) -->
-                        <div
-                          class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
-                        >
-                          <div
-                            class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
-                          >
-                            否则
-                          </div>
-                          <div class="px-2 py-1">
-                            <Input
-                              size="small"
-                              :value="
-                                surcharge.prices[String(ctn.ctnCodeId)]
-                                  ?.otherPrice
-                              "
-                              @input="
-                                updateSurchargePriceValue(
-                                  index,
-                                  String(ctn.ctnCodeId),
-                                  'otherPrice',
-                                  ($event.target as HTMLInputElement).value,
-                                )
-                              "
-                              type="number"
-                              class="h-9 w-full rounded-none text-center"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
                       </div>
                     </div>
+                  </td>
 
-                    <!-- 普通模式（无条件） -->
-                    <div v-else class="relative mt-6">
-                      <Input
-                        :value="surcharge.prices[String(ctn.ctnCodeId)]?.price"
-                        @input="
-                          updateSurchargePriceValue(
-                            index,
-                            String(ctn.ctnCodeId),
-                            'price',
-                            ($event.target as HTMLInputElement).value,
-                          )
-                        "
-                        type="number"
-                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </td>
-
-                <!-- 删除按钮 -->
-                <td class="border border-gray-300 px-2 py-2 text-center">
-                  <Button
-                    type="link"
-                    danger
-                    size="small"
-                    @click="removeSurchargeFee(index)"
-                  >
-                    <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <!-- 删除按钮 -->
+                  <td class="border border-gray-300 px-2 py-2 text-center">
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      @click="removeSurchargeFee(index)"
+                    >
+                      <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </section>
 
       <!-- 底部按钮 -->
       <div class="form-footer">
-        <Button @click="modalApi.close">取消</Button>
-        <Button type="primary" @click="handleSubmit" :disabled="!hasPermission"
-          >确定</Button
+        <Button class="footer-btn" @click="modalApi.close">取消</Button>
+        <Button
+          type="primary"
+          class="footer-btn footer-btn--primary"
+          @click="handleSubmit"
+          :disabled="!hasPermission"
         >
+          确定
+        </Button>
       </div>
     </div>
   </Modal>
@@ -2295,7 +2348,7 @@ onMounted(() => {
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(-5px);
+    transform: translateY(-4px);
   }
 
   to {
@@ -2305,12 +2358,18 @@ onMounted(() => {
 }
 
 @media (max-width: 1200px) {
-  .date-group-content {
+  .date-group-content,
+  .week-group-content {
     grid-template-columns: 1fr;
   }
 
-  .week-group-content {
-    grid-template-columns: 1fr;
+  .validity-period-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .banner-fields {
+    flex-wrap: wrap;
   }
 }
 
@@ -2321,21 +2380,28 @@ onMounted(() => {
 
 .edit-form-container {
   max-height: 70vh;
-  padding: 16px;
+  padding: 4px 8px 8px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
-/* 有效期醒目提示横幅样式 */
+/* 有效期：主色浅底，替代原先紫渐变，贴近系统风格 */
 .validity-period-banner {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 12%) 0%,
+    hsl(var(--primary) / 4%) 55%,
+    hsl(var(--card)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 22%);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgb(102 126 234 / 30%);
-  animation: fade-in 0.4s ease-in-out;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 8%);
+  animation: fade-in 0.35s ease;
 }
 
 .banner-icon {
@@ -2343,11 +2409,12 @@ onMounted(() => {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  color: white;
-  background: rgb(255 255 255 / 20%);
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  color: hsl(var(--primary));
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--primary) / 20%);
+  border-radius: 12px;
 }
 
 .banner-content {
@@ -2356,20 +2423,21 @@ onMounted(() => {
 }
 
 .banner-title {
-  margin-bottom: 4px;
-  font-size: 18px;
+  margin-bottom: 2px;
+  font-size: 15px;
   font-weight: 600;
-  color: white;
+  color: hsl(var(--foreground));
 }
 
 .banner-subtitle {
-  font-size: 13px;
-  color: rgb(255 255 255 / 85%);
+  font-size: 12px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
 }
 
 .banner-fields {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-end;
 }
 
@@ -2379,14 +2447,14 @@ onMounted(() => {
   gap: 6px;
 }
 
-.field-label {
-  font-size: 13px;
+.validity-period-banner .field-label {
+  font-size: 12px;
   font-weight: 500;
-  color: white;
+  color: hsl(var(--foreground));
 }
 
 .required {
-  color: #ffd700;
+  color: #ff4d4f;
 }
 
 .field-input {
@@ -2394,111 +2462,251 @@ onMounted(() => {
 }
 
 .field-input :deep(.ant-picker) {
-  background: rgb(255 255 255 / 95%);
-  border: none;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
   border-radius: 6px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .field-input :deep(.ant-picker:hover),
 .field-input :deep(.ant-picker-focused) {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgb(255 215 0 / 30%);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 15%);
 }
 
 .field-divider {
   padding-bottom: 8px;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: white;
+  color: hsl(var(--muted-foreground));
 }
 
+/* 分区卡片 */
 .form-section {
-  padding: 10px;
-  margin-bottom: 24px;
-  background: #fafafa;
-  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: hsl(var(--card));
+  border: 1px solid #e8ecf3;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+  transition: box-shadow 0.25s ease;
+}
+
+.form-section:hover {
+  box-shadow: 0 4px 14px rgb(16 42 83 / 8%);
+}
+
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #f4f8ff 0%, #fafbfd 55%, #fff 100%);
+  border-bottom: 1px solid #e4e8ef;
 }
 
 .section-title {
   display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
-  margin: 0 0 6px;
-  font-size: 16px;
+  margin: 0;
+}
+
+.section-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #006ce6;
+  background: #eaf2ff;
+  border-radius: 8px;
+}
+
+.section-title-icon.icon-teal {
+  color: #0d9488;
+  background: #e6fffa;
+}
+
+.section-title-icon.icon-amber {
+  color: #d97706;
+  background: #fff7ed;
+}
+
+.section-title-icon.icon-violet {
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.section-title-text {
+  font-size: 14px;
   font-weight: 600;
-  color: #262626;
+  color: #252a31;
+}
+
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-body {
+  padding: 14px 16px 16px;
+}
+
+.mode-switch {
+  display: inline-flex;
+  padding: 3px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.mode-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.mode-chip:hover {
+  color: #334155;
+  background: rgb(255 255 255 / 70%);
+}
+
+.mode-chip--active {
+  color: #006ce6;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(16 42 83 / 10%);
+}
+
+.mode-chip--active:hover {
+  color: #006ce6;
+  background: #fff;
+}
+
+.add-group-btn {
+  font-weight: 500;
 }
 
 .sub-table {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .sub-table-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
 }
 
 .empty-tip {
-  padding: 32px 16px;
-  font-size: 14px;
-  color: #94a3b8;
+  padding: 28px 16px;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
   text-align: center;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px dashed #cbd5e1;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
   border-radius: 8px;
-  transition: all 0.3s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .empty-tip:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  border-color: #94a3b8;
+  background: #f1f5f9;
+  border-color: hsl(var(--primary) / 40%);
 }
 
 .form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: flex-end;
-  padding-top: 16px;
-  border-top: 1px solid #e8e8e8;
+  padding: 14px 4px 4px;
+  margin-top: 4px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(var(--card)) 28%,
+    hsl(var(--card)) 100%
+  );
+  border-top: 1px solid #e8ecf3;
 }
 
-/* 模式切换按钮样式增强 */
-.mode-toggle {
-  padding: 10px 20px;
-  color: #fff;
-  cursor: pointer;
-  background-color: #333;
-  border: none;
-  border-radius: 5px;
+.footer-btn {
+  min-width: 88px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
 }
 
-/* 表格样式 */
+.footer-btn:hover {
+  transform: translateY(-1px);
+}
+
+.footer-btn--primary:hover {
+  box-shadow: 0 4px 12px hsl(var(--primary) / 28%);
+}
+
 table {
   border-collapse: collapse;
 }
 
-th,
-td {
-  border: 1px solid #d1d5db;
+.section-body :deep(table) {
+  overflow: hidden;
+  border: 1px solid #e4e8ef !important;
+  border-radius: 8px;
 }
 
-/* 条件模式图标按钮样式 */
+.section-body :deep(th),
+.section-body :deep(td) {
+  border-color: #e8ecf3 !important;
+}
+
+.section-body :deep(thead tr) {
+  background: #f4f8ff !important;
+}
+
+.section-body :deep(tbody tr) {
+  transition: background-color 0.15s ease;
+}
+
+.section-body :deep(tbody tr:hover) {
+  background: #fafbfd;
+}
+
 button[title='设置条件费用'] {
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
 }
 
 button[title='设置条件费用']:hover {
-  transform: scale(1.1);
+  transform: scale(1.06);
 }
 
-/* 输入框焦点效果 */
 input[type='number'],
 input[type='text'] {
   transition:
@@ -2509,37 +2717,21 @@ input[type='text'] {
 input[type='number']:focus,
 input[type='text']:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgb(59 130 246 / 10%);
-}
-
-/* 价格输入区域渐变背景增强 */
-.bg-gradient-to-r {
-  background-size: 200% 100%;
-  transition: background-position 0.3s ease;
-}
-
-.bg-gradient-to-r:hover {
-  background-position: right center;
-}
-
-/* 条件配置区域动画 */
-.space-y-2 {
-  animation: fade-in 0.3s ease-in-out;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
 }
 
 .currency-select :deep(.ant-select-selector) {
   border-color: #f59e0b;
-  border-width: 2px;
+  border-width: 1.5px;
 }
 
 .currency-select :deep(.ant-select-selector:hover),
 .currency-select :deep(.ant-select-focused .ant-select-selector) {
-  border-color: #f59e0b !important;
-  box-shadow: 0 0 0 2px rgb(245 158 11 / 20%) !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 2px rgb(245 158 11 / 18%) !important;
 }
 
-/* 费用名称选择框固定宽度样式 */
 .fee-name-select {
   min-width: 200px;
 }
@@ -2554,7 +2746,6 @@ input[type='text']:focus {
   white-space: nowrap;
 }
 
-/* 币别选择框固定宽度样式 */
 .currency-select-fixed {
   min-width: 120px;
 }
@@ -2569,62 +2760,61 @@ input[type='text']:focus {
   white-space: nowrap;
 }
 
-/* 必填标签样式 */
 .required-label {
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #262626;
+  color: #252a31;
 }
 
 .required-star {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 700;
   line-height: 1;
   color: #ff4d4f;
 }
 
-/* 日期时间设置模块样式 */
 .date-group-row,
 .week-group-row {
   position: relative;
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-start;
-  padding: 16px;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 14px 14px 14px 16px;
+  background: #fff;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(16 42 83 / 4%);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.date-group-row::before {
+.date-group-row::before,
+.week-group-row::before {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 10px;
+  bottom: 10px;
   left: 0;
   width: 3px;
   content: '';
-  background: linear-gradient(to bottom, #3b82f6, #60a5fa);
-  border-radius: 8px 0 0 8px;
+  background: hsl(var(--primary));
+  border-radius: 0 3px 3px 0;
 }
 
-/* .date-group-row:hover,
+.date-group-row:hover,
 .week-group-row:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
-  transform: translateY(-2px);
-} */
+  border-color: hsl(var(--primary) / 35%);
+  box-shadow: 0 3px 10px hsl(var(--primary) / 10%);
+}
 
 .date-group-content {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 14px;
 }
 
 .week-group-content {
@@ -2648,9 +2838,8 @@ input[type='text']:focus {
   align-items: center;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #64748b;
+  letter-spacing: 0.2px;
 }
 
 .week-pair {
@@ -2669,8 +2858,8 @@ input[type='text']:focus {
 
 .delete-btn {
   flex-shrink: 0;
-  margin-top: 24px;
-  opacity: 0.6;
+  margin-top: 22px;
+  opacity: 0.55;
   transition: opacity 0.2s ease;
 }
 
@@ -2678,70 +2867,7 @@ input[type='text']:focus {
   opacity: 1;
 }
 
-/* 模式切换按钮样式增强 */
-.mode-btn-active {
-  font-weight: 600 !important;
-  color: white !important;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  border-color: #2563eb !important;
-  box-shadow: 0 4px 12px rgb(59 130 246 / 50%) !important;
-  transform: scale(1.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.mode-btn-active:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  box-shadow: 0 6px 16px rgb(59 130 246 / 60%) !important;
-  transform: scale(1.1);
-}
-
-.mode-btn-active:active {
-  transform: scale(1.05);
-}
-
-.mode-btn-inactive {
-  color: #9ca3af !important;
-  background-color: #fafafa !important;
-  border-color: #e5e7eb !important;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-}
-
-.mode-btn-inactive:hover {
-  color: #6b7280 !important;
-  background-color: #f3f4f6 !important;
-  border-color: #d1d5db !important;
-  opacity: 0.85;
-}
-
-.section-title .ant-btn {
-  color: #333;
-  background-color: #f0f0f0;
-  border-color: #d9d9d9;
-}
-
-.section-title .ant-btn:hover {
-  background-color: #e0e0e0;
-  border-color: #c1c1c1;
-}
-
-.section-title .ant-btn-primary {
-  box-shadow: 0 2px 4px rgb(59 130 246 / 30%);
-}
-
-.section-title .ant-btn-primary:hover {
-  box-shadow: 0 4px 8px rgb(59 130 246 / 40%);
-  transform: translateY(-1px);
-}
-
-/* 添加一组按钮样式 */
-.section-title .ant-btn-link {
-  font-weight: 500;
-  color: #10b981;
-}
-
-.section-title .ant-btn-link:hover {
-  color: #059669;
-  background: rgb(16 185 129 / 5%);
+.section-body :deep(.ant-form) {
+  margin-bottom: 0;
 }
 </style>

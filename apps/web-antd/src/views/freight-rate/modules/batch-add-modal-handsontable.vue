@@ -26,9 +26,9 @@ import { useCarrierRemoteAutocomplete } from './composables/useCarrierRemoteAuto
 import { useBookingAgentRemoteAutocomplete } from './composables/useBookingAgentRemoteAutocomplete';
 
 // 导入核心表格组件
-import BatchAddTableCore from './BatchAddTableCore.vue';
+import BatchAddTableCore from './batch-add-table-core.vue';
 // 导入列配置组件
-import ColumnConfigModal from './ColumnConfigModal.vue';
+import ColumnConfigModal from './column-config-modal.vue';
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';

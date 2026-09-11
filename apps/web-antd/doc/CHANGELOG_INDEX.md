@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-11 运价新增/编辑弹窗视觉分区优化](./changelogs/change-log-2026-09-11-freight-rate-edit-form-polish.md)
+- [2026-09-11 运价 modules 下 Vue 文件统一为 kebab-case](./changelogs/change-log-2026-09-11-freight-rate-modules-kebab-case.md)
 - [2026-09-11 运价查询视图从海运出口目录抽出为独立模块](./changelogs/change-log-2026-09-11-freight-rate-extract-views.md)
 - [2026-09-11 自动费用模板明细表小屏高度裁切](./changelogs/change-log-2026-09-11-order-fee-template-table-height-fill.md)
 - [2026-09-11 运价批量新增港口/船公司/订舱代理改为远程搜索](./changelogs/change-log-2026-09-11-freight-rate-batch-add-port-remote-search.md)
