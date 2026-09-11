@@ -165,6 +165,31 @@ const formatTotalAmount = (value: number) =>
 /** 当前页是否有数据（控制合计区空态） */
 const hasPageData = computed(() => currentPageData.value.length > 0);
 
+/**
+ * 底部合计扁平项（对齐开票申请列表：
+ * 「标签: 着色金额」，每两组后用分隔符）。
+ */
+const summaryItems = computed(() => {
+  if (!hasPageData.value) return [];
+  return [
+    {
+      color: 'total',
+      name: '价税合计:',
+      value: formatTotalAmount(pageTotals.value.totalAmount),
+    },
+    {
+      color: 'amount',
+      name: '金额:',
+      value: formatTotalAmount(pageTotals.value.exTaxAmount),
+    },
+    {
+      color: 'tax',
+      name: '税额:',
+      value: formatTotalAmount(pageTotals.value.taxAmount),
+    },
+  ];
+});
+
 const [Grid, gridApi] = useVbenVxeGrid<Api.InputInvoiceListDto>({
   formOptions: {
     schema: searchFormSchema,
@@ -185,7 +210,7 @@ const [Grid, gridApi] = useVbenVxeGrid<Api.InputInvoiceListDto>({
   gridOptions: {
     align: 'left',
     columns,
-    height: 'auto',
+    height: '100%',
     keepSource: true,
     rowConfig: { keyField: 'id', isHover: true },
     pagerConfig: { enabled: true },
@@ -244,8 +269,8 @@ const onGroupFieldChange = (value: number | undefined) => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid>
+  <Page auto-content-height content-class="flex flex-col">
+    <Grid class="min-h-0 flex-1">
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 title 与插槽切换导致列设置重置 -->
       <template #toolbar-actions>
         <GroupingTabs
@@ -302,94 +327,97 @@ const onGroupFieldChange = (value: number | undefined) => {
       </template>
     </Grid>
 
-    <!-- 表格下方：当前页含税/不含税/税额合计 -->
-    <template #footer>
-      <div v-if="hasPageData" class="input-invoice-footer-summary">
-        <span class="input-invoice-footer-summary__label">当页合计：</span>
-        <div class="input-invoice-footer-summary__list">
-          <span class="input-invoice-footer-summary__item">
-            <span class="input-invoice-footer-summary__cell-label">
-              含税总金额
-            </span>
-            <span class="input-invoice-footer-summary__value">
-              {{ formatTotalAmount(pageTotals.totalAmount) }}
-            </span>
-          </span>
-          <span class="input-invoice-footer-summary__item">
-            <span class="input-invoice-footer-summary__cell-label">
-              不含税总金额
-            </span>
-            <span class="input-invoice-footer-summary__value">
-              {{ formatTotalAmount(pageTotals.exTaxAmount) }}
-            </span>
-          </span>
-          <span class="input-invoice-footer-summary__item">
-            <span class="input-invoice-footer-summary__cell-label"> 税额 </span>
-            <span class="input-invoice-footer-summary__value">
-              {{ formatTotalAmount(pageTotals.taxAmount) }}
-            </span>
-          </span>
-        </div>
-      </div>
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div v-if="summaryItems.length > 0" class="input-invoice-footer-summary">
       <div
-        v-else
-        class="input-invoice-footer-summary input-invoice-footer-summary--empty"
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="input-invoice-footer-summary__pair"
       >
-        <span class="input-invoice-footer-summary__label">当页合计：</span>
-        <span class="text-muted-foreground">暂无数据</span>
+        <span class="input-invoice-footer-summary__name">{{ item.name }}</span>
+        <span
+          class="input-invoice-footer-summary__value"
+          :class="`input-invoice-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="(index + 1) % 2 === 0 && index < summaryItems.length - 1"
+          class="input-invoice-footer-summary__split"
+        >
+          |
+        </span>
       </div>
-    </template>
+    </div>
+    <div
+      v-else
+      class="input-invoice-footer-summary input-invoice-footer-summary--empty"
+    >
+      <span class="input-invoice-footer-summary__name">当页合计：</span>
+      <span class="input-invoice-footer-summary__empty-text">暂无数据</span>
+    </div>
 
     <PullModal v-model:open="pullOpen" @success="handlePullSuccess" />
   </Page>
 </template>
 
 <style scoped>
-/* 表格下方：当页含税/不含税/税额合计（颜色走设计 token，兼容暗色） */
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
 .input-invoice-footer-summary {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0 4px;
   align-items: center;
   width: 100%;
-
-  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
-  min-height: 32px;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
   font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .input-invoice-footer-summary--empty {
-  color: hsl(var(--muted-foreground));
+  color: #94a3b8;
 }
 
-.input-invoice-footer-summary__label {
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
-.input-invoice-footer-summary__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-.input-invoice-footer-summary__item {
+.input-invoice-footer-summary__pair {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  padding: 4px 12px;
-  background: hsl(var(--primary) / 6%);
-  border: 1px solid hsl(var(--primary) / 20%);
-  border-radius: 4px;
+  margin-right: 12px;
 }
 
-.input-invoice-footer-summary__cell-label {
-  color: hsl(var(--muted-foreground));
+.input-invoice-footer-summary__name {
+  flex-shrink: 0;
 }
 
 .input-invoice-footer-summary__value {
   font-weight: 600;
-  color: hsl(var(--primary));
+}
+
+.input-invoice-footer-summary__value--total {
+  color: #00a862;
+}
+
+.input-invoice-footer-summary__value--amount {
+  color: #f59e0b;
+}
+
+.input-invoice-footer-summary__value--tax {
+  color: #1890ff;
+}
+
+.input-invoice-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
+}
+
+.input-invoice-footer-summary__empty-text {
+  color: #94a3b8;
 }
 </style>

@@ -349,7 +349,7 @@ const currencyTotals = computed(() => {
     item.invoiceAmount += Number(row.invoiceAmount) || 0;
     map.set(code, item);
   });
-  // 币别按代码排序，翻页时合计行的胶囊顺序不跳动
+  // 币别按代码排序，翻页时合计行顺序不跳动
   return [...map.values()].sort((a, b) =>
     a.currencyCode.localeCompare(b.currencyCode),
   );
@@ -373,6 +373,34 @@ const totalInvoiceAmount = computed(() =>
   ),
 );
 
+/**
+ * 底部合计扁平项（对齐应收应付审核详情底部 total-amount：
+ * 「标签: 着色金额」，每币别两组后用分隔符）。
+ */
+const summaryItems = computed(() => {
+  const list: Array<{ color: string; name: string; value: string }> = [];
+  currencyTotals.value.forEach((item) => {
+    list.push({
+      color: 'applied',
+      name: `${item.currencyCode}申请金额:`,
+      value: formatAmount(item.appliedAmount),
+    });
+    list.push({
+      color: 'invoice',
+      name: `${item.currencyCode}发票金额:`,
+      value: formatAmount(item.invoiceAmount),
+    });
+  });
+  if (currencyTotals.value.length > 0) {
+    list.push({
+      color: 'total',
+      name: '总计发票金额:',
+      value: formatAmount(totalInvoiceAmount.value),
+    });
+  }
+  return list;
+});
+
 /** 初始化表格 */
 const [Grid, gridApi] =
   useVbenVxeGrid<InvoiceApplicationApi.InvoiceApplicationListDto>({
@@ -389,7 +417,7 @@ const [Grid, gridApi] =
     },
     gridOptions: {
       columns: useColumns(),
-      height: 'auto',
+      height: '100%',
       keepSource: true,
       // 使用 checkboxConfig（多选），支持点击行选中
       checkboxConfig: {
@@ -577,8 +605,8 @@ function handleBatchWithdraw() {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid table-title="开票申请列表">
+  <Page auto-content-height content-class="flex flex-col">
+    <Grid table-title="开票申请列表" class="min-h-0 flex-1">
       <template #toolbar-tools>
         <Space>
           <Button type="primary" @click="handleCreate"> 新建 </Button>
@@ -607,53 +635,36 @@ function handleBatchWithdraw() {
       </template>
     </Grid>
 
-    <!-- 表格下方：当前页按币别的申请金额/发票金额合计 -->
-    <template #footer>
-      <div v-if="currencyTotals.length > 0" class="invoice-footer-summary">
-        <span class="invoice-footer-summary__label">当页合计：</span>
-        <div class="invoice-footer-summary__list">
-          <div
-            v-for="item in currencyTotals"
-            :key="item.currencyCode"
-            class="invoice-footer-summary__item"
-          >
-            <span class="invoice-footer-summary__currency">
-              {{ item.currencyCode }}
-            </span>
-            <span class="invoice-footer-summary__cell">
-              <span class="invoice-footer-summary__cell-label">申请金额</span>
-              <span class="invoice-footer-summary__applied">
-                {{ formatAmount(item.appliedAmount) }}
-              </span>
-            </span>
-            <span class="invoice-footer-summary__cell">
-              <span class="invoice-footer-summary__cell-label">发票金额</span>
-              <span class="invoice-footer-summary__invoice">
-                {{ formatAmount(item.invoiceAmount) }}
-              </span>
-            </span>
-          </div>
-
-          <!-- 跨币别总计：直接相加，未折算 -->
-          <div
-            class="invoice-footer-summary__item invoice-footer-summary__item--total"
-            title="各币别发票金额直接相加，未按开票汇率折算"
-          >
-            <span class="invoice-footer-summary__currency">总计</span>
-            <span class="invoice-footer-summary__cell">
-              <span class="invoice-footer-summary__cell-label">发票金额</span>
-              <span class="invoice-footer-summary__invoice">
-                {{ formatAmount(totalInvoiceAmount) }}
-              </span>
-            </span>
-          </div>
-        </div>
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div
+      v-if="summaryItems.length > 0"
+      class="invoice-footer-summary"
+      title="各币别金额直接相加；总计发票金额未按开票汇率折算"
+    >
+      <div
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="invoice-footer-summary__pair"
+      >
+        <span class="invoice-footer-summary__name">{{ item.name }}</span>
+        <span
+          class="invoice-footer-summary__value"
+          :class="`invoice-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="(index + 1) % 2 === 0 && index < summaryItems.length - 1"
+          class="invoice-footer-summary__split"
+        >
+          |
+        </span>
       </div>
-      <div v-else class="invoice-footer-summary invoice-footer-summary--empty">
-        <span class="invoice-footer-summary__label">当页合计：</span>
-        <span class="text-muted-foreground">暂无数据</span>
-      </div>
-    </template>
+    </div>
+    <div v-else class="invoice-footer-summary invoice-footer-summary--empty">
+      <span class="invoice-footer-summary__name">当页合计：</span>
+      <span class="invoice-footer-summary__empty-text">暂无数据</span>
+    </div>
 
     <!-- 驳回原因对话框 -->
     <Modal
@@ -857,75 +868,62 @@ function handleBatchWithdraw() {
   transform: scale(1.05);
 }
 
-/* 表格下方：当页按币别合计（与客户对账列表合计样式保持一致） */
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
 .invoice-footer-summary {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0 4px;
   align-items: center;
   width: 100%;
-
-  /* Page 只在挂载时量一次 footer 高度，空/有数据两态保持等高，避免表格高度跳变 */
-  min-height: 32px;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
   font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .invoice-footer-summary--empty {
-  color: rgb(0 0 0 / 45%);
+  color: #94a3b8;
 }
 
-.invoice-footer-summary__label {
-  font-weight: 600;
-  color: rgb(0 0 0 / 85%);
-}
-
-.invoice-footer-summary__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-.invoice-footer-summary__item {
+.invoice-footer-summary__pair {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  padding: 4px 12px;
-  background: rgb(24 144 255 / 6%);
-  border: 1px solid rgb(24 144 255 / 20%);
-  border-radius: 4px;
+  margin-right: 12px;
 }
 
-/* 跨币别总计胶囊：底色加重，与各币别明细区分 */
-.invoice-footer-summary__item--total {
-  background: rgb(24 144 255 / 14%);
-  border-color: rgb(24 144 255 / 45%);
+.invoice-footer-summary__name {
+  flex-shrink: 0;
 }
 
-.invoice-footer-summary__currency {
-  padding-right: 8px;
+.invoice-footer-summary__value {
   font-weight: 600;
+}
+
+.invoice-footer-summary__value--applied {
+  color: #00a862;
+}
+
+.invoice-footer-summary__value--invoice {
+  color: #f59e0b;
+}
+
+.invoice-footer-summary__value--total {
   color: #1890ff;
-  border-right: 1px solid rgb(24 144 255 / 20%);
 }
 
-.invoice-footer-summary__cell {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
+.invoice-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
 }
 
-.invoice-footer-summary__cell-label {
-  color: rgb(0 0 0 / 45%);
-}
-
-.invoice-footer-summary__applied {
-  font-weight: 600;
-  color: #cf1322;
-}
-
-.invoice-footer-summary__invoice {
-  font-weight: 600;
-  color: #389e0d;
+.invoice-footer-summary__empty-text {
+  color: #94a3b8;
 }
 </style>

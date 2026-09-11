@@ -74,6 +74,18 @@ const formatPageTotal = (value: number) =>
     maximumFractionDigits: 2,
   });
 
+/**
+ * 底部合计扁平项（对齐开票申请列表：
+ * 「{币别}申请合计: 着色金额」，项间用分隔符）。
+ */
+const summaryItems = computed(() =>
+  currencyTotals.value.map((item) => ({
+    color: 'applied',
+    name: `${item.currencyCode}申请合计:`,
+    value: formatPageTotal(item.amount),
+  })),
+);
+
 const settlementModalOpen = ref(false);
 const settlementModalApplicationNo = ref('');
 const settlementModalItems = ref<
@@ -264,7 +276,7 @@ const [Grid, gridApi] =
     },
     gridOptions: {
       columns: applyDefaultSortable(buildColumns()),
-      height: 'auto',
+      height: '100%',
       keepSource: true,
       // 列配置面板隐藏各币别平铺列，仅保留「申请合计」锚点列作为唯一配置项
       customConfig: {
@@ -279,9 +291,6 @@ const [Grid, gridApi] =
       },
       pagerConfig: {
         enabled: true,
-        slots: {
-          left: 'pagerLeft',
-        },
       },
       proxyConfig: {
         ajax: {
@@ -508,8 +517,8 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Grid :table-title="t('list')">
+  <Page auto-content-height content-class="flex flex-col">
+    <Grid :table-title="t('list')" class="min-h-0 flex-1">
       <template #toolbar-tools>
         <Space>
           <Button type="primary" @click="handleCreate">
@@ -572,24 +581,34 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           审批流程
         </Button>
       </template>
-      <template #pagerLeft>
-        <span v-if="currencyTotals.length > 0" class="pay-app-pager-summary">
-          <span class="pay-app-pager-summary__label">当页合计</span>
-          <span
-            v-for="item in currencyTotals"
-            :key="item.currencyId"
-            class="pay-app-pager-summary__item"
-          >
-            <span class="pay-app-pager-summary__currency">{{
-              item.currencyCode
-            }}</span>
-            <span class="pay-app-pager-summary__amount">{{
-              formatPageTotal(item.amount)
-            }}</span>
-          </span>
-        </span>
-      </template>
     </Grid>
+
+    <!-- 合计放在内容区内：Page 的 p-4 形成相对页面左右与底部的外边距 -->
+    <div v-if="summaryItems.length > 0" class="pay-app-footer-summary">
+      <div
+        v-for="(item, index) in summaryItems"
+        :key="`${item.name}-${index}`"
+        class="pay-app-footer-summary__pair"
+      >
+        <span class="pay-app-footer-summary__name">{{ item.name }}</span>
+        <span
+          class="pay-app-footer-summary__value"
+          :class="`pay-app-footer-summary__value--${item.color}`"
+        >
+          {{ item.value }}
+        </span>
+        <span
+          v-show="index < summaryItems.length - 1"
+          class="pay-app-footer-summary__split"
+        >
+          |
+        </span>
+      </div>
+    </div>
+    <div v-else class="pay-app-footer-summary pay-app-footer-summary--empty">
+      <span class="pay-app-footer-summary__name">当页合计：</span>
+      <span class="pay-app-footer-summary__empty-text">暂无数据</span>
+    </div>
 
     <SettlementDetailModal
       v-model:open="settlementModalOpen"
@@ -630,68 +649,54 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
   text-decoration: underline;
 }
 
-/* 当页合计嵌在分页行：插在「共 xx 条 / 每页条数」和翻页按钮之间 */
-:deep(.vxe-pager--wrapper) {
-  justify-content: flex-start;
-}
-
-:deep(.vxe-pager--total) {
-  order: 1;
-}
-
-:deep(.vxe-pager--sizes) {
-  order: 2;
-  margin-right: 0 !important;
-}
-
-:deep(.vxe-pager--left-wrapper) {
-  display: inline-flex;
-  align-items: center;
-  order: 3;
-  min-width: 0;
-  margin-right: auto;
-  margin-left: 8px;
-}
-
-:deep(
-  .vxe-pager--wrapper
-    > *:not(.vxe-pager--total):not(.vxe-pager--sizes):not(
-      .vxe-pager--left-wrapper
-    )
-) {
-  order: 4;
-}
-
-.pay-app-pager-summary {
-  display: inline-flex;
+/* 内容区内合计：相对页面的外边距由 Page p-4 提供，自身仅与表格留间距 */
+.pay-app-footer-summary {
+  display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 12px;
-  align-items: baseline;
+  gap: 0 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin-top: 12px;
   font-size: 13px;
-  line-height: 22px;
-  color: hsl(var(--foreground));
+  color: #52607a;
+  background: linear-gradient(90deg, #f7faff 0%, #fff 55%, #f7faff 100%);
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
-.pay-app-pager-summary__label {
-  font-weight: 600;
-  color: hsl(var(--foreground));
+.pay-app-footer-summary--empty {
+  color: #94a3b8;
 }
 
-.pay-app-pager-summary__item {
+.pay-app-footer-summary__pair {
   display: inline-flex;
-  gap: 6px;
-  align-items: baseline;
+  gap: 8px;
+  align-items: center;
+  margin-right: 12px;
 }
 
-.pay-app-pager-summary__currency {
+.pay-app-footer-summary__name {
+  flex-shrink: 0;
+}
+
+.pay-app-footer-summary__value {
   font-weight: 600;
-  color: hsl(var(--foreground) / 75%);
 }
 
-.pay-app-pager-summary__amount {
-  font-size: 14px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: hsl(var(--foreground));
+.pay-app-footer-summary__value--applied {
+  color: #00a862;
+}
+
+.pay-app-footer-summary__split {
+  margin: 0 4px;
+  color: #d9dee8;
+}
+
+.pay-app-footer-summary__empty-text {
+  color: #94a3b8;
 }
 </style>
