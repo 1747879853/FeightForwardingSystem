@@ -129,7 +129,7 @@ const resolveLabelKey = (
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   const portAny = port as Record<string, unknown>;
   const ediCode = (port.ediCode ?? '').toString().trim();
-  const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
+  const countryName = (port.country?.countryName ?? '').toString().trim();
   const cnName = (port.cnName ?? '').toString().trim();
   const portName = (port.portName ?? '').toString().trim();
   const rawLabel = ediCode ? `${ediCode}(${portName})` : portName;
@@ -138,8 +138,8 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
     disabled: port.status === 1,
     /** 第一行：EDI代码/港口名称 */
     line1: [ediCode, portName].filter(Boolean).join('/'),
-    /** 第二行：国家英文名 / 中文名称 */
-    line2: [countryEnName, cnName].filter(Boolean).join(' / '),
+    /** 第二行：国家中文名 / 港口中文名 */
+    line2: [countryName, cnName].filter(Boolean).join(' / '),
     label: resolveLabelKey(port, props.labelKey),
     /** 完整港口 DTO，供业务层 @change 使用 */
     raw: port,
@@ -251,7 +251,7 @@ const isDisplayComplete = (port: PortCodeAdminApi.PortCodeDto): boolean =>
     (port.ediCode ?? '').toString().trim() &&
     (port.portName ?? '').toString().trim() &&
     (port.cnName ?? '').toString().trim() &&
-    (port.country?.countryEnName ?? '').toString().trim(),
+    (port.country?.countryName ?? '').toString().trim(),
   );
 
 watch(
