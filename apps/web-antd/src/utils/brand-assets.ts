@@ -107,9 +107,9 @@ const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
     jiayue: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
     sjtd: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
     longshan: 'https://oss.jiayuebetter.com/longshan.mp4',
-    qinggang: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-    qdhd: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-    sdjg: 'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+    qinggang: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
+    qdhd: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
+    sdjg: 'https://oss.jiayuebetter.com/jht-login-back.mp4',
   },
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );
