@@ -8,7 +8,10 @@ import { getProfitReportList } from '#/api/system/report';
 
 import { setPortTypeByBizType } from '../_shared/formatters';
 import { localCurrencyColumn, textRenderer } from '../_shared/hot-columns';
-import { getCommonReportFormFields } from '../_shared/options';
+import {
+  currentMonthDateRange,
+  getCommonReportFormFields,
+} from '../_shared/options';
 
 /**
  * 利润报表配置
@@ -18,8 +21,8 @@ export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
   name: '利润报表',
   fetchApi: getProfitReportList,
 
-  // 查询表单：利润报表全部使用公共字段
-  formSchema: getCommonReportFormFields(),
+  // 查询表单：公共字段，业务日期默认当月，避免首屏全量查询
+  formSchema: getCommonReportFormFields(currentMonthDateRange()),
 
   // 查询前：保留原有权限校验行为，并按业务类型设置港口类型
   beforeQuery: (values, ctx) => {

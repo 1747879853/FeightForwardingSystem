@@ -1,33 +1,20 @@
 <script lang="ts" setup>
-import {
-  computed,
-  ref,
-  nextTick,
-  onActivated,
-  onDeactivated,
-  onMounted,
-  onUnmounted,
-  watch,
-} from 'vue';
+import { computed, nextTick, onMounted, shallowRef, watch } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
 
-// ✅ 注册中文语言包
 registerLanguageDictionary(zhCN);
 
-import { message, Tag, Modal, Checkbox } from 'ant-design-vue';
-
-// 说明：列配置弹窗（ColumnConfigModal）由父级模板组件 report-page.vue 渲染，此处不再引入
-
-// 导入 SheetJS
-import * as XLSX from 'xlsx';
+import { Button, Card, Empty, message, Spin, Tag } from 'ant-design-vue';
 
 import {
-  blankMixedCurrencyTotals,
-  collectRowLocalCurrencies,
-  LOCAL_CURRENCY_COLUMN_KEY,
-} from './hot-columns';
+  applyLocalCurrencyToAggregate,
+  collectAllGroupKeys,
+  fillAggregatedColumns,
+  parseNumeric,
+} from './aggregate';
+import { useReportTableLayout } from './use-report-table-layout';
 
 defineOptions({
   name: 'ReportHotTable',
@@ -38,7 +25,6 @@ const REPORT_ROW_HEIGHT = 32;
 /** cells() 普通行复用，避免每次 new 对象 */
 const EMPTY_CELL_PROPS = Object.freeze({});
 
-// Props and emits
 const props = defineProps<{
   originalData: Record<string, any>[];
   groupColumns: string[];
@@ -58,49 +44,49 @@ const emit = defineEmits<{
   (e: 'update:expandedGroups', value: Set<string>): void;
   (e: 'update:columnConfigs', value: any[]): void;
   (e: 'viewDetail', record: Record<string, any>): void;
-  (e: 'export'): void;
 }>();
 
-// Handsontable 引用
-const hotTableRef = ref<any>(null);
-const containerRef = ref<HTMLElement | null>(null);
-// 当前显示的列配置
-const currentColumnsRef = ref<any[]>([]);
-// ✅ 新增：存储隐藏列的状态（索引数组）
-const hiddenColumnsRef = ref<number[]>([]);
-// ✅ 新增：存储隐藏列的data属性（而不是索引）
-const hiddenColumnDataRefs = ref<Set<string>>(new Set());
-// 表格数据
-const tableData = ref<any[]>([]);
+const hotTableRef = shallowRef<any>(null);
+const containerRef = shallowRef<HTMLElement | null>(null);
+const currentColumnsRef = shallowRef<any[]>([]);
+const hiddenColumnsRef = shallowRef<number[]>([]);
+const hiddenColumnDataRefs = shallowRef<Set<string>>(new Set());
+/** 展示行（含分组/合计）。只整体替换，不做深层代理 */
+const tableData = shallowRef<any[]>([]);
+const exporting = shallowRef(false);
 
-// 分组相关状态
-const localGroupColumns = ref<string[]>([...props.groupColumns]);
-const localExpandedGroups = ref<Set<string>>(
+const localGroupColumns = shallowRef<string[]>([...props.groupColumns]);
+const localExpandedGroups = shallowRef<Set<string>>(
   new Set([...props.expandedGroups]),
 );
 
-// ✅ 排序状态：作用于原始数据源，合计行不参与排序、始终保持在最后一行
-const sortState = ref<{ column: string; order: 'asc' | 'desc' } | null>(null);
-// ✅ 表格数据源：保存排序后的原始数据，分组/展开/合计行均基于它重建
-const dataSource = ref<any[]>([...props.originalData]);
+/** 排序状态：作用于原始数据源，合计行不参与排序、始终保持在最后一行 */
+const sortState = shallowRef<{ column: string; order: 'asc' | 'desc' } | null>(
+  null,
+);
+/** 表格数据源：保存排序后的原始数据，分组/展开/合计行均基于它重建 */
+const dataSource = shallowRef<any[]>([...props.originalData]);
 
-// ✅ 新增：存储当前右键点击的列索引
-const rightClickColumnIndex = ref<number | null>(null);
+const rightClickColumnIndex = shallowRef<number | null>(null);
+const draggedGroupIndex = shallowRef<number | null>(null);
+const dragOverGroupIndex = shallowRef<number | null>(null);
+const hoverColumnData = shallowRef<string | null>(null);
 
-// ✅ 分组标签拖拽状态
-const draggedGroupIndex = ref<number | null>(null);
-const dragOverGroupIndex = ref<number | null>(null);
+const groupingCache = new Map<string, any[]>();
+const treeStructureCache = new Map<string, any[]>();
 
-// ✅ 新增：悬停提示状态
-const hoverColumnData = ref<string | null>(null);
+const { scheduleHeightUpdate } = useReportTableLayout({
+  containerRef,
+  getHotInstance: () => hotTableRef.value?.hotInstance,
+});
 
-// Handsontable 列配置（由父级根据报表配置计算后注入）
-const dynamicHotColumns = computed(() => props.hotColumns);
+function clearCaches() {
+  groupingCache.clear();
+  treeStructureCache.clear();
+}
 
-// 获取列标题映射（用于表头显示）
 const columnTitleMap = computed<Record<string, string>>(() => {
-  const columns = dynamicHotColumns.value;
-  return columns.reduce(
+  return props.hotColumns.reduce(
     (map, col) => {
       map[col.data] = col.title;
       return map;
@@ -109,33 +95,26 @@ const columnTitleMap = computed<Record<string, string>>(() => {
   );
 });
 
-// 更新数值列字段（用于累加和右对齐），由报表配置驱动，不再硬编码某个报表的字段
-const numericColumns = computed(() => {
-  return new Set(props.numericColumnKeys);
-});
+const numericColumns = computed(() => new Set(props.numericColumnKeys));
 
-// ✅ 新增：数据处理缓存
-const groupingCache = new Map<string, any[]>();
-const treeStructureCache = new Map<string, any[]>();
+const recordCount = computed(() => dataSource.value.length);
 
-// ✅ 重新添加 clearCaches 函数，确保展开/折叠操作时数据正确性
-function clearCaches() {
-  groupingCache.clear();
-  treeStructureCache.clear();
+const hasGrouping = computed(() => localGroupColumns.value.length > 0);
+
+function syncHotData(rows: any[]) {
+  tableData.value = rows;
+  nextTick(() => {
+    const hotInstance = hotTableRef.value?.hotInstance;
+    if (!hotInstance) return;
+    try {
+      hotInstance.loadData(rows);
+      scheduleHeightUpdate(0);
+    } catch (error) {
+      console.error('Handsontable 更新失败:', error);
+    }
+  });
 }
 
-// ✅ 新增：计算可用于分组的列（排除已在分组中的列）
-const availableGroupColumns = computed(() => {
-  const groupedSet = new Set(localGroupColumns.value);
-  return dynamicHotColumns.value.filter(
-    (col) =>
-      !groupedSet.has(col.data) &&
-      col.data !== '_groupDisplay' &&
-      !col.data.startsWith('total'), // 排除合计列
-  );
-});
-
-// ✅ 新增：切换分组展开状态
 function toggleGroupExpand(groupKey: string) {
   if (localExpandedGroups.value.has(groupKey)) {
     localExpandedGroups.value.delete(groupKey);
@@ -143,24 +122,38 @@ function toggleGroupExpand(groupKey: string) {
     localExpandedGroups.value.add(groupKey);
   }
 
-  // 更新父组件的状态（保持 Set 类型，与 emit 签名一致）
   emit('update:expandedGroups', localExpandedGroups.value);
-
-  // ✅ 重新添加 clearCaches 调用，确保展开/折叠操作时数据正确性
   clearCaches();
 
-  // 重新应用分组（这会触发表格数据更新）
   if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
+    applyGrouping(dataSource.value);
   }
 }
 
-// ✅ 自定义列排序：对原始数据源排序，分组/合计行在 applyGrouping 中重建，合计行始终保持在最后一行
+function expandAllGroups() {
+  if (!hasGrouping.value || dataSource.value.length === 0) return;
+  const keys = collectAllGroupKeys(dataSource.value, localGroupColumns.value);
+  localExpandedGroups.value = new Set(keys);
+  emit('update:expandedGroups', localExpandedGroups.value);
+  clearCaches();
+  applyGrouping(dataSource.value);
+}
+
+function collapseAllGroups() {
+  if (!hasGrouping.value) return;
+  localExpandedGroups.value = new Set();
+  emit('update:expandedGroups', new Set());
+  clearCaches();
+  if (dataSource.value.length > 0) {
+    applyGrouping(dataSource.value);
+  }
+}
+
 function compareCellValues(a: any, b: any): number {
   const aEmpty = a == null || a === '' || a === '-';
   const bEmpty = b == null || b === '' || b === '-';
   if (aEmpty && bEmpty) return 0;
-  if (aEmpty) return 1; // 空值始终排在最后
+  if (aEmpty) return 1;
   if (bEmpty) return -1;
 
   const aNum = Number.parseFloat(String(a).replaceAll(',', ''));
@@ -178,7 +171,7 @@ function sortRows(data: any[], column: string, order: 'asc' | 'desc'): any[] {
   });
 }
 
-// 列头左键单击排序：同列切换升降序，不同列默认升序
+/** 列头单击排序：升序 → 降序 → 取消，合计行始终在最后 */
 function handleColumnHeaderClick(colIndex: number) {
   const colConfig = currentColumnsRef.value[colIndex];
   const columnData = colConfig?.data;
@@ -187,33 +180,31 @@ function handleColumnHeaderClick(colIndex: number) {
   }
 
   const currentSort = sortState.value;
-  const order: 'asc' | 'desc' =
-    currentSort?.column === columnData && currentSort?.order === 'asc'
-      ? 'desc'
-      : 'asc';
-
-  sortState.value = { column: columnData, order };
-
   clearCaches();
-  dataSource.value = sortRows(dataSource.value, columnData, order);
+
+  if (
+    currentSort &&
+    currentSort.column === columnData &&
+    currentSort.order === 'desc'
+  ) {
+    sortState.value = null;
+    dataSource.value = [...props.originalData];
+  } else {
+    const order: 'asc' | 'desc' =
+      currentSort &&
+      currentSort.column === columnData &&
+      currentSort.order === 'asc'
+        ? 'desc'
+        : 'asc';
+    sortState.value = { column: columnData, order };
+    dataSource.value = sortRows(dataSource.value, columnData, order);
+  }
 
   if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
+    applyGrouping(dataSource.value);
   }
 }
 
-// 列选择器相关状态
-const showColumnSelector = ref(false);
-const selectedColumnsForGroup = ref<string[]>([]);
-
-// 监听动态列变化，更新默认配置
-watch(dynamicHotColumns, () => {
-  if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
-  }
-});
-
-// 监听外部 props 变化
 watch(
   () => props.groupColumns,
   (newVal) => {
@@ -228,15 +219,15 @@ watch(
   },
 );
 
-// 监听原始数据变化：查询刷新或重置清空时同步刷新表格显示，
-// 避免重置后表格残留上一次的分组长态数据
+/**
+ * 查询结果与列配置在同一次查询里会一起变，合并成一个 watch 避免 applyGrouping 跑两遍。
+ */
 watch(
-  () => props.originalData,
-  (newVal) => {
+  () => [props.originalData, props.columnConfigs] as const,
+  ([newVal]) => {
     clearCaches();
     dataSource.value = [...newVal];
     if (newVal.length > 0) {
-      // 保持当前排序（如果有）
       if (sortState.value) {
         dataSource.value = sortRows(
           dataSource.value,
@@ -244,97 +235,92 @@ watch(
           sortState.value.order,
         );
       }
-      applyGrouping([...dataSource.value]);
+      applyGrouping(dataSource.value);
     } else {
-      // 数据被清空（重置）：恢复初始展示状态（无分组行、无隐藏列）
-      tableData.value = [];
       hiddenColumnsRef.value = [];
       hiddenColumnDataRefs.value = new Set();
+      syncHotData([]);
     }
   },
 );
 
-// 在 setup 函数中添加对组件实例的引用，用于 contextMenu
 const componentInstance = {
   localGroupColumns,
   localExpandedGroups,
   currentColumnsRef,
-  props,
   emit,
-  applyGrouping,
+  applyGrouping: (_data: any[]) => {},
   rightClickColumnIndex,
   dataSource,
 };
 
-// Handsontable 配置（改为计算属性）
+function updateHiddenColumnData(destinationHideConfig: number[]) {
+  const hotInstance = hotTableRef.value?.hotInstance;
+  if (!hotInstance) return;
+
+  const columns = hotInstance.getSettings().columns || [];
+  const hiddenData = new Set<string>();
+  destinationHideConfig.forEach((colIndex) => {
+    const colConfig = columns[colIndex];
+    if (colConfig && colConfig.data) {
+      hiddenData.add(colConfig.data);
+    }
+  });
+  hiddenColumnDataRefs.value = hiddenData;
+}
+
+/**
+ * 列/排序/隐藏列变化才重算 settings。
+ * 故意不把 tableData 放进 computed：行数据改走 loadData，避免每次展开分组都
+ * 把整份 Handsontable 配置（含回调）重建一遍。
+ */
 const hotSettings = computed(() => {
-  // 获取可见列并按order排序
-  // 如果有分组，使用currentColumnsRef（包含分组列），否则使用columnConfigs
-  const visibleColumns =
-    localGroupColumns.value.length > 0
-      ? [...currentColumnsRef.value]
-      : [...props.columnConfigs]
-          .filter((col) => col.visible)
-          .sort((a, b) => a.order - b.order);
+  const grouped = localGroupColumns.value.length > 0;
 
-  // 计算固定列数量 - 移除固定列以提高性能
-  // const leftFixedColumns = visibleColumns.filter((col) => col.fixed === 'left');
-  // const rightFixedColumns = visibleColumns.filter(
-  //   (col) => col.fixed === 'right',
-  // );
+  const visibleColumns = grouped
+    ? [...currentColumnsRef.value]
+    : [...props.columnConfigs]
+        .filter((col) => col.visible)
+        .sort((a, b) => a.order - b.order);
 
-  // const fixedColumnsLeft = leftFixedColumns.length;
-  // const fixedColumnsRight = rightFixedColumns.length;
-
-  // 列定义快照：供 colHeaders / cells 闭包使用，避免滚动时反复读 props
   const columnsForSettings = visibleColumns.map((col) => {
     const isNumeric = numericColumns.value.has(col.data);
     return {
       ...col,
-      // 数值列右对齐；非数值列优先保留列配置自带的 className（如 htRight）
       className: isNumeric ? 'htRight' : col.className || 'htLeft',
-      // 固定宽度，避免 autoColumnSize / stretchH 在横向滚动时反复测宽
       width: col.width || 150,
     };
   });
 
   return {
-    data: tableData.value,
     columns: columnsForSettings,
     rowHeaders: true,
-    // 排序箭头写进表头文案，避免 afterGetColHeader 里对 textContent 做 replace
+    // 排序箭头读 sortState.value：必须在回调内取最新值。
+    // Handsontable Vue 包装器用函数 toString 判断是否更新，闭包捕获会让箭头停在旧排序。
     colHeaders: (col: number) => {
       const colConfig = columnsForSettings[col];
       if (!colConfig) return '';
       const title = colConfig.title || '';
       const data = colConfig.data;
-      if (
-        data &&
-        data !== '_groupDisplay' &&
-        sortState.value?.column === data
-      ) {
-        return `${title} ${sortState.value.order === 'asc' ? '▲' : '▼'}`;
+      const sort = sortState.value;
+      if (data && data !== '_groupDisplay' && sort && sort.column === data) {
+        return `${title} ${sort.order === 'asc' ? '▲' : '▼'}`;
       }
       return title;
     },
-    // 高度由 updateTableHeight 以像素写入，勿在此写 height:'100%'：
-    // hotSettings 重算时会把已适配的像素高度重置掉，多次折叠检索后表现为不再填满。
     width: '100%',
-    // 固定列宽场景下禁用拉伸，减少横向滚动时的布局计算
     stretchH: 'none',
     manualColumnResize: true,
     manualRowResize: false,
     autoColumnSize: false,
     autoRowSize: false,
     renderAllRows: false,
-    // 预渲染少量行列，降低竖/横滚时离屏绘制量
     viewportColumnRenderingOffset: 6,
     viewportRowRenderingOffset: 8,
-
-    // ✅ 启用手动列移动功能 - 允许拖拽列头调整列顺序
     manualColumnMove: true,
-
-    // ✅ 启用右键菜单和列隐藏/显示功能，使用中文标签
+    fillHandle: false,
+    // 有数据时合计行钉在底部，滚动明细不必翻到最后
+    fixedRowsBottom: dataSource.value.length > 0 ? 1 : 0,
     contextMenu: {
       items: {
         hidden_columns_show: {
@@ -343,9 +329,7 @@ const hotSettings = computed(() => {
         hidden_columns_hide: {
           name: '隐藏列',
         },
-        // ✅ 添加分隔线
         separator1: '---------',
-        // ✅ 添加分组菜单项
         add_to_group: {
           name: '添加到分组',
           callback: function (
@@ -354,9 +338,8 @@ const hotSettings = computed(() => {
             _clickEvent: any,
           ) {
             const instance = componentInstance;
-            let col = selection[0].start.col;
+            const col = selection[0].start.col;
 
-            // 获取当前列的data属性
             const currentColumns = instance.currentColumnsRef.value;
             if (col < 0 || col >= currentColumns.length) {
               return;
@@ -370,24 +353,24 @@ const hotSettings = computed(() => {
               return;
             }
 
-            // 检查是否已经在分组中
             if (instance.localGroupColumns.value.includes(columnData)) {
               message.warning(`"${columnTitle}" 已在分组中`);
               return;
             }
 
-            // 添加到分组
-            instance.localGroupColumns.value.push(columnData);
+            instance.localGroupColumns.value = [
+              ...instance.localGroupColumns.value,
+              columnData,
+            ];
             instance.emit('update:groupColumns', [
               ...instance.localGroupColumns.value,
             ]);
 
-            // 清空展开状态
             instance.localExpandedGroups.value = new Set();
             instance.emit('update:expandedGroups', new Set());
 
             if (instance.dataSource.value.length > 0) {
-              instance.applyGrouping([...instance.dataSource.value]);
+              instance.applyGrouping(instance.dataSource.value);
             }
 
             message.success(`已将 "${columnTitle}" 添加到分组`);
@@ -396,76 +379,56 @@ const hotSettings = computed(() => {
             const instance = componentInstance;
             const col = instance.rightClickColumnIndex.value;
 
-            // 如果没有有效的列索引，启用菜单项（让callback处理验证）
-            // 这解决了第一次右键时菜单项灰色的问题
             if (col === null || col < 0) {
               return false;
             }
 
-            // 获取当前列的data属性
             const currentColumns = instance.currentColumnsRef.value;
             if (col >= currentColumns.length) {
-              return false; // 启用菜单项，让callback处理
-            }
-
-            const columnData = currentColumns[col]?.data;
-
-            // 如果列数据无效，启用菜单项，让callback处理
-            if (!columnData) {
               return false;
             }
 
-            // 如果是分组列（_groupDisplay），禁用分组功能
+            const columnData = currentColumns[col]?.data;
+            if (!columnData) {
+              return false;
+            }
             if (columnData === '_groupDisplay') {
               return true;
             }
-
-            // 如果是合计列（以total开头），禁用分组功能
             if (columnData.startsWith('total')) {
               return true;
             }
-
-            // 如果已经在分组中，禁用
             return instance.localGroupColumns.value.includes(columnData);
           },
         },
       },
     },
-
-    // ✅ 配置隐藏列功能
     hiddenColumns: {
-      columns: hiddenColumnsRef.value, // 使用计算后的隐藏列索引
-      indicators: true, // 显示隐藏列指示器（小箭头）
-      copyPasteEnabled: false, // 隐藏列不参与复制粘贴
+      columns: hiddenColumnsRef.value,
+      indicators: true,
+      copyPasteEnabled: false,
     },
-
-    // ✅ 设置语言为中文
     language: zhCN.languageCode,
-
     readOnly: true,
     licenseKey: 'non-commercial-and-evaluation',
     className: 'htCenter htMiddle',
-    // 固定行高：避免滚动时测高；与 CSS 中 td/行头高度保持一致
     rowHeights: REPORT_ROW_HEIGHT,
     autoWrapRow: false,
     autoWrapCol: false,
-
-    // ✅ 移除固定列以提高滚动性能
     fixedColumnsLeft: 0,
     fixedColumnsRight: 0,
-
-    // 合计/分组行样式走 className；普通数据行快速返回空对象
     cells: (row: number, col: number) => {
       if (row == null || row < 0) return EMPTY_CELL_PROPS;
       const rowData = tableData.value[row];
       if (!rowData) return EMPTY_CELL_PROPS;
 
+      const colConfig = currentColumnsRef.value[col];
       let rowClass = '';
       if (rowData._isTotalRow) {
         rowClass = 'report-total-cell';
       } else if (rowData._isGroupRow) {
         rowClass =
-          columnsForSettings[col]?.data === '_groupDisplay'
+          colConfig?.data === '_groupDisplay'
             ? 'report-group-cell report-group-label'
             : 'report-group-cell';
       } else if (rowData._isDetailRow) {
@@ -474,12 +437,10 @@ const hotSettings = computed(() => {
         return EMPTY_CELL_PROPS;
       }
 
-      const base = columnsForSettings[col]?.className || '';
+      const base = colConfig?.className || '';
       return { className: base ? `${base} ${rowClass}` : rowClass };
     },
-
     afterDblClick: onAfterOnCellDblClick,
-    // 列头排序 + 分组行展开（事件委托，避免分组列 renderer 反复绑 click）
     afterOnCellMouseDown: (event: MouseEvent, coords: any) => {
       if (event?.button !== 0) return;
       if (coords?.row === -1 && coords?.col >= 0) {
@@ -497,7 +458,6 @@ const hotSettings = computed(() => {
         }
       }
     },
-    // title 推迟到悬停，避免每个可见单元格在滚动渲染时写 DOM 属性
     afterOnCellMouseOver: (
       _event: MouseEvent,
       coords: { row: number; col: number },
@@ -505,7 +465,9 @@ const hotSettings = computed(() => {
     ) => {
       if (coords.row < 0 || coords.col < 0) return;
       const value =
-        tableData.value[coords.row]?.[columnsForSettings[coords.col]?.data];
+        tableData.value[coords.row]?.[
+          currentColumnsRef.value[coords.col]?.data
+        ];
       const cellValue = value == null ? '' : String(value);
       if (cellValue && cellValue !== '-' && cellValue.trim() !== '') {
         TD.title = cellValue;
@@ -518,279 +480,37 @@ const hotSettings = computed(() => {
     ) => {
       if (TD.title) TD.title = '';
     },
-    // ✅ 添加右键菜单事件处理，捕获点击位置
     afterOnCellContextMenu: (_event: MouseEvent, coords: any) => {
-      // 存储当前右键点击的列索引
       if (coords && coords.col !== undefined) {
         rightClickColumnIndex.value = coords.col;
       }
     },
-    // ✅ 添加列头右键菜单事件处理
     afterOnColumnHeaderContextMenu: (_event: MouseEvent, col: number) => {
-      // 存储当前右键点击的列索引
       if (col !== undefined) {
         rightClickColumnIndex.value = col;
       }
     },
-    // ✅ 监听隐藏列变化
     afterHideColumns: (
       _currentHideConfig: number[],
       destinationHideConfig: number[],
     ) => {
-      const hotInstance = hotTableRef.value?.hotInstance;
-      if (!hotInstance) return;
-
-      const columns = hotInstance.getSettings().columns || [];
-      const hiddenData = new Set<string>();
-      destinationHideConfig.forEach((colIndex) => {
-        const colConfig = columns[colIndex];
-        if (colConfig && colConfig.data) {
-          hiddenData.add(colConfig.data);
-        }
-      });
-      hiddenColumnDataRefs.value = hiddenData;
+      updateHiddenColumnData(destinationHideConfig);
     },
-    // ✅ 监听取消隐藏列变化
     afterUnhideColumns: (
       _currentHideConfig: number[],
       destinationHideConfig: number[],
     ) => {
-      const hotInstance = hotTableRef.value?.hotInstance;
-      if (!hotInstance) return;
-
-      const columns = hotInstance.getSettings().columns || [];
-      const hiddenData = new Set<string>();
-      destinationHideConfig.forEach((colIndex) => {
-        const colConfig = columns[colIndex];
-        if (colConfig && colConfig.data) {
-          hiddenData.add(colConfig.data);
-        }
-      });
-      hiddenColumnDataRefs.value = hiddenData;
+      updateHiddenColumnData(destinationHideConfig);
     },
   };
 });
 
-/**
- * 更新表格高度
- */
-let resizeObserver: ResizeObserver | null = null;
-/** 仅观察查询卡片内部 class 变化（折叠字段 hidden），避免再监听 document.body */
-let queryCardMutationObserver: MutationObserver | null = null;
-let heightUpdateTimer: ReturnType<typeof setTimeout> | null = null;
-let heightDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-let heightFollowUpTimer: ReturnType<typeof setTimeout> | null = null;
-/** 观察器是否已启动。onMounted 与 onActivated 都会调用启动函数，需要幂等 */
-let layoutWatching = false;
-
-/**
- * 更新表格高度：按「视口底部 − 容器顶」估算，不依赖 container.clientHeight。
- * 原因：未定高 flex 时 clientHeight ≈ Handsontable 已设像素高，折叠检索后会锁死不再长高。
- */
-function updateTableHeight() {
-  // 清除之前的定时器，避免重复调用
-  if (heightUpdateTimer) {
-    clearTimeout(heightUpdateTimer);
-  }
-
-  heightUpdateTimer = setTimeout(() => {
-    const container = containerRef.value;
-    const hotInstance = hotTableRef.value?.hotInstance;
-
-    if (!container || !hotInstance) {
-      heightUpdateTimer = null;
-      return;
-    }
-
-    const rect = container.getBoundingClientRect();
-    let targetHeight = Math.floor(window.innerHeight - rect.top - 24);
-
-    if (targetHeight < 200) {
-      targetHeight = 200;
-    }
-
-    const currentHeight = Number(hotInstance.getSettings()?.height);
-    if (currentHeight === targetHeight) {
-      heightUpdateTimer = null;
-      return;
-    }
-
-    hotInstance.updateSettings({ height: targetHeight }, false);
-
-    heightUpdateTimer = null;
-  }, 16);
-}
-
-/** 防抖调度一次高度重算 */
-function scheduleHeightUpdate(delay = 50) {
-  if (heightDebounceTimer) {
-    clearTimeout(heightDebounceTimer);
-  }
-  heightDebounceTimer = setTimeout(() => {
-    heightDebounceTimer = null;
-    updateTableHeight();
-  }, delay);
-}
-
-/**
- * 折叠检索后布局可能分两帧完成：先立刻重算，再补一次兜底。
- * 第二次用独立 timer，避免被 scheduleHeightUpdate 的防抖清掉。
- */
-function scheduleHeightUpdateWithFollowUp() {
-  scheduleHeightUpdate(50);
-  if (heightFollowUpTimer) {
-    clearTimeout(heightFollowUpTimer);
-  }
-  heightFollowUpTimer = setTimeout(() => {
-    heightFollowUpTimer = null;
-    updateTableHeight();
-  }, 200);
-}
-
-function handleWindowResize() {
-  scheduleHeightUpdateWithFollowUp();
-}
-
-/**
- * 启动布局观察。
- *
- * Page 组件没有 .vben-page-wrapper，需从 .report-page / .report-page__content
- * 定位查询卡。折叠改的是表单项 class，故在 query-card 子树监听 class。
- */
-function startLayoutWatchers() {
-  if (layoutWatching) return;
-  const container = containerRef.value;
-  if (!container) return;
-  layoutWatching = true;
-
-  resizeObserver = new ResizeObserver(() => scheduleHeightUpdate(50));
-  resizeObserver.observe(container);
-
-  const pageRoot = container.closest('.report-page');
-  const pageContent =
-    container.closest('.report-page__content') ||
-    (pageRoot?.querySelector('.report-page__content') as HTMLElement | null);
-
-  if (pageContent) {
-    resizeObserver.observe(pageContent);
-  }
-
-  const queryCard = pageRoot?.querySelector(
-    '.query-card',
-  ) as HTMLElement | null;
-  if (queryCard) {
-    resizeObserver.observe(queryCard);
-    queryCardMutationObserver = new MutationObserver(() =>
-      scheduleHeightUpdateWithFollowUp(),
-    );
-    queryCardMutationObserver.observe(queryCard, {
-      attributes: true,
-      attributeFilter: ['class'],
-      subtree: true,
-    });
-  }
-
-  window.addEventListener('resize', handleWindowResize);
-}
-
-/**
- * 停止布局观察并清空待执行的定时器。
- *
- * 报表路由带 keepAlive，离开页面只触发 onDeactivated 而不触发 onUnmounted，
- * 所以两个钩子都要调用这里，否则观察器会在整个会话内一直存活。
- */
-function stopLayoutWatchers() {
-  if (!layoutWatching) return;
-  layoutWatching = false;
-
-  window.removeEventListener('resize', handleWindowResize);
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-  queryCardMutationObserver?.disconnect();
-  queryCardMutationObserver = null;
-
-  if (heightDebounceTimer) {
-    clearTimeout(heightDebounceTimer);
-    heightDebounceTimer = null;
-  }
-  if (heightUpdateTimer) {
-    clearTimeout(heightUpdateTimer);
-    heightUpdateTimer = null;
-  }
-  if (heightFollowUpTimer) {
-    clearTimeout(heightFollowUpTimer);
-    heightFollowUpTimer = null;
-  }
-}
-
-/**
- * 初始化列头拖拽功能（使用内联事件处理器） - 已完全移除拖拽功能，此函数不再需要
- */
-// function initColumnHeaderDrag() {
-//   nextTick(() => {
-//     const hotInstance = hotTableRef.value?.hotInstance;
-//     if (!hotInstance) {
-//       console.warn('Handsontable 实例不存在');
-//       return;
-//     }
-
-//     const container = hotInstance.rootElement;
-//     if (!container) {
-//       console.warn('Handsontable 根元素不存在');
-//       return;
-//     }
-
-//     const columnHeader = container.querySelector('thead');
-//     if (!columnHeader) {
-//       console.warn('未找到 thead 元素');
-//       return;
-//     }
-
-//     (initColumnHeaderDrag as any).cleanup = () => {
-//       console.log('✅ 列头拖拽清理完成');
-//     };
-//   });
-// }
-
 onMounted(() => {
-  // 初始化观察者
-  startLayoutWatchers();
-
-  // 如果有数据，应用分组
   if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
+    applyGrouping(dataSource.value);
   }
-
-  // 默认执行一次高度更新
-  updateTableHeight();
 });
 
-// 从 keepAlive 缓存恢复：重新挂观察器，并按当前布局重算一次高度
-onActivated(() => {
-  startLayoutWatchers();
-  scheduleHeightUpdate(0);
-});
-
-// 切走时立即停掉，避免在整个会话内持续监听
-onDeactivated(stopLayoutWatchers);
-
-onUnmounted(() => {
-  stopLayoutWatchers();
-
-  // ✅ 移除拖拽相关资源清理（已完全移除拖拽功能）
-  // if (dragGhostElement) {
-  //   dragGhostElement.remove();
-  //   dragGhostElement = null;
-  // }
-  // isDraggingColumn = false;
-  // dragColumnData = {};
-
-  // 移除可能残留的全局事件监听器
-  document.querySelectorAll('.column-drag-ghost').forEach((el) => el.remove());
-  // document.querySelector('.group-area-tags')?.classList.remove('sortable-over');
-});
-
-// 创建分组列配置（轻量 renderer：无 innerHTML / inline style / 事件绑定）
 function createGroupColumn() {
   return {
     data: '_groupDisplay',
@@ -834,30 +554,24 @@ function createGroupColumn() {
   };
 }
 
-// 应用分组逻辑
 function applyGrouping(data: any[]) {
-  // ✅ 修复：缓存键必须包含展开状态，否则展开/折叠操作不会生效
   const expandedGroupsKey = Array.from(localExpandedGroups.value)
     .sort()
     .join('|');
-  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}`;
+  const visibleColumnConfigs = props.columnConfigs.filter((col) => col.visible);
+  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}_${visibleColumnConfigs.length}`;
 
-  // ✅ 使用缓存键避免重复计算
   if (groupingCache.has(cacheKey)) {
     const cachedResult = groupingCache.get(cacheKey);
     if (cachedResult) {
-      tableData.value = cachedResult;
+      syncHotData(cachedResult);
       return;
     }
   }
 
-  // 获取可见的列配置
-  const visibleColumnConfigs = props.columnConfigs.filter((col) => col.visible);
-
   let columnsConfig = [];
 
   if (localGroupColumns.value.length > 0) {
-    // 如果有分组，在最前面添加分组列，并过滤掉已用于分组的列
     const groupedColumnSet = new Set(localGroupColumns.value);
     const filteredColumns = visibleColumnConfigs
       .filter((col) => !groupedColumnSet.has(col.data))
@@ -871,7 +585,6 @@ function applyGrouping(data: any[]) {
 
     columnsConfig = [createGroupColumn(), ...filteredColumns];
   } else {
-    // 无分组时显示所有可见列
     columnsConfig = visibleColumnConfigs.map((col) => {
       const isNumeric = numericColumns.value.has(col.data);
       return {
@@ -881,74 +594,51 @@ function applyGrouping(data: any[]) {
     });
   }
 
-  // 保存当前列配置
-  currentColumnsRef.value = columnsConfig;
+  const nextSignature = columnsConfig.map((col) => col.data).join('|');
+  const prevSignature = currentColumnsRef.value
+    .map((col) => col.data)
+    .join('|');
+  if (nextSignature !== prevSignature) {
+    currentColumnsRef.value = columnsConfig;
+  }
 
-  // ✅ 计算应该隐藏的列索引
   const newHiddenColumnIndexes: number[] = [];
   columnsConfig.forEach((col, index) => {
     if (hiddenColumnDataRefs.value.has(col.data)) {
       newHiddenColumnIndexes.push(index);
     }
   });
-  hiddenColumnsRef.value = newHiddenColumnIndexes;
+  const prevHidden = hiddenColumnsRef.value;
+  const hiddenUnchanged =
+    prevHidden.length === newHiddenColumnIndexes.length &&
+    prevHidden.every((v, i) => v === newHiddenColumnIndexes[i]);
+  if (!hiddenUnchanged) {
+    hiddenColumnsRef.value = newHiddenColumnIndexes;
+  }
 
+  let rows: any[];
   if (localGroupColumns.value.length === 0) {
-    tableData.value = data.map((item) => ({
+    rows = data.map((item) => ({
       ...item,
       _isDataRow: true,
     }));
   } else {
-    // 构建树状结构
-    const treeData = buildTreeStructure(data, localGroupColumns.value);
-    tableData.value = treeData;
+    rows = buildTreeStructure(data, localGroupColumns.value);
   }
 
-  // 添加合计行（只要有数据就显示）
   if (data.length > 0) {
-    const totalRow = calculateTotalRow();
-    tableData.value = [...tableData.value, totalRow];
+    rows = [...rows, calculateTotalRow()];
   }
 
-  // 更新 Handsontable 数据
-  nextTick(() => {
-    if (hotTableRef.value && hotTableRef.value.hotInstance) {
-      try {
-        hotTableRef.value.hotInstance.loadData(tableData.value);
-      } catch (error) {
-        console.error('Handsontable 更新失败:', error);
-      }
-    }
-  });
-
-  // ✅ 缓存结果
-  groupingCache.set(cacheKey, tableData.value);
+  groupingCache.set(cacheKey, rows);
+  syncHotData(rows);
 }
 
-/**
- * 汇总行的本位币口径：合计列（total*）以本位币计价，
- * 跨公司查询时不同行的本位币可能不同，此时不能直接加总，置为「多币别」。
- */
-function applyLocalCurrencyToAggregate(
-  aggregatedRow: Record<string, any>,
-  items: Record<string, any>[],
-  columnKeys: string[],
-) {
-  const codes = collectRowLocalCurrencies(items);
-  if (codes.length > 1) {
-    blankMixedCurrencyTotals(aggregatedRow, columnKeys);
-    return;
-  }
-  aggregatedRow[LOCAL_CURRENCY_COLUMN_KEY] = codes[0] ?? '';
-}
-
-// 递归构建树状结构（带聚合数据）
 function buildTreeStructure(
   data: any[],
   groupCols: string[],
   level: number = 0,
 ): any[] {
-  // ✅ 修复：缓存键必须包含展开状态，否则展开/折叠操作不会生效
   const expandedGroupsKey = Array.from(localExpandedGroups.value)
     .sort()
     .join('|');
@@ -958,7 +648,6 @@ function buildTreeStructure(
   }
 
   if (groupCols.length === 0) {
-    // 没有更多分组列，返回原始数据（标记层级）
     return data.map((item) => ({
       ...item,
       _groupLevel: level,
@@ -967,8 +656,6 @@ function buildTreeStructure(
   }
 
   const [currentGroupCol, ...remainingGroupCols] = groupCols;
-
-  // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
     const groupValue = item[currentGroupCol as string] || '空值';
@@ -978,82 +665,24 @@ function buildTreeStructure(
     groups.get(groupValue)?.push(item);
   });
 
+  const columnKeys = props.columnConfigs
+    .filter((col) => col.visible)
+    .map((col) => col.data);
+  const numericSet = numericColumns.value;
   const result: any[] = [];
 
   groups.forEach((items, groupName) => {
-    // 创建聚合后的分组行数据
-    const aggregatedRow: any = {};
+    const aggregatedRow: any = {
+      [currentGroupCol as string]: groupName,
+    };
 
-    // 设置分组列的值
-    aggregatedRow[currentGroupCol as string] = groupName;
-
-    // 聚合其他列的数据
-    const visibleColumns = props.columnConfigs.filter((col) => col.visible);
-    visibleColumns.forEach((colConfig) => {
-      const col = colConfig.data;
-      if (col === currentGroupCol) return; // 分组列已经设置
-
-      const values = items.map((item) => item[col]);
-
-      if (numericColumns.value.has(col)) {
-        // 数值列：累加
-        let sum = 0;
-        values.forEach((val) => {
-          const numVal = parseFloat(val) || 0;
-          sum += numVal;
-        });
-        const formattedValue = sum.toFixed(2);
-        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
-      } else if (col === 'totalProfitRate') {
-        // 利润率特殊处理：需要重新计算总利润率
-        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
-        const totalProfit = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
-          0,
-        );
-        const totalPayable = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
-          0,
-        );
-        aggregatedRow[col] =
-          totalPayable !== 0 ? totalProfit / totalPayable : null;
-      } else {
-        // 文本列：统计每个值的出现次数并格式化显示
-        const valueCounts: Record<string, number> = {};
-        let totalCount = 0;
-
-        values.forEach((val) => {
-          if (val && val !== '-') {
-            valueCounts[val] = (valueCounts[val] || 0) + 1;
-            totalCount++;
-          }
-        });
-
-        const uniqueValues = Object.keys(valueCounts);
-        if (uniqueValues.length === 0) {
-          aggregatedRow[col] = '-';
-        } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(번호)"
-          const value = uniqueValues[0]!;
-          const count = valueCounts[value] || 0;
-          aggregatedRow[col] = `${value}(${count})`;
-        } else {
-          // 多个唯一值，显示为 "값1(번호1), 값2(번호2), ..."
-          const formattedValues = uniqueValues.map((value) => {
-            return `${value}(${valueCounts[value] || 0})`;
-          });
-          aggregatedRow[col] = formattedValues.join(', ');
-        }
-      }
+    fillAggregatedColumns(aggregatedRow, {
+      items,
+      columnKeys,
+      currentGroupCol,
+      numericColumnKeys: numericSet,
     });
 
-    applyLocalCurrencyToAggregate(
-      aggregatedRow,
-      items,
-      visibleColumns.map((col) => col.data),
-    );
-
-    // 添加分组行元数据
     aggregatedRow._isGroupRow = true;
     aggregatedRow._groupName = `${groupName}(${items.length})`;
     aggregatedRow._groupKey = `${currentGroupCol}|${groupName}|${level}`;
@@ -1064,27 +693,22 @@ function buildTreeStructure(
 
     result.push(aggregatedRow);
 
-    // 检查是否展开（即使是第一级也不默认展开，让用户手动控制）
     const isExpanded = localExpandedGroups.value.has(aggregatedRow._groupKey);
 
     if (isExpanded) {
       if (remainingGroupCols.length > 0) {
-        // 还有更多分组列，递归处理
-        const subTree = buildTreeStructure(
-          items,
-          remainingGroupCols,
-          level + 1,
+        result.push(
+          ...buildTreeStructure(items, remainingGroupCols, level + 1),
         );
-        result.push(...subTree);
       } else {
-        // 最后一级，添加原始数据行
-        const dataRows = items.map((item) => ({
-          ...item,
-          _groupLevel: level + 1,
-          _isDataRow: true,
-          _originalData: item._originalData,
-        }));
-        result.push(...dataRows);
+        result.push(
+          ...items.map((item) => ({
+            ...item,
+            _groupLevel: level + 1,
+            _isDataRow: true,
+            _originalData: item._originalData,
+          })),
+        );
       }
     }
   });
@@ -1093,14 +717,12 @@ function buildTreeStructure(
   return result;
 }
 
-// 构建完整的导出树结构（包含所有数据，无论是否展开）
 function buildFullExportTree(
   data: any[],
   groupCols: string[],
   level: number = 0,
 ): any[] {
   if (groupCols.length === 0) {
-    // 没有更多分组列，返回原始数据（标记层级）
     return data.map((item) => ({
       ...item,
       _groupLevel: level,
@@ -1109,93 +731,32 @@ function buildFullExportTree(
   }
 
   const [currentGroupCol, ...remainingGroupCols] = groupCols;
-
-  // 按当前分组列分组
   const groups = new Map<string, any[]>();
   data.forEach((item) => {
     const groupValue =
-      (currentGroupCol && item[currentGroupCol as string]) || '空값';
+      (currentGroupCol && item[currentGroupCol as string]) || '空值';
     if (!groups.has(groupValue)) {
       groups.set(groupValue, []);
     }
     groups.get(groupValue)?.push(item);
   });
 
+  const columnKeys = props.hotColumns.map((col) => col.data);
+  const numericSet = numericColumns.value;
   const result: any[] = [];
 
   groups.forEach((items, groupName) => {
-    // 创建聚合后的分组行数据
-    const aggregatedRow: any = {};
+    const aggregatedRow: any = {
+      [currentGroupCol as string]: groupName,
+    };
 
-    // 设置分组列的值
-    aggregatedRow[currentGroupCol as string] = groupName;
-
-    // 聚合其他列的数据（使用所有列，包括隐藏列，用于导出）
-    dynamicHotColumns.value.forEach((colConfig) => {
-      const col = colConfig.data;
-      if (col === currentGroupCol) return; // 分组列已经设置
-
-      const values = items.map((item) => item[col]);
-
-      if (numericColumns.value.has(col)) {
-        // 数值列：累加
-        let sum = 0;
-        values.forEach((val) => {
-          const numVal = parseFloat(val) || 0;
-          sum += numVal;
-        });
-        const formattedValue = sum.toFixed(2);
-        aggregatedRow[col] = formattedValue === '0.00' ? '' : formattedValue;
-      } else if (col === 'totalProfitRate') {
-        // 利润率特殊处理：根据总利润和总应付计算
-        // 正确的公式：利润率 = 利润 / 应付（返回小数形式，显示时会乘以100）
-        const totalProfit = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalProfit) || 0),
-          0,
-        );
-        const totalPayable = items.reduce(
-          (acc, item) => acc + (parseFloat(item.totalPayable) || 0),
-          0,
-        );
-        aggregatedRow[col] =
-          totalPayable !== 0 ? totalProfit / totalPayable : null;
-      } else {
-        // 文本列：统计每个值的出现次数并格式化显示
-        const valueCounts: Record<string, number> = {};
-        let totalCount = 0;
-
-        values.forEach((val) => {
-          if (val && val !== '-') {
-            valueCounts[val] = (valueCounts[val] || 0) + 1;
-            totalCount++;
-          }
-        });
-
-        const uniqueValues = Object.keys(valueCounts);
-        if (uniqueValues.length === 0) {
-          aggregatedRow[col] = '-';
-        } else if (uniqueValues.length === 1) {
-          // 只有一个唯一值，显示为 "값(번호)"
-          const value = uniqueValues[0]!;
-          const count = valueCounts[value];
-          aggregatedRow[col] = `${value}(${count})`;
-        } else {
-          // 多个唯一값，显示为 "값1(번호1), 값2(번호2), ..."
-          const formattedValues = uniqueValues.map((value) => {
-            return `${value}(${valueCounts[value]})`;
-          });
-          aggregatedRow[col] = formattedValues.join(', ');
-        }
-      }
+    fillAggregatedColumns(aggregatedRow, {
+      items,
+      columnKeys,
+      currentGroupCol,
+      numericColumnKeys: numericSet,
     });
 
-    applyLocalCurrencyToAggregate(
-      aggregatedRow,
-      items,
-      dynamicHotColumns.value.map((col) => col.data),
-    );
-
-    // 添加分组行元数据
     aggregatedRow._isGroupRow = true;
     aggregatedRow._groupName = `${groupName}(${items.length})`;
     aggregatedRow._groupLevel = level;
@@ -1204,77 +765,56 @@ function buildFullExportTree(
 
     result.push(aggregatedRow);
 
-    // 始终展开所有子节点用于导出
     if (remainingGroupCols.length > 0) {
-      // 还有更多分组列，递归处理
-      const subTree = buildFullExportTree(items, remainingGroupCols, level + 1);
-      result.push(...subTree);
+      result.push(...buildFullExportTree(items, remainingGroupCols, level + 1));
     } else {
-      // 最后一级，添加原始数据行
-      const dataRows = items.map((item) => ({
-        ...item,
-        _groupLevel: level + 1,
-        _isDataRow: true,
-        _originalData: item._originalData,
-      }));
-      result.push(...dataRows);
+      result.push(
+        ...items.map((item) => ({
+          ...item,
+          _groupLevel: level + 1,
+          _isDataRow: true,
+          _originalData: item._originalData,
+        })),
+      );
     }
   });
 
   return result;
 }
 
-// 计算合计行数据
 function calculateTotalRow(): any {
   const totalRow: any = {
-    _isTotalRow: true, // 标记为合计行
+    _isTotalRow: true,
   };
 
-  // 初始化所有可见字段为空字符串
   const visibleColumns = props.columnConfigs.filter((col) => col.visible);
   visibleColumns.forEach((col) => {
     totalRow[col.data] = '';
   });
 
-  // 设置分组列显示（如果有分组）
   if (localGroupColumns.value.length > 0) {
     totalRow._groupDisplay = '合计';
   } else if (visibleColumns.length > 0) {
-    // 无分组时，在第一列显示「合计」
     totalRow[visibleColumns[0].data] = '合计';
   }
 
-  // 基于原始数据计算合计（originalData.value 包含所有原始数据）
   const originalDataArray = props.originalData;
 
-  // ✅ 对所有数值列进行合计（包括隐藏的币别列，确保合计完整）
   numericColumns.value.forEach((colName) => {
     let sum = 0;
-    let hasData = false;
-
-    originalDataArray.forEach((item) => {
-      const value = parseFloat(item[colName]) || 0;
-      sum += value;
-      hasData = true;
-    });
-
-    if (hasData) {
-      const formattedValue = sum.toFixed(2);
-      totalRow[colName] = formattedValue;
-    } else {
-      totalRow[colName] = '0.00';
+    for (const item of originalDataArray) {
+      sum += parseNumeric(item[colName]);
     }
+    totalRow[colName] = originalDataArray.length > 0 ? sum.toFixed(2) : '0.00';
   });
 
-  // 利润率单独计算：利润 ÷ 应付，保留小数，由列渲染器统一乘 100 显示为百分比
-  const totalReceivableSum = originalDataArray.reduce(
-    (acc, item) => acc + (parseFloat(item.totalReceivable) || 0),
-    0,
-  );
-  const totalPayableSum = originalDataArray.reduce(
-    (acc, item) => acc + Math.abs(parseFloat(item.totalPayable) || 0),
-    0,
-  );
+  // 利润率单独按「利润 ÷ |应付|」重算；应付为 0 时置空
+  let totalReceivableSum = 0;
+  let totalPayableSum = 0;
+  for (const item of originalDataArray) {
+    totalReceivableSum += parseNumeric(item.totalReceivable);
+    totalPayableSum += Math.abs(parseNumeric(item.totalPayable));
+  }
   totalRow.totalProfitRate =
     totalPayableSum !== 0
       ? (totalReceivableSum - totalPayableSum) / totalPayableSum
@@ -1283,13 +823,12 @@ function calculateTotalRow(): any {
   applyLocalCurrencyToAggregate(
     totalRow,
     originalDataArray,
-    dynamicHotColumns.value.map((col) => col.data),
+    props.hotColumns.map((col) => col.data),
   );
 
   return totalRow;
 }
 
-// 移除分组列
 function removeGroupColumn(columnName: string) {
   const index = localGroupColumns.value.indexOf(columnName);
   if (index > -1) {
@@ -1298,15 +837,12 @@ function removeGroupColumn(columnName: string) {
     localGroupColumns.value = newGroupColumns;
     emit('update:groupColumns', newGroupColumns);
 
-    // 清空展开状态，因为分组结构已经改变
     localExpandedGroups.value = new Set();
     emit('update:expandedGroups', new Set());
-
-    // ✅ 重新添加 clearCaches 调用，确保移除分组列时数据正确性
     clearCaches();
 
     if (dataSource.value.length > 0) {
-      applyGrouping([...dataSource.value]);
+      applyGrouping(dataSource.value);
     }
 
     message.success(
@@ -1315,81 +851,27 @@ function removeGroupColumn(columnName: string) {
   }
 }
 
-// ✅ 新增：清空所有分组
 function clearAllGroups() {
   if (localGroupColumns.value.length === 0) return;
 
   localGroupColumns.value = [];
   emit('update:groupColumns', []);
-
   localExpandedGroups.value = new Set();
   emit('update:expandedGroups', new Set());
-
-  // ✅ 重新添加 clearCaches 调用，确保清空分组时数据正确性
   clearCaches();
 
   if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
+    applyGrouping(dataSource.value);
   }
 
   message.success('已清空所有分组');
 }
 
-// ✅ 新增：处理添加选中的列到分组
-function handleAddSelectedColumns() {
-  if (selectedColumnsForGroup.value.length === 0) {
-    message.warning('请至少选择一个列');
-    return;
-  }
-
-  // 将选中的列添加到分组
-  selectedColumnsForGroup.value.forEach((colData) => {
-    if (!localGroupColumns.value.includes(colData)) {
-      localGroupColumns.value.push(colData);
-    }
-  });
-
-  emit('update:groupColumns', [...localGroupColumns.value]);
-
-  // 清空展开状态
-  localExpandedGroups.value = new Set();
-  emit('update:expandedGroups', new Set());
-
-  // 重新应用分组
-  if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
-  }
-
-  message.success(`已添加 ${selectedColumnsForGroup.value.length} 个分组`);
-
-  // 关闭弹窗并重置选择
-  showColumnSelector.value = false;
-  selectedColumnsForGroup.value = [];
-}
-
-// 监听分组变化
-watch(localGroupColumns, (newVal, oldVal) => {
-  // 如果分组结构发生变化（不是第一次初始化），清空展开状态
-  if (oldVal && oldVal.length > 0 && newVal.length !== oldVal.length) {
-    localExpandedGroups.value = new Set();
-    emit('update:expandedGroups', new Set());
-  }
-
-  if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
-  }
-});
-
-/**
- * 处理分组标签拖拽开始
- */
 function handleGroupTagDragStart(
   e: DragEvent,
   columnData: string,
   index: number,
 ) {
-  console.log('🏷️ 开始拖拽分组标签:', columnData, '索引:', index);
-
   draggedGroupIndex.value = index;
 
   if (e.dataTransfer) {
@@ -1398,7 +880,6 @@ function handleGroupTagDragStart(
     e.dataTransfer.setData('application/index', String(index));
   }
 
-  // 添加拖拽样式
   setTimeout(() => {
     const target = e.target as HTMLElement;
     if (target) {
@@ -1407,9 +888,6 @@ function handleGroupTagDragStart(
   }, 0);
 }
 
-/**
- * 处理分组标签拖拽经过
- */
 function handleGroupTagDragOver(e: DragEvent, index: number) {
   e.preventDefault();
   if (e.dataTransfer) {
@@ -1418,9 +896,6 @@ function handleGroupTagDragOver(e: DragEvent, index: number) {
   dragOverGroupIndex.value = index;
 }
 
-/**
- * 处理分组标签放置
- */
 function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
   e.preventDefault();
 
@@ -1429,13 +904,9 @@ function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
 
   if (!dragIndexStr || !columnData) return;
 
-  const dragIndex = parseInt(dragIndexStr, 10);
-
-  console.log('🏷️ 放置分组标签:', columnData, '从', dragIndex, '到', dropIndex);
-
+  const dragIndex = Number.parseInt(dragIndexStr, 10);
   if (dragIndex === dropIndex) return;
 
-  // 重新排列数组
   const newGroupColumns = [...localGroupColumns.value];
   const [movedItem] = newGroupColumns.splice(dragIndex, 1);
   newGroupColumns.splice(dropIndex, 0, movedItem!);
@@ -1443,62 +914,29 @@ function handleGroupTagDrop(e: DragEvent, dropIndex: number) {
   localGroupColumns.value = newGroupColumns;
   emit('update:groupColumns', newGroupColumns);
 
-  // 清空展开状态
   localExpandedGroups.value = new Set();
   emit('update:expandedGroups', new Set());
 
-  // 重新应用分组
   if (dataSource.value.length > 0) {
-    applyGrouping([...dataSource.value]);
+    applyGrouping(dataSource.value);
   }
 
   message.success('分组顺序已调整');
 
-  // 重置状态
   draggedGroupIndex.value = null;
   dragOverGroupIndex.value = null;
 }
 
-/**
- * 处理分组标签拖拽结束
- */
 function handleGroupTagDragEnd(e: DragEvent) {
-  console.log('🏷️ 分组标签拖拽结束');
-
-  // 重置状态
   draggedGroupIndex.value = null;
   dragOverGroupIndex.value = null;
 
-  // 恢复样式
   const target = e.target as HTMLElement;
   if (target) {
     target.style.opacity = '1';
   }
 }
 
-/**
- * 清理拖拽相关资源 - 由于移除了拖拽功能，这个函数也不需要了
- */
-// function cleanupSortable() {
-//   // 清理全局事件监听器
-//   const dragCleanup = (initColumnHeaderDrag as any).cleanup;
-//   if (typeof dragCleanup === 'function') {
-//     dragCleanup();
-//     console.log('✅ 已清理拖拽事件监听器');
-//   }
-
-//   // 重置状态
-//   isDraggingColumn = false;
-//   dragColumnData = {};
-//   if (dragGhostElement) {
-//     dragGhostElement.remove();
-//     dragGhostElement = null;
-//   }
-// }
-
-/**
- * 添加双击事件处理
- */
 function onAfterOnCellDblClick(
   _event: any,
   coords: any,
@@ -1506,22 +944,17 @@ function onAfterOnCellDblClick(
 ) {
   if (coords.row >= 0 && coords.row < tableData.value.length) {
     const rowData = tableData.value[coords.row];
-    // 排除合计行和分组行
     if (
       rowData &&
       rowData._isDataRow &&
       rowData._originalData &&
       !rowData._isTotalRow
     ) {
-      // 双击数据行，跳转详情
       emit('viewDetail', rowData._originalData);
     }
   }
 }
 
-/**
- * 导出单元格格式化：利润率存储为小数，导出时统一转为百分比字符串
- */
 function formatExportCellValue(colData: string, value: any) {
   if (colData === 'totalProfitRate' && value != null && value !== '') {
     return `${(Number.parseFloat(value) * 100).toFixed(2)}%`;
@@ -1529,22 +962,22 @@ function formatExportCellValue(colData: string, value: any) {
   return value;
 }
 
-/**
- * 导出当前显示的数据为Excel
- */
-function handleExport() {
+async function handleExport() {
   if (dataSource.value.length === 0) {
     message.warning('没有数据可导出');
     return;
   }
+  if (exporting.value) return;
 
+  exporting.value = true;
   try {
+    const XLSX = await import('xlsx');
+
     let exportData: any[] = [];
     let headers: string[] = [];
     let headerTitles: string[] = [];
 
     if (localGroupColumns.value.length > 0) {
-      // 有分组的情况 - 使用完整的导出树结构
       const currentColumns = currentColumnsRef.value;
       headers = currentColumns.map((col) => col.data!).filter(Boolean);
       headerTitles = currentColumns
@@ -1555,37 +988,29 @@ function handleExport() {
         )
         .filter(Boolean);
 
-      // 构建完整的导出数据（包含所有未展开的数据）
       const fullExportTree = buildFullExportTree(
-        [...dataSource.value],
+        dataSource.value,
         localGroupColumns.value,
       );
-
-      // 添加合计行
       const totalRow = calculateTotalRow();
 
-      // 处理每一行数据
       for (const row of [...fullExportTree, totalRow]) {
         const exportRow: Record<string, any> = {};
 
-        for (let i = 0; i < headers.length; i++) {
-          const colData = headers[i];
+        for (const colData of headers) {
           if (!colData) continue;
           if (colData === '_groupDisplay') {
-            // 分组列的特殊处理
             if (row._isGroupRow) {
               exportRow[colData] = row._groupName;
             } else if (row._isTotalRow) {
               exportRow[colData] = '合计';
             } else if (row._isDataRow) {
-              // 数据行显示缩进标记
               const indentLevel = (row._groupLevel || 0) + 1;
               exportRow[colData] = '•'.repeat(indentLevel);
             } else {
               exportRow[colData] = '';
             }
           } else {
-            // 普通列
             exportRow[colData] = formatExportCellValue(
               colData,
               (row as any)[colData] ?? '',
@@ -1596,14 +1021,12 @@ function handleExport() {
         exportData.push(exportRow);
       }
     } else {
-      // 无分组的情况
       const currentColumns = currentColumnsRef.value;
       headers = currentColumns.map((col) => col.data!).filter(Boolean);
       headerTitles = currentColumns
         .map((col) => columnTitleMap.value[col.data!] || col.data!)
         .filter(Boolean);
 
-      // 包含合计行
       const totalRow = calculateTotalRow();
       const allData = [...dataSource.value, totalRow];
 
@@ -1619,13 +1042,9 @@ function handleExport() {
       }
     }
 
-    // 创建工作表数据
     const wsData: any[][] = [];
-
-    // 添加表头
     wsData.push(headerTitles);
 
-    // 添加数据行
     for (const row of exportData) {
       const rowData: any[] = [];
       for (const header of headers) {
@@ -1634,15 +1053,12 @@ function handleExport() {
       wsData.push(rowData);
     }
 
-    // 创建工作表
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // 计算列宽（考虑表头和数据内容的最大长度）
     const colWidths = headers.map((header, index) => {
       const title = headerTitles[index] || header;
-      let maxWidth = Math.min(50, Math.max(10, title.length + 2)); // 表头长度
+      let maxWidth = Math.min(50, Math.max(10, title.length + 2));
 
-      // 检查数据内容的最大长度
       for (const row of exportData) {
         const cellValue = String(row[header] || '');
         const cellLength = cellValue.length;
@@ -1654,39 +1070,34 @@ function handleExport() {
       return { wch: maxWidth };
     });
 
-    // 设置列宽
     ws['!cols'] = colWidths;
 
-    // 创建工作簿
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, props.reportTitle);
 
-    // 导出Excel文件
     const timestamp =
-      new Date().toLocaleDateString('zh-CN').replace(/\//g, '') +
+      new Date().toLocaleDateString('zh-CN').replaceAll('/', '') +
       '_' +
-      new Date().toLocaleTimeString('zh-CN').replace(/[:]/g, '');
+      new Date().toLocaleTimeString('zh-CN').replaceAll(':', '');
     XLSX.writeFile(wb, `${props.reportTitle}_${timestamp}.xlsx`);
 
     message.success('导出成功');
   } catch (error) {
     console.error('导出失败:', error);
     message.error('导出失败，请稍后重试');
+  } finally {
+    exporting.value = false;
   }
 }
+
+componentInstance.applyGrouping = applyGrouping;
 </script>
 
 <template>
-  <!-- 分组区域 -->
   <div
-    class="group-area mb-2 flex items-center rounded border bg-gradient-to-r from-blue-50 to-indigo-50 px-4 transition-all duration-300"
-    :class="{
-      'border-gray-200': true,
-    }"
-    style="flex-shrink: 0; width: 100%; min-height: 48px; padding: 8px 16px"
+    class="group-area mb-2 flex items-center rounded border px-4 transition-all duration-300"
   >
     <div class="flex w-full items-center gap-2">
-      <!-- 分组标签图标 -->
       <span class="flex items-center text-sm font-medium text-gray-700">
         <svg
           class="mr-1 h-4 w-4"
@@ -1704,42 +1115,32 @@ function handleExport() {
         分组
       </span>
 
-      <!-- 空状态提示 - 增强视觉效果 -->
       <div
-        v-if="localGroupColumns.length === 0"
-        class="group-area-tags flex flex-1 items-center justify-center rounded border-2 border-dashed border-gray-300 bg-white py-2 text-sm text-gray-500 transition-all duration-300"
+        v-if="!hasGrouping"
+        class="group-area-tags flex flex-1 items-center rounded border-2 border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-500"
       >
-        <div class="flex items-center gap-2">
-          <!-- <svg
-            class="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-            />
-          </svg> -->
-          <span class="font-medium"> 右键点击列标题可添加分组 </span>
-        </div>
+        <span class="font-medium">右键列标题可添加分组</span>
+        <span class="mx-2 text-gray-300">|</span>
+        <span>单击列头排序</span>
       </div>
 
-      <!-- 分组标签列表 - 增强交互反馈 -->
       <div
         v-else
         class="group-area-tags flex flex-1 flex-wrap gap-2"
-        :class="{
-          'sortable-over': dragOverGroupIndex !== null,
-        }"
+        :class="{ 'sortable-over': dragOverGroupIndex !== null }"
       >
         <Tag
           v-for="(col, index) in localGroupColumns"
           :key="col"
           closable
           draggable="true"
+          class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md"
+          :class="{
+            'scale-95 opacity-50': draggedGroupIndex === index,
+            'group-tag--over': dragOverGroupIndex === index,
+            'group-tag--hover': hoverColumnData === col,
+            'group-tag--idle': hoverColumnData !== col,
+          }"
           @dragstart="handleGroupTagDragStart($event, col, index)"
           @dragover.prevent="handleGroupTagDragOver($event, index)"
           @drop="handleGroupTagDrop($event, index)"
@@ -1752,19 +1153,8 @@ function handleExport() {
               removeGroupColumn(col);
             }
           "
-          class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md"
-          :class="{
-            'scale-95 opacity-50': draggedGroupIndex === index,
-            'ring-2 ring-blue-400 ring-offset-2': dragOverGroupIndex === index,
-            'border-blue-600 bg-gradient-to-r from-blue-500 to-indigo-500 text-white':
-              hoverColumnData === col,
-            'border-gray-200 bg-white hover:border-blue-300':
-              hoverColumnData !== col,
-          }"
-          style="min-height: 28px; padding: 4px 8px"
         >
           <span class="inline-flex items-center gap-1 whitespace-nowrap">
-            <!-- 拖拽手柄图标 -->
             <svg
               v-if="hoverColumnData === col || draggedGroupIndex === index"
               class="h-3 w-3 flex-shrink-0 cursor-grab active:cursor-grabbing"
@@ -1780,39 +1170,38 @@ function handleExport() {
               />
             </svg>
             <span class="font-medium">{{ columnTitleMap[col] || col }}</span>
-            <span
-              class="ml-1 flex-shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-xs"
-              :class="{
-                'text-white/80': hoverColumnData === col,
-                'text-gray-500': hoverColumnData !== col,
-              }"
-            >
-              {{ index + 1 }}级
-            </span>
+            <span class="group-tag__level"> {{ index + 1 }}级 </span>
           </span>
         </Tag>
       </div>
 
-      <!-- 操作按钮组 -->
-      <div class="flex items-center gap-2">
-        <!-- 清空分组按钮 -->
-        <Button
-          v-if="localGroupColumns.length > 0"
-          size="small"
-          type="text"
-          danger
-          @click="clearAllGroups"
-          class="text-xs"
-        >
-          清空
-        </Button>
-
-        <!-- 导出按钮 -->
+      <div class="flex shrink-0 items-center gap-2">
+        <span v-if="recordCount > 0" class="text-xs text-gray-500">
+          共 {{ recordCount }} 条
+        </span>
+        <template v-if="hasGrouping">
+          <Button size="small" type="text" @click="expandAllGroups">
+            全部展开
+          </Button>
+          <Button size="small" type="text" @click="collapseAllGroups">
+            全部收起
+          </Button>
+          <Button
+            size="small"
+            type="text"
+            danger
+            class="text-xs"
+            @click="clearAllGroups"
+          >
+            清空
+          </Button>
+        </template>
         <Button
           type="primary"
           size="small"
+          :loading="exporting"
+          :disabled="recordCount === 0 || loading"
           @click="handleExport"
-          :disabled="tableData.length === 0"
         >
           导出
         </Button>
@@ -1820,102 +1209,63 @@ function handleExport() {
     </div>
   </div>
 
-  <!-- 列选择器弹窗 -->
-  <Modal
-    v-model:open="showColumnSelector"
-    title="选择分组列"
-    width="600px"
-    @ok="handleAddSelectedColumns"
-  >
-    <div class="max-h-96 overflow-y-auto">
-      <Checkbox.Group
-        v-model:value="selectedColumnsForGroup"
-        class="flex flex-col gap-3"
-      >
-        <Checkbox
-          v-for="col in availableGroupColumns"
-          :key="col.data"
-          :value="col.data"
-          class="rounded border p-2 hover:bg-gray-50"
-        >
-          <div class="flex items-center gap-2">
-            <span class="font-medium">{{ col.title }}</span>
-            <span class="text-xs text-gray-500">({{ col.data }})</span>
-          </div>
-        </Checkbox>
-      </Checkbox.Group>
-    </div>
-  </Modal>
-
-  <!-- 表格区域 -->
   <Card class="table-card" :bordered="false">
-    <div ref="containerRef" class="handsontable-container">
-      <HotTable ref="hotTableRef" :settings="hotSettings" />
-    </div>
+    <Spin :spinning="loading || exporting">
+      <div ref="containerRef" class="handsontable-container">
+        <HotTable ref="hotTableRef" :settings="hotSettings" />
+        <div v-if="!loading && recordCount === 0" class="report-empty-overlay">
+          <Empty description="暂无数据，请调整筛选条件后查询" />
+        </div>
+      </div>
+    </Spin>
   </Card>
 </template>
 
 <style scoped lang="scss">
-/* ✅ 新增：拖拽提示动画 */
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-5px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
 .group-area {
   flex-shrink: 0;
+  width: 100%;
   min-width: 200px;
+  min-height: 48px;
+  padding: 8px 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    hsl(var(--background)) 100%
+  );
 
-  // ✅ 恢复分组标签拖拽样式增强
   :deep(.ant-tag) {
     display: inline-flex;
     align-items: center;
     max-width: 100%;
+    min-height: 28px;
+    padding: 4px 8px;
     white-space: nowrap;
     cursor: grab;
     user-select: none;
     transition: all 0.2s ease;
 
-    // 确保关闭按钮和内容在一行
     .ant-tag-close-icon {
       display: inline-flex;
       flex-shrink: 0;
       align-items: center;
       justify-content: center;
-      width: 22px; // 进一步增大宽度
-      height: 22px; // 进一步增大高度
-      margin-left: 6px; // 增加左边距，避免与文字重叠
-      font-size: 16px; // 进一步增大字体大小（图标大小）
-      line-height: 22px; // 确保垂直居中
-      cursor: pointer; // 确保有手型光标
-      border-radius: 50%; // 圆形背景
+      width: 22px;
+      height: 22px;
+      margin-left: 6px;
+      font-size: 16px;
+      line-height: 22px;
+      cursor: pointer;
+      border-radius: 50%;
       transition: all 0.2s ease;
 
       &:hover {
-        color: #ff4d4f; // 悬停时显示红色
+        color: #ff4d4f;
         background-color: rgb(0 0 0 / 15%);
         transform: scale(1.15);
       }
 
-      // 点击时的反馈
       &:active {
         background-color: rgb(0 0 0 / 20%);
         transform: scale(0.95);
@@ -1926,12 +1276,6 @@ function handleExport() {
       cursor: grabbing;
     }
 
-    &.dragging {
-      opacity: 0.5;
-      transform: scale(0.95);
-    }
-
-    // 添加悬停效果
     &:hover {
       box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
       transform: translateY(-1px);
@@ -1939,25 +1283,46 @@ function handleExport() {
   }
 }
 
-// ✅ 恢复分组区域拖拽高亮样式
+.group-tag--over {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 45%);
+}
+
+.group-tag--hover {
+  color: #fff;
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.group-tag--idle {
+  background: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+
+.group-tag__level {
+  flex-shrink: 0;
+  padding: 0 6px;
+  margin-left: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 4px;
+}
+
+.group-tag--hover .group-tag__level {
+  color: #fff;
+  background: rgb(255 255 255 / 20%);
+}
+
 .group-area-tags {
   min-height: 32px;
   padding: 4px;
   transition: all 0.3s;
 
-  /* 当有元素拖拽经过时高亮 */
   &.sortable-over {
-    background-color: #e6f7ff !important;
-    border: 2px dashed #1890ff !important;
-  }
-
-  :deep(.ant-tag) {
-    transition: all 0.3s;
-
-    &:hover {
-      box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-      transform: translateY(-2px);
-    }
+    background-color: hsl(var(--primary) / 8%);
+    border: 2px dashed hsl(var(--primary));
+    border-radius: 6px;
   }
 }
 
@@ -1968,7 +1333,6 @@ function handleExport() {
   min-height: 0;
   overflow: hidden;
 
-  // 覆盖 Card 组件的默认样式
   :deep(.ant-card-body) {
     display: flex;
     flex: 1;
@@ -1976,6 +1340,14 @@ function handleExport() {
     min-height: 0;
     padding: 0;
     overflow: hidden;
+  }
+
+  :deep(.ant-spin-nested-loading),
+  :deep(.ant-spin-container) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
   }
 }
 
@@ -1994,7 +1366,6 @@ function handleExport() {
        不一致，横向滚动到底时表头克隆层与主表错位；恢复 auto 使 webkit 滚动条样式生效 */
     scrollbar-color: auto;
 
-    /* 统一滚动条宽度为 10px：与 vben 全局滚动条样式及 Handsontable 内部预留宽度保持一致 */
     .wtHolder {
       scrollbar-color: auto;
 
@@ -2028,7 +1399,7 @@ function handleExport() {
       }
 
       td.report-group-label {
-        background-color: #e6f7ff !important;
+        background-color: hsl(var(--primary) / 12%) !important;
       }
 
       td.report-detail-cell {
@@ -2056,27 +1427,48 @@ function handleExport() {
         color: #fff;
         text-align: center;
         cursor: pointer;
-        background-color: #1890ff !important;
+        background-color: hsl(var(--primary)) !important;
       }
 
-      /* 序号列表头不可排序 */
       thead th:first-child {
         cursor: default;
       }
     }
 
-    /* 固定行头高度与 rowHeights 对齐，避免 height:auto 在竖滚时反复测高 */
     .ht_clone_inline_start .htCore tbody th {
       box-sizing: border-box;
       height: 32px !important;
     }
 
-    /* 克隆表头与主表头同色，避免横滚时露白 */
     .ht_clone_top th,
-    .ht_clone_top_inline_start_corner th {
+    .ht_clone_top_inline_start_corner th,
+    .ht_clone_bottom th,
+    .ht_clone_bottom_inline_start_corner th {
       color: #fff;
-      background-color: #1890ff !important;
+      background-color: hsl(var(--primary)) !important;
+    }
+
+    /*
+     * fixedRowsBottom 会在主表下方叠一层克隆表，主表末行底边 + 克隆首行顶边
+     * 叠成双线。去掉克隆层顶边，只保留主表单元格底边。
+     */
+    .ht_clone_bottom .htCore tbody tr:first-child td,
+    .ht_clone_bottom .htCore tbody tr:first-child th,
+    .ht_clone_bottom_inline_start_corner .htCore tbody tr:first-child td,
+    .ht_clone_bottom_inline_start_corner .htCore tbody tr:first-child th {
+      border-top: none !important;
     }
   }
+}
+
+.report-empty-overlay {
+  position: absolute;
+  inset: 40px 0 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: hsl(var(--background) / 80%);
 }
 </style>

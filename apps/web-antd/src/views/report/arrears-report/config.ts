@@ -22,6 +22,7 @@ import {
   clientField,
   innerVoynoField,
   keywordField,
+  last12MonthsDateRange,
   mergeChangeOrderField,
   operationUserField,
   podField,
@@ -162,14 +163,15 @@ export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
     name: '欠费报表',
     fetchApi: getArrearsReportList,
 
-    // 查询表单：收付类型 + 公共字段（插入结算对象） + 欠费特有筛选字段
+    // 查询表单：首行放收付类型、结算对象与业务日期（折叠时也看得见）；
+    // 业务日期默认近 12 个月，催收需要跨月，但不能默认拉全量历史
     formSchema: [
       paySideField(),
-      bizTypeField(),
       clientField(),
       settlementField(),
+      ...bizDateRangeFields(last12MonthsDateRange()),
+      bizTypeField(),
       keywordField(),
-      ...bizDateRangeFields(),
       cargoField(),
       settlementTypeField(),
       mergeChangeOrderField(),

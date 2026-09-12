@@ -1,6 +1,6 @@
 import type { ReportPageConfig } from './types';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
@@ -30,17 +30,20 @@ export function useReportPage(config: ReportPageConfig) {
   // ==================== 状态 ====================
 
   /** 表格加载状态 */
-  const loading = ref(false);
-  /** 表格数据（转换后的行数据，供分组/合计使用） */
-  const originalData = ref<Record<string, any>[]>([]);
+  const loading = shallowRef(false);
+  /**
+   * 表格数据（转换后的行数据，供分组/合计使用）。
+   * 全量报表行只整体替换，用 shallowRef 避免对上千行做深层代理。
+   */
+  const originalData = shallowRef<Record<string, any>[]>([]);
   /** 当前分组的列名数组 */
-  const groupColumns = ref<string[]>([]);
+  const groupColumns = shallowRef<string[]>([]);
   /** 展开的分组键集合 */
-  const expandedGroups = ref<Set<string>>(new Set());
+  const expandedGroups = shallowRef<Set<string>>(new Set());
   /** 所有出现的币别代码 */
-  const allCurrencyCodes = ref<Set<string>>(new Set());
+  const allCurrencyCodes = shallowRef<Set<string>>(new Set());
   /** 列显隐与排序配置 */
-  const columnConfigs = ref<any[]>([]);
+  const columnConfigs = shallowRef<any[]>([]);
 
   // ==================== 动态列 ====================
 
@@ -176,9 +179,11 @@ export function useReportPage(config: ReportPageConfig) {
         config.mapExtraRow,
       );
       allCurrencyCodes.value = currencyCodes;
-      originalData.value = [...rows];
+      originalData.value = rows;
       config.afterQuery?.(rows);
-      message.success(`查询成功，共 ${rows.length} 条记录`);
+      if (rows.length === 0) {
+        message.info('未查询到数据');
+      }
     } catch (error: any) {
       console.error('查询失败:', error);
       message.error('查询失败，请稍后重试');
@@ -210,11 +215,11 @@ export function useReportPage(config: ReportPageConfig) {
     await handleQuery();
   }
 
-  // 页面加载时默认执行一次查询（延迟执行，确保表单已初始化）
+  // 表单在 setup 阶段已创建，defaultValue（含默认业务日期）可直接取到
   onMounted(() => {
-    setTimeout(() => {
-      handleQuery();
-    }, 100);
+    void nextTick(() => {
+      void handleQuery();
+    });
   });
 
   // ==================== 详情跳转 ====================
