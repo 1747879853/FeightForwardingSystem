@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,6 +21,7 @@ last_updated: 2026-09-11
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **箱型箱量批量新增：** 与新建页共用 `order-ctn-table.vue`；标题栏「批量新增」按箱型填数量后一次生成「一行一柜」，并带出货物区总包装默认值；单条「+」仍可用。
 - **未保存与整页缓存：** 离开时基础信息或应收应付任一未落库都二次确认；确认切走后整页 KeepAlive，点 X 才销毁。缓存页的委托 id 用 `useKeepAliveRouteParamId`：本页可见才跟地址栏，藏起来后冻结，避免跟海出等同名 `:id` 页抢详情。
 - **浏览器标签栏标题：** 工作台进页拉详情、基础信息 Form 回填/录入主提单号时由 `useSeaImportTabTitle` 动态设置：有主提单号显示「海运进口-{主提单号}」，否则显示「海运进口-{委托编号}」；切到费用等 Tab 时 Form 未挂载，标题仍由工作台保持。
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。收发通（发货人/收货人/通知人）为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件数/包装件重尺、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）；件数与包装合并为一个控件，交互对齐船名/航次。
@@ -71,6 +72,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 与新建共用进口 `order-ctn-table.vue`。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗不出该列，提示文案也不再提码头航次。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-10 | `Feature` | 更改单样式与交互对齐海运出口：Handsontable、页签只保存一侧、订单信息通栏。 | 详见 `changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md`；专题活文档见 `modules/sea-exports/change-order.md`。 |
 | 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |

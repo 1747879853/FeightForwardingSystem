@@ -531,6 +531,19 @@ const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
   wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
 });
 
+/** 新建箱型时带回总包装 id + 文本 */
+const getDefaultCodePackage = async () => {
+  const values = await cargoMetricsFormApi.getValues();
+  const id = values.codePackageId ?? undefined;
+  if (id === undefined || id === null || id === '') return undefined;
+  const cached = codePackageSelectedItems.value?.[0];
+  const name =
+    cached?.id !== undefined && String(cached.id) === String(id)
+      ? cached.name
+      : undefined;
+  return { id, name };
+};
+
 const showDgFields = computed(() => cargoType.value === CARGO_TYPE.D);
 const showReeferFields = computed(() => cargoType.value === CARGO_TYPE.R);
 
@@ -1778,7 +1791,10 @@ watch(pageLoading, (loading) => {
                   <CargoReeferForm />
                 </div>
                 <div class="cargo-ctn-section">
-                  <OrderCtnTable v-model="orderCtns" />
+                  <OrderCtnTable
+                    v-model="orderCtns"
+                    :get-default-code-package="getDefaultCodePackage"
+                  />
                 </div>
               </Card>
             </section>

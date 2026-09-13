@@ -14,6 +14,7 @@
 ## 2026-09
 
 - [2026-09-13 海出派车列表分页改回 pageIndex/pageSize](./changelogs/change-log-2026-09-13-dispatch-page-params.md)
+- [2026-09-13 海运进口箱型箱量支持批量新增](./changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)
 - [2026-09-13 编号规则列表分页改回 pageIndex/pageSize](./changelogs/change-log-2026-09-13-generate-num-page-params.md)
 - [2026-09-13 分单船期标签 EDT 更正为 ETD](./changelogs/change-log-2026-09-13-separate-bill-etd-label.md)
 - [2026-09-11 useVbenModal 弹窗宽度须用 class 且勿被自定义 class 覆盖](./changelogs/change-log-2026-09-11-vben-modal-width-class-convention.md)

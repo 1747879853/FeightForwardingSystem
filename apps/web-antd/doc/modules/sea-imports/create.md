@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,6 +25,7 @@ last_updated: 2026-09-11
 - **AI 识别辅助：** 顶栏「AI识别」弹出拖拽上传区，支持 PDF/图片/Word/Excel/OFD；调用 TextIn `ExtractSeaImportToAddDtoAsync`，回填 `seaImport`（箱子在进口层 `orderCtns`，到港日期→`etd`）；未匹配箱型保留识别原文供补选。
 - **进口作业日期：** 到港日期可改；转站、箱使为只读文本，由到港日期与免箱期推算；免箱期在船期标题旁编辑。
 - **干系人：** 销售角色必填且唯一；右侧卡片式增删角色。`UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回的人不受过滤限制、始终显示昵称。
+- **箱型箱量批量新增：** 标题栏「批量新增」打开 Popover，分页拉取全部启用箱型并可按名称搜索；按箱型填数量后确认，一次生成对应条数「一行一柜」记录（预填箱型，带出总包装默认值）；单条「+」添加仍保留。
 - **提交创建：** 校验通过后调用新增接口，成功跳转编辑页。
 - **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运进口」；录入主提单号后为「海运进口-{主提单号}」；保存后无主提单号时为「海运进口-{委托编号}」。主提单号优先于委托编号。
 
@@ -62,6 +63,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 进口自有 `order-ctn-table.vue`；确认时预填箱型并带出货物区总包装。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-05 | `Feature` | 顶部浏览器标签栏标题按主提单号/委托编号动态展示，未保存新建单默认「海运进口」。 | 逻辑收敛至 `use-sea-import-tab-title.ts`，新建页与编辑工作台嵌入表单共用。详见 `changelogs/change-log-2026-09-05-sea-import-tab-title.md`。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 32）。 | 与编辑页共用 `form.vue`。详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
