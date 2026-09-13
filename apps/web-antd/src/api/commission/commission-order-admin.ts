@@ -514,6 +514,8 @@ export namespace CommissionOrderAdminApi {
     settlementDate?: null | string;
     /** 超期天数，今天-应结日期，只比日期，未到期是负数不归零 */
     overdueDays?: null | number;
+    /** 账期类型/结算方式：0票结 1月结 2指定日结（与客户账期 SettlementType 同值） */
+    settlementType?: null | number;
     /** 箱型箱量，空运出口恒为空列表 */
     ctns?: null | CommissionCtnSimpleDto[];
     /** 起运港/目的港，仅海运出口有值 */

@@ -150,6 +150,48 @@ export const ticketRowKey = (
   ticket: CommissionOrderAdminApi.CommissionTicketDto,
 ): string => ticket.changeOrderId ?? `${ticket.transportOrderId}:original`;
 
+/** 未结清票按结算对象展开后的行（同一票多结算对象多行） */
+export type UnsettledSettlementFlatRow =
+  CommissionOrderAdminApi.CommissionTicketDto & {
+    _flatKey: string;
+    _unsettledGroupIndex: number;
+    _unsettledSettlement: string;
+  };
+
+/** 未结清票 → 按结算对象拆行，供欠款明细按币别动态列展示 */
+export function flattenUnsettledBySettlement(
+  tickets: CommissionOrderAdminApi.CommissionTicketDto[],
+): UnsettledSettlementFlatRow[] {
+  const rows: UnsettledSettlementFlatRow[] = [];
+  for (const ticket of tickets) {
+    const groups = ticket.unsettledSettlements ?? [];
+    const baseKey = ticketRowKey(ticket);
+    if (groups.length === 0) {
+      rows.push({
+        ...ticket,
+        _flatKey: `${baseKey}:unsettled:0`,
+        _unsettledGroupIndex: 0,
+        _unsettledSettlement: '',
+      });
+      continue;
+    }
+    groups.forEach((group, index) => {
+      rows.push({
+        ...ticket,
+        _flatKey: `${baseKey}:unsettled:${index}`,
+        _unsettledGroupIndex: index,
+        _unsettledSettlement:
+          group.settlement?.name ?? group.settlement?.fullName ?? '',
+      });
+    });
+  }
+  return rows;
+}
+
+export const unsettledSettlementRowKey = (
+  row: UnsettledSettlementFlatRow,
+): string => row._flatKey;
+
 /** 原币明细文案：`USD 应收100.00 应付80.00 利润20.00(汇率7.1)` */
 export const formatCurrencies = (
   currencies?: CommissionOrderAdminApi.CommissionCurrencyDto[] | null,
@@ -215,7 +257,7 @@ export const formatCtns = (
     .join('、');
 };
 
-/** 欠款明细文案：`结算对象A：USD 应收100 未收80 应付50 未付30；...`，无值时显示 `-` */
+/** 欠款明细文案：`结算对象A：USD 应收100 未收80；...`（不含应付/未付），无值时显示 `-` */
 export const formatUnsettledSettlements = (
   groups?: null | CommissionOrderAdminApi.CommissionUnsettledSettlementDto[],
 ): string => {
@@ -229,7 +271,7 @@ export const formatUnsettledSettlements = (
       const details = (group.currencies ?? [])
         .map((c) => {
           const code = c.currency?.code ?? '-';
-          return `${code} ${$t('commissionOrder.ticket.receivable')}${formatAmount(c.receivable)} ${$t('commissionOrder.ticket.unReceived')}${formatAmount(c.unReceived)} ${$t('commissionOrder.ticket.payable')}${formatAmount(c.payable)} ${$t('commissionOrder.ticket.unPaid')}${formatAmount(c.unPaid)}`;
+          return `${code} ${$t('commissionOrder.ticket.receivable')}${formatAmount(c.receivable)} ${$t('commissionOrder.ticket.unReceived')}${formatAmount(c.unReceived)}`;
         })
         .join('；');
       return details ? `${party}：${details}` : party;
@@ -237,72 +279,109 @@ export const formatUnsettledSettlements = (
     .join('；');
 };
 
-/** 未结清票展开行：一票多结算对象/币别时拆成多行，便于分列展示欠款 */
-export type UnsettledTicketFlatRow =
-  CommissionOrderAdminApi.CommissionTicketDto & {
-    _flatKey: string;
-    _unsettledCurrency: string;
-    _unsettledPayable: null | number | undefined;
-    _unsettledReceivable: null | number | undefined;
-    _unsettledSettlement: string;
-    _unsettledUnPaid: null | number | undefined;
-    _unsettledUnReceived: null | number | undefined;
-  };
-
-export const flattenUnsettledTickets = (
+/** 从票列表收集币别代码（升序），用于动态列 */
+export const collectTicketCurrencyCodes = (
   tickets: CommissionOrderAdminApi.CommissionTicketDto[],
-): UnsettledTicketFlatRow[] => {
-  const rows: UnsettledTicketFlatRow[] = [];
-  tickets.forEach((ticket) => {
-    const baseKey = ticketRowKey(ticket);
-    const groups = ticket.unsettledSettlements ?? [];
-    if (groups.length === 0) {
-      rows.push({
-        ...ticket,
-        _flatKey: baseKey,
-        _unsettledCurrency: '-',
-        _unsettledPayable: undefined,
-        _unsettledReceivable: undefined,
-        _unsettledSettlement: '-',
-        _unsettledUnPaid: undefined,
-        _unsettledUnReceived: undefined,
-      });
-      return;
-    }
-    groups.forEach((group, groupIndex) => {
-      const settlementName =
-        group.settlement?.name ??
-        group.settlement?.fullName ??
-        $t('commissionOrder.ticket.unsettledSettlementNone');
-      const currencies = group.currencies ?? [];
-      if (currencies.length === 0) {
-        rows.push({
-          ...ticket,
-          _flatKey: `${baseKey}:g${groupIndex}`,
-          _unsettledCurrency: '-',
-          _unsettledPayable: undefined,
-          _unsettledReceivable: undefined,
-          _unsettledSettlement: settlementName,
-          _unsettledUnPaid: undefined,
-          _unsettledUnReceived: undefined,
-        });
-        return;
+  source: 'currencies' | 'unsettled' = 'currencies',
+): string[] => {
+  const codes = new Set<string>();
+  for (const ticket of tickets) {
+    if (source === 'unsettled') {
+      for (const group of ticket.unsettledSettlements ?? []) {
+        for (const item of group.currencies ?? []) {
+          const code = item.currency?.code?.trim();
+          if (code) codes.add(code);
+        }
       }
-      currencies.forEach((currency, currencyIndex) => {
-        rows.push({
-          ...ticket,
-          _flatKey: `${baseKey}:g${groupIndex}:c${currencyIndex}`,
-          _unsettledCurrency: currency.currency?.code ?? '-',
-          _unsettledPayable: currency.payable,
-          _unsettledReceivable: currency.receivable,
-          _unsettledSettlement: settlementName,
-          _unsettledUnPaid: currency.unPaid,
-          _unsettledUnReceived: currency.unReceived,
-        });
-      });
+      continue;
+    }
+    for (const item of ticket.currencies ?? []) {
+      const code = item.currency?.code?.trim();
+      if (code) codes.add(code);
+    }
+  }
+  return [...codes].sort((a, b) => a.localeCompare(b));
+};
+
+/** 参与计算票：按币别取应收；未收对已结清票恒为 0 */
+const getSettledCurrencyAmount = (
+  ticket: CommissionOrderAdminApi.CommissionTicketDto,
+  code: string,
+  field: 'receivable' | 'unReceived',
+): null | number => {
+  const hit = (ticket.currencies ?? []).find(
+    (item) => (item.currency?.code ?? '') === code,
+  );
+  if (!hit) return null;
+  return field === 'unReceived' ? 0 : (hit.receivable ?? null);
+};
+
+/** 未结清票：按币别汇总应收/未收（跨结算对象） */
+const getUnsettledCurrencyAmount = (
+  ticket: CommissionOrderAdminApi.CommissionTicketDto,
+  code: string,
+  field: 'receivable' | 'unReceived',
+): null | number => {
+  let sum = 0;
+  let hit = false;
+  for (const group of ticket.unsettledSettlements ?? []) {
+    for (const item of group.currencies ?? []) {
+      if ((item.currency?.code ?? '') !== code) continue;
+      hit = true;
+      sum += Number(item[field] ?? 0);
+    }
+  }
+  return hit ? sum : null;
+};
+
+/** 未结清票拆行后：按当前结算对象 + 币别取应收/未收 */
+const getUnsettledSettlementCurrencyAmount = (
+  row: UnsettledSettlementFlatRow,
+  code: string,
+  field: 'receivable' | 'unReceived',
+): null | number => {
+  const group = row.unsettledSettlements?.[row._unsettledGroupIndex];
+  if (!group) return null;
+  const hit = (group.currencies ?? []).find(
+    (item) => (item.currency?.code ?? '') === code,
+  );
+  if (!hit) return null;
+  return hit[field] ?? null;
+};
+
+/** 仅日期：`2026-08-27`，空值 `-` */
+export const formatDateOnly = (value?: null | string): string => {
+  if (!value) return '-';
+  return value.slice(0, 10);
+};
+
+/** 超期天数文案：未到期为负数不归零 */
+export const formatOverdueDays = (days?: null | number): string => {
+  if (days == null || Number.isNaN(Number(days))) return '-';
+  const value = Number(days);
+  if (value < 0) {
+    return $t('commissionOrder.ticket.overdueDaysEarly', {
+      days: Math.abs(value),
     });
-  });
-  return rows;
+  }
+  return $t('commissionOrder.ticket.overdueDaysValue', { days: value });
+};
+
+/** 账期类型（结算方式：票结/月结/指定日结） */
+export const getSettlementTypeLabel = (type?: null | number): string => {
+  if (type == null) return '-';
+  const map: Record<number, string> = {
+    0: $t(
+      'seaExport.client.paymentTerms.SettlementTypeOptions.ticketSettlement',
+    ),
+    1: $t(
+      'seaExport.client.paymentTerms.SettlementTypeOptions.monthlySettlement',
+    ),
+    2: $t(
+      'seaExport.client.paymentTerms.SettlementTypeOptions.appointedDaySettlement',
+    ),
+  };
+  return map[type] ?? String(type);
 };
 
 // ==================== 列表搜索表单 ====================
@@ -519,183 +598,255 @@ const ticketTitle = (key: string) => $t(`commissionOrder.ticket.${key}`);
 type TicketColumns =
   TableColumnsType<CommissionOrderAdminApi.CommissionTicketDto>;
 
-const ticketBaseColumns = (options: {
-  showUnsettled: boolean;
-}): TicketColumns => {
-  const columns: TicketColumns = [
-    {
-      title: ticketTitle('commissionNum'),
-      dataIndex: ['transportOrder', 'commissionNum'],
-      key: 'commissionNum',
-      width: 120,
-      customRender: ({ record }) =>
+/** 应结日期 / 超期天数 / 账期类型 */
+const buildSettlementMetaColumns = (): TicketColumns => [
+  {
+    title: ticketTitle('settlementDate'),
+    key: 'settlementDate',
+    width: 110,
+    customRender: ({ record }) =>
+      formatDateOnly(
         (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
-          ?.commissionNum ?? '-',
+          ?.settlementDate,
+      ),
+  },
+  {
+    title: ticketTitle('overdueDays'),
+    key: 'overdueDays',
+    width: 90,
+    align: 'right',
+    customRender: ({ record }) => {
+      const days = (record as CommissionOrderAdminApi.CommissionTicketDto)
+        .transportOrder?.overdueDays;
+      const label = formatOverdueDays(days);
+      if (days == null) return label;
+      const className =
+        days < 0
+          ? 'text-green-600'
+          : days === 0
+            ? 'text-amber-500'
+            : 'text-red-500';
+      return h('span', { class: className }, label);
     },
-    {
-      title: ticketTitle('mblNum'),
-      dataIndex: ['transportOrder', 'mblNum'],
-      key: 'mblNum',
-      width: 130,
-      customRender: ({ record }) =>
+  },
+  {
+    title: ticketTitle('settlementType'),
+    key: 'settlementType',
+    width: 100,
+    customRender: ({ record }) =>
+      getSettlementTypeLabel(
         (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
-          ?.mblNum ?? '-',
-    },
-    {
-      title: ticketTitle('bizType'),
-      dataIndex: ['transportOrder', 'bizType'],
-      key: 'bizType',
-      width: 90,
-      customRender: ({ text }) => getBizTypeLabel(text as number | null),
-    },
-    {
-      title: ticketTitle('bizDate'),
-      dataIndex: ['transportOrder', 'bizDate'],
-      key: 'bizDate',
-      width: 110,
-      customRender: ({ record }) =>
-        formatMonth(
-          (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
-            ?.bizDate,
-        ),
-    },
-    {
-      title: ticketTitle('client'),
-      dataIndex: ['transportOrder', 'client'],
-      key: 'client',
-      width: 130,
-      customRender: ({ record }) =>
-        (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
-          ?.client?.name ?? '-',
-    },
-    {
-      title: ticketTitle('operations'),
-      dataIndex: ['transportOrder', 'operations'],
-      key: 'operations',
-      width: 100,
-      customRender: ({ record }) => {
-        const operations = (
-          record as CommissionOrderAdminApi.CommissionTicketDto
-        ).transportOrder?.operations;
-        const text = (operations ?? [])
-          .map((o) => o.nickName)
-          .filter(Boolean)
-          .join('、');
-        return text || '-';
-      },
-    },
-    {
-      title: ticketTitle('polPod'),
-      key: 'polPod',
-      width: 150,
-      ellipsis: true,
-      customRender: ({ record }) =>
-        formatPolPod(
-          (record as CommissionOrderAdminApi.CommissionTicketDto)
-            .transportOrder,
-        ),
-    },
-    {
-      title: ticketTitle('ticketType'),
-      key: 'ticketType',
-      width: 80,
-      customRender: ({ record }) =>
-        getTicketTypeLabel(
-          record as CommissionOrderAdminApi.CommissionTicketDto,
-        ),
-    },
-    {
-      title: ticketTitle('accountDate'),
-      dataIndex: 'accountDate',
-      key: 'accountDate',
-      width: 100,
-      customRender: ({ text }) => formatMonth(text as string | null),
-    },
-  ];
-  if (options.showUnsettled) {
-    columns.push({
-      title: ticketTitle('unsettledCount'),
-      dataIndex: 'unsettledFeeCount',
-      key: 'unsettledFeeCount',
-      width: 100,
-      customRender: ({ text }) =>
-        text == null
-          ? '-'
-          : $t('commissionOrder.ticket.unsettledCountValue', { count: text }),
-    });
+          ?.settlementType,
+      ),
+  },
+];
+
+/** 按币别动态列：`RMB应收` / `RMB未收` …；mode=settled 时未收恒为 0 */
+const buildCurrencyAmountColumns = (
+  currencyCodes: string[],
+  mode: 'settled' | 'unsettled' | 'unsettledBySettlement',
+): TicketColumns => {
+  const columns: TicketColumns = [];
+  for (const code of currencyCodes) {
     columns.push(
       {
-        title: ticketTitle('unsettledSettlement'),
-        key: 'unsettledSettlement',
-        dataIndex: '_unsettledSettlement',
-        width: 140,
-        ellipsis: true,
-        customRender: ({ text }) => (text as string) || '-',
-      },
-      {
-        title: ticketTitle('unsettledCurrency'),
-        key: 'unsettledCurrency',
-        dataIndex: '_unsettledCurrency',
-        width: 72,
-        align: 'center',
-        customRender: ({ text }) => (text as string) || '-',
-      },
-      {
-        title: ticketTitle('receivable'),
-        key: 'unsettledReceivable',
-        dataIndex: '_unsettledReceivable',
-        width: 100,
+        title: $t('commissionOrder.ticket.currencyReceivable', { code }),
+        key: `currencyRecv_${code}`,
+        width: 110,
         align: 'right',
-        customRender: ({ text }) =>
-          formatAmount(text as number | null | undefined),
+        customRender: ({ record }) => {
+          let value: null | number;
+          if (mode === 'unsettledBySettlement') {
+            value = getUnsettledSettlementCurrencyAmount(
+              record as UnsettledSettlementFlatRow,
+              code,
+              'receivable',
+            );
+          } else {
+            const ticket =
+              record as CommissionOrderAdminApi.CommissionTicketDto;
+            value =
+              mode === 'unsettled'
+                ? getUnsettledCurrencyAmount(ticket, code, 'receivable')
+                : getSettledCurrencyAmount(ticket, code, 'receivable');
+          }
+          return amountCell(value);
+        },
       },
       {
-        title: ticketTitle('unReceived'),
-        key: 'unsettledUnReceived',
-        dataIndex: '_unsettledUnReceived',
-        width: 100,
+        title: $t('commissionOrder.ticket.currencyUnReceived', { code }),
+        key: `currencyUnRecv_${code}`,
+        width: 110,
         align: 'right',
-        customRender: ({ text }) =>
-          formatAmount(text as number | null | undefined),
-      },
-      {
-        title: ticketTitle('payable'),
-        key: 'unsettledPayable',
-        dataIndex: '_unsettledPayable',
-        width: 100,
-        align: 'right',
-        customRender: ({ text }) =>
-          formatAmount(text as number | null | undefined),
-      },
-      {
-        title: ticketTitle('unPaid'),
-        key: 'unsettledUnPaid',
-        dataIndex: '_unsettledUnPaid',
-        width: 100,
-        align: 'right',
-        customRender: ({ text }) =>
-          formatAmount(text as number | null | undefined),
+        customRender: ({ record }) => {
+          let value: null | number;
+          if (mode === 'unsettledBySettlement') {
+            value = getUnsettledSettlementCurrencyAmount(
+              record as UnsettledSettlementFlatRow,
+              code,
+              'unReceived',
+            );
+          } else {
+            const ticket =
+              record as CommissionOrderAdminApi.CommissionTicketDto;
+            value =
+              mode === 'unsettled'
+                ? getUnsettledCurrencyAmount(ticket, code, 'unReceived')
+                : getSettledCurrencyAmount(ticket, code, 'unReceived');
+          }
+          return amountCell(value);
+        },
       },
     );
   }
   return columns;
 };
 
+const ticketBaseColumns = (): TicketColumns => [
+  {
+    title: ticketTitle('commissionNum'),
+    dataIndex: ['transportOrder', 'commissionNum'],
+    key: 'commissionNum',
+    width: 120,
+    customRender: ({ record }) =>
+      (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
+        ?.commissionNum ?? '-',
+  },
+  {
+    title: ticketTitle('mblNum'),
+    dataIndex: ['transportOrder', 'mblNum'],
+    key: 'mblNum',
+    width: 130,
+    customRender: ({ record }) =>
+      (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
+        ?.mblNum ?? '-',
+  },
+  {
+    title: ticketTitle('bizType'),
+    dataIndex: ['transportOrder', 'bizType'],
+    key: 'bizType',
+    width: 90,
+    customRender: ({ text }) => getBizTypeLabel(text as number | null),
+  },
+  {
+    title: ticketTitle('bizDate'),
+    dataIndex: ['transportOrder', 'bizDate'],
+    key: 'bizDate',
+    width: 110,
+    customRender: ({ record }) =>
+      formatMonth(
+        (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
+          ?.bizDate,
+      ),
+  },
+  {
+    title: ticketTitle('client'),
+    dataIndex: ['transportOrder', 'client'],
+    key: 'client',
+    width: 130,
+    customRender: ({ record }) =>
+      (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder
+        ?.client?.name ?? '-',
+  },
+  {
+    title: ticketTitle('operations'),
+    dataIndex: ['transportOrder', 'operations'],
+    key: 'operations',
+    width: 100,
+    customRender: ({ record }) => {
+      const operations = (record as CommissionOrderAdminApi.CommissionTicketDto)
+        .transportOrder?.operations;
+      const text = (operations ?? [])
+        .map((o) => o.nickName)
+        .filter(Boolean)
+        .join('、');
+      return text || '-';
+    },
+  },
+  {
+    title: ticketTitle('polPod'),
+    key: 'polPod',
+    width: 150,
+    ellipsis: true,
+    customRender: ({ record }) =>
+      formatPolPod(
+        (record as CommissionOrderAdminApi.CommissionTicketDto).transportOrder,
+      ),
+  },
+  {
+    title: ticketTitle('ticketType'),
+    key: 'ticketType',
+    width: 80,
+    customRender: ({ record }) =>
+      getTicketTypeLabel(record as CommissionOrderAdminApi.CommissionTicketDto),
+  },
+  {
+    title: ticketTitle('accountDate'),
+    dataIndex: 'accountDate',
+    key: 'accountDate',
+    width: 100,
+    customRender: ({ text }) => formatMonth(text as string | null),
+  },
+];
+
 /** 销售提成票表格列。
  * compact：新建弹窗「参与计算的票」精简列；
- * showUnsettled：未结清票只保留催款列，不含应收/应付/利润。 */
+ * showUnsettled：未结清票（按结算对象拆行 + 币别动态应收/未收列）；
+ * currencyCodes：动态币别列，由调用方按当前数据收集。 */
 export function useSalesTicketColumns(
   options: {
     compact?: boolean;
+    currencyCodes?: string[];
     showUnsettled?: boolean;
   } = {},
 ): TicketColumns {
   const showUnsettled = options.showUnsettled ?? false;
   const compact = options.compact ?? false;
+  const currencyCodes = options.currencyCodes ?? [];
+  const currencyMode = showUnsettled ? 'unsettledBySettlement' : 'settled';
+  const currencyColumns = buildCurrencyAmountColumns(
+    currencyCodes,
+    currencyMode,
+  );
+  const metaColumns = buildSettlementMetaColumns();
 
   if (showUnsettled) {
-    return ticketBaseColumns({ showUnsettled: true });
+    return [
+      ...ticketBaseColumns(),
+      {
+        title: ticketTitle('unsettledSettlement'),
+        key: 'unsettledSettlement',
+        width: 120,
+        ellipsis: true,
+        customRender: ({ record }) => {
+          const row = record as UnsettledSettlementFlatRow;
+          return (
+            row._unsettledSettlement ||
+            $t('commissionOrder.ticket.unsettledSettlementNone')
+          );
+        },
+      },
+      ...metaColumns,
+      ...currencyColumns,
+    ];
   }
+
+  const profitTypeColumn = {
+    title: compact ? ticketTitle('status') : ticketTitle('profitType'),
+    dataIndex: 'profitType',
+    key: 'profitType',
+    width: 100,
+    customRender: ({ text }: { text: unknown }) => {
+      const value = text as number | null;
+      if (value == null) return '-';
+      const option = getProfitTypeOptions().find((o) => o.value === value);
+      return h(
+        Tag,
+        { color: option?.color ?? 'default' },
+        () => option?.label ?? String(value),
+      );
+    },
+  };
 
   if (compact) {
     return [
@@ -714,22 +865,8 @@ export function useSalesTicketColumns(
         customRender: ({ record }) =>
           formatBizInfo(record as CommissionOrderAdminApi.CommissionTicketDto),
       },
-      {
-        title: ticketTitle('totalReceivable'),
-        dataIndex: 'totalReceivable',
-        key: 'totalReceivable',
-        width: 110,
-        align: 'right',
-        customRender: ({ text }) => amountCell(text),
-      },
-      {
-        title: ticketTitle('totalPayable'),
-        dataIndex: 'totalPayable',
-        key: 'totalPayable',
-        width: 110,
-        align: 'right',
-        customRender: ({ text }) => amountCell(text),
-      },
+      ...metaColumns,
+      ...currencyColumns,
       {
         title: ticketTitle('profit'),
         dataIndex: 'profit',
@@ -747,43 +884,14 @@ export function useSalesTicketColumns(
         customRender: ({ text }) =>
           amountCell(text, 'font-semibold text-[hsl(var(--primary))]'),
       },
-      {
-        title: ticketTitle('status'),
-        dataIndex: 'profitType',
-        key: 'profitType',
-        width: 100,
-        customRender: ({ text }) => {
-          const value = text as number | null;
-          if (value == null) return '-';
-          const option = getProfitTypeOptions().find((o) => o.value === value);
-          return h(
-            Tag,
-            { color: option?.color ?? 'default' },
-            () => option?.label ?? String(value),
-          );
-        },
-      },
+      profitTypeColumn,
     ];
   }
 
-  const columns: TicketColumns = [
-    ...ticketBaseColumns({ showUnsettled: false }),
-    {
-      title: ticketTitle('totalReceivable'),
-      dataIndex: 'totalReceivable',
-      key: 'totalReceivable',
-      width: 110,
-      align: 'right',
-      customRender: ({ text }) => amountCell(text),
-    },
-    {
-      title: ticketTitle('totalPayable'),
-      dataIndex: 'totalPayable',
-      key: 'totalPayable',
-      width: 110,
-      align: 'right',
-      customRender: ({ text }) => amountCell(text),
-    },
+  return [
+    ...ticketBaseColumns(),
+    ...metaColumns,
+    ...currencyColumns,
     {
       title: ticketTitle('profit'),
       dataIndex: 'profit',
@@ -792,22 +900,7 @@ export function useSalesTicketColumns(
       align: 'right',
       customRender: ({ text }) => amountCell(text),
     },
-    {
-      title: ticketTitle('profitType'),
-      dataIndex: 'profitType',
-      key: 'profitType',
-      width: 100,
-      customRender: ({ text }) => {
-        const value = text as number | null;
-        if (value == null) return '-';
-        const option = getProfitTypeOptions().find((o) => o.value === value);
-        return h(
-          Tag,
-          { color: option?.color ?? 'default' },
-          () => option?.label ?? String(value),
-        );
-      },
-    },
+    profitTypeColumn,
     {
       title: ticketTitle('amount'),
       dataIndex: 'amount',
@@ -818,13 +911,12 @@ export function useSalesTicketColumns(
         amountCell(text, 'font-semibold text-[hsl(var(--primary))]'),
     },
   ];
-  return columns;
 }
 
 /** 操作提成票表格列 */
 export function useOperationTicketColumns(): TicketColumns {
   return [
-    ...ticketBaseColumns({ showUnsettled: false }),
+    ...ticketBaseColumns(),
     {
       title: ticketTitle('amount'),
       dataIndex: 'amount',

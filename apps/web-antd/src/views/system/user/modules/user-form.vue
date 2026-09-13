@@ -517,7 +517,6 @@ async function loadUserDetail(id: number) {
       officeTel: userDetail.officeTel,
       emailAddress: userDetail.emailAddress,
       qq: userDetail.qq,
-      extensionNumber: userDetail.extensionNumber ?? undefined,
     });
     await attributeFormApi.setValues({
       userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
@@ -592,12 +591,8 @@ async function handleSubmit() {
     sendAddrPort: values.sendAddrPort || undefined,
     officeTel: values.officeTel || undefined,
     senderDisplayName: values.senderDisplayName || undefined,
-    extensionNumber:
-      values.extensionNumber === undefined ||
-      values.extensionNumber === null ||
-      values.extensionNumber === ''
-        ? null
-        : values.extensionNumber,
+    // 开票分机号已从基础信息表单移除；编辑时透传原值，避免保存时被清空
+    extensionNumber: formData.value?.extensionNumber ?? null,
     shouldChangePasswordOnNextLogin: values.shouldChangePasswordOnNextLogin,
   };
 
