@@ -96,8 +96,8 @@ export namespace SeaExportDispatchAdminApi {
     seaExportId: string;
     keyword?: string;
     sorting?: string;
-    skipCount?: number;
-    maxResultCount?: number;
+    pageIndex?: number;
+    pageSize?: number;
   }
 }
 

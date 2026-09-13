@@ -169,6 +169,7 @@ last_updated: 2026-09-13
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-13 | `Fix` | 派车列表分页改为 `pageIndex` / `pageSize`，不再误传 `skipCount`。 | `SeaExportDispatchQueryDto` 继承 `PagingAndSorting`。详见 [变更日志](../../changelogs/change-log-2026-09-13-dispatch-page-params.md)。 |
 | 2026-09-13 | `Fix` | 分单船期与港口卡标签由错误的 EDT 改回 ETD。 | 文案 key `seaExport.export.separate.etdLabel`；取值仍是主单 `transportOrder.etd`。详见 [变更日志](../../changelogs/change-log-2026-09-13-separate-bill-etd-label.md)。 |
 | 2026-09-11 | `Feature` | 完成服务后若自动生成了费用，弹窗展示费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Fix` | 无编辑权限时不再锁表单，只禁用保存；复制仍可用。 | 去掉 `setFormApisDisabled` 与只读 pointer-events。详见 [变更日志](../../changelogs/change-log-2026-09-11-sea-export-readonly-save-only.md)。 |

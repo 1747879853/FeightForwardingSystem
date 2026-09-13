@@ -79,8 +79,8 @@ const loadData = async () => {
     const res = await getDispatchPagedList({
       seaExportId: seaExportId.value,
       keyword: keyword.value || undefined,
-      skipCount: (currentPage.value - 1) * pageSize.value,
-      maxResultCount: pageSize.value,
+      pageIndex: currentPage.value,
+      pageSize: pageSize.value,
     });
     dataSource.value = res.items || [];
     selectedDispatchKeys.value = [];
