@@ -124,6 +124,7 @@ function openInNewTab() {
       </div>
       <div class="share-preview__frame">
         <LoadingOrderSharePage
+          v-if="open"
           :embedded="true"
           :lang="lang"
           :loading-order-num="loadingOrderNum"

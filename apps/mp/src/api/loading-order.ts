@@ -129,6 +129,8 @@ export interface LoadingOrderListItemDto {
 }
 
 export interface LoadingOrderDetailDto extends LoadingOrderListItemDto {
+  cameraNo?: null | number;
+  camera?: null | { cameraNo: number; name: string };
   claimTime?: null | string;
   completeTime?: null | string;
   /** 师傅端只返回勾选了的明细，isChecked 恒为 true */
@@ -177,6 +179,31 @@ export interface LoadingOrderCtnEditItem {
 }
 
 const PREFIX = '/services/app/LoadingOrder';
+
+export interface LoadingOrderCameraOptionDto {
+  cameraNo: number;
+  isCurrent?: boolean;
+  isOccupied: boolean;
+  name: string;
+  occupiedLoadingOrderNum?: null | string;
+}
+
+/** 仅已认领的本人工单可查；占用相对本工单计算。 */
+export function getLoadingOrderCameraList(id: string) {
+  return request<LoadingOrderCameraOptionDto[]>({
+    url: `${PREFIX}/GetCameraListAsync`,
+    params: { id },
+  });
+}
+
+/** 仅已认领的本人工单可维护；null 表示解绑。 */
+export function editLoadingOrderCameraNo(id: string, cameraNo: null | number) {
+  return request<boolean>({
+    url: `${PREFIX}/EditCameraNoAsync`,
+    method: 'PUT',
+    data: { id, cameraNo },
+  });
+}
 
 /**
  * 分页查询。status 必填：1 看公共池，2/3 只看自己的。

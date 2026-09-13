@@ -122,6 +122,8 @@ export namespace LoadingOrderAdminApi {
 
   /** 监装工单详情 */
   export interface LoadingOrderDetailDto {
+    cameraNo?: null | number;
+    camera?: null | { cameraNo: number; name: string };
     id: string;
     seaExportId: string;
     loadingOrderNum?: string;

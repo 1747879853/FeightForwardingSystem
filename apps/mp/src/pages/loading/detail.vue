@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { AttachmentDtlTypeSimpleDto } from '@/api/attachment-dtl-type';
-import type { LoadingOrderDetailDto } from '@/api/loading-order';
+import type {
+  LoadingOrderCameraOptionDto,
+  LoadingOrderDetailDto,
+} from '@/api/loading-order';
 import type { EditableCtn } from '@/utils/ctn-model';
 
 import { onLoad, onShow } from '@dcloudio/uni-app';
@@ -10,12 +13,15 @@ import { getOrderCtnLoadingAttachmentTypes } from '@/api/attachment-dtl-type';
 import {
   cancelLoadingOrderComplete,
   claimLoadingOrder,
+  editLoadingOrderCameraNo,
   editLoadingOrderCtns,
+  getLoadingOrderCameraList,
   getLoadingOrderDetail,
   isNoSupervisionError,
   LoadingOrderStatus,
   rejectLoadingOrder,
 } from '@/api/loading-order';
+import CameraPickerSheet from '@/components/camera-picker-sheet.vue';
 import CtnPhotoPanel from '@/components/ctn-photo-panel.vue';
 import {
   countPhotos,
@@ -39,6 +45,9 @@ const ctns = ref<EditableCtn[]>([]);
 const attachmentTypes = ref<AttachmentDtlTypeSimpleDto[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
+const cameras = ref<LoadingOrderCameraOptionDto[]>([]);
+const cameraSheetVisible = ref(false);
+const camerasLoading = ref(false);
 const noPermission = ref(false);
 
 const photoPanelVisible = ref(false);
@@ -204,6 +213,64 @@ function onClaim() {
   void runAction(() => claimLoadingOrder(orderId.value), '认领成功');
 }
 
+async function openCameraSheet() {
+  if (!editable.value || submitting.value || loading.value || !detail.value)
+    return;
+  cameraSheetVisible.value = true;
+  camerasLoading.value = true;
+  try {
+    cameras.value = await getLoadingOrderCameraList(orderId.value);
+  } catch (error) {
+    cameras.value = [];
+    cameraSheetVisible.value = false;
+    uni.showToast({
+      icon: 'none',
+      title: error instanceof Error ? error.message : '摄像头列表加载失败',
+    });
+  } finally {
+    camerasLoading.value = false;
+  }
+}
+
+async function bindCamera(cameraNo: null | number) {
+  if (!editable.value || submitting.value || !detail.value) return;
+  if (cameraNo === null) {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: '解绑摄像头',
+        content: '解绑后客户将无法观看视频',
+        success: (result) => resolve(Boolean(result.confirm)),
+        fail: () => resolve(false),
+      });
+    });
+    if (!confirmed) return;
+  }
+  submitting.value = true;
+  try {
+    await editLoadingOrderCameraNo(orderId.value, cameraNo);
+    cameraSheetVisible.value = false;
+    // 只更新详情，不覆盖尚未提交的箱型/照片草稿。
+    detail.value = await getLoadingOrderDetail(orderId.value);
+    uni.showToast({
+      icon: 'none',
+      title: cameraNo === null ? '已解绑摄像头' : '摄像头已认领',
+    });
+  } catch (error) {
+    uni.showModal({
+      title: '摄像头保存失败',
+      content: error instanceof Error ? error.message : '保存失败，请重试',
+      showCancel: false,
+    });
+    try {
+      cameras.value = await getLoadingOrderCameraList(orderId.value);
+    } catch {
+      // 刷新占用失败时保留刚才那份列表，保存错误已提示。
+    }
+  } finally {
+    submitting.value = false;
+  }
+}
+
 async function onSaveFromPanel() {
   if (!detail.value || submitting.value) return;
   submitting.value = true;
@@ -231,7 +298,7 @@ function onCancelComplete() {
       showCancel: false,
       title: '已恢复编辑',
       content:
-        '取消完成不会清掉各箱的完成勾选，如需保留未完成状态，请先打开监装处理取消至少一个箱子的勾选再保存。',
+        '取消完成不会清掉各箱的完成勾选，如需保留未完成状态，请先打开监装处理取消至少一个箱子的勾选再保存。摄像头已释放，如需继续直播，请重新选择摄像头。',
     });
   }, '已取消完成');
 }
@@ -312,6 +379,29 @@ onShow(() => {
             </text>
           </view>
         </view>
+      </view>
+
+      <view
+        v-if="editable || status === LoadingOrderStatus.Completed"
+        class="card"
+      >
+        <view class="card__head">
+          <view class="card__bar" />
+          <text class="card__title">摄像头认领</text>
+        </view>
+        <template v-if="editable">
+          <view class="row" @tap="openCameraSheet">
+            <text class="row__label">摄像头</text>
+            <view class="row__right">
+              <text
+                :class="['row__value', { 'is-empty': !detail.camera?.name }]"
+              >
+                {{ detail.camera?.name || '请选择' }}
+              </text>
+            </view>
+          </view>
+        </template>
+        <text v-else class="empty-line">监装已完成，摄像头已释放</text>
       </view>
 
       <view class="card">
@@ -410,6 +500,17 @@ onShow(() => {
       <text class="placeholder__desc">加载中…</text>
     </view>
 
+    <CameraPickerSheet
+      :visible="cameraSheetVisible"
+      :cameras="cameras"
+      :loading="camerasLoading"
+      :submitting="submitting"
+      :has-bound="detail?.cameraNo != null"
+      @close="cameraSheetVisible = false"
+      @select="bindCamera"
+      @unbind="bindCamera(null)"
+    />
+
     <CtnPhotoPanel
       :ctn="activeCtn"
       :editable="editable"
@@ -447,6 +548,10 @@ onShow(() => {
 </template>
 
 <style lang="scss" scoped>
+.row__value.is-empty {
+  color: #c2c8d2;
+}
+
 .page {
   position: relative;
   min-height: 100vh;

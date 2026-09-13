@@ -98,6 +98,7 @@
     "globe.gl": "^2.45.1",
     "handsontable": "^18.0.0",
     "json-bigint": "catalog:",
+    "mpegts.js": "^1.8.2",
     "pinia": "catalog:",
     "pinyin-pro": "^3.28.1",
     "sortablejs": "catalog:",

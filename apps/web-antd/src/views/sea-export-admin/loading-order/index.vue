@@ -1087,6 +1087,20 @@ const displayValue = (value: null | number | string | undefined) => {
           <div class="loading-order__grid">
             <div class="loading-order__field loading-order__field--readonly">
               <div class="loading-order__label">
+                {{ $t('seaExport.loadingOrder.camera') }}
+              </div>
+              <Input
+                readonly
+                :value="
+                  detail?.camera?.name ||
+                  (detail?.status === LoadingOrderStatus.Completed
+                    ? $t('seaExport.loadingOrder.cameraReleased')
+                    : $t('seaExport.loadingOrder.cameraUnclaimed'))
+                "
+              />
+            </div>
+            <div class="loading-order__field loading-order__field--readonly">
+              <div class="loading-order__label">
                 {{ $t('seaExport.loadingOrder.loadingOrderNum') }}
               </div>
               <Input

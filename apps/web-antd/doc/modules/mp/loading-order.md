@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-09-07
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,10 +15,12 @@ last_updated: 2026-09-07
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **摄像头认领：** 仅已认领工单可操作。点「摄像头」调 `GET /api/services/app/LoadingOrder/GetCameraListAsync` 拉台账，对照机身号牌选择后立即 `PUT .../EditCameraNoAsync`；占用项置灰，同公司显示工单号、跨公司只提示已被其它工单占用。解绑需确认后传 null。已完成只读提示已释放，取消完成后需重新选择。选摄像头不会覆盖未提交的箱型照片草稿。不手填编号，也不在非已认领状态拉列表。
+
 - **底栏四个 Tab：** 首页、监装、积分兑换、个人中心。第一期只有「监装」（监装列表）与「个人中心」有内容，首页与积分兑换是占位页。
 - **列表（`pages/loading/list`）：** 顶部分段「新派 / 进行中 / 已完成」分别打接口状态 1/2/3；分段用 `components/skew-tabs/skew-tabs`（Canvas 2D 斜切白滑块），点击插值滑动。打开检索抽屉时卸掉 canvas；切底栏或进出详情不再控制 canvas。Tab 与卡片间距 24rpx；过渡写在列表里：`.list__fade` 为 `180deg #F9FAFD → #F0F2F8`，与选中滑块衔接，垫在内容卡片下面。视觉按 Figma「检索条件」稿：蓝渐变顶、口号渐变字、3D 插图压在 Tab 右侧、白卡片展示监装工号、状态徽标、主提单号、明细包装\*件数、船名航次、堆场、品名、下单日期与预计到货日期。支持下拉刷新、触底加载。
 - **检索：** 点顶栏放大镜从右侧弹出「检索条件」抽屉，支持监装工单号（模糊）、主提单号（模糊）、监装堆场关键字（名称/地址/备注）、起运港、船公司、品名、预计到货日；有生效条件时放大镜带红点。起运港/船公司/品名点开底部面板，可搜关键字、每页 20 条、触底加载。起运港下拉两行对齐 PC：`EDI码/英文名` + `国家英文名 / 中文名`；船公司对齐 PC：`CODE(简称)`，下拉与选中回显都带 logo（无图则只显示文字）。检索用本地 `search-drawer`（右侧遮罩，不引用 `wd-popup`，避免微信把 `node-modules/wot-design-uni` 当无依赖丢掉）。打开时把 Tab 的 `hidden` 设为 true，`v-if` 卸掉 2d canvas，关掉再挂回。
-- **详情（`pages/loading/detail`）：** 三张卡——基本信息（13 行）、监装要求（胶囊标签 + 详细说明）、集装箱要求（序号/箱型/箱号/封号/监装处理）。视觉对齐 Figma「检索条件-详情」。基本信息「监装堆场」有名称或地址时可点「导航」：腾讯 `geocoder` 把中文地址转经纬度后 `uni.openLocation`。
+- **详情（`pages/loading/detail`）：** 基本卡片——基本信息（13 行）、监装要求（胶囊标签 + 详细说明）、集装箱要求（序号/箱型/箱号/封号/监装处理）。视觉对齐 Figma「检索条件-详情」。基本信息「监装堆场」有名称或地址时可点「导航」：腾讯 `geocoder` 把中文地址转经纬度后 `uni.openLocation`。
 - **监装处理：** 箱行只留一个入口，展示待处理/已完成与已传张数；点开面板可改该箱箱号、封号、完成状态并按附件类型横排传图（每类型限 1 张）。箱号旁可「识别」：拍照/相册一张图只用来识别箱号，不进入监装照片。已认领时面板底栏点「保存」立即提交；点遮罩或关闭且未保存则还原该箱打开时的值。拍照与相册分入口，避免误开相机。
 - **箱型编辑：** 只有已认领状态可在「监装处理」面板改箱号、封号、完成勾选；列表行只展示。不能加箱删箱。
 - **按状态的底部操作条：**
@@ -52,6 +54,7 @@ last_updated: 2026-09-07
 | **rejectReason** | 拒接原因 | 前端填，`RejectAsync` | 多人先后拒接只保留最后一次 | 前端必填，最长 1024 |
 | **loadingRequirements** | 监装要求 | 详情 | 师傅端只返回勾选了的明细，`isChecked` 恒 true | 师傅只读，不能改勾选 |
 | **remark** | 工单详细说明 | 详情 `remark` | 与拒接原因是两个独立字段 | 管理端维护，师傅只读 |
+| **camera / cameraNo** | 当前绑定的摄像头 | 详情 `camera`；列表 `GetCameraListAsync` | 点开选择后立即 `EditCameraNoAsync`；`isOccupied` 仅提前告知，保存仍可能被抢占 | 已认领才可选；占用项不可选；解绑传 null |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -119,3 +122,5 @@ last_updated: 2026-09-07
 | 2026-08-25 | `Chore` | `manifest.json` 填入津海通小程序 AppId，便于微信开发者工具登录与 `wx.login` | AppSecret 不进前端；后端凭据在 `App_WeixinAccessTokens`（`AppType=0`）。改 manifest 后须重启 `dev:mp-weixin` |
 | 2026-08-25 | `Chore` | 开发态后端改为 `http://43.138.14.122:88`，停用 `118.190.1.4:82` | `apps/mp/.env.development` 的 `VITE_API_ORIGIN`；须重启小程序开发服务 |
 | 2026-08-23 | `Feature` | 新增 `apps/mp` 小程序工程与监装师傅端第一期：登录（微信静默 + 手机号绑定 + 开发态账密）、监装列表三分段与检索、详情三卡与认领/拒接/保存/取消完成、分组照片面板、四个底栏 Tab（首页与积分兑换为占位）。 | 小程序不能用 `json-bigint`：其依赖 `bignumber.js` 会被打包器外部化成运行时找不到的 `require`，改为零依赖的 `safe-json.ts`（超安全范围整数先加引号再 parse），保持与 web-antd 一致的「ID 即 string」口径。`vite` 必须锁 5.2.8 以满足 `vite-plugin-uni` 的 peer；包内不提供 `build`/`dev` 脚本，`pnpm build` 与 `pnpm dev` 因此不会带上小程序。stylelint 对 `apps/mp` 需关 `rpx` 未知值校验与 `inset` 简写合并（旧 webview 不支持，遮罩会塌陷）。 |
+| 2026-09-13 | `Feature` | 小程序支持摄像头认领、换号、确认解绑及完成释放提示。 | 摄像头与直播按监装视频接口文档对接，所有应用服务方法保留 Async 后缀。 |
+| 2026-09-13 | `Feature` | 摄像头改为从 `GetCameraListAsync` 选择，不再手填编号。 | 占用项置灰；选中立即保存；解绑仍确认后传 null。 |

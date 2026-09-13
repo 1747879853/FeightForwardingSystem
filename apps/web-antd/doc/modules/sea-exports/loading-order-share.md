@@ -2,7 +2,7 @@
 title: 监装工单客户公开详情
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,8 +11,11 @@ last_updated: 2026-09-06
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **无首帧诊断：** 30 秒仍无可播放画面时销毁连接，复查业务状态；业务接口仍成功则提示检查摄像头出流与视频转发，不再误报为「视频已中断」。HTTP 200 与 FLV 文件头不代表已经收到视频帧。
+- **监装直播：** 页面只展示「查看监装视频」，不自动点播。点击后全屏打开再调 `LoadingOrderVideo/StartPlayAsync`，点播超时 120 秒；mpegts.js 只播返回的 flvUrl，首帧最多等 30 秒。异常先断开再点播一次查业务原因，由用户手动重试；已完成不提供入口。连接数每 10 秒查一次，失败显示未知。云台在全屏画面右下角，按住方向或变倍、松开停止；Esc 或关闭销毁播放器并释放观看位。视频及云台请求免登录，不带 token。
+
 - **分享预览：** 海出编辑工作台「监装」Tab 顶栏「分享」。已保存工单（有 `loadingOrderNum`）才显示。点击后弹出客户页预览，可切换中文 / English；「复制分享链接」按当前语言生成绝对 URL（英文带 `lang=en`）。缺主提单号时 toast 提示先填写。
-- **打开公开页：** 访问 `/loading-order-share?mblNum=&loadingOrderNum=`（hash 路由品牌实际为 `/#/loading-order-share?...`）。可选 `lang=en` 展示英文界面，缺省中文；文案跟 URL 语言走，不跟操作系统或后台账号语言。页头品牌 Logo + 标题滚动吸顶。概览区展示主提单号、工单号与工单状态。主体为基本信息卡与集装箱卡（箱照按类型横排，每类型一张；历史多图仍并排展示）。
+- **打开公开页：** 访问 `/loading-order-share?mblNum=&loadingOrderNum=`（hash 路由品牌实际为 `/#/loading-order-share?...`）。可选 `lang=en` 展示英文界面，缺省中文；文案跟 URL 语言走，不跟操作系统或后台账号语言。页头品牌 Logo + 标题滚动吸顶。概览区主提单号是大标题，标签贴在号码上方；监装工单号在标题下一行作为次要说明；状态徽标在右侧。主体为基本信息卡与集装箱卡（箱照按类型横排，每类型一张；历史多图仍并排展示）。
 - **免登录拉详情：** 调用 `GET /api/services/app/LoadingOrder/DetailByMblAndLoadingOrderNumAsync`，`skipAuth` 不带 token。query 缺任一号码时不请求，展示「请通过分享给您的链接访问」。
 - **对客户隐藏：** 即使接口返回了 `loadingRequirements`、`remark`、`rejectReason`，页面也不渲染。
 
@@ -56,3 +59,6 @@ last_updated: 2026-09-06
 | 2026-09-06 | `Fix` | 顶栏 Logo 行滚动吸顶 | 页面自己 `overflow: auto`，避免全局 `html/body/#app` 满高导致 sticky 粘错容器。详见 `changelogs/change-log-2026-09-06-loading-share-header-sticky.md` |
 | 2026-09-06 | `Fix` | 顶栏去掉「客户共享 · 只读查看」，只保留品牌 Logo 与「监装信息」 | 详见 `changelogs/change-log-2026-09-06-loading-share-header-note.md` |
 | 2026-09-05 | `Feature` | 监装 Tab 可复制免登录分享链接；客户打开后查看监装信息，不展示监装要求与备注 | 路由 `external/loading-order-share.ts`；接口 `skipAuth`；链接用 `router.resolve` 兼容 hash。详见 `changelogs/change-log-2026-09-05-loading-order-share.md` |
+| 2026-09-13 | `Fix` | 分享页直播改为点「查看监装视频」后全屏播放；云台改成画面上的圆形方向盘。 | 进入页面不再自动点播，避免未观看就占满 3 路连接。 |
+| 2026-09-13 | `Fix` | 概览区主提单号做大标题，监装工单号改为标题下的次要说明。 | 工单号不再与主提单号同等字号并排，避免抢视觉。 |
+| 2026-09-13 | `Feature` | 公开详情新增 HTTP-FLV 直播、连接数和云台控制，关闭预览释放连接。 | 摄像头与直播按监装视频接口文档对接，所有应用服务方法保留 Async 后缀。 |

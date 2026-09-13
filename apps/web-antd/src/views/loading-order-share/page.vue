@@ -3,7 +3,7 @@ import type { LoadingOrderAdminApi } from '#/api/sea-export/loading-order-admin'
 
 import type { LoadingShareLang } from './share-text';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Empty, Image, Spin } from 'ant-design-vue';
@@ -17,6 +17,7 @@ import { buildAttachmentUrl } from '#/utils';
 import { brandLogo, brandLogoText } from '#/utils/brand-assets';
 
 import { getLoadingShareText } from './share-text';
+import LiveVideo from './live-video.vue';
 
 defineOptions({ name: 'LoadingOrderSharePage' });
 
@@ -224,7 +225,14 @@ function onPreviewVisibleChange(visible: boolean) {
   previewOpen.value = visible;
 }
 
+let detailRequest = 0;
+onBeforeUnmount(() => {
+  ++detailRequest;
+});
+
 async function loadDetail() {
+  const requestId = ++detailRequest;
+  detail.value = null;
   if (!hasQuery.value) {
     detail.value = null;
     errorText.value = '';
@@ -234,15 +242,18 @@ async function loadDetail() {
   loading.value = true;
   errorText.value = '';
   try {
-    detail.value = await getLoadingOrderPublicDetail({
+    const result = await getLoadingOrderPublicDetail({
       mblNum: mblNum.value,
       loadingOrderNum: loadingOrderNum.value,
     });
+    if (requestId !== detailRequest) return;
+    detail.value = result;
   } catch (error) {
+    if (requestId !== detailRequest) return;
     detail.value = null;
     errorText.value = extractAbpMessage(error);
   } finally {
-    loading.value = false;
+    if (requestId === detailRequest) loading.value = false;
   }
 }
 
@@ -291,14 +302,14 @@ watch(
           >
             <div>
               <div class="loading-share__eyebrow">{{ t.eyebrow }}</div>
-              <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
-              <p class="loading-share__order">
-                {{ t.mblNum }}
-                <span
-                  >{{ t.loadingOrder }}
-                  {{ textOr(detail.loadingOrderNum) }}</span
-                >
-              </p>
+              <div class="loading-share__id">
+                <span class="loading-share__id-label">{{ t.mblNum }}</span>
+                <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
+                <p class="loading-share__order">
+                  {{ t.loadingOrder }}
+                  <strong>{{ textOr(detail.loadingOrderNum) }}</strong>
+                </p>
+              </div>
             </div>
             <span
               v-if="statusLabel"
@@ -311,6 +322,13 @@ watch(
               ><span class="loading-share__status-dot" />{{ statusLabel }}</span
             >
           </section>
+          <LiveVideo
+            :key="`${mblNum}-${loadingOrderNum}-${detail.status}`"
+            :mbl-num="mblNum"
+            :loading-order-num="loadingOrderNum"
+            :lang="shareLang"
+            :completed="detail.status === LoadingOrderStatus.Completed"
+          />
           <section class="loading-share__card">
             <div class="loading-share__card-head">
               <span class="loading-share__section-number">01</span>
@@ -512,6 +530,17 @@ watch(
   letter-spacing: 1px;
 }
 
+.loading-share__id {
+  min-width: 0;
+}
+
+.loading-share__id-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #6b7b90;
+}
+
 .loading-share__overview h1 {
   margin: 0;
   font-size: clamp(26px, 4vw, 34px);
@@ -522,15 +551,14 @@ watch(
 }
 
 .loading-share__order {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
   margin: 10px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7b90;
 }
 
-.loading-share__order span {
+.loading-share__order strong {
+  margin-left: 8px;
+  font-weight: 500;
   color: #43556d;
 }
 
@@ -831,7 +859,7 @@ watch(
 
   .loading-share__status {
     padding: 5px 9px;
-    margin-top: 27px;
+    margin-top: 20px;
   }
 
   .loading-share__card {
