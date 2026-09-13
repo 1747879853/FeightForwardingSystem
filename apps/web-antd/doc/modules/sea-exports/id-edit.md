@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-13
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -169,6 +169,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-13 | `Fix` | 分单船期与港口卡标签由错误的 EDT 改回 ETD。 | 文案 key `seaExport.export.separate.etdLabel`；取值仍是主单 `transportOrder.etd`。详见 [变更日志](../../changelogs/change-log-2026-09-13-separate-bill-etd-label.md)。 |
 | 2026-09-11 | `Feature` | 完成服务后若自动生成了费用，弹窗展示费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Fix` | 无编辑权限时不再锁表单，只禁用保存；复制仍可用。 | 去掉 `setFormApisDisabled` 与只读 pointer-events。详见 [变更日志](../../changelogs/change-log-2026-09-11-sea-export-readonly-save-only.md)。 |
 | 2026-09-11 | `Feature` | 服务项目当前待处理节点显示橙色「待」字，替换原先的时钟图标。 | `active` 态渲染 `.chevron-step__pending`。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
