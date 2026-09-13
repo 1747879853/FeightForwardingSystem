@@ -11,7 +11,8 @@ param(
   [switch]$WhatIfOnly,
   [switch]$SkipConnectivityCheck,
   [switch]$Force,
-  [switch]$SkipHealthCheck
+  [switch]$SkipHealthCheck,
+  [switch]$SkipGitSyncCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -220,6 +221,24 @@ try {
   Write-Host "IIS site   : $siteName"
   Write-Host "Endpoint   : $endpoint"
   Write-Host "Dist       : $distPath"
+
+  if ($SkipGitSyncCheck) {
+    Write-Warning 'Git sync check skipped by request.'
+  } else {
+    $gitSyncScript = Join-Path $PSScriptRoot 'assert-git-publish-ready.ps1'
+    if (-not (Test-Path -LiteralPath $gitSyncScript -PathType Leaf)) {
+      throw "Git sync check script was not found: $gitSyncScript"
+    }
+    Invoke-ExternalCommand 'powershell.exe' @(
+      '-NoProfile'
+      '-ExecutionPolicy'
+      'Bypass'
+      '-File'
+      $gitSyncScript
+      '-RepoRoot'
+      $repoRoot
+    )
+  }
 
   if (-not $SkipBuild) {
     if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {

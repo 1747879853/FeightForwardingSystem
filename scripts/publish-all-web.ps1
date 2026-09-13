@@ -6,6 +6,7 @@ param(
   [switch]$ForcePrebuild,
   [switch]$SkipConnectivityCheck,
   [switch]$SkipHealthCheck,
+  [switch]$SkipGitSyncCheck,
   # 0 = 不限制（有几套发几路）。默认 5：Windows 上 10 路同时 Vite
   # 会 realpath UNKNOWN / 内存打满。机器宽裕可显式 -ThrottleLimit 0
   [ValidateRange(0, 32)]
@@ -70,6 +71,7 @@ function Start-BrandPublish {
     '-Force'
     '-SkipPrebuild'
     '-SkipHealthCheck'
+    '-SkipGitSyncCheck'
   )
   if ($SkipConnectivityCheck) {
     $argumentList += '-SkipConnectivityCheck'
@@ -176,6 +178,24 @@ try {
   Write-Host "Brands     : $($environments -join ', ')"
   Write-Host "Throttle   : $ThrottleLimit"
   Write-Host 'Each brand builds to apps/web-antd/dist-<brand> independently.'
+
+  if ($SkipGitSyncCheck) {
+    Write-Warning 'Git sync check skipped by request.'
+  } else {
+    $gitSyncScript = Join-Path $PSScriptRoot 'assert-git-publish-ready.ps1'
+    if (-not (Test-Path -LiteralPath $gitSyncScript -PathType Leaf)) {
+      throw "Git sync check script was not found: $gitSyncScript"
+    }
+    Invoke-ExternalCommand 'powershell.exe' @(
+      '-NoProfile'
+      '-ExecutionPolicy'
+      'Bypass'
+      '-File'
+      $gitSyncScript
+      '-RepoRoot'
+      $repoRoot
+    )
+  }
 
   if ($InstallDeps) {
     Write-Host '=== Install dependencies ==='
