@@ -7,6 +7,8 @@ export interface LoadingShareText {
   mblNum: string;
   loadingOrder: string;
   basicInfo: string;
+  orderStatus: string;
+  containerStatus: string;
   containers: string;
   completedCount: (done: number, total: number) => string;
   noContainers: string;
@@ -49,6 +51,8 @@ const ZH: LoadingShareText = {
   mblNum: '主提单号',
   loadingOrder: '监装工单',
   basicInfo: '基本信息',
+  orderStatus: '工单',
+  containerStatus: '本箱',
   containers: '集装箱与现场照片',
   completedCount: (done, total) => `已完成 ${done} / ${total} 箱`,
   noContainers: '暂无集装箱信息，录入后将在此展示',
@@ -56,8 +60,8 @@ const ZH: LoadingShareText = {
   sealNo: '封号',
   done: '已完成',
   pending: '待处理',
-  noPhotos: '暂无现场照片',
-  noPhotosHint: '上传后可在此查看监装记录',
+  noPhotos: '现场照片尚未上传',
+  noPhotosHint: '现场人员上传照片后，可在此查看监装记录',
   photoFallback: '监装照片',
   footer: (company) => (company ? `${company} · 监装信息共享` : '监装信息共享'),
   loading: '正在加载监装信息…',
@@ -66,9 +70,9 @@ const ZH: LoadingShareText = {
   listJoin: '、',
   kg: (value) => `${value} KG`,
   groups: {
-    voyage: '运输',
-    cargo: '货物',
-    site: '现场',
+    voyage: '运输信息',
+    cargo: '货物信息',
+    site: '监装信息',
   },
   fields: {
     vesselVoyage: '船名航次',
@@ -96,6 +100,8 @@ const EN: LoadingShareText = {
   mblNum: 'Master B/L No.',
   loadingOrder: 'Loading Order',
   basicInfo: 'Basic Information',
+  orderStatus: 'Order',
+  containerStatus: 'Container',
   containers: 'Containers & Photos',
   completedCount: (done, total) => `${done} / ${total} completed`,
   noContainers: 'No container information yet',

@@ -202,12 +202,8 @@ const basicGroups = computed(() => {
       ...group,
       rows: group.rows.filter((row) => isFilled(row.value)),
     }))
-    .filter((group) => group.rows.length > 0);
+    .filter((group) => group.key === 'site' || group.rows.length > 0);
 });
-
-const filledRows = computed(() =>
-  basicGroups.value.flatMap((group) => group.rows),
-);
 
 function collectCtnPhotos(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   return (ctn.attachmentGroups ?? []).flatMap((group) =>
@@ -339,29 +335,6 @@ watch(
                   <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
                 </dd>
               </div>
-              <div class="loading-share__order">
-                <dt>{{ t.loadingOrder }}</dt>
-                <dd>
-                  <strong>{{ textOr(detail.loadingOrderNum) }}</strong>
-                  <span
-                    v-if="statusLabel"
-                    class="loading-share__status"
-                    :class="{
-                      'is-done': detail.status === LoadingOrderStatus.Completed,
-                      'is-pending':
-                        detail.status === LoadingOrderStatus.Pending,
-                      'is-active': detail.status === LoadingOrderStatus.Claimed,
-                    }"
-                  >
-                    <span class="loading-share__status-dot" />
-                    {{ statusLabel }}
-                  </span>
-                </dd>
-              </div>
-              <div v-for="row in filledRows" :key="row.label">
-                <dt>{{ row.label }}</dt>
-                <dd>{{ row.value }}</dd>
-              </div>
             </dl>
             <LiveVideo
               :key="`${mblNum}-${loadingOrderNum}-${detail.status}`"
@@ -372,6 +345,43 @@ watch(
               :completed="detail.status === LoadingOrderStatus.Completed"
             />
           </header>
+
+          <div class="loading-share__groups">
+            <section
+              v-for="group in basicGroups"
+              :key="group.key"
+              class="loading-share__group"
+            >
+              <h2>{{ group.title }}</h2>
+              <dl class="loading-share__facts">
+                <div v-if="group.key === 'site'" class="loading-share__order">
+                  <dt>{{ t.loadingOrder }}</dt>
+                  <dd>
+                    <strong>{{ textOr(detail.loadingOrderNum) }}</strong>
+                    <span
+                      v-if="statusLabel"
+                      class="loading-share__status"
+                      :class="{
+                        'is-done':
+                          detail.status === LoadingOrderStatus.Completed,
+                        'is-pending':
+                          detail.status === LoadingOrderStatus.Pending,
+                        'is-active':
+                          detail.status === LoadingOrderStatus.Claimed,
+                      }"
+                    >
+                      <span class="loading-share__status-dot" />
+                      {{ t.orderStatus }} · {{ statusLabel }}
+                    </span>
+                  </dd>
+                </div>
+                <div v-for="row in group.rows" :key="row.label">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
 
           <section class="loading-share__boxes" :aria-label="t.containers">
             <div class="loading-share__boxes-head">
@@ -398,13 +408,18 @@ watch(
               <div class="loading-share__ctn-head">
                 <strong>{{ ctnTypeName(ctn.ctnCode) }}</strong>
                 <div class="loading-share__ctn-meta">
-                  <span>{{ t.ctnNo }} {{ textOr(ctn.ctnNo) }}</span>
-                  <span>{{ t.sealNo }} {{ textOr(ctn.sealNo) }}</span>
+                  <span
+                    >{{ t.ctnNo }} <b>{{ textOr(ctn.ctnNo) }}</b></span
+                  >
+                  <span
+                    >{{ t.sealNo }} <b>{{ textOr(ctn.sealNo) }}</b></span
+                  >
                 </div>
                 <em
                   class="loading-share__ctn-status"
                   :class="ctn.isLoadingCompleted ? 'is-done' : 'is-pending'"
                 >
+                  {{ t.containerStatus }} ·
                   {{ ctn.isLoadingCompleted ? t.done : t.pending }}
                 </em>
               </div>
@@ -413,7 +428,8 @@ watch(
                 v-if="!visiblePhotoSlots(ctn).length"
                 class="loading-share__photo-empty"
               >
-                {{ t.noPhotos }}
+                <strong>{{ t.noPhotos }}</strong>
+                <span>{{ t.noPhotosHint }}</span>
               </p>
               <div v-else class="loading-share__photo-grid">
                 <div
@@ -481,7 +497,7 @@ watch(
   gap: 24px;
   align-items: center;
   min-height: 56px;
-  padding: 8px max(24px, calc((100% - 1632px) / 2));
+  padding: 8px max(24px, calc((100% - 1312px) / 2));
   background: #fff;
   border-bottom: 1px solid #e3e9f0;
 }
@@ -514,9 +530,9 @@ watch(
   box-sizing: border-box;
   flex: 1 1 auto;
   width: 100%;
-  max-width: 1680px;
+  max-width: 1360px;
   min-height: 0;
-  padding: 12px 24px 0;
+  padding: 24px 24px 0;
   margin: 0 auto;
   overflow: auto;
 }
@@ -535,15 +551,15 @@ watch(
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px 20px;
   align-items: start;
-  padding: 14px 24px 16px;
+  padding: 24px 28px;
 }
 
 .loading-share__band :deep(.live-video.is-compact) {
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 .loading-share__mbl {
-  grid-column: span 2;
+  min-width: 0;
 }
 
 .loading-share__mbl h1 {
@@ -602,16 +618,42 @@ watch(
 
 .loading-share__facts {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 20px;
   padding: 0;
   margin: 0;
 }
 
+.loading-share__band .loading-share__facts {
+  display: block;
+}
+
+.loading-share__groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding: 0 28px 24px;
+}
+
+.loading-share__group {
+  min-width: 0;
+}
+
+.loading-share__group h2 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #43556d;
+}
+
+.loading-share__order {
+  grid-column: 1 / -1;
+}
+
 .loading-share__facts dt {
   margin-bottom: 4px;
   font-size: 12px;
-  color: #8a96a6;
+  color: #65758a;
 }
 
 .loading-share__facts dd {
@@ -643,8 +685,8 @@ watch(
 }
 
 .loading-share__boxes-head span {
-  font-size: 12px;
-  color: #7b8898;
+  font-size: 13px;
+  color: #65758a;
 }
 
 .loading-share__ctn + .loading-share__ctn {
@@ -667,7 +709,6 @@ watch(
 
 .loading-share__ctn-meta {
   display: flex;
-  flex: 1;
   flex-wrap: wrap;
   gap: 8px 20px;
   min-width: 0;
@@ -676,14 +717,36 @@ watch(
 }
 
 .loading-share__ctn-head .loading-share__ctn-status {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .loading-share__photo-empty,
 .loading-share__hint {
   margin: 12px 0 0;
   font-size: 13px;
-  color: #8a96a6;
+  color: #65758a;
+}
+
+.loading-share__photo-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  line-height: 1.6;
+  background: #f6f8fb;
+  border-radius: 8px;
+}
+
+.loading-share__photo-empty strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: #43556d;
+}
+
+.loading-share__ctn-meta b {
+  font-weight: 600;
+  color: #24344a;
+  overflow-wrap: anywhere;
 }
 
 .loading-share__photo-grid {
@@ -748,7 +811,7 @@ watch(
   flex-shrink: 0;
   padding: 10px 24px 16px;
   font-size: 12px;
-  color: #8a96a6;
+  color: #65758a;
   text-align: center;
   background: #e8edf3;
 }
@@ -757,28 +820,25 @@ watch(
   display: none;
 }
 
-@media (max-width: 1280px) {
-  .loading-share__facts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .loading-share__mbl {
-    grid-column: span 2;
-  }
-}
-
 @media (max-width: 800px) {
+  .loading-share__groups {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px 16px;
+  }
+
+  .loading-share__group + .loading-share__group {
+    padding-top: 20px;
+    border-top: 1px solid #e8edf3;
+  }
+
   .loading-share__band {
     grid-template-columns: 1fr;
-    padding: 14px 16px 16px;
-  }
-
-  .loading-share__facts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 20px 16px;
   }
 
   .loading-share__boxes {
-    padding: 16px;
+    padding: 20px 16px;
   }
 }
 
@@ -808,7 +868,7 @@ watch(
   }
 
   .loading-share__mbl {
-    grid-column: span 2;
+    min-width: 0;
   }
 
   .loading-share__mbl h1 {

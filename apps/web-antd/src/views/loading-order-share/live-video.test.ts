@@ -82,12 +82,25 @@ async function openPlayer() {
 }
 
 describe('监装直播', () => {
-  it('进入页面不点播，只展示查看按钮', async () => {
+  it('进入页面静默探活，有摄像头才展示查看按钮，不点播', async () => {
+    wrapper = mount(LiveVideo, { props });
+    expect(wrapper.find('.live-video__open').exists()).toBe(false);
+    await flushPromises();
+    expect(mocks.start).not.toHaveBeenCalled();
+    expect(mocks.viewers).toHaveBeenCalledTimes(1);
+    expect(wrapper.text()).toContain('查看监装视频');
+    expect(wrapper.find('video').exists()).toBe(false);
+  });
+
+  it('探活失败不展示按钮，只渲染接口报错', async () => {
+    mocks.viewers.mockRejectedValue(
+      new Error('该监装工单未绑定摄像头,暂无视频'),
+    );
     wrapper = mount(LiveVideo, { props });
     await flushPromises();
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain('查看监装视频');
-    expect(wrapper.find('video').exists()).toBe(false);
+    expect(wrapper.find('.live-video__open').exists()).toBe(false);
+    expect(wrapper.text()).toContain('该监装工单未绑定摄像头,暂无视频');
   });
 
   it('点查看后全屏打开，拿到点播地址但30秒没有首帧，明确提示未收到画面而不是已中断', async () => {
@@ -112,14 +125,14 @@ describe('监装直播', () => {
       withCredentials: false,
     });
     await vi.advanceTimersByTimeAsync(9999);
-    expect(mocks.viewers).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1);
     expect(mocks.viewers).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.viewers).toHaveBeenCalledTimes(2);
     wrapper!.unmount();
     wrapper = undefined;
     await vi.advanceTimersByTimeAsync(30_000);
     expect(mocks.destroy).toHaveBeenCalledTimes(1);
-    expect(mocks.viewers).toHaveBeenCalledTimes(1);
+    expect(mocks.viewers).toHaveBeenCalledTimes(2);
   });
 
   it('播放错误只诊断一次，满员不自动重连', async () => {
@@ -181,6 +194,7 @@ describe('监装直播', () => {
     wrapper = mount(LiveVideo, { props: { ...props, completed: true } });
     await flushPromises();
     expect(mocks.start).not.toHaveBeenCalled();
+    expect(mocks.viewers).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('监装已完成，视频已关闭');
     expect(wrapper.find('.live-video__open').exists()).toBe(false);
   });

@@ -23,6 +23,8 @@ const props = defineProps<{
 const english = computed(() => props.lang === 'en');
 const video = ref<HTMLVideoElement>();
 const opened = ref(false);
+const available = ref(false);
+const availabilityHint = ref('');
 const busy = ref(false);
 const playing = ref(false);
 const error = ref('');
@@ -37,6 +39,7 @@ let player: ReturnType<typeof Mpegts.createPlayer> | undefined;
 let alive = true;
 let generation = 0;
 let request: AbortController | undefined;
+let probe: AbortController | undefined;
 let poll: ReturnType<typeof setTimeout> | undefined;
 let firstFrameTimeout: ReturnType<typeof setTimeout> | undefined;
 const connecting = ref(false);
@@ -75,6 +78,30 @@ function showError(failure: unknown) {
       : '视频连接失败，请稍后重试',
   );
   if (/监装已完成|视频已关闭/.test(error.value)) ended.value = true;
+}
+
+async function probeAvailability() {
+  if (!alive || ended.value) return;
+  probe?.abort();
+  probe = new AbortController();
+  try {
+    await getLoadingVideoViewers(query, probe.signal);
+    if (!alive) return;
+    available.value = true;
+    availabilityHint.value = '';
+  } catch (failure) {
+    if (!alive || probe.signal.aborted) return;
+    const message = loadingVideoError(
+      failure,
+      english.value ? 'Live video is unavailable.' : '暂无现场视频',
+    );
+    if (/监装已完成|视频已关闭/.test(message)) {
+      ended.value = true;
+      return;
+    }
+    available.value = false;
+    availabilityHint.value = message;
+  }
 }
 
 async function pollViewers(token: number) {
@@ -288,10 +315,12 @@ onMounted(() => {
   window.addEventListener('pageshow', onPageShow);
   window.addEventListener('keydown', onEscape);
   document.addEventListener('visibilitychange', onVisibility);
+  if (!ended.value) void probeAvailability();
 });
 
 onBeforeUnmount(() => {
   alive = false;
+  probe?.abort();
   closePlayer();
   window.removeEventListener('pointerup', release);
   window.removeEventListener('pointercancel', release);
@@ -310,8 +339,11 @@ onBeforeUnmount(() => {
         english ? 'Loading completed. Video closed.' : '监装已完成，视频已关闭'
       }}
     </p>
+    <p v-else-if="availabilityHint" class="live-video__hint">
+      {{ availabilityHint }}
+    </p>
     <button
-      v-else
+      v-else-if="available"
       type="button"
       class="live-video__open"
       :title="
@@ -483,6 +515,7 @@ onBeforeUnmount(() => {
 }
 
 .live-video__closed,
+.live-video__hint,
 .live-video__open {
   box-sizing: border-box;
   width: 100%;
@@ -492,7 +525,8 @@ onBeforeUnmount(() => {
   border-radius: 12px;
 }
 
-.live-video.is-compact .live-video__closed {
+.live-video.is-compact .live-video__closed,
+.live-video.is-compact .live-video__hint {
   width: auto;
   padding: 0;
   font-size: 13px;
@@ -544,7 +578,8 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.live-video__closed {
+.live-video__closed,
+.live-video__hint {
   margin: 0;
   font-size: 14px;
   color: #6b7b90;
