@@ -19,4 +19,4 @@ module: schedule-query
 
 - 密钥只放环境变量，不要写进 `schedule-sdk.html`。父页必须等 iframe `load` 后再 `postMessage`，且校验 `event.origin` / `event.source`。
 - 开发环境访问 `/schedule-sdk.html` 必须走 `scheduleSdkPagePlugin`；只靠 `publicDir` 会被 history fallback 吃掉，iframe 里会跑主应用。
-- SDK 可能在导航后再次插入对方客户图 `wy3.png`，宿主页用 MutationObserver 持续移除，不能只靠一条 CSS。
+- SDK 可能在导航后再次插入对方客户图。宿主页用 MutationObserver 持续移除：既匹配 `wy3.png`，也按可靠性弹窗里船公司 Logo 旁第二张图的位置删除，不依赖对方改文件名或域名。不能只靠一条 CSS。

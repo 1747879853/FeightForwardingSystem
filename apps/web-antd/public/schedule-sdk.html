@@ -29,7 +29,8 @@
       #status[hidden] {
         display: none;
       }
-      img[src^="https://i.saas.freightower.com/assets/customer/wy3.png"] {
+      img[src^="https://i.saas.freightower.com/assets/customer/wy3.png"],
+      .ft-schedule-wrapper .el-dialog .el-row:first-child > .el-col.text-center:first-child > div > img:nth-of-type(2) {
         display: none !important;
       }
       /* Fit the SDK's fixed-width desktop layout to the host content area. */
@@ -99,7 +100,14 @@
     <script type="module">
       // The SDK can insert this image again after navigation or re-rendering.
       const app = document.getElementById('app');
+      // Reliability dialog: the second image beside the carrier logo.
+      // Do not depend on the customer image's host, filename or version.
+      const customerImagePosition =
+        '.ft-schedule-wrapper .el-dialog .el-row:first-child > .el-col.text-center:first-child > div > img:nth-of-type(2)';
       function removeCustomerImage() {
+        for (const image of app.querySelectorAll(customerImagePosition)) {
+          image.remove();
+        }
         for (const image of app.querySelectorAll('img[src]')) {
           const url = new URL(image.getAttribute('src'), document.baseURI);
           if (
