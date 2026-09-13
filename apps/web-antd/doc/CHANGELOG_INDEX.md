@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-13 船期查询入口切换为飞驼 Web SDK](./changelogs/change-log-2026-09-13-schedule-query-web-sdk.md)
 - [2026-09-13 发布前检查 git 同步，未推送或远程未拉取则禁止发布](./changelogs/change-log-2026-09-13-publish-git-sync-guard.md)
 - [2026-09-13 version.json 写入 git commit 与构建时间](./changelogs/change-log-2026-09-13-version-json-git-commit.md)
 - [2026-09-13 海出派车列表分页改回 pageIndex/pageSize](./changelogs/change-log-2026-09-13-dispatch-page-params.md)

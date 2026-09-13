@@ -2,12 +2,14 @@
 title: 船期查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
 
 **白话解释：** 对接飞驼船期实时查询，供业务按港口/船期条件检索航线船期信息。侧边栏位于「航线管理」分组下，子菜单为「船期查询」。
+
+**2026-09-13 当前入口：** `/schedule` 已切换至 `sdk.vue`，通过独立 iframe 运行 `public/schedule-sdk.html` 中的 Web SDK。只显示船期功能，隐藏导航栏，默认中文；密钥读取 `VITE_GLOB_FREIGHTOWER_SCHEDULE_KEY`。加载失败或超时提供重试。原 `list.vue`、分组逻辑、接口及测试完整保留，以下工作台说明为原实现。恢复时将 `freight-rate.ts` 的组件导入改回 `#/views/schedule-query/list.vue`。
 
 **路由与源码定位：**
 
@@ -15,9 +17,9 @@ last_updated: 2026-09-06
 | :-- | :-- |
 | 页面路由 | `/schedule` |
 | 路由名称 | `ScheduleQueryList` |
-| 页面组件 | `src/views/schedule-query/list.vue` |
+| 页面组件 | `src/views/schedule-query/sdk.vue`（原页面 `list.vue` 保留） |
 | 权限口径 | `Admin.Schedule` / `Admin.Schedule.Get` |
-| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/schedule-query/list.vue`<br/>`src/views/schedule-query/data.ts`<br/>`src/views/schedule-query/copy-text.ts`<br/>`src/api/schedule/feituo-schedule-admin.ts` |
+| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/schedule-query/sdk.vue`<br/>`public/schedule-sdk.html`<br/>`src/views/schedule-query/list.vue`<br/>`src/views/schedule-query/data.ts`<br/>`src/views/schedule-query/copy-text.ts`<br/>`src/api/schedule/feituo-schedule-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -66,6 +68,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-13 | `Feature` | `/schedule` 切换为飞驼 Web SDK（仅船期、隐藏导航、默认中文）；加载失败或超时可重试。原工作台 `list.vue` 保留。 | iframe 隔离 SDK 的 `#app`/全局样式/hash 路由；密钥经同源 `postMessage` 注入。开发环境需 `scheduleSdkPagePlugin` 避免 SPA fallback。详见 `changelogs/change-log-2026-09-13-schedule-query-web-sdk.md`。 |
 | 2026-09-06 | `Fix` | 点击方案名称复制：Clipboard API 失败后回退 `execCommand`，减少「复制失败，请手动选择方案名称」。 | `copy-text.ts` 先 `writeText`，reject 或缺能力再隐藏 textarea 复制。详见 `changelogs/change-log-2026-09-06-schedule-copy-group-name.md`。 |
 | 2026-09-02 | `Style` | 班次表船名、航次分列；截关时间和卡片最早截关都改为一行。 | 计划离到港仍拆两行。详见 `changelogs/change-log-2026-09-02-schedule-query-vessel-voyage-cutoff-oneline.md`。 |
 | 2026-09-02 | `Feature` | 班次表船名旁悬停可看船名、MMSI、IMO、呼号、航次、运营方。 | 只用 `QueryScheduleAsync` 班次字段；没有船旗/建造日/箱量。详见 `changelogs/change-log-2026-09-02-schedule-query-vessel-hover.md`。 |

@@ -9,11 +9,37 @@ import {
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { loadEnv } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 
 import { defineConfig } from '@vben/vite-config';
 
 const appRoot = dirname(fileURLToPath(import.meta.url));
+
+// Serve the standalone SDK document before SPA HTML fallback in development.
+function scheduleSdkPagePlugin(publicRoot: string): Plugin {
+  return {
+    name: 'schedule-sdk-page',
+    enforce: 'pre',
+    configureServer: {
+      order: 'pre',
+      handler(server) {
+        server.middlewares.use((req, res, next) => {
+          const pathname = req.url?.split('?')[0];
+          const base = server.config.base.replace(/\/$/, '');
+          if (
+            pathname !== `${base}/schedule-sdk.html` &&
+            pathname !== '/schedule-sdk.html'
+          ) {
+            return next();
+          }
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.end(readFileSync(join(publicRoot, 'schedule-sdk.html')));
+        });
+      },
+    },
+  };
+}
 
 const BRAND_IMG_BY_APP_BRAND: Record<string, string> = {
   hhyy: 'hhyy',
@@ -166,10 +192,7 @@ function createSyncLoadingLogoPlugin(mode: string, publicRoot: string) {
           appBrand === 'jht' ? ' loader-fill--brand-jht' : '';
         return html
           .replaceAll('{{BRAND_LOADING_CLASS}}', brandLoadingClass)
-          .replaceAll(
-            'src="/logo-text.png"',
-            `src="${loadingLogoDataUri}"`,
-          );
+          .replaceAll('src="/logo-text.png"', `src="${loadingLogoDataUri}"`);
       },
     },
   };
@@ -195,7 +218,10 @@ export default defineConfig(async (config) => {
       publicDir: publicRoot,
       ...(isolatedCacheDir ? { cacheDir: isolatedCacheDir } : {}),
       ...(isolatedOutDir ? { build: { outDir: isolatedOutDir } } : {}),
-      plugins: [createSyncLoadingLogoPlugin(mode, publicRoot)],
+      plugins: [
+        scheduleSdkPagePlugin(publicRoot),
+        createSyncLoadingLogoPlugin(mode, publicRoot),
+      ],
       // build: {
       //   minify: 'terser', // 明确指定使用 terser
       //   terserOptions: {

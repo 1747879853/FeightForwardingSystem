@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>船期查询</title>
+    <style>
+      html,
+      body,
+      #app {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      #status {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-content: center;
+        gap: 16px;
+        text-align: center;
+        background: white;
+        color: #475569;
+        font:
+          14px system-ui,
+          sans-serif;
+      }
+      #status[hidden] {
+        display: none;
+      }
+      img[src^="https://i.saas.freightower.com/assets/customer/wy3.png"] {
+        display: none !important;
+      }
+      /* Fit the SDK's fixed-width desktop layout to the host content area. */
+      #app .ft-schedule-wrapper {
+        box-sizing: border-box;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+        height: 100% !important;
+        min-height: 0;
+        padding: 0 16px 16px;
+      }
+      #app .ft-page-search-wrapper > .el-row,
+      #app .history-schedules-wrapper > .list-card {
+        box-sizing: border-box;
+        width: 100% !important;
+        max-width: none !important;
+      }
+      #app .ft-schedule-wrapper > .ft-page-search-wrapper,
+      #app .ft-schedule-wrapper > .history-schedules-wrapper,
+      #app .ft-schedule-wrapper > .content-wrapper {
+        width: 100% !important;
+        max-width: none !important;
+      }
+      #app .ft-schedule-wrapper > .ft-page-search-wrapper,
+      #app .ft-schedule-wrapper > .history-schedules-wrapper {
+        flex-shrink: 0;
+      }
+      #app .ft-schedule-wrapper > .content-wrapper {
+        flex: 1;
+        column-gap: 20px;
+        min-height: 0;
+      }
+      #app .ft-schedules-data-wrapper {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+        max-width: none !important;
+        height: 100% !important;
+      }
+      #app .ft-schedules-data-wrapper > .ft-radio-wrapper {
+        flex-shrink: 0;
+      }
+      #app .ft-schedules-data-wrapper > .ft-schedules-data {
+        flex: 1;
+        min-height: 0;
+        height: auto !important;
+        max-height: none !important;
+        margin-bottom: 0;
+      }
+      #app .ft-schedules-filter {
+        flex-shrink: 0;
+        height: 100% !important;
+      }
+      button {
+        padding: 8px 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="status" role="status">
+      <span id="message">正在加载船期查询…</span>
+      <button id="retry" type="button" hidden>重新加载</button>
+    </div>
+    <script type="module">
+      // The SDK can insert this image again after navigation or re-rendering.
+      const app = document.getElementById('app');
+      function removeCustomerImage() {
+        for (const image of app.querySelectorAll('img[src]')) {
+          const url = new URL(image.getAttribute('src'), document.baseURI);
+          if (
+            url.origin === 'https://i.saas.freightower.com' &&
+            url.pathname === '/assets/customer/wy3.png'
+          ) {
+            image.remove();
+          }
+        }
+      }
+      const imageObserver = new MutationObserver(removeCustomerImage);
+      imageObserver.observe(app, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src'],
+      });
+      window.addEventListener('pagehide', () => imageObserver.disconnect());
+      window.addEventListener('pageshow', () => {
+        imageObserver.observe(app, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['src'],
+        });
+        removeCustomerImage();
+      });
+      const key = await new Promise((resolve) => {
+        window.addEventListener('message', (event) => {
+          if (event.source === parent && event.origin === location.origin && event.data?.type === 'schedule-sdk-init') {
+            resolve(event.data.key);
+          }
+        }, { once: true });
+      });
+      const status = document.getElementById('status');
+      const message = document.getElementById('message');
+      const retry = document.getElementById('retry');
+      retry.addEventListener('click', () => location.reload());
+      function fail(text) {
+        message.textContent = text;
+        retry.hidden = false;
+        status.hidden = false;
+      }
+      if (!key) {
+        fail('船期查询尚未配置，请联系管理员。');
+      } else {
+        const timer = setTimeout(
+          () => fail('船期查询加载超时，请重试。'),
+          30000,
+        );
+        try {
+          const { init } =
+            await import('https://i.saas.freightower.com/web-sdk.js');
+          await init({
+            key,
+            hiddenMenu: {
+              schedule: false,
+              vessel: true,
+              track: true,
+              truck: true,
+            },
+            hideHeader: true,
+            mounted({ locale }) {
+              locale('zh');
+              clearTimeout(timer);
+              status.hidden = true;
+            },
+          });
+        } catch {
+          clearTimeout(timer);
+          fail('船期查询加载失败，请重试。');
+        }
+      }
+    </script>
+  </body>
+</html>

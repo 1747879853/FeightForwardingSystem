@@ -37,7 +37,7 @@ const routes: RouteRecordRaw[] = [
           title: '船期查询',
           authority: abpPageAuthority('Admin.Schedule'),
         },
-        component: () => import('#/views/schedule-query/list.vue'),
+        component: () => import('#/views/schedule-query/sdk.vue'),
       },
       {
         path: '/port-congestion',
