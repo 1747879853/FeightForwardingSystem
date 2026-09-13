@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-13 version.json 写入 git commit 与构建时间](./changelogs/change-log-2026-09-13-version-json-git-commit.md)
 - [2026-09-13 海出派车列表分页改回 pageIndex/pageSize](./changelogs/change-log-2026-09-13-dispatch-page-params.md)
 - [2026-09-13 海运进口箱型箱量支持批量新增](./changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)
 - [2026-09-13 编号规则列表分页改回 pageIndex/pageSize](./changelogs/change-log-2026-09-13-generate-num-page-params.md)
