@@ -1,5 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
+import dayjs from 'dayjs';
+
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
@@ -93,13 +95,33 @@ export function keywordField(): VbenFormSchema {
   };
 }
 
+/** 当月业务日期区间（与列表页默认会计期间口径对齐） */
+export function currentMonthDateRange() {
+  return {
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().endOf('month').format('YYYY-MM-DD'),
+  };
+}
+
+/** 近 12 个自然月（欠费催收需要跨月历史，但不能默认拉全量） */
+export function last12MonthsDateRange() {
+  return {
+    start: dayjs().subtract(11, 'month').startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().endOf('month').format('YYYY-MM-DD'),
+  };
+}
+
 /** 业务日期起止（两个字段） */
-export function bizDateRangeFields(): VbenFormSchema[] {
+export function bizDateRangeFields(defaults?: {
+  end?: string;
+  start?: string;
+}): VbenFormSchema[] {
   return [
     {
       fieldName: 'bizDateStart',
       label: '业务日期起',
       component: 'DatePicker',
+      defaultValue: defaults?.start,
       componentProps: {
         placeholder: '请选择开始日期',
         format: 'YYYY-MM-DD',
@@ -111,6 +133,7 @@ export function bizDateRangeFields(): VbenFormSchema[] {
       fieldName: 'bizDateEnd',
       label: '业务日期止',
       component: 'DatePicker',
+      defaultValue: defaults?.end,
       componentProps: {
         placeholder: '请选择结束日期',
         format: 'YYYY-MM-DD',
@@ -338,12 +361,15 @@ export function accountDateRangeFields(): VbenFormSchema[] {
  * 两个报表共有的 15+ 个字段，按原有顺序组合；
  * 各报表可在其前后插入特有字段
  */
-export function getCommonReportFormFields(): VbenFormSchema[] {
+export function getCommonReportFormFields(dateDefaults?: {
+  end?: string;
+  start?: string;
+}): VbenFormSchema[] {
   return [
     bizTypeField(),
     clientField(),
     keywordField(),
-    ...bizDateRangeFields(),
+    ...bizDateRangeFields(dateDefaults),
     cargoField(),
     settlementTypeField(),
     mergeChangeOrderField(),

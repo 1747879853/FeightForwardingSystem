@@ -1,5 +1,8 @@
 # biz-select 组件说明
 
+> 原 `src/adapter/component/biz-select/README.md` 已迁至此。代码目录不再放置说明文档。  
+> 组件实现仍在：`apps/web-antd/src/adapter/component/biz-select/`。
+
 本目录提供业务相关的选择器组件，主要基于 `ApiComponent` / `usePagedSelect`（部分场景直接使用 `Select`）封装，用于表单中的远程搜索与下拉选择。
 
 ## 组件用途一览

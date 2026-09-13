@@ -9,6 +9,7 @@
 | clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-11 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料；「是否共享」在所属公司标题右侧；未保存切走可缓存。保存成功后 replace 进编辑并关闭原新建页签。 | [客户新建](./modules/clients/create.md) | 2026-09-11 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护客户完整资料；基础信息「是否共享」在所属公司标题旁；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-09-11 |
+| sea-exports | `/sea-exports/create`、编辑 Tab「基础信息」 | 操作管理 / 海运出口 | 基础信息表单目录职责、依赖关系与私有拆分文件说明。 | [基础信息表单](./modules/sea-exports/basic-info-form.md) | 2026-09-12 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；开船日期筛选按自然日闭区间提交；支持多选后运踪批量订阅（按打包品牌分流：sjtd 用现有运踪、其他品牌用新服务商），主提单号前带异常预警叹号，并可按权限删除单条勾选委托。无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列。码头航次列与筛选默认隐藏。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-09-11 |
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；货物类型默认普通货；委托单位/订舱代理标签旁展示默认联系人；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；码头航次隐藏但仍随保存提交；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存切走可 KeepAlive，点 X 才丢；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-09-11 |
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；委托单位/订舱代理联系人同样挂在标签旁，保存带回联系人 Id；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/码头航次/截港等并保存（码头航次界面不展示，弹窗也不出该列）；无行级编辑权限时仅禁用保存，表单仍可改；分单 Tab 支持分单头备注（代理地址旁）、复制分单（不带分提单号与装箱）与独立打印（数据源 500）；货物区底部前端拼件数大写 SAY 行；船期卡标签为 ETD。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-13 |
@@ -40,6 +41,7 @@
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-08-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-08-19 |
 | fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；选费支持编号/委托单位/开船日期/销售/操作/收付类型；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-09-08 |
+| settlement-management | `/settlement-management/payment-settlement` | 财务管理 | 付费结算列表与模块实现说明（筛选、锁定、权限、代码结构）。 | [付费结算](./modules/settlement-management/payment-settlement.md) | 2026-09-12 |
 | settlement-management | `/settlement-management/payment-settlement/edit/:id` | 财务管理 | 付费结算编辑：按「付费申请+原币」扁平行对接 `*ByCurrencyAsync`；汇率由后端从申请快照；结算对象与币别随第一张申请锁定；表单逻辑拆 composable。 | [付费结算编辑](./modules/settlement-management/payment-settlement-id-edit.md) | 2026-09-09 |
 | settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名；支持付款方/银行/核销状态分组，删除后同步刷新分组条数。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-09-08 |
 | settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-08 |
@@ -96,5 +98,6 @@
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入；搜索或重置后恢复默认排序箭头。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-09-03 |
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
 | shared | （全站页面级表单） | 共享能力 | 未保存离开拦截：切走可缓存、点 X 才销毁；单个关标签先确认；当前页脏时 `beforeunload`。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-08-23 |
-| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总。 | [利润报表](./modules/report/profit-report.md) | 2026-08-30 |
-| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总。 | [欠费报表](./modules/report/arrears-report.md) | 2026-08-30 |
+| report | （模块索引） | 报表 | 配置驱动基座 + 利润/欠费两页；文档均在 `doc/modules/report/`，勿在 `views/report` 下写 README。 | [报表模块索引](./modules/report/README.md) | 2026-09-12 |
+| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总。 | [利润报表](./modules/report/profit-report.md) | 2026-09-12 |
+| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-12 |

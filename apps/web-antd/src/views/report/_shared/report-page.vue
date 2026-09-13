@@ -44,7 +44,7 @@ const {
   <Page
     class="report-page"
     auto-content-height
-    content-class="report-page__content !p-0"
+    content-class="report-page__content !px-3 !py-0"
   >
     <Card class="query-card mb-3" :bordered="false">
       <component :is="QueryForm" />
@@ -78,6 +78,7 @@ const {
  * auto-content-height 给 content 明确高度后，检索区收缩才能把剩余高度交给表格。
  */
 :deep(.report-page__content) {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   height: 100%;

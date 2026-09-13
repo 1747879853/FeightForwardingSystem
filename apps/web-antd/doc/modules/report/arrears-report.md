@@ -2,8 +2,10 @@
 title: 欠费报表
 module: 报表
 author: auto-doc-sync
-last_updated: 2026-08-30
+last_updated: 2026-09-12
 ---
+
+> [!TIP] 模块文档索引：[报表模块](./README.md)。前端实现与培训说明：[报表页面实现与经验培训](../../guides/report-page-implementation.md)。
 
 # 1. 业务背景说明 (Background)
 
@@ -14,7 +16,8 @@ last_updated: 2026-08-30
 # 2. 功能与操作说明 (Features & Operations)
 
 - **收付类型：** 默认「应收」，不可清空；切换到「应付」时列语义变为已付/未付（列标题为「应收/应付」双写）。
-- **查询 / 分组 / 合计 / 导出 / 双击跳转：** 与利润报表一致，均由 `_shared/report-page.vue` 模板承载。
+- **查询：** 页面打开自动查一次。业务日期默认近 12 个月（折叠时首行可见），避免首屏全量历史；可清空日期后查全部。
+- **查询 / 分组 / 合计 / 导出 / 双击跳转：** 其余交互与利润报表一致，均由 `_shared/report-page.vue` 模板承载。
 - **超期天数：** 负数（未到期）绿色、0（当天到期）黄色、正数（超期）红色。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -42,4 +45,5 @@ last_updated: 2026-08-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-12 | `Improve` | 业务日期默认近 12 个月，并调到折叠后仍可见的首行（收付类型 / 委托单位 / 结算对象 / 日期）。 | 与利润报表同一轮 `_shared` 性能与易用性优化，见利润报表 changelog。 |
 | 2026-08-30 | `Feature` | 合计列新增前置「本位币」列，列标题去掉写死的 `(CNY)`；分组行/合计行遇到多种本位币时显示「多币别」并停止加总。 | 与利润报表共用 `_shared` 的列工厂与聚合逻辑，本页只在 `config.ts` 的 `totalHotColumns` 首位加 `localCurrencyColumn()` 并改标题。详见 `changelogs/change-log-2026-08-30-data-permission-local-currency.md`。 |

@@ -1,6 +1,9 @@
 # 海运出口 · 基础信息表单（basic-info-form）
 
-本目录收敛「海运出口基础信息表单」的主组件及其**私有**拆分文件（仅本表单使用），便于按域维护。跨视图共享的模块仍保留在上级目录 `sea-export-admin/`，本表单以 `../` 方式引用。
+> 原 `src/views/sea-export-admin/basic-info-form/README.md` 已迁至此。代码目录不再放置说明文档。  
+> 相关页面：[新建](./create.md)、[编辑工作台](./id-edit.md)。
+
+本说明对应代码目录 `src/views/sea-export-admin/basic-info-form/`：收敛「海运出口基础信息表单」主组件及其**私有**拆分文件（仅本表单使用）。跨视图共享模块仍在上级 `sea-export-admin/`，本表单以 `../` 引用。
 
 ## 入口与使用方
 

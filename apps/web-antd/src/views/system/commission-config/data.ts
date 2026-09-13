@@ -83,6 +83,18 @@ export const getTradeTermsTypeOptions = (): Option[] => [
   },
 ];
 
+/** 委托单位类型（同行 / 直客，与客户模块 ClientType 同值） */
+export const getClientTypeOptions = (): Option[] => [
+  {
+    label: $t('commission.clientTypePeer'),
+    value: CommissionConfigAdminApi.ClientType.Peer,
+  },
+  {
+    label: $t('commission.clientTypeDirectCustomer'),
+    value: CommissionConfigAdminApi.ClientType.DirectCustomer,
+  },
+];
+
 export const getConditionFieldOptions = (): Option[] => [
   {
     label: $t('commission.conditionFieldSeaPol'),
@@ -111,6 +123,10 @@ export const getConditionFieldOptions = (): Option[] => [
   {
     label: $t('commission.conditionFieldTradeTerms'),
     value: CommissionConfigAdminApi.CommissionConditionField.TradeTerms,
+  },
+  {
+    label: $t('commission.conditionFieldClientClientType'),
+    value: CommissionConfigAdminApi.CommissionConditionField.ClientClientType,
   },
 ];
 
@@ -241,6 +257,13 @@ export const getTradeTermsTypeLabel = (
   return map.get(tradeTermsType as number) ?? String(tradeTermsType ?? '');
 };
 
+export const getClientTypeLabel = (
+  clientClientType?: CommissionConfigAdminApi.ClientType | null,
+): string => {
+  const map = new Map(getClientTypeOptions().map((o) => [o.value, o.label]));
+  return map.get(clientClientType as number) ?? String(clientClientType ?? '');
+};
+
 export const getConditionFieldLabel = (
   field: CommissionConfigAdminApi.CommissionConditionField,
 ): string => {
@@ -366,6 +389,9 @@ export const buildConditionDescription = (
     }
     if (v.tradeTermsType != null) {
       return getTradeTermsTypeLabel(v.tradeTermsType);
+    }
+    if (v.clientClientType != null) {
+      return getClientTypeLabel(v.clientClientType);
     }
     return getCargoTypeLabel(v.cargoId);
   });

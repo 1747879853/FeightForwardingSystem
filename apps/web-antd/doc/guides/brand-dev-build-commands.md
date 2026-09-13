@@ -2,6 +2,8 @@
 
 开发与打包均通过 **Vite `--mode`** 加载对应 `.env.*`，并由 `VITE_APP_BRAND` 切换素材目录与缓存命名空间。
 
+各品牌 Logo / favicon / 字体说明见：[品牌素材与字体](./brand-assets.md)（勿在 `src/assets/**` 下再写 README）。
+
 ## 命令对照（仓库根目录）
 
 | 公司/场景 | 开发 | 打包 | Vite mode | 素材目录 |

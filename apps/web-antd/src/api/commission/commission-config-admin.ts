@@ -93,6 +93,14 @@ export namespace CommissionConfigAdminApi {
     CAndF = 7,
   }
 
+  /** 委托单位类型（与客户模块 ClientType 同值：同行 / 直客） */
+  export enum ClientType {
+    /** 同行 */
+    Peer = 0,
+    /** 直客 */
+    DirectCustomer = 1,
+  }
+
   /** 条件字段 */
   export enum CommissionConditionField {
     /** 海运起运港 */
@@ -109,6 +117,8 @@ export namespace CommissionConfigAdminApi {
     PerTicket = 5,
     /** 贸易条款 */
     TradeTerms = 6,
+    /** 委托单位类型 */
+    ClientClientType = 7,
   }
 
   /** 条件比较符 */
@@ -229,15 +239,17 @@ export namespace CommissionConfigAdminApi {
     cargoId?: CargoType | null;
     /** 贸易条款。ConditionField 为 6 时必填 */
     tradeTermsType?: TradeTermsType | null;
+    /** 委托单位类型。ConditionField 为 7 时必填 */
+    clientClientType?: ClientType | null;
   }
 
   /** 条件入参 */
   export interface CommissionConditionInputDto {
-    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票 6贸易条款 */
+    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票 6贸易条款 7委托单位类型 */
     conditionField: CommissionConditionField;
     /** 比较符：0等于 1不等于 2包含于 3不包含于。字段为 5（按票）时不参与判定，传什么都存 0 */
     operator?: CommissionConditionOperator | null;
-    /** 比较值。字段为 0~4 时至少一个，且比较符为 0/1 时只能传一个；字段为 5（按票）时必须不传 */
+    /** 比较值。除按票外至少一个，且比较符为 0/1 时只能传一个；字段为 5（按票）时必须不传 */
     values?: CommissionConditionValueInputDto[] | null;
   }
 
@@ -376,6 +388,8 @@ export namespace CommissionConfigAdminApi {
     cargoId?: CargoType | null;
     /** 贸易条款，仅 ConditionField 为 6 时有值 */
     tradeTermsType?: TradeTermsType | null;
+    /** 委托单位类型，仅 ConditionField 为 7 时有值 */
+    clientClientType?: ClientType | null;
     /** 排序id，从1开始 */
     sortId: number;
   }
@@ -384,7 +398,7 @@ export namespace CommissionConfigAdminApi {
   export interface CommissionConditionDto {
     /** 条件id（编辑后会变） */
     id: string;
-    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票。决定 values 里哪个对象有值 */
+    /** 条件字段：0海运起运港 1海运目的港 2空运起运地 3空运目的地 4货物类型 5按票 6贸易条款 7委托单位类型。决定 values 里哪个对象有值 */
     conditionField: CommissionConditionField;
     /** 比较符。字段为 5（按票）时恒为 0 且无意义，不要显示 */
     operator: CommissionConditionOperator;
