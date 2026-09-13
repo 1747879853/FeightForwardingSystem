@@ -70,16 +70,6 @@ const handleActionClick = ({
   }
 };
 
-const fetchGenerateNumPagedList = (params: Record<string, any>) => {
-  const { pageIndex, pageSize, sorting, ...rest } = params;
-  return getGenerateNumPagedList({
-    skipCount: (pageIndex - 1) * pageSize,
-    maxResultCount: pageSize,
-    sorting,
-    ...rest,
-  });
-};
-
 const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -95,7 +85,7 @@ const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
     },
     proxyConfig: {
       ajax: {
-        query: createPagedListQuery(fetchGenerateNumPagedList, {
+        query: createPagedListQuery(getGenerateNumPagedList, {
           afterFetch: (result) => ({
             ...result,
             items: (result.items ?? []).map((item) => ({

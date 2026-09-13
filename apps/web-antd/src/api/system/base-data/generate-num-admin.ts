@@ -91,14 +91,14 @@ export namespace GenerateNumAdminApi {
     totalPages: number;
   }
 
-  /** 分页查询参数 */
+  /** 分页查询参数（PagingAndSorting：pageIndex 从 1 起，pageSize 默认 10） */
   export interface GetPagedListParams {
     name?: string;
     tableName?: string;
     orgId?: number;
     sorting?: string;
-    skipCount?: number;
-    maxResultCount?: number;
+    pageIndex?: number;
+    pageSize?: number;
   }
 }
 

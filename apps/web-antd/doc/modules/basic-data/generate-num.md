@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -59,6 +59,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-13 | `Fix` | 编号规则列表翻页、改每页条数按 `pageIndex` / `pageSize` 传给后端，不再误用 `skipCount` / `maxResultCount`。 | `GenerateNumQueryDto` 继承 `PagingAndSorting`，只认页码与每页条数。详见 [变更日志](../../changelogs/change-log-2026-09-13-generate-num-page-params.md)。 |
 | 2026-09-06 | `Fix` | 新建规则明细时「重置序号」默认勾选；从自增序号改成日期/文本等类型时也默认勾选。编辑仍按详情回填。 | `addRule()` 默认 `reset: true`；`onGenerateEnumChange` 在离开 AutoNum 时补勾选，AutoNum 仍强制 `false`。 |
 | 2026-08-04 | `Feature` | 编号规则类型新增 `SeaImport.CommissionNum`（海运进口委托编号）、`AirExport.CommissionNum`（空运出口委托编号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护；业务日期 ETD 含义按业务区分（海进=到港、空出=起飞）。 |
 | 2026-08-02 | `Feature` | 生成类型新增 `7=ETDyyyyMM`、`8=ETDyyMM`（业务日期年月，取开船日期 ETD，为空回退当前时间）；下拉、预览与中英文文案同步。 | `GenerateEnum` 类型扩为 `0-8`；`buildGenerateNumRuleSegment` 中 7/8 与 5/6 复用 `YYYYMM`/`YYMM` 预览格式；后端由 `GetGenerateTextDto.ETD` 传入业务日期。 |
