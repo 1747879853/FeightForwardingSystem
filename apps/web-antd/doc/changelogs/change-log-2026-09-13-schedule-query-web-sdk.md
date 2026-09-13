@@ -12,7 +12,7 @@ module: schedule-query
 
 1. **路由入口：** `freight-rate.ts` 的船期查询组件由 `list.vue` 改为 `sdk.vue`。`sdk.vue` 用全高 iframe 打开 `public/schedule-sdk.html`，避免 SDK 的 `#app` 挂载、全局样式和 hash 路由污染主应用。
 2. **独立 HTML：** 开发时 Vite SPA fallback 会把 `schedule-sdk.html` 重写成主应用文档，因此增加 `scheduleSdkPagePlugin`，在 fallback 之前按静态 HTML 返回该文件。`scripts/verify-schedule-sdk.ps1` 用浏览器 `Accept: text/html` 校验不会回退到 `/src/main.ts`。
-3. **SDK 初始化：** 父页通过 `postMessage`（`schedule-sdk-init`，同源）把 `VITE_GLOB_FREIGHTOWER_SCHEDULE_KEY` 传给 iframe；只开船期、隐藏导航，`mounted` 后切中文。密钥缺失、加载失败或 30 秒超时显示重试。
+3. **SDK 初始化：** 父页通过 `postMessage`（`schedule-sdk-init`，同源）把 `VITE_GLOB_FREIGHTOWER_SCHEDULE_KEY` 传给 iframe；只开船期、隐藏导航，`mounted` 后切中文。密钥缺失、加载失败或 30 秒超时显示重试。各品牌（含 `.env` / `.env.development` / `.env.production`）共用同一把密钥。
 4. **恢复方式：** 将 `freight-rate.ts` 的组件导入改回 `#/views/schedule-query/list.vue` 即可回到原工作台。
 
 # 避坑指南
