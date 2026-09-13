@@ -38,6 +38,7 @@ import {
   getBaseSalaryModeOptions,
   getBizTypeOptions,
   getCargoTypeOptions,
+  getClientTypeOptions,
   getConditionFieldOptions,
   getConditionOperatorOptions,
   getPeriodTypeOptions,
@@ -198,6 +199,7 @@ const baseSalaryModeOptions = getBaseSalaryModeOptions();
 const periodTypeOptions = getPeriodTypeOptions();
 const cargoTypeOptions = getCargoTypeOptions();
 const tradeTermsTypeOptions = getTradeTermsTypeOptions();
+const clientTypeOptions = getClientTypeOptions();
 const conditionFieldOptions = getConditionFieldOptions();
 const conditionOperatorOptions = getConditionOperatorOptions();
 const profitThresholdOperatorOptions = getProfitThresholdOperatorOptions();
@@ -274,6 +276,10 @@ const isAirPortField = (
 const isTradeTermsField = (
   field?: CommissionConfigAdminApi.CommissionConditionField,
 ) => field === CommissionConditionField.TradeTerms;
+
+const isClientClientTypeField = (
+  field?: CommissionConfigAdminApi.CommissionConditionField,
+) => field === CommissionConditionField.ClientClientType;
 
 const isPerTicket = (
   field?: CommissionConfigAdminApi.CommissionConditionField,
@@ -477,6 +483,11 @@ function buildConditionValues(
         tradeTermsType: value as CommissionConfigAdminApi.TradeTermsType,
       };
     }
+    if (cond.conditionField === CommissionConditionField.ClientClientType) {
+      return {
+        clientClientType: value as CommissionConfigAdminApi.ClientType,
+      };
+    }
     return { portId: value as number };
   });
 }
@@ -595,7 +606,8 @@ async function fillFromDetail(id: string) {
                 value.seaPort?.id ??
                 value.airPort?.id ??
                 value.cargoId ??
-                value.tradeTermsType,
+                value.tradeTermsType ??
+                value.clientClientType,
             )
             .filter((value): value is number => value != null),
         })),
@@ -1027,6 +1039,20 @@ const [Modal, modalApi] = useVbenModal({
                       v-else-if="isTradeTermsField(cond.conditionField)"
                       :model-value="getConditionValueBinding(cond)"
                       :options="tradeTermsTypeOptions"
+                      :mode="
+                        isMultipleOperator(cond.operator)
+                          ? 'multiple'
+                          : undefined
+                      "
+                      :placeholder="$t('commission.conditionValues')"
+                      @update:value="
+                        (value) => onConditionValuesChange(cond, value)
+                      "
+                    />
+                    <Select
+                      v-else-if="isClientClientTypeField(cond.conditionField)"
+                      :model-value="getConditionValueBinding(cond)"
+                      :options="clientTypeOptions"
                       :mode="
                         isMultipleOperator(cond.operator)
                           ? 'multiple'
