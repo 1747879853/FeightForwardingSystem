@@ -1,3 +1,5 @@
+import { authState, TOKEN_KEY } from '../stores/auth-state';
+
 import { parseJsonSafe } from '@/utils/safe-json';
 
 /** 后端根地址（不含 /api），附件与上传都基于它拼接 */
@@ -8,8 +10,6 @@ export const API_ORIGIN = String(import.meta.env.VITE_API_ORIGIN || '').replace(
 
 /** ABP 应用服务前缀 */
 const API_BASE = `${API_ORIGIN}/api`;
-
-const TOKEN_KEY = 'mp_access_token';
 
 export interface AbpError {
   code?: number;
@@ -44,10 +44,14 @@ export function getAccessToken() {
 
 export function setAccessToken(token: string) {
   uni.setStorageSync(TOKEN_KEY, token);
+  authState.token = token;
 }
 
 export function clearAccessToken() {
   uni.removeStorageSync(TOKEN_KEY);
+  authState.token = '';
+  authState.profile = null;
+  authState.needPhoneBinding = false;
 }
 
 function pickErrorMessage(
@@ -160,6 +164,8 @@ let redirecting = false;
 
 function redirectToLogin() {
   if (redirecting) return;
+  const pages = getCurrentPages();
+  if (pages[pages.length - 1]?.route === 'pages/login/index') return;
   redirecting = true;
   uni.reLaunch({
     url: '/pages/login/index',
