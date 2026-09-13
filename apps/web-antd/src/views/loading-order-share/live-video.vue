@@ -4,7 +4,7 @@ import type Mpegts from 'mpegts.js';
 import type { LoadingVideoPlay } from '#/api/sea-export/loading-order-video';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Button, Spin } from 'ant-design-vue';
+import { Button, Spin, Tooltip } from 'ant-design-vue';
 
 import {
   controlLoadingVideo,
@@ -19,12 +19,20 @@ const props = defineProps<{
   lang: 'en' | 'zh';
   completed: boolean;
   compact?: boolean;
+  cameraNo?: null | number;
 }>();
 const english = computed(() => props.lang === 'en');
+const hasCamera = computed(() => props.cameraNo != null);
+const noVideoHint = computed(() =>
+  english.value ? 'No live video' : '暂无现场视频',
+);
+const noVideoReason = computed(() =>
+  english.value
+    ? 'This loading order has no camera bound.'
+    : '该监装工单未绑定摄像头,暂无视频',
+);
 const video = ref<HTMLVideoElement>();
 const opened = ref(false);
-const available = ref(false);
-const availabilityHint = ref('');
 const busy = ref(false);
 const playing = ref(false);
 const error = ref('');
@@ -39,7 +47,6 @@ let player: ReturnType<typeof Mpegts.createPlayer> | undefined;
 let alive = true;
 let generation = 0;
 let request: AbortController | undefined;
-let probe: AbortController | undefined;
 let poll: ReturnType<typeof setTimeout> | undefined;
 let firstFrameTimeout: ReturnType<typeof setTimeout> | undefined;
 const connecting = ref(false);
@@ -78,30 +85,6 @@ function showError(failure: unknown) {
       : '视频连接失败，请稍后重试',
   );
   if (/监装已完成|视频已关闭/.test(error.value)) ended.value = true;
-}
-
-async function probeAvailability() {
-  if (!alive || ended.value) return;
-  probe?.abort();
-  probe = new AbortController();
-  try {
-    await getLoadingVideoViewers(query, probe.signal);
-    if (!alive) return;
-    available.value = true;
-    availabilityHint.value = '';
-  } catch (failure) {
-    if (!alive || probe.signal.aborted) return;
-    const message = loadingVideoError(
-      failure,
-      english.value ? 'Live video is unavailable.' : '暂无现场视频',
-    );
-    if (/监装已完成|视频已关闭/.test(message)) {
-      ended.value = true;
-      return;
-    }
-    available.value = false;
-    availabilityHint.value = message;
-  }
 }
 
 async function pollViewers(token: number) {
@@ -315,12 +298,10 @@ onMounted(() => {
   window.addEventListener('pageshow', onPageShow);
   window.addEventListener('keydown', onEscape);
   document.addEventListener('visibilitychange', onVisibility);
-  if (!ended.value) void probeAvailability();
 });
 
 onBeforeUnmount(() => {
   alive = false;
-  probe?.abort();
   closePlayer();
   window.removeEventListener('pointerup', release);
   window.removeEventListener('pointercancel', release);
@@ -339,11 +320,14 @@ onBeforeUnmount(() => {
         english ? 'Loading completed. Video closed.' : '监装已完成，视频已关闭'
       }}
     </p>
-    <p v-else-if="availabilityHint" class="live-video__hint">
-      {{ availabilityHint }}
-    </p>
+    <Tooltip v-else-if="!hasCamera" :title="noVideoReason">
+      <p class="live-video__hint" :title="noVideoReason">
+        {{ noVideoHint }}
+        <span class="live-video__hint-mark" aria-hidden="true">?</span>
+      </p>
+    </Tooltip>
     <button
-      v-else-if="available"
+      v-else
       type="button"
       class="live-video__open"
       :title="
@@ -583,6 +567,27 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 14px;
   color: #6b7b90;
+}
+
+.live-video__hint {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  cursor: help;
+}
+
+.live-video__hint-mark {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #8a96a6;
+  border: 1px solid #c5d0dc;
+  border-radius: 50%;
 }
 
 .live-video__open {

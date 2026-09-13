@@ -59,12 +59,17 @@ export function controlLoadingVideo(
 export function loadingVideoError(error: unknown, fallback: string) {
   const failure = error as {
     response?: { data?: { error?: { message?: string }; message?: string } };
+    error?: { message?: string };
     message?: string;
   };
+  const axiosStatus = failure?.message?.match(
+    /^Request failed with status code \d+$/,
+  );
   return (
-    failure?.response?.data?.error?.message ||
-    failure?.response?.data?.message ||
-    failure?.message ||
+    failure?.response?.data?.error?.message?.trim() ||
+    failure?.response?.data?.message?.trim() ||
+    failure?.error?.message?.trim() ||
+    (axiosStatus ? '' : failure?.message?.trim()) ||
     fallback
   );
 }

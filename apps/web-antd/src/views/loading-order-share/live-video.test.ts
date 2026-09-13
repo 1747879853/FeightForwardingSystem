@@ -28,6 +28,7 @@ vi.mock('mpegts.js', () => ({
 vi.mock('ant-design-vue', () => ({
   Button: { template: '<button><slot /></button>' },
   Spin: { template: '<span>Loading</span>' },
+  Tooltip: { props: ['title'], template: '<div><slot /></div>' },
 }));
 
 const info = {
@@ -41,6 +42,7 @@ const props = {
   loadingOrderNum: 'LO001',
   lang: 'zh' as const,
   completed: false,
+  cameraNo: 1,
 };
 let wrapper: ReturnType<typeof mount> | undefined;
 
@@ -82,25 +84,32 @@ async function openPlayer() {
 }
 
 describe('监装直播', () => {
-  it('进入页面静默探活，有摄像头才展示查看按钮，不点播', async () => {
+  it('有摄像头才展示查看按钮，进入页面不点播', async () => {
     wrapper = mount(LiveVideo, { props });
-    expect(wrapper.find('.live-video__open').exists()).toBe(false);
     await flushPromises();
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(mocks.viewers).toHaveBeenCalledTimes(1);
+    expect(mocks.viewers).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('查看监装视频');
     expect(wrapper.find('video').exists()).toBe(false);
   });
 
-  it('探活失败不展示按钮，只渲染接口报错', async () => {
-    mocks.viewers.mockRejectedValue(
-      new Error('该监装工单未绑定摄像头,暂无视频'),
-    );
-    wrapper = mount(LiveVideo, { props });
+  it('未绑摄像头不展示按钮，提示暂无视频，悬浮说明原因', async () => {
+    wrapper = mount(LiveVideo, { props: { ...props, cameraNo: null } });
     await flushPromises();
     expect(mocks.start).not.toHaveBeenCalled();
     expect(wrapper.find('.live-video__open').exists()).toBe(false);
-    expect(wrapper.text()).toContain('该监装工单未绑定摄像头,暂无视频');
+    expect(wrapper.text()).toContain('暂无现场视频');
+    expect(wrapper.get('.live-video__hint-mark').text()).toBe('?');
+    expect(wrapper.get('.live-video__hint').attributes('title')).toBe(
+      '该监装工单未绑定摄像头,暂无视频',
+    );
+  });
+
+  it('点查看后点播失败，展示接口报错', async () => {
+    mocks.start.mockRejectedValue(new Error('当前已有3人在观看,请稍后再试'));
+    await openPlayer();
+    expect(overlayText()).toContain('当前已有3人在观看');
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it('点查看后全屏打开，拿到点播地址但30秒没有首帧，明确提示未收到画面而不是已中断', async () => {
@@ -125,14 +134,14 @@ describe('监装直播', () => {
       withCredentials: false,
     });
     await vi.advanceTimersByTimeAsync(9999);
-    expect(mocks.viewers).toHaveBeenCalledTimes(1);
+    expect(mocks.viewers).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
-    expect(mocks.viewers).toHaveBeenCalledTimes(2);
+    expect(mocks.viewers).toHaveBeenCalledTimes(1);
     wrapper!.unmount();
     wrapper = undefined;
     await vi.advanceTimersByTimeAsync(30_000);
     expect(mocks.destroy).toHaveBeenCalledTimes(1);
-    expect(mocks.viewers).toHaveBeenCalledTimes(2);
+    expect(mocks.viewers).toHaveBeenCalledTimes(1);
   });
 
   it('播放错误只诊断一次，满员不自动重连', async () => {

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
 import type { LoadingOrderAdminApi } from '#/api/sea-export/loading-order-admin';
 
 import type { LoadingShareLang } from './share-text';
@@ -337,12 +337,13 @@ watch(
               </div>
             </dl>
             <LiveVideo
-              :key="`${mblNum}-${loadingOrderNum}-${detail.status}`"
+              :key="`${mblNum}-${loadingOrderNum}-${detail.status}-${detail.cameraNo}`"
               compact
               :mbl-num="mblNum"
               :loading-order-num="loadingOrderNum"
               :lang="shareLang"
               :completed="detail.status === LoadingOrderStatus.Completed"
+              :camera-no="detail.cameraNo"
             />
           </header>
 
