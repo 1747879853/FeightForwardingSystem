@@ -152,27 +152,62 @@ const completedCount = computed(
     0,
 );
 
-const basicRows = computed(() => {
+function isFilled(value: string) {
+  return value !== EMPTY && value.trim() !== '';
+}
+
+const basicGroups = computed(() => {
   const item = detail.value;
   if (!item) return [];
   const labels = t.value.fields;
-  return [
-    { label: labels.vesselVoyage, value: vesselVoyage.value },
-    { label: labels.ctnQty, value: ctnQtyText.value },
-    { label: labels.goods, value: goodsText.value },
+  const groups = [
     {
-      label: labels.kgs,
-      value: sea.value?.kgs == null ? EMPTY : t.value.kg(sea.value.kgs),
+      key: 'voyage',
+      title: t.value.groups.voyage,
+      rows: [
+        { label: labels.vesselVoyage, value: vesselVoyage.value },
+        { label: labels.ctnQty, value: ctnQtyText.value },
+        { label: labels.eta, value: formatDateTime(item.estimatedArrivalTime) },
+      ],
     },
-    { label: labels.pkgs, value: textOr(sea.value?.pkgs) },
-    { label: labels.package, value: textOr(sea.value?.codePackage?.name) },
-    { label: labels.packageItem, value: textOr(item.codePackageItem?.name) },
-    { label: labels.packageItemQty, value: textOr(item.pkgs) },
-    { label: labels.eta, value: formatDateTime(item.estimatedArrivalTime) },
-    { label: labels.yard, value: textOr(item.carrierYard?.name) },
-    { label: labels.supervisors, value: supervisorText.value },
+    {
+      key: 'cargo',
+      title: t.value.groups.cargo,
+      rows: [
+        { label: labels.goods, value: goodsText.value },
+        {
+          label: labels.kgs,
+          value: sea.value?.kgs == null ? EMPTY : t.value.kg(sea.value.kgs),
+        },
+        { label: labels.pkgs, value: textOr(sea.value?.pkgs) },
+        { label: labels.package, value: textOr(sea.value?.codePackage?.name) },
+        {
+          label: labels.packageItem,
+          value: textOr(item.codePackageItem?.name),
+        },
+        { label: labels.packageItemQty, value: textOr(item.pkgs) },
+      ],
+    },
+    {
+      key: 'site',
+      title: t.value.groups.site,
+      rows: [
+        { label: labels.yard, value: textOr(item.carrierYard?.name) },
+        { label: labels.supervisors, value: supervisorText.value },
+      ],
+    },
   ];
+  return groups
+    .map((group) => ({
+      ...group,
+      rows: group.rows.filter((row) => isFilled(row.value)),
+    }))
+    .filter((group) => group.rows.length > 0);
 });
+
+const filledRows = computed(() =>
+  basicGroups.value.flatMap((group) => group.rows),
+);
 
 function collectCtnPhotos(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   return (ctn.attachmentGroups ?? []).flatMap((group) =>
@@ -295,62 +330,53 @@ watch(
           <Empty :description="loading ? t.loading : errorText || t.needLink" />
         </div>
 
-        <template v-else>
-          <section
-            class="loading-share__overview"
-            aria-labelledby="share-heading"
-          >
-            <div>
-              <div class="loading-share__eyebrow">{{ t.eyebrow }}</div>
-              <div class="loading-share__id">
-                <span class="loading-share__id-label">{{ t.mblNum }}</span>
-                <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
-                <p class="loading-share__order">
-                  {{ t.loadingOrder }}
-                  <strong>{{ textOr(detail.loadingOrderNum) }}</strong>
-                </p>
+        <article v-else class="loading-share__sheet">
+          <header class="loading-share__band" aria-labelledby="share-heading">
+            <dl class="loading-share__facts" :aria-label="t.basicInfo">
+              <div class="loading-share__mbl">
+                <dt>{{ t.mblNum }}</dt>
+                <dd>
+                  <h1 id="share-heading">{{ textOr(sea?.mblNum) }}</h1>
+                </dd>
               </div>
-            </div>
-            <span
-              v-if="statusLabel"
-              class="loading-share__status"
-              :class="{
-                'is-done': detail.status === LoadingOrderStatus.Completed,
-                'is-pending': detail.status === LoadingOrderStatus.Pending,
-                'is-active': detail.status === LoadingOrderStatus.Claimed,
-              }"
-              ><span class="loading-share__status-dot" />{{ statusLabel }}</span
-            >
-          </section>
-          <LiveVideo
-            :key="`${mblNum}-${loadingOrderNum}-${detail.status}`"
-            :mbl-num="mblNum"
-            :loading-order-num="loadingOrderNum"
-            :lang="shareLang"
-            :completed="detail.status === LoadingOrderStatus.Completed"
-          />
-          <section class="loading-share__card">
-            <div class="loading-share__card-head">
-              <span class="loading-share__section-number">01</span>
-              <h2>{{ t.basicInfo }}</h2>
-            </div>
-            <dl class="loading-share__rows">
-              <div
-                v-for="row in basicRows"
-                :key="row.label"
-                class="loading-share__row"
-              >
+              <div class="loading-share__order">
+                <dt>{{ t.loadingOrder }}</dt>
+                <dd>
+                  <strong>{{ textOr(detail.loadingOrderNum) }}</strong>
+                  <span
+                    v-if="statusLabel"
+                    class="loading-share__status"
+                    :class="{
+                      'is-done': detail.status === LoadingOrderStatus.Completed,
+                      'is-pending':
+                        detail.status === LoadingOrderStatus.Pending,
+                      'is-active': detail.status === LoadingOrderStatus.Claimed,
+                    }"
+                  >
+                    <span class="loading-share__status-dot" />
+                    {{ statusLabel }}
+                  </span>
+                </dd>
+              </div>
+              <div v-for="row in filledRows" :key="row.label">
                 <dt>{{ row.label }}</dt>
                 <dd>{{ row.value }}</dd>
               </div>
             </dl>
-          </section>
+            <LiveVideo
+              :key="`${mblNum}-${loadingOrderNum}-${detail.status}`"
+              compact
+              :mbl-num="mblNum"
+              :loading-order-num="loadingOrderNum"
+              :lang="shareLang"
+              :completed="detail.status === LoadingOrderStatus.Completed"
+            />
+          </header>
 
-          <section class="loading-share__card">
-            <div class="loading-share__card-head">
-              <span class="loading-share__section-number">02</span>
+          <section class="loading-share__boxes" :aria-label="t.containers">
+            <div class="loading-share__boxes-head">
               <h2>{{ t.containers }}</h2>
-              <span class="loading-share__count">
+              <span>
                 {{
                   t.completedCount(
                     completedCount,
@@ -360,58 +386,35 @@ watch(
               </span>
             </div>
 
-            <div v-if="!detail.orderCtns?.length" class="loading-share__hint">
+            <p v-if="!detail.orderCtns?.length" class="loading-share__hint">
               {{ t.noContainers }}
-            </div>
+            </p>
 
             <article
-              v-for="(ctn, index) in detail.orderCtns"
+              v-for="ctn in detail.orderCtns"
               :key="String(ctn.id)"
               class="loading-share__ctn"
             >
               <div class="loading-share__ctn-head">
-                <div class="loading-share__ctn-identity">
-                  <span class="loading-share__ctn-index">{{
-                    String(index + 1).padStart(2, '0')
-                  }}</span
-                  ><strong>{{ ctnTypeName(ctn.ctnCode) }}</strong>
+                <strong>{{ ctnTypeName(ctn.ctnCode) }}</strong>
+                <div class="loading-share__ctn-meta">
+                  <span>{{ t.ctnNo }} {{ textOr(ctn.ctnNo) }}</span>
+                  <span>{{ t.sealNo }} {{ textOr(ctn.sealNo) }}</span>
                 </div>
-                <span
+                <em
                   class="loading-share__ctn-status"
                   :class="ctn.isLoadingCompleted ? 'is-done' : 'is-pending'"
                 >
                   {{ ctn.isLoadingCompleted ? t.done : t.pending }}
-                </span>
-              </div>
-              <div class="loading-share__ctn-meta">
-                <div>
-                  <span>{{ t.ctnNo }}</span
-                  ><strong>{{ textOr(ctn.ctnNo) }}</strong>
-                </div>
-                <div>
-                  <span>{{ t.sealNo }}</span
-                  ><strong>{{ textOr(ctn.sealNo) }}</strong>
-                </div>
+                </em>
               </div>
 
-              <div
+              <p
                 v-if="!visiblePhotoSlots(ctn).length"
                 class="loading-share__photo-empty"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  aria-hidden="true"
-                >
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <circle cx="8" cy="9" r="1.5" />
-                  <path d="m3 17 5-5 4 4 3-3 6 6" />
-                </svg>
-                <span>{{ t.noPhotos }}</span
-                ><span>{{ t.noPhotosHint }}</span>
-              </div>
+                {{ t.noPhotos }}
+              </p>
               <div v-else class="loading-share__photo-grid">
                 <div
                   v-for="slot in visiblePhotoSlots(ctn)"
@@ -432,7 +435,7 @@ watch(
               </div>
             </article>
           </section>
-        </template>
+        </article>
       </Spin>
     </main>
 
@@ -460,24 +463,25 @@ watch(
 
 <style scoped>
 .loading-share {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 100%;
-  overflow: auto;
+  overflow: hidden;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: #24344a;
-  background: #f2f5f9;
+  background: #e8edf3;
   -webkit-font-smoothing: antialiased;
 }
 
 .loading-share__header {
-  position: sticky;
-  top: 0;
   z-index: 20;
   display: flex;
+  flex-shrink: 0;
   gap: 24px;
   align-items: center;
-  min-height: 72px;
-  padding: 12px max(24px, calc((100% - 1080px) / 2));
+  min-height: 56px;
+  padding: 8px max(24px, calc((100% - 1632px) / 2));
   background: #fff;
   border-bottom: 1px solid #e3e9f0;
 }
@@ -508,72 +512,74 @@ watch(
 
 .loading-share__body {
   box-sizing: border-box;
+  flex: 1 1 auto;
   width: 100%;
-  max-width: 1128px;
-  padding: 0 24px;
+  max-width: 1680px;
+  min-height: 0;
+  padding: 12px 24px 0;
   margin: 0 auto;
+  overflow: auto;
 }
 
-.loading-share__overview {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 34px 0 28px;
+.loading-share__sheet {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d5dde7;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgb(28 43 61 / 6%);
 }
 
-.loading-share__eyebrow {
-  margin-bottom: 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #6b7b90;
-  letter-spacing: 1px;
+.loading-share__band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 20px;
+  align-items: start;
+  padding: 14px 24px 16px;
 }
 
-.loading-share__id {
-  min-width: 0;
+.loading-share__band :deep(.live-video.is-compact) {
+  margin-top: 18px;
 }
 
-.loading-share__id-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: #6b7b90;
+.loading-share__mbl {
+  grid-column: span 2;
 }
 
-.loading-share__overview h1 {
+.loading-share__mbl h1 {
   margin: 0;
-  font-size: clamp(26px, 4vw, 34px);
+  font-size: clamp(18px, 1.5vw, 22px);
   font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: 0.5px;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
   overflow-wrap: anywhere;
 }
 
-.loading-share__order {
-  margin: 10px 0 0;
-  font-size: 13px;
-  color: #6b7b90;
+.loading-share__order dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .loading-share__order strong {
-  margin-left: 8px;
-  font-weight: 500;
-  color: #43556d;
+  font-weight: 600;
+  color: #24344a;
 }
 
 .loading-share__status,
 .loading-share__ctn-status {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 7px;
+  gap: 6px;
   align-items: center;
-  padding: 6px 12px;
+  padding: 4px 10px;
   font-size: 12px;
+  font-style: normal;
   font-weight: 500;
   color: #53647a;
-  background: #e6ebf1;
-  border-radius: 6px;
+  background: #e8eef4;
+  border-radius: 999px;
 }
 
 .loading-share__status-dot {
@@ -594,165 +600,100 @@ watch(
   background: #fff3df;
 }
 
-.loading-share__card {
-  margin-bottom: 22px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #e1e7ef;
-  border-radius: 12px;
-}
-
-.loading-share__card-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 19px 24px;
-  border-bottom: 1px solid #e8edf3;
-}
-
-.loading-share__section-number {
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #8292a8;
-}
-
-.loading-share__card-head h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #24344a;
-}
-
-.loading-share__count {
-  margin-left: auto;
-  font-size: 12px;
-  color: #6b7b90;
-}
-
-.loading-share__rows {
+.loading-share__facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 26px 32px;
-  padding: 24px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px 20px;
+  padding: 0;
   margin: 0;
 }
 
-.loading-share__row {
-  min-width: 0;
-}
-
-.loading-share__row dt {
-  margin-bottom: 8px;
+.loading-share__facts dt {
+  margin-bottom: 4px;
   font-size: 12px;
-  color: #738096;
+  color: #8a96a6;
 }
 
-.loading-share__row dd {
+.loading-share__facts dd {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.6;
-  color: #283b53;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.45;
+  color: #24344a;
   overflow-wrap: anywhere;
 }
 
-.loading-share__ctn {
-  padding: 22px 24px 24px;
+.loading-share__boxes {
+  padding: 16px 28px 22px;
   border-top: 1px solid #e8edf3;
 }
 
-.loading-share__ctn:first-of-type {
-  border-top: 0;
+.loading-share__boxes-head {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.loading-share__boxes-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.loading-share__boxes-head span {
+  font-size: 12px;
+  color: #7b8898;
+}
+
+.loading-share__ctn + .loading-share__ctn {
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid #eef2f6;
 }
 
 .loading-share__ctn-head {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 20px;
   align-items: center;
-  justify-content: space-between;
-}
-
-.loading-share__ctn-identity {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.loading-share__ctn-index {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  font-size: 12px;
-  color: #647892;
-  background: #f0f4f9;
-  border-radius: 5px;
 }
 
 .loading-share__ctn-head strong {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
 }
 
 .loading-share__ctn-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  max-width: 540px;
-  margin: 20px 0;
-}
-
-.loading-share__ctn-meta div {
   display: flex;
-  gap: 16px;
-  align-items: baseline;
-  font-size: 13px;
-}
-
-.loading-share__ctn-meta span {
-  flex-shrink: 0;
-  color: #738096;
-}
-
-.loading-share__ctn-meta strong {
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-.loading-share__photo-empty {
-  display: flex;
+  flex: 1;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 18px;
-  font-size: 12px;
-  color: #758397;
-  background: #f7f9fc;
-  border: 1px dashed #dce4ee;
-  border-radius: 7px;
+  gap: 8px 20px;
+  min-width: 0;
+  font-size: 13px;
+  color: #5d6d80;
 }
 
-.loading-share__photo-empty svg {
-  width: 20px;
-  height: 20px;
+.loading-share__ctn-head .loading-share__ctn-status {
+  margin-left: auto;
 }
 
-.loading-share__photo-empty span:first-of-type {
-  color: #52657e;
+.loading-share__photo-empty,
+.loading-share__hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #8a96a6;
 }
 
 .loading-share__photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 104px);
+  grid-template-columns: repeat(auto-fill, minmax(148px, 180px));
   gap: 14px 16px;
-  justify-content: start;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .loading-share__photo-slot {
-  width: 104px;
   min-width: 0;
 }
 
@@ -762,16 +703,16 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 12px;
-  font-weight: 400;
   line-height: 22px;
-  color: #5d6c80;
+  color: #6f7d8e;
   white-space: nowrap;
 }
 
 .loading-share__photo {
   display: block;
-  width: 104px;
-  height: 104px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
@@ -803,26 +744,41 @@ watch(
   min-height: 400px;
 }
 
-.loading-share__hint {
-  padding: 24px;
-  font-size: 13px;
-  color: #738096;
-}
-
 .loading-share__footer {
-  padding: 6px 24px 28px;
+  flex-shrink: 0;
+  padding: 10px 24px 16px;
   font-size: 12px;
-  color: #7e8ba0;
+  color: #8a96a6;
   text-align: center;
+  background: #e8edf3;
 }
 
 .loading-share__preview-host {
   display: none;
 }
 
+@media (max-width: 1280px) {
+  .loading-share__facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .loading-share__mbl {
+    grid-column: span 2;
+  }
+}
+
 @media (max-width: 800px) {
-  .loading-share__rows {
+  .loading-share__band {
+    grid-template-columns: 1fr;
+    padding: 14px 16px 16px;
+  }
+
+  .loading-share__facts {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .loading-share__boxes {
+    padding: 16px;
   }
 }
 
@@ -844,78 +800,28 @@ watch(
   }
 
   .loading-share__body {
-    padding: 0 14px;
+    padding: 10px 14px 0;
   }
 
-  .loading-share__overview {
-    gap: 12px;
-    align-items: flex-start;
-    padding: 26px 4px 22px;
-  }
-
-  .loading-share__overview > div {
-    min-width: 0;
-  }
-
-  .loading-share__status {
-    padding: 5px 9px;
-    margin-top: 20px;
-  }
-
-  .loading-share__card {
-    margin-bottom: 16px;
-  }
-
-  .loading-share__card-head {
-    gap: 8px;
-    padding: 16px;
-  }
-
-  .loading-share__card-head h2 {
-    font-size: 15px;
-  }
-
-  .loading-share__rows {
+  .loading-share__facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px 18px;
-    padding: 20px 16px;
   }
 
-  .loading-share__ctn {
-    padding: 18px 16px;
+  .loading-share__mbl {
+    grid-column: span 2;
   }
 
-  .loading-share__ctn-meta {
-    gap: 14px;
+  .loading-share__mbl h1 {
+    font-size: 20px;
   }
 
-  .loading-share__ctn-meta div {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .loading-share__photo-empty {
-    gap: 8px;
-    padding: 14px;
-  }
-
-  .loading-share__photo-empty span:last-child {
-    flex-basis: 100%;
-    padding-left: 28px;
+  .loading-share__ctn-head .loading-share__ctn-status {
+    margin-left: 0;
   }
 
   .loading-share__photo-grid {
-    grid-template-columns: repeat(auto-fill, 88px);
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
     gap: 12px;
-  }
-
-  .loading-share__photo-slot,
-  .loading-share__photo {
-    width: 88px;
-  }
-
-  .loading-share__photo {
-    height: 88px;
   }
 }
 

@@ -4,7 +4,6 @@ export type LoadingShareLang = 'en' | 'zh';
 
 export interface LoadingShareText {
   title: string;
-  eyebrow: string;
   mblNum: string;
   loadingOrder: string;
   basicInfo: string;
@@ -24,6 +23,11 @@ export interface LoadingShareText {
   queryError: string;
   listJoin: string;
   kg: (value: number | string) => string;
+  groups: {
+    voyage: string;
+    cargo: string;
+    site: string;
+  };
   fields: {
     vesselVoyage: string;
     ctnQty: string;
@@ -42,7 +46,6 @@ export interface LoadingShareText {
 
 const ZH: LoadingShareText = {
   title: '监装信息',
-  eyebrow: '海运出口 / 监装信息',
   mblNum: '主提单号',
   loadingOrder: '监装工单',
   basicInfo: '基本信息',
@@ -62,6 +65,11 @@ const ZH: LoadingShareText = {
   queryError: '主提单号或监装工单号错误',
   listJoin: '、',
   kg: (value) => `${value} KG`,
+  groups: {
+    voyage: '运输',
+    cargo: '货物',
+    site: '现场',
+  },
   fields: {
     vesselVoyage: '船名航次',
     ctnQty: '箱型箱量',
@@ -85,7 +93,6 @@ const ZH: LoadingShareText = {
 
 const EN: LoadingShareText = {
   title: 'Loading Information',
-  eyebrow: 'Sea Export / Loading Information',
   mblNum: 'Master B/L No.',
   loadingOrder: 'Loading Order',
   basicInfo: 'Basic Information',
@@ -106,6 +113,11 @@ const EN: LoadingShareText = {
   queryError: 'Master B/L or loading order number is incorrect',
   listJoin: ', ',
   kg: (value) => `${value} KG`,
+  groups: {
+    voyage: 'Voyage',
+    cargo: 'Cargo',
+    site: 'On Site',
+  },
   fields: {
     vesselVoyage: 'Vessel / Voyage',
     ctnQty: 'Container Type & Qty',

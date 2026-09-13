@@ -18,6 +18,7 @@ const props = defineProps<{
   loadingOrderNum: string;
   lang: 'en' | 'zh';
   completed: boolean;
+  compact?: boolean;
 }>();
 const english = computed(() => props.lang === 'en');
 const video = ref<HTMLVideoElement>();
@@ -303,13 +304,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="live-video">
+  <section class="live-video" :class="{ 'is-compact': compact }">
     <p v-if="ended" class="live-video__closed">
       {{
         english ? 'Loading completed. Video closed.' : '监装已完成，视频已关闭'
       }}
     </p>
-    <button v-else type="button" class="live-video__open" @click="openPlayer">
+    <button
+      v-else
+      type="button"
+      class="live-video__open"
+      :title="
+        english
+          ? 'Opens fullscreen. Stream starts only after you click.'
+          : '点击后全屏查看现场画面'
+      "
+      @click="openPlayer"
+    >
       <span class="live-video__open-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M9 7.5v9l8-4.5-8-4.5Z" />
@@ -465,6 +476,12 @@ onBeforeUnmount(() => {
   margin: 8px 0 22px;
 }
 
+.live-video.is-compact {
+  flex-shrink: 0;
+  width: auto;
+  margin: 0;
+}
+
 .live-video__closed,
 .live-video__open {
   box-sizing: border-box;
@@ -473,6 +490,58 @@ onBeforeUnmount(() => {
   background: #fff;
   border: 1px solid #e1e7ef;
   border-radius: 12px;
+}
+
+.live-video.is-compact .live-video__closed {
+  width: auto;
+  padding: 0;
+  font-size: 13px;
+  color: #6f7d8e;
+  background: transparent;
+  border: 0;
+}
+
+.live-video.is-compact .live-video__open {
+  gap: 8px;
+  width: auto;
+  padding: 11px 18px;
+  color: #fff;
+  background: hsl(var(--primary));
+  border: 0;
+  border-radius: 999px;
+}
+
+.live-video.is-compact .live-video__open:hover {
+  background: color-mix(in srgb, hsl(var(--primary)) 88%, #000);
+  border-color: transparent;
+  box-shadow: 0 8px 20px hsl(var(--primary) / 22%);
+}
+
+.live-video.is-compact .live-video__open-icon {
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  background: transparent;
+}
+
+.live-video.is-compact .live-video__open-icon svg {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.live-video.is-compact .live-video__open-copy {
+  gap: 0;
+}
+
+.live-video.is-compact .live-video__open-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.live-video.is-compact .live-video__open-copy em {
+  display: none;
 }
 
 .live-video__closed {
@@ -770,6 +839,14 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: #fecaca;
   text-align: right;
+}
+
+@media (max-width: 800px) {
+  .live-video.is-compact,
+  .live-video.is-compact .live-video__open {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 @media (max-width: 600px) {
