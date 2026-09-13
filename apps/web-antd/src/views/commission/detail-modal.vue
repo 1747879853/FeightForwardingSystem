@@ -15,6 +15,7 @@ import { $t } from '#/locales';
 
 import CalcPanels from './calc-panels.vue';
 import {
+  collectTicketCurrencyCodes,
   formatAmount,
   formatDateTimeText,
   formatMonth,
@@ -96,11 +97,15 @@ const baseSalaryText = computed(() => {
   return `${formatAmount(current.baseSalary)}${modeText}`;
 });
 
-const ticketColumns = computed(() =>
-  isSales.value ? useSalesTicketColumns() : useOperationTicketColumns(),
-);
-
 const tickets = computed(() => detail.value?.tickets ?? []);
+
+const ticketColumns = computed(() =>
+  isSales.value
+    ? useSalesTicketColumns({
+        currencyCodes: collectTicketCurrencyCodes(tickets.value, 'currencies'),
+      })
+    : useOperationTicketColumns(),
+);
 
 /** 未达门槛票数（销售），供「达标票数」磁贴副文案 */
 const belowCount = computed(

@@ -30,9 +30,11 @@ import { $t } from '#/locales';
 
 import CalcPanels from './calc-panels.vue';
 import {
+  collectTicketCurrencyCodes,
+  flattenUnsettledBySettlement,
   formatAmount,
-  flattenUnsettledTickets,
   ticketRowKey,
+  unsettledSettlementRowKey,
   useOperationTicketColumns,
   useSalesTicketColumns,
 } from './data';
@@ -236,14 +238,34 @@ const totalFinal = computed(() =>
 
 // ==================== 票表格列 ====================
 
+const settledCurrencyCodes = computed(() =>
+  collectTicketCurrencyCodes(
+    monthBlocks.value.flatMap((block) => block.settled),
+    'currencies',
+  ),
+);
+
+const unsettledCurrencyCodes = computed(() =>
+  collectTicketCurrencyCodes(
+    monthBlocks.value.flatMap((block) => block.unsettled),
+    'unsettled',
+  ),
+);
+
 const ticketColumns = computed(() =>
   isSales.value
-    ? useSalesTicketColumns({ compact: true })
+    ? useSalesTicketColumns({
+        compact: true,
+        currencyCodes: settledCurrencyCodes.value,
+      })
     : useOperationTicketColumns(),
 );
 
 const unsettledTicketColumns = computed(() =>
-  useSalesTicketColumns({ showUnsettled: true }),
+  useSalesTicketColumns({
+    showUnsettled: true,
+    currencyCodes: unsettledCurrencyCodes.value,
+  }),
 );
 
 // ==================== 新建 ====================
@@ -404,9 +426,9 @@ const onConfirmCreate = () => {
             size="small"
             :scroll="{ x: 'max-content' }"
             :columns="unsettledTicketColumns"
-            :data-source="flattenUnsettledTickets(block.unsettled)"
+            :data-source="flattenUnsettledBySettlement(block.unsettled)"
             :pagination="false"
-            :row-key="(row) => row._flatKey"
+            :row-key="unsettledSettlementRowKey"
           />
         </section>
 
@@ -421,7 +443,7 @@ const onConfirmCreate = () => {
           <Table
             class="design-table"
             size="small"
-            :scroll="{ x: isSales ? undefined : 'max-content' }"
+            :scroll="{ x: 'max-content' }"
             :columns="ticketColumns"
             :data-source="block.settled"
             :pagination="false"
