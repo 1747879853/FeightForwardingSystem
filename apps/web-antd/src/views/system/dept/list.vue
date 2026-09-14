@@ -640,6 +640,9 @@ loadTree();
                 <DescriptionsItem :label="$t('system.dept.enName')">
                   {{ selectedOrgDetail.enName || '-' }}
                 </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.chargeUser')">
+                  {{ selectedOrgDetail.chargeUserNickName || '-' }}
+                </DescriptionsItem>
                 <DescriptionsItem :label="$t('system.dept.contactPhone')">
                   {{ selectedOrgDetail.contactPhone || '-' }}
                 </DescriptionsItem>
