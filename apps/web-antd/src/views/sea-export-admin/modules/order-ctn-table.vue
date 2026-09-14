@@ -15,7 +15,10 @@ import {
   message,
 } from 'ant-design-vue';
 
+import { useVbenModal } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
+
+import ContainerImportModal from '#/views/_shared/order-ctn/container-import-modal.vue';
 
 import {
   getCtnCodeDetail,
@@ -372,6 +375,37 @@ const handleBatchAddOpenChange = async (open: boolean) => {
   await loadBatchAddCtnTypes();
 };
 
+const [ContainerImportModalComponent, containerImportModalApi] = useVbenModal({
+  connectedComponent: ContainerImportModal,
+  destroyOnClose: true,
+});
+
+const openContainerImport = () => {
+  containerImportModalApi
+    .setData({
+      i18nNs: 'seaExport.export',
+      createEmptyCtnRow,
+      resolveDefaultPackageFields,
+    })
+    .open();
+};
+
+const handleContainerImportConfirm = (rows: Record<string, unknown>[]) => {
+  if (!rows.length) return;
+  const list = [...(modelValue.value ?? []), ...(rows as any[])];
+  modelValue.value = list;
+
+  const nextNames = { ...ctnNameById.value };
+  for (const row of rows) {
+    const ctnCodeId = row.ctnCodeId;
+    const ctnCodeName = row.ctnCodeName;
+    if (ctnCodeId != null && ctnCodeName) {
+      nextNames[String(ctnCodeId)] = String(ctnCodeName);
+    }
+  }
+  ctnNameById.value = nextNames;
+};
+
 const confirmBatchAdd = async () => {
   const selected = batchAddItems.value.filter((item) => {
     const qty = Math.floor(Number(item.qty));
@@ -596,6 +630,14 @@ watch(
           {{ $t('seaExport.export.batchAddCtn') }}
         </Button>
       </Popover>
+      <Button
+        size="small"
+        class="order-ctn-table__batch-add-btn"
+        @click="openContainerImport"
+      >
+        {{ $t('seaExport.export.importCtnExcel') }}
+      </Button>
+      <ContainerImportModalComponent @confirm="handleContainerImportConfirm" />
       <Tooltip :title="$t('seaExport.export.addCtn')">
         <Button
           type="text"
