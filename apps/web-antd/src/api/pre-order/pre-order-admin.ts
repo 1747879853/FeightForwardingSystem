@@ -306,7 +306,7 @@ export namespace PreOrderAdminApi {
     notifier?: SimpleNamedDto | null;
     /** 订舱代理（仅详情返回；列表只返回 bookingAgentId） */
     bookingAgent?: SimpleNamedDto | null;
-    /** 车队（仅详情返回；列表只返回 teamId） */
+    /** 车队（列表/详情都返回；无车队时为 null。列表列不展示，只做 TeamId 筛选） */
     team?: SimpleNamedDto | null;
     preOrderCodeGoodss?: PreOrderCodeGoodsDto[] | null;
     preOrderCtns?: PreOrderCtnDto[] | null;

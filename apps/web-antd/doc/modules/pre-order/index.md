@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-09-08
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,8 +11,8 @@ last_updated: 2026-09-08
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **检索：** 支持关键字（业务编号 / 主提单号）、状态、委托单位、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
-- **列表列：** 除业务主字段外，展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度（色块对齐海出列表），海进/空出/未通过为 `-`；运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
+- **检索：** 支持关键字（业务编号 / 主提单号 / 船名 / 航次）、状态、委托单位、车队、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
+- **列表列：** 除业务主字段外，船公司后展示「船名」「航次」（`vessel` / `innerVoyno` 直接取值）；**不加「车队」列**（车队只做 `TeamId` 筛选，与海出/海进口径一致）。另展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度（色块对齐海出列表），海进/空出/未通过为 `-`；运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
 - **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。删除/工具栏刷新/表单返回走 `handleRefresh`，会同步 `refreshGroupData()`。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
@@ -37,6 +37,9 @@ last_updated: 2026-09-08
 | **状态** | 单据生命周期 | `PreOrderStatus` 枚举 | 决定删除是否可用 | 只读，以 Tag 呈现 |
 | **业务状态** | 关联海出做到哪项服务 | 列表 `transportOrder.seaExport.seaExportServices`；前端复用 `getSeaExportBusinessStatusMeta`；服务名来自 `ServiceType` 枚举 | 仅列表返回；海进/空出没有服务项；未通过或业务表已删时 `transportOrder` 为 null，显示 `-` | 只读计算列，不可筛 |
 | **运踪状态** | 关联业务当前运踪节点或订阅态 | 列表 `transportOrder` 下 `seaExport` / `seaImport` / `airExport` 的订阅标志与摘要；海出按品牌分流新旧运踪 | 点 Tag 打开详情（权限 `Admin.ExternalApi.Get`）；列表不提供订阅。详情接口不返回这份嵌套 | 只读计算列，列 field 名沿用 `yundangTrackStatus` |
+| **关键字（Keyword）** | 模糊检索 | `GetPagedListAsync` 的 `Keyword` | 匹配业务编号 / 主提单号 / 船名 / 航次（后端口径；不含车队名） | 可清空 |
+| **船名 / 航次** | 主表船名、船公司航次 | 列 `vessel` / `innerVoyno` | 仅海出/海进有值，空出为 null；关键字可搜这两项 | 只读列 |
+| **车队（筛选）** | 往来单位车队 | 筛 `TeamId`；`ClientSelect`（`industryCategory: 'i'`） | **列表不展示列**。接口虽返回 `team` 对象，列设置不铺 `team.name` | 筛选项非必填 |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
 | **起运港 / 目的港** | 航段两端 | **港口**<br/>`PortSelect` | 起运港决定服务项候选池；可作为分组维度 | 筛选项非必填 |
 | **开船日期** | ETD | `ETDStart` / `ETDEnd` | 前端把区间拆成两个 ISO 时间参数 | 筛选项非必填 |
@@ -59,6 +62,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Feature` | 列表增加船名/航次列；筛选增加车队；关键字可搜船名/航次。 | **不加车队列**（需求原文只加两列+筛选）。后端列表已返回 `team`，列 field 若以后要加应绑 `team.name`。详见 [变更日志](../../changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间。 | 无时分 RangePicker 点「今天」不再把起止打成同一时刻。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-14 | `Fix` | 列表增加销售/操作/备注列，并支持按销售、操作、备注筛选（TAPD #1000794） | 对齐后端 `saleNames`/`operatorNames` 与 `SaleIds`/`OperatorIds`/`Remark`；筛选交互参考结算拉费用弹窗。详见 `changelogs/change-log-2026-08-14-pre-order-list-sale-operator-remark.md` |

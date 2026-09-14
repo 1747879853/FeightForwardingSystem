@@ -13,6 +13,9 @@
 
 ## 2026-09
 
+- [2026-09-14] [PC监装状态配色优化](./changelogs/change-log-2026-09-14-PC监装状态配色.md)
+
+- [2026-09-14] [业务联系单船名航次车队](./changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)
 - [2026-09-14] [小程序监装列表派单人加大热区](./changelogs/change-log-2026-09-14-mp-loading-list-dispatcher-tap.md)
 - [2026-09-14] [监装小程序箱列表易读易点](./changelogs/change-log-2026-09-14-监装小程序箱列表易读易点.md)
 
