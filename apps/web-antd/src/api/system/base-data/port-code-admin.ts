@@ -2,13 +2,13 @@ import { requestClient } from '#/api/request';
 import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
 import type { LaneCodeAdminApi } from '#/api/system/base-data/lane-code-admin';
 
-// ==================== PortCode（非 Admin，只读接口）====================
+// ==================== PortCode（非 Admin，只读，仅需登录）====================
 
 export namespace PortCodeApi {
   /** 港口列表项（精简版，单字母字段以减小传输体积） */
   export interface PortCodeListItemDto {
     /** 主键ID */
-    i: number;
+    i: number | string;
     /** 港口英文名称/港口代码 */
     p: string;
     /** 港口中文名称 */
@@ -18,9 +18,73 @@ export namespace PortCodeApi {
     /** 排序 id，值越大越靠前 */
     s: number;
   }
+
+  /** 分页列表中国家简易对象 */
+  export interface CountryCodeSimpleDto {
+    id: number | string;
+    code?: string;
+    countryName?: string;
+    countryEnName?: string;
+  }
+
+  /** 分页列表中航线简易对象 */
+  export interface LaneCodeSimpleDto {
+    id: number | string;
+    code?: string;
+    laneName?: string;
+    laneEnName?: string;
+    ediCode?: string;
+  }
+
+  /**
+   * 港口分页列表项（PortCode/GetPagedListAsync）
+   * 无 creatorUserName / lastModifierUserName；country/lane 查不到时为 null
+   */
+  export interface PortCodePagedDto {
+    id: number | string;
+    portName?: string;
+    cnName?: string;
+    explain?: string;
+    portType?: string;
+    countryId?: number | string;
+    country?: CountryCodeSimpleDto | null;
+    laneId?: number | string;
+    lane?: LaneCodeSimpleDto | null;
+    ediCode?: string;
+    statisticalArea?: string;
+    /** 状态 0启用 1禁用 */
+    status?: number;
+    sortId?: number;
+    remark?: string;
+  }
+
+  export interface PagedListOfPortCodePagedDto {
+    skipCount?: number;
+    maxResultCount?: number;
+    items: PortCodePagedDto[];
+    totalCount: number;
+    currentPage?: number;
+    totalPages?: number;
+  }
+
+  /** 分页查询参数（与管理端筛选口径一致） */
+  export interface GetPagedListParams {
+    Keyword?: string;
+    LaneId?: number | string;
+    EdiCode?: string;
+    CountryId?: number | string;
+    /** 状态 0启用 1禁用 */
+    Status?: number;
+    Sorting?: string;
+    PageIndex?: number;
+    PageSize?: number;
+  }
 }
 
 const PORT_CODE_API_PREFIX = '/services/app/PortCode';
+
+/** 下拉/业务分页默认排序：值越大越靠前 */
+const DEFAULT_PORT_CODE_PAGED_SORT = 'sortId DESC';
 
 /**
  * 获取全部港口列表（无需业务权限，仅需登录）
@@ -29,16 +93,54 @@ const PORT_CODE_API_PREFIX = '/services/app/PortCode';
  * - 全量返回，不分页
  * - 包含启用和禁用的港口（ABP 软删除过滤后的全部）
  * - 后端按 SortId 降序返回，前端按返回顺序渲染
- * - 使用 ResponseCompression（gzip/brotli）压缩传输
  * - 字段使用单字母命名以减小体积：i(id), p(portName), c(cnName), e(countryEnName), s(sortId)
- *
- * @returns 港口列表（精简版）
  */
 export const getPortCodeList = () => {
   return requestClient.get<PortCodeApi.PortCodeListItemDto[]>(
     `${PORT_CODE_API_PREFIX}/GetListAsync`,
   );
 };
+
+/**
+ * 港口分页列表（无需业务权限，仅需登录）
+ *
+ * 业务下拉、远程搜索统一走此接口，勿再调 PortCodeAdmin/GetPagedListAsync。
+ * 未传 Sorting 时默认 sortId 降序。
+ */
+export const getPortCodePagedList = (
+  params: PortCodeApi.GetPagedListParams,
+) => {
+  return requestClient.get<PortCodeApi.PagedListOfPortCodePagedDto>(
+    `${PORT_CODE_API_PREFIX}/GetPagedListAsync`,
+    {
+      params: {
+        ...params,
+        Sorting: params.Sorting ?? DEFAULT_PORT_CODE_PAGED_SORT,
+      },
+    },
+  );
+};
+
+/**
+ * 将全量精简项映射为分页 DTO 形态，供下拉按 id 回显兜底（PortCode 无 Detail 接口）
+ */
+export function mapPortCodeListItemToPagedDto(
+  item: PortCodeApi.PortCodeListItemDto,
+): PortCodeApi.PortCodePagedDto {
+  return {
+    id: item.i,
+    portName: item.p,
+    cnName: item.c,
+    sortId: item.s,
+    status: 0,
+    country: item.e
+      ? {
+          id: '',
+          countryEnName: item.e,
+        }
+      : null,
+  };
+}
 
 // ==================== PortCodeAdmin（管理接口，带权限）====================
 
@@ -101,7 +203,7 @@ export namespace PortCodeAdminApi {
     sortId?: number;
   }
 
-  /** 港口信息详情/列表输出 */
+  /** 港口信息详情/管理列表输出 */
   export interface PortCodeDto {
     /** 港口英文名称 */
     portName?: string;
@@ -174,21 +276,18 @@ export namespace PortCodeAdminApi {
   }
 }
 
-const API_PREFIX = '/services/app/PortCodeAdmin';
-
-/** 管理端分页默认排序：值越大越靠前；调用方显式传 Sorting 时可覆盖 */
-const DEFAULT_PORT_CODE_PAGED_SORT = 'sortId DESC';
+const ADMIN_API_PREFIX = '/services/app/PortCodeAdmin';
 
 /**
- * 获取港口信息分页列表
+ * 管理端港口分页列表（需 PortCodeAdmin 权限）
  *
- * 未传 Sorting 时默认 sortId 降序，避免后端回退为创建时间降序。
+ * 业务下拉请用 {@link getPortCodePagedList}（PortCode/GetPagedListAsync）。
  */
-export const getPortCodePagedList = (
+export const getPortCodeAdminPagedList = (
   params: PortCodeAdminApi.GetPagedListParams,
 ) => {
   return requestClient.get<PortCodeAdminApi.PagedListOfPortCodeDto>(
-    `${API_PREFIX}/GetPagedListAsync`,
+    `${ADMIN_API_PREFIX}/GetPagedListAsync`,
     {
       params: {
         ...params,
@@ -199,13 +298,13 @@ export const getPortCodePagedList = (
 };
 
 /**
- * 获取港口信息详情
+ * 获取港口信息详情（管理端，需权限）
  * @param id 港口 ID，建议传 string 避免大数精度丢失（超过 2^53-1 的 ID 用 number 会丢精度）
  */
 export const getPortCodeDetail = (id: number | string) => {
   const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<PortCodeAdminApi.PortCodeDto>(
-    `${API_PREFIX}/DetailAsync`,
+    `${ADMIN_API_PREFIX}/DetailAsync`,
     { params: { Id: idStr } },
   );
 };
@@ -214,14 +313,14 @@ export const getPortCodeDetail = (id: number | string) => {
  * 新增港口信息
  */
 export const addPortCode = (data: PortCodeAdminApi.PortCodeAddDto) => {
-  return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+  return requestClient.post<number>(`${ADMIN_API_PREFIX}/AddAsync`, data);
 };
 
 /**
  * 编辑港口信息
  */
 export const editPortCode = (data: PortCodeAdminApi.PortCodeEditDto) => {
-  return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
+  return requestClient.put<boolean>(`${ADMIN_API_PREFIX}/EditAsync`, data);
 };
 
 /**
@@ -229,7 +328,7 @@ export const editPortCode = (data: PortCodeAdminApi.PortCodeEditDto) => {
  * @param id 港口 ID，大数以 string 透传避免精度丢失
  */
 export const deletePortCode = (id: number | string) => {
-  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
+  return requestClient.delete<boolean>(`${ADMIN_API_PREFIX}/DeleteAsync`, {
     data: { id },
   });
 };

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
+import type { PortCodeApi } from '#/api/system/base-data/port-code-admin';
 
 import { computed, ref, toRef, useSlots, watch } from 'vue';
 
@@ -9,11 +9,26 @@ import { $t } from '@vben/locales';
 import { Select } from 'ant-design-vue';
 
 import {
-  getPortCodeDetail,
+  getPortCodeList,
   getPortCodePagedList,
+  mapPortCodeListItemToPagedDto,
 } from '#/api/system/base-data/port-code-admin';
 
 import { usePagedSelect } from './use-paged-select';
+
+/** 全量精简列表缓存：PortCode 无 Detail，按 id 回显时兜底 */
+let portListCachePromise: Promise<PortCodeApi.PortCodeListItemDto[]> | null =
+  null;
+
+function loadPortListCache() {
+  if (!portListCachePromise) {
+    portListCachePromise = getPortCodeList().catch((error) => {
+      portListCachePromise = null;
+      throw error;
+    });
+  }
+  return portListCachePromise;
+}
 
 interface Props {
   /**
@@ -29,7 +44,7 @@ interface Props {
   /** placeholder */
   placeholder?: string;
   /** 已选中的港口对象数组（用于编辑时回显） */
-  selectedItems?: PortCodeAdminApi.PortCodeDto[];
+  selectedItems?: PortCodeApi.PortCodePagedDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
@@ -44,7 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
-  /** change 事件，option 含 `raw`（完整 PortCodeDto） */
+  /** change 事件，option 含 `raw`（完整 PortCodePagedDto） */
   change: [value: any, option: any | any[]];
 }>();
 
@@ -74,7 +89,7 @@ const getNestedValue = (obj: unknown, path: string): string => {
  * - `'portNameCnName'`：`港口英文名-中文名`（如 QINGDAO-青岛）
  */
 const resolveLabelKey = (
-  port: PortCodeAdminApi.PortCodeDto,
+  port: PortCodeApi.PortCodePagedDto,
   labelKey: string | string[],
 ): string => {
   if (labelKey === 'portNameEdi') {
@@ -126,7 +141,7 @@ const resolveLabelKey = (
   );
 };
 
-const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
+const mapPortToOption = (port: PortCodeApi.PortCodePagedDto) => {
   const portAny = port as Record<string, unknown>;
   const ediCode = (port.ediCode ?? '').toString().trim();
   const countryName = (port.country?.countryName ?? '').toString().trim();
@@ -226,8 +241,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     if (idStr === null) continue;
     if (loadedSelectedIds.value.has(idStr)) continue;
 
-    // DetailAsync 只认港口 GUID Id。valueKey 为 ediCode 时 modelValue 是五字码，
-    // 不能拿去当 Id 查询，否则后端报 The value 'BRPHE' is not valid for Id.
+    // valueKey 为 ediCode 时 modelValue 是五字码，不能当 Id 查询
     if (props.valueKey !== 'id') {
       loadedSelectedIds.value.add(idStr);
       continue;
@@ -235,8 +249,14 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 
     loadedSelectedIds.value.add(idStr);
     try {
-      const detail = await getPortCodeDetail(idStr);
-      mergeSelectedItems([detail], { complete: true });
+      // PortCode 无 Detail：用全量精简列表按 id 回显（仅需登录）
+      const list = await loadPortListCache();
+      const hit = list.find((item) => String(item.i) === idStr);
+      if (hit) {
+        mergeSelectedItems([mapPortCodeListItemToPagedDto(hit)], {
+          complete: true,
+        });
+      }
     } catch {
       loadedSelectedIds.value.delete(idStr);
     }
@@ -246,7 +266,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 const loadedSelectedIds = ref(new Set<string>());
 
 /** 下拉两行展示所需字段是否齐全，不齐时仍需拉详情补全 */
-const isDisplayComplete = (port: PortCodeAdminApi.PortCodeDto): boolean =>
+const isDisplayComplete = (port: PortCodeApi.PortCodePagedDto): boolean =>
   Boolean(
     (port.ediCode ?? '').toString().trim() &&
     (port.portName ?? '').toString().trim() &&
