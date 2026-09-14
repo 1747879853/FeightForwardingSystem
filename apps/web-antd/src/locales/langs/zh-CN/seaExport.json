@@ -1094,8 +1094,6 @@
       "status": "监装状态",
       "loadingOrderNum": "监装工单号",
       "submitUserName": "派单人",
-      "callPhone": "拨打",
-      "submitUserPhoneEmpty": "该派单人未维护手机号",
       "submitTime": "提交时间",
       "claimTime": "认领时间",
       "completeTime": "完成时间",

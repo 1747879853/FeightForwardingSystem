@@ -867,8 +867,6 @@
       "status": "Status",
       "loadingOrderNum": "Loading Order No.",
       "submitUserName": "Submitted By",
-      "callPhone": "Call",
-      "submitUserPhoneEmpty": "This dispatcher has no phone number on file",
       "submitTime": "Submit Time",
       "claimTime": "Claim Time",
       "completeTime": "Complete Time",
