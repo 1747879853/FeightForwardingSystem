@@ -188,7 +188,7 @@ export const getPortCodePagedList = (
   params: PortCodeAdminApi.GetPagedListParams,
 ) => {
   return requestClient.get<PortCodeAdminApi.PagedListOfPortCodeDto>(
-    `${API_PREFIX}/GetPagedListAsync`,
+    `${PORT_CODE_API_PREFIX}/GetPagedListAsync`,
     {
       params: {
         ...params,
