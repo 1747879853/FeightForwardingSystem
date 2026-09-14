@@ -1,6 +1,8 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-template-admin';
+import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
+
 import { $t } from '#/locales';
 import { createClientSelectSchema } from '../../../client/base/data';
 
@@ -43,16 +45,6 @@ const blTypeOptions: Array<{ label: string; value: number }> = [
   { label: '整柜', value: 0 },
   { label: '拼箱分票', value: 1 },
   { label: '拼箱主票', value: 2 },
-];
-
-// 服务项枚举选项
-const serviceTypeOptions: Array<{ label: string; value: number }> = [
-  { label: '订舱', value: 0 },
-  { label: '拖车', value: 1 },
-  { label: '报关', value: 2 },
-  { label: '仓库', value: 3 },
-  { label: '保险', value: 4 },
-  { label: '代收支', value: 5 },
 ];
 
 /**
@@ -108,9 +100,12 @@ function formatBlType(blType?: number | null): string {
 }
 
 /**
- * 格式化服务项显示
+ * 格式化服务项显示（选项来自枚举管理 ServiceType）
  */
-function formatServiceType(serviceType?: number | null): string {
+function formatServiceType(
+  serviceType: number | null | undefined,
+  serviceTypeOptions: ServiceTypeOption[],
+): string {
   if (serviceType === null || serviceType === undefined) return '-';
   const option = serviceTypeOptions.find((opt) => opt.value === serviceType);
   return option?.label || String(serviceType);
@@ -120,6 +115,7 @@ function formatServiceType(serviceType?: number | null): string {
  * 获取表格列配置
  */
 export function useColumns(
+  serviceTypeOptions: ServiceTypeOption[],
   onActionClick: OnActionClickFn<OrderFeeTemplateAdminApi.OrderFeeTemplateListDto>,
 ): VxeTableGridOptions<OrderFeeTemplateAdminApi.OrderFeeTemplateListDto>['columns'] {
   return [
@@ -222,7 +218,8 @@ export function useColumns(
       field: 'serviceType',
       title: '服务项',
       width: 100,
-      formatter: ({ row }) => formatServiceType(row.serviceType),
+      formatter: ({ row }) =>
+        formatServiceType(row.serviceType, serviceTypeOptions),
     },
     {
       field: 'itemCount',
@@ -261,8 +258,11 @@ export function useColumns(
 
 /**
  * 获取查询表单 schema
+ * @param serviceTypeOptions 服务项选项（loadSeServiceTypeOptions）
  */
-export function useGridFormSchema(): VbenFormSchema[] {
+export function useGridFormSchema(
+  serviceTypeOptions: ServiceTypeOption[] = [],
+): VbenFormSchema[] {
   return [
     {
       fieldName: 'name',
@@ -328,9 +328,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       fieldName: 'serviceType',
       label: '服务项',
-      component: 'Input',
+      component: 'Select',
       componentProps: {
-        placeholder: '请输入服务项',
+        placeholder: '请选择服务项',
+        options: serviceTypeOptions,
         allowClear: true,
       },
     },
