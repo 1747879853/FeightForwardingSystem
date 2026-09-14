@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -30,7 +30,7 @@ last_updated: 2026-09-09
 - **复制本票：** 保存按钮下拉菜单里提供，先检查未保存修改。
 - **应收应付：** 只读展示该票全部费用（含改单费用），按收/付两段分组，合计按币别分别汇总；增删改在业务费用模块进行。基础信息保存成功后，编辑工作台把最新详情经 `:latest-detail` 下发，费用列表与 Tab「收 - 付」徽标一并刷新，不再重复拉详情。
 - **运踪信息：** Tab 内嵌运踪面板；四态（未订阅/订阅失败/等待推送/有动态）；有动态时展示运单摘要 + 里程碑/航段/状态轨迹；等待推送时 30s 轮询最多 20 次。
-- **附件：** 按附件类型分组上传、预览、下载、删除，支持把文件拖到类型卡片上上传，以及客户可见性开关。
+- **附件：** 按附件类型分组上传、预览、下载、删除，支持把文件拖到类型卡片上上传，以及客户可见性开关；类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序。
 - **未保存拦截：** 离开路由时基础信息或应收应付任一未落库都二次确认；确认切走后整页 KeepAlive，点 X 才销毁。缓存页的委托 id 用 `useKeepAliveRouteParamId`：本页可见才跟地址栏，藏起来后冻结，避免跟海进/海出等同名 `:id` 页抢详情。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -79,6 +79,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 与海出附件 Tab 共用比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-09 | `Fix` | 附件 Tab 下载改为 blob + 友好文件名，不再新开窗口。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-05 | `Feature` | 浏览器标签栏标题随主运单号/委托编号动态更新；有主运单号优先展示主运单号。 | 工作台 `editor.vue` 与嵌入 `form.vue` 共用 `useAirExportTabTitle`；进页详情同时刷新费用徽标。详见 `changelogs/change-log-2026-09-05-air-export-tab-title.md`。 |
 | 2026-08-31 | `Fix` | 应收应付费用数量改为最多 4 位小数，末尾 0 不展示。 | 共用 `OrderFee.Quantity` `decimal(20,4)`。详见 `changelogs/change-log-2026-08-31-dispatch-preorder-fee-qty-4-decimal.md`。 |

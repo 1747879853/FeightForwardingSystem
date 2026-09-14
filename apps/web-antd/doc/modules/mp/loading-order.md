@@ -27,7 +27,7 @@ last_updated: 2026-09-14
   - 待认领 → 「认领」
   - 已认领 → 「拒接」（必填原因）；箱号/封号/照片/完成状态在监装处理面板内保存
   - 已完成 → 「取消完成」
-- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`。面板按类型横排网格，每类型限 1 张；有图则隐藏添加槽，相册/拍照都只选 1 张。拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
+- **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`，按类型原始 `sortId` 降序横排。面板按类型横排网格，每类型限 1 张；有图则隐藏添加槽，相册/拍照都只选 1 张。拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
 - **登录：** 启动静默登录（`wx.login` → `WxOpenSilentAuthenticate`）；未绑账号时登录页展示「手机号一键登录」。开发态可用账密（`VITE_ENABLE_PASSWORD_LOGIN=true`）。
 - **会话失效：** 请求返回 401 或 ABP 未授权标志时同步清理缓存与内存登录态、个人资料，跳转登录页；已在登录页不重复跳转。登录后个人信息接口鉴权失败不能继续进入列表。
 - **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。
@@ -84,6 +84,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 监装箱照类型槽按原始 `sortId` 降序，历史组不再固定垫后。 | `toEditableCtns`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-07 | `Fix` | 监装处理弹层内滚动不再带动背后详情页。 | 遮罩 catchtouchmove + 面板固定高度。详见 `changelogs/change-log-2026-09-07-mp-loading-photo-panel-scroll.md`。 |
 | 2026-09-07 | `Fix` | 堆场导航改为直调腾讯地理编码；补齐 manifest / Key 配额说明。 | 去掉运行时对 qqmap CJS SDK 依赖。详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |
 | 2026-09-06 | `Feature` | 详情监装堆场可一键导航到地图。 | 腾讯 geocoder + `uni.openLocation`；Key 见 `VITE_QQMAP_KEY`。详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |

@@ -37,7 +37,7 @@ import {
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, compareAttachmentTypeSortIdDesc } from '#/utils';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { createAbpPermission } from '#/utils/abp-permission';
 
@@ -252,8 +252,9 @@ const mergeGroups = (
   const merged: AttachmentTypeGroup[] = [];
   const seenTypeIds = new Set<number>();
 
-  const sortedConfigured = [...configuredTypes].sort(
-    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
+  /** 与附件类型管理列表默认 `SortId DESC` 一致：值越大越靠前；手动类型也用原始 sortId */
+  const sortedConfigured = [...configuredTypes].sort((a, b) =>
+    compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
   );
 
   for (const type of sortedConfigured) {
@@ -276,7 +277,7 @@ const mergeGroups = (
     merged.push({
       attachmentDtlTypeId: manualId,
       name: resolveGroupName(manualId, type),
-      sortId: type?.sortId ?? 5000,
+      sortId: type?.sortId ?? 0,
       items: itemsByTypeId.get(manualId) ?? [],
     });
   }
@@ -296,12 +297,14 @@ const mergeGroups = (
     merged.push({
       attachmentDtlTypeId: typeId,
       name: resolveGroupName(typeId, typeInfo),
-      sortId: typeInfo?.sortId ?? 9999,
+      sortId: typeInfo?.sortId ?? 0,
       items: group.items ?? [],
     });
   }
 
-  return merged.sort((a, b) => a.sortId - b.sortId);
+  return merged.sort((a, b) =>
+    compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
+  );
 };
 
 const displayedTypeIds = computed(() => {
@@ -315,9 +318,9 @@ const displayedTypeIds = computed(() => {
 });
 
 const availableOtherTypes = computed(() => {
-  return allAttachmentTypes.value.filter(
-    (item) => !displayedTypeIds.value.has(item.id),
-  );
+  return allAttachmentTypes.value
+    .filter((item) => !displayedTypeIds.value.has(item.id))
+    .sort((a, b) => compareAttachmentTypeSortIdDesc(a.sortId, b.sortId));
 });
 
 const otherTypeOptions = computed(() =>

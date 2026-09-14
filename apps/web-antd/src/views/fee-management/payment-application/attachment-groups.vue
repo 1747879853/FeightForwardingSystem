@@ -15,9 +15,13 @@ import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { extractInvoice } from '#/api/sea-export/gemini-admin';
 import { addPaymentApplicationAttachments } from '#/api/settlement-management/payment-application-admin';
-import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
+import {
+  getAttachmentDtlTypeList,
+  getAttachmentDtlTypesByModuleTypes,
+} from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { $t } from '#/locales';
+import { compareAttachmentTypeSortIdDesc } from '#/utils';
 
 interface AttachmentGroupView {
   attachmentDtlTypeId: null | number;
@@ -60,6 +64,9 @@ const dragOverTypeId = ref<null | number | undefined>(undefined);
 const attachmentTypes = ref<AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]>(
   [],
 );
+const allAttachmentTypes = ref<
+  AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]
+>([]);
 
 /** 可编辑：本地维护，随 Add/Edit 保存 */
 const canEditLocally = computed(() => !props.disabled);
@@ -85,14 +92,20 @@ const groups = computed<AttachmentGroupView[]>(() => {
   const rendered = new Set(result.map((group) => group.attachmentDtlTypeId));
   for (const [typeId, items] of existingById) {
     if (rendered.has(typeId)) continue;
+    const type =
+      typeId == null
+        ? undefined
+        : allAttachmentTypes.value.find((item) => item.id === typeId);
     result.push({
       attachmentDtlTypeId: typeId,
       items,
-      name: typeId == null ? '未分类' : String(typeId),
-      sortId: 9999,
+      name: type?.name || (typeId == null ? '未分类' : String(typeId)),
+      sortId: type?.sortId ?? 0,
     });
   }
-  return result.sort((a, b) => a.sortId - b.sortId);
+  return result.sort((a, b) =>
+    compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
+  );
 });
 
 function updateGroup(
@@ -157,13 +170,17 @@ async function loadAttachmentTypes() {
       $t('system.permission.modulePaymentApplication'),
     );
     if (moduleType == null) return;
-    const results = await getAttachmentDtlTypesByModuleTypes({
-      moduleTypes: [moduleType],
-    });
+    const [results, allTypes] = await Promise.all([
+      getAttachmentDtlTypesByModuleTypes({
+        moduleTypes: [moduleType],
+      }),
+      getAttachmentDtlTypeList(),
+    ]);
     attachmentTypes.value = (results[0]?.attachmentDtlTypes ?? []).filter(
       (type): type is AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto =>
         typeof type.id === 'number',
     );
+    allAttachmentTypes.value = allTypes ?? [];
   } finally {
     loading.value = false;
   }

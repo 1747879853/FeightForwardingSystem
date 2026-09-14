@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -82,6 +82,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 申请附件分组按类型原始 `sortId` 降序。 | 与海出附件同一比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-09 | `Fix` | 全站附件预览/下载统一：查看器 + blob 友好文件名；打印除外。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 附件预览下载保存名改为 `friendlyFileName`（与列表展示一致）。 | 全站 `openAttachmentViewer`；详见 `changelogs/change-log-2026-09-08-attachment-download-friendly-filename.md`。 |
 | 2026-09-08 | `Style` | 「从进项发票选择」挪到发票方式「不开票」右侧；挑票弹窗表头与表体右侧对齐。 | 详见 `changelogs/change-log-2026-09-08-payment-application-input-invoice-pick-ui.md`。 |

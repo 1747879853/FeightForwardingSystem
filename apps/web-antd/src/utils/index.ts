@@ -1,4 +1,5 @@
 export * from './abp-permission';
+export * from './attachment-type-sort';
 export * from './attachment-url';
 export * from './date-range-iso';
 export * from './keys-search';

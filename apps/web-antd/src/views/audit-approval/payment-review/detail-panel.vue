@@ -15,6 +15,7 @@ import { getPaymentApplicationDetail } from '#/api/settlement-management/payment
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
+import { compareAttachmentTypeSortIdDesc } from '#/utils';
 import {
   resolvePodPortDisplayName,
   resolvePolPortDisplayName,
@@ -84,10 +85,10 @@ const visibleAttachmentGroups = computed(() =>
           ? '未分类'
           : String(group.attachmentDtlTypeId)),
       items: group.items ?? [],
-      sortId: group.attachmentDtlType?.sortId ?? 9999,
+      sortId: group.attachmentDtlType?.sortId ?? 0,
     }))
     .filter((group) => group.items.length > 0)
-    .sort((a, b) => a.sortId - b.sortId),
+    .sort((a, b) => compareAttachmentTypeSortIdDesc(a.sortId, b.sortId)),
 );
 
 const hasAttachments = computed(

@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -65,7 +65,7 @@ last_updated: 2026-09-09
 | **应收未结算** | 该行结算对象已审核通过的应收费用未结算合计（原币、按币别）。展示在右侧费用合计卡片底部，不进列表列。 | 列表 `PayAppTaskListAsync` → `settlementReceivableGroup[]`（随选中行传入详情面板） | **触发/依赖：** 点击列表行后回填；与本申请 `currencyGroup` 无关；空数组兜底 `?? []`。 | 已结清币别不出现；无欠款显示「无欠款」。不要当成「本申请可结算余额」。 |
 | **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 | **费用合计** | 各币别申请净额（付 − 收）与结算银行。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 原币/指定币别两种展示模式 | 只读 |
-| **附件** | 先展示发票子表（票号/抬头/日期/金额/单附件，有金额时显示总额），再按附件明细类型分组展示申请附件，另含结算附件。 | `DetailAsync` → `paymentApplicationInvoices[].attachment` / `attachmentGroup` / `paymentSettlements[].attachments` | 点击调用 `openAttachmentViewer`；无发票附件显示「无附件」；总额前端求和 | 只读 |
+| **附件** | 先展示发票子表（票号/抬头/日期/金额/单附件，有金额时显示总额），再按附件明细类型分组展示申请附件，另含结算附件。 | `DetailAsync` → `paymentApplicationInvoices[].attachment` / `attachmentGroup` / `paymentSettlements[].attachments` | 申请分组按类型原始 `sortId` 降序；点击调用 `openAttachmentViewer`；无发票附件显示「无附件」；总额前端求和 | 只读 |
 | **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑与 `NestedDataTable`（`fill-height`，外层表头纵滚吸顶）；加载后 `expandedGroupKeys` 为空，默认不展开 | 只读 |
 | **审核意见** | 通过或驳回备注。 | 审核弹窗输入 | 写入 `AuditAsync`；本人节点已过的驳回写入 `RejectAsync` | 建议驳回时填写 |
 
@@ -89,6 +89,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 审批详情申请附件分组按类型原始 `sortId` 降序。 | 详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-09 | `Fix` | 进入付费审批首查与翻页稳定带上「任务状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `TaskStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-09-08 | `Fix` | 提交时间、最晚付款、审核时间筛选改为自然日闭区间。 | 控件无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-09-05 | `Fix` | Office 附件改为 vue-office 本地预览，不再走微软在线嵌入。 | 详见 `changelogs/change-log-2026-09-05-office-preview-vue-office.md`。 |

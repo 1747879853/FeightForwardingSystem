@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-13
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -29,7 +29,7 @@ last_updated: 2026-09-13
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id；**纯查询，不写库**）。有可引入数据则弹窗选择（弹窗不展示码头航次列），确定引入后前端回填**码头航次**（`ivoyage` → `terminalVoyno`，界面隐藏）并走原有编辑保存；**不要把 `ivoyage` 写进 `innerVoyno`。** 进口表单没有实际开船与截关类字段，这两类不填。无数据只提示。新建态不显示该按钮。**进口经常查不到属正常现象**：进口按起运港查，而起运港多为国外港口，码头船舶计划以国内港区为主。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。打印拉模板传 `bizType=1`（海运进口，结果含通用模板）。
-- **更改单 / 附件：** 更改单对齐海出：顶部订单信息通栏、更改单选择器/历史抽屉、Handsontable 费用表（页签一次只展示并保存一侧）、底部利润汇总；附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」。
+- **更改单 / 附件：** 更改单对齐海出：顶部订单信息通栏、更改单选择器/历史抽屉、Handsontable 费用表（页签一次只展示并保存一侧）、底部利润汇总；附件类型卡片支持把文件拖进去上传，空态为「点击或拖拽上传」；类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序。
 - **委托编号：** 编辑态可一键重新生成（需 `Admin.SeaImport.Edit` **且** `detail.isEditable`）。
 - **复制：** 保存下拉支持复制整单（可选复制费用）；`isEditable === false` 时保存禁用，复制仍可用。
 - **运踪订阅：** 基础信息工具栏「运踪订阅 / 重新订阅」（仅编辑态 + `Admin.ExternalApi.Use`）；已成功订阅禁用；失败可重订；订阅后重新加载详情刷新状态。订阅读库内数据，与表单未保存输入可能不一致。与列表共用 `useContainerTrackingSubscribe`（`bizType=1`）。
@@ -72,6 +72,7 @@ last_updated: 2026-09-13
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 与海出附件 Tab 共用比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 与新建共用进口 `order-ctn-table.vue`。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗不出该列，提示文案也不再提码头航次。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-10 | `Feature` | 更改单样式与交互对齐海运出口：Handsontable、页签只保存一侧、订单信息通栏。 | 详见 `changelogs/change-log-2026-09-10-sea-import-change-order-align-export.md`；专题活文档见 `modules/sea-exports/change-order.md`。 |

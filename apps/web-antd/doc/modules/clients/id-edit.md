@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-09-11
 
 - **基础信息维护：** 编辑客户主数据。未保存切走可 KeepAlive；点 X 关闭才丢。脏检查含基础信息、联系人 Handsontable、开票表单。「是否共享」在所属公司标题右侧，提示共享后全集团可见。
 - **开票信息：** 卡片标题展示抬头与税号；首次保存走 `AddAsync`，成功后把临时 `new_*` id 换成返回的真实 id 并回写标题，再次保存走 `EditAsync`。
-- **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件；内部 Tab 使用 KeepAlive，页内切换不销毁未保存块。
+- **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件；内部 Tab 使用 KeepAlive，页内切换不销毁未保存块。附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序。
 - **海运出口服务项目：** 仅委托单位（`industryCategories` 含 `p`）可配置按起运港排除的服务项；开关关闭表示排除，保存后写入 `ClientExceptService`；全局模板含默认港口配置（`polId` 为空）时，Tab 以「默认港口配置」Card 展示。
 - **业务引用：** 客户资料会被海运委托、费用、对账等业务模块引用。
 
@@ -52,6 +52,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 客户附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 共用 `compareAttachmentTypeSortIdDesc`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-11 | `Feature` | 基础信息可维护可空「税率」；费用录入优先取结算对象税率。 | 详见 `changelogs/change-log-2026-09-11-client-tax-rate-fee-linkage.md`。 |
 | 2026-09-11 | `Style` | 「是否共享」挪到所属公司标题右侧并加问号提示；提交补传 `isShared`。 | 详见 `changelogs/change-log-2026-09-11-client-is-shared-beside-org.md`。 |
 | 2026-09-09 | `Fix` | 开票信息首次保存后标题回显税号/抬头，再次保存走编辑接口。 | `AddAsync` 返回 id 就地替换 `new_*` 并回写列表项；不再依赖被注释的整表重载。详见 `changelogs/change-log-2026-09-09-client-invoice-save-id-echo.md`。 |

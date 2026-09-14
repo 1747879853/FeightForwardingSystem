@@ -17,6 +17,7 @@ export interface EditableGroup {
   /** 没有配附件明细类型时为 null，后端接受空分组 */
   attachmentDtlTypeId: null | number | string;
   items: EditablePhoto[];
+  sortId: number;
   typeName: string;
 }
 
@@ -49,16 +50,12 @@ function resolveExistingTypeName(
 
 /**
  * 详情箱型转成可编辑模型。
- * 先铺维护的附件类型空槽，再把已有照片填进去；历史未分类组追加在后。
+ * 先铺维护的附件类型空槽，再把已有照片填进去；全部按类型原始 sortId 降序。
  */
 export function toEditableCtns(
   ctns?: LoadingOrderCtnDto[] | null,
   configuredTypes: AttachmentDtlTypeSimpleDto[] = [],
 ): EditableCtn[] {
-  const sortedTypes = [...configuredTypes].sort(
-    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
-  );
-
   return (ctns ?? []).map((ctn) => {
     const existing = ctn.attachmentGroups ?? [];
     const itemsByType = new Map<string, EditablePhoto[]>();
@@ -76,12 +73,13 @@ export function toEditableCtns(
     const groups: EditableGroup[] = [];
     const seen = new Set<string>();
 
-    for (const type of sortedTypes) {
+    for (const type of configuredTypes) {
       const key = typeIdKey(type.id);
       seen.add(key);
       groups.push({
         attachmentDtlTypeId: type.id,
         typeName: type.name || String(type.id),
+        sortId: type.sortId ?? 0,
         items: itemsByType.get(key) ?? [],
       });
     }
@@ -93,6 +91,7 @@ export function toEditableCtns(
       groups.push({
         attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
         typeName: resolveExistingTypeName(group),
+        sortId: group.attachmentDtlType?.sortId ?? 0,
         items: itemsByType.get(key) ?? [],
       });
     }
@@ -101,9 +100,12 @@ export function toEditableCtns(
       groups.push({
         attachmentDtlTypeId: null,
         typeName: DEFAULT_GROUP_NAME,
+        sortId: 0,
         items: [],
       });
     }
+
+    groups.sort((a, b) => (b.sortId ?? 0) - (a.sortId ?? 0));
 
     return {
       id: ctn.id,

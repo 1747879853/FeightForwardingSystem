@@ -2,7 +2,7 @@
 title: 附件类型
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -36,6 +36,7 @@ last_updated: 2026-09-05
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **类型名称** | 附件详细类型显示名，如提单、托书。 | `AttachmentDtlTypeAdmin/AddAsync`、`EditAsync` | 列表与业务附件返回 `AttachmentDtlTypeSimpleDto.name` | 必填，最长 100 字符。 |
+| **排序号 sortId** | 类型展示顺序，值越大越靠前。 | 表单 `sortId`；列表默认 `SortId DESC` | **触发/依赖：** 各业务附件分组前端按类型原始 `sortId` 降序排卡片（含手动添加类型）；`GetListAsync`/`GetListByModuleTypesAsync` 后端仍升序返回 | 可选整数，表单默认 `0`、最小 `0`。 |
 | **默认展示模块** | 新建业务单据时默认展示该类型上传口的模块集合。 | 系统枚举 `ModuleType`（`getItemsByName`，value 如 160050=业务联系单、160100=监装箱型附件）+ 子表 `moduleType` | **触发/依赖：** 列表经可变 `moduleTypeLabelMapHolder` 映射显示名后再查询；表单下拉仅启用项 | 可选多选；编辑时全量替换子表。 |
 | **创建人** | 类型创建者昵称。 | 详情/分页返回 `creatorUserName` | 只读 | 无修改人字段。 |
 
@@ -49,6 +50,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 无 | 各业务附件分组按类型原始 `sortId` 降序，手动添加类型不再垫底。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-05 | `Fix` | 去掉 `ModuleType` 代码兜底；监装/业务联系单须在枚举管理补 `160100`/`160050`。 | 删除 `KNOWN_MODULE_TYPE_FALLBACKS`；漏配显示数字、下拉无对应项。 |
 | 2026-08-04 | `Fix` | 默认展示模块 `160050` 回显为「业务联系单」，下拉可选。 | 当时用 `KNOWN_MODULE_TYPE_FALLBACKS`；2026-09-05 已改为枚举维护。 |
 | 2026-07-28 | `Fix` | 列表「默认展示模块」显示 ModuleType 枚举中文名（客户/海运出口/付费申请等）。 | formatter 改为读可变 `holder.map`；`autoLoad: false` 且映射就绪后再 query；勿用 CommonLookup（无业务模块码）。 |

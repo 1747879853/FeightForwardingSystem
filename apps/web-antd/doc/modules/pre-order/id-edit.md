@@ -18,7 +18,7 @@ last_updated: 2026-09-14
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后先 `syncFormSnapshot`，再 `replace` 到编辑路由、`closeTabByKey` 关掉新建页签，然后重新拉详情。
-- **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。点击文件打开全站附件查看器。
+- **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`，卡片按类型原始 `sortId` 降序。录入/驳回可增删；待审核/通过只读展示。点击文件打开全站附件查看器。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」后隐藏保存/提交按钮。
 - **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」，重新显示保存/提交。
 - **审核通过 / 审核驳回：** 「待审核」状态下弹窗填写意见；通过时若缺少「操作」干系人，弹窗强制先指派。
@@ -123,6 +123,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 附件分组按类型原始 `sortId` 降序，历史组不再垫底。 | 额外拉 `GetListAsync` 补历史类型 sortId。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-14 | `Feature` | 主表新增船名/航次合并输入与车队下拉；已有单据回显，清空保存可解除。 | 海进 maxlength 32、其余 64；`VesselVoyageInput` 的 `componentProps` 必须是函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)。 |
 | 2026-09-05 | `Fix` | 新建保存成功后 `replace` 进编辑并关闭新建页签。 | 跳转前已 `syncFormSnapshot`。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |
 | 2026-09-05 | `Feature` | 点击附件改为全站弹窗预览，不再新开浏览器窗口。 | `openAttachmentViewer`。详见 `changelogs/change-log-2026-09-05-global-attachment-viewer.md`。 |

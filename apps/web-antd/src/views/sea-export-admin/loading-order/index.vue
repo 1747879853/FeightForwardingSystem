@@ -52,7 +52,7 @@ import { getLoadingRequirementPagedList } from '#/api/system/base-data/loading-r
 import { UserAttribute } from '#/api/system/user-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, compareAttachmentTypeSortIdDesc } from '#/utils';
 import SharePreviewModal from '#/views/loading-order-share/share-preview-modal.vue';
 
 import cameraIcon from './assets/camera.svg';
@@ -121,6 +121,7 @@ type EditablePhoto = {
 type EditableGroup = {
   attachmentDtlTypeId: null | number | string;
   typeName: string;
+  sortId: number;
   items: EditablePhoto[];
 };
 
@@ -149,7 +150,7 @@ function resolveExistingTypeName(
   );
 }
 
-/** 先铺维护的附件类型空槽，再填该箱已有照片；历史未分类组追加在后 */
+/** 先铺维护的附件类型空槽，再填该箱已有照片；全部按类型原始 sortId 降序 */
 function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   const existing = ctn.attachmentGroups ?? [];
   const itemsByType = new Map<string, EditablePhoto[]>();
@@ -169,16 +170,14 @@ function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
 
   const groups: EditableGroup[] = [];
   const seen = new Set<string>();
-  const sortedTypes = [...attachmentTypes.value].sort(
-    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
-  );
 
-  for (const type of sortedTypes) {
+  for (const type of attachmentTypes.value) {
     const key = typeIdKey(type.id);
     seen.add(key);
     groups.push({
       attachmentDtlTypeId: type.id,
       typeName: type.name || String(type.id),
+      sortId: type.sortId ?? 0,
       items: itemsByType.get(key) ?? [],
     });
   }
@@ -190,6 +189,7 @@ function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
     groups.push({
       attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
       typeName: resolveExistingTypeName(group),
+      sortId: group.attachmentDtlType?.sortId ?? 0,
       items: itemsByType.get(key) ?? [],
     });
   }
@@ -198,11 +198,14 @@ function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
     groups.push({
       attachmentDtlTypeId: null,
       typeName: DEFAULT_PHOTO_GROUP_NAME,
+      sortId: 0,
       items: [],
     });
   }
 
-  return groups;
+  return groups.sort((a, b) =>
+    compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
+  );
 }
 
 const loadAttachmentTypes = async () => {

@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-14] [业务附件按原始 sortId 降序](./changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)
 - [2026-09-14] [PC监装状态配色优化](./changelogs/change-log-2026-09-14-PC监装状态配色.md)
 
 - [2026-09-14] [业务联系单船名航次车队](./changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)
