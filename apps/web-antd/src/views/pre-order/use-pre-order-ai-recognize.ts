@@ -42,7 +42,6 @@ export type UsePreOrderAiRecognizeDeps = {
   /** 回填完成后的联动与 selectedItems 注入 */
   afterApply: (ctx: {
     formValues: Record<string, unknown>;
-    extractedSchema?: Record<string, unknown>;
     preOrderCodeGoodss: Array<number | string>;
     preOrderCtns: TextInAdminApi.PreOrderCtnExtractAddDto[];
   }) => Promise<void> | void;
@@ -59,7 +58,6 @@ export function usePreOrderAiRecognize(deps: UsePreOrderAiRecognizeDeps) {
     options?: {
       preOrderCtnsPayload?: TextInAdminApi.PreOrderCtnExtractAddDto[];
       preOrderCodeGoodssPayload?: Array<number | string>;
-      extractedSchema?: Record<string, unknown>;
     },
   ) => {
     await Promise.all([
@@ -89,7 +87,6 @@ export function usePreOrderAiRecognize(deps: UsePreOrderAiRecognizeDeps) {
 
     await afterApply({
       formValues: values,
-      extractedSchema: options?.extractedSchema,
       preOrderCodeGoodss: options?.preOrderCodeGoodssPayload ?? [],
       preOrderCtns: options?.preOrderCtnsPayload ?? [],
     });
@@ -113,10 +110,6 @@ export function usePreOrderAiRecognize(deps: UsePreOrderAiRecognizeDeps) {
     const hideLoading = message.loading('AI识别中，请稍候...', 0);
     try {
       const result = await extractPreOrderToAddDto(file, getBizType());
-      if (result.extract?.code != null && result.extract.code !== 200) {
-        message.error(result.extract.message || 'AI识别失败，请稍后重试');
-        return false;
-      }
 
       const payload = buildAiExtractFormPayload(result, {
         allowedFields: AI_RECOGNIZE_ALLOWED_FIELDS,
@@ -131,13 +124,9 @@ export function usePreOrderAiRecognize(deps: UsePreOrderAiRecognizeDeps) {
       await applyAiRecognizedFormValues(payload.formValues, {
         preOrderCtnsPayload: payload.preOrderCtns,
         preOrderCodeGoodssPayload: payload.preOrderCodeGoodss,
-        extractedSchema: result.extract?.extractedSchema,
       });
 
-      const cacheHint = result.extract?.isFromCache ? '（缓存）' : '';
-      message.success(
-        `AI识别完成${cacheHint}，已回填 ${recognizedFieldCount} 个字段`,
-      );
+      message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
       if (payload.unmatchedCtnCount > 0) {
         message.warning(
           `有 ${payload.unmatchedCtnCount} 条箱型未匹配系统数据，请按识别原文补选箱型`,
@@ -145,7 +134,6 @@ export function usePreOrderAiRecognize(deps: UsePreOrderAiRecognizeDeps) {
       }
       return true;
     } catch {
-      message.error('AI识别失败，请稍后重试');
       return false;
     } finally {
       hideLoading();

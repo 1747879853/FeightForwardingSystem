@@ -67,7 +67,7 @@ import {
 import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
-import { pickExtractedLabel, resolveCitationKeys } from './ai-extract-utils';
+import { splitPortRemark } from './ai-extract-utils';
 import {
   buildPreOrderPortSelectProps,
   buildPreOrderServiceTradeTermsProps,
@@ -742,33 +742,19 @@ const nextRowKey = (prefix: string) =>
  */
 async function applyAiExtractAfterFill(ctx: {
   formValues: Record<string, unknown>;
-  extractedSchema?: Record<string, unknown>;
 }) {
   const values = ctx.formValues;
-  const schema = ctx.extractedSchema ?? {};
-  const clientLabel = pickExtractedLabel(
-    schema,
-    resolveCitationKeys('clientId'),
+  const pol = splitPortRemark(values.polRemark as string | undefined);
+  const pod = splitPortRemark(values.podRemark as string | undefined);
+  const receivePort = splitPortRemark(
+    values.receivePortRemark as string | undefined,
   );
-  const carrierLabel = pickExtractedLabel(
-    schema,
-    resolveCitationKeys('carrierId'),
-  );
-  const codeFrtLabel = pickExtractedLabel(
-    schema,
-    resolveCitationKeys('codeFrtId'),
-  );
-  const codeServiceLabel = pickExtractedLabel(
-    schema,
-    resolveCitationKeys('codeServiceId'),
-  );
-  const codePackageLabel = pickExtractedLabel(
-    schema,
-    resolveCitationKeys('codePackageId'),
+  const deliverPort = splitPortRemark(
+    values.deliverPortRemark as string | undefined,
   );
 
   if (values.clientId != null) {
-    bindClientUserLinkage(toSelectedItems(values.clientId, clientLabel));
+    bindClientUserLinkage(toSelectedItems(values.clientId, ''));
   }
 
   const basicSchemaUpdates: Array<{
@@ -779,9 +765,7 @@ async function applyAiExtractAfterFill(ctx: {
     basicSchemaUpdates.push({
       fieldName: 'carrierId',
       componentProps: {
-        selectedItems: toCarrierSelectedItems(values.carrierId as any, {
-          cnShortName: carrierLabel || undefined,
-        }),
+        selectedItems: toCarrierSelectedItems(values.carrierId as any),
       },
     });
   }
@@ -789,10 +773,7 @@ async function applyAiExtractAfterFill(ctx: {
     basicSchemaUpdates.push({
       fieldName: 'codeFrtId',
       componentProps: {
-        selectedItems: toCodeNamedSelectedItems(values.codeFrtId, {
-          cnName: codeFrtLabel || undefined,
-          enName: codeFrtLabel || undefined,
-        }),
+        selectedItems: toCodeNamedSelectedItems(values.codeFrtId),
       },
     });
   }
@@ -800,10 +781,7 @@ async function applyAiExtractAfterFill(ctx: {
     basicSchemaUpdates.push({
       fieldName: 'codeServiceId',
       componentProps: buildPreOrderServiceTradeTermsProps(
-        toCodeNamedSelectedItems(values.codeServiceId, {
-          enName: codeServiceLabel || undefined,
-          cnName: codeServiceLabel || undefined,
-        }),
+        toCodeNamedSelectedItems(values.codeServiceId),
       ),
     });
   }
@@ -814,8 +792,9 @@ async function applyAiExtractAfterFill(ctx: {
         ...buildPreOrderPortSelectProps('polId', handleBasicPortChange),
         selectedItems: toPortSelectedItems(
           values.polId,
-          pickExtractedLabel(schema, ['起运港名称']),
-          pickExtractedLabel(schema, ['起运港代码']),
+          pol.portName,
+          undefined,
+          pol.countryEnName,
         ),
       },
     });
@@ -827,8 +806,9 @@ async function applyAiExtractAfterFill(ctx: {
         ...buildPreOrderPortSelectProps('podId', handleBasicPortChange),
         selectedItems: toPortSelectedItems(
           values.podId,
-          pickExtractedLabel(schema, ['目的港名称']),
-          pickExtractedLabel(schema, ['目的港代码']),
+          pod.portName,
+          undefined,
+          pod.countryEnName,
         ),
       },
     });
@@ -852,8 +832,9 @@ async function applyAiExtractAfterFill(ctx: {
         'receivePortId',
         toPortSelectedItems(
           values.receivePortId,
-          pickExtractedLabel(schema, ['收货地名称']),
-          pickExtractedLabel(schema, ['收货地代码']),
+          receivePort.portName,
+          undefined,
+          receivePort.countryEnName,
         ),
       ),
     });
@@ -865,8 +846,9 @@ async function applyAiExtractAfterFill(ctx: {
         'polId',
         toPortSelectedItems(
           values.polId,
-          pickExtractedLabel(schema, ['起运港名称']),
-          pickExtractedLabel(schema, ['起运港代码']),
+          pol.portName,
+          undefined,
+          pol.countryEnName,
         ),
       ),
     });
@@ -878,8 +860,9 @@ async function applyAiExtractAfterFill(ctx: {
         'podId',
         toPortSelectedItems(
           values.podId,
-          pickExtractedLabel(schema, ['目的港名称']),
-          pickExtractedLabel(schema, ['目的港代码']),
+          pod.portName,
+          undefined,
+          pod.countryEnName,
         ),
       ),
     });
@@ -891,8 +874,9 @@ async function applyAiExtractAfterFill(ctx: {
         'deliverPortId',
         toPortSelectedItems(
           values.deliverPortId,
-          pickExtractedLabel(schema, ['交货地名称']),
-          pickExtractedLabel(schema, ['交货港代码']),
+          deliverPort.portName,
+          undefined,
+          deliverPort.countryEnName,
         ),
       ),
     });
@@ -907,9 +891,7 @@ async function applyAiExtractAfterFill(ctx: {
       {
         fieldName: 'codePackageId',
         componentProps: {
-          selectedItems: toCodePackageSelectedItems(values.codePackageId, {
-            name: codePackageLabel || undefined,
-          }),
+          selectedItems: toCodePackageSelectedItems(values.codePackageId),
         },
       },
     ]);
@@ -917,10 +899,6 @@ async function applyAiExtractAfterFill(ctx: {
 
   if (values.clientId != null) {
     currentClientId.value = String(values.clientId);
-    if (clientLabel) {
-      currentClientName.value = clientLabel;
-      rememberPartyName(currentClientId.value, clientLabel);
-    }
     await applyClientDefaultUsersByClientId(values.clientId);
   }
   if (values.polId != null) {

@@ -27,32 +27,20 @@ export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
   'ofd',
 ]);
 
-/** 表单字段 -> citations 中文字段名（可多 key） */
-export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
-  carrierId: ['船公司简称', '船公司'],
-  receivePortId: ['收货地名称', '收货地代码'],
-  polId: ['起运港名称', '起运港代码'],
-  podId: ['目的港名称', '目的港代码'],
-  deliverPortId: ['交货地名称', '交货港代码'],
-  mblNum: ['主提单号'],
-  vessel: ['船名'],
-  innerVoyno: ['航次'],
-  clientId: ['委托单位'],
-  consigneeContent: ['收货人'],
-  shipperContent: ['发货人'],
-  notifierContent: ['通知人'],
-  pkgs: ['件数'],
-  kgs: ['毛重kgs'],
-  cbm: ['体积cbm'],
-  goodsCompleteTime: ['货好日期'],
-  etd: ['开船日期'],
-  codePackageId: ['包装'],
-  codeServiceId: ['运输条款'],
-  codeFrtId: ['付费方式'],
-  tradeTermsType: ['贸易条款'],
-  preOrderCodeGoodss: ['品名'],
-  preOrderCtns: ['集装箱信息', '箱型箱量'],
-};
+/** 解析港口备注「PortName, CountryEnName」 */
+export function splitPortRemark(remark?: null | string): {
+  countryEnName?: string;
+  portName: string;
+} {
+  const raw = (remark ?? '').trim();
+  if (!raw) return { portName: '' };
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx < 0) return { portName: raw };
+  return {
+    portName: raw.slice(0, commaIdx).trim(),
+    countryEnName: raw.slice(commaIdx + 1).trim() || undefined,
+  };
+}
 
 export function isEmptyRecognizedValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -71,10 +59,6 @@ export function isAiExtractSupportedFile(file: File): boolean {
   if (ext === 'pdf') return true;
   if (AI_EXTRACT_IMAGE_EXTENSIONS.has(ext)) return true;
   return AI_EXTRACT_OFFICE_EXTENSIONS.has(ext);
-}
-
-export function resolveCitationKeys(fieldName: string): string[] {
-  return FORM_FIELD_CITATION_KEYS[fieldName] ?? [];
 }
 
 function pickProp<T = unknown>(
@@ -135,13 +119,13 @@ function hasUsefulPreOrderCtn(
 }
 
 export function buildAiExtractFormPayload(
-  dto: TextInAdminApi.PreOrderExtractAddDto,
+  dto: TextInAdminApi.PreOrderExtractFormDto,
   options: {
     allowedFields: Set<string>;
     normalizeValue: (field: string, value: unknown) => unknown;
   },
 ): AiExtractFormPayload {
-  const preOrderRaw = (dto.preOrder ?? {}) as Record<string, unknown>;
+  const preOrderRaw = dto as unknown as Record<string, unknown>;
   const filledFields: string[] = [];
 
   const assignScalar = (
@@ -293,18 +277,6 @@ export function buildAiExtractFormPayload(
     filledFields,
     unmatchedCtnCount,
   };
-}
-
-export function pickExtractedLabel(
-  schema: Record<string, unknown> | undefined,
-  keys: string[],
-): string {
-  if (!schema) return '';
-  for (const key of keys) {
-    const value = schema[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
 }
 
 /** AI 识别允许回填的表单字段白名单（仅接口会回填且表单已有的字段） */

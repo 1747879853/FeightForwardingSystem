@@ -1,4 +1,3 @@
-import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { TextInAdminApi } from '#/api/common/text-in-admin';
 
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
@@ -29,38 +28,20 @@ export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
   'rtf',
 ]);
 
-/** 表单字段 -> citations 中文字段名（可多 key） */
-export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
-  vessel: ['船名'],
-  innerVoyno: ['航次'],
-  terminalVoyno: ['码头航次'],
-  carrierId: ['船公司简称', '船公司'],
-  shipAgentId: ['船代'],
-  codeIssueTypeId: ['签单方式'],
-  signingPortId: ['签单地点'],
-  signingTime: ['签单日期'],
-  polId: ['起运港名称', '起运港代码'],
-  podId: ['目的港名称', '目的港代码'],
-  deliverPortId: ['交货地名称', '交货港代码'],
-  mblNum: ['主提单号'],
-  bookingNum: ['订舱编号'],
-  clientId: ['委托单位'],
-  consigneeContent: ['收货人'],
-  shipperContent: ['发货人'],
-  notifierContent: ['通知人'],
-  marks: ['唛头'],
-  goodsDes: ['货物描述'],
-  pkgs: ['件数'],
-  kgs: ['毛重kgs'],
-  cbm: ['体积cbm'],
-  goodsCompleteTime: ['货好日期'],
-  etd: ['开船日期'],
-  codePackageId: ['包装'],
-  codeServiceId: ['运输条款'],
-  tradeTermsType: ['贸易条款'],
-  orderCodeGoodss: ['品名'],
-  orderCtns: ['箱型箱量'],
-};
+/** 解析港口备注「PortName, CountryEnName」 */
+export function splitPortRemark(remark?: null | string): {
+  countryEnName?: string;
+  portName: string;
+} {
+  const raw = (remark ?? '').trim();
+  if (!raw) return { portName: '' };
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx < 0) return { portName: raw };
+  return {
+    portName: raw.slice(0, commaIdx).trim(),
+    countryEnName: raw.slice(commaIdx + 1).trim() || undefined,
+  };
+}
 
 export function isEmptyRecognizedValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -87,38 +68,58 @@ export function isPdfFile(file: File): boolean {
   );
 }
 
-export function resolveCitationKeys(fieldName: string): string[] {
-  return FORM_FIELD_CITATION_KEYS[fieldName] ?? [];
-}
-
-export function resolveCitationForField(
-  fieldName: string,
-  citations?: Record<string, TextInAdminApi.TextInFieldCitationDto>,
-): TextInAdminApi.TextInFieldCitationDto | undefined {
-  if (!citations) return undefined;
-  for (const key of resolveCitationKeys(fieldName)) {
-    const citation = citations[key];
-    if (citation) return citation;
-  }
-  return undefined;
-}
-
 export interface AiExtractFormPayload {
   formValues: Record<string, unknown>;
-  orderCtns: SeaExportAdminApi.OrderCtnAddDto[];
+  orderCtns: TextInAdminApi.OrderCtnExtractAddDto[];
   orderCodeGoodss: number[];
   filledFields: string[];
+  unmatchedCtnCount: number;
+}
+
+function normalizeExtractOrderCtn(
+  item: TextInAdminApi.OrderCtnExtractAddDto,
+): TextInAdminApi.OrderCtnExtractAddDto {
+  const ctnCodeId = isEmptyRecognizedValue(item.ctnCodeId)
+    ? undefined
+    : item.ctnCodeId;
+  const codePackageId = isEmptyRecognizedValue(item.codePackageId)
+    ? undefined
+    : item.codePackageId;
+
+  return {
+    ...item,
+    ctnCodeId,
+    ctnCodeName: (item.ctnCodeName ?? '').trim() || undefined,
+    codePackageId,
+    codePackageName: (item.codePackageName ?? '').trim() || undefined,
+  };
+}
+
+function hasUsefulOrderCtn(
+  item: TextInAdminApi.OrderCtnExtractAddDto,
+): boolean {
+  return (
+    !isEmptyRecognizedValue(item.ctnCodeId) ||
+    !!(item.ctnCodeName && item.ctnCodeName.trim()) ||
+    !!(item.ctnNo && item.ctnNo.trim()) ||
+    !!(item.sealNo && item.sealNo.trim()) ||
+    !isEmptyRecognizedValue(item.pkgs) ||
+    !isEmptyRecognizedValue(item.grossWeight) ||
+    !isEmptyRecognizedValue(item.volume)
+  );
 }
 
 export function buildAiExtractFormPayload(
-  dto: TextInAdminApi.SeaExportExtractAddDto,
+  dto: TextInAdminApi.SeaExportExtractFormDto,
   options: {
     allowedFields: Set<string>;
     normalizeValue: (field: string, value: unknown) => unknown;
   },
 ): AiExtractFormPayload {
-  const seaExport = dto.seaExport ?? {};
-  const transportOrder = seaExport.transportOrder ?? {};
+  const seaExport = dto;
+  const transportOrder =
+    seaExport.transportOrder ??
+    ({} as TextInAdminApi.TransportOrderExtractAddDto);
   const filledFields: string[] = [];
 
   const assignScalar = (
@@ -186,9 +187,21 @@ export function buildAiExtractFormPayload(
   assignScalar(formValues, 'internalRemark', transportOrder.internalRemark);
   assignScalar(formValues, 'remark', transportOrder.remark);
 
-  const orderCtns = (transportOrder.orderCtns ?? []).filter(
-    (item) => !isEmptyRecognizedValue(item?.ctnCodeId),
-  );
+  let unmatchedCtnCount = 0;
+  const orderCtns = (transportOrder.orderCtns ?? [])
+    .map((item) => normalizeExtractOrderCtn(item))
+    .filter(hasUsefulOrderCtn);
+
+  for (const item of orderCtns) {
+    if (
+      isEmptyRecognizedValue(item.ctnCodeId) &&
+      item.ctnCodeName &&
+      item.ctnCodeName.trim()
+    ) {
+      unmatchedCtnCount += 1;
+    }
+  }
+
   if (orderCtns.length > 0) {
     filledFields.push('orderCtns');
   }
@@ -205,19 +218,8 @@ export function buildAiExtractFormPayload(
     orderCtns,
     orderCodeGoodss,
     filledFields,
+    unmatchedCtnCount,
   };
-}
-
-export function pickExtractedLabel(
-  schema: Record<string, unknown> | undefined,
-  keys: string[],
-): string {
-  if (!schema) return '';
-  for (const key of keys) {
-    const value = schema[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
 }
 
 /** AI 识别允许回填的表单字段白名单 */

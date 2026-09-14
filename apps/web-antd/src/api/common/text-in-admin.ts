@@ -6,31 +6,54 @@ import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 import { requestClient } from '#/api/request';
 
 export namespace TextInAdminApi {
-  export interface TextInBoundingRegionDto {
-    pageNumber?: number;
-    position?: number[];
-    text?: string;
+  /** 海运出口箱型抽取扩展：带展示用名称，便于未匹配 id 时回显识别原文 */
+  export interface OrderCtnExtractAddDto
+    extends SeaExportAdminApi.OrderCtnAddDto {
+    ctnCodeName?: null | string;
+    codePackageName?: null | string;
   }
 
-  export interface TextInFieldCitationDto {
-    value?: string;
-    boundingRegions?: TextInBoundingRegionDto[];
+  /** 海运出口 transportOrder 抽取字段 */
+  export interface TransportOrderExtractAddDto extends Omit<
+    SeaExportAdminApi.TransportOrderAddDto,
+    'orderCtns' | 'orderCodeGoodss' | 'orderUsers'
+  > {
+    orderCtns?: OrderCtnExtractAddDto[];
+    orderCodeGoodss?: SeaExportAdminApi.OrderCodeGoodsAddDto[];
+    orderUsers?: SeaExportAdminApi.OrderUserAddDto[];
   }
 
-  export interface TextInExtractResultDto {
-    code?: number;
-    message?: string;
-    version?: string;
-    duration?: number;
-    status?: string;
-    extractedSchema?: Record<string, unknown>;
-    citations?: Record<string, TextInFieldCitationDto>;
-    isFromCache?: boolean;
-  }
-
-  export interface SeaExportExtractAddDto {
-    seaExport?: SeaExportAdminApi.SeaExportAddDto;
-    extract?: TextInExtractResultDto;
+  /** 海运出口出参（Gemini 直接返回表单对象，无外层包装） */
+  export interface SeaExportExtractFormDto extends Partial<
+    Pick<
+      SeaExportAdminApi.SeaExportAddDto,
+      | 'billType'
+      | 'blType'
+      | 'carrierId'
+      | 'codeIssueTypeId'
+      | 'deliverPortId'
+      | 'deliverPortRemark'
+      | 'innerVoyno'
+      | 'issueType'
+      | 'podId'
+      | 'podRemark'
+      | 'polId'
+      | 'polRemark'
+      | 'poT1Id'
+      | 'poT1Remark'
+      | 'poT2Id'
+      | 'poT2Remark'
+      | 'receivePortId'
+      | 'receivePortRemark'
+      | 'shipAgentId'
+      | 'signingPortId'
+      | 'signingTime'
+      | 'terminalVoyno'
+      | 'vessel'
+    >
+  > {
+    serviceTypes?: SeaExportAdminApi.SeaExportServiceItemDto[];
+    transportOrder?: TransportOrderExtractAddDto;
   }
 
   /** 海运进口箱型抽取扩展：带展示用名称，便于未匹配 id 时回显识别原文 */
@@ -48,11 +71,6 @@ export namespace TextInAdminApi {
     orderCtns?: SeaImportOrderCtnExtractAddDto[];
   }
 
-  export interface SeaImportExtractAddDto {
-    seaImport?: SeaImportExtractFormDto;
-    extract?: TextInExtractResultDto;
-  }
-
   /** 业务联系单箱型抽取扩展：带箱型名，便于未匹配 id 时回显识别原文 */
   export interface PreOrderCtnExtractAddDto extends Omit<
     PreOrderAdminApi.PreOrderCtnDto,
@@ -68,19 +86,9 @@ export namespace TextInAdminApi {
   > {
     preOrderCtns?: PreOrderCtnExtractAddDto[];
   }
-
-  export interface PreOrderExtractAddDto {
-    preOrder?: PreOrderExtractFormDto;
-    extract?: TextInExtractResultDto;
-  }
-
-  export interface AirExportExtractAddDto {
-    airExport?: AirExportAdminApi.AirExportAddDto;
-    extract?: TextInExtractResultDto;
-  }
 }
 
-const TEXT_IN_EXTRACT_REQUEST_OPTIONS = {
+const GEMINI_EXTRACT_REQUEST_OPTIONS = {
   timeout: 120_000,
   headers: {
     'Content-Type': 'multipart/form-data',
@@ -88,34 +96,34 @@ const TEXT_IN_EXTRACT_REQUEST_OPTIONS = {
 } as const;
 
 /**
- * TextIn 海运出口智能抽取并转换为新建 Dto（含名称→id 匹配）
+ * Gemini 海运出口智能抽取并转换为新建 Dto（含名称→id 匹配）
  */
 export const extractSeaExportToAddDto = (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  return requestClient.post<TextInAdminApi.SeaExportExtractAddDto>(
-    '/services/app/TextInAdmin/ExtractSeaExportToAddDtoAsync',
+  return requestClient.post<TextInAdminApi.SeaExportExtractFormDto>(
+    '/services/app/GeminiAdmin/ExtractSeaExportToAddDtoAsync',
     formData,
-    TEXT_IN_EXTRACT_REQUEST_OPTIONS,
+    GEMINI_EXTRACT_REQUEST_OPTIONS,
   );
 };
 
 /**
- * TextIn 海运进口智能抽取并转换为新建 Dto（含名称→id 匹配）
- * 箱子在 seaImport.orderCtns；到港日期落在 transportOrder.etd；支持同文件缓存。
+ * Gemini 海运进口智能抽取并转换为新建 Dto（含名称→id 匹配）
+ * 箱子在 orderCtns；到港日期落在 transportOrder.etd。
  */
 export const extractSeaImportToAddDto = (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  return requestClient.post<TextInAdminApi.SeaImportExtractAddDto>(
-    '/services/app/TextInAdmin/ExtractSeaImportToAddDtoAsync',
+  return requestClient.post<TextInAdminApi.SeaImportExtractFormDto>(
+    '/services/app/GeminiAdmin/ExtractSeaImportToAddDtoAsync',
     formData,
-    TEXT_IN_EXTRACT_REQUEST_OPTIONS,
+    GEMINI_EXTRACT_REQUEST_OPTIONS,
   );
 };
 
 /**
- * TextIn 业务联系单智能抽取并转换为新建 Dto（含名称→id 匹配）
+ * Gemini 业务联系单智能抽取并转换为新建 Dto（含名称→id 匹配）
  * bizType 须放 form 字段或 query，不可放 JSON body；不传默认海运出口 0。
  */
 export const extractPreOrderToAddDto = (file: File, bizType?: number) => {
@@ -124,23 +132,23 @@ export const extractPreOrderToAddDto = (file: File, bizType?: number) => {
   if (bizType != null) {
     formData.append('bizType', String(bizType));
   }
-  return requestClient.post<TextInAdminApi.PreOrderExtractAddDto>(
-    '/services/app/TextInAdmin/ExtractPreOrderToAddDtoAsync',
+  return requestClient.post<TextInAdminApi.PreOrderExtractFormDto>(
+    '/services/app/GeminiAdmin/ExtractPreOrderToAddDtoAsync',
     formData,
-    TEXT_IN_EXTRACT_REQUEST_OPTIONS,
+    GEMINI_EXTRACT_REQUEST_OPTIONS,
   );
 };
 
 /**
- * TextIn 空运出口智能抽取并转换为新建 Dto（含名称→id 匹配）。
- * 空港匹配 AirPort；货物明细在 airExport.airExportOrderCtns；支持同文件缓存。
+ * Gemini 空运出口智能抽取并转换为新建 Dto（含名称→id 匹配）。
+ * 空港匹配 AirPort；货物明细在 airExportOrderCtns。
  */
 export const extractAirExportToAddDto = (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  return requestClient.post<TextInAdminApi.AirExportExtractAddDto>(
-    '/services/app/TextInAdmin/ExtractAirExportToAddDtoAsync',
+  return requestClient.post<AirExportAdminApi.AirExportAddDto>(
+    '/services/app/GeminiAdmin/ExtractAirExportToAddDtoAsync',
     formData,
-    TEXT_IN_EXTRACT_REQUEST_OPTIONS,
+    GEMINI_EXTRACT_REQUEST_OPTIONS,
   );
 };

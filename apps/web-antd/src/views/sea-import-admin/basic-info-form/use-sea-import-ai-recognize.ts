@@ -24,8 +24,7 @@ import {
   buildAiExtractFormPayload,
   isAiExtractSupportedFile,
   normalizeAiFieldValue,
-  pickExtractedLabel,
-  resolveCitationKeys,
+  splitPortRemark,
 } from './ai-extract-utils';
 
 type AiRecognizeFormApi = {
@@ -121,36 +120,23 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     }
   };
 
-  const applyAiExtractSelectedItems = (
-    values: Record<string, any>,
-    extractedSchema?: Record<string, unknown>,
-  ) => {
-    const schema = extractedSchema ?? {};
+  const applyAiExtractSelectedItems = (values: Record<string, any>) => {
     const item = (fieldName: string, componentProps: Record<string, any>) => ({
       fieldName,
       componentProps: { ...componentProps, size: 'small' },
     });
+    const pol = splitPortRemark(values.polRemark);
+    const pod = splitPortRemark(values.podRemark);
 
     formApis.basic.updateSchema([
       item('clientId', {
-        selectedItems: toSelectedItems(
-          values.clientId,
-          pickExtractedLabel(schema, resolveCitationKeys('clientId')),
-        ),
+        selectedItems: toSelectedItems(values.clientId, ''),
       }),
       item('carrierId', {
-        selectedItems: toSelectedItems(
-          values.carrierId,
-          pickExtractedLabel(schema, resolveCitationKeys('carrierId')),
-          'cnShortName',
-        ),
+        selectedItems: toSelectedItems(values.carrierId, '', 'cnShortName'),
       }),
       item('codeServiceId', {
-        selectedItems: toSelectedItems(
-          values.codeServiceId,
-          pickExtractedLabel(schema, resolveCitationKeys('codeServiceId')),
-          'enName',
-        ),
+        selectedItems: toSelectedItems(values.codeServiceId, '', 'enName'),
       }),
     ]);
 
@@ -158,25 +144,22 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
       item('polId', {
         selectedItems: toPortSelectedItems(
           values.polId,
-          pickExtractedLabel(schema, ['起运港名称']),
-          pickExtractedLabel(schema, ['起运港代码']),
+          pol.portName,
+          undefined,
+          pol.countryEnName,
         ),
       }),
       item('podId', {
         selectedItems: toPortSelectedItems(
           values.podId,
-          pickExtractedLabel(schema, ['目的港名称']),
-          pickExtractedLabel(schema, ['目的港代码']),
+          pod.portName,
+          undefined,
+          pod.countryEnName,
         ),
       }),
     ]);
 
-    setCodePackageSelectedItems?.(
-      toSelectedItems(
-        values.codePackageId,
-        pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
-      ),
-    );
+    setCodePackageSelectedItems?.(toSelectedItems(values.codePackageId, ''));
   };
 
   /**
@@ -197,10 +180,6 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     const hideLoading = message.loading('AI识别中，请稍候...', 0);
     try {
       const result = await extractSeaImportToAddDto(file);
-      if (result.extract?.code != null && result.extract.code !== 200) {
-        message.error(result.extract.message || 'AI识别失败，请稍后重试');
-        return false;
-      }
 
       const payload = buildAiExtractFormPayload(result, {
         allowedFields: AI_RECOGNIZE_ALLOWED_FIELDS,
@@ -212,19 +191,13 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
         return false;
       }
 
-      applyAiExtractSelectedItems(
-        payload.formValues,
-        result.extract?.extractedSchema,
-      );
+      applyAiExtractSelectedItems(payload.formValues);
       await applyAiRecognizedFormValues(payload.formValues, {
         orderCtnsPayload: payload.orderCtns,
         orderCodeGoodssPayload: payload.orderCodeGoodss,
       });
 
-      const cacheHint = result.extract?.isFromCache ? '（缓存）' : '';
-      message.success(
-        `AI识别完成${cacheHint}，已回填 ${recognizedFieldCount} 个字段`,
-      );
+      message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
       if (payload.unmatchedCtnCount > 0) {
         message.warning(
           `有 ${payload.unmatchedCtnCount} 条箱型未匹配系统数据，请按识别原文补选箱型`,
@@ -232,7 +205,6 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
       }
       return true;
     } catch {
-      message.error('AI识别失败，请稍后重试');
       return false;
     } finally {
       hideLoading();

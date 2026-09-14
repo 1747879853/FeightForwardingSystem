@@ -1,8 +1,8 @@
 /**
  * 空运出口 AI 识别回填编排。
  *
- * 与海运出口差异：空港匹配 AirPort；货物明细读 airExport.airExportOrderCtns；
- * 起飞/预抵对应 etd/eta；航司只在 extract 中，不写入 airExport。
+ * 与海运出口差异：空港匹配 AirPort；货物明细读 airExportOrderCtns；
+ * 起飞/预抵对应 etd/eta；未匹配空港提示读 polRemark/potRemark/podRemark。
  * 纯规范化策略见 ./ai-extract-utils.ts。
  */
 import type { Ref } from 'vue';
@@ -25,8 +25,6 @@ import {
   buildAiExtractFormPayload,
   isAiExtractSupportedFile,
   normalizeAiFieldValue,
-  pickExtractedLabel,
-  resolveCitationKeys,
   toExtractAirPortSelectedItems,
 } from './ai-extract-utils';
 
@@ -118,11 +116,7 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
     syncTabTitleFromValues(values);
   };
 
-  const applyAiExtractSelectedItems = (
-    values: Record<string, any>,
-    extractedSchema?: Record<string, unknown>,
-  ) => {
-    const schema = extractedSchema ?? {};
+  const applyAiExtractSelectedItems = (values: Record<string, any>) => {
     const item = (fieldName: string, componentProps: Record<string, any>) => ({
       fieldName,
       componentProps: { ...componentProps, size: 'small' },
@@ -130,32 +124,20 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
 
     formApis.basic.updateSchema([
       item('clientId', {
-        selectedItems: toSelectedItems(
-          values.clientId,
-          pickExtractedLabel(schema, resolveCitationKeys('clientId')),
-        ),
+        selectedItems: toSelectedItems(values.clientId, ''),
       }),
       item('codeServiceId', {
-        selectedItems: toSelectedItems(
-          values.codeServiceId,
-          pickExtractedLabel(schema, resolveCitationKeys('codeServiceId')),
-          'enName',
-        ),
+        selectedItems: toSelectedItems(values.codeServiceId, '', 'enName'),
       }),
     ]);
 
-    const airPortProps = (
-      fieldName: 'podId' | 'polId' | 'potId',
-      nameKeys: string[],
-      codeKeys: string[],
-    ) => ({
+    const airPortProps = (fieldName: 'podId' | 'polId' | 'potId') => ({
       allowClear: true,
       labelKey: 'iataCode',
       placeholder: $t('ui.placeholder.select'),
       selectedItems: toExtractAirPortSelectedItems(
         values[fieldName],
-        pickExtractedLabel(schema, codeKeys),
-        pickExtractedLabel(schema, nameKeys),
+        values[`${fieldName.replace(/Id$/, 'Remark')}`],
       ),
       ...(onAirPortChange
         ? {
@@ -166,17 +148,12 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
     });
 
     formApis.airLeg.updateSchema([
-      item('polId', airPortProps('polId', ['起运地名称'], ['起运地代码'])),
-      item('potId', airPortProps('potId', ['中转地名称'], ['中转地代码'])),
-      item('podId', airPortProps('podId', ['目的地名称'], ['目的地代码'])),
+      item('polId', airPortProps('polId')),
+      item('potId', airPortProps('potId')),
+      item('podId', airPortProps('podId')),
     ]);
 
-    setCodePackageSelectedItems?.(
-      toSelectedItems(
-        values.codePackageId,
-        pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
-      ),
-    );
+    setCodePackageSelectedItems?.(toSelectedItems(values.codePackageId, ''));
   };
 
   /**
@@ -197,10 +174,6 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
     const hideLoading = message.loading('AI识别中，请稍候...', 0);
     try {
       const result = await extractAirExportToAddDto(file);
-      if (result.extract?.code != null && result.extract.code !== 200) {
-        message.error(result.extract.message || 'AI识别失败，请稍后重试');
-        return false;
-      }
 
       const payload = buildAiExtractFormPayload(result, {
         allowedFields: AI_RECOGNIZE_ALLOWED_FIELDS,
@@ -212,22 +185,13 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
         return false;
       }
 
-      applyAiExtractSelectedItems(
-        payload.formValues,
-        result.extract?.extractedSchema,
-      );
+      applyAiExtractSelectedItems(payload.formValues);
       await applyAiRecognizedFormValues(payload.formValues, {
         orderCtnsPayload: payload.orderCtns,
         orderCodeGoodssPayload: payload.orderCodeGoodss,
       });
 
-      const cacheHint = result.extract?.isFromCache ? '（缓存）' : '';
-      const airlineHint = payload.airlineLabel
-        ? `；航司原文：${payload.airlineLabel}`
-        : '';
-      message.success(
-        `AI识别完成${cacheHint}，已回填 ${recognizedFieldCount} 个字段${airlineHint}`,
-      );
+      message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
       if (payload.unmatchedLabels.length > 0) {
         message.warning(
           `${payload.unmatchedLabels.join('、')} 未匹配到系统数据，请手动补录`,
@@ -235,7 +199,6 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
       }
       return true;
     } catch {
-      message.error('AI识别失败，请稍后重试');
       return false;
     } finally {
       hideLoading();

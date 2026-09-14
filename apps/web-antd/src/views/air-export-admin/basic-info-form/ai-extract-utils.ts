@@ -1,5 +1,4 @@
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
-import type { TextInAdminApi } from '#/api/common/text-in-admin';
 
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
@@ -28,32 +27,6 @@ export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
   'ofd',
 ]);
 
-/** 表单字段 -> citations 中文字段名（可多 key） */
-export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
-  flightNo: ['航班'],
-  polId: ['起运地名称', '起运地代码'],
-  potId: ['中转地名称', '中转地代码'],
-  podId: ['目的地名称', '目的地代码'],
-  mblNum: ['主提单号'],
-  bookingNum: ['订舱编号'],
-  clientId: ['委托单位'],
-  consigneeContent: ['收货人'],
-  shipperContent: ['发货人'],
-  notifierContent: ['通知人'],
-  marks: ['唛头'],
-  goodsDes: ['货物描述'],
-  pkgs: ['件数'],
-  kgs: ['毛重kgs'],
-  cbm: ['体积cbm'],
-  goodsCompleteTime: ['货好日期'],
-  etd: ['起飞日期'],
-  eta: ['预抵日期'],
-  codePackageId: ['包装'],
-  codeServiceId: ['运输条款'],
-  orderCodeGoodss: ['品名'],
-  airExportOrderCtns: ['货物明细'],
-};
-
 export function isEmptyRecognizedValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === 'number' && value === 0) return true;
@@ -71,10 +44,6 @@ export function isAiExtractSupportedFile(file: File): boolean {
   if (ext === 'pdf') return true;
   if (AI_EXTRACT_IMAGE_EXTENSIONS.has(ext)) return true;
   return AI_EXTRACT_OFFICE_EXTENSIONS.has(ext);
-}
-
-export function resolveCitationKeys(fieldName: string): string[] {
-  return FORM_FIELD_CITATION_KEYS[fieldName] ?? [];
 }
 
 /**
@@ -117,7 +86,6 @@ export interface AiExtractFormPayload {
   orderCodeGoodss: Array<number | string>;
   filledFields: string[];
   unmatchedLabels: string[];
-  airlineLabel: string;
 }
 
 function hasUsefulOrderCtn(
@@ -156,14 +124,19 @@ function normalizeExtractOrderCtn(
   };
 }
 
+function hasRemarkButNoId(remark: unknown, id: unknown): boolean {
+  const remarkText = typeof remark === 'string' ? remark.trim() : '';
+  return !!remarkText && (id === null || id === undefined);
+}
+
 export function buildAiExtractFormPayload(
-  dto: TextInAdminApi.AirExportExtractAddDto,
+  dto: AirExportAdminApi.AirExportAddDto,
   options: {
     allowedFields: Set<string>;
     normalizeValue: (field: string, value: unknown) => unknown;
   },
 ): AiExtractFormPayload {
-  const airExportRaw = (dto.airExport ?? {}) as Record<string, unknown>;
+  const airExportRaw = dto as Record<string, unknown>;
   const transportOrderRaw = (airExportRaw.transportOrder ?? {}) as Record<
     string,
     unknown
@@ -275,40 +248,15 @@ export function buildAiExtractFormPayload(
     filledFields.push('orderCodeGoodss');
   }
 
-  const schema = dto.extract?.extractedSchema ?? {};
   const unmatchedLabels: string[] = [];
-  if (pickExtractedLabel(schema, ['委托单位']) && !formValues.clientId) {
-    unmatchedLabels.push('委托单位');
-  }
-  if (
-    pickExtractedLabel(schema, ['起运地名称', '起运地代码']) &&
-    formValues.polId == null
-  ) {
+  if (hasRemarkButNoId(formValues.polRemark, formValues.polId)) {
     unmatchedLabels.push('起运地');
   }
-  if (
-    pickExtractedLabel(schema, ['中转地名称', '中转地代码']) &&
-    formValues.potId == null
-  ) {
+  if (hasRemarkButNoId(formValues.potRemark, formValues.potId)) {
     unmatchedLabels.push('中转地');
   }
-  if (
-    pickExtractedLabel(schema, ['目的地名称', '目的地代码']) &&
-    formValues.podId == null
-  ) {
+  if (hasRemarkButNoId(formValues.podRemark, formValues.podId)) {
     unmatchedLabels.push('目的地');
-  }
-  if (
-    pickExtractedLabel(schema, ['包装']) &&
-    formValues.codePackageId == null
-  ) {
-    unmatchedLabels.push('包装');
-  }
-  if (
-    pickExtractedLabel(schema, ['运输条款']) &&
-    formValues.codeServiceId == null
-  ) {
-    unmatchedLabels.push('运输条款');
   }
 
   return {
@@ -317,32 +265,15 @@ export function buildAiExtractFormPayload(
     orderCodeGoodss,
     filledFields,
     unmatchedLabels,
-    airlineLabel: pickExtractedLabel(schema, ['航空公司']),
   };
 }
 
-export function pickExtractedLabel(
-  schema: Record<string, unknown> | undefined,
-  keys: string[],
-): string {
-  if (!schema) return '';
-  for (const key of keys) {
-    const value = schema[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
-}
-
-/** 用抽取原文拼机场回显项；无 id 时返回空，禁止拿海港 PortCode 顶替 */
-export function toExtractAirPortSelectedItems(
-  id: unknown,
-  iataCode: string,
-  name: string,
-) {
+/** 用出参 remark 拼机场回显项；无 id 时返回空，禁止拿海港 PortCode 顶替 */
+export function toExtractAirPortSelectedItems(id: unknown, remark?: unknown) {
   if (id === null || id === undefined || id === '') return [];
+  const name = typeof remark === 'string' ? remark.trim() : '';
   return toAirPortSelectedItems({
     id: id as AirExportAdminApi.LongId,
-    iataCode: iataCode || undefined,
     enName: name || undefined,
     cnName: name || undefined,
   });
