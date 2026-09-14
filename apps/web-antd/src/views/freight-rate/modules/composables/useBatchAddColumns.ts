@@ -289,7 +289,7 @@ export function useBatchAddColumns(
           culture: 'zh-CN',
         },
         className: 'htRight',
-        readOnly: true, // 自动计算，只读
+        // DEM / DET / 免箱使期相互独立，可分别录入
       },
       {
         data: 'voyage',

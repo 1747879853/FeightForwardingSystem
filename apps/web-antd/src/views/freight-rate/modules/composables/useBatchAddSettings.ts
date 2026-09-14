@@ -101,29 +101,7 @@ export function useBatchAddSettings(
           hotInstance.render();
         }
 
-        // 处理 DEM + DET = 免箱使期 的自动计算
-        if (prop === 'poddem' || prop === 'podFreeDays') {
-          // 使用 hotInstance.getDataAtCell 获取当前值，而不是直接访问 dataSource
-          const dem =
-            Number(
-              hotInstance.getDataAtCell(row, hotInstance.propToCol('poddem')),
-            ) || 0;
-          const det =
-            Number(
-              hotInstance.getDataAtCell(
-                row,
-                hotInstance.propToCol('podFreeDays'),
-              ),
-            ) || 0;
-          const poddet = dem + det;
-
-          // 使用 setDataAtCell 更新，避免触发 Vue 响应式
-          hotInstance.setDataAtCell(
-            row,
-            hotInstance.propToCol('poddet'),
-            poddet,
-          );
-        }
+        // DEM / DET / 免箱使期相互独立：客户可能只填前两项，或只填免箱使期，不做联动覆盖
 
         // 处理日期模式切换时的清空逻辑
         if (prop === 'etd' && newValue) {
