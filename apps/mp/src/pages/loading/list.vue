@@ -210,6 +210,28 @@ function statusClass(status: number) {
   return 'badge--pending';
 }
 
+function onDispatcherTap(item: LoadingOrderListItemDto) {
+  const name = item.submitUserName?.trim();
+  if (!name) return;
+
+  const phone = item.submitUserPhone?.trim();
+  if (!phone) {
+    uni.showToast({ icon: 'none', title: '该派单人未维护手机号' });
+    return;
+  }
+
+  uni.showModal({
+    title: '派单人',
+    content: `${name}  ${phone}`,
+    confirmText: '拨打',
+    success: (result) => {
+      if (result.confirm) {
+        uni.makePhoneCall({ phoneNumber: phone });
+      }
+    },
+  });
+}
+
 onShow(() => {
   setTimeout(() => {
     uni.showTabBar({ animation: false });
@@ -297,9 +319,21 @@ onReachBottom(() => {
                   监装工号 {{ textOr(item.loadingOrderNum) }}
                 </text>
               </view>
-              <text :class="['badge', statusClass(item.status)]">
-                {{ STATUS_TEXT[item.status] }}
-              </text>
+              <view class="card__head-right">
+                <view
+                  v-if="item.submitUserName"
+                  class="card__dispatcher"
+                  @tap.stop="onDispatcherTap(item)"
+                >
+                  <text class="card__dispatcher-label">派单人</text>
+                  <text class="card__dispatcher-name">
+                    {{ item.submitUserName }}
+                  </text>
+                </view>
+                <text :class="['badge', statusClass(item.status)]">
+                  {{ STATUS_TEXT[item.status] }}
+                </text>
+              </view>
             </view>
 
             <view class="card__title-row">
@@ -806,6 +840,34 @@ onReachBottom(() => {
   font-size: 20rpx;
   line-height: 20rpx;
   color: $text-label;
+  white-space: nowrap;
+}
+
+.card__head-right {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12rpx;
+  align-items: center;
+  margin-left: 12rpx;
+}
+
+.card__dispatcher {
+  display: flex;
+  gap: 8rpx;
+  align-items: center;
+  max-width: 220rpx;
+}
+
+.card__dispatcher-label,
+.card__dispatcher-name {
+  font-size: 20rpx;
+  line-height: 20rpx;
+  color: $text-label;
+}
+
+.card__dispatcher-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

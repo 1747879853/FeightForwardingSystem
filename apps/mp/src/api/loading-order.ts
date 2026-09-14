@@ -126,6 +126,12 @@ export interface LoadingOrderListItemDto {
   seaExport?: null | LoadingOrderSeaExportSimpleDto;
   seaExportId: string;
   status: number;
+  /** 派单人 ID，列表接口待上线 */
+  submitUserId?: null | number | string;
+  /** 派单人姓名，为空时不展示派单人区域 */
+  submitUserName?: null | string;
+  /** 派单人手机号 */
+  submitUserPhone?: null | string;
 }
 
 export interface LoadingOrderDetailDto extends LoadingOrderListItemDto {
