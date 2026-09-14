@@ -123,7 +123,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'Keyword',
       label: '关键字',
       componentProps: {
-        placeholder: '业务编号 / 主提单号',
+        placeholder: '业务编号 / 主提单号 / 船名 / 航次',
         allowClear: true,
       },
     },
@@ -144,6 +144,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'ClientId',
       industryCategory: 'p',
       label: '委托单位',
+    }),
+    createClientSelectSchema({
+      fieldName: 'TeamId',
+      industryCategory: 'i',
+      label: '车队',
     }),
     {
       component: 'PortSelect',
@@ -267,6 +272,18 @@ export function buildColumns(): Array<Record<string, any>> {
       title: '船公司',
       minWidth: 120,
       slots: { default: 'carrierWithLogo' },
+    },
+    {
+      field: 'vessel',
+      title: '船名',
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'innerVoyno',
+      title: '航次',
+      minWidth: 100,
+      showOverflow: true,
     },
     {
       field: 'etd',
