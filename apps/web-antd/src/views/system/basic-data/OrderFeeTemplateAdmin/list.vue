@@ -33,9 +33,16 @@ import {
   useColumns,
   useGridFormSchema,
 } from './data';
+import {
+  loadSeServiceTypeOptions,
+  type ServiceTypeOption,
+} from '#/views/sea-export-admin/service-type';
 
 // 创建权限对象
 const perm = createAbpPermission('Admin.OrderFeeTemplate');
+
+/** 服务项枚举（ServiceType），挂载后异步加载 */
+const serviceTypeOptions = ref<ServiceTypeOption[]>([]);
 
 // 获取用户store
 const userStore = useUserStore();
@@ -441,7 +448,7 @@ function handlePolGroupClick(polId?: number | null) {
 const [Grid, gridApi] =
   useVbenVxeGrid<OrderFeeTemplateAdminApi.OrderFeeTemplateListDto>({
     formOptions: {
-      schema: useGridFormSchema(),
+      schema: useGridFormSchema(serviceTypeOptions.value),
       showCollapseButton: true,
       submitOnChange: true,
       collapsed: true,
@@ -452,7 +459,7 @@ const [Grid, gridApi] =
     },
     gridOptions: {
       id: ORDER_FEE_TEMPLATE_LIST_TABLE_ID,
-      columns: useColumns(onActionClick),
+      columns: useColumns(serviceTypeOptions.value, onActionClick),
       height: 'auto',
       keepSource: true,
       sortConfig: {
@@ -520,6 +527,29 @@ const [Grid, gridApi] =
       cellDblclick: onRowDblClick,
     },
   });
+
+/** 加载服务项枚举并刷新列表列/查询下拉 */
+async function loadServiceTypeOptions() {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeOptions.value.splice(
+    0,
+    serviceTypeOptions.value.length,
+    ...options,
+  );
+  gridApi.setGridOptions({
+    columns: useColumns(serviceTypeOptions.value, onActionClick),
+  });
+  await gridApi.formApi.updateSchema([
+    {
+      fieldName: 'serviceType',
+      componentProps: {
+        options: serviceTypeOptions.value,
+      },
+    },
+  ]);
+  // 枚举到位后重查，避免首屏服务项仍显示数字
+  await gridApi.query();
+}
 
 // 航线标签相关引用和状态
 const polTabBarRef = ref<HTMLElement | null>(null);
@@ -664,6 +694,7 @@ onMounted(() => {
   initUserPermissions();
   loadPolGroupList();
   loadDropdownData();
+  void loadServiceTypeOptions();
 });
 
 onUnmounted(() => {
