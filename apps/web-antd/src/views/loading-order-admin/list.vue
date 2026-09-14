@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { message, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getLoadingOrderPagedList } from '#/api/sea-export/loading-order-admin';
@@ -59,6 +59,28 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     creationTimeEnd: toIsoEndOfDay(creationTimeEnd),
     creationTimeRange: undefined,
   };
+};
+
+const handleSubmitUserClick = (
+  row: LoadingOrderAdminApi.LoadingOrderListDto,
+) => {
+  const name = row.submitUserName?.trim();
+  if (!name) return;
+
+  const phone = row.submitUserPhone?.trim();
+  if (!phone) {
+    message.warning($t('seaExport.loadingOrder.list.submitUserPhoneEmpty'));
+    return;
+  }
+
+  Modal.confirm({
+    title: $t('seaExport.loadingOrder.list.submitUserName'),
+    content: `${name}  ${phone}`,
+    okText: $t('seaExport.loadingOrder.list.callPhone'),
+    onOk: () => {
+      window.location.href = `tel:${phone}`;
+    },
+  });
 };
 
 const handleRowDblclick = ({
@@ -130,6 +152,18 @@ useRefreshListOnFormReturn('LoadingOrderList', handleRefresh);
         <Tag :color="getLoadingOrderStatusMeta(row.status).color">
           {{ getLoadingOrderStatusMeta(row.status).label }}
         </Tag>
+      </template>
+      <template #submitUser="{ row }">
+        <span v-if="!row.submitUserName">-</span>
+        <Button
+          v-else
+          type="link"
+          size="small"
+          class="!px-0"
+          @click.stop="handleSubmitUserClick(row)"
+        >
+          {{ row.submitUserName }}
+        </Button>
       </template>
     </Grid>
   </Page>

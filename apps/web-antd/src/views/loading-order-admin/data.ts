@@ -318,6 +318,7 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.list.submitUserName'),
       width: 100,
       showOverflow: true,
+      slots: { default: 'submitUser' },
       sortable: true,
     },
     {

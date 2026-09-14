@@ -200,6 +200,7 @@ export namespace LoadingOrderAdminApi {
     status: number;
     remark?: null | string;
     submitUserName?: null | string;
+    submitUserPhone?: null | string;
     submitTime?: null | string;
     claimTime?: null | string;
     completeTime?: null | string;
