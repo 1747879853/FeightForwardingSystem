@@ -569,7 +569,7 @@ const [Modal, modalApi] = useVbenModal({
         :before-upload="handleBeforeUpload"
         @remove="handleRemove"
       >
-        <p class="ant-upload-drag-icon">
+        <p class="ant-upload-drag-icon !mb-2 flex justify-center">
           <IconifyIcon
             class="text-5xl text-blue-400"
             icon="ant-design:inbox-outlined"
