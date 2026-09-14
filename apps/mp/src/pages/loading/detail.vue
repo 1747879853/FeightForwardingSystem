@@ -434,43 +434,42 @@ onShow(() => {
           <text class="card__title">集装箱要求</text>
         </view>
 
-        <view class="table__head">
-          <text class="col col--no">序号</text>
-          <text class="col col--type">箱型</text>
-          <text class="col col--input">箱号</text>
-          <text class="col col--input">封号</text>
-          <text class="col col--handling">监装处理</text>
-        </view>
-
-        <view v-for="(ctn, index) in ctns" :key="ctn.id" class="table__row">
-          <text class="col col--no">{{ index + 1 }}</text>
-          <text class="col col--type">{{ ctn.ctnName }}</text>
-
-          <view class="col col--input">
-            <text class="cell-text">{{ ctn.ctnNo || EMPTY_TEXT }}</text>
+        <text v-if="ctns.length > 0" class="ctn-list-hint"
+          >点击箱信息{{ editable ? '进行监装处理' : '查看详情' }}</text
+        >
+        <button
+          v-for="(ctn, index) in ctns"
+          :key="ctn.id"
+          class="ctn-item"
+          hover-class="ctn-item--pressed"
+          @tap="openPhotoPanel(index)"
+        >
+          <text class="ctn-item__index">{{ index + 1 }}</text>
+          <view class="ctn-item__body">
+            <text class="ctn-item__number">{{
+              ctn.ctnNo || '箱号未填写'
+            }}</text>
+            <text class="ctn-item__seal"
+              >封号 {{ ctn.sealNo || EMPTY_TEXT }}</text
+            >
           </view>
-
-          <view class="col col--input">
-            <text class="cell-text">{{ ctn.sealNo || EMPTY_TEXT }}</text>
-          </view>
-
-          <view class="col col--handling">
-            <view class="handling-btn" @tap="openPhotoPanel(index)">
+          <view class="ctn-item__meta">
+            <text class="ctn-item__type">{{ ctn.ctnName || EMPTY_TEXT }}</text>
+            <view class="ctn-item__status">
               <view
                 :class="[
                   'handling-btn__dot',
                   ctn.isLoadingCompleted ? 'dot--done' : 'dot--pending',
                 ]"
               />
-              <text class="handling-btn__text">
-                {{ ctn.isLoadingCompleted ? '已完成' : '待处理' }}
-              </text>
-              <text v-if="countPhotos(ctn) > 0" class="handling-btn__count">
-                {{ countPhotos(ctn) }}图
-              </text>
+              <text>{{ ctn.isLoadingCompleted ? '已完成' : '待处理' }}</text>
             </view>
+            <text v-if="countPhotos(ctn) > 0" class="ctn-item__photos"
+              >{{ countPhotos(ctn) }}图</text
+            >
           </view>
-        </view>
+          <text class="ctn-item__arrow">›</text>
+        </button>
 
         <text v-if="ctns.length === 0" class="empty-line">
           该海运出口暂无箱型
@@ -738,92 +737,109 @@ onShow(() => {
   color: $text-label;
 }
 
-.table__head,
-.table__row {
-  display: flex;
-  align-items: center;
-}
-
-.table__head {
-  height: 52rpx;
-  margin-top: 16rpx;
-  background: #eef1f2;
-  border-radius: 12rpx 12rpx 0 0;
-}
-
-.table__row {
-  min-height: 58rpx;
-  border-bottom: 1rpx solid $divider;
-}
-
-.col {
-  padding: 0 6rpx;
-  font-size: 20rpx;
-  font-weight: 500;
-  color: $text-title;
-  text-align: center;
-}
-
-.table__head .col {
+.ctn-list-hint {
+  display: block;
+  margin-top: -16rpx;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
   color: $text-label;
 }
 
-.col--no {
-  width: 68rpx;
-}
-
-.col--type {
-  width: 106rpx;
-}
-
-.col--input {
-  flex: 1;
-}
-
-.col--handling {
-  width: 192rpx;
-}
-
-.cell-input {
+.ctn-item {
+  box-sizing: border-box;
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
   width: 100%;
-  height: 48rpx;
-  font-size: 20rpx;
+  min-height: 76px;
+  padding: 22rpx 0;
+  margin: 0;
+  line-height: 1.5;
+  text-align: left;
+  background: transparent;
+  border-bottom: 1rpx solid $divider;
+  border-radius: 0;
+}
+
+.ctn-item::after {
+  border: 0;
+}
+
+.ctn-item:last-child {
+  border-bottom: 0;
+}
+
+.ctn-item--pressed {
+  background: $brand-primary-soft;
+}
+
+.ctn-item__index {
+  flex-shrink: 0;
+  min-width: 28rpx;
+  font-size: 24rpx;
+  color: $text-label;
   text-align: center;
-  background: $chip-bg;
-  border-radius: 10rpx;
+}
+
+.ctn-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ctn-item__number {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $text-title;
+  word-break: break-all;
+}
+
+.ctn-item__seal {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 28rpx;
+  color: $text-label;
+  word-break: break-all;
+}
+
+.ctn-item__meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 6rpx;
+  align-items: flex-end;
+  max-width: 144rpx;
+}
+
+.ctn-item__type {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: $text-title;
+  word-break: break-all;
+}
+
+.ctn-item__status {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: $text-label;
+  white-space: nowrap;
+}
+
+.ctn-item__photos {
+  font-size: 24rpx;
+  color: $text-label;
+}
+
+.ctn-item__arrow {
+  flex-shrink: 0;
+  font-size: 36rpx;
+  color: $text-label;
 }
 
 .cell-input__placeholder {
-  font-size: 20rpx;
+  font-size: 26rpx;
   color: #c2c8d2;
-}
-
-.cell-text {
-  font-size: 20rpx;
-  color: $text-title;
-}
-
-.handling-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 156rpx;
-  height: 38rpx;
-  margin: 0 auto;
-  background: $chip-bg;
-  border-radius: 24rpx;
-}
-
-.handling-btn__text,
-.handling-btn__count {
-  font-size: 18rpx;
-  font-weight: 500;
-  color: $text-title;
-}
-
-.handling-btn__count {
-  margin-left: 8rpx;
-  color: $brand-primary;
 }
 
 .handling-btn__dot {
