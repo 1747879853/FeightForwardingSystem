@@ -1,6 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { PortFormSchemaOptions } from '#/views/sea-export-admin/data';
 
+import { PreOrderBizType } from '#/api/pre-order/pre-order-admin';
 import { $t } from '#/locales';
 import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 import { createClientSelectSchema } from '#/views/client/base/data';
@@ -43,6 +44,33 @@ export const PAY_SIDE_OPTIONS = [
   { label: '应付', value: 1 },
 ];
 
+/** 海进船名/航次最大 32，其余业务 64 */
+export function resolvePreOrderVesselMaxLength(
+  bizType?: PreOrderBizType,
+): number {
+  return bizType === PreOrderBizType.SeaImport ? 32 : 64;
+}
+
+/**
+ * vessel 用 VesselVoyageInput 合并组件，componentProps 必须是函数以承载航次动态入参。
+ */
+export function buildPreOrderVesselComponentProps(
+  getBizType: () => PreOrderBizType | undefined,
+) {
+  return (values: Record<string, any>, formApi: any) => ({
+    formContext: formApi,
+    secondFieldName: 'innerVoyno',
+    secondFieldValue: values?.innerVoyno ?? '',
+    mainRatio: 3,
+    secondRatio: 2,
+    maxLength: resolvePreOrderVesselMaxLength(getBizType()),
+  });
+}
+
+export interface PreOrderBasicSchemaOptions {
+  getBizType?: () => PreOrderBizType | undefined;
+}
+
 /** 运输条款/贸易条款合并控件：回显 selectedItems 时须整段替换函数，勿只传静态对象。 */
 export function buildPreOrderServiceTradeTermsProps(selectedItems?: unknown[]) {
   return (values: Record<string, any>, formApi: any) => ({
@@ -68,7 +96,11 @@ export function buildPreOrderServiceTradeTermsProps(selectedItems?: unknown[]) {
  * 可见顺序对齐业务稿：首行委托单位→主提单号→货好时间→开船日期→船公司→付款方式；
  * 次行起运地→目的地→贸易条款/运输条款→备注。稿中没有的订舱代理放到末行。
  */
-export function usePreOrderBasicSchema(): VbenFormSchema[] {
+export function usePreOrderBasicSchema(
+  options?: PreOrderBasicSchemaOptions,
+): VbenFormSchema[] {
+  const getBizType = options?.getBizType ?? (() => undefined);
+  const vesselMaxLength = () => resolvePreOrderVesselMaxLength(getBizType());
   return [
     createClientSelectSchema({
       fieldName: 'clientId',
@@ -109,9 +141,26 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
+      component: 'VesselVoyageInput',
+      fieldName: 'vessel',
+      formItemClass: 'pre-order-basic-field--6',
+      label: $t('preOrder.vesselVoyage'),
+      componentProps: buildPreOrderVesselComponentProps(getBizType),
+    },
+    {
+      component: 'Input',
+      fieldName: 'innerVoyno',
+      label: '',
+      formItemClass: 'hidden',
+      componentProps: () => ({
+        class: 'hidden',
+        maxlength: vesselMaxLength(),
+      }),
+    },
+    {
       component: 'CodeFrtSelect',
       fieldName: 'codeFrtId',
-      formItemClass: 'pre-order-basic-field--6',
+      formItemClass: 'pre-order-basic-field--7',
       label: '付款方式',
       componentProps: {
         allowClear: true,
@@ -122,7 +171,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'PortSelect',
       fieldName: 'polId',
-      formItemClass: 'pre-order-basic-field--7',
+      formItemClass: 'pre-order-basic-field--8',
       label: '起运地',
       rules: 'selectRequired',
       componentProps: buildPreOrderPortSelectProps('polId'),
@@ -130,14 +179,14 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'PortSelect',
       fieldName: 'podId',
-      formItemClass: 'pre-order-basic-field--8',
+      formItemClass: 'pre-order-basic-field--9',
       label: '目的地',
       componentProps: buildPreOrderPortSelectProps('podId'),
     },
     {
       component: 'ServiceTradeTermsInput',
       fieldName: 'codeServiceId',
-      formItemClass: 'pre-order-basic-field--9',
+      formItemClass: 'pre-order-basic-field--10',
       label: '贸易条款/运输条款',
       componentProps: buildPreOrderServiceTradeTermsProps(),
     },
@@ -157,14 +206,20 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
-      formItemClass: 'col-span-3 pre-order-basic-field--10',
+      formItemClass: 'col-span-3 pre-order-basic-field--11',
       componentProps: { rows: 1, maxlength: 1024 },
     },
     createClientSelectSchema({
       fieldName: 'bookingAgentId',
-      formItemClass: 'pre-order-basic-field--11',
+      formItemClass: 'pre-order-basic-field--12',
       industryCategory: 'o',
       label: '订舱代理',
+    }),
+    createClientSelectSchema({
+      fieldName: 'teamId',
+      formItemClass: 'pre-order-basic-field--13',
+      industryCategory: 'i',
+      label: $t('preOrder.teamId'),
     }),
   ];
 }

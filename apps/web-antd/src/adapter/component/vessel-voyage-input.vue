@@ -42,6 +42,8 @@ interface Props {
   actionTitle?: string;
   /** 操作按钮图标 */
   actionIcon?: string;
+  /** 船名/航次最大长度 */
+  maxLength?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -75,6 +77,7 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.vessel')"
       :size="props.size"
+      :maxlength="props.maxLength"
       class="min-w-0"
       :style="{ flex: props.mainRatio }"
       allow-clear
@@ -85,6 +88,7 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.innerVoyno')"
       :size="props.size"
+      :maxlength="props.maxLength"
       class="min-w-0"
       :style="{ flex: props.secondRatio }"
       allow-clear

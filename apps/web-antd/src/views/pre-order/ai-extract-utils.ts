@@ -35,6 +35,8 @@ export const FORM_FIELD_CITATION_KEYS: Record<string, string[]> = {
   podId: ['目的港名称', '目的港代码'],
   deliverPortId: ['交货地名称', '交货港代码'],
   mblNum: ['主提单号'],
+  vessel: ['船名'],
+  innerVoyno: ['航次'],
   clientId: ['委托单位'],
   consigneeContent: ['收货人'],
   shipperContent: ['发货人'],
@@ -176,6 +178,8 @@ export function buildAiExtractFormPayload(
   );
   assignScalar(formValues, 'etd', pickProp(preOrderRaw, 'etd', 'eTD'));
   assignScalar(formValues, 'carrierId', pickProp(preOrderRaw, 'carrierId'));
+  assignScalar(formValues, 'vessel', pickProp(preOrderRaw, 'vessel'));
+  assignScalar(formValues, 'innerVoyno', pickProp(preOrderRaw, 'innerVoyno'));
   assignScalar(
     formValues,
     'receivePortId',
@@ -311,6 +315,8 @@ export const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'goodsCompleteTime',
   'etd',
   'carrierId',
+  'vessel',
+  'innerVoyno',
   'receivePortId',
   'receivePortRemark',
   'polId',
@@ -351,6 +357,8 @@ const ENGLISH_UPPER_CASE_FIELDS = new Set([
   'podRemark',
   'deliverPortRemark',
   'mblNum',
+  'vessel',
+  'innerVoyno',
 ]);
 
 /** 日期字段对齐业务联系单 DatePicker 的 valueFormat */

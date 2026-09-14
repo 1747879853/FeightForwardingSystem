@@ -235,6 +235,12 @@ export namespace PreOrderAdminApi {
     goodsCompleteTime?: string | null;
     etd?: string | null;
     carrierId?: number | null;
+    /** 船名 */
+    vessel?: string | null;
+    /** 航次 */
+    innerVoyno?: string | null;
+    /** 车队 id */
+    teamId?: string | null;
     /** 船公司 Logo（列表展示，对齐海运出口） */
     carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
     receivePortId?: number | null;
@@ -300,6 +306,8 @@ export namespace PreOrderAdminApi {
     notifier?: SimpleNamedDto | null;
     /** 订舱代理（仅详情返回；列表只返回 bookingAgentId） */
     bookingAgent?: SimpleNamedDto | null;
+    /** 车队（仅详情返回；列表只返回 teamId） */
+    team?: SimpleNamedDto | null;
     preOrderCodeGoodss?: PreOrderCodeGoodsDto[] | null;
     preOrderCtns?: PreOrderCtnDto[] | null;
     preOrderUsers?: PreOrderUserDto[] | null;
@@ -368,6 +376,9 @@ export namespace PreOrderAdminApi {
     goodsCompleteTime?: string | null;
     etd?: string | null;
     carrierId?: number | null;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    teamId?: string | null;
     receivePortId?: number | null;
     receivePortRemark?: string | null;
     polId?: number | null;
@@ -456,7 +467,10 @@ export namespace PreOrderAdminApi {
 
   /** 列表查询参数 */
   export interface PreOrderQueryParams {
+    /** 关键词（业务联系单编号、主提单号、委托单位、船名、航次等） */
     Keyword?: string;
+    /** 车队 id */
+    TeamId?: string;
     PreOrderNum?: string;
     BizType?: number;
     Status?: number;

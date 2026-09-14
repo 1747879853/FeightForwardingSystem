@@ -71,7 +71,9 @@ import { pickExtractedLabel, resolveCitationKeys } from './ai-extract-utils';
 import {
   buildPreOrderPortSelectProps,
   buildPreOrderServiceTradeTermsProps,
+  buildPreOrderVesselComponentProps,
   PRE_ORDER_PORT_REMARK_FIELDS,
+  resolvePreOrderVesselMaxLength,
   usePreOrderBasicSchema,
   usePreOrderCargoSchema,
   usePreOrderCargoTypeInlineSchema,
@@ -187,6 +189,22 @@ watch(userRoleOptions, (roles) => {
 watch(headerBizType, () => {
   if (skipBizTypeUserSync) return;
   pendingRoleCleanup = true;
+  const maxLength = resolvePreOrderVesselMaxLength(headerBizType.value);
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'vessel',
+      componentProps: buildPreOrderVesselComponentProps(
+        () => headerBizType.value,
+      ),
+    },
+    {
+      fieldName: 'innerVoyno',
+      componentProps: () => ({
+        class: 'hidden',
+        maxlength: maxLength,
+      }),
+    },
+  ]);
 });
 
 /** 本单箱型名，费用单位可取这些值（数量按对应箱量带出） */
@@ -239,7 +257,9 @@ const statusMeta = computed(() => {
 const [BasicForm, basicFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePreOrderBasicSchema(),
+  schema: usePreOrderBasicSchema({
+    getBizType: () => headerBizType.value,
+  }),
   showDefaultActions: false,
   wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
 });
@@ -605,6 +625,28 @@ function bindBookingAgentLinkage(selectedItems?: any[]) {
             currentBookingAgentName.value = undefined;
           }
         },
+      },
+    },
+  ]);
+}
+
+function resolveTeamDisplayName(
+  team?: null | PreOrderAdminApi.SimpleNamedDto,
+): string | undefined {
+  const name = team?.name?.trim();
+  if (name) return name;
+  const cnShortName = (team as { cnShortName?: string } | null)?.cnShortName;
+  return cnShortName?.trim() || undefined;
+}
+
+/** 车队变更；详情回填注入 selectedItems */
+function bindTeamLinkage(selectedItems?: any[]) {
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'teamId',
+      componentProps: {
+        industryCategory: 'i',
+        ...(selectedItems ? { selectedItems } : {}),
       },
     },
   ]);
@@ -991,6 +1033,9 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   bindBookingAgentLinkage(
     toSelectedItems(dto.bookingAgentId, dto.bookingAgent?.name),
   );
+  bindTeamLinkage(
+    toSelectedItems(dto.teamId, resolveTeamDisplayName(dto.team)),
+  );
   applyFeeRateAsOf(dto.etd, false);
   void basicFormApi
     .setValues({
@@ -1004,7 +1049,10 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
       etd: dto.etd,
       goodsCompleteTime: dto.goodsCompleteTime,
       carrierId: dto.carrierId,
+      vessel: dto.vessel,
+      innerVoyno: dto.innerVoyno,
       bookingAgentId: dto.bookingAgentId,
+      teamId: dto.teamId,
       remark: dto.remark,
     })
     .finally(() => {
@@ -1282,6 +1330,7 @@ onMounted(async () => {
   applyTransitPortTabSchema();
   bindClientUserLinkage();
   bindBookingAgentLinkage();
+  bindTeamLinkage();
   bindBasicPortLinkage();
   bindEtdRateLinkage();
   bindPartySettlementLinkage();
@@ -2269,5 +2318,13 @@ const getContentTabStyle = (isActive: boolean) =>
 
 .pre-order-basic-page :deep(.pre-order-basic-field--11) {
   order: 11;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--12) {
+  order: 12;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--13) {
+  order: 13;
 }
 </style>
