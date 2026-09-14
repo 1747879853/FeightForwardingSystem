@@ -26,6 +26,8 @@ last_updated: 2026-09-14
 - **派单人：** 列 `field` 为 `submitUserName`，只展示姓名（空为 `-`）。PC 端不提供拨打；小程序列表才可拨打 `submitUserPhone`。
 - **返回刷新：** 路由 `keepAlive`；从海出编辑页返回时 `useRefreshListOnFormReturn('LoadingOrderList')` 刷新。
 
+- **状态配色：** 未提交灰色、待认领橙色、已认领蓝色、已完成深绿色；标签采用浅底深字、无描边。未知状态使用灰色。
+
 # 3. 状态流转说明 (Status Transitions)
 
 | 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
@@ -57,3 +59,4 @@ last_updated: 2026-09-14
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-09-14 | `Fix` | PC 监装列表派单人改为纯文本，去掉拨打弹窗。 | 小程序仍走 `submitUserPhone` + `tel:`；PC 列 field 保持 `submitUserName`。 |
+| 2026-09-14 | `Fix` | 状态列采用灰、橙、蓝、绿区分状态，去除描边并加深文字。 | 仅调整展示，状态枚举与筛选不变。 |

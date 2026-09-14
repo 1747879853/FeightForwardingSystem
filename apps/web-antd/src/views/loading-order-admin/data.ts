@@ -367,7 +367,7 @@ export function getLoadingOrderStatusMeta(status?: null | number) {
     label: LOADING_ORDER_STATUS_TEXT[status] ?? String(status),
     color:
       status === LoadingOrderStatus.Unsubmitted
-        ? 'blue'
+        ? 'default'
         : status === LoadingOrderStatus.Pending
           ? 'orange'
           : status === LoadingOrderStatus.Claimed

@@ -127,10 +127,38 @@ useRefreshListOnFormReturn('LoadingOrderList', handleRefresh);
   <Page auto-content-height>
     <Grid :table-title="$t('seaExport.loadingOrder.list.title')">
       <template #status="{ row }">
-        <Tag :color="getLoadingOrderStatusMeta(row.status).color">
+        <Tag
+          class="loading-status"
+          :class="`loading-status--${getLoadingOrderStatusMeta(row.status).color}`"
+          :bordered="false"
+        >
           {{ getLoadingOrderStatusMeta(row.status).label }}
         </Tag>
       </template>
     </Grid>
   </Page>
 </template>
+
+<style scoped>
+.loading-status {
+  margin-inline-end: 0;
+  font-weight: 500;
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.loading-status--orange {
+  color: #92400e;
+  background: #fff7e6;
+}
+
+.loading-status--processing {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.loading-status--success {
+  color: #166534;
+  background: #edf7ef;
+}
+</style>
