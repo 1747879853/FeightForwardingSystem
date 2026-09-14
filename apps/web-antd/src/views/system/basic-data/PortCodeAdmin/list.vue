@@ -10,7 +10,7 @@ import { Button, message } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deletePortCode,
-  getPortCodePagedList,
+  getPortCodeAdminPagedList,
 } from '#/api/system/base-data/port-code-admin';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
@@ -85,7 +85,7 @@ const [Grid, gridApi] = useVbenVxeGrid<PortCodeAdminApi.PortCodeDto>({
     },
     proxyConfig: {
       ajax: {
-        query: createPagedListQuery(getPortCodePagedList, {
+        query: createPagedListQuery(getPortCodeAdminPagedList, {
           defaultSort: 'sortId DESC',
         }),
       },

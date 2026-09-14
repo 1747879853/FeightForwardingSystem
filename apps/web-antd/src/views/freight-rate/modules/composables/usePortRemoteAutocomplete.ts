@@ -1,16 +1,17 @@
-import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
+import type { PortCodeApi } from '#/api/system/base-data/port-code-admin';
 
 import { ref } from 'vue';
 
 import {
-  getPortCodeDetail,
+  getPortCodeList,
   getPortCodePagedList,
+  mapPortCodeListItemToPagedDto,
 } from '#/api/system/base-data/port-code-admin';
 
 /** 与历史全量缓存一致：`港口英文名/国家英文名` */
 export function formatPortLabel(
   port:
-    | Pick<PortCodeAdminApi.PortCodeDto, 'portName' | 'cnName' | 'country'>
+    | Pick<PortCodeApi.PortCodePagedDto, 'portName' | 'cnName' | 'country'>
     | null
     | undefined,
 ): string {
@@ -79,7 +80,7 @@ export function usePortRemoteAutocomplete(options?: {
   }
 
   function rememberPortDto(
-    port: PortCodeAdminApi.PortCodeDto | null | undefined,
+    port: PortCodeApi.PortCodePagedDto | null | undefined,
   ) {
     if (!port?.id) return;
     const label = formatPortLabel(port);
@@ -357,10 +358,10 @@ export function usePortRemoteAutocomplete(options?: {
       podId?: number | string;
       poT1Id?: number | string;
       poT2Id?: number | string;
-      pol?: PortCodeAdminApi.PortCodeDto | null;
-      pod?: PortCodeAdminApi.PortCodeDto | null;
-      poT1?: PortCodeAdminApi.PortCodeDto | null;
-      poT2?: PortCodeAdminApi.PortCodeDto | null;
+      pol?: PortCodeApi.PortCodePagedDto | null;
+      pod?: PortCodeApi.PortCodePagedDto | null;
+      poT1?: PortCodeApi.PortCodePagedDto | null;
+      poT2?: PortCodeApi.PortCodePagedDto | null;
     },
     field: 'pol' | 'pod' | 'poT1' | 'poT2',
   ): string {
@@ -383,7 +384,7 @@ export function usePortRemoteAutocomplete(options?: {
     return getCachedPortLabel(id);
   }
 
-  /** 仅有 ID 时批量拉详情补全 label（编辑回显兜底） */
+  /** 仅有 ID 时用 PortCode 全量精简列表补全 label（编辑回显兜底，无需 Admin 权限） */
   async function ensurePortLabelsByIds(
     ids: Array<number | string | null | undefined>,
   ) {
@@ -395,16 +396,20 @@ export function usePortRemoteAutocomplete(options?: {
           .filter((id) => !portIdToLabel.value.has(id)),
       ),
     ];
-    await Promise.all(
-      missing.map(async (id) => {
-        try {
-          const detail = await getPortCodeDetail(id);
-          rememberPortDto(detail);
-        } catch (error) {
-          console.warn(`[port autocomplete] detail failed for ${id}:`, error);
+    if (missing.length === 0) return;
+
+    try {
+      const list = await getPortCodeList();
+      const byId = new Map(list.map((item) => [String(item.i), item]));
+      for (const id of missing) {
+        const hit = byId.get(id);
+        if (hit) {
+          rememberPortDto(mapPortCodeListItemToPagedDto(hit));
         }
-      }),
-    );
+      }
+    } catch (error) {
+      console.warn('[port autocomplete] getPortCodeList failed:', error);
+    }
   }
 
   function clearPortCache() {

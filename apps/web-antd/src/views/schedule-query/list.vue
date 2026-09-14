@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { FeituoScheduleAdminApi } from '#/api/schedule/feituo-schedule-admin';
-import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
+import type { PortCodeApi } from '#/api/system/base-data/port-code-admin';
 
 import {
   computed,
@@ -115,8 +115,8 @@ const sortMode = ref<'durationAsc' | 'etdAsc' | 'etdDesc' | 'weekdayAsc'>(
   'weekdayAsc',
 );
 const visibleGroupCount = ref(80);
-const polSelectedItems = ref<PortCodeAdminApi.PortCodeDto[]>([]);
-const podSelectedItems = ref<PortCodeAdminApi.PortCodeDto[]>([]);
+const polSelectedItems = ref<PortCodeApi.PortCodePagedDto[]>([]);
+const podSelectedItems = ref<PortCodeApi.PortCodePagedDto[]>([]);
 const recentChipsRef = ref<HTMLElement>();
 const recentSearches = ref<RecentSearch[]>([]);
 let recentFitObserver: ResizeObserver | undefined;
@@ -337,7 +337,7 @@ function toCachedPortItem(
   code: string,
   cnName: string,
   portName: string,
-): PortCodeAdminApi.PortCodeDto {
+): PortCodeApi.PortCodePagedDto {
   return {
     cnName,
     ediCode: code,
@@ -451,7 +451,7 @@ function swapPorts() {
 
 function onPortChange(
   side: 'pod' | 'pol',
-  option: { raw?: PortCodeAdminApi.PortCodeDto } | undefined,
+  option: { raw?: PortCodeApi.PortCodePagedDto } | undefined,
 ) {
   const items = option?.raw ? [option.raw] : [];
   if (side === 'pol') polSelectedItems.value = items;
