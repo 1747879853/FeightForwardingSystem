@@ -296,12 +296,7 @@ onReachBottom(() => {
         </view>
 
         <template v-else>
-          <view
-            v-for="item in list"
-            :key="item.id"
-            class="card"
-            @tap="goDetail(item)"
-          >
+          <view v-for="item in list" :key="item.id" class="card">
             <image
               class="card__watermark"
               src="/static/images/card-watermark.png"
@@ -309,7 +304,7 @@ onReachBottom(() => {
             />
 
             <view class="card__head">
-              <view class="card__no">
+              <view class="card__no" @tap="goDetail(item)">
                 <image
                   class="card__no-icon"
                   src="/static/icons/icon-grid.svg"
@@ -320,69 +315,76 @@ onReachBottom(() => {
                 </text>
               </view>
               <view class="card__head-right">
-                <view
+                <button
                   v-if="item.submitUserName"
                   class="card__dispatcher"
-                  @tap.stop="onDispatcherTap(item)"
+                  hover-class="none"
+                  hover-stop-propagation
+                  @tap.stop.prevent="onDispatcherTap(item)"
                 >
                   <text class="card__dispatcher-label">派单人</text>
                   <text class="card__dispatcher-name">
                     {{ item.submitUserName }}
                   </text>
-                </view>
-                <text :class="['badge', statusClass(item.status)]">
+                </button>
+                <text
+                  :class="['badge', statusClass(item.status)]"
+                  @tap="goDetail(item)"
+                >
                   {{ STATUS_TEXT[item.status] }}
                 </text>
               </view>
             </view>
 
-            <view class="card__title-row">
-              <text class="card__title">
-                {{ textOr(item.seaExport?.mblNum) }}
-              </text>
-              <text v-if="packageBadge(item)" class="card__chip">
-                {{ packageBadge(item) }}
-              </text>
-            </view>
+            <view class="card__main" @tap="goDetail(item)">
+              <view class="card__title-row">
+                <text class="card__title">
+                  {{ textOr(item.seaExport?.mblNum) }}
+                </text>
+                <text v-if="packageBadge(item)" class="card__chip">
+                  {{ packageBadge(item) }}
+                </text>
+              </view>
 
-            <view class="card__grid">
-              <view class="card__cell">
-                <text class="card__value">
-                  {{
-                    vesselVoyage(
-                      item.seaExport?.vessel,
-                      item.seaExport?.innerVoyno,
-                    )
-                  }}
-                </text>
-                <text class="card__label">船名/航次</text>
+              <view class="card__grid">
+                <view class="card__cell">
+                  <text class="card__value">
+                    {{
+                      vesselVoyage(
+                        item.seaExport?.vessel,
+                        item.seaExport?.innerVoyno,
+                      )
+                    }}
+                  </text>
+                  <text class="card__label">船名/航次</text>
+                </view>
+                <view class="card__cell">
+                  <text class="card__value">
+                    {{ textOr(item.carrierYard?.name) }}
+                  </text>
+                  <text class="card__label">堆场</text>
+                </view>
+                <view class="card__cell">
+                  <text class="card__value">
+                    {{ joinNames(item.seaExport?.codeGoodss) }}
+                  </text>
+                  <text class="card__label">品名</text>
+                </view>
               </view>
-              <view class="card__cell">
-                <text class="card__value">
-                  {{ textOr(item.carrierYard?.name) }}
-                </text>
-                <text class="card__label">堆场</text>
-              </view>
-              <view class="card__cell">
-                <text class="card__value">
-                  {{ joinNames(item.seaExport?.codeGoodss) }}
-                </text>
-                <text class="card__label">品名</text>
-              </view>
-            </view>
 
-            <view class="card__foot">
-              <view class="card__foot-item">
-                <text class="card__foot-label">下单日期：</text>
-                <text class="card__foot-date">
-                  {{ formatDate(item.creationTime) }}
-                </text>
-              </view>
-              <view class="card__foot-item">
-                <text class="card__foot-label">预计到货日期：</text>
-                <text class="card__foot-date">
-                  {{ formatDate(item.estimatedArrivalTime) }}
-                </text>
+              <view class="card__foot">
+                <view class="card__foot-item">
+                  <text class="card__foot-label">下单日期：</text>
+                  <text class="card__foot-date">
+                    {{ formatDate(item.creationTime) }}
+                  </text>
+                </view>
+                <view class="card__foot-item">
+                  <text class="card__foot-label">预计到货日期：</text>
+                  <text class="card__foot-date">
+                    {{ formatDate(item.estimatedArrivalTime) }}
+                  </text>
+                </view>
               </view>
             </view>
           </view>
@@ -856,6 +858,17 @@ onReachBottom(() => {
   gap: 8rpx;
   align-items: center;
   max-width: 220rpx;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  line-height: 20rpx;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.card__dispatcher::after {
+  border: 0;
 }
 
 .card__dispatcher-label,

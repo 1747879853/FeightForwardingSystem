@@ -126,11 +126,11 @@ export interface LoadingOrderListItemDto {
   seaExport?: null | LoadingOrderSeaExportSimpleDto;
   seaExportId: string;
   status: number;
-  /** 派单人 ID，列表接口待上线 */
+  /** 派单人 ID；未提交时为 null */
   submitUserId?: null | number | string;
-  /** 派单人姓名，为空时不展示派单人区域 */
+  /** 派单人姓名，为空时不展示标题行灰色小字 */
   submitUserName?: null | string;
-  /** 派单人手机号 */
+  /** 派单人手机号，点姓名后弹窗确认再 makePhoneCall */
   submitUserPhone?: null | string;
 }
 

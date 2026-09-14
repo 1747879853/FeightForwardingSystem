@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-14] [小程序监装列表派单人加大热区](./changelogs/change-log-2026-09-14-mp-loading-list-dispatcher-tap.md)
 - [2026-09-14] [监装小程序箱列表易读易点](./changelogs/change-log-2026-09-14-监装小程序箱列表易读易点.md)
 
 - [2026-09-14] [PC 监装列表派单人不显示拨打](./changelogs/change-log-2026-09-14-pc-loading-list-hide-call.md)
