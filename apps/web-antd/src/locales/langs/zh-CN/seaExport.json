@@ -1088,7 +1088,24 @@
     "statusDone": "已完成",
     "statusPending": "待处理",
     "isLoadingCompleted": "监装完成",
-    "attachmentCount": "监装照片"
+    "attachmentCount": "监装照片",
+    "list": {
+      "title": "监装",
+      "status": "监装状态",
+      "loadingOrderNum": "监装工单号",
+      "submitUserName": "派单人",
+      "submitTime": "提交时间",
+      "claimTime": "认领时间",
+      "completeTime": "完成时间",
+      "creationTime": "创建时间",
+      "creationTimeRange": "创建时间",
+      "creationTimeStart": "创建时间起",
+      "creationTimeEnd": "创建时间止",
+      "estimatedArrivalDate": "预计到货日期",
+      "remark": "备注",
+      "selectCarrierFirst": "请先选择船公司",
+      "seaExportDeleted": "关联的海运出口已删除，无法打开监装页"
+    }
   },
   "yundang": {
     "subscribe": "运踪订阅",

@@ -166,6 +166,28 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
+      {
+        meta: {
+          icon: 'mdi:hard-hat',
+          title: '监装',
+          hideChildrenInMenu: true,
+          authority: abpPageAuthority('Admin.SeaExport.LoadingOrder'),
+        },
+        name: 'LoadingOrder',
+        path: '/loading-orders',
+        children: [
+          {
+            path: '',
+            name: 'LoadingOrderList',
+            meta: {
+              keepAlive: true,
+              title: '监装',
+              authority: abpPageAuthority('Admin.SeaExport.LoadingOrder'),
+            },
+            component: () => import('#/views/loading-order-admin/list.vue'),
+          },
+        ],
+      },
     ],
   },
 ];

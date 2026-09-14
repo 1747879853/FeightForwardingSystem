@@ -861,7 +861,24 @@
     "statusDone": "Completed",
     "statusPending": "Pending",
     "isLoadingCompleted": "Completed",
-    "attachmentCount": "Photos"
+    "attachmentCount": "Photos",
+    "list": {
+      "title": "Loading",
+      "status": "Status",
+      "loadingOrderNum": "Loading Order No.",
+      "submitUserName": "Submitted By",
+      "submitTime": "Submit Time",
+      "claimTime": "Claim Time",
+      "completeTime": "Complete Time",
+      "creationTime": "Created At",
+      "creationTimeRange": "Created At",
+      "creationTimeStart": "Created From",
+      "creationTimeEnd": "Created To",
+      "estimatedArrivalDate": "ETA Date",
+      "remark": "Remark",
+      "selectCarrierFirst": "Select a carrier first",
+      "seaExportDeleted": "The linked sea export was deleted; cannot open the loading tab"
+    }
   },
   "yundang": {
     "subscribe": "Tracking Subscribe",

@@ -1,3 +1,5 @@
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+
 import { requestClient } from '#/api/request';
 
 /** 监装工单状态 */
@@ -17,6 +19,14 @@ export const LOADING_ORDER_STATUS_TEXT: Record<number, string> = {
   [LoadingOrderStatus.Pending]: '待认领',
   [LoadingOrderStatus.Claimed]: '已认领',
   [LoadingOrderStatus.Completed]: '已完成',
+};
+
+/** 监装列表状态 Tag 颜色（与海运出口监装 Tab 状态色一致） */
+export const LOADING_ORDER_STATUS_COLORS: Record<number, string> = {
+  [LoadingOrderStatus.Unsubmitted]: 'blue',
+  [LoadingOrderStatus.Pending]: 'orange',
+  [LoadingOrderStatus.Claimed]: 'processing',
+  [LoadingOrderStatus.Completed]: 'success',
 };
 
 /** 监装箱型附件 ModuleType，与后端 OrderCtnLoading 一致 */
@@ -178,6 +188,58 @@ export namespace LoadingOrderAdminApi {
     id: string;
   }
 
+  /** 监装工单分页列表项 */
+  export interface LoadingOrderListDto {
+    id: string;
+    seaExportId: string;
+    loadingOrderNum?: string;
+    codePackageItem?: null | SimpleNamedDto;
+    pkgs?: null | number;
+    estimatedArrivalTime?: null | string;
+    carrierYard?: null | CarrierYardSimpleDto;
+    status: number;
+    remark?: null | string;
+    submitUserName?: null | string;
+    submitTime?: null | string;
+    claimTime?: null | string;
+    completeTime?: null | string;
+    rejectTime?: null | string;
+    rejectReason?: null | string;
+    creatorUserName?: null | string;
+    lastModifierUserName?: null | string;
+    creationTime?: string;
+    loadingOrderUsers?: LoadingOrderUserDto[] | null;
+    /** 与海运出口列表同一对象；海运出口被删时为 null */
+    seaExport?: null | SeaExportAdminApi.SeaExportDto;
+  }
+
+  /** 监装工单分页列表查询 */
+  export interface LoadingOrderQueryDto {
+    status?: number;
+    loadingOrderNum?: string;
+    carrierYardId?: string;
+    estimatedArrivalDate?: string;
+    userId?: number | string;
+    creationTimeStart?: string;
+    creationTimeEnd?: string;
+    mblNum?: string;
+    commissionNum?: string;
+    codeGoodsId?: number | string;
+    carrierId?: number | string;
+    polId?: number | string;
+    vessel?: string;
+    innerVoyno?: string;
+    orgId?: number | string;
+    pageIndex?: number;
+    pageSize?: number;
+    sorting?: string;
+  }
+
+  export interface PagedListOfLoadingOrderListDto {
+    items: LoadingOrderListDto[];
+    totalCount: number;
+  }
+
   /** 按到货日+船公司查已排师傅 */
   export interface LoadingOrderYardUserQueryDto {
     estimatedArrivalDate: string;
@@ -216,6 +278,16 @@ export namespace LoadingOrderAdminApi {
 }
 
 const ADMIN_PREFIX = '/services/app/LoadingOrderAdmin';
+
+/** 监装工单分页列表（管理端操作管理入口） */
+export const getLoadingOrderPagedList = (
+  params: LoadingOrderAdminApi.LoadingOrderQueryDto,
+) => {
+  return requestClient.get<LoadingOrderAdminApi.PagedListOfLoadingOrderListDto>(
+    `${ADMIN_PREFIX}/GetPagedListAsync`,
+    { params },
+  );
+};
 
 /**
  * 按海运出口 id 查监装工单详情。
