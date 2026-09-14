@@ -14,6 +14,7 @@
 ## 2026-09
 
 - [2026-09-14 港口下拉改走 PortCode/GetPagedListAsync](./changelogs/change-log-2026-09-14-portcode-paged-select.md)
+- [2026-09-14] [组织英文名输入上限对齐后端 128](./changelogs/change-log-2026-09-14-dept-enname-max-128.md)
 - [2026-09-13] [小程序登录失效循环跳转修复](./changelogs/change-log-2026-09-13-小程序登录失效循环跳转修复.md)
 
 - [2026-09-13] [监装分享页按摄像头显示视频入口](./changelogs/change-log-2026-09-13-监装分享页按摄像头显示视频入口.md)

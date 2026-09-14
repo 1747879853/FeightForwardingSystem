@@ -2,7 +2,7 @@
 title: 部门管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-10
+last_updated: 2026-09-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -43,6 +43,7 @@ last_updated: 2026-09-10
 | :-- | :-- | :-- | :-- | :-- |
 | **权限码** | 控制页面可见与访问。 | `src/router/routes/modules/system.ts` | **触发/依赖：** 经 `abpPageAuthority` 转换后参与动态路由过滤。 | 用户必须具备对应权限码。 |
 | **页面数据** | 系统管理页面的列表、表单或配置对象。 | src/views/system/dept/data.ts | **触发/依赖：** 与系统 API 契约联动。 | 字段校验以后端接口为准。 |
+| **英文名** | 组织英文名称，公司与部门均可维护。 | **组织机构**<br/>`CreateOrganizationUnitAsync` / `UpdateOrganizationUnitAsync` / `GetOrganizationUnitAsync` 的 `enName` | **触发/依赖：** 新增/编辑弹窗输入；详情页只读展示。 | 非必填，最长 128（2026-09-14 由 64 放宽，前后端一致）。 |
 | **本级人数** | 当前组织直接归属的成员数。 | `OrganizationUnit.memberCount` | **触发/依赖：** 公司与普通组织节点均展示。 | 接口应返回有效数字。 |
 | **含下级人数** | 当前公司及所有下级组织的成员总数。 | `OrganizationUnit.memberCountTotal` | **触发/依赖：** 仅公司节点与本级人数并列展示。 | 缺省按 0 展示。 |
 | **公司 Logo** | 公司品牌图，供打印等下游读取（附件模块 `OrganizationUnitLogo`）。 | **组织机构**<br/>`CreateOrganizationUnitAsync` / `UpdateOrganizationUnitAsync` / `GetOrganizationUnitAsync` 的 `logo` | **触发/依赖：** 仅 `isCompany=true` 可上传；详情回显在标题/「组织名称」旁，不单独占字段行；提交 `{ attachmentId, displayOrder: 0 }`；清空传 `null`。 | 单文件图片（png/jpg/jpeg/webp/svg），≤5MB；非必填。 |
@@ -62,6 +63,7 @@ last_updated: 2026-09-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-14 | `Fix` | 组织英文名输入上限由 64 改为 128，与后端 `MaxEnNameLength` 对齐。 | 仅改 `data.ts` 的 `maxLength`，无 Zod 二次校验。详见 `changelogs/change-log-2026-09-14-dept-enname-max-128.md`。 |
 | 2026-09-10 | `Fix` | 公司新增银行账户时，「账户名称」默认带出当前公司名称，编辑仍按详情回填。 | 新建弹窗传入 `displayName`，`resetForm` 后再写 `accountName`。详见 `changelogs/change-log-2026-09-10-dept-bank-account-name-default.md`。 |
 | 2026-08-28 | `Feature` | 公司级组织编辑增加开票令牌 Token（密码框）；详情页只显示是否已配置。 | Token 与 AppKey/AppSecret 同属全量覆盖字段；固定值、不自动刷新。详见 `changelogs/change-log-2026-08-28-dept-company-invoice-access-token.md`。 |
 | 2026-08-22 | `Fix` | 公司 Logo 上传后只显示缩略图，不再附带文件名列表。 | 与船公司共用 `FileUploadInput` 的 `picture-card`：隐藏自定义文件名列表与 Ant Design 文件名。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |

@@ -63,7 +63,7 @@ export function useSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
-      componentProps: { maxLength: 64 },
+      componentProps: { maxLength: 128 },
       fieldName: 'enName',
       label: $t('system.dept.enName'),
     },
