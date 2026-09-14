@@ -19,7 +19,6 @@ import {
  */
 export const profitReportConfig: ReportPageConfig<ReportApi.ProfitReportDto> = {
   name: '利润报表',
-  tableId: 'ProfitReport',
   fetchApi: getProfitReportList,
 
   // 查询表单：公共字段，业务日期默认当月，避免首屏全量查询

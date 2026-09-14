@@ -31,11 +31,6 @@ export interface ReportQueryContext {
 export interface ReportPageConfig<TRaw = any> {
   /** 报表名称（用于导出文件名与工作表名） */
   name: string;
-  /**
-   * 稳定表格 id（用于 UserSetting 持久化手动隐藏列）
-   * 键名：`report_hidden_columns_${tableId}`
-   */
-  tableId: string;
   /** 列表查询接口（当前后端为不分页全量查询） */
   fetchApi: (params: any) => Promise<TRaw[]>;
   /** 查询表单配置 */

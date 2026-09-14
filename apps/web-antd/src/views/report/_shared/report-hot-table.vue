@@ -1,12 +1,5 @@
 <script lang="ts" setup>
-import {
-  computed,
-  nextTick,
-  onMounted,
-  onUnmounted,
-  shallowRef,
-  watch,
-} from 'vue';
+import { computed, nextTick, onMounted, shallowRef, watch } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
@@ -21,7 +14,6 @@ import {
   fillAggregatedColumns,
   parseNumeric,
 } from './aggregate';
-import { useReportHiddenColumnsPersist } from './use-report-hidden-columns-persist';
 import { useReportTableLayout } from './use-report-table-layout';
 
 defineOptions({
@@ -32,6 +24,15 @@ defineOptions({
 const REPORT_ROW_HEIGHT = 32;
 /** cells() 普通行复用，避免每次 new 对象 */
 const EMPTY_CELL_PROPS = Object.freeze({});
+/** 分组列每级缩进（像素）。不能用空格：td 的 nowrap 会折叠空白，层次看不出来 */
+const GROUP_INDENT_PX = 18;
+/** 层级样式封顶，更深的分组复用最末档 */
+const GROUP_LEVEL_CAP = 3;
+
+function clampGroupLevel(level: unknown): number {
+  const n = Number(level) || 0;
+  return Math.min(Math.max(n, 0), GROUP_LEVEL_CAP);
+}
 
 const props = defineProps<{
   originalData: Record<string, any>[];
@@ -45,8 +46,6 @@ const props = defineProps<{
   numericColumnKeys: string[];
   /** 报表名称（用于导出文件名与工作表名） */
   reportTitle: string;
-  /** 稳定表格 id，用于 UserSetting 持久化隐藏列 */
-  tableId: string;
 }>();
 
 const emit = defineEmits<{
@@ -89,11 +88,6 @@ const { scheduleHeightUpdate } = useReportTableLayout({
   containerRef,
   getHotInstance: () => hotTableRef.value?.hotInstance,
 });
-
-const { dispose, loadHiddenColumnKeys, scheduleSaveHiddenColumnKeys } =
-  useReportHiddenColumnsPersist(() => props.tableId);
-
-let hiddenColumnsPersistLoaded = false;
 
 function clearCaches() {
   groupingCache.clear();
@@ -252,8 +246,8 @@ watch(
       }
       applyGrouping(dataSource.value);
     } else {
-      // 查无数据时只清索引，保留字段偏好（含已持久化的 keys）
       hiddenColumnsRef.value = [];
+      hiddenColumnDataRefs.value = new Set();
       syncHotData([]);
     }
   },
@@ -283,12 +277,8 @@ function syncHiddenColumnIndexesFromDataRefs() {
   return indexes;
 }
 
-function persistHiddenColumnKeys() {
-  scheduleSaveHiddenColumnKeys([...hiddenColumnDataRefs.value]);
-}
-
 /**
- * 按列 data 字段解除隐藏（支持单个或多个）；同步插件索引并持久化。
+ * 按列 data 字段解除隐藏（支持单个或多个）；同步插件索引。
  */
 function unhideColumnsByData(keys: string[]) {
   const keySet = new Set(
@@ -314,8 +304,6 @@ function unhideColumnsByData(keys: string[]) {
     plugin.showColumns(showIndexes);
     hotInstance.render();
   }
-
-  persistHiddenColumnKeys();
 }
 
 componentInstance.unhideColumnsByData = unhideColumnsByData;
@@ -333,7 +321,6 @@ function updateHiddenColumnData(destinationHideConfig: number[]) {
     }
   });
   hiddenColumnDataRefs.value = hiddenData;
-  persistHiddenColumnKeys();
 }
 
 /**
@@ -527,16 +514,18 @@ const hotSettings = computed(() => {
       if (!rowData) return EMPTY_CELL_PROPS;
 
       const colConfig = currentColumnsRef.value[col];
+      const isGroupCol = colConfig?.data === '_groupDisplay';
       let rowClass = '';
       if (rowData._isTotalRow) {
         rowClass = 'report-total-cell';
       } else if (rowData._isGroupRow) {
-        rowClass =
-          colConfig?.data === '_groupDisplay'
-            ? 'report-group-cell report-group-label'
-            : 'report-group-cell';
-      } else if (rowData._isDetailRow) {
-        rowClass = 'report-detail-cell';
+        const level = clampGroupLevel(rowData._groupLevel);
+        rowClass = `report-group-cell report-group-cell--l${level}`;
+        if (isGroupCol) rowClass += ' report-group-label';
+      } else if (rowData._isDataRow && localGroupColumns.value.length > 0) {
+        rowClass = isGroupCol
+          ? 'report-data-cell report-data-label'
+          : 'report-data-cell';
       } else {
         return EMPTY_CELL_PROPS;
       }
@@ -609,30 +598,115 @@ const hotSettings = computed(() => {
   };
 });
 
-onMounted(async () => {
-  if (!hiddenColumnsPersistLoaded) {
-    const keys = await loadHiddenColumnKeys();
-    hiddenColumnDataRefs.value = new Set(keys);
-    hiddenColumnsPersistLoaded = true;
-    if (currentColumnsRef.value.length > 0) {
-      syncHiddenColumnIndexesFromDataRefs();
-    }
-  }
-
+onMounted(() => {
   if (dataSource.value.length > 0) {
     applyGrouping(dataSource.value);
   }
 });
 
-onUnmounted(() => {
-  dispose();
-});
+function renderGroupDisplayCell(
+  td: HTMLTableCellElement,
+  rowData: Record<string, any> | undefined,
+) {
+  td.replaceChildren();
+  td.removeAttribute('title');
+
+  if (!rowData) {
+    return td;
+  }
+
+  if (rowData._isTotalRow) {
+    td.textContent = '合计';
+    return td;
+  }
+
+  if (rowData._isGroupRow) {
+    const level = Number(rowData._groupLevel) || 0;
+    const expanded = localExpandedGroups.value.has(rowData._groupKey);
+    const fieldKey = rowData._groupCol as string | undefined;
+    const fieldTitle = fieldKey
+      ? columnTitleMap.value[fieldKey] || fieldKey
+      : '';
+    const rawValue = fieldKey ? rowData[fieldKey] : '';
+    const groupValue =
+      rawValue != null && rawValue !== ''
+        ? String(rawValue)
+        : String(rowData._groupName || '').replace(/\(\d+\)$/, '');
+    const count = Array.isArray(rowData._groupItems)
+      ? rowData._groupItems.length
+      : 0;
+
+    const wrap = document.createElement('span');
+    wrap.className = expanded
+      ? 'report-group-tree report-group-tree--expanded'
+      : 'report-group-tree';
+    wrap.style.setProperty(
+      '--report-group-indent',
+      `${level * GROUP_INDENT_PX}px`,
+    );
+
+    const caret = document.createElement('span');
+    caret.className = 'report-group-tree__caret';
+    wrap.append(caret);
+
+    if (fieldTitle) {
+      const field = document.createElement('span');
+      field.className = 'report-group-tree__field';
+      field.textContent = fieldTitle;
+      wrap.append(field);
+    }
+
+    const name = document.createElement('span');
+    name.className = 'report-group-tree__name';
+    name.textContent = groupValue;
+    wrap.append(name);
+
+    if (count > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'report-group-tree__count';
+      badge.textContent = String(count);
+      wrap.append(badge);
+    }
+
+    td.title = fieldTitle
+      ? `${fieldTitle}：${groupValue}（${count}）`
+      : `${groupValue}（${count}）`;
+    td.append(wrap);
+    return td;
+  }
+
+  if (rowData._isDataRow) {
+    const level = Number(rowData._groupLevel) || 0;
+    const wrap = document.createElement('span');
+    wrap.className = 'report-group-tree report-group-tree--leaf';
+    wrap.style.setProperty(
+      '--report-group-indent',
+      `${level * GROUP_INDENT_PX}px`,
+    );
+
+    const dot = document.createElement('span');
+    dot.className = 'report-group-tree__dot';
+    wrap.append(dot);
+
+    td.append(wrap);
+    return td;
+  }
+
+  return td;
+}
 
 function createGroupColumn() {
+  const groupTitle =
+    localGroupColumns.value.length > 0
+      ? localGroupColumns.value
+          .map((col) => columnTitleMap.value[col] || col)
+          .join(' › ')
+      : '分组';
+
   return {
     data: '_groupDisplay',
-    title: '分组',
-    width: 250,
+    title: groupTitle,
+    width: 300,
     className: 'htLeft',
     renderer: (
       _instance: any,
@@ -642,32 +716,7 @@ function createGroupColumn() {
       _prop: string,
       _value: any,
       _cellProperties: any,
-    ) => {
-      const rowData = tableData.value[row];
-      if (!rowData) {
-        td.textContent = '';
-        return td;
-      }
-      if (rowData._isTotalRow) {
-        td.textContent = '合计';
-        return td;
-      }
-      if (rowData._isGroupRow) {
-        const level = rowData._groupLevel || 0;
-        const icon = localExpandedGroups.value.has(rowData._groupKey)
-          ? '▼ '
-          : '▶ ';
-        td.textContent = `${'  '.repeat(level)}${icon}${rowData._groupName || ''}`;
-        return td;
-      }
-      if (rowData._isDataRow) {
-        const level = (rowData._groupLevel || 0) + 1;
-        td.textContent = `${'  '.repeat(level)}•`;
-        return td;
-      }
-      td.textContent = '';
-      return td;
-    },
+    ) => renderGroupDisplayCell(td, tableData.value[row]),
   };
 }
 
@@ -803,6 +852,7 @@ function buildTreeStructure(
     aggregatedRow._isGroupRow = true;
     aggregatedRow._groupName = `${groupName}(${items.length})`;
     aggregatedRow._groupKey = `${currentGroupCol}|${groupName}|${level}`;
+    aggregatedRow._groupCol = currentGroupCol;
     aggregatedRow._groupLevel = level;
     aggregatedRow._groupItems = items;
     aggregatedRow._hasChildren =
@@ -876,6 +926,7 @@ function buildFullExportTree(
 
     aggregatedRow._isGroupRow = true;
     aggregatedRow._groupName = `${groupName}(${items.length})`;
+    aggregatedRow._groupCol = currentGroupCol;
     aggregatedRow._groupLevel = level;
     aggregatedRow._hasChildren =
       remainingGroupCols.length > 0 || items.length > 0;
@@ -1100,7 +1151,9 @@ async function handleExport() {
       headerTitles = currentColumns
         .map((col) =>
           col.data === '_groupDisplay'
-            ? '分组'
+            ? localGroupColumns.value
+                .map((key) => columnTitleMap.value[key] || key)
+                .join(' › ') || '分组'
             : columnTitleMap.value[col.data!] || col.data!,
         )
         .filter(Boolean);
@@ -1117,13 +1170,17 @@ async function handleExport() {
         for (const colData of headers) {
           if (!colData) continue;
           if (colData === '_groupDisplay') {
+            const indent = '\u00A0\u00A0'.repeat(row._groupLevel || 0);
             if (row._isGroupRow) {
-              exportRow[colData] = row._groupName;
+              const field = row._groupCol
+                ? columnTitleMap.value[row._groupCol] || row._groupCol
+                : '';
+              exportRow[colData] =
+                `${indent}${field ? `${field}：` : ''}${row._groupName}`;
             } else if (row._isTotalRow) {
               exportRow[colData] = '合计';
             } else if (row._isDataRow) {
-              const indentLevel = (row._groupLevel || 0) + 1;
-              exportRow[colData] = '•'.repeat(indentLevel);
+              exportRow[colData] = `${indent}•`;
             } else {
               exportRow[colData] = '';
             }
@@ -1246,50 +1303,53 @@ componentInstance.applyGrouping = applyGrouping;
         class="group-area-tags flex flex-1 flex-wrap gap-2"
         :class="{ 'sortable-over': dragOverGroupIndex !== null }"
       >
-        <Tag
-          v-for="(col, index) in localGroupColumns"
-          :key="col"
-          closable
-          draggable="true"
-          class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md"
-          :class="{
-            'scale-95 opacity-50': draggedGroupIndex === index,
-            'group-tag--over': dragOverGroupIndex === index,
-            'group-tag--hover': hoverColumnData === col,
-            'group-tag--idle': hoverColumnData !== col,
-          }"
-          @dragstart="handleGroupTagDragStart($event, col, index)"
-          @dragover.prevent="handleGroupTagDragOver($event, index)"
-          @drop="handleGroupTagDrop($event, index)"
-          @dragend="handleGroupTagDragEnd"
-          @mouseenter="hoverColumnData = col"
-          @mouseleave="hoverColumnData = null"
-          @close="
-            (e: Event) => {
-              e.preventDefault();
-              removeGroupColumn(col);
-            }
-          "
-        >
-          <span class="inline-flex items-center gap-1 whitespace-nowrap">
-            <svg
-              v-if="hoverColumnData === col || draggedGroupIndex === index"
-              class="h-3 w-3 flex-shrink-0 cursor-grab active:cursor-grabbing"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 8h16M4 16h16"
-              />
-            </svg>
-            <span class="font-medium">{{ columnTitleMap[col] || col }}</span>
-            <span class="group-tag__level"> {{ index + 1 }}级 </span>
+        <template v-for="(col, index) in localGroupColumns" :key="col">
+          <span v-if="index > 0" class="group-tag__sep" aria-hidden="true">
+            ›
           </span>
-        </Tag>
+          <Tag
+            closable
+            draggable="true"
+            class="group-tag cursor-grab rounded-md border transition-all duration-200 hover:shadow-md"
+            :class="{
+              'scale-95 opacity-50': draggedGroupIndex === index,
+              'group-tag--over': dragOverGroupIndex === index,
+              'group-tag--hover': hoverColumnData === col,
+              'group-tag--idle': hoverColumnData !== col,
+            }"
+            @dragstart="handleGroupTagDragStart($event, col, index)"
+            @dragover.prevent="handleGroupTagDragOver($event, index)"
+            @drop="handleGroupTagDrop($event, index)"
+            @dragend="handleGroupTagDragEnd"
+            @mouseenter="hoverColumnData = col"
+            @mouseleave="hoverColumnData = null"
+            @close="
+              (e: Event) => {
+                e.preventDefault();
+                removeGroupColumn(col);
+              }
+            "
+          >
+            <span class="inline-flex items-center gap-1 whitespace-nowrap">
+              <svg
+                v-if="hoverColumnData === col || draggedGroupIndex === index"
+                class="h-3 w-3 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 8h16M4 16h16"
+                />
+              </svg>
+              <span class="font-medium">{{ columnTitleMap[col] || col }}</span>
+              <span class="group-tag__level"> {{ index + 1 }}级 </span>
+            </span>
+          </Tag>
+        </template>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">
@@ -1426,6 +1486,12 @@ componentInstance.applyGrouping = applyGrouping;
   border-radius: 4px;
 }
 
+.group-tag__sep {
+  font-size: 14px;
+  line-height: 1;
+  color: hsl(var(--muted-foreground));
+}
+
 .group-tag--hover .group-tag__level {
   color: #fff;
   background: rgb(255 255 255 / 20%);
@@ -1510,17 +1576,140 @@ componentInstance.applyGrouping = applyGrouping;
       }
 
       td.report-group-cell {
-        font-weight: bold;
+        font-weight: 600;
         cursor: pointer;
-        background-color: #fafafa29 !important;
+      }
+
+      td.report-group-cell--l0 {
+        background-color: hsl(var(--primary) / 14%) !important;
+      }
+
+      td.report-group-cell--l1 {
+        background-color: hsl(var(--primary) / 8%) !important;
+      }
+
+      td.report-group-cell--l2 {
+        font-weight: 500;
+        background-color: hsl(var(--primary) / 4.5%) !important;
+      }
+
+      td.report-group-cell--l3 {
+        font-weight: 500;
+        background-color: hsl(var(--muted)) !important;
       }
 
       td.report-group-label {
-        background-color: hsl(var(--primary) / 12%) !important;
+        padding-left: 8px !important;
       }
 
-      td.report-detail-cell {
-        background-color: #fafafa29 !important;
+      td.report-group-cell--l0.report-group-label {
+        box-shadow: inset 3px 0 0 hsl(var(--primary));
+      }
+
+      td.report-group-cell--l1.report-group-label {
+        box-shadow: inset 3px 0 0 hsl(var(--primary) / 70%);
+      }
+
+      td.report-group-cell--l2.report-group-label {
+        box-shadow: inset 3px 0 0 hsl(var(--primary) / 42%);
+      }
+
+      td.report-group-cell--l3.report-group-label {
+        box-shadow: inset 3px 0 0 hsl(var(--muted-foreground) / 40%);
+      }
+
+      td.report-data-cell {
+        background-color: hsl(var(--background)) !important;
+      }
+
+      td.report-data-label {
+        color: hsl(var(--muted-foreground));
+      }
+
+      .report-group-tree {
+        box-sizing: border-box;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        width: 100%;
+        max-width: 100%;
+        padding-left: var(--report-group-indent, 0);
+        overflow: hidden;
+        line-height: 1;
+        vertical-align: middle;
+        background-image: repeating-linear-gradient(
+          90deg,
+          hsl(var(--primary) / 28%) 0 1px,
+          transparent 1px 18px
+        );
+        background-repeat: no-repeat;
+        background-position: 8px 50%;
+        background-size: var(--report-group-indent, 0) 55%;
+      }
+
+      .report-group-tree__caret {
+        flex-shrink: 0;
+        width: 0;
+        height: 0;
+        border-color: transparent transparent transparent hsl(var(--primary));
+        border-style: solid;
+        border-width: 4px 0 4px 6px;
+        transform-origin: 25% 50%;
+      }
+
+      .report-group-tree--expanded .report-group-tree__caret {
+        transform: rotate(90deg);
+      }
+
+      .report-group-tree__field {
+        flex-shrink: 0;
+        padding: 1px 5px;
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 16px;
+        color: hsl(var(--primary));
+        background: hsl(var(--background) / 78%);
+        border: 1px solid hsl(var(--primary) / 28%);
+        border-radius: 3px;
+      }
+
+      td.report-group-cell--l0 .report-group-tree__field {
+        color: #fff;
+        background: hsl(var(--primary));
+        border-color: transparent;
+      }
+
+      .report-group-tree__name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .report-group-tree__count {
+        flex-shrink: 0;
+        min-width: 18px;
+        padding: 0 6px;
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 16px;
+        color: hsl(var(--muted-foreground));
+        text-align: center;
+        background: hsl(var(--background) / 72%);
+        border-radius: 999px;
+      }
+
+      .report-group-tree--leaf {
+        opacity: 0.7;
+      }
+
+      .report-group-tree__dot {
+        flex-shrink: 0;
+        width: 6px;
+        height: 6px;
+        background: hsl(var(--muted-foreground) / 55%);
+        border-radius: 50%;
       }
 
       td.report-days-early {
