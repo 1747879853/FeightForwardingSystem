@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, shallowRef, watch } from 'vue';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  shallowRef,
+  watch,
+} from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
@@ -14,6 +21,7 @@ import {
   fillAggregatedColumns,
   parseNumeric,
 } from './aggregate';
+import { useReportHiddenColumnsPersist } from './use-report-hidden-columns-persist';
 import { useReportTableLayout } from './use-report-table-layout';
 
 defineOptions({
@@ -37,6 +45,8 @@ const props = defineProps<{
   numericColumnKeys: string[];
   /** 报表名称（用于导出文件名与工作表名） */
   reportTitle: string;
+  /** 稳定表格 id，用于 UserSetting 持久化隐藏列 */
+  tableId: string;
 }>();
 
 const emit = defineEmits<{
@@ -79,6 +89,11 @@ const { scheduleHeightUpdate } = useReportTableLayout({
   containerRef,
   getHotInstance: () => hotTableRef.value?.hotInstance,
 });
+
+const { dispose, loadHiddenColumnKeys, scheduleSaveHiddenColumnKeys } =
+  useReportHiddenColumnsPersist(() => props.tableId);
+
+let hiddenColumnsPersistLoaded = false;
 
 function clearCaches() {
   groupingCache.clear();
@@ -237,8 +252,8 @@ watch(
       }
       applyGrouping(dataSource.value);
     } else {
+      // 查无数据时只清索引，保留字段偏好（含已持久化的 keys）
       hiddenColumnsRef.value = [];
-      hiddenColumnDataRefs.value = new Set();
       syncHotData([]);
     }
   },
@@ -252,7 +267,58 @@ const componentInstance = {
   applyGrouping: (_data: any[]) => {},
   rightClickColumnIndex,
   dataSource,
+  hiddenColumnDataRefs,
+  columnTitleMap,
+  unhideColumnsByData: (_keys: string[]) => {},
 };
+
+function syncHiddenColumnIndexesFromDataRefs() {
+  const indexes: number[] = [];
+  currentColumnsRef.value.forEach((col, index) => {
+    if (col?.data && hiddenColumnDataRefs.value.has(col.data)) {
+      indexes.push(index);
+    }
+  });
+  hiddenColumnsRef.value = indexes;
+  return indexes;
+}
+
+function persistHiddenColumnKeys() {
+  scheduleSaveHiddenColumnKeys([...hiddenColumnDataRefs.value]);
+}
+
+/**
+ * 按列 data 字段解除隐藏（支持单个或多个）；同步插件索引并持久化。
+ */
+function unhideColumnsByData(keys: string[]) {
+  const keySet = new Set(
+    keys.map((key) => String(key ?? '').trim()).filter(Boolean),
+  );
+  if (keySet.size === 0) return;
+
+  const next = new Set(
+    [...hiddenColumnDataRefs.value].filter((key) => !keySet.has(key)),
+  );
+  hiddenColumnDataRefs.value = next;
+
+  const hotInstance = hotTableRef.value?.hotInstance;
+  const columns = currentColumnsRef.value;
+  const showIndexes = columns
+    .map((col, index) => (keySet.has(col?.data) ? index : -1))
+    .filter((index) => index >= 0);
+
+  syncHiddenColumnIndexesFromDataRefs();
+
+  const plugin = hotInstance?.getPlugin?.('hiddenColumns');
+  if (plugin && showIndexes.length > 0) {
+    plugin.showColumns(showIndexes);
+    hotInstance.render();
+  }
+
+  persistHiddenColumnKeys();
+}
+
+componentInstance.unhideColumnsByData = unhideColumnsByData;
 
 function updateHiddenColumnData(destinationHideConfig: number[]) {
   const hotInstance = hotTableRef.value?.hotInstance;
@@ -267,6 +333,7 @@ function updateHiddenColumnData(destinationHideConfig: number[]) {
     }
   });
   hiddenColumnDataRefs.value = hiddenData;
+  persistHiddenColumnKeys();
 }
 
 /**
@@ -323,8 +390,45 @@ const hotSettings = computed(() => {
     fixedRowsBottom: dataSource.value.length > 0 ? 1 : 0,
     contextMenu: {
       items: {
-        hidden_columns_show: {
+        report_show_hidden_columns: {
           name: '显示隐藏的列',
+          disabled() {
+            return componentInstance.hiddenColumnDataRefs.value.size === 0;
+          },
+          submenu: {
+            items: [
+              {
+                key: 'report_show_hidden_columns:all',
+                name: '全部显示',
+                disabled() {
+                  return (
+                    componentInstance.hiddenColumnDataRefs.value.size === 0
+                  );
+                },
+                callback() {
+                  componentInstance.unhideColumnsByData([
+                    ...componentInstance.hiddenColumnDataRefs.value,
+                  ]);
+                },
+              },
+              ...[...hiddenColumnDataRefs.value].map((dataKey) => {
+                const safeKey = encodeURIComponent(dataKey);
+                const title =
+                  componentInstance.columnTitleMap.value[dataKey] ||
+                  componentInstance.currentColumnsRef.value.find(
+                    (col) => col?.data === dataKey,
+                  )?.title ||
+                  dataKey;
+                return {
+                  key: `report_show_hidden_columns:${safeKey}`,
+                  name: title,
+                  callback() {
+                    componentInstance.unhideColumnsByData([dataKey]);
+                  },
+                };
+              }),
+            ],
+          },
         },
         hidden_columns_hide: {
           name: '隐藏列',
@@ -505,10 +609,23 @@ const hotSettings = computed(() => {
   };
 });
 
-onMounted(() => {
+onMounted(async () => {
+  if (!hiddenColumnsPersistLoaded) {
+    const keys = await loadHiddenColumnKeys();
+    hiddenColumnDataRefs.value = new Set(keys);
+    hiddenColumnsPersistLoaded = true;
+    if (currentColumnsRef.value.length > 0) {
+      syncHiddenColumnIndexesFromDataRefs();
+    }
+  }
+
   if (dataSource.value.length > 0) {
     applyGrouping(dataSource.value);
   }
+});
+
+onUnmounted(() => {
+  dispose();
 });
 
 function createGroupColumn() {

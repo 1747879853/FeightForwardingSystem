@@ -248,7 +248,7 @@ onDeactivated / onUnmounted → stopLayoutWatchers()
 ## 9. 新增一张报表的标准步骤
 
 1. **`api/system/report.ts`**：DTO + `getXxxReportList`（雪花 ID 保持 string）。
-2. **`views/report/<name>/config.ts`**：填 `ReportPageConfig`（见第 4 节）。
+2. **`views/report/<name>/config.ts`**：填 `ReportPageConfig`（见第 4 节），**必填稳定 `tableId`**（隐藏列 UserSetting 键）。
 3. **`views/report/<name>/index.vue`**：`<ReportPage :config="..." />`，`defineOptions({ name })` 与路由 `name` 一致。
 4. **`router/routes/modules/report.ts`**：注册 path / authority / `keepAlive`。
 5. **文档**：`doc/modules/report/<name>.md` + `MODULE_INDEX.md` 一行；有特殊 UI 再用 `report-page` 插槽（`form-extra` / `toolbar` / `table-extra`）。
@@ -259,6 +259,7 @@ onDeactivated / onUnmounted → stopLayoutWatchers()
 - [ ] `numericColumnKeys` 不含需重算的比率列
 - [ ] `beforeQuery` 做了权限拦截；港口成对补了 `*IsSeaPort`
 - [ ] 默认日期合理，折叠后关键筛选项仍可见
+- [ ] 配置了唯一 `tableId`（与其它报表不冲突）
 - [ ] 路由 `name` = 组件 `defineOptions.name`，且 `keepAlive: true` 时布局观察在 `onDeactivated` 停掉
 - [ ] 无新的 `document.body` MutationObserver / 顶层 `window.addEventListener` 泄漏
 
@@ -266,13 +267,13 @@ onDeactivated / onUnmounted → stopLayoutWatchers()
 
 ## 10. 和列表页的对比（避免混用模式）
 
-|        | 业务列表（VXE）                 | 报表（Handsontable）       |
-| :----- | :------------------------------ | :------------------------- |
-| 分页   | `createPagedListQuery`          | 当前全量                   |
-| 列配置 | `useTableConfigStore` 持久化    | 当次会话列显隐（右键隐藏） |
-| 分组   | `list-grouping` Tabs            | 表格内多级树               |
-| 表单   | `useVbenVxeGrid` 内置 form      | 独立 `useVbenForm`         |
-| 刷新   | `useRefreshListOnFormReturn` 等 | 打开页 / 点查询 / 重置再查 |
+|  | 业务列表（VXE） | 报表（Handsontable） |
+| :-- | :-- | :-- |
+| 分页 | `createPagedListQuery` | 当前全量 |
+| 列配置 | `useTableConfigStore` 持久化 | 右键隐藏列；可按列或全部解除；`report_hidden_columns_${tableId}` 用户设置持久化 |
+| 分组 | `list-grouping` Tabs | 表格内多级树 |
+| 表单 | `useVbenVxeGrid` 内置 form | 独立 `useVbenForm` |
+| 刷新 | `useRefreshListOnFormReturn` 等 | 打开页 / 点查询 / 重置再查 |
 
 不要把报表硬套成 VXE 列表，也不要在列表页复制一套 Handsontable 分组树。
 
@@ -293,4 +294,5 @@ onDeactivated / onUnmounted → stopLayoutWatchers()
 
 | 日期 | 说明 |
 | :-- | :-- |
+| 2026-09-14 | 右键可按列/全部解除隐藏列；`report_hidden_columns_${tableId}` 用户设置持久化 |
 | 2026-09-12 | 初版：配置驱动架构、数据流、扩展步骤、性能/易用性踩坑与 keepAlive 布局约定 |

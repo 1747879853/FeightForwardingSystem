@@ -62,6 +62,7 @@ const {
       :hot-columns="dynamicHotColumns"
       :numeric-column-keys="numericColumnKeys"
       :report-title="config.name"
+      :table-id="config.tableId"
       @update:group-columns="groupColumns = $event"
       @update:expanded-groups="expandedGroups = $event"
       @update:column-configs="columnConfigs = $event"
