@@ -46,6 +46,17 @@ export function useFormSchema(): VbenFormSchema[] {
           ]),
         ),
     },
+    {
+      component: 'InputNumber',
+      fieldName: 'sortId',
+      label: $t('system.basicData.attachmentDtlType.sortId'),
+      defaultValue: 0,
+      componentProps: {
+        min: 0,
+        precision: 0,
+        style: { width: '100%' },
+      },
+    },
   ];
 }
 
@@ -78,6 +89,11 @@ export function useColumns(
       field: 'name',
       title: $t('system.basicData.attachmentDtlType.typeName'),
       minWidth: 160,
+    },
+    {
+      field: 'sortId',
+      title: $t('system.basicData.attachmentDtlType.sortId'),
+      width: 90,
     },
     {
       field: 'attachmentDefaultModules',

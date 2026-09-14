@@ -12,18 +12,21 @@ export namespace AttachmentDtlTypeAdminApi {
 
   export interface AttachmentDtlTypeAddDto {
     name?: string | null;
+    sortId?: number;
     attachmentDefaultModules?: AttachmentDefaultModuleInputDto[] | null;
   }
 
   export interface AttachmentDtlTypeEditDto {
     id: number;
     name?: string | null;
+    sortId?: number;
     attachmentDefaultModules?: AttachmentDefaultModuleInputDto[] | null;
   }
 
   export interface AttachmentDtlTypeDto {
     id: number;
     name?: string | null;
+    sortId?: null | number;
     creatorUserName?: string | null;
     creatorUserId?: number | null;
     creationTime?: string | null;

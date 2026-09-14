@@ -280,6 +280,7 @@
       "list": "Attachment Type List",
       "name": "Attachment Type",
       "typeName": "Type Name",
+      "sortId": "Sort order",
       "defaultModules": "Default Display Modules",
       "defaultModulesPlaceholder": "Select business modules for default display",
       "defaultModulesTip": "Selected modules will show this attachment type upload slot when creating new records",

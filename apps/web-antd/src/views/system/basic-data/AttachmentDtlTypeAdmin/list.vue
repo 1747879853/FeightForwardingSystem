@@ -93,7 +93,9 @@ const [Grid, gridApi] =
       proxyConfig: {
         autoLoad: false,
         ajax: {
-          query: createPagedListQuery(getAttachmentDtlTypePagedList),
+          query: createPagedListQuery(getAttachmentDtlTypePagedList, {
+            defaultSort: 'SortId DESC',
+          }),
         },
       },
       toolbarConfig: {

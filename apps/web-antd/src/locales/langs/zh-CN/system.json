@@ -280,6 +280,7 @@
       "list": "附件类型列表",
       "name": "附件类型",
       "typeName": "类型名称",
+      "sortId": "排序",
       "defaultModules": "默认展示模块",
       "defaultModulesPlaceholder": "请选择默认展示的业务模块",
       "defaultModulesTip": "配置后，对应模块新建业务单据时将默认展示该类型的附件上传入口",

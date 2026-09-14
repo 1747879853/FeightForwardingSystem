@@ -47,6 +47,18 @@ const buildDefaultModulesPayload = () => {
   return selectedModuleTypes.value.map((moduleType) => ({ moduleType }));
 };
 
+const mapDtoToFormValues = (
+  data: AttachmentDtlTypeAdminApi.AttachmentDtlTypeDto,
+) => ({
+  name: data.name,
+  sortId: data.sortId ?? 0,
+});
+
+const collectSubmitData = (values: Record<string, unknown>) => ({
+  name: values.name as string,
+  sortId: (values.sortId as number | undefined) ?? 0,
+});
+
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
@@ -56,18 +68,19 @@ const [Modal, modalApi] = useVbenModal({
 
     modalApi.lock();
     const values = await formApi.getValues();
+    const submitData = collectSubmitData(values);
     const attachmentDefaultModules = buildDefaultModulesPayload();
 
     try {
       if (formData.value?.id) {
         await editAttachmentDtlType({
           id: formData.value.id,
-          name: values.name,
+          ...submitData,
           attachmentDefaultModules,
         });
       } else {
         await addAttachmentDtlType({
-          name: values.name,
+          ...submitData,
           attachmentDefaultModules,
         });
       }
@@ -93,9 +106,7 @@ const [Modal, modalApi] = useVbenModal({
         formData.value = detail;
         selectedModuleTypes.value =
           detail.attachmentDefaultModules?.map((item) => item.moduleType) ?? [];
-        formApi.setValues({
-          name: detail.name,
-        });
+        formApi.setValues(mapDtoToFormValues(detail));
       } finally {
         modalApi.lock(false);
       }
