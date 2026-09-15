@@ -7,6 +7,7 @@ import {
   getClientInvoiceInfoDetail,
   type ClientInvoiceInfoAdminApi,
 } from '#/api/sea-export/clinet-invoice-admin';
+import type { GeminiClientInvoiceInfoDto } from '#/api/sea-export/gemini-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import BankTable from './bank-table.vue';
 import { $t } from '#/locales';
@@ -105,13 +106,15 @@ const [InvoiceForm, invoiceFormApi] = useVbenForm({
       },
     },
     {
-      component: 'Input',
+      component: 'Textarea',
       fieldName: 'require',
       label: '开票要求',
       componentProps: {
         allowClear: true,
         placeholder: '请输入开票要求',
-        maxlength: 128, // 根据文档要求，开票要求字段长度限制为128
+        maxlength: 2048,
+        rows: 3,
+        showCount: true,
       },
     },
     {
@@ -378,9 +381,78 @@ async function isInvoiceFormDirty() {
   return (await buildInvoiceSnapshot()) !== invoiceSnapshot.value;
 }
 
+/**
+ * 将 Gemini 开票信息识别结果回填到当前表单（不覆盖 isDefault / sortId）
+ * @returns 是否存在未匹配币别（currencyId === -1）的银行行
+ */
+async function applyAiResult(
+  dto: GeminiClientInvoiceInfoDto,
+): Promise<boolean> {
+  const current = await invoiceFormApi.getValues();
+  await invoiceFormApi.setValues({
+    ...current,
+    header: dto.header ?? current.header ?? '',
+    taxNum: dto.taxNum ?? current.taxNum ?? '',
+    address: dto.address ?? current.address ?? '',
+    tel: dto.tel ?? current.tel ?? '',
+    mobile: dto.mobile ?? current.mobile ?? '',
+    require: dto.require ?? current.require ?? '',
+  });
+
+  formData.value = {
+    header: dto.header ?? formData.value?.header,
+    taxNum: dto.taxNum ?? formData.value?.taxNum,
+    address: dto.address ?? formData.value?.address,
+    tel: dto.tel ?? formData.value?.tel,
+    mobile: dto.mobile ?? formData.value?.mobile,
+    require: dto.require ?? formData.value?.require,
+    isDefault: formData.value?.isDefault,
+  };
+
+  let hasUnmatchedCurrency = false;
+  const banks = Array.isArray(dto.clientInvoiceBanks)
+    ? dto.clientInvoiceBanks
+    : [];
+  bankList.value = banks.map((bank, index) => {
+    const rawId = bank.currencyId;
+    const currencyIdNum =
+      rawId === undefined || rawId === null || rawId === ''
+        ? undefined
+        : Number(rawId);
+    const unmatched =
+      currencyIdNum === undefined ||
+      Number.isNaN(currencyIdNum) ||
+      currencyIdNum < 0;
+    if (unmatched) {
+      hasUnmatchedCurrency = true;
+    }
+    return {
+      _rowKey: `ai_bank_${Date.now()}_${index}`,
+      clientInvoiceInfoId: props.invoiceId || '',
+      bankName: bank.bankName ?? undefined,
+      bankAccount: bank.bankAccount ?? undefined,
+      accountName: bank.accountName ?? dto.header ?? undefined,
+      currencyId: unmatched ? (undefined as unknown as number) : currencyIdNum,
+      currencyCode: bank.currencyCode ?? bank.currency?.code ?? undefined,
+      swiftCode: bank.swiftCode ?? undefined,
+      isDefault: bank.isDefault ?? false,
+      sortId: bank.sortId ?? banks.length - index,
+      _currencyUnmatched: unmatched,
+    } as ClientInvoiceInfoAdminApi.ClientInvoiceBankAddOrEditDto & {
+      _rowKey?: string;
+      currencyCode?: string;
+      _currencyUnmatched?: boolean;
+    };
+  });
+
+  await syncInvoiceSnapshot();
+  return hasUnmatchedCurrency;
+}
+
 defineExpose({
   getFormData,
   isInvoiceFormDirty,
+  applyAiResult,
   // 保存成功后由父组件调用，重新记录干净快照，避免未保存守卫误判为脏
   syncSnapshot: syncInvoiceSnapshot,
   resetForm: () => {
