@@ -494,7 +494,7 @@ function buildConditionValues(
         clientClientType: value as CommissionConfigAdminApi.ClientType,
       };
     }
-    return { portId: value as number };
+    return { portId: value as number | string };
   });
 }
 
@@ -525,21 +525,30 @@ function buildOperationPayload(): CommissionConfigAdminApi.CommissionOperationIn
       name: rule.name.trim() || null,
       amount: rule.amount ?? 0,
       conditionGroups: rule.conditionGroups.map((group) => ({
-        conditions: group.conditions.map((cond) => ({
-          conditionField:
-            cond.conditionField ?? CommissionConditionField.PerTicket,
-          operator: isPerTicket(cond.conditionField)
-            ? CommissionConditionOperator.Equal
-            : (cond.operator ?? CommissionConditionOperator.Equal),
-          values: buildConditionValues(cond),
-        })),
+        conditions: group.conditions.map((cond) => {
+          const conditionField =
+            cond.conditionField ?? CommissionConditionField.PerTicket;
+          const payload: CommissionConfigAdminApi.CommissionConditionInputDto =
+            {
+              conditionField,
+              operator: isPerTicket(conditionField)
+                ? CommissionConditionOperator.Equal
+                : (cond.operator ?? CommissionConditionOperator.Equal),
+            };
+          // 按票条件不能传 values（含 null），否则后端会报错
+          const values = buildConditionValues(cond);
+          if (values != null) {
+            payload.values = values;
+          }
+          return payload;
+        }),
       })),
     })),
   };
 }
 
 function buildSubmitData(): CommissionConfigAdminApi.CommissionConfigAddDto {
-  return {
+  const payload: CommissionConfigAdminApi.CommissionConfigAddDto = {
     name: baseForm.name.trim(),
     sortId: baseForm.sortId,
     remark: baseForm.remark.trim() || null,
@@ -557,9 +566,13 @@ function buildSubmitData(): CommissionConfigAdminApi.CommissionConfigAddDto {
     bizTypes: baseForm.bizTypes.length > 0 ? baseForm.bizTypes : null,
     baseSalary: baseForm.baseSalary ?? null,
     baseSalaryMode: baseForm.baseSalaryMode ?? null,
-    sales: buildSalesPayload(),
-    operation: buildOperationPayload(),
   };
+  // 提成类型决定只传对应半边：销售不传 operation，操作不传 sales（传 null 也会被后端当成传了）
+  const sales = buildSalesPayload();
+  const operation = buildOperationPayload();
+  if (sales) payload.sales = sales;
+  if (operation) payload.operation = operation;
+  return payload;
 }
 
 // ==================== 编辑回填 ====================
@@ -600,23 +613,31 @@ async function fillFromDetail(id: string) {
       amount: rule.amount,
       conditionGroups: rule.conditionGroups.map((group) => ({
         _key: nextKey(),
-        conditions: group.conditions.map((cond) => ({
-          _key: nextKey(),
-          conditionField: cond.conditionField,
-          operator: isPerTicket(cond.conditionField)
-            ? undefined
-            : cond.operator,
-          values: cond.values
-            .map(
-              (value) =>
-                value.seaPort?.id ??
-                value.airPort?.id ??
-                value.cargoId ??
-                value.tradeTermsType ??
-                value.clientClientType,
-            )
-            .filter((value): value is number => value != null),
-        })),
+        conditions: group.conditions.map((cond) => {
+          const conditionField = Number(
+            cond.conditionField,
+          ) as CommissionConfigAdminApi.CommissionConditionField;
+          return {
+            _key: nextKey(),
+            conditionField,
+            operator: isPerTicket(conditionField)
+              ? undefined
+              : (Number(
+                  cond.operator,
+                ) as CommissionConfigAdminApi.CommissionConditionOperator),
+            values: (cond.values ?? [])
+              .map((value) => {
+                const raw =
+                  value.seaPort?.id ??
+                  value.airPort?.id ??
+                  value.cargoId ??
+                  value.tradeTermsType ??
+                  value.clientClientType;
+                return raw == null ? null : raw;
+              })
+              .filter((value): value is number | string => value != null),
+          };
+        }),
       })),
     }));
   }
@@ -1074,8 +1095,9 @@ const [Modal, modalApi] = useVbenModal({
                     :key="cond._key"
                     class="cc-cond-row"
                   >
+                    <!-- Ant Design Vue Select 使用 value / update:value，勿绑 model-value，否则回显空白像未保存 -->
                     <Select
-                      :model-value="cond.conditionField"
+                      :value="cond.conditionField"
                       :options="conditionFieldOptions"
                       :placeholder="$t('commission.conditionField')"
                       class="cc-cond-row__field"
@@ -1089,7 +1111,7 @@ const [Modal, modalApi] = useVbenModal({
                     />
                     <Select
                       v-if="!isPerTicket(cond.conditionField)"
-                      :model-value="cond.operator"
+                      :value="cond.operator"
                       :options="conditionOperatorOptions"
                       :placeholder="$t('commission.conditionOperator')"
                       class="cc-cond-row__op"
@@ -1131,7 +1153,7 @@ const [Modal, modalApi] = useVbenModal({
                           cond.conditionField ===
                           CommissionConditionField.CargoType
                         "
-                        :model-value="getConditionValueBinding(cond)"
+                        :value="getConditionValueBinding(cond)"
                         :options="cargoTypeOptions"
                         :mode="
                           isMultipleOperator(cond.operator)
@@ -1145,7 +1167,7 @@ const [Modal, modalApi] = useVbenModal({
                       />
                       <Select
                         v-else-if="isTradeTermsField(cond.conditionField)"
-                        :model-value="getConditionValueBinding(cond)"
+                        :value="getConditionValueBinding(cond)"
                         :options="tradeTermsTypeOptions"
                         :mode="
                           isMultipleOperator(cond.operator)
@@ -1159,7 +1181,7 @@ const [Modal, modalApi] = useVbenModal({
                       />
                       <Select
                         v-else-if="isClientClientTypeField(cond.conditionField)"
-                        :model-value="getConditionValueBinding(cond)"
+                        :value="getConditionValueBinding(cond)"
                         :options="clientTypeOptions"
                         :mode="
                           isMultipleOperator(cond.operator)
