@@ -51,6 +51,8 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
           slotColumns.set(slot, original ?? column);
           return { ...column, slots: { ...column.slots, default: slot } };
         });
+    const filterSearchSchema = () =>
+      schema.filter((item) => !permission.searchAlways(item.fieldName));
     const result = useVbenVxeGrid(
       {
         ...options,
@@ -58,6 +60,9 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
           ...options.gridOptions,
           columns: renderColumns(),
         },
+        formOptions: options.formOptions
+          ? { ...options.formOptions, schema: filterSearchSchema() }
+          : options.formOptions,
       },
       ...rest,
     );
@@ -73,12 +78,13 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
       maskedFieldIndex,
       () => {
         setGridOptions({ columns: renderColumns() });
-        if (options.formOptions)
-          result[1].formApi.setState({
-            schema: schema.filter(
-              (item) => !permission.searchAlways(item.fieldName),
-            ),
-          });
+        if (!options.formOptions) return;
+        const nextSchema = filterSearchSchema();
+        // Grid 的 formApi 要等表格 onMounted 才挂上，setup 阶段是空对象。
+        result[1].formApi.setState?.({ schema: nextSchema });
+        result[1].setState?.({
+          formOptions: { ...options.formOptions, schema: nextSchema },
+        });
       },
       { immediate: true },
     );

@@ -61,6 +61,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 委托单位、港口、航线、国家、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径。 | `SEA_IMPORT_SORT_FIELD_MAP` 同步；`terminal.name` 删多余 formatter。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-15 | `Fix` | 报关发票号列改为读 `transportOrder.invoiceNum`，文案由「发票号」改为「报关发票号」。 | 筛选参数名仍是 `InvoiceNum`。列设置以当前列为全集，旧 `invoiceNum` key 进页清掉。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)、[列设置清脏键](../../changelogs/change-log-2026-09-15-column-persist-prune-stale-keys.md)。 |

@@ -72,4 +72,5 @@ last_updated: 2026-09-15
 | 2026-06-12 | `Feature` | 列表航线 Tab 靠左展示，超出时可左右滚动切换，且不再挤占右侧批量操作按钮。 | Tab 区与按钮区分 slot 布局；滚动动画期间只改 DOM，结束后再更新 Vue 滚动状态。 |
 | 2026-06-12 | `Fix` | 批量新增弹窗一次新增多行时改为批量插入并增加 loading 反馈，减轻 10 行级卡顿。 | `insertRowsBatch` 合并 `getFullData` + `loadData` 替代循环 `insertAt`；复制行同步走同一路径。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |
+| 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

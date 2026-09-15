@@ -31,10 +31,11 @@
 - API 字段 PascalCase 与 JSON camelCase 不同，按不区分大小写的规则索引匹配；JSON 路径仍按实际对象层次声明。
 - 批量编辑的服务端跳过规则继续由后端执行；前端不会自行求值后端条件树。
 - 原有报表多业务线聚合规则保持独立，继续处理所有来源都受限才隐藏整列的情形。
+- `usePermissionGrid` 不可在 setup 立刻调用 `gridApi.formApi.setState`：`formApi` 要等表格 `onMounted` 才挂上。应改 `formOptions.schema`，并对 `formApi.setState` 做可选调用。见 [列表字段权限不再在挂载前调用空 formApi](./change-log-2026-09-15-field-permission-grid-form-api.md)。
 
 ## 验证
 
-- 命令：`pnpm exec vitest run --config apps/web-antd/vitest.field-permission.config.ts`，14 项通过。
+- 命令：`pnpm exec vitest run --config apps/web-antd/vitest.field-permission.config.ts`，15 项通过。
 - 修改的 14 个 Vue 文件通过 Vue 脚本与模板编译。
 - 全项目类型检查仍报告既有错误，不能宣称整仓类型检查通过；本次新增权限文件已单独核对诊断。
 - 未进行登录后的浏览器端到端验收，需使用实际条件规则验证列表、编辑保存与批量场景。

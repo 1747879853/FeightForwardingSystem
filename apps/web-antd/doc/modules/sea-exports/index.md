@@ -114,6 +114,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Fix` | 批量修改成功后，再进入此前已打开的编辑页会重拉详情，不再沿用 KeepAlive 旧数据。 | `markEntitiesShouldRefresh('SeaExport', ids)`；Form `onActivated` 发现标记才 `loadEditData`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-refresh-detail.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`；点问号不订阅。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字覆盖该字段。 | 列 `transportOrder.invoiceNum`；默认隐藏。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |

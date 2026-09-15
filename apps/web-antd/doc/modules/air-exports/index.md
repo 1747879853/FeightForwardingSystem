@@ -65,6 +65,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 委托单位、订舱代理、空港、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径；空港仍用 `formatAirPortLabel`。 | `AIR_EXPORT_SORT_FIELD_MAP` 同步。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字扩到 6 个字段。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |

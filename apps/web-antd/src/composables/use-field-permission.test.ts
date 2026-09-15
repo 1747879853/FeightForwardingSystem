@@ -16,13 +16,18 @@ vi.mock('#/adapter/form', () => ({
 vi.mock('#/adapter/vxe-table', () => ({
   renderOriginalPermissionCell: vi.fn(() => '原渲染器'),
   useVbenVxeGrid: (options: any) => {
-    const state = { ...options.gridOptions };
+    const state = {
+      ...options.gridOptions,
+      formOptions: options.formOptions,
+    };
     return [
       {},
       {
         state,
         setGridOptions: (patch: any) => Object.assign(state, patch),
-        formApi: { setState: vi.fn() },
+        setState: (patch: any) => Object.assign(state, patch),
+        // 与真实 VxeGridApi 一致：挂载前 formApi 是空对象
+        formApi: {},
       },
     ];
   },
@@ -110,4 +115,21 @@ it('条件屏蔽保留列，受限格子优先于业务插槽', async () => {
   expect(slot({ row: {} })[0].children).toBe('***');
   expect(originalSlot).not.toHaveBeenCalled();
   expect(slot({ row: { vessel: 'A' } })).toBe('船名原插槽');
+});
+
+it('列表筛选在表格未挂载时不抛错，规则到位后写入 schema', async () => {
+  const permission = setup();
+  const [, api] = permission.usePermissionGrid({
+    formOptions: {
+      schema: [{ fieldName: 'vessel' }, { fieldName: 'remark' }],
+    } as any,
+    gridOptions: {
+      columns: [{ field: 'vessel' }, { field: 'remark' }],
+    },
+  });
+  expect((api as any).formApi.setState).toBeUndefined();
+  await mask(true);
+  expect(
+    (api as any).state.formOptions.schema.map((item: any) => item.fieldName),
+  ).toEqual(['remark']);
 });
