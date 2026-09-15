@@ -21,6 +21,7 @@ import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-par
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
+import { peekEntityShouldRefresh } from '#/utils/list-refresh-flag';
 import { isVendorOceanExportTracking } from '#/utils/tracking-brand';
 
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
@@ -214,7 +215,24 @@ watch(
 
 onActivated(() => {
   applyForcedTab(editId.value);
+  void refreshCachedDetailIfBatchEdited();
 });
+
+/** 当前不在基础信息 Tab 时 Form 未挂载，工作台自己拉一次给费用/更改单/标题用；标记留给 Form 进基础信息时再清 */
+async function refreshCachedDetailIfBatchEdited() {
+  const id = editId.value;
+  if (!id || !peekEntityShouldRefresh('SeaExport', id)) return;
+  if (activeTab.value === 'basic') return;
+  try {
+    const detail = await getSeaExportDetail(id);
+    if (String(editId.value ?? '') !== String(id)) return;
+    savedDetail.value = detail;
+    applyTabTitleFromDetail(detail);
+    clearOrderDetailCache(id);
+  } catch {
+    // 批量改后进缓存页以 Form 重拉为准，这里失败不挡切 Tab
+  }
+}
 
 watch(activeTab, (tab) => {
   writeStoredTab(editId.value, tab);

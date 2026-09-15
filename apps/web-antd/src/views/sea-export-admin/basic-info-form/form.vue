@@ -98,7 +98,11 @@ import {
 } from '#/components/terminal-schedule';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable } from '#/utils/ticket-editable';
-import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  consumeEntityShouldRefresh,
+  markListShouldRefresh,
+  peekEntityShouldRefresh,
+} from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   emptyPartyContact,
@@ -2246,6 +2250,8 @@ const loadEditData = async (): Promise<
   SeaExportAdminApi.SeaExportDto | undefined
 > => {
   if (!editId.value) return undefined;
+  // 列表批量改等外部写库后，进页/激活一旦开始拉详情就清标记，避免 KeepAlive 连打两次
+  consumeEntityShouldRefresh('SeaExport', editId.value);
 
   detailIsEditable.value = false;
   suppressServiceTypeLinkage.value = true;
@@ -3086,9 +3092,20 @@ onMounted(() => {
   window.addEventListener('resize', syncCargoMainLayoutHeight);
 });
 
+/** KeepAlive 首次挂载会连着走 onMounted + onActivated，详情已由 initialize 拉取 */
+const skipFirstActivateDetailReload = ref(true);
+
 onActivated(() => {
   if (!isEdit.value) return;
   void refreshUploadedAttachmentTypeIds();
+  if (skipFirstActivateDetailReload.value) {
+    skipFirstActivateDetailReload.value = false;
+    return;
+  }
+  if (!peekEntityShouldRefresh('SeaExport', editId.value)) return;
+  void loadEditData().then((detail) => {
+    if (detail) emit('saved', detail);
+  });
 });
 
 onBeforeUnmount(() => {

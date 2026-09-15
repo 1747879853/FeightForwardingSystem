@@ -28,7 +28,7 @@ last_updated: 2026-09-15
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。港口备注列仍用 `polName` 等旧 field + `formatter` 读 `*Remark`，排序仍走 `*.PortName`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
-- **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、干系人三区（一行三列），控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。六段港口选中后自动带出对应备注（`PORTNAME, COUNTRYENNAME`）并随 id 提交，列表港口列读的就是这些备注。仅 `isEditable === true` 的票 id 参与提交。
+- **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、干系人三区（一行三列），控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。六段港口选中后自动带出对应备注（`PORTNAME, COUNTRYENNAME`）并随 id 提交，列表港口列读的就是这些备注。仅 `isEditable === true` 的票 id 参与提交。成功后给这些 id 打详情重拉标记：之前开过、仍挂在页签里的编辑页再点进去会重新 `DetailAsync`，不会继续显示 KeepAlive 里的旧数据。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；规则问号嵌在按钮文案后（船公司、主提单号/箱号），点问号不触发订阅。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
@@ -105,11 +105,14 @@ last_updated: 2026-09-15
 > **[卡点 7：搜索持久化重排与折叠测量时序]** `loadSearchFieldConfig()` 在 `onMounted → init()` 中异步重排 schema（长度不变）。若折叠组件只监听 `schema.length`，`keepFormItemIndex` 会停留在重排前的测量结果（例如旧顺序首行含 `col-span-2` 日期范围时测得 `keepIndex=3`），重排后头部变为单列字段则第一行留白。修复后 `expandable.ts` 以「字段顺序 + 显隐」指纹触发重算；排查折叠错位时优先核对 `search_form_config_*` 与首行实际列占用。
 
 > **[卡点 8：能看 ≠ 能改]** 列表/详情根上的 `isEditable` 才是这一票能不能改、删、重新生成委托编号的口径。有查询权限就能进详情，保存仍要 `Admin.SeaExport.Edit` ∧ `isEditable`。缺字段按不可编辑。不要读 `transportOrder.isEditable`。上线后按钮变灰先查编辑口径数据权限，不是前端 bug。
+>
+> **[卡点 9：批量改完再进已打开的详情要靠重拉标记]** 列表批量成功只刷新列表。编辑页 KeepAlive 不会 `onMounted`。成功时按 id 写入 `entity-refresh:SeaExport:{id}`，再进入该票才 `DetailAsync`。没标记不要每次激活都重拉。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 批量修改成功后，再进入此前已打开的编辑页会重拉详情，不再沿用 KeepAlive 旧数据。 | `markEntitiesShouldRefresh('SeaExport', ids)`；Form `onActivated` 发现标记才 `loadEditData`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-refresh-detail.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`；点问号不订阅。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字覆盖该字段。 | 列 `transportOrder.invoiceNum`；默认隐藏。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-15 | `Fix` | 批量修改选港后自动同步对应港口备注，列表港口列与所选港口一致。 | 与编辑页同款 `formatSeaExportPortRemark`；`BatchEditAsync` 改港时写备注，没带到则按港口资料兜底。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-business.md)。 |

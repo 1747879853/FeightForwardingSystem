@@ -33,6 +33,7 @@ last_updated: 2026-09-15
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。能否保存以当次详情根上的 `isEditable` 为准（并要有 `Admin.SeaExport.Edit`）；为假则**只禁用保存**，表单、页头、简报、AI 识别仍可改，复制仍可用。详情能打开不代表能落库。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaExportDto`，经 `form` → `saved` → `editor.savedDetail` 下发给费用/更改单（`:latest-detail`）；同时调用 `clearOrderDetailCache` 清掉 `useOrderFeeLinkage` 模块级订单详情缓存，避免 KeepAlive 子页继续展示或联动旧数据。
+- **列表批量修改后回缓存页：** 列表 `BatchEditAsync` 成功后按票 id 写入 `entity-refresh:SeaExport:{id}`。再进入仍 KeepAlive 的本票编辑页时：基础信息 Tab 由 Form `onActivated` 重拉详情并 `emit('saved')`；若记忆落在费用等其它 Tab，工作台先拉一次详情更新 `savedDetail`/页签标题，切回基础信息时 Form 再清标记并回填。未打标时 `onActivated` 不重拉，以免冲掉未保存草稿。
 - **AI 识别辅助：** 与新建页共用 `form.vue` 顶栏「AI识别」：点击弹出拖拽上传区，支持 PDF/图片/Word/Excel/RTF（doc/docx/xls/xlsx/rtf）；放入文件后自动对接 TextIn `ExtractSeaExportToAddDtoAsync`；识别结果覆盖回填（含六段港口 Id/`*Remark`；空值/0/空 Guid 跳过），成功后关窗。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。**新建页**与**编辑页**均走 POL 联动，但语义不同：
   - **编辑首屏**：拉 `GetServiceTypesByPOLAsync`（按 `polId`）仅作为**元数据**（`sortId`/`userAttribute`/`seServiceLocks`/`seServiceRequires`）；勾选与任务进度以详情 `seaExportServices` 为准；港口配置缺失的历史服务项照常保留（回填期间 `suppressServiceTypeLinkage` 抑制误触发）。
@@ -76,6 +77,7 @@ last_updated: 2026-09-15
 | 基础信息编辑中 | 点击复制并确认 | 新票编辑页 | 若有未保存修改先警告；调 `CopyAsync` 后 `replace` 至 `/sea-exports/{newId}/edit`。 |
 | 任意工作台状态 | 切换顶部标签 | 写入 Tab 记忆 | `activeTab` 按委托 ID 存入 `sessionStorage`。 |
 | 再次进入编辑页 | 组件挂载 / `editId` 变化 | 恢复离开前 Tab | 仅读取当前可见且有面板的 `TabKey`；无记录或非法/已隐藏值时回退「基础信息」。 |
+| 列表批量修改成功 | 再进入已打开的本票编辑页 | 重拉详情 | `onActivated` 消费 `entity-refresh:SeaExport:{id}` 后 `DetailAsync`；无标记不重拉。 |
 | 基础信息内滚动 | 用户滚动表单分区 | 停留当前 Tab | 不再通过 `sectionChange` 改写工作台 `activeTab`，避免切到已隐藏 key 导致空白页。 |
 | 任意工作台状态 | 切换到费用标签 | 费用列表加载 | `OrderFee` 以运输单 ID 查询费用明细，并可维护应收/应付。 |
 | 费用录入状态 | 提交审核 | 提交审核 | 费用状态由录入进入审核链路，审核结果在费用审核模块处理。 |
@@ -168,11 +170,14 @@ last_updated: 2026-09-15
 > **[卡点 15：监装照片不是工单编辑]** 管理端改某箱监装照片走 `EditOrderCtnAttachmentGroupsAsync`，`id` 是箱型 id 不是工单 id；不要塞箱号/封号/是否完成，也不要再调师傅端 `EditOrderCtnsAsync`（那条仍要求已认领且会改箱子字段）。弹窗先按 `160100` 铺维护类型，再叠已有照片；附件按该箱全量替换，漏传某组等于删掉该组照片。类型横排、每类型限 1 张；换图先删再传，历史多图不会在保存时自动截断。
 >
 > **[卡点 16：明细包装空态要拆两种]** 主单没包装才说「未填写包装」。主单有包装但 `codePackageItems` 为空，占位要写成「包装「x」未维护明细包装」，去基础资料补子表；不要和没填包装共用一句。
+>
+> **[卡点 17：列表批量改不会自动刷新已打开的详情]** 编辑页 KeepAlive，列表 `BatchEditAsync` 只改库。必须靠 `entity-refresh:SeaExport:{id}`：再进入该票时 `onActivated` 才 `DetailAsync`。不要改成每次切回编辑页都重拉，会冲掉未保存草稿。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-15 | `Fix` | 列表批量修改后，再进入此前已打开的本票编辑页会重拉详情。 | `markEntitiesShouldRefresh` + Form/`editor` `onActivated`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-refresh-detail.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-15 | `Fix` | 分单主卡 `serviceStatus` 中文由「运输状态」改为「运输条款」。 | 仍绑定 `codeServiceId` / `CodeServiceSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-separate-service-status-label.md)。 |

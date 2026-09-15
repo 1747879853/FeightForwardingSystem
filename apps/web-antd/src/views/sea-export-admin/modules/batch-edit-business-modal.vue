@@ -12,6 +12,7 @@ import { useVbenForm } from '#/adapter/form';
 import { batchEditSeaExport } from '#/api/sea-export/sea-export-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
+import { markEntitiesShouldRefresh } from '#/utils/list-refresh-flag';
 
 import { createClientSelectSchema } from '../../client/base/data';
 import {
@@ -458,6 +459,7 @@ const submitBatchEdit = async () => {
     modalApi.lock();
     try {
       await batchEditSeaExport(payload);
+      markEntitiesShouldRefresh('SeaExport', batchIds.value);
       message.success($t('seaExport.export.batchEditSuccess'));
       emits('success');
       modalApi.close();

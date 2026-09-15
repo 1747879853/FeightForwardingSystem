@@ -14,6 +14,7 @@ TAPD #1000972：海运出口列表需支持多选后批量修改业务字段，�
 2. **弹窗：** `modules/batch-edit-business-modal.vue` 分基础信息 / 港口 / 干系人三区，一行三列；提交 `PUT /services/app/SeaExportAdmin/BatchEditAsync`；组装 payload 时剥离空值；`poT1Id`/`poT2Id` 映射为 `pot1Id`/`pot2Id`。
 3. **交互：** 修改起运港二次确认（将按新港重新生成服务项目）；选目的港时只读预览航线（列表刷新后仍从 `pod.lane` 带出）。
 4. **选港带备注：** 六段港口（收货地 / 起运港 / 中转 1/2 / 目的港 / 交货地）选中后按编辑页同款 `formatSeaExportPortRemark` 自动带出 `PORTNAME, COUNTRYENNAME`，随港口 id 一起提交；后端改港时同步写备注（没带到则按港口资料兜底）。列表港口列读的是备注，不跟着改会出现港和格子文案对不上。
+5. **缓存详情：** 提交成功后给所选票打 `entity-refresh:SeaExport:{id}`；再进入已 KeepAlive 的编辑页会重拉详情。见 [批量修改后缓存详情页重拉](./change-log-2026-09-15-sea-export-batch-edit-refresh-detail.md)。
 
 # 避坑指南
 
