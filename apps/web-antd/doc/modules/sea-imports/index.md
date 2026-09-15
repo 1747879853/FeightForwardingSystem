@@ -24,6 +24,7 @@ last_updated: 2026-09-15
 - **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。进入列表**不预填会计期间**；默认按到港日期（`transportOrder.etd` / `TransportOrder.ETD`）降序，与海出开船日期同一字段。搜索条件变更不自动查询，需点「查询」；重置清空全部条件且不自动重查。
 - **分组统计：** 支持列表分组 Tabs。点分组 Tab 只重查列表；删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选复制费用）、删除。删除需 `Admin.SeaImport.Delete` **且** `row.isEditable === true`；复制与进详情不看 `isEditable`。
+- **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`）；规则问号嵌在按钮文案后。
 - **进入编辑：** 进入 `/sea-imports/:id/edit`。
 - **进入新建：** 进入 `/sea-imports/create`。
 
@@ -58,6 +59,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 委托单位、港口、航线、国家、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径。 | `SEA_IMPORT_SORT_FIELD_MAP` 同步；`terminal.name` 删多余 formatter。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-15 | `Fix` | 报关发票号列改为读 `transportOrder.invoiceNum`，文案由「发票号」改为「报关发票号」。 | 筛选参数名仍是 `InvoiceNum`。列设置以当前列为全集，旧 `invoiceNum` key 进页清掉。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)、[列设置清脏键](../../changelogs/change-log-2026-09-15-column-persist-prune-stale-keys.md)。 |
 | 2026-09-11 | `Fix` | 列表不再展示「码头航次」列，筛选也隐藏。 | `useColumns` 去掉该列。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |

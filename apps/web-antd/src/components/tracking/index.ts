@@ -50,6 +50,7 @@ export {
 export { default as TrackingTimeline } from './tracking-timeline.vue';
 export { default as TrackingWarningModal } from './tracking-warning-modal.vue';
 export { default as ContainerTrackingPanel } from './container-tracking-panel.vue';
+export { default as TrackingSubscribeHelp } from './tracking-subscribe-help.vue';
 export { default as TrackingWarningIcon } from './tracking-warning-icon.vue';
 export type {
   TrackingSubscribeResultRow,

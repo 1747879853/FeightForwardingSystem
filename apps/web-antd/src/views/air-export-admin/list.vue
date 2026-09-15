@@ -37,6 +37,7 @@ import {
   getAirTrackingStatusColor,
   getAirTrackingStatusLabel,
   resolveAirTrackingOrderLabel,
+  TrackingSubscribeHelp,
   TrackingWarningIcon,
   useAirTrackingDetail,
   useAirTrackingSubscribe,
@@ -512,25 +513,18 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
             AI识别
           </Button>
         </span>
-        <span
-          v-access:code="externalApiUseCode"
-          class="mr-2 inline-flex items-center gap-1"
-        >
-          <Button :loading="subscribing" @click="handleSubscribeTracking">
+        <span v-access:code="externalApiUseCode" class="mr-2 inline-flex">
+          <Button
+            class="inline-flex items-center"
+            :loading="subscribing"
+            @click="handleSubscribeTracking"
+          >
             {{ $t('tracking.subscribe') }}
-          </Button>
-          <Tooltip>
-            <template #title>
-              <div class="whitespace-pre-line text-left">
-                {{ $t('tracking.subscribeRules.airExport') }}
-              </div>
-            </template>
-            <IconifyIcon
-              icon="ant-design:question-circle-outlined"
-              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+            <TrackingSubscribeHelp
+              :title="$t('tracking.subscribeRules.airExport')"
               :aria-label="$t('tracking.subscribeRulesTitle')"
             />
-          </Tooltip>
+          </Button>
         </span>
         <Tooltip :title="deleteDisabledTip">
           <span v-access:code="perm.delete" class="mr-2 inline-flex">

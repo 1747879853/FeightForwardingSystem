@@ -80,7 +80,10 @@ import {
 import AirExportOrderCtnTable from '../modules/air-export-order-ctn-table.vue';
 import { useAirExportCopy } from '../use-air-export-copy';
 import { useAirExportTabTitle } from '../use-air-export-tab-title';
-import { useAirTrackingSubscribe } from '#/components/tracking';
+import {
+  TrackingSubscribeHelp,
+  useAirTrackingSubscribe,
+} from '#/components/tracking';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import {
   calcBubbleRatio,
@@ -1295,7 +1298,7 @@ watch(pageLoading, (loading) => {
                     <template v-if="isEdit">
                       <span
                         v-access:code="externalApiUseCode"
-                        class="inline-flex items-center gap-1"
+                        class="inline-flex"
                       >
                         <Tooltip
                           :title="
@@ -1318,19 +1321,11 @@ watch(pageLoading, (loading) => {
                             <span class="align-middle">{{
                               trackingSubscribeButtonText
                             }}</span>
+                            <TrackingSubscribeHelp
+                              :title="$t('tracking.subscribeRules.airExport')"
+                              :aria-label="$t('tracking.subscribeRulesTitle')"
+                            />
                           </Button>
-                        </Tooltip>
-                        <Tooltip>
-                          <template #title>
-                            <div class="whitespace-pre-line text-left">
-                              {{ $t('tracking.subscribeRules.airExport') }}
-                            </div>
-                          </template>
-                          <IconifyIcon
-                            icon="ant-design:question-circle-outlined"
-                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-                            :aria-label="$t('tracking.subscribeRulesTitle')"
-                          />
                         </Tooltip>
                       </span>
                     </template>

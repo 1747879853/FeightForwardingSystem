@@ -63,7 +63,10 @@ import {
   buildTerminalScheduleFormPatch,
   useTerminalScheduleSync,
 } from '#/components/terminal-schedule';
-import { useContainerTrackingSubscribe } from '#/components/tracking';
+import {
+  TrackingSubscribeHelp,
+  useContainerTrackingSubscribe,
+} from '#/components/tracking';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
@@ -1423,7 +1426,7 @@ watch(pageLoading, (loading) => {
                     <template v-if="isEdit">
                       <span
                         v-access:code="externalApiUseCode"
-                        class="inline-flex items-center gap-1"
+                        class="inline-flex"
                       >
                         <Tooltip
                           :title="
@@ -1446,19 +1449,11 @@ watch(pageLoading, (loading) => {
                             <span class="align-middle">{{
                               trackingSubscribeButtonText
                             }}</span>
+                            <TrackingSubscribeHelp
+                              :title="$t('tracking.subscribeRules.seaImport')"
+                              :aria-label="$t('tracking.subscribeRulesTitle')"
+                            />
                           </Button>
-                        </Tooltip>
-                        <Tooltip>
-                          <template #title>
-                            <div class="whitespace-pre-line text-left">
-                              {{ $t('tracking.subscribeRules.seaImport') }}
-                            </div>
-                          </template>
-                          <IconifyIcon
-                            icon="ant-design:question-circle-outlined"
-                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-                            :aria-label="$t('tracking.subscribeRulesTitle')"
-                          />
                         </Tooltip>
                       </span>
                     </template>

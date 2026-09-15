@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-15] [运踪订阅规则问号并入按钮](./changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)
 - [2026-09-15] [列表列 field 改绑真实对象路径](./changelogs/change-log-2026-09-15-list-column-object-path.md)
 - [2026-09-15] [列表列设置以当前列为全集并清掉脏键](./changelogs/change-log-2026-09-15-column-persist-prune-stale-keys.md)
 - [2026-09-15] [报关发票号抽到业务主表](./changelogs/change-log-2026-09-15-transport-order-invoice-num.md)

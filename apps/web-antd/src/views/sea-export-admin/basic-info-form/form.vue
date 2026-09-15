@@ -175,7 +175,10 @@ import {
   useYundangOceanSubscribe,
 } from '../use-yundang-ocean-subscribe';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
-import { useContainerTrackingSubscribe } from '#/components/tracking';
+import {
+  TrackingSubscribeHelp,
+  useContainerTrackingSubscribe,
+} from '#/components/tracking';
 import {
   isLegacyOceanExportTracking,
   isVendorOceanExportTracking,
@@ -3537,7 +3540,7 @@ defineExpose({
                       <span
                         v-if="isVendorOceanExportTracking"
                         v-access:code="externalApiUseCode"
-                        class="inline-flex items-center gap-1"
+                        class="inline-flex"
                       >
                         <Tooltip
                           :title="
@@ -3560,25 +3563,17 @@ defineExpose({
                             <span class="align-middle">
                               {{ $t('tracking.subscribe') }}
                             </span>
+                            <TrackingSubscribeHelp
+                              :title="$t('tracking.subscribeRules.seaExport')"
+                              :aria-label="$t('tracking.subscribeRulesTitle')"
+                            />
                           </Button>
-                        </Tooltip>
-                        <Tooltip>
-                          <template #title>
-                            <div class="whitespace-pre-line text-left">
-                              {{ $t('tracking.subscribeRules.seaExport') }}
-                            </div>
-                          </template>
-                          <IconifyIcon
-                            icon="ant-design:question-circle-outlined"
-                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-                            :aria-label="$t('tracking.subscribeRulesTitle')"
-                          />
                         </Tooltip>
                       </span>
                       <span
                         v-else
                         v-access:code="externalApiUseCode"
-                        class="inline-flex items-center gap-1"
+                        class="inline-flex"
                       >
                         <Tooltip
                           :title="
@@ -3601,21 +3596,13 @@ defineExpose({
                             <span class="align-middle">{{
                               yundangSubscribeButtonText
                             }}</span>
+                            <TrackingSubscribeHelp
+                              :title="$t('seaExport.yundang.subscribeRules')"
+                              :aria-label="
+                                $t('seaExport.yundang.subscribeRulesTitle')
+                              "
+                            />
                           </Button>
-                        </Tooltip>
-                        <Tooltip>
-                          <template #title>
-                            <div class="whitespace-pre-line text-left">
-                              {{ $t('seaExport.yundang.subscribeRules') }}
-                            </div>
-                          </template>
-                          <IconifyIcon
-                            icon="ant-design:question-circle-outlined"
-                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
-                            :aria-label="
-                              $t('seaExport.yundang.subscribeRulesTitle')
-                            "
-                          />
                         </Tooltip>
                       </span>
                     </template>

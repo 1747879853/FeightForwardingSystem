@@ -29,7 +29,7 @@ last_updated: 2026-09-15
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
 - **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、干系人三区（一行三列），控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。六段港口选中后自动带出对应备注（`PORTNAME, COUNTRYENNAME`）并随 id 提交，列表港口列读的就是这些备注。仅 `isEditable === true` 的票 id 参与提交。
-- **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；按钮旁有规则说明（船公司、主提单号/箱号）。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
+- **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；规则问号嵌在按钮文案后（船公司、主提单号/箱号），点问号不触发订阅。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
@@ -110,6 +110,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`；点问号不订阅。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字覆盖该字段。 | 列 `transportOrder.invoiceNum`；默认隐藏。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-15 | `Fix` | 批量修改选港后自动同步对应港口备注，列表港口列与所选港口一致。 | 与编辑页同款 `formatSeaExportPortRemark`；`BatchEditAsync` 改港时写备注，没带到则按港口资料兜底。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-business.md)。 |
 | 2026-09-15 | `Feature` | 列表工具栏新增「批量修改」，多选后按区批量改基础/港口/干系人字段（一行三列）。 | `batch-edit-business-modal.vue` + `BatchEditAsync`；payload 剥离空值，`poT1Id`→`pot1Id`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-business.md)。 |

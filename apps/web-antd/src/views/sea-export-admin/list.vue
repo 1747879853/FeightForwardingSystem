@@ -36,6 +36,7 @@ import {
   getContainerTrackingStatusColor,
   getContainerTrackingStatusLabel,
   resolveContainerOrderLabel,
+  TrackingSubscribeHelp,
   TrackingWarningIcon,
   useContainerTrackingDetail,
   useContainerTrackingSubscribe,
@@ -595,44 +596,36 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <span
           v-if="isLegacyOceanExportTracking"
           v-access:code="externalApiUseCode"
-          class="mr-2 inline-flex items-center gap-1"
+          class="mr-2 inline-flex"
         >
-          <Button :loading="subscribing" @click="handleYundangSubscribe">
+          <Button
+            class="inline-flex items-center"
+            :loading="subscribing"
+            @click="handleYundangSubscribe"
+          >
             {{ $t('seaExport.yundang.subscribe') }}
-          </Button>
-          <Tooltip>
-            <template #title>
-              <div class="whitespace-pre-line text-left">
-                {{ $t('seaExport.yundang.subscribeRules') }}
-              </div>
-            </template>
-            <IconifyIcon
-              icon="ant-design:question-circle-outlined"
-              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+            <TrackingSubscribeHelp
+              :title="$t('seaExport.yundang.subscribeRules')"
               :aria-label="$t('seaExport.yundang.subscribeRulesTitle')"
             />
-          </Tooltip>
+          </Button>
         </span>
         <span
           v-else
           v-access:code="externalApiUseCode"
-          class="mr-2 inline-flex items-center gap-1"
+          class="mr-2 inline-flex"
         >
-          <Button :loading="vendorSubscribing" @click="handleVendorSubscribe">
+          <Button
+            class="inline-flex items-center"
+            :loading="vendorSubscribing"
+            @click="handleVendorSubscribe"
+          >
             {{ $t('tracking.subscribe') }}
-          </Button>
-          <Tooltip>
-            <template #title>
-              <div class="whitespace-pre-line text-left">
-                {{ $t('tracking.subscribeRules.seaExport') }}
-              </div>
-            </template>
-            <IconifyIcon
-              icon="ant-design:question-circle-outlined"
-              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+            <TrackingSubscribeHelp
+              :title="$t('tracking.subscribeRules.seaExport')"
               :aria-label="$t('tracking.subscribeRulesTitle')"
             />
-          </Tooltip>
+          </Button>
         </span>
         <Button
           v-access:code="perm.edit"

@@ -24,7 +24,7 @@ last_updated: 2026-09-15
 - **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、报关发票号、委托编号 6 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
-- **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则 Tooltip 说明订阅单号=主运单号、航司系统自动识别。
+- **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则问号嵌在按钮文案后（订阅单号=主运单号、航司系统自动识别）。
 - **运踪状态列：** 付费状态列后展示四态文案（未订阅/订阅失败/等待数据/节点描述）；有 `Admin.ExternalApi.Get` 时可点击打开运踪详情 Modal。
 - **进入编辑 / 新建：** 双击行进 `/air-exports/:id/edit`；新建进 `/air-exports/create`。
 
@@ -63,6 +63,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 委托单位、订舱代理、空港、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径；空港仍用 `formatAirPortLabel`。 | `AIR_EXPORT_SORT_FIELD_MAP` 同步。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字扩到 6 个字段。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
