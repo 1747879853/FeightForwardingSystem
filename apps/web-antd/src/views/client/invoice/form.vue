@@ -114,12 +114,14 @@ const [InvoiceForm, invoiceFormApi] = useVbenForm({
       component: 'Textarea',
       fieldName: 'require',
       label: '开票要求',
+      formItemClass: 'col-span-4',
       componentProps: {
         allowClear: true,
         placeholder: '请输入开票要求',
         maxlength: 2048,
         rows: 3,
         showCount: true,
+        autoSize: { minRows: 3, maxRows: 8 },
       },
     },
     {
@@ -127,6 +129,7 @@ const [InvoiceForm, invoiceFormApi] = useVbenForm({
       fieldName: 'isDefault',
       label: $t('client.invoice.isDefault'),
       defaultValue: false,
+      formItemClass: 'col-span-1 self-start',
     },
   ],
   showDefaultActions: false,
