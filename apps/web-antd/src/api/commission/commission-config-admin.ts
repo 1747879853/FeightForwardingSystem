@@ -177,8 +177,8 @@ export namespace CommissionConfigAdminApi {
 
   /** 海运港口简易对象（复用港口模块的共享 DTO） */
   export interface PortCodeSimpleDto {
-    /** 港口id */
-    id: number;
+    /** 港口id（雪花 id 可能为 string） */
+    id: number | string;
     /** 港口代码 */
     portName?: string | null;
     /** 中文名称 */
@@ -193,8 +193,8 @@ export namespace CommissionConfigAdminApi {
 
   /** 空运港口简易对象（复用空运港口模块的共享 DTO） */
   export interface AirPortSimpleDto {
-    /** 港口id */
-    id: number;
+    /** 港口id（雪花 id 可能为 string） */
+    id: number | string;
     /** 三字码 */
     iataCode?: string | null;
     /** 英文名称 */
@@ -233,8 +233,8 @@ export namespace CommissionConfigAdminApi {
 
   /** 条件值入参（按字段只有其中一个字段有值） */
   export interface CommissionConditionValueInputDto {
-    /** 港口id。ConditionField 为 0/1 传 PortCode.Id（海运港口），2/3 传 AirPort.Id（空运港口） */
-    portId?: number | null;
+    /** 港口id。ConditionField 为 0/1 传 PortCode.Id（海运港口），2/3 传 AirPort.Id（空运港口）；雪花 id 可能为 string */
+    portId?: null | number | string;
     /** 货物类型。ConditionField 为 4 时必填 */
     cargoId?: CargoType | null;
     /** 贸易条款。ConditionField 为 6 时必填 */

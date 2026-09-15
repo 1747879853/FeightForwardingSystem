@@ -892,8 +892,8 @@ const innerColumns = [
           {{ feeRecord.transportOrder?.mblNum || '-' }}
         </template>
         <template v-else-if="column.key === 'paySide'">
-          <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
-            {{ feeRecord.paySide === 0 ? '付' : '收' }}
+          <Tag :color="feeRecord.paySide === 1 ? 'orange' : 'green'">
+            {{ feeRecord.paySide === 1 ? '应付' : '应收' }}
           </Tag>
         </template>
         <template v-else-if="column.key === 'feeCodeName'">

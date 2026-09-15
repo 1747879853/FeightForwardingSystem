@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
@@ -14,6 +14,7 @@ import { $t } from '#/locales';
 import { Page } from '@vben/common-ui';
 import { Plus, IconifyIcon } from '@vben/icons';
 import Form from './form.vue';
+import InvoiceAiUploadModal from './invoice-ai-upload-modal.vue';
 import {
   getClientInvoiceInfoList,
   addClientInvoiceInfo,
@@ -21,6 +22,11 @@ import {
   deleteClientInvoiceInfo,
   type ClientInvoiceInfoAdminApi,
 } from '#/api/sea-export/clinet-invoice-admin';
+import {
+  CLIENT_INVOICE_INFO_MAX_BYTES,
+  extractClientInvoiceInfo,
+  isClientInvoiceInfoUploadFile,
+} from '#/api/sea-export/gemini-admin';
 
 defineOptions({ name: 'ClientInvoiceList' });
 
@@ -45,6 +51,11 @@ const editingInvoiceId = ref<string>('');
 
 // 表单组件引用
 const formRefs = ref<Record<string, any>>({});
+
+const aiModalOpen = ref(false);
+const aiRecognizing = ref(false);
+/** 当前进行 AI 识别的开票卡片 id（识别时再确定：复用首条新增或自动新建） */
+const aiTargetInvoiceId = ref<string>('');
 
 /**
  * 加载开票信息列表
@@ -229,6 +240,100 @@ const setFormRef = (el: any, invoiceId: string) => {
   }
 };
 
+function openAiRecognize() {
+  if (aiRecognizing.value) return;
+  aiModalOpen.value = true;
+}
+
+/** 首条已是未保存新增则复用；否则自动新建一条作为回填目标 */
+function ensureAiTargetInvoiceId(): string {
+  const first = invoiceList.value[0];
+  if (first?.id?.startsWith('new_')) {
+    return first.id;
+  }
+  handleAddInvoice();
+  const created = invoiceList.value[invoiceList.value.length - 1];
+  return created?.id ?? '';
+}
+
+async function waitForFormRef(invoiceId: string, retries = 8) {
+  for (let i = 0; i < retries; i += 1) {
+    await nextTick();
+    const formRef = formRefs.value[invoiceId];
+    if (formRef?.applyAiResult) return formRef;
+  }
+  return formRefs.value[invoiceId];
+}
+
+async function runAiRecognize(file?: File, text?: string) {
+  if (aiRecognizing.value) return;
+  if (file) {
+    if (!isClientInvoiceInfoUploadFile(file)) {
+      message.warning('请上传 PDF、图片或 Excel/TXT 文件');
+      return;
+    }
+    if (file.size > CLIENT_INVOICE_INFO_MAX_BYTES) {
+      message.warning('文件大小超过 20MB 上限，无法识别');
+      return;
+    }
+  }
+  if (!file && !text?.trim()) {
+    message.warning('请上传开票资料文件或输入需要识别的文字');
+    return;
+  }
+
+  aiRecognizing.value = true;
+  try {
+    const result = await extractClientInvoiceInfo(file, text);
+
+    const invoiceId = ensureAiTargetInvoiceId();
+    if (!invoiceId) {
+      message.warning('无法创建开票信息，请稍后重试');
+      return;
+    }
+    aiTargetInvoiceId.value = invoiceId;
+    if (!activeKey.value.includes(invoiceId)) {
+      activeKey.value = [invoiceId];
+    }
+
+    const formRef = await waitForFormRef(invoiceId);
+    if (!formRef?.applyAiResult) {
+      message.warning('表单尚未就绪，请展开开票信息后重试');
+      return;
+    }
+    await formRef.whenReady?.();
+
+    const hasUnmatched = await formRef.applyAiResult(result);
+    // 同步卡片标题区抬头/税号
+    patchInvoiceListItem(invoiceId, {
+      header: result.header ?? undefined,
+      taxNum: result.taxNum ?? undefined,
+      address: result.address ?? undefined,
+      tel: result.tel ?? undefined,
+      mobile: result.mobile ?? undefined,
+      require: result.require ?? undefined,
+    });
+    aiModalOpen.value = false;
+    if (hasUnmatched) {
+      message.warning('识别完成，请核对标红银行币别后再保存');
+    } else {
+      message.success('AI识别完成，请核对后保存');
+    }
+  } catch (error) {
+    console.error('开票信息 AI 识别失败:', error);
+  } finally {
+    aiRecognizing.value = false;
+  }
+}
+
+async function handleAiFile(file: File) {
+  await runAiRecognize(file);
+}
+
+async function handleAiText(text: string) {
+  await runAiRecognize(undefined, text);
+}
+
 async function isInvoiceDirty() {
   for (const form of Object.values(formRefs.value)) {
     const dirty = await form?.isInvoiceFormDirty?.();
@@ -263,14 +368,24 @@ onMounted(() => {
             </span>
             <span class="invoice-toolbar__count">{{ invoiceList.length }}</span>
           </div>
-          <Button
-            type="primary"
-            class="invoice-toolbar__add"
-            @click="handleAddInvoice"
-          >
-            <Plus class="size-4" />
-            {{ $t('common.create') }}
-          </Button>
+          <div class="invoice-toolbar__actions">
+            <Button
+              class="invoice-toolbar__ai"
+              :loading="aiRecognizing"
+              @click="openAiRecognize"
+            >
+              <IconifyIcon icon="mdi:robot-outline" class="size-4" />
+              AI识别
+            </Button>
+            <Button
+              type="primary"
+              class="invoice-toolbar__add"
+              @click="handleAddInvoice"
+            >
+              <Plus class="size-4" />
+              {{ $t('common.create') }}
+            </Button>
+          </div>
         </div>
 
         <!-- 开票信息卡片列表 -->
@@ -351,6 +466,13 @@ onMounted(() => {
         </div>
       </div>
     </Spin>
+
+    <InvoiceAiUploadModal
+      v-model:open="aiModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiFile"
+      @text="handleAiText"
+    />
   </Page>
 </template>
 
@@ -414,9 +536,16 @@ onMounted(() => {
   border-radius: 11px;
 }
 
-.invoice-toolbar__add {
+.invoice-toolbar__actions {
   display: inline-flex;
   flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.invoice-toolbar__ai,
+.invoice-toolbar__add {
+  display: inline-flex;
   gap: 6px;
   align-items: center;
 }

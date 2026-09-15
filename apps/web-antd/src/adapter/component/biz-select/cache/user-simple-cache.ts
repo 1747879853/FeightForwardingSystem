@@ -5,7 +5,7 @@ import { getUserSimplePagedList } from '#/api/system/user-admin';
 import { createBizSelectCache } from './create-biz-select-cache';
 
 const USER_SIMPLE_PAGE_SIZE = 1000;
-const USER_SIMPLE_CACHE_VERSION = 2;
+const USER_SIMPLE_CACHE_VERSION = 3;
 
 async function fetchAllUserSimpleList(): Promise<
   SystemUserAdminApi.UserSimpleDto[]

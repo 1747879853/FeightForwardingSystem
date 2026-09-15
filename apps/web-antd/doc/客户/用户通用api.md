@@ -102,6 +102,7 @@ GET /api/services/app/User/GetUserSimplePagedListAsync?keyWords=张三&pageIndex
 | 字段 | JSON Key | 类型 | 说明 |
 | :-- | :-- | :-- | :-- |
 | Id | `id` | `long` | 用户主键 id |
+| UserName | `userName` | `string` | 登录用户名；`UserSelect` 下拉首行与关键词检索使用 |
 | NickName | `nickName` | `string` | 昵称（真实姓名，用于页面展示） |
 | EnName | `enName` | `string` | 英文名 |
 | EmployeeID | `employeeID` | `string` | 工号 |
@@ -110,7 +111,7 @@ GET /api/services/app/User/GetUserSimplePagedListAsync?keyWords=张三&pageIndex
 | UserAttribute | `userAttribute` | `long` | 用户属性位掩码（与 `UserAttribute` 枚举一致）；前端全量缓存后按位筛选角色。后端未返回时前端不按角色过滤 |
 | CompanyIds | `companyIds` | `long[]` | 用户所属公司 id 列表；`UserSelect` 传入 `companyIds` 时与此项求交过滤 |
 
-> **注意**：`UserSimpleDto` 未继承审计字段，**不返回** `creatorUserName`、`lastModifierUserName`、`creationTime` 等创建/修改人信息；亦不返回用户名、手机号、邮箱、性别、是否激活等字段。
+> **注意**：`UserSimpleDto` 未继承审计字段，**不返回** `creatorUserName`、`lastModifierUserName`、`creationTime` 等创建/修改人信息；亦不返回手机号、邮箱、性别、是否激活等字段。前端 `UserSelect` 展示「昵称（用户名）」依赖 `userName` 字段，若接口未返回则只能显示昵称。
 
 ### 业务规则
 
@@ -479,6 +480,7 @@ title: 用户通用 API module: 用户 author: 系统 last_updated: 2026-07-13
 | 字段名 | 字段含义说明 | 数据来源 | 联动规则 | 校验限制 |
 | :-- | :-- | :-- | :-- | :-- |
 | **id** | 用户主键 | `User` 表 | 作为外键关联用户 | 只读 |
+| **userName** | 登录用户名 | `User.UserName` | `UserSelect` 下拉首行与按用户名检索；选中回显「昵称（用户名）」 | - |
 | **nickName** | 页面展示用姓名 | `User.NickName` | 所有关联用户展示优先用此字段 | - |
 | **enName** | 英文名 | `User.EnName` | - | - |
 | **employeeID** | 工号 | `User.EmployeeID` | 可与关键字搜索联动 | - |

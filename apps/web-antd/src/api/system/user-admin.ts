@@ -49,6 +49,8 @@ export namespace SystemUserAdminApi {
   /** 简易用户DTO（用于下拉选人、列表展示） */
   export interface UserSimpleDto {
     id: number;
+    /** 登录用户名；UserSelect 下拉与检索使用 */
+    userName?: string;
     nickName: string;
     enName?: string;
     employeeID?: string;
@@ -147,6 +149,7 @@ export namespace SystemUserAdminApi {
   export interface UserInfoDto {
     id: number;
     nickName?: string;
+    userName?: string;
     enable?: boolean;
     phoneNumber?: string;
     emailAddress?: string;

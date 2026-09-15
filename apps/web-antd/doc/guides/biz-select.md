@@ -153,9 +153,12 @@
 | 参数 | 类型 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `userAttribute` | `number` | — | 角色位掩码；`UserSimpleDto.userAttribute` 未返回时不按角色筛 |
-| `companyIds` | `Array<number \| string>` | — | 与 `UserSimpleDto.companyIds` 求交过滤候选；不传不过滤。已选人始终 pin 回显昵称 |
+| `companyIds` | `Array<number \| string>` | — | 与 `UserSimpleDto.companyIds` 求交过滤候选；不传不过滤。已选人始终 pin 回显 |
 | `selectedItems` | `UserSimpleDto[]` | `[]` | 编辑/默认带回显 |
-| `labelKey` | `string` | `'nickName'` | 展示字段 |
+| `labelKey` | `string` | `'nickName'` | 缺昵称/用户名时的回退字段 |
+| `optionLabelProp` | `string` | `'label'` | 选中展示字段；默认 `label` 为「昵称（用户名）」 |
+
+下拉项对齐港口选择：首行 `用户名 / 昵称`，次行英文名；关键词按 `userName` / `nickName` / `enName` 前端过滤。依赖简易列表返回 `userName`（缓存 version=3）。
 
 海出 / 海进 / 空出干系人传入 `companyIds`：未选归属组织时为当前登录用户各公司；选了组织后为该销售组织所属公司。客户默认干系人不因过滤被清空。
 

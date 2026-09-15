@@ -101,6 +101,15 @@ const updateRow = (
   modelValue.value = list;
 };
 
+/** 用户手工选过币别后清除 AI 未匹配标记 */
+const clearCurrencyUnmatched = (index: number) => {
+  const list = [...(modelValue.value ?? [])];
+  const row = list[index] as any;
+  if (!row) return;
+  list[index] = { ...row, _currencyUnmatched: false };
+  modelValue.value = list;
+};
+
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
@@ -189,7 +198,28 @@ watch(
     >
       <template #bodyCell="{ column, record, index }">
         <template v-if="column.key === 'currencyId'">
+          <Tooltip
+            v-if="(record as any)._currencyUnmatched"
+            :title="
+              (record as any).currencyCode
+                ? `未匹配币别：${(record as any).currencyCode}，请手工选择`
+                : '未识别币别，请手工选择'
+            "
+          >
+            <CurrencySelect
+              :model-value="record.currencyId"
+              class="currency-unmatched w-full min-w-[100px]"
+              :placeholder="$t('ui.placeholder.select')"
+              @update:model-value="
+                (v) => {
+                  updateRow(index, 'currencyId', v);
+                  clearCurrencyUnmatched(index);
+                }
+              "
+            />
+          </Tooltip>
           <CurrencySelect
+            v-else
             :model-value="record.currencyId"
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
@@ -289,5 +319,11 @@ watch(
 .bank-table__title-icon {
   font-size: 16px;
   color: hsl(var(--primary));
+}
+
+.currency-unmatched {
+  :deep(.ant-select-selector) {
+    border-color: #ff4d4f !important;
+  }
 }
 </style>

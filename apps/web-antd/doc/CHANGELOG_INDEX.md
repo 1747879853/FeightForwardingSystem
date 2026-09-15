@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-15] [合并保留本地字段权限实现](./changelogs/change-log-2026-09-15-合并保留本地字段权限实现.md)
+
 - [2026-09-15] [列表字段权限不再在挂载前调用空 formApi](./changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)
 - [2026-09-15] [业务字段权限通用展示适配](./changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)
 

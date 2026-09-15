@@ -67,3 +67,4 @@ last_updated: 2026-09-15
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/permission` 对应组件 `src/views/system/permission/list.vue`，权限口径为 Admin.UserDataPermission / Admin.UserDataPermission.Get。 |
 | 2026-05-30 | `Feature` | 补齐 `Admin.PortCode`、`Admin.LaneCode`、`Admin.CtnCode`、`Admin.CountryCode` 共 20 个权限 i18n 键，权限树可正确显示港口/航线/集装箱/国家模块文案。 | 权限树通过 `getAllPermissionsTreeApi($t)` 将权限码 `.` 转 `_` 后查找 `auth.json`；新增后端权限需同步双语语言包。 |
 | 2026-09-15 | `Feature` | 字段权限保存或删除后刷新当前用户共享规则，已接入页面响应更新；退出登录清空缓存，防止跨用户复用。 | 显式模块配置、原始键结构快照及共享展示适配器。 |
+| 2026-09-15 | `Fix` | 合并冲突后字段权限完全保留本地通用实现。 | 舍弃远端海出专用重复适配；保留挂载前表单 API 访问修复。 |

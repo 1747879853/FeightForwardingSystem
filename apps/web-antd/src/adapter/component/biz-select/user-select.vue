@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
+import type { OptionItem } from './use-paged-select';
 
-import { computed, toRef, useAttrs, watch } from 'vue';
+import { computed, toRef, useAttrs, useSlots, watch } from 'vue';
 
 import { $t } from '@vben/locales';
 
@@ -13,16 +14,18 @@ import { getUserListByIds } from '#/api/system/user-admin';
 
 import { userSimpleListCache } from './cache/user-simple-cache';
 import { useCachedSelect } from './use-cached-select';
-import type { OptionItem } from './use-paged-select';
 
 defineOptions({ inheritAttrs: false });
 
 interface Props {
-  /** label 字段名，默认 'nickName'，可用值：'userName' | 'nickName' */
+  /** label 字段名，缺昵称/用户名时的回退字段，默认 'nickName' */
   labelKey?: string;
-  /** 选中后展示字段（如下拉与选中展示分离，配合 useRichOptionLabel） */
+  /** 选中后展示字段；不传则用「昵称（用户名）」 */
   optionLabelProp?: string;
-  /** 下拉项展示为「用户名 — 昵称」，选中项仍用 optionLabelProp 或 labelKey */
+  /**
+   * 兼容旧调用。下拉项现已固定为港口式两行（用户名/昵称 + 英文名），
+   * 该开关不再改变展示。
+   */
   useRichOptionLabel?: boolean;
   /** 用户属性（位掩码），用于筛选用户 */
   userAttribute?: number;
@@ -57,6 +60,7 @@ const emit = defineEmits<{
 }>();
 
 const attrs = useAttrs();
+const slots = useSlots();
 const modelValue = defineModel<any>();
 
 const selectedItemsRef = toRef(props, 'selectedItems');
@@ -67,18 +71,49 @@ const bindProps = computed(() =>
   objectOmit(attrs, ['value', 'onUpdate:value', 'onUpdate:modelValue']),
 );
 
+const forwardSlotNames = computed(() =>
+  Object.keys(slots).filter((name) => name !== 'option'),
+);
+
+function trimText(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+/** 选中回显：昵称（用户名）；缺一项则只显示另一项 */
+function formatUserSelectedLabel(nickName: string, userName: string): string {
+  if (nickName && userName && nickName !== userName) {
+    return `${nickName}（${userName}）`;
+  }
+  return nickName || userName;
+}
+
 const mapUserToOption = (user: SystemUserAdminApi.UserSimpleDto) => {
-  const rawLabel = (user as any)[props.labelKey];
-  const nickName =
-    (typeof rawLabel === 'string' ? rawLabel.trim() : '') ||
-    user.nickName?.trim();
+  const nickName = trimText(user.nickName);
+  const userName = trimText(user.userName);
+  const enName = trimText(user.enName);
+  const selectedLabel =
+    formatUserSelectedLabel(nickName, userName) ||
+    trimText((user as Record<string, unknown>)[props.labelKey]);
+
+  const line1 =
+    userName && nickName && userName !== nickName
+      ? `${userName} / ${nickName}`
+      : userName || nickName || selectedLabel;
+
   const option: OptionItem = {
-    label: nickName,
-    value: (user as any)[props.valueKey],
+    enName,
+    label: selectedLabel,
+    line1,
+    line2: enName,
+    nickName,
+    userName,
+    value: (user as Record<string, unknown>)[props.valueKey] as number | string,
   };
 
-  if (props.optionLabelProp) {
-    option[props.optionLabelProp] = nickName;
+  if (props.optionLabelProp && props.optionLabelProp !== 'label') {
+    option[props.optionLabelProp] =
+      trimText((user as Record<string, unknown>)[props.optionLabelProp]) ||
+      selectedLabel;
   }
 
   return option;
@@ -105,7 +140,7 @@ const matchesKeyword = (
   user: SystemUserAdminApi.UserSimpleDto,
   query: string,
 ) => {
-  const haystacks = [user.nickName, user.enName, user.employeeID];
+  const haystacks = [user.userName, user.nickName, user.enName];
   return haystacks.some((text) =>
     String(text ?? '')
       .toLowerCase()
@@ -150,14 +185,15 @@ const handleChange = (value: any) => {
 
 const toSimpleFromCacheOrDetail = (
   idStr: string,
-  detail?: { id?: number | string; nickName?: string },
+  detail?: { id?: number | string; nickName?: string; userName?: string },
 ): SystemUserAdminApi.UserSimpleDto | undefined => {
   const cached = userSimpleListCache.findById(idStr);
   if (cached) return cached;
-  if (!detail?.nickName) return undefined;
+  if (!detail?.nickName && !detail?.userName) return undefined;
   return {
     id: detail.id as number,
-    nickName: detail.nickName.trim(),
+    nickName: (detail.nickName ?? '').trim(),
+    userName: detail.userName?.trim(),
   };
 };
 
@@ -238,7 +274,7 @@ defineExpose({
     :value="modelValue"
     :options="options"
     :placeholder="computedPlaceholder"
-    :option-label-prop="optionLabelProp"
+    :option-label-prop="optionLabelProp || 'label'"
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
@@ -249,8 +285,26 @@ defineExpose({
     @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
   >
-    <template v-for="(_, name) in $slots" :key="name" #[name]="slotData">
+    <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->
+    <template v-for="name in forwardSlotNames" :key="name" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}"></slot>
+    </template>
+    <template #option="opt">
+      <div class="flex flex-col gap-0.5 py-0.5">
+        <span
+          class="text-sm font-medium"
+          :class="opt?.disabled ? 'text-gray-400' : 'text-gray-900'"
+        >
+          {{ opt?.line1 }}
+        </span>
+        <span
+          v-if="opt?.line2"
+          class="text-xs"
+          :class="opt?.disabled ? 'text-gray-300' : 'text-gray-500'"
+        >
+          {{ opt?.line2 }}
+        </span>
+      </div>
     </template>
   </Select>
 </template>

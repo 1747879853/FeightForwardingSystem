@@ -3,29 +3,12 @@ import { computed, ref } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
-import { Modal, Spin, UploadDragger, Input } from 'ant-design-vue';
+import { Input, Modal, Spin, UploadDragger } from 'ant-design-vue';
 
-// 支持的文件类型：PDF、图片、Office文档
-const AI_EXTRACT_ACCEPT = [
-  '.pdf',
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.doc',
-  '.docx',
-  '.xlsx',
-  '.xls',
-  '.txt',
-  '.webp',
-  '.heic',
-  '.heif',
-  '.gif',
-  '.bmp',
-  '.rtf',
-].join(',');
+import { CLIENT_INVOICE_INFO_ACCEPT } from '#/api/sea-export/gemini-admin';
 
 defineOptions({
-  name: 'FreightRateAiUploadModal',
+  name: 'ClientInvoiceAiUploadModal',
 });
 
 const props = defineProps<{
@@ -44,10 +27,9 @@ const openProxy = computed({
   set: (value: boolean) => emit('update:open', value),
 });
 
-const activeTab = ref<'text' | 'upload'>('upload');
+const activeTab = ref<'text' | 'upload'>('text');
 const inputText = ref('');
 
-/** 仅拦截自动上传；选中/拖入后立刻交给父组件识别 */
 function handleBeforeUpload(file: File) {
   if (props.recognizing) return false;
   emit('file', file);
@@ -57,16 +39,12 @@ function handleBeforeUpload(file: File) {
 function handleCancel() {
   if (props.recognizing) return;
   openProxy.value = false;
-  // 重置状态
-  activeTab.value = 'upload';
+  activeTab.value = 'text';
   inputText.value = '';
 }
 
 function handleTextConfirm() {
-  if (!inputText.value.trim()) {
-    return;
-  }
-  if (props.recognizing) return;
+  if (!inputText.value.trim() || props.recognizing) return;
   emit('text', inputText.value.trim());
 }
 </script>
@@ -74,7 +52,7 @@ function handleTextConfirm() {
 <template>
   <Modal
     v-model:open="openProxy"
-    title="AI批量新增运价"
+    title="AI识别开票信息"
     :footer="null"
     :mask-closable="!recognizing"
     :closable="!recognizing"
@@ -82,26 +60,12 @@ function handleTextConfirm() {
     destroy-on-close
     centered
     width="720px"
-    class="freight-rate-ai-upload-modal"
+    class="client-invoice-ai-upload-modal"
     @cancel="handleCancel"
   >
     <Spin :spinning="!!recognizing" tip="AI识别中，请稍候...">
-      <div class="freight-rate-ai-upload-content flex flex-col gap-4">
-        <!-- 切换标签：默认上传文件 -->
+      <div class="client-invoice-ai-upload-content flex flex-col gap-4">
         <div class="flex border-b border-gray-200 dark:border-gray-700">
-          <button
-            type="button"
-            class="relative flex-1 py-3 text-sm font-medium transition-colors"
-            :class="
-              activeTab === 'upload'
-                ? '-mb-[1px] border-b-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            "
-            :disabled="recognizing"
-            @click="activeTab = 'upload'"
-          >
-            上传文件
-          </button>
           <button
             type="button"
             class="relative flex-1 py-3 text-sm font-medium transition-colors"
@@ -115,38 +79,26 @@ function handleTextConfirm() {
           >
             粘贴文本
           </button>
+          <button
+            type="button"
+            class="relative flex-1 py-3 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'upload'
+                ? '-mb-[1px] border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            :disabled="recognizing"
+            @click="activeTab = 'upload'"
+          >
+            上传文件
+          </button>
         </div>
 
-        <!-- 内容区域容器，固定高度以确保弹窗不跳动 -->
-        <div class="freight-rate-ai-upload-area min-h-[320px]">
-          <!-- 上传文件区域 -->
-          <div v-show="activeTab === 'upload'" class="h-[95%]">
-            <UploadDragger
-              :accept="AI_EXTRACT_ACCEPT"
-              :disabled="!!recognizing"
-              :multiple="false"
-              :show-upload-list="false"
-              :before-upload="handleBeforeUpload"
-              class="freight-rate-ai-upload-dragger h-full"
-            >
-              <div class="freight-rate-ai-upload-body">
-                <div class="freight-rate-ai-upload-icon" aria-hidden="true">
-                  <IconifyIcon icon="mdi:file-document-plus-outline" />
-                </div>
-                <p class="freight-rate-ai-upload-title">点击或拖拽文件到此处</p>
-                <p class="freight-rate-ai-upload-desc">放入后自动开始识别</p>
-                <p class="freight-rate-ai-upload-formats">
-                  PDF · 图片 · Word / Excel / RTF
-                </p>
-              </div>
-            </UploadDragger>
-          </div>
-
-          <!-- 粘贴文本区域 -->
+        <div class="client-invoice-ai-upload-area min-h-[320px]">
           <div v-show="activeTab === 'text'" class="flex h-[95%] flex-col pt-2">
             <Input.TextArea
               v-model:value="inputText"
-              placeholder="请在此处粘贴运价报价文字内容...&#10;建议格式：每行一个目的港，各列之间用空格或制表符对齐"
+              placeholder="请粘贴开票资料文字（抬头、税号、地址电话、开户行账号等）"
               :rows="8"
               :disabled="recognizing"
               class="flex-grow resize-none"
@@ -162,6 +114,30 @@ function handleTextConfirm() {
               </button>
             </div>
           </div>
+
+          <div v-show="activeTab === 'upload'" class="h-[95%]">
+            <UploadDragger
+              :accept="CLIENT_INVOICE_INFO_ACCEPT"
+              :disabled="!!recognizing"
+              :multiple="false"
+              :show-upload-list="false"
+              :before-upload="handleBeforeUpload"
+              class="client-invoice-ai-upload-dragger h-full"
+            >
+              <div class="client-invoice-ai-upload-body">
+                <div class="client-invoice-ai-upload-icon" aria-hidden="true">
+                  <IconifyIcon icon="mdi:file-document-plus-outline" />
+                </div>
+                <p class="client-invoice-ai-upload-title">
+                  点击或拖拽开票资料到此处
+                </p>
+                <p class="client-invoice-ai-upload-desc">放入后自动开始识别</p>
+                <p class="client-invoice-ai-upload-formats">
+                  PDF · 图片 · Excel / TXT（≤20MB）
+                </p>
+              </div>
+            </UploadDragger>
+          </div>
         </div>
       </div>
     </Spin>
@@ -169,12 +145,12 @@ function handleTextConfirm() {
 </template>
 
 <style scoped>
-.freight-rate-ai-upload-dragger {
+.client-invoice-ai-upload-dragger {
   background: transparent !important;
   border: none !important;
 }
 
-.freight-rate-ai-upload-dragger :deep(.ant-upload.ant-upload-drag) {
+.client-invoice-ai-upload-dragger :deep(.ant-upload.ant-upload-drag) {
   padding: 0;
   background: hsl(var(--primary) / 4%);
   border: 1.5px dashed hsl(var(--primary) / 35%);
@@ -185,13 +161,13 @@ function handleTextConfirm() {
     box-shadow 0.2s ease;
 }
 
-.freight-rate-ai-upload-dragger
+.client-invoice-ai-upload-dragger
   :deep(.ant-upload.ant-upload-drag:not(.ant-upload-disabled):hover) {
   background: hsl(var(--primary) / 8%);
   border-color: hsl(var(--primary) / 65%);
 }
 
-.freight-rate-ai-upload-dragger
+.client-invoice-ai-upload-dragger
   :deep(
     .ant-upload.ant-upload-drag.ant-upload-drag-hover:not(.ant-upload-disabled)
   ) {
@@ -201,12 +177,12 @@ function handleTextConfirm() {
   box-shadow: inset 0 0 0 1px hsl(var(--primary) / 25%);
 }
 
-.freight-rate-ai-upload-dragger
+.client-invoice-ai-upload-dragger
   :deep(.ant-upload.ant-upload-drag.ant-upload-disabled) {
   opacity: 0.7;
 }
 
-.freight-rate-ai-upload-body {
+.client-invoice-ai-upload-body {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -216,7 +192,7 @@ function handleTextConfirm() {
   text-align: center;
 }
 
-.freight-rate-ai-upload-icon {
+.client-invoice-ai-upload-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,32 +203,9 @@ function handleTextConfirm() {
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 12%);
   border-radius: 14px;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    color 0.2s ease;
 }
 
-.freight-rate-ai-upload-dragger
-  :deep(
-    .ant-upload.ant-upload-drag:not(.ant-upload-disabled):hover
-      .freight-rate-ai-upload-icon
-  ) {
-  background: hsl(var(--primary) / 18%);
-  transform: translateY(-1px);
-}
-
-.freight-rate-ai-upload-dragger
-  :deep(
-    .ant-upload.ant-upload-drag.ant-upload-drag-hover:not(.ant-upload-disabled)
-      .freight-rate-ai-upload-icon
-  ) {
-  color: #fff;
-  background: hsl(var(--primary));
-  transform: scale(1.04);
-}
-
-.freight-rate-ai-upload-title {
+.client-invoice-ai-upload-title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
@@ -260,14 +213,14 @@ function handleTextConfirm() {
   color: hsl(var(--foreground));
 }
 
-.freight-rate-ai-upload-desc {
+.client-invoice-ai-upload-desc {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.4;
   color: hsl(var(--muted-foreground));
 }
 
-.freight-rate-ai-upload-formats {
+.client-invoice-ai-upload-formats {
   padding: 4px 10px;
   margin: 14px 0 0;
   font-size: 12px;
@@ -278,11 +231,7 @@ function handleTextConfirm() {
   border-radius: 8px;
 }
 
-.freight-rate-ai-upload-content {
-  height: 360px; /* 固定内容区总高度 */
-}
-
-.freight-rate-ai-upload-area {
-  /* 确保内部组件撑开或保持最小高度 */
+.client-invoice-ai-upload-content {
+  height: 360px;
 }
 </style>
