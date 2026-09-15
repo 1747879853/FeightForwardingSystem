@@ -27,7 +27,7 @@ const openProxy = computed({
   set: (value: boolean) => emit('update:open', value),
 });
 
-const activeTab = ref<'text' | 'upload'>('upload');
+const activeTab = ref<'text' | 'upload'>('text');
 const inputText = ref('');
 
 function handleBeforeUpload(file: File) {
@@ -39,7 +39,7 @@ function handleBeforeUpload(file: File) {
 function handleCancel() {
   if (props.recognizing) return;
   openProxy.value = false;
-  activeTab.value = 'upload';
+  activeTab.value = 'text';
   inputText.value = '';
 }
 
@@ -70,19 +70,6 @@ function handleTextConfirm() {
             type="button"
             class="relative flex-1 py-3 text-sm font-medium transition-colors"
             :class="
-              activeTab === 'upload'
-                ? '-mb-[1px] border-b-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            "
-            :disabled="recognizing"
-            @click="activeTab = 'upload'"
-          >
-            上传文件
-          </button>
-          <button
-            type="button"
-            class="relative flex-1 py-3 text-sm font-medium transition-colors"
-            :class="
               activeTab === 'text'
                 ? '-mb-[1px] border-b-2 border-primary text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -92,9 +79,42 @@ function handleTextConfirm() {
           >
             粘贴文本
           </button>
+          <button
+            type="button"
+            class="relative flex-1 py-3 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'upload'
+                ? '-mb-[1px] border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            :disabled="recognizing"
+            @click="activeTab = 'upload'"
+          >
+            上传文件
+          </button>
         </div>
 
         <div class="client-invoice-ai-upload-area min-h-[320px]">
+          <div v-show="activeTab === 'text'" class="flex h-[95%] flex-col pt-2">
+            <Input.TextArea
+              v-model:value="inputText"
+              placeholder="请粘贴开票资料文字（抬头、税号、地址电话、开户行账号等）"
+              :rows="8"
+              :disabled="recognizing"
+              class="flex-grow resize-none"
+            />
+            <div class="mt-4 flex shrink-0 justify-end">
+              <button
+                type="button"
+                class="rounded-md bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!inputText.trim() || recognizing"
+                @click="handleTextConfirm"
+              >
+                开始识别
+              </button>
+            </div>
+          </div>
+
           <div v-show="activeTab === 'upload'" class="h-[95%]">
             <UploadDragger
               :accept="CLIENT_INVOICE_INFO_ACCEPT"
@@ -117,26 +137,6 @@ function handleTextConfirm() {
                 </p>
               </div>
             </UploadDragger>
-          </div>
-
-          <div v-show="activeTab === 'text'" class="flex h-[95%] flex-col pt-2">
-            <Input.TextArea
-              v-model:value="inputText"
-              placeholder="请粘贴开票资料文字（抬头、税号、地址电话、开户行账号等）"
-              :rows="8"
-              :disabled="recognizing"
-              class="flex-grow resize-none"
-            />
-            <div class="mt-4 flex shrink-0 justify-end">
-              <button
-                type="button"
-                class="rounded-md bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="!inputText.trim() || recognizing"
-                @click="handleTextConfirm"
-              >
-                开始识别
-              </button>
-            </div>
           </div>
         </div>
       </div>
