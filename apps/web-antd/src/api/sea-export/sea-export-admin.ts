@@ -890,11 +890,18 @@ export namespace SeaExportAdminApi {
     tradeTermsType?: number | null;
     codeSourceId?: LongId | null;
     receivePortId?: LongId | null;
+    /** 随收货地一起提交；选港后自动带出 `PORTNAME, COUNTRYENNAME` */
+    receivePortRemark?: string | null;
     polId?: LongId | null;
+    polRemark?: string | null;
     pot1Id?: LongId | null;
+    pot1Remark?: string | null;
     pot2Id?: LongId | null;
+    pot2Remark?: string | null;
     podId?: LongId | null;
+    podRemark?: string | null;
     deliverPortId?: LongId | null;
+    deliverPortRemark?: string | null;
     operationUserId?: LongId | null;
     documentationUserId?: LongId | null;
     customerServiceUserId?: LongId | null;

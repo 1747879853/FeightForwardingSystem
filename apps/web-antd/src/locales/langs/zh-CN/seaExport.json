@@ -209,7 +209,7 @@
     "batchEditPoT2": "中转港2",
     "batchEditOrgId": "归属组织",
     "batchEditPolConfirmTitle": "确认修改起运港",
-    "batchEditPolConfirmContent": "所选单据会按新起运港重新生成服务项和任务，原来的服务进度会被清掉。其中一票改不成功时，这次全部不会保存。是否继续？",
+    "batchEditPolConfirmContent": "将按新起运港重新生成服务项目。是否继续？",
     "copy": "复制",
     "copyConfirmTitle": "复制海运出口",
     "copyConfirmIntro": "确定复制以下委托并新建吗？",

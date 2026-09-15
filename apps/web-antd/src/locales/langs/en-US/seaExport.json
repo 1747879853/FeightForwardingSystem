@@ -631,7 +631,7 @@
     "batchEditPoT2": "Transit Port 2",
     "batchEditOrgId": "Organization",
     "batchEditPolConfirmTitle": "Confirm POL change",
-    "batchEditPolConfirmContent": "Selected orders will regenerate service items and tasks for the new POL, and current service progress will be cleared. If any order fails, none of this batch will be saved. Continue?",
+    "batchEditPolConfirmContent": "Service items will be regenerated for the new POL. Continue?",
     "copy": "Copy",
     "copyConfirmTitle": "Copy Sea Export",
     "copyConfirmIntro": "Create a new order by copying the following?",

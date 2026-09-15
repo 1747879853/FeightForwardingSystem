@@ -14,12 +14,38 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import { createClientSelectSchema } from '../../client/base/data';
-import { getTradeTermsTypeOptions, pickPortSelectOption } from '../data';
+import {
+  buildPortSelectProps,
+  formatSeaExportPortRemark,
+  getTradeTermsTypeOptions,
+  pickPortSelectOption,
+} from '../data';
+
+/** 选港后自动带出对应备注，与编辑页 `PORT_ID_FIELD_TO_REMARK_FIELD` 同口径 */
+const PORT_ID_TO_REMARK_FIELD: Record<string, string> = {
+  receivePortId: 'receivePortRemark',
+  polId: 'polRemark',
+  poT1Id: 'poT1Remark',
+  poT2Id: 'poT2Remark',
+  podId: 'podRemark',
+  deliverPortId: 'deliverPortRemark',
+};
+
+const PORT_REMARK_TO_PAYLOAD: Record<string, string> = {
+  receivePortRemark: 'receivePortRemark',
+  polRemark: 'polRemark',
+  poT1Remark: 'pot1Remark',
+  poT2Remark: 'pot2Remark',
+  podRemark: 'podRemark',
+  deliverPortRemark: 'deliverPortRemark',
+};
 
 const emits = defineEmits<{ success: [] }>();
 
 const batchIds = ref<Array<number | string>>([]);
 const lanePreview = ref('');
+/** 选港时记下自动带出的备注，提交时随对应港口 id 一起带上 */
+const portRemarks = ref<Record<string, string>>({});
 
 const hasValue = (value: unknown) => {
   if (value === null || value === undefined) return false;
@@ -48,10 +74,6 @@ const buildBatchEditPayload = (
     'codeServiceId',
     'tradeTermsType',
     'codeSourceId',
-    'receivePortId',
-    'polId',
-    'podId',
-    'deliverPortId',
     'operationUserId',
     'documentationUserId',
     'customerServiceUserId',
@@ -67,12 +89,25 @@ const buildBatchEditPayload = (
     }
   }
 
-  if (hasValue(values.poT1Id)) {
-    payload.pot1Id = values.poT1Id;
-  }
-  if (hasValue(values.poT2Id)) {
-    payload.pot2Id = values.poT2Id;
-  }
+  const attachPort = (
+    formIdField: string,
+    payloadIdField: string,
+    remarkFormField: string,
+  ) => {
+    if (!hasValue(values[formIdField])) return;
+    payload[payloadIdField] = values[formIdField];
+    const remark = portRemarks.value[remarkFormField];
+    if (typeof remark === 'string' && remark.trim()) {
+      payload[PORT_REMARK_TO_PAYLOAD[remarkFormField]] = remark.trim();
+    }
+  };
+
+  attachPort('receivePortId', 'receivePortId', 'receivePortRemark');
+  attachPort('polId', 'polId', 'polRemark');
+  attachPort('poT1Id', 'pot1Id', 'poT1Remark');
+  attachPort('poT2Id', 'pot2Id', 'poT2Remark');
+  attachPort('podId', 'podId', 'podRemark');
+  attachPort('deliverPortId', 'deliverPortId', 'deliverPortRemark');
 
   for (const field of ['vessel', 'innerVoyno'] as const) {
     const value = values[field];
@@ -94,6 +129,23 @@ const handlePodChange = (_value: unknown, option: unknown) => {
     | { lane?: { laneName?: string } }
     | undefined;
   lanePreview.value = raw?.lane?.laneName ?? '';
+};
+
+const handlePortChange = (
+  fieldName: string,
+  value: unknown,
+  option: unknown,
+) => {
+  if (fieldName === 'podId') {
+    handlePodChange(value, option);
+  }
+  const remarkField = PORT_ID_TO_REMARK_FIELD[fieldName];
+  if (!remarkField) return;
+  portRemarks.value = {
+    ...portRemarks.value,
+    [remarkField]:
+      formatSeaExportPortRemark(pickPortSelectOption(option)?.raw) ?? '',
+  };
 };
 
 const formCommonConfig = {
@@ -271,62 +323,37 @@ const [PortForm, portFormApi] = useVbenForm({
       component: 'PortSelect',
       fieldName: 'receivePortId',
       label: $t('seaExport.export.receivePortId'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-      },
+      componentProps: buildPortSelectProps('receivePortId', handlePortChange),
     },
     {
       component: 'PortSelect',
       fieldName: 'polId',
       label: $t('seaExport.export.polId'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-      },
+      componentProps: buildPortSelectProps('polId', handlePortChange),
     },
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
       label: $t('seaExport.export.batchEditPoT1'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-      },
+      componentProps: buildPortSelectProps('poT1Id', handlePortChange),
     },
     {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: $t('seaExport.export.batchEditPoT2'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-      },
+      componentProps: buildPortSelectProps('poT2Id', handlePortChange),
     },
     {
       component: 'PortSelect',
       fieldName: 'podId',
       label: $t('seaExport.export.podId'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-        onChange: handlePodChange,
-      },
+      componentProps: buildPortSelectProps('podId', handlePortChange),
     },
     {
       component: 'PortSelect',
       fieldName: 'deliverPortId',
       label: $t('seaExport.export.deliverPortId'),
-      componentProps: {
-        allowClear: true,
-        labelKey: 'ediCode',
-        placeholder: $t('ui.placeholder.select'),
-      },
+      componentProps: buildPortSelectProps('deliverPortId', handlePortChange),
     },
   ],
 });
@@ -458,12 +485,14 @@ const [ModalComponent, modalApi] = useVbenModal({
   async onOpenChange(isOpen) {
     if (!isOpen) {
       lanePreview.value = '';
+      portRemarks.value = {};
       return;
     }
 
     const data = modalApi.getData<{ ids?: Array<number | string> }>();
     batchIds.value = data?.ids ?? [];
     lanePreview.value = '';
+    portRemarks.value = {};
     await resetAllForms();
   },
   closeOnClickModal: false,
