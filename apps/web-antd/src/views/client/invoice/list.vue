@@ -54,7 +54,7 @@ const formRefs = ref<Record<string, any>>({});
 
 const aiModalOpen = ref(false);
 const aiRecognizing = ref(false);
-/** 当前进行 AI 识别的开票卡片 id */
+/** 当前进行 AI 识别的开票卡片 id（识别时再确定：复用首条新增或自动新建） */
 const aiTargetInvoiceId = ref<string>('');
 
 /**
@@ -240,15 +240,29 @@ const setFormRef = (el: any, invoiceId: string) => {
   }
 };
 
-function openAiRecognize(invoiceId: string) {
+function openAiRecognize() {
   if (aiRecognizing.value) return;
-  aiTargetInvoiceId.value = invoiceId;
-  if (!activeKey.value.includes(invoiceId)) {
-    activeKey.value = [invoiceId];
+  aiModalOpen.value = true;
+}
+
+/** 首条已是未保存新增则复用；否则自动新建一条作为回填目标 */
+function ensureAiTargetInvoiceId(): string {
+  const first = invoiceList.value[0];
+  if (first?.id?.startsWith('new_')) {
+    return first.id;
   }
-  void nextTick(() => {
-    aiModalOpen.value = true;
-  });
+  handleAddInvoice();
+  const created = invoiceList.value[invoiceList.value.length - 1];
+  return created?.id ?? '';
+}
+
+async function waitForFormRef(invoiceId: string, retries = 8) {
+  for (let i = 0; i < retries; i += 1) {
+    await nextTick();
+    const formRef = formRefs.value[invoiceId];
+    if (formRef?.applyAiResult) return formRef;
+  }
+  return formRefs.value[invoiceId];
 }
 
 async function runAiRecognize(file?: File, text?: string) {
@@ -268,21 +282,27 @@ async function runAiRecognize(file?: File, text?: string) {
     return;
   }
 
-  const invoiceId = aiTargetInvoiceId.value;
-  await nextTick();
-  let formRef = formRefs.value[invoiceId];
-  if (!formRef?.applyAiResult) {
-    await nextTick();
-    formRef = formRefs.value[invoiceId];
-  }
-  if (!formRef?.applyAiResult) {
-    message.warning('请先展开对应开票信息后再识别');
-    return;
-  }
-
   aiRecognizing.value = true;
   try {
     const result = await extractClientInvoiceInfo(file, text);
+
+    const invoiceId = ensureAiTargetInvoiceId();
+    if (!invoiceId) {
+      message.warning('无法创建开票信息，请稍后重试');
+      return;
+    }
+    aiTargetInvoiceId.value = invoiceId;
+    if (!activeKey.value.includes(invoiceId)) {
+      activeKey.value = [invoiceId];
+    }
+
+    const formRef = await waitForFormRef(invoiceId);
+    if (!formRef?.applyAiResult) {
+      message.warning('表单尚未就绪，请展开开票信息后重试');
+      return;
+    }
+    await formRef.whenReady?.();
+
     const hasUnmatched = await formRef.applyAiResult(result);
     // 同步卡片标题区抬头/税号
     patchInvoiceListItem(invoiceId, {
@@ -348,14 +368,24 @@ onMounted(() => {
             </span>
             <span class="invoice-toolbar__count">{{ invoiceList.length }}</span>
           </div>
-          <Button
-            type="primary"
-            class="invoice-toolbar__add"
-            @click="handleAddInvoice"
-          >
-            <Plus class="size-4" />
-            {{ $t('common.create') }}
-          </Button>
+          <div class="invoice-toolbar__actions">
+            <Button
+              class="invoice-toolbar__ai"
+              :loading="aiRecognizing"
+              @click="openAiRecognize"
+            >
+              <IconifyIcon icon="mdi:robot-outline" class="size-4" />
+              AI识别
+            </Button>
+            <Button
+              type="primary"
+              class="invoice-toolbar__add"
+              @click="handleAddInvoice"
+            >
+              <Plus class="size-4" />
+              {{ $t('common.create') }}
+            </Button>
+          </div>
         </div>
 
         <!-- 开票信息卡片列表 -->
@@ -395,17 +425,6 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="invoice-card__actions" @click.stop>
-                  <Button
-                    size="small"
-                    :loading="aiRecognizing && aiTargetInvoiceId === invoice.id"
-                    @click.stop="openAiRecognize(invoice.id)"
-                  >
-                    <IconifyIcon
-                      icon="mdi:robot-outline"
-                      class="mr-0.5 inline-block size-3.5 align-middle"
-                    />
-                    AI识别
-                  </Button>
                   <Button
                     type="primary"
                     size="small"
@@ -517,9 +536,16 @@ onMounted(() => {
   border-radius: 11px;
 }
 
-.invoice-toolbar__add {
+.invoice-toolbar__actions {
   display: inline-flex;
   flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.invoice-toolbar__ai,
+.invoice-toolbar__add {
+  display: inline-flex;
   gap: 6px;
   align-items: center;
 }

@@ -34,6 +34,11 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const loading = ref(false);
+/** 详情/默认值首次加载完成（供父级 AI 回填等待） */
+let resolveReady: (() => void) | undefined;
+const readyPromise = new Promise<void>((resolve) => {
+  resolveReady = resolve;
+});
 
 // 客户详情缓存
 const clientDetail = ref<any>(null);
@@ -355,8 +360,12 @@ const processBankDefault = (
 // 监听 invoiceId 变化，重新加载数据
 watch(
   () => props.invoiceId,
-  () => {
-    loadDetail();
+  async () => {
+    try {
+      await loadDetail();
+    } finally {
+      resolveReady?.();
+    }
   },
   { immediate: true },
 );
@@ -453,6 +462,8 @@ defineExpose({
   getFormData,
   isInvoiceFormDirty,
   applyAiResult,
+  /** 首次详情/默认值加载完成 */
+  whenReady: () => readyPromise,
   // 保存成功后由父组件调用，重新记录干净快照，避免未保存守卫误判为脏
   syncSnapshot: syncInvoiceSnapshot,
   resetForm: () => {
