@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -108,6 +108,7 @@ last_updated: 2026-09-14
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细；页内按分提单号 Tab 编辑。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 分页（`pageSize=100`）列出并保存；装箱列对齐稿面（序号/箱型/箱号/封号/件数/包装/重量/尺码/箱皮重/备注）；船期港口只读自主单；第二通知人从主单带出、界面可改，不写分单 DTO；支持 `CopyAsync` 复制已保存分单。 | 子记录需绑定当前海出 ID。 |
+| **分单运输条款** | 分单主卡右侧运输条款下拉，不是运输/运踪状态。 | `formData.codeServiceId` / i18n `seaExport.export.separate.serviceStatus` | **触发/依赖：** `CodeServiceSelect`；中文标签为「运输条款」，key 仍叫 `serviceStatus`。 | 可选；复制分单会带走条款。 |
 | **分单头备注（remark）** | 分单主表一句话备注，与装箱行备注不同。 | `SeparateDto.remark` / `AddAsync`·`EditAsync` 根字段 `remark` | **触发/依赖：** 代理地址右侧多行输入；列表/详情 `keyword` 可模糊匹配备注；复制分单会带走备注。 | 可选，最长 1024；勿与 `seaExportSeparateCtns[].remark` 混填。 |
 | **分单件数大写** | 货物区底部只读提单套话，不入库。 | 前端 `formatPkgsSay(pkgs, codePackageName)` | **触发/依赖：** 跟货物件数/包装；装箱改件数会回写货物件数后刷新。样例 `SAY:ONE HUNDRED AND FORTY-SEVEN CARTONS ONLY.`；都空则 `SAY: ONLY.`。 | 只读；不提交；勿用主单 `upperPKGS`。 |
 | **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；卡片按 `sortId` 降序；点击文件调用 `openAttachmentViewer` 预览。 | 上传需 `Admin.SeaExport.Edit`；新上传 `clientVisible` 默认 `false`。 |
@@ -171,6 +172,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-15 | `Fix` | 分单主卡 `serviceStatus` 中文由「运输状态」改为「运输条款」。 | 仍绑定 `codeServiceId` / `CodeServiceSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-separate-service-status-label.md)。 |
 | 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。监装照片槽位同样按原始 `sortId` 降序。 | 共用 `compareAttachmentTypeSortIdDesc`；缺省 `0`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-13 | `Fix` | 派车列表分页改为 `pageIndex` / `pageSize`，不再误传 `skipCount`。 | `SeaExportDispatchQueryDto` 继承 `PagingAndSorting`。详见 [变更日志](../../changelogs/change-log-2026-09-13-dispatch-page-params.md)。 |
 | 2026-09-13 | `Fix` | 分单船期与港口卡标签由错误的 EDT 改回 ETD。 | 文案 key `seaExport.export.separate.etdLabel`；取值仍是主单 `transportOrder.etd`。详见 [变更日志](../../changelogs/change-log-2026-09-13-separate-bill-etd-label.md)。 |

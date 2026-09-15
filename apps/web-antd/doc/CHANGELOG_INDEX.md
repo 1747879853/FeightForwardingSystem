@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-15] [海运出口分单运输条款文案更正](./changelogs/change-log-2026-09-15-sea-export-separate-service-status-label.md)
 - [2026-09-14] [业务附件按原始 sortId 降序](./changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)
 - [2026-09-14] [PC监装状态配色优化](./changelogs/change-log-2026-09-14-PC监装状态配色.md)
 
