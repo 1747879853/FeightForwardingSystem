@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
@@ -14,6 +14,7 @@ import { $t } from '#/locales';
 import { Page } from '@vben/common-ui';
 import { Plus, IconifyIcon } from '@vben/icons';
 import Form from './form.vue';
+import InvoiceAiUploadModal from './invoice-ai-upload-modal.vue';
 import {
   getClientInvoiceInfoList,
   addClientInvoiceInfo,
@@ -21,6 +22,11 @@ import {
   deleteClientInvoiceInfo,
   type ClientInvoiceInfoAdminApi,
 } from '#/api/sea-export/clinet-invoice-admin';
+import {
+  CLIENT_INVOICE_INFO_MAX_BYTES,
+  extractClientInvoiceInfo,
+  isClientInvoiceInfoUploadFile,
+} from '#/api/sea-export/gemini-admin';
 
 defineOptions({ name: 'ClientInvoiceList' });
 
@@ -45,6 +51,11 @@ const editingInvoiceId = ref<string>('');
 
 // 表单组件引用
 const formRefs = ref<Record<string, any>>({});
+
+const aiModalOpen = ref(false);
+const aiRecognizing = ref(false);
+/** 当前进行 AI 识别的开票卡片 id */
+const aiTargetInvoiceId = ref<string>('');
 
 /**
  * 加载开票信息列表
@@ -229,6 +240,80 @@ const setFormRef = (el: any, invoiceId: string) => {
   }
 };
 
+function openAiRecognize(invoiceId: string) {
+  if (aiRecognizing.value) return;
+  aiTargetInvoiceId.value = invoiceId;
+  if (!activeKey.value.includes(invoiceId)) {
+    activeKey.value = [invoiceId];
+  }
+  void nextTick(() => {
+    aiModalOpen.value = true;
+  });
+}
+
+async function runAiRecognize(file?: File, text?: string) {
+  if (aiRecognizing.value) return;
+  if (file) {
+    if (!isClientInvoiceInfoUploadFile(file)) {
+      message.warning('请上传 PDF、图片或 Excel/TXT 文件');
+      return;
+    }
+    if (file.size > CLIENT_INVOICE_INFO_MAX_BYTES) {
+      message.warning('文件大小超过 20MB 上限，无法识别');
+      return;
+    }
+  }
+  if (!file && !text?.trim()) {
+    message.warning('请上传开票资料文件或输入需要识别的文字');
+    return;
+  }
+
+  const invoiceId = aiTargetInvoiceId.value;
+  await nextTick();
+  let formRef = formRefs.value[invoiceId];
+  if (!formRef?.applyAiResult) {
+    await nextTick();
+    formRef = formRefs.value[invoiceId];
+  }
+  if (!formRef?.applyAiResult) {
+    message.warning('请先展开对应开票信息后再识别');
+    return;
+  }
+
+  aiRecognizing.value = true;
+  try {
+    const result = await extractClientInvoiceInfo(file, text);
+    const hasUnmatched = await formRef.applyAiResult(result);
+    // 同步卡片标题区抬头/税号
+    patchInvoiceListItem(invoiceId, {
+      header: result.header ?? undefined,
+      taxNum: result.taxNum ?? undefined,
+      address: result.address ?? undefined,
+      tel: result.tel ?? undefined,
+      mobile: result.mobile ?? undefined,
+      require: result.require ?? undefined,
+    });
+    aiModalOpen.value = false;
+    if (hasUnmatched) {
+      message.warning('识别完成，请核对标红银行币别后再保存');
+    } else {
+      message.success('AI识别完成，请核对后保存');
+    }
+  } catch (error) {
+    console.error('开票信息 AI 识别失败:', error);
+  } finally {
+    aiRecognizing.value = false;
+  }
+}
+
+async function handleAiFile(file: File) {
+  await runAiRecognize(file);
+}
+
+async function handleAiText(text: string) {
+  await runAiRecognize(undefined, text);
+}
+
 async function isInvoiceDirty() {
   for (const form of Object.values(formRefs.value)) {
     const dirty = await form?.isInvoiceFormDirty?.();
@@ -311,6 +396,17 @@ onMounted(() => {
                 </div>
                 <div class="invoice-card__actions" @click.stop>
                   <Button
+                    size="small"
+                    :loading="aiRecognizing && aiTargetInvoiceId === invoice.id"
+                    @click.stop="openAiRecognize(invoice.id)"
+                  >
+                    <IconifyIcon
+                      icon="mdi:robot-outline"
+                      class="mr-0.5 inline-block size-3.5 align-middle"
+                    />
+                    AI识别
+                  </Button>
+                  <Button
                     type="primary"
                     size="small"
                     :loading="submitting && activeKey.includes(invoice.id)"
@@ -351,6 +447,13 @@ onMounted(() => {
         </div>
       </div>
     </Spin>
+
+    <InvoiceAiUploadModal
+      v-model:open="aiModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiFile"
+      @text="handleAiText"
+    />
   </Page>
 </template>
 

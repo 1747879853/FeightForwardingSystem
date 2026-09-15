@@ -396,3 +396,100 @@ export function extractBillFees(file: File, transportOrderId?: string) {
     },
   );
 }
+
+// ==================== 客户开票信息识别 ====================
+
+/** 开票资料上传 accept（与 ExtractClientInvoiceInfoAsync 文档一致） */
+export const CLIENT_INVOICE_INFO_ACCEPT = [
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.heic',
+  '.heif',
+  '.gif',
+  '.bmp',
+  '.txt',
+  '.xlsx',
+  '.xls',
+].join(',');
+
+/** 开票资料文件大小上限 20MB */
+export const CLIENT_INVOICE_INFO_MAX_BYTES = 20 * 1024 * 1024;
+
+const CLIENT_INVOICE_INFO_EXT =
+  /\.(pdf|png|jpe?g|webp|heic|heif|gif|bmp|txt|xlsx|xls)$/i;
+
+export function isClientInvoiceInfoUploadFile(file: {
+  name?: string;
+  type?: string;
+}) {
+  return CLIENT_INVOICE_INFO_EXT.test(String(file.name ?? ''));
+}
+
+/** 币别简易对象（展示用） */
+export interface GeminiClientInvoiceCurrencyDto {
+  code?: null | string;
+  cnName?: null | string;
+  enName?: null | string;
+}
+
+/** 开票银行识别结果（字段名对齐 ClientInvoiceBankAddDto） */
+export interface GeminiClientInvoiceBankDto {
+  bankName?: null | string;
+  bankAccount?: null | string;
+  accountName?: null | string;
+  /** 识别原文三位码；未标注为 null */
+  currencyCode?: null | string;
+  /** 匹配不到为 -1（含 currencyCode 为 null） */
+  currencyId?: number | string;
+  swiftCode?: null | string;
+  /** 每个币别的第一条为 true */
+  isDefault?: boolean;
+  /** 按识别顺序倒序 */
+  sortId?: number;
+  currency?: GeminiClientInvoiceCurrencyDto | null;
+}
+
+/**
+ * 客户开票信息识别结果（字段名对齐 ClientInvoiceInfoAddDto）
+ * 不含 clientId / isDefault / sortId，由前端按新增页逻辑处理
+ */
+export interface GeminiClientInvoiceInfoDto {
+  header?: null | string;
+  taxNum?: null | string;
+  address?: null | string;
+  tel?: null | string;
+  mobile?: null | string;
+  /** 多条要求用中文分号拼成一段；最长 2048 */
+  require?: null | string;
+  /** 识别不到银行为空数组，不是 null */
+  clientInvoiceBanks?: GeminiClientInvoiceBankDto[];
+}
+
+/**
+ * Gemini 识别客户开票信息（不落库）
+ * 文件与文字二选一；传了非空白 text 则忽略 file。
+ */
+export function extractClientInvoiceInfo(file?: File, text?: string) {
+  const formData = new FormData();
+  const trimmed = text?.trim();
+  if (trimmed) {
+    formData.append('text', trimmed);
+  }
+  if (file) {
+    formData.append('file', file);
+  }
+
+  return requestClient.post<GeminiClientInvoiceInfoDto>(
+    '/services/app/GeminiAdmin/ExtractClientInvoiceInfoAsync',
+    formData,
+    {
+      timeout: 180_000,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}
