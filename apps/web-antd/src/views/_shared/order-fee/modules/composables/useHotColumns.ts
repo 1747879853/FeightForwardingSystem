@@ -1,3 +1,6 @@
+import { createFieldPermission } from '#/composables/field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import { computed, type Ref } from 'vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { useOrderFeeColumns, getStatementNumsText } from '../../data';
@@ -41,6 +44,8 @@ export function useHotColumns(
     return set;
   });
 
+  void loadMaskedFields();
+  const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const hotColumns = computed(() => {
     const vxeColumns = useOrderFeeColumns(props.type);
 
@@ -801,7 +806,9 @@ export function useHotColumns(
       return hotCol;
     });
 
-    return columns.concat(mappedColumns);
+    return columns
+      .concat(mappedColumns)
+      .filter((column) => !fieldPermission.always(String(column.data ?? '')));
   });
 
   return {

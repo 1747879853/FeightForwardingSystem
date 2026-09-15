@@ -1,8 +1,15 @@
 <script lang="ts" setup>
+import { rememberPermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  orderFeeFieldPermission,
+);
+
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
+
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import {
   Button,
@@ -409,7 +416,9 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
             detail.orderFeeTasks?.filter(
               (item) => item.paySide === props.type,
             ) || [];
-          const modifyData = handleModifyTask(orderFeeTasks);
+          const modifyData = handleModifyTask(
+            orderFeeTasks.map(rememberPermissionRow),
+          );
 
           // 按照创建时间正序排序
           const sortedData = modifyData.sort((a, b) => {

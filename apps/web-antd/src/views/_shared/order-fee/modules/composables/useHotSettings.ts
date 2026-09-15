@@ -1,3 +1,5 @@
+import { createFieldPermission } from '#/composables/field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
 import { shallowRef, nextTick, type Ref } from 'vue';
 import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
@@ -45,6 +47,7 @@ export function useHotSettings(
   getSortIcon?: (field: string) => string,
   onDoubleClickFeeStatus?: (row: any) => void, // ✅ 新增：双击费用状态的回调
 ) {
+  const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const getDataSource = () =>
     Array.isArray(dataSource) ? dataSource : dataSource.value;
   const getSelectedRowKeys = () =>
@@ -107,12 +110,28 @@ export function useHotSettings(
         return cellProperties;
       }
       const rowData = getDataSource()[row];
-      if (rowData && isFeeStatemented(rowData)) {
+      if (
+        rowData &&
+        (isFeeStatemented(rowData) ||
+          fieldPermission.masked(
+            String(prop),
+            rowData?.id ? rowData : undefined,
+          ))
+      ) {
         cellProperties.readOnly = true;
       }
       return cellProperties;
     },
 
+    beforeChange: (changes: any[] | null, source: string) => {
+      if (!changes || !USER_EDIT_SOURCES.has(source)) return;
+      for (let index = changes.length - 1; index >= 0; index--) {
+        const [row, field] = changes[index];
+        const item = getDataSource()[row];
+        if (fieldPermission.masked(String(field), item?.id ? item : undefined))
+          changes.splice(index, 1);
+      }
+    },
     afterOnCellMouseDown: function (
       this: any,
       event: MouseEvent,
@@ -490,6 +509,16 @@ export function useHotSettings(
       value: any,
       cellProperties: any,
     ) {
+      if (
+        fieldPermission.masked(
+          String(prop),
+          getDataSource()[row]?.id ? getDataSource()[row] : undefined,
+        )
+      ) {
+        td.textContent = '***';
+        td.removeAttribute('title');
+        return;
+      }
       // 费用状态着色 - 使用 setProperty 确保优先级
       const actualDataSource = getDataSource();
       const rowData = actualDataSource[row];

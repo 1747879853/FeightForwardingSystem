@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import type { Recordable } from '@vben/types';
 
 import type { OnActionClickParams } from '#/adapter/vxe-table';
@@ -386,6 +387,7 @@ const [PropModal, modalApi] = useVbenModal({
         await addPropPermission(submitData);
       }
       message.success($t('system.permission.saveSuccess'));
+      await loadMaskedFields(true);
       modalApi.close();
       gridApi.query();
     } finally {
@@ -452,6 +454,7 @@ function handleDelete(row: SystemPermissionApi.UserPropPermissionDto) {
     content: $t('system.permission.confirmDelete'),
     onOk: async () => {
       await deletePropPermission(row.id);
+      await loadMaskedFields(true);
       message.success($t('system.permission.deleteSuccess'));
       gridApi.query();
     },

@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { airExportFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  airExportFieldPermission,
+);
+
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
@@ -20,7 +26,6 @@ import dayjs from 'dayjs';
 
 import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteAirExport,
   getAirExportGroupedList,

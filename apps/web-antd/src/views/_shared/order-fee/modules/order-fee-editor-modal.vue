@@ -1,8 +1,15 @@
 <script lang="ts" setup>
+import { capturePermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionForm: useVbenForm, rawDetail } = useFieldPermission(
+  orderFeeFieldPermission,
+);
+
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { computed, ref, watch, nextTick } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
-import { useVbenForm } from '#/adapter/form';
+
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
 import { useOrderFeeAdapter } from '../use-adapter';
@@ -173,6 +180,7 @@ const [Modal, modalApi] = useVbenModal({
       if (data) {
         // 兼容旧的数据格式（直接传递费用数据）和新的数据格式（包含orderBaseData）
         const feeData = data.feeData || data;
+        rawDetail.value = capturePermissionRow(feeData);
         console.log('📊 [编辑模态框] 费用数据:', feeData);
 
         currentFeeData.value = { ...feeData };

@@ -1,4 +1,11 @@
 <script lang="ts" setup>
+import { rememberPermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  orderFeeFieldPermission,
+);
+
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
@@ -39,7 +46,6 @@ import {
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
 
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   useOrderFeeColumns,
   initOrderFeeEnumCache,
@@ -121,6 +127,7 @@ let rowKeyCounter = 0;
 const setChangeOrderFee = async (id: string) => {
   if (id) {
     let res = await adapter.api.getChangeOrderDetail(id);
+    res.orderFees = res.orderFees.map(rememberPermissionRow);
     console.log(
       'res',
       res.orderFees.filter((item) => item.paySide === props.type),
@@ -169,6 +176,7 @@ const queryTableData = async () => {
     PageSize: 999,
   };
   const res = await adapter.api.getOrderFeePagedList(params);
+  res.items = res.items.map(rememberPermissionRow);
   res.items.forEach((item) => {
     item.taskStatus = '';
     if (

@@ -1,4 +1,13 @@
 <script lang="ts" setup>
+import { capturePermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { seaExportFieldPermission } from '#/composables/field-permission-profiles';
+const {
+  usePermissionForm: useVbenForm,
+  rawDetail,
+  masked,
+} = useFieldPermission(seaExportFieldPermission);
+
 import type { AttachmentDtlTypeApi } from '#/api/system/attachment-dtl-type';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { TerminalScheduleItem } from '#/components/terminal-schedule';
@@ -63,7 +72,7 @@ import {
   UserOrgSelect,
   UserSelect,
 } from '#/adapter/component';
-import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
+import { type VbenFormSchema } from '#/adapter/form';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
@@ -227,6 +236,9 @@ const pageWrapperProps = computed(() =>
 );
 const editId = useKeepAliveRouteParamId();
 
+watch(editId, () => {
+  rawDetail.value = undefined;
+});
 const isEdit = computed(() => !!editId.value);
 
 /** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
@@ -2258,6 +2270,7 @@ const loadEditData = async (): Promise<
   pageLoading.value = true;
   try {
     const detail = await getSeaExportDetail(editId.value);
+    rawDetail.value = capturePermissionRow(detail);
     detailIsEditable.value = isTicketEditable(detail);
     transportOrderId.value = detail.transportOrder?.id;
     yundangSubscribed.value = detail.isYundangSubscribed ?? false;
@@ -2689,7 +2702,8 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     editOriginalServiceTypeSet,
     normalizeIdForCompare,
     confirmServiceTaskRebuild,
-    validateSalesRoleCount,
+    validateSalesRoleCount: () =>
+      masked('orderUsers', rawDetail.value) || validateSalesRoleCount(),
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
     validateShipmentDates,
@@ -2946,6 +2960,7 @@ const resolvePrintContext = async (): Promise<null | {
     }
 
     const detail = await getSeaExportDetail(editId.value);
+    rawDetail.value = capturePermissionRow(detail);
     return {
       codeIssueTypeId:
         (detail as any).codeIssueTypeId ?? (detail as any).issueType ?? null,
@@ -3697,7 +3712,10 @@ defineExpose({
                     {{ $t('seaExport.export.formCardBasicInfo') }}
                   </span>
                   <div class="basic-info-header__meta">
-                    <div class="basic-info-header__item">
+                    <div
+                      v-if="!masked('commissionNum', rawDetail)"
+                      class="basic-info-header__item"
+                    >
                       <span class="basic-info-header__label">委托编号</span>
                       <span class="basic-info-header__value">{{
                         entrustReadonlyInfo.commissionNum || '-'
@@ -3741,6 +3759,7 @@ defineExpose({
                         归属组织
                       </span>
                       <UserOrgSelect
+                        v-if="!masked('orgId', rawDetail)"
                         :model-value="headerOrgId"
                         :user-id="salesUserId"
                         :selected-items="headerOrgSelectedItems"
@@ -4070,7 +4089,10 @@ defineExpose({
                   </div>
                   <CargoReeferForm />
                 </div>
-                <div class="cargo-ctn-section">
+                <div
+                  v-if="!masked('orderCtns', rawDetail)"
+                  class="cargo-ctn-section"
+                >
                   <OrderCtnTable
                     v-model="orderCtns"
                     :get-default-code-package="getDefaultCodePackage"
@@ -4094,7 +4116,10 @@ defineExpose({
                 </span>
               </template>
 
-              <div class="order-user-panel">
+              <div
+                v-if="!masked('orderUsers', rawDetail)"
+                class="order-user-panel"
+              >
                 <div
                   v-for="row in orderUserRows"
                   :key="row._rowKey"

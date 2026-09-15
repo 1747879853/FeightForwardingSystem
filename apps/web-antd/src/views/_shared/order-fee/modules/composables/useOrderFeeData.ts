@@ -1,3 +1,8 @@
+import {
+  rememberPermissionRow,
+  createFieldPermission,
+} from '#/composables/field-permission';
+import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
 import { computed, ref, watch, nextTick } from 'vue';
@@ -259,6 +264,7 @@ export function useOrderFeeData(
   const setChangeOrderFee = async (id: string) => {
     if (id) {
       let res = await adapter.api.getChangeOrderDetail(id);
+      res.orderFees = res.orderFees.map(rememberPermissionRow);
       console.log(
         'res',
         res.orderFees.filter((item) => item.paySide === props.type),
@@ -313,6 +319,7 @@ export function useOrderFeeData(
       Sorting: 'creationTime asc',
     };
     const res = await adapter.api.getOrderFeePagedList(params);
+    res.items = res.items.map(rememberPermissionRow);
     res.items.forEach((item) => {
       item.taskStatus = '';
       if (
@@ -507,6 +514,13 @@ export function useOrderFeeData(
       //console.log("AAA", item)
       const dto: Record<string, any> = {};
       for (const key of ORDER_CTN_API_KEYS) {
+        if (
+          createFieldPermission(orderFeeFieldPermission).masked(
+            key,
+            item.id ? item : undefined,
+          )
+        )
+          continue;
         // ✅ 关键修改：优先使用 _value 字段的值（如果存在）
         let val =
           item[`${key}_value`] !== undefined && key !== 'unit'

@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-24
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-08-24
 | 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/views/system/permission/list.vue`<br/>`src/api/system/*.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **字段权限保存或删除后刷新当前用户共享规则，已接入页面响应更新；退出登录清空缓存，防止跨用户复用。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
 - **数据权限 Tab：** 为当前选中的角色/用户维护 `UserDataPermission` 主规则；数据范围为「多用户」或「多部门/多公司」时，在弹窗内通过 `UserSelect` / `OrganizationSelect` 多选维护子项，保存时通过 `entityIds` 随主规则一次性提交；列表/详情由后端返回 `items` 子表，支持「查看明细」抽屉回显名称；列表展示明细数。
 - **表级权限 Tab：** 为当前选中的角色/用户维护 `UserTablePermission` 主规则及 `UserTablePermissionCondition` 条件子项；主规则仅配置业务模块，条件在抽屉内维护（字段下拉 + 操作符 + 值）；列表展示条件条数，支持「查看条件」只读抽屉；编辑已保存条件仅可改操作符与值。
@@ -64,3 +66,4 @@ last_updated: 2026-08-24
 | 2026-06-09 | `Fix` | 字段权限列表 `UserPropPermissionAdmin/GetPagedListAsync` 分页参数改为 `pageIndex`/`pageSize`。 | 视图层已传 `page.currentPage`，API 层移除偏移量换算。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/permission` 对应组件 `src/views/system/permission/list.vue`，权限口径为 Admin.UserDataPermission / Admin.UserDataPermission.Get。 |
 | 2026-05-30 | `Feature` | 补齐 `Admin.PortCode`、`Admin.LaneCode`、`Admin.CtnCode`、`Admin.CountryCode` 共 20 个权限 i18n 键，权限树可正确显示港口/航线/集装箱/国家模块文案。 | 权限树通过 `getAllPermissionsTreeApi($t)` 将权限码 `.` 转 `_` 后查找 `auth.json`；新增后端权限需同步双语语言包。 |
+| 2026-09-15 | `Feature` | 字段权限保存或删除后刷新当前用户共享规则，已接入页面响应更新；退出登录清空缓存，防止跨用户复用。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { seaImportFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  seaImportFieldPermission,
+);
+
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
@@ -18,7 +24,6 @@ import { useAccess } from '@vben/access';
 
 import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteSeaImport,
   getSeaImportGroupedList,

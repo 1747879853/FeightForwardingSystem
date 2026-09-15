@@ -2,7 +2,7 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-10
+last_updated: 2026-09-15
 last_change: sea-import-change-order-align-export
 ---
 
@@ -37,6 +37,8 @@ last_change: sea-import-change-order-align-export
 ---
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
 ## 2.1 页面结构
 
@@ -235,3 +237,4 @@ sequenceDiagram
 | 2026-07-21 | `Feature` | 更改单页面按「选择→编辑→确认利润→整体保存」工作流重构：保存唯一入口移至详情区并支持 `Ctrl/Cmd+S`；应收/应付改页签；新增未保存保护、锁定只读、状态标签、利润固定汇总栏（千分位+缺失汇率提示）、新建表单化（原因必填+常用原因）、左侧摘要瘦身；列表补传 `TransportOrderId` 并保存后保持选中；透传 `parentChangeOrderId` 修复收付互生；更改单模式收敛主单专用操作。详见 `changelogs/change-log-2026-07-21-change-order-workflow-refactor.md`。 | 修复费用表深度 watch 导致的脏标记误判；KeepAlive 下全局监听需在 `onActivated`/`onDeactivated` 成对绑定。 |
 | 2026-07-21 | `Parsing` | 无 | 首次沉淀更改单专题活文档：厘清主单/更改单费用边界、保存路径、锁费树、打印与已知前端缺口（列表未传 TransportOrderId、收付互生未传 parentChangeOrderId、批量引入未接更改单）。详见 `parsing-logs/parse-log-2026-07-21-change-order-business-logic.md`。 |
 | 2026-07-20 | `Feature` | 更改单 Tab 放开费用打印：`isChangeOrderPrint` + `detailInput` | 与全局打印后端取数改造一并上线。 |
+| 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

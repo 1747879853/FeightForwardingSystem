@@ -1,3 +1,6 @@
+import { createFieldPermission } from '#/composables/field-permission';
+import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import { computed } from 'vue';
 
 /**
@@ -35,6 +38,8 @@ export function useBatchAddColumns(
   /**
    * 构建动态列配置
    */
+  void loadMaskedFields();
+  const fieldPermission = createFieldPermission(freightRateFieldPermission);
   const hotColumns = computed(() => {
     const columns: any[] = [
       // {
@@ -428,7 +433,9 @@ export function useBatchAddColumns(
       columns.push(colConfig);
     });
 
-    return columns;
+    return columns.filter(
+      (column) => !fieldPermission.always(String(column.data ?? '')),
+    );
   });
 
   return {

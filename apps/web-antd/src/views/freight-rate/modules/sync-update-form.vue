@@ -1,4 +1,10 @@
 ﻿<script lang="ts" setup>
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionForm: useVbenForm } = useFieldPermission(
+  freightRateFieldPermission,
+);
+
 import type {
   BatchEditSeFreiPriceInput,
   SeFreiPriceCtnAddDto,
@@ -13,7 +19,7 @@ import { PriceFeeType } from '#/api/sea-export/freight-rate-admin';
 import { computed, ref, onMounted } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
-import { useVbenForm } from '#/adapter/form';
+
 import {
   batchEditSeFreiPrice,
   GetCtnCodesByPriceIdsAsync,

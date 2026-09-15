@@ -1,4 +1,13 @@
 <script lang="ts" setup>
+import { capturePermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { seaImportFieldPermission } from '#/composables/field-permission-profiles';
+const {
+  usePermissionForm: useVbenForm,
+  rawDetail,
+  masked,
+} = useFieldPermission(seaImportFieldPermission);
+
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 import type { TerminalScheduleItem } from '#/components/terminal-schedule';
 
@@ -52,7 +61,7 @@ import {
   UserOrgSelect,
   UserSelect,
 } from '#/adapter/component';
-import { useVbenForm } from '#/adapter/form';
+
 import {
   getSeaImportDetail,
   updateSeaImportCommissionNum,
@@ -139,6 +148,9 @@ const pageWrapperProps = computed(() =>
 );
 
 const editId = useKeepAliveRouteParamId();
+watch(editId, () => {
+  rawDetail.value = undefined;
+});
 const isEdit = computed(() => !!editId.value);
 
 /** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
@@ -889,6 +901,7 @@ const loadEditData = async (): Promise<
   netWeightAutoSyncSuspended.value = true;
   try {
     const detail = await getSeaImportDetail(editId.value);
+    rawDetail.value = capturePermissionRow(detail);
     detailIsEditable.value = isTicketEditable(detail);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
@@ -1097,8 +1110,10 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     isEdit,
     editId,
     transportOrderId,
-    validateSalesRoleCount: validateOrderUsers,
-    validateOrderCtns,
+    validateSalesRoleCount: () =>
+      masked('orderUsers', rawDetail.value) || validateOrderUsers(),
+    validateOrderCtns: () =>
+      masked('orderCtns', rawDetail.value) || validateOrderCtns(),
     loadEditData,
     onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
@@ -1529,7 +1544,10 @@ watch(pageLoading, (loading) => {
                     {{ $t('seaImport.import.formCardBasicInfo') }}
                   </span>
                   <div class="basic-info-header__meta">
-                    <div class="basic-info-header__item">
+                    <div
+                      v-if="!masked('commissionNum', rawDetail)"
+                      class="basic-info-header__item"
+                    >
                       <span class="basic-info-header__label">
                         {{ $t('seaImport.import.commissionNum') }}
                       </span>
@@ -1572,6 +1590,7 @@ watch(pageLoading, (loading) => {
                     >
                       <span class="basic-info-header__label">归属组织</span>
                       <UserOrgSelect
+                        v-if="!masked('orgId', rawDetail)"
                         :model-value="headerOrgId"
                         :user-id="salesUserId"
                         :selected-items="headerOrgSelectedItems"
@@ -1785,7 +1804,10 @@ watch(pageLoading, (loading) => {
                   </div>
                   <CargoReeferForm />
                 </div>
-                <div class="cargo-ctn-section">
+                <div
+                  v-if="!masked('orderCtns', rawDetail)"
+                  class="cargo-ctn-section"
+                >
                   <OrderCtnTable
                     v-model="orderCtns"
                     :get-default-code-package="getDefaultCodePackage"
@@ -1804,7 +1826,10 @@ watch(pageLoading, (loading) => {
                 </span>
               </template>
 
-              <div class="order-user-panel">
+              <div
+                v-if="!masked('orderUsers', rawDetail)"
+                class="order-user-panel"
+              >
                 <div
                   v-for="row in orderUserRows"
                   :key="row._rowKey"

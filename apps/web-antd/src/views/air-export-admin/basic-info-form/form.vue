@@ -1,4 +1,13 @@
 <script lang="ts" setup>
+import { capturePermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { airExportFieldPermission } from '#/composables/field-permission-profiles';
+const {
+  usePermissionForm: useVbenForm,
+  rawDetail,
+  masked,
+} = useFieldPermission(airExportFieldPermission);
+
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import {
@@ -43,7 +52,7 @@ import {
   UserOrgSelect,
   UserSelect,
 } from '#/adapter/component';
-import { useVbenForm } from '#/adapter/form';
+
 import {
   getAirExportDetail,
   updateAirExportCommissionNum,
@@ -126,6 +135,9 @@ const pageWrapperProps = computed(() =>
 );
 
 const editId = useKeepAliveRouteParamId();
+watch(editId, () => {
+  rawDetail.value = undefined;
+});
 const isEdit = computed(() => !!editId.value);
 
 /** 详情根上的 isEditable；缺字段按不可编辑，进页后以最新详情为准 */
@@ -737,6 +749,7 @@ const loadEditData = async (): Promise<
   pageLoading.value = true;
   try {
     const detail = await getAirExportDetail(editId.value);
+    rawDetail.value = capturePermissionRow(detail);
     detailIsEditable.value = isTicketEditable(detail);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
@@ -920,7 +933,8 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     isEdit,
     editId,
     transportOrderId,
-    validateOrderUsers,
+    validateOrderUsers: () =>
+      masked('orderUsers', rawDetail.value) || validateOrderUsers(),
     loadEditData,
     onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
@@ -1024,6 +1038,7 @@ const resolvePrintContext = async (): Promise<null | {
     }
 
     const detail = await getAirExportDetail(editId.value);
+    rawDetail.value = capturePermissionRow(detail);
     return {
       orgId: detail.orgId ?? detail.transportOrder?.orgId ?? null,
     };
@@ -1403,7 +1418,10 @@ watch(pageLoading, (loading) => {
                     {{ $t('airExport.export.formCardBasicInfo') }}
                   </span>
                   <div class="basic-info-header__meta">
-                    <div class="basic-info-header__item">
+                    <div
+                      v-if="!masked('commissionNum', rawDetail)"
+                      class="basic-info-header__item"
+                    >
                       <span class="basic-info-header__label">
                         {{ $t('airExport.export.commissionNum') }}
                       </span>
@@ -1463,6 +1481,7 @@ watch(pageLoading, (loading) => {
                     >
                       <span class="basic-info-header__label">归属组织</span>
                       <UserOrgSelect
+                        v-if="!masked('orgId', rawDetail)"
                         :model-value="headerOrgId"
                         :user-id="salesUserId"
                         :selected-items="headerOrgSelectedItems"
@@ -1628,7 +1647,10 @@ watch(pageLoading, (loading) => {
                   </div>
                   <CargoReeferForm />
                 </div>
-                <div class="cargo-ctn-section">
+                <div
+                  v-if="!masked('orderCtns', rawDetail)"
+                  class="cargo-ctn-section"
+                >
                   <AirExportOrderCtnTable v-model="orderCtns" />
                 </div>
               </Card>
@@ -1644,7 +1666,10 @@ watch(pageLoading, (loading) => {
                 </span>
               </template>
 
-              <div class="order-user-panel">
+              <div
+                v-if="!masked('orderUsers', rawDetail)"
+                class="order-user-panel"
+              >
                 <div
                   v-for="row in orderUserRows"
                   :key="row._rowKey"

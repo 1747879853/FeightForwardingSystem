@@ -1,4 +1,13 @@
 ﻿<script lang="ts" setup>
+import { capturePermissionRow } from '#/composables/field-permission';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
+const {
+  usePermissionForm: useVbenForm,
+  rawDetail,
+  masked,
+} = useFieldPermission(freightRateFieldPermission);
+
 import type {
   AddSeFreiPriceInput,
   EditSeFreiPriceInput,
@@ -9,7 +18,7 @@ import type {
 import { computed, ref, onMounted } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
-import { useVbenForm } from '#/adapter/form';
+
 import {
   addSeFreiPrice,
   editSeFreiPrice,
@@ -591,6 +600,7 @@ function validateValidityPeriod(): boolean {
 
 const [Modal, modalApi] = useVbenModal({
   async onOpenChange(isOpen: boolean) {
+    rawDetail.value = undefined;
     if (!isOpen) {
       // 关闭时重置状态
       // 先清理条件配置弹窗的事件监听器
@@ -670,6 +680,7 @@ async function loadDetail(priceId: string) {
   try {
     const hideLoading = message.loading({ content: '加载中...', duration: 0 });
     const detail = await getSeFreiPriceDetail(priceId);
+    rawDetail.value = capturePermissionRow(detail);
     hideLoading();
 
     formData.value = detail;
@@ -1450,7 +1461,7 @@ onMounted(() => {
               >有效起始 <span class="required">*</span></label
             >
             <DatePicker
-              v-if="formData"
+              v-if="formData && !masked('validTimeStart', rawDetail)"
               v-model:value="formData.validTimeStart"
               placeholder="请选择有效起始时间"
               format="YYYY-MM-DD"
@@ -1464,7 +1475,7 @@ onMounted(() => {
               >有效截止 <span class="required">*</span></label
             >
             <DatePicker
-              v-if="formData"
+              v-if="formData && !masked('validTimeEnd', rawDetail)"
               v-model:value="formData.validTimeEnd"
               placeholder="请选择有效截止时间"
               format="YYYY-MM-DD"
@@ -1537,7 +1548,11 @@ onMounted(() => {
 
         <div class="section-body">
           <!-- 日期模式 -->
-          <div v-if="dateEditMode === 'date'">
+          <div
+            v-if="
+              dateEditMode === 'date' && !masked('seFreiPriceDays', rawDetail)
+            "
+          >
             <div v-if="etdList.length === 0" class="empty-tip">
               暂无日期数据，请点击「添加一组」按钮添加
             </div>
@@ -1615,7 +1630,12 @@ onMounted(() => {
           </div>
 
           <!-- 星期模式 -->
-          <div v-if="dateEditMode === 'week'">
+          <div
+            v-if="
+              dateEditMode === 'week' &&
+              !masked('seFreiPriceWeekDays', rawDetail)
+            "
+          >
             <div v-if="etdDayList.length === 0" class="empty-tip">
               暂无星期数据，请点击「添加一组」按钮添加
             </div>
@@ -1775,7 +1795,10 @@ onMounted(() => {
       </section>
 
       <!-- 箱型费率 -->
-      <section class="form-section">
+      <section
+        v-if="!masked('seFreiPriceCtns', rawDetail)"
+        class="form-section"
+      >
         <header class="section-header">
           <div class="section-title">
             <div class="section-title-icon icon-amber">
@@ -1894,7 +1917,10 @@ onMounted(() => {
       </section>
 
       <!-- 附加费明细 -->
-      <section class="form-section form-section--surcharge">
+      <section
+        v-if="!masked('seFreiPriceFees', rawDetail)"
+        class="form-section form-section--surcharge"
+      >
         <header class="section-header">
           <div class="section-title">
             <div class="section-title-icon icon-violet">

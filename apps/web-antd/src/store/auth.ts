@@ -1,3 +1,7 @@
+import {
+  loadMaskedFields,
+  resetMaskedFields,
+} from '#/composables/use-masked-fields';
 import type { Recordable, UserInfo } from '@vben/types';
 
 import { ref } from 'vue';
@@ -100,6 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
       userInfo = fetchUserInfoResult;
 
       userStore.setUserInfo(userInfo);
+      resetMaskedFields();
+      await loadMaskedFields();
       accessStore.setAccessCodes(accessCodes);
       tableConfigStore.$reset();
       try {
@@ -151,6 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     // 须在 resetAllStores 前清理，以便按当前用户 scope 删掉 localStorage
     clearAllBizSelectCaches();
+    resetMaskedFields();
     resetAllStores();
     tableConfigStore.$reset();
     accessStore.setLoginExpired(false);

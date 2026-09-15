@@ -187,8 +187,18 @@ import ExchangeRateSelect from '#/adapter/component/biz-select/exchange-rate-sel
 import UnitSelect from '#/adapter/component/biz-select/unit-select.vue';
 import IndustryCategorySelect from '#/adapter/component/biz-select/industry-category-select.vue';
 
+/** 保留字段权限包装前的自定义单元格渲染。 */
+export let renderOriginalPermissionCell: (
+  options: any,
+  params: any,
+) => any = () => undefined;
+
 setupVbenVxeTable({
   configVxeTable: (vxeUI) => {
+    renderOriginalPermissionCell = (options, params) => {
+      const renderer = vxeUI.renderer.get(options.name);
+      return renderer?.renderTableDefault?.(options, params);
+    };
     vxeUI.setConfig({
       grid: {
         align: 'center',

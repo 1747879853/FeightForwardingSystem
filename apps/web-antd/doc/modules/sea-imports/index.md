@@ -21,6 +21,8 @@ last_updated: 2026-09-15
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
+
 - **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。进入列表**不预填会计期间**；默认按到港日期（`transportOrder.etd` / `TransportOrder.ETD`）降序，与海出开船日期同一字段。搜索条件变更不自动查询，需点「查询」；重置清空全部条件且不自动重查。
 - **分组统计：** 支持列表分组 Tabs。点分组 Tab 只重查列表；删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选复制费用）、删除。删除需 `Admin.SeaImport.Delete` **且** `row.isEditable === true`；复制与进详情不看 `isEditable`。
@@ -78,3 +80,4 @@ last_updated: 2026-09-15
 | 2026-08-04 | `Feat` | 列表按进口接口重建列与搜索；支持分组统计、复制、删除；权限 `Admin.SeaImport`。 | 复制逻辑抽至 `use-sea-import-copy.ts`。 |
 | 2026-07-12 | `Fix` | 列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`；费用子表同步。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-imports` 对应组件 `src/views/sea-import-admin/list.vue`，权限口径为 未在路由中声明独立权限。 |
+| 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

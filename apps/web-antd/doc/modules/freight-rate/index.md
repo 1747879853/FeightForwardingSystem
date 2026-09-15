@@ -2,7 +2,7 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,6 +21,8 @@ last_updated: 2026-09-11
 | 列持久化 tableId | 列表 `FreightRateList`；批量编辑 `FreightRateBatchEdit`；批量新增 `FreightRateBatchAdd`（经 `gridOptions.id` 注入，常量见 `data.ts`） |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
 - **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。有效状态默认「已生效 + 未生效」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认值写入「最近提交值」（切航线 Tab / 翻页 / 刷新不丢）。
 - **搜索项设置：** 可通过列表工具栏入口调整搜索字段的显示与顺序，设置弹层显示在工具栏下方。
@@ -70,3 +72,4 @@ last_updated: 2026-09-11
 | 2026-06-12 | `Feature` | 列表航线 Tab 靠左展示，超出时可左右滚动切换，且不再挤占右侧批量操作按钮。 | Tab 区与按钮区分 slot 布局；滚动动画期间只改 DOM，结束后再更新 Vue 滚动状态。 |
 | 2026-06-12 | `Fix` | 批量新增弹窗一次新增多行时改为批量插入并增加 loading 反馈，减轻 10 行级卡顿。 | `insertRowsBatch` 合并 `getFullData` + `loadData` 替代循环 `insertAt`；复制行同步走同一路径。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |
+| 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

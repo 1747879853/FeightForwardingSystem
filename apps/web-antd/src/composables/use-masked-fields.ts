@@ -23,6 +23,16 @@ const loaded = ref(false);
 const loading = ref(false);
 /** 进行中的请求（并发合并为一次网络调用） */
 let inflight: Promise<void> | null = null;
+let generation = 0;
+
+/** 退出/切换用户时清理缓存，旧会话请求不能写回新会话。 */
+export function resetMaskedFields() {
+  generation += 1;
+  maskedFieldIndex.value = new Map();
+  loaded.value = false;
+  loading.value = false;
+  inflight = null;
+}
 
 /**
  * 加载并缓存「当前用户不可见字段」。
@@ -36,17 +46,21 @@ export async function loadMaskedFields(force = false): Promise<void> {
   if (loaded.value && !force) return;
   if (inflight) return inflight;
 
+  const requestGeneration = generation;
   loading.value = true;
   inflight = (async () => {
     try {
       const list = await getCurrentUserMaskedFields();
-      maskedFieldIndex.value = buildIndex(list ?? []);
+      if (requestGeneration !== generation) return;
       loaded.value = true;
+      maskedFieldIndex.value = buildIndex(list ?? []);
     } catch (error) {
       console.error('[字段权限] 获取当前用户不可见字段失败:', error);
     } finally {
-      loading.value = false;
-      inflight = null;
+      if (requestGeneration === generation) {
+        loading.value = false;
+        inflight = null;
+      }
     }
   })();
 

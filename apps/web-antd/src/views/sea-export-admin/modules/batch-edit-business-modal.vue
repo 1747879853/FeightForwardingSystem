@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { seaExportFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionForm: useVbenForm } = useFieldPermission(
+  seaExportFieldPermission,
+);
+
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, ref } from 'vue';
@@ -8,7 +14,6 @@ import { IconifyIcon } from '@vben/icons';
 
 import { Modal, message } from 'ant-design-vue';
 
-import { useVbenForm } from '#/adapter/form';
 import { batchEditSeaExport } from '#/api/sea-export/sea-export-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';

@@ -23,6 +23,8 @@ last_updated: 2026-09-15
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **字段权限展示：新建表单隐藏无条件受限项目，未取得已有详情时不推断条件屏蔽；创建数据仍需满足后端必填与默认值规则。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
+
 - **AI 识别辅助：** 顶栏「AI识别」点击后弹出拖拽上传区（`ai-extract-upload-modal.vue`），支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf）；拖入或点击选文件后自动调用 TextIn `ExtractSeaExportToAddDtoAsync`，由后端完成名称→id 匹配并回填表单；六段港口 Id 与对应 `*Remark` 一并映射进港口表单（空值、`0`、空 Guid 不回填）。识别成功自动关窗；失败可在弹窗内重试。
 - **基础信息 6 列顺序：** 第 1 行委托单位、船公司、船名/航次、船代、订舱代理；车队落到下一行。码头航次 `terminalVoyno` 仍在 schema 里、保存会带上，但界面 `hidden`。由 `BASIC_INFO_FIELD_ORDER` 控制；头部委托编号/会计期间/应结日期/归属组织/业务来源/装运方式/订单类型不占栅格。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
@@ -160,3 +162,4 @@ last_updated: 2026-09-15
 | 2026-05-17 | `Fix` | 海运出口新建页“品名”由弹窗维护改为可搜索多选下拉，并统一展示为“品名-海关代码”；输入区宽度按内容自适应扩展，同时保留 `orderCodeGoodss` 提交结构。 | 无 |
 | 2026-05-16 | `Parsing` | 无 | 结合 `form.vue`、`data.ts` 与 `SeaExportAddDto` 补全新建页多表单分区、服务项目、港口备注联动、AI PDF 识别、DTO 双层映射和创建后跳转逻辑。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-exports/create` 对应组件 `src/views/sea-export-admin/form.vue`，权限口径为 未在路由中声明独立权限。 |
+| 2026-09-15 | `Feature` | 字段权限展示：新建表单隐藏无条件受限项目，未取得已有详情时不推断条件屏蔽；创建数据仍需满足后端必填与默认值规则。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

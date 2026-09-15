@@ -21,6 +21,8 @@ last_updated: 2026-09-15
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
+
 - **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、报关发票号、委托编号 6 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
@@ -79,3 +81,4 @@ last_updated: 2026-09-15
 | 2026-08-09 | `Refactor` | 运踪批量订阅与运踪信息查询的接口地址迁移到合并后的云当服务，页面行为无变化。 | 后端云当空运 AppService 合并进 `YundangAdminAppService`；`yundang-air-admin.ts` 的两个地址由 `services/app/YundangAirAdmin/...` 改为 `services/app/YundangAdmin/...`，海运侧地址未变。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-08-08 | `Feature` | 列表工具栏运踪批量订阅 +「运踪状态」列 + 运踪详情 Modal。 | 镜像海运出口：`yundang-air-admin` + `use-yundang-air-subscribe/track`；详见 `changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md`。 |
 | 2026-08-05 | `Feature` | 新建空运出口列表：关键字、「未填写」开关、明细区间筛选、9 维分组统计、复制与删除，权限 `Admin.AirExport`。 | 以 `sea-import-admin/list.vue` 为范式；分组字段改用 `AirExportGroupField`，分组结果无 `logo` 字段；报关/送仓日期区间单独按 `endOf('day')` 处理。 |
+| 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |

@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  freightRateFieldPermission,
+);
+
 import type {
   SeFreiPriceOutDto,
   LaneCodeDto,
@@ -28,7 +34,6 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   changeRecommendStatus,
   deleteSeFreiPrice,
@@ -40,10 +45,6 @@ import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useBaseStore } from '#/store/base';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
-import {
-  getCurrentUserMaskedFields,
-  FrightModule,
-} from '#/api/system/permission';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
@@ -79,7 +80,7 @@ const hasDeletePermission = computed(() =>
 
 const tableData = ref<SeFreiPriceOutDto[]>([]);
 const selectedLineId = ref<number | undefined>(undefined);
-const maskedFields = ref<string[]>([]);
+
 const lines = ref<LaneCodeDto[]>([]);
 
 const aiExtractModalOpen = ref(false);
@@ -227,12 +228,12 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
 });
 
 watch(
-  [tableData, maskedFields],
-  async ([newData, newMaskedFields]) => {
+  tableData,
+  async (newData) => {
     if (!newData?.length) return;
     await nextTick();
     gridApi.setGridOptions({
-      columns: useColumns(newData, newMaskedFields),
+      columns: useColumns(newData),
     });
   },
   { deep: true },
@@ -720,21 +721,6 @@ onMounted(async () => {
     await baseStore.fetchFreightRateDropdownData();
   } catch {
     // 下拉缓存失败不阻塞列表
-  }
-
-  try {
-    const maskedFieldsData = await getCurrentUserMaskedFields();
-    const freightRateModule = maskedFieldsData.find(
-      (module) => module.frightModule === FrightModule.SeFreiPrice,
-    );
-    if (freightRateModule?.fields) {
-      // only alwaysMasked 字段可整列隐藏（条件规则只能逐行判定）
-      maskedFields.value = freightRateModule.fields
-        .filter((f) => f.alwaysMasked)
-        .map((f) => f.propName);
-    }
-  } catch {
-    // 字段权限失败时按全量列展示
   }
 
   await nextTick();
