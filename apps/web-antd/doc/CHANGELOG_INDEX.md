@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-15 海运出口费用录入表格接入字段权限](./changelogs/change-log-2026-09-15-sea-export-order-fee-field-permission.md)
+- [2026-09-15 海运出口列表与基础信息接入字段权限](./changelogs/change-log-2026-09-15-sea-export-field-permission.md)
 - [2026-09-14] [业务附件按原始 sortId 降序](./changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)
 - [2026-09-14] [PC监装状态配色优化](./changelogs/change-log-2026-09-14-PC监装状态配色.md)
 

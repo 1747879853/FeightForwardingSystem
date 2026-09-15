@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -108,6 +108,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Feature` | 字段权限生效：条件屏蔽显示 `***`；非条件屏蔽列表藏列、基础信息表单显示 `***`。 | 规则在 `field-permission.ts`；列表 `hideColumn` + 单元格打码；表单换成 `ReadonlyText`，保存剔除打码值。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-field-permission.md)。 |
 | 2026-09-11 | `Feature` | 业务状态进行中时，文案前显示橙色「待」徽标。 | 与详情页服务项目 `active` 节点同一标记。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-11 | `Fix` | 列表不再展示「码头航次」列，筛选也隐藏。 | `useColumns` 去掉该列，避免用户列设置再勾出。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

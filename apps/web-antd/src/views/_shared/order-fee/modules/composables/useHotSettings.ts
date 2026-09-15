@@ -6,6 +6,7 @@ import {
   isFeeStatemented,
   markUserEditedCell,
 } from '../../data';
+import { isOrderFeeCellMasked, MASKED_TEXT } from '../../field-permission';
 import { ensureEmptyTableHorizontalScroll } from '../utils/helpers';
 
 /** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
@@ -110,6 +111,9 @@ export function useHotSettings(
       if (rowData && isFeeStatemented(rowData)) {
         cellProperties.readOnly = true;
       }
+      if (rowData && isOrderFeeCellMasked(rowData, String(prop ?? ''))) {
+        cellProperties.readOnly = true;
+      }
       return cellProperties;
     },
 
@@ -174,6 +178,11 @@ export function useHotSettings(
         if (!columnConfig) return;
 
         const field = columnConfig.data;
+        const actualDataSource = getDataSource();
+        const rowData = actualDataSource[rowIndex];
+        if (isOrderFeeCellMasked(rowData, String(field ?? ''))) {
+          return;
+        }
 
         // ✅ 修复：双击费用状态字段时打开审核历史
         if (field === 'combinedFeeStatus' || field === 'feeStatus') {
@@ -252,6 +261,11 @@ export function useHotSettings(
       if (!columnConfig || !columnConfig.data) return;
 
       const field = columnConfig.data;
+      const rowData = getDataSource()[row];
+      if (isOrderFeeCellMasked(rowData, String(field))) {
+        return false;
+      }
+
       const td = this.getCell(row, col);
 
       if (!td) return;
@@ -493,6 +507,14 @@ export function useHotSettings(
       // 费用状态着色 - 使用 setProperty 确保优先级
       const actualDataSource = getDataSource();
       const rowData = actualDataSource[row];
+      if (rowData && isOrderFeeCellMasked(rowData, String(prop ?? ''))) {
+        td.innerHTML = '';
+        td.textContent = MASKED_TEXT;
+        td.style.textAlign = 'center';
+        td.style.color = '#262626';
+        td.classList.remove('cell-edited-mark');
+        return;
+      }
       if (rowData) {
         const feeStatus =
           (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;

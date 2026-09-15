@@ -51,6 +51,7 @@ ai-extract-upload-modal.vue → ai-extract-utils.ts（accept / 文件类型）
 
 | 文件 | 说明 | 是否被其它视图共享 |
 | --- | --- | --- |
+| `../field-permission.ts` | 海出 PropMask：列表藏列/`***`、基础信息表单 `***` | 是（`list.vue`） |
 | `../data.ts` | 各子表单 schema 与常量（`CARGO_TYPE` 等） | 是（`list.vue`/`editor.vue`/`orderFee` 等） |
 | `../service-type.ts` | 服务项枚举加载与 label 映射 | 是 |
 | `../modules/order-ctn-table.vue` | 箱信息（orderCtns）表格组件 | 否（本表单私有，但保留在 `modules/`） |

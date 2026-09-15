@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { useOrderFeeColumns, getStatementNumsText } from '../../data';
+import { isOrderFeeColumnAlwaysMasked } from '../../field-permission';
 import { formatWeightVolumeLocale } from '#/utils/weight-volume-precision';
 
 import {
@@ -42,11 +43,9 @@ export function useHotColumns(
   });
 
   const hotColumns = computed(() => {
-    const vxeColumns = useOrderFeeColumns(props.type);
-
-    if (!vxeColumns || !Array.isArray(vxeColumns)) {
-      return [];
-    }
+    const vxeColumns = (useOrderFeeColumns(props.type) ?? []).filter(
+      (col) => !isOrderFeeColumnAlwaysMasked(String(col?.field ?? '')),
+    );
 
     // 解构 Ref 获取实际值
     const actualDataSource = Array.isArray(dataSource)

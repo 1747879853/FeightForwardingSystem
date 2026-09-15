@@ -44,6 +44,7 @@ import { useHotSettings } from './composables/useHotSettings';
 import { useModals } from './composables/useModals';
 import { initOrderFeeEnumCache } from '../data';
 import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import { useOrderFeeAdapter } from '../use-adapter';
 import { extractBillFees } from '#/api/sea-export/gemini-admin';
 import { consumePendingBillFees } from '../ai-bill-fee-pending';
@@ -811,6 +812,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 onMounted(async () => {
   initOrderFeeEnumCache();
+  await loadMaskedFields();
   // 列表页 AI 识别跳转而来：应付表挂载即消费跨页暂存，命中则自动弹出确认弹窗
   if (!isChangeOrderMode.value) {
     tryConsumePendingBillFees();

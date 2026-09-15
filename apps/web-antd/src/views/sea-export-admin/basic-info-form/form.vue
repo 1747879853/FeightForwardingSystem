@@ -68,6 +68,7 @@ import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import {
   formatOrgPathLabel,
   useAllUserOrg,
@@ -170,6 +171,12 @@ import { useSeaExportTabTitle } from '../use-sea-export-tab-title';
 import { useSeaExportCopy } from '../use-sea-export-copy';
 import { useYardRealQuery } from '../use-yard-real-query';
 import { useSyncShipmentDates } from '../use-sync-shipment-dates';
+import {
+  buildMaskedFormSchemaPatches,
+  MASKED_TEXT,
+  omitMaskedFormValues,
+  resolveMaskedFormFields,
+} from '../field-permission';
 import {
   getYundangSubscribeStatus,
   useYundangOceanSubscribe,
@@ -690,6 +697,10 @@ const headerBlType = ref<number | undefined>();
 const headerBillType = ref<number | undefined>();
 const headerCodeSourceId = ref<number | undefined>();
 const headerCodeSourceSelectedItems = ref<any[]>([]);
+/** 基础信息表单当前应显示 *** 的字段 */
+const maskedFormFields = ref<Set<string>>(new Set());
+const isFormFieldMasked = (fieldName: string) =>
+  maskedFormFields.value.has(fieldName);
 
 /** 归属组织写入序号：防止 clear/default 或 sync 与 setFieldValue 乱序把表单 orgId 写空 */
 let headerOrgWriteSeq = 0;
@@ -900,7 +911,9 @@ const getServiceLockedFieldNames = (): Set<string> => {
 const applyServiceLockedFields = () => {
   if (!isEdit.value) return;
   const lockedFields = getServiceLockedFieldNames();
-  const patches = SERVICE_LOCKABLE_FIELD_NAMES.map((fieldName) => {
+  const patches = SERVICE_LOCKABLE_FIELD_NAMES.filter(
+    (fieldName) => !isFormFieldMasked(fieldName),
+  ).map((fieldName) => {
     // vessel 使用 VesselVoyageInput 合并组件，componentProps 为函数，
     // 需保留 secondFieldValue（航次）等动态入参，否则 updateSchema 会以
     // 静态对象覆盖函数，导致航次显示丢失且无法写回 innerVoyno。
@@ -1147,7 +1160,7 @@ const collectCurrentFormValues = async () => {
     cargoDgFormApi.getValues(),
     cargoReeferFormApi.getValues(),
   ]);
-  return {
+  const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     accountDate: entrustReadonlyInfo.value.accountDate,
     settlementDate: entrustReadonlyInfo.value.settlementDate,
@@ -1168,6 +1181,7 @@ const collectCurrentFormValues = async () => {
     clientContactId: clientContactInfo.value.id ?? null,
     bookingAgentContactId: bookingAgentContactInfo.value.id ?? null,
   } as Record<string, any>;
+  return omitMaskedFormValues(values, maskedFormFields.value);
 };
 const getBriefingFormData = async () => {
   try {
@@ -2238,6 +2252,71 @@ const handleBriefingConfirm = async (content: string) => {
   }
 };
 
+const applyFormFieldMasks = async (
+  detail?: null | SeaExportAdminApi.SeaExportDto,
+) => {
+  await loadMaskedFields();
+  const fields = resolveMaskedFormFields(detail);
+  maskedFormFields.value = fields;
+  const names = [...fields];
+  if (names.length === 0) return;
+  const patches = buildMaskedFormSchemaPatches(names);
+  [
+    partyInfoFormApi,
+    basicInfoFormApi,
+    shipmentFormApi,
+    portFormApi,
+    cargoTypeInlineFormApi,
+    cargoMainFormApi,
+    cargoMetricsFormApi,
+    cargoRemarkFormApi,
+    cargoDgFormApi,
+    cargoReeferFormApi,
+  ].forEach((api) => api.updateSchema(patches));
+  const maskedValues = Object.fromEntries(
+    names.map((name) => [name, MASKED_TEXT]),
+  );
+  await Promise.all([
+    partyInfoFormApi.setValues(maskedValues),
+    basicInfoFormApi.setValues(maskedValues),
+    shipmentFormApi.setValues(maskedValues),
+    portFormApi.setValues(maskedValues),
+    cargoTypeInlineFormApi.setValues(maskedValues),
+    cargoMainFormApi.setValues(maskedValues),
+    cargoMetricsFormApi.setValues(maskedValues),
+    cargoRemarkFormApi.setValues(maskedValues),
+    cargoDgFormApi.setValues(maskedValues),
+    cargoReeferFormApi.setValues(maskedValues),
+  ]);
+  if (fields.has('commissionNum')) {
+    entrustReadonlyInfo.value.commissionNum = MASKED_TEXT;
+  }
+  if (fields.has('accountDate')) {
+    entrustReadonlyInfo.value.accountDateText = MASKED_TEXT;
+  }
+  if (fields.has('settlementDate')) {
+    entrustReadonlyInfo.value.settlementDateText = MASKED_TEXT;
+  }
+  if (fields.has('countryName')) {
+    entrustReadonlyInfo.value.countryName = MASKED_TEXT;
+  }
+  if (fields.has('laneName')) {
+    entrustReadonlyInfo.value.laneName = MASKED_TEXT;
+  }
+  if (fields.has('yardContact')) {
+    entrustReadonlyInfo.value.yardContact = MASKED_TEXT;
+  }
+  if (fields.has('yardEmail')) {
+    entrustReadonlyInfo.value.yardEmail = MASKED_TEXT;
+  }
+  if (fields.has('yardMobile')) {
+    entrustReadonlyInfo.value.yardMobile = MASKED_TEXT;
+  }
+  if (fields.has('yardTel')) {
+    entrustReadonlyInfo.value.yardTel = MASKED_TEXT;
+  }
+};
+
 const loadEditData = async (): Promise<
   SeaExportAdminApi.SeaExportDto | undefined
 > => {
@@ -2606,6 +2685,7 @@ const loadEditData = async (): Promise<
     // 角色枚举异步到位后干系人行还会补齐，快照基线须等它稳定，否则误报未保存
     await whenOrderUserRolesReady();
     await nextTick();
+    await applyFormFieldMasks(detail);
     await syncFormSnapshot();
     void refreshUploadedAttachmentTypeIds();
     return detail;
@@ -2847,7 +2927,8 @@ const canRegenerateCommissionNum = computed(
     isEdit.value &&
     !!editId.value &&
     hasAccessByCodes([perm.edit]) &&
-    detailIsEditable.value,
+    detailIsEditable.value &&
+    !isFormFieldMasked('commissionNum'),
 );
 
 const handleRegenerateCommissionNum = async () => {
@@ -3058,9 +3139,10 @@ const scheduleCargoMainLayoutHeightSync = () => {
 
 onMounted(() => {
   const initialize = async () => {
-    await loadServiceTypeLabelMap();
+    await Promise.all([loadServiceTypeLabelMap(), loadMaskedFields()]);
     loadEditData();
     if (!isEdit.value) {
+      await applyFormFieldMasks(null);
       void syncServiceTypesByPol();
       // 新建态记录初始空白快照，作为未保存拦截的脏检查基线
       await whenOrderUserRolesReady();
@@ -3695,7 +3777,9 @@ defineExpose({
                     <div class="basic-info-header__item">
                       <span class="basic-info-header__label">委托编号</span>
                       <span class="basic-info-header__value">{{
-                        entrustReadonlyInfo.commissionNum || '-'
+                        isFormFieldMasked('commissionNum')
+                          ? MASKED_TEXT
+                          : entrustReadonlyInfo.commissionNum || '-'
                       }}</span>
                       <Tooltip
                         v-if="canRegenerateCommissionNum"
@@ -3719,13 +3803,17 @@ defineExpose({
                     <div class="basic-info-header__item">
                       <span class="basic-info-header__label">会计期间</span>
                       <span class="basic-info-header__value">{{
-                        entrustReadonlyInfo.accountDateText || '-'
+                        isFormFieldMasked('accountDate')
+                          ? MASKED_TEXT
+                          : entrustReadonlyInfo.accountDateText || '-'
                       }}</span>
                     </div>
                     <div class="basic-info-header__item">
                       <span class="basic-info-header__label">应结日期</span>
                       <span class="basic-info-header__value">{{
-                        entrustReadonlyInfo.settlementDateText || '-'
+                        isFormFieldMasked('settlementDate')
+                          ? MASKED_TEXT
+                          : entrustReadonlyInfo.settlementDateText || '-'
                       }}</span>
                     </div>
                     <div
@@ -3735,7 +3823,14 @@ defineExpose({
                         <span class="order-user-panel__role-required">*</span>
                         归属组织
                       </span>
+                      <span
+                        v-if="isFormFieldMasked('orgId')"
+                        class="basic-info-header__value"
+                      >
+                        {{ MASKED_TEXT }}
+                      </span>
                       <UserOrgSelect
+                        v-else
                         :model-value="headerOrgId"
                         :user-id="salesUserId"
                         :selected-items="headerOrgSelectedItems"
@@ -3753,7 +3848,14 @@ defineExpose({
                       <span class="basic-info-header__label">{{
                         $t('seaExport.export.codeSourceId')
                       }}</span>
+                      <span
+                        v-if="isFormFieldMasked('codeSourceId')"
+                        class="basic-info-header__value"
+                      >
+                        {{ MASKED_TEXT }}
+                      </span>
                       <CodeSourceSelect
+                        v-else
                         :model-value="headerCodeSourceId"
                         :selected-items="headerCodeSourceSelectedItems"
                         allow-clear
@@ -3769,7 +3871,14 @@ defineExpose({
                       <span class="basic-info-header__label">{{
                         $t('seaExport.export.blType')
                       }}</span>
+                      <span
+                        v-if="isFormFieldMasked('blType')"
+                        class="basic-info-header__value"
+                      >
+                        {{ MASKED_TEXT }}
+                      </span>
                       <Select
+                        v-else
                         :value="headerBlType"
                         allow-clear
                         size="small"
@@ -3785,7 +3894,14 @@ defineExpose({
                       <span class="basic-info-header__label">{{
                         $t('seaExport.export.billType')
                       }}</span>
+                      <span
+                        v-if="isFormFieldMasked('billType')"
+                        class="basic-info-header__value"
+                      >
+                        {{ MASKED_TEXT }}
+                      </span>
                       <Select
+                        v-else
                         :value="headerBillType"
                         allow-clear
                         size="small"

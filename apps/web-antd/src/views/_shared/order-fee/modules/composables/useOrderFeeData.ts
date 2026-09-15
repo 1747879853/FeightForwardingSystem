@@ -10,7 +10,14 @@ import * as feeConstants from '../../data';
 import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 
 import { createFeeTableDirtyTracker } from '#/utils/fee-table-dirty';
+import { loadMaskedFields } from '#/composables/use-masked-fields';
 import { useOrderFeeAdapter } from '../../use-adapter';
+import {
+  MASKED_TEXT,
+  omitMaskedOrderFeeValues,
+  ORDER_FEE_MASKED_FIELDS_KEY,
+  resolveMaskedOrderFeeFields,
+} from '../../field-permission';
 
 /**
  * 从订单详情中提取所有可能的结算对象映射
@@ -214,11 +221,16 @@ export function useOrderFeeData(
       }
 
       // ✅ 初始化 _value 字段，用于存储实际的 value 值
+      const maskedFields = resolveMaskedOrderFeeFields(item);
       const normalizedItem = {
         ...item,
         industryCategory: industryCategoryValue, // ✅ 存储数值ID
         _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
       };
+      if (maskedFields.length > 0) {
+        (normalizedItem as Record<string, any>)[ORDER_FEE_MASKED_FIELDS_KEY] =
+          maskedFields;
+      }
 
       // ✅ 为下拉框字段初始化 _value 字段
       // feeCodeId: 需要获取费用代码详情来获取 label
@@ -372,6 +384,7 @@ export function useOrderFeeData(
     if (id !== undefined && id !== null) {
       changeOrderId.value = id;
     }
+    await loadMaskedFields();
     await queryTableData();
   };
 
@@ -504,17 +517,18 @@ export function useOrderFeeData(
     ]);
 
     return items.map((item) => {
-      //console.log("AAA", item)
+      const sanitized = omitMaskedOrderFeeValues(item as Record<string, any>);
       const dto: Record<string, any> = {};
       for (const key of ORDER_CTN_API_KEYS) {
         // ✅ 关键修改：优先使用 _value 字段的值（如果存在）
         let val =
-          item[`${key}_value`] !== undefined && key !== 'unit'
-            ? item[`${key}_value`]
-            : item[key];
+          sanitized[`${key}_value`] !== undefined && key !== 'unit'
+            ? sanitized[`${key}_value`]
+            : sanitized[key];
 
         if (val === undefined || val === null) continue;
-        if (typeof val === 'string' && val === '') continue;
+        if (typeof val === 'string' && (val === '' || val === MASKED_TEXT))
+          continue;
 
         if (numericFields.has(key)) {
           dto[key] = typeof val === 'number' ? val : Number(val);

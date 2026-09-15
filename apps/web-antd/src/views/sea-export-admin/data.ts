@@ -9,6 +9,7 @@ import { createKeysSearchSchema } from '#/utils/keys-search';
 import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 
 import { createClientSelectSchema } from '../client/base/data';
+import { applySeaExportListColumnFormatters } from './field-permission';
 import { applySeaExportListDefaultColumns } from './list-column-defaults';
 import { getSeaExportFeeStatusOptions } from './orderFee/data';
 
@@ -765,447 +766,449 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 列表列配置（无操作列，第一列为 checkbox 多选列）
  */
 export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
-  return applySeaExportListDefaultColumns([
-    {
-      type: 'checkbox',
-      width: 48,
-      fixed: 'left',
-      align: 'center',
-    },
-    {
-      field: 'transportOrder.commissionNum',
-      title: $t('seaExport.export.commissionNum'),
-      minWidth: 140,
-    },
-    {
-      field: 'transportOrder.mblNum',
-      title: $t('seaExport.export.mblNum'),
-      minWidth: 160,
-      // 走新服务商运踪的品牌，有异常预警时在单号前展示黄色叹号（悬停看原因）
-      slots: { default: 'mblNum' },
-    },
-    {
-      field: 'transportOrder.contractNum',
-      title: $t('seaExport.export.contractNum'),
-      minWidth: 140,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.etd',
-      title: $t('seaExport.export.etd'),
-      minWidth: 140,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'transportOrder.goodsCompleteTime',
-      title: $t('seaExport.export.goodsCompleteTime'),
-      minWidth: 120,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'transportOrder.atd',
-      title: $t('seaExport.export.atd'),
-      minWidth: 120,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'transportOrder.eta',
-      title: $t('seaExport.export.eta'),
-      minWidth: 120,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'closeVgmTime',
-      title: $t('seaExport.export.closeVgmTime'),
-      minWidth: 120,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'closingTime',
-      title: $t('seaExport.export.closingTime'),
-      minWidth: 120,
-      formatter: 'formatDate',
-    },
-    {
-      field: 'transportOrder.clientName',
-      title: $t('seaExport.export.clientId'),
-      minWidth: 150,
-      showOverflow: true,
-      formatter: ({ row }) => row.transportOrder?.client?.name ?? '',
-    },
-    {
-      field: 'carrierCode',
-      title: $t('seaExport.export.carrierId'),
-      minWidth: 100,
-      slots: { default: 'carrierWithLogo' },
-    },
-    {
-      field: 'bookingAgentName',
-      title: $t('seaExport.export.bookingAgentId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.bookingAgent?.name ?? '',
-    },
-    {
-      field: 'yardName',
-      title: $t('seaExport.export.yardId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.yard?.name ?? '',
-    },
-    {
-      field: 'receivePortName',
-      title: $t('seaExport.export.receivePortId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.receivePortRemark ?? '',
-    },
-    {
-      field: 'polName',
-      title: $t('seaExport.export.polId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.polRemark ?? '',
-    },
-    {
-      field: 'poT1Name',
-      title: $t('seaExport.export.poT1Id'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.poT1Remark ?? '',
-    },
-    {
-      field: 'poT2Name',
-      title: $t('seaExport.export.poT2Id'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.poT2Remark ?? '',
-    },
-    {
-      field: 'podName',
-      title: $t('seaExport.export.podId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.podRemark ?? '',
-    },
-    {
-      field: 'deliverPortName',
-      title: $t('seaExport.export.deliverPortId'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.deliverPortRemark ?? '',
-    },
-    {
-      field: 'vessel',
-      title: $t('seaExport.export.vessel'),
-      minWidth: 120,
-      showOverflow: true,
-    },
-    {
-      field: 'innerVoyno',
-      title: $t('seaExport.export.innerVoyno'),
-      minWidth: 100,
-      showOverflow: true,
-    },
-    {
-      field: 'laneName',
-      title: $t('seaExport.export.laneName'),
-      minWidth: 120,
-      showOverflow: true,
-      formatter: ({ row }) => row.pod?.lane?.laneName ?? '',
-    },
-    {
-      field: 'transportOrder.codeSourceName',
-      title: $t('seaExport.export.codeSourceId'),
-      minWidth: 110,
-      showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeSource?.cnName ||
-        row.transportOrder?.codeSourceName ||
-        '',
-    },
-    {
-      field: 'transportOrder.codeFrtName',
-      title: $t('seaExport.export.codeFrtId'),
-      minWidth: 110,
-      showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeFrt?.cnName ||
-        row.transportOrder?.codeFrtName ||
-        '',
-    },
-    {
-      field: 'transportOrder.totalCtn',
-      title: $t('seaExport.export.orderCtns'),
-      minWidth: 120,
-      sortable: false,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.teu',
-      title: 'TEU',
-      minWidth: 90,
-      sortable: false,
-    },
-    {
-      field: 'operationUserName',
-      title: $t('system.user.userAttributeOptions.operation'),
-      minWidth: 100,
-      sortable: false,
-      formatter: ({ row }) =>
-        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
-      showOverflow: true,
-    },
-    {
-      field: 'saleUserName',
-      title: $t('system.user.userAttributeOptions.sales'),
-      minWidth: 100,
-      sortable: false,
-      formatter: ({ row }) =>
-        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
-      showOverflow: true,
-    },
-    {
-      field: 'customerServiceUserName',
-      title: $t('system.user.userAttributeOptions.customerService'),
-      minWidth: 120,
-      sortable: false,
-      formatter: ({ row }) =>
-        getRoleName(
-          row.transportOrder?.orderUsers,
-          USER_ATTRIBUTE.customerService,
-        ),
-      showOverflow: true,
-    },
-    {
-      field: 'documentationUserName',
-      title: $t('system.user.userAttributeOptions.documentation'),
-      minWidth: 100,
-      sortable: false,
-      formatter: ({ row }) =>
-        getRoleName(
-          row.transportOrder?.orderUsers,
-          USER_ATTRIBUTE.documentation,
-        ),
-      showOverflow: true,
-    },
-    {
-      field: 'businessUserName',
-      title: $t('system.user.userAttributeOptions.business'),
-      minWidth: 100,
-      sortable: false,
-      formatter: ({ row }) =>
-        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
-      showOverflow: true,
-    },
-    {
-      field: 'orgs',
-      title: $t('seaExport.export.organizationUnits'),
-      minWidth: 140,
-      sortable: false,
-      formatter: ({ row }) => row.orgs?.[0]?.name || '',
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.accountDate',
-      title: $t('seaExport.export.accountDate'),
-      minWidth: 110,
-      formatter: ({ row }) => formatMonth(row.transportOrder?.accountDate),
-    },
-    {
-      field: 'transportOrder.shipperName',
-      title: $t('seaExport.export.shipperId'),
-      minWidth: 140,
-      sortable: false,
-      formatter: ({ row }) =>
-        getPartyName(
-          row.transportOrder?.shipper?.name,
-          row.transportOrder?.shipperContent,
-        ),
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.consigneeName',
-      title: $t('seaExport.export.consigneeId'),
-      minWidth: 140,
-      sortable: false,
-      formatter: ({ row }) =>
-        getPartyName(
-          row.transportOrder?.consignee?.name,
-          row.transportOrder?.consigneeContent,
-        ),
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.notifierName',
-      title: $t('seaExport.export.notifierId'),
-      minWidth: 140,
-      sortable: false,
-      formatter: ({ row }) =>
-        getPartyName(
-          row.transportOrder?.notifier?.name,
-          row.transportOrder?.notifierContent,
-        ),
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.pkgs',
-      title: $t('seaExport.export.pkgs'),
-      minWidth: 90,
-    },
-    {
-      field: 'transportOrder.codePackageName',
-      title: $t('seaExport.export.codePackageId'),
-      minWidth: 100,
-      sortable: false,
-      showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codePackage?.name ||
-        row.transportOrder?.codePackageName ||
-        '',
-    },
-    {
-      field: 'transportOrder.kgs',
-      title: $t('seaExport.export.kgs'),
-      minWidth: 100,
-    },
-    {
-      field: 'transportOrder.cbm',
-      title: $t('seaExport.export.cbm'),
-      minWidth: 100,
-    },
-    {
-      field: 'transportOrder.marks',
-      title: $t('seaExport.export.marks'),
-      minWidth: 160,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.goodsDes',
-      title: $t('seaExport.export.goodsDes'),
-      minWidth: 180,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.internalRemark',
-      title: $t('seaExport.export.internalRemark'),
-      minWidth: 160,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.remark',
-      title: '外部备注',
-      minWidth: 160,
-      showOverflow: true,
-    },
-    {
-      field: 'codeIssueTypeName',
-      title: $t('seaExport.export.issueType'),
-      minWidth: 110,
-      showOverflow: true,
-      formatter: ({ row }) =>
-        row.codeIssueType?.billType || row.codeIssueTypeName || '',
-    },
-    {
-      field: 'closeDocTime',
-      title: $t('seaExport.export.closeDocTime'),
-      minWidth: 160,
-      formatter: 'formatDateTime',
-    },
-    {
-      field: 'blType',
-      title: $t('seaExport.export.blType'),
-      minWidth: 100,
-      cellRender: {
-        name: 'CellTag',
-        options: getBlTypeOptions(),
+  return applySeaExportListColumnFormatters(
+    applySeaExportListDefaultColumns([
+      {
+        type: 'checkbox',
+        width: 48,
+        fixed: 'left',
+        align: 'center',
       },
-    },
-    {
-      field: 'billType',
-      title: $t('seaExport.export.billType'),
-      minWidth: 90,
-      cellRender: {
-        name: 'CellTag',
-        options: getBillTypeOptions(),
+      {
+        field: 'transportOrder.commissionNum',
+        title: $t('seaExport.export.commissionNum'),
+        minWidth: 140,
       },
-    },
-    {
-      field: 'transportOrder.feeLocked',
-      title: $t('seaExport.export.isFeeLocking'),
-      minWidth: 90,
-      align: 'center',
-      slots: { default: 'feeLocked' },
-    },
-    {
-      field: 'transportOrder.isBusinessLocking',
-      title: $t('seaExport.export.isBusinessLocking'),
-      minWidth: 90,
-      align: 'center',
-      slots: { default: 'businessLocked' },
-    },
-    {
-      field: 'transportOrder.isUnfinished',
-      title: '未完结状态',
-      minWidth: 100,
-      align: 'center',
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { value: true, label: '未完结', color: 'warning' },
-          { value: false, label: '已完结', color: 'success' },
-        ],
+      {
+        field: 'transportOrder.mblNum',
+        title: $t('seaExport.export.mblNum'),
+        minWidth: 160,
+        // 走新服务商运踪的品牌，有异常预警时在单号前展示黄色叹号（悬停看原因）
+        slots: { default: 'mblNum' },
       },
-    },
-    {
-      field: 'businessStatus',
-      title: '业务状态',
-      minWidth: 130,
-      sortable: false,
-      showOverflow: true,
-      slots: { default: 'businessStatus' },
-    },
-    {
-      field: 'receiveFeeStatus',
-      title: $t('seaExport.export.orderFee.receiveFeeStatus'),
-      minWidth: 110,
-      sortable: false,
-      cellRender: {
-        name: 'CellTag',
-        options: getSeaExportFeeStatusOptions(),
+      {
+        field: 'transportOrder.contractNum',
+        title: $t('seaExport.export.contractNum'),
+        minWidth: 140,
+        showOverflow: true,
       },
-    },
-    {
-      field: 'payFeeStatus',
-      title: $t('seaExport.export.orderFee.payFeeStatus'),
-      minWidth: 110,
-      sortable: false,
-      cellRender: {
-        name: 'CellTag',
-        options: getSeaExportFeeStatusOptions(),
+      {
+        field: 'transportOrder.etd',
+        title: $t('seaExport.export.etd'),
+        minWidth: 140,
+        formatter: 'formatDate',
       },
-    },
-    {
-      field: 'yundangTrackStatus',
-      title: $t('seaExport.yundang.trackStatusColumn'),
-      minWidth: 120,
-      sortable: false,
-      slots: { default: 'yundangTrackStatus' },
-    },
-    {
-      field: 'creatorUserNickName',
-      title: '录入人',
-      minWidth: 120,
-      sortable: false,
-      showOverflow: true,
-    },
-    {
-      field: 'creationTime',
-      title: $t('seaExport.export.creationTime'),
-      minWidth: 160,
-      formatter: 'formatDateTime',
-    },
-  ]);
+      {
+        field: 'transportOrder.goodsCompleteTime',
+        title: $t('seaExport.export.goodsCompleteTime'),
+        minWidth: 120,
+        formatter: 'formatDate',
+      },
+      {
+        field: 'transportOrder.atd',
+        title: $t('seaExport.export.atd'),
+        minWidth: 120,
+        formatter: 'formatDate',
+      },
+      {
+        field: 'transportOrder.eta',
+        title: $t('seaExport.export.eta'),
+        minWidth: 120,
+        formatter: 'formatDate',
+      },
+      {
+        field: 'closeVgmTime',
+        title: $t('seaExport.export.closeVgmTime'),
+        minWidth: 120,
+        formatter: 'formatDate',
+      },
+      {
+        field: 'closingTime',
+        title: $t('seaExport.export.closingTime'),
+        minWidth: 120,
+        formatter: 'formatDate',
+      },
+      {
+        field: 'transportOrder.clientName',
+        title: $t('seaExport.export.clientId'),
+        minWidth: 150,
+        showOverflow: true,
+        formatter: ({ row }) => row.transportOrder?.client?.name ?? '',
+      },
+      {
+        field: 'carrierCode',
+        title: $t('seaExport.export.carrierId'),
+        minWidth: 100,
+        slots: { default: 'carrierWithLogo' },
+      },
+      {
+        field: 'bookingAgentName',
+        title: $t('seaExport.export.bookingAgentId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.bookingAgent?.name ?? '',
+      },
+      {
+        field: 'yardName',
+        title: $t('seaExport.export.yardId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.yard?.name ?? '',
+      },
+      {
+        field: 'receivePortName',
+        title: $t('seaExport.export.receivePortId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.receivePortRemark ?? '',
+      },
+      {
+        field: 'polName',
+        title: $t('seaExport.export.polId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.polRemark ?? '',
+      },
+      {
+        field: 'poT1Name',
+        title: $t('seaExport.export.poT1Id'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.poT1Remark ?? '',
+      },
+      {
+        field: 'poT2Name',
+        title: $t('seaExport.export.poT2Id'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.poT2Remark ?? '',
+      },
+      {
+        field: 'podName',
+        title: $t('seaExport.export.podId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.podRemark ?? '',
+      },
+      {
+        field: 'deliverPortName',
+        title: $t('seaExport.export.deliverPortId'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.deliverPortRemark ?? '',
+      },
+      {
+        field: 'vessel',
+        title: $t('seaExport.export.vessel'),
+        minWidth: 120,
+        showOverflow: true,
+      },
+      {
+        field: 'innerVoyno',
+        title: $t('seaExport.export.innerVoyno'),
+        minWidth: 100,
+        showOverflow: true,
+      },
+      {
+        field: 'laneName',
+        title: $t('seaExport.export.laneName'),
+        minWidth: 120,
+        showOverflow: true,
+        formatter: ({ row }) => row.pod?.lane?.laneName ?? '',
+      },
+      {
+        field: 'transportOrder.codeSourceName',
+        title: $t('seaExport.export.codeSourceId'),
+        minWidth: 110,
+        showOverflow: true,
+        formatter: ({ row }) =>
+          row.transportOrder?.codeSource?.cnName ||
+          row.transportOrder?.codeSourceName ||
+          '',
+      },
+      {
+        field: 'transportOrder.codeFrtName',
+        title: $t('seaExport.export.codeFrtId'),
+        minWidth: 110,
+        showOverflow: true,
+        formatter: ({ row }) =>
+          row.transportOrder?.codeFrt?.cnName ||
+          row.transportOrder?.codeFrtName ||
+          '',
+      },
+      {
+        field: 'transportOrder.totalCtn',
+        title: $t('seaExport.export.orderCtns'),
+        minWidth: 120,
+        sortable: false,
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.teu',
+        title: 'TEU',
+        minWidth: 90,
+        sortable: false,
+      },
+      {
+        field: 'operationUserName',
+        title: $t('system.user.userAttributeOptions.operation'),
+        minWidth: 100,
+        sortable: false,
+        formatter: ({ row }) =>
+          getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
+        showOverflow: true,
+      },
+      {
+        field: 'saleUserName',
+        title: $t('system.user.userAttributeOptions.sales'),
+        minWidth: 100,
+        sortable: false,
+        formatter: ({ row }) =>
+          getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
+        showOverflow: true,
+      },
+      {
+        field: 'customerServiceUserName',
+        title: $t('system.user.userAttributeOptions.customerService'),
+        minWidth: 120,
+        sortable: false,
+        formatter: ({ row }) =>
+          getRoleName(
+            row.transportOrder?.orderUsers,
+            USER_ATTRIBUTE.customerService,
+          ),
+        showOverflow: true,
+      },
+      {
+        field: 'documentationUserName',
+        title: $t('system.user.userAttributeOptions.documentation'),
+        minWidth: 100,
+        sortable: false,
+        formatter: ({ row }) =>
+          getRoleName(
+            row.transportOrder?.orderUsers,
+            USER_ATTRIBUTE.documentation,
+          ),
+        showOverflow: true,
+      },
+      {
+        field: 'businessUserName',
+        title: $t('system.user.userAttributeOptions.business'),
+        minWidth: 100,
+        sortable: false,
+        formatter: ({ row }) =>
+          getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
+        showOverflow: true,
+      },
+      {
+        field: 'orgs',
+        title: $t('seaExport.export.organizationUnits'),
+        minWidth: 140,
+        sortable: false,
+        formatter: ({ row }) => row.orgs?.[0]?.name || '',
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.accountDate',
+        title: $t('seaExport.export.accountDate'),
+        minWidth: 110,
+        formatter: ({ row }) => formatMonth(row.transportOrder?.accountDate),
+      },
+      {
+        field: 'transportOrder.shipperName',
+        title: $t('seaExport.export.shipperId'),
+        minWidth: 140,
+        sortable: false,
+        formatter: ({ row }) =>
+          getPartyName(
+            row.transportOrder?.shipper?.name,
+            row.transportOrder?.shipperContent,
+          ),
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.consigneeName',
+        title: $t('seaExport.export.consigneeId'),
+        minWidth: 140,
+        sortable: false,
+        formatter: ({ row }) =>
+          getPartyName(
+            row.transportOrder?.consignee?.name,
+            row.transportOrder?.consigneeContent,
+          ),
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.notifierName',
+        title: $t('seaExport.export.notifierId'),
+        minWidth: 140,
+        sortable: false,
+        formatter: ({ row }) =>
+          getPartyName(
+            row.transportOrder?.notifier?.name,
+            row.transportOrder?.notifierContent,
+          ),
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.pkgs',
+        title: $t('seaExport.export.pkgs'),
+        minWidth: 90,
+      },
+      {
+        field: 'transportOrder.codePackageName',
+        title: $t('seaExport.export.codePackageId'),
+        minWidth: 100,
+        sortable: false,
+        showOverflow: true,
+        formatter: ({ row }) =>
+          row.transportOrder?.codePackage?.name ||
+          row.transportOrder?.codePackageName ||
+          '',
+      },
+      {
+        field: 'transportOrder.kgs',
+        title: $t('seaExport.export.kgs'),
+        minWidth: 100,
+      },
+      {
+        field: 'transportOrder.cbm',
+        title: $t('seaExport.export.cbm'),
+        minWidth: 100,
+      },
+      {
+        field: 'transportOrder.marks',
+        title: $t('seaExport.export.marks'),
+        minWidth: 160,
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.goodsDes',
+        title: $t('seaExport.export.goodsDes'),
+        minWidth: 180,
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.internalRemark',
+        title: $t('seaExport.export.internalRemark'),
+        minWidth: 160,
+        showOverflow: true,
+      },
+      {
+        field: 'transportOrder.remark',
+        title: '外部备注',
+        minWidth: 160,
+        showOverflow: true,
+      },
+      {
+        field: 'codeIssueTypeName',
+        title: $t('seaExport.export.issueType'),
+        minWidth: 110,
+        showOverflow: true,
+        formatter: ({ row }) =>
+          row.codeIssueType?.billType || row.codeIssueTypeName || '',
+      },
+      {
+        field: 'closeDocTime',
+        title: $t('seaExport.export.closeDocTime'),
+        minWidth: 160,
+        formatter: 'formatDateTime',
+      },
+      {
+        field: 'blType',
+        title: $t('seaExport.export.blType'),
+        minWidth: 100,
+        cellRender: {
+          name: 'CellTag',
+          options: getBlTypeOptions(),
+        },
+      },
+      {
+        field: 'billType',
+        title: $t('seaExport.export.billType'),
+        minWidth: 90,
+        cellRender: {
+          name: 'CellTag',
+          options: getBillTypeOptions(),
+        },
+      },
+      {
+        field: 'transportOrder.feeLocked',
+        title: $t('seaExport.export.isFeeLocking'),
+        minWidth: 90,
+        align: 'center',
+        slots: { default: 'feeLocked' },
+      },
+      {
+        field: 'transportOrder.isBusinessLocking',
+        title: $t('seaExport.export.isBusinessLocking'),
+        minWidth: 90,
+        align: 'center',
+        slots: { default: 'businessLocked' },
+      },
+      {
+        field: 'transportOrder.isUnfinished',
+        title: '未完结状态',
+        minWidth: 100,
+        align: 'center',
+        cellRender: {
+          name: 'CellTag',
+          options: [
+            { value: true, label: '未完结', color: 'warning' },
+            { value: false, label: '已完结', color: 'success' },
+          ],
+        },
+      },
+      {
+        field: 'businessStatus',
+        title: '业务状态',
+        minWidth: 130,
+        sortable: false,
+        showOverflow: true,
+        slots: { default: 'businessStatus' },
+      },
+      {
+        field: 'receiveFeeStatus',
+        title: $t('seaExport.export.orderFee.receiveFeeStatus'),
+        minWidth: 110,
+        sortable: false,
+        cellRender: {
+          name: 'CellTag',
+          options: getSeaExportFeeStatusOptions(),
+        },
+      },
+      {
+        field: 'payFeeStatus',
+        title: $t('seaExport.export.orderFee.payFeeStatus'),
+        minWidth: 110,
+        sortable: false,
+        cellRender: {
+          name: 'CellTag',
+          options: getSeaExportFeeStatusOptions(),
+        },
+      },
+      {
+        field: 'yundangTrackStatus',
+        title: $t('seaExport.yundang.trackStatusColumn'),
+        minWidth: 120,
+        sortable: false,
+        slots: { default: 'yundangTrackStatus' },
+      },
+      {
+        field: 'creatorUserNickName',
+        title: '录入人',
+        minWidth: 120,
+        sortable: false,
+        showOverflow: true,
+      },
+      {
+        field: 'creationTime',
+        title: $t('seaExport.export.creationTime'),
+        minWidth: 160,
+        formatter: 'formatDateTime',
+      },
+    ]),
+  );
 }
 
 /**

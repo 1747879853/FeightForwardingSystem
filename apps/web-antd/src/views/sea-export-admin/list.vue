@@ -60,12 +60,22 @@ import {
   isVendorOceanExportTracking,
 } from '#/utils/tracking-brand';
 
+import { loadMaskedFields } from '#/composables/use-masked-fields';
+
 import {
   getSeaExportBusinessStatusMeta,
   SEA_EXPORT_BUSINESS_STATUS_COLORS,
   useColumns,
   useGridFormSchema,
 } from './data';
+import {
+  applySeaExportListRowMasks,
+  getAlwaysMaskedListColumnFields,
+  getAlwaysMaskedSearchFieldNames,
+  isSeaExportListCellMasked,
+  isSeaExportListColumnAlwaysMasked,
+  MASKED_TEXT,
+} from './field-permission';
 import { stringifySeaExportListDefaultColumnSetting } from './list-column-defaults';
 import {
   buildServiceTypeLabelMap,
@@ -331,6 +341,13 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       ajax: {
         query: createPagedListQuery(getSeaExportPagedList, {
           defaultSort: 'TransportOrder.Etd DESC',
+          afterFetch: (result: any) => {
+            const items = result?.items;
+            if (Array.isArray(items)) {
+              items.forEach((row) => applySeaExportListRowMasks(row));
+            }
+            return result;
+          },
           mapParams: normalizeQuery,
           fieldMap: {
             'transportOrder.etd': 'TransportOrder.ETD',
@@ -358,6 +375,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       refresh: { code: 'query' },
       zoom: true,
     },
+    customConfig: {
+      visibleMethod: ({ column }: { column: { field?: string } }) =>
+        !isSeaExportListColumnAlwaysMasked(String(column?.field ?? '')),
+    },
   },
   columnPersist: {
     load: async ({ keyword }) => {
@@ -373,13 +394,33 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
 });
 
 onMounted(async () => {
+  await loadMaskedFields();
   // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
   // 从而在同一次查询中拉取分组数据，避免恢复与首查竞态导致分组只剩「全部」。
   await grouping.restorePersistedField();
+  await hideAlwaysMaskedSearchFields();
   // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
   // 后续分页/排序走 gridApi.query 时才能带上同一套条件。
   await gridApi.formApi.submitForm();
+  // 列持久化在 Grid 初始化时应用；首查后再隐藏，避免被远端列配置重新显示。
+  hideAlwaysMaskedListColumns();
 });
+
+function hideAlwaysMaskedListColumns() {
+  const grid = gridApi.grid as any;
+  if (!grid?.hideColumn) return;
+  getAlwaysMaskedListColumnFields().forEach((field) => {
+    grid.hideColumn(field);
+  });
+}
+
+async function hideAlwaysMaskedSearchFields() {
+  const fieldNames = getAlwaysMaskedSearchFieldNames();
+  if (fieldNames.length === 0) return;
+  await gridApi.formApi.updateSchema(
+    fieldNames.map((fieldName) => ({ fieldName, hide: true })),
+  );
+}
 
 // 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。
 // 首次激活与 onMounted 首查重合，跳过以避免重复请求。
@@ -640,15 +681,25 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         />
       </template>
       <template #feeLocked="{ row }">
+        <span v-if="isSeaExportListCellMasked(row, 'transportOrder.feeLocked')">
+          {{ MASKED_TEXT }}
+        </span>
         <LockKeyhole
-          v-if="row?.transportOrder?.feeLocked"
+          v-else-if="row?.transportOrder?.feeLocked"
           class="mx-auto size-4 text-red-500"
         />
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
       <template #businessLocked="{ row }">
+        <span
+          v-if="
+            isSeaExportListCellMasked(row, 'transportOrder.isBusinessLocking')
+          "
+        >
+          {{ MASKED_TEXT }}
+        </span>
         <LockKeyhole
-          v-if="row?.transportOrder?.isBusinessLocking"
+          v-else-if="row?.transportOrder?.isBusinessLocking"
           class="mx-auto size-4 text-red-500"
         />
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
@@ -678,7 +729,10 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </span>
       </template>
       <template #mblNum="{ row }">
-        <span class="inline-flex min-w-0 items-center">
+        <span v-if="isSeaExportListCellMasked(row, 'transportOrder.mblNum')">
+          {{ MASKED_TEXT }}
+        </span>
+        <span v-else class="inline-flex min-w-0 items-center">
           <TrackingWarningIcon v-bind="buildContainerWarningProps(row)" />
           <span class="truncate">{{
             row?.transportOrder?.mblNum || '--'
@@ -714,7 +768,10 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </template>
       </template>
       <template #carrierWithLogo="{ row }">
-        <span class="inline-flex items-center gap-1">
+        <span v-if="isSeaExportListCellMasked(row, 'carrierCode')">
+          {{ MASKED_TEXT }}
+        </span>
+        <span v-else class="inline-flex items-center gap-1">
           <img
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
