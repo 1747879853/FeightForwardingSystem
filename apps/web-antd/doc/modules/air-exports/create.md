@@ -2,7 +2,7 @@
 title: 空运出口新建
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -46,6 +46,7 @@ last_updated: 2026-09-05
 | :-- | :-- | :-- | :-- | :-- |
 | **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 头部选择写回隐藏字段 `codeSourceId`；**不**随委托单位自动带出（与海出不同）。 | 可选，允许清空。 |
 | **委托单位** | 委托方客户主体。 | `ClientSelect`（行业类别 `p`） | **触发/依赖：** 影响账期与后续费用链路。 | **必填**，否则后端报「委托单位不存在」。 |
+| **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。 | 可空；最长 64。 |
 | **归属组织** | 数据归属组织。 | `UserOrgSelect`（按销售取直属组织） | **触发/依赖：** 切换销售会清空已选组织并重载列表。 | **必填**，且必须是该销售的**直属**组织，父组织不算。 |
 | **干系人-销售** | 该票销售。 | `UserSelect`（`UserAttribute=16`） | **触发/依赖：** 决定归属组织候选范围。干系人下拉按当前用户各公司或所选组织所属公司过滤。 | **有且只能有一个**，0 个和 2 个都报同一句。 |
 | **航班** | 航班号自由文本。 | `AirExport.flightNo` | **触发/依赖：** 内联在航段标题右侧，不占港口栅格。 | 不必填。 |
@@ -74,6 +75,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-05 | `Feature` | 顶部浏览器标签栏标题按主运单号/委托编号动态展示，未保存新建单默认「空运出口」。 | 逻辑收敛至 `use-air-export-tab-title.ts`，新建页与编辑工作台嵌入表单共用。详见 `changelogs/change-log-2026-09-05-air-export-tab-title.md`。 |
 | 2026-08-31 | `Fix` | 主单毛重/体积、货物明细单件重量/体积改为最多 4 位小数，末尾 0 不展示；长宽高/体积重/计费重/泡比仍 6 位。 | TAPD `#1161580498001000905`。与编辑页共用 schema。详见 `changelogs/change-log-2026-08-31-weight-volume-4-decimal.md`。 |
 | 2026-08-23 | `Feature` | 新建页接入未保存守卫并 KeepAlive。 | `keepAliveName: AirExportAdminForm`。详见 `changelogs/change-log-2026-08-23-detail-keep-alive-unsaved.md`。 |

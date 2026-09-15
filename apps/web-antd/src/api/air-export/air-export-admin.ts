@@ -227,6 +227,8 @@ export namespace AirExportAdminApi {
     /** 主提单号，空运即主运单号，64 */
     mblNum?: string;
     contractNum?: string;
+    /** 报关发票号（可空，最长 64，一票一号，复制清空） */
+    invoiceNum?: string;
     internalRemark?: string;
     remark?: string;
     marks?: string;
@@ -311,6 +313,7 @@ export namespace AirExportAdminApi {
     /** 订舱编号，空运不展示 */
     bookingNum?: null | string;
     contractNum?: null | string;
+    invoiceNum?: null | string;
     internalRemark?: null | string;
     remark?: null | string;
     marks?: null | string;
@@ -568,7 +571,7 @@ export namespace AirExportAdminApi {
     PageSize?: number;
     Sorting?: string;
 
-    /** 模糊匹配航班/外部备注/主提单号/合同号/委托编号 */
+    /** 模糊匹配航班/外部备注/主运单号/合同号/报关发票号/委托编号 */
     Keyword?: string;
     /** 按所属组织筛，自动包含全部下级组织 */
     OrgId?: number;
@@ -611,6 +614,8 @@ export namespace AirExportAdminApi {
     IsUnfinished?: boolean;
     MblNum?: string;
     ContractNum?: string;
+    /** 报关发票号（TransportOrder.InvoiceNum）模糊匹配 */
+    InvoiceNum?: string;
     InternalRemark?: string;
     CargoId?: number;
     Marks?: string;

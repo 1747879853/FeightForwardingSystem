@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-13
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -47,6 +47,7 @@ last_updated: 2026-09-13
 | **码头 (`terminalId`)** | 往来单位，行业类别含「码头」。 | `ClientSelect` `industryCategory=t` | 提交最外层 `terminalId`，读取 `terminal.name`。 | 后端只校验客户存在，不校验行业类别。 |
 | **联运单号 / 分单号** | 一票一号字段。 | 文本 | 复制时后端清空。 | 上限 32。 |
 | **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
+| **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。 | 可空；最长 64。 |
 | **集装箱净重** | 进口箱表专属列。 | 手填 | **不**按毛重减皮重自动计算。 | 可选。 |
 | **集装箱规格/型号** | 品名子表 id。 | 品名详情 `codeGoodsSpecs` / `codeGoodsModels` | 先选品名；切换品名清空这两列。 | 未选品名或 id 不属于该品名会被后端拦下。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
@@ -63,6 +64,7 @@ last_updated: 2026-09-13
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 报关发票号改为提交/回显 `transportOrder.invoiceNum`，文案由「发票号」改名。 | 不再走票根。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 进口自有 `order-ctn-table.vue`；确认时预填箱型并带出货物区总包装。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-05 | `Feature` | 顶部浏览器标签栏标题按主提单号/委托编号动态展示，未保存新建单默认「海运进口」。 | 逻辑收敛至 `use-sea-import-tab-title.ts`，新建页与编辑工作台嵌入表单共用。详见 `changelogs/change-log-2026-09-05-sea-import-tab-title.md`。 |

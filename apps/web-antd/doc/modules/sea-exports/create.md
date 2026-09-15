@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-15
 ---
 
 > [!TIP] 表单目录与文件职责：[基础信息表单](./basic-info-form.md)。
@@ -53,6 +53,7 @@ last_updated: 2026-09-11
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **归属组织** | 委托直属组织（必填）；头部按销售绑定可选范围，标签带 `*`。 | `orgId`；`UserOrgSelect`（`salesUserId` + `selectedItems` 回显） | **触发/依赖：** 干系人销售变化时选项范围切换；`formatOrgPathLabel` 展示完整路径；schema 隐藏载体保留 `selectRequired`；缺值时 toast 点名。 | **必填项**。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** 提交/回填走 `transportOrder`；复制入库由后端置空；栅格排在运输条款/贸易条款之后。 | 可空；`maxlength: 64`。 |
+| **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。 | 可空；`maxlength: 64`。 |
 | **业务来源** | 订单业务来源分类；头部可下拉，选项来自基础资料业务来源。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 用客户维护值自动带出，允许再改或清空。 | 可选。 |
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时带出起运港（`polId`）；为到付时带出目的港（`podId`），带出后允许修改。 | - |
@@ -92,6 +93,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 64）。 | 与编辑页共用 `form.vue`；详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
 | 2026-08-31 | `Fix` | 委托单位、订舱代理标签旁按场站同款展示联系人；选客户带出默认联系人并随保存提交 Id。 | TAPD 1000904。详见 `changelogs/change-log-2026-08-31-sea-export-party-contact-label.md`。 |

@@ -57,7 +57,6 @@ export const flattenDetail = (
     throughBillNum: detail.throughBillNum,
     hblNum: detail.hblNum,
     tradeMode: detail.tradeMode,
-    invoiceNum: detail.invoiceNum,
     batchNum: detail.batchNum,
     originCountryId: detail.originCountryId,
     totalNetWeight: detail.totalNetWeight,
@@ -91,6 +90,8 @@ export const flattenDetail = (
     mblNum: to?.mblNum,
     bookingNum: to?.bookingNum,
     contractNum: to?.contractNum,
+    invoiceNum:
+      to?.invoiceNum ?? (detail as { invoiceNum?: null | string }).invoiceNum,
     internalRemark: to?.internalRemark,
     remark: to?.remark,
     marks: to?.marks,

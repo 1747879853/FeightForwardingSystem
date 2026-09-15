@@ -246,11 +246,10 @@ export function buildColumns(): Array<Record<string, any>> {
       slots: { default: 'yundangTrackStatus' },
     },
     {
-      field: 'clientName',
+      field: 'client.name',
       title: '委托单位',
       minWidth: 180,
       showOverflow: true,
-      formatter: ({ row }) => row.client?.name ?? '',
     },
     { field: 'mblNum', title: '主提单号', minWidth: 140 },
     {

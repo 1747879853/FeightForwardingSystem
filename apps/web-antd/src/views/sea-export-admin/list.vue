@@ -5,7 +5,7 @@ import type { GroupFieldDef } from '#/components/list-grouping';
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import {
   Copy,
   IconifyIcon,
@@ -86,7 +86,13 @@ import {
 import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-upload-modal.vue';
 import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
+import BatchEditBusinessModal from './modules/batch-edit-business-modal.vue';
+
 const perm = createAbpPermission('Admin.SeaExport');
+const [BatchEditModal, batchEditModalApi] = useVbenModal({
+  connectedComponent: BatchEditBusinessModal,
+  destroyOnClose: true,
+});
 const externalApiUseCode = 'Admin.ExternalApi.Use';
 const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useSeaExportCopy();
@@ -334,11 +340,17 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
           mapParams: normalizeQuery,
           fieldMap: {
             'transportOrder.etd': 'TransportOrder.ETD',
+            'transportOrder.client.name': 'TransportOrder.Client.Name',
             'transportOrder.clientName': 'TransportOrder.Client.Name',
+            'transportOrder.codeSource.cnName':
+              'TransportOrder.CodeSource.CnName',
             'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
+            'transportOrder.codeFrt.cnName': 'TransportOrder.CodeFrt.CnName',
             'transportOrder.codeFrtName': 'TransportOrder.CodeFrt.CnName',
             carrierCode: 'Carrier.CnName',
+            'bookingAgent.name': 'BookingAgent.Name',
             bookingAgentName: 'BookingAgent.Name',
+            'yard.name': 'Yard.Name',
             yardName: 'Yard.Name',
             receivePortName: 'ReceivePort.PortName',
             polName: 'POL.PortName',
@@ -346,7 +358,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
             poT2Name: 'POT2.PortName',
             podName: 'POD.PortName',
             deliverPortName: 'DeliverPort.PortName',
+            'codeIssueType.billType': 'CodeIssueType.BillType',
             codeIssueTypeName: 'CodeIssueType.BillType',
+            'pod.lane.laneName': 'POD.Lane.LaneName',
             laneName: 'POD.Lane.LaneName',
           },
         }),
@@ -477,6 +491,22 @@ const handleRefresh = () => {
   grouping.refreshGroupData();
 };
 
+const onBatchEditBusiness = () => {
+  const rows = getCheckboxRecords();
+  if (rows.length === 0) {
+    message.warning($t('seaExport.export.batchEditPleaseSelect'));
+    return;
+  }
+
+  const editableRows = rows.filter((row) => isTicketEditable(row));
+  if (editableRows.length === 0) {
+    message.warning($t('seaExport.export.batchEditNoEditable'));
+    return;
+  }
+
+  batchEditModalApi.setData({ ids: editableRows.map((row) => row.id) }).open();
+};
+
 const handleYundangSubscribe = async () => {
   const rows = getCheckboxRecords();
   await subscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
@@ -604,6 +634,13 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
             />
           </Tooltip>
         </span>
+        <Button
+          v-access:code="perm.edit"
+          class="mr-2 inline-flex items-center"
+          @click="onBatchEditBusiness"
+        >
+          {{ $t('seaExport.export.batchEditBusiness') }}
+        </Button>
         <Tooltip :title="deleteDisabledTip">
           <span v-access:code="perm.delete" class="mr-2 inline-flex">
             <Button danger :disabled="!canDeleteSelected" @click="handleDelete">
@@ -738,6 +775,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
       :recognizing="aiRecognizing"
       @file="handleAiBillFeeFile"
     />
+    <BatchEditModal @success="handleRefresh" />
   </Page>
 </template>
 

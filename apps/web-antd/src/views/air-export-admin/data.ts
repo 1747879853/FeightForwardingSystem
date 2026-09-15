@@ -474,6 +474,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
+      fieldName: 'InvoiceNum',
+      label: $t('airExport.export.invoiceNum'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
       fieldName: 'POLRemark',
       label: $t('airExport.export.polRemark'),
       componentProps: {
@@ -813,13 +822,19 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 关联表出参是对象，列本身不可直接排序，需映射到后端导航属性路径。
  */
 export const AIR_EXPORT_SORT_FIELD_MAP: Record<string, string> = {
+  'transportOrder.client.name': 'TransportOrder.Client.Name',
   'transportOrder.clientName': 'TransportOrder.Client.Name',
   'transportOrder.codeSource.cnName': 'TransportOrder.CodeSource.CnName',
   'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
+  'transportOrder.codeService.cnName': 'TransportOrder.CodeService.CnName',
   'transportOrder.codeServiceName': 'TransportOrder.CodeService.CnName',
+  'bookingAgent.name': 'BookingAgent.Name',
   bookingAgentName: 'BookingAgent.Name',
+  'pol.iataCode': 'POL.IataCode',
   polName: 'POL.IataCode',
+  'pot.iataCode': 'POT.IataCode',
   potName: 'POT.IataCode',
+  'pod.iataCode': 'POD.IataCode',
   podName: 'POD.IataCode',
 };
 
@@ -882,39 +897,37 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       formatter: 'formatDate',
     },
     {
-      field: 'transportOrder.clientName',
+      field: 'transportOrder.client.name',
       title: $t('airExport.export.clientId'),
       minWidth: 150,
       showOverflow: true,
-      formatter: ({ row }) => row.transportOrder?.client?.name ?? '',
     },
     {
-      field: 'polName',
+      field: 'pol.iataCode',
       title: $t('airExport.export.polId'),
       minWidth: 150,
       showOverflow: true,
       formatter: ({ row }) => formatAirPortLabel(row.pol),
     },
     {
-      field: 'potName',
+      field: 'pot.iataCode',
       title: $t('airExport.export.potId'),
       minWidth: 150,
       showOverflow: true,
       formatter: ({ row }) => formatAirPortLabel(row.pot),
     },
     {
-      field: 'podName',
+      field: 'pod.iataCode',
       title: $t('airExport.export.podId'),
       minWidth: 150,
       showOverflow: true,
       formatter: ({ row }) => formatAirPortLabel(row.pod),
     },
     {
-      field: 'bookingAgentName',
+      field: 'bookingAgent.name',
       title: $t('airExport.export.bookingAgentId'),
       minWidth: 140,
       showOverflow: true,
-      formatter: ({ row }) => row.bookingAgent?.name ?? '',
     },
     {
       field: 'transportOrder.contractNum',
@@ -923,21 +936,22 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       showOverflow: true,
     },
     {
+      field: 'transportOrder.invoiceNum',
+      title: $t('airExport.export.invoiceNum'),
+      minWidth: 130,
+      showOverflow: true,
+    },
+    {
       field: 'transportOrder.codeSource.cnName',
       title: $t('airExport.export.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) => row.transportOrder?.codeSource?.cnName ?? '',
     },
     {
-      field: 'transportOrder.codeServiceName',
+      field: 'transportOrder.codeService.cnName',
       title: $t('airExport.export.codeServiceId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeService?.cnName ||
-        row.transportOrder?.codeServiceName ||
-        '',
     },
     {
       field: 'transportOrder.pkgs',
@@ -945,15 +959,11 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       minWidth: 90,
     },
     {
-      field: 'transportOrder.codePackageName',
+      field: 'transportOrder.codePackage.name',
       title: $t('airExport.export.codePackageId'),
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codePackage?.name ||
-        row.transportOrder?.codePackageName ||
-        '',
     },
     {
       field: 'transportOrder.kgs',
@@ -1076,7 +1086,7 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       formatter: 'formatDate',
     },
     {
-      field: 'transportOrder.shipperName',
+      field: 'transportOrder.shipper.name',
       title: $t('airExport.export.shipperId'),
       minWidth: 140,
       sortable: false,
@@ -1088,7 +1098,7 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
         ),
     },
     {
-      field: 'transportOrder.consigneeName',
+      field: 'transportOrder.consignee.name',
       title: $t('airExport.export.consigneeId'),
       minWidth: 140,
       sortable: false,
@@ -1100,7 +1110,7 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
         ),
     },
     {
-      field: 'transportOrder.notifierName',
+      field: 'transportOrder.notifier.name',
       title: $t('airExport.export.notifierId'),
       minWidth: 140,
       sortable: false,
@@ -1308,6 +1318,12 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'contractNum',
       label: $t('airExport.export.contractNum'),
+      componentProps: { allowClear: true, maxlength: 64 },
+    },
+    {
+      component: 'Input',
+      fieldName: 'invoiceNum',
+      label: $t('airExport.export.invoiceNum'),
       componentProps: { allowClear: true, maxlength: 64 },
     },
     createClientSelectSchema({

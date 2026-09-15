@@ -58,5 +58,6 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 主提单号列改绑 `seaExport.transportOrder.mblNum`；堆场列删多余 formatter。 | 详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-14 | `Fix` | PC 监装列表派单人改为纯文本，去掉拨打弹窗。 | 小程序仍走 `submitUserPhone` + `tel:`；PC 列 field 保持 `submitUserName`。 |
 | 2026-09-14 | `Fix` | 状态列采用灰、橙、蓝、绿区分状态，去除描边并加深文字。 | 仅调整展示，状态枚举与筛选不变。 |

@@ -136,16 +136,14 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'locked' },
     },
     {
-      field: 'settlementName',
+      field: 'settlement.name',
       title: '结算对象',
       minWidth: 150,
-      formatter: ({ row }) => row.settlement?.name || '-',
     },
     {
-      field: 'currencyCode',
+      field: 'currency.code',
       title: '结算币别',
       width: 100,
-      formatter: ({ row }) => row.currency?.code || '-',
     },
     {
       field: 'totalSettledPrice',

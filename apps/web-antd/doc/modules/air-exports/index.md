@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-09-08
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、委托编号 5 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
+- **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、报关发票号、委托编号 6 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
 - **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则 Tooltip 说明订阅单号=主运单号、航司系统自动识别。
@@ -41,7 +41,8 @@ last_updated: 2026-09-08
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **委托编号** | 空运委托的业务识别号。 | `transportOrder.commissionNum` | **触发/依赖：** 贯穿列表、编辑与费用。 | 不填由后端按 `AirExport.CommissionNum` 规则生成。 |
-| **起运地 / 中转地 / 目的地** | 空运三段航段。 | `pol` / `pot` / `pod` 对象（`App_AirPorts`） | **触发/依赖：** 列表列展示为「三字码/英文名」；筛选下拉选中后只回显三字码。 | 都不必填。 |
+| **报关发票号** | 报关用的商业发票号；列表列与独立模糊筛选。 | 列 `transportOrder.invoiceNum`；筛 `InvoiceNum` | **触发/依赖：** 关键字第 6 字段；复制入库由后端置空。 | 可空；最长 64。 |
+| **起运地 / 中转地 / 目的地** | 空运三段航段。 | 列 `pol.iataCode` / `pot.iataCode` / `pod.iataCode` | **触发/依赖：** `formatAirPortLabel` 格式化为「三字码/英文名」；筛选下拉选中后只回显三字码。 | 都不必填。 |
 | **体积重合计 / 计费重合计** | 整票的体积重、计费重。 | 由 `airExportOrderCtns` 各行相加 | **触发/依赖：** 后端不返回票级合计字段，界面自行汇总。 | 无。 |
 | **应收状态 / 应付状态** | 组合费用状态。 | `receiveFeeStatus` / `payFeeStatus` | **触发/依赖：** 无该方向费用时为 `null`。 | 只读。 |
 | **运踪状态** | 订阅与推送四态展示。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` / `yundangAirShipmentNode` | **触发/依赖：** 有查看权限可点开运踪详情。 | 只读；订阅权限与编辑权限独立。 |
@@ -62,6 +63,8 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 委托单位、订舱代理、空港、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径；空港仍用 `formatAirPortLabel`。 | `AIR_EXPORT_SORT_FIELD_MAP` 同步。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
+| 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字扩到 6 个字段。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开航/实际开航/预抵/货好/应结/创建时间及报关、送仓日期筛选统一按自然日闭区间。 | 与海出开船日期同类：无时分选择器不再带当前时钟。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 列表删除增加 `row.isEditable`：无行级编辑权限时禁用删除。 | 见 `changelogs/change-log-2026-08-19-ticket-is-editable.md`。 |

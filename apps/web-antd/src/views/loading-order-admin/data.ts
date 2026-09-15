@@ -255,11 +255,10 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       sortable: true,
     },
     {
-      field: 'seaExport.mblNum',
+      field: 'seaExport.transportOrder.mblNum',
       title: $t('seaExport.loadingOrder.mblNum'),
       minWidth: 140,
       showOverflow: true,
-      formatter: ({ row }) => row.seaExport?.transportOrder?.mblNum ?? '-',
     },
     {
       field: 'seaExport.vessel',
@@ -304,7 +303,6 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.carrierYard'),
       minWidth: 140,
       showOverflow: true,
-      formatter: ({ row }) => row.carrierYard?.name ?? '-',
     },
     {
       field: 'loadingOrderUsers',

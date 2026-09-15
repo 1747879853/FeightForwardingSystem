@@ -232,18 +232,16 @@ export function useColumns(
       },
     },
     {
-      field: 'laneCode',
+      field: 'lane.code',
       title: $t('system.basicData.portCode.laneCode'),
       minWidth: 120,
       sortField: 'Lane.Code',
-      formatter: ({ row }) => row.lane?.code ?? '',
     },
     {
-      field: 'laneName',
+      field: 'lane.laneName',
       title: $t('system.basicData.portCode.laneName'),
       minWidth: 140,
       sortField: 'Lane.LaneName',
-      formatter: ({ row }) => row.lane?.laneName ?? '',
     },
     {
       field: 'ediCode',

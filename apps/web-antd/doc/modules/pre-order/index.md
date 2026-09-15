@@ -40,7 +40,7 @@ last_updated: 2026-09-14
 | **关键字（Keyword）** | 模糊检索 | `GetPagedListAsync` 的 `Keyword` | 匹配业务编号 / 主提单号 / 船名 / 航次（后端口径；不含车队名） | 可清空 |
 | **船名 / 航次** | 主表船名、船公司航次 | 列 `vessel` / `innerVoyno` | 仅海出/海进有值，空出为 null；关键字可搜这两项 | 只读列 |
 | **车队（筛选）** | 往来单位车队 | 筛 `TeamId`；`ClientSelect`（`industryCategory: 'i'`） | **列表不展示列**。接口虽返回 `team` 对象，列设置不铺 `team.name` | 筛选项非必填 |
-| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
+| **委托单位** | 业务委托方 | 列 `client.name`；筛 **客户** `ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
 | **起运港 / 目的港** | 航段两端 | **港口**<br/>`PortSelect` | 起运港决定服务项候选池；可作为分组维度 | 筛选项非必填 |
 | **开船日期** | ETD | `ETDStart` / `ETDEnd` | 前端把区间拆成两个 ISO 时间参数 | 筛选项非必填 |
 | **销售 / 操作** | 干系人昵称 | 列表字段 `saleNames`/`operatorNames`；筛选 `SaleIds`/`OperatorIds`（用户 id，多选命中任一） | 下拉 `UserSelect` 分别带 `userAttribute=Sale/Operation`；销售与操作条件之间为 AND | 筛选项非必填；无干系人时列为空 |
@@ -62,6 +62,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 委托单位列 `field` 改绑 `client.name`；港口备注列仍 `polName`/`podName`+`formatter`。 | 详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-14 | `Feature` | 列表增加船名/航次列；筛选增加车队；关键字可搜船名/航次。 | **不加车队列**（需求原文只加两列+筛选）。后端列表已返回 `team`，列 field 若以后要加应绑 `team.name`。详见 [变更日志](../../changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-09-08 | `Fix` | 开船日期筛选改为自然日闭区间。 | 无时分 RangePicker 点「今天」不再把起止打成同一时刻。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |

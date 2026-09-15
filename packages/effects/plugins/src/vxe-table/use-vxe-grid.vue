@@ -484,6 +484,43 @@ function buildColumnConfigFromColumns(columns: any[]): ColumnPersistConfig {
   return { visibleColumnKeys, columnVisibility, columnFixed };
 }
 
+/** 当前列定义的持久化键全集（新版 uniqueKey + 旧版 legacyKey） */
+function collectKnownColumnPersistKeys(columns: any[]): Set<string> {
+  const keys = new Set<string>();
+  getLeafColumns(columns).forEach((column) => {
+    const uniqueKey = String(
+      column?.[columnUniqueKeyField] ?? column?.id ?? '',
+    ).trim();
+    const legacyKey = String(column?.[columnLegacyKeyField] ?? '').trim();
+    if (uniqueKey) {
+      keys.add(uniqueKey);
+    }
+    if (legacyKey) {
+      keys.add(legacyKey);
+    }
+  });
+  return keys;
+}
+
+/** 配置里有、当前列定义没有的键：改 field / 删列后的脏数据 */
+function listOrphanColumnPersistKeys(
+  config: ColumnPersistConfig,
+  knownKeys: Set<string>,
+): string[] {
+  const orphans = new Set<string>();
+  const consider = (key: unknown) => {
+    const normalized = String(key ?? '').trim();
+    if (normalized && !knownKeys.has(normalized)) {
+      orphans.add(normalized);
+    }
+  };
+  config.visibleColumnKeys.forEach(consider);
+  Object.keys(config.columnVisibility).forEach(consider);
+  Object.keys(config.columnFixed ?? {}).forEach(consider);
+  Object.keys(config.columnWidths ?? {}).forEach(consider);
+  return [...orphans];
+}
+
 function isColumnPersistEnabled() {
   const enabled = columnPersist.value?.enabled;
   if (enabled === false) {
@@ -861,6 +898,7 @@ function collectColumnConfigFromGrid(
       const meta = resolveStableColumnKeyMeta(column, stableKeyLookup, index);
       if (!stableKeySet.has(meta.key)) {
         keyMapping.visibleKeysNotInStableColumns++;
+        return;
       }
       if (column?.visible !== false) {
         runtimeVisibleKeys.push(meta.key);
@@ -1159,8 +1197,8 @@ async function resetColumnConfig() {
 }
 
 /**
- * 用当前（已回退为默认的）列重建配置并覆盖远端，
- * 让历史脏配置不会在每次进页面时反复生效。
+ * 用当前已应用的列重建配置并覆盖远端。
+ * 当前 `useColumns` 是全集：配置里多出来的旧 field、运行时脏键一律丢掉。
  */
 async function healColumnConfig(
   columns: any[],
@@ -1279,6 +1317,10 @@ async function loadColumnConfig() {
         const hasRemoteKeys =
           remoteConfig.visibleColumnKeys.length > 0 ||
           Object.keys(remoteConfig.columnVisibility).length > 0;
+        const orphanKeys = listOrphanColumnPersistKeys(
+          remoteConfig,
+          collectKnownColumnPersistKeys(rawColumns),
+        );
         if (hasRemoteKeys && applyResult.invalid) {
           hasHealed = true;
           clearLocalStorageCache();
@@ -1290,6 +1332,12 @@ async function loadColumnConfig() {
           });
         } else {
           hasApplied = true;
+          if (orphanKeys.length > 0) {
+            await healColumnConfig(rawColumns, {
+              reason: '远端配置含当前列定义之外的脏键，按当前列全集回写',
+              sourceConfig: remoteConfig,
+            });
+          }
         }
       } else {
         debugLog('远端配置解析失败或为空', {
@@ -1318,6 +1366,10 @@ async function loadColumnConfig() {
       const hasLocalKeys =
         localConfig.visibleColumnKeys.length > 0 ||
         Object.keys(localConfig.columnVisibility).length > 0;
+      const orphanKeys = listOrphanColumnPersistKeys(
+        localConfig,
+        collectKnownColumnPersistKeys(rawColumns),
+      );
       hasApplied = true;
       // 本地兜底同样要校验，避免旧格式或异种配置被原样应用后再回写远端
       if (hasLocalKeys && applyResult.invalid) {
@@ -1326,6 +1378,12 @@ async function loadColumnConfig() {
           reason: applyResult.recovered
             ? '本地兜底配置应用后无可见列'
             : '本地兜底配置键与当前列全部不匹配',
+          sourceConfig: localConfig,
+        });
+      } else if (orphanKeys.length > 0) {
+        clearLocalStorageCache();
+        await healColumnConfig(rawColumns, {
+          reason: '本地兜底含当前列定义之外的脏键，按当前列全集回写',
           sourceConfig: localConfig,
         });
       } else if (columnPersist.value?.add) {

@@ -175,7 +175,7 @@ export function useFeeLockColumns(): VxeTableGridOptions<FeeLockTreeRow>['column
       minWidth: 140,
     },
     {
-      field: 'clientName',
+      field: 'client.name',
       title: $t('seaExport.export.clientId'),
       minWidth: 140,
       showOverflow: true,

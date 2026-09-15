@@ -211,11 +211,10 @@ export function useColumns(
       sortable: false,
     },
     {
-      field: 'countryName',
+      field: 'country.countryName',
       title: $t('system.basicData.airPort.countryName'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) => row.country?.countryName ?? '',
     },
     {
       field: 'city',

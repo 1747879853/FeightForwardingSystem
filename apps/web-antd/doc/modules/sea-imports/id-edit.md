@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-09-14
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isFeituoSubscribed` / `isFeituoSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 | **贸易方式** | 海运进口贸易方式。 | 枚举中心 `TradeMode`（`/system/enumeration`） | 后端只存整数。 | 不校验取值；未配置枚举时下拉为空。 |
+| **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。回显过渡可读票根旧字段。 | 可空；最长 64。 |
 | **码头航次** | 港区航次，与船公司航次 `innerVoyno` 是两套编号；界面不展示。 | `SeaImportDto.terminalVoyno` | **触发/依赖：** 表单 `hidden`；码头船舶引入写这里（`ivoyage`）。 | 可空；上限 32。 |
 | **毛重 KGS / 体积 CBM / 净重合计** | 整票毛重、体积与集装箱净重求和。 | `transportOrder.kgs/cbm`、`totalNetWeight`；库列毛重体积 `decimal(20,4)` | **触发/依赖：** 最多 4 位小数，末尾 0 不展示；净重合计可由箱明细净重汇总。 | 可选，非负。 |
 | **集装箱毛重 / 皮重 / 净重 / 体积** | 箱明细重量体积。 | `orderCtns.grossWeight/tareWeight/netWeight/volume` | **触发/依赖：** 与主单同一套 `weight-volume-precision`。 | 可选，非负。 |
@@ -72,6 +73,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | 报关发票号改为读写 `transportOrder.invoiceNum`，文案由「发票号」改名。 | 详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 与海出附件 Tab 共用比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 与新建共用进口 `order-ctn-table.vue`。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」；选码头计划弹窗不出该列，提示文案也不再提码头航次。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |

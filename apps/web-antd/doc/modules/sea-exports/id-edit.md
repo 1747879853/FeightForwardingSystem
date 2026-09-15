@@ -96,6 +96,7 @@ last_updated: 2026-09-15
 | **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要（所属公司文案）。 | `transportOrder.commissionNum/accountDate/settlementDate`、`orgs` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`；归属组织已改为头部可编辑 `UserOrgSelect`，勿与只读所属公司文案混淆。 | 前端展示为只读（归属组织除外）。 |
 | **归属组织** | 委托直属组织（必填）；头部按干系人销售绑定可选范围，标签带 `*`。 | `orgId`；`UserOrgSelect` + `salesUserId` + `headerOrgSelectedItems`（`formatOrgPathLabel(orgs)`） | **触发/依赖：** 详情用 `orgs` 路径兜底回显；销售切换时仅「从另一用户切过来」清空已选；缺值时 toast 点名。 | **必填项**；schema 隐藏载体保留校验。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** `flattenDetail`/`buildSeaExportDto`；复制确认展示源票值，入库由后端置空；栅格排在运输条款/贸易条款之后。 | 可空；最长 64。 |
+| **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。 | 可空；最长 64。 |
 | **场站联系人 / 邮箱 / 手机 / 电话** | 「场站」标签右侧展示联系人，悬浮后展示邮箱、手机、电话；保存时透传以防被空覆盖。 | `SeaExportDto` / `SeaExportEditDto` 的 `yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与 `yardId` 选择解耦，当前不随改场站即时刷新；`collectCurrentFormValues` + `buildSeaExportDto` 写入提交 DTO。 | UI 只读；保存必须带回当前值；空值显示 `-`。 |
 | **委托单位 / 订舱代理联系人** | 标签右侧展示姓名，悬停邮箱/手机/电话。 | 详情 `clientContact` / `bookingAgentContact`；改选客户后 `ClientContactAdmin/GetPagedListAsync` | **触发/依赖：** 回填用详情对象，不在加载时改写成默认；保存 `clientContactId`（运输单）与 `bookingAgentContactId`（海出根）。 | UI 只读；无下拉；空显示 `-`。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
@@ -172,6 +173,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-15 | `Fix` | 分单主卡 `serviceStatus` 中文由「运输状态」改为「运输条款」。 | 仍绑定 `codeServiceId` / `CodeServiceSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-separate-service-status-label.md)。 |
 | 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。监装照片槽位同样按原始 `sortId` 降序。 | 共用 `compareAttachmentTypeSortIdDesc`；缺省 `0`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-13 | `Fix` | 派车列表分页改为 `pageIndex` / `pageSize`，不再误传 `skipCount`。 | `SeaExportDispatchQueryDto` 继承 `PagingAndSorting`。详见 [变更日志](../../changelogs/change-log-2026-09-13-dispatch-page-params.md)。 |

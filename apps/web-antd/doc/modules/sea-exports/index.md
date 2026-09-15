@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,7 +17,7 @@ last_updated: 2026-09-11
 | 路由名称 | `SeaExportList` |
 | 页面组件 | `src/views/sea-export-admin/list.vue` |
 | 权限口径 | 路由未声明独立权限；菜单入口由父路由 `/sea-exports` 承载 |
-| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/list-column-defaults.ts`<br/>`src/views/sea-export-admin/form.vue`<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
+| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/modules/batch-edit-business-modal.vue`<br/>`src/views/sea-export-admin/list-column-defaults.ts`<br/>`src/views/sea-export-admin/form.vue`<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -25,9 +25,10 @@ last_updated: 2026-09-11
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
-- **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
+- **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。港口备注列仍用 `polName` 等旧 field + `formatter` 读 `*Remark`，排序仍走 `*.PortName`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
+- **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、干系人三区（一行三列），控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（服务项和任务会按新港重做，原进度清掉；一票失败则整批不保存）；选目的港时弹窗内只读预览航线。仅 `isEditable === true` 的票 id 参与提交。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；按钮旁有规则说明（船公司、主提单号/箱号）。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
@@ -55,23 +56,24 @@ last_updated: 2026-09-11
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；需点「查询」触发表格刷新；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
+| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号 / 报关发票号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；需点「查询」触发表格刷新；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `InvoiceNum`）。 |
 | **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
+| **报关发票号** | 报关用的商业发票号；列表列与独立模糊筛选。 | 列 `transportOrder.invoiceNum`；筛 `InvoiceNum` | **触发/依赖：** 默认列隐藏，与合同号同款；复制入库由后端置空。 | 可空；最长 64。 |
 | **开船日期** | 按运输单 ETD 过滤海出委托；列表默认按该字段降序。 | 筛 `ETDRange` -> `ETDStart` / `ETDEnd`；列 `transportOrder.etd`；`sorting`=`TransportOrder.ETD` | **触发/依赖：** 前端拆分日期区间：开始 `startOf('day')`、结束 `endOf('day')` 再转 ISO，避免点「今天」带上当前时分。`defaultSort` 写成 `TransportOrder.Etd DESC` 才能把列头箭头落到本列。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **货好 / 实际开船 / 预抵 / 截港 / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截港/截关在海出根级；`formatDate`。 | 无值时空。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
 | **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
-| **航线** | 目的港所属航线名称。 | 列 `laneName`；展示 `pod.lane.laneName` | **触发/依赖：** 列表 DTO 无顶层 `laneName`，单元格用 `formatter` 读目的港对象；列头排序仍走 `fieldMap` 的 `POD.Lane.LaneName`。 | 目的港无航线时为空。 |
+| **航线** | 目的港所属航线名称。 | 列 `pod.lane.laneName` | **触发/依赖：** 列 `field` 直接绑目的港航线；排序走 `fieldMap` 的 `POD.Lane.LaneName`。 | 目的港无航线时为空。 |
 | **船名 / 航次** | 船期检索字段；航次是船公司航次。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
 | **码头航次** | 港区航次；与船公司航次是两套编号；界面不展示。 | 筛 `TerminalVoyno`（hidden）；列表不再定义该列 | **触发/依赖：** 不进 `Keyword` 模糊范围；查码头船舶计划仍用该字段。 | 可清空；出口上限 64。 |
-| **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示 `carrierLogo` + `carrier?.code`（英文简称）；订舱代理/场站/委托单位等走对象字段 `bookingAgent?.name`、`yard?.name`、`transportOrder.client?.name`（列 `field`/`fieldMap` 仍保留旧键名以便排序与列持久化）。 | 需选择有效基础资料或客户资料；对象为空显示 `--`。 |
+| **船公司 / 订舱代理 / 场站** | 承运、订舱与场站主体。 | `CarrierSelect`、客户选择 `industryCategory: 'o'`、场站下拉 | **触发/依赖：** 船公司列 `carrierCode` + Logo 插槽；订舱代理 `bookingAgent.name`、场站 `yard.name`、委托单位 `transportOrder.client.name`；列 `field` 与对象路径一致。 | 需选择有效基础资料或客户资料；对象为空显示空。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
 | **所属公司（列表列）** | 委托所属公司名称（组织串首节点）。 | 列 `orgs`；i18n `seaExport.export.organizationUnits` | **触发/依赖：** `formatter` 取 `orgs?.[0]?.name`；勿与归属组织末端 `orgs.at(-1)` 混淆。 | 无则空串。 |
 | **所属组织（筛选）** | 委托归属组织过滤条件（直属组织）。 | `MyOrgSelect` / `OrgId` | **触发/依赖：** 查询入参 `orgId`。 | 须为本人直属组织。 |
 | **箱号** | 按箱号定位包含具体箱的委托。 | 查询参数 `CtnNo` | **触发/依赖：** 与订单箱型箱量明细相关。 | 文本可清空；匹配以后端为准。 |
 | **货物类型 / 品名** | 货物维度检索字段。 | `CargoId`、`GoodsDes`；货物类型枚举 `普通/冷藏/危险品/超限` | **触发/依赖：** 与编辑页货物信息字段一致。 | 货物类型需选择枚举值。 |
-| **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列表展示 `codeSource?.cnName`、`codeIssueType?.billType`（无对象时回退旧 `*Name`）；列 `field` 仍为 `codeSourceName` / `codeIssueTypeName` 以便排序与列持久化。付费方式、包装同理读 `codeFrt?.cnName`、`codePackage?.name`。 | 需选择有效代码资料。 |
+| **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列 `field` 为 `transportOrder.codeSource.cnName`、`transportOrder.codeFrt.cnName`、`codeIssueType.billType`、`transportOrder.codePackage.name`。 | 需选择有效代码资料。 |
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表列仅图标展示（锁定红色 `LockKeyhole` / 未锁定灰色 `LockKeyholeOpen`）；查询区仍可按是/否筛选；编辑页以锁定标签展示。 | 布尔值，是/否。 |
 | **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表**不预填**；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** 未选则不传起止；用户选月后 `normalizeQuery` 扩成整月。schema 不设 `defaultValue`；`handleReset` 清空期间不查询。 | Month RangePicker；可清空后重查。 |
@@ -108,6 +110,9 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Feature` | 列表新增报关发票号列与 `InvoiceNum` 筛选；关键字覆盖该字段。 | 列 `transportOrder.invoiceNum`；默认隐藏。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
+| 2026-09-15 | `Feature` | 列表工具栏新增「批量修改」，多选后按区批量改基础/港口/干系人字段（一行三列）。 | `batch-edit-business-modal.vue` + `BatchEditAsync`；payload 剥离空值，`poT1Id`→`pot1Id`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-business.md)。 |
+| 2026-09-15 | `Fix` | 委托单位、订舱代理、场站、航线、业务来源/付费方式/包装/签单方式、收发通等列 `field` 改绑真实对象路径，修复对象化后格子空白。 | 纯取值 formatter 删除；`fieldMap`/`list-column-defaults` 同步；港口备注列仍 `*Name`+`formatter`。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-11 | `Feature` | 业务状态进行中时，文案前显示橙色「待」徽标。 | 与详情页服务项目 `active` 节点同一标记。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-11 | `Fix` | 列表不再展示「码头航次」列，筛选也隐藏。 | `useColumns` 去掉该列，避免用户列设置再勾出。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-08 | `Fix` | 刷新列表时同步刷新分组 Tab 条数（删除等数据变更后不再显示过期条数）。 | `handleRefresh` 追加 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

@@ -100,7 +100,7 @@ export function usePreOrderReviewColumns(): Array<Record<string, any>> {
       cellRender: { name: 'CellTag', options: taskStatusOptions },
     },
     {
-      field: 'preOrder.clientName',
+      field: 'preOrder.client.name',
       title: '委托单位',
       minWidth: 180,
       showOverflow: true,

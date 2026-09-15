@@ -165,6 +165,7 @@ export const flattenDetail = (
     feeLocked: to?.feeLocked,
     mblNum: to?.mblNum,
     contractNum: to?.contractNum,
+    invoiceNum: to?.invoiceNum,
     internalRemark: to?.internalRemark,
     remark: to?.remark,
     marks: to?.marks,

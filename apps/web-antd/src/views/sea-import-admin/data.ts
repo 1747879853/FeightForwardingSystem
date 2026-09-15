@@ -783,14 +783,22 @@ export function useGridFormSchema(): VbenFormSchema[] {
  */
 export const SEA_IMPORT_SORT_FIELD_MAP: Record<string, string> = {
   'transportOrder.etd': 'TransportOrder.ETD',
+  'transportOrder.client.name': 'TransportOrder.Client.Name',
   'transportOrder.clientName': 'TransportOrder.Client.Name',
+  'transportOrder.codeSource.cnName': 'TransportOrder.CodeSource.CnName',
   'transportOrder.codeSourceName': 'TransportOrder.CodeSource.CnName',
+  'transportOrder.codeService.cnName': 'TransportOrder.CodeService.CnName',
   'transportOrder.codeServiceName': 'TransportOrder.CodeService.CnName',
   carrierCode: 'Carrier.CnName',
+  'pol.portName': 'POL.PortName',
   polName: 'POL.PortName',
+  'pod.portName': 'POD.PortName',
   podName: 'POD.PortName',
+  'pol.lane.laneName': 'POL.Lane.LaneName',
   laneName: 'POL.Lane.LaneName',
+  'pol.country.countryName': 'POL.Country.CountryName',
   countryName: 'POL.Country.CountryName',
+  'originCountry.countryName': 'OriginCountry.CountryName',
   originCountryName: 'OriginCountry.CountryName',
 };
 
@@ -844,7 +852,7 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       showOverflow: true,
     },
     {
-      field: 'invoiceNum',
+      field: 'transportOrder.invoiceNum',
       title: $t('seaImport.import.invoiceNum'),
       minWidth: 130,
       showOverflow: true,
@@ -862,11 +870,10 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       formatter: 'formatDate',
     },
     {
-      field: 'transportOrder.clientName',
+      field: 'transportOrder.client.name',
       title: $t('seaImport.import.clientId'),
       minWidth: 150,
       showOverflow: true,
-      formatter: ({ row }) => row.transportOrder?.client?.name ?? '',
     },
     {
       field: 'carrierCode',
@@ -875,18 +882,16 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       slots: { default: 'carrierWithLogo' },
     },
     {
-      field: 'polName',
+      field: 'pol.portName',
       title: $t('seaImport.import.polId'),
       minWidth: 120,
       showOverflow: true,
-      formatter: ({ row }) => row.pol?.portName ?? '',
     },
     {
-      field: 'podName',
+      field: 'pod.portName',
       title: $t('seaImport.import.podId'),
       minWidth: 120,
       showOverflow: true,
-      formatter: ({ row }) => row.pod?.portName ?? '',
     },
     {
       field: 'vessel',
@@ -901,32 +906,28 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       showOverflow: true,
     },
     {
-      field: 'laneName',
+      field: 'pol.lane.laneName',
       title: $t('seaImport.import.laneName'),
       minWidth: 120,
       showOverflow: true,
-      formatter: ({ row }) => row.pol?.lane?.laneName ?? '',
     },
     {
-      field: 'countryName',
+      field: 'pol.country.countryName',
       title: $t('seaImport.import.countryName'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) => row.pol?.country?.countryName ?? '',
     },
     {
-      field: 'originCountryName',
+      field: 'originCountry.countryName',
       title: $t('seaImport.import.originCountryId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) => row.originCountry?.countryName ?? '',
     },
     {
       field: 'terminal.name',
       title: $t('seaImport.import.terminal'),
       minWidth: 120,
       showOverflow: true,
-      formatter: ({ row }) => row.terminal?.name ?? '',
     },
     {
       field: 'tradeMode',
@@ -941,24 +942,16 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       showOverflow: true,
     },
     {
-      field: 'transportOrder.codeSourceName',
+      field: 'transportOrder.codeSource.cnName',
       title: $t('seaImport.import.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeSourceName ||
-        row.transportOrder?.codeSource?.cnName ||
-        '',
     },
     {
-      field: 'transportOrder.codeServiceName',
+      field: 'transportOrder.codeService.cnName',
       title: $t('seaImport.import.codeServiceId'),
       minWidth: 110,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codeServiceName ||
-        row.transportOrder?.codeService?.cnName ||
-        '',
     },
     {
       field: 'transportOrder.totalCtn',
@@ -1039,7 +1032,7 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       formatter: ({ row }) => formatMonth(row.transportOrder?.accountDate),
     },
     {
-      field: 'transportOrder.shipperName',
+      field: 'transportOrder.shipper.name',
       title: $t('seaImport.import.shipperId'),
       minWidth: 140,
       sortable: false,
@@ -1051,7 +1044,7 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
         ),
     },
     {
-      field: 'transportOrder.consigneeName',
+      field: 'transportOrder.consignee.name',
       title: $t('seaImport.import.consigneeId'),
       minWidth: 140,
       sortable: false,
@@ -1063,7 +1056,7 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
         ),
     },
     {
-      field: 'transportOrder.notifierName',
+      field: 'transportOrder.notifier.name',
       title: $t('seaImport.import.notifierId'),
       minWidth: 140,
       sortable: false,
@@ -1080,15 +1073,11 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 90,
     },
     {
-      field: 'transportOrder.codePackageName',
+      field: 'transportOrder.codePackage.name',
       title: $t('seaImport.import.codePackageId'),
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
-        row.transportOrder?.codePackageName ||
-        row.transportOrder?.codePackage?.name ||
-        '',
     },
     {
       field: 'transportOrder.kgs',

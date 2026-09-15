@@ -227,6 +227,8 @@ export namespace SeaExportAdminApi {
     bookingNum?: string;
     /** 合同号（可空，最长 64） */
     contractNum?: string;
+    /** 报关发票号（可空，最长 64，一票一号，复制清空） */
+    invoiceNum?: string;
     codeFrtId?: number;
     prepareAtId?: number;
     codeServiceId?: number;
@@ -716,7 +718,7 @@ export namespace SeaExportAdminApi {
     Keyword?: string;
     /**
      * Keys 精确搜索（SQL IN，非模糊）：命中船名、船公司航次、业务备注、
-     * 主提单号、订舱编号、合同号、委托编号中任意一个即可（不含码头航次）。
+     * 主提单号、订舱编号、合同号、报关发票号、委托编号中任意一个即可（不含码头航次）。
      * GET 需 repeat 序列化：Keys=a&Keys=b。
      */
     Keys?: string[];
@@ -746,6 +748,8 @@ export namespace SeaExportAdminApi {
     CtnNo?: string;
     /** 合同号（TransportOrder.ContractNum）模糊匹配 */
     ContractNum?: string;
+    /** 报关发票号（TransportOrder.InvoiceNum）模糊匹配 */
+    InvoiceNum?: string;
     CloseDocTimeStart?: string;
     CloseDocTimeEnd?: string;
     /** 会计期间起（>=），一般为当月 1 号 */
@@ -861,6 +865,42 @@ export namespace SeaExportAdminApi {
     closeDocTime?: string | null;
     closeManifestTime?: string | null;
   }
+
+  /**
+   * 批量编辑海运出口入参（除 ids 外全部可空，只传要改的字段）。
+   * 字段名与后端 SeaExportBatchEditDto 一致。
+   */
+  export interface SeaExportBatchEditDto {
+    ids: Array<number | string>;
+    orgId?: LongId | null;
+    clientId?: string | null;
+    shipAgentId?: string | null;
+    bookingAgentId?: string | null;
+    teamId?: string | null;
+    insuranceId?: string | null;
+    warehouseId?: string | null;
+    yardId?: string | null;
+    carrierId?: LongId | null;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    codeIssueTypeId?: LongId | null;
+    codeFrtId?: LongId | null;
+    prepareAtId?: LongId | null;
+    codeServiceId?: LongId | null;
+    tradeTermsType?: number | null;
+    codeSourceId?: LongId | null;
+    receivePortId?: LongId | null;
+    polId?: LongId | null;
+    pot1Id?: LongId | null;
+    pot2Id?: LongId | null;
+    podId?: LongId | null;
+    deliverPortId?: LongId | null;
+    operationUserId?: LongId | null;
+    documentationUserId?: LongId | null;
+    customerServiceUserId?: LongId | null;
+    saleUserId?: LongId | null;
+    lanerUserId?: LongId | null;
+  }
 }
 
 const API_PREFIX = '/services/app/SeaExportAdmin';
@@ -907,6 +947,13 @@ export const addSeaExport = (data: SeaExportAdminApi.SeaExportAddDto) => {
 
 export const editSeaExport = (data: SeaExportAdminApi.SeaExportEditDto) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
+};
+
+/** 批量编辑海运出口；返回实际修改的票数 */
+export const batchEditSeaExport = (
+  data: SeaExportAdminApi.SeaExportBatchEditDto,
+) => {
+  return requestClient.put<number>(`${API_PREFIX}/BatchEditAsync`, data);
 };
 
 /** 重新生成委托编号，返回后端按编号规则生成的新编号 */

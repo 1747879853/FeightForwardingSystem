@@ -331,6 +331,7 @@ const BASIC_INFO_FIELD_ORDER = [
   'codeServiceId',
   'tradeTermsType',
   'contractNum',
+  'invoiceNum',
 ] as const;
 const BASIC_INFO_FIELD_ORDER_MAP = new Map(
   BASIC_INFO_FIELD_ORDER.map((fieldName, index) => [fieldName, index]),

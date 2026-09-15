@@ -299,6 +299,8 @@ export namespace SeaImportAdminApi {
     mblNum?: string;
     bookingNum?: string;
     contractNum?: string;
+    /** 报关发票号（商业发票号，最长 64，一票一号，复制清空） */
+    invoiceNum?: string;
     internalRemark?: string;
     remark?: string;
     marks?: string;
@@ -375,6 +377,8 @@ export namespace SeaImportAdminApi {
     mblNum?: null | string;
     bookingNum?: null | string;
     contractNum?: null | string;
+    /** 报关发票号；2026-09-15 从海运进口层迁入业务主表 */
+    invoiceNum?: null | string;
     internalRemark?: null | string;
     remark?: null | string;
     marks?: null | string;
@@ -508,7 +512,6 @@ export namespace SeaImportAdminApi {
      * 贸易方式：枚举中心 `TradeMode`，后端只存整数、不校验、不参与逻辑。
      */
     tradeMode?: number;
-    invoiceNum?: string;
     batchNum?: string;
     /** 原产国：整票只有一个 */
     originCountryId?: LongId;
@@ -573,7 +576,6 @@ export namespace SeaImportAdminApi {
     throughBillNum?: null | string;
     hblNum?: null | string;
     tradeMode?: null | number;
-    invoiceNum?: null | string;
     batchNum?: null | string;
     originCountryId?: LongId | null;
     originCountry?: CountrySimpleDto | null;
@@ -651,7 +653,7 @@ export namespace SeaImportAdminApi {
     PageSize?: number;
     Sorting?: string;
 
-    /** 模糊匹配船名/航次/发票号/批次号/外部备注/主提单号/合同号/委托编号 */
+    /** 模糊匹配船名/航次/报关发票号/批次号/外部备注/主提单号/合同号/委托编号 */
     Keyword?: string;
     /** 按所属组织筛，自动包含全部下级组织 */
     OrgId?: number;
@@ -677,7 +679,6 @@ export namespace SeaImportAdminApi {
     HblNum?: string;
     /** 贸易方式：筛选项来自枚举中心 `TradeMode` */
     TradeMode?: number;
-    InvoiceNum?: string;
     BatchNum?: string;
     OriginCountryId?: LongId;
     OriginCountryIdEmpty?: boolean;
@@ -711,6 +712,8 @@ export namespace SeaImportAdminApi {
     MblNum?: string;
     BookingNum?: string;
     ContractNum?: string;
+    /** 报关发票号（TransportOrder.InvoiceNum）模糊匹配 */
+    InvoiceNum?: string;
     InternalRemark?: string;
     CargoId?: number;
     Marks?: string;

@@ -13,6 +13,10 @@
 
 ## 2026-09
 
+- [2026-09-15] [列表列 field 改绑真实对象路径](./changelogs/change-log-2026-09-15-list-column-object-path.md)
+- [2026-09-15] [列表列设置以当前列为全集并清掉脏键](./changelogs/change-log-2026-09-15-column-persist-prune-stale-keys.md)
+- [2026-09-15] [报关发票号抽到业务主表](./changelogs/change-log-2026-09-15-transport-order-invoice-num.md)
+- [2026-09-15] [海运出口列表批量修改业务](./changelogs/change-log-2026-09-15-sea-export-batch-edit-business.md)
 - [2026-09-15] [业务联系单付款方式前移与备注后置](./changelogs/change-log-2026-09-15-pre-order-pay-method-remark.md)
 - [2026-09-15] [海运出口分单运输条款文案更正](./changelogs/change-log-2026-09-15-sea-export-separate-service-status-label.md)
 - [2026-09-14] [业务附件按原始 sortId 降序](./changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)

@@ -86,6 +86,7 @@ export const flattenDetail = (
     mblNum: to?.mblNum,
     bookingNum: to?.bookingNum,
     contractNum: to?.contractNum,
+    invoiceNum: to?.invoiceNum,
     accountDate: toDayjs(to?.accountDate),
     settlementDate: toDayjs(to?.settlementDate),
     orgId: detail.orgId ?? undefined,

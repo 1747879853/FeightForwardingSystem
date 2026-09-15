@@ -187,6 +187,7 @@ const BASIC_INFO_FIELD_ORDER = [
   'clientId',
   'mblNum',
   'contractNum',
+  'invoiceNum',
   'codeServiceId',
   'teamId',
   'custBrokerId',

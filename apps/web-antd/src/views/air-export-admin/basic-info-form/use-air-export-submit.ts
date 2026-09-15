@@ -64,6 +64,7 @@ export const buildAirExportDto = (
     isBusinessLocking: values.isBusinessLocking,
     mblNum: values.mblNum,
     contractNum: values.contractNum,
+    invoiceNum: values.invoiceNum,
     internalRemark: values.internalRemark,
     remark: values.remark,
     marks: values.marks,
