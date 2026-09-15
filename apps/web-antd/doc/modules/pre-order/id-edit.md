@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,7 +14,7 @@ last_updated: 2026-09-14
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等；编辑且可保存时「保存」为拆分按钮，下拉「复制新建」；待审核/通过无保存时单独显示「复制新建」）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表顺序：首行委托单位 / 主提单号 / 货好时间 / 开船日期 / 船公司 / **船名·航次**（`VesselVoyageInput` 合并一格），次行付款方式 / 起运地 / 目的地 / 贸易条款·运输条款 / 备注（占剩余三列）；**订舱代理**、**车队**排在备注后末行。其下为 **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像，选人下拉按该行 `userAttribute` 过滤。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮（可保存态含 **AI识别**、上传附件、保存等；编辑且可保存时「保存」为拆分按钮，下拉「复制新建」；待审核/通过无保存时单独显示「复制新建」）；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表顺序：首行委托单位 / 主提单号 / 货好时间 / 开船日期 / 船公司 / **船名/航次**（`VesselVoyageInput` 合并一格，与海出同款），次行起运地 / 目的地 / **付款方式** / 贸易条款·运输条款 / **订舱代理** / **车队**；**备注**在车队后换行通栏，默认 3 行。其下为 **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像，选人下拉按该行 `userAttribute` 过滤。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **AI识别：** 可保存态（新建 / 录入 / 驳回）顶栏「AI识别」→ 拖拽/选择单证 → `TextInAdmin/ExtractPreOrderToAddDtoAsync`（FormData 传文件 + 当前 `bizType`，超时 120s）→ 只把有值字段写入表单（空/`0`/空 Guid 不覆盖已填项）→ 注入下拉 `selectedItems` 并联动干系人默认、起运港服务项、费用计量；未匹配箱型保留 `ctnCodeName` 提示补选；识别出收发通文本时自动展开折叠区。原始结果在 `result.extract`，表单数据在 `result.preOrder`。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后先 `syncFormSnapshot`，再 `replace` 到编辑路由、`closeTabByKey` 关掉新建页签，然后重新拉详情。
@@ -50,10 +50,11 @@ last_updated: 2026-09-14
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 用详情 `carrier`（`cnShortName`/`code`，注意**不是** `name`）+ 根节点 `carrierLogo` 拼 `selectedItems`，与海运出口一致展示 Logo；不再回拉船公司详情 | 非必填 |
 | **船名 / 航次（vessel / innerVoyno）** | 船名与船公司航次，视觉合并为一格 | `VesselVoyageInput`；字段 `vessel` + 隐藏载体 `innerVoyno` | **展示：** 主表首行末项（`pre-order-basic-field--6`）；`componentProps` 必须是函数以带出航次动态值。切换业务类型时刷新 `maxLength`。**回显：** 详情原样写入；清空后保存传空可解除。AI 识别可回填（英文大写） | 选填。海运进口各 ≤32，其余业务各 ≤64；仅海出/海进有意义，空出不填 |
-| **车队（teamId）** | 往来单位车队 | **客户**<br/>`ClientSelect`（`industryCategory: 'i'`） | **展示：** 主表末行订舱代理后（`pre-order-basic-field--13`）。**回显：** 详情 `team` 经 `toSelectedItems(teamId, team.name)` 注入；清空保存传空解除。审核通过写入 `TransportOrder.TeamId`（三种业务都有）。AI 识别不回填车队 | 选填；有值须是存在的车队，否则后端报「车队不存在」 |
-| **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 业务稿无此字段，排在备注后、车队前（`pre-order-basic-field--12`）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
-| **付款方式** | 运费支付方式（原「付费方式」展示名） | `CodeFrtSelect`（`codeFrtId`） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；空值显示「请选择」 | 非必填 |
+| **车队（teamId）** | 往来单位车队 | **客户**<br/>`ClientSelect`（`industryCategory: 'i'`） | **展示：** 次行末项、订舱代理后（`pre-order-basic-field--12`）。**回显：** 详情 `team` 经 `toSelectedItems(teamId, team.name)` 注入；清空保存传空解除。审核通过写入 `TransportOrder.TeamId`（三种业务都有）。AI 识别不回填车队 | 选填；有值须是存在的车队，否则后端报「车队不存在」 |
+| **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 次行贸易条款后（`pre-order-basic-field--11`）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
+| **付款方式** | 运费支付方式（原「付费方式」展示名） | `CodeFrtSelect`（`codeFrtId`） | **展示：** 主表次行、贸易条款前（`pre-order-basic-field--9`）；空值显示「请选择」 | 非必填 |
 | **贸易条款 / 运输条款** | 贸易责任与运输条款 | 贸易条款字典 + `CodeServiceSelect`，视觉合并为 `ServiceTradeTermsInput` | **展示：** 主表次行占一列（两下拉挤在同一格）；左运输条款、右贸易条款；`tradeTermsType` 隐藏载体仍提交。回显 `codeServiceId` 时必须整段替换 `componentProps` 函数，勿只传 `selectedItems` | 非必填 |
+| **备注（remark）** | 业务联系单主表备注 | 手填 `Textarea` | **展示：** 车队后换行通栏（`pre-order-basic-field--13`，`col-span-6`），默认 3 行。勿与港口备注、费用行备注、箱型行备注混填 | 可选，最长 1024 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
 | **起运地** | POL（表单标签为「起运地」，列表筛选仍称起运港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；选中态为 `港口英文名-中文名`（如 QINGDAO-青岛），与海出 EDI 不同；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
@@ -123,6 +124,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-15 | `Fix` | TAPD `#1000965`：船名/航次仍在船公司后；付款方式挪到贸易条款前；订舱代理后为车队；备注放到车队后换行通栏，默认 3 行，不做高亮。 | 次行 6 项；备注 `col-span-6`、`rows: 3`。详见 [变更日志](../../changelogs/change-log-2026-09-15-pre-order-pay-method-remark.md)。 |
 | 2026-09-14 | `Fix` | 附件分组按类型原始 `sortId` 降序，历史组不再垫底。 | 额外拉 `GetListAsync` 补历史类型 sortId。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-14 | `Feature` | 主表新增船名/航次合并输入与车队下拉；已有单据回显，清空保存可解除。 | 海进 maxlength 32、其余 64；`VesselVoyageInput` 的 `componentProps` 必须是函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)。 |
 | 2026-09-05 | `Fix` | 新建保存成功后 `replace` 进编辑并关闭新建页签。 | 跳转前已 `syncFormSnapshot`。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |

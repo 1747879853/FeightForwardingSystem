@@ -93,8 +93,9 @@ export function buildPreOrderServiceTradeTermsProps(selectedItems?: unknown[]) {
 /**
  * 基础信息（业务/单据属性）。
  * 业务编号/状态/归属组织/业务类型/装运方式对齐海运出口展示在分区标题栏 meta 区，不进表单。
- * 可见顺序对齐业务稿：首行委托单位→主提单号→货好时间→开船日期→船公司→付款方式；
- * 次行起运地→目的地→贸易条款/运输条款→备注。稿中没有的订舱代理放到末行。
+ * 可见顺序：首行委托单位→主提单号→货好时间→开船日期→船公司→船名/航次；
+ * 次行起运地→目的地→付款方式→贸易条款/运输条款→订舱代理→车队；
+ * 备注单独一行（车队后换行）。
  */
 export function usePreOrderBasicSchema(
   options?: PreOrderBasicSchemaOptions,
@@ -158,20 +159,9 @@ export function usePreOrderBasicSchema(
       }),
     },
     {
-      component: 'CodeFrtSelect',
-      fieldName: 'codeFrtId',
-      formItemClass: 'pre-order-basic-field--7',
-      label: '付款方式',
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
       component: 'PortSelect',
       fieldName: 'polId',
-      formItemClass: 'pre-order-basic-field--8',
+      formItemClass: 'pre-order-basic-field--7',
       label: '起运地',
       rules: 'selectRequired',
       componentProps: buildPreOrderPortSelectProps('polId'),
@@ -179,9 +169,20 @@ export function usePreOrderBasicSchema(
     {
       component: 'PortSelect',
       fieldName: 'podId',
-      formItemClass: 'pre-order-basic-field--9',
+      formItemClass: 'pre-order-basic-field--8',
       label: '目的地',
       componentProps: buildPreOrderPortSelectProps('podId'),
+    },
+    {
+      component: 'CodeFrtSelect',
+      fieldName: 'codeFrtId',
+      formItemClass: 'pre-order-basic-field--9',
+      label: '付款方式',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'ServiceTradeTermsInput',
@@ -202,25 +203,25 @@ export function usePreOrderBasicSchema(
         class: 'w-full',
       },
     },
-    {
-      component: 'Textarea',
-      fieldName: 'remark',
-      label: '备注',
-      formItemClass: 'col-span-3 pre-order-basic-field--11',
-      componentProps: { rows: 1, maxlength: 1024 },
-    },
     createClientSelectSchema({
       fieldName: 'bookingAgentId',
-      formItemClass: 'pre-order-basic-field--12',
+      formItemClass: 'pre-order-basic-field--11',
       industryCategory: 'o',
       label: '订舱代理',
     }),
     createClientSelectSchema({
       fieldName: 'teamId',
-      formItemClass: 'pre-order-basic-field--13',
+      formItemClass: 'pre-order-basic-field--12',
       industryCategory: 'i',
       label: $t('preOrder.teamId'),
     }),
+    {
+      component: 'Textarea',
+      fieldName: 'remark',
+      label: '备注',
+      formItemClass: 'col-span-6 pre-order-basic-field--13',
+      componentProps: { rows: 3, maxlength: 1024 },
+    },
   ];
 }
 

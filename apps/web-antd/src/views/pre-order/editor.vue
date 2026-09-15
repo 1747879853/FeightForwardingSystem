@@ -2253,7 +2253,7 @@ const getContentTabStyle = (isActive: boolean) =>
   padding-top: 12px;
 }
 
-/* 主表对齐业务稿：首行 6 项末项为付款方式；次行起运地/目的地/条款/备注；订舱代理在末行。 */
+/* 主表：首行末项船名/航次；次行起运地/目的地/付款方式/条款/订舱代理/车队；备注在车队后换行。 */
 .pre-order-basic-page :deep(.pre-order-basic-field--1) {
   order: 1;
 }
