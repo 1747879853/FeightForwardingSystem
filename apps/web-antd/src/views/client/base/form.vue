@@ -124,6 +124,26 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return '-';
   }
 };
+
+const getOrderUserRoleIcon = (userAttribute?: number) => {
+  switch (userAttribute) {
+    case UserAttribute.Sales:
+      return 'mdi:account-tie-outline';
+    case UserAttribute.Operation:
+      return 'mdi:cog-outline';
+    case UserAttribute.CustomerService:
+      return 'mdi:headset';
+    case UserAttribute.Documentation:
+      return 'mdi:file-document-outline';
+    default:
+      return 'mdi:account-outline';
+  }
+};
+
+const getStakeholderCount = (item: {
+  userIds?: number[];
+  stakeholderList?: unknown[];
+}) => item.userIds?.length ?? item.stakeholderList?.length ?? 0;
 const defaultOrderUsers = ref<ClientAdminApi.ClientStakeholderListDto[]>([
   { userAttribute: UserAttribute.Sales, stakeholderList: [] },
   { userAttribute: UserAttribute.Operation, stakeholderList: [] },
@@ -1831,50 +1851,84 @@ onMounted(() => {
       </div>
     </div>
 
-    <Card class="right-column mr-2 w-[260px] rounded-md shadow-md">
+    <Card class="right-column stakeholders-panel mr-2">
       <template #title>
         <span class="card-title">
-          <IconifyIcon
-            icon="gridicons:multiple-users"
-            class="size-4"
-          ></IconifyIcon>
+          <span class="stakeholders-panel__title-icon" aria-hidden="true">
+            <IconifyIcon icon="gridicons:multiple-users" class="size-4" />
+          </span>
           {{ $t('seaExport.client.stakeholders') }}
         </span>
       </template>
-      <div
-        v-for="(item, index) in defaultOrderUsers"
-        :key="item.userAttribute"
-        class="stakeholders-content w-full space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3 shadow"
-      >
-        <div class="font-semibold">
-          {{ getOrderUserRoleLabel(item.userAttribute) }}
-        </div>
-        <div>
-          <UserSelect
-            :mode="'multiple'"
-            :model-value="item.userIds"
-            labelKey="nickName"
-            :user-attribute="item.userAttribute"
-            @update:model-value="
-              (v) => updateStakeholders(item.userAttribute, v as number[])
-            "
-          >
-          </UserSelect>
-        </div>
-      </div>
 
-      <!-- 对账人区域 -->
-      <div
-        class="stakeholders-content mt-2 w-full space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3 shadow"
-      >
-        <div class="font-semibold">对账人</div>
-        <div>
-          <UserSelect
-            mode="multiple"
-            :model-value="reconcilerUserIds"
-            labelKey="nickName"
-            @update:model-value="updateReconcilers($event as number[])"
-          />
+      <div class="stakeholders-panel__body">
+        <div class="stakeholders-panel__group">
+          <div class="stakeholders-panel__group-label">业务干系人</div>
+          <div
+            v-for="item in defaultOrderUsers"
+            :key="item.userAttribute"
+            class="stakeholder-block"
+            :class="{
+              'stakeholder-block--filled': getStakeholderCount(item) > 0,
+            }"
+          >
+            <div class="stakeholder-block__head">
+              <span class="stakeholder-block__icon" aria-hidden="true">
+                <IconifyIcon
+                  :icon="getOrderUserRoleIcon(item.userAttribute)"
+                  class="size-3.5"
+                />
+              </span>
+              <span class="stakeholder-block__title">
+                {{ getOrderUserRoleLabel(item.userAttribute) }}
+              </span>
+              <span class="stakeholder-block__count">
+                {{ getStakeholderCount(item) }}
+              </span>
+            </div>
+            <UserSelect
+              mode="multiple"
+              :model-value="item.userIds"
+              label-key="nickName"
+              :user-attribute="item.userAttribute"
+              class="stakeholder-block__select"
+              @update:model-value="
+                (v) => updateStakeholders(item.userAttribute, v as number[])
+              "
+            />
+          </div>
+        </div>
+
+        <div class="stakeholders-panel__divider" role="separator"></div>
+
+        <div class="stakeholders-panel__group">
+          <div class="stakeholders-panel__group-label">结算对账</div>
+          <div
+            class="stakeholder-block stakeholder-block--reconciler"
+            :class="{
+              'stakeholder-block--filled': reconcilerUserIds.length > 0,
+            }"
+          >
+            <div class="stakeholder-block__head">
+              <span class="stakeholder-block__icon" aria-hidden="true">
+                <IconifyIcon
+                  icon="mdi:file-table-box-outline"
+                  class="size-3.5"
+                />
+              </span>
+              <span class="stakeholder-block__title">对账人</span>
+              <span class="stakeholder-block__count">
+                {{ reconcilerUserIds.length }}
+              </span>
+            </div>
+            <UserSelect
+              mode="multiple"
+              :model-value="reconcilerUserIds"
+              label-key="nickName"
+              class="stakeholder-block__select"
+              @update:model-value="updateReconcilers($event as number[])"
+            />
+          </div>
         </div>
       </div>
     </Card>
@@ -1892,9 +1946,179 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .right-column {
-  :deep(.ant-card-body) {
-    padding: 10px !important;
+  flex-shrink: 0;
+  width: 280px;
+  overflow: hidden;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+
+  :deep(.ant-card-head) {
+    min-height: 44px;
+    padding: 0 14px;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 8%) 0%,
+      hsl(var(--primary) / 3%) 70%,
+      hsl(var(--background)) 100%
+    );
+    border-bottom: 1px solid hsl(var(--border));
   }
+
+  :deep(.ant-card-head-title) {
+    padding: 10px 0;
+  }
+
+  :deep(.ant-card-body) {
+    padding: 12px !important;
+  }
+}
+
+.stakeholders-panel__title-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+  border-radius: 6px;
+}
+
+.stakeholders-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stakeholders-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stakeholders-panel__group-label {
+  padding-left: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.04em;
+}
+
+.stakeholders-panel__divider {
+  height: 1px;
+  margin: 2px 0;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 28%) 0%,
+    hsl(var(--border)) 55%,
+    transparent 100%
+  );
+}
+
+.stakeholder-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: hsl(var(--accent) / 45%);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    background: hsl(var(--primary) / 5%);
+    border-color: hsl(var(--primary) / 35%);
+    box-shadow: 0 2px 8px hsl(var(--primary) / 8%);
+  }
+
+  &:focus-within {
+    background: hsl(var(--primary) / 6%);
+    border-color: hsl(var(--primary) / 55%);
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
+  }
+}
+
+.stakeholder-block--filled {
+  background: hsl(var(--primary) / 4%);
+  border-color: hsl(var(--primary) / 22%);
+}
+
+.stakeholder-block--reconciler {
+  background: hsl(var(--muted) / 55%);
+
+  &:hover,
+  &:focus-within {
+    background: hsl(var(--primary) / 5%);
+  }
+
+  &.stakeholder-block--filled {
+    background: hsl(var(--primary) / 4%);
+  }
+}
+
+.stakeholder-block__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.stakeholder-block__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+  border-radius: 6px;
+}
+
+.stakeholder-block__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+
+.stakeholder-block__count {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+}
+
+.stakeholder-block--filled .stakeholder-block__count {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-color: hsl(var(--primary) / 22%);
+}
+
+.stakeholder-block__select {
+  width: 100%;
 }
 
 .text-sm {
