@@ -134,6 +134,14 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
               (params: any) => {
                 if (permission.masked(column.field, params.row))
                   return [h('span', '***')];
+                // 列配置里的函数插槽（如审核费用状态 Tag）必须转发，否则会落到原始值
+                const original = column.slots?.default;
+                if (typeof original === 'function') return original(params);
+                if (
+                  typeof original === 'string' &&
+                  !original.startsWith('permission_')
+                )
+                  return slots[original]?.(params);
                 if (column.cellRender)
                   return renderOriginalPermissionCell(
                     column.cellRender,
