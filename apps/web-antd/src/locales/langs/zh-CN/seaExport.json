@@ -203,6 +203,7 @@
     "batchEditSelectedCount": "已选 {0} 条",
     "batchEditSectionBasic": "基础信息",
     "batchEditSectionPort": "港口信息",
+    "batchEditSectionTime": "时间信息",
     "batchEditSectionStakeholder": "干系人",
     "batchEditSectionHint": "选填，留空不改",
     "batchEditPoT1": "中转港1",

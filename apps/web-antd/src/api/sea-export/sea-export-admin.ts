@@ -883,6 +883,14 @@ export namespace SeaExportAdminApi {
     carrierId?: LongId | null;
     vessel?: string | null;
     innerVoyno?: string | null;
+    /** 日期只能改成某个值，不能用本接口清空 */
+    goodsCompleteTime?: string | null;
+    etd?: string | null;
+    atd?: string | null;
+    eta?: string | null;
+    closeDocTime?: string | null;
+    closeVgmTime?: string | null;
+    closeManifestTime?: string | null;
     codeIssueTypeId?: LongId | null;
     codeFrtId?: LongId | null;
     prepareAtId?: LongId | null;

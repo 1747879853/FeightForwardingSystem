@@ -625,6 +625,7 @@
     "batchEditSelectedCount": "{0} selected",
     "batchEditSectionBasic": "Basic Info",
     "batchEditSectionPort": "Ports",
+    "batchEditSectionTime": "Schedule Dates",
     "batchEditSectionStakeholder": "Stakeholders",
     "batchEditSectionHint": "Optional, leave blank to keep",
     "batchEditPoT1": "Transit Port 1",

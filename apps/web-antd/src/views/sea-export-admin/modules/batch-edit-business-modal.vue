@@ -21,10 +21,15 @@ import { markEntitiesShouldRefresh } from '#/utils/list-refresh-flag';
 
 import { createClientSelectSchema } from '../../client/base/data';
 import {
-  buildPortSelectProps,
+  toDateOnlyString,
+  toDateString,
+} from '../basic-info-form/sea-export-detail-mapper';
+import {
   formatSeaExportPortRemark,
   getTradeTermsTypeOptions,
   pickPortSelectOption,
+  usePortFormSchema,
+  useShipmentFormSchema,
 } from '../data';
 
 /** 选港后自动带出对应备注，与编辑页 `PORT_ID_FIELD_TO_REMARK_FIELD` 同口径 */
@@ -36,6 +41,42 @@ const PORT_ID_TO_REMARK_FIELD: Record<string, string> = {
   podId: 'podRemark',
   deliverPortId: 'deliverPortRemark',
 };
+
+/**
+ * 港口流转卡片的列位：与编辑页同一套 `port-flow-*` 样式，
+ * 但批量修改把两个中转港平铺成独立列（编辑页是 Tab 切换），所以列位在此显式指定。
+ */
+const PORT_FLOW_COLUMN: Record<string, number> = {
+  receivePortId: 1,
+  receivePortRemark: 1,
+  polId: 2,
+  polRemark: 2,
+  poT1Id: 3,
+  poT1Remark: 3,
+  poT2Id: 4,
+  poT2Remark: 4,
+  podId: 5,
+  podRemark: 5,
+  deliverPortId: 6,
+  deliverPortRemark: 6,
+};
+
+/** 编辑页中转港标题走 Tab，这里两列并排需要各自的标题 */
+const PORT_LABEL_OVERRIDE: Record<string, string> = {
+  poT1Id: $t('seaExport.export.batchEditPoT1'),
+  poT2Id: $t('seaExport.export.batchEditPoT2'),
+};
+
+/** 与编辑页船期区一致的时间字段（截港日期即 closeVgmTime，closingTime 编辑页未展示） */
+const TIME_FIELD_NAMES = new Set([
+  'goodsCompleteTime',
+  'etd',
+  'atd',
+  'eta',
+  'closeDocTime',
+  'closeVgmTime',
+  'closeManifestTime',
+]);
 
 const PORT_REMARK_TO_PAYLOAD: Record<string, string> = {
   receivePortRemark: 'receivePortRemark',
@@ -50,8 +91,6 @@ const emits = defineEmits<{ success: [] }>();
 
 const batchIds = ref<Array<number | string>>([]);
 const lanePreview = ref('');
-/** 选港时记下自动带出的备注，提交时随对应港口 id 一起带上 */
-const portRemarks = ref<Record<string, string>>({});
 
 const hasValue = (value: unknown) => {
   if (value === null || value === undefined) return false;
@@ -95,6 +134,7 @@ const buildBatchEditPayload = (
     }
   }
 
+  /** 备注描述的就是那个港口，后端也只在港口 id 有值时落库，所以备注跟着 id 一起带 */
   const attachPort = (
     formIdField: string,
     payloadIdField: string,
@@ -102,7 +142,7 @@ const buildBatchEditPayload = (
   ) => {
     if (!hasValue(values[formIdField])) return;
     payload[payloadIdField] = values[formIdField];
-    const remark = portRemarks.value[remarkFormField];
+    const remark = values[remarkFormField];
     if (typeof remark === 'string' && remark.trim()) {
       payload[PORT_REMARK_TO_PAYLOAD[remarkFormField]] = remark.trim();
     }
@@ -122,6 +162,24 @@ const buildBatchEditPayload = (
     }
   }
 
+  // 日期口径与单条编辑一致：货好/开船/实开/预抵只到天，截单/截港/截关到分钟
+  const dateFields = [
+    { field: 'goodsCompleteTime', format: toDateOnlyString },
+    { field: 'etd', format: toDateOnlyString },
+    { field: 'atd', format: toDateOnlyString },
+    { field: 'eta', format: toDateString },
+    { field: 'closeDocTime', format: toDateString },
+    { field: 'closeVgmTime', format: toDateString },
+    { field: 'closeManifestTime', format: toDateString },
+  ] as const;
+
+  for (const { field, format } of dateFields) {
+    const formatted = format(values[field]);
+    if (formatted) {
+      payload[field] = formatted;
+    }
+  }
+
   const editableKeys = Object.keys(payload).filter((key) => key !== 'ids');
   if (editableKeys.length === 0) {
     return null;
@@ -137,6 +195,9 @@ const handlePodChange = (_value: unknown, option: unknown) => {
   lanePreview.value = raw?.lane?.laneName ?? '';
 };
 
+/** 港口表单在 handlePortChange 之后才创建，用间接引用回填备注 */
+const portFormApiRef = { current: null as any };
+
 const handlePortChange = (
   fieldName: string,
   value: unknown,
@@ -147,11 +208,9 @@ const handlePortChange = (
   }
   const remarkField = PORT_ID_TO_REMARK_FIELD[fieldName];
   if (!remarkField) return;
-  portRemarks.value = {
-    ...portRemarks.value,
-    [remarkField]:
-      formatSeaExportPortRemark(pickPortSelectOption(option)?.raw) ?? '',
-  };
+  const remark =
+    formatSeaExportPortRemark(pickPortSelectOption(option)?.raw) ?? '';
+  void portFormApiRef.current?.setFieldValue(remarkField, remark);
 };
 
 const formCommonConfig = {
@@ -324,44 +383,33 @@ const [BasicForm, basicFormApi] = useVbenForm({
 
 const [PortForm, portFormApi] = useVbenForm({
   ...formCommonConfig,
-  schema: [
-    {
-      component: 'PortSelect',
-      fieldName: 'receivePortId',
-      label: $t('seaExport.export.receivePortId'),
-      componentProps: buildPortSelectProps('receivePortId', handlePortChange),
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'polId',
-      label: $t('seaExport.export.polId'),
-      componentProps: buildPortSelectProps('polId', handlePortChange),
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'poT1Id',
-      label: $t('seaExport.export.batchEditPoT1'),
-      componentProps: buildPortSelectProps('poT1Id', handlePortChange),
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'poT2Id',
-      label: $t('seaExport.export.batchEditPoT2'),
-      componentProps: buildPortSelectProps('poT2Id', handlePortChange),
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'podId',
-      label: $t('seaExport.export.podId'),
-      componentProps: buildPortSelectProps('podId', handlePortChange),
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'deliverPortId',
-      label: $t('seaExport.export.deliverPortId'),
-      componentProps: buildPortSelectProps('deliverPortId', handlePortChange),
-    },
-  ],
+  schema: usePortFormSchema({ onPortChange: handlePortChange })
+    .filter((item) => PORT_FLOW_COLUMN[item.fieldName])
+    .map((item) => {
+      const isRemark = item.fieldName.endsWith('Remark');
+      const column = PORT_FLOW_COLUMN[item.fieldName];
+      const cardClass = isRemark
+        ? 'port-flow-remark'
+        : `port-flow-item${item.fieldName === 'deliverPortId' ? ' port-flow-item--last' : ''}`;
+      return {
+        ...item,
+        label: PORT_LABEL_OVERRIDE[item.fieldName] ?? item.label,
+        // 起运港在编辑页必填，批量修改是留空不改
+        rules: undefined,
+        formItemClass: `batch-edit-field ${cardClass} port-flow-col--${column}`,
+      };
+    }),
+  // 与编辑页港口区一致：紧凑间距，选港与备注贴合成一张卡片
+  compact: true,
+  wrapperClass: 'batch-edit-port-grid',
+});
+portFormApiRef.current = portFormApi;
+
+const [TimeForm, timeFormApi] = useVbenForm({
+  ...formCommonConfig,
+  schema: useShipmentFormSchema()
+    .filter((item) => TIME_FIELD_NAMES.has(item.fieldName))
+    .map((item) => ({ ...item, formItemClass: 'batch-edit-field' })),
 });
 
 const [StakeholderForm, stakeholderFormApi] = useVbenForm({
@@ -439,19 +487,23 @@ const resetAllForms = async () => {
   await Promise.all([
     basicFormApi.resetForm(),
     portFormApi.resetForm(),
+    timeFormApi.resetForm(),
     stakeholderFormApi.resetForm(),
   ]);
 };
 
 const submitBatchEdit = async () => {
-  const [basicValues, portValues, stakeholderValues] = await Promise.all([
-    basicFormApi.getValues(),
-    portFormApi.getValues(),
-    stakeholderFormApi.getValues(),
-  ]);
+  const [basicValues, portValues, timeValues, stakeholderValues] =
+    await Promise.all([
+      basicFormApi.getValues(),
+      portFormApi.getValues(),
+      timeFormApi.getValues(),
+      stakeholderFormApi.getValues(),
+    ]);
   const values = {
     ...basicValues,
     ...portValues,
+    ...timeValues,
     ...stakeholderValues,
   };
   const payload = buildBatchEditPayload(batchIds.value, values);
@@ -492,14 +544,12 @@ const [ModalComponent, modalApi] = useVbenModal({
   async onOpenChange(isOpen) {
     if (!isOpen) {
       lanePreview.value = '';
-      portRemarks.value = {};
       return;
     }
 
     const data = modalApi.getData<{ ids?: Array<number | string> }>();
     batchIds.value = data?.ids ?? [];
     lanePreview.value = '';
-    portRemarks.value = {};
     await resetAllForms();
   },
   closeOnClickModal: false,
@@ -577,6 +627,25 @@ const [ModalComponent, modalApi] = useVbenModal({
       <section class="form-section">
         <header class="section-header">
           <div class="section-title">
+            <div class="section-title-icon icon-amber">
+              <IconifyIcon icon="mdi:clock-outline" class="size-4" />
+            </div>
+            <span class="section-title-text">
+              {{ $t('seaExport.export.batchEditSectionTime') }}
+            </span>
+            <span class="section-hint">
+              {{ $t('seaExport.export.batchEditSectionHint') }}
+            </span>
+          </div>
+        </header>
+        <div class="section-body section-body--form">
+          <TimeForm />
+        </div>
+      </section>
+
+      <section class="form-section">
+        <header class="section-header">
+          <div class="section-title">
             <div class="section-title-icon icon-violet">
               <IconifyIcon icon="mdi:account-group-outline" class="size-4" />
             </div>
@@ -597,6 +666,33 @@ const [ModalComponent, modalApi] = useVbenModal({
 </template>
 
 <style scoped>
+@media (max-width: 900px) {
+  .batch-edit__hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  :deep(.batch-edit-form-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  /* 单列时流转箭头与固定列位都失去意义，回退成普通堆叠 */
+  :deep(.batch-edit-port-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  :deep(.port-flow-item),
+  :deep(.port-flow-remark) {
+    grid-row: auto;
+    grid-column: 1;
+  }
+
+  :deep(.port-flow-item::after),
+  :deep(.port-flow-item::before) {
+    content: none;
+  }
+}
+
 .batch-edit {
   display: flex;
   flex-direction: column;
@@ -728,6 +824,11 @@ const [ModalComponent, modalApi] = useVbenModal({
   background: #eef2ff;
 }
 
+.section-title-icon.icon-amber {
+  color: #b45309;
+  background: #fffbeb;
+}
+
 .section-title-text {
   font-size: 14px;
   font-weight: 600;
@@ -774,6 +875,108 @@ const [ModalComponent, modalApi] = useVbenModal({
   margin-bottom: 0;
 }
 
+/* 港口区沿用编辑页的流转卡片：上半格选港、下半格港口备注 */
+:deep(.batch-edit-port-grid) {
+  --port-flow-col-gap: 20px;
+
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0 var(--port-flow-col-gap);
+  padding: 6px 0;
+}
+
+:deep(.port-flow-item) {
+  position: relative;
+  grid-row: 1;
+  padding: 6px 10px 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+
+:deep(.port-flow-remark) {
+  grid-row: 2;
+  padding: 4px 10px 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+}
+
+:deep(.port-flow-col--1) {
+  grid-column: 1;
+}
+
+:deep(.port-flow-col--2) {
+  grid-column: 2;
+}
+
+:deep(.port-flow-col--3) {
+  grid-column: 3;
+}
+
+:deep(.port-flow-col--4) {
+  grid-column: 4;
+}
+
+:deep(.port-flow-col--5) {
+  grid-column: 5;
+}
+
+:deep(.port-flow-col--6) {
+  grid-column: 6;
+}
+
+:deep(.port-flow-item > label) {
+  min-height: 22px;
+  font-weight: 500;
+  color: rgb(0 0 0 / 65%);
+}
+
+:deep(.port-flow-item:not(.port-flow-item--last)::after) {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + (var(--port-flow-col-gap) - 20px) / 2);
+  z-index: 1;
+  width: 14px;
+  height: 2px;
+  content: '';
+  background: linear-gradient(90deg, #93c5fd 0%, #3b82f6 100%);
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+:deep(.port-flow-item:not(.port-flow-item--last)::before) {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + (var(--port-flow-col-gap) - 20px) / 2 + 14px);
+  z-index: 1;
+  content: '';
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #3b82f6;
+  transform: translateY(-50%);
+}
+
+:deep(.port-flow-remark textarea.ant-input) {
+  display: block;
+  height: auto;
+  min-height: 32px;
+  line-height: 1.5715;
+}
+
+:deep(.port-flow-remark > .flex-auto),
+:deep(.port-flow-remark .flex-auto > .relative) {
+  overflow: visible;
+}
+
+/* 选港格与备注格必须零间距才能拼成一张卡片 */
+.section-body--form :deep(.batch-edit-field.port-flow-item),
+.section-body--form :deep(.batch-edit-field.port-flow-remark) {
+  margin-bottom: 0;
+}
+
 .section-body--form :deep(.ant-form) {
   margin-bottom: 0;
 }
@@ -802,16 +1005,5 @@ const [ModalComponent, modalApi] = useVbenModal({
 .section-body--form :deep(.ant-input),
 .section-body--form :deep(.ant-input-affix-wrapper) {
   border-radius: 8px;
-}
-
-@media (max-width: 900px) {
-  .batch-edit__hero {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  :deep(.batch-edit-form-grid) {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
