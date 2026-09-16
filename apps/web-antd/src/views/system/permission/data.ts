@@ -789,12 +789,6 @@ export function usePropPermissionColumns<
       minWidth: 160,
     },
     {
-      field: 'isConditional',
-      title: $t('system.permission.propConditional'),
-      width: 100,
-      formatter: ({ cellValue }) => (cellValue ? '是' : '否'),
-    },
-    {
       field: 'conditionJson',
       title: $t('system.permission.propConditionSummary'),
       minWidth: 240,

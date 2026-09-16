@@ -921,7 +921,7 @@
     "tablePermission": "表级权限",
     "tablePermissionDesc": "按字段条件进一步过滤数据，决定能看到范围内满足条件的数据",
     "propPermission": "字段权限",
-    "propPermissionDesc": "控制角色/用户在某个模块中能否看到某些字段",
+    "propPermissionDesc": "控制角色/用户在某个模块中不能看到某些字段",
     "operation": "操作",
     "createTime": "创建时间",
     "manageType": "功能类型",
