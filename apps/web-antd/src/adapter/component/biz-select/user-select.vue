@@ -81,9 +81,6 @@ function trimText(value: unknown): string {
 
 /** 选中回显：昵称（用户名）；缺一项则只显示另一项 */
 function formatUserSelectedLabel(nickName: string, userName: string): string {
-  if (nickName && userName && nickName !== userName) {
-    return `${nickName}（${userName}）`;
-  }
   return nickName || userName;
 }
 
