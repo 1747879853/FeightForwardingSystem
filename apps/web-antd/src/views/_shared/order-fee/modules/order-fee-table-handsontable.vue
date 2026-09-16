@@ -1259,6 +1259,22 @@ watch(
     text-align: center !important;
   }
 
+  .fee-reject-help {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    cursor: help;
+    background: #8c8c8c;
+    border-radius: 50%;
+  }
+
   // 已修改单元格角标：左上角橙色三角，纯 CSS 呈现，无 JS 渲染开销
   td.cell-edited-mark {
     position: relative;
@@ -1391,5 +1407,22 @@ watch(
     padding: 0 0 8px !important;
     overflow: hidden;
   }
+}
+</style>
+
+<style lang="scss">
+/* 挂到 body，需非 scoped，避免 Handsontable 裁切单元格内绝对定位提示 */
+.fee-reject-help-floating-tip {
+  position: fixed;
+  z-index: 11000;
+  max-width: 320px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #fff;
+  pointer-events: none;
+  background: rgb(0 0 0 / 85%);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
 }
 </style>

@@ -11,7 +11,39 @@ import {
   getFeeStatusLabel,
   getDataEntryMethodLabel,
   formatDateTime,
+  isOrderFeeRejectedStatus,
+  resolveLatestOrderFeeRejectRemark,
 } from '../utils/helpers';
+
+const FEE_REJECT_TIP_CLASS = 'fee-reject-help-floating-tip';
+
+function hideFeeRejectHelpTip() {
+  document.querySelectorAll(`.${FEE_REJECT_TIP_CLASS}`).forEach((el) => {
+    el.remove();
+  });
+}
+
+function showFeeRejectHelpTip(anchor: HTMLElement, reason: string) {
+  hideFeeRejectHelpTip();
+  const tip = document.createElement('div');
+  tip.className = FEE_REJECT_TIP_CLASS;
+  const tipHint = document.createElement('div');
+  tipHint.textContent = '双击“驳回”字样查看审核流程';
+  const tipReason = document.createElement('div');
+  tipReason.textContent = `驳回原因：${reason || '无'}`;
+  tip.append(tipHint, tipReason);
+  document.body.appendChild(tip);
+  const rect = anchor.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - tipRect.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+  let top = rect.top - tipRect.height - 8;
+  if (top < 8) {
+    top = rect.bottom + 8;
+  }
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+}
 
 /**
  * Handsontable 列配置生成器
@@ -606,7 +638,7 @@ export function useHotColumns(
         col.field === 'feeStatus'
       ) {
         hotCol.type = 'text';
-        hotCol.width = 100;
+        hotCol.width = 110;
         hotCol.readOnly = true;
         hotCol.renderer = function (
           this: any,
@@ -618,45 +650,76 @@ export function useHotColumns(
           value: any,
           cellProperties: any,
         ) {
-          const rowData = actualDataSource[row] as any;
-          const label = getFeeStatusLabel(value);
-
+          const currentDataSource = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const rowData = currentDataSource[row] as any;
+          const statusValue =
+            value ?? rowData?.combinedFeeStatus ?? rowData?.feeStatus;
+          const label = getFeeStatusLabel(statusValue);
           const modificationCount =
             rowData?.ModificationCount ??
             rowData?.modificationCount ??
             rowData?.MODIFICATIONCOUNT ??
             0;
+          const rejected = isOrderFeeRejectedStatus(statusValue);
+
+          td.innerHTML = '';
+          td.style.cursor = 'pointer';
+          td.style.textAlign = 'center';
+          td.style.verticalAlign = 'middle';
+          td.style.overflow = 'hidden';
+
+          const wrap = document.createElement('span');
+          wrap.className = 'fee-status-cell';
+          wrap.style.display = 'inline-flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.justifyContent = 'center';
+          wrap.style.gap = '4px';
+          wrap.style.maxWidth = '100%';
+          wrap.style.whiteSpace = 'nowrap';
+          wrap.style.overflow = 'hidden';
+
+          const statusSpan = document.createElement('span');
+          statusSpan.className = 'fee-status-label';
+          statusSpan.textContent = label || '';
+          statusSpan.style.color = '#262626';
+          statusSpan.style.overflow = 'hidden';
+          statusSpan.style.textOverflow = 'ellipsis';
+          if (!rejected) {
+            statusSpan.title = modificationCount
+              ? `双击查看审核历史(共 ${modificationCount} 次修改)`
+              : '双击查看审核历史';
+          }
+          wrap.appendChild(statusSpan);
+
+          if (rejected) {
+            const help = document.createElement('span');
+            help.className = 'fee-reject-help';
+            help.setAttribute('aria-label', '查看驳回原因');
+            help.textContent = '?';
+
+            const reason = resolveLatestOrderFeeRejectRemark(rowData);
+            help.addEventListener('mouseenter', () => {
+              showFeeRejectHelpTip(help, reason);
+            });
+            help.addEventListener('mouseleave', () => {
+              hideFeeRejectHelpTip();
+            });
+            wrap.appendChild(help);
+          }
 
           if (modificationCount && modificationCount > 0) {
-            td.innerHTML = '';
-            //td.style.display = 'inline-flex';
-            td.style.alignItems = 'center';
-            td.style.cursor = 'pointer';
-            td.title = `双击查看审核历史(共 ${modificationCount} 次修改)`;
-
-            const statusSpan = document.createElement('span');
-            statusSpan.textContent = label || '';
-            statusSpan.style.color = '#262626';
-            statusSpan.style.marginRight = '0';
-            // ✅ 新增：添加省略号样式
-            statusSpan.style.whiteSpace = 'nowrap';
-            statusSpan.style.overflow = 'hidden';
-            statusSpan.style.textOverflow = 'ellipsis';
-            td.appendChild(statusSpan);
-
             const countSpan = document.createElement('span');
             countSpan.textContent = `+${modificationCount}`;
             countSpan.style.color = '#ff4d4f';
             countSpan.style.fontWeight = 'bold';
-            countSpan.style.marginLeft = '4px';
-            countSpan.style.cursor = 'pointer';
+            countSpan.style.flexShrink = '0';
             countSpan.title = `点击查看 ${modificationCount} 次修改记录`;
-            td.appendChild(countSpan);
-          } else {
-            // ✅ 新增：添加省略号样式
-            td.innerHTML = `<span style="color: #262626; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="双击查看审核历史">${label || ''}</span>`;
+            wrap.appendChild(countSpan);
           }
 
+          td.appendChild(wrap);
           return td;
         };
       } else if (
@@ -704,10 +767,7 @@ export function useHotColumns(
         )
       ) {
         hotCol.type = 'numeric';
-        hotCol.numericFormat = {
-          pattern: '0.00',
-          culture: 'en-US',
-        };
+        // 显示由自定义 renderer 负责；勿再配 pattern/culture（新版 HOT 不支持会报错）
         // ✅ 关键修复：添加自定义 renderer，先清空单元格内容
         hotCol.renderer = function (
           this: any,
@@ -767,9 +827,11 @@ export function useHotColumns(
       ) {
         hotCol.type = 'numeric';
         hotCol.readOnly = true;
+        // Handsontable 新版只认 Intl.NumberFormat 选项，不再支持 pattern/culture
         hotCol.numericFormat = {
-          pattern: '0.00',
-          culture: 'en-US',
+          style: 'decimal',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
         };
       } else if (col.field === 'statementNum') {
         // 对账单列 - 只读文本，不可编辑；多个对账单号用“，”分割展示

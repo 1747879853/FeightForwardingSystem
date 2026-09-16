@@ -94,6 +94,35 @@ export const getFeeStatusLabel = (feeStatus: any): string => {
   return option?.label || String(feeStatus);
 };
 
+/** 费用状态是否为「驳回」（combinedFeeStatus / feeStatus = 5） */
+export function isOrderFeeRejectedStatus(feeStatus: unknown): boolean {
+  return Number(feeStatus) === 5;
+}
+
+/**
+ * 取费用行最近一次驳回任务的审核意见（taskStatus=1）。
+ * 合并提交/修改/删除三类任务，按审核时间倒序取第一条 remark。
+ */
+export function resolveLatestOrderFeeRejectRemark(row: unknown): string {
+  if (row == null || typeof row !== 'object') return '';
+  const fee = row as Record<string, any>;
+  const tasks = [
+    ...(Array.isArray(fee.submitOrderFeeTasks) ? fee.submitOrderFeeTasks : []),
+    ...(Array.isArray(fee.modifyOrderFeeTasks) ? fee.modifyOrderFeeTasks : []),
+    ...(Array.isArray(fee.deleteOrderFeeTasks) ? fee.deleteOrderFeeTasks : []),
+  ].filter((task) => Number(task?.taskStatus) === 1);
+
+  if (tasks.length === 0) return '';
+
+  tasks.sort((a, b) => {
+    const timeA = a?.auditTime ? Date.parse(String(a.auditTime)) || 0 : 0;
+    const timeB = b?.auditTime ? Date.parse(String(b.auditTime)) || 0 : 0;
+    return timeB - timeA;
+  });
+
+  return String(tasks[0]?.remark ?? '').trim();
+}
+
 /**
  * 根据数据录入方式值获取显示标签
  */
