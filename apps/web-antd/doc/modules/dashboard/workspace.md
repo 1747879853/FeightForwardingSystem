@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,8 @@ last_updated: 2026-09-11
   - 待处理页签下，服务项 chevron 显示橙色「待」字；已处理页签不显示
 - **海运出口业务列表动态列：**
   - 列由当前 chevron 服务项的 `seServiceShows`（`SeaExportPropEnum`）驱动，严格 1 枚举 1 列，顺序与配置数组一致
-  - 固定列始终显示：委托单号、处理人；「转交任务」节点额外显示转交备注列；`seServiceShows` 为空时不展示业务列
+  - 当前港口的服务项没有配置 `seServiceShows` 时，懒加载默认港口配置（`POLId = null`），按相同 `serviceType` 回退展示字段；默认配置详情在页面内缓存
+  - 固定列始终显示：委托单号、处理人；「转交任务」节点额外显示转交备注列；港口专属与默认配置的 `seServiceShows` 均为空时不展示业务列
   - 表头文案取自 `SeaExportPropEnum` 枚举 `displayName`；审核 Tab 仍使用固定列，不受 `seServiceShows` 影响
 - **行选中：** 海运出口服务业务列表**仅点击 checkbox 才选中**，单击行不切换选中；双击行仍进入编辑。
 - **任务处理动作：**
@@ -75,7 +76,7 @@ last_updated: 2026-09-11
 | **ids + assigneeUserId** | 批量转交入参。 | `TransferAsync` | **触发/依赖：** 由表格勾选行 + 转交弹窗用户选择组装。 | 被转交人不能为空，任务需可转交。 |
 | **id** | 完成任务入参。 | `CompleteAsync` | **触发/依赖：** 行内完成或批量完成逐条提交。 | 任务需处于待处理且当前用户有处理权限。 |
 | **generatedFeeCount / generatedFees** | 完成任务后本次按自动费用模板生成的费用。 | `SeServiceTaskAdmin/CompleteAsync` | **触发/依赖：** 条数大于 0 才弹窗；批量完成会把各任务返回的费用合并成一张表。 | 为 0 或旧接口返回 `true` 时不弹窗。 |
-| **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `SeServiceConfigAdmin/DetailAsync`（按起运港 `polId` 查配置） | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 指派任务不展示动态列；为空时不展示业务列。 |
+| **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `SeServiceConfigAdmin/DetailAsync`（港口专属配置优先，缺少时读取 `POLId = null` 的默认配置） | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 指派任务不展示动态列；专属与默认配置均为空时不展示业务列。 |
 | **Keyword（编号）** | 按主提单号 / 订舱编号 / 委托编号统一模糊检索。 | `GetWorkbenchCountAsync` / `GetWorkbenchPagedListAsync` 参数 `Keyword` | **触发/依赖：** 筛选栏输入即时 trim；Count 与 PagedList 共用同一过滤参数。 | 可清空；已替代原 `MblNum`。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -90,6 +91,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-17 | `Fix` | 海出业务列表当前服务项未配置动态列时，自动回退默认港口配置的展示字段。 | 默认配置按需加载并缓存，仅补 `seServiceShows`，不改变港口专属任务配置。详见 [变更日志](../../changelogs/change-log-2026-09-17-workbench-dynamic-columns-default-config.md)。 |
 | 2026-09-11 | `Feature` | 完成任务后若自动生成了费用，弹窗展示费用明细；批量完成会汇总各任务费用。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Feature` | 待处理页签下服务项节点显示「待」字，已处理页签不显示。 | `WorkbenchBusinessTable.showPendingMark` 仅海出服务 Tab 传入。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-08 | `Fix` | 应收应付/业务联系单审核的 ETD、付费申请审核的提交时间改为自然日起止。 | 海出服务任务 ETD 原先已切日界。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |

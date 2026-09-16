@@ -151,10 +151,15 @@ const pagedTasks = ref<SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto[]>(
 );
 const activePortConfig =
   ref<SeServiceConfigAdminApi.SeServiceConfigDetailDto | null>(null);
+const defaultPortConfig =
+  ref<SeServiceConfigAdminApi.SeServiceConfigDetailDto | null>(null);
 const portConfigCache = new Map<
   string,
   SeServiceConfigAdminApi.SeServiceConfigDetailDto | null
 >();
+let defaultPortConfigLoaded = false;
+let defaultPortConfigPromise: Promise<SeServiceConfigAdminApi.SeServiceConfigDetailDto | null> | null =
+  null;
 const seaExportPagination = reactive({
   current: 1,
   pageSize: SEA_EXPORT_DEFAULT_PAGE_SIZE,
@@ -349,9 +354,20 @@ const activeConfigItem = computed(() => {
   );
 });
 
+const dynamicColumnConfigItem = computed(() => {
+  if (activeConfigItem.value?.seServiceShows?.length) {
+    return activeConfigItem.value;
+  }
+  const serviceType = Number(activeStageKey.value);
+  if (Number.isNaN(serviceType)) return undefined;
+  return defaultPortConfig.value?.seServiceConfigItems?.find(
+    (item) => item.serviceType === serviceType,
+  );
+});
+
 const seaExportDynamicColumns = computed(() => {
   if (activeStageKey.value === 'assigned') return undefined;
-  const shows = activeConfigItem.value?.seServiceShows?.map((item) => ({
+  const shows = dynamicColumnConfigItem.value?.seServiceShows?.map((item) => ({
     seaExportPropEnum: item.seaExportPropEnum,
   }));
   return buildDynamicColumns(shows, seaExportPropLabelMap.value);
@@ -550,6 +566,46 @@ async function loadPortConfig(polId: string) {
   return detail;
 }
 
+async function loadDefaultPortConfig() {
+  if (defaultPortConfigLoaded) return defaultPortConfig.value;
+  if (defaultPortConfigPromise) return defaultPortConfigPromise;
+
+  defaultPortConfigPromise = (async () => {
+    const listResult = await getSeServiceConfigPagedList({
+      pageIndex: 1,
+      pageSize: 1,
+      sorting: 'POLId ASC',
+    });
+    const config = listResult.items?.[0];
+    if (!config || config.polId != null) {
+      defaultPortConfig.value = null;
+      return null;
+    }
+
+    const detail = await getSeServiceConfigDetail(config.id);
+    defaultPortConfig.value = detail;
+    return detail;
+  })();
+
+  try {
+    const detail = await defaultPortConfigPromise;
+    defaultPortConfigLoaded = true;
+    return detail;
+  } finally {
+    defaultPortConfigPromise = null;
+  }
+}
+
+async function ensureDynamicColumnConfig() {
+  if (
+    activeStageKey.value === 'assigned' ||
+    activeConfigItem.value?.seServiceShows?.length
+  ) {
+    return;
+  }
+  await loadDefaultPortConfig();
+}
+
 async function loadSeaExportCount(resetSelection: boolean) {
   const result = await getSeServiceTaskWorkbenchCount(
     buildSeaExportFilterParams(),
@@ -630,6 +686,7 @@ async function loadSeaExportWorkbenchFull() {
 
     await loadPortConfig(polId);
     ensureActiveStage();
+    await ensureDynamicColumnConfig();
     await loadSeaExportTaskList({ resetPage: true });
   } finally {
     loading.value = false;
@@ -656,6 +713,7 @@ async function refreshSeaExportAfterAction() {
       activePortConfig.value = portConfigCache.get(polId) ?? null;
     }
     ensureActiveStage();
+    await ensureDynamicColumnConfig();
     await loadSeaExportTaskList({ keepPage: true });
   } finally {
     loading.value = false;
@@ -679,6 +737,7 @@ async function handlePortChange(portKey: string) {
     }
     await loadPortConfig(polId);
     ensureActiveStage();
+    await ensureDynamicColumnConfig();
     await loadSeaExportTaskList({ resetPage: true });
   } finally {
     loading.value = false;
@@ -691,6 +750,7 @@ async function handleStageChange(stageKey: string) {
   selectedRowKeys.value = [];
   loading.value = true;
   try {
+    await ensureDynamicColumnConfig();
     await loadSeaExportTaskList({ resetPage: true });
   } finally {
     loading.value = false;

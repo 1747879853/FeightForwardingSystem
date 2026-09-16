@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-17] [工作台动态列回退默认港口配置](./changelogs/change-log-2026-09-17-workbench-dynamic-columns-default-config.md)
 - [2026-09-16] [分析首页不再按 Page.Home 拦截](./changelogs/change-log-2026-09-16-analytics-no-page-home-authority.md)
 
 - [2026-09-16] [船期查询密钥更新](./changelogs/change-log-2026-09-16-船期查询密钥更新.md)
