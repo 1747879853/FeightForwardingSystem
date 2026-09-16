@@ -70,6 +70,7 @@ last_updated: 2026-09-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-16 | `Chore` | 统一更新全部品牌及开发、生产环境的船期查询密钥，共 13 份配置。 | 已校验配置一致；开发服务需重启，线上需重新构建发布。文档不记录密钥原文。 |
 | 2026-09-13 | `Feature` | `/schedule` 切换为飞驼 Web SDK（仅船期、隐藏导航、默认中文）；加载失败或超时可重试。原工作台 `list.vue` 保留。各品牌共用同一 `VITE_GLOB_FREIGHTOWER_SCHEDULE_KEY`。 | iframe 隔离 SDK 的 `#app`/全局样式/hash 路由；密钥经同源 `postMessage` 注入。开发环境需 `scheduleSdkPagePlugin` 避免 SPA fallback。可靠性弹窗客户图按位置+`wy3.png` 双重移除。详见 `changelogs/change-log-2026-09-13-schedule-query-web-sdk.md`。 |
 | 2026-09-06 | `Fix` | 点击方案名称复制：Clipboard API 失败后回退 `execCommand`，减少「复制失败，请手动选择方案名称」。 | `copy-text.ts` 先 `writeText`，reject 或缺能力再隐藏 textarea 复制。详见 `changelogs/change-log-2026-09-06-schedule-copy-group-name.md`。 |
 | 2026-09-02 | `Style` | 班次表船名、航次分列；截关时间和卡片最早截关都改为一行。 | 计划离到港仍拆两行。详见 `changelogs/change-log-2026-09-02-schedule-query-vessel-voyage-cutoff-oneline.md`。 |
