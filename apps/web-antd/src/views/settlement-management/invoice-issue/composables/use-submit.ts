@@ -106,7 +106,6 @@ export function useSubmit(
     try {
       const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
         orgId: formData.value.orgId,
-        invoiceIssueType: formData.value.invoiceIssueType,
         invoiceNo: formData.value.invoiceNo,
         invoiceIssueTime: invoiceIssueTime.value,
         invoiceExchangeRate: invoiceExchangeRate.value,
@@ -132,7 +131,6 @@ export function useSubmit(
         const editData: InvoiceIssueApi.InvoiceIssueEditDto = {
           id: editId.value!,
           orgId: formData.value.orgId,
-          invoiceIssueType: formData.value.invoiceIssueType,
           invoiceNo: formData.value.invoiceNo,
           invoiceIssueTime: invoiceIssueTime.value,
           invoiceExchangeRate: invoiceExchangeRate.value,

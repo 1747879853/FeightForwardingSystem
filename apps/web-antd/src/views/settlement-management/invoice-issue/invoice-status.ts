@@ -48,21 +48,22 @@ export function getCombinedStatusLabel(status?: null | number): string {
 
 /** 组合状态 → Tag 颜色（开票完成绿、失败红、进行中蓝、冲红中橙、已冲红红） */
 export function getCombinedStatusColor(status?: null | number): string {
-  if (status === undefined || status === null) return 'default';
+  if (status === undefined || status === null) return 'geekblue';
 
   // 开票段
   if (status === 2) return 'success'; // 开票完成
   if (status === 24) return 'warning'; // 签章失败（票已开出）
   if (status === 22) return 'error'; // 开票失败
   if ([1, 20, 21, 31].includes(status)) return 'processing'; // 开票中/签章中/作废中
-  if (status === 0 || status === 3) return 'default'; // 未开票/已作废
+  if (status === 0) return 'cyan'; // 未开票
+  if (status === 3) return 'purple'; // 已作废
 
   // 冲红段
   if (status === 199) return 'red'; // 已冲红
   if (status === 116 || (status >= 105 && status <= 111)) return 'error'; // 冲红失败/确认单作废
   if (status === 115 || (status >= 101 && status <= 104)) return 'orange'; // 冲红中
 
-  return 'default';
+  return 'geekblue';
 }
 
 /**

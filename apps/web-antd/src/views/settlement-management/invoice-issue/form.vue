@@ -485,6 +485,32 @@ function getRedStatusColor(status?: number): string {
   return 'orange';
 }
 
+/** 开票方式标签 */
+function getInvoiceIssueTypeLabel(
+  type?: InvoiceIssueApi.InvoiceIssueType | number | null,
+): string {
+  if (type === InvoiceIssueApi.InvoiceIssueType.NuonuoInterface) {
+    return '接口开票';
+  }
+  if (type === InvoiceIssueApi.InvoiceIssueType.ManualRecord) {
+    return '手动开票';
+  }
+  return '-';
+}
+
+/** 开票方式 Tag 颜色 */
+function getInvoiceIssueTypeColor(
+  type?: InvoiceIssueApi.InvoiceIssueType | number | null,
+): string {
+  if (type === InvoiceIssueApi.InvoiceIssueType.NuonuoInterface) {
+    return 'blue';
+  }
+  if (type === InvoiceIssueApi.InvoiceIssueType.ManualRecord) {
+    return 'orange';
+  }
+  return 'geekblue';
+}
+
 /** 获取冲红原因中文标签 */
 function getRedReasonLabel(reason?: number): string {
   if (!reason) return '-';
@@ -642,17 +668,20 @@ onMounted(() => {
                         {{ invoiceIssueTime || '-' }}
                       </span>
                     </div>
-                  </div>
-
-                  <div v-if="editId" class="basic-config__status">
-                    <span class="basic-config__meta-label">发票状态</span>
-                    <Tag
-                      :color="
-                        getCombinedStatusColor(invoiceStatus.combinedStatus)
-                      "
-                    >
-                      {{ getCombinedStatusLabel(invoiceStatus.combinedStatus) }}
-                    </Tag>
+                    <div v-if="editId" class="basic-config__meta-row">
+                      <span class="basic-config__meta-label">发票状态</span>
+                      <span class="basic-config__meta-value">
+                        <Tag
+                          :color="
+                            getCombinedStatusColor(invoiceStatus.combinedStatus)
+                          "
+                        >
+                          {{
+                            getCombinedStatusLabel(invoiceStatus.combinedStatus)
+                          }}
+                        </Tag>
+                      </span>
+                    </div>
                   </div>
                 </section>
 
@@ -693,24 +722,14 @@ onMounted(() => {
                     />
                   </Form.Item>
 
-                  <Form.Item label="开票方式" required>
-                    <Select
-                      v-model:value="formData.invoiceIssueType"
-                      :options="[
-                        {
-                          label: '接口开票',
-                          value:
-                            InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
-                        },
-                        {
-                          label: '手动开票',
-                          value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
-                        },
-                      ]"
-                      style="width: 100%"
-                      placeholder="请选择开票方式"
-                      :disabled="invoiceStatus.editLocked"
-                    />
+                  <Form.Item label="开票方式">
+                    <Tag
+                      :color="
+                        getInvoiceIssueTypeColor(formData.invoiceIssueType)
+                      "
+                    >
+                      {{ getInvoiceIssueTypeLabel(formData.invoiceIssueType) }}
+                    </Tag>
                   </Form.Item>
                 </section>
 

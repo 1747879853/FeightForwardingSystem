@@ -158,7 +158,6 @@ export function useFeeSelection(
       // 构建提交数据
       const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
         orgId: formData.value.orgId,
-        invoiceIssueType: formData.value.invoiceIssueType,
         invoiceNo: formData.value.invoiceNo,
         invoiceIssueTime:
           invoiceIssueTime.value || dayjs().format('YYYY-MM-DD'),

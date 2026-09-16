@@ -116,8 +116,8 @@ export namespace InvoiceIssueApi {
   export interface InvoiceIssueAddDto {
     /** 归属组织id */
     orgId: number;
-    /** 发票开出方式 */
-    invoiceIssueType: InvoiceIssueType;
+    /** 发票开出方式（展示用，提交不必传；后端按开票动作落库） */
+    invoiceIssueType?: InvoiceIssueType;
     /** 发票号 */
     invoiceNo?: string;
     /** 开票时间 */
