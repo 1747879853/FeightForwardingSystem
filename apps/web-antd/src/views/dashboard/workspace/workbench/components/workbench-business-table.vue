@@ -383,8 +383,12 @@ function handlePaginationChange(page: number, pageSize: number) {
 </template>
 
 <style scoped>
+/* 卡片吃满父级分配的高度，表头与分页固定，中间表格区自身滚动 */
 .table-card {
-  margin-top: 24px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   background: #fff;
   border: 0.5px solid #eff0f2;
@@ -392,8 +396,23 @@ function handlePaginationChange(page: number, pageSize: number) {
   box-shadow: 0 2px 8px 0 rgb(150 199 217 / 6%);
 }
 
+/* Spin 会在卡片内插入 nested-loading / container 两层包裹，需一并参与纵向弹性布局 */
+.table-card :deep(.ant-spin-nested-loading) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-card :deep(.ant-spin-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .table-card__header {
   display: flex;
+  flex: none;
   gap: 10px;
   align-items: center;
   justify-content: space-between;
@@ -614,7 +633,9 @@ function handlePaginationChange(page: number, pageSize: number) {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .business-table {
@@ -624,14 +645,20 @@ function handlePaginationChange(page: number, pageSize: number) {
   border-collapse: collapse;
 }
 
+/* 表格区自身滚动，表头吸顶；背景需不透明，否则滚动时会透出行内容 */
 .business-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   height: 48px;
   font-weight: 700;
   color: #555d6d;
   text-align: left;
   white-space: nowrap;
-  background: rgb(243 244 246 / 50%);
-  border-bottom: 1px solid #f3f4f6;
+  background: #f9fafb;
+
+  /* border-collapse: collapse 下吸顶表头的 border 不随之固定，用 inset 阴影补分隔线 */
+  box-shadow: inset 0 -1px 0 #f3f4f6;
 }
 
 .business-table tbody tr {
@@ -686,6 +713,7 @@ function handlePaginationChange(page: number, pageSize: number) {
 
 .table-pagination {
   display: flex;
+  flex: none;
   justify-content: flex-end;
   padding: 12px 24px 16px;
   border-top: 1px solid #f3f4f6;

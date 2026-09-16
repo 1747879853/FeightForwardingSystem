@@ -53,8 +53,8 @@ last_updated: 2026-09-17
   - 单条/批量完成：`CompleteAsync`（批量为逐条调用）；点完成先按当前服务项配置预检本票附件。缺则弹出「请先上传附件」，点「前往上传」后再跳到对应海出编辑页附件 Tab（pending Tab + `?tab=attachments`，批量打开第一条缺附件的票）；点取消留在工作台。已传齐才弹出「确认完成」。后端仍报缺附件时同样先弹窗，前往上传后再跳转。完成成功后若返回 `generatedFeeCount > 0`，汇总本次自动生成的费用并弹窗展示（费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型）
 - **业务列表行跳转：**
   - 单击委托单号或双击整行：进入对应业务编辑/详情（海运出口编辑页、应收应付费用详情、付费申请编辑页）
-- **保留 mock 区域：**
-  - 紧急处理任务 / 异常业务区块：仍用 mock；**津海通（jht）、龙山（longshan）打包环境不展示这两块**（`hideWorkbenchMockSidePanels`）
+- **已隐藏的 mock 区域：**
+  - 「紧急处理任务」「异常业务」仍为 mock，**所有品牌工作台均不展示**；组件与 mock 数据仍保留在仓库中。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -92,6 +92,7 @@ last_updated: 2026-09-17
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-09-17 | `Fix` | 海出业务列表当前服务项未配置动态列时，自动回退默认港口配置的展示字段。 | 默认配置按需加载并缓存，仅补 `seServiceShows`，不改变港口专属任务配置。详见 [变更日志](../../changelogs/change-log-2026-09-17-workbench-dynamic-columns-default-config.md)。 |
+| 2026-09-16 | `Fix` | 所有品牌工作台均隐藏「紧急处理任务」「异常业务」mock 面板。 | 不再按品牌开关；页面不再挂载对应组件。详见 [变更日志](../../changelogs/change-log-2026-09-16-workbench-hide-mock-side-panels.md)。 |
 | 2026-09-11 | `Feature` | 完成任务后若自动生成了费用，弹窗展示费用明细；批量完成会汇总各任务费用。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
 | 2026-09-11 | `Feature` | 待处理页签下服务项节点显示「待」字，已处理页签不显示。 | `WorkbenchBusinessTable.showPendingMark` 仅海出服务 Tab 传入。详见 [变更日志](../../changelogs/change-log-2026-09-11-service-item-pending-mark.md)。 |
 | 2026-09-08 | `Fix` | 应收应付/业务联系单审核的 ETD、付费申请审核的提交时间改为自然日起止。 | 海出服务任务 ETD 原先已切日界。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |

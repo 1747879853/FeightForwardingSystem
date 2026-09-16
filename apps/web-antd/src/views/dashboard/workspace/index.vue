@@ -40,7 +40,6 @@ import {
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
 import { getAttachmentDtlTypeList } from '#/api/system/attachment-dtl-type';
-import { isJhtBrand, isLongshanBrand } from '#/utils/brand-assets';
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
@@ -55,8 +54,6 @@ import {
 } from '#/views/sea-export-admin/service-type';
 
 import {
-  emergencyTasks,
-  exceptionSummary,
   filterModelDefaults,
   normalizePolId,
   processingTabs,
@@ -70,9 +67,6 @@ import {
   loadSeaExportPropLabelMap,
 } from './workbench/se-service-show-columns';
 
-/** 津海通 / 龙山：隐藏紧急处理任务与异常业务 mock 面板 */
-const hideWorkbenchMockSidePanels = isJhtBrand || isLongshanBrand;
-
 const WorkbenchTopNav = defineAsyncComponent(
   () => import('./workbench/components/workbench-top-nav.vue'),
 );
@@ -85,14 +79,8 @@ const WorkbenchFilterBar = defineAsyncComponent(
 const WorkbenchReviewFilterBar = defineAsyncComponent(
   () => import('./workbench/components/workbench-review-filter-bar.vue'),
 );
-const WorkbenchEmergencyQueue = defineAsyncComponent(
-  () => import('./workbench/components/workbench-emergency-queue.vue'),
-);
 const WorkbenchBusinessTable = defineAsyncComponent(
   () => import('./workbench/components/workbench-business-table.vue'),
-);
-const WorkbenchExceptionPanel = defineAsyncComponent(
-  () => import('./workbench/components/workbench-exception-panel.vue'),
 );
 
 const SEA_EXPORT_PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
@@ -1179,10 +1167,6 @@ onMounted(() => {
     <div class="workbench-layout">
       <template v-if="isSeaExportTab">
         <main class="workbench-main">
-          <WorkbenchEmergencyQueue
-            v-if="!hideWorkbenchMockSidePanels"
-            :tasks="emergencyTasks"
-          />
           <WorkbenchBusinessTable
             :enable-task-actions="true"
             :dynamic-columns="seaExportDynamicColumns"
@@ -1203,10 +1187,6 @@ onMounted(() => {
             @open-sea-export="handleOpenSeaExport"
           />
         </main>
-        <WorkbenchExceptionPanel
-          v-if="!hideWorkbenchMockSidePanels"
-          :summary="exceptionSummary"
-        />
       </template>
       <template v-else-if="isReviewTab">
         <main class="workbench-main workbench-main--review">
@@ -1265,34 +1245,41 @@ onMounted(() => {
 
 <style scoped>
 .workbench-page {
-  min-height: calc(100vh - 104px);
+  /* 纵向弹性布局：高度锁定在布局内容区（--vben-content-height），顶部导航/筛选/
+     港口卡固定高度，剩余高度全部交给表格区自身滚动，避免整页出现纵向滚动条。 */
+  display: flex;
+  flex-direction: column;
+  height: var(--vben-content-height, calc(100vh - 104px));
+  overflow: hidden;
   background: #f7f8fa;
+}
+
+.workbench-page > * {
+  flex: none;
 }
 
 .workbench-layout {
   display: flex;
+  flex: 1 1 auto;
   gap: 24px;
-  align-items: flex-start;
-  padding-top: 16px;
+  align-items: stretch;
+  min-height: 0;
+  padding-top: 12px;
+  padding-bottom: 16px;
   margin-right: 20px;
 }
 
 .workbench-port-wrap {
-  padding: 16px 20px 0;
+  padding: 12px 20px 0;
 }
 
 .workbench-main {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 760px;
+  min-height: 0;
   margin-left: 20px;
-}
-
-.workbench-main--review {
-  margin-bottom: 20px;
-}
-
-.workbench-main--review :deep(.table-card) {
-  margin-top: 12px;
 }
 
 .workbench-main--review :deep(.business-table th),
@@ -1305,7 +1292,6 @@ onMounted(() => {
   display: grid;
   flex: 1;
   place-items: center;
-  min-height: 280px;
   margin: 0 20px;
   font-size: 16px;
   color: #8b93a5;
