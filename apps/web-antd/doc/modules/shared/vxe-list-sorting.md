@@ -2,7 +2,7 @@
 title: vxe 分页列表列头排序
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-09-03
+last_updated: 2026-09-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,6 +17,7 @@ last_updated: 2026-09-03
 - **默认排序：** 页面可配置 `defaultSort`；全部取消后回退默认；未配置则不传 `sorting`。用户首次点击 **非 defaultSort 字段** 的列头时 **替换** 默认排序（不会把 `CreationTime DESC` 等默认项叠进排序链）；已有会话后再点其他列仍可多列叠加。
 - **搜索后恢复：** 搜索表单调用 `reload` 后，按当前 `sortConfig.defaultSort` 恢复列头箭头，避免请求仍带默认排序但表头没有高亮。
 - **排除列：** 无 `field`、序号/勾选列、`operation`/`actions` 不可排；特殊列可 `sortable: false`。
+- **字段权限刷新：** 海运进出口、空运出口及运价分页列表刷新权限或动态替换列时，继续补充默认排序属性；明确禁排的列保持禁排。运价动态箱型列属于集合展开列，不提供远程排序。
 
 # 3. 开发接入
 
@@ -56,6 +57,7 @@ proxyConfig: {
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-16 | Fix | 恢复字段权限包装列表的列头排序入口。 | 权限监听用原始列覆盖适配器增强列；生成列时复用默认排序规则，并排除运价动态箱型列。回归测试共 19 项通过。 |
 | 2026-09-03 | Fix | 搜索或重置筛选条件后，默认排序列头继续保持高亮。 | `reload` 完成后等待视图更新，再调用 `restoreDefaultSortIndicators`；请求排序与表头状态重新一致。 |
 | 2026-08-28 | Fix | 列设置加载/恢复默认列后，默认排序列头箭头不再消失。 | `refreshColumn` 冲掉 `column.order`；补 `restoreDefaultSortIndicators`。见海出/海进默认开船日期排序 changelog。 |
 | 2026-07-07 | Fix | 修复有 defaultSort 时点击其他列仍叠加默认排序 | `resolveEffectiveSortList` 识别 proxy 中相对 default 新增的字段并单独替换，保留已有 session 后的多列叠加 |

@@ -36,6 +36,7 @@ vi.mock('#/adapter/vxe-table', () => ({
 import { getCurrentUserMaskedFields } from '#/api/system/permission';
 import { loadMaskedFields, resetMaskedFields } from './use-masked-fields';
 import { useFieldPermission } from './use-field-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 function setup() {
@@ -55,6 +56,68 @@ async function mask(alwaysMasked: boolean) {
   await loadMaskedFields(true);
   await nextTick();
 }
+
+it('分页列表初始渲染、权限刷新与动态换列均保留排序能力', async () => {
+  const permission = setup();
+  const [, api] = permission.usePermissionGrid({
+    gridOptions: {
+      columns: [
+        { type: 'checkbox' },
+        { field: 'vessel' },
+        { field: 'remark', sortable: false },
+        { field: 'actions' },
+        { title: '分组', children: [{ field: 'contractNo' }] },
+      ],
+      proxyConfig: { ajax: { query: createPagedListQuery(vi.fn()) } },
+    },
+  });
+  const state = (api as any).state;
+  expect(state.columns[1].sortable).toBe(true);
+  expect(state.columns[0].sortable).toBeUndefined();
+  expect(state.columns[2].sortable).toBe(false);
+  expect(state.columns[3].sortable).toBeUndefined();
+  expect(state.columns[4].children[0].sortable).toBe(true);
+  await mask(true);
+  expect(state.columns.some((column: any) => column.field === 'vessel')).toBe(
+    false,
+  );
+  expect(state.columns.at(-1).children[0].sortable).toBe(true);
+  api.setGridOptions({
+    columns: [{ field: 'vessel' }, { field: 'contractNo' }],
+  });
+  expect(state.columns[0]).toMatchObject({
+    field: 'contractNo',
+    sortable: true,
+  });
+  vi.mocked(getCurrentUserMaskedFields).mockResolvedValue([]);
+  await loadMaskedFields(true);
+  await nextTick();
+  expect(state.columns.map((column: any) => column.sortable)).toEqual([
+    true,
+    true,
+  ]);
+});
+
+it.each([undefined, false])(
+  '非分页远程排序表格不自动开启排序（分页配置 %s）',
+  (enabled) => {
+    const permission = setup();
+    const [, api] = permission.usePermissionGrid({
+      gridOptions: {
+        columns: [{ field: 'remark' }, { field: 'contractNo', sortable: true }],
+        ...(enabled === false
+          ? {
+              pagerConfig: { enabled },
+              proxyConfig: { ajax: { query: createPagedListQuery(vi.fn()) } },
+            }
+          : {}),
+      },
+    });
+    expect(
+      (api as any).state.columns.map((column: any) => column.sortable),
+    ).toEqual([undefined, true]);
+  },
+);
 
 it('隐藏必填字段并在切换到可见记录时恢复原 schema', async () => {
   const permission = setup();

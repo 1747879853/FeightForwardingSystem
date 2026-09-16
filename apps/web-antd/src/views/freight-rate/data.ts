@@ -498,6 +498,8 @@ export function useColumns(
     const ctnNames = extractUniqueCtnNames(data);
     dynamicCtnColumns = ctnNames.map((ctnName) => ({
       field: `ctn_${ctnName}`,
+      // 集合展开的展示列没有对应的后端排序字段。
+      sortable: false,
       title: ctnName,
       width: 140,
       align: 'left',

@@ -9,6 +9,11 @@ import {
   type FieldPermissionProfile,
 } from './field-permission';
 import { useMaskedFields } from './use-masked-fields';
+import {
+  applyDefaultSortable,
+  isPagedListQuery,
+  isRemoteSortEnabled,
+} from '#/utils/paged-list-query';
 
 /** 页面显式选择 DTO 配置；不依赖路由猜测模块。 */
 export function useFieldPermission(profile: FieldPermissionProfile) {
@@ -36,6 +41,10 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
 
   const usePermissionGrid: typeof useVbenVxeGrid = (options, ...rest) => {
     let columns = options.gridOptions?.columns ?? [];
+    // 与表格适配器使用同一启用条件，权限刷新/动态换列也需保留自动排序属性。
+    const autoSortable =
+      isRemoteSortEnabled(options.gridOptions) &&
+      isPagedListQuery(options.gridOptions?.proxyConfig?.ajax?.query);
     const schema = options.formOptions?.schema ?? [];
     /** field → 无具名插槽的列配置（走 permission_${field}） */
     const slotColumns = new Map<string, any>();
@@ -71,7 +80,7 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
           return { ...column, slots: { ...column.slots, default: slot } };
         });
       slotColumnsVersion.value += 1;
-      return next;
+      return autoSortable ? (applyDefaultSortable(next) ?? next) : next;
     };
 
     const filterSearchSchema = () =>
