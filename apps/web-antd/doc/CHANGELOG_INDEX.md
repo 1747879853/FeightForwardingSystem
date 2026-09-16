@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-16] [分析首页不再按 Page.Home 拦截](./changelogs/change-log-2026-09-16-analytics-no-page-home-authority.md)
+
 - [2026-09-16] [船期查询密钥更新](./changelogs/change-log-2026-09-16-船期查询密钥更新.md)
 
 - [2026-09-16] [字段权限刷新保留列排序](./changelogs/change-log-2026-09-16-字段权限刷新保留列排序.md)

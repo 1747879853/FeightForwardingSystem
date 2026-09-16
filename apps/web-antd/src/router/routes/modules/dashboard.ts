@@ -13,7 +13,6 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:area-chart',
       order: 0,
       title: $t('page.dashboard.analytics'),
-      authority: abpPageAuthority('Page.Home'),
     },
   },
   {
