@@ -2,7 +2,7 @@
 title: 船期查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-13
+last_updated: 2026-09-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,6 +12,8 @@ last_updated: 2026-09-13
 **2026-09-13 当前入口：** `/schedule` 已切换至 `sdk.vue`，通过独立 iframe 运行 `public/schedule-sdk.html` 中的 Web SDK。只显示船期功能，隐藏导航栏，默认中文；密钥读取 `VITE_GLOB_FREIGHTOWER_SCHEDULE_KEY`（各品牌共用同一把）。加载失败或超时提供重试。原 `list.vue`、分组逻辑、接口及测试完整保留，以下工作台说明为原实现。恢复时将 `freight-rate.ts` 的组件导入改回 `#/views/schedule-query/list.vue`。
 
 **路由与源码定位：**
+
+**2026-09-16 不可用提示：** 识别套餐购买、额度耗尽或服务到期弹窗后，隐藏供应商弹窗及遮罩，统一显示「船期查询暂不可用，请联系管理员。」并提供重新加载。普通详情不匹配收费规则；规则依赖供应商 DOM 和中文文案，后续变化需维护。
 
 | 项目 | 内容 |
 | :-- | :-- |
@@ -101,3 +103,4 @@ last_updated: 2026-09-13
 | 2026-07-16 | `Feature` | 对接飞驼 `QueryScheduleAsync` 新增字段，AIS 定位改为优先真实 MMSI；起运/目的/中转港码头优先展示标准化名称。 | DTO 补全 `mmsi`/`imoNumber`/`callSign`/`shareCabins`/`*TerminalCn`/`*UnCode`/`manifestCutoff`/`cvCutoff` 等及 `FeituoShareCabinDto`；`Result` 增 `status`/`size`；`handleRowDblclick` 取 `row.mmsi \|\| row.vessel`；列表码头显示回退 `*TerminalCn \|\| *Terminal`。 |
 | 2026-07-16 | `Feature` | 列表全字段展示：为飞驼返回的所有字段补齐表格列（内部字段默认隐藏，工具栏可开启）。 | `useColumns` 补全全部字段列，新增 `text()` 空值兜底与 `formatShareCabins()` 共舱摘要；`pol`/`pod` 组合插槽列 field 改为 `polName`/`podName` 以避免与原始英文名列 field 冲突。 |
 | 2026-07-16 | `Style` | 用户可见提示语去掉供应商名称，避免暴露第三方接口来源。 | AIS 未配置密钥提示改为「船舶定位服务未配置，请联系管理员」；无数据提示不再透传接口 `message`；`.env`/代码注释中立化。 |
+| 2026-09-16 | `Fix` | 隐藏 SDK 收费弹窗，改为中立不可用提示及重新加载。 | CSS 预隐藏套餐弹窗，body 监听外层挂载及文案；实际查询及重新加载验证通过。 |

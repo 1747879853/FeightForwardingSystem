@@ -15,7 +15,7 @@
       #status {
         position: fixed;
         inset: 0;
-        z-index: 9999;
+        z-index: 2147483647;
         display: grid;
         place-content: center;
         gap: 16px;
@@ -28,6 +28,12 @@
       }
       #status[hidden] {
         display: none;
+      }
+      /* Hide the upgrade UI before the observer runs, including its backdrop. */
+      .ft-upgrade-transparent-dialog,
+      .el-overlay:has(.ft-upgrade-transparent-dialog),
+      [data-schedule-billing-dialog] {
+        display: none !important;
       }
       img[src^="https://i.saas.freightower.com/assets/customer/wy3.png"],
       .ft-schedule-wrapper .el-dialog .el-row:first-child > .el-col.text-center:first-child > div > img:nth-of-type(2) {
@@ -98,8 +104,54 @@
       <button id="retry" type="button" hidden>重新加载</button>
     </div>
     <script type="module">
+      const status = document.getElementById('status');
+      const message = document.getElementById('message');
+      const retry = document.getElementById('retry');
+      let serviceUnavailable = false;
+      retry.addEventListener('click', () => location.reload());
+      function fail(text) {
+        message.textContent = serviceUnavailable
+          ? '船期查询暂不可用，请联系管理员。'
+          : text;
+        retry.hidden = false;
+        status.hidden = false;
+      }
+      function hideBillingDialogs() {
+        for (const dialog of document.querySelectorAll('.el-dialog, .el-message-box')) {
+          const text = dialog.textContent || '';
+          const isBilling = dialog.matches('.ft-upgrade-transparent-dialog') ||
+            (/流量包|会员权益/.test(text) && /立即开通|购买|充值/.test(text)) ||
+            /(?:额度|余额|查询次数|流量).{0,12}(?:不足|用完|耗尽)|(?:套餐|会员|服务).{0,8}已到期/.test(text);
+          if (!isBilling) continue;
+          const overlay = dialog.closest('.el-overlay') || dialog;
+          // A mounted but closed dialog must not disable normal queries.
+          if (overlay.style.display === 'none' || dialog.style.display === 'none') continue;
+          if (!overlay.hasAttribute('data-schedule-billing-dialog')) {
+            overlay.setAttribute('data-schedule-billing-dialog', '');
+          }
+          if (!serviceUnavailable) {
+            serviceUnavailable = true;
+            app.hidden = true;
+            fail();
+          }
+        }
+      }
+      const billingObserver = new MutationObserver(hideBillingDialogs);
+      function observeBillingDialogs() {
+        billingObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: ['class', 'style'],
+        });
+        hideBillingDialogs();
+      }
+      window.addEventListener('pagehide', () => billingObserver.disconnect());
+      window.addEventListener('pageshow', observeBillingDialogs);
       // The SDK can insert this image again after navigation or re-rendering.
       const app = document.getElementById('app');
+      observeBillingDialogs();
       // Reliability dialog: the second image beside the carrier logo.
       // Do not depend on the customer image's host, filename or version.
       const customerImagePosition =
@@ -142,15 +194,6 @@
           }
         }, { once: true });
       });
-      const status = document.getElementById('status');
-      const message = document.getElementById('message');
-      const retry = document.getElementById('retry');
-      retry.addEventListener('click', () => location.reload());
-      function fail(text) {
-        message.textContent = text;
-        retry.hidden = false;
-        status.hidden = false;
-      }
       if (!key) {
         fail('船期查询尚未配置，请联系管理员。');
       } else {
@@ -173,7 +216,7 @@
             mounted({ locale }) {
               locale('zh');
               clearTimeout(timer);
-              status.hidden = true;
+              status.hidden = serviceUnavailable === false;
             },
           });
         } catch {
