@@ -98,6 +98,49 @@ it('动态替换列仍受权限约束，解除规则后恢复列', async () => {
   ]);
 });
 
+it('后补动态列保留具名插槽并可渲染（运价箱型列）', async () => {
+  const permission = setup();
+  const [Grid, api] = permission.usePermissionGrid({
+    gridOptions: {
+      columns: [{ field: 'remark' }],
+    },
+  });
+  const originalSlot = vi.fn(() => '箱型价');
+  const render = (Grid as any).setup(
+    {},
+    { attrs: {}, slots: { ctnEditableCell: originalSlot } },
+  );
+
+  api.setGridOptions({
+    columns: [
+      { field: 'remark' },
+      {
+        field: 'ctn_20GP',
+        slots: { default: 'ctnEditableCell' },
+        params: { ctnName: '20GP' },
+      },
+    ],
+  });
+
+  // 不应改成 permission_ctn_*（否则 VXE 可能在插槽挂上前渲染出空白）
+  expect(render().children.permission_ctn_20GP).toBeUndefined();
+  const slot = render().children.ctnEditableCell;
+  expect(slot).toBeTypeOf('function');
+  expect(
+    slot({
+      column: { field: 'ctn_20GP', params: { ctnName: '20GP' } },
+      row: {
+        seFreiPriceCtns: [{ cost: 100, ctnCode: { ctnName: '20GP' } }],
+      },
+    }),
+  ).toBe('箱型价');
+  expect(originalSlot).toHaveBeenCalled();
+  expect(
+    (api as any).state.columns.find((c: any) => c.field === 'ctn_20GP')?.slots
+      ?.default,
+  ).toBe('ctnEditableCell');
+});
+
 it('条件屏蔽保留列，受限格子优先于业务插槽', async () => {
   const permission = setup();
   const [Grid] = permission.usePermissionGrid({
@@ -111,10 +154,15 @@ it('条件屏蔽保留列，受限格子优先于业务插槽', async () => {
     {},
     { attrs: {}, slots: { vesselSlot: originalSlot } },
   );
-  const slot = render().children.permission_vessel;
-  expect(slot({ row: {} })[0].children).toBe('***');
+  // 具名插槽保持原名，由包装层拦截
+  const slot = render().children.vesselSlot;
+  expect(slot({ row: {}, column: { field: 'vessel' } })[0].children).toBe(
+    '***',
+  );
   expect(originalSlot).not.toHaveBeenCalled();
-  expect(slot({ row: { vessel: 'A' } })).toBe('船名原插槽');
+  expect(slot({ row: { vessel: 'A' }, column: { field: 'vessel' } })).toBe(
+    '船名原插槽',
+  );
 });
 
 it('列表筛选在表格未挂载时不抛错，规则到位后写入 schema', async () => {
