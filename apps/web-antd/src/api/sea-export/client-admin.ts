@@ -9,6 +9,19 @@ export namespace ClientAdminApi {
     DirectCustomer = 1,
   }
 
+  /**
+   * 客户共享类型（2026-09-16：由 bool 改为枚举）
+   * 0 不共享 / 1 共享本公司 / 2 共享所有人
+   */
+  export enum ClientSharedType {
+    /** 不共享：仅数据权限或干系人可见 */
+    None = 0,
+    /** 共享本公司：客户归属公司属于当前用户所属公司时可见 */
+    Company = 1,
+    /** 共享所有人：全集团可见 */
+    All = 2,
+  }
+
   /** 合作状态枚举 */
   export enum CoopStatus {
     /** 潜在 */
@@ -194,8 +207,8 @@ export namespace ClientAdminApi {
     reconcilerUserIds?: number[];
     /** 企业类型（前端自定义枚举） */
     enterpriseType?: number;
-    /** 是否共享 */
-    isShared?: boolean;
+    /** 共享类型 */
+    isShared?: ClientSharedType;
     /** 归属组织id（可选） */
     orgId?: null | number;
     isDeleted?: boolean;
@@ -335,8 +348,8 @@ export namespace ClientAdminApi {
     reconcilerUserIds?: number[];
     /** 企业类型（前端自定义枚举） */
     enterpriseType?: number;
-    /** 是否共享 */
-    isShared?: boolean;
+    /** 共享类型 */
+    isShared?: ClientSharedType;
     /** 归属组织id（可选） */
     orgId?: null | number;
   }
@@ -629,8 +642,8 @@ export namespace ClientAdminApi {
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织），可空 */
     orgs?: null | OrganizationUnitSimpleDto[];
-    /** 是否共享（共享后全集团可见） */
-    isShared?: boolean;
+    /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人） */
+    isShared?: ClientSharedType;
 
     /** 是否失信 */
     isDishonest?: boolean;
@@ -695,8 +708,8 @@ export namespace ClientAdminApi {
     DishonestRemark?: string;
     /** 企业类型 */
     EnterpriseType?: number;
-    /** 是否共享 */
-    IsShared?: boolean;
+    /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人） */
+    IsShared?: ClientSharedType;
 
     /** 归属组织ID，为空不筛选 */
     OrgId?: number;

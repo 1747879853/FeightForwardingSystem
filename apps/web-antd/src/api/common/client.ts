@@ -13,6 +13,19 @@ export namespace ClientAppApi {
     Blacklist = 3,
   }
 
+  /**
+   * 客户共享类型（2026-09-16：由 bool 改为枚举）
+   * 0 不共享 / 1 共享本公司 / 2 共享所有人
+   */
+  export enum ClientSharedType {
+    /** 不共享 */
+    None = 0,
+    /** 共享本公司 */
+    Company = 1,
+    /** 共享所有人 */
+    All = 2,
+  }
+
   /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
     /** 组织id */
@@ -43,8 +56,8 @@ export namespace ClientAppApi {
     isDishonest?: boolean;
     /** 企业类型（前端自定义枚举） */
     enterpriseType?: number;
-    /** 是否共享 */
-    isShared?: boolean;
+    /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人） */
+    isShared?: ClientSharedType;
     /** 客户税率(%)，可空表示未设置 */
     taxRate?: null | number;
     /** 归属组织id */
@@ -111,8 +124,8 @@ export namespace ClientAppApi {
     isDishonest?: boolean;
     /** 企业类型（前端自定义枚举），为空不筛选 */
     enterpriseType?: number;
-    /** 是否共享，为空不筛选 */
-    isShared?: boolean;
+    /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人），为空不筛选；勿再传 true/false */
+    isShared?: ClientSharedType;
     /** 归属组织id，为空不筛选 */
     orgId?: null | number;
     /** 当前页码，从1开始，默认1 */

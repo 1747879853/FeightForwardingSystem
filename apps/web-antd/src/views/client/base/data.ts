@@ -22,6 +22,11 @@ import {
   getSupplierIndustryCategoryOptions,
   getSupplierLevelOptions,
 } from './options';
+import {
+  ClientSharedType,
+  getClientSharedTypeOptions,
+  getClientSharedTypeTagOptions,
+} from './shared-type';
 
 /**
  * 根据行业类别生成客户下拉的表单 schema
@@ -155,13 +160,13 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'IsShared',
-      label: '是否共享',
+      label: '共享类型',
       componentProps: {
         allowClear: true,
-        options: [
-          { label: '是', value: true },
-          { label: '否', value: false },
-        ],
+        options: getClientSharedTypeOptions().map((item) => ({
+          label: item.label,
+          value: item.value,
+        })),
         placeholder: $t('ui.placeholder.select'),
       },
     },
@@ -350,7 +355,7 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       component: 'UserCompanySelect',
       fieldName: 'orgId',
       label: '所属公司',
-      // 标签行占满宽度，供 form.vue 把「是否共享」渲在标题右侧
+      // 标签行占满宽度，供 form.vue 把「共享类型」渲在标题右侧
       labelClass: 'w-full',
       rules: 'required',
       componentProps: {
@@ -363,11 +368,11 @@ export function useBaseFormSchema(): VbenFormSchema[] {
     },
     {
       // 实际 UI 在所属公司标题右侧；此字段仅参与表单取值/脏检查/提交
-      component: 'Switch',
+      component: 'InputNumber',
       fieldName: 'isShared',
-      label: '是否共享',
-      help: '共享后全集团可见',
-      defaultValue: false,
+      label: '共享类型',
+      help: '不共享 / 共享本公司 / 共享所有人',
+      defaultValue: ClientSharedType.None,
       hideLabel: true,
       formItemClass: '!hidden',
     },
@@ -764,14 +769,12 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
     },
     {
       field: 'isShared',
-      title: '是否共享',
-      minWidth: 100,
+      title: '共享类型',
+      minWidth: 110,
+      align: 'center',
       cellRender: {
         name: 'CellTag',
-        options: [
-          { value: true, label: '是', color: 'success' },
-          { value: false, label: '否', color: 'default' },
-        ],
+        options: getClientSharedTypeTagOptions(),
       },
     },
     {

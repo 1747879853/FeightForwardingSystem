@@ -34,6 +34,7 @@ import { getAreaAndParents } from '#/api/common/area';
 import AddressModal from './address-modal.vue';
 import RiskbirdSearchModal from './riskbird-search-modal.vue';
 import OrgSharedLabel from './org-shared-label.vue';
+import { ClientSharedType, normalizeClientSharedType } from './shared-type';
 import { useVbenModal } from '@vben/common-ui';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
@@ -199,8 +200,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-4',
 });
 
-/** 是否共享：UI 挂在所属公司标题右侧，值写入基础表单 isShared */
-const isSharedChecked = ref(false);
+/** 共享类型：UI 挂在所属公司标题右侧，值写入基础表单 isShared */
+const isSharedValue = ref(ClientSharedType.None);
 
 function bindOrgSharedLabel() {
   baseFormApi.updateSchema([
@@ -213,10 +214,10 @@ function bindOrgSharedLabel() {
           setup() {
             return () =>
               h(OrgSharedLabel, {
-                checked: isSharedChecked.value,
-                'onUpdate:checked': async (checked: boolean) => {
-                  isSharedChecked.value = checked;
-                  await baseFormApi.setFieldValue('isShared', checked);
+                value: isSharedValue.value,
+                'onUpdate:value': async (value: ClientSharedType) => {
+                  isSharedValue.value = value;
+                  await baseFormApi.setFieldValue('isShared', value);
                 },
               });
           },
@@ -646,7 +647,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     url: detail.url,
     enterpriseType: detail.enterpriseType, // 添加企业类型字段
     orgId: detail.orgId, // 归属组织字段
-    isShared: detail.isShared ?? false,
+    isShared: normalizeClientSharedType(detail.isShared),
     remark: detail.remark,
     country: detail.countryId,
     areaId: areaIdPath,
@@ -696,7 +697,7 @@ const loadEditData = async () => {
 
     // 设置各个表单的值
     await baseFormApi.setValues(formValues);
-    isSharedChecked.value = Boolean(formValues.isShared);
+    isSharedValue.value = normalizeClientSharedType(formValues.isShared);
     await businessFormApi.setValues(formValues);
 
     // 根据客户类型设置对应的表单
@@ -1089,7 +1090,7 @@ const handleSubmit = async () => {
 
         enterpriseType: baseValues.enterpriseType, // 企业类型字段
         orgId: baseValues.orgId, // 归属组织字段
-        isShared: Boolean(baseValues.isShared),
+        isShared: normalizeClientSharedType(baseValues.isShared),
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1199,7 +1200,7 @@ const handleSubmit = async () => {
 
         enterpriseType: baseValues.enterpriseType, // 添加企业类型字段
         orgId: baseValues.orgId, // 归属组织字段
-        isShared: Boolean(baseValues.isShared),
+        isShared: normalizeClientSharedType(baseValues.isShared),
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
