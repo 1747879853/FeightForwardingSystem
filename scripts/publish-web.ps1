@@ -56,6 +56,26 @@ function Invoke-ExternalCommand {
   }
 }
 
+function Get-Sha256Hash {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$LiteralPath
+  )
+
+  $stream = [System.IO.File]::OpenRead($LiteralPath)
+  try {
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+      $hashBytes = $sha256.ComputeHash($stream)
+      return ([System.BitConverter]::ToString($hashBytes)).Replace('-', '')
+    } finally {
+      $sha256.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
+
 function Get-ConfigValue {
   param(
     [Parameter(Mandatory = $true)]
@@ -314,7 +334,7 @@ try {
   }
 
   $files = @(Get-ChildItem -LiteralPath $distPath -Recurse -File)
-  $indexHash = (Get-FileHash (Join-Path $distPath 'index.html') -Algorithm SHA256).Hash
+  $indexHash = Get-Sha256Hash -LiteralPath (Join-Path $distPath 'index.html')
   Write-Host "Files       : $($files.Count)"
   Write-Host "API         : $expectedApi"
   Write-Host "index SHA256: $indexHash"
@@ -337,7 +357,7 @@ try {
   }
 
   $package = Get-Item -LiteralPath $packagePath
-  $packageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+  $packageHash = Get-Sha256Hash -LiteralPath $packagePath
   Write-Host ("Package     : {0} ({1:N2} MB)" -f $packagePath, ($package.Length / 1MB))
   Write-Host "ZIP SHA256  : $packageHash"
 
