@@ -165,6 +165,26 @@ it('条件屏蔽保留列，受限格子优先于业务插槽', async () => {
   );
 });
 
+it('列配置函数插槽会被转发（审核费用状态 Tag）', async () => {
+  const permission = setup();
+  const feeSlot = vi.fn(({ row }: any) => `状态:${row.combinedFeeStatus}`);
+  const [Grid] = permission.usePermissionGrid({
+    gridOptions: {
+      columns: [
+        {
+          field: 'combinedFeeStatus',
+          slots: { default: feeSlot },
+        },
+      ],
+    },
+  });
+  const render = (Grid as any).setup({}, { attrs: {}, slots: {} });
+  const slot = render().children.permission_combinedFeeStatus;
+  expect(slot).toBeTypeOf('function');
+  expect(slot({ row: { combinedFeeStatus: 2 } })).toBe('状态:2');
+  expect(feeSlot).toHaveBeenCalled();
+});
+
 it('列表筛选在表格未挂载时不抛错，规则到位后写入 schema', async () => {
   const permission = setup();
   const [, api] = permission.usePermissionGrid({
