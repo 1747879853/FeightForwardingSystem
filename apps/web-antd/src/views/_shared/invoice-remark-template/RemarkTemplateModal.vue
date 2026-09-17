@@ -656,78 +656,70 @@ defineExpose({
     title="备注模板管理"
     width="1200px"
     :footer="null"
-    :body-style="{ padding: '16px' }"
+    class="remark-template-manage-modal"
+    :body-style="{ padding: '0' }"
   >
-    <div style="display: flex; gap: 16px">
-      <!-- 左侧：模板列表 -->
-      <div style="flex: 1; min-width: 0">
-        <!-- 可用占位符 -->
-        <div
-          style="
-            padding: 12px;
-            margin-bottom: 16px;
-            background: #fff7f0;
-            border: 2px solid #ff4d4f;
-            border-radius: 4px;
-          "
-        >
-          <div style="margin-bottom: 8px; font-weight: bold; color: #ff4d4f">
-            可用占位符：
+    <div class="rtm">
+      <!-- 左侧：列表与占位符 -->
+      <div class="rtm__main">
+        <section class="rtm-section rtm-section--placeholders">
+          <div class="rtm-section__head">
+            <span class="rtm-section__indicator" />
+            <span class="rtm-section__title">可用占位符</span>
+            <span class="rtm-section__hint">点击插入到右侧模板内容</span>
           </div>
-          <Space wrap size="small">
-            <Button
+          <div class="rtm-placeholder-chips">
+            <button
               v-for="ph in availablePlaceholders"
               :key="ph.value"
-              size="small"
-              type="primary"
-              ghost
+              type="button"
+              class="rtm-chip"
+              :title="`插入 ${ph.value}`"
               @click="insertPlaceholder(ph.value, ph.example)"
             >
               {{ ph.label }}
-            </Button>
-          </Space>
-        </div>
+            </button>
+          </div>
+        </section>
 
-        <!-- 筛选条件 -->
-        <div
-          style="
-            padding: 12px;
-            margin-bottom: 16px;
-            background: #fafafa;
-            border: 1px solid #d9d9d9;
-            border-radius: 4px;
-          "
-        >
-          <div style="display: flex; gap: 12px; align-items: center">
-            <span style="font-size: 14px; font-weight: bold"
-              >已有模板 ({{ templateList.length }})</span
-            >
-            <span style="color: #999">筛选:</span>
-            <Select
-              v-model:value="filterCompanyId"
-              :options="
-                companyList.map((c) => ({ label: c.displayName, value: c.id }))
-              "
-              placeholder="全部公司"
-              style="width: 150px"
-              allow-clear
-            />
-            <CurrencySelect
-              v-model="filterCurrencyId"
-              placeholder="全部币别"
-              style="width: 150px"
-              allow-clear
-            />
-            <Button type="primary" size="small" @click="loadTemplateList">
-              查询
-            </Button>
-            <Button size="small" @click="handleResetFilter">重置</Button>
+        <section class="rtm-section rtm-section--list">
+          <div class="rtm-toolbar">
+            <div class="rtm-toolbar__title">
+              <span class="rtm-section__indicator" />
+              <span>已有模板</span>
+              <span class="rtm-count">{{ templateList.length }}</span>
+            </div>
+            <div class="rtm-toolbar__filters">
+              <Select
+                v-model:value="filterCompanyId"
+                :options="
+                  companyList.map((c) => ({
+                    label: c.displayName,
+                    value: c.id,
+                  }))
+                "
+                placeholder="全部公司"
+                class="rtm-filter-select"
+                allow-clear
+              />
+              <CurrencySelect
+                v-model="filterCurrencyId"
+                placeholder="全部币别"
+                class="rtm-filter-select"
+                allow-clear
+              />
+              <Button type="primary" size="small" @click="loadTemplateList">
+                查询
+              </Button>
+              <Button size="small" @click="handleResetFilter">重置</Button>
+            </div>
+          </div>
 
-            <!-- 批量操作按钮 -->
-            <template v-if="selectedTemplateIds.length > 0">
-              <span style="font-weight: bold; color: #1890ff"
-                >已选中 {{ selectedTemplateIds.length }} 项</span
-              >
+          <div v-if="selectedTemplateIds.length > 0" class="rtm-batch-bar">
+            <span class="rtm-batch-bar__text">
+              已选中 {{ selectedTemplateIds.length }} 项
+            </span>
+            <Space size="small">
               <Button size="small" danger @click="handleBatchDelete">
                 批量删除
               </Button>
@@ -738,139 +730,106 @@ defineExpose({
               >
                 批量设默认
               </Button>
-            </template>
-          </div>
-        </div>
-
-        <!-- 模板列表 -->
-        <div style="max-height: 500px; overflow-y: auto">
-          <!-- 全选复选框 -->
-          <div
-            v-if="templateList.length > 0"
-            style="
-              padding: 8px 12px;
-              margin-bottom: 12px;
-              background: #fff;
-              border: 1px solid #d9d9d9;
-              border-radius: 4px;
-            "
-          >
-            <Checkbox
-              :checked="
-                selectedTemplateIds.length === templateList.length &&
-                templateList.length > 0
-              "
-              :indeterminate="
-                selectedTemplateIds.length > 0 &&
-                selectedTemplateIds.length < templateList.length
-              "
-              @change="(e) => handleSelectAll(e.target.checked)"
-            >
-              全选
-            </Checkbox>
+            </Space>
           </div>
 
-          <div
-            v-for="item in templateList"
-            :key="item.id"
-            style="
-              padding: 12px;
-              margin-bottom: 12px;
-              background: #fafafa;
-              border: 2px solid #d9d9d9;
-              border-radius: 4px;
-            "
-            :style="{
-              backgroundColor: item.default ? '#fffbe6' : '#fafafa',
-              borderColor: item.default ? '#faad14' : '#d9d9d9',
-            }"
-          >
+          <div class="rtm-list">
+            <div v-if="templateList.length > 0" class="rtm-select-all">
+              <Checkbox
+                :checked="
+                  selectedTemplateIds.length === templateList.length &&
+                  templateList.length > 0
+                "
+                :indeterminate="
+                  selectedTemplateIds.length > 0 &&
+                  selectedTemplateIds.length < templateList.length
+                "
+                @change="(e) => handleSelectAll(e.target.checked)"
+              >
+                全选
+              </Checkbox>
+            </div>
+
             <div
-              style="
-                display: flex;
-                gap: 8px;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 8px;
-              "
+              v-for="item in templateList"
+              :key="item.id"
+              class="rtm-card"
+              :class="{
+                'rtm-card--default': item.default,
+                'rtm-card--selected': selectedTemplateIds.includes(item.id),
+                'rtm-card--editing': isEditMode && editingId === item.id,
+              }"
             >
-              <div style="display: flex; gap: 8px; align-items: center">
-                <Checkbox
-                  :checked="selectedTemplateIds.includes(item.id)"
-                  @change="
-                    (e) => toggleTemplateSelection(item.id, e.target.checked)
-                  "
-                />
-                <Tag v-if="item.default" color="orange">默认</Tag>
-                <span style="font-size: 16px; font-weight: bold">
-                  {{ item.name }}
-                </span>
-                <Tag :color="item.currency.code === 'RMB' ? 'green' : 'blue'">
-                  {{ item.currency.code }}
-                </Tag>
+              <div class="rtm-card__head">
+                <div class="rtm-card__meta">
+                  <Checkbox
+                    :checked="selectedTemplateIds.includes(item.id)"
+                    @change="
+                      (e) => toggleTemplateSelection(item.id, e.target.checked)
+                    "
+                  />
+                  <Tag v-if="item.default" color="orange">默认</Tag>
+                  <span class="rtm-card__name">{{ item.name }}</span>
+                  <Tag
+                    :color="
+                      item.currency.code === 'RMB' ||
+                      item.currency.code === 'CNY'
+                        ? 'green'
+                        : 'blue'
+                    "
+                  >
+                    {{ item.currency.code }}
+                  </Tag>
+                </div>
+                <Space size="small" class="rtm-card__actions">
+                  <Button
+                    v-if="!item.default"
+                    size="small"
+                    type="primary"
+                    ghost
+                    @click="handleSetDefault(item)"
+                  >
+                    设默认
+                  </Button>
+                  <Button size="small" @click="handleEdit(item)">编辑</Button>
+                  <Button size="small" danger @click="handleDelete(item)">
+                    删除
+                  </Button>
+                </Space>
               </div>
-              <Space size="small">
-                <!-- <Button size="small" type="primary" @click="handleUse(item)"
-                  >使用</Button
-                > -->
-                <Button
-                  v-if="!item.default"
-                  size="small"
-                  type="primary"
-                  ghost
-                  @click="handleSetDefault(item)"
-                >
-                  设默认
-                </Button>
-                <Button size="small" @click="handleEdit(item)">编辑</Button>
-                <Button size="small" danger @click="handleDelete(item)"
-                  >删除</Button
-                >
-              </Space>
+              <div class="rtm-card__body">
+                {{ item.template || '(空模板)' }}
+              </div>
             </div>
-            <div
-              style="
-                padding: 8px;
-                font-size: 13px;
-                line-height: 1.6;
-                word-break: break-all;
-                white-space: pre-wrap;
-                background: #fff;
-                border: 1px solid #e8e8e8;
-                border-radius: 4px;
-              "
-            >
-              {{ item.template || '(空模板)' }}
-            </div>
-          </div>
 
-          <div
-            v-if="templateList.length === 0 && !loading"
-            style="padding: 40px; color: #999; text-align: center"
-          >
-            暂无模板数据
+            <div v-if="templateList.length === 0 && !loading" class="rtm-empty">
+              暂无模板数据，可在右侧新增
+            </div>
           </div>
-        </div>
+        </section>
       </div>
 
-      <!-- 右侧：新增/编辑表单 -->
-      <div style="flex-shrink: 0; width: 400px">
-        <div
-          style="
-            padding: 16px;
-            background: #f0f5ff;
-            border: 1px solid #adc6ff;
-            border-radius: 4px;
-          "
-        >
-          <div style="margin-bottom: 16px; font-size: 16px; font-weight: bold">
-            {{ isEditMode ? '✏️ 编辑模板' : '➕ 新增模板' }}
+      <!-- 右侧：编辑表单 -->
+      <aside class="rtm__side">
+        <div class="rtm-form">
+          <div class="rtm-form__head">
+            <span class="rtm-section__indicator" />
+            <span class="rtm-form__title">
+              {{ isEditMode ? '编辑模板' : '新增模板' }}
+            </span>
+            <Button
+              v-if="isEditMode"
+              type="link"
+              size="small"
+              class="rtm-form__reset"
+              @click="handleAdd"
+            >
+              改为新增
+            </Button>
           </div>
 
-          <div style="margin-bottom: 12px">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold"
-              >模板名称</label
-            >
+          <div class="rtm-form__field">
+            <label class="rtm-form__label">模板名称</label>
             <Input
               :value="formData.name"
               placeholder="如: RMB通用模板"
@@ -878,73 +837,41 @@ defineExpose({
             />
           </div>
 
-          <div style="margin-bottom: 12px">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold"
-              >币别</label
-            >
+          <div class="rtm-form__field">
+            <label class="rtm-form__label">币别</label>
             <CurrencySelect
               :model-value="formData.currencyId"
               placeholder="请选择币别"
-              style="width: 100%"
+              class="w-full"
               @update:model-value="(v) => updateSelectedCurrencyId(v as number)"
             />
           </div>
 
-          <div style="margin-bottom: 12px">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold"
-              >所属公司</label
-            >
+          <div class="rtm-form__field">
+            <label class="rtm-form__label">所属公司</label>
             <Select
               v-model:value="formData.orgId"
               :options="
                 companyList.map((c) => ({ label: c.displayName, value: c.id }))
               "
               placeholder="请选择所属公司"
-              style="width: 100%"
+              class="w-full"
             />
           </div>
 
-          <div style="margin-bottom: 12px">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold"
-              >模板内容</label
-            >
+          <div class="rtm-form__field">
+            <label class="rtm-form__label">模板内容</label>
             <Input.TextArea
               v-model:value="formData.template"
               :rows="8"
               placeholder="输入模板内容，可点击左侧占位符插入..."
+              class="rtm-form__textarea"
             />
           </div>
 
-          <!-- 模板预览 -->
-          <div
-            v-if="formData.template"
-            style="
-              padding: 12px;
-              margin-bottom: 12px;
-              background: #fff;
-              border: 1px dashed #d9d9d9;
-              border-radius: 4px;
-            "
-          >
-            <div
-              style="
-                margin-bottom: 8px;
-                font-size: 13px;
-                font-weight: bold;
-                color: #666;
-              "
-            >
-              模板预览（示例效果）
-            </div>
-            <div
-              style="
-                font-size: 12px;
-                line-height: 1.6;
-                color: #333;
-                word-break: break-all;
-                white-space: pre-wrap;
-              "
-            >
+          <div v-if="formData.template" class="rtm-preview">
+            <div class="rtm-preview__label">模板预览（示例效果）</div>
+            <div class="rtm-preview__content">
               {{ generateExampleText(formData.template) }}
             </div>
           </div>
@@ -952,14 +879,347 @@ defineExpose({
           <Button
             type="primary"
             block
+            size="large"
+            class="rtm-form__submit"
             :loading="submitLoading"
             @click="handleSave"
-            style="margin-top: 8px"
           >
-            {{ isEditMode ? '保存修改' : '+ 保存模板' }}
+            {{ isEditMode ? '保存修改' : '保存模板' }}
           </Button>
         </div>
-      </div>
+      </aside>
     </div>
   </Modal>
 </template>
+
+<style scoped>
+.rtm {
+  display: flex;
+  gap: 16px;
+  padding: 16px 16px 20px;
+  background: #f8fafc;
+}
+
+.rtm__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.rtm__side {
+  flex-shrink: 0;
+  width: 380px;
+}
+
+.rtm-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.rtm-section__head,
+.rtm-toolbar__title,
+.rtm-form__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rtm-section__indicator {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-radius: 2px;
+}
+
+.rtm-section__title,
+.rtm-form__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rtm-section__hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.rtm-section--placeholders {
+  padding: 12px 14px 14px;
+}
+
+.rtm-placeholder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rtm-chip {
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--primary, 212 100% 40%));
+  cursor: pointer;
+  background: hsl(var(--primary, 212 100% 45%) / 8%);
+  border: 1px solid hsl(var(--primary, 212 100% 45%) / 22%);
+  border-radius: 999px;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.rtm-chip:hover {
+  color: #fff;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-color: hsl(var(--primary, 212 100% 45%));
+  transform: translateY(-1px);
+}
+
+.rtm-chip:active {
+  transform: translateY(0);
+}
+
+.rtm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rtm-toolbar__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rtm-count {
+  min-width: 22px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary, 212 100% 40%));
+  text-align: center;
+  background: hsl(var(--primary, 212 100% 45%) / 10%);
+  border-radius: 999px;
+}
+
+.rtm-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.rtm-filter-select {
+  width: 140px;
+}
+
+.rtm-batch-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: hsl(var(--primary, 212 100% 45%) / 6%);
+  border-bottom: 1px solid hsl(var(--primary, 212 100% 45%) / 12%);
+}
+
+.rtm-batch-bar__text {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--primary, 212 100% 38%));
+}
+
+.rtm-list {
+  max-height: 420px;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+}
+
+.rtm-select-all {
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.rtm-card {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.rtm-card:last-child {
+  margin-bottom: 0;
+}
+
+.rtm-card:hover {
+  border-color: hsl(var(--primary, 212 100% 45%) / 35%);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 6%);
+}
+
+.rtm-card--default {
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 55%);
+  border-color: #fbbf24;
+}
+
+.rtm-card--selected {
+  border-color: hsl(var(--primary, 212 100% 45%) / 55%);
+  box-shadow: 0 0 0 2px hsl(var(--primary, 212 100% 45%) / 12%);
+}
+
+.rtm-card--editing {
+  border-color: hsl(var(--primary, 212 100% 45%));
+  box-shadow: 0 0 0 2px hsl(var(--primary, 212 100% 45%) / 18%);
+}
+
+.rtm-card__head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rtm-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.rtm-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rtm-card__actions {
+  flex-shrink: 0;
+}
+
+.rtm-card__body {
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #334155;
+  word-break: break-all;
+  white-space: pre-wrap;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+}
+
+.rtm-empty {
+  padding: 48px 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.rtm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 14px 16px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.rtm-form__head {
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rtm-form__reset {
+  padding-inline: 0;
+  margin-left: auto;
+}
+
+.rtm-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rtm-form__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.rtm-form__textarea :deep(textarea) {
+  border-radius: 8px;
+}
+
+.rtm-preview {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.rtm-preview__label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.rtm-preview__content {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #334155;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.rtm-form__submit {
+  margin-top: 4px;
+  border-radius: 8px;
+}
+</style>
+
+<style>
+.remark-template-manage-modal .ant-modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.remark-template-manage-modal .ant-modal-header {
+  padding: 14px 20px;
+  margin: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.remark-template-manage-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+</style>

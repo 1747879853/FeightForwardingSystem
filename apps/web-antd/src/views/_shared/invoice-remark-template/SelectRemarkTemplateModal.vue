@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue';
-import { Modal, Button, message, Space, Tag } from 'ant-design-vue';
+import { Modal, Button, message, Tag } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { resolveOrganizationCompany } from '#/api/system/organization-unit';
 import { getCompanyIdByOrgId } from '#/composables/use-my-org';
@@ -293,117 +293,286 @@ watch(
     title="选择备注模板"
     width="900px"
     :footer="null"
-    :body-style="{ padding: '16px' }"
+    class="remark-template-select-modal"
+    :body-style="{ padding: '0' }"
   >
-    <!-- 提示信息 -->
-    <div
-      style="
-        padding: 12px;
-        margin-bottom: 16px;
-        background: #e6f7ff;
-        border: 1px solid #91d5ff;
-        border-radius: 4px;
-      "
-    >
-      <div style="font-size: 13px; color: #0050b3">
-        💡
-        提示：点击"使用"按钮可将模板内容自动填充到备注字段。如果当前有费用数据，系统将自动替换占位符生成实际备注。
-      </div>
-    </div>
-
-    <!-- 模板列表 -->
-    <div style="max-height: 500px; overflow-y: auto">
-      <div
-        v-for="item in templateList"
-        :key="item.id"
-        style="
-          padding: 12px;
-          margin-bottom: 12px;
-          background: #fafafa;
-          border: 2px solid #d9d9d9;
-          border-radius: 4px;
-        "
-        :style="{
-          backgroundColor: item.default ? '#fffbe6' : '#fafafa',
-          borderColor: item.default ? '#faad14' : '#d9d9d9',
-        }"
-      >
-        <div
-          style="
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-          "
-        >
-          <div style="display: flex; gap: 8px; align-items: center">
-            <Tag v-if="item.default" color="orange">默认</Tag>
-            <span style="font-size: 16px; font-weight: bold">
-              {{ item.name || '未命名' }}
-            </span>
-            <Tag :color="item.currency.code === 'RMB' ? 'green' : 'blue'">
-              {{ item.currency.code }}
-            </Tag>
+    <div class="rts">
+      <section class="rts-tip">
+        <span class="rts-tip__indicator" />
+        <div class="rts-tip__body">
+          <div class="rts-tip__title">使用说明</div>
+          <div class="rts-tip__text">
+            点击「使用此模板」可将内容填入备注；若当前已有费用数据，系统会自动替换占位符生成实际备注。
           </div>
-          <Button size="small" type="primary" @click="handleUse(item)">
-            使用此模板
-          </Button>
+        </div>
+      </section>
+
+      <section class="rts-list-panel">
+        <div class="rts-list-panel__head">
+          <span class="rts-tip__indicator" />
+          <span class="rts-list-panel__title">可选模板</span>
+          <span class="rts-count">{{ templateList.length }}</span>
         </div>
 
-        <!-- 模板内容预览 -->
-        <div
-          style="
-            padding: 8px;
-            margin-bottom: 8px;
-            font-size: 13px;
-            line-height: 1.6;
-            word-break: break-all;
-            white-space: pre-wrap;
-            background: #fff;
-            border: 1px solid #e8e8e8;
-            border-radius: 4px;
-          "
-        >
-          <div style="margin-bottom: 4px; font-size: 12px; color: #999">
-            模板原文：
+        <div class="rts-list">
+          <div
+            v-for="item in templateList"
+            :key="item.id"
+            class="rts-card"
+            :class="{ 'rts-card--default': item.default }"
+          >
+            <div class="rts-card__head">
+              <div class="rts-card__meta">
+                <Tag v-if="item.default" color="orange">默认</Tag>
+                <span class="rts-card__name">{{ item.name || '未命名' }}</span>
+                <Tag
+                  :color="
+                    item.currency.code === 'RMB' || item.currency.code === 'CNY'
+                      ? 'green'
+                      : 'blue'
+                  "
+                >
+                  {{ item.currency.code }}
+                </Tag>
+              </div>
+              <Button
+                size="small"
+                type="primary"
+                class="rts-card__use"
+                @click="handleUse(item)"
+              >
+                使用此模板
+              </Button>
+            </div>
+
+            <div class="rts-card__block">
+              <div class="rts-card__block-label">模板原文</div>
+              <div class="rts-card__block-content">
+                {{ item.template || '(空模板)' }}
+              </div>
+            </div>
+
+            <div class="rts-card__block rts-card__block--preview">
+              <div class="rts-card__block-label">示例效果（占位符已替换）</div>
+              <div class="rts-card__block-content">
+                {{ generateExampleText(item.template) }}
+              </div>
+            </div>
           </div>
-          {{ item.template || '(空模板)' }}
-        </div>
 
-        <!-- 示例效果预览 -->
-        <div
-          style="
-            padding: 8px;
-            font-size: 13px;
-            line-height: 1.6;
-            word-break: break-all;
-            white-space: pre-wrap;
-            background: #f6ffed;
-            border: 1px dashed #b7eb8f;
-            border-radius: 4px;
-          "
-        >
-          <div style="margin-bottom: 4px; font-size: 12px; color: #52c41a">
-            示例效果（占位符已替换）：
+          <div v-if="templateList.length === 0 && !loading" class="rts-empty">
+            暂无可用的备注模板
           </div>
-          {{ generateExampleText(item.template) }}
+
+          <div v-if="loading" class="rts-empty">加载中...</div>
         </div>
-      </div>
-
-      <div
-        v-if="templateList.length === 0 && !loading"
-        style="padding: 40px; color: #999; text-align: center"
-      >
-        暂无可用的备注模板
-      </div>
-
-      <div
-        v-if="loading"
-        style="padding: 40px; color: #999; text-align: center"
-      >
-        加载中...
-      </div>
+      </section>
     </div>
   </Modal>
 </template>
+
+<style scoped>
+.rts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 20px;
+  background: #f8fafc;
+}
+
+.rts-tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background: hsl(var(--primary, 212 100% 45%) / 6%);
+  border: 1px solid hsl(var(--primary, 212 100% 45%) / 18%);
+  border-radius: 12px;
+}
+
+.rts-tip__indicator {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  margin-top: 3px;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-radius: 2px;
+}
+
+.rts-tip__body {
+  min-width: 0;
+}
+
+.rts-tip__title {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--primary, 212 100% 35%));
+}
+
+.rts-tip__text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.rts-list-panel {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.rts-list-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rts-list-panel__head .rts-tip__indicator {
+  margin-top: 0;
+}
+
+.rts-list-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rts-count {
+  min-width: 22px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary, 212 100% 40%));
+  text-align: center;
+  background: hsl(var(--primary, 212 100% 45%) / 10%);
+  border-radius: 999px;
+}
+
+.rts-list {
+  max-height: 460px;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+}
+
+.rts-card {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.rts-card:last-child {
+  margin-bottom: 0;
+}
+
+.rts-card:hover {
+  border-color: hsl(var(--primary, 212 100% 45%) / 35%);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 6%);
+}
+
+.rts-card--default {
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 55%);
+  border-color: #fbbf24;
+}
+
+.rts-card__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.rts-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.rts-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rts-card__use {
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.rts-card__block {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+}
+
+.rts-card__block:last-child {
+  margin-bottom: 0;
+}
+
+.rts-card__block--preview {
+  background: hsl(var(--primary, 212 100% 45%) / 4%);
+  border-color: hsl(var(--primary, 212 100% 45%) / 22%);
+  border-style: dashed;
+}
+
+.rts-card__block-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.rts-card__block--preview .rts-card__block-label {
+  color: hsl(var(--primary, 212 100% 38%));
+}
+
+.rts-card__block-content {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #334155;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.rts-empty {
+  padding: 48px 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+</style>
+
+<style>
+.remark-template-select-modal .ant-modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.remark-template-select-modal .ant-modal-header {
+  padding: 14px 20px;
+  margin: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.remark-template-select-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+</style>

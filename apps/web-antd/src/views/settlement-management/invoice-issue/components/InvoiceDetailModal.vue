@@ -2,15 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
-import {
-  Button,
-  Input,
-  message,
-  Modal,
-  Space,
-  Spin,
-  Checkbox,
-} from 'ant-design-vue';
+import { Button, Input, message, Modal, Spin, Checkbox } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
 import {
@@ -675,7 +667,350 @@ defineExpose({
 });
 </script>
 
+<template>
+  <Modal
+    v-model:open="modalVisible"
+    title="查看发票明细"
+    width="1200px"
+    :footer="null"
+    class="invoice-detail-manage-modal"
+    :body-style="{ padding: '0' }"
+  >
+    <Spin :spinning="loading">
+      <div class="idm">
+        <section class="idm-section idm-toolbar">
+          <div class="idm-toolbar__left">
+            <span class="idm-indicator" />
+            <span class="idm-toolbar__label">筛选</span>
+            <Input
+              v-model:value="searchKeyword"
+              placeholder="申请单号 / 委托编号 / 主提单号"
+              class="idm-search-input"
+              allow-clear
+            />
+            <Button size="small" @click="handleResetSearch">
+              <template #icon>
+                <IconifyIcon icon="ant-design:reload-outlined" />
+              </template>
+              重置
+            </Button>
+          </div>
+          <div class="idm-toolbar__right">
+            <span v-if="selectedRowKeys.length > 0" class="idm-selected-hint">
+              已选 {{ selectedRowKeys.length }} 项
+            </span>
+            <Button
+              danger
+              size="small"
+              :disabled="selectedRowKeys.length === 0"
+              @click="handleDeleteSelected"
+            >
+              <template #icon>
+                <IconifyIcon icon="ant-design:delete-outlined" />
+              </template>
+              删除选中
+              <template v-if="selectedRowKeys.length > 0">
+                ({{ selectedRowKeys.length }})
+              </template>
+            </Button>
+          </div>
+        </section>
+
+        <section class="idm-section idm-table-panel">
+          <div class="idm-table-panel__head">
+            <span class="idm-indicator" />
+            <span class="idm-table-panel__title">明细列表</span>
+            <span class="idm-count">{{ filteredData?.length || 0 }}</span>
+          </div>
+
+          <div
+            v-if="!filteredData || filteredData.length === 0"
+            class="idm-empty"
+          >
+            <IconifyIcon
+              icon="ant-design:inbox-outlined"
+              class="idm-empty__icon"
+            />
+            <div>暂无发票明细数据</div>
+          </div>
+
+          <div v-else class="idm-table-wrap">
+            <NestedDataTable
+              :columns="parentColumns"
+              :data-source="filteredData"
+              fill-height
+              :inner-columns="childColumns"
+              inner-data-key="invoiceApplicationItems"
+              inner-row-key="id"
+              row-key="rowKey"
+              :loading="loading"
+              v-model:expanded-row-keys="expandedRowKeys"
+            >
+              <template #outerHeaderCell="{ column }">
+                <span v-if="column.key === 'seq'" class="table-sequence-cell">
+                  <Checkbox
+                    :checked="isAllSelected"
+                    :indeterminate="isIndeterminate"
+                    @change="(e) => toggleAllSelection(e.target.checked)"
+                  />
+                  {{ column.title }}
+                </span>
+                <template v-else>{{ column.title }}</template>
+              </template>
+
+              <template #outerBodyCell="{ column, record, index }">
+                <template v-if="column.key === 'seq'">
+                  <span class="table-sequence-cell">
+                    <Checkbox
+                      :checked="selectedRowKeys.includes(record.rowKey)"
+                      @change="
+                        (e) =>
+                          toggleRowSelection(record.rowKey, e.target.checked)
+                      "
+                    />
+                    {{ index + 1 }}
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'invoiceType'">
+                  {{ getInvoiceTypeText(record.invoiceType) }}
+                </template>
+                <template v-else-if="column.key === 'applyTime'">
+                  {{ record.applyTime || '-' }}
+                </template>
+                <template v-else-if="column.key === 'totalAppliedAmount'">
+                  {{ (record.totalAppliedAmount || 0).toFixed(2) }}
+                </template>
+                <template v-else-if="column.key === 'invoiceAmount'">
+                  {{ (record.invoiceAmount || 0).toFixed(2) }}
+                </template>
+                <template v-else-if="column.key === 'invoiceExchangeRate'">
+                  {{ record.invoiceExchangeRate || 1.0 }}
+                </template>
+                <template v-else>
+                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                </template>
+              </template>
+
+              <template #expandColumnTitle></template>
+              <template #expandIcon="{ expanded, record, onExpand }">
+                <span
+                  class="expand-toggle cursor-pointer"
+                  :class="{ 'expand-toggle--expanded': expanded }"
+                  @click="
+                    (e) => {
+                      e.stopPropagation();
+                      onExpand(record, e);
+                    }
+                  "
+                >
+                  &#9654;
+                </span>
+              </template>
+
+              <template #innerBodyCell="{ column, record: childRecord }">
+                <template v-if="column.key === 'payReceiveType'">
+                  {{ childRecord.payReceiveType || '-' }}
+                </template>
+                <template v-else-if="column.key === 'amount'">
+                  {{ (childRecord.amount || 0).toFixed(2) }}
+                </template>
+                <template v-else-if="column.key === 'appliedAmountOriginal'">
+                  {{ (childRecord.appliedAmountOriginal || 0).toFixed(2) }}
+                </template>
+                <template v-else-if="column.key === 'settlementAmount'">
+                  {{ (childRecord.settlementAmount || 0).toFixed(2) }}
+                </template>
+                <template v-else>
+                  {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
+                </template>
+              </template>
+            </NestedDataTable>
+          </div>
+        </section>
+
+        <div
+          v-if="filteredData && filteredData.length > 0"
+          class="idm-footer-summary"
+        >
+          <div class="idm-footer-summary__pair">
+            <span class="idm-footer-summary__name">发票数量</span>
+            <span
+              class="idm-footer-summary__value idm-footer-summary__value--total"
+            >
+              {{ filteredData.length }}
+            </span>
+          </div>
+          <span class="idm-footer-summary__split">|</span>
+          <div class="idm-footer-summary__pair">
+            <span class="idm-footer-summary__name">开票总金额</span>
+            <span
+              class="idm-footer-summary__value idm-footer-summary__value--invoice"
+            >
+              {{
+                filteredData
+                  .reduce((sum, item) => sum + (item.invoiceAmount || 0), 0)
+                  .toFixed(2)
+              }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Spin>
+  </Modal>
+</template>
+
 <style scoped>
+.idm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 20px;
+  background: #f8fafc;
+}
+
+.idm-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.idm-indicator {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-radius: 2px;
+}
+
+.idm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.idm-toolbar__left,
+.idm-toolbar__right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.idm-toolbar__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.idm-search-input {
+  width: 300px;
+}
+
+.idm-selected-hint {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--primary, 212 100% 38%));
+}
+
+.idm-table-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.idm-table-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.idm-count {
+  min-width: 22px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary, 212 100% 40%));
+  text-align: center;
+  background: hsl(var(--primary, 212 100% 45%) / 10%);
+  border-radius: 999px;
+}
+
+.idm-table-wrap {
+  padding: 0 4px 4px;
+}
+
+.idm-empty {
+  padding: 48px 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.idm-empty__icon {
+  margin-bottom: 12px;
+  font-size: 40px;
+  color: #cbd5e1;
+}
+
+/* 对齐开票申请列表底部合计条 */
+.idm-footer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--background, 0 0% 100%)) 55%,
+    hsl(var(--primary) / 6%) 100%
+  );
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.idm-footer-summary__pair {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.idm-footer-summary__name {
+  flex-shrink: 0;
+}
+
+.idm-footer-summary__value {
+  font-weight: 600;
+}
+
+.idm-footer-summary__value--total {
+  color: #1890ff;
+}
+
+.idm-footer-summary__value--invoice {
+  color: #f59e0b;
+}
+
+.idm-footer-summary__split {
+  margin: 0 8px;
+  color: #d9dee8;
+}
+
 .table-sequence-cell {
   display: flex;
   gap: 10px;
@@ -689,268 +1024,37 @@ defineExpose({
   width: 14px;
   min-width: 14px;
   line-height: 1;
+  color: #64748b;
   transform-origin: center;
-  transition: transform 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.expand-toggle:hover {
+  color: hsl(var(--primary, 212 100% 45%));
 }
 
 .expand-toggle--expanded {
   transform: rotate(90deg);
 }
-
-/* 统计信息样式 */
-.statistics-container {
-  padding: 0;
-  margin-top: 16px;
-}
-
-.statistics-card {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  height: 38px;
-  max-height: 48px;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
-}
-
-.stats-icon {
-  font-size: 16px;
-  color: #1890ff;
-}
-
-.statistics-title {
-  margin-right: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1890ff;
-}
-
-.statistic-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 30px;
-  padding: 4px 8px;
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
-}
-
-.statistic-item.primary {
-  border-left: 2px solid #1890ff;
-}
-
-.statistic-item.success {
-  border-left: 2px solid #52c41a;
-}
-
-.statistic-label {
-  margin-right: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #6c757d;
-}
-
-.statistic-value {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #212529;
-}
 </style>
 
-<template>
-  <Modal
-    v-model:open="modalVisible"
-    title="查看发票明细"
-    width="1600px"
-    :footer="null"
-    :body-style="{ padding: '16px', maxHeight: '70vh', overflow: 'auto' }"
-  >
-    <Spin :spinning="loading">
-      <!-- 搜索和操作区 -->
-      <div
-        style="
-          padding: 12px;
-          margin-bottom: 16px;
-          background: #fafafa;
-          border: 1px solid #d9d9d9;
-          border-radius: 4px;
-        "
-      >
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          "
-        >
-          <Space>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <span style="font-size: 14px; color: #333">搜索:</span>
-              <Input
-                v-model:value="searchKeyword"
-                placeholder="申请单号/委托编号/主提单号"
-                style="width: 300px"
-                allow-clear
-              />
-            </div>
-            <Button @click="handleResetSearch">
-              <template #icon>
-                <IconifyIcon icon="ant-design:reload-outlined" />
-              </template>
-              重置
-            </Button>
-          </Space>
-          <Space>
-            <Button
-              danger
-              :disabled="selectedRowKeys.length === 0"
-              @click="handleDeleteSelected"
-            >
-              <template #icon>
-                <IconifyIcon icon="ant-design:delete-outlined" />
-              </template>
-              删除选中 ({{ selectedRowKeys.length }})
-            </Button>
-          </Space>
-        </div>
-      </div>
+<style>
+.invoice-detail-manage-modal .ant-modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+}
 
-      <!-- 空状态提示 -->
-      <div
-        v-if="!filteredData || filteredData.length === 0"
-        style="padding: 40px; color: #999; text-align: center"
-      >
-        <IconifyIcon
-          icon="ant-design:inbox-outlined"
-          style="margin-bottom: 16px; font-size: 48px"
-        />
-        <div>暂无发票明细数据</div>
-      </div>
+.invoice-detail-manage-modal .ant-modal-header {
+  padding: 14px 20px;
+  margin: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
 
-      <!-- 树状表格 -->
-      <NestedDataTable
-        v-else
-        :columns="parentColumns"
-        :data-source="filteredData"
-        fill-height
-        :inner-columns="childColumns"
-        inner-data-key="invoiceApplicationItems"
-        inner-row-key="id"
-        row-key="rowKey"
-        :loading="loading"
-        v-model:expanded-row-keys="expandedRowKeys"
-      >
-        <template #outerHeaderCell="{ column }">
-          <span v-if="column.key === 'seq'" class="table-sequence-cell">
-            <Checkbox
-              :checked="isAllSelected"
-              :indeterminate="isIndeterminate"
-              @change="(e) => toggleAllSelection(e.target.checked)"
-            />
-            {{ column.title }}
-          </span>
-          <template v-else>{{ column.title }}</template>
-        </template>
-
-        <template #outerBodyCell="{ column, record, index }">
-          <template v-if="column.key === 'seq'">
-            <span class="table-sequence-cell">
-              <Checkbox
-                :checked="selectedRowKeys.includes(record.rowKey)"
-                @change="
-                  (e) => toggleRowSelection(record.rowKey, e.target.checked)
-                "
-              />
-              {{ index + 1 }}
-            </span>
-          </template>
-          <template v-else-if="column.key === 'invoiceType'">
-            {{ getInvoiceTypeText(record.invoiceType) }}
-          </template>
-          <template v-else-if="column.key === 'applyTime'">
-            {{ record.applyTime || '-' }}
-          </template>
-          <template v-else-if="column.key === 'totalAppliedAmount'">
-            {{ (record.totalAppliedAmount || 0).toFixed(2) }}
-          </template>
-          <template v-else-if="column.key === 'invoiceAmount'">
-            {{ (record.invoiceAmount || 0).toFixed(2) }}
-          </template>
-          <template v-else-if="column.key === 'invoiceExchangeRate'">
-            {{ record.invoiceExchangeRate || 1.0 }}
-          </template>
-          <template v-else>
-            {{ column.dataIndex ? record[column.dataIndex] : '' }}
-          </template>
-        </template>
-
-        <template #expandColumnTitle></template>
-        <template #expandIcon="{ expanded, record, onExpand }">
-          <span
-            class="expand-toggle cursor-pointer"
-            :class="{ 'expand-toggle--expanded': expanded }"
-            @click="
-              (e) => {
-                e.stopPropagation();
-                onExpand(record, e);
-              }
-            "
-          >
-            &#9654;
-          </span>
-        </template>
-
-        <template #innerBodyCell="{ column, record: childRecord }">
-          <template v-if="column.key === 'payReceiveType'">
-            {{ childRecord.payReceiveType || '-' }}
-          </template>
-          <template v-else-if="column.key === 'amount'">
-            {{ (childRecord.amount || 0).toFixed(2) }}
-          </template>
-          <template v-else-if="column.key === 'appliedAmountOriginal'">
-            {{ (childRecord.appliedAmountOriginal || 0).toFixed(2) }}
-          </template>
-          <template v-else-if="column.key === 'settlementAmount'">
-            {{ (childRecord.settlementAmount || 0).toFixed(2) }}
-          </template>
-          <template v-else>
-            {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
-          </template>
-        </template>
-      </NestedDataTable>
-
-      <!-- 底部统计信息 -->
-      <div
-        v-if="filteredData && filteredData.length > 0"
-        class="statistics-container"
-      >
-        <div class="statistics-card">
-          <IconifyIcon
-            icon="ant-design:bar-chart-outlined"
-            class="stats-icon"
-          />
-          <span class="statistics-title">统计信息：</span>
-          <div class="statistic-item primary">
-            <span class="statistic-label">发票数量</span>
-            <span class="statistic-value">{{ filteredData.length }}</span>
-          </div>
-          <div class="statistic-item success">
-            <span class="statistic-label">开票总金额</span>
-            <span class="statistic-value">
-              {{
-                filteredData
-                  .reduce((sum, item) => sum + (item.invoiceAmount || 0), 0)
-                  .toFixed(2)
-              }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Spin>
-  </Modal>
-</template>
+.invoice-detail-manage-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+</style>

@@ -14,7 +14,6 @@ import {
   message,
   Modal,
   Select,
-  Space,
   Spin,
   Checkbox,
   Tag,
@@ -81,6 +80,8 @@ const drawerVisible = computed({
 });
 
 const feeDrawerLoading = ref(false);
+/** 筛选区是否展开（默认只显示一行） */
+const filterExpanded = ref(false);
 const selectedSettlementId = ref<string>('');
 const selectedCurrencyId = ref<number | undefined>();
 const selectedHeaderId = ref<string>(''); // 选择的发票抬头ID
@@ -478,6 +479,7 @@ async function handleOpenFeeDrawer() {
   }
 
   drawerVisible.value = true;
+  filterExpanded.value = false;
 
   nextTick(() => {
     // ✅ 始终从接口加载数据（但不包含假删的数据）
@@ -1251,82 +1253,84 @@ defineExpose({
   <Drawer
     v-model:open="drawerVisible"
     title="选择已提交的开票申请"
-    width="1600"
-    :footer-style="{ textAlign: 'right' }"
+    width="1200"
+    class="fee-selection-drawer"
+    :body-style="{ padding: '16px', background: '#f8fafc' }"
+    :footer-style="{
+      padding: '12px 16px',
+      borderTop: '1px solid #f1f5f9',
+      background: '#fff',
+    }"
   >
-    <div class="invoice-issue-fee-selection-drawer">
+    <div class="invoice-issue-fee-selection-drawer fsd">
       <Spin :spinning="feeDrawerLoading">
-        <!-- 筛选条件 -->
-        <div
-          style="
-            padding: 10px 5px;
-            margin-bottom: 16px;
-            background: #fafafa;
-            border: 1px solid #d9d9d9;
-            border-radius: 4px;
-          "
-        >
+        <section class="fsd-section">
+          <div class="fsd-filters__head">
+            <span class="fsd-indicator" />
+            <span class="fsd-filters__title">筛选条件</span>
+            <span class="fsd-filters__hint">设置条件后点击查询</span>
+          </div>
           <div
-            style="
-              display: flex;
-              flex-wrap: wrap;
-              gap: 12px;
-              align-items: center;
-            "
+            class="fsd-filters__body"
+            :class="{ 'fsd-filters__body--collapsed': !filterExpanded }"
           >
-            <!-- ✅ 新增：结算单位选择 -->
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >结算单位:</span
-              >
+            <div class="fsd-field">
+              <span class="fsd-field__label">结算单位</span>
               <ClientSelect
                 v-model:model-value="selectedSettlementId"
                 :selected-items="selectedSettlementItems"
                 placeholder="请选择结算单位"
-                style="flex: 1"
+                class="fsd-field__control"
                 :disabled="isSettlementFixed"
                 @change="handleSettlementChange"
               />
             </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >编号:</span
-              >
+            <div class="fsd-field">
+              <span class="fsd-field__label">编号</span>
               <Input
                 v-model:value="keyWord"
                 placeholder="请输入申请单号"
-                style="flex: 1"
+                class="fsd-field__control"
                 allow-clear
               />
             </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >申请日期:</span
-              >
+            <div class="fsd-field">
+              <span class="fsd-field__label">申请日期</span>
               <DatePicker.RangePicker
                 v-model:value="filterApplyTimeRange"
-                @update:value="handleApplyTimeRangeChange"
-                style="flex: 1"
+                class="fsd-field__control"
                 format="YYYY-MM-DD"
                 :placeholder="['开始日期', '结束日期']"
+                @update:value="handleApplyTimeRangeChange"
               />
             </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >发票抬头:</span
+            <div class="fsd-filters__actions">
+              <Button
+                type="link"
+                size="small"
+                class="fsd-filters__toggle"
+                @click="filterExpanded = !filterExpanded"
               >
+                {{ filterExpanded ? '收起' : '展开' }}
+                <IconifyIcon
+                  icon="ant-design:down-outlined"
+                  class="fsd-filters__toggle-icon"
+                  :class="{
+                    'fsd-filters__toggle-icon--expanded': filterExpanded,
+                  }"
+                />
+              </Button>
+              <Button type="primary" @click="loadApplicationGroupData">
+                查询
+              </Button>
+            </div>
+
+            <div class="fsd-field fsd-field--more">
+              <span class="fsd-field__label">发票抬头</span>
               <Input
                 v-model:value="filterHeader"
                 placeholder="请输入发票抬头"
-                style="flex: 1"
+                class="fsd-field__control"
                 allow-clear
                 :disabled="
                   props.headerId !== undefined &&
@@ -1335,159 +1339,148 @@ defineExpose({
                 "
               />
             </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >发票币别:</span
-              >
+            <div class="fsd-field fsd-field--more">
+              <span class="fsd-field__label">发票币别</span>
               <CurrencySelect
                 v-model:model-value="filterCurrencyId"
                 placeholder="请选择发票币别"
-                style="flex: 1"
+                class="fsd-field__control"
                 :disabled="
                   props.currencyId !== undefined && props.currencyId !== null
                 "
               />
             </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >申请人:</span
-              >
+            <div class="fsd-field fsd-field--more">
+              <span class="fsd-field__label">申请人</span>
               <Input
                 v-model:value="filterApplyUserId"
                 placeholder="请输入申请人"
-                style="flex: 1"
+                class="fsd-field__control"
                 allow-clear
               />
             </div>
-            <div style="display: flex; flex: 1; justify-content: flex-end">
-              <Button type="primary" @click="loadApplicationGroupData"
-                >查询</Button
-              >
-            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 申请表格 -->
-        <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-          <NestedDataTable
-            :columns="appParentColumns"
-            :data-source="applicationGroupsData"
-            fill-height
-            :inner-columns="appChildColumns"
-            inner-data-key="invoiceApplicationItems"
-            inner-row-key="id"
-            row-key="rowKey"
-            :loading="feeDrawerLoading"
-            v-model:expanded-row-keys="expandedRowKeys"
-          >
-            <template #outerHeaderCell="{ column }">
-              <span v-if="column.key === 'seq'" class="table-sequence-cell">
-                <Checkbox
-                  :checked="isAllSelected"
-                  :indeterminate="isIndeterminate"
-                  @change="(e) => toggleAllSelection(e.target.checked)"
-                />
-                {{ column.title }}
-              </span>
-              <template v-else>{{ column.title }}</template>
-            </template>
-
-            <template #outerBodyCell="{ column, record, index }">
-              <template v-if="column.key === 'seq'">
-                <span class="table-sequence-cell">
+        <section class="fsd-section">
+          <div class="fsd-table-panel__head">
+            <div class="fsd-table-panel__title-wrap">
+              <span class="fsd-indicator" />
+              <span class="fsd-table-panel__title">申请列表</span>
+              <span class="fsd-count">{{ applicationGroupsData.length }}</span>
+            </div>
+            <span
+              v-if="selectedAppRowKeys.length > 0"
+              class="fsd-selected-hint"
+            >
+              已选 {{ selectedAppRowKeys.length }} 项
+            </span>
+          </div>
+          <div class="fsd-table-wrap">
+            <NestedDataTable
+              :columns="appParentColumns"
+              :data-source="applicationGroupsData"
+              fill-height
+              :inner-columns="appChildColumns"
+              inner-data-key="invoiceApplicationItems"
+              inner-row-key="id"
+              row-key="rowKey"
+              :loading="feeDrawerLoading"
+              v-model:expanded-row-keys="expandedRowKeys"
+            >
+              <template #outerHeaderCell="{ column }">
+                <span v-if="column.key === 'seq'" class="table-sequence-cell">
                   <Checkbox
-                    :checked="selectedAppRowKeys.includes(record.rowKey)"
-                    @change="
-                      (e) => toggleRowSelection(record.rowKey, e.target.checked)
-                    "
+                    :checked="isAllSelected"
+                    :indeterminate="isIndeterminate"
+                    @change="(e) => toggleAllSelection(e.target.checked)"
                   />
-                  {{ index + 1 }}
+                  {{ column.title }}
                 </span>
+                <template v-else>{{ column.title }}</template>
               </template>
-              <template v-else-if="column.key === 'code'">
-                <span
-                  :style="{
-                    color:
+
+              <template #outerBodyCell="{ column, record, index }">
+                <template v-if="column.key === 'seq'">
+                  <span class="table-sequence-cell">
+                    <Checkbox
+                      :checked="selectedAppRowKeys.includes(record.rowKey)"
+                      @change="
+                        (e) =>
+                          toggleRowSelection(record.rowKey, e.target.checked)
+                      "
+                    />
+                    {{ index + 1 }}
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'code'">
+                  <span
+                    class="fsd-status"
+                    :class="{
+                      'fsd-status--ok': record.code === 0,
+                      'fsd-status--warn': record.code === 1,
+                      'fsd-status--error':
+                        record.code !== 0 && record.code !== 1,
+                    }"
+                  >
+                    {{
                       record.code === 0
-                        ? '#52c41a'
+                        ? '✓ 可开票'
                         : record.code === 1
-                          ? '#faad14'
-                          : '#ff4d4f',
-                    fontWeight: 'bold',
-                  }"
-                >
-                  {{
-                    record.code === 0
-                      ? '✓ 可开票'
-                      : record.code === 1
-                        ? '⚠ 需更新'
-                        : '✗ 不可开'
-                  }}
-                </span>
+                          ? '⚠ 需更新'
+                          : '✗ 不可开'
+                    }}
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'invoiceType'">
+                  <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
+                </template>
+                <template v-else>
+                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                </template>
               </template>
-              <template v-else-if="column.key === 'invoiceType'">
-                <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
-              </template>
-              <template v-else>
-                {{ column.dataIndex ? record[column.dataIndex] : '' }}
-              </template>
-            </template>
 
-            <template #expandColumnTitle></template>
-            <template #expandIcon="{ expanded, record, onExpand }">
-              <span
-                class="expand-toggle cursor-pointer"
-                :class="{ 'expand-toggle--expanded': expanded }"
-                @click="
-                  (e) => {
-                    e.stopPropagation();
-                    onExpand(record, e);
-                  }
-                "
-              >
-                &#9654;
-              </span>
-            </template>
-
-            <template #innerBodyCell="{ column, record: childRecord }">
-              <template v-if="column.key === 'alreadyAdded'">
+              <template #expandColumnTitle></template>
+              <template #expandIcon="{ expanded, record, onExpand }">
                 <span
-                  v-if="childRecord.alreadyAdded"
-                  style="font-size: 12px; color: #999"
+                  class="expand-toggle cursor-pointer"
+                  :class="{ 'expand-toggle--expanded': expanded }"
+                  @click="
+                    (e) => {
+                      e.stopPropagation();
+                      onExpand(record, e);
+                    }
+                  "
                 >
-                  ✓ 已添加
+                  &#9654;
                 </span>
               </template>
-              <template v-else>
-                {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
+
+              <template #innerBodyCell="{ column, record: childRecord }">
+                <template v-if="column.key === 'alreadyAdded'">
+                  <span v-if="childRecord.alreadyAdded" class="fsd-added">
+                    ✓ 已添加
+                  </span>
+                </template>
+                <template v-else>
+                  {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
+                </template>
               </template>
-            </template>
-          </NestedDataTable>
-        </div>
+            </NestedDataTable>
+          </div>
+        </section>
       </Spin>
     </div>
 
     <template #footer>
-      <div
-        style="
-          display: flex;
-          gap: 8px;
-          align-items: center;
-          justify-content: space-between;
-        "
-      >
-        <!-- 左侧：币别汇率转换 -->
+      <div class="fsd-footer">
         <div
           v-if="selectedCurrencyId && selectedCurrencyId !== 1"
-          style="display: flex; gap: 8px; align-items: center"
+          class="fsd-footer__rate"
         >
-          <span style="font-size: 14px; color: #666"
-            >币别汇率转换 ({{ selectedCurrencyCode || '外币' }}兑人民币)</span
-          >
+          <span class="fsd-footer__rate-label">
+            币别汇率转换 ({{ selectedCurrencyCode || '外币' }}兑人民币)
+          </span>
           <Form layout="inline" size="small">
             <Form.Item label="开票汇率">
               <InputNumber
@@ -1501,12 +1494,8 @@ defineExpose({
             </Form.Item>
           </Form>
         </div>
-
-        <!-- 占位元素，确保按钮始终在右侧 -->
-        <div v-else style="flex: 1"></div>
-
-        <!-- 右侧：操作按钮 -->
-        <Space>
+        <div v-else />
+        <div class="fsd-footer__actions">
           <Button
             type="primary"
             :disabled="selectedAppRowKeys.length === 0"
@@ -1526,12 +1515,11 @@ defineExpose({
           </Button>
           <Button @click="drawerVisible = false">取消</Button>
           <Button type="primary" @click="handleSaveFeeSelection">确定</Button>
-        </Space>
+        </div>
       </div>
     </template>
   </Drawer>
 
-  <!-- ✅ 驳回确认对话框框 -->
   <Modal
     v-model:open="rejectModalVisible"
     title="驳回开票申请"
@@ -1561,24 +1549,5 @@ defineExpose({
 </template>
 
 <style scoped>
-.table-sequence-cell {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.expand-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  min-width: 14px;
-  line-height: 1;
-  transform-origin: center;
-  transition: transform 0.15s ease;
-}
-
-.expand-toggle--expanded {
-  transform: rotate(90deg);
-}
+@import '#/views/_shared/invoice-fee-selection/fee-selection-drawer.scss';
 </style>
