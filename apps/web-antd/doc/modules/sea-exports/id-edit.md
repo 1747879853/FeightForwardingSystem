@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-17
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -113,6 +113,7 @@ last_updated: 2026-09-15
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细；页内按分提单号 Tab 编辑。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 分页（`pageSize=100`）列出并保存；装箱列对齐稿面（序号/箱型/箱号/封号/件数/包装/重量/尺码/箱皮重/备注）；船期港口只读自主单；第二通知人从主单带出、界面可改，不写分单 DTO；支持 `CopyAsync` 复制已保存分单。 | 子记录需绑定当前海出 ID。 |
+| **分单签单方式** | 当前分单的签单业务分类。 | `formData.codeIssueTypeId` / `CodeIssueTypeSelect` | **触发/依赖：** 新建草稿不从主单默认带入；主动「读入主单」可显式带入；已保存分单回显自身值。 | **必填项**；保存前为空则提示并中止提交。 |
 | **分单运输条款** | 分单主卡右侧运输条款下拉，不是运输/运踪状态。 | `formData.codeServiceId` / i18n `seaExport.export.separate.serviceStatus` | **触发/依赖：** `CodeServiceSelect`；中文标签为「运输条款」，key 仍叫 `serviceStatus`。 | 可选；复制分单会带走条款。 |
 | **分单头备注（remark）** | 分单主表一句话备注，与装箱行备注不同。 | `SeparateDto.remark` / `AddAsync`·`EditAsync` 根字段 `remark` | **触发/依赖：** 代理地址右侧多行输入；列表/详情 `keyword` 可模糊匹配备注；复制分单会带走备注。 | 可选，最长 1024；勿与 `seaExportSeparateCtns[].remark` 混填。 |
 | **分单件数大写** | 货物区底部只读提单套话，不入库。 | 前端 `formatPkgsSay(pkgs, codePackageName)` | **触发/依赖：** 跟货物件数/包装；装箱改件数会回写货物件数后刷新。样例 `SAY:ONE HUNDRED AND FORTY-SEVEN CARTONS ONLY.`；都空则 `SAY: ONLY.`。 | 只读；不提交；勿用主单 `upperPKGS`。 |
@@ -179,6 +180,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-17 | `Fix` | 海运出口分单签单方式改为必填，新建草稿不再默认带入主单签单方式；页面标签宽度整体增加 8px。 | 默认读入与主动「读入主单」分流；保存前校验 `codeIssueTypeId`；普通/收发通标签分别调整为 64px/126px。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-separate-issue-type-required.md)。 |
 | 2026-09-15 | `Fix` | 列表批量修改后，再进入此前已打开的本票编辑页会重拉详情。 | `markEntitiesShouldRefresh` + Form/`editor` `onActivated`。详见 [变更日志](../../changelogs/change-log-2026-09-15-sea-export-batch-edit-refresh-detail.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |

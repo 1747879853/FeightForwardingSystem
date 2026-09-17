@@ -257,8 +257,12 @@ const applyMasterToForm = (
   }
 
   const terms = {
-    codeIssueTypeId: se.codeIssueTypeId,
-    codeIssueTypeName: se.codeIssueType?.billType,
+    ...(mode === 'full'
+      ? {
+          codeIssueTypeId: se.codeIssueTypeId,
+          codeIssueTypeName: se.codeIssueType?.billType,
+        }
+      : {}),
     codeFrtId: to.codeFrtId,
     codeFrtName: to.codeFrt?.cnName,
     codeServiceId: to.codeServiceId,
@@ -575,6 +579,13 @@ const buildPayload = () => ({
 });
 
 const handleSubmit = async () => {
+  if (!formData.value.codeIssueTypeId) {
+    message.warning(
+      $t('ui.formRules.required', [$t('seaExport.export.issueType')]),
+    );
+    return;
+  }
+
   submitting.value = true;
   try {
     let savedId = editingId.value;
@@ -1018,7 +1029,7 @@ watch(seaExportId, () => {
                 />
               </div>
               <div class="inline-field">
-                <label class="inline-label">
+                <label class="inline-label inline-label--required">
                   {{ $t('seaExport.export.issueType') }}
                 </label>
                 <CodeIssueTypeSelect
@@ -1700,6 +1711,12 @@ watch(seaExportId, () => {
   border-color: hsl(var(--primary));
 }
 
+.inline-label--required::before {
+  margin-right: 4px;
+  color: #ff4d4f;
+  content: '*';
+}
+
 .main-split {
   display: grid;
   grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
@@ -1736,7 +1753,7 @@ watch(seaExportId, () => {
 
 .inline-label {
   flex-shrink: 0;
-  width: 56px;
+  width: 64px;
   font-size: 12px;
   line-height: 16px;
   color: #8c95a3;
@@ -1744,7 +1761,7 @@ watch(seaExportId, () => {
 }
 
 .inline-label--party {
-  width: 118px;
+  width: 126px;
   text-align: left;
 }
 
