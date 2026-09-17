@@ -180,6 +180,7 @@ function hasAnySearchCondition(
   const hasArray = (v: unknown) => Array.isArray(v) && v.length > 0;
   return Boolean(
     values.SettlementId ||
+    values.ClientId ||
     values.Keyword ||
     // Keys 现在是输入框字符串（也兼容历史数组值），统一归一化后判断是否有值
     normalizeKeysParam(values.Keys) ||
@@ -439,7 +440,7 @@ function clearSelection() {
 
 async function handleSearch() {
   const values = await searchFormApi.getValues();
-  // 结算对象已非必填：允许不选委托单位按其它条件检索，但至少需要一个查询条件
+  // 结算对象已非必填：允许不选结算单位按其它条件检索，但至少需要一个查询条件
   if (!hasAnySearchCondition(values)) {
     message.warning('请至少输入一个查询条件后再查询');
     return;
@@ -479,6 +480,7 @@ async function fetchData(formValues?: Record<string, any>) {
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
     // 结算对象非必填：不传则不按结算对象过滤；传了才享受对账人免数据权限
     SettlementId: values.SettlementId || undefined,
+    ClientId: values.ClientId || undefined,
     PaySide: values.PaySide !== undefined ? values.PaySide : undefined,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
@@ -616,6 +618,7 @@ async function checkSearchChanged() {
   const values = await searchFormApi.getValues();
   const snapshot = JSON.stringify({
     SettlementId: values?.SettlementId,
+    ClientId: values?.ClientId,
     OrgId: values?.OrgId,
     Keyword: values?.Keyword,
     Keys: values?.Keys,
@@ -829,7 +832,7 @@ defineExpose({ open: openDrawer });
       <SearchForm />
       <div class="mt-2 flex items-center justify-between">
         <div class="text-xs text-gray-400">
-          提示：不选委托单位可跨结算对象浏览，但仅按普通数据权限展示；选择委托单位后对账人可免数据权限查看该客户全部费用。
+          提示：不选结算单位可跨结算对象浏览，但仅按普通数据权限展示；选择结算单位后对账人可免数据权限查看该客户全部费用。
         </div>
         <Button type="primary" :loading="loading" @click="handleSearch">
           查询

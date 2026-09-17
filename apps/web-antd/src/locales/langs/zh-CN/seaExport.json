@@ -559,7 +559,7 @@
       "editTitle": "编辑对账单",
       "list": "对账单列表",
       "number": "对账单号",
-      "clientName": "委托单位",
+      "clientName": "结算单位",
       "localCurrencyCode": "本位币",
       "statementDate": "对账单日期",
       "localCurrencyReceiveAmount": "应收合计",
