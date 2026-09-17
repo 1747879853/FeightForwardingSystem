@@ -7,19 +7,7 @@ import { IconifyIcon } from '@vben/icons';
 
 import { useAccess } from '@vben/access';
 
-import {
-  Alert,
-  Button,
-  Descriptions,
-  DescriptionsItem,
-  Empty,
-  message,
-  Segmented,
-  Spin,
-  Table,
-  Tag,
-  Tooltip,
-} from 'ant-design-vue';
+import { Alert, Button, Empty, message, Spin, Tag } from 'ant-design-vue';
 
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
@@ -35,10 +23,7 @@ import {
   getTrackingDataStatusColor,
   getTrackingDataStatusLabel,
 } from './data-status';
-import {
-  buildContainerTimelineGroups,
-  buildContainerTimelineNodes,
-} from './timeline-nodes';
+import { buildContainerTimelineGroups } from './timeline-nodes';
 import TrackingTimeline from './tracking-timeline.vue';
 import TrackingWarningModal from './tracking-warning-modal.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
@@ -110,37 +95,61 @@ const viewState = computed(() =>
 
 const subscribeNo = computed(
   () =>
-    summary.value?.billNo?.trim() ||
-    summary.value?.containerNo?.trim() ||
     result.value?.billNo?.trim() ||
     result.value?.containerNo?.trim() ||
+    summary.value?.billNo?.trim() ||
+    summary.value?.containerNo?.trim() ||
     '--',
 );
 
 const dataStatusLabel = computed(() =>
-  getTrackingDataStatusLabel(summary.value?.statusCategory),
+  (result.value?.statusCategory ?? summary.value?.statusCategory) === 'COMPLETE'
+    ? $t('tracking.overview.ended')
+    : getTrackingDataStatusLabel(
+        result.value?.statusCategory ?? summary.value?.statusCategory,
+      ),
 );
 const dataStatusColor = computed(() =>
-  getTrackingDataStatusColor(summary.value?.statusCategory),
+  getTrackingDataStatusColor(
+    result.value?.statusCategory ?? summary.value?.statusCategory,
+  ),
 );
 
-const currentNodeText = computed(() => {
-  const description = summary.value?.currentDescriptionCn?.trim();
-  if (!description) {
-    return '--';
-  }
-  return summary.value?.currentIsEsti === 'Y'
-    ? `${description}${$t('tracking.status.estimatedSuffix')}`
-    : description;
-});
-
-const vesselVoyageText = computed(() => {
-  const parts = [
-    summary.value?.firstVesselName?.trim(),
-    summary.value?.firstVesselVoyage?.trim(),
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(' / ') : '--';
-});
+/** 仅展示当前完整快照中的航段，不用整票摘要拼凑港口和船期。 */
+function textField(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : '--';
+}
+const routeRows = computed(() =>
+  (result.value?.routes ?? []).map((route) => {
+    const details =
+      route.modeDetails && typeof route.modeDetails === 'object'
+        ? (route.modeDetails as Record<string, unknown>)
+        : {};
+    return {
+      origin: textField(route.polName || route.polCode),
+      destination: textField(route.podName || route.podCode),
+      mode: textField(route.transportMode),
+      vessel:
+        [details.vessel, details.voyage]
+          .filter((value) => typeof value === 'string' && value.trim())
+          .join(' / ') || '--',
+      etd: textField(details.polEtd),
+      atd: textField(details.polAtd),
+      eta: textField(details.podEta),
+      ata: textField(details.podAta),
+    };
+  }),
+);
+const updatedAt = computed(
+  () => result.value?.updateTime || summary.value?.updateTime,
+);
+const carrierName = computed(
+  () =>
+    result.value?.carrier?.nameCn ||
+    result.value?.carrier?.nameEn ||
+    result.value?.carrier?.code ||
+    '--',
+);
 
 const rolledContainers = computed(
   () => summary.value?.offLoadContainerNos ?? [],
@@ -181,49 +190,22 @@ const handleViewMap = () => {
   });
 };
 
-const containerColumns = computed(() => [
-  {
-    dataIndex: 'containerNo',
-    title: $t('tracking.detail.containerNo'),
-    width: 150,
-  },
-  {
-    dataIndex: 'containerTypeGroup',
-    title: $t('tracking.detail.containerType'),
-    width: 110,
-  },
-  {
-    dataIndex: 'currentStatusDescriptionCn',
-    title: $t('tracking.detail.containerStatus'),
-    minWidth: 160,
-  },
-  {
-    dataIndex: 'eventPlace',
-    title: $t('tracking.detail.eventPlace'),
-    minWidth: 140,
-  },
-  {
-    dataIndex: 'offLoadOfCarrier',
-    title: $t('tracking.detail.rolled'),
-    width: 90,
-  },
-]);
-
-const containerRows = computed(() => result.value?.containers ?? []);
-
-/** 整票时间轴：各箱节点合并去重后按时间升序 */
-const timelineNodes = computed(() => buildContainerTimelineNodes(result.value));
-/** 按箱时间轴：多箱票排查单箱进度用 */
+/** 每个箱独立展示轨迹，保留后端返回顺序。 */
 const timelineGroups = computed(() =>
-  buildContainerTimelineGroups(result.value),
+  buildContainerTimelineGroups(result.value).map((group, index) => {
+    const box = result.value?.containers?.[index];
+    return {
+      ...group,
+      currentStatus:
+        box?.currentStatusDescriptionCn ||
+        box?.currentStatusDescriptionEn ||
+        box?.currentStatusCode ||
+        $t('tracking.timeline.state.unknown'),
+      currentPlace: box?.eventPlace || box?.portCode,
+      rolled: box?.offLoadOfCarrier === true,
+    };
+  }),
 );
-/** 只有多箱票才需要切换视角 */
-const canSwitchTimelineView = computed(() => timelineGroups.value.length > 1);
-const timelineView = ref<'byContainer' | 'merged'>('merged');
-const timelineViewOptions = computed(() => [
-  { label: $t('tracking.timeline.viewMerged'), value: 'merged' },
-  { label: $t('tracking.timeline.viewByContainer'), value: 'byContainer' },
-]);
 
 async function fetchModuleDetail() {
   if (!props.loadDetail || !props.orderId) {
@@ -313,17 +295,14 @@ const handleRefresh = async () => {
 </script>
 
 <template>
-  <div class="container-tracking-panel bg-white">
-    <div class="mb-3 flex items-center justify-between gap-3">
+  <div class="container-tracking-panel">
+    <div class="tracking-toolbar">
       <div class="flex flex-wrap items-center gap-2">
         <Tag v-if="dataStatusLabel" :color="dataStatusColor">
           {{ dataStatusLabel }}
         </Tag>
-        <span
-          v-if="summary?.updateTime"
-          class="text-xs text-[rgba(0,0,0,0.45)]"
-        >
-          {{ $t('tracking.detail.updateTime') }}：{{ summary.updateTime }}
+        <span v-if="updatedAt" class="tracking-updated">
+          {{ $t('tracking.detail.updateTime') }}：{{ updatedAt }}
         </span>
       </div>
       <div class="flex items-center gap-2">
@@ -387,7 +366,11 @@ const handleRefresh = async () => {
           :description="subscribeFailedReason"
         />
         <Alert
-          v-else-if="viewState === 'waiting_data'"
+          v-else-if="
+            viewState === 'waiting_data' &&
+            !result?.routes?.length &&
+            !result?.containers?.some((box) => box.status?.length)
+          "
           type="info"
           show-icon
           class="mb-4"
@@ -432,97 +415,126 @@ const handleRefresh = async () => {
           </template>
         </Alert>
 
-        <Descriptions bordered size="small" :column="2" class="mb-4">
-          <DescriptionsItem :label="$t('tracking.detail.subscribeNo')">
-            {{ subscribeNo }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.dataStatus')">
-            {{ dataStatusLabel || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.currentNode')">
-            {{ currentNodeText }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.eventTime')">
-            {{ summary?.currentEventTime || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.eventPlace')">
-            {{ summary?.currentEventPlace || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.firstVessel')">
-            {{ vesselVoyageText }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.polEtd')">
-            {{ summary?.polEtd || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.polAtd')">
-            {{ summary?.polAtd || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.podEta')">
-            {{ summary?.podEta || summary?.podSta || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.podAta')">
-            {{ summary?.podAta || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.bookingStatus')">
-            {{ summary?.bookingStatusCn || '--' }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="$t('tracking.detail.totalContainers')">
-            {{ summary?.bookingTotalContainers || '--' }}
-          </DescriptionsItem>
-        </Descriptions>
-
-        <div class="mb-1 mt-4 flex items-center justify-between gap-3">
-          <span class="text-sm font-medium">
-            {{ $t('tracking.timeline.title') }}
-          </span>
-          <Tooltip
-            v-if="canSwitchTimelineView"
-            :title="$t('tracking.timeline.viewHint')"
-          >
-            <Segmented
-              v-model:value="timelineView"
-              :options="timelineViewOptions"
-              size="small"
-            />
-          </Tooltip>
-        </div>
-        <template
-          v-if="canSwitchTimelineView && timelineView === 'byContainer'"
-        >
-          <div
-            v-for="group in timelineGroups"
-            :key="group.containerNo"
-            class="mb-2"
-          >
-            <div class="text-xs text-[rgba(0,0,0,0.45)]">
-              {{ group.containerNo
-              }}<template v-if="group.containerType">
-                / {{ group.containerType }}</template
+        <section class="shipment-overview">
+          <div class="shipment-identity">
+            <div>
+              <span class="eyebrow">{{
+                $t('tracking.detail.subscribeNo')
+              }}</span>
+              <h2>{{ subscribeNo }}</h2>
+            </div>
+            <div class="shipment-meta">
+              <span
+                ><span class="eyebrow">{{
+                  $t('tracking.overview.carrier')
+                }}</span
+                >{{ carrierName }}</span
+              >
+              <span
+                ><span class="eyebrow">{{
+                  $t('tracking.detail.bookingStatus')
+                }}</span
+                >{{ result?.booking?.bookingStatusCn || '--' }}</span
+              >
+              <span
+                ><span class="eyebrow">{{
+                  $t('tracking.detail.totalContainers')
+                }}</span
+                >{{ result?.booking?.totalContainers || '--' }}</span
               >
             </div>
-            <TrackingTimeline :nodes="group.nodes" />
           </div>
-        </template>
-        <TrackingTimeline v-else :nodes="timelineNodes" class="mb-4" />
+          <div v-if="routeRows.length" class="route-list">
+            <article
+              v-for="(route, index) in routeRows"
+              :key="index"
+              class="route-row"
+            >
+              <div class="route-summary">
+                <div class="route-heading">
+                  <span class="route-index">{{
+                    String(index + 1).padStart(2, '0')
+                  }}</span
+                  ><strong>{{ route.origin }}</strong
+                  ><IconifyIcon icon="ph:arrow-right" /><strong>{{
+                    route.destination
+                  }}</strong>
+                </div>
+                <div class="route-vessel">
+                  {{ route.mode }} <span>·</span> {{ route.vessel }}
+                </div>
+              </div>
+              <dl class="route-times">
+                <div>
+                  <dt>{{ $t('tracking.overview.etd') }}</dt>
+                  <dd>{{ route.etd }}</dd>
+                </div>
+                <div>
+                  <dt>{{ $t('tracking.overview.atd') }}</dt>
+                  <dd>{{ route.atd }}</dd>
+                </div>
+                <div>
+                  <dt>{{ $t('tracking.overview.eta') }}</dt>
+                  <dd>{{ route.eta }}</dd>
+                </div>
+                <div>
+                  <dt>{{ $t('tracking.overview.ata') }}</dt>
+                  <dd>{{ route.ata }}</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+          <p v-else class="route-empty">
+            {{ $t('tracking.overview.noRoute') }}
+          </p>
+        </section>
 
-        <Table
-          v-if="containerRows.length > 0"
-          :columns="containerColumns"
-          :data-source="containerRows"
-          :pagination="false"
-          :scroll="{ y: 240 }"
-          size="small"
-          :row-key="(record, index) => `${record.containerNo ?? ''}-${index}`"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.dataIndex === 'offLoadOfCarrier'">
-              <Tag v-if="record.offLoadOfCarrier" color="warning">
-                {{ $t('tracking.detail.rolledYes') }}
-              </Tag>
-              <span v-else class="text-[rgba(0,0,0,0.45)]">--</span>
-            </template>
-          </template>
-        </Table>
+        <section class="container-tracks">
+          <h3 class="container-tracks__title">
+            {{ $t('tracking.timeline.title') }}
+            <span class="route-note">{{
+              $t('tracking.overview.localTime')
+            }}</span>
+          </h3>
+          <Empty
+            v-if="timelineGroups.length === 0"
+            :description="$t('tracking.timeline.empty')"
+            :image="Empty.PRESENTED_IMAGE_SIMPLE"
+          />
+          <details
+            v-for="(group, index) in timelineGroups"
+            :key="`${orderId}-${group.containerNo}-${index}`"
+            class="container-track"
+          >
+            <summary class="container-track__header">
+              <IconifyIcon
+                icon="ph:shipping-container"
+                class="text-xl text-primary"
+              />
+              <strong class="container-track__number">{{
+                group.containerNo
+              }}</strong>
+              <Tag v-if="group.containerType">{{ group.containerType }}</Tag>
+              <span class="container-track__count">{{
+                $t('tracking.timeline.nodeCount', [group.nodes.length])
+              }}</span>
+              <span class="container-track__status">{{
+                group.currentStatus
+              }}</span>
+              <span v-if="group.currentPlace" class="container-track__place">{{
+                group.currentPlace
+              }}</span>
+              <Tag v-if="group.rolled" color="warning">{{
+                $t('tracking.detail.rolledYes')
+              }}</Tag>
+              <IconifyIcon
+                icon="ph:caret-down"
+                class="container-track__chevron"
+              />
+            </summary>
+            <TrackingTimeline :nodes="group.nodes" layout="vertical" />
+          </details>
+        </section>
       </template>
     </Spin>
 
@@ -533,3 +545,255 @@ const handleRefresh = async () => {
     />
   </div>
 </template>
+
+<style scoped>
+.container-tracking-panel {
+  padding: 4px;
+  container-type: inline-size;
+  color: hsl(var(--foreground));
+}
+
+.tracking-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tracking-updated,
+.eyebrow,
+.route-note,
+.route-empty {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 400;
+}
+
+.shipment-overview {
+  overflow: hidden;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+}
+
+.shipment-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: center;
+  padding: 16px 20px;
+  background: hsl(var(--muted) / 35%);
+}
+
+.shipment-identity h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.shipment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.route-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(480px, 1.4fr);
+  gap: 20px 32px;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.route-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 15px;
+}
+
+.route-index {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--primary));
+}
+
+.route-vessel {
+  margin: 6px 0 0 28px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.route-vessel span {
+  margin: 0 8px;
+}
+
+.route-times {
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: 8px 28px;
+  margin: 0;
+}
+
+.route-times > div {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.route-times dt {
+  margin-bottom: 0;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.route-times dd {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.route-note {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+.route-empty {
+  padding: 20px 24px;
+  margin: 0;
+}
+
+.container-tracks {
+  margin: 20px 0 12px;
+}
+
+.container-tracks__title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.container-track {
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+}
+
+.container-track__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 18px 20px;
+  cursor: pointer;
+  list-style: none;
+  transition: background 0.15s;
+}
+
+.container-track__header::-webkit-details-marker {
+  display: none;
+}
+
+.container-track__header:hover {
+  background: hsl(var(--muted) / 45%);
+}
+
+.container-track__header:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -3px;
+}
+
+.container-track[open] > summary {
+  background: hsl(var(--muted) / 25%);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.container-track__number {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.container-track__count {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.container-track__status {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.container-track__place {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.container-track__chevron {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.container-track[open] .container-track__chevron {
+  transform: rotate(180deg);
+}
+
+@container (max-width: 900px) {
+  .route-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+@container (max-width: 560px) {
+  .route-times {
+    grid-template-rows: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-flow: row;
+  }
+
+  .route-note {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .shipment-identity,
+  .route-row {
+    padding: 18px 16px;
+  }
+
+  .container-track__header {
+    padding: 16px 12px;
+  }
+
+  .container-track__status {
+    margin-left: 0;
+  }
+}
+</style>

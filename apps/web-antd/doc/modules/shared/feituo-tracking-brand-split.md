@@ -181,6 +181,12 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 > [!NOTE] **[卡点 5：订阅成功 ≠ 有轨迹]** `trackingLoaded=false`、或摘要非空但当前节点全空，都应提示「数据获取中」，不要报错；空运重新订阅会消耗配额，仅在单号改过或数据异常时使用。
 
+## 海运箱轨迹展示（2026-09-17）
+
+顶部按完整快照展示订阅号、船公司、订舱状态和服务商箱量，routes 逐航段提供港口、船名航次及预计/实际到离时间。移除整票当前节点和摘要船期的混合展示；数据状态 COMPLETE 文案为跟踪已结束。
+
+每个箱默认折叠，摘要展示箱号、箱型、接口单箱当前状态与地点及甩柜标记，展开独立纵向时间轴，不提供整票合并。严格按 `containers[].status[]` 返回顺序逐条展示，不排序、不去重、不删除预计或无时间节点。`isEsti=N/Y` 分别展示已发生/预计，其他值为状态未明确，不自动标记当前。节点时间缺失展示时间未提供。箱号、箱型及节点数置于分组顶部，空动态箱保留空态。
+
 # 8. 前端落地位置 (Implementation)
 
 | 关注点 | 位置 |
@@ -189,7 +195,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 | 品牌分流开关 | `src/utils/tracking-brand.ts` |
 | 服务商文案清洗 | `src/utils/vendor-text.ts` → `sanitizeVendorText` |
 | 共享运踪能力 | `src/components/tracking/`（预警叹号、状态文案/颜色、订阅 composable、运踪面板与弹窗、空运地图拼装） |
-| 轨迹节点时间轴 | `components/tracking/timeline-nodes.ts`（海运整票合并 / 空运五类事件合并）+ `tracking-timeline.vue` |
+| 轨迹节点时间轴 | `components/tracking/timeline-nodes.ts`（海运按箱原序展示 / 空运五类事件合并）+ `tracking-timeline.vue` |
 | 轨迹地图弹窗 | `components/tracking/vendor-tracking-map-modal.vue` + `use-vendor-tracking-map.ts`（全局单例，挂在 `app.vue`） |
 | 地图地址与分享令牌 | `components/tracking/vendor-map-src.ts`（`resolveVendorMapSrc` / `withMapLang` / `encodeVendorMapToken`） |
 | 免登录分享页 | 路由 `router/routes/external/cargo-tracking.ts` + 页面 `views/tracking-map/vendor-page.vue` |
@@ -212,6 +218,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-17 | `Fix` | 海运改为按箱独立纵向轨迹，保留接口顺序和无时间节点 | 移除海运合并、去重、预计删除与当前节点推断；空运处理逻辑保留。 |
 | 2026-08-20 | `Fix` | 免登录分享页页头补展示单号：新服务商 `/cargo-tracking/*` 与现有运踪 `/tracking-map/:mblNo` 均展示，与登录后地图弹窗一致 | 空运 URL 本就带 `?no=`、旧页路径本就有 `mblNo`，页头却只渲染品牌与标题。海运新服务商令牌解不出可读单号，复制时额外带上弹窗已有的 `referenceNo`。详见 `changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md` |
 | 2026-08-16 | `Fix` | 海运进口编辑页基础信息工具栏补齐单票「运踪订阅」按钮，与列表、海出/空出编辑页对齐 | 首版只做了列表订阅与编辑页运踪 Tab，漏了表单入口。复用 `useContainerTrackingSubscribe(SeaImport)`，权限 `Admin.ExternalApi.Use`。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md` |
 | 2026-08-16 | `Refactor` | 异常预警明细不再常驻页面底部，改为**仅在有预警时**出现「异常预警(N)」按钮，点击弹窗看明细 | 绝大多数票无预警，常驻「共 0 条」空态白占版面。新增共享 `tracking-warning-modal.vue`（按 `kind` 切海运箱号列 / 空运发生地列），两个面板各自的列定义与行映射收敛到弹窗；按钮条件统一为 `warnings.length > 0`，列表场景与未订阅票的 `warnings` 本就是空数组，无需额外判断。详见 `changelogs/change-log-2026-08-16-tracking-warning-modal.md` |

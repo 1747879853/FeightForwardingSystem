@@ -45,7 +45,6 @@ export type {
 export {
   buildAirTimelineNodes,
   buildContainerTimelineGroups,
-  buildContainerTimelineNodes,
 } from './timeline-nodes';
 export { default as TrackingTimeline } from './tracking-timeline.vue';
 export { default as TrackingWarningModal } from './tracking-warning-modal.vue';

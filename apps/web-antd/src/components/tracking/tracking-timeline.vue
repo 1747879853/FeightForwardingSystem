@@ -18,14 +18,16 @@ import type {
  */
 interface Props {
   nodes: TrackingTimelineNode[];
+  layout?: 'horizontal' | 'vertical';
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { layout: 'horizontal' });
 
 const STATE_VISUALS: Record<
   TrackingTimelineState,
   { color: string; icon: string }
 > = {
+  unknown: { color: '#8c8c8c', icon: 'ph:question' },
   completed: { color: '#34c759', icon: 'ph:check-bold' },
   current: { color: '#007aff', icon: 'ph:map-pin-fill' },
   estimated: { color: '#ff9500', icon: 'ph:clock' },
@@ -38,7 +40,7 @@ const STATE_VISUALS: Record<
     :description="$t('tracking.timeline.empty')"
     :image="Empty.PRESENTED_IMAGE_SIMPLE"
   />
-  <Timeline v-else class="track-timeline track-timeline--horizontal">
+  <Timeline v-else :class="['track-timeline', `track-timeline--${layout}`]">
     <TimelineItem
       v-for="node in nodes"
       :key="node.key"
@@ -78,8 +80,8 @@ const STATE_VISUALS: Record<
         >
           {{ node.containerNos.join('、') }}
         </div>
-        <div v-if="node.time" class="track-timeline-card__time">
-          {{ node.time }}
+        <div class="track-timeline-card__time">
+          {{ node.time || $t('tracking.timeline.timeMissing') }}
         </div>
       </div>
     </TimelineItem>
@@ -225,5 +227,78 @@ const STATE_VISUALS: Record<
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   color: rgb(60 60 67 / 45%);
+}
+
+.track-timeline--vertical {
+  padding: 24px 24px 0;
+  color: hsl(var(--foreground));
+
+  @media (max-width: 640px) {
+    padding: 20px 16px 0;
+
+    .track-timeline-card {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .track-timeline-card__time {
+      grid-row: auto;
+      grid-column: 1;
+      margin-top: 4px;
+    }
+  }
+
+  :deep(.ant-timeline-item-content) {
+    padding-bottom: 20px;
+    margin-left: 32px;
+  }
+
+  :deep(.ant-timeline-item-tail) {
+    border-inline-start-color: hsl(var(--border));
+  }
+
+  .track-timeline-dot {
+    width: 20px;
+    height: 20px;
+    box-shadow: none;
+  }
+
+  .track-timeline-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 20px;
+  }
+
+  .track-timeline-card__header {
+    flex-direction: row;
+    grid-column: 1;
+    gap: 10px;
+    justify-content: flex-start;
+  }
+
+  .track-timeline-card__title {
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
+  .track-timeline-card__place {
+    grid-column: 1;
+    color: hsl(var(--muted-foreground));
+    overflow-wrap: anywhere;
+  }
+
+  .track-timeline-card__time {
+    grid-row: 1;
+    grid-column: 2;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+  }
+
+  .track-timeline-card__pill {
+    border-radius: 4px;
+  }
+
+  .track-timeline-card__pill--unknown {
+    color: hsl(var(--muted-foreground));
+  }
 }
 </style>

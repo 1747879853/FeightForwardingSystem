@@ -106,8 +106,11 @@
     "state": {
       "completed": "已发生",
       "current": "当前",
-      "estimated": "预计"
-    }
+      "estimated": "预计",
+      "unknown": "状态未明确"
+    },
+    "timeMissing": "时间未提供",
+    "nodeCount": "{0} 个节点"
   },
   "map": {
     "title": "货物轨迹",
@@ -122,5 +125,15 @@
     "shareCopiedEn": "英文分享链接已复制",
     "shareFailed": "复制失败，请手动复制",
     "shareUnavailable": "暂无可分享的轨迹链接"
+  },
+  "overview": {
+    "carrier": "船公司",
+    "ended": "跟踪已结束",
+    "etd": "预计离开 · ETD",
+    "atd": "实际离开 · ATD",
+    "eta": "预计到达 · ETA",
+    "ata": "实际到达 · ATA",
+    "noRoute": "暂无航段信息",
+    "localTime": "时间均为各港当地时间"
   }
 }

@@ -106,8 +106,11 @@
     "state": {
       "completed": "Actual",
       "current": "Current",
-      "estimated": "Estimated"
-    }
+      "estimated": "Estimated",
+      "unknown": "Unknown"
+    },
+    "timeMissing": "Time not provided",
+    "nodeCount": "{0} events"
   },
   "map": {
     "title": "Cargo tracking",
@@ -122,5 +125,15 @@
     "shareCopiedEn": "English share link copied",
     "shareFailed": "Copy failed, please copy manually",
     "shareUnavailable": "No shareable tracking link"
+  },
+  "overview": {
+    "carrier": "Carrier",
+    "ended": "Tracking ended",
+    "etd": "Estimated departure · ETD",
+    "atd": "Actual departure · ATD",
+    "eta": "Estimated arrival · ETA",
+    "ata": "Actual arrival · ATA",
+    "noRoute": "No route information available",
+    "localTime": "All times are local to each port"
   }
 }

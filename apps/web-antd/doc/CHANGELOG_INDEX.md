@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-17] [海运按箱独立轨迹与展示优化](./changelogs/change-log-2026-09-17-海运按箱轨迹.md)
 - [2026-09-17] [业务联系单业务状态增加“待”标记](./changelogs/change-log-2026-09-17-pre-order-business-status-pending.md)
 - [2026-09-17] [空运出口列表移除会计期间并按起飞日期默认排序](./changelogs/change-log-2026-09-17-air-export-list-default-layout.md)
 - [2026-09-17] [海运出口分单签单方式改为必填且不设默认值](./changelogs/change-log-2026-09-17-sea-export-separate-issue-type-required.md)

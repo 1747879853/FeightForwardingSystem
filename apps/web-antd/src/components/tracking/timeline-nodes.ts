@@ -2,7 +2,11 @@ import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admi
 
 import { $t } from '#/locales';
 
-export type TrackingTimelineState = 'completed' | 'current' | 'estimated';
+export type TrackingTimelineState =
+  | 'completed'
+  | 'current'
+  | 'estimated'
+  | 'unknown';
 
 /** 时间轴节点（海运箱物流节点与空运事件归一化后的展示结构） */
 export interface TrackingTimelineNode {
@@ -137,119 +141,39 @@ function markStates(
   });
 }
 
-interface ContainerNodeEntry {
-  node: FeituoTrackingAdminApi.ContainerStatusNodeDto;
-  containerNos: Set<string>;
-}
-
-/** 箱物流节点的事件标识：同一事件的预计与实际要落到同一个键上 */
-function resolveContainerEventKey(
-  node: FeituoTrackingAdminApi.ContainerStatusNodeDto,
-): string {
-  const category = node.eventCode?.trim() || node.descriptionCn?.trim() || '';
-  const location = node.portCode?.trim() || node.eventPlace?.trim() || '';
-  return `${category}|${location}`.toUpperCase();
-}
-
-/** 把去重后的箱节点整理成时间轴：丢作废预计 → 按时间升序 → 标记三态 */
-function toContainerTimelineNodes(
-  entries: ContainerNodeEntry[],
-  withContainerNos: boolean,
-): TrackingTimelineNode[] {
-  const effective = dropSupersededEstimates(entries, ({ node }) => ({
-    eventKey: resolveContainerEventKey(node),
-    isEstimated: node.isEsti === 'Y',
-    time: node.eventTime,
-  }));
-
-  const sorted = sortByTimeAsc(effective, ({ node }) => node.eventTime);
-  return markStates(
-    sorted.map(({ containerNos, node }, index) => ({
-      isEstimated: node.isEsti === 'Y',
-      node: {
-        key: `${toSortKey(node.eventTime)}-${node.eventCode ?? ''}-${index}`,
-        title: node.descriptionCn?.trim() || node.descriptionEn?.trim() || '--',
-        time: node.eventTime?.trim(),
-        place: node.eventPlace?.trim() || node.terminalName?.trim(),
-        vehicle: [node.vslName?.trim(), node.voy?.trim()]
-          .filter(Boolean)
-          .join(' / '),
-        containerNos:
-          withContainerNos && containerNos.size > 0
-            ? [...containerNos].sort()
-            : undefined,
-      },
-    })),
-  );
-}
-
-/** 收集单个箱的节点条目（同箱内同一节点重复推送也去重） */
-function collectContainerEntries(
-  container: FeituoTrackingAdminApi.ContainerItemDto,
-  into: Map<string, ContainerNodeEntry>,
-) {
-  const containerNo = container.containerNo?.trim() ?? '';
-  for (const node of container.status ?? []) {
-    const description =
-      node.descriptionCn?.trim() || node.descriptionEn?.trim();
-    if (!description) {
-      continue;
-    }
-    const key = [
-      node.eventCode?.trim() ?? '',
-      toSortKey(node.eventTime),
-      node.eventPlace?.trim() ?? '',
-      description,
-    ].join('|');
-    const exist = into.get(key);
-    if (exist) {
-      if (containerNo) {
-        exist.containerNos.add(containerNo);
-      }
-      continue;
-    }
-    into.set(key, {
-      node,
-      containerNos: new Set(containerNo ? [containerNo] : []),
-    });
-  }
-}
-
-/**
- * 海运：把各箱的物流节点合并成整票一条时间轴。
- *
- * 同一节点会在多个箱上重复出现（如「船舶离港」），按事件代码+时间+地点+描述去重，
- * 再丢掉已被实际进度取代的预计节点。**同名节点仍可能出现多次**：多箱票各箱进度不同，
- * 或被摘车/甩柜后重新编组，都会产生真实的第二次「离站/到站」，因此多箱票的节点带上箱号，
- * 需要逐箱排查时改用 `buildContainerTimelineGroups`。
- *
- * 港区与海关节点服务商单独计费、默认不返回，节点会比船公司口径稀疏。
- */
-export function buildContainerTimelineNodes(
-  result?: FeituoTrackingAdminApi.ContainerResultDto | null,
-): TrackingTimelineNode[] {
-  const containers = result?.containers ?? [];
-  const merged = new Map<string, ContainerNodeEntry>();
-  for (const container of containers) {
-    collectContainerEntries(container, merged);
-  }
-  // 单箱票标箱号是冗余信息，只有多箱票才需要解释同名节点归属
-  return toContainerTimelineNodes([...merged.values()], containers.length > 1);
-}
-
-/** 海运：每个箱一条时间轴（多箱票排查单箱进度用） */
+/** 海运按箱逐条展示，节点身份和顺序均由接口负责，不排序、去重或推断当前节点。 */
 export function buildContainerTimelineGroups(
   result?: FeituoTrackingAdminApi.ContainerResultDto | null,
 ): ContainerTimelineGroup[] {
-  return (result?.containers ?? []).map((container, index) => {
-    const entries = new Map<string, ContainerNodeEntry>();
-    collectContainerEntries(container, entries);
-    return {
-      containerNo: container.containerNo?.trim() || `#${index + 1}`,
-      containerType: container.containerTypeGroup?.trim(),
-      nodes: toContainerTimelineNodes([...entries.values()], false),
-    };
-  });
+  return (result?.containers ?? []).map((container, index) => ({
+    containerNo: container.containerNo?.trim() || `#${index + 1}`,
+    containerType: container.containerTypeGroup?.trim(),
+    nodes: (container.status ?? []).map((node, nodeIndex) => {
+      const state =
+        node.isEsti === 'N'
+          ? 'completed'
+          : node.isEsti === 'Y'
+            ? 'estimated'
+            : 'unknown';
+      return {
+        key: `${index}-${nodeIndex}`,
+        title:
+          node.descriptionCn?.trim() ||
+          node.descriptionEn?.trim() ||
+          node.eventCode?.trim() ||
+          '--',
+        time: node.eventTime?.trim(),
+        place: [node.eventPlace?.trim(), node.terminalName?.trim()]
+          .filter((value, i, values) => value && values.indexOf(value) === i)
+          .join(' · '),
+        vehicle: [node.vslName?.trim(), node.voy?.trim()]
+          .filter(Boolean)
+          .join(' / '),
+        state,
+        stateLabel: $t(`tracking.timeline.state.${state}`),
+      };
+    }),
+  }));
 }
 
 /**
