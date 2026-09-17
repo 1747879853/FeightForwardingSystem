@@ -93,15 +93,17 @@ const STATE_VISUALS: Record<
 .track-timeline--horizontal {
   display: flex;
   flex-flow: row nowrap;
-  padding: 16px 4px 8px;
+  padding: 18px 10px 14px;
   margin: 0;
   overflow-x: auto;
+  scrollbar-color: rgb(60 60 67 / 22%) transparent;
+  scrollbar-width: thin;
 
   :deep(.ant-timeline-item) {
     position: relative;
-    flex: 1 0 168px;
-    min-width: 168px;
-    max-width: 220px;
+    flex: 1 0 156px;
+    min-width: 156px;
+    max-width: 200px;
     padding-bottom: 0 !important;
     margin: 0;
   }
@@ -113,7 +115,7 @@ const STATE_VISUALS: Record<
     width: calc(100% - 28px);
     height: 0;
     border: none;
-    border-top: 1.5px solid rgb(60 60 67 / 12%);
+    border-top: 1px solid rgb(60 60 67 / 14%);
     transform: none;
   }
 
@@ -230,11 +232,11 @@ const STATE_VISUALS: Record<
 }
 
 .track-timeline--vertical {
-  padding: 24px 24px 0;
+  padding: 16px 18px 4px;
   color: hsl(var(--foreground));
 
   @media (max-width: 640px) {
-    padding: 20px 16px 0;
+    padding: 14px 12px 4px;
 
     .track-timeline-card {
       grid-template-columns: minmax(0, 1fr);

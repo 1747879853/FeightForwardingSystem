@@ -129,10 +129,10 @@
   "overview": {
     "carrier": "船公司",
     "ended": "跟踪已结束",
-    "etd": "预计离开 · ETD",
-    "atd": "实际离开 · ATD",
-    "eta": "预计到达 · ETA",
-    "ata": "实际到达 · ATA",
+    "etd": "ETD",
+    "atd": "ATD",
+    "eta": "ETA",
+    "ata": "ATA",
     "noRoute": "暂无航段信息",
     "localTime": "时间均为各港当地时间"
   }

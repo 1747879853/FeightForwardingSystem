@@ -129,10 +129,10 @@
   "overview": {
     "carrier": "Carrier",
     "ended": "Tracking ended",
-    "etd": "Estimated departure · ETD",
-    "atd": "Actual departure · ATD",
-    "eta": "Estimated arrival · ETA",
-    "ata": "Actual arrival · ATA",
+    "etd": "ETD",
+    "atd": "ATD",
+    "eta": "ETA",
+    "ata": "ATA",
     "noRoute": "No route information available",
     "localTime": "All times are local to each port"
   }

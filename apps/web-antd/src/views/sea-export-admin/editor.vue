@@ -397,7 +397,7 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <div
             v-if="activeTab === 'tracking'"
-            class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
+            class="tracking-tab flex min-h-0 min-w-0 flex-1 flex-col overflow-auto px-5 py-4"
           >
             <!-- 运踪按品牌分流：sjtd 保留已上线的运踪，其他品牌走新服务商 -->
             <ContainerTrackingPanel
@@ -428,3 +428,9 @@ const getContentTabStyle = (isActive: boolean) =>
     </div>
   </Page>
 </template>
+
+<style scoped>
+.tracking-tab {
+  background: #f2f2f7;
+}
+</style>

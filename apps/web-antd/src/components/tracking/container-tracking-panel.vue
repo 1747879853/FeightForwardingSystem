@@ -151,6 +151,18 @@ const carrierName = computed(
     '--',
 );
 
+const ticketMeta = computed(() =>
+  [
+    carrierName.value,
+    result.value?.booking?.bookingStatusCn || '--',
+    result.value?.booking?.totalContainers || '--',
+  ].join(' · '),
+);
+
+function isBlankTime(value: string) {
+  return !value || value === '--';
+}
+
 const rolledContainers = computed(
   () => summary.value?.offLoadContainerNos ?? [],
 );
@@ -416,72 +428,68 @@ const handleRefresh = async () => {
         </Alert>
 
         <section class="shipment-overview">
-          <div class="shipment-identity">
-            <div>
-              <span class="eyebrow">{{
-                $t('tracking.detail.subscribeNo')
-              }}</span>
-              <h2>{{ subscribeNo }}</h2>
-            </div>
-            <div class="shipment-meta">
-              <span
-                ><span class="eyebrow">{{
-                  $t('tracking.overview.carrier')
-                }}</span
-                >{{ carrierName }}</span
-              >
-              <span
-                ><span class="eyebrow">{{
-                  $t('tracking.detail.bookingStatus')
-                }}</span
-                >{{ result?.booking?.bookingStatusCn || '--' }}</span
-              >
-              <span
-                ><span class="eyebrow">{{
-                  $t('tracking.detail.totalContainers')
-                }}</span
-                >{{ result?.booking?.totalContainers || '--' }}</span
-              >
-            </div>
+          <header class="shipment-ticket">
+            <strong class="shipment-ticket__no">{{ subscribeNo }}</strong>
+            <span class="shipment-ticket__meta">{{ ticketMeta }}</span>
+          </header>
+          <div class="ticket-perforation" aria-hidden="true">
+            <span></span>
           </div>
-          <div v-if="routeRows.length" class="route-list">
+          <div v-if="routeRows.length" class="voyage-list">
             <article
               v-for="(route, index) in routeRows"
               :key="index"
-              class="route-row"
+              class="voyage"
             >
-              <div class="route-summary">
-                <div class="route-heading">
-                  <span class="route-index">{{
-                    String(index + 1).padStart(2, '0')
-                  }}</span
-                  ><strong>{{ route.origin }}</strong
-                  ><IconifyIcon icon="ph:arrow-right" /><strong>{{
-                    route.destination
-                  }}</strong>
+              <div class="voyage-board">
+                <div class="voyage-port voyage-port--from">
+                  <strong>{{ route.origin }}</strong>
                 </div>
-                <div class="route-vessel">
-                  {{ route.mode }} <span>·</span> {{ route.vessel }}
+                <div class="voyage-spine" aria-hidden="true">
+                  <i class="voyage-spine__dot"></i>
+                  <span class="voyage-spine__track">
+                    <i class="voyage-spine__rail"></i>
+                    <span class="voyage-spine__mark">
+                      <IconifyIcon icon="ph:boat-fill" />
+                    </span>
+                  </span>
+                  <i class="voyage-spine__dot voyage-spine__dot--end"></i>
                 </div>
+                <div class="voyage-port voyage-port--to">
+                  <strong>{{ route.destination }}</strong>
+                </div>
+                <p class="voyage-vessel">
+                  {{ route.mode }} · {{ route.vessel }}
+                </p>
+                <dl class="voyage-times voyage-times--from">
+                  <div>
+                    <dt>{{ $t('tracking.overview.etd') }}</dt>
+                    <dd :class="{ 'is-empty': isBlankTime(route.etd) }">
+                      {{ route.etd }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ $t('tracking.overview.atd') }}</dt>
+                    <dd :class="{ 'is-empty': isBlankTime(route.atd) }">
+                      {{ route.atd }}
+                    </dd>
+                  </div>
+                </dl>
+                <dl class="voyage-times voyage-times--to">
+                  <div>
+                    <dt>{{ $t('tracking.overview.eta') }}</dt>
+                    <dd :class="{ 'is-empty': isBlankTime(route.eta) }">
+                      {{ route.eta }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ $t('tracking.overview.ata') }}</dt>
+                    <dd :class="{ 'is-empty': isBlankTime(route.ata) }">
+                      {{ route.ata }}
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <dl class="route-times">
-                <div>
-                  <dt>{{ $t('tracking.overview.etd') }}</dt>
-                  <dd>{{ route.etd }}</dd>
-                </div>
-                <div>
-                  <dt>{{ $t('tracking.overview.atd') }}</dt>
-                  <dd>{{ route.atd }}</dd>
-                </div>
-                <div>
-                  <dt>{{ $t('tracking.overview.eta') }}</dt>
-                  <dd>{{ route.eta }}</dd>
-                </div>
-                <div>
-                  <dt>{{ $t('tracking.overview.ata') }}</dt>
-                  <dd>{{ route.ata }}</dd>
-                </div>
-              </dl>
             </article>
           </div>
           <p v-else class="route-empty">
@@ -505,34 +513,43 @@ const handleRefresh = async () => {
             v-for="(group, index) in timelineGroups"
             :key="`${orderId}-${group.containerNo}-${index}`"
             class="container-track"
+            :open="index === 0"
           >
             <summary class="container-track__header">
-              <IconifyIcon
-                icon="ph:shipping-container"
-                class="text-xl text-primary"
-              />
-              <strong class="container-track__number">{{
-                group.containerNo
-              }}</strong>
-              <Tag v-if="group.containerType">{{ group.containerType }}</Tag>
+              <div class="container-track__lead">
+                <IconifyIcon
+                  icon="ph:shipping-container"
+                  class="container-track__icon"
+                />
+                <div class="container-track__identity">
+                  <strong class="container-track__number">{{
+                    group.containerNo
+                  }}</strong>
+                  <Tag v-if="group.containerType">{{
+                    group.containerType
+                  }}</Tag>
+                  <Tag v-if="group.rolled" color="warning">{{
+                    $t('tracking.detail.rolledYes')
+                  }}</Tag>
+                </div>
+              </div>
+              <div class="container-track__progress">
+                <span class="container-track__status">{{
+                  group.currentStatus
+                }}</span>
+                <span v-if="group.currentPlace" class="container-track__place">
+                  {{ group.currentPlace }}
+                </span>
+              </div>
               <span class="container-track__count">{{
                 $t('tracking.timeline.nodeCount', [group.nodes.length])
               }}</span>
-              <span class="container-track__status">{{
-                group.currentStatus
-              }}</span>
-              <span v-if="group.currentPlace" class="container-track__place">{{
-                group.currentPlace
-              }}</span>
-              <Tag v-if="group.rolled" color="warning">{{
-                $t('tracking.detail.rolledYes')
-              }}</Tag>
               <IconifyIcon
                 icon="ph:caret-down"
                 class="container-track__chevron"
               />
             </summary>
-            <TrackingTimeline :nodes="group.nodes" layout="vertical" />
+            <TrackingTimeline :nodes="group.nodes" />
           </details>
         </section>
       </template>
@@ -548,126 +565,243 @@ const handleRefresh = async () => {
 
 <style scoped>
 .container-tracking-panel {
-  padding: 4px;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
   container-type: inline-size;
-  color: hsl(var(--foreground));
+  color: rgb(0 0 0 / 88%);
 }
 
 .tracking-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px 12px;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
 .tracking-updated,
-.eyebrow,
 .route-note,
 .route-empty {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  color: rgb(60 60 67 / 56%);
 }
 
-.eyebrow {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 400;
-}
-
-.shipment-overview {
+.shipment-overview,
+.container-track {
   overflow: hidden;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 12px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
 }
 
-.shipment-identity {
+.shipment-ticket {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 32px;
-  align-items: center;
-  padding: 16px 20px;
-  background: hsl(var(--muted) / 35%);
+  gap: 6px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
 }
 
-.shipment-identity h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+.shipment-ticket__no {
+  font-size: 22px;
+  font-weight: 620;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 
-.shipment-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: center;
+.shipment-ticket__meta {
   font-size: 13px;
+  line-height: 1.35;
+  color: rgb(60 60 67 / 56%);
 }
 
-.route-row {
+.ticket-perforation {
+  position: relative;
+  height: 16px;
+}
+
+.ticket-perforation::before,
+.ticket-perforation::after {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  content: '';
+  background: #f2f2f7;
+  border: 0;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.ticket-perforation::before {
+  left: -8px;
+}
+
+.ticket-perforation::after {
+  right: -8px;
+}
+
+.ticket-perforation span {
+  position: absolute;
+  inset: 50% 16px auto;
+  border-top: 0.5px dashed rgb(60 60 67 / 22%);
+}
+
+.voyage {
+  padding: 6px 20px 18px;
+}
+
+.voyage + .voyage {
+  border-top: 0.5px solid rgb(60 60 67 / 8%);
+}
+
+.voyage-board {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(480px, 1.4fr);
-  gap: 20px 32px;
+  grid-template-areas:
+    'from spine to'
+    'fromTime vessel toTime';
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 1.05fr) minmax(0, 1fr);
+  gap: 6px 10px;
   align-items: center;
-  padding: 16px 20px;
-  border-top: 1px solid hsl(var(--border));
 }
 
-.route-heading {
+.voyage-port--from {
+  grid-area: from;
+}
+
+.voyage-port--to {
+  grid-area: to;
+  text-align: right;
+}
+
+.voyage-port strong {
+  font-size: 20px;
+  font-weight: 590;
+  line-height: 1.25;
+  letter-spacing: -0.028em;
+  overflow-wrap: anywhere;
+}
+
+.voyage-spine {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  grid-area: spine;
   align-items: center;
-  font-size: 15px;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 2px;
 }
 
-.route-index {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: hsl(var(--primary));
+.voyage-spine__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: #007aff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgb(0 122 255 / 12%);
 }
 
-.route-vessel {
-  margin: 6px 0 0 28px;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
+.voyage-spine__dot--end {
+  background: #34c759;
+  box-shadow: 0 0 0 4px rgb(52 199 89 / 12%);
 }
 
-.route-vessel span {
-  margin: 0 8px;
+.voyage-spine__track {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
 }
 
-.route-times {
+.voyage-spine__rail {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #007aff 0%,
+    rgb(0 122 255 / 28%) 24%,
+    rgb(60 60 67 / 14%) 50%,
+    rgb(52 199 89 / 32%) 76%,
+    #34c759 100%
+  );
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.voyage-spine__mark {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  color: #007aff;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 122 255 / 16%);
+}
+
+.voyage-times {
   display: grid;
-  grid-template-rows: repeat(2, auto);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-flow: column;
-  gap: 8px 28px;
+  gap: 4px 16px;
   margin: 0;
 }
 
-.route-times > div {
+.voyage-times--from {
+  grid-area: fromTime;
+}
+
+.voyage-times--to {
+  grid-area: toTime;
+  justify-items: end;
+  text-align: right;
+}
+
+.voyage-times > div {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: baseline;
-  justify-content: space-between;
 }
 
-.route-times dt {
-  margin-bottom: 0;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  white-space: nowrap;
+.voyage-times dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 510;
+  color: rgb(60 60 67 / 48%);
 }
 
-.route-times dd {
+.voyage-times dd {
   margin: 0;
   font-size: 13px;
+  font-weight: 590;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.voyage-times dd.is-empty {
+  font-weight: 400;
+  color: rgb(60 60 67 / 36%);
+}
+
+.voyage-vessel {
+  grid-area: vessel;
+  align-self: start;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgb(60 60 67 / 52%);
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
@@ -677,41 +811,39 @@ const handleRefresh = async () => {
 }
 
 .route-empty {
-  padding: 20px 24px;
+  padding: 8px 20px 18px;
   margin: 0;
 }
 
 .container-tracks {
-  margin: 20px 0 12px;
+  margin: 18px 0 4px;
 }
 
 .container-tracks__title {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 6px 12px;
   align-items: baseline;
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 600;
+  padding: 0 4px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 590;
+  color: rgb(60 60 67 / 56%);
 }
 
 .container-track {
-  margin-bottom: 10px;
-  overflow: hidden;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 10px;
+  margin-bottom: 8px;
 }
 
 .container-track__header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1.1fr) minmax(120px, 1.3fr) auto auto;
+  gap: 6px 14px;
   align-items: center;
-  padding: 18px 20px;
+  padding: 11px 14px;
   cursor: pointer;
   list-style: none;
-  transition: background 0.15s;
+  transition: background 0.15s ease;
 }
 
 .container-track__header::-webkit-details-marker {
@@ -719,81 +851,119 @@ const handleRefresh = async () => {
 }
 
 .container-track__header:hover {
-  background: hsl(var(--muted) / 45%);
+  background: rgb(120 120 128 / 6%);
 }
 
 .container-track__header:focus-visible {
-  outline: 2px solid hsl(var(--primary));
+  outline: 2px solid #007aff;
   outline-offset: -3px;
 }
 
 .container-track[open] > summary {
-  background: hsl(var(--muted) / 25%);
-  border-bottom: 1px solid hsl(var(--border));
+  background: rgb(120 120 128 / 5%);
+  border-bottom: 0.5px solid rgb(60 60 67 / 10%);
+}
+
+.container-track__lead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.container-track__icon {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #007aff;
+}
+
+.container-track__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+  min-width: 0;
 }
 
 .container-track__number {
   font-size: 14px;
-  letter-spacing: 0.04em;
+  font-weight: 590;
+  letter-spacing: 0.02em;
   overflow-wrap: anywhere;
+}
+
+.container-track__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .container-track__count {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: rgb(60 60 67 / 56%);
+  white-space: nowrap;
 }
 
 .container-track__status {
-  margin-left: auto;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 590;
+  overflow-wrap: anywhere;
 }
 
 .container-track__place {
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: rgb(60 60 67 / 56%);
+  overflow-wrap: anywhere;
 }
 
 .container-track__chevron {
   flex-shrink: 0;
-  color: hsl(var(--muted-foreground));
+  color: rgb(60 60 67 / 36%);
+  transition: transform 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .container-track[open] .container-track__chevron {
   transform: rotate(180deg);
 }
 
-@container (max-width: 900px) {
-  .route-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+@container (max-width: 720px) {
+  .container-track__header {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .container-track__progress {
+    grid-column: 1 / -2;
   }
 }
 
 @container (max-width: 560px) {
-  .route-times {
-    grid-template-rows: auto;
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-flow: row;
+  .shipment-ticket {
+    padding: 14px 14px 10px;
+  }
+
+  .voyage {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .voyage-port strong {
+    font-size: 17px;
   }
 
   .route-note {
     margin-left: 0;
   }
-}
-
-@media (max-width: 640px) {
-  .shipment-identity,
-  .route-row {
-    padding: 18px 16px;
-  }
 
   .container-track__header {
-    padding: 16px 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
-  .container-track__status {
-    margin-left: 0;
+  .container-track__progress,
+  .container-track__count {
+    grid-column: 1;
   }
 }
 </style>

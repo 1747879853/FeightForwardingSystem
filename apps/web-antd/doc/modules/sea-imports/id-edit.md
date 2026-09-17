@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -75,6 +75,9 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |
+| 2026-09-17 | `Style` | 运踪箱轨迹改回横向时间轴，顶部摘要收成一行四列（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-apple-layout.md)。 |
+| 2026-09-17 | `Style` | 运踪面板航段时间条与箱行折叠头改版（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-tab-style.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 报关发票号改为读写 `transportOrder.invoiceNum`，文案由「发票号」改名。 | 详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 与海出附件 Tab 共用比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |

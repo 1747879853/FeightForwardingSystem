@@ -407,13 +407,13 @@ const handleRefresh = async () => {
 </script>
 
 <template>
-  <div class="yundang-tracking-panel bg-white">
-    <div class="mb-3 flex items-center justify-between gap-3">
+  <div class="yundang-tracking-panel">
+    <div class="yundang-tracking-toolbar">
       <div class="flex flex-wrap items-center gap-2">
         <Tag :color="viewState === 'has_shipment' ? 'processing' : 'default'">
           {{ statusLabel }}
         </Tag>
-        <span v-if="lastUpdatedText" class="text-xs text-[rgba(0,0,0,0.45)]">
+        <span v-if="lastUpdatedText" class="yundang-tracking-updated">
           {{ $t('seaExport.yundang.tracking.lastUpdated', [lastUpdatedText]) }}
         </span>
       </div>
@@ -478,6 +478,7 @@ const handleRefresh = async () => {
           bordered
           size="small"
           :column="2"
+          class="yundang-summary"
         >
           <DescriptionsItem
             :label="$t('seaExport.yundang.tracking.referenceNo')"
@@ -513,6 +514,7 @@ const handleRefresh = async () => {
           bordered
           size="small"
           :column="2"
+          class="yundang-summary"
         >
           <DescriptionsItem
             :label="$t('seaExport.yundang.tracking.referenceNo')"
@@ -536,7 +538,12 @@ const handleRefresh = async () => {
       </template>
 
       <template v-else-if="pushInfo?.shipment">
-        <Descriptions bordered size="small" :column="2" class="mb-4">
+        <Descriptions
+          bordered
+          size="small"
+          :column="2"
+          class="yundang-summary mb-4"
+        >
           <DescriptionsItem
             :label="$t('seaExport.yundang.tracking.referenceNo')"
           >
@@ -624,7 +631,7 @@ const handleRefresh = async () => {
           </DescriptionsItem>
         </Descriptions>
 
-        <Tabs>
+        <Tabs class="yundang-detail-tabs">
           <TabPane
             key="nodes"
             :tab="$t('seaExport.yundang.tracking.tabs.nodes')"
@@ -759,7 +766,12 @@ const handleRefresh = async () => {
                     {{ resolveRolledTag(container.isRolled).label }}
                   </Tag>
                 </div>
-                <Descriptions bordered size="small" :column="2" class="mb-3">
+                <Descriptions
+                  bordered
+                  size="small"
+                  :column="2"
+                  class="yundang-summary mb-3"
+                >
                   <DescriptionsItem
                     :label="$t('seaExport.yundang.tracking.container.sizeType')"
                   >
@@ -1050,8 +1062,13 @@ const handleRefresh = async () => {
 /* 航段 / 费用表格：细边框、留白、数字等宽 */
 .carriage-table {
   width: 100%;
+  overflow: hidden;
   font-size: 13px;
-  border-collapse: collapse;
+  border-spacing: 0;
+  border-collapse: separate;
+  background: #fff;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 10px;
 
   th,
   td {
@@ -1158,5 +1175,50 @@ const handleRefresh = async () => {
 
 .yundang-tracking-panel {
   min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+.yundang-tracking-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.yundang-tracking-updated {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgb(60 60 67 / 55%);
+}
+
+:deep(.yundang-summary.ant-descriptions-bordered) {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 10px;
+}
+
+:deep(.yundang-summary .ant-descriptions-view) {
+  border: 0;
+}
+
+:deep(.yundang-summary .ant-descriptions-item-label) {
+  width: 112px;
+  color: rgb(60 60 67 / 60%);
+  background: rgb(120 120 128 / 5%);
+}
+
+:deep(.yundang-summary .ant-descriptions-item-content) {
+  color: rgb(0 0 0 / 88%);
+}
+
+:deep(.yundang-detail-tabs .ant-tabs-nav) {
+  margin-bottom: 12px;
+}
+
+:deep(.yundang-detail-tabs .ant-tabs-content-holder) {
+  padding: 4px 0 0;
 }
 </style>
