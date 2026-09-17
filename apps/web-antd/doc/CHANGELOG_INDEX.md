@@ -13,6 +13,7 @@
 
 ## 2026-09
 
+- [2026-09-18] [运踪箱卡展开加过渡并收紧苹果风时间轴](./changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)
 - [2026-09-17] [运踪登机牌航线收回左右港口中间](./changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)
 - [2026-09-17] [海运出口运踪改为横向时间轴与苹果风摘要](./changelogs/change-log-2026-09-17-sea-export-tracking-apple-layout.md)
 - [2026-09-17] [海运出口运踪 Tab 版式收紧](./changelogs/change-log-2026-09-17-sea-export-tracking-tab-style.md)

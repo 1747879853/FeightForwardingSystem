@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-17
+last_updated: 2026-09-18
 ---
 
 # 1. 业务背景说明 (Background)
@@ -75,6 +75,7 @@ last_updated: 2026-09-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-18 | `Style` | 运踪箱卡展开加过渡，横向时间轴收成细线小圆点（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |
 | 2026-09-17 | `Style` | 运踪箱轨迹改回横向时间轴，顶部摘要收成一行四列（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-apple-layout.md)。 |
 | 2026-09-17 | `Style` | 运踪面板航段时间条与箱行折叠头改版（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-tab-style.md)。 |

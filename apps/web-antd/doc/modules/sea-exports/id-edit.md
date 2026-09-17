@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-17
+last_updated: 2026-09-18
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -62,7 +62,7 @@ last_updated: 2026-09-17
 - **打印：** 基础信息顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}` 为海出 id，`bizType=0`，后端 `GetPrintAsync` 自动取数）；分单 Tab「打印」用 `PrintJsonType=500`，`detailInput` 为**分单 id**；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput` + `bizType=0`。模板列表走非管理端接口并按当票签单方式/船公司/分公司/业务类型筛选（`bizType` 相等或为空）。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。`isEditable === false` 或无 `Edit` 权限时保存禁用，表单不锁；复制拆成独立按钮以免被一起禁用。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；规则问号嵌在按钮文案后。与列表共用 `useYundangOceanSubscribe`。提交仅 `seaExportIds`，字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
-- **运踪信息：** 按打包品牌分流。非 sjtd 用 `container-tracking-panel.vue`（`load-detail` 自取详情拿 `feituoTracking` 摘要与全量预警，另读本地快照补箱清单与轨迹页）；编辑 Tab 浅灰底 `#f2f2f7`，顶部是登机牌式航次卡（大号订阅号、打孔虚线、左右港口+中间航线，ETD/ATD 挂起运、ETA/ATA 挂目的），其下按箱折叠**横向**时间轴（首箱默认展开）。sjtd 仍走 `yundang-tracking-panel.vue`：调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；概要表与航段表用圆角浅底。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**里程碑**节点「已完成」仅看 `actualityTime` 是否有值，不再用 `isCurrent` 标「进行中」。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
+- **运踪信息：** 按打包品牌分流。非 sjtd 用 `container-tracking-panel.vue`（`load-detail` 自取详情拿 `feituoTracking` 摘要与全量预警，另读本地快照补箱清单与轨迹页）；编辑 Tab 浅灰底 `#f2f2f7`，顶部是登机牌式航次卡（大号订阅号、打孔虚线、左右港口+中间航线，ETD/ATD 挂起运、ETA/ATA 挂目的），其下按箱折叠**横向**时间轴（首箱默认展开，展开收起有高度过渡；轴用细线小圆点，当前节点轻脉冲）。sjtd 仍走 `yundang-tracking-panel.vue`：调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；概要表与航段表用圆角浅底。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**里程碑**节点「已完成」仅看 `actualityTime` 是否有值，不再用 `isCurrent` 标「进行中」。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。`CompleteAsync` 若返回 `generatedFeeCount > 0`，刷新详情后再弹窗展示本次自动生成的费用（费用名称、结算对象、币别、汇率、含税单价、含税金额、单位、数量、税率、收付类型）。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
 - **保存重建二次确认：** 编辑保存时，若 `polId` 或勾选 `serviceType` 集合相对详情发生变化，**且本票已存在任意服务任务**，弹确认「将清空全部服务任务进度并重新生成」，取消则中止保存。配置弹窗「确定」后直接应用勾选并保存，重建确认统一由保存流程处理。
@@ -180,6 +180,7 @@ last_updated: 2026-09-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-18 | `Style` | 运踪箱卡展开收起加高度过渡；横向时间轴改为细线小圆点苹果风。 | 手风琴不再用 `details`。详见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间，船名航次落在航线下方，少占一行。 | 三列网格，不再通栏航线。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |
 | 2026-09-17 | `Style` | 运踪箱轨迹改回横向时间轴；顶部改为一行四列 + 航段横排时间，去掉「01」序号；Tab 浅灰底苹果风。 | 首箱默认展开。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-apple-layout.md)。 |
 | 2026-09-17 | `Style` | 运踪 Tab 去掉外包白卡；航段时间改为上标签下数值；箱行折叠头改四列网格。sjtd 概要表/航段表改为圆角浅底。 | 不改订阅与节点口径；箱行默认仍折叠。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-tab-style.md)。 |

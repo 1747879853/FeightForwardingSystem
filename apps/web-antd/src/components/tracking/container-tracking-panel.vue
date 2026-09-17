@@ -219,6 +219,40 @@ const timelineGroups = computed(() =>
   }),
 );
 
+const openTrackKeys = ref(new Set<string>());
+
+function trackKey(containerNo: string, index: number) {
+  return `${props.orderId}-${containerNo}-${index}`;
+}
+
+watch(
+  timelineGroups,
+  (groups) => {
+    const keys = groups.map((group, index) =>
+      trackKey(group.containerNo, index),
+    );
+    const retained = keys.filter((key) => openTrackKeys.value.has(key));
+    openTrackKeys.value = new Set(
+      retained.length > 0 ? retained : keys[0] ? [keys[0]] : [],
+    );
+  },
+  { immediate: true },
+);
+
+function isTrackOpen(key: string) {
+  return openTrackKeys.value.has(key);
+}
+
+function toggleTrack(key: string) {
+  const next = new Set(openTrackKeys.value);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  openTrackKeys.value = next;
+}
+
 async function fetchModuleDetail() {
   if (!props.loadDetail || !props.orderId) {
     return;
@@ -509,13 +543,20 @@ const handleRefresh = async () => {
             :description="$t('tracking.timeline.empty')"
             :image="Empty.PRESENTED_IMAGE_SIMPLE"
           />
-          <details
+          <div
             v-for="(group, index) in timelineGroups"
             :key="`${orderId}-${group.containerNo}-${index}`"
             class="container-track"
-            :open="index === 0"
+            :class="{
+              'is-open': isTrackOpen(trackKey(group.containerNo, index)),
+            }"
           >
-            <summary class="container-track__header">
+            <button
+              type="button"
+              class="container-track__header"
+              :aria-expanded="isTrackOpen(trackKey(group.containerNo, index))"
+              @click="toggleTrack(trackKey(group.containerNo, index))"
+            >
               <div class="container-track__lead">
                 <IconifyIcon
                   icon="ph:shipping-container"
@@ -548,9 +589,13 @@ const handleRefresh = async () => {
                 icon="ph:caret-down"
                 class="container-track__chevron"
               />
-            </summary>
-            <TrackingTimeline :nodes="group.nodes" />
-          </details>
+            </button>
+            <div class="container-track__panel">
+              <div class="container-track__panel-inner">
+                <TrackingTimeline :nodes="group.nodes" />
+              </div>
+            </div>
+          </div>
         </section>
       </template>
     </Spin>
@@ -840,14 +885,19 @@ const handleRefresh = async () => {
   grid-template-columns: minmax(160px, 1.1fr) minmax(120px, 1.3fr) auto auto;
   gap: 6px 14px;
   align-items: center;
+  width: 100%;
   padding: 11px 14px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  appearance: none;
   cursor: pointer;
-  list-style: none;
-  transition: background 0.15s ease;
-}
-
-.container-track__header::-webkit-details-marker {
-  display: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 0.5px solid transparent;
+  transition:
+    background 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    border-color 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .container-track__header:hover {
@@ -859,9 +909,32 @@ const handleRefresh = async () => {
   outline-offset: -3px;
 }
 
-.container-track[open] > summary {
+.container-track.is-open .container-track__header {
   background: rgb(120 120 128 / 5%);
-  border-bottom: 0.5px solid rgb(60 60 67 / 10%);
+  border-bottom-color: rgb(60 60 67 / 10%);
+}
+
+.container-track__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.container-track.is-open .container-track__panel {
+  grid-template-rows: 1fr;
+}
+
+.container-track__panel-inner {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.container-track.is-open .container-track__panel-inner {
+  opacity: 1;
+  transition-delay: 0.05s;
+  transition-duration: 0.28s;
 }
 
 .container-track__lead {
@@ -920,11 +993,20 @@ const handleRefresh = async () => {
 .container-track__chevron {
   flex-shrink: 0;
   color: rgb(60 60 67 / 36%);
-  transition: transform 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.container-track[open] .container-track__chevron {
+.container-track.is-open .container-track__chevron {
   transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container-track__header,
+  .container-track__panel,
+  .container-track__panel-inner,
+  .container-track__chevron {
+    transition: none;
+  }
 }
 
 @container (max-width: 720px) {
