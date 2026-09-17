@@ -67,6 +67,29 @@ export function getCombinedStatusColor(status?: null | number): string {
 }
 
 /**
+ * 费用侧全局 InvoiceStatus（0 未开票 / 1 部分开票 / 2 已开票）的 Ant Tag 色。
+ * 与上方 getCombinedStatusColor 语义对齐：
+ * - 未开票 → cyan
+ * - 进行中（部分开票）→ processing
+ * - 已开票/开票完成 → success
+ */
+export function getFeeInvoiceStatusTagColor(status?: null | number): string {
+  if (status === undefined || status === null) return 'default';
+  if (status === 2) return 'success';
+  if (status === 1) return 'processing';
+  if (status === 0) return 'cyan';
+  return 'default';
+}
+
+/** 费用侧 InvoiceStatus 的文字色（Handsontable 等非 Tag 场景） */
+export function getFeeInvoiceStatusTextColor(status?: null | number): string {
+  if (status === 2) return '#52c41a'; // success
+  if (status === 1) return '#1677ff'; // processing
+  if (status === 0) return '#13c2c2'; // cyan
+  return '#8c8c8c';
+}
+
+/**
  * 列表筛选：发票状态逻辑分组选项。
  * 单值代表一段流程（如「开票中」跨 1/20/21），查询时经 expandCombinedStatusGroup
  * 展开成 combinedStatuses 数组传给后端（多选之间是 OR）。

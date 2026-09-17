@@ -33,6 +33,7 @@ import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { NestedDataTable } from '#/components/nested-data-table';
 import type { Attachment } from '#/api/common/upload';
 import { getFeeStatusOptions } from '#/views/air-export-admin/orderFee/data';
+import { getFeeInvoiceStatusTagColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 import {
   ClientSelect,
   MyOrgSelect,
@@ -103,12 +104,7 @@ function getInvoiceStatusLabel(invoiceStatus: number | undefined): string {
 }
 
 function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
-  const colorMap: Record<number, string> = {
-    0: 'default', // 未开票 - 灰色
-    1: 'orange', // 部分开票 - 橙色
-    2: 'green', // 已开票 - 绿色
-  };
-  return colorMap[invoiceStatus ?? -1] ?? 'default';
+  return getFeeInvoiceStatusTagColor(invoiceStatus);
 }
 
 /**
