@@ -28,12 +28,21 @@ import {
 } from '#/components/list-grouping';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 
 import { openAuditRemarkConfirm } from '../composables/use-audit-remark-confirm';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
 import Detail from './modules/detail.vue';
 
 defineOptions({ name: 'ExpenseAll' });
+
+function getRangeValue(
+  value: unknown,
+): [unknown | undefined, unknown | undefined] {
+  return Array.isArray(value)
+    ? [value[0] as unknown, value[1] as unknown]
+    : [undefined, undefined];
+}
 
 // ==================== 分组统计配置 ====================
 
@@ -179,8 +188,11 @@ const [Grid, gridApi] =
       submitOnChange: true,
       showCollapseButton: true,
       collapsed: true,
+      collapsedRows: 1,
       compact: true,
-      wrapperClass: 'grid-cols-7',
+      // 标签略收窄，折叠态一行尽量塞下常用条件
+      labelWidth: 72,
+      wrapperClass: 'grid-cols-5',
     },
     gridEvents: {
       cellClick: handleRowDblclick,
@@ -222,7 +234,13 @@ const [Grid, gridApi] =
               }
               processedDefaultApplied = true;
 
-              let params = grouping.decorateListParams(nextValues);
+              const [etdStart, etdEnd] = getRangeValue(nextValues.ETDRange);
+              const { ETDRange: _etdRange, ...restValues } = nextValues;
+              let params = grouping.decorateListParams({
+                ...restValues,
+                ETDStart: toIsoStartOfDay(etdStart),
+                ETDEnd: toIsoEndOfDay(etdEnd),
+              });
 
               // 港口分组：把 isSea_id 拆回 IsSea + 真实港口 ID
               const field = grouping.enabledField.value;
@@ -381,14 +399,15 @@ const changeTableType = (type: string) => {
 </script>
 
 <template>
-  <!-- 内容区改为 flex 纵向布局：顶部任务列表与下方费用明细按高度自适应分配，
-       不再使用固定像素高，整页正好收在可视区内，不同分辨率下都不出现纵向滚动条。
-       注意：Page 内容 div 默认有 p-4 padding，auto-content-height 已给出确定高度，flex 子项据此精确填满。 -->
-  <Page auto-content-height content-class="flex flex-col overflow-hidden">
-    <!-- 顶部任务列表：由固定 h-[445px] 改为占比高度(42%)并加 min/max 守卫，随屏幕自适应；
-         flex-shrink-0 保证其不被压缩，vxe-grid height:'auto' 据此填满。 -->
+  <!-- 内容区 flex 纵向布局：顶部任务列表与下方费用明细按高度自适应。
+       小屏优先压缩查询区高度，保证票列表能看到多行。 -->
+  <Page
+    auto-content-height
+    content-class="expense-review-page flex flex-col overflow-hidden"
+  >
+    <!-- 顶部任务列表：保持足够占比给票表；查询区靠 compact + 样式压缩，避免表体只剩一行 -->
     <Grid
-      class="expense-task-grid mb-[10px] h-[42%] max-h-[440px] min-h-[240px] flex-shrink-0"
+      class="expense-task-grid mb-2 h-[44%] max-h-[480px] min-h-[280px] flex-shrink-0"
     >
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
       <template #toolbar-actions>
@@ -414,9 +433,10 @@ const changeTableType = (type: string) => {
             </Menu>
           </template>
         </DropdownButton>
-        <span class="split mx-3 flex">|</span>
+        <span class="split mx-2 flex">|</span>
         <Button
           class="layout-toggle-btn mr-2"
+          size="small"
           @click="changeTableType('vertical')"
           :class="[feeTableType === 'vertical' ? 'green-btn' : '']"
         >
@@ -426,6 +446,7 @@ const changeTableType = (type: string) => {
         </Button>
         <Button
           class="layout-toggle-btn"
+          size="small"
           @click="changeTableType('horizontal')"
           :class="[feeTableType === 'horizontal' ? 'green-btn' : '']"
         >
@@ -439,7 +460,7 @@ const changeTableType = (type: string) => {
         />
       </template>
     </Grid>
-    <!-- 费用明细：占据剩余全部高度(flex-1)，min-h-0 允许内部表格按需收缩，避免撑出滚动条 -->
+    <!-- 费用明细：占据剩余全部高度(flex-1)，min-h-0 允许内部表格按需收缩 -->
     <Detail
       class="min-h-0 flex-1"
       :orderName="orderName"
@@ -452,11 +473,24 @@ const changeTableType = (type: string) => {
   </Page>
 </template>
 <style scoped lang="scss">
+@media (max-height: 820px) {
+  .expense-task-grid {
+    // 矮屏：略提高顶部下限，配合已压缩的查询区，保证票表至少能看到多行
+    min-height: 260px !important;
+    max-height: 52vh !important;
+  }
+}
+
 .split {
   color: #d9dee8;
 }
 
-// 顶部任务列表：卡片化容器 + 表头层级强化，与下方费用明细卡片风格统一
+// 页面内容区略减 padding，给表格多留纵向空间（覆盖 Page 默认 p-4）
+.expense-review-page {
+  padding: 8px 12px !important;
+}
+
+// 顶部任务列表：卡片化容器 + 查询区高度压缩
 .expense-task-grid {
   overflow: hidden;
   border: 1px solid #e8ecf3;
@@ -464,6 +498,62 @@ const changeTableType = (type: string) => {
   box-shadow:
     0 1px 2px rgb(16 42 83 / 4%),
     0 4px 12px rgb(16 42 83 / 5%);
+
+  // 压缩搜索表单：默认折叠一行时尽量矮，避免小屏只剩一行票表
+  :deep(.vxe-grid--form-wrapper),
+  :deep([class*='form-container']),
+  :deep(.relative > form),
+  :deep(form.vben-form) {
+    margin-bottom: 0 !important;
+  }
+
+  :deep(.ant-form-item) {
+    margin-bottom: 0 !important;
+  }
+
+  :deep(.ant-form-item-label) {
+    padding: 0 !important;
+    line-height: 1.2;
+  }
+
+  :deep(.ant-form-item-label > label) {
+    height: auto;
+    font-size: 12px;
+  }
+
+  :deep(.ant-form-item-control-input) {
+    min-height: 28px;
+  }
+
+  :deep(
+    .ant-select-single:not(.ant-select-customize-input) .ant-select-selector
+  ),
+  :deep(.ant-input),
+  :deep(.ant-input-affix-wrapper),
+  :deep(.ant-picker) {
+    min-height: 28px;
+  }
+
+  :deep(.pb-2),
+  :deep(.pb-4) {
+    padding-bottom: 4px !important;
+  }
+
+  :deep(.pt-1),
+  :deep(.pt-2) {
+    padding-top: 2px !important;
+  }
+
+  // 工具栏与分页条略收紧
+  :deep(.vxe-toolbar) {
+    min-height: 40px;
+    padding-block: 4px;
+  }
+
+  :deep(.vxe-pager) {
+    min-height: 36px;
+    padding-block: 2px;
+  }
 
   :deep(.vxe-header--column) {
     font-weight: 600;
