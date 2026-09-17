@@ -8,7 +8,7 @@ const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -21,8 +21,6 @@ import {
 } from '@vben/icons';
 
 import { useAccess } from '@vben/access';
-
-import dayjs from 'dayjs';
 
 import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
@@ -53,9 +51,7 @@ import {
   createPagedListQuery,
   isTicketEditable,
   toIsoEndOfDay,
-  toIsoEndOfMonth,
   toIsoStartOfDay,
-  toIsoStartOfMonth,
 } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -65,6 +61,10 @@ import {
   useColumns,
   useGridFormSchema,
 } from './data';
+import {
+  applyAirExportListDefaultColumns,
+  stringifyAirExportListDefaultColumnSetting,
+} from './list-column-defaults';
 import { useAirExportCopy } from './use-air-export-copy';
 import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-upload-modal.vue';
 import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
@@ -203,13 +203,6 @@ const DATE_RANGE_FIELDS = [
   ],
 ] as const;
 
-/**
- * 会计日期默认值是否已写入表单。
- * 用于兜底：在默认值写入前（如分组恢复抢先触发查询），仍按当月过滤；
- * 写入后则完全尊重表单值（允许用户清空或改月）。
- */
-let accountDateDefaultApplied = false;
-
 const normalizeQuery = (
   formValues: Record<string, unknown>,
 ): AirExportAdminApi.GetPagedListParams => {
@@ -222,24 +215,11 @@ const normalizeQuery = (
     dateParams[endKey] = toIsoEndOfDay(end);
   }
 
-  const { AccountDateRange, ...others } = rest;
-  let [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
-  // 默认值尚未写入表单前的早期查询，兜底按当月过滤，避免首屏漏掉默认会计期间
-  if (!accountDateStart && !accountDateEnd && !accountDateDefaultApplied) {
-    const currentMonth = dayjs().startOf('month');
-    accountDateStart = currentMonth;
-    accountDateEnd = currentMonth;
-  }
-
   const baseParams = {
-    ...others,
+    ...rest,
     ...dateParams,
     Keyword:
-      typeof others.Keyword === 'string'
-        ? others.Keyword.trim()
-        : others.Keyword,
-    AccountDateStart: toIsoStartOfMonth(accountDateStart),
-    AccountDateEnd: toIsoEndOfMonth(accountDateEnd),
+      typeof rest.Keyword === 'string' ? rest.Keyword.trim() : rest.Keyword,
   };
 
   return grouping.decorateListParams(
@@ -280,6 +260,12 @@ const syncSelectedRows = () => {
   selectedRows.value = (gridApi.grid as any)?.getCheckboxRecords?.() ?? [];
 };
 
+const defaultColumns = applyAirExportListDefaultColumns(
+  (useColumns() ?? []) as unknown as Parameters<
+    typeof applyAirExportListDefaultColumns
+  >[0],
+) as NonNullable<ReturnType<typeof useColumns>>;
+
 const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -291,12 +277,9 @@ const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
       labelWidth: 96,
     },
     wrapperClass: 'grid-cols-6',
-    /** 重置：清空全部条件（含会计期间），不自动查询 */
+    /** 重置搜索条件，不自动查询 */
     handleReset: async () => {
       await gridApi.formApi.resetForm();
-      // filterFields=false：避免 merge 把 undefined 盖回重置前的旧值
-      await gridApi.formApi.setValues({ AccountDateRange: undefined }, false);
-      await nextTick();
     },
   },
   gridEvents: {
@@ -306,7 +289,7 @@ const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
   },
   gridOptions: {
     align: 'left',
-    columns: useColumns(),
+    columns: defaultColumns,
     height: 'auto',
     keepSource: true,
     checkboxConfig: {
@@ -321,12 +304,13 @@ const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
       enabled: true,
     },
     proxyConfig: {
-      // 关闭自动加载：改由 onMounted 里先写入「会计日期」默认值（当月）再手动查询，
-      // 否则首查在表单模型尚未落入默认值时触发，会漏掉默认会计期间。
+      // 关闭自动加载：由 onMounted 先恢复分组字段再 submitForm 首查，
+      // 避免分组恢复与首查竞态。
       autoLoad: false,
       ajax: {
         query: createPagedListQuery(getAirExportPagedList, {
-          defaultSort: 'CreationTime DESC',
+          // defaultSort 使用前端列 field，列头才能同步高亮；请求层再由 fieldMap 转成后端字段。
+          defaultSort: 'transportOrder.etd DESC',
           mapParams: normalizeQuery,
           fieldMap: AIR_EXPORT_SORT_FIELD_MAP,
         }),
@@ -339,25 +323,25 @@ const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
       zoom: true,
     },
   },
+  columnPersist: {
+    load: async ({ keyword }) => {
+      await tableConfigStore.loadTableConfigsOnce();
+      const hit = tableConfigStore.getTableConfigByName(keyword);
+      if (hit?.setting) {
+        return { id: hit.id, setting: hit.setting };
+      }
+      return { setting: stringifyAirExportListDefaultColumnSetting() };
+    },
+  },
 });
 
-/** 默认会计期间：当月（起止均为当月，配合 normalizeQuery 扩展为整月区间） */
-const applyDefaultAccountDate = async () => {
-  const currentMonth = dayjs().startOf('month');
-  await gridApi.formApi.setValues({
-    AccountDateRange: [currentMonth, currentMonth],
-  });
-};
-
 onMounted(async () => {
-  await applyDefaultAccountDate();
   // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
   // 从而在同一次查询中拉取分组数据，避免恢复与首查竞态导致分组只剩「全部」。
   await grouping.restorePersistedField();
   // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
-  // 从而让首查及后续分页/排序都带上默认会计期间（gridApi.query 用的是最近提交值）。
+  // 后续分页/排序走 gridApi.query 时才能带上同一套条件。
   await gridApi.formApi.submitForm();
-  accountDateDefaultApplied = true;
 });
 
 // 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。

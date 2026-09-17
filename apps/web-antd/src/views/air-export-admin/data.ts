@@ -395,19 +395,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: ['开始日期', '结束日期'],
       },
     },
-    {
-      component: 'RangePicker',
-      fieldName: 'AccountDateRange',
-      label: $t('airExport.export.accountDate'),
-      formItemClass: 'col-span-2',
-      // 默认当月由 list.vue onMounted 写入；不设 defaultValue，否则「重置」会回到当月而非清空
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-        picker: 'month',
-        placeholder: ['开始月份', '结束月份'],
-      },
-    },
     createClientSelectSchema({
       fieldName: 'ClientId',
       industryCategory: 'p',
@@ -822,6 +809,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 关联表出参是对象，列本身不可直接排序，需映射到后端导航属性路径。
  */
 export const AIR_EXPORT_SORT_FIELD_MAP: Record<string, string> = {
+  'transportOrder.etd': 'TransportOrder.ETD',
   'transportOrder.client.name': 'TransportOrder.Client.Name',
   'transportOrder.clientName': 'TransportOrder.Client.Name',
   'transportOrder.codeSource.cnName': 'TransportOrder.CodeSource.CnName',

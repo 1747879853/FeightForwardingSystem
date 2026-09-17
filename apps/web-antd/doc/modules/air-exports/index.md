@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,13 +17,14 @@ last_updated: 2026-09-15
 | 路由名称 | `AirExportList` |
 | 页面组件 | `src/views/air-export-admin/list.vue` |
 | 权限口径 | `Admin.AirExport`；运踪订阅 `Admin.ExternalApi.Use`、查看运踪 `Admin.ExternalApi.Get` |
-| 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/air-export-admin/list.vue`<br/>`src/views/air-export-admin/data.ts`<br/>`src/views/air-export-admin/use-air-export-copy.ts`<br/>`src/views/air-export-admin/use-yundang-air-subscribe.ts`<br/>`src/views/air-export-admin/use-yundang-air-track.ts`<br/>`src/api/air-export/air-export-admin.ts`<br/>`src/api/yundang/yundang-air-admin.ts` |
+| 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/air-export-admin/list.vue`<br/>`src/views/air-export-admin/data.ts`<br/>`src/views/air-export-admin/list-column-defaults.ts`<br/>`src/views/air-export-admin/use-air-export-copy.ts`<br/>`src/api/air-export/air-export-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
-- **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、报关发票号、委托编号 6 个字段；会计期间默认当月。搜索区不再提供「未填写」开关与货物明细区间筛选。
+- **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、报关发票号、委托编号 6 个字段；搜索区不提供会计期间、「未填写」开关与货物明细区间筛选。
+- **默认排序与列布局：** 首屏按起飞日期倒序，列头同步显示倒序状态；无个人列设置时按 `list-column-defaults.ts` 展示与海运出口同类的状态、单号、日期、客户、港口、货量和干系人顺序，个人列设置优先。
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
 - **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则问号嵌在按钮文案后（订阅单号=主运单号、航司系统自动识别）。
@@ -34,7 +35,7 @@ last_updated: 2026-09-15
 
 | 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
 | :-- | :-- | :-- | :-- |
-| 页面初始 | 用户进入路由 | 页面可用 | 关闭 `autoLoad`，先写入默认会计期间与持久化分组字段再触发首查。 |
+| 页面初始 | 用户进入路由 | 页面可用 | 关闭 `autoLoad`，先恢复持久化分组字段再触发首查；默认按起飞日期倒序。 |
 | 列表 | 用户点「复制」 | 新票编辑页 | 复制不校验组织归属，新票所属组织沿用源票。 |
 | 列表已勾选 | 用户点「运踪订阅」 | 订阅结果 Modal | 汇总 toast + 逐条结果；成功后刷新列表运踪状态列。 |
 
@@ -65,6 +66,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-17 | `Fix` | 移除会计期间检索，首屏按起飞日期倒序并高亮列头；默认列顺序对齐海运出口业务结构。 | 前端列字段 `transportOrder.etd` 经 `AIR_EXPORT_SORT_FIELD_MAP` 转成后端 `TransportOrder.ETD`；个人列设置仍优先。详见 [变更日志](../../changelogs/change-log-2026-09-17-air-export-list-default-layout.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Fix` | 委托单位、订舱代理、空港、业务来源/运输条款/包装、收发通等列 `field` 改绑真实对象路径；空港仍用 `formatAirPortLabel`。 | `AIR_EXPORT_SORT_FIELD_MAP` 同步。详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
