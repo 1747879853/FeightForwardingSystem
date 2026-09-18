@@ -499,6 +499,8 @@ export namespace InvoiceApplicationAdminApi {
      * - 冲红完成后挂靠会被解除，附件也随之消失
      */
     attachments?: AttachmentItemDto[];
+    /** 结算状态：0未结算 1部分结算 2结算完毕（列表聚合，详情不返回） */
+    settlementStatus?: number;
   }
 
   /** 审核开票申请DTO */

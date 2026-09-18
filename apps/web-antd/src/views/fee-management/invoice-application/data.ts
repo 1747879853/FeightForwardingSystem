@@ -25,6 +25,13 @@ export const getInvoiceTypeOptions = () => [
   },
 ];
 
+/** 结算状态选项（与客户对账列表同一套文案/颜色） */
+export const getSettlementStatusOptions = () => [
+  { value: 0, label: '未结算', color: '#b8cdd7' },
+  { value: 1, label: '部分结算', color: '#909399' },
+  { value: 2, label: '结算完毕', color: '#67c23a' },
+];
+
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
@@ -170,6 +177,15 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
         options: invoiceApplicationStatusOptions(),
       },
       slots: { default: 'status' },
+    },
+    {
+      field: 'settlementStatus',
+      title: '结算状态',
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getSettlementStatusOptions(),
+      },
     },
     {
       field: 'totalAppliedAmount',

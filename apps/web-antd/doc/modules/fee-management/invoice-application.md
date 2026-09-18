@@ -2,7 +2,7 @@
 title: 开票申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-10
+last_updated: 2026-09-18
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,6 +12,7 @@ last_updated: 2026-09-10
 # 2. 功能与操作说明 (Features & Operations)
 
 - **检索：** 编号（主提单号/委托编号）、精确 Keys、申请单号、发票号、状态、结算对象、币别、申请时间、创建人。
+- **结算状态：** 列表按关联费用聚合展示未结算 / 部分结算 / 结算完毕（文案颜色与客户对账一致）；无费用视为未结算。详情不返回该字段。
 - **新建：** 进入 `/fee-management/invoice-application/add`。
 - **编辑/查看：** 录入、驳回双击进编辑；其他状态进只读查看。
 - **提交/撤销：** 录入/驳回可提交；待审核可撤销。编辑页「提交」成功关编辑进查看；查看页「撤回」成功关查看进编辑；失败均留在当前页。
@@ -28,6 +29,7 @@ last_updated: 2026-09-10
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **applyTimeRange** | 申请时间区间 | **开票申请**<br/>`applyTimeStart` / `applyTimeEnd` | **触发：** 无时分 RangePicker | 提交时切到当天 00:00～23:59.999 再转 ISO |
+| **settlementStatus** | 关联费用结算进度 | **开票申请列表**<br/>`InvoiceApplicationListDto.settlementStatus` | **依赖：** 后端按关联费用聚合；无费用为 `0` | 仅列表字段；`0` 未结算 / `1` 部分结算 / `2` 结算完毕 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -41,6 +43,7 @@ last_updated: 2026-09-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-18 | `Feature` | 列表「状态」后增加结算状态列：未结算 / 部分结算 / 结算完毕。 | 列表 DTO 聚合字段；详情不返回。文案颜色对齐客户对账。详见 `changelogs/change-log-2026-09-18-invoice-application-settlement-status.md`。 |
 | 2026-09-10 | `Fix` | 不同部门的人打开编辑/查看页时，归属组织回显所属公司名（值仍是部门 id），销售方按该公司拉取税号/地址/银行。 | `MyOrgSelect` 对不在本人选项中的部门 id 用公司名兜底；`resolveMyOrgCompanyNode` 先部门换公司再取开票资料。详见 `changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md`。 |
 | 2026-09-10 | `Fix` | 查看页禁用控件文字对比度提高，避免灰字难读。 | 只读根类 `invoice-application-form--readonly` 覆盖 Ant disabled 字色。详见 `changelogs/change-log-2026-09-10-invoice-application-readonly-contrast.md`。 |
 | 2026-09-09 | `Fix` | 查看页撤回成功后关闭查看并打开该单编辑页；失败留在查看页。 | `handleWithdraw`：`replace` edit + `closeTabByKey`；刷新键改为 `InvoiceApplicationList`。详见 `changelogs/change-log-2026-09-09-invoice-application-withdraw-to-edit.md`。 |

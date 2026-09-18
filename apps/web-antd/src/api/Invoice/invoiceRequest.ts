@@ -61,6 +61,16 @@ export namespace InvoiceApplicationApi {
     Special = 's',
   }
 
+  /** 结算状态（列表按关联费用聚合，详情不返回） */
+  export enum SettlementStatus {
+    /** 未结算 */
+    UnSettled = 0,
+    /** 部分结算 */
+    PartialSettlement = 1,
+    /** 结算完毕 */
+    Settlemented = 2,
+  }
+
   // ==================== DTO 定义 ====================
 
   /** 客户简易对象 */
@@ -644,6 +654,8 @@ export namespace InvoiceApplicationApi {
     itemCount: number;
     invoiceAmount: number;
     invoiceExchangeRate?: number;
+    /** 结算状态：0未结算 1部分结算 2结算完毕（按关联费用聚合，无费用时为 0） */
+    settlementStatus: SettlementStatus;
   }
 
   // ==================== API 方法定义 ====================
