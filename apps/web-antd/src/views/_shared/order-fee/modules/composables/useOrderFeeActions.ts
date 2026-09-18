@@ -56,6 +56,10 @@ export function useOrderFeeActions(
     );
 
     const list = [...(dataContext.dataSource.value ?? [])];
+    const maxSortId = list.reduce((max, row) => {
+      const sid = Number((row as any).sortId ?? -1);
+      return Number.isFinite(sid) ? Math.max(max, sid) : max;
+    }, -1);
     const newRow = {
       _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
       id: '',
@@ -70,6 +74,8 @@ export function useOrderFeeActions(
       invoiceBlocked: false, // ✅ 修改：新增费用时，不开发票默认为false（允许开票）
       isConfidential: false,
       dataEntryMethod: 0,
+      // 追加到末尾，不打乱已有自定义顺序
+      sortId: maxSortId + 1,
     } as any;
 
     list.push(newRow);

@@ -47,6 +47,11 @@ import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
 import { useOrderFeeAdapter } from '../use-adapter';
 import { extractBillFees } from '#/api/sea-export/gemini-admin';
 import { consumePendingBillFees } from '../ai-bill-fee-pending';
+import {
+  restoreOrderFeeSort,
+  sortOrderFees,
+} from '#/api/sea-export/order-fee-admin';
+import { applySequentialSortIds } from './utils/order-fee-sort';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -239,6 +244,167 @@ const {
 } = useModals();
 
 // Handsontable 设置
+const feeSortMode = ref(false);
+const feeSortDirty = ref(false);
+const feeSortSaving = ref(false);
+const feeSortResetting = ref(false);
+
+const getHotInstance = () =>
+  coreTableRef.value?.hotTableRef?.hotInstance ?? null;
+
+/** ManualRowMove 只改视觉行序，需按 visual→physical 还原当前展示顺序 */
+const getFeesInVisualOrder = () => {
+  const list = dataSource.value ?? [];
+  const hot = getHotInstance();
+  if (!hot || list.length === 0) {
+    return [...list];
+  }
+
+  const ordered: typeof list = [];
+  const rowCount = hot.countRows();
+  for (let visual = 0; visual < rowCount; visual++) {
+    const physical = hot.toPhysicalRow(visual);
+    const row =
+      typeof physical === 'number' && physical >= 0
+        ? (list[physical] ?? hot.getSourceDataAtRow(physical))
+        : null;
+    if (row) {
+      ordered.push(row);
+    }
+  }
+  return ordered.length > 0 ? ordered : [...list];
+};
+
+const applyFeeSortModeSettings = (enabled: boolean) => {
+  const hot = getHotInstance();
+  if (!hot) return;
+  hot.updateSettings({
+    contextMenu: !enabled && !isTableReadonly.value,
+    manualRowMove: enabled,
+    readOnly: enabled || isTableReadonly.value,
+    rowHeaderWidth: 32,
+    rowHeaders: enabled,
+  });
+  hot.render();
+};
+
+const onAfterFeeRowMove = () => {
+  feeSortDirty.value = true;
+};
+
+const enterFeeSortMode = () => {
+  if (isTableReadonly.value) {
+    message.warning('当前费用只读，无法排序');
+    return;
+  }
+  if (!dataSource.value.length) {
+    message.warning('暂无费用可排序');
+    return;
+  }
+  feeSortMode.value = true;
+  feeSortDirty.value = false;
+  nextTick(() => applyFeeSortModeSettings(true));
+};
+
+const exitFeeSortMode = async (reload = false) => {
+  feeSortMode.value = false;
+  feeSortDirty.value = false;
+  applyFeeSortModeSettings(false);
+  if (reload) {
+    await getTableDate();
+  }
+};
+
+const cancelFeeSortMode = () => {
+  if (feeSortDirty.value) {
+    Modal.confirm({
+      title: '取消排序',
+      content: '当前顺序尚未保存，取消后将恢复为进入排序前的列表顺序，是否继续？',
+      okText: '放弃调整',
+      cancelText: '继续调整',
+      onOk: async () => {
+        await exitFeeSortMode(true);
+      },
+    });
+    return;
+  }
+  void exitFeeSortMode(false);
+};
+
+const saveFeeSortOrder = async () => {
+  // 必须按 Handsontable 当前视觉顺序取行，不能直接用 dataSource 物理下标
+  const ordered = getFeesInVisualOrder();
+  applySequentialSortIds(ordered);
+
+  const payload = ordered
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row?.id && String(row.id).trim())
+    .map(({ row, index }) => ({
+      id: String(row.id),
+      sortId: index,
+    }));
+
+  if (payload.length === 0) {
+    message.warning('没有已保存的费用可写入排序，请先保存费用后再排序');
+    return;
+  }
+
+  feeSortSaving.value = true;
+  try {
+    await sortOrderFees({ orderFees: payload });
+    // 本地同步为视觉顺序，避免保存后短暂错位
+    dataSource.value = ordered;
+    if (hotSettings.value) {
+      hotSettings.value.data = ordered;
+    }
+    message.success('排序已保存');
+    feeSortDirty.value = false;
+    await exitFeeSortMode(true);
+  } catch (error) {
+    console.error('保存费用排序失败:', error);
+  } finally {
+    feeSortSaving.value = false;
+  }
+};
+
+const resetFeeSortOrder = () => {
+  if (!editId.value) {
+    message.warning('缺少业务 id');
+    return;
+  }
+  Modal.confirm({
+    title: '重置排序',
+    content: '将恢复为按录入时间的原始顺序，并清空自定义排序，是否继续？',
+    okText: '重置',
+    cancelText: '取消',
+    async onOk() {
+      feeSortResetting.value = true;
+      try {
+        await restoreOrderFeeSort({
+          transportOrderId: String(editId.value),
+          paySide: props.type ?? 0,
+          ...(isChangeOrderMode.value &&
+          (changeOrderId.value || props.parentChangeOrderId)
+            ? {
+                changeOrderId: String(
+                  changeOrderId.value || props.parentChangeOrderId,
+                ),
+              }
+            : {}),
+        });
+        message.success('已恢复原始录入顺序');
+        feeSortDirty.value = false;
+        await exitFeeSortMode(true);
+      } catch (error) {
+        console.error('重置费用排序失败:', error);
+      } finally {
+        feeSortResetting.value = false;
+      }
+    },
+  });
+};
+
+// Handsontable 设置
 const { hotSettings: rawHotSettings } = useHotSettings(
   dataSource,
   selectedRowKeys,
@@ -254,6 +420,8 @@ const { hotSettings: rawHotSettings } = useHotSettings(
   handleOpenDropdown,
   getSortIcon, // ✅ 新增：传递排序图标函数
   openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调
+  () => feeSortMode.value,
+  onAfterFeeRowMove,
 );
 
 // 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
@@ -990,85 +1158,115 @@ watch(
               </slot>
             </div>
             <Space class="toolbar-actions">
-              <Button
-                type="primary"
-                :disabled="isTableReadonly"
-                @click="extendedActions.addRow"
-                >{{ $t('common.create') }}</Button
-              >
-              <Button
-                type="primary"
-                @click="actions.saveRow"
-                v-show="!isChangeOrderMode"
-              >
-                {{ $t('common.save') }}
-              </Button>
-              <Button
-                :loading="printing"
-                @click="
-                  handlePrint({
-                    feeType: type,
-                    transportOrderId: editId,
-                    orderDetail: orderBaseData,
-                    selectedFeeIds,
-                    isChangeOrderPrint: isChangeOrderMode,
-                    changeOrderId: isChangeOrderMode
-                      ? changeOrderId || parentChangeOrderId
-                      : undefined,
-                  })
-                "
-              >
-                <IconifyIcon
-                  icon="mdi:printer-outline"
-                  class="mr-1 inline-block size-3.5 align-middle"
-                />
-                打印
-              </Button>
-              <Button
-                danger
-                :disabled="isTableReadonly || !selectedRowKeys.length"
-                @click="actions.removeSelectedRows"
-              >
-                {{ $t('common.delete') }}
-              </Button>
+              <template v-if="feeSortMode">
+                <span class="fee-sort-hint">按住左侧 ⋮⋮ 拖动调整顺序</span>
+                <Button
+                  type="primary"
+                  :loading="feeSortSaving"
+                  :disabled="!feeSortDirty"
+                  @click="saveFeeSortOrder"
+                >
+                  保存排序
+                </Button>
+                <Button
+                  :loading="feeSortResetting"
+                  @click="resetFeeSortOrder"
+                >
+                  重置排序
+                </Button>
+                <Button @click="cancelFeeSortMode">取消</Button>
+              </template>
+              <template v-else>
+                <Button
+                  type="primary"
+                  :disabled="isTableReadonly"
+                  @click="extendedActions.addRow"
+                  >{{ $t('common.create') }}</Button
+                >
+                <Button
+                  type="primary"
+                  @click="actions.saveRow"
+                  v-show="!isChangeOrderMode"
+                >
+                  {{ $t('common.save') }}
+                </Button>
+                <Button
+                  :disabled="isTableReadonly || !dataSource.length"
+                  @click="enterFeeSortMode"
+                >
+                  <IconifyIcon
+                    icon="mdi:drag"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  费用排序
+                </Button>
+                <Button
+                  :loading="printing"
+                  @click="
+                    handlePrint({
+                      feeType: type,
+                      transportOrderId: editId,
+                      orderDetail: orderBaseData,
+                      selectedFeeIds,
+                      isChangeOrderPrint: isChangeOrderMode,
+                      changeOrderId: isChangeOrderMode
+                        ? changeOrderId || parentChangeOrderId
+                        : undefined,
+                    })
+                  "
+                >
+                  <IconifyIcon
+                    icon="mdi:printer-outline"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  打印
+                </Button>
+                <Button
+                  danger
+                  :disabled="isTableReadonly || !selectedRowKeys.length"
+                  @click="actions.removeSelectedRows"
+                >
+                  {{ $t('common.delete') }}
+                </Button>
 
-              <DropdownButton
-                :disabled="isTableReadonly"
-                @click="openBatchImportModal"
-                type="primary"
-              >
-                {{ orderFeeDataT('batchImport') }}
-                <template #overlay>
-                  <Menu @click="ImportOther">
-                    <MenuItem key="submit">{{
-                      type === 0 ? '应收生成应付' : '应付生成应收'
-                    }}</MenuItem>
-                  </Menu>
-                </template>
-              </DropdownButton>
+                <DropdownButton
+                  :disabled="isTableReadonly"
+                  @click="openBatchImportModal"
+                  type="primary"
+                >
+                  {{ orderFeeDataT('batchImport') }}
+                  <template #overlay>
+                    <Menu @click="ImportOther">
+                      <MenuItem key="submit">{{
+                        type === 0 ? '应收生成应付' : '应付生成应收'
+                      }}</MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
 
-              <Button
-                v-if="type === 1 && !isChangeOrderMode"
-                type="primary"
-                ghost
-                @click="openAiBillFeeModal"
-              >
-                <IconifyIcon
-                  icon="mdi:robot-outline"
-                  class="mr-1 inline-block size-3.5 align-middle"
-                />
-                <span class="align-middle">AI识别</span>
-              </Button>
+                <Button
+                  v-if="type === 1 && !isChangeOrderMode"
+                  type="primary"
+                  ghost
+                  @click="openAiBillFeeModal"
+                >
+                  <IconifyIcon
+                    icon="mdi:robot-outline"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  <span class="align-middle">AI识别</span>
+                </Button>
 
-              <Button
-                v-show="type === 0 && !isChangeOrderMode"
-                type="default"
-                :loading="loadingFinishStatus"
-                @click="toggleFinishStatus"
-                class="finish-status-btn"
-              >
-                {{ isFinished ? '设为未完结' : '设为已完结' }}
-              </Button>
+                <Button
+                  v-show="type === 0 && !isChangeOrderMode"
+                  type="default"
+                  :loading="loadingFinishStatus"
+                  @click="toggleFinishStatus"
+                  class="finish-status-btn"
+                >
+                  {{ isFinished ? '设为未完结' : '设为已完结' }}
+                </Button>
+              </template>
             </Space>
           </div>
 
@@ -1407,6 +1605,45 @@ watch(
     padding: 0 0 8px !important;
     overflow: hidden;
   }
+}
+
+.fee-sort-hint {
+  font-size: 12px;
+  color: #8c95a3;
+}
+
+:deep(.fee-sort-row-header) {
+  cursor: grab !important;
+  user-select: none;
+  background: #f5f7fb !important;
+  border-color: #e8ecf3 !important;
+
+  &:active {
+    cursor: grabbing !important;
+  }
+}
+
+:deep(.fee-sort-handle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8c95a3;
+  letter-spacing: -1px;
+  transition: color 0.15s ease;
+}
+
+:deep(.fee-sort-row-header:hover .fee-sort-handle) {
+  color: hsl(var(--primary));
+}
+
+/* Handsontable ManualRowMove 占位引导线 */
+:deep(.ht__manualRowMove--guideline),
+:deep(.ht__manualRowMove--guide) {
+  background: hsl(var(--primary)) !important;
+  opacity: 0.85;
 }
 </style>
 
