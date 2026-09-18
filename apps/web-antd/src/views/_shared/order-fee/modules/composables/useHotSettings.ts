@@ -93,7 +93,6 @@ export function useHotSettings(
     contextMenu: true,
     manualColumnResize: true,
     manualRowMove: false,
-    rowHeaders: false,
     rowHeaderWidth: 32,
     // 列已带固定 width；空数据时 stretchH:'all' 会算错总宽，横滚时克隆表头错位/消失
     stretchH: 'none',
