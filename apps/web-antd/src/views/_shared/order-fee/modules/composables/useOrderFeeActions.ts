@@ -18,6 +18,8 @@ import {
   deleteOrderFee,
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
+import { promptSubmitRemarkIfNegativeProfit } from '../utils/prompt-submit-remark';
+import { normalizeOrderFeeChangeOrderKey } from '../utils/helpers';
 
 // 类型别名
 type OrderFeeRow = OrderFeeAdminApi.OrderFeeDto & { _rowKey?: string };
@@ -260,7 +262,7 @@ export function useOrderFeeActions(
   /**
    * 提交费用
    */
-  const Submitted = () => {
+  const Submitted = async () => {
     if (!dataContext.selectedRowKeys.value.length) return;
     const keysSet = new Set(dataContext.selectedRowKeys.value);
     const list = (dataContext.dataSource.value ?? [])
@@ -281,9 +283,54 @@ export function useOrderFeeActions(
       return;
     }
 
+    const scopeKey = normalizeOrderFeeChangeOrderKey(
+      list[0]?.changeOrderId ??
+        (props.mode === 'changeOrder' ? props.parentChangeOrderId : undefined),
+    );
+    const oppositePaySide = props.type === 0 ? 1 : 0;
+    let oppositeFees: any[] = [];
+    try {
+      const oppositeRes = await adapter.api.getOrderFeePagedList({
+        TransportOrderId: dataContext.editId.value,
+        PaySide: oppositePaySide,
+        PageIndex: 1,
+        PageSize: 999,
+      });
+      oppositeFees = (oppositeRes?.items ?? []).filter(
+        (fee: any) =>
+          normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+      );
+    } catch (error) {
+      console.error('加载对立费用失败，无法校验提交后利润:', error);
+      message.error('无法校验提交后利润，请稍后重试');
+      return;
+    }
+
+    const sameSideAll = (dataContext.dataSource.value ?? []).filter(
+      (fee: any) =>
+        normalizeOrderFeeChangeOrderKey(
+          fee.changeOrderId ??
+            (props.mode === 'changeOrder'
+              ? props.parentChangeOrderId
+              : undefined),
+        ) === scopeKey,
+    );
+    const submitting = list.map((fee: any) => ({
+      ...fee,
+      changeOrderId: fee.changeOrderId ?? (scopeKey || undefined),
+    }));
+    const remark = await promptSubmitRemarkIfNegativeProfit(
+      [...sameSideAll, ...oppositeFees],
+      submitting,
+    );
+    if (remark === null) {
+      return;
+    }
+
     let SubmitOrderFeeDto = {
       TransportOrderId: dataContext.editId.value,
       PaySide: props.type ?? 0,
+      remark: remark || undefined,
       orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
     };
     console.log(SubmitOrderFeeDto);

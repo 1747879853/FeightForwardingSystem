@@ -203,6 +203,14 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       },
     },
     {
+      field: 'remark',
+      title: $t('auditApproval.task.remark'),
+      minWidth: 160,
+      showOverflow: true,
+      formatter: ({ cellValue }: { cellValue: string | null | undefined }) =>
+        cellValue || '--',
+    },
+    {
       field: 'transportOrder.saleNames',
       title: $t('system.user.userAttributeOptions.sales'),
       minWidth: 90,

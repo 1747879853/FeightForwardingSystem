@@ -71,6 +71,7 @@ import {
   deleteOrderFee,
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
+import { promptSubmitRemarkIfNegativeProfit } from './modules/utils/prompt-submit-remark';
 
 const emit = defineEmits<{
   (
@@ -641,6 +642,17 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
       return;
     }
 
+    // 提交后利润：本批提交 ∪ 同归属下非录入/非驳回费用；主单与更改单分算
+    const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
+    const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
+    const remark = await promptSubmitRemarkIfNegativeProfit(
+      [...allRecFees, ...allPayFees],
+      allFees,
+    );
+    if (remark === null) {
+      return;
+    }
+
     // 转换为OrderFeeEditDto格式，确保所有必需字段都有值
     const editFees = allFees.map((fee) => ({
       id: fee.id,
@@ -677,6 +689,7 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
     // 注意：submitOrderFee接口需要orderFees数组，包含完整的费用信息
     await submitOrderFee({
       transportOrderId: editId.value,
+      remark: remark || undefined,
       orderFees: editFees,
     });
 

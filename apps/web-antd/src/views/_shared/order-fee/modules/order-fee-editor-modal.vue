@@ -9,6 +9,7 @@ const { usePermissionForm: useVbenForm, rawDetail } = useFieldPermission(
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { computed, ref, watch, nextTick } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
+import { message, Textarea } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
@@ -32,6 +33,9 @@ import { resolveFeeTaxRate } from './utils/helpers';
 
 /** 弹窗内最近一次结算对象税率（ClientSelect change / 订单往来单位带出） */
 const lastSettlementTaxRate = ref<null | number | undefined>(undefined);
+
+/** 申请修改原因（提交任务备注，非费用本身的 remark） */
+const modifyRemarkInput = ref('');
 
 // 定义Props
 const props = defineProps<{
@@ -145,21 +149,23 @@ const [Modal, modalApi] = useVbenModal({
     const formValues = await orderFeeFormApi.getValues();
     console.log('表单提交数据:', formValues);
 
-    // 获取修改理由（从modal data中）
-    const data = modalApi.getData<any>();
-    const remark = data?.remark || '';
+    const remark = modifyRemarkInput.value.trim();
+    if (!remark) {
+      message.warning('请填写修改原因');
+      return;
+    }
 
     // 计算更改后的金额
     const updatedFeeData = {
       ...currentFeeData.value,
       ...formValues,
-      modifyRemark: remark, // 添加修改理由字段
+      modifyRemark: remark,
     };
 
     emit('confirm', {
       originalData: originalFeeData.value,
       updatedData: updatedFeeData,
-      remark: remark, // 同时单独传递remark
+      remark,
     });
 
     modalApi.close();
@@ -167,6 +173,7 @@ const [Modal, modalApi] = useVbenModal({
   onOpenChange(isOpen: boolean) {
     if (isOpen) {
       const data = modalApi.getData<any>();
+      modifyRemarkInput.value = data?.remark || '';
       console.log('📊 [编辑模态框] 打开，接收到的数据:', data);
       console.log(
         '📊 [编辑模态框] data.orderBaseData 是否存在:',
@@ -508,6 +515,7 @@ const [Modal, modalApi] = useVbenModal({
       originalFeeData.value = null;
       orderBaseData.value = null;
       isLoadingOrderDetail.value = false;
+      modifyRemarkInput.value = '';
     }
   },
 });
@@ -1782,6 +1790,18 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
             {{ orderFeeDataT('editFeeInfo') }}
           </h3>
           <OrderFeeForm />
+          <div class="modify-reason mt-3">
+            <div class="mb-2 text-sm font-medium text-gray-700">
+              修改原因 <span class="text-red-500">*</span>
+            </div>
+            <Textarea
+              v-model:value="modifyRemarkInput"
+              :rows="3"
+              :maxlength="100"
+              show-count
+              placeholder="请输入修改原因"
+            />
+          </div>
         </div>
       </div>
 
