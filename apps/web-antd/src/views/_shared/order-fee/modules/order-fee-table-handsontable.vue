@@ -51,7 +51,6 @@ import {
   restoreOrderFeeSort,
   sortOrderFees,
 } from '#/api/sea-export/order-fee-admin';
-import { applySequentialSortIds } from './utils/order-fee-sort';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -310,6 +309,8 @@ const exitFeeSortMode = async (reload = false) => {
   feeSortMode.value = false;
   feeSortDirty.value = false;
   applyFeeSortModeSettings(false);
+  // 等 ManualRowMove 关闭后再改数据，避免与 loadData 竞态卡死
+  await nextTick();
   if (reload) {
     await getTableDate();
   }
@@ -334,8 +335,7 @@ const cancelFeeSortMode = () => {
 const saveFeeSortOrder = async () => {
   // 必须按 Handsontable 当前视觉顺序取行，不能直接用 dataSource 物理下标
   const ordered = getFeesInVisualOrder();
-  applySequentialSortIds(ordered);
-
+  // 只组 payload，禁止就地改 sortId：deep watch 会在排序模式下 loadData，打乱 ManualRowMove
   const payload = ordered
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => row?.id && String(row.id).trim())
@@ -352,19 +352,20 @@ const saveFeeSortOrder = async () => {
   feeSortSaving.value = true;
   try {
     await sortOrderFees({ orderFees: payload });
-    // 本地同步为视觉顺序，避免保存后短暂错位
-    dataSource.value = ordered;
-    if (hotSettings.value) {
-      hotSettings.value.data = ordered;
-    }
     message.success('排序已保存');
     feeSortDirty.value = false;
-    await exitFeeSortMode(true);
+    // 先退出排序模式并释放按钮 loading，再拉列表（避免 updateSettings + loadData 卡死转圈）
+    feeSortMode.value = false;
+    applyFeeSortModeSettings(false);
   } catch (error) {
     console.error('保存费用排序失败:', error);
+    return;
   } finally {
     feeSortSaving.value = false;
   }
+
+  await nextTick();
+  await getTableDate();
 };
 
 const resetFeeSortOrder = () => {
@@ -394,12 +395,17 @@ const resetFeeSortOrder = () => {
         });
         message.success('已恢复原始录入顺序');
         feeSortDirty.value = false;
-        await exitFeeSortMode(true);
+        feeSortMode.value = false;
+        applyFeeSortModeSettings(false);
       } catch (error) {
         console.error('重置费用排序失败:', error);
+        return;
       } finally {
         feeSortResetting.value = false;
       }
+
+      await nextTick();
+      await getTableDate();
     },
   });
 };
