@@ -1457,12 +1457,6 @@ defineExpose({
 
   :deep(.handsontable thead th) {
     font-weight: 600;
-    color: #252a31;
-    background: hsl(var(--primary) / 8%) !important;
-  }
-
-  :deep(.handsontable tbody tr:hover td) {
-    background: #fafbfd;
   }
 }
 

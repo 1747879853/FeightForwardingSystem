@@ -1169,8 +1169,8 @@ watch(
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid #e8e8e8;
-    border-radius: 4px;
+    border: 1px solid #e4e8ef;
+    border-radius: 8px;
   }
 
   .table-header {
@@ -1179,8 +1179,8 @@ watch(
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: #fafafa;
-    border-bottom: 1px solid #e8e8e8;
+    background: #fafbfd;
+    border-bottom: 1px solid #eef1f6;
 
     .table-header__left {
       display: flex;
@@ -1191,7 +1191,7 @@ watch(
     .table-title {
       font-size: 14px;
       font-weight: 500;
-      color: #262626;
+      color: #252a31;
     }
 
     .toolbar-actions {
@@ -1295,7 +1295,7 @@ watch(
     cursor: pointer;
 
     &:hover {
-      accent-color: #1890ff;
+      accent-color: hsl(var(--primary));
     }
   }
 
@@ -1305,11 +1305,11 @@ watch(
     cursor: pointer;
 
     &:hover {
-      accent-color: #1890ff;
+      accent-color: hsl(var(--primary));
     }
 
     &:checked {
-      accent-color: #1890ff;
+      accent-color: hsl(var(--primary));
     }
   }
 }
