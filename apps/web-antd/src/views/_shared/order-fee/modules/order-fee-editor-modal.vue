@@ -139,7 +139,7 @@ const [OrderFeeForm, orderFeeFormApi] = useVbenForm({
   compact: true,
   schema: useOrderFeeFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-4',
 });
 
 // 模态框
@@ -1382,21 +1382,6 @@ function useOrderFeeFormSchema() {
       },
     },
     {
-      component: 'ExchangeRateSelect',
-      fieldName: 'exchangeRate',
-      label: orderFeeDataT('ExchangeRate'),
-      dependencies: {
-        triggerFields: ['currencyId'],
-        componentProps: (values: any, _formApi: any) => {
-          return {
-            currencyId: values.currencyId,
-            valueKey:
-              originalFeeData.value?.paySide === 0 ? 'drValue' : 'crValue',
-          };
-        },
-      },
-    },
-    {
       component: 'UnitSelect',
       fieldName: 'unit',
       label: orderFeeDataT('unitEmum'),
@@ -1413,7 +1398,41 @@ function useOrderFeeFormSchema() {
         style: { width: '100%' },
       },
     },
+    {
+      component: 'ExchangeRateSelect',
+      fieldName: 'exchangeRate',
+      label: orderFeeDataT('ExchangeRate'),
+      dependencies: {
+        triggerFields: ['currencyId'],
+        componentProps: (values: any, _formApi: any) => {
+          return {
+            currencyId: values.currencyId,
+            valueKey:
+              originalFeeData.value?.paySide === 0 ? 'drValue' : 'crValue',
+          };
+        },
+      },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'invoiceBlocked',
+      label: orderFeeDataT('canInvoice'),
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'isConfidential',
+      label: orderFeeDataT('isConfidential'),
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+    },
 
+    // 金额类：一行 4 个
     {
       component: 'InputNumber',
       fieldName: 'quantity',
@@ -1423,6 +1442,39 @@ function useOrderFeeFormSchema() {
         ...weightVolumeInputNumberProps,
         style: { width: '100%' },
         onChange: () => handleFieldChange('quantity'),
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'unitPrice',
+      label: orderFeeDataT('unitPrice'),
+      componentProps: {
+        min: 0,
+        precision: 4,
+        style: { width: '100%' },
+        onChange: () => handleFieldChange('unitPrice'),
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'amount',
+      label: orderFeeDataT('amount'),
+      componentProps: {
+        min: 0,
+        precision: 2,
+        style: { width: '100%' },
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'taxRate',
+      label: orderFeeDataT('taxRate'),
+      componentProps: {
+        min: 0,
+        max: 100,
+        precision: 2,
+        style: { width: '100%' },
+        onChange: () => handleFieldChange('taxRate'),
       },
     },
     {
@@ -1449,67 +1501,15 @@ function useOrderFeeFormSchema() {
         onChange: () => handleFieldChange('noTaxAmount'),
       },
     },
-
     {
-      component: 'InputNumber',
-      fieldName: 'taxRate',
-      label: orderFeeDataT('taxRate'),
-      componentProps: {
-        min: 0,
-        max: 100,
-        precision: 2,
-        style: { width: '100%' },
-        onChange: () => handleFieldChange('taxRate'),
-      },
-    },
-    {
-      component: 'InputNumber',
-      fieldName: 'unitPrice',
-      label: orderFeeDataT('unitPrice'),
-      componentProps: {
-        min: 0,
-        precision: 4,
-        style: { width: '100%' },
-        onChange: () => handleFieldChange('unitPrice'),
-      },
-    },
-    {
-      component: 'InputNumber',
-      fieldName: 'amount',
-      label: orderFeeDataT('amount'),
-      componentProps: {
-        min: 0,
-        precision: 2,
-        style: { width: '100%' },
-      },
-    },
-
-    {
-      component: 'Switch',
-      fieldName: 'invoiceBlocked',
-      label: orderFeeDataT('canInvoice'),
-      componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
-      },
-    },
-    {
-      component: 'Switch',
-      fieldName: 'isConfidential',
-      label: orderFeeDataT('isConfidential'),
-      componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
-      },
-    },
-    {
-      component: 'Textarea',
+      component: 'Input',
       fieldName: 'remark',
       label: orderFeeDataT('remark'),
+      formItemClass: 'col-span-2',
       componentProps: {
-        rows: 3,
         maxlength: 200,
-        showCount: true,
+        allowClear: true,
+        placeholder: $t('ui.placeholder.input'),
       },
     },
   ];
@@ -1582,28 +1582,34 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
 
 <template>
   <Modal :title="orderFeeDataT('editFee')" width="1400px">
-    <div class="flex gap-4">
-      <!-- 左侧区域 -->
-      <div class="flex flex-1 flex-col gap-4">
-        <!-- 左上：原费用数据展示 -->
-        <div class="rounded border border-gray-200 p-4">
-          <h3 class="mb-3 text-base font-semibold">
-            {{ orderFeeDataT('originalFeeData') }}
-          </h3>
-          <div class="grid grid-cols-3 gap-3 text-sm">
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('feecodeName') }}:</span
-              >
-              <span class="font-medium">{{
+    <div class="fee-modify">
+      <div class="fee-modify__main">
+        <!-- 原费用：只读对照 -->
+        <section class="fee-modify-section fee-modify-section--readonly">
+          <header class="fee-modify-section__head">
+            <span class="fee-modify-section__mark"></span>
+            <div class="fee-modify-section__titles">
+              <h3 class="fee-modify-section__title">
+                {{ orderFeeDataT('originalFeeData') }}
+              </h3>
+              <p class="fee-modify-section__desc">更改前快照，仅供对照</p>
+            </div>
+            <span class="fee-modify-section__badge">只读</span>
+          </header>
+          <div class="fee-modify-kv">
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('feecodeName')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.feeCode?.cnName || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ clientDataT('industryCategories') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                clientDataT('industryCategories')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 feeConstants
                   .getIndustryCategoryOptions()
                   .find(
@@ -1611,169 +1617,169 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                   )?.label || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('settlement') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('settlement')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.settlement?.name || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('currency') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('currency')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.currency?.cnName || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('ExchangeRate') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('ExchangeRate')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.exchangeRate?.toFixed(4) || '1.0000'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('unitPrice') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('unitPrice')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.unitPrice?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('quantity') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('quantity')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 formatWeightVolume(originalFeeData?.quantity) || '0'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('amount') }}:</span
-              >
-              <span class="font-medium text-blue-600">{{
+            <div class="fee-modify-kv__item fee-modify-kv__item--accent">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('amount')
+              }}</span>
+              <span class="fee-modify-kv__value fee-modify-kv__value--amount">{{
                 originalFeeData?.amount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('unitEmum') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('unitEmum')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.unit || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('taxRate') }}:</span
-              >
-              <span class="font-medium"
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('taxRate')
+              }}</span>
+              <span class="fee-modify-kv__value"
                 >{{ originalFeeData?.taxRate?.toFixed(2) || '0.00' }}%</span
               >
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('noTaxUnitPrice') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('noTaxUnitPrice')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.noTaxUnitPrice?.toFixed(4) || '0.0000'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('noTaxAmount') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('noTaxAmount')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.noTaxAmount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('rqstPaymentAmount') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('rqstPaymentAmount')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.rqstPaymentAmount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('invoicedAmount') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('invoicedAmount')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.invoicedAmount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('orderInvoiceAmount') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('orderInvoiceAmount')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.orderInvoiceAmount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('settledAmount') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('settledAmount')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.settledAmount?.toFixed(2) || '0.00'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('canInvoice') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('canInvoice')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.invoiceBlocked ? '是' : '否'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('isConfidential') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('isConfidential')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.isConfidential ? '是' : '否'
               }}</span>
             </div>
-            <div class="col-span-3 flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('remark') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item fee-modify-kv__item--span">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('remark')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 originalFeeData?.remark || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('feeStatus') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('feeStatus')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 feeConstants
                   .getFeeStatusOptions()
                   .find((item) => item.value === originalFeeData?.feeStatus)
                   ?.label || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('invoiceStatus') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('invoiceStatus')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 feeConstants
                   .getInvoiceStatusOptions()
                   .find((item) => item.value === originalFeeData?.invoiceStatus)
                   ?.label || '--'
               }}</span>
             </div>
-            <div class="flex">
-              <span class="w-28 text-gray-600"
-                >{{ orderFeeDataT('dataEntryMethod') }}:</span
-              >
-              <span class="font-medium">{{
+            <div class="fee-modify-kv__item">
+              <span class="fee-modify-kv__label">{{
+                orderFeeDataT('dataEntryMethod')
+              }}</span>
+              <span class="fee-modify-kv__value">{{
                 feeConstants
                   .getDataEntryMethodOptions()
                   .find(
@@ -1782,84 +1788,504 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
               }}</span>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 左下：费用编辑表单 -->
-        <div class="flex-1 rounded border border-gray-200 p-4">
-          <h3 class="mb-3 text-base font-semibold">
-            {{ orderFeeDataT('editFeeInfo') }}
-          </h3>
-          <OrderFeeForm />
-          <div class="modify-reason mt-3">
-            <div class="mb-2 text-sm font-medium text-gray-700">
-              修改原因 <span class="text-red-500">*</span>
+        <!-- 编辑区：主操作 -->
+        <section class="fee-modify-section fee-modify-section--edit">
+          <header class="fee-modify-section__head">
+            <span
+              class="fee-modify-section__mark fee-modify-section__mark--primary"
+            ></span>
+            <div class="fee-modify-section__titles">
+              <h3 class="fee-modify-section__title">
+                {{ orderFeeDataT('editFeeInfo') }}
+              </h3>
+              <p class="fee-modify-section__desc">在此调整费用字段并提交申请</p>
+            </div>
+            <span
+              class="fee-modify-section__badge fee-modify-section__badge--primary"
+              >可编辑</span
+            >
+          </header>
+          <div class="fee-modify-form">
+            <OrderFeeForm />
+          </div>
+          <div class="fee-modify-reason">
+            <div class="fee-modify-reason__label">
+              修改原因 <span class="fee-modify-reason__required">*</span>
             </div>
             <Textarea
               v-model:value="modifyRemarkInput"
+              class="fee-modify-reason__input"
               :rows="3"
               :maxlength="100"
               show-count
               placeholder="请输入修改原因"
             />
           </div>
-        </div>
+        </section>
       </div>
 
-      <!-- 右侧：利润变化展示 -->
-      <div class="w-80 rounded border border-gray-200 p-4">
-        <h3 class="mb-3 text-base font-semibold">
-          {{ orderFeeDataT('profitChange') }}
-        </h3>
-        <div class="space-y-4">
-          <div class="rounded bg-gray-50 p-3">
-            <div class="mb-1 text-sm text-gray-600">
-              {{ orderFeeDataT('originalProfit') }}
+      <!-- 右侧：利润摘要 -->
+      <aside class="fee-modify__aside">
+        <section class="fee-modify-section fee-modify-section--profit">
+          <header class="fee-modify-section__head">
+            <span class="fee-modify-section__mark"></span>
+            <div class="fee-modify-section__titles">
+              <h3 class="fee-modify-section__title">
+                {{ orderFeeDataT('profitChange') }}
+              </h3>
+              <p class="fee-modify-section__desc">本位币口径预览</p>
             </div>
-            <div class="text-lg font-semibold text-blue-600">
-              {{ formatCurrency(originalProfit) }}
-            </div>
-          </div>
+          </header>
 
-          <div class="rounded bg-gray-50 p-3">
-            <div class="mb-1 text-sm text-gray-600">
-              {{ orderFeeDataT('updatedProfit') }}
+          <div class="fee-modify-profit">
+            <div class="fee-modify-profit__card">
+              <div class="fee-modify-profit__label">
+                {{ orderFeeDataT('originalProfit') }}
+              </div>
+              <div
+                class="fee-modify-profit__value fee-modify-profit__value--muted"
+              >
+                {{ formatCurrency(originalProfit) }}
+              </div>
             </div>
+
+            <div class="fee-modify-profit__card">
+              <div class="fee-modify-profit__label">
+                {{ orderFeeDataT('updatedProfit') }}
+              </div>
+              <div
+                class="fee-modify-profit__value"
+                :class="
+                  updatedProfit >= 0
+                    ? 'fee-modify-profit__value--up'
+                    : 'fee-modify-profit__value--down'
+                "
+              >
+                {{ formatCurrency(updatedProfit) }}
+              </div>
+            </div>
+
             <div
-              class="text-lg font-semibold"
-              :class="updatedProfit >= 0 ? 'text-green-600' : 'text-red-600'"
+              class="fee-modify-profit__card fee-modify-profit__card--focus"
+              :class="
+                profitChange >= 0
+                  ? 'fee-modify-profit__card--up'
+                  : 'fee-modify-profit__card--down'
+              "
             >
-              {{ formatCurrency(updatedProfit) }}
+              <div class="fee-modify-profit__label">
+                {{ orderFeeDataT('profitDifference') }}
+              </div>
+              <div
+                class="fee-modify-profit__value fee-modify-profit__value--lg"
+                :class="
+                  profitChange >= 0
+                    ? 'fee-modify-profit__value--up'
+                    : 'fee-modify-profit__value--down'
+                "
+              >
+                {{ profitChange >= 0 ? '+' : ''
+                }}{{ formatCurrency(profitChange) }}
+              </div>
             </div>
-          </div>
 
-          <div class="rounded bg-gray-50 p-3">
-            <div class="mb-1 text-sm text-gray-600">
-              {{ orderFeeDataT('profitDifference') }}
-            </div>
-            <div
-              class="text-lg font-semibold"
-              :class="profitChange >= 0 ? 'text-green-600' : 'text-red-600'"
-            >
-              {{ profitChange >= 0 ? '+' : ''
-              }}{{ formatCurrency(profitChange) }}
+            <div class="fee-modify-tip">
+              <div class="fee-modify-tip__title">说明</div>
+              <p
+                v-if="originalFeeData?.paySide === 0"
+                class="fee-modify-tip__text"
+              >
+                应收费用：增加金额会提升利润，减少金额会降低利润。
+              </p>
+              <p v-else class="fee-modify-tip__text">
+                应付费用：增加金额会降低利润，减少金额会提升利润。
+              </p>
             </div>
           </div>
-
-          <div class="mt-4 rounded bg-blue-50 p-3 text-xs text-blue-700">
-            <div class="mb-1 font-medium">💡 说明：</div>
-            <div v-if="originalFeeData?.paySide === 0">
-              • 应收费用：增加金额会提升利润，减少金额会降低利润
-            </div>
-            <div v-else>• 应付费用：增加金额会降低利润，减少金额会提升利润</div>
-          </div>
-        </div>
-      </div>
+        </section>
+      </aside>
     </div>
   </Modal>
 </template>
 
 <style scoped lang="scss">
+.fee-modify {
+  --fm-border: #e4e8ef;
+  --fm-border-soft: #eef1f6;
+  --fm-bg: #f5f7fb;
+  --fm-surface: #fff;
+  --fm-surface-soft: #fafbfd;
+  --fm-text: #252a31;
+  --fm-text-secondary: #5c6570;
+  --fm-text-muted: #8c95a3;
+  --fm-shadow: 0 1px 2px rgb(16 42 83 / 4%), 0 4px 12px rgb(16 42 83 / 4%);
+  --fm-radius: 10px;
+  --fm-up: #3d8b6e;
+  --fm-down: #c45c5c;
+
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  padding: 2px 2px 16px;
+  color: var(--fm-text);
+}
+
+.fee-modify__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fee-modify__aside {
+  flex-shrink: 0;
+  width: 300px;
+}
+
+.fee-modify-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--fm-surface);
+  border: 1px solid var(--fm-border);
+  border-radius: var(--fm-radius);
+  box-shadow: var(--fm-shadow);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.fee-modify-section--readonly {
+  background: linear-gradient(
+    180deg,
+    var(--fm-surface-soft) 0%,
+    var(--fm-surface) 40%
+  );
+
+  .fee-modify-section__head {
+    padding: 8px 12px;
+  }
+
+  .fee-modify-section__desc {
+    display: none;
+  }
+}
+
+.fee-modify-section--edit {
+  flex: 1;
+  border-color: hsl(var(--primary) / 22%);
+  box-shadow:
+    0 1px 2px rgb(16 42 83 / 4%),
+    0 0 0 1px hsl(var(--primary) / 6%);
+}
+
+.fee-modify-section--edit:focus-within {
+  border-color: hsl(var(--primary) / 40%);
+  box-shadow:
+    0 2px 8px rgb(16 42 83 / 6%),
+    0 0 0 1px hsl(var(--primary) / 14%);
+}
+
+.fee-modify-section--profit {
+  height: 100%;
+  background: linear-gradient(
+    165deg,
+    hsl(var(--primary) / 6%) 0%,
+    var(--fm-surface) 42%
+  );
+}
+
+.fee-modify-section__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 7%) 0%,
+    hsl(var(--primary) / 2%) 65%,
+    transparent 100%
+  );
+  border-bottom: 1px solid var(--fm-border-soft);
+}
+
+.fee-modify-section__mark {
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 55%),
+    hsl(var(--primary) / 75%)
+  );
+  border-radius: 2px;
+}
+
+.fee-modify-section__mark--primary {
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 85%),
+    hsl(var(--primary))
+  );
+}
+
+.fee-modify-section__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.fee-modify-section__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--fm-text);
+}
+
+.fee-modify-section__desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--fm-text-muted);
+}
+
+.fee-modify-section__badge {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: var(--fm-text-muted);
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.fee-modify-section__badge--primary {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+}
+
+.fee-modify-kv {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px 10px;
+  padding: 6px 12px 8px;
+}
+
+.fee-modify-kv__item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 3px 0;
+  line-height: 1.35;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.fee-modify-kv__item:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.fee-modify-kv__item--accent {
+  padding: 2px 6px;
+  background: hsl(var(--primary) / 5%);
+  border-radius: 4px;
+}
+
+.fee-modify-kv__item--span {
+  grid-column: 1 / -1;
+}
+
+.fee-modify-kv__label {
+  flex-shrink: 0;
+  max-width: 5.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--fm-text-muted);
+  white-space: nowrap;
+}
+
+.fee-modify-kv__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fm-text-secondary);
+  white-space: nowrap;
+}
+
+.fee-modify-kv__item--span .fee-modify-kv__value {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.fee-modify-kv__value--amount {
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.fee-modify-form {
+  padding: 10px 14px 4px;
+}
+
+.fee-modify-reason {
+  padding: 12px;
+  margin: 4px 14px 14px;
+  background: var(--fm-bg);
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 8px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.fee-modify-reason:focus-within {
+  background: #fff;
+  border-color: hsl(var(--primary) / 35%);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 8%);
+}
+
+.fee-modify-reason__label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fm-text);
+}
+
+.fee-modify-reason__required {
+  color: var(--fm-down);
+}
+
+.fee-modify-profit {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+
+.fee-modify-profit__card {
+  padding: 12px 14px;
+  background: var(--fm-surface-soft);
+  border: 1px solid var(--fm-border-soft);
+  border-radius: 8px;
+  transition:
+    border-color 0.2s ease,
+    transform 0.18s ease,
+    box-shadow 0.2s ease;
+}
+
+.fee-modify-profit__card:hover {
+  border-color: var(--fm-border);
+  box-shadow: 0 2px 6px rgb(16 42 83 / 5%);
+  transform: translateY(-1px);
+}
+
+.fee-modify-profit__card--focus {
+  background: #fff;
+  border-color: hsl(var(--primary) / 20%);
+}
+
+.fee-modify-profit__card--up {
+  background: linear-gradient(180deg, rgb(61 139 110 / 6%), #fff);
+  border-color: rgb(61 139 110 / 22%);
+}
+
+.fee-modify-profit__card--down {
+  background: linear-gradient(180deg, rgb(196 92 92 / 6%), #fff);
+  border-color: rgb(196 92 92 / 22%);
+}
+
+.fee-modify-profit__label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--fm-text-muted);
+}
+
+.fee-modify-profit__value {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.fee-modify-profit__value--lg {
+  font-size: 22px;
+}
+
+.fee-modify-profit__value--muted {
+  color: hsl(var(--primary) / 85%);
+}
+
+.fee-modify-profit__value--up {
+  color: var(--fm-up);
+}
+
+.fee-modify-profit__value--down {
+  color: var(--fm-down);
+}
+
+.fee-modify-tip {
+  padding: 10px 12px;
+  margin-top: 2px;
+  background: hsl(var(--primary) / 5%);
+  border: 1px solid hsl(var(--primary) / 10%);
+  border-radius: 8px;
+}
+
+.fee-modify-tip__title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fm-text-secondary);
+}
+
+.fee-modify-tip__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--fm-text-muted);
+}
+
 :deep(.ant-form-item) {
   margin-bottom: 12px;
+}
+
+:deep(.fee-modify-form .ant-input),
+:deep(.fee-modify-form .ant-input-number),
+:deep(.fee-modify-form .ant-select-selector),
+:deep(.fee-modify-reason__input.ant-input) {
+  border-radius: 6px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+:deep(.fee-modify-form .ant-input:hover),
+:deep(.fee-modify-form .ant-input-number:hover),
+:deep(
+  .fee-modify-form
+    .ant-select:not(.ant-select-disabled):hover
+    .ant-select-selector
+),
+:deep(.fee-modify-reason__input.ant-input:hover) {
+  border-color: hsl(var(--primary) / 45%);
+}
+
+:deep(.fee-modify-form .ant-input:focus),
+:deep(.fee-modify-form .ant-input-focused),
+:deep(.fee-modify-form .ant-input-number-focused),
+:deep(.fee-modify-form .ant-select-focused .ant-select-selector),
+:deep(.fee-modify-reason__input.ant-input:focus) {
+  border-color: hsl(var(--primary) / 55%);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 10%);
 }
 </style>
