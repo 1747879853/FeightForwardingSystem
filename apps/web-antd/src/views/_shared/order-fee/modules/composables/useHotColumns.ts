@@ -14,6 +14,7 @@ import {
   isOrderFeeRejectedStatus,
   resolveLatestOrderFeeRejectRemark,
 } from '../utils/helpers';
+import { getFeeInvoiceStatusTextColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 const FEE_REJECT_TIP_CLASS = 'fee-reject-help-floating-tip';
 
@@ -192,13 +193,7 @@ export function useHotColumns(
           const rowData = currentDataSource[row];
           const invoiceStatus = (rowData as any)?.invoiceStatus;
           const statusLabel = getInvoiceStatusLabel(invoiceStatus);
-
-          let statusColor = '#262626';
-          if (invoiceStatus === 1) {
-            statusColor = '#faad14';
-          } else if (invoiceStatus === 2) {
-            statusColor = '#52c41a';
-          }
+          const statusColor = getFeeInvoiceStatusTextColor(invoiceStatus);
 
           td.innerHTML = '';
           td.style.textAlign = 'center';

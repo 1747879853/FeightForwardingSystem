@@ -5,14 +5,15 @@ import type { StatementAdminApi } from '#/api/settlement-management/statement-ad
 
 import { $t } from '#/locales';
 import { createKeysSearchSchema } from '#/utils/keys-search';
+import { getFeeInvoiceStatusTextColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 /**
- * 开票状态选项（参考费用状态的颜色规范）
+ * 开票状态选项（Tag/筛选项颜色与发票开出组合状态对齐）
  */
 export const getInvoiceStatusOptions = () => [
-  { value: 0, label: '未开票', color: '#b8cdd7' },
-  { value: 1, label: '部分开票', color: '#ffc107' },
-  { value: 2, label: '已开票', color: '#67c23a' },
+  { value: 0, label: '未开票', color: getFeeInvoiceStatusTextColor(0) },
+  { value: 1, label: '部分开票', color: getFeeInvoiceStatusTextColor(1) },
+  { value: 2, label: '已开票', color: getFeeInvoiceStatusTextColor(2) },
 ];
 
 /**

@@ -58,13 +58,10 @@ function getIssueStatusLabel(status?: number): { text: string; color: string } {
   if (status === undefined || status === null) {
     return { text: '-', color: 'default' };
   }
-  const statusMap: Record<number, { text: string; color: string }> = {
-    0: { text: '待开票', color: 'default' },
-    1: { text: '开票中', color: 'processing' },
-    2: { text: '开票完成', color: 'success' },
-    3: { text: '开票失败', color: 'error' },
+  return {
+    text: getCombinedStatusLabel(status),
+    color: getCombinedStatusColor(status),
   };
-  return statusMap[status] || { text: String(status), color: 'default' };
 }
 
 /** 获取红冲状态标签 */

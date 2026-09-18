@@ -51,7 +51,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'Processed',
-      label: '费用审核状态',
+      label: '审核状态',
       defaultValue: false,
       componentProps: {
         allowClear: true,
@@ -91,21 +91,13 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'DatePicker',
-      fieldName: 'ETDStart',
+      component: 'RangePicker',
+      fieldName: 'ETDRange',
       label: $t('seaExport.export.etd'),
       componentProps: {
-        placeholder: $t('ui.placeholder.input'),
         allowClear: true,
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'ETDEnd',
-      label: $t('seaExport.export.deadline'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
+        class: 'w-full',
+        placeholder: ['开始日期', '结束日期'],
       },
     },
     {
