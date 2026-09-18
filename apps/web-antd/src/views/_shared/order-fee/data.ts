@@ -366,6 +366,11 @@ export const getIndustryCategoryOptions = () => [
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
+  {
+    key: 22,
+    value: 'v',
+    label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
+  },
 ];
 
 /**
