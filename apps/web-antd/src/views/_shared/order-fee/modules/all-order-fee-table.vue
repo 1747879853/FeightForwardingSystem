@@ -27,6 +27,7 @@ import {
   Textarea,
   Tag,
   Card,
+  Tooltip,
 } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
@@ -129,45 +130,7 @@ const useOrderFeeDetailColumns = () => {
       slots: {
         default: ({ row }: any) => {
           const task = row.task;
-
-          // 如果是删除申请且待审核状态，显示Tag和问号图标
-          if (task && task.taskType === 2 && task.taskStatus === 0) {
-            return h(
-              'div',
-              {
-                style:
-                  'display: flex; align-items: center; justify-content: center;',
-              },
-              [
-                h(
-                  Tag,
-                  {
-                    color:
-                      feeConstants
-                        .getFeeStatusOptions()
-                        .find((opt) => opt.value === row.combinedFeeStatus)
-                        ?.color || 'default',
-                  },
-                  () =>
-                    feeConstants
-                      .getFeeStatusOptions()
-                      .find((opt) => opt.value === row.combinedFeeStatus)
-                      ?.label || '--',
-                ),
-                h(IconifyIcon, {
-                  icon: 'ant-design:question-circle-outlined',
-                  style: 'cursor: pointer; color: #1890ff; font-size: 22px;',
-                  onClick: (e: Event) => {
-                    e.stopPropagation();
-                    showDeleteReason(row);
-                  },
-                }),
-              ],
-            );
-          }
-
-          // 其他情况正常显示费用状态Tag
-          return h(
+          const statusTag = h(
             Tag,
             {
               color:
@@ -182,6 +145,49 @@ const useOrderFeeDetailColumns = () => {
                 .find((opt) => opt.value === row.combinedFeeStatus)?.label ||
               '--',
           );
+
+          // 申请修改 / 申请删除（待审核）：状态旁问号，悬停展示原因
+          const isPendingModify =
+            task && task.taskType === 1 && task.taskStatus === 0;
+          const isPendingDelete =
+            task && task.taskType === 2 && task.taskStatus === 0;
+
+          if (isPendingModify || isPendingDelete) {
+            const reason =
+              task.remark ||
+              (isPendingDelete ? '未填写删除原因' : '未填写修改原因');
+            return h(
+              'div',
+              {
+                style:
+                  'display: flex; align-items: center; justify-content: center; gap: 4px;',
+              },
+              [
+                statusTag,
+                h(
+                  Tooltip,
+                  {
+                    title: reason,
+                    placement: 'top',
+                  },
+                  {
+                    default: () =>
+                      h(IconifyIcon, {
+                        icon: 'ant-design:question-circle-outlined',
+                        style:
+                          'cursor: pointer; color: #1890ff; font-size: 22px;',
+                        onClick: (e: Event) => {
+                          e.stopPropagation();
+                          showTaskReason(row);
+                        },
+                      }),
+                  },
+                ),
+              ],
+            );
+          }
+
+          return statusTag;
         },
       },
     },
@@ -531,24 +537,32 @@ defineExpose({
   getTableDate,
 });
 
-// 删除原因弹窗相关状态
-const deleteReasonModalVisible = ref<boolean>(false);
-const currentDeleteReason = ref<string>('');
+// 任务原因弹窗（申请修改 / 申请删除）
+const taskReasonModalVisible = ref<boolean>(false);
+const currentTaskReason = ref<string>('');
+const taskReasonModalTitle = ref<string>('申请原因');
+const taskReasonLabel = ref<string>('原因：');
 
 /**
- * 显示删除原因弹窗
+ * 显示申请修改 / 删除原因
  */
-const showDeleteReason = (row: any) => {
+const showTaskReason = (row: any) => {
   const task = row.task;
-  if (task && task.taskType === 2 && task.remark) {
-    currentDeleteReason.value = task.remark;
-    deleteReasonModalVisible.value = true;
-  } else if (task && task.taskType === 2) {
-    currentDeleteReason.value = '未填写删除原因';
-    deleteReasonModalVisible.value = true;
-  } else {
-    message.warning('该费用没有删除申请记录');
+  if (task && task.taskType === 1) {
+    taskReasonModalTitle.value = '修改申请原因';
+    taskReasonLabel.value = '修改原因：';
+    currentTaskReason.value = task.remark || '未填写修改原因';
+    taskReasonModalVisible.value = true;
+    return;
   }
+  if (task && task.taskType === 2) {
+    taskReasonModalTitle.value = '删除申请原因';
+    taskReasonLabel.value = '删除原因：';
+    currentTaskReason.value = task.remark || '未填写删除原因';
+    taskReasonModalVisible.value = true;
+    return;
+  }
+  message.warning('该费用没有申请记录');
 };
 </script>
 
@@ -578,15 +592,15 @@ const showDeleteReason = (row: any) => {
     </Grid>
   </div>
 
-  <!-- 删除原因弹窗 -->
+  <!-- 申请修改 / 删除原因弹窗 -->
   <Modal
-    v-model:open="deleteReasonModalVisible"
-    title="删除申请原因"
+    v-model:open="taskReasonModalVisible"
+    :title="taskReasonModalTitle"
     :footer="null"
     width="500px"
   >
     <div style="padding: 16px 0">
-      <div style="margin-bottom: 8px; color: #666">删除原因：</div>
+      <div style="margin-bottom: 8px; color: #666">{{ taskReasonLabel }}</div>
       <div
         style="
           min-height: 60px;
@@ -597,7 +611,7 @@ const showDeleteReason = (row: any) => {
           border-radius: 4px;
         "
       >
-        {{ currentDeleteReason }}
+        {{ currentTaskReason }}
       </div>
     </div>
   </Modal>

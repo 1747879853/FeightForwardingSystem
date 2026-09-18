@@ -99,6 +99,115 @@ export function isOrderFeeRejectedStatus(feeStatus: unknown): boolean {
   return Number(feeStatus) === 5;
 }
 
+/** 费用状态是否为「录入」 */
+export function isOrderFeeEnteringStatus(feeStatus: unknown): boolean {
+  return Number(feeStatus) === 0;
+}
+
+/** 录入或驳回：提交后利润口径中不计入（除非本批正在提交） */
+export function isOrderFeeEnteringOrRejectedStatus(
+  feeStatus: unknown,
+): boolean {
+  return (
+    isOrderFeeEnteringStatus(feeStatus) || isOrderFeeRejectedStatus(feeStatus)
+  );
+}
+
+/** 主单 / 更改单归属键：空串表示主单 */
+export function normalizeOrderFeeChangeOrderKey(
+  changeOrderId?: null | string,
+): string {
+  if (changeOrderId == null) return '';
+  const key = String(changeOrderId).trim();
+  return key;
+}
+
+export type FeeProfitCalcRow = {
+  id?: null | string;
+  amount?: null | number;
+  exchangeRate?: null | number;
+  paySide?: null | number;
+  feeStatus?: null | number;
+  combinedFeeStatus?: null | number;
+  changeOrderId?: null | string;
+};
+
+function resolveFeeStatus(fee: FeeProfitCalcRow): unknown {
+  return fee.combinedFeeStatus ?? fee.feeStatus;
+}
+
+/**
+ * 提交后利润口径：本批提交费用 ∪ 同归属（主单/更改单）下非录入且非驳回的费用。
+ */
+export function collectFeesForPostSubmitProfit(
+  allFees: FeeProfitCalcRow[],
+  submittingFees: FeeProfitCalcRow[],
+): FeeProfitCalcRow[] {
+  if (!submittingFees.length) return [];
+
+  const scopeKey = normalizeOrderFeeChangeOrderKey(
+    submittingFees[0]?.changeOrderId,
+  );
+  const submittingIds = new Set(
+    submittingFees
+      .map((fee) => (fee.id == null ? '' : String(fee.id).trim()))
+      .filter(Boolean),
+  );
+
+  const scoped = allFees.filter(
+    (fee) => normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+  );
+
+  const byId = new Map<string, FeeProfitCalcRow>();
+  for (const fee of scoped) {
+    const id = fee.id == null ? '' : String(fee.id).trim();
+    if (!id) continue;
+    const status = resolveFeeStatus(fee);
+    if (submittingIds.has(id) || !isOrderFeeEnteringOrRejectedStatus(status)) {
+      byId.set(id, fee);
+    }
+  }
+
+  // 本批提交里可能有尚未落库 id 的临时行，仍按金额计入
+  for (const fee of submittingFees) {
+    if (normalizeOrderFeeChangeOrderKey(fee.changeOrderId) !== scopeKey) {
+      continue;
+    }
+    const id = fee.id == null ? '' : String(fee.id).trim();
+    if (id) {
+      byId.set(id, fee);
+    } else {
+      byId.set(`__tmp_${byId.size}`, fee);
+    }
+  }
+
+  return [...byId.values()];
+}
+
+/** 本位币口径利润：Σ应收(amount×汇率) − Σ应付(amount×汇率) */
+export function calcOrderFeeProfitRmb(fees: FeeProfitCalcRow[]): number {
+  let totalRec = 0;
+  let totalPay = 0;
+  for (const fee of fees) {
+    const amount = (Number(fee.amount) || 0) * (Number(fee.exchangeRate) || 1);
+    if (Number(fee.paySide) === 1) {
+      totalPay += amount;
+    } else {
+      totalRec += amount;
+    }
+  }
+  // 金额按分取整，避免浮点误差把 ~0 判成负利润
+  return Math.round((totalRec - totalPay) * 100) / 100;
+}
+
+export function isPostSubmitProfitNegative(
+  allFees: FeeProfitCalcRow[],
+  submittingFees: FeeProfitCalcRow[],
+): boolean {
+  const fees = collectFeesForPostSubmitProfit(allFees, submittingFees);
+  return calcOrderFeeProfitRmb(fees) < 0;
+}
+
 /**
  * 取费用行最近一次驳回任务的审核意见（taskStatus=1）。
  * 合并提交/修改/删除三类任务，按审核时间倒序取第一条 remark。

@@ -734,17 +734,13 @@ onMounted(() => {
       <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
         <Card class="fee-detail-card min-h-0 flex-1">
           <template #title>
-            <div class="flex items-center">
-              <span class="fee-detail-title mr-2 flex items-center gap-2">
-                <Package class="size-4" />
+            <div class="fee-detail-head flex items-center gap-2">
+              <span class="fee-detail-title flex items-center gap-1.5">
+                <Package class="size-3.5" />
                 {{ $t('seaExport.export.orderFee.feeDetail') }}
               </span>
-              <div class="my-1 flex items-center justify-between">
-                <Space>
-                  <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length"
-                  @click="showConfirmWithRemark(true)">
-                  {{ $t('auditApproval.Passed') }}
-                </Button> -->
+              <div class="flex items-center">
+                <Space size="small">
                   <DropdownButton
                     @click="showConfirmWithRemark(true, 'all')"
                     size="small"
@@ -775,7 +771,7 @@ onMounted(() => {
                   </Button>
                 </Space>
               </div>
-              <div class="select-name flex flex-1 text-sm font-normal">
+              <div class="select-name flex flex-1 text-xs font-normal">
                 {{ props.orderName }}
               </div>
             </div>
@@ -786,7 +782,7 @@ onMounted(() => {
           >
             <!-- 左侧/上侧区域 -->
             <div
-              class="left-top-section mt-1"
+              class="left-top-section"
               :style="{
                 height: layout === 'horizontal' ? '100%' : `${topHeight}%`,
                 width: layout === 'horizontal' ? `${leftWidth}%` : 'auto',
@@ -877,12 +873,12 @@ onMounted(() => {
 <style scoped lang="scss">
 .select-name {
   flex-direction: row-reverse;
-  padding: 2px 10px;
+  padding: 0 8px;
   color: #52607a;
   border-radius: 6px;
 }
 
-// 费用明细卡片：强化卡片层次与标题品牌感
+// 费用明细卡片：压缩标题栏高度，把空间让给下方应收/应付表
 .fee-detail-card {
   overflow: hidden;
   border: 1px solid #e8ecf3;
@@ -892,6 +888,8 @@ onMounted(() => {
     0 4px 12px rgb(16 42 83 / 5%);
 
   :deep(.ant-card-head) {
+    min-height: 36px;
+    padding: 0 12px;
     background: linear-gradient(
       90deg,
       hsl(var(--primary) / 8%) 0%,
@@ -901,14 +899,29 @@ onMounted(() => {
     border-bottom: 1px solid #e8ecf3;
   }
 
+  :deep(.ant-card-head-wrapper) {
+    min-height: 36px;
+  }
+
   :deep(.ant-card-head-title) {
-    padding: 10px 0;
+    padding: 4px 0;
+    overflow: visible;
+  }
+
+  :deep(.ant-card-body) {
+    padding-top: 8px;
+  }
+
+  .fee-detail-head {
+    min-height: 28px;
   }
 
   .fee-detail-title {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
+    line-height: 1.2;
     color: #1f2d3d;
+    white-space: nowrap;
 
     :deep(svg) {
       color: hsl(var(--primary));
