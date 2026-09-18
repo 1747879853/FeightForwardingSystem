@@ -16,6 +16,7 @@ import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 
 import { createFeeTableDirtyTracker } from '#/utils/fee-table-dirty';
 import { useOrderFeeAdapter } from '../../use-adapter';
+import { sortOrderFeeList } from '../utils/order-fee-sort';
 
 /**
  * 从订单详情中提取所有可能的结算对象映射
@@ -294,7 +295,9 @@ export function useOrderFeeData(
       // 为费用数据填充结算对象名称
       const feesWithNames = fillSettlementNames(orderFees, settlementNameMap);
 
-      dataSource.value = normalizeOrderFeeWithRowKey(feesWithNames);
+      dataSource.value = normalizeOrderFeeWithRowKey(
+        sortOrderFeeList(feesWithNames),
+      );
       syncFee();
       feeDirty.syncFeeSnapshot();
     } else {
@@ -316,7 +319,8 @@ export function useOrderFeeData(
       PaySide: props.type ?? 0,
       PageIndex: 1,
       PageSize: 999,
-      Sorting: 'creationTime asc',
+      // 优先自定义 sortId，相同再按录入时间
+      Sorting: 'sortId ASC, creationTime ASC',
     };
     const res = await adapter.api.getOrderFeePagedList(params);
     res.items = res.items.map(rememberPermissionRow);
@@ -362,7 +366,9 @@ export function useOrderFeeData(
     // 为费用数据填充结算对象名称
     const feesWithNames = fillSettlementNames(res.items, settlementNameMap);
 
-    const normalizedData = normalizeOrderFeeWithRowKey(feesWithNames);
+    const normalizedData = normalizeOrderFeeWithRowKey(
+      sortOrderFeeList(feesWithNames),
+    );
     console.log('📊 [queryTableData] 加载数据:', normalizedData.length, '条');
     dataSource.value = normalizedData;
 
@@ -499,6 +505,7 @@ export function useOrderFeeData(
       'isConfidential',
       'dataEntryMethod',
       'remark',
+      'sortId',
     ];
 
     const numericFields = new Set([
@@ -508,6 +515,7 @@ export function useOrderFeeData(
       'feeStatus',
       'invoiceStatus',
       'dataEntryMethod',
+      'sortId',
     ]);
 
     return items.map((item) => {

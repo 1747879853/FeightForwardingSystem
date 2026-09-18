@@ -29,6 +29,7 @@ import {
   Card,
   Tooltip,
 } from 'ant-design-vue';
+import { sortOrderFeeList } from './utils/order-fee-sort';
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
 import dayjs from 'dayjs';
@@ -426,16 +427,8 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
             orderFeeTasks.map(rememberPermissionRow),
           );
 
-          // 按照创建时间正序排序
-          const sortedData = modifyData.sort((a, b) => {
-            const timeA = a.creationTime
-              ? new Date(a.creationTime).getTime()
-              : 0;
-            const timeB = b.creationTime
-              ? new Date(b.creationTime).getTime()
-              : 0;
-            return timeA - timeB;
-          });
+          // 优先自定义 sortId，相同再按录入时间（与费用录入 / 打印口径一致）
+          const sortedData = sortOrderFeeList(modifyData);
 
           dataSource.value = normalizeOrderFeeWithRowKey(sortedData);
           emit('updateTableData', dataSource.value);
