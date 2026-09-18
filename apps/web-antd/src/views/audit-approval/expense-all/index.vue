@@ -385,10 +385,10 @@ const changeTableType = (type: string) => {
        不再使用固定像素高，整页正好收在可视区内，不同分辨率下都不出现纵向滚动条。
        注意：Page 内容 div 默认有 p-4 padding，auto-content-height 已给出确定高度，flex 子项据此精确填满。 -->
   <Page auto-content-height content-class="flex flex-col overflow-hidden">
-    <!-- 顶部任务列表：由固定 h-[445px] 改为占比高度(42%)并加 min/max 守卫，随屏幕自适应；
-         flex-shrink-0 保证其不被压缩，vxe-grid height:'auto' 据此填满。 -->
+    <!-- 顶部任务列表：占比高度 + min/max 守卫；min-h 按「折叠查询 + 工具栏 + 表头 + 约 4 行 + 分页」估算，
+         保证笔记本上至少露出约 4 行，同时给下方费用明细留足高度。 -->
     <Grid
-      class="expense-task-grid mb-[10px] h-[42%] max-h-[440px] min-h-[240px] flex-shrink-0"
+      class="expense-task-grid mb-[10px] h-[44%] max-h-[500px] min-h-[400px] flex-shrink-0"
     >
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
       <template #toolbar-actions>
