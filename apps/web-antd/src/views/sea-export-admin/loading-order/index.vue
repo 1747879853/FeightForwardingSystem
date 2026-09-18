@@ -10,6 +10,7 @@ import { computed, onActivated, onMounted, ref, watch } from 'vue';
 
 import { useAccess } from '@vben/access';
 import { Copy, IconifyIcon } from '@vben/icons';
+import { useUserStore } from '@vben/stores';
 
 import dayjs from 'dayjs';
 
@@ -53,6 +54,7 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { buildAttachmentUrl, compareAttachmentTypeSortIdDesc } from '#/utils';
+import { watermarkLoadingPhoto } from '#/utils/loading-photo-watermark';
 import SharePreviewModal from '#/views/loading-order-share/share-preview-modal.vue';
 
 import cameraIcon from './assets/camera.svg';
@@ -64,6 +66,7 @@ defineOptions({
 });
 
 const { hasAccessByCodes } = useAccess();
+const userStore = useUserStore();
 
 const seaExportIdRef = useKeepAliveRouteParamId();
 const seaExportId = computed(() => seaExportIdRef.value ?? '');
@@ -104,7 +107,9 @@ const isEmptyBizId = (id: unknown) => {
 /** 当前正在编辑照片的箱 */
 const photoEditCtn = ref<LoadingOrderAdminApi.LoadingOrderCtnDto | null>(null);
 const photoEditOpen = ref(false);
-const photoEditUploading = ref(false);
+const photoUploadPending = ref(0);
+const photoEditUploading = computed(() => photoUploadPending.value > 0);
+let photoUploadQueue = Promise.resolve();
 const photoEditSaving = ref(false);
 const attachmentTypes = ref<AttachmentDtlTypeApi.AttachmentDtlTypeSimpleDto[]>(
   [],
@@ -128,8 +133,6 @@ type EditableGroup = {
 const photoEditGroups = ref<EditableGroup[]>([]);
 
 const DEFAULT_PHOTO_GROUP_NAME = '监装照片';
-/** 每个附件类型只允许一张监装照片 */
-const PHOTO_PER_TYPE_MAX = 1;
 /** 采集槽固定边长，与 antd picture-card 一致，避免已传图把格子撑爆 */
 const PHOTO_TILE_PX = 104;
 
@@ -247,44 +250,52 @@ function buildAttachmentGroupsPayload(groups: EditableGroup[]) {
 }
 
 function removePhotoFromGroup(groupIndex: number, photoIndex: number) {
-  if (!canEdit.value) return;
+  if (!canEdit.value || photoEditUploading.value || photoEditSaving.value)
+    return;
   photoEditGroups.value[groupIndex]?.items.splice(photoIndex, 1);
 }
 
-function canAddPhotoToGroup(group: EditableGroup | undefined) {
-  return (group?.items.length ?? 0) < PHOTO_PER_TYPE_MAX;
-}
-
-async function handlePhotoUpload(file: unknown, groupIndex: number) {
-  if (!canEdit.value) return false;
+function handlePhotoUpload(file: File, groupIndex: number) {
   const group = photoEditGroups.value[groupIndex];
-  if (!canAddPhotoToGroup(group)) {
-    message.warning('该类型只能上传一张图片');
-    return false;
-  }
-  photoEditUploading.value = true;
-  try {
-    const formData = new FormData();
-    formData.append('file', file as File);
-    const results = await uploadFile(formData);
-    const uploaded = results[0];
-    if (!uploaded) throw new Error('上传返回为空');
-    const attachment = mapResultToAttachment(uploaded);
-    group?.items.push({
-      attachmentId: attachment.attachmentId,
-      url: buildAttachmentUrl(attachment.url),
-    });
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '上传失败');
-  } finally {
-    photoEditUploading.value = false;
-  }
-  return false; // 阻止 antd Upload 默认行为
+  if (!canEdit.value || !group || photoEditSaving.value) return false;
+  // beforeUpload 对一次多选逐个调用，先计数，再串行处理，保存等待整个队列。
+  photoUploadPending.value += 1;
+  const uploader =
+    userStore.userInfo?.realName || userStore.userInfo?.username || '';
+  photoUploadQueue = photoUploadQueue.then(async () => {
+    try {
+      const watermarked = await watermarkLoadingPhoto(file, uploader);
+      const formData = new FormData();
+      formData.append('file', watermarked);
+      const results = await uploadFile(formData);
+      const uploaded = results[0];
+      if (!uploaded) throw new Error('上传返回为空');
+      const attachment = mapResultToAttachment(uploaded);
+      group.items.push({
+        attachmentId: attachment.attachmentId,
+        url: buildAttachmentUrl(attachment.url),
+      });
+    } catch (error) {
+      message.error(
+        `${file.name}：${error instanceof Error ? error.message : '上传失败'}，请重新添加`,
+      );
+    } finally {
+      photoUploadPending.value -= 1;
+    }
+  });
+  return false;
 }
 
 async function savePhotoEdit() {
   const ctn = photoEditCtn.value;
-  if (!ctn || isEmptyBizId(ctn.id) || !canEdit.value) return;
+  if (
+    !ctn ||
+    isEmptyBizId(ctn.id) ||
+    !canEdit.value ||
+    photoEditUploading.value ||
+    photoEditSaving.value
+  )
+    return;
 
   photoEditSaving.value = true;
   try {
@@ -1511,6 +1522,9 @@ const displayValue = (value: null | number | string | undefined) => {
       :title="`照片采集 — 箱号 ${photoEditCtn?.ctnNo || '--'}`"
       :footer="null"
       width="760px"
+      :closable="!photoEditUploading && !photoEditSaving"
+      :mask-closable="!photoEditUploading && !photoEditSaving"
+      :keyboard="!photoEditUploading && !photoEditSaving"
       destroy-on-close
     >
       <Spin :spinning="photoEditSaving">
@@ -1520,13 +1534,19 @@ const displayValue = (value: null | number | string | undefined) => {
         >
           {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
         </div>
+        <p v-if="canEdit" class="photo-edit-hint">
+          每类可添加多张，支持一次多选；新图片自动添加上传人和上传时间水印。
+        </p>
         <div class="photo-edit-grid">
           <div
             v-for="(group, gi) in photoEditGroups"
             :key="String(group.attachmentDtlTypeId ?? 'untyped')"
             class="photo-edit-slot"
           >
-            <div class="photo-edit-slot__title">{{ group.typeName }}</div>
+            <div class="photo-edit-slot__title">
+              {{ group.typeName }}
+              <span class="photo-edit-count">{{ group.items.length }} 张</span>
+            </div>
             <div class="photo-edit-slot__body">
               <div
                 v-for="(photo, pi) in group.items"
@@ -1550,19 +1570,21 @@ const displayValue = (value: null | number | string | undefined) => {
                 </button>
               </div>
               <Upload
-                v-if="canEdit && canAddPhotoToGroup(group)"
+                v-if="canEdit"
                 :show-upload-list="false"
                 accept="image/*"
-                :multiple="false"
+                :multiple="true"
                 :before-upload="(file) => handlePhotoUpload(file, gi)"
-                :disabled="photoEditUploading"
+                :disabled="photoEditUploading || photoEditSaving"
               >
                 <div class="photo-edit-add">
                   <span class="photo-edit-add__icon">{{
                     photoEditUploading ? '…' : '+'
                   }}</span>
                   <span class="photo-edit-add__tip">{{
-                    photoEditUploading ? '上传中' : '添加图片'
+                    photoEditUploading
+                      ? `剩余 ${photoUploadPending} 张`
+                      : '添加图片'
                   }}</span>
                 </div>
               </Upload>
@@ -1570,14 +1592,17 @@ const displayValue = (value: null | number | string | undefined) => {
           </div>
         </div>
         <div class="photo-edit-footer">
-          <Button @click="photoEditOpen = false">
+          <Button
+            :disabled="photoEditUploading || photoEditSaving"
+            @click="photoEditOpen = false"
+          >
             {{ canEdit ? '取消' : '关闭' }}
           </Button>
           <Button
             v-if="canEdit"
             type="primary"
             :loading="photoEditSaving"
-            :disabled="photoEditUploading"
+            :disabled="photoEditUploading || photoEditSaving"
             @click="savePhotoEdit"
           >
             保存
@@ -2204,20 +2229,32 @@ const displayValue = (value: null | number | string | undefined) => {
   color: #8b95a7;
 }
 
+.photo-edit-hint,
+.photo-edit-count {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.photo-edit-count {
+  margin-left: 8px;
+}
+
 .photo-edit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 104px);
-  gap: 14px 16px;
-  justify-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .photo-edit-slot {
-  width: 104px;
   min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .photo-edit-slot__title {
-  height: 22px;
+  min-height: 22px;
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2225,12 +2262,12 @@ const displayValue = (value: null | number | string | undefined) => {
   font-weight: 400;
   line-height: 22px;
   color: #5d6c80;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .photo-edit-slot__body {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

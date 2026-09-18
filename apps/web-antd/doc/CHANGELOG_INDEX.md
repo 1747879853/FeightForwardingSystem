@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-18] [监装分类多图与上传水印](./changelogs/change-log-2026-09-18-监装分类多图与上传水印.md)
+
 - [2026-09-18] [开票申请列表增加结算状态列](./changelogs/change-log-2026-09-18-invoice-application-settlement-status.md)
 - [2026-09-18] [运踪箱卡展开加过渡并收紧苹果风时间轴](./changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)
 - [2026-09-17] [运踪登机牌航线收回左右港口中间](./changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)

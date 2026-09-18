@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, getCurrentInstance, nextTick, ref } from 'vue';
 
 import type { EditableCtn, EditablePhoto } from '@/utils/ctn-model';
 
@@ -11,6 +11,8 @@ import {
   uploadImage,
   type ImageSource,
 } from '@/api/upload';
+import { authState } from '@/stores/auth';
+import { useLoadingPhotoWatermark } from '@/utils/loading-photo-watermark';
 import { pickCtnNoFromUpload } from '@/utils/recognized-ctn-no';
 import { resolveUploadDisplayUrl } from '@/utils/upload-display-url';
 
@@ -27,25 +29,25 @@ const emit = defineEmits<{
   (event: 'save'): void;
 }>();
 
+const { canvasWidth, canvasHeight, watermark } = useLoadingPhotoWatermark(
+  getCurrentInstance()?.proxy,
+);
 const uploading = ref(false);
+const choosing = ref(false);
 const recognizing = ref(false);
 /** 相机返回后原生 image 常不刷新，hideLoading 后再 bump 一次强制重挂 */
 const thumbEpoch = ref(0);
-const busy = computed(() => uploading.value || recognizing.value);
+const busy = computed(
+  () => uploading.value || recognizing.value || choosing.value,
+);
 
 const groups = computed(() => props.ctn?.groups ?? []);
-/** 每个附件类型只允许一张监装照片 */
-const PHOTO_PER_TYPE_MAX = 1;
 const statusText = computed(() =>
   props.ctn?.isLoadingCompleted ? '已完成' : '待处理',
 );
 
-function canAddPhotoToGroup(groupIndex: number) {
-  return (groups.value[groupIndex]?.items.length ?? 0) < PHOTO_PER_TYPE_MAX;
-}
-
 function toggleStatus() {
-  if (!props.editable || !props.ctn) return;
+  if (!props.editable || !props.ctn || busy.value || props.saving) return;
   props.ctn.isLoadingCompleted = !props.ctn.isLoadingCompleted;
 }
 
@@ -91,20 +93,11 @@ function alertAfterLoading(title: string, content: string) {
 async function recognizeCtnNo() {
   if (!props.editable || !props.ctn || busy.value || props.saving) return;
 
-  let sourceType: ImageSource | null;
-  try {
-    sourceType = await choosePhotoSource();
-  } catch (error) {
-    uni.showToast({
-      icon: 'none',
-      title: error instanceof Error ? error.message : '无法打开图片来源',
-    });
-    return;
-  }
-  if (!sourceType) return;
-
+  choosing.value = true;
   let paths: string[];
   try {
+    const sourceType = await choosePhotoSource();
+    if (!sourceType) return;
     paths = await chooseImages([sourceType], 1);
   } catch (error) {
     uni.showToast({
@@ -112,6 +105,8 @@ async function recognizeCtnNo() {
       title: error instanceof Error ? error.message : '选择图片失败',
     });
     return;
+  } finally {
+    choosing.value = false;
   }
   const filePath = paths[0];
   if (!filePath) return;
@@ -146,59 +141,46 @@ async function recognizeCtnNo() {
 
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
-  if (!group || busy.value) return;
-  if (!canAddPhotoToGroup(groupIndex)) {
-    uni.showToast({ icon: 'none', title: '该类型只能上传一张图片' });
-    return;
-  }
-
+  if (!group || !props.editable || busy.value || props.saving) return;
+  choosing.value = true;
+  let paths: string[];
   let sourceType: ImageSource | null;
   try {
     sourceType = await choosePhotoSource();
-  } catch (error) {
-    uni.showToast({
-      icon: 'none',
-      title: error instanceof Error ? error.message : '无法打开图片来源',
-    });
-    return;
-  }
-  if (!sourceType) return;
-
-  let paths: string[];
-  try {
-    paths = await chooseImages([sourceType], 1);
+    if (!sourceType) return;
+    paths = await chooseImages([sourceType], sourceType === 'camera' ? 1 : 9);
   } catch (error) {
     uni.showToast({
       icon: 'none',
       title: error instanceof Error ? error.message : '选择图片失败',
     });
     return;
+  } finally {
+    choosing.value = false;
   }
   if (paths.length === 0) return;
-
-  const remaining = PHOTO_PER_TYPE_MAX - group.items.length;
-  if (remaining <= 0) {
-    uni.showToast({ icon: 'none', title: '该类型只能上传一张图片' });
+  const uploader =
+    authState.profile?.nickName || authState.profile?.userName || '';
+  if (!uploader.trim()) {
+    uni.showToast({ icon: 'none', title: '无法获取上传人，请重新登录' });
     return;
   }
-  paths = paths.slice(0, remaining);
-
   uploading.value = true;
+  let failed = 0;
+  let failureReason = '';
   try {
-    for (const path of paths) {
-      // 先把本地图推进格子，避免相机页返回后只剩空白等到二次打开
-      const localPath =
-        sourceType === 'camera' ? await persistLocalImage(path) : path;
-      const photo: EditablePhoto = {
-        attachmentId: '',
-        localPath,
-        url: localPath,
-      };
-      group.items.push(photo);
-      await nextTick();
-
-      uni.showLoading({ mask: true, title: '上传中' });
+    for (const [index, path] of paths.entries()) {
+      uni.showLoading({
+        mask: true,
+        title: `上传 ${index + 1}/${paths.length}`,
+      });
+      let photo: EditablePhoto | undefined;
       try {
+        const watermarkedPath = await watermark(path, uploader);
+        const localPath = await persistLocalImage(watermarkedPath);
+        photo = { attachmentId: '', localPath, url: localPath };
+        group.items.push(photo);
+        await nextTick();
         const result = await uploadImage(localPath);
         photo.attachmentId = result.attachmentId;
         photo.url = resolveUploadDisplayUrl(
@@ -207,20 +189,31 @@ async function addPhotos(groupIndex: number) {
           API_ORIGIN,
         );
       } catch (error) {
-        const index = group.items.indexOf(photo);
-        if (index >= 0) group.items.splice(index, 1);
-        throw error;
+        failureReason = error instanceof Error ? error.message : '上传失败';
+        // 用路径找回响应式数组项，不能依赖原始对象 indexOf。
+        if (photo) {
+          const index = group.items.findIndex(
+            (item) => item.localPath === photo?.localPath && !item.attachmentId,
+          );
+          if (index >= 0) group.items.splice(index, 1);
+        }
+        failed += 1;
       }
     }
-  } catch (error) {
-    uni.showToast({
-      icon: 'none',
-      title: error instanceof Error ? error.message : '上传失败',
-    });
   } finally {
     uploading.value = false;
-    uni.hideLoading();
     thumbEpoch.value += 1;
+    hideLoadingThen(() => {
+      if (failed) {
+        uni.showModal({
+          title: '部分图片未上传',
+          content: `成功 ${paths.length - failed} 张，失败 ${failed} 张（${failureReason}）。已保留成功图片，请重新添加失败图片。`,
+          showCancel: false,
+        });
+      } else {
+        uni.showToast({ icon: 'success', title: `已上传 ${paths.length} 张` });
+      }
+    });
   }
 }
 
@@ -231,11 +224,12 @@ function onThumbError(photo: EditablePhoto) {
 }
 
 function removePhoto(groupIndex: number, photoIndex: number) {
+  if (!props.editable || busy.value || props.saving) return;
   groups.value[groupIndex]?.items.splice(photoIndex, 1);
 }
 
 function onSave() {
-  if (!props.editable || props.saving) return;
+  if (!props.editable || props.saving || choosing.value) return;
   if (uploading.value) {
     uni.showToast({ icon: 'none', title: '请等待图片上传完成' });
     return;
@@ -248,7 +242,7 @@ function onSave() {
 }
 
 function onDismiss() {
-  if (props.saving) return;
+  if (props.saving || busy.value) return;
   emit('close');
 }
 
@@ -263,6 +257,11 @@ function lockMaskScroll() {}
     @tap="onDismiss"
     @touchmove.stop.prevent="lockMaskScroll"
   >
+    <canvas
+      canvas-id="loading-photo-watermark"
+      class="watermark-canvas"
+      :style="{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }"
+    />
     <view class="panel" @tap.stop @touchmove.stop>
       <view class="panel__head">
         <text class="panel__title">监装处理</text>
@@ -329,13 +328,18 @@ function lockMaskScroll() {}
           未配置监装附件类型
         </text>
 
+        <text v-if="editable" class="group__empty"
+          >每类可传多张，相册一次最多选 9 张；自动添加上传人和时间水印。</text
+        >
         <view class="photo-grid">
           <view
             v-for="(group, gi) in groups"
             :key="String(group.attachmentDtlTypeId ?? 'untyped')"
             class="photo-slot"
           >
-            <text class="photo-slot__title">{{ group.typeName }}</text>
+            <text class="photo-slot__title"
+              >{{ group.typeName }} · {{ group.items.length }} 张</text
+            >
             <view class="photo-slot__body">
               <view
                 v-for="(photo, pi) in group.items"
@@ -351,7 +355,7 @@ function lockMaskScroll() {}
                 />
                 <view
                   v-if="editable"
-                  class="thumb__remove"
+                  :class="['thumb__remove', { 'is-disabled': busy || saving }]"
                   @tap.stop="removePhoto(gi, pi)"
                 >
                   <wd-icon name="close" size="12px" color="#fff" />
@@ -359,8 +363,12 @@ function lockMaskScroll() {}
               </view>
 
               <view
-                v-if="editable && canAddPhotoToGroup(gi)"
-                class="thumb thumb--add"
+                v-if="editable"
+                :class="[
+                  'thumb',
+                  'thumb--add',
+                  { 'is-disabled': busy || saving },
+                ]"
                 @tap="addPhotos(gi)"
               >
                 <view class="thumb__inner">
@@ -384,7 +392,7 @@ function lockMaskScroll() {}
       <view class="panel__foot">
         <view
           v-if="editable"
-          :class="['panel__btn', { 'is-disabled': saving }]"
+          :class="['panel__btn', { 'is-disabled': saving || busy }]"
           @tap="onSave"
         >
           {{ saving ? '保存中…' : '保存' }}
@@ -396,6 +404,13 @@ function lockMaskScroll() {}
 </template>
 
 <style lang="scss" scoped>
+.watermark-canvas {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  pointer-events: none;
+}
+
 .mask {
   position: fixed;
   top: 0;
@@ -568,8 +583,8 @@ function lockMaskScroll() {}
 
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20rpx 16rpx;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28rpx;
   padding: 24rpx 0;
 }
 
@@ -578,7 +593,8 @@ function lockMaskScroll() {}
 }
 
 .photo-slot__title {
-  height: 36rpx;
+  display: block;
+  min-height: 36rpx;
   margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -586,13 +602,13 @@ function lockMaskScroll() {}
   font-weight: 400;
   line-height: 36rpx;
   color: $text-body;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .photo-slot__body {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
 }
 
 .thumb {
@@ -628,6 +644,11 @@ function lockMaskScroll() {}
   height: 36rpx;
   background: rgb(0 0 0 / 45%);
   border-radius: 50%;
+}
+
+.thumb.is-disabled,
+.thumb__remove.is-disabled {
+  opacity: 0.5;
 }
 
 .thumb--add,
