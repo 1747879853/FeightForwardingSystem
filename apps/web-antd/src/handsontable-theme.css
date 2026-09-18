@@ -72,6 +72,10 @@
 }
 
 /* ---------- 选中 / 当前格 ---------- */
+/*
+ * Handsontable 已用 .wtBorder（绝对定位细条）画选区与当前格边框。
+ * 勿再给 td 加 outline/box-shadow，否则会与 wtBorder 叠成双层粗边。
+ */
 .handsontable:not(.listbox) td.area,
 .handsontable:not(.listbox) td.area-1,
 .handsontable:not(.listbox) td.area-2,
@@ -93,14 +97,20 @@
 .handsontable:not(.listbox) .htCurrent,
 .handsontable:not(.listbox) td.current,
 .handsontable:not(.listbox) td.htCurrent {
-  outline: 2px solid hsl(var(--primary) / 70%) !important;
-  outline-offset: -2px;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-/* 区域选中边框色 */
+/* 选区边框：单层主题色细线（由 HOT 控制宽高定位，此处只改色） */
 .handsontable:not(.listbox) .wtBorder.current,
 .handsontable:not(.listbox) .wtBorder.area {
   background-color: hsl(var(--primary)) !important;
+}
+
+/* 填色手柄：与选区同色，避免默认蓝与主题边框打架 */
+.handsontable:not(.listbox) .wtBorder.corner {
+  background-color: hsl(var(--primary)) !important;
+  border: none !important;
 }
 
 /* ---------- 只读 / 校验 ---------- */

@@ -16,6 +16,7 @@ import {
   bindOrderFeeDataI18n,
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
+  getFeeStatusValue,
 } from './data';
 import { ORDER_FEE_ADAPTER_KEY, type OrderFeeModuleAdapter } from './types';
 import { useOrderFeeI18n } from './use-adapter';
@@ -72,6 +73,7 @@ import {
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
 import { promptSubmitRemarkIfNegativeProfit } from './modules/utils/prompt-submit-remark';
+import BatchModifySettlementModal from './modules/batch-modify-settlement-modal.vue';
 
 const emit = defineEmits<{
   (
@@ -607,6 +609,10 @@ const paymentApplicationPerm = createAbpPermission('Admin.PaymentApplication');
 const paymentApplicationNavLoading = ref(false);
 const invoiceApplicationPerm = createAbpPermission('Admin.InvoiceApplication');
 const invoiceApplicationNavLoading = ref(false);
+const orderFeePerm = createAbpPermission('Admin.OrderFee');
+const batchModifySettlementModalRef = ref<InstanceType<
+  typeof BatchModifySettlementModal
+> | null>(null);
 
 function collectSelectedFeesForPaymentApplication() {
   collectSelectedFeeIds();
@@ -895,6 +901,74 @@ const handleWithdraw = async () => {
   }
 };
 
+/** 批量修改结算对象（已审核费用 → 同一结算对象；一次仅一种收付） */
+const handleBatchModifySettlement = () => {
+  collectSelectedFeeIds();
+  const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+  const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+
+  if (recFees.length > 0 && payFees.length > 0) {
+    message.warning('一次只能修改一种收付类型的费用');
+    return;
+  }
+
+  const fees = recFees.length > 0 ? recFees : payFees;
+  if (fees.length === 0) {
+    message.warning('请至少选择一条费用');
+    return;
+  }
+
+  const paySide = (recFees.length > 0 ? 0 : 1) as 0 | 1;
+  const approvedStatus = getFeeStatusValue.Approved;
+
+  const notApproved = fees.filter((fee: any) => {
+    const status = fee.combinedFeeStatus ?? fee.feeStatus;
+    return status !== approvedStatus;
+  });
+  if (notApproved.length > 0) {
+    message.warning('只能选择审核通过的费用批量修改结算对象');
+    return;
+  }
+
+  const changeOrderFlags = new Set(
+    fees.map((fee: any) => (fee.changeOrderId ? 'change' : 'main')),
+  );
+  if (changeOrderFlags.size > 1) {
+    message.warning('不能同时选择主单费用与更改单费用');
+    return;
+  }
+
+  const transportOrderIdForSubmit =
+    fees[0]?.transportOrderId || editId.value || '';
+  if (!transportOrderIdForSubmit) {
+    message.warning('缺少业务 id，无法提交');
+    return;
+  }
+
+  const orderFeeIds = fees
+    .map((fee: any) => fee.id)
+    .filter((id: unknown): id is string => !!id)
+    .map(String);
+
+  if (orderFeeIds.length === 0) {
+    message.warning('选中的费用缺少有效 id，请先保存后再试');
+    return;
+  }
+
+  batchModifySettlementModalRef.value?.modalApi.setData({
+    orderFeeIds,
+    paySide,
+    transportOrderId: String(transportOrderIdForSubmit),
+  });
+  batchModifySettlementModalRef.value?.modalApi.open();
+};
+
+const handleBatchModifySettlementSuccess = () => {
+  recOrderFeeTableRef.value?.getTableDate();
+  payOrderFeeTableRef.value?.getTableDate();
+  selectedFeeIds.value = [];
+};
+
 // 下拉菜单操作
 const handleMenuClick = (info: any) => {
   const key = info.key;
@@ -1054,6 +1128,14 @@ onMounted(async () => {
                 创建付费申请
               </Button>
 
+              <Button
+                v-access:code="orderFeePerm.edit"
+                :disabled="selectedFeeIds.length === 0"
+                @click="handleBatchModifySettlement"
+              >
+                批量改结算对象
+              </Button>
+
               <DropdownButton type="primary" @click="handleSubmitAllFees">
                 整票提交
                 <template #overlay>
@@ -1147,6 +1229,11 @@ onMounted(async () => {
       ref="configModalRef"
       :available-fields="displayFieldConfig"
       @confirm="handleConfigConfirm"
+    />
+
+    <BatchModifySettlementModal
+      ref="batchModifySettlementModalRef"
+      @success="handleBatchModifySettlementSuccess"
     />
   </Page>
 </template>
