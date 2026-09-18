@@ -855,18 +855,6 @@ defineExpose({
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
-/* Handsontable 表头主题化 */
-.handsontable-wrapper :deep(.handsontable th) {
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  background: hsl(var(--accent));
-  border-color: hsl(var(--border));
-}
-
-.handsontable-wrapper :deep(.handsontable td) {
-  border-color: hsl(var(--border));
-}
-
 /* 操作列按钮（renderer 动态创建，无 scoped 属性，需 :deep 覆盖） */
 .handsontable-wrapper :deep(.contact-action-group) {
   display: flex;

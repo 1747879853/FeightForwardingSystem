@@ -766,32 +766,16 @@ onMounted(() => {
     width: 100%;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid #e8e8e8;
+    border: 1px solid #e4e8ef;
     border-top: none;
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 8px 8px;
   }
 
   :deep(.handsontable) {
-    font-size: 13px;
     scrollbar-color: auto;
 
     .wtHolder {
       scrollbar-color: auto;
-    }
-
-    .htCore {
-      border-collapse: collapse;
-    }
-
-    th {
-      font-weight: 500;
-      color: #262626;
-      background: #fafafa;
-      border-color: #e8e8e8;
-    }
-
-    td {
-      border-color: #e8e8e8;
     }
 
     .htLeft {
@@ -800,30 +784,6 @@ onMounted(() => {
 
     .htRight {
       text-align: right !important;
-    }
-
-    .htSelected {
-      background: #e6f7ff !important;
-    }
-
-    .htCurrent {
-      outline: 2px solid #1890ff !important;
-      outline-offset: -2px;
-    }
-
-    .handsontableEditor,
-    .htAutocompleteEditor {
-      z-index: 9999 !important;
-      background: white !important;
-      border: 1px solid #1890ff !important;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
-    }
-
-    .htAutocompleteList {
-      z-index: 10000 !important;
-      background: white !important;
-      border: 1px solid #d9d9d9 !important;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
     }
   }
 }

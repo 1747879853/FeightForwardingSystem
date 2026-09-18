@@ -39,6 +39,25 @@ export namespace ExpenseSubmissionAdminApi {
     orderFeeIds?: string[];
   }
 
+  /** 批量修改已审核费用的结算对象 */
+  export interface BatchModifyOrderFeeSettlementDto {
+    /** 业务 id；费用必须属于这一票 */
+    transportOrderId: string;
+    /** 收付类型：0 收、1 付；一次只能一种 */
+    paySide: number;
+    /** 要改成的结算对象 id（本批全部改成它） */
+    settlementId: string;
+    /** 应付必填；写入申请修改任务备注。应收不使用 */
+    remark?: string;
+    /** 费用 id 列表，须已审核通过 */
+    orderFeeIds: string[];
+  }
+
+  export interface BatchModifyOrderFeeSettlementResultDto {
+    /** 仅应付有值：申请修改主任务 id。应收直接改库为 null */
+    taskBaseId?: null | string;
+  }
+
   /** 更改单简易信息 */
   export interface ChangeOrderSimpleDto {
     /** 更改单 id */
@@ -649,6 +668,19 @@ export const deleteOrderFee = (
   data: ExpenseSubmissionAdminApi.DeleteOrderFeeDto,
 ) => {
   return requestClient.post<number>(`${API_PREFIX}/DeleteOrderFeeAsync`, data);
+};
+
+/**
+ * 批量把已审核费用的结算对象改成同一个。
+ * 应收直接改库；应付备注必填，走申请修改工作流。
+ */
+export const batchModifyOrderFeeSettlement = (
+  data: ExpenseSubmissionAdminApi.BatchModifyOrderFeeSettlementDto,
+) => {
+  return requestClient.post<ExpenseSubmissionAdminApi.BatchModifyOrderFeeSettlementResultDto>(
+    `${API_PREFIX}/BatchModifyOrderFeeSettlementAsync`,
+    data,
+  );
 };
 
 /** 获取费用提交审核列表 */

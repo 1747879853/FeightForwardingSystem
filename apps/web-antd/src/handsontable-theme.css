@@ -1,0 +1,237 @@
+/**
+ * Handsontable 主表格全局主题（对齐系统费用录入 / vxe 列表视觉语言）
+ *
+ * - 使用 vben/antd 设计 token，亮暗色自动跟随
+ * - 不命中 `.handsontable.listbox`（下拉浮层见 handsontable-dropdown.css）
+ * - 报表分组着色等业务专用类仍由各组件更高优先级规则覆盖
+ *
+ * 加载：bootstrap.ts，晚于 handsontable.min.css
+ */
+
+/* ---------- 表格基底 ---------- */
+.handsontable:not(.listbox) {
+  font-size: 13px;
+  color: hsl(var(--foreground));
+  scrollbar-color: auto;
+}
+
+.handsontable:not(.listbox) .wtHolder {
+  scrollbar-color: auto;
+}
+
+.handsontable:not(.listbox) .htCore {
+  border-collapse: collapse;
+}
+
+/* 网格线：柔和灰蓝，贴近系统卡片边框 */
+.handsontable:not(.listbox) th,
+.handsontable:not(.listbox) td {
+  border-color: #e8ecf3 !important;
+}
+
+/* ---------- 表头 ---------- */
+.handsontable:not(.listbox) thead th,
+.handsontable:not(.listbox) .ht_clone_top th,
+.handsontable:not(.listbox) .ht_clone_top_inline_start_corner th {
+  font-weight: 600 !important;
+  color: #252a31 !important;
+  background: #fafbfd !important;
+  border-bottom-color: #eef1f6 !important;
+}
+
+.handsontable:not(.listbox) .ht_clone_inline_start th,
+.handsontable:not(.listbox) .ht_clone_top_inline_start_corner th {
+  background: #f5f7fb !important;
+}
+
+/* 行号列 */
+.handsontable:not(.listbox) tbody th {
+  font-weight: 500 !important;
+  color: #8c95a3 !important;
+  background: #fafbfd !important;
+}
+
+/* ---------- 数据单元格 ---------- */
+.handsontable:not(.listbox) td {
+  color: #252a31;
+  transition: background-color 0.12s ease;
+}
+
+/* 斑马纹（Handsontable 默认偶行类）：压低对比，避免跳色 */
+.handsontable:not(.listbox) tr.ht__row_even td {
+  background-color: #fafbfd;
+}
+
+.handsontable:not(.listbox) tr.ht__row_odd td {
+  background-color: #fff;
+}
+
+/* 悬停行：主题淡色，与 vxe hover 一致（跳过报表分组等业务专用类） */
+.handsontable:not(.listbox) tbody tr:hover > td:not([class*='report-']) {
+  background-color: hsl(var(--primary) / 6%) !important;
+}
+
+/* ---------- 选中 / 当前格 ---------- */
+/*
+ * Handsontable 已用 .wtBorder（绝对定位细条）画选区与当前格边框。
+ * 勿再给 td 加 outline/box-shadow，否则会与 wtBorder 叠成双层粗边。
+ */
+.handsontable:not(.listbox) td.area,
+.handsontable:not(.listbox) td.area-1,
+.handsontable:not(.listbox) td.area-2,
+.handsontable:not(.listbox) td.area-3,
+.handsontable:not(.listbox) td.area-4,
+.handsontable:not(.listbox) td.area-5,
+.handsontable:not(.listbox) td.area-6,
+.handsontable:not(.listbox) td.area-7,
+.handsontable:not(.listbox) .htSelected,
+.handsontable:not(.listbox) td.htSelected {
+  background: hsl(var(--primary) / 10%) !important;
+}
+
+.handsontable:not(.listbox) .ht__highlight,
+.handsontable:not(.listbox) td.ht__highlight {
+  background: hsl(var(--primary) / 12%) !important;
+}
+
+.handsontable:not(.listbox) .htCurrent,
+.handsontable:not(.listbox) td.current,
+.handsontable:not(.listbox) td.htCurrent {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 选区边框：单层主题色细线（由 HOT 控制宽高定位，此处只改色） */
+.handsontable:not(.listbox) .wtBorder.current,
+.handsontable:not(.listbox) .wtBorder.area {
+  background-color: hsl(var(--primary)) !important;
+}
+
+/* 填色手柄：与选区同色，避免默认蓝与主题边框打架 */
+.handsontable:not(.listbox) .wtBorder.corner {
+  background-color: hsl(var(--primary)) !important;
+  border: none !important;
+}
+
+/* ---------- 只读 / 校验 ---------- */
+
+/* 不强制只读底色，留给 afterRenderer 内联样式 */
+.handsontable:not(.listbox) td.htInvalid {
+  background: hsl(0deg 72% 96%) !important;
+  border-color: hsl(0deg 55% 78%) !important;
+}
+
+/* ---------- 单元格编辑器 ---------- */
+.handsontable:not(.listbox) .handsontableInput,
+.handsontable:not(.listbox) .handsontableInputHolder textarea,
+.handsontable:not(.listbox) textarea.handsontableInput {
+  color: hsl(var(--foreground)) !important;
+  outline: none !important;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--primary) / 55%) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%) !important;
+}
+
+.handsontable:not(.listbox) .handsontableEditor,
+.handsontable:not(.listbox) .htAutocompleteEditor {
+  z-index: 9999 !important;
+  overflow: hidden;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--primary) / 45%) !important;
+  border-radius: 6px !important;
+  box-shadow:
+    0 2px 8px rgb(16 42 83 / 8%),
+    0 0 0 1px hsl(var(--primary) / 8%) !important;
+}
+
+/* ---------- 复选框：跟随主题色 ---------- */
+.handsontable:not(.listbox) input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: hsl(var(--primary));
+  cursor: pointer;
+}
+
+.handsontable:not(.listbox) input[type='checkbox']:hover {
+  accent-color: hsl(var(--primary));
+}
+
+/* ---------- 滚动条：贴近系统纤细条 ---------- */
+.handsontable:not(.listbox) .wtHolder::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-track {
+  background: #f5f7fb;
+  border-radius: 8px;
+}
+
+.handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-thumb {
+  background: #c5ccd8;
+  border-radius: 8px;
+}
+
+.handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-thumb:hover {
+  background: #a8b0bf;
+}
+
+.handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-thumb:active {
+  background: #8c95a3;
+}
+
+/* ---------- 右键 / 列头菜单（若启用）：卡片化 ---------- */
+.htContextMenu:not(.htGhostTable),
+.htDropdownMenu:not(.htGhostTable) {
+  overflow: hidden;
+  background: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    0 6px 16px 0 rgb(0 0 0 / 8%),
+    0 3px 6px -4px rgb(0 0 0 / 12%) !important;
+}
+
+.htContextMenu table tbody tr td,
+.htDropdownMenu table tbody tr td {
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+}
+
+.htContextMenu table tbody tr td.current,
+.htContextMenu table tbody tr td:hover,
+.htDropdownMenu table tbody tr td.current,
+.htDropdownMenu table tbody tr td:hover {
+  color: hsl(var(--primary)) !important;
+  background: hsl(var(--primary) / 10%) !important;
+}
+
+/* ---------- 暗色主题微调 ---------- */
+html.dark .handsontable:not(.listbox) th,
+html.dark .handsontable:not(.listbox) td {
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .handsontable:not(.listbox) thead th,
+html.dark .handsontable:not(.listbox) .ht_clone_top th,
+html.dark .handsontable:not(.listbox) tbody th {
+  color: hsl(var(--foreground)) !important;
+  background: hsl(var(--muted)) !important;
+}
+
+html.dark .handsontable:not(.listbox) tr.ht__row_even td {
+  background-color: hsl(var(--muted) / 35%);
+}
+
+html.dark .handsontable:not(.listbox) tr.ht__row_odd td {
+  background-color: hsl(var(--background));
+}
+
+html.dark .handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+html.dark .handsontable:not(.listbox) .wtHolder::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+}

@@ -195,7 +195,7 @@ const handleModalSuccess = () => {
   <div class="cc-list">
     <CommissionConfigModalComponent @success="handleModalSuccess" />
 
-    <div class="cc-list__meta">
+    <!-- <div class="cc-list__meta">
       <div class="cc-list__meta-main">
         <span class="cc-list__type-badge">{{ typeLabel }}</span>
         <span class="cc-list__hint">
@@ -209,7 +209,7 @@ const handleModalSuccess = () => {
       >
         {{ $t('commission.selectedCount', { count: selectedCount }) }}
       </span>
-    </div>
+    </div> -->
 
     <Grid class="cc-list__grid min-h-0 flex-1">
       <template #toolbar-tools>

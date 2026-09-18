@@ -202,8 +202,8 @@ const getSortIcon = (field: string): string => {
     return ''; // 未排序状态不显示箭头
   }
   return props.sortState.order === 'asc'
-    ? '<span style="color: #1890ff; font-size: 12px;">▼</span>' // 升序显示向下箭头（实心三角形）
-    : '<span style="color: #1890ff; font-size: 12px;">▲</span>'; // 降序显示向上箭头（实心三角形）
+    ? '<span style="color: hsl(var(--primary)); font-size: 12px;">▼</span>' // 升序显示向下箭头（实心三角形）
+    : '<span style="color: hsl(var(--primary)); font-size: 12px;">▲</span>'; // 降序显示向上箭头（实心三角形）
 };
 
 /**
@@ -331,34 +331,11 @@ defineExpose({
   /* 勿强制 htCore width:100%：空数据横滚时会压扁列总宽，导致 ht_clone_top 与主表错位/表头「消失」 */
 
   :deep(.handsontable) {
-    /* 与全局/报表一致：避免 scrollbar-color 非 auto 时标准条宽度与 HOT 预留不一致 */
+    /* 滚动条主题见全局 handsontable-theme.css；此处仅保证 HOT 宽度检测正确 */
     scrollbar-color: auto;
 
     .wtHolder {
       scrollbar-color: auto;
-    }
-  }
-
-  :deep(::-webkit-scrollbar) {
-    width: 10px;
-    height: 10px;
-  }
-
-  :deep(::-webkit-scrollbar-track) {
-    background: #f5f5f5;
-    border-radius: 8px;
-  }
-
-  :deep(::-webkit-scrollbar-thumb) {
-    background: #c1c1c1;
-    border-radius: 8px;
-
-    &:hover {
-      background: #a8a8a8;
-    }
-
-    &:active {
-      background: #8a8a8a;
     }
   }
 
@@ -370,87 +347,18 @@ defineExpose({
 }
 
 :deep(.handsontable) {
-  font-size: 13px;
-
-  .htCore {
-    border-collapse: collapse;
-  }
-
-  th {
-    font-weight: 500;
-    color: #262626;
-    background: #fafafa;
-    border-color: #e8e8e8;
-  }
-
-  td {
-    border-color: #e8e8e8;
-  }
-
-  .htSelected {
-    background: #e6f7ff !important;
-  }
-
-  .htCurrent {
-    outline: 2px solid #1890ff !important;
-    outline-offset: -2px;
-  }
-}
-</style>
-
-<style lang="scss" scoped>
-:deep(.handsontable) {
-  /* ✅ 确保只读单元格的背景色不被 Handsontable 默认样式覆盖 */
-  td.htReadOnly,
-  td.readOnly,
-  td[readonly],
-  .htCore td.readOnly,
-  .htCore td.htReadOnly,
-  td.htDimmed,
-  .htCore td.htDimmed {
-    /* 不设置 background，让 afterRenderer 设置的内联样式生效 */
-  }
-
-  /* 编辑器激活状态 */
+  /* 只读底色交给 afterRenderer 内联样式；激活编辑时隐藏单元格文字避免重影 */
   td.ht__active_highlight {
     color: transparent !important;
     background-color: transparent !important;
   }
 
-  /* 确保编辑器完全覆盖 */
-  .handsontableEditor,
-  .htAutocompleteEditor {
-    z-index: 9999 !important;
-    background: white !important;
-    border: 1px solid #1890ff !important;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
-    opacity: 1 !important;
-  }
-
-  /* 下拉列表 */
-  .htAutocompleteList {
-    z-index: 10000 !important;
-    background: white !important;
-    border: 1px solid #d9d9d9 !important;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
-
-    .htAutocompleteItem {
-      padding: 4px 11px;
-
-      &.htAutocompleteActiveItem {
-        color: #1890ff;
-        background-color: #e6f7ff;
-      }
-    }
-  }
-
-  /* 下拉箭头 */
   .htAutocompleteArrow {
     z-index: 10001;
-    color: rgb(0 0 0 / 25%);
+    color: hsl(var(--muted-foreground) / 55%);
 
     &:hover {
-      color: rgb(0 0 0 / 45%);
+      color: hsl(var(--muted-foreground) / 85%);
     }
   }
 }
