@@ -14,6 +14,7 @@ import {
   isOrderFeeRejectedStatus,
   resolveLatestOrderFeeRejectRemark,
 } from '../utils/helpers';
+import { getFeeInvoiceStatusTextColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 const FEE_REJECT_TIP_CLASS = 'fee-reject-help-floating-tip';
 
@@ -192,13 +193,7 @@ export function useHotColumns(
           const rowData = currentDataSource[row];
           const invoiceStatus = (rowData as any)?.invoiceStatus;
           const statusLabel = getInvoiceStatusLabel(invoiceStatus);
-
-          let statusColor = '#262626';
-          if (invoiceStatus === 1) {
-            statusColor = '#faad14';
-          } else if (invoiceStatus === 2) {
-            statusColor = '#52c41a';
-          }
+          const statusColor = getFeeInvoiceStatusTextColor(invoiceStatus);
 
           td.innerHTML = '';
           td.style.textAlign = 'center';
@@ -302,6 +297,20 @@ export function useHotColumns(
         };
         hotCol.strict = true;
         hotCol.allowInvalid = false;
+        // 允许清空：strict 下默认空串会被判无效，显式放行 null/空
+        hotCol.validator = function (
+          value: any,
+          callback: (valid: boolean) => void,
+        ) {
+          if (value === null || value === undefined || value === '') {
+            callback(true);
+            return;
+          }
+          const labels = dropdownSources.value.industryCategoryList.map(
+            (item: any) => item.label,
+          );
+          callback(labels.includes(value));
+        };
         hotCol.filteringCaseSensitive = false;
         hotCol.trimDropdown = false;
         hotCol.visibleRows = 10;

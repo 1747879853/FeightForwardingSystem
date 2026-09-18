@@ -18,6 +18,8 @@ import {
   deleteOrderFee,
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
+import { promptSubmitRemarkIfNegativeProfit } from '../utils/prompt-submit-remark';
+import { normalizeOrderFeeChangeOrderKey } from '../utils/helpers';
 
 // 类型别名
 type OrderFeeRow = OrderFeeAdminApi.OrderFeeDto & { _rowKey?: string };
@@ -56,6 +58,10 @@ export function useOrderFeeActions(
     );
 
     const list = [...(dataContext.dataSource.value ?? [])];
+    const maxSortId = list.reduce((max, row) => {
+      const sid = Number((row as any).sortId ?? -1);
+      return Number.isFinite(sid) ? Math.max(max, sid) : max;
+    }, -1);
     const newRow = {
       _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
       id: '',
@@ -70,6 +76,8 @@ export function useOrderFeeActions(
       invoiceBlocked: false, // ✅ 修改：新增费用时，不开发票默认为false（允许开票）
       isConfidential: false,
       dataEntryMethod: 0,
+      // 追加到末尾，不打乱已有自定义顺序
+      sortId: maxSortId + 1,
     } as any;
 
     list.push(newRow);
@@ -260,7 +268,7 @@ export function useOrderFeeActions(
   /**
    * 提交费用
    */
-  const Submitted = () => {
+  const Submitted = async () => {
     if (!dataContext.selectedRowKeys.value.length) return;
     const keysSet = new Set(dataContext.selectedRowKeys.value);
     const list = (dataContext.dataSource.value ?? [])
@@ -281,9 +289,54 @@ export function useOrderFeeActions(
       return;
     }
 
+    const scopeKey = normalizeOrderFeeChangeOrderKey(
+      list[0]?.changeOrderId ??
+        (props.mode === 'changeOrder' ? props.parentChangeOrderId : undefined),
+    );
+    const oppositePaySide = props.type === 0 ? 1 : 0;
+    let oppositeFees: any[] = [];
+    try {
+      const oppositeRes = await adapter.api.getOrderFeePagedList({
+        TransportOrderId: dataContext.editId.value,
+        PaySide: oppositePaySide,
+        PageIndex: 1,
+        PageSize: 999,
+      });
+      oppositeFees = (oppositeRes?.items ?? []).filter(
+        (fee: any) =>
+          normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+      );
+    } catch (error) {
+      console.error('加载对立费用失败，无法校验提交后利润:', error);
+      message.error('无法校验提交后利润，请稍后重试');
+      return;
+    }
+
+    const sameSideAll = (dataContext.dataSource.value ?? []).filter(
+      (fee: any) =>
+        normalizeOrderFeeChangeOrderKey(
+          fee.changeOrderId ??
+            (props.mode === 'changeOrder'
+              ? props.parentChangeOrderId
+              : undefined),
+        ) === scopeKey,
+    );
+    const submitting = list.map((fee: any) => ({
+      ...fee,
+      changeOrderId: fee.changeOrderId ?? (scopeKey || undefined),
+    }));
+    const remark = await promptSubmitRemarkIfNegativeProfit(
+      [...sameSideAll, ...oppositeFees],
+      submitting,
+    );
+    if (remark === null) {
+      return;
+    }
+
     let SubmitOrderFeeDto = {
       TransportOrderId: dataContext.editId.value,
       PaySide: props.type ?? 0,
+      remark: remark || undefined,
       orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
     };
     console.log(SubmitOrderFeeDto);

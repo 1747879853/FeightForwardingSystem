@@ -45,6 +45,8 @@ import {
   submitOrderFeeWithdrawAsync,
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
+import { promptSubmitRemarkIfNegativeProfit } from './utils/prompt-submit-remark';
+import { normalizeOrderFeeChangeOrderKey } from './utils/helpers';
 
 import {
   useOrderFeeColumns,
@@ -838,7 +840,7 @@ const generateOppositeFees = async () => {
   }
 };
 
-const Submitted = () => {
+const Submitted = async () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
   const list = (dataSource.value ?? [])
@@ -849,9 +851,59 @@ const Submitted = () => {
         row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
         row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
     );
+  if (list.length === 0) {
+    message.warning('没有可提交的费用');
+    return;
+  }
+
+  const scopeKey = normalizeOrderFeeChangeOrderKey(
+    list[0]?.changeOrderId ??
+      (props.mode === 'changeOrder' ? props.parentChangeOrderId : undefined),
+  );
+  const oppositePaySide = (props.type ?? 0) === 0 ? 1 : 0;
+  let oppositeFees: any[] = [];
+  try {
+    const oppositeRes = await adapter.api.getOrderFeePagedList({
+      TransportOrderId: editId.value,
+      PaySide: oppositePaySide,
+      PageIndex: 1,
+      PageSize: 999,
+    });
+    oppositeFees = (oppositeRes?.items ?? []).filter(
+      (fee: any) =>
+        normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+    );
+  } catch (error) {
+    console.error('加载对立费用失败，无法校验提交后利润:', error);
+    message.error('无法校验提交后利润，请稍后重试');
+    return;
+  }
+
+  const sameSideAll = (dataSource.value ?? []).filter(
+    (fee: any) =>
+      normalizeOrderFeeChangeOrderKey(
+        fee.changeOrderId ??
+          (props.mode === 'changeOrder'
+            ? props.parentChangeOrderId
+            : undefined),
+      ) === scopeKey,
+  );
+  const submitting = list.map((fee: any) => ({
+    ...fee,
+    changeOrderId: fee.changeOrderId ?? (scopeKey || undefined),
+  }));
+  const remark = await promptSubmitRemarkIfNegativeProfit(
+    [...sameSideAll, ...oppositeFees],
+    submitting,
+  );
+  if (remark === null) {
+    return;
+  }
+
   let SubmitOrderFeeDto = {
     TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
+    remark: remark || undefined,
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
   console.log(SubmitOrderFeeDto);
@@ -933,12 +985,13 @@ const openModifyModal = () => {
 const handleModalConfirm = (data: {
   originalData: OrderFeeAdminApi.OrderFeeDto | null;
   updatedData: OrderFeeAdminApi.OrderFeeDto | null;
+  remark?: string;
 }) => {
   //console.log('模态框确认:', data);
   let list = [data.updatedData];
   // TODO: 这里可以添加保存逻辑，调用API更新费用
   let ModifyOrderFeeDto = {
-    remark: data.updatedData?.remark || '',
+    remark: data.remark || (data.updatedData as any)?.modifyRemark || '',
     TransportOrderId: editId.value,
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };

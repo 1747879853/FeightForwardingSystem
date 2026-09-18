@@ -24,6 +24,7 @@ import { getOrderFeeGroup } from '#/api/settlement-management/statement-admin';
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { formatAmount } from '#/views/settlement-management/receive-settlement/form-data';
+import { getFeeInvoiceStatusTagColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 import {
   type AddFeeDrawerProps,
@@ -789,12 +790,7 @@ function getInvoiceStatusLabel(invoiceStatus: number | undefined): string {
 }
 
 function getInvoiceStatusColor(invoiceStatus: number | undefined): string {
-  const colorMap: Record<number, string> = {
-    0: 'default', // 未开票 - 灰色
-    1: 'orange', // 部分开票 - 橙色
-    2: 'green', // 已开票 - 绿色
-  };
-  return colorMap[invoiceStatus ?? -1] ?? 'default';
+  return getFeeInvoiceStatusTagColor(invoiceStatus);
 }
 
 function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {

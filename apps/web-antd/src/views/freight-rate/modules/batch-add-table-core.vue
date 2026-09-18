@@ -192,23 +192,16 @@ watch(
     }
 
     .disabled-cell {
-      color: #999 !important;
+      color: hsl(var(--muted-foreground)) !important;
       cursor: not-allowed !important;
-      background-color: #f5f5f5 !important;
+      background-color: #f3f5f8 !important;
     }
 
     td input[type='checkbox'] {
-      width: 16px;
-      height: 16px;
+      width: 15px;
+      height: 15px;
+      accent-color: hsl(var(--primary));
       cursor: pointer;
-
-      &:hover {
-        accent-color: #1890ff;
-      }
-
-      &:checked {
-        accent-color: #1890ff;
-      }
     }
   }
 }

@@ -158,6 +158,9 @@ export namespace OrderFeeAdminApi {
     /** 数据录入方式 */
     dataEntryMethod: number;
 
+    /** 排序 id，越小越靠前，允许相同；不传按 0 */
+    sortId?: number;
+
     /** 备注 */
     remark?: string;
   }
@@ -296,6 +299,9 @@ export namespace OrderFeeAdminApi {
 
     /** 备注 */
     remark?: string;
+
+    /** 排序 id，越小越靠前；列表默认按 sortId、creationTime 升序 */
+    sortId?: number;
 
     /** 本位币id */
     localCurrencyId?: number;
@@ -597,6 +603,25 @@ export namespace OrderFeeAdminApi {
     /** 应付费用数量（PaySide=付，即 1） */
     payableCount: number;
   }
+
+  /** 批量改费用排序 */
+  export interface OrderFeeSortItemDto {
+    id: string;
+    sortId: number;
+  }
+
+  export interface OrderFeeSortDto {
+    orderFees?: OrderFeeSortItemDto[] | null;
+  }
+
+  /** 按录入时间恢复费用顺序 */
+  export interface RestoreOrderFeeSortDto {
+    transportOrderId: string;
+    /** 空 / 不传 = 只恢复主单费用 */
+    changeOrderId?: null | string;
+    /** 0 收 / 1 付 */
+    paySide: number;
+  }
 }
 
 /** 新增业务费用 */
@@ -709,5 +734,20 @@ export const getOrderFeeCount = (
   return requestClient.get<OrderFeeAdminApi.OrderFeeCountDto>(
     `${API_PREFIX}/GetOrderFeeCountAsync`,
     { params },
+  );
+};
+
+/** 按入参批量改费用 sortId（仅改排序，无业务校验） */
+export const sortOrderFees = (data: OrderFeeAdminApi.OrderFeeSortDto) => {
+  return requestClient.post<void>(`${API_PREFIX}/SortOrderFeesAsync`, data);
+};
+
+/** 按录入时间恢复费用顺序（sortId = 0,1,2…） */
+export const restoreOrderFeeSort = (
+  data: OrderFeeAdminApi.RestoreOrderFeeSortDto,
+) => {
+  return requestClient.post<void>(
+    `${API_PREFIX}/RestoreOrderFeeSortAsync`,
+    data,
   );
 };

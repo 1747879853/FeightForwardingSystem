@@ -46,6 +46,8 @@ export function useHotSettings(
   ) => void,
   getSortIcon?: (field: string) => string,
   onDoubleClickFeeStatus?: (row: any) => void, // ✅ 新增：双击费用状态的回调
+  getSortMode?: () => boolean,
+  onAfterRowMove?: () => void,
 ) {
   const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const getDataSource = () =>
@@ -91,6 +93,7 @@ export function useHotSettings(
     contextMenu: true,
     manualColumnResize: true,
     manualRowMove: false,
+    rowHeaderWidth: 32,
     // 列已带固定 width；空数据时 stretchH:'all' 会算错总宽，横滚时克隆表头错位/消失
     stretchH: 'none',
     // 显式列宽：空表无行时 Walkontable 仍能按列宽计算内容总宽
@@ -673,6 +676,19 @@ export function useHotSettings(
 
               return [row, prop, oldValue, newValue];
             }
+
+            // 行业类别允许清空：清空时同步去掉 _value，避免仍用旧枚举值联动/提交
+            if (
+              prop === 'industryCategory' &&
+              (newValue === null || newValue === undefined || newValue === '')
+            ) {
+              const actualDataSource = getDataSource();
+              if (actualDataSource[row]) {
+                (actualDataSource[row] as any)[prop] = '';
+                (actualDataSource[row] as any)[`${prop}_value`] = undefined;
+              }
+              return [row, prop, oldValue, ''];
+            }
           }
 
           return change;
@@ -682,6 +698,29 @@ export function useHotSettings(
       }
 
       linkage.handleAfterChange(processedChanges, source, null);
+    },
+
+    afterGetRowHeader(_row: number, TH: HTMLTableCellElement) {
+      if (!getSortMode?.()) {
+        return;
+      }
+      TH.classList.add('fee-sort-row-header');
+      TH.innerHTML =
+        '<span class="fee-sort-handle" title="按住拖动调整顺序">⋮⋮</span>';
+    },
+
+    afterRowMove(
+      _movedRows: number[],
+      _finalIndex: number,
+      _dropIndex: number | undefined,
+      movePossible: boolean,
+      orderChanged: boolean,
+    ) {
+      if (!getSortMode?.() || !movePossible || !orderChanged) {
+        return;
+      }
+      // ManualRowMove 只更新行索引映射，不改动源 data；sortId 在保存时按视觉序生成
+      onAfterRowMove?.();
     },
   });
 

@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { $t } from '#/locales';
-import { orderFeeDataT, clientDataT } from '../data';
+import { orderFeeDataT } from '../data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import { Tag, Timeline, TimelineItem, Table } from 'ant-design-vue';
 import dayjs from 'dayjs';
@@ -11,7 +11,7 @@ import { getTaskStatusOptions } from '../data';
 
 // 模态框
 const [Modal, modalApi] = useVbenModal({
-  class: 'w-[800px]',
+  class: 'w-[840px]',
   title: orderFeeDataT('auditHistory'),
   footer: false,
 });
@@ -254,6 +254,11 @@ const parseAndCompareFields = (
     'unRqstPaymentAmount', // 未申请金额
     'unSettledAmount', // 未结算金额
     'unInvoicedAmount', // 未开票金额
+    // 结算占用类：快照里常不一致，不参与「申请修改」字段对比
+    'finalSettlementTime',
+    'FinalSettlementTime',
+    'settlementOccupiedAmount',
+    'SettlementOccupiedAmount',
 
     'IsConfidential', // 是否机密
     'statementId',
@@ -261,14 +266,24 @@ const parseAndCompareFields = (
     'statement',
     'combinedFeeStatus',
 
+    // 嵌套主数据 / 对应 Id 由下方 LOGICAL_MASTERS 专门解析展示，勿进普通字段遍历
     'Settlement',
     'FeeCode',
-    'feeCodeId',
     'Currency',
+    'feeCode',
+    'currency',
+    'settlement',
+    'feeCodeName',
+    'currencyName',
+    'settlementName',
+    'feeCodeCode',
+    'currencyCode',
     'localCurrencyId',
     'localCurrency',
-    'currencyId',
     'SettlementId',
+    'settlementId',
+    'feeCodeId',
+    'currencyId',
 
     // 其他字段（包括各种大小写变体）
     'localCurrencyCode', // 本位币代码
@@ -291,7 +306,6 @@ const parseAndCompareFields = (
     'orgId', // 归属组织ID
     'orgs', // 组织串
 
-    'settlementId',
     'taskStatus',
     'ModificationCount',
     '_settlementName',
@@ -310,6 +324,12 @@ const parseAndCompareFields = (
     'unit_label_converted',
     'settlementId_label_converted',
   ];
+
+  const excludeFieldSet = new Set(
+    excludeFields.map((field) => field.toLowerCase()),
+  );
+  const isExcludedField = (fieldName: string) =>
+    excludeFieldSet.has(fieldName.toLowerCase());
 
   const changes: Array<{
     field: string;
@@ -407,59 +427,246 @@ const parseAndCompareFields = (
     return undefined;
   };
 
+  /** 嵌套主数据对象 → 可展示文案（兼容大小写） */
+  const pickNestedDisplay = (
+    value: any,
+    kind: 'currency' | 'feeCode' | 'settlement',
+  ): string => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    if (typeof value !== 'object') {
+      return String(value);
+    }
+    if (kind === 'feeCode') {
+      return String(
+        value.cnName ??
+          value.CnName ??
+          value.name ??
+          value.Name ??
+          value.code ??
+          value.Code ??
+          '-',
+      );
+    }
+    if (kind === 'currency') {
+      return String(
+        value.code ?? value.Code ?? value.name ?? value.Name ?? '-',
+      );
+    }
+    return String(
+      value.name ??
+        value.Name ??
+        value.shortName ??
+        value.ShortName ??
+        value.code ??
+        value.Code ??
+        '-',
+    );
+  };
+
+  /**
+   * 费用名 / 币别 / 结算对象：从嵌套对象、名称字段、Handsontable 标签列或 Id 解析展示文案。
+   * （申请修改快照常只有 Id；录入行常把 label 写进 *Id、真 Id 在 *_value）
+   */
+  const resolveMasterDisplay = (
+    data: any,
+    kind: 'currency' | 'feeCode' | 'settlement',
+  ): string => {
+    if (!data || typeof data !== 'object') {
+      return '-';
+    }
+
+    const nested = getFieldValue(data, kind);
+    if (nested && typeof nested === 'object') {
+      const fromNested = pickNestedDisplay(nested, kind);
+      if (fromNested !== '-') {
+        return fromNested;
+      }
+    }
+
+    if (kind === 'feeCode') {
+      const name =
+        getFieldValue(data, 'feeCodeName') ??
+        getFieldValue(data, 'feeCodeCode');
+      if (name != null && name !== '' && typeof name !== 'object') {
+        return String(name);
+      }
+    }
+    if (kind === 'currency') {
+      const name =
+        getFieldValue(data, 'currencyName') ??
+        getFieldValue(data, 'currencyCode');
+      if (name != null && name !== '' && typeof name !== 'object') {
+        return String(name);
+      }
+    }
+    if (kind === 'settlement') {
+      const name =
+        getFieldValue(data, 'settlementName') ??
+        data._settlementName ??
+        data.__settlementName;
+      if (name != null && name !== '' && typeof name !== 'object') {
+        return String(name);
+      }
+    }
+
+    const idKey =
+      kind === 'feeCode'
+        ? 'feeCodeId'
+        : kind === 'currency'
+          ? 'currencyId'
+          : 'settlementId';
+    const idValue = data[`${idKey}_value`];
+    const idRaw = getFieldValue(data, idKey);
+    const labelConverted = !!data[`${idKey}_label_converted`];
+
+    // Handsontable：*Id 已被改成展示名，真 Id 在 *_value
+    if (
+      (idValue != null || labelConverted) &&
+      idRaw != null &&
+      idRaw !== '' &&
+      typeof idRaw !== 'object'
+    ) {
+      return String(idRaw);
+    }
+
+    if (nested != null && typeof nested !== 'object') {
+      return String(nested);
+    }
+
+    if (idRaw != null && idRaw !== '' && typeof idRaw !== 'object') {
+      return String(idRaw);
+    }
+    if (idValue != null && idValue !== '') {
+      return String(idValue);
+    }
+
+    return '-';
+  };
+
+  /** 解析主数据 Id，用于判断是否真的改了（避免仅对象引用不同） */
+  const resolveMasterId = (
+    data: any,
+    kind: 'currency' | 'feeCode' | 'settlement',
+  ): string => {
+    if (!data || typeof data !== 'object') {
+      return '';
+    }
+    const idKey =
+      kind === 'feeCode'
+        ? 'feeCodeId'
+        : kind === 'currency'
+          ? 'currencyId'
+          : 'settlementId';
+    if (data[`${idKey}_value`] != null && data[`${idKey}_value`] !== '') {
+      return String(data[`${idKey}_value`]);
+    }
+    const nested = getFieldValue(data, kind);
+    if (nested && typeof nested === 'object' && nested.id != null) {
+      return String(nested.id);
+    }
+    if (data[`${idKey}_label_converted`]) {
+      return '';
+    }
+    const idRaw = getFieldValue(data, idKey);
+    if (idRaw != null && idRaw !== '' && typeof idRaw !== 'object') {
+      return String(idRaw);
+    }
+    return '';
+  };
+
+  /** 统一成可比对的展示值，再判断是否有变更（避免整对象 JSON 误判） */
+  const toComparableDisplay = (normalizedKey: string, value: any): string => {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+    if (typeof value === 'boolean') {
+      return value ? '是' : '否';
+    }
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  };
+
   // 合并所有需要检查的字段（包括修改前和修改后的所有字段）
   const allFields = new Set([
-    ...Object.keys(original).filter((key) => !excludeFields.includes(key)),
-    ...Object.keys(modified).filter((key) => !excludeFields.includes(key)),
+    ...Object.keys(original).filter((key) => !isExcludedField(key)),
+    ...Object.keys(modified).filter((key) => !isExcludedField(key)),
   ]);
 
   console.log('需要对比的所有字段:', Array.from(allFields));
 
-  // 遍历所有字段，找出变化的
-  allFields.forEach((key) => {
-    // 标准化字段名，确保中英文都能正确匹配
-    const normalizedKey = normalizeFieldName(key);
+  const seenNormalizedKeys = new Set<string>();
 
-    // 使用辅助函数获取值，尝试多种可能的字段名
-    let before = getFieldValue(original, normalizedKey);
-    let after = getFieldValue(modified, normalizedKey);
+  // 费用名 / 币别 / 结算对象：始终按 Id+展示名解析（不依赖快照是否带嵌套对象）
+  (
+    [
+      { key: 'feeCode', kind: 'feeCode', label: '费用代码' },
+      { key: 'currency', kind: 'currency', label: '币别' },
+      { key: 'settlement', kind: 'settlement', label: '结算对象' },
+    ] as const
+  ).forEach(({ key, kind, label }) => {
+    seenNormalizedKeys.add(key.toLowerCase());
+    const beforeId = resolveMasterId(original, kind);
+    const afterId = resolveMasterId(modified, kind);
+    let before = resolveMasterDisplay(original, kind);
+    let after = resolveMasterDisplay(modified, kind);
 
-    // 如果值不同，则记录变化
-    if (JSON.stringify(before) !== JSON.stringify(after)) {
-      before =
-        JSON.stringify(before) === 'true'
-          ? '是'
-          : JSON.stringify(before) === 'false'
-            ? '否'
-            : before;
-      after =
-        JSON.stringify(after) === 'true'
-          ? '是'
-          : JSON.stringify(after) === 'false'
-            ? '否'
-            : after;
-      before = before === null ? '-' : before;
-      after = after === null ? '-' : after;
-
-      if (normalizedKey === 'feeCode') {
-        before = before.CnName ?? before.cnName;
-        after = after.cnName;
-      }
-      if (normalizedKey === 'currency') {
-        before = before.Code ?? before.code;
-        after = after.code;
-      }
-      if (normalizedKey === 'settlement') {
-        before = before.Name || before.name;
-        after = after.name;
-      }
-      changes.push({
-        field: normalizedKey,
-        label: fieldLabels[normalizedKey] || normalizedKey, // 统一使用中文标签
-        before: before ?? '-',
-        after: after ?? '-',
-      });
+    // 快照只有 Id、没有嵌套名称时，用 Id 兜底展示，避免单元格空白
+    if (before === '-' && beforeId) {
+      before = beforeId;
     }
+    if (after === '-' && afterId) {
+      after = afterId;
+    }
+
+    const changed =
+      beforeId && afterId ? beforeId !== afterId : before !== after;
+
+    if (!changed) {
+      return;
+    }
+
+    changes.push({
+      field: key,
+      label: fieldLabels[key] || label,
+      before,
+      after,
+    });
+  });
+
+  // 遍历其余普通字段
+  allFields.forEach((key) => {
+    const normalizedKey = normalizeFieldName(key);
+    if (isExcludedField(normalizedKey)) {
+      return;
+    }
+    if (seenNormalizedKeys.has(normalizedKey.toLowerCase())) {
+      return;
+    }
+    seenNormalizedKeys.add(normalizedKey.toLowerCase());
+
+    const beforeRaw = getFieldValue(original, normalizedKey);
+    const afterRaw = getFieldValue(modified, normalizedKey);
+    const before = toComparableDisplay(normalizedKey, beforeRaw);
+    const after = toComparableDisplay(normalizedKey, afterRaw);
+
+    if (before === after) {
+      return;
+    }
+
+    changes.push({
+      field: normalizedKey,
+      label: fieldLabels[normalizedKey] || normalizedKey,
+      before,
+      after,
+    });
   });
 
   console.log('检测到的字段变化数量:', changes.length);
@@ -501,11 +708,11 @@ defineExpose({
 
 <template>
   <Modal>
-    <div class="audit-history-container">
-      <div v-if="auditTasks.length === 0" class="empty-state">
+    <div class="audit-history">
+      <div v-if="auditTasks.length === 0" class="audit-history__empty">
         {{ $t('common.noData') }}
       </div>
-      <Timeline v-else class="audit-timeline">
+      <Timeline v-else class="audit-history__timeline">
         <TimelineItem
           v-for="(task, index) in auditTasks"
           :key="index"
@@ -513,131 +720,109 @@ defineExpose({
         >
           <template #dot>
             <div
-              class="timeline-dot"
+              class="audit-history__dot"
               :class="{
-                'status-rejected': task.taskStatus === 1,
-                'status-approved': task.taskStatus === 2,
-                'status-pending': !task.auditTime,
+                'is-rejected': task.taskStatus === 1,
+                'is-approved': task.taskStatus === 2,
+                'is-pending': !task.auditTime,
               }"
             />
           </template>
-          <div class="audit-item">
-            <!-- 第一行：核心信息 -->
-            <div class="audit-header">
-              <!-- 操作人员 -->
-              <span
-                class="audit-user"
-                :title="`审核人: ${task.auditUserName || '-'}`"
-              >
-                <i class="i-carbon-user" />
-                审核人: {{ task.auditUserName || '-' }}
-              </span>
 
-              <!-- 审核时间 -->
-              <span
-                class="audit-time"
-                :title="`审核时间: ${task.auditTime ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
-              >
-                <i class="i-carbon-calendar" />
-                审核时间:
-                {{
-                  task.auditTime
-                    ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss')
-                    : '-'
-                }}
-              </span>
-
-              <!-- 任务类型标签 -->
-              <Tag
-                v-if="getTaskTypeTag(task.taskType)"
-                :color="getTaskTypeTag(task.taskType)?.color"
-                class="task-type-tag"
-              >
-                {{ getTaskTypeTag(task.taskType)?.text }}
-              </Tag>
-
-              <!-- 审核状态标签（通过/驳回） -->
-              <Tag
-                :color="
-                  task.taskStatus === 1
-                    ? 'error'
-                    : task.taskStatus === 2
-                      ? 'success'
-                      : 'default'
-                "
-                class="task-status-tag"
-              >
-                <i
-                  :class="
-                    task.taskStatus === 2
-                      ? 'i-carbon-checkmark'
-                      : task.taskStatus === 1
-                        ? 'i-carbon-close'
-                        : ''
+          <article class="audit-card">
+            <header class="audit-card__header">
+              <div class="audit-card__primary">
+                <span
+                  class="audit-card__auditor"
+                  :title="`审核人: ${task.auditUserName || '-'}`"
+                >
+                  <i class="i-carbon-user" />
+                  {{ task.auditUserName || '-' }}
+                </span>
+                <span
+                  class="audit-card__time"
+                  :title="`审核时间: ${task.auditTime ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
+                >
+                  <i class="i-carbon-calendar" />
+                  {{
+                    task.auditTime
+                      ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss')
+                      : '待审核'
+                  }}
+                </span>
+              </div>
+              <div class="audit-card__tags">
+                <Tag
+                  v-if="getTaskTypeTag(task.taskType)"
+                  :color="getTaskTypeTag(task.taskType)?.color"
+                  class="audit-card__tag"
+                >
+                  {{ getTaskTypeTag(task.taskType)?.text }}
+                </Tag>
+                <Tag
+                  :color="
+                    task.taskStatus === 1
+                      ? 'error'
+                      : task.taskStatus === 2
+                        ? 'success'
+                        : 'default'
                   "
-                />
-                {{ getTaskStatusText(task.taskStatus) }}
-              </Tag>
-            </div>
+                  class="audit-card__tag"
+                >
+                  {{ getTaskStatusText(task.taskStatus) }}
+                </Tag>
+              </div>
+            </header>
 
-            <!-- 第二行：创建时间和提交人信息 -->
-            <div class="audit-meta-info">
-              <!-- 创建时间 -->
+            <div class="audit-card__meta">
               <span
-                class="meta-item create-time"
+                class="audit-card__meta-item"
                 :title="`创建时间: ${task.creationTime ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
               >
                 <i class="i-carbon-time" />
-                创建时间:
+                创建
                 {{
                   task.creationTime
                     ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss')
                     : '-'
                 }}
               </span>
-
-              <!-- 提交人 -->
-              <span v-if="task.creatorUserName" class="meta-item submitter">
+              <span v-if="task.creatorUserName" class="audit-card__meta-item">
                 <i class="i-carbon-user-avatar" />
-                提交人: {{ task.creatorUserName }}
+                提交人 {{ task.creatorUserName }}
               </span>
             </div>
 
-            <!-- 第三行：审核意见 -->
-            <div v-if="task.remark" class="audit-remark">
-              <div class="remark-label">审核意见:</div>
-              <div class="remark-content">{{ task.remark }}</div>
+            <div v-if="task.remark" class="audit-card__remark">
+              <span class="audit-card__remark-label">审核意见</span>
+              <p class="audit-card__remark-text">{{ task.remark }}</p>
             </div>
 
-            <!-- 第四行：修改记录对比（费用修改类型显示） -->
-            <div
-              v-if="task.taskType === 1 && task.info"
-              class="modify-record-section"
-            >
-              <!-- 标题区域 -->
-              <div class="modify-record-header">
-                <div class="header-left">
-                  <i class="i-carbon-compare header-icon" />
-                  <span class="header-title">费用修改详情</span>
-                  <Tag v-if="!task.auditTime" color="warning" class="ml-2">
+            <section v-if="task.taskType === 1 && task.info" class="audit-diff">
+              <div class="audit-diff__header">
+                <div class="audit-diff__title">
+                  <i class="i-carbon-compare" />
+                  <span>费用修改详情</span>
+                  <Tag
+                    v-if="!task.auditTime"
+                    color="warning"
+                    class="audit-card__tag"
+                  >
                     待审核
                   </Tag>
                 </div>
-                <div class="header-badges">
-                  <span class="badge badge-before">
-                    <i class="i-carbon-arrow-left" />
-                    修改前
-                  </span>
-                  <i class="i-carbon-arrow-right arrow-icon" />
-                  <span class="badge badge-after">
-                    修改后
-                    <i class="i-carbon-arrow-right" />
-                  </span>
+                <div class="audit-diff__legend" aria-hidden="true">
+                  <span class="audit-diff__chip audit-diff__chip--before"
+                    >修改前</span
+                  >
+                  <span class="audit-diff__arrow">→</span>
+                  <span class="audit-diff__chip audit-diff__chip--after"
+                    >修改后</span
+                  >
                 </div>
               </div>
 
-              <!-- 对比表格 -->
-              <div class="table-wrapper">
+              <div class="audit-diff__body">
                 <Table
                   :columns="getModifyColumns()"
                   :data-source="
@@ -653,26 +838,27 @@ defineExpose({
                   :pagination="false"
                   size="middle"
                   bordered
-                  class="modify-record-table"
+                  class="audit-diff__table"
                 >
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'before'">
-                      <div class="cell-before">
-                        <i class="i-carbon-subtract cell-icon" />
-                        <span class="cell-value">{{ record.before }}</span>
+                      <div class="diff-cell diff-cell--before">
+                        {{ record.before }}
                       </div>
                     </template>
                     <template v-else-if="column.key === 'after'">
-                      <div class="cell-after">
-                        <i class="i-carbon-add cell-icon" />
-                        <span class="cell-value">{{ record.after }}</span>
+                      <div class="diff-cell diff-cell--after">
+                        {{ record.after }}
                       </div>
+                    </template>
+                    <template v-else-if="column.key === 'label'">
+                      <span class="diff-field">{{ record.label }}</span>
                     </template>
                   </template>
                 </Table>
               </div>
-            </div>
-          </div>
+            </section>
+          </article>
         </TimelineItem>
       </Timeline>
     </div>
@@ -680,351 +866,315 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
-// 动画效果
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
+.audit-history {
+  padding: 2px 2px 16px;
 }
 
-@keyframes slide-right {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  50% {
-    transform: translateX(3px);
-  }
-}
-
-.audit-history-container {
-  max-height: 600px;
-  padding: 16px 10px;
-  overflow-y: auto;
-}
-
-.empty-state {
-  padding: 40px 0;
-  color: #999;
+.audit-history__empty {
+  padding: 48px 16px;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
   text-align: center;
+  background: #fafbfd;
+  border: 1px dashed #e4e8ef;
+  border-radius: 10px;
 }
 
-.audit-timeline {
+.audit-history__timeline {
+  padding-top: 4px;
+
+  :deep(.ant-timeline-item) {
+    padding-bottom: 16px;
+  }
+
+  :deep(.ant-timeline-item-tail) {
+    border-inline-start: 2px solid #e8ecf3;
+  }
+
   :deep(.ant-timeline-item-content) {
-    padding-left: 32px;
+    top: -4px;
+    margin-inline-start: 22px;
   }
 }
 
-.timeline-dot {
-  width: 12px;
-  height: 12px;
-  background-color: currentcolor;
+.audit-history__dot {
+  width: 10px;
+  height: 10px;
+  background: #a8b0bf;
+  border: 2px solid #fff;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  box-shadow: 0 0 0 1px #d5dae3;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 
-  // 审核驳回 - 红色
-  &.status-rejected {
-    background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
-    box-shadow: 0 0 0 2px rgb(255 77 79 / 20%);
+  &.is-rejected {
+    background: #e57373;
+    box-shadow: 0 0 0 1px rgb(229 115 115 / 35%);
   }
 
-  // 审核通过 - 绿色
-  &.status-approved {
-    background: linear-gradient(135deg, #73d13d 0%, #52c41a 100%);
-    box-shadow: 0 0 0 2px rgb(82 196 26 / 20%);
+  &.is-approved {
+    background: #6bbf8a;
+    box-shadow: 0 0 0 1px rgb(107 191 138 / 35%);
   }
 
-  // 待审核 - 橙色
-  &.status-pending {
-    background: linear-gradient(135deg, #ffc53d 0%, #faad14 100%);
-    box-shadow: 0 0 0 2px rgb(250 173 20 / 20%);
-  }
-}
-
-.audit-item {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-
-  &:last-child {
-    border-bottom: none;
+  &.is-pending {
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 28%);
   }
 }
 
-.audit-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
+.audit-card {
+  padding: 14px 16px 16px;
+  background: #fff;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(16 42 83 / 4%);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 
-  .audit-user {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-    color: #262626;
-
-    i {
-      font-size: 16px;
-      color: #1890ff;
-    }
-  }
-
-  .audit-time {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    font-size: 13px;
-    color: #8c8c8c;
-
-    i {
-      font-size: 14px;
-      color: #595959;
-    }
-
-    &.audit-create-time {
-      color: #595959;
-
-      i {
-        color: #faad14;
-      }
-    }
-  }
-
-  .task-type-tag {
-    margin: 0;
-  }
-
-  .task-status-tag {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    margin: 0;
-
-    i {
-      font-size: 14px;
-    }
+  &:hover {
+    background: #fcfdff;
+    border-color: #dce3ee;
+    box-shadow: 0 4px 12px rgb(16 42 83 / 6%);
   }
 }
 
-.audit-meta-info {
+.audit-card__header {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-  padding: 6px 0;
-
-  .meta-item {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    font-size: 13px;
-    color: #595959;
-
-    i {
-      font-size: 14px;
-    }
-
-    &.create-time {
-      i {
-        color: #faad14;
-      }
-    }
-
-    &.submitter {
-      i {
-        color: #1890ff;
-      }
-    }
-  }
-}
-
-.audit-remark {
-  padding: 10px 12px;
-  margin-top: 4px;
-  background-color: #fafafa;
-  border-left: 3px solid #1890ff;
-  border-radius: 4px;
-
-  .remark-label {
-    margin-bottom: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #8c8c8c;
-  }
-
-  .remark-content {
-    font-size: 13px;
-    line-height: 1.6;
-    color: #595959;
-  }
-}
-
-.modify-record-section {
-  margin-top: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
-}
-
-.modify-record-header {
-  display: flex;
+  gap: 10px 14px;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
-  border-bottom: 2px solid #bae7ff;
+}
 
-  .header-left {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+.audit-card__primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  min-width: 0;
+}
 
-    .header-icon {
-      font-size: 18px;
-      color: #1890ff;
-      animation: pulse 2s ease-in-out infinite;
-    }
+.audit-card__auditor {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #252a31;
 
-    .header-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #262626;
-      letter-spacing: 0.5px;
-    }
-  }
-
-  .header-badges {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-
-    .badge {
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
-      padding: 4px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
-      transition: all 0.3s ease;
-
-      &:hover {
-        box-shadow: 0 3px 6px rgb(0 0 0 / 15%);
-        transform: translateY(-1px);
-      }
-
-      &.badge-before {
-        background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
-
-        i {
-          font-size: 12px;
-        }
-      }
-
-      &.badge-after {
-        background: linear-gradient(135deg, #73d13d 0%, #52c41a 100%);
-
-        i {
-          font-size: 12px;
-        }
-      }
-    }
-
-    .arrow-icon {
-      font-size: 16px;
-      color: #1890ff;
-      animation: slide-right 1.5s ease-in-out infinite;
-    }
+  i {
+    font-size: 15px;
+    color: hsl(var(--primary) / 75%);
   }
 }
 
-.table-wrapper {
-  width: 100%;
-  padding: 12px;
-  background-color: #fff;
+.audit-card__time {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12px;
+  color: #8c95a3;
+
+  i {
+    font-size: 13px;
+    color: #a8b0bf;
+  }
 }
 
-.modify-record-table {
+.audit-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.audit-card__tag {
+  margin: 0;
+  border-radius: 6px;
+}
+
+.audit-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: center;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #eef1f6;
+}
+
+.audit-card__meta-item {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12px;
+  color: #8c95a3;
+
+  i {
+    font-size: 13px;
+    color: #b0b8c5;
+  }
+}
+
+.audit-card__remark {
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: hsl(var(--primary) / 4.5%);
+  border: 1px solid hsl(var(--primary) / 10%);
+  border-radius: 8px;
+}
+
+.audit-card__remark-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8c95a3;
+  letter-spacing: 0.02em;
+}
+
+.audit-card__remark-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #3d4654;
+  overflow-wrap: anywhere;
+}
+
+.audit-diff {
+  margin-top: 12px;
+  overflow: hidden;
+  background: #fafbfd;
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+}
+
+.audit-diff__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 7%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  );
+  border-bottom: 1px solid hsl(var(--primary) / 12%);
+}
+
+.audit-diff__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #252a31;
+
+  i {
+    font-size: 15px;
+    color: hsl(var(--primary) / 80%);
+  }
+}
+
+.audit-diff__legend {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.audit-diff__chip {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+
+  &--before {
+    color: #9a5b5b;
+    background: #f8eeee;
+  }
+
+  &--after {
+    color: #4f7a5f;
+    background: #eef6f1;
+  }
+}
+
+.audit-diff__arrow {
+  font-size: 12px;
+  color: #a8b0bf;
+}
+
+.audit-diff__body {
+  padding: 10px;
+  background: #fff;
+}
+
+.audit-diff__table {
   :deep(.ant-table) {
     font-size: 13px;
     border-radius: 6px;
   }
 
+  :deep(.ant-table-container) {
+    border-color: #e8ecf3 !important;
+  }
+
   :deep(.ant-table-thead > tr > th) {
-    padding: 12px 8px;
-    font-weight: 700;
-    color: #262626;
-    background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
-    border-bottom: 2px solid #d9d9d9;
+    padding: 9px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5c6570;
+    background: #fafbfd !important;
+    border-bottom-color: #eef1f6 !important;
   }
 
   :deep(.ant-table-tbody > tr > td) {
-    padding: 10px 8px;
-    transition: all 0.3s ease;
+    padding: 8px 10px;
+    vertical-align: middle;
+    border-bottom-color: #eef1f6 !important;
+    transition: background-color 0.15s ease;
   }
 
   :deep(.ant-table-tbody > tr:hover > td) {
-    background-color: #f5f5f5;
+    background: hsl(var(--primary) / 4%) !important;
   }
 
-  .cell-before {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 4px 8px;
-    background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
-    border-left: 3px solid #ff4d4f;
-    border-radius: 4px;
+  :deep(.ant-table-tbody > tr:last-child > td) {
+    border-bottom: none !important;
+  }
+}
 
-    .cell-icon {
-      flex-shrink: 0;
-      font-size: 14px;
-      color: #ff4d4f;
-    }
+.diff-field {
+  font-size: 13px;
+  font-weight: 500;
+  color: #3d4654;
+}
 
-    .cell-value {
-      font-size: 13px;
-      font-weight: 500;
-      color: #cf1322;
-      word-break: break-all;
-    }
+.diff-cell {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+  border-radius: 6px;
+
+  &--before {
+    color: #8a5555;
+    background: #f7f0f0;
+    box-shadow: inset 2px 0 0 #d4a5a5;
   }
 
-  .cell-after {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 4px 8px;
-    background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-    border-left: 3px solid #52c41a;
-    border-radius: 4px;
-
-    .cell-icon {
-      flex-shrink: 0;
-      font-size: 14px;
-      color: #52c41a;
-    }
-
-    .cell-value {
-      font-size: 13px;
-      font-weight: 600;
-      color: #389e0d;
-      word-break: break-all;
-    }
+  &--after {
+    color: #457058;
+    background: #f0f6f2;
+    box-shadow: inset 2px 0 0 #8fbf9f;
   }
 }
 </style>
