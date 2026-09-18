@@ -700,6 +700,10 @@ export namespace SeaExportAdminApi {
     CodeIssueType = 9,
     /** 场站 */
     Yard = 10,
+    /** 销售 */
+    Sale = 19,
+    /** 操作 */
+    Operation = 20,
   }
 
   /** 分组统计单项 */
@@ -738,7 +742,11 @@ export namespace SeaExportAdminApi {
     /** 仅返回场站未填写记录（与 YardId 互斥） */
     YardIdEmpty?: boolean;
     SaleId?: number;
+    /** 仅返回销售未填写记录（与 SaleId 互斥） */
+    SaleIdEmpty?: boolean;
     OperationId?: number;
+    /** 仅返回操作未填写记录（与 OperationId 互斥） */
+    OperationIdEmpty?: boolean;
     BusinessId?: number;
     CustomerServiceId?: number;
     DocumentationId?: number;

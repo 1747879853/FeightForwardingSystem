@@ -222,6 +222,18 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
     paramKey: 'YardId',
     emptyParamKey: 'YardIdEmpty',
   },
+  {
+    value: 19,
+    label: '销售',
+    paramKey: 'SaleId',
+    emptyParamKey: 'SaleIdEmpty',
+  },
+  {
+    value: 20,
+    label: '操作',
+    paramKey: 'OperationId',
+    emptyParamKey: 'OperationIdEmpty',
+  },
 ];
 
 const getRangeValue = (
