@@ -532,19 +532,36 @@ export function useHotSettings(
       value: any,
       cellProperties: any,
     ) {
+      const rowData = getDataSource()[row];
+      const highlightIds = getHighlightIds();
+      const isWarningHighlight =
+        !!rowData?.id &&
+        highlightIds.size > 0 &&
+        highlightIds.has(String(rowData.id));
+
+      /** 预警高亮必须在任何 early-return 前同步，否则 *** 遮罩格会残留红底 */
+      const applyWarningHighlight = (bgFallback: null | string = null) => {
+        td.classList.toggle('ht-fee-warning-highlight', isWarningHighlight);
+        if (isWarningHighlight) {
+          td.style.setProperty('background-color', '#ffccc7', 'important');
+          return;
+        }
+        if (bgFallback) {
+          td.style.setProperty('background-color', bgFallback, 'important');
+        } else {
+          td.style.removeProperty('background-color');
+        }
+      };
+
       if (
-        fieldPermission.masked(
-          String(prop),
-          getDataSource()[row]?.id ? getDataSource()[row] : undefined,
-        )
+        fieldPermission.masked(String(prop), rowData?.id ? rowData : undefined)
       ) {
         td.textContent = '***';
         td.removeAttribute('title');
+        applyWarningHighlight(null);
         return;
       }
       // 费用状态着色 - 使用 setProperty 确保优先级
-      const actualDataSource = getDataSource();
-      const rowData = actualDataSource[row];
       if (rowData) {
         const feeStatus =
           (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
@@ -560,26 +577,7 @@ export function useHotSettings(
           }
         }
 
-        // 预警悬停高亮：压过状态底色，指示对应费用行
-        const highlightIds = getHighlightIds();
-        const isWarningHighlight =
-          highlightIds.size > 0 &&
-          !!rowData.id &&
-          highlightIds.has(String(rowData.id));
-        td.classList.toggle('ht-fee-warning-highlight', isWarningHighlight);
-        if (isWarningHighlight) {
-          backgroundColor = '#ffccc7';
-        }
-
-        if (backgroundColor) {
-          td.style.setProperty(
-            'background-color',
-            backgroundColor,
-            'important',
-          );
-        } else {
-          td.style.removeProperty('background-color');
-        }
+        applyWarningHighlight(backgroundColor);
 
         // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现（无 DOM 增删开销）
         const editedFields = (rowData as any)._editedFields as
@@ -595,6 +593,8 @@ export function useHotSettings(
         } else if (td.title === EDITED_CELL_TITLE) {
           td.title = '';
         }
+      } else {
+        applyWarningHighlight(null);
       }
     },
 

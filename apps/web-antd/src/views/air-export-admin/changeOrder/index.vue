@@ -623,9 +623,9 @@ onBeforeUnmount(unbindGlobalListeners);
 </script>
 
 <template>
-  <Page auto-content-height>
+  <Page auto-content-height content-class="!p-0">
     <Spin :spinning="pageLoading">
-      <div class="mx-2 flex flex-col gap-4">
+      <div class="flex flex-col gap-4 p-3">
         <!-- 顶部通铺：订单信息（默认关键字段，点击展开；字段值单行不换行） -->
         <section
           class="order-info-bar"

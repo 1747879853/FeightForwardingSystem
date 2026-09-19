@@ -1114,7 +1114,7 @@ onMounted(async () => {
     class="order-fee-page"
     auto-content-height
     :height-offset="58"
-    content-class="flex flex-col overflow-hidden"
+    content-class="!p-0 flex flex-col overflow-hidden"
   >
     <Spin
       :spinning="pageLoading || clientsLoading"
@@ -1122,7 +1122,7 @@ onMounted(async () => {
     >
       <div
         ref="mainSplitRef"
-        class="order-fee-main-split mx-2 flex h-full min-h-0 items-stretch"
+        class="order-fee-main-split flex h-full min-h-0 items-stretch p-3"
         :class="{ 'is-resizing': isInfoFeeDragging }"
       >
         <!-- 左侧订单信息：宽度可左右拖拽调整 -->

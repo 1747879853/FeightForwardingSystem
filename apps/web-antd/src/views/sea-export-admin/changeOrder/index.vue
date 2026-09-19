@@ -917,10 +917,10 @@ onBeforeUnmount(unbindGlobalListeners);
     class="change-order-page"
     auto-content-height
     :height-offset="58"
-    content-class="flex flex-col overflow-hidden"
+    content-class="!p-0 flex flex-col overflow-hidden"
   >
     <Spin :spinning="pageLoading" wrapper-class-name="change-order-spin">
-      <div class="mx-2 flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-3">
         <!-- 顶部通铺：订单信息（默认关键字段，点击展开；字段值单行不换行） -->
         <section
           class="order-info-bar"
