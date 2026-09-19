@@ -28,3 +28,86 @@ const ORDER_FEE_WARNING_MESSAGE_MAP: Record<number, string> = {
 export function getOrderFeeWarningMessage(type: number): string {
   return ORDER_FEE_WARNING_MESSAGE_MAP[type] ?? `费用预警(${type})`;
 }
+
+/** 可悬停高亮的明细（费用名 / 币别） */
+export interface OrderFeeWarningDetailChip {
+  key: string;
+  label: string;
+  orderFeeIds: string[];
+}
+
+/** 预警条展示模型（一组 type → 一条轮播） */
+export interface OrderFeeWarningDisplayItem {
+  key: string;
+  type: number;
+  paySide?: null | number;
+  /** 类型文案 */
+  message: string;
+  /** 按费用名/币别拆开的可悬停明细 */
+  details: OrderFeeWarningDetailChip[];
+  /** 本组全部费用 id（合并型或整组兜底高亮） */
+  orderFeeIds: string[];
+}
+
+function normalizeIds(ids?: null | string[]): string[] {
+  if (!Array.isArray(ids)) return [];
+  return ids.map((id) => String(id)).filter(Boolean);
+}
+
+function resolveDetailLabel(
+  item: OrderFeeAdminApi.OrderFeeWarningItemDto,
+): string {
+  const fee = item.feeCode;
+  if (fee) {
+    return String(fee.cnName || fee.code || fee.enName || '').trim();
+  }
+  const currency = item.currency;
+  if (currency) {
+    return String(
+      currency.code || currency.cnName || currency.enName || '',
+    ).trim();
+  }
+  return '';
+}
+
+/** 将接口分组转为 UI 展示项 */
+export function buildOrderFeeWarningDisplayItems(
+  groups: OrderFeeAdminApi.OrderFeeWarningGroupDto[] | null | undefined,
+): OrderFeeWarningDisplayItem[] {
+  if (!Array.isArray(groups) || groups.length === 0) return [];
+
+  return groups.map((group) => {
+    const items = Array.isArray(group.items) ? group.items : [];
+    const details: OrderFeeWarningDetailChip[] = [];
+    const allIds: string[] = [];
+
+    items.forEach((item, index) => {
+      const orderFeeIds = normalizeIds(item.orderFeeIds);
+      allIds.push(...orderFeeIds);
+      const label = resolveDetailLabel(item);
+      if (!label) return;
+      details.push({
+        key: `${group.type}-${index}-${label}`,
+        label,
+        orderFeeIds,
+      });
+    });
+
+    return {
+      key: String(group.type),
+      type: group.type,
+      paySide: group.paySide,
+      message: getOrderFeeWarningMessage(group.type),
+      details,
+      orderFeeIds: [...new Set(allIds)],
+    };
+  });
+}
+
+/** 纯文案（无交互场景兜底，如需要字符串列表时） */
+export function getOrderFeeWarningPlainText(
+  item: OrderFeeWarningDisplayItem,
+): string {
+  if (item.details.length === 0) return item.message;
+  return `${item.message}：${item.details.map((d) => d.label).join('、')}`;
+}

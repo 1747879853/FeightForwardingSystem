@@ -632,17 +632,19 @@ const getOrderFeeCountStats = async () => {
 const feeCountMap = ref<Record<number, number>>({ 0: 0, 1: 0 });
 
 // 费用预警：表格增删改后防抖重拉；按 paySide 分到费用录入 / 应收 / 应付标题旁
-const {
-  receivableMessages: receivableWarningMessages,
-  payableMessages: payableWarningMessages,
-  sharedMessages: sharedWarningMessages,
-  refreshWarnings,
-} = useOrderFeeWarnings({
-  transportOrderId: editId,
-  fetcher: props.adapter.api.getOrderFeeWarnings
-    ? (params) => props.adapter.api.getOrderFeeWarnings!(params)
-    : null,
-});
+const { receivableWarnings, payableWarnings, sharedWarnings, refreshWarnings } =
+  useOrderFeeWarnings({
+    transportOrderId: editId,
+    fetcher: props.adapter.api.getOrderFeeWarnings
+      ? (params) => props.adapter.api.getOrderFeeWarnings!(params)
+      : null,
+  });
+
+/** 悬停预警费用名时高亮对应费用行 */
+const highlightFeeIds = ref<string[]>([]);
+const handleWarningHighlight = (ids: string[]) => {
+  highlightFeeIds.value = ids ?? [];
+};
 
 // 费用表数据变化时，上抛最新应收/应付数量，并刷新预警
 const handleFeeSync = (data: { type: number; orderFees: any[] }) => {
@@ -1222,7 +1224,10 @@ onMounted(async () => {
               >
                 已选 {{ selectedFeeIds.length }} 条
               </span>
-              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
+              <OrderFeeWarningTicker
+                :warnings="sharedWarnings"
+                @highlight="handleWarningHighlight"
+              />
             </div>
             <Space class="fee-entry-panel__toolbar-actions">
               <Button
@@ -1286,6 +1291,7 @@ onMounted(async () => {
               :pay-amount-map="payAmountMap"
               :order-detail="formValues"
               :all-clients-by-industry="allClientsByIndustry"
+              :highlight-fee-ids="highlightFeeIds"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
               @change="handleFeeTableChange"
@@ -1293,7 +1299,10 @@ onMounted(async () => {
               @selection-change="handleSelectionChange"
             >
               <template #title-extra>
-                <OrderFeeWarningTicker :messages="receivableWarningMessages" />
+                <OrderFeeWarningTicker
+                  :warnings="receivableWarnings"
+                  @highlight="handleWarningHighlight"
+                />
               </template>
             </OrderFeeTable>
 
@@ -1318,6 +1327,7 @@ onMounted(async () => {
               :pay-amount-map="payAmountMap"
               :order-detail="formValues"
               :all-clients-by-industry="allClientsByIndustry"
+              :highlight-fee-ids="highlightFeeIds"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
               @change="handleFeeTableChange"
@@ -1325,7 +1335,10 @@ onMounted(async () => {
               @selection-change="handleSelectionChange"
             >
               <template #title-extra>
-                <OrderFeeWarningTicker :messages="payableWarningMessages" />
+                <OrderFeeWarningTicker
+                  :warnings="payableWarnings"
+                  @highlight="handleWarningHighlight"
+                />
               </template>
             </OrderFeeTable>
           </div>

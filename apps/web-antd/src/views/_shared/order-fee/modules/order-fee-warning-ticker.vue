@@ -4,27 +4,55 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { IconifyIcon } from '@vben/icons';
 import { Tooltip } from 'ant-design-vue';
 
+import type { OrderFeeWarningDisplayItem } from './utils/order-fee-warning-messages';
+import { getOrderFeeWarningPlainText } from './utils/order-fee-warning-messages';
+
 const props = withDefaults(
   defineProps<{
-    /** 预警文案列表；为空不渲染 */
+    /** 结构化预警列表（优先） */
+    warnings?: OrderFeeWarningDisplayItem[];
+    /** 纯文案列表（兼容旧用法；与 warnings 二选一） */
     messages?: string[];
     /** 单条停留毫秒 */
     intervalMs?: number;
   }>(),
   {
+    warnings: () => [],
     messages: () => [],
     intervalMs: 3200,
   },
 );
 
+const emit = defineEmits<{
+  /** 悬停费用名/币别时高亮对应费用行；离开传空数组 */
+  highlight: [orderFeeIds: string[]];
+}>();
+
 const index = ref(0);
 let timer: null | ReturnType<typeof setInterval> = null;
 
-const list = computed(() =>
+const structuredList = computed(() => props.warnings ?? []);
+
+const plainList = computed(() =>
   (props.messages ?? []).map((m) => String(m).trim()).filter(Boolean),
 );
 
-const current = computed(() => list.value[index.value] ?? '');
+const useStructured = computed(() => structuredList.value.length > 0);
+
+const listLength = computed(() =>
+  useStructured.value ? structuredList.value.length : plainList.value.length,
+);
+
+const currentStructured = computed(
+  () => structuredList.value[index.value] ?? null,
+);
+
+const currentPlain = computed(() => plainList.value[index.value] ?? '');
+
+const currentPlainFallback = computed(() => {
+  const item = currentStructured.value;
+  return item ? getOrderFeeWarningPlainText(item) : currentPlain.value;
+});
 
 function clearTimer() {
   if (timer) {
@@ -35,27 +63,54 @@ function clearTimer() {
 
 function startTimer() {
   clearTimer();
-  if (list.value.length <= 1) return;
+  if (listLength.value <= 1) return;
   timer = setInterval(() => {
-    index.value = (index.value + 1) % list.value.length;
+    index.value = (index.value + 1) % listLength.value;
   }, props.intervalMs);
 }
 
 watch(
-  list,
+  listLength,
   (next) => {
     index.value = 0;
-    if (next.length > 1) startTimer();
+    if (next > 1) startTimer();
     else clearTimer();
   },
   { immediate: true },
 );
 
-onBeforeUnmount(clearTimer);
+onBeforeUnmount(() => {
+  clearTimer();
+  emit('highlight', []);
+});
+
+function onWarningEnter(item: OrderFeeWarningDisplayItem | null) {
+  clearTimer();
+  if (!item?.orderFeeIds?.length) return;
+  emit('highlight', item.orderFeeIds);
+}
+
+function onWarningLeave() {
+  emit('highlight', []);
+  if (listLength.value > 1) startTimer();
+}
+
+function onChipEnter(ids: string[]) {
+  emit('highlight', ids ?? []);
+}
+
+/** 离开费用名时：若仍在该条预警内，恢复整组高亮 */
+function onChipLeave(item: OrderFeeWarningDisplayItem | null) {
+  if (item?.orderFeeIds?.length) {
+    emit('highlight', item.orderFeeIds);
+    return;
+  }
+  emit('highlight', []);
+}
 </script>
 
 <template>
-  <div v-if="list.length > 0" class="order-fee-warning-ticker">
+  <div v-if="listLength > 0" class="order-fee-warning-ticker">
     <Tooltip
       placement="bottomLeft"
       :mouse-enter-delay="0.08"
@@ -70,18 +125,54 @@ onBeforeUnmount(clearTimer);
             </span>
             <span class="order-fee-warning-panel__head-title">费用预警</span>
             <span class="order-fee-warning-panel__head-count"
-              >共 {{ list.length }} 条</span
+              >共 {{ listLength }} 条</span
             >
           </div>
           <ul class="order-fee-warning-panel__list">
-            <li
-              v-for="(msg, i) in list"
-              :key="`${i}-${msg}`"
-              class="order-fee-warning-panel__item"
-            >
-              <span class="order-fee-warning-panel__index">{{ i + 1 }}</span>
-              <span class="order-fee-warning-panel__text">{{ msg }}</span>
-            </li>
+            <template v-if="useStructured">
+              <li
+                v-for="(item, i) in structuredList"
+                :key="item.key"
+                class="order-fee-warning-panel__item"
+                :class="{
+                  'is-hoverable': item.orderFeeIds.length > 0,
+                }"
+                @mouseenter="onWarningEnter(item)"
+                @mouseleave="onWarningLeave"
+              >
+                <span class="order-fee-warning-panel__index">{{ i + 1 }}</span>
+                <div class="order-fee-warning-panel__body">
+                  <span class="order-fee-warning-panel__text">
+                    {{ item.message }}
+                  </span>
+                  <template v-if="item.details.length > 0">
+                    <span class="order-fee-warning-panel__sep">：</span>
+                    <span
+                      v-for="(chip, chipIndex) in item.details"
+                      :key="chip.key"
+                      class="order-fee-warning-chip"
+                      @mouseenter.stop="onChipEnter(chip.orderFeeIds)"
+                      @mouseleave.stop="onChipLeave(item)"
+                    >
+                      {{ chip.label
+                      }}<template v-if="chipIndex < item.details.length - 1"
+                        >、</template
+                      >
+                    </span>
+                  </template>
+                </div>
+              </li>
+            </template>
+            <template v-else>
+              <li
+                v-for="(msg, i) in plainList"
+                :key="`${i}-${msg}`"
+                class="order-fee-warning-panel__item"
+              >
+                <span class="order-fee-warning-panel__index">{{ i + 1 }}</span>
+                <span class="order-fee-warning-panel__text">{{ msg }}</span>
+              </li>
+            </template>
           </ul>
         </div>
       </template>
@@ -97,16 +188,47 @@ onBeforeUnmount(clearTimer);
     </Tooltip>
     <div class="order-fee-warning-ticker__viewport">
       <Transition name="order-fee-warning-fade" mode="out-in">
+        <div
+          v-if="useStructured && currentStructured"
+          :key="`s-${index}-${currentStructured.key}`"
+          class="order-fee-warning-ticker__line"
+          :class="{
+            'is-hoverable': currentStructured.orderFeeIds.length > 0,
+          }"
+          @mouseenter="onWarningEnter(currentStructured)"
+          @mouseleave="onWarningLeave"
+        >
+          <span class="order-fee-warning-ticker__text">
+            {{ currentStructured.message }}
+          </span>
+          <template v-if="currentStructured.details.length > 0">
+            <span class="order-fee-warning-ticker__sep">：</span>
+            <span
+              v-for="(chip, chipIndex) in currentStructured.details"
+              :key="chip.key"
+              class="order-fee-warning-chip"
+              @mouseenter.stop="onChipEnter(chip.orderFeeIds)"
+              @mouseleave.stop="onChipLeave(currentStructured)"
+            >
+              {{ chip.label
+              }}<template
+                v-if="chipIndex < currentStructured.details.length - 1"
+                >、</template
+              >
+            </span>
+          </template>
+        </div>
         <span
-          :key="`${index}-${current}`"
+          v-else
+          :key="`p-${index}-${currentPlainFallback}`"
           class="order-fee-warning-ticker__text"
         >
-          {{ current }}
+          {{ currentPlainFallback }}
         </span>
       </Transition>
     </div>
-    <span v-if="list.length > 1" class="order-fee-warning-ticker__count">
-      {{ index + 1 }}/{{ list.length }}
+    <span v-if="listLength > 1" class="order-fee-warning-ticker__count">
+      {{ index + 1 }}/{{ listLength }}
     </span>
   </div>
 </template>
@@ -117,7 +239,7 @@ onBeforeUnmount(clearTimer);
   gap: 6px;
   align-items: center;
   min-width: 0;
-  max-width: min(420px, 46vw);
+  max-width: min(480px, 52vw);
   height: 22px;
   padding: 0 8px;
   margin-left: 10px;
@@ -151,11 +273,27 @@ onBeforeUnmount(clearTimer);
   overflow: hidden;
 }
 
+.order-fee-warning-ticker__line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.order-fee-warning-ticker__line.is-hoverable {
+  cursor: help;
+}
+
 .order-fee-warning-ticker__text {
-  display: block;
+  flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.order-fee-warning-ticker__sep {
+  flex-shrink: 0;
 }
 
 .order-fee-warning-ticker__count {
@@ -191,7 +329,7 @@ onBeforeUnmount(clearTimer);
 
 .order-fee-warning-ticker-overlay .ant-tooltip-inner {
   min-width: 280px;
-  max-width: 400px;
+  max-width: 420px;
   padding: 0;
   color: #252a31;
   background: #fff;
@@ -263,12 +401,16 @@ onBeforeUnmount(clearTimer);
   border-radius: 6px;
 }
 
+.order-fee-warning-panel__item.is-hoverable {
+  cursor: help;
+}
+
 .order-fee-warning-panel__item + .order-fee-warning-panel__item {
   margin-top: 2px;
 }
 
 .order-fee-warning-panel__item:hover {
-  background: #fff7f6;
+  background: #fff1f0;
 }
 
 .order-fee-warning-panel__index {
@@ -287,7 +429,7 @@ onBeforeUnmount(clearTimer);
   border-radius: 4px;
 }
 
-.order-fee-warning-panel__text {
+.order-fee-warning-panel__body {
   flex: 1;
   min-width: 0;
   font-size: 12px;
@@ -296,5 +438,26 @@ onBeforeUnmount(clearTimer);
   word-break: normal;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.order-fee-warning-panel__text {
+  color: #475569;
+}
+
+.order-fee-warning-panel__sep {
+  color: #475569;
+}
+
+.order-fee-warning-chip {
+  font-weight: 600;
+  color: #cf1322;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: help;
+  transition: color 0.15s ease;
+}
+
+.order-fee-warning-chip:hover {
+  color: #a8071a;
 }
 </style>

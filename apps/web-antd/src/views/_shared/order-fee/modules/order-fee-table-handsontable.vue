@@ -61,6 +61,8 @@ const props = defineProps<{
   payAmountMap?: Record<string, any>;
   orderDetail?: any | null;
   allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
+  /** 预警悬停高亮的费用 id */
+  highlightFeeIds?: string[];
 }>();
 
 const isChangeOrderMode = computed(() => props.mode === 'changeOrder');
@@ -296,6 +298,7 @@ const { hotSettings: rawHotSettings } = useHotSettings(
   openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调
   () => feeSortMode.value,
   onAfterFeeRowMove,
+  () => props.highlightFeeIds ?? [],
 );
 
 // 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
@@ -1120,6 +1123,16 @@ watch(
 );
 
 watch(
+  () => props.highlightFeeIds,
+  () => {
+    nextTick(() => {
+      getHotInstance()?.render();
+    });
+  },
+  { deep: true },
+);
+
+watch(
   () => editId.value,
   async (newEditId, oldEditId) => {
     if (newEditId && newEditId !== oldEditId) {
@@ -1698,6 +1711,11 @@ watch(
 :deep(.ht__manualRowMove--guide) {
   background: hsl(var(--primary)) !important;
   opacity: 0.85;
+}
+
+/* 预警悬停：对应费用行底色变红 */
+:deep(.handsontable td.ht-fee-warning-highlight) {
+  background: #ffccc7 !important;
 }
 </style>
 

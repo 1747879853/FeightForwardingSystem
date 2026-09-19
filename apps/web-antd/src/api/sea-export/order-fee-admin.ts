@@ -645,8 +645,24 @@ export namespace OrderFeeAdminApi {
     TooManyCurrencies = 110,
   }
 
-  /** 费用预警单条 */
-  export interface OrderFeeWarningDto {
+  /**
+   * 费用预警明细（按费用名 / 币别拆开，或合并型一条）
+   * @see §7.2.1 OrderFeeWarningItemDto
+   */
+  export interface OrderFeeWarningItemDto {
+    /** 按 FeeCodeId 拆开的类型才有（1.1–1.4 / 3 / 4 / 7.1 / 7.2） */
+    feeCode?: FeeCodeSimpleDto | null;
+    /** 按 CurrencyId 拆开的类型才有（2.2）；只有 code / cnName / enName */
+    currency?: CurrencySimpleDto | null;
+    /** 本条明细对应的费用 id */
+    orderFeeIds?: string[] | null;
+  }
+
+  /**
+   * 费用预警分组（每种 type 最多一组）
+   * @see §7.2 OrderFeeWarningGroupDto
+   */
+  export interface OrderFeeWarningGroupDto {
     /** 预警类型，见 OrderFeeWarningType */
     type: number;
     /**
@@ -655,11 +671,14 @@ export namespace OrderFeeAdminApi {
      */
     paySide?: null | number;
     /**
-     * 触发本条的费用 id。
-     * 由本行全部费用汇总出的预警为 null（合计利润、币别数量）。
+     * 该类型下的明细。恒有值（可为空数组）。
+     * 整行汇总（2.1 / 11）为空数组；按费用名/币别拆开可多条；合并型一条。
      */
-    orderFeeIds?: null | string[];
+    items: OrderFeeWarningItemDto[];
   }
+
+  /** @deprecated 使用 OrderFeeWarningGroupDto；保留别名兼容旧引用 */
+  export type OrderFeeWarningDto = OrderFeeWarningGroupDto;
 
   /** 批量改费用排序 */
   export interface OrderFeeSortItemDto {
@@ -816,7 +835,7 @@ export const restoreOrderFeeSort = (
 export const getOrderFeeWarnings = (
   params: OrderFeeAdminApi.OrderFeeWarningQueryDto,
 ) => {
-  return requestClient.get<OrderFeeAdminApi.OrderFeeWarningDto[]>(
+  return requestClient.get<OrderFeeAdminApi.OrderFeeWarningGroupDto[]>(
     `${API_PREFIX}/GetOrderFeeWarningsAsync`,
     { params },
   );

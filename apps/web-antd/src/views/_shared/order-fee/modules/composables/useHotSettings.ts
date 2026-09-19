@@ -48,12 +48,18 @@ export function useHotSettings(
   onDoubleClickFeeStatus?: (row: any) => void, // ✅ 新增：双击费用状态的回调
   getSortMode?: () => boolean,
   onAfterRowMove?: () => void,
+  /** 预警悬停高亮的费用 id 列表 */
+  getHighlightFeeIds?: () => string[],
 ) {
   const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const getDataSource = () =>
     Array.isArray(dataSource) ? dataSource : dataSource.value;
   const getSelectedRowKeys = () =>
     Array.isArray(selectedRowKeys) ? selectedRowKeys : selectedRowKeys.value;
+  const getHighlightIds = () => {
+    const ids = getHighlightFeeIds?.() ?? [];
+    return new Set(ids.map((id) => String(id)));
+  };
 
   const hotSettings = shallowRef({
     data: getDataSource(),
@@ -122,6 +128,20 @@ export function useHotSettings(
           ))
       ) {
         cellProperties.readOnly = true;
+      }
+      // 预警悬停：对应费用行标红
+      const highlightIds = getHighlightIds();
+      if (
+        highlightIds.size > 0 &&
+        rowData?.id &&
+        highlightIds.has(String(rowData.id))
+      ) {
+        cellProperties.className = [
+          cellProperties.className,
+          'ht-fee-warning-highlight',
+        ]
+          .filter(Boolean)
+          .join(' ');
       }
       return cellProperties;
     },
@@ -529,20 +549,36 @@ export function useHotSettings(
         const feeStatus =
           (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
 
+        let backgroundColor: null | string = null;
         if (feeStatus !== undefined && feeStatus !== null) {
           const statusOptions = getFeeStatusOptions();
           const statusOption = statusOptions.find(
             (opt) => opt.value === feeStatus,
           );
-
           if (statusOption?.color) {
-            // ✅ 使用 setProperty 并添加 !important 确保样式不被覆盖
-            td.style.setProperty(
-              'background-color',
-              `${statusOption.color}30`,
-              'important',
-            );
+            backgroundColor = `${statusOption.color}30`;
           }
+        }
+
+        // 预警悬停高亮：压过状态底色，指示对应费用行
+        const highlightIds = getHighlightIds();
+        const isWarningHighlight =
+          highlightIds.size > 0 &&
+          !!rowData.id &&
+          highlightIds.has(String(rowData.id));
+        td.classList.toggle('ht-fee-warning-highlight', isWarningHighlight);
+        if (isWarningHighlight) {
+          backgroundColor = '#ffccc7';
+        }
+
+        if (backgroundColor) {
+          td.style.setProperty(
+            'background-color',
+            backgroundColor,
+            'important',
+          );
+        } else {
+          td.style.removeProperty('background-color');
         }
 
         // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现（无 DOM 增删开销）

@@ -6,15 +6,18 @@ import { useDebounceFn } from '@vueuse/core';
 
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
-import { getOrderFeeWarningMessage } from '../utils/order-fee-warning-messages';
+import {
+  buildOrderFeeWarningDisplayItems,
+  type OrderFeeWarningDisplayItem,
+} from '../utils/order-fee-warning-messages';
 
 export type OrderFeeWarningFetcher = (
   params: OrderFeeAdminApi.OrderFeeWarningQueryDto,
-) => Promise<OrderFeeAdminApi.OrderFeeWarningDto[]>;
+) => Promise<OrderFeeAdminApi.OrderFeeWarningGroupDto[]>;
 
 /**
  * 费用预警：按 transportOrderId（+ 可选 changeOrderId）拉取，
- * 再按 paySide 拆成应收 / 应付 / 不分收付三组文案。
+ * 再按 paySide 拆成应收 / 应付 / 不分收付三组展示项。
  */
 export function useOrderFeeWarnings(options: {
   transportOrderId: MaybeRefOrGetter<null | string | undefined>;
@@ -24,27 +27,50 @@ export function useOrderFeeWarnings(options: {
   /** 表格频繁 change 时合并请求 */
   debounceMs?: number;
 }) {
-  const warnings = ref<OrderFeeAdminApi.OrderFeeWarningDto[]>([]);
+  const warnings = ref<OrderFeeAdminApi.OrderFeeWarningGroupDto[]>([]);
   const loading = ref(false);
   let requestSeq = 0;
 
-  const receivableMessages = computed(() =>
-    warnings.value
-      .filter((w) => w.paySide === 0)
-      .map((w) => getOrderFeeWarningMessage(w.type)),
+  const displayItems = computed(() =>
+    buildOrderFeeWarningDisplayItems(warnings.value),
   );
 
-  const payableMessages = computed(() =>
-    warnings.value
-      .filter((w) => w.paySide === 1)
-      .map((w) => getOrderFeeWarningMessage(w.type)),
+  const receivableWarnings = computed(() =>
+    displayItems.value.filter((w) => w.paySide === 0),
+  );
+
+  const payableWarnings = computed(() =>
+    displayItems.value.filter((w) => w.paySide === 1),
   );
 
   /** paySide 为 null / undefined 的汇总类预警 */
+  const sharedWarnings = computed(() =>
+    displayItems.value.filter((w) => w.paySide !== 0 && w.paySide !== 1),
+  );
+
+  /** @deprecated 兼容旧字符串列表用法 */
+  const receivableMessages = computed(() =>
+    receivableWarnings.value.map((w) =>
+      w.details.length
+        ? `${w.message}：${w.details.map((d) => d.label).join('、')}`
+        : w.message,
+    ),
+  );
+
+  const payableMessages = computed(() =>
+    payableWarnings.value.map((w) =>
+      w.details.length
+        ? `${w.message}：${w.details.map((d) => d.label).join('、')}`
+        : w.message,
+    ),
+  );
+
   const sharedMessages = computed(() =>
-    warnings.value
-      .filter((w) => w.paySide !== 0 && w.paySide !== 1)
-      .map((w) => getOrderFeeWarningMessage(w.type)),
+    sharedWarnings.value.map((w) =>
+      w.details.length
+        ? `${w.message}：${w.details.map((d) => d.label).join('、')}`
+        : w.message,
+    ),
   );
 
   async function fetchWarnings() {
@@ -97,6 +123,10 @@ export function useOrderFeeWarnings(options: {
   return {
     warnings,
     loading,
+    displayItems,
+    receivableWarnings,
+    payableWarnings,
+    sharedWarnings,
     receivableMessages,
     payableMessages,
     sharedMessages,
@@ -104,3 +134,5 @@ export function useOrderFeeWarnings(options: {
     refreshWarnings,
   };
 }
+
+export type { OrderFeeWarningDisplayItem };

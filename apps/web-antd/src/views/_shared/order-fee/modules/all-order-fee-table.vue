@@ -35,6 +35,7 @@ import { orderFeeDataT, clientDataT } from '../data';
 import dayjs from 'dayjs';
 import { CircleHelp, IconifyIcon } from '@vben/icons';
 import OrderFeeWarningTicker from './order-fee-warning-ticker.vue';
+import type { OrderFeeWarningDisplayItem } from './utils/order-fee-warning-messages';
 
 import * as feeConstants from '../data';
 
@@ -50,9 +51,32 @@ const props = defineProps<{
   transportOrderId: string;
   entityId: string;
   changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
-  /** 费用预警文案（展示在应收/应付标题旁，效果同费用录入） */
+  /** 费用预警展示项（优先于 warningMessages） */
+  warningItems?: OrderFeeWarningDisplayItem[];
+  /** 费用预警文案（兼容旧用法） */
   warningMessages?: string[];
+  /** 预警悬停高亮的费用 id */
+  highlightFeeIds?: string[];
 }>();
+
+const emit = defineEmits<{
+  (e: 'updateTableData', data: any[]): void;
+  (e: 'updateSelectData', keys: any[]): void;
+  (e: 'highlight', orderFeeIds: string[]): void;
+}>();
+
+const highlightIdSet = computed(() => {
+  const ids = props.highlightFeeIds ?? [];
+  return new Set(ids.map((id) => String(id)));
+});
+
+function resolveRowWarningClass({ row }: { row: any }) {
+  const id = row?.id;
+  if (id && highlightIdSet.value.has(String(id))) {
+    return 'fee-warning-highlight-row';
+  }
+  return '';
+}
 
 // 币别符号映射表（从API获取）
 const currencySymbolMap = ref<Record<number, string>>({});
@@ -398,6 +422,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     rowConfig: {
       keyField: 'id',
     },
+    rowClassName: resolveRowWarningClass,
     pagerConfig: {
       enabled: false,
     },
@@ -478,8 +503,6 @@ const getTableDate = async (changeOrderId?: string | null) => {
   gridApi.query();
 };
 
-const emit = defineEmits(['updateTableData', 'updateSelectData']);
-
 // watch(
 //   () => dataSource.value,
 //   (val) => {
@@ -523,6 +546,17 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => props.highlightFeeIds,
+  async () => {
+    await nextTick();
+    // rowClassName 读 highlightIdSet；刷新行以重算 class
+    gridApi.grid?.refreshData?.();
+  },
+  { deep: true },
+);
+
 onMounted(() => {
   // 组件挂载时加载币别符号
   loadCurrencySymbols();
@@ -578,7 +612,11 @@ const showTaskReason = (row: any) => {
                 : orderFeeDataT('payableCharges')
             }}
           </span>
-          <OrderFeeWarningTicker :messages="warningMessages" />
+          <OrderFeeWarningTicker
+            :warnings="warningItems"
+            :messages="warningMessages"
+            @highlight="(ids) => emit('highlight', ids)"
+          />
         </div>
       </template>
       <template #toolbar-tools>
@@ -699,6 +737,14 @@ const showTaskReason = (row: any) => {
   .fee-title-dot {
     background-color: rgb(255 153 0);
   }
+}
+
+:deep(.fee-warning-highlight-row) {
+  background-color: #ffccc7 !important;
+}
+
+:deep(.fee-warning-highlight-row > td) {
+  background-color: #ffccc7 !important;
 }
 
 .green {

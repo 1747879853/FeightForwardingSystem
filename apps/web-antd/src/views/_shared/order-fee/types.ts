@@ -25,11 +25,24 @@ export interface OrderFeeCountResult {
   payableCount: number;
 }
 
-/** 费用预警单条（与 OrderFeeAdmin.GetOrderFeeWarningsAsync 对齐） */
+/** 费用预警分组（与 OrderFeeAdmin.GetOrderFeeWarningsAsync §7 对齐） */
 export interface OrderFeeWarningItem {
   type: number;
   paySide?: null | number;
-  orderFeeIds?: null | string[];
+  items: Array<{
+    feeCode?: {
+      id?: number;
+      code?: string | null;
+      cnName?: string | null;
+      enName?: string | null;
+    } | null;
+    currency?: {
+      code?: string | null;
+      cnName?: string | null;
+      enName?: string | null;
+    } | null;
+    orderFeeIds?: string[] | null;
+  }>;
 }
 
 /**

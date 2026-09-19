@@ -220,16 +220,17 @@ const resolvedEntityId = computed(() => {
 const standaloneTableType = ref<string>('horizontal');
 
 // 费用预警：与费用录入相同效果；按票（+更改单）拉取，分到明细头 / 应收 / 应付标题旁
-const {
-  receivableMessages: receivableWarningMessages,
-  payableMessages: payableWarningMessages,
-  sharedMessages: sharedWarningMessages,
-  refreshWarnings,
-} = useOrderFeeWarnings({
-  transportOrderId: resolvedTransportOrderId,
-  changeOrderId: () => props.changeOrderId,
-  fetcher: getOrderFeeWarnings,
-});
+const { receivableWarnings, payableWarnings, sharedWarnings, refreshWarnings } =
+  useOrderFeeWarnings({
+    transportOrderId: resolvedTransportOrderId,
+    changeOrderId: () => props.changeOrderId,
+    fetcher: getOrderFeeWarnings,
+  });
+
+const highlightFeeIds = ref<string[]>([]);
+const handleWarningHighlight = (ids: string[]) => {
+  highlightFeeIds.value = ids ?? [];
+};
 
 const SubmittedOther = async (e: { key: string }) => {
   showConfirmWithRemark(true, e.key);
@@ -755,7 +756,10 @@ onMounted(() => {
                 <Package class="size-3.5" />
                 {{ $t('seaExport.export.orderFee.feeDetail') }}
               </span>
-              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
+              <OrderFeeWarningTicker
+                :warnings="sharedWarnings"
+                @highlight="handleWarningHighlight"
+              />
               <div class="flex items-center">
                 <Space size="small">
                   <DropdownButton
@@ -812,11 +816,13 @@ onMounted(() => {
               <OrderFeeTable
                 @update-table-data="handleReceivableTableUpdate"
                 @update-select-data="handleReceivableTableSelect"
+                @highlight="handleWarningHighlight"
                 :transportOrderId="resolvedTransportOrderId"
                 :entityId="resolvedEntityId"
                 :changeOrderId="props.changeOrderId"
                 :type="0"
-                :warning-messages="receivableWarningMessages"
+                :warning-items="receivableWarnings"
+                :highlight-fee-ids="highlightFeeIds"
                 ref="childRecRef"
               />
             </div>
@@ -860,11 +866,13 @@ onMounted(() => {
               <OrderFeeTable
                 @update-table-data="handlePayableTableUpdate"
                 @update-select-data="handlePayableTableSelect"
+                @highlight="handleWarningHighlight"
                 :transportOrderId="resolvedTransportOrderId"
                 :entityId="resolvedEntityId"
                 :changeOrderId="props.changeOrderId"
                 :type="1"
-                :warning-messages="payableWarningMessages"
+                :warning-items="payableWarnings"
+                :highlight-fee-ids="highlightFeeIds"
                 ref="childPayRef"
               />
             </div>
