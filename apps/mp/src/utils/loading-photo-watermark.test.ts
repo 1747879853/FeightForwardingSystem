@@ -30,12 +30,19 @@ it('等待画布绘制结束后才导出，上传使用生成的水印文件', a
   });
   const instance = {};
   const { watermark } = useLoadingPhotoWatermark(instance);
-  const pending = watermark('/original.jpg', '李师傅');
+  const pending = watermark('/original.jpg', '李师傅', {
+    address: '山东省青岛市黄岛区测试路1号',
+    latitude: 31.2304,
+    longitude: 121.4737,
+  });
   await vi.waitFor(() => expect(drawn).toBeTypeOf('function'));
   expect(exportImage).not.toHaveBeenCalled();
   drawn!();
   expect(await pending).toBe('/watermarked.jpg');
   expect(fillText.mock.calls[0]?.[0]).toBe('上传人：李师傅');
+  expect(fillText.mock.calls[2]?.[0]).toBe(
+    '上传位置：山东省青岛市黄岛区测试路1号',
+  );
   expect(exportImage).toHaveBeenCalledWith(
     expect.objectContaining({
       destWidth: 1536,
@@ -49,6 +56,20 @@ it('等待画布绘制结束后才导出，上传使用生成的水印文件', a
 it('无法读取图片时失败，不回退上传无水印原图', async () => {
   vi.stubGlobal('uni', { getImageInfo: (options: any) => options.fail() });
   await expect(
-    useLoadingPhotoWatermark({}).watermark('/bad.jpg', '李师傅'),
+    useLoadingPhotoWatermark({}).watermark('/bad.jpg', '李师傅', {
+      address: '山东省青岛市黄岛区测试路1号',
+      latitude: 31.2304,
+      longitude: 121.4737,
+    }),
   ).rejects.toThrow('无法读取图片');
+});
+
+it('未解析出中文地址时禁止生成小程序水印', async () => {
+  await expect(
+    useLoadingPhotoWatermark({}).watermark('/photo.jpg', '师傅', {
+      latitude: 31,
+      longitude: 121,
+      address: ' ',
+    }),
+  ).rejects.toThrow('未获取当前位置地址');
 });

@@ -11,6 +11,7 @@ export async function watermarkLoadingPhoto(file: File, uploader: string) {
       image.naturalWidth,
       image.naturalHeight,
       uploader,
+      null,
     );
     const canvas = document.createElement('canvas');
     canvas.width = layout.width;
@@ -28,7 +29,7 @@ export async function watermarkLoadingPhoto(file: File, uploader: string) {
       layout.bandHeight,
     );
     ctx.fillStyle = '#fff';
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'middle';
     for (const [index, line] of layout.lines.entries()) {
       ctx.font = `${layout.fontSize}px sans-serif`;
       const available = layout.width - layout.padding * 2;
@@ -42,7 +43,8 @@ export async function watermarkLoadingPhoto(file: File, uploader: string) {
         layout.height -
           layout.bandHeight +
           layout.padding +
-          index * layout.fontSize * 1.5,
+          layout.fontSize / 2 +
+          index * layout.lineHeight,
       );
     }
     const blob = await new Promise<Blob>((resolve, reject) =>

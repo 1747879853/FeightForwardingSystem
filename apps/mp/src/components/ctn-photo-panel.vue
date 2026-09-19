@@ -12,11 +12,16 @@ import {
   type ImageSource,
 } from '@/api/upload';
 import { authState } from '@/stores/auth';
+import type { TaskPhotoLocation } from '@/utils/loading-task-location';
 import { useLoadingPhotoWatermark } from '@/utils/loading-photo-watermark';
 import { pickCtnNoFromUpload } from '@/utils/recognized-ctn-no';
 import { resolveUploadDisplayUrl } from '@/utils/upload-display-url';
 
 const props = defineProps<{
+  getUploadLocation: () => Promise<TaskPhotoLocation>;
+  locationPending: boolean;
+  locationError: string;
+  locationAddress: string;
   ctn: EditableCtn | null;
   editable: boolean;
   saving?: boolean;
@@ -27,6 +32,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'save'): void;
+  (event: 'retry-location'): void;
+  (event: 'open-location-settings'): void;
 }>();
 
 const { canvasWidth, canvasHeight, watermark } = useLoadingPhotoWatermark(
@@ -142,6 +149,15 @@ async function recognizeCtnNo() {
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
   if (!group || !props.editable || busy.value || props.saving) return;
+  if (props.locationPending || !props.locationAddress) {
+    uni.showToast({
+      icon: 'none',
+      title: props.locationPending
+        ? '正在获取位置，请稍后添加图片'
+        : '请先点击重新定位，获取地址后上传',
+    });
+    return;
+  }
   choosing.value = true;
   let paths: string[];
   let sourceType: ImageSource | null;
@@ -166,6 +182,18 @@ async function addPhotos(groupIndex: number) {
     return;
   }
   uploading.value = true;
+  uni.showLoading({ mask: true, title: '准备上传' });
+  let location: TaskPhotoLocation;
+  try {
+    location = await props.getUploadLocation();
+  } catch (error) {
+    uploading.value = false;
+    alertAfterLoading(
+      '位置获取失败，未上传图片',
+      error instanceof Error ? error.message : '请开启定位权限后重试',
+    );
+    return;
+  }
   let failed = 0;
   let failureReason = '';
   try {
@@ -176,11 +204,14 @@ async function addPhotos(groupIndex: number) {
       });
       let photo: EditablePhoto | undefined;
       try {
-        const watermarkedPath = await watermark(path, uploader);
+        const watermarkedPath = await watermark(path, uploader, location);
         const localPath = await persistLocalImage(watermarkedPath);
         photo = { attachmentId: '', localPath, url: localPath };
         group.items.push(photo);
         await nextTick();
+        if ((await props.getUploadLocation()) !== location) {
+          throw new Error('任务位置已更新，请重新添加图片');
+        }
         const result = await uploadImage(localPath);
         photo.attachmentId = result.attachmentId;
         photo.url = resolveUploadDisplayUrl(
@@ -328,9 +359,28 @@ function lockMaskScroll() {}
           未配置监装附件类型
         </text>
 
-        <text v-if="editable" class="group__empty"
-          >每类可传多张，相册一次最多选 9 张；自动添加上传人和时间水印。</text
-        >
+        <view v-if="editable" class="group__empty location-row">
+          <text>{{
+            locationPending
+              ? '定位中…'
+              : locationError || `位置：${locationAddress || '未获取'}`
+          }}</text>
+          <view
+            v-if="!locationPending && !locationAddress"
+            class="location-actions"
+          >
+            <button class="location-action" @tap="emit('retry-location')">
+              重新定位
+            </button>
+            <button
+              v-if="locationError"
+              class="location-action"
+              @tap="emit('open-location-settings')"
+            >
+              开启定位
+            </button>
+          </view>
+        </view>
         <view class="photo-grid">
           <view
             v-for="(group, gi) in groups"
@@ -700,5 +750,43 @@ function lockMaskScroll() {}
 
 .panel__btn.is-disabled {
   opacity: 0.6;
+}
+
+.location-row {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+  justify-content: space-between;
+
+  > text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.location-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 20rpx;
+}
+
+.location-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 64rpx;
+  padding: 0;
+  margin: 0;
+  font-size: 24rpx;
+  font-weight: 400;
+  line-height: 1.5;
+  color: $brand-primary;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+
+  &::after {
+    border: 0;
+  }
 }
 </style>

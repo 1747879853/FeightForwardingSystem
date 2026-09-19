@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { onLaunch } from '@dcloudio/uni-app';
+import { onHide, onLaunch } from '@dcloudio/uni-app';
 
 import { restoreSession } from './stores/auth';
+import { appBackgroundEpoch } from './stores/app-visibility';
+
+onHide(() => {
+  appBackgroundEpoch.value += 1;
+});
 
 onLaunch(() => {
   // 启动即尝试恢复会话：本地 token 优先，其次微信静默登录

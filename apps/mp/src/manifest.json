@@ -15,8 +15,12 @@
       "ignoreUploadUnusedFiles": false
     },
     "usingComponents": true,
-    "permission": {},
-    "requiredPrivateInfos": []
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于在监装照片水印中记录上传时的当前位置"
+      }
+    },
+    "requiredPrivateInfos": ["getLocation"]
   },
   "h5": {
     "router": {

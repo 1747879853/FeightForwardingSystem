@@ -1,3 +1,5 @@
+import type { LoadingPhotoLocation } from '../../../shared/loading-photo-location';
+
 import { nextTick, ref } from 'vue';
 
 import { loadingPhotoWatermark } from '../../../shared/loading-photo-watermark';
@@ -6,7 +8,13 @@ import { loadingPhotoWatermark } from '../../../shared/loading-photo-watermark';
 export function useLoadingPhotoWatermark(instance: any) {
   const canvasWidth = ref(1);
   const canvasHeight = ref(1);
-  async function watermark(filePath: string, uploader: string) {
+  async function watermark(
+    filePath: string,
+    uploader: string,
+    location: LoadingPhotoLocation & { address: string },
+  ) {
+    if (!location?.address?.trim())
+      throw new Error('未获取当前位置地址，请重新上传');
     const info = await new Promise<UniApp.GetImageInfoSuccessData>(
       (resolve, reject) => {
         uni.getImageInfo({
@@ -16,7 +24,12 @@ export function useLoadingPhotoWatermark(instance: any) {
         });
       },
     );
-    const layout = loadingPhotoWatermark(info.width, info.height, uploader);
+    const layout = loadingPhotoWatermark(
+      info.width,
+      info.height,
+      uploader,
+      location,
+    );
     canvasWidth.value = layout.width;
     canvasHeight.value = layout.height;
     await nextTick();
@@ -32,7 +45,7 @@ export function useLoadingPhotoWatermark(instance: any) {
       layout.bandHeight,
     );
     ctx.setFillStyle('#fff');
-    ctx.setTextBaseline('top');
+    ctx.setTextBaseline('middle');
     for (const [index, line] of layout.lines.entries()) {
       ctx.setFontSize(layout.fontSize);
       const available = layout.width - layout.padding * 2;
@@ -46,7 +59,8 @@ export function useLoadingPhotoWatermark(instance: any) {
         layout.height -
           layout.bandHeight +
           layout.padding +
-          index * layout.fontSize * 1.5,
+          layout.fontSize / 2 +
+          index * layout.lineHeight,
       );
     }
     await new Promise<void>((resolve, reject) => {

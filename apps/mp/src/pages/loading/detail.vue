@@ -6,8 +6,8 @@ import type {
 } from '@/api/loading-order';
 import type { EditableCtn } from '@/utils/ctn-model';
 
-import { onLoad, onShow } from '@dcloudio/uni-app';
-import { computed, ref } from 'vue';
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app';
+import { computed, ref, watch } from 'vue';
 
 import { getOrderCtnLoadingAttachmentTypes } from '@/api/attachment-dtl-type';
 import {
@@ -36,10 +36,20 @@ import {
   textOr,
   vesselVoyage,
 } from '@/utils/format';
+import { appBackgroundEpoch } from '@/stores/app-visibility';
+import { createLoadingTaskLocation } from '@/utils/loading-task-location';
 import { openYardNavigation } from '@/utils/yard-nav';
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight ?? 20);
 const orderId = ref('');
+const taskLocation = createLoadingTaskLocation();
+const {
+  location: photoLocation,
+  loading: locationLoading,
+  error: locationError,
+} = taskLocation;
+watch(appBackgroundEpoch, () => taskLocation.invalidate(), { flush: 'sync' });
+onUnload(() => taskLocation.invalidate());
 const detail = ref<LoadingOrderDetailDto | null>(null);
 const ctns = ref<EditableCtn[]>([]);
 const attachmentTypes = ref<AttachmentDtlTypeSimpleDto[]>([]);
@@ -335,6 +345,7 @@ onLoad((options) => {
 });
 
 onShow(() => {
+  if (orderId.value) taskLocation.onPageShow();
   actionsReady.value = false;
   setTimeout(() => {
     actionsReady.value = true;
@@ -365,6 +376,28 @@ onShow(() => {
     </view>
 
     <template v-else-if="detail">
+      <view class="location-status location-row">
+        <text>{{
+          locationLoading
+            ? '定位中…'
+            : locationError || `位置：${photoLocation?.address || '未获取'}`
+        }}</text>
+        <view
+          v-if="!locationLoading && !photoLocation"
+          class="location-actions"
+        >
+          <button class="location-action" @tap="taskLocation.refresh">
+            重新定位
+          </button>
+          <button
+            v-if="locationError"
+            class="location-action"
+            @tap="taskLocation.openLocationSettings"
+          >
+            开启定位
+          </button>
+        </view>
+      </view>
       <view class="card">
         <view class="card__head">
           <view class="card__bar" />
@@ -511,6 +544,12 @@ onShow(() => {
     />
 
     <CtnPhotoPanel
+      :get-upload-location="taskLocation.getForUpload"
+      :location-pending="locationLoading"
+      :location-error="locationError"
+      :location-address="photoLocation?.address || ''"
+      @retry-location="taskLocation.refresh"
+      @open-location-settings="taskLocation.openLocationSettings"
       :ctn="activeCtn"
       :editable="editable"
       :saving="submitting"
@@ -547,6 +586,15 @@ onShow(() => {
 </template>
 
 <style lang="scss" scoped>
+.location-status {
+  padding: 20rpx 24rpx;
+  margin-bottom: 20rpx;
+  font-size: 24rpx;
+  color: $text-label;
+  background: $card-bg;
+  border-radius: 16rpx;
+}
+
 .row__value.is-empty {
   color: #c2c8d2;
 }
@@ -954,5 +1002,43 @@ onShow(() => {
 .dialog__actions {
   display: flex;
   gap: 20rpx;
+}
+
+.location-row {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+  justify-content: space-between;
+
+  > text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.location-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 20rpx;
+}
+
+.location-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 64rpx;
+  padding: 0;
+  margin: 0;
+  font-size: 24rpx;
+  font-weight: 400;
+  line-height: 1.5;
+  color: $brand-primary;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+
+  &::after {
+    border: 0;
+  }
 }
 </style>
