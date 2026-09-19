@@ -274,21 +274,49 @@ const getFeesInVisualOrder = () => {
   return ordered.length > 0 ? ordered : [...list];
 };
 
+const onAfterFeeRowMove = () => {
+  feeSortDirty.value = true;
+};
+
+// Handsontable 设置
+const { hotSettings: rawHotSettings } = useHotSettings(
+  dataSource,
+  selectedRowKeys,
+  hotColumns,
+  sortableFieldsSet,
+  handleColumnSort,
+  linkage,
+  dropdownSources,
+  currentOptionsCache,
+  loadClientList,
+  getColumnIndex,
+  getSettlementIndustryCategory,
+  handleOpenDropdown,
+  getSortIcon, // ✅ 新增：传递排序图标函数
+  openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调
+  () => feeSortMode.value,
+  onAfterFeeRowMove,
+);
+
+// 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
+const hotSettings = shallowRef(rawHotSettings.value);
+
 const applyFeeSortModeSettings = (enabled: boolean) => {
-  const hot = getHotInstance();
-  if (!hot) return;
-  hot.updateSettings({
+  const next = {
     contextMenu: !enabled && !isTableReadonly.value,
     manualRowMove: enabled,
     readOnly: enabled || isTableReadonly.value,
     rowHeaderWidth: 32,
     rowHeaders: enabled,
-  });
+  };
+  // 必须同步进 hotSettings：表头区显隐会触发 ResizeObserver → dynHeight 变化，
+  // OrderFeeTableCore 的 mergedSettings 会用 hotSettings 再 updateSettings；
+  // 若不写回，会把刚打开的行头/ManualRowMove 盖回 false（⋮⋮ 闪一下消失）。
+  Object.assign(hotSettings.value, next);
+  const hot = getHotInstance();
+  if (!hot) return;
+  hot.updateSettings(next);
   hot.render();
-};
-
-const onAfterFeeRowMove = () => {
-  feeSortDirty.value = true;
 };
 
 const enterFeeSortMode = () => {
@@ -320,7 +348,8 @@ const cancelFeeSortMode = () => {
   if (feeSortDirty.value) {
     Modal.confirm({
       title: '取消排序',
-      content: '当前顺序尚未保存，取消后将恢复为进入排序前的列表顺序，是否继续？',
+      content:
+        '当前顺序尚未保存，取消后将恢复为进入排序前的列表顺序，是否继续？',
       okText: '放弃调整',
       cancelText: '继续调整',
       onOk: async () => {
@@ -409,29 +438,6 @@ const resetFeeSortOrder = () => {
     },
   });
 };
-
-// Handsontable 设置
-const { hotSettings: rawHotSettings } = useHotSettings(
-  dataSource,
-  selectedRowKeys,
-  hotColumns,
-  sortableFieldsSet,
-  handleColumnSort,
-  linkage,
-  dropdownSources,
-  currentOptionsCache,
-  loadClientList,
-  getColumnIndex,
-  getSettlementIndustryCategory,
-  handleOpenDropdown,
-  getSortIcon, // ✅ 新增：传递排序图标函数
-  openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调
-  () => feeSortMode.value,
-  onAfterFeeRowMove,
-);
-
-// 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
-const hotSettings = shallowRef(rawHotSettings.value);
 
 // ==================== 费用合计计算 ====================
 
@@ -1162,117 +1168,150 @@ watch(
                   }}
                 </span>
               </slot>
-            </div>
-            <Space class="toolbar-actions">
-              <template v-if="feeSortMode">
-                <span class="fee-sort-hint">按住左侧 ⋮⋮ 拖动调整顺序</span>
+              <!-- 费用排序：紧贴标题右侧，虚线次要样式，与右侧增删主操作区分 -->
+              <div class="fee-sort-actions">
+                <template v-if="feeSortMode">
+                  <span class="fee-sort-hint">按住左侧 ⋮⋮ 拖动调整顺序</span>
+                  <Button
+                    size="small"
+                    type="link"
+                    class="fee-sort-link-btn"
+                    :loading="feeSortSaving"
+                    :disabled="!feeSortDirty"
+                    @click="saveFeeSortOrder"
+                  >
+                    保存排序
+                  </Button>
+                  <Button
+                    size="small"
+                    type="link"
+                    class="fee-sort-link-btn"
+                    :loading="feeSortResetting"
+                    @click="resetFeeSortOrder"
+                  >
+                    重置排序
+                  </Button>
+                  <Button
+                    size="small"
+                    type="text"
+                    class="fee-sort-entry-btn"
+                    @click="cancelFeeSortMode"
+                  >
+                    取消
+                  </Button>
+                </template>
                 <Button
-                  type="primary"
-                  :loading="feeSortSaving"
-                  :disabled="!feeSortDirty"
-                  @click="saveFeeSortOrder"
-                >
-                  保存排序
-                </Button>
-                <Button
-                  :loading="feeSortResetting"
-                  @click="resetFeeSortOrder"
-                >
-                  重置排序
-                </Button>
-                <Button @click="cancelFeeSortMode">取消</Button>
-              </template>
-              <template v-else>
-                <Button
-                  type="primary"
-                  :disabled="isTableReadonly"
-                  @click="extendedActions.addRow"
-                  >{{ $t('common.create') }}</Button
-                >
-                <Button
-                  type="primary"
-                  @click="actions.saveRow"
-                  v-show="!isChangeOrderMode"
-                >
-                  {{ $t('common.save') }}
-                </Button>
-                <Button
+                  v-else
+                  size="small"
+                  type="text"
+                  class="fee-sort-entry-btn"
                   :disabled="isTableReadonly || !dataSource.length"
                   @click="enterFeeSortMode"
                 >
                   <IconifyIcon
                     icon="mdi:drag"
-                    class="mr-1 inline-block size-3.5 align-middle"
+                    class="mr-0.5 inline-block size-3.5 align-middle"
                   />
                   费用排序
                 </Button>
-                <Button
-                  :loading="printing"
-                  @click="
-                    handlePrint({
-                      feeType: type,
-                      transportOrderId: editId,
-                      orderDetail: orderBaseData,
-                      selectedFeeIds,
-                      isChangeOrderPrint: isChangeOrderMode,
-                      changeOrderId: isChangeOrderMode
-                        ? changeOrderId || parentChangeOrderId
-                        : undefined,
-                    })
-                  "
-                >
-                  <IconifyIcon
-                    icon="mdi:printer-outline"
-                    class="mr-1 inline-block size-3.5 align-middle"
-                  />
-                  打印
-                </Button>
-                <Button
-                  danger
-                  :disabled="isTableReadonly || !selectedRowKeys.length"
-                  @click="actions.removeSelectedRows"
-                >
-                  {{ $t('common.delete') }}
-                </Button>
+              </div>
+              <slot name="title-extra" />
+              <!-- 选中行按币别汇总：紧挨预警右侧，保持间距 -->
+              <div
+                v-if="feeSummary && feeSummary.length > 0"
+                class="fee-summary"
+              >
+                <div class="fee-summary-content">
+                  <span
+                    v-for="(item, index) in feeSummary"
+                    :key="index"
+                    class="summary-item"
+                  >
+                    {{ item.currency }}: {{ item.amount }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Space v-show="!feeSortMode" class="toolbar-actions">
+              <Button
+                type="primary"
+                :disabled="isTableReadonly"
+                @click="extendedActions.addRow"
+                >{{ $t('common.create') }}</Button
+              >
+              <Button
+                type="primary"
+                @click="actions.saveRow"
+                v-show="!isChangeOrderMode"
+              >
+                {{ $t('common.save') }}
+              </Button>
+              <Button
+                :loading="printing"
+                @click="
+                  handlePrint({
+                    feeType: type,
+                    transportOrderId: editId,
+                    orderDetail: orderBaseData,
+                    selectedFeeIds,
+                    isChangeOrderPrint: isChangeOrderMode,
+                    changeOrderId: isChangeOrderMode
+                      ? changeOrderId || parentChangeOrderId
+                      : undefined,
+                  })
+                "
+              >
+                <IconifyIcon
+                  icon="mdi:printer-outline"
+                  class="mr-1 inline-block size-3.5 align-middle"
+                />
+                打印
+              </Button>
+              <Button
+                danger
+                :disabled="isTableReadonly || !selectedRowKeys.length"
+                @click="actions.removeSelectedRows"
+              >
+                {{ $t('common.delete') }}
+              </Button>
 
-                <DropdownButton
-                  :disabled="isTableReadonly"
-                  @click="openBatchImportModal"
-                  type="primary"
-                >
-                  {{ orderFeeDataT('batchImport') }}
-                  <template #overlay>
-                    <Menu @click="ImportOther">
-                      <MenuItem key="submit">{{
-                        type === 0 ? '应收生成应付' : '应付生成应收'
-                      }}</MenuItem>
-                    </Menu>
-                  </template>
-                </DropdownButton>
+              <DropdownButton
+                :disabled="isTableReadonly"
+                @click="openBatchImportModal"
+                type="primary"
+              >
+                {{ orderFeeDataT('batchImport') }}
+                <template #overlay>
+                  <Menu @click="ImportOther">
+                    <MenuItem key="submit">{{
+                      type === 0 ? '应收生成应付' : '应付生成应收'
+                    }}</MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
 
-                <Button
-                  v-if="type === 1 && !isChangeOrderMode"
-                  type="primary"
-                  ghost
-                  @click="openAiBillFeeModal"
-                >
-                  <IconifyIcon
-                    icon="mdi:robot-outline"
-                    class="mr-1 inline-block size-3.5 align-middle"
-                  />
-                  <span class="align-middle">AI识别</span>
-                </Button>
+              <Button
+                v-if="type === 1 && !isChangeOrderMode"
+                type="primary"
+                ghost
+                @click="openAiBillFeeModal"
+              >
+                <IconifyIcon
+                  icon="mdi:robot-outline"
+                  class="mr-1 inline-block size-3.5 align-middle"
+                />
+                <span class="align-middle">AI识别</span>
+              </Button>
 
-                <Button
-                  v-show="type === 0 && !isChangeOrderMode"
-                  type="default"
-                  :loading="loadingFinishStatus"
-                  @click="toggleFinishStatus"
-                  class="finish-status-btn"
-                >
-                  {{ isFinished ? '设为未完结' : '设为已完结' }}
-                </Button>
-              </template>
+              <Button
+                v-show="type === 0 && !isChangeOrderMode"
+                type="default"
+                :loading="loadingFinishStatus"
+                @click="toggleFinishStatus"
+                class="finish-status-btn"
+              >
+                {{ isFinished ? '设为未完结' : '设为已完结' }}
+              </Button>
             </Space>
           </div>
 
@@ -1295,22 +1334,6 @@ watch(
             class="readonly-fee-mask"
             title="该更改单已锁定，费用仅可查看"
           ></div>
-
-          <!-- 费用合计显示 -->
-          <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
-            <div class="fee-summary-content">
-              <!-- <span class="summary-label">费用合计：</span> -->
-              <Space :size="16">
-                <span
-                  v-for="(item, index) in feeSummary"
-                  :key="index"
-                  class="summary-item"
-                >
-                  {{ item.currency }}: {{ item.amount }}
-                </span>
-              </Space>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1380,6 +1403,7 @@ watch(
   .table-header {
     display: flex;
     flex-shrink: 0;
+    gap: 8px;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
@@ -1388,11 +1412,15 @@ watch(
 
     .table-header__left {
       display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 4px;
       align-items: center;
       min-width: 0;
     }
 
     .table-title {
+      flex-shrink: 0;
       font-size: 14px;
       font-weight: 500;
       color: #252a31;
@@ -1400,6 +1428,7 @@ watch(
 
     .toolbar-actions {
       display: flex;
+      flex-shrink: 0;
       gap: 8px;
 
       // ✅ 完结状态按钮特殊样式
@@ -1518,45 +1547,21 @@ watch(
   }
 }
 
-// 费用合计样式
+// 费用合计：紧挨预警右侧，保持间距；高度随内容展开，不出现滚动条
 .fee-summary {
-  position: absolute;
-  top: 10px;
-  right: 120px;
-  left: 70px;
-  z-index: 10;
-  max-width: 600px;
-  padding: 8px 20px;
-  pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
-  // background: linear-gradient(
-  //   135deg,
-  //   rgb(255 255 255 / 98%) 0%,
-  //   rgb(245 248 255 / 95%) 100%
-  // );
-  //border: 1px solid rgb(24 144 255 / 20%);
-  border-radius: 8px;
-  // box-shadow:
-  //   0 4px 12px rgb(24 144 255 / 15%),
-  //   0 2px 4px rgb(0 0 0 / 8%),
-  //   inset 0 1px 0 rgb(255 255 255 / 80%);
-  // backdrop-filter: blur(8px);
-  // transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  // &:hover {
-  //   border-color: rgb(24 144 255 / 35%);
-  //   box-shadow:
-  //     0 6px 20px rgb(24 144 255 / 25%),
-  //     0 3px 8px rgb(0 0 0 / 12%),
-  //     inset 0 1px 0 rgb(255 255 255 / 90%);
-  //   transform: translateY(-2px);
-  // }
+  display: flex;
+  flex-shrink: 1;
+  align-items: center;
+  min-width: 0;
+  margin-left: 12px;
 
   .fee-summary-content {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
-    font-size: 14px;
-    pointer-events: auto; // ✅ 恢复内容区域的鼠标事件
+    font-size: 13px;
+    line-height: 22px;
 
     .summary-label {
       padding: 0;
@@ -1567,8 +1572,11 @@ watch(
     }
 
     .summary-item {
-      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
       font-weight: 600;
+      line-height: 20px;
       color: hsl(var(--primary));
       white-space: nowrap;
       background: linear-gradient(
@@ -1587,8 +1595,6 @@ watch(
           hsl(var(--primary) / 8%) 100%
         );
         border-color: hsl(var(--primary) / 30%);
-        box-shadow: 0 2px 8px hsl(var(--primary) / 20%);
-        transform: scale(1.05);
       }
     }
   }
@@ -1613,9 +1619,51 @@ watch(
   }
 }
 
+.fee-sort-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  align-items: center;
+  margin-left: 6px;
+}
+
 .fee-sort-hint {
+  margin-right: 2px;
   font-size: 12px;
+  line-height: 22px;
   color: #8c95a3;
+  white-space: nowrap;
+}
+
+.fee-sort-entry-btn {
+  height: 24px !important;
+  padding: 0 8px !important;
+  font-size: 12px;
+  line-height: 22px;
+  color: #64748b !important;
+  background: #f8fafc !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+
+  &:hover:not(:disabled) {
+    color: hsl(var(--primary)) !important;
+    background: hsl(var(--primary) / 8%) !important;
+    border-color: hsl(var(--primary) / 45%) !important;
+  }
+
+  &:disabled {
+    color: #94a3b8 !important;
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    opacity: 0.7;
+  }
+}
+
+.fee-sort-link-btn {
+  height: 24px !important;
+  padding: 0 6px !important;
+  font-size: 12px;
 }
 
 :deep(.fee-sort-row-header) {

@@ -44,6 +44,7 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import OrderFeeTable from './modules/order-fee-table-handsontable.vue';
+import OrderFeeWarningTicker from './modules/order-fee-warning-ticker.vue';
 import DisplayFieldsConfigModal, {
   type DisplayFieldConfig,
 } from './modules/display-fields-config-modal.vue';
@@ -51,6 +52,7 @@ import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
 // ✅ 新增：导入下拉框数据源管理
 import { useDropdownSources } from './modules/composables/useDropdownSources';
+import { useOrderFeeWarnings } from './modules/composables/useOrderFeeWarnings';
 import {
   DISPLAY_FIELD_GROUP_ICONS,
   DISPLAY_FIELD_GROUP_LABELS,
@@ -186,7 +188,82 @@ const resetSplit = () => {
   persistSplit();
 };
 
-onBeforeUnmount(stopSplitDrag);
+// ==================== 订单信息 / 费用录入 左右拖拽分割 ====================
+const INFO_FEE_SPLIT_KEY = 'order-fee-info-fee-split-width';
+const DEFAULT_INFO_PANEL_WIDTH = 300;
+const mainSplitRef = ref<HTMLElement | null>(null);
+const infoPanelWidth = ref(DEFAULT_INFO_PANEL_WIDTH);
+const isInfoFeeDragging = ref(false);
+let infoFeeDragMove: ((event: MouseEvent) => void) | null = null;
+let infoFeeDragUp: (() => void) | null = null;
+
+try {
+  const saved = Number(localStorage.getItem(INFO_FEE_SPLIT_KEY));
+  if (!Number.isNaN(saved) && saved > 0) {
+    infoPanelWidth.value = Math.max(200, Math.min(560, saved));
+  }
+} catch {
+  // 本地缓存不可用时回退默认宽度
+}
+
+const persistInfoFeeSplit = () => {
+  try {
+    localStorage.setItem(INFO_FEE_SPLIT_KEY, String(infoPanelWidth.value));
+  } catch {
+    // 忽略写入失败（如隐私模式）
+  }
+};
+
+const stopInfoFeeSplitDrag = () => {
+  const wasDragging = isInfoFeeDragging.value;
+  isInfoFeeDragging.value = false;
+  if (infoFeeDragMove) {
+    document.removeEventListener('mousemove', infoFeeDragMove);
+  }
+  if (infoFeeDragUp) {
+    document.removeEventListener('mouseup', infoFeeDragUp);
+  }
+  infoFeeDragMove = null;
+  infoFeeDragUp = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (wasDragging) persistInfoFeeSplit();
+};
+
+const startInfoFeeSplitDrag = (event: MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = mainSplitRef.value;
+  if (!container) return;
+
+  isInfoFeeDragging.value = true;
+  const startX = event.clientX;
+  const startWidth = infoPanelWidth.value;
+
+  infoFeeDragMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const containerWidth = container.getBoundingClientRect().width;
+    // 右侧费用区至少留约 45% 可视宽度，左侧不超过 560
+    const maxWidth = Math.min(560, Math.max(200, containerWidth * 0.55 - 12));
+    const next = startWidth + (moveEvent.clientX - startX);
+    infoPanelWidth.value = Math.max(200, Math.min(maxWidth, next));
+  };
+  infoFeeDragUp = stopInfoFeeSplitDrag;
+  document.addEventListener('mousemove', infoFeeDragMove);
+  document.addEventListener('mouseup', infoFeeDragUp);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+};
+
+const resetInfoFeeSplit = () => {
+  infoPanelWidth.value = DEFAULT_INFO_PANEL_WIDTH;
+  persistInfoFeeSplit();
+};
+
+onBeforeUnmount(() => {
+  stopSplitDrag();
+  stopInfoFeeSplitDrag();
+});
 
 const pageLoading = ref(false);
 const submitting = ref(false);
@@ -554,13 +631,32 @@ const getOrderFeeCountStats = async () => {
 // 各方向费用行数（0 应收 / 1 应付），用于同步父级 Tab 数字
 const feeCountMap = ref<Record<number, number>>({ 0: 0, 1: 0 });
 
-// 费用表数据变化时，上抛最新应收/应付数量
+// 费用预警：表格增删改后防抖重拉；按 paySide 分到费用录入 / 应收 / 应付标题旁
+const {
+  receivableMessages: receivableWarningMessages,
+  payableMessages: payableWarningMessages,
+  sharedMessages: sharedWarningMessages,
+  refreshWarnings,
+} = useOrderFeeWarnings({
+  transportOrderId: editId,
+  fetcher: props.adapter.api.getOrderFeeWarnings
+    ? (params) => props.adapter.api.getOrderFeeWarnings!(params)
+    : null,
+});
+
+// 费用表数据变化时，上抛最新应收/应付数量，并刷新预警
 const handleFeeSync = (data: { type: number; orderFees: any[] }) => {
   feeCountMap.value[data.type] = data.orderFees?.length ?? 0;
   emit('fee-count-change', {
     recCount: feeCountMap.value[0] ?? 0,
     payCount: feeCountMap.value[1] ?? 0,
   });
+  void refreshWarnings();
+};
+
+/** Handsontable dataSource 变化（含增删改后重载）时刷新预警 */
+const handleFeeTableChange = () => {
+  void refreshWarnings();
 };
 
 // 处理费用表格的金额更新事件
@@ -1022,9 +1118,16 @@ onMounted(async () => {
       :spinning="pageLoading || clientsLoading"
       wrapper-class-name="order-fee-spin"
     >
-      <div class="mx-2 flex h-full min-h-0 items-stretch gap-6">
-        <!-- 垂直方向撑满 -->
-        <Card class="form-info-card flex min-h-0 w-[300px] shrink-0 flex-col">
+      <div
+        ref="mainSplitRef"
+        class="order-fee-main-split mx-2 flex h-full min-h-0 items-stretch"
+        :class="{ 'is-resizing': isInfoFeeDragging }"
+      >
+        <!-- 左侧订单信息：宽度可左右拖拽调整 -->
+        <Card
+          class="form-info-card flex min-h-0 shrink-0 flex-col"
+          :style="{ width: `${infoPanelWidth}px` }"
+        >
           <template #title>
             <span class="form-info-card__title">
               <span class="form-info-card__title-main">
@@ -1093,6 +1196,17 @@ onMounted(async () => {
           </div>
         </Card>
 
+        <!-- 左右拖拽条：拖动调整订单信息与费用录入宽度，双击恢复默认 -->
+        <div
+          class="drag-handle drag-handle-horizontal"
+          :class="{ dragging: isInfoFeeDragging }"
+          title="拖动调整订单信息与费用录入宽度，双击恢复默认"
+          @mousedown="startInfoFeeSplitDrag"
+          @dblclick="resetInfoFeeSplit"
+        >
+          <div class="drag-line"></div>
+        </div>
+
         <!-- 右侧费用录入：统一面板背景与分区 -->
         <div class="fee-entry-panel">
           <header class="fee-entry-panel__toolbar">
@@ -1108,6 +1222,7 @@ onMounted(async () => {
               >
                 已选 {{ selectedFeeIds.length }} 条
               </span>
+              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
             </div>
             <Space class="fee-entry-panel__toolbar-actions">
               <Button
@@ -1173,9 +1288,14 @@ onMounted(async () => {
               :all-clients-by-industry="allClientsByIndustry"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
+              @change="handleFeeTableChange"
               @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
               @selection-change="handleSelectionChange"
-            />
+            >
+              <template #title-extra>
+                <OrderFeeWarningTicker :messages="receivableWarningMessages" />
+              </template>
+            </OrderFeeTable>
 
             <!-- 上下拖拽条：拖动调整应收/应付高度，双击恢复均分 -->
             <div
@@ -1200,9 +1320,14 @@ onMounted(async () => {
               :all-clients-by-industry="allClientsByIndustry"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
+              @change="handleFeeTableChange"
               @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
               @selection-change="handleSelectionChange"
-            />
+            >
+              <template #title-extra>
+                <OrderFeeWarningTicker :messages="payableWarningMessages" />
+              </template>
+            </OrderFeeTable>
           </div>
 
           <footer class="fee-entry-panel__footer total-amount">
@@ -1548,6 +1673,16 @@ onMounted(async () => {
   border-top: 1px solid #e8ecf3;
 }
 
+/* 订单信息 / 费用录入 左右拖拽 */
+.order-fee-main-split.is-resizing {
+  user-select: none;
+}
+
+.order-fee-main-split.is-resizing .form-info-card,
+.order-fee-main-split.is-resizing .fee-entry-panel {
+  pointer-events: none;
+}
+
 /* 应收/应付上下拖拽分割条 */
 .split-area.is-resizing {
   user-select: none;
@@ -1594,6 +1729,16 @@ onMounted(async () => {
 .drag-handle-vertical .drag-line {
   width: 48px;
   height: 4px;
+}
+
+.drag-handle-horizontal {
+  width: 12px;
+  cursor: col-resize;
+}
+
+.drag-handle-horizontal .drag-line {
+  width: 4px;
+  height: 48px;
 }
 
 .total-amount__item {

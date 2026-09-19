@@ -604,6 +604,63 @@ export namespace OrderFeeAdminApi {
     payableCount: number;
   }
 
+  /**
+   * 费用预警查询参数
+   * @see apps/web-antd/doc/业务费用/业务费用模块接口文档.md §7
+   */
+  export interface OrderFeeWarningQueryDto {
+    /** 业务 id */
+    transportOrderId: string;
+    /**
+     * 更改单 id。
+     * 空 / 不传 / 全 0 = 只匹配主单费用；有值只匹配该更改单下的费用。
+     */
+    changeOrderId?: string | null;
+  }
+
+  /**
+   * 费用预警类型（现场按规则计算，JSON 为数字）
+   * 1x 汇率/税率不一致 · 2x 利润 · 3 费用名利润 · 4 应付无对应应收 ·
+   * 5x 负数金额 · 6x 非本月汇率 · 7x 费用名重复 · 8 结算对象 ·
+   * 9 海运费非 USD · 10 禁开 · 11 币别过多
+   */
+  export enum OrderFeeWarningType {
+    ReceivableRateInconsistent = 11,
+    PayableRateInconsistent = 12,
+    ReceivableTaxInconsistent = 13,
+    PayableTaxInconsistent = 14,
+    TotalProfitNegative = 21,
+    CurrencyProfitNegative = 22,
+    FeeCodeProfitNegative = 30,
+    PayableFeeCodeMissingInReceivable = 40,
+    ReceivableNegativeAmount = 51,
+    PayableNegativeAmount = 52,
+    ReceivableExchangeRateMismatch = 61,
+    PayableExchangeRateMismatch = 62,
+    ReceivableFeeCodeDuplicated = 71,
+    PayableFeeCodeDuplicated = 72,
+    ReceivableSettlementMismatch = 80,
+    OceanFreightNotUsd = 90,
+    InvoiceBlocked = 100,
+    TooManyCurrencies = 110,
+  }
+
+  /** 费用预警单条 */
+  export interface OrderFeeWarningDto {
+    /** 预警类型，见 OrderFeeWarningType */
+    type: number;
+    /**
+     * 收付类型：0 收、1 付；不分收付为 null
+     * （合计利润、币别数量、海运费非 USD、禁开等）
+     */
+    paySide?: null | number;
+    /**
+     * 触发本条的费用 id。
+     * 由本行全部费用汇总出的预警为 null（合计利润、币别数量）。
+     */
+    orderFeeIds?: null | string[];
+  }
+
   /** 批量改费用排序 */
   export interface OrderFeeSortItemDto {
     id: string;
@@ -749,5 +806,18 @@ export const restoreOrderFeeSort = (
   return requestClient.post<void>(
     `${API_PREFIX}/RestoreOrderFeeSortAsync`,
     data,
+  );
+};
+
+/**
+ * 费用预警（按 transportOrderId + changeOrderId 现场计算）
+ * @see apps/web-antd/doc/业务费用/业务费用模块接口文档.md §7
+ */
+export const getOrderFeeWarnings = (
+  params: OrderFeeAdminApi.OrderFeeWarningQueryDto,
+) => {
+  return requestClient.get<OrderFeeAdminApi.OrderFeeWarningDto[]>(
+    `${API_PREFIX}/GetOrderFeeWarningsAsync`,
+    { params },
   );
 };

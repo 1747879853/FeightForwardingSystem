@@ -34,6 +34,7 @@ import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
 import dayjs from 'dayjs';
 import { CircleHelp, IconifyIcon } from '@vben/icons';
+import OrderFeeWarningTicker from './order-fee-warning-ticker.vue';
 
 import * as feeConstants from '../data';
 
@@ -49,6 +50,8 @@ const props = defineProps<{
   transportOrderId: string;
   entityId: string;
   changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
+  /** 费用预警文案（展示在应收/应付标题旁，效果同费用录入） */
+  warningMessages?: string[];
 }>();
 
 // 币别符号映射表（从API获取）
@@ -566,7 +569,7 @@ const showTaskReason = (row: any) => {
   >
     <Grid>
       <template #toolbar-actions>
-        <div class="fee-table-title flex items-center gap-2">
+        <div class="fee-table-title flex min-w-0 items-center gap-2">
           <span class="fee-title-dot"></span>
           <span class="fee-title-text">
             {{
@@ -575,6 +578,7 @@ const showTaskReason = (row: any) => {
                 : orderFeeDataT('payableCharges')
             }}
           </span>
+          <OrderFeeWarningTicker :messages="warningMessages" />
         </div>
       </template>
       <template #toolbar-tools>
@@ -662,12 +666,14 @@ const showTaskReason = (row: any) => {
   padding-left: 4px;
 
   .fee-title-dot {
+    flex-shrink: 0;
     width: 8px;
     height: 8px;
     border-radius: 50%;
   }
 
   .fee-title-text {
+    flex-shrink: 0;
     font-size: 14px;
     font-weight: 600;
     color: #1f2d3d;

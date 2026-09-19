@@ -28,6 +28,9 @@ import {
   getFeeStatusValueByLabel,
 } from '#/views/_shared/order-fee/data';
 import OrderFeeTable from '#/views/_shared/order-fee/modules/all-order-fee-table.vue';
+import OrderFeeWarningTicker from '#/views/_shared/order-fee/modules/order-fee-warning-ticker.vue';
+import { useOrderFeeWarnings } from '#/views/_shared/order-fee/modules/composables/useOrderFeeWarnings';
+import { getOrderFeeWarnings } from '#/api/sea-export/order-fee-admin';
 
 import { openAuditRemarkConfirm } from '../../composables/use-audit-remark-confirm';
 
@@ -215,6 +218,18 @@ const resolvedEntityId = computed(() => {
   return props.entityId ? String(props.entityId) : '';
 });
 const standaloneTableType = ref<string>('horizontal');
+
+// 费用预警：与费用录入相同效果；按票（+更改单）拉取，分到明细头 / 应收 / 应付标题旁
+const {
+  receivableMessages: receivableWarningMessages,
+  payableMessages: payableWarningMessages,
+  sharedMessages: sharedWarningMessages,
+  refreshWarnings,
+} = useOrderFeeWarnings({
+  transportOrderId: resolvedTransportOrderId,
+  changeOrderId: () => props.changeOrderId,
+  fetcher: getOrderFeeWarnings,
+});
 
 const SubmittedOther = async (e: { key: string }) => {
   showConfirmWithRemark(true, e.key);
@@ -488,6 +503,7 @@ const getTableDate = (changeOrderId?: string | null) => {
   if (childPayRef.value) {
     childPayRef.value.getTableDate(changeOrderId || null);
   }
+  void refreshWarnings();
 };
 const transCurrencySymbol = (currencyId: number) => {
   // 优先从API获取的映射表中查找
@@ -739,6 +755,7 @@ onMounted(() => {
                 <Package class="size-3.5" />
                 {{ $t('seaExport.export.orderFee.feeDetail') }}
               </span>
+              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
               <div class="flex items-center">
                 <Space size="small">
                   <DropdownButton
@@ -799,6 +816,7 @@ onMounted(() => {
                 :entityId="resolvedEntityId"
                 :changeOrderId="props.changeOrderId"
                 :type="0"
+                :warning-messages="receivableWarningMessages"
                 ref="childRecRef"
               />
             </div>
@@ -846,6 +864,7 @@ onMounted(() => {
                 :entityId="resolvedEntityId"
                 :changeOrderId="props.changeOrderId"
                 :type="1"
+                :warning-messages="payableWarningMessages"
                 ref="childPayRef"
               />
             </div>
