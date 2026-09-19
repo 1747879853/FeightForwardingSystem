@@ -124,9 +124,9 @@ onBeforeUnmount(clearTimer);
   overflow: hidden;
   font-size: 12px;
   line-height: 22px;
-  color: #b45309;
-  background: hsl(38deg 100% 96%);
-  border: 1px solid hsl(38deg 90% 82%);
+  color: #b91c1c;
+  background: #fff1f0;
+  border: 1px solid #ffccc7;
   border-radius: 4px;
 }
 
@@ -140,7 +140,7 @@ onBeforeUnmount(clearTimer);
 
 .order-fee-warning-ticker__icon {
   font-size: 14px;
-  color: #d97706;
+  color: #f5222d;
 }
 
 .order-fee-warning-ticker__viewport {
@@ -161,7 +161,7 @@ onBeforeUnmount(clearTimer);
 .order-fee-warning-ticker__count {
   flex-shrink: 0;
   font-size: 11px;
-  color: #a16207;
+  color: #cf1322;
   opacity: 0.85;
 }
 
@@ -210,8 +210,8 @@ onBeforeUnmount(clearTimer);
   gap: 8px;
   align-items: center;
   padding: 10px 14px;
-  background: linear-gradient(90deg, hsl(38deg 100% 96%) 0%, #fff 70%);
-  border-bottom: 1px solid #eef1f6;
+  background: linear-gradient(90deg, #fff1f0 0%, #fff 70%);
+  border-bottom: 1px solid #ffe1e0;
   border-radius: 10px 10px 0 0;
 }
 
@@ -222,8 +222,8 @@ onBeforeUnmount(clearTimer);
   width: 22px;
   height: 22px;
   font-size: 14px;
-  color: #d97706;
-  background: hsl(38deg 100% 94%);
+  color: #f5222d;
+  background: #fff1f0;
   border-radius: 6px;
 }
 
@@ -239,8 +239,8 @@ onBeforeUnmount(clearTimer);
   padding: 0 8px;
   font-size: 12px;
   line-height: 20px;
-  color: #a16207;
-  background: hsl(38deg 100% 95%);
+  color: #cf1322;
+  background: #fff1f0;
   border-radius: 999px;
 }
 
@@ -268,7 +268,7 @@ onBeforeUnmount(clearTimer);
 }
 
 .order-fee-warning-panel__item:hover {
-  background: #f8fafc;
+  background: #fff7f6;
 }
 
 .order-fee-warning-panel__index {
@@ -282,8 +282,8 @@ onBeforeUnmount(clearTimer);
   font-size: 11px;
   font-weight: 600;
   line-height: 18px;
-  color: #b45309;
-  background: hsl(38deg 100% 94%);
+  color: #cf1322;
+  background: #fff1f0;
   border-radius: 4px;
 }
 
