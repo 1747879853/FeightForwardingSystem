@@ -320,7 +320,8 @@ const cancelFeeSortMode = () => {
   if (feeSortDirty.value) {
     Modal.confirm({
       title: '取消排序',
-      content: '当前顺序尚未保存，取消后将恢复为进入排序前的列表顺序，是否继续？',
+      content:
+        '当前顺序尚未保存，取消后将恢复为进入排序前的列表顺序，是否继续？',
       okText: '放弃调整',
       cancelText: '继续调整',
       onOk: async () => {
@@ -1161,6 +1162,7 @@ watch(
                       : orderFeeDataT('payableCharges')
                   }}
                 </span>
+                <slot name="title-extra" />
               </slot>
             </div>
             <Space class="toolbar-actions">
@@ -1174,10 +1176,7 @@ watch(
                 >
                   保存排序
                 </Button>
-                <Button
-                  :loading="feeSortResetting"
-                  @click="resetFeeSortOrder"
-                >
+                <Button :loading="feeSortResetting" @click="resetFeeSortOrder">
                   重置排序
                 </Button>
                 <Button @click="cancelFeeSortMode">取消</Button>
@@ -1388,11 +1387,14 @@ watch(
 
     .table-header__left {
       display: flex;
+      flex: 1;
+      gap: 4px;
       align-items: center;
       min-width: 0;
     }
 
     .table-title {
+      flex-shrink: 0;
       font-size: 14px;
       font-weight: 500;
       color: #252a31;

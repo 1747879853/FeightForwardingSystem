@@ -25,6 +25,13 @@ export interface OrderFeeCountResult {
   payableCount: number;
 }
 
+/** 费用预警单条（与 OrderFeeAdmin.GetOrderFeeWarningsAsync 对齐） */
+export interface OrderFeeWarningItem {
+  type: number;
+  paySide?: null | number;
+  orderFeeIds?: null | string[];
+}
+
 /**
  * 订单费用录入模块适配器。
  *
@@ -59,6 +66,14 @@ export interface OrderFeeModuleAdapter {
     getOrderFeePagedList(params: any): Promise<OrderFeePagedResult>;
     /** 费用数量统计 */
     getOrderFeeCount(params: any): Promise<OrderFeeCountResult>;
+    /**
+     * 费用预警（可选：未实现的模块不展示预警条）
+     * @see apps/web-antd/doc/业务费用/业务费用模块接口文档.md §7
+     */
+    getOrderFeeWarnings?(params: {
+      transportOrderId: string;
+      changeOrderId?: null | string;
+    }): Promise<OrderFeeWarningItem[]>;
     /** 运输单费用 */
     getTransportOrderFees(params: any): Promise<any>;
     /** 批量导入费用到运输单 */

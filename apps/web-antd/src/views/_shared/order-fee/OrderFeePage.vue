@@ -44,6 +44,7 @@ import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import OrderFeeTable from './modules/order-fee-table-handsontable.vue';
+import OrderFeeWarningTicker from './modules/order-fee-warning-ticker.vue';
 import DisplayFieldsConfigModal, {
   type DisplayFieldConfig,
 } from './modules/display-fields-config-modal.vue';
@@ -51,6 +52,7 @@ import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
 // ✅ 新增：导入下拉框数据源管理
 import { useDropdownSources } from './modules/composables/useDropdownSources';
+import { useOrderFeeWarnings } from './modules/composables/useOrderFeeWarnings';
 import {
   DISPLAY_FIELD_GROUP_ICONS,
   DISPLAY_FIELD_GROUP_LABELS,
@@ -554,13 +556,32 @@ const getOrderFeeCountStats = async () => {
 // 各方向费用行数（0 应收 / 1 应付），用于同步父级 Tab 数字
 const feeCountMap = ref<Record<number, number>>({ 0: 0, 1: 0 });
 
-// 费用表数据变化时，上抛最新应收/应付数量
+// 费用预警：表格增删改后防抖重拉；按 paySide 分到费用录入 / 应收 / 应付标题旁
+const {
+  receivableMessages: receivableWarningMessages,
+  payableMessages: payableWarningMessages,
+  sharedMessages: sharedWarningMessages,
+  refreshWarnings,
+} = useOrderFeeWarnings({
+  transportOrderId: editId,
+  fetcher: props.adapter.api.getOrderFeeWarnings
+    ? (params) => props.adapter.api.getOrderFeeWarnings!(params)
+    : null,
+});
+
+// 费用表数据变化时，上抛最新应收/应付数量，并刷新预警
 const handleFeeSync = (data: { type: number; orderFees: any[] }) => {
   feeCountMap.value[data.type] = data.orderFees?.length ?? 0;
   emit('fee-count-change', {
     recCount: feeCountMap.value[0] ?? 0,
     payCount: feeCountMap.value[1] ?? 0,
   });
+  void refreshWarnings();
+};
+
+/** Handsontable dataSource 变化（含增删改后重载）时刷新预警 */
+const handleFeeTableChange = () => {
+  void refreshWarnings();
 };
 
 // 处理费用表格的金额更新事件
@@ -1099,6 +1120,7 @@ onMounted(async () => {
             <div class="fee-entry-panel__toolbar-left">
               <span class="fee-entry-panel__toolbar-mark"></span>
               <span class="fee-entry-panel__toolbar-title">费用录入</span>
+              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
               <span
                 class="fee-entry-panel__selection"
                 :class="{
@@ -1173,9 +1195,14 @@ onMounted(async () => {
               :all-clients-by-industry="allClientsByIndustry"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
+              @change="handleFeeTableChange"
               @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
               @selection-change="handleSelectionChange"
-            />
+            >
+              <template #title-extra>
+                <OrderFeeWarningTicker :messages="receivableWarningMessages" />
+              </template>
+            </OrderFeeTable>
 
             <!-- 上下拖拽条：拖动调整应收/应付高度，双击恢复均分 -->
             <div
@@ -1200,9 +1227,14 @@ onMounted(async () => {
               :all-clients-by-industry="allClientsByIndustry"
               @update-amount="handleAmountUpdate"
               @sync-fee="handleFeeSync"
+              @change="handleFeeTableChange"
               @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
               @selection-change="handleSelectionChange"
-            />
+            >
+              <template #title-extra>
+                <OrderFeeWarningTicker :messages="payableWarningMessages" />
+              </template>
+            </OrderFeeTable>
           </div>
 
           <footer class="fee-entry-panel__footer total-amount">
