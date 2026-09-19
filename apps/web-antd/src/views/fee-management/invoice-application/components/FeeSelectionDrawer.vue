@@ -1,4 +1,6 @@
 ﻿<script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import { computed, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
@@ -95,6 +97,13 @@ const feeGroupsData = ref<any[]>([]);
 
 // 选中的费用行 keys（支持父级和子级）
 const selectedFeeRowKeys = ref<string[]>([]);
+const selectionQuery = createDrawerSelectionQuery<any>(
+  (row) => row.id,
+  () => {
+    selectedFeeRowKeys.value = [];
+    feeGroupsData.value = [];
+  },
+);
 
 // NestedDataTable 展开的行 keys
 const expandedRowKeys = ref<string[]>([]);
@@ -343,6 +352,7 @@ function getSelectedFeesFromTable(): any[] {
 
 /** 重置筛选条件 */
 function handleResetFilter() {
+  selectionQuery.reset();
   selectedSettlementId.value = '';
   selectedSettlementName.value = '';
   selectedCurrencyId.value = undefined;
@@ -416,6 +426,8 @@ async function updateSettlementNameById(settlementId: string) {
 
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
+  selectionQuery.reset();
+  feeGroupsData.value = [];
   if (!props.settlementId) {
     selectedSettlementId.value = '';
     selectedSettlementName.value = '';
@@ -435,6 +447,7 @@ function handleOpenFeeDrawer() {
 
 /** 保存费用选择 */
 async function handleSaveFeeSelection() {
+  if (feeDrawerLoading.value) return;
   const selectedFees = getSelectedFeesFromTable();
 
   if (selectedFees.length === 0) {
@@ -477,6 +490,7 @@ async function handleSaveFeeSelection() {
 
 /** 加载费用分组数据 */
 async function loadFeeGroupData() {
+  let request: number | undefined;
   feeDrawerLoading.value = true;
   try {
     const params: any = {
@@ -541,7 +555,9 @@ async function loadFeeGroupData() {
       params.orderFeeIds = props.orderFeeIds;
     }
 
+    request = selectionQuery.begin(params);
     const result = await InvoiceApplicationApi.getOrderFeeGroupAsync(params);
+    if (!selectionQuery.isCurrent(request)) return;
 
     const treeData = transformToTreeData(result.items || []);
     feeGroupsData.value = treeData;
@@ -564,7 +580,8 @@ async function loadFeeGroupData() {
     console.error('❌ 加载费用数据失败:', error);
     message.error('加载费用数据失败');
   } finally {
-    feeDrawerLoading.value = false;
+    if (request === undefined || selectionQuery.isCurrent(request))
+      feeDrawerLoading.value = false;
   }
 }
 
@@ -1167,7 +1184,12 @@ defineExpose({
         <!-- 右侧：操作按钮 -->
         <Space>
           <Button @click="drawerVisible = false">取消</Button>
-          <Button type="primary" @click="handleSaveFeeSelection">确定</Button>
+          <Button
+            type="primary"
+            :disabled="feeDrawerLoading"
+            @click="handleSaveFeeSelection"
+            >确定</Button
+          >
         </Space>
       </div>
     </template>

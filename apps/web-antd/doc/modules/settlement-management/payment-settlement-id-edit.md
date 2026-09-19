@@ -2,7 +2,7 @@
 title: 付费结算编辑
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-19
 ---
 
 > [!TIP] 模块实现总览：[付费结算](./payment-settlement.md)。
@@ -12,6 +12,8 @@ last_updated: 2026-09-09
 **白话解释：** 付费结算是把已审核通过的「付费申请」按结算币别折算后合并成一张对外付款单。页面维护结算时间、付款方式、结算对象、结算币别、双方银行与手续费；结算粒度是「付费申请 + 原币币别」一行，详情与选择列表结构一致。结算对象与币别一经确定即随第一张付费申请锁定。
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **抽屉选择规则：** 筛选条件变化时清空旧选择及输入金额；分页抽屉在同一筛选范围内缓存已访问页，跨页选择、合计与确认共用缓存。当前页取消全选不影响其他页。重新打开或重置会使旧请求失效，加载期间禁止确认。
 
 - **新建结算：** `/settlement-management/payment-settlement/add`，抽屉调 `GetPagedListByCurrencyForSettlementAsync`（有结算币别时传 `settlementCurrencyId`）；确认后走 `AddByCurrencyAsync`。
 - **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailByCurrencyAsync` 回填主信息与 `paymentApplicationCurrencies[]`；追加 `AddItemsByCurrencyAsync`，删除 `DeleteItemsByCurrencyAsync`。
@@ -57,3 +59,5 @@ last_updated: 2026-09-09
 | 2026-09-08 | `Fix` | 「选择付费申请」最晚付款时间按自然日闭区间；提交时间仍带时分。 | 提交时间控件有 `showTime`。 |
 | 2026-08-09 | `Refactor` | 费用明细「费用名称」「币别」改读嵌套对象。 | `OrderFeeDto` / `OrderFeeForSelectionDto` 对象化。 |
 | 2026-07-25 | `Refactor` | 结算对象改读对象化后的 `settlement`。 | 删除 `settlementName` 标量字段。 |
+
+| 2026-09-19 | `Fix` | #0916 延伸：统一抽屉筛选清理与选择状态 | 共享查询范围及请求序号；分页选择使用完整缓存 |

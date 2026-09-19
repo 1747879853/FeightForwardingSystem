@@ -2,7 +2,7 @@
 title: 对账单新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-09-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-08-19
 | 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **抽屉选择规则：** 筛选条件变化时清空旧选择及输入金额；分页抽屉在同一筛选范围内缓存已访问页，跨页选择、合计与确认共用缓存。当前页取消全选不影响其他页。重新打开或重置会使旧请求失效，加载期间禁止确认。
 
 - **选择费用：** 按对账对象和期间选择可纳入对账的费用。
 - **生成对账：** 保存对账单主信息与明细。
@@ -48,3 +50,5 @@ last_updated: 2026-08-19
 | 2026-08-19 | `Fix` | 删除已废弃的空文件 `attachment-upload.vue`，附件上传仍用 `FileUploadInput`。 | `views/**/*.vue` 会被路由 glob 扫进构建，空 SFC 会导致 Vite 失败。 |
 | 2026-08-09 | `Refactor` | 新增对账时的费用选择弹窗与币别汇总改读费用嵌套对象。 | 与编辑页共用 `editor.vue`；`add-fee-statement-modal` 的 `collectCurrencies`、行映射与内层列渲染改走 `fee.feeCode?.cnName` / `fee.currency?.cnName ?? code` / `fee.settlement?.name`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/statement/add` 对应组件 `src/views/fee-management/statement/editor.vue`，权限口径为 Admin.Statement / Admin.Statement.Get。 |
+
+| 2026-09-19 | `Fix` | #0916 延伸：统一抽屉筛选清理与选择状态 | 共享查询范围及请求序号；分页选择使用完整缓存 |

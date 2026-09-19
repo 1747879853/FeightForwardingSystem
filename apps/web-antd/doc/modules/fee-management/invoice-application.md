@@ -2,7 +2,7 @@
 title: 开票申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-18
+last_updated: 2026-09-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -10,6 +10,8 @@ last_updated: 2026-09-18
 **白话解释：** 开票申请列表是应收开票的检索入口：按申请单号、发票号、结算对象、申请时间等查出申请，新建或双击进编辑，录入/驳回可提交，待审核可撤销。
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **抽屉选择规则：** 选择费用的查询条件变化或重新打开时清空旧选择，旧请求不能覆盖最新结果，加载期间禁止确认。
 
 - **检索：** 编号（主提单号/委托编号）、精确 Keys、申请单号、发票号、状态、结算对象、币别、申请时间、创建人。
 - **结算状态：** 列表按关联费用聚合展示未结算 / 部分结算 / 结算完毕（文案颜色与客户对账一致）；无费用视为未结算。详情不返回该字段。
@@ -50,3 +52,5 @@ last_updated: 2026-09-18
 | 2026-09-09 | `Fix` | 编辑页提交成功后关闭编辑并打开该单查看页；失败留在编辑页。 | `navigateToViewAfterSubmit`：`markListShouldRefresh` + `replace` view + `closeTabByKey`。详见 `changelogs/change-log-2026-09-09-invoice-application-submit-to-view.md`。 |
 | 2026-09-09 | `Fix` | 发票附件「下载」保存名为 `friendlyFileName`（blob，跨域可用）。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 申请时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
+
+| 2026-09-19 | `Fix` | #0916 延伸：统一抽屉筛选清理与选择状态 | 共享查询范围及请求序号；分页选择使用完整缓存 |

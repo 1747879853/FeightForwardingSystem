@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
@@ -62,6 +64,15 @@ const selectionMap = reactive(new Map<string, Set<string>>());
 const appliedAmountMap = reactive(new Map<string, number>());
 
 const expandedRowKeys = ref<string[]>([]);
+const selectionQuery =
+  createDrawerSelectionQuery<SeaExportAdminApi.TransportOrderDto>(
+    (row) => row.id,
+    () => {
+      clearSelection();
+      orderList.value = [];
+      tableRows.value = [];
+    },
+  );
 
 // 勾选合计：按币别和收付类型汇总选中费用金额
 const selectedFeeSummary = computed(() => {
@@ -168,8 +179,8 @@ function toggleAllOrders(checked: boolean) {
       selectionMap.set(row.id, set);
     }
   } else {
-    // 取消全选
-    selectionMap.clear();
+    // 只取消当前页，保留其他页选择
+    for (const row of tableRows.value) toggleOrder(row.id, false);
   }
 }
 
@@ -209,7 +220,7 @@ const throttledAutoSearch = useThrottleFn(
     const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
     if (feeCodeMode === 'exclude' && !hasFeeCodes) return;
     currentPage.value = 1;
-    await checkSearchChanged();
+
     await fetchData(values);
   },
   800,
@@ -424,6 +435,8 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
 }
 
 function resetState() {
+  selectionQuery.reset();
+  loading.value = false;
   orderList.value = [];
   totalCount.value = 0;
   currentPage.value = 1;
@@ -447,7 +460,7 @@ async function handleSearch() {
     return;
   }
   currentPage.value = 1;
-  await checkSearchChanged();
+
   await fetchData(values);
 }
 
@@ -515,9 +528,11 @@ async function fetchData(formValues?: Record<string, any>) {
     PageSize: pageSize.value,
   };
 
+  const request = selectionQuery.begin(params);
   loading.value = true;
   try {
     const result = await getOrderFeeGroup(params);
+    if (!selectionQuery.accept(request, result.items ?? [])) return;
     orderList.value = result.items ?? [];
     totalCount.value = result.totalCount ?? 0;
 
@@ -528,7 +543,7 @@ async function fetchData(formValues?: Record<string, any>) {
     console.log('Fetched order fee group data:', tableRows.value);
     expandedRowKeys.value = [];
   } finally {
-    loading.value = false;
+    if (selectionQuery.isCurrent(request)) loading.value = false;
   }
 }
 
@@ -541,7 +556,7 @@ async function handlePageChange(page: number, size: number) {
 // --- Checkbox 联动逻辑 ---
 
 function getOrderFees(orderId: string): OrderFeeAdminApi.OrderFeeDto[] {
-  const order = orderList.value.find((o) => o.id === orderId);
+  const order = selectionQuery.rows.find((o) => o.id === orderId);
   return order?.orderFees ?? [];
 }
 
@@ -612,25 +627,6 @@ function toggleFee(orderId: string, feeId: string, checked: boolean) {
   }
 }
 
-// --- 搜索条件变化清空选择 ---
-let lastSearchSnapshot = '';
-
-async function checkSearchChanged() {
-  const values = await searchFormApi.getValues();
-  const snapshot = JSON.stringify({
-    SettlementId: values?.SettlementId,
-    ClientId: values?.ClientId,
-    OrgId: values?.OrgId,
-    Keyword: values?.Keyword,
-    Keys: values?.Keys,
-    CurrencyId: values?.CurrencyId,
-  });
-  if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {
-    clearSelection();
-  }
-  lastSearchSnapshot = snapshot;
-}
-
 // --- 汇总选中费用 ---
 
 function getSelectedFees(): SelectedFeeItem[] {
@@ -651,7 +647,7 @@ function getSelectedFees(): SelectedFeeItem[] {
       .filter((name): name is string => Boolean(name))
       .join('、');
   for (const [orderId, feeIds] of selectionMap.entries()) {
-    const order = orderList.value.find((o) => o.id === orderId);
+    const order = selectionQuery.rows.find((o) => o.id === orderId);
     const saleUserNames = getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,
@@ -703,6 +699,7 @@ function getSelectedFees(): SelectedFeeItem[] {
 }
 
 function handleConfirm() {
+  if (loading.value) return;
   const selected = getSelectedFees();
   if (selected.length === 0) {
     message.warning('请至少选择一条费用');
@@ -1075,7 +1072,9 @@ defineExpose({ open: openDrawer });
         </div>
         <div class="flex gap-2">
           <Button @click="handleCancel">取消</Button>
-          <Button type="primary" @click="handleConfirm">添加对账</Button>
+          <Button type="primary" :disabled="loading" @click="handleConfirm"
+            >添加对账</Button
+          >
         </div>
       </div>
     </template>

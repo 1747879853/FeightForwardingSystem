@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
 import { computed, nextTick, reactive, ref } from 'vue';
@@ -51,6 +53,16 @@ useAntTableColumnResize({
 const selectedFeeIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
 const remarkMap = reactive(new Map<string, string>());
+const selectionQuery =
+  createDrawerSelectionQuery<ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto>(
+    (row) => row.transportOrder.id,
+    () => {
+      selectedFeeIds.value = [];
+      settledAmountMap.clear();
+      remarkMap.clear();
+      orderList.value = [];
+    },
+  );
 
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
@@ -138,6 +150,8 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
 }
 
 function resetState() {
+  selectionQuery.reset();
+  loading.value = false;
   orderList.value = [];
   totalCount.value = 0;
   currentPage.value = 1;
@@ -168,21 +182,24 @@ async function fetchData(formValues?: Record<string, any>) {
 
   const values = formValues ?? ((await searchFormApi.getValues()) || {});
 
+  const params = {
+    receiveSettlementId: drawerProps.value.receiveSettlementId,
+    settlementId,
+    currencyId,
+    ...buildFeeGroupSearchQuery(values),
+    pageIndex: currentPage.value,
+    pageSize: pageSize.value,
+  };
+  const request = selectionQuery.begin(params);
   loading.value = true;
   try {
-    const result = await getOrderFeeGroupForReceiveSettlement({
-      receiveSettlementId: drawerProps.value.receiveSettlementId,
-      settlementId,
-      currencyId,
-      ...buildFeeGroupSearchQuery(values),
-      pageIndex: currentPage.value,
-      pageSize: pageSize.value,
-    });
+    const result = await getOrderFeeGroupForReceiveSettlement(params);
+    if (!selectionQuery.accept(request, result.items ?? [])) return;
     orderList.value = result.items ?? [];
     totalCount.value = result.totalCount ?? 0;
     expandedRowKeys.value = [];
   } finally {
-    loading.value = false;
+    if (selectionQuery.isCurrent(request)) loading.value = false;
   }
 }
 
@@ -245,7 +262,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
   const selectedSet = new Set(selectedFeeIds.value);
   const result: SelectedReceiveFee[] = [];
 
-  for (const group of orderList.value) {
+  for (const group of selectionQuery.rows) {
     for (const fee of group.orderFees ?? []) {
       if (!selectedSet.has(fee.id)) continue;
       const settledAmount = settledAmountMap.get(fee.id) ?? 0;
@@ -272,6 +289,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
 }
 
 function handleConfirm() {
+  if (loading.value) return;
   const fees = buildSelectedFees();
   if (fees.length === 0) {
     message.warning('请先选择费用');
@@ -317,7 +335,9 @@ defineExpose({ open: openDrawer });
         <SearchForm>
           <template #expand-after>
             <Button @click="handleSearch">查询</Button>
-            <Button type="primary" @click="handleConfirm">确认添加</Button>
+            <Button type="primary" :disabled="loading" @click="handleConfirm"
+              >确认添加</Button
+            >
           </template>
         </SearchForm>
       </div>

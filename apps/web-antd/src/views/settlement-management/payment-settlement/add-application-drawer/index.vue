@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
@@ -66,6 +68,13 @@ const loading = ref(false);
 const selectedRowKeys = ref<string[]>([]);
 // ✅ 使用any类型数组，因为需要添加前端临时字段settledPrice
 const dataSource = ref<any[]>([]);
+const selectionQuery = createDrawerSelectionQuery<any>(
+  (row) => row.rowKey,
+  () => {
+    selectedRowKeys.value = [];
+    dataSource.value = [];
+  },
+);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -92,6 +101,8 @@ const [SearchForm, searchFormApi] = useVbenForm({
 
 /** 打开抽屉 */
 async function openDrawer() {
+  selectionQuery.reset();
+  dataSource.value = [];
   visible.value = true;
   selectedRowKeys.value = [];
   currentPage.value = 1;
@@ -210,6 +221,7 @@ async function requestSettlementApplicationList(
 
 /** 获取数据（按「付费申请+原币」扁平行） */
 async function fetchData() {
+  let request: number | undefined;
   loading.value = true;
   try {
     const formValues = await searchFormApi.getValues();
@@ -238,7 +250,9 @@ async function fetchData() {
         pageSize: pageSize.value,
       };
 
+    request = selectionQuery.begin(params);
     const result = await requestSettlementApplicationList(params);
+    if (!selectionQuery.isCurrent(request)) return;
 
     dataSource.value = (result.items || []).map((row: any) => {
       // 结满一行时直接用 totalUnSettledPrice 作为 settledPrice（结算币别）
@@ -254,6 +268,11 @@ async function fetchData() {
         row.rowKey ||
         [row.paymentApplicationId, row.originalCurrencyId ?? 'null'].join('_');
 
+      const cached = selectionQuery.rows.find(
+        (item) => item.rowKey === row.rowKey,
+      );
+      if (cached && selectedRowKeys.value.includes(row.rowKey))
+        row.settledPrice = cached.settledPrice;
       if (!row.orderFees) {
         row.orderFees = [];
       }
@@ -261,11 +280,13 @@ async function fetchData() {
       return row;
     });
 
+    selectionQuery.accept(request, dataSource.value);
     total.value = result.totalCount || 0;
   } catch (error: any) {
     message.error(error?.message || '获取数据失败');
   } finally {
-    loading.value = false;
+    if (request === undefined || selectionQuery.isCurrent(request))
+      loading.value = false;
   }
 }
 
@@ -277,6 +298,7 @@ async function handleSearch() {
 
 /** 重置 */
 async function handleReset() {
+  selectionQuery.reset();
   await searchFormApi.resetForm();
   currentPage.value = 1;
   await fetchData();
@@ -289,7 +311,7 @@ function handleRowSelectionChange(selectedRowKeysValue: (string | number)[]) {
 
 /** 获取选中的行数据 */
 function getSelectedRows() {
-  const selected = dataSource.value.filter((item) =>
+  const selected = selectionQuery.rows.filter((item) =>
     selectedRowKeys.value.includes(item.rowKey),
   );
 
@@ -309,6 +331,7 @@ function getSelectedRows() {
 
 /** 确认选择 */
 async function handleConfirm() {
+  if (loading.value) return;
   const selectedRows = getSelectedRows();
 
   if (selectedRows.length === 0) {
@@ -514,12 +537,9 @@ const isIndeterminate = computed(() => {
 
 // ✅ 全选/取消全选（跳过已在结算单中的组合）
 function toggleAllSelection(checked: boolean) {
-  if (checked) {
-    selectedRowKeys.value = dataSource.value
-      .filter((item) => !props.existingRowKeys?.includes(item.rowKey))
-      .map((item) => item.rowKey);
-  } else {
-    selectedRowKeys.value = [];
+  for (const row of dataSource.value) {
+    if (!props.existingRowKeys?.includes(row.rowKey))
+      toggleRowSelection(row.rowKey, checked);
   }
 }
 
@@ -951,7 +971,7 @@ const innerColumns = [
     <template #footer>
       <Space>
         <Button @click="closeDrawer">取消</Button>
-        <Button type="primary" @click="handleConfirm">
+        <Button type="primary" :disabled="loading" @click="handleConfirm">
           确定 (已选 {{ selectedRowKeys.length }} 个)
         </Button>
       </Space>

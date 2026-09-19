@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
 import { computed, nextTick, reactive, ref } from 'vue';
@@ -51,6 +53,16 @@ const expandedRowKeys = ref<string[]>([]);
 const selectedItemIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
 const remarkMap = reactive(new Map<string, string>());
+const selectionQuery =
+  createDrawerSelectionQuery<ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto>(
+    (row) => row.invoiceApplicationId,
+    () => {
+      selectedItemIds.value = [];
+      settledAmountMap.clear();
+      remarkMap.clear();
+      groupList.value = [];
+    },
+  );
 
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
@@ -81,7 +93,7 @@ const selectedCurrencyTotals = computed(() => {
     { amount: number; count: number; currencyCode: string }
   >();
 
-  for (const group of groupList.value) {
+  for (const group of selectionQuery.rows) {
     for (const item of group.items ?? []) {
       if (!selectedSet.has(item.invoiceApplicationItemId)) continue;
       const settled =
@@ -119,6 +131,8 @@ async function openDrawer(props: AddInvoiceDrawerProps = {}) {
 }
 
 function resetState() {
+  selectionQuery.reset();
+  loading.value = false;
   groupList.value = [];
   totalCount.value = 0;
   currentPage.value = 1;
@@ -138,6 +152,8 @@ async function handleSearch() {
 }
 
 async function handleReset() {
+  selectionQuery.reset();
+  loading.value = false;
   await searchFormApi.resetForm();
   if (drawerProps.value.settlementId) {
     searchFormApi.setValues({
@@ -161,27 +177,30 @@ async function fetchData() {
     ? values.applyTimeRange
     : [undefined, undefined];
 
+  const params = {
+    receiveSettlementId: drawerProps.value.receiveSettlementId,
+    settlementId,
+    currencyId: drawerProps.value.currencyId,
+    applicationNo: values.applicationNo || undefined,
+    invoiceNo: values.invoiceNo || undefined,
+    applyTimeStart: toIsoStartOfDay(applyTimeStart),
+    applyTimeEnd: toIsoEndOfDay(applyTimeEnd),
+    onlySettleable: true,
+    pageIndex: currentPage.value,
+    pageSize: pageSize.value,
+  };
+  const request = selectionQuery.begin(params);
   loading.value = true;
   try {
-    const result = await getInvoiceApplicationGroupForSettlement({
-      receiveSettlementId: drawerProps.value.receiveSettlementId,
-      settlementId,
-      currencyId: drawerProps.value.currencyId,
-      applicationNo: values.applicationNo || undefined,
-      invoiceNo: values.invoiceNo || undefined,
-      applyTimeStart: toIsoStartOfDay(applyTimeStart),
-      applyTimeEnd: toIsoEndOfDay(applyTimeEnd),
-      onlySettleable: true,
-      pageIndex: currentPage.value,
-      pageSize: pageSize.value,
-    });
+    const result = await getInvoiceApplicationGroupForSettlement(params);
+    if (!selectionQuery.accept(request, result.items ?? [])) return;
     groupList.value = result.items ?? [];
     totalCount.value = result.totalCount ?? 0;
     expandedRowKeys.value = groupList.value.map(
       (group) => group.invoiceApplicationId,
     );
   } finally {
-    loading.value = false;
+    if (selectionQuery.isCurrent(request)) loading.value = false;
   }
 }
 
@@ -284,7 +303,7 @@ function buildSelectedFees(): SelectedInvoiceFee[] {
   const selectedSet = new Set(selectedItemIds.value);
   const result: SelectedInvoiceFee[] = [];
 
-  for (const group of groupList.value) {
+  for (const group of selectionQuery.rows) {
     for (const item of group.items ?? []) {
       if (!selectedSet.has(item.invoiceApplicationItemId)) continue;
       const order = item.transportOrder;
@@ -317,6 +336,7 @@ function buildSelectedFees(): SelectedInvoiceFee[] {
 }
 
 function handleConfirm() {
+  if (loading.value) return;
   const fees = buildSelectedFees();
   if (fees.length === 0) {
     message.warning('请先选择开票明细');
@@ -526,7 +546,9 @@ defineExpose({ open: openDrawer });
 
     <template #footer>
       <div class="drawer-footer">
-        <Button type="primary" @click="handleConfirm">确认添加</Button>
+        <Button type="primary" :disabled="loading" @click="handleConfirm"
+          >确认添加</Button
+        >
       </div>
     </template>
   </Drawer>

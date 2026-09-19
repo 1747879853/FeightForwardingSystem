@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
+
 import { computed, h, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
@@ -116,6 +118,13 @@ useAntTableColumnResize({
 
 // 选中的申请行 keys
 const selectedAppRowKeys = ref<string[]>([]);
+const selectionQuery = createDrawerSelectionQuery<any>(
+  (row) => row.id,
+  () => {
+    selectedAppRowKeys.value = [];
+    applicationGroupsData.value = [];
+  },
+);
 
 // ✅ NestedDataTable 展开行控制
 const expandedRowKeys = ref<(string | number)[]>([]);
@@ -310,6 +319,7 @@ function getSelectedApplicationsFromTable(): any[] {
 
 /** 重置筛选条件 */
 function handleResetFilter() {
+  selectionQuery.reset();
   // ✅ 只在非固定状态下才重置结算单位
   if (!isSettlementFixed.value) {
     selectedSettlementId.value = '';
@@ -378,6 +388,8 @@ function handleApplyTimeRangeChange(
 
 /** 打开费用选择抽屉 */
 async function handleOpenFeeDrawer() {
+  selectionQuery.reset();
+  applicationGroupsData.value = [];
   // ✅ 重置筛选条件
   keyWord.value = '';
   filterApplyTimeStart.value = '';
@@ -487,6 +499,7 @@ async function handleOpenFeeDrawer() {
 
 /** 保存费用选择 */
 async function handleSaveFeeSelection() {
+  if (feeDrawerLoading.value) return;
   // ✅ 校验0：确保已选择结算单位
   // if (!selectedSettlementId.value) {
   //   message.warning('请先选择结算单位');
@@ -722,6 +735,7 @@ async function handleSaveFeeSelection() {
 
 /** 加载申请分组数据 */
 async function loadApplicationGroupData() {
+  let request: number | undefined;
   feeDrawerLoading.value = true;
   try {
     const params: InvoiceIssueApi.InvoiceIssueApplicationQueryDto = {};
@@ -764,7 +778,9 @@ async function loadApplicationGroupData() {
       params.applyUserId = filterApplyUserId.value;
     }
 
+    request = selectionQuery.begin(params);
     const result = await getSubmittedApplicationList(params);
+    if (!selectionQuery.isCurrent(request)) return;
 
     // ✅ 详细检查接口返回的数据结构
     if (result && result.length > 0) {
@@ -779,7 +795,8 @@ async function loadApplicationGroupData() {
     console.error('❌ 加载申请数据失败:', error);
     message.error('加载申请数据失败');
   } finally {
-    feeDrawerLoading.value = false;
+    if (request === undefined || selectionQuery.isCurrent(request))
+      feeDrawerLoading.value = false;
   }
 }
 
@@ -1525,7 +1542,12 @@ defineExpose({
             驳回
           </Button>
           <Button @click="drawerVisible = false">取消</Button>
-          <Button type="primary" @click="handleSaveFeeSelection">确定</Button>
+          <Button
+            type="primary"
+            :disabled="feeDrawerLoading"
+            @click="handleSaveFeeSelection"
+            >确定</Button
+          >
         </Space>
       </div>
     </template>
