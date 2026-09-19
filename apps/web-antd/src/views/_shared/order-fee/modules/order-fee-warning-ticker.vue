@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
+import { Tooltip } from 'ant-design-vue';
 
 const props = withDefaults(
   defineProps<{
@@ -54,15 +55,46 @@ onBeforeUnmount(clearTimer);
 </script>
 
 <template>
-  <div
-    v-if="list.length > 0"
-    class="order-fee-warning-ticker"
-    :title="list.join('\n')"
-  >
-    <IconifyIcon
-      icon="mdi:alert-circle-outline"
-      class="order-fee-warning-ticker__icon"
-    />
+  <div v-if="list.length > 0" class="order-fee-warning-ticker">
+    <Tooltip
+      placement="bottomLeft"
+      :mouse-enter-delay="0.08"
+      :mouse-leave-delay="0.08"
+      overlay-class-name="order-fee-warning-ticker-overlay"
+    >
+      <template #title>
+        <div class="order-fee-warning-panel">
+          <div class="order-fee-warning-panel__head">
+            <span class="order-fee-warning-panel__head-icon">
+              <IconifyIcon icon="mdi:alert-circle-outline" />
+            </span>
+            <span class="order-fee-warning-panel__head-title">费用预警</span>
+            <span class="order-fee-warning-panel__head-count"
+              >共 {{ list.length }} 条</span
+            >
+          </div>
+          <ul class="order-fee-warning-panel__list">
+            <li
+              v-for="(msg, i) in list"
+              :key="`${i}-${msg}`"
+              class="order-fee-warning-panel__item"
+            >
+              <span class="order-fee-warning-panel__index">{{ i + 1 }}</span>
+              <span class="order-fee-warning-panel__text">{{ msg }}</span>
+            </li>
+          </ul>
+        </div>
+      </template>
+      <span
+        class="order-fee-warning-ticker__icon-wrap"
+        aria-label="查看全部预警"
+      >
+        <IconifyIcon
+          icon="mdi:alert-circle-outline"
+          class="order-fee-warning-ticker__icon"
+        />
+      </span>
+    </Tooltip>
     <div class="order-fee-warning-ticker__viewport">
       <Transition name="order-fee-warning-fade" mode="out-in">
         <span
@@ -98,8 +130,15 @@ onBeforeUnmount(clearTimer);
   border-radius: 4px;
 }
 
-.order-fee-warning-ticker__icon {
+.order-fee-warning-ticker__icon-wrap {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.order-fee-warning-ticker__icon {
   font-size: 14px;
   color: #d97706;
 }
@@ -141,5 +180,121 @@ onBeforeUnmount(clearTimer);
 .order-fee-warning-fade-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+</style>
+
+<!-- Tooltip 挂到 body，面板样式需非 scoped -->
+<style>
+.order-fee-warning-ticker-overlay.ant-tooltip {
+  max-width: none;
+}
+
+.order-fee-warning-ticker-overlay .ant-tooltip-inner {
+  min-width: 280px;
+  max-width: 400px;
+  padding: 0;
+  color: #252a31;
+  background: #fff;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
+}
+
+.order-fee-warning-ticker-overlay .ant-tooltip-arrow::before {
+  background: #fff;
+  border: 1px solid #e8ecf3;
+}
+
+.order-fee-warning-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, hsl(38deg 100% 96%) 0%, #fff 70%);
+  border-bottom: 1px solid #eef1f6;
+  border-radius: 10px 10px 0 0;
+}
+
+.order-fee-warning-panel__head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  color: #d97706;
+  background: hsl(38deg 100% 94%);
+  border-radius: 6px;
+}
+
+.order-fee-warning-panel__head-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #252a31;
+}
+
+.order-fee-warning-panel__head-count {
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #a16207;
+  background: hsl(38deg 100% 95%);
+  border-radius: 999px;
+}
+
+.order-fee-warning-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 260px;
+  padding: 8px 10px 10px;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.order-fee-warning-panel__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.order-fee-warning-panel__item + .order-fee-warning-panel__item {
+  margin-top: 2px;
+}
+
+.order-fee-warning-panel__item:hover {
+  background: #f8fafc;
+}
+
+.order-fee-warning-panel__index {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #b45309;
+  background: hsl(38deg 100% 94%);
+  border-radius: 4px;
+}
+
+.order-fee-warning-panel__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: #475569;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 </style>
