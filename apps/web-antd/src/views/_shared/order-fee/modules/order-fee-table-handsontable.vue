@@ -1216,6 +1216,21 @@ watch(
                 </Button>
               </div>
               <slot name="title-extra" />
+              <!-- 选中行按币别汇总：紧挨预警右侧，保持间距 -->
+              <div
+                v-if="feeSummary && feeSummary.length > 0"
+                class="fee-summary"
+              >
+                <div class="fee-summary-content">
+                  <span
+                    v-for="(item, index) in feeSummary"
+                    :key="index"
+                    class="summary-item"
+                  >
+                    {{ item.currency }}: {{ item.amount }}
+                  </span>
+                </div>
+              </div>
             </div>
             <Space v-show="!feeSortMode" class="toolbar-actions">
               <Button
@@ -1319,22 +1334,6 @@ watch(
             class="readonly-fee-mask"
             title="该更改单已锁定，费用仅可查看"
           ></div>
-
-          <!-- 费用合计显示 -->
-          <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
-            <div class="fee-summary-content">
-              <!-- <span class="summary-label">费用合计：</span> -->
-              <Space :size="16">
-                <span
-                  v-for="(item, index) in feeSummary"
-                  :key="index"
-                  class="summary-item"
-                >
-                  {{ item.currency }}: {{ item.amount }}
-                </span>
-              </Space>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1404,6 +1403,7 @@ watch(
   .table-header {
     display: flex;
     flex-shrink: 0;
+    gap: 8px;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
@@ -1413,6 +1413,7 @@ watch(
     .table-header__left {
       display: flex;
       flex: 1;
+      flex-wrap: wrap;
       gap: 4px;
       align-items: center;
       min-width: 0;
@@ -1427,6 +1428,7 @@ watch(
 
     .toolbar-actions {
       display: flex;
+      flex-shrink: 0;
       gap: 8px;
 
       // ✅ 完结状态按钮特殊样式
@@ -1545,45 +1547,21 @@ watch(
   }
 }
 
-// 费用合计样式
+// 费用合计：紧挨预警右侧，保持间距；高度随内容展开，不出现滚动条
 .fee-summary {
-  position: absolute;
-  top: 10px;
-  right: 120px;
-  left: 70px;
-  z-index: 10;
-  max-width: 600px;
-  padding: 8px 20px;
-  pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
-  // background: linear-gradient(
-  //   135deg,
-  //   rgb(255 255 255 / 98%) 0%,
-  //   rgb(245 248 255 / 95%) 100%
-  // );
-  //border: 1px solid rgb(24 144 255 / 20%);
-  border-radius: 8px;
-  // box-shadow:
-  //   0 4px 12px rgb(24 144 255 / 15%),
-  //   0 2px 4px rgb(0 0 0 / 8%),
-  //   inset 0 1px 0 rgb(255 255 255 / 80%);
-  // backdrop-filter: blur(8px);
-  // transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  // &:hover {
-  //   border-color: rgb(24 144 255 / 35%);
-  //   box-shadow:
-  //     0 6px 20px rgb(24 144 255 / 25%),
-  //     0 3px 8px rgb(0 0 0 / 12%),
-  //     inset 0 1px 0 rgb(255 255 255 / 90%);
-  //   transform: translateY(-2px);
-  // }
+  display: flex;
+  flex-shrink: 1;
+  align-items: center;
+  min-width: 0;
+  margin-left: 12px;
 
   .fee-summary-content {
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
-    font-size: 14px;
-    pointer-events: auto; // ✅ 恢复内容区域的鼠标事件
+    font-size: 13px;
+    line-height: 22px;
 
     .summary-label {
       padding: 0;
@@ -1594,8 +1572,11 @@ watch(
     }
 
     .summary-item {
-      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
       font-weight: 600;
+      line-height: 20px;
       color: hsl(var(--primary));
       white-space: nowrap;
       background: linear-gradient(
@@ -1614,8 +1595,6 @@ watch(
           hsl(var(--primary) / 8%) 100%
         );
         border-color: hsl(var(--primary) / 30%);
-        box-shadow: 0 2px 8px hsl(var(--primary) / 20%);
-        transform: scale(1.05);
       }
     }
   }
