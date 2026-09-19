@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-14
 | 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **添加费用筛选范围：** 首次查询即记录筛选条件；切换结算对象或其他筛选条件时清空旧选择和金额缓存，翻页或调整每页条数保留选择。重置、重新打开抽屉会使旧请求失效，避免旧结果覆盖当前列表。
 
 - **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。**从应收应付页带 `orderFeeIds` 进入时**：解析 query 回捞明细并预填，**跳过**自动打开抽屉（见 `prefill-from-order-fee-ids.ts`）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。支持按**客户对账单号**模糊检索（`StatementNum`，空值不传），只返回被命中对账单里仍可申请的费用；展开行展示对账单号。费用匹配支持「匹配 / 排除」：`FeeCodeIds` / `ExceptFeeCodeIds` 以 `paramsSerializer: 'repeat'` 传给 `GetOrderFeeGroupAsync`；排除模式须先选费用名称。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段；起运港/目的港按 `bizType` 从 `seaExport`、`seaImport`、`airExport` 简要对象读取港口备注。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；**业务行父级全选仅作用于可选费用**，组内全部已添加时父级 Checkbox 禁用；支持 **收付类型**（默认「付」）与 **业务类型**（`BizType`：海出/海进/空出，可清空）筛选。「费用明细」右侧展示已选笔数与按币别本次申请净额合计（付 − 收）；勾选写入 `selectedFeeCache`，**翻页保留勾选与合计**，确认添加也读缓存（搜索条件变化仍清空）。**付费申请场景**抽屉启用 `enableInvoiceProcess`，须在抽屉内选定「发票方式」后才可确认费用并创建申请；未选时顶部 toast 提示，下拉标红但不插入行内错误文案。**指定结算币别**且所选费用原币与结算币别不同时，确认添加会弹出「币别汇率折算」：按「1 单位 =」双向填写，改一侧另一侧取倒数；预填只取汇率表「费用币别兑结算币」且**当天**有效的应付 `crValue`，未维护则留空。抽屉与页内费用明细表（`NestedDataTable`）均支持表头拖拽调列宽。
 - **应收应付快捷入口（海出/海进/空出）：** 编辑工作台应收应付 Tab 顶部「创建付费申请」按钮（需 `Admin.PaymentApplication.Add`）；勾选费用后跳转本页并带 `orderFeeIds` 预填。跳转前校验组合费用状态、结算对象、应付条数，并先调 `GetOrderFeeGroupAsync` 确认有可申请明细。预填后仍须选定发票方式再保存；先票后付允许空发票建单，提交时才要求至少一条发票（与抽屉确认建单同一套规则）。
@@ -138,3 +140,5 @@ last_updated: 2026-09-14
 | 2026-06-16 | `feat` | 申请页去除与 Page 重复 padding；添加费用抽屉搜索区五列布局、业务日期占两列、查询重置紧跟币别右对齐。 | 搜索按钮通过 Vben `FormActions` + `col-start-4 col-span-2` 嵌入网格，避免破坏第二行对齐。 |
 | 2026-06-16 | `feat` | 新建付费申请（`/add`）挂载后自动打开添加费用抽屉；编辑页行为不变。 | 实现方式与 `payment-settlement/form.vue` 新建自动开抽屉一致：`onMounted` + `nextTick` + `handleOpenAddFee`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application/add` 对应组件 `src/views/fee-management/payment-application/form.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |
+
+| 2026-09-19 | `Fix` | #0916：筛选变化清理隐藏的旧费用选择，保留跨页勾选 | 在统一查询入口维护筛选范围；新增 8 项回归测试 |

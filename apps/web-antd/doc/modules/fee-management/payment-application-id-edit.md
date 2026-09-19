@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-14
 | 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **添加费用筛选范围：** 首次查询即记录筛选条件；切换结算对象或其他筛选条件时清空旧选择和金额缓存，翻页或调整每页条数保留选择。重置、重新打开抽屉会使旧请求失效，避免旧结果覆盖当前列表。
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
@@ -143,3 +145,5 @@ last_updated: 2026-09-14
 | 2026-06-20 | `Feature` | 选费抽屉与编辑页明细分组改为「业务+结算对象」；外层新增结算对象列，子表去掉该列；底部统计改为「共 X 组」。 | `PayAppFeeGroupDto` 补 `settlementId`/`settlement`；`groupKey`=`transportOrderId_settlementId`；单一结算对象锁定规则不变。 |
 | 2026-06-20 | `Fix` | 费用明细列与添加费用抽屉中「结算单位」统一为「结算对象」，与主表字段一致。 | `form-data.ts` 内层列使用 `settlementNameColumn` i18n；`add-fee-modal` 搜索与表格列同步引用 `paymentApplication` 文案键。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application/:id/edit` 对应组件 `src/views/fee-management/payment-application/form.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |
+
+| 2026-09-19 | `Fix` | #0916：筛选变化清理隐藏的旧费用选择，保留跨页勾选 | 在统一查询入口维护筛选范围；新增 8 项回归测试 |

@@ -28,6 +28,7 @@ import { normalizeKeysParam } from '#/utils/keys-search';
 import { getStatementNumsText } from '#/views/_shared/order-fee/data';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
+import { createSelectionScope } from './selection-scope';
 import {
   collectOriginalCurrencyRatePairs,
   currencyRatePairKey,
@@ -81,6 +82,10 @@ const appliedAmountMap = reactive(new Map<string, number>());
 const selectedFeeCache = reactive(new Map<string, SelectedFeeItem>());
 /** 选择/金额变更计数，驱动合计 computed */
 const selectionEpoch = ref(0);
+const selectionScope = createSelectionScope(() => {
+  clearSelection();
+  initDisabledFeeAppliedAmounts();
+});
 
 const expandedRowKeys = ref<string[]>([]);
 
@@ -108,7 +113,6 @@ const debouncedAutoSearch = useDebounceFn(async () => {
   // 排除模式未选费用名称时不自动查询，避免误以为「排除未生效」
   if (feeCodeMode === 'exclude' && !hasFeeCodes) return;
   currentPage.value = 1;
-  await checkSearchChanged();
   await fetchData(values);
 }, 400);
 
@@ -145,7 +149,6 @@ const [SearchForm, searchFormApi] = useVbenForm({
       return;
     }
     currentPage.value = 1;
-    await checkSearchChanged();
     await fetchData(values);
   },
   handleReset: async () => {
@@ -156,7 +159,9 @@ const [SearchForm, searchFormApi] = useVbenForm({
       : undefined;
     await searchFormApi.resetForm();
     clearSelection();
-    lastSearchSnapshot = '';
+    selectionScope.reset();
+    fetchSeq += 1;
+    loading.value = false;
     orderList.value = [];
     totalCount.value = 0;
     currencies.value = [];
@@ -297,6 +302,9 @@ function bumpSelectionEpoch() {
 }
 
 function resetState() {
+  selectionScope.reset();
+  fetchSeq += 1;
+  loading.value = false;
   orderList.value = [];
   totalCount.value = 0;
   currentPage.value = 1;
@@ -355,6 +363,7 @@ async function fetchData(formValues?: Record<string, any>) {
     PageSize: pageSize.value,
   };
 
+  selectionScope.update(params);
   const seq = ++fetchSeq;
   loading.value = true;
   try {
@@ -554,25 +563,6 @@ const nestedTableRows = computed(() =>
     feeRows: getFeeRows(record.groupKey),
   })),
 );
-
-// --- 搜索条件变化清空选择 ---
-let lastSearchSnapshot = '';
-
-async function checkSearchChanged() {
-  const values = await searchFormApi.getValues();
-  const snapshot = JSON.stringify({
-    SettlementId: values?.SettlementId,
-    OrgId: values?.OrgId,
-    Keyword: values?.Keyword,
-    PaySide: values?.PaySide,
-    CurrencyId: values?.CurrencyId,
-  });
-  if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {
-    clearSelection();
-    initDisabledFeeAppliedAmounts();
-  }
-  lastSearchSnapshot = snapshot;
-}
 
 // --- 汇总选中费用 ---
 
