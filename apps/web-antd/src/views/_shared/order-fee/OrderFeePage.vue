@@ -1213,7 +1213,6 @@ onMounted(async () => {
             <div class="fee-entry-panel__toolbar-left">
               <span class="fee-entry-panel__toolbar-mark"></span>
               <span class="fee-entry-panel__toolbar-title">费用录入</span>
-              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
               <span
                 class="fee-entry-panel__selection"
                 :class="{
@@ -1223,6 +1222,7 @@ onMounted(async () => {
               >
                 已选 {{ selectedFeeIds.length }} 条
               </span>
+              <OrderFeeWarningTicker :messages="sharedWarningMessages" />
             </div>
             <Space class="fee-entry-panel__toolbar-actions">
               <Button
