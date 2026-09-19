@@ -358,21 +358,7 @@ function buildStaticColumns(): Array<Record<string, any>> {
       field: 'taskStatus',
       title: $t('auditApproval.task.status'),
       minWidth: 100,
-      cellRender: {
-        name: 'CellTag',
-        options: getTaskStatusOptions(),
-      },
-    },
-    {
-      field: 'myStatus',
-      title: t('myStatus'),
-      minWidth: 100,
-      // 后端无 MyStatus 排序字段
-      sortable: false,
-      cellRender: {
-        name: 'CellTag',
-        options: getTaskStatusOptions(),
-      },
+      slots: { default: 'taskStatus' },
     },
     {
       field: 'submitTime',

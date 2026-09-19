@@ -406,6 +406,8 @@ export namespace PaymentApplicationAdminApi {
      * 付费结算选单列表不填充，恒为 null。
      */
     paymentApplicationInvoices?: PaymentApplicationInvoiceDto[] | null;
+    /** 关联付费结算及其附件（详情展示） */
+    paymentSettlements?: PaymentSettlementForApplicationSimpleDto[] | null;
 
     // === 整票结算状态字段（客户对账接口使用） ===
     /** 应收整票结算状态（按该业务下全部应收费用汇总） */
@@ -994,6 +996,8 @@ export namespace PaymentApplicationAdminApi {
   /** 运输单简要信息 */
   export interface TransportOrderSimpleDto {
     id: string;
+    /** 整票全部应收费用的结算状态：0 未结算、1 部分结算、2 结算完毕；无值不推断 */
+    recSettlementStatus?: null | number;
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;

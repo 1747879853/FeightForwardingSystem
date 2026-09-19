@@ -21,6 +21,7 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 
 import DetailPanel from './detail-panel.vue';
+import TaskStatusCell from './task-status-cell.vue';
 import {
   buildColumns,
   buildColumnsWithRuntime,
@@ -390,6 +391,9 @@ const showRejectConfirm = () => {
           </template>
           <template #appliedTotalAnchorHeader="{ column }">
             {{ column.params?.anchorHeader || column.title }}
+          </template>
+          <template #taskStatus="{ row }">
+            <TaskStatusCell :row="row" />
           </template>
         </Grid>
       </template>

@@ -7,9 +7,8 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
+import { Card, Empty, Spin, Table, Tag, Tooltip } from 'ant-design-vue';
 import dayjs from 'dayjs';
-
-import { Card, Empty, Spin, Tag, Tooltip } from 'ant-design-vue';
 
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
@@ -30,13 +29,16 @@ import {
   isUserRoleColumnKey,
   resolveFeeCurrencyCode,
   summarizeByCurrency,
-  summarizeByCurrencyWithConversion,
   useFeeInnerColumns,
   useOrderGroupColumns,
 } from '#/views/fee-management/payment-application/form-data';
 import { sumInvoiceAmounts } from '#/views/fee-management/payment-application/invoice-rows';
 
 import { formatSettlementReceivableItems } from './data';
+
+interface ReviewFeeDetailRow extends FeeDetailRow {
+  unSettledAmount: number;
+}
 
 const props = defineProps<{
   paymentApplicationId?: string;
@@ -54,10 +56,51 @@ const loading = ref(false);
 const loaded = ref(false);
 /** 当前详情对应的申请单号（多选时便于对照正在看哪一单） */
 const applicationNo = ref('');
+const settlementName = ref('');
+const transportOrders = ref<
+  PaymentApplicationAdminApi.TransportOrderSimpleDto[]
+>([]);
+
+const invoiceColumns = [
+  {
+    title: '发票抬头',
+    dataIndex: 'sellerHeader',
+    key: 'sellerHeader',
+    width: 140,
+    ellipsis: true,
+  },
+  {
+    title: '发票号',
+    dataIndex: 'invoiceNo',
+    key: 'invoiceNo',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '开票日期',
+    dataIndex: 'invoiceDate',
+    key: 'invoiceDate',
+    width: 100,
+  },
+  {
+    title: '金额',
+    dataIndex: 'amount',
+    key: 'amount',
+    width: 100,
+    align: 'right' as const,
+  },
+  { title: '附件', key: 'attachment', width: 150 },
+];
+const receivableHint =
+  '当前该结算对象在系统中已提交的应收未结算金额，可用于判断是否需要进行费用互抵';
+const settlementStatuses: Record<number, { color: string; label: string }> = {
+  0: { label: '未结算', color: 'default' },
+  1: { label: '部分结算', color: 'purple' },
+  2: { label: '结算完毕', color: 'green' },
+};
 
 const settlementCurrencyId = ref<null | number>(null);
-const settlementCurrencyName = ref('');
-const feeDetailRows = ref<FeeDetailRow[]>([]);
+const feeDetailRows = ref<ReviewFeeDetailRow[]>([]);
 /** 申请自身附件（按类型分组） */
 const attachmentGroups = ref<PaymentApplicationAdminApi.AttachmentGroupDto[]>(
   [],
@@ -76,41 +119,46 @@ const visibleAttachmentGroups = computed(() =>
   attachmentGroups.value
     .map((group) => ({
       key:
-        group.attachmentDtlTypeId == null
+        group.attachmentDtlTypeId === null ||
+        group.attachmentDtlTypeId === undefined
           ? 'untyped'
           : String(group.attachmentDtlTypeId),
       name:
         group.attachmentDtlType?.name ||
-        (group.attachmentDtlTypeId == null
+        (group.attachmentDtlTypeId === null ||
+        group.attachmentDtlTypeId === undefined
           ? '未分类'
           : String(group.attachmentDtlTypeId)),
       items: group.items ?? [],
       sortId: group.attachmentDtlType?.sortId ?? 0,
     }))
     .filter((group) => group.items.length > 0)
-    .sort((a, b) => compareAttachmentTypeSortIdDesc(a.sortId, b.sortId)),
+    .toSorted((a, b) => compareAttachmentTypeSortIdDesc(a.sortId, b.sortId)),
 );
 
 const hasAttachments = computed(
   () =>
     visibleAttachmentGroups.value.length > 0 ||
-    settlementAttachments.value.length > 0 ||
-    paymentApplicationInvoices.value.length > 0,
+    settlementAttachments.value.length > 0,
 );
 
 const invoiceAmountTotal = computed(() =>
   sumInvoiceAmounts(paymentApplicationInvoices.value),
 );
 
-/** 币别 -> 已选结算银行（只读展示） */
-const bankByCurrency = ref<
-  Record<
-    number,
-    PaymentApplicationAdminApi.ClientInvoiceBankSimpleDto | undefined
-  >
->({});
-
-const orderGroupColumns = useOrderGroupColumns();
+const orderGroupColumns = useOrderGroupColumns().flatMap((column) =>
+  column.key === 'accountDate'
+    ? [
+        column,
+        {
+          title: '应收结算状态',
+          dataIndex: 'transportOrder.recSettlementStatus',
+          key: 'recSettlementStatus',
+          width: 120,
+        },
+      ]
+    : [column],
+);
 const feeInnerColumns = computed(() =>
   useFeeInnerColumns(settlementCurrencyId.value !== null).filter(
     (col) => col.key !== 'checkbox',
@@ -129,38 +177,25 @@ const allOrderGroupColumns = computed(() => [
 ]);
 
 const orderGroups = computed(() =>
-  groupFeesByOrder(feeDetailRows.value, appliedCurrencies.value),
+  groupFeesByOrder(feeDetailRows.value, appliedCurrencies.value).map(
+    (group) => ({
+      ...group,
+      transportOrder: transportOrders.value.find(
+        (order) => order.id === group.transportOrderId,
+      ),
+    }),
+  ),
 );
 const expandedGroupKeys = ref<string[]>([]);
 
 const currencySummaries = computed(() =>
   summarizeByCurrency(feeDetailRows.value),
 );
-const currencyConversionSummaries = computed(() =>
-  summarizeByCurrencyWithConversion(feeDetailRows.value),
-);
-const grandConvertedTotal = computed(() =>
-  currencyConversionSummaries.value.reduce(
-    (sum, cs) => sum + cs.convertedTotal,
-    0,
-  ),
-);
-
-function getSelectedBank(currencyId: number) {
-  return bankByCurrency.value[currencyId];
-}
-
-const settlementSelectedBank = computed(() =>
-  settlementCurrencyId.value === null
-    ? undefined
-    : bankByCurrency.value[settlementCurrencyId.value],
-);
-
 function mapDetailToFeeRows(
   detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
-): FeeDetailRow[] {
+): ReviewFeeDetailRow[] {
   const settlementShortName = detail.settlement?.name ?? '';
-  const rows: FeeDetailRow[] = [];
+  const rows: ReviewFeeDetailRow[] = [];
   for (const group of detail.payAppFeeBySeaExportGroup ?? []) {
     const order = group.transportOrder;
     for (const item of group.paymentApplicationItems ?? []) {
@@ -189,6 +224,7 @@ function mapDetailToFeeRows(
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
         unSettledAmount: fee?.unSettledAmount ?? 0,
+        unRqstPaymentAmount: fee?.unRqstPaymentAmount ?? 0,
         appliedAmount: item.appliedAmount,
         exchangeRate: fee?.exchangeRate,
         itemRemark: item.remark ?? '',
@@ -199,66 +235,40 @@ function mapDetailToFeeRows(
   return rows;
 }
 
-/** 从详情的 currencyGroup.paymentApplicationBank 还原已选银行（只读展示） */
-function restoreBanksFromDetail(
-  detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
-) {
-  const groups = detail.currencyGroup ?? [];
-  const next: Record<
-    number,
-    PaymentApplicationAdminApi.ClientInvoiceBankSimpleDto | undefined
-  > = {};
-
-  const pickBank = (
-    rel:
-      | PaymentApplicationAdminApi.PaymentApplicationBankDto
-      | null
-      | undefined,
-  ) => {
-    if (!rel) return undefined;
-    const banks = rel.clientInvoiceBanks ?? [];
-    return banks.find((b) => b.id === rel.clientInvoiceBankId) ?? banks[0];
-  };
-
-  if (settlementCurrencyId.value === null) {
-    for (const g of groups) {
-      const sel = pickBank(g.paymentApplicationBank);
-      if (sel) next[g.id] = sel;
-    }
-  } else {
-    const rel = groups.map((g) => g.paymentApplicationBank).find(Boolean);
-    const sel = pickBank(rel);
-    if (sel) next[settlementCurrencyId.value] = sel;
-  }
-  bankByCurrency.value = next;
-}
-
 function resetState() {
   applicationNo.value = '';
+  settlementName.value = '';
+  transportOrders.value = [];
   settlementCurrencyId.value = null;
-  settlementCurrencyName.value = '';
   feeDetailRows.value = [];
   attachmentGroups.value = [];
   paymentApplicationInvoices.value = [];
   settlementAttachments.value = [];
-  bankByCurrency.value = {};
   expandedGroupKeys.value = [];
   loaded.value = false;
 }
 
+let detailRequestId = 0;
+
 async function loadDetail(id: string | undefined) {
+  const requestId = ++detailRequestId;
+  resetState();
   if (!id) {
-    resetState();
+    loading.value = false;
     return;
   }
   loading.value = true;
   try {
     const detail = await getPaymentApplicationDetail(id);
+    if (requestId !== detailRequestId) return;
     applicationNo.value = detail.applicationNo ?? '';
     settlementCurrencyId.value = detail.currencyId ?? null;
-    settlementCurrencyName.value = detail.currency?.code ?? '';
+    settlementName.value =
+      detail.settlement?.name || detail.settlement?.fullName || '-';
+    transportOrders.value = (detail.payAppFeeBySeaExportGroup ?? []).flatMap(
+      (group) => (group.transportOrder ? [group.transportOrder] : []),
+    );
     feeDetailRows.value = mapDetailToFeeRows(detail);
-    restoreBanksFromDetail(detail);
     attachmentGroups.value = detail.attachmentGroup ?? [];
     paymentApplicationInvoices.value = detail.paymentApplicationInvoices ?? [];
     settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
@@ -267,7 +277,7 @@ async function loadDetail(id: string | undefined) {
     expandedGroupKeys.value = [];
     loaded.value = true;
   } finally {
-    loading.value = false;
+    if (requestId === detailRequestId) loading.value = false;
   }
 }
 
@@ -286,14 +296,14 @@ function getGroupAppliedAmountDisplay(record: any, columnKey: any): string {
 function getUserRoleCellTextFromRecord(record: any, dataIndex: any): string {
   if (!dataIndex) return '';
   const value = record?.[String(dataIndex)];
-  if (value == null || value === '') return '';
+  if (value === null || value === undefined || value === '') return '';
   return String(value);
 }
 
 function getCellText(record: any, dataIndex: any): string {
   if (!dataIndex) return '';
   const value = record?.[String(dataIndex)];
-  return value == null ? '' : String(value);
+  return value === null || value === undefined ? '' : String(value);
 }
 
 function getPaySideLabel(val: number) {
@@ -442,7 +452,7 @@ onUnmounted(stopDrag);
     class="review-layout"
     :class="{ 'is-resizing': isDragging }"
   >
-    <!-- 上方两栏：左列表 + 右(费用合计 / 附件) -->
+    <!-- 上方两栏：左列表 + 右(应收未结算 / 发票 / 附件) -->
     <div
       ref="topPaneRef"
       class="review-layout__top"
@@ -450,7 +460,7 @@ onUnmounted(stopDrag);
     >
       <!-- 左：列表 -->
       <div class="review-layout__list">
-        <slot name="list" />
+        <slot name="list"></slot>
       </div>
 
       <div
@@ -464,7 +474,7 @@ onUnmounted(stopDrag);
         <div class="drag-line"></div>
       </div>
 
-      <!-- 右：费用合计 + 附件（上下排列） -->
+      <!-- 右：结算对象应收未结算、发票、附件 -->
       <div
         class="review-layout__aside"
         :style="{ flex: `0 0 ${asideWidth}px`, width: `${asideWidth}px` }"
@@ -477,153 +487,31 @@ onUnmounted(stopDrag);
             <Empty :description="$t('common.noData')" />
           </div>
           <div v-else class="review-layout__aside-body">
-            <!-- 费用合计 -->
             <Card size="small" class="summary-card">
               <template #title>
-                <div class="flex items-center gap-3">
-                  <span class="font-semibold">{{ t('feeSummary') }}</span>
-                  <span class="text-xs text-gray-500">
-                    {{ t('settlementCurrency') }}：
-                    <Tag color="blue">
-                      {{
-                        settlementCurrencyId === null
-                          ? t('originalCurrency')
-                          : settlementCurrencyName
-                      }}
-                    </Tag>
+                <div class="receivable-title">
+                  <span class="truncate" :title="settlementName">
+                    {{
+                      $t(
+                        'auditApproval.paymentReview.settlementReceivableGroup',
+                      )
+                    }}：{{ settlementName }}
                   </span>
-                </div>
-              </template>
-
-              <!-- 按票原币模式 -->
-              <template v-if="settlementCurrencyId === null">
-                <div
-                  v-if="currencySummaries.length === 0"
-                  class="py-3 text-center text-gray-400"
-                >
-                  {{ t('noFeeWarning') }}
-                </div>
-                <div v-else class="currency-cards">
-                  <div
-                    v-for="cs in currencySummaries"
-                    :key="cs.currencyId"
-                    class="currency-card"
-                  >
-                    <div class="currency-card__header">
-                      <Tag color="blue">
-                        {{ cs.currencyCode || cs.currencyName }}
-                      </Tag>
-                      <span class="currency-card__amount">
-                        {{ formatAmount(cs.totalAmount) }}
-                      </span>
-                    </div>
-                    <Tooltip
-                      v-if="getSelectedBank(cs.currencyId)"
-                      :title="
-                        [
-                          `开户行 ${getSelectedBank(cs.currencyId)?.bankName || '-'}`,
-                          `账号 ${getSelectedBank(cs.currencyId)?.bankAccount || '-'}`,
-                          `SWIFT ${getSelectedBank(cs.currencyId)?.swiftCode || '-'}`,
-                        ].join(' · ')
-                      "
-                    >
-                      <div class="bank-meta">
-                        <span class="bank-meta__item">
-                          <em>开户行</em>
-                          {{ getSelectedBank(cs.currencyId)?.bankName || '-' }}
-                        </span>
-                        <span class="bank-meta__item">
-                          <em>账号</em>
-                          {{
-                            getSelectedBank(cs.currencyId)?.bankAccount || '-'
-                          }}
-                        </span>
-                        <span class="bank-meta__item">
-                          <em>SWIFT</em>
-                          {{ getSelectedBank(cs.currencyId)?.swiftCode || '-' }}
-                        </span>
-                      </div>
-                    </Tooltip>
-                  </div>
-                </div>
-              </template>
-
-              <!-- 指定币别模式 -->
-              <template v-else>
-                <div
-                  v-if="currencyConversionSummaries.length === 0"
-                  class="py-3 text-center text-gray-400"
-                >
-                  {{ t('noFeeWarning') }}
-                </div>
-                <template v-else>
-                  <div class="conversion-cards">
-                    <div
-                      v-for="cs in currencyConversionSummaries"
-                      :key="`${cs.currencyId}_${cs.rate}`"
-                      class="conversion-card"
-                    >
-                      <div class="conversion-card__head">
-                        <Tag color="blue">
-                          {{ cs.currencyCode || cs.currencyName }}
-                        </Tag>
-                        <span class="conversion-card__amount">
-                          {{ formatAmount(cs.originalTotal) }}
-                        </span>
-                        <span class="conversion-card__rate">
-                          {{ t('exchangeRate') }} {{ cs.rate.toFixed(4) }}
-                        </span>
-                        <span class="conversion-card__converted">
-                          ≈ {{ formatAmount(cs.convertedTotal) }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="conversion-total-bar">
-                    <span class="conversion-total-bar__label">
-                      {{ t('convertedTotal') }}
-                      <template v-if="settlementCurrencyName">
-                        ({{ settlementCurrencyName }})
-                      </template>
-                    </span>
-                    <span class="conversion-total-bar__amount">
-                      {{ formatAmount(grandConvertedTotal) }}
-                    </span>
-                  </div>
                   <Tooltip
-                    v-if="settlementSelectedBank"
-                    :title="
-                      [
-                        `开户行 ${settlementSelectedBank?.bankName || '-'}`,
-                        `账号 ${settlementSelectedBank?.bankAccount || '-'}`,
-                        `SWIFT ${settlementSelectedBank?.swiftCode || '-'}`,
-                      ].join(' · ')
-                    "
+                    :title="receivableHint"
+                    :trigger="['hover', 'focus']"
                   >
-                    <div class="bank-meta bank-meta--block">
-                      <span class="bank-meta__item">
-                        <em>开户行</em>
-                        {{ settlementSelectedBank?.bankName || '-' }}
-                      </span>
-                      <span class="bank-meta__item">
-                        <em>账号</em>
-                        {{ settlementSelectedBank?.bankAccount || '-' }}
-                      </span>
-                      <span class="bank-meta__item">
-                        <em>SWIFT</em>
-                        {{ settlementSelectedBank?.swiftCode || '-' }}
-                      </span>
-                    </div>
+                    <button
+                      type="button"
+                      class="receivable-help"
+                      :aria-label="receivableHint"
+                    >
+                      <IconifyIcon icon="ant-design:question-circle-outlined" />
+                    </button>
                   </Tooltip>
-                </template>
-              </template>
-
-              <div class="receivable-block">
-                <div class="receivable-block__title">
-                  {{
-                    $t('auditApproval.paymentReview.settlementReceivableGroup')
-                  }}
                 </div>
+              </template>
+              <div class="receivable-block">
                 <div
                   v-if="settlementReceivableItems.length === 0"
                   class="receivable-block__empty"
@@ -649,6 +537,53 @@ onUnmounted(stopDrag);
               </div>
             </Card>
 
+            <Card size="small" class="invoice-card" title="发票">
+              <Table
+                :columns="invoiceColumns"
+                :data-source="paymentApplicationInvoices"
+                :pagination="false"
+                :scroll="{ x: 640 }"
+                size="small"
+                row-key="id"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'invoiceDate'">
+                    {{ formatInvoiceDate(record.invoiceDate) }}
+                  </template>
+                  <template v-else-if="column.key === 'amount'">
+                    {{
+                      record.amount == null ? '-' : formatAmount(record.amount)
+                    }}
+                  </template>
+                  <template v-else-if="column.key === 'attachment'">
+                    <button
+                      v-if="record.attachment"
+                      type="button"
+                      class="review-attachment-file"
+                      :title="getAttachmentFileName(record.attachment)"
+                      @click="openAttachment(record.attachment)"
+                    >
+                      <IconifyIcon icon="mdi:file-outline" />
+                      <span>{{
+                        getAttachmentFileName(record.attachment)
+                      }}</span>
+                    </button>
+                    <span v-else class="text-gray-400">无附件</span>
+                  </template>
+                  <template v-else>
+                    {{ getCellText(record, column.dataIndex) || '-' }}
+                  </template>
+                </template>
+              </Table>
+              <div
+                v-if="invoiceAmountTotal != null"
+                class="review-invoice-total"
+              >
+                <span>总额</span>
+                <strong>{{ formatAmount(invoiceAmountTotal) }}</strong>
+              </div>
+            </Card>
+
             <!-- 附件信息（按类型分组） -->
             <Card size="small" class="attachment-card">
               <template #title>
@@ -661,58 +596,6 @@ onUnmounted(stopDrag);
                 {{ $t('common.noData') }}
               </div>
               <div v-else class="review-attachments">
-                <section
-                  v-if="paymentApplicationInvoices.length > 0"
-                  class="review-attachment-group"
-                >
-                  <div class="review-attachment-group__title">发票</div>
-                  <div class="review-invoice-list">
-                    <div
-                      v-for="invoice in paymentApplicationInvoices"
-                      :key="invoice.id"
-                      class="review-invoice-row"
-                    >
-                      <span class="review-invoice-row__no">
-                        {{ invoice.invoiceNo || '-' }}
-                      </span>
-                      <span class="review-invoice-row__header">
-                        {{ invoice.sellerHeader || '-' }}
-                      </span>
-                      <span class="review-invoice-row__date">
-                        {{ formatInvoiceDate(invoice.invoiceDate) }}
-                      </span>
-                      <span class="review-invoice-row__amount">
-                        {{
-                          invoice.amount == null
-                            ? '-'
-                            : formatAmount(invoice.amount)
-                        }}
-                      </span>
-                      <button
-                        v-if="invoice.attachment"
-                        type="button"
-                        class="review-attachment-file"
-                        :title="getAttachmentFileName(invoice.attachment)"
-                        @click="openAttachment(invoice.attachment)"
-                      >
-                        <IconifyIcon icon="mdi:file-outline" />
-                        <span>{{
-                          getAttachmentFileName(invoice.attachment)
-                        }}</span>
-                      </button>
-                      <span v-else class="review-invoice-row__empty">
-                        无附件
-                      </span>
-                    </div>
-                    <div
-                      v-if="invoiceAmountTotal != null"
-                      class="review-invoice-total"
-                    >
-                      <span>总额</span>
-                      <strong>{{ formatAmount(invoiceAmountTotal) }}</strong>
-                    </div>
-                  </div>
-                </section>
                 <section
                   v-for="group in visibleAttachmentGroups"
                   :key="group.key"
@@ -811,6 +694,27 @@ onUnmounted(stopDrag);
                 <template #outerBodyCell="{ column, record, index }">
                   <template v-if="column.key === 'seq'">
                     {{ index + 1 }}
+                  </template>
+                  <template v-else-if="column.key === 'recSettlementStatus'">
+                    <Tag
+                      v-if="
+                        settlementStatuses[
+                          record.transportOrder?.recSettlementStatus
+                        ]
+                      "
+                      :color="
+                        settlementStatuses[
+                          record.transportOrder.recSettlementStatus
+                        ]?.color
+                      "
+                    >
+                      {{
+                        settlementStatuses[
+                          record.transportOrder.recSettlementStatus
+                        ]?.label
+                      }}
+                    </Tag>
+                    <span v-else>—</span>
                   </template>
                   <template v-else-if="column.key === 'etd'">
                     {{ formatDate(record.etd) }}
@@ -1038,11 +942,12 @@ onUnmounted(stopDrag);
   gap: 12px;
   height: 100%;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .summary-card {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
 }
@@ -1060,17 +965,17 @@ onUnmounted(stopDrag);
   overflow-y: auto;
 }
 
-.receivable-block {
-  padding-top: 10px;
-  margin-top: 10px;
-  border-top: 1px dashed #e8eef6;
+.receivable-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
 }
 
-.receivable-block__title {
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #595959;
+.receivable-help {
+  flex-shrink: 0;
+  color: #8c8c8c;
+  cursor: help;
 }
 
 .receivable-block__empty {
@@ -1080,8 +985,11 @@ onUnmounted(stopDrag);
 
 .receivable-block__list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 4px;
   overflow: hidden;
+  background: #fffaf3;
   border: 1px solid #f3e8d8;
   border-radius: 6px;
 }
@@ -1092,7 +1000,6 @@ onUnmounted(stopDrag);
   align-items: center;
   padding: 6px 10px;
   background: #fffaf3;
-  border-bottom: 1px solid #f3e8d8;
 }
 
 .receivable-block__item:last-child {
@@ -1106,10 +1013,12 @@ onUnmounted(stopDrag);
   word-break: keep-all;
 }
 
+.invoice-card,
 .attachment-card {
   flex-shrink: 0;
 }
 
+.invoice-card :deep(.ant-card-body),
 .attachment-card :deep(.ant-card-body) {
   max-height: 240px;
   padding: 10px 12px;
@@ -1127,55 +1036,6 @@ onUnmounted(stopDrag);
   font-size: 12px;
   font-weight: 600;
   color: #595959;
-}
-
-.review-invoice-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.review-invoice-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  font-size: 12px;
-}
-
-.review-invoice-row__no {
-  flex: 1 1 80px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #262626;
-  white-space: nowrap;
-}
-
-.review-invoice-row__header {
-  flex: 1 1 100px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #595959;
-  white-space: nowrap;
-}
-
-.review-invoice-row__date {
-  flex-shrink: 0;
-  color: #8c8c8c;
-}
-
-.review-invoice-row__amount {
-  flex-shrink: 0;
-  min-width: 72px;
-  color: #262626;
-  text-align: right;
-}
-
-.review-invoice-row__empty {
-  flex-shrink: 0;
-  color: #bfbfbf;
 }
 
 .review-invoice-total {
@@ -1275,117 +1135,6 @@ onUnmounted(stopDrag);
 
 .fee-detail-bottom {
   flex-shrink: 0;
-}
-
-.currency-cards,
-.conversion-cards {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
-}
-
-.currency-card,
-.conversion-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
-  background: #f6f9ff;
-  border-bottom: 1px solid #e8eef6;
-}
-
-.currency-card:last-child,
-.conversion-card:last-child {
-  border-bottom: 0;
-}
-
-.currency-card__header,
-.conversion-card__head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  align-items: center;
-}
-
-.currency-card__amount {
-  font-size: 15px;
-  font-weight: 700;
-  color: hsl(var(--primary));
-  word-break: keep-all;
-}
-
-.conversion-card__amount {
-  font-size: 14px;
-  font-weight: 700;
-  color: #262626;
-}
-
-.conversion-card__rate {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.conversion-card__converted {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: hsl(var(--primary));
-}
-
-.bank-meta {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #595959;
-}
-
-.bank-meta--block {
-  padding: 6px 8px;
-  margin-top: 8px;
-  background: #f6f9ff;
-  border: 1px dashed #d9e2ec;
-  border-radius: 4px;
-}
-
-.bank-meta__item {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bank-meta__item em {
-  margin-right: 4px;
-  font-style: normal;
-  color: #8c8c8c;
-}
-
-.conversion-total-bar {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-top: 8px;
-  margin-top: 8px;
-  border-top: 1px solid #e8eef6;
-}
-
-.conversion-total-bar__label {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.conversion-total-bar__amount {
-  font-size: 18px;
-  font-weight: 700;
-  color: hsl(var(--primary));
 }
 
 .fee-group-table :deep(.user-role-column) {
