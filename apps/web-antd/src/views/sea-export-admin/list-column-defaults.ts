@@ -38,8 +38,8 @@ export const SEA_EXPORT_LIST_DEFAULT_COLUMN_SETTING: SeaExportListColumnPersistC
       'field:bookingAgent.name',
       'field:carrierCode',
       'field:yard.name',
-      'field:polName',
-      'field:podName',
+      'field:polRemark',
+      'field:podRemark',
       'field:vessel',
       'field:innerVoyno',
       'field:transportOrder.totalCtn',
@@ -88,12 +88,12 @@ export const SEA_EXPORT_LIST_DEFAULT_COLUMN_SETTING: SeaExportListColumnPersistC
       'field:carrierCode': true,
       'field:bookingAgent.name': true,
       'field:yard.name': true,
-      'field:receivePortName': false,
-      'field:polName': true,
-      'field:poT1Name': false,
-      'field:poT2Name': false,
-      'field:podName': true,
-      'field:deliverPortName': false,
+      'field:receivePortRemark': false,
+      'field:polRemark': true,
+      'field:poT1Remark': false,
+      'field:poT2Remark': false,
+      'field:podRemark': true,
+      'field:deliverPortRemark': false,
       'field:vessel': true,
       'field:innerVoyno': true,
       'field:terminalVoyno': false,
@@ -150,12 +150,12 @@ export const SEA_EXPORT_LIST_DEFAULT_COLUMN_SETTING: SeaExportListColumnPersistC
       'field:carrierCode': '',
       'field:bookingAgent.name': '',
       'field:yard.name': '',
-      'field:receivePortName': '',
-      'field:polName': '',
-      'field:poT1Name': '',
-      'field:poT2Name': '',
-      'field:podName': '',
-      'field:deliverPortName': '',
+      'field:receivePortRemark': '',
+      'field:polRemark': '',
+      'field:poT1Remark': '',
+      'field:poT2Remark': '',
+      'field:podRemark': '',
+      'field:deliverPortRemark': '',
       'field:vessel': '',
       'field:innerVoyno': '',
       'field:terminalVoyno': '',
@@ -203,8 +203,8 @@ export const SEA_EXPORT_LIST_DEFAULT_COLUMN_SETTING: SeaExportListColumnPersistC
       'field:transportOrder.client.name': 126,
       'field:bookingAgent.name': 91,
       'field:yard.name': 70,
-      'field:polName': 111,
-      'field:podName': 134,
+      'field:polRemark': 111,
+      'field:podRemark': 134,
       'field:vessel': 82,
       'field:innerVoyno': 59,
       'field:terminalVoyno': 90,
@@ -291,4 +291,45 @@ export function applySeaExportListDefaultColumns<T extends ColumnLike>(
   const hidden = columns.filter((column) => column.visible === false);
 
   return [...orderedVisible, ...appendedVisible, ...hidden];
+}
+
+/** 兼容旧港口列键，保留用户的列顺序、显隐、固定与宽度。 */
+export function migrateSeaExportPortColumnSetting(setting: string): string {
+  const fields: Record<string, string> = {
+    receivePortName: 'receivePortRemark',
+    polName: 'polRemark',
+    poT1Name: 'poT1Remark',
+    poT2Name: 'poT2Remark',
+    podName: 'podRemark',
+    deliverPortName: 'deliverPortRemark',
+  };
+  const migrateKey = (key: string) =>
+    key.replace(
+      /^(field:|col_\d+_)(receivePortName|polName|poT1Name|poT2Name|podName|deliverPortName)$/,
+      (_match, prefix: string, field: string) => `${prefix}${fields[field]}`,
+    );
+  try {
+    const config = JSON.parse(setting);
+    if (!config || typeof config !== 'object') return setting;
+    if (Array.isArray(config.visibleColumnKeys)) {
+      config.visibleColumnKeys = config.visibleColumnKeys.map((key: unknown) =>
+        typeof key === 'string' ? migrateKey(key) : key,
+      );
+    }
+    for (const section of ['columnVisibility', 'columnFixed', 'columnWidths']) {
+      const values = config[section];
+      if (!values || typeof values !== 'object') continue;
+      for (const key of Object.keys(values)) {
+        const nextKey = migrateKey(key);
+        if (nextKey !== key) {
+          if (!(nextKey in values)) values[nextKey] = values[key];
+          delete values[key];
+        }
+      }
+    }
+    return JSON.stringify(config);
+  } catch {
+    // 格式异常交给表格现有的默认配置回退处理。
+    return setting;
+  }
 }

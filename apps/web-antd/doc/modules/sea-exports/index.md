@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-09-15
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
-- **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。港口备注列仍用 `polName` 等旧 field + `formatter` 读 `*Remark`，排序仍走 `*.PortName`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
+- **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。六段港口列直接绑定 `*Remark` 真实字段，排序通过 `fieldMap` 仍走 `*.PortName`；个人列设置加载时迁移旧港口键，保留顺序、显隐、固定和宽度。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
 - **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、时间信息、干系人四区，控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。港口区用编辑页同款流转卡片，六段港口各自带一格备注：选港后自动填 `PORTNAME, COUNTRYENNAME` 且可手工改，备注只在对应港口有值时随 id 提交（后端亦只在改港时写备注），列表港口列读的就是这些备注。时间信息区与编辑页船期区同源，含货好时间、开船日期、实际开船日期、预抵日期、截单日期、截港日期、截关日期；日期只能改成某个值，不能用批量修改清空。仅 `isEditable === true` 的票 id 参与提交。成功后给这些 id 打详情重拉标记：之前开过、仍挂在页签里的编辑页再点进去会重新 `DetailAsync`，不会继续显示 KeepAlive 里的旧数据。
@@ -65,7 +65,7 @@ last_updated: 2026-09-15
 | **货好 / 实际开船 / 预抵 / 截港 / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截港/截关在海出根级；`formatDate`。 | 无值时空。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
-| **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
+| **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，列 `field` 直接绑定），通过 `fieldMap` 保持**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
 | **航线** | 目的港所属航线名称。 | 列 `pod.lane.laneName` | **触发/依赖：** 列 `field` 直接绑目的港航线；排序走 `fieldMap` 的 `POD.Lane.LaneName`。 | 目的港无航线时为空。 |
 | **船名 / 航次** | 船期检索字段；航次是船公司航次。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
 | **码头航次** | 港区航次；与船公司航次是两套编号；界面不展示。 | 筛 `TerminalVoyno`（hidden）；列表不再定义该列 | **触发/依赖：** 不进 `Keyword` 模糊范围；查码头船舶计划仍用该字段。 | 可清空；出口上限 64。 |
@@ -193,3 +193,7 @@ last_updated: 2026-09-15
 | 2026-05-16 | `Parsing` | 无 | 结合 `list.vue`、`data.ts` 与 `sea-export-admin.ts` 补全列表查询、日期区间拆参、单选行操作、删除确认和跨 DTO 字段来源说明。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-exports` 对应组件 `src/views/sea-export-admin/list.vue`，权限口径为 未在路由中声明独立权限。 |
 | 2026-09-15 | `Feature` | 字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。 | 显式模块配置、原始键结构快照及共享展示适配器。 |
+
+| 2026-09-19 | `Fix` | 修复批量改港后接口返回新备注、列表仍显示旧值；兼容已保存列设置。 | 六段港口列直接绑定备注字段，消除旧字段 formatter 缓存；排序仍映射港口名称。 |
+
+| 2026-09-19 | `Parsing` | 无 | 扩展排查发现人员列与收发通回退文本存在同类 formatter 缓存依赖偏差；九个样例完成单元级复现，尚未逐页实测。详见 [排查记录](../../parsing-logs/parse-log-2026-09-19-列表格式化缓存排查.md)。 |

@@ -72,7 +72,10 @@ import {
   useColumns,
   useGridFormSchema,
 } from './data';
-import { stringifySeaExportListDefaultColumnSetting } from './list-column-defaults';
+import {
+  migrateSeaExportPortColumnSetting,
+  stringifySeaExportListDefaultColumnSetting,
+} from './list-column-defaults';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
@@ -371,11 +374,17 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
             'yard.name': 'Yard.Name',
             yardName: 'Yard.Name',
             receivePortName: 'ReceivePort.PortName',
+            receivePortRemark: 'ReceivePort.PortName',
             polName: 'POL.PortName',
+            polRemark: 'POL.PortName',
             poT1Name: 'POT1.PortName',
+            poT1Remark: 'POT1.PortName',
             poT2Name: 'POT2.PortName',
+            poT2Remark: 'POT2.PortName',
             podName: 'POD.PortName',
+            podRemark: 'POD.PortName',
             deliverPortName: 'DeliverPort.PortName',
+            deliverPortRemark: 'DeliverPort.PortName',
             'codeIssueType.billType': 'CodeIssueType.BillType',
             codeIssueTypeName: 'CodeIssueType.BillType',
             'pod.lane.laneName': 'POD.Lane.LaneName',
@@ -396,7 +405,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       await tableConfigStore.loadTableConfigsOnce();
       const hit = tableConfigStore.getTableConfigByName(keyword);
       if (hit?.setting) {
-        return { id: hit.id, setting: hit.setting };
+        return {
+          id: hit.id,
+          setting: migrateSeaExportPortColumnSetting(hit.setting),
+        };
       }
       // 无用户配置：套代码默认 JSON，不带 id，避免写成用户设置
       return { setting: stringifySeaExportListDefaultColumnSetting() };
