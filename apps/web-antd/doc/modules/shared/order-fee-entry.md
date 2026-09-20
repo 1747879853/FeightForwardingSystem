@@ -458,6 +458,9 @@ stateDiagram-v2
 - 基础信息保存成功：海出/海进/空出编辑页均 `clearOrderDetailCache(editId)`，避免费用联动仍用旧详情。
 - 费用页挂载只调 `getOrderFeeCount` 刷角标；金额汇总由子表 `@update-amount` 上报，**不再**额外 `PageSize:999` 拉全量列表。
 - 客户按行业懒加载（打开结算对象下拉时拉取；未选行业才走全量分组接口），挂载不再全量 Spin。
+- 选中/预警高亮：行级刷新或 DOM class，避免动辄整表 `render()`。
+- 提交利润校验复用对立表内存行；收付互生只刷对立侧。
+- 挂载时费用列表与下拉源并行，主单表格先出。
 - 空运 `dataI18nPrefix` 使用 `airExport.export`（列文案与海出键对齐）。
 - `onActivated` 重绑 i18n。
 

@@ -58,8 +58,8 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const initDropdownSources = async () => {
     try {
+      // 行业类别（同步，无请求）
       const industryOptions = getIndustryCategoryOptionsFromData();
-
       dropdownSources.value.industryCategoryList = industryOptions.map(
         (opt) => ({
           label: opt.label,
@@ -68,14 +68,12 @@ export function useDropdownSources(orderCtnList: any) {
         }),
       );
 
-      // 加载费用代码列表并构建缓存（费用代码下拉选项与详情缓存）
-      await getFeeCodeList();
-
-      // ✅ 修改：从后端 API 获取币别列表
-      await loadCurrencyList();
-
-      // ✅ 新增：预加载汇率缓存
-      await loadExchangeRateCache();
+      // 费用代码 / 币别 / 汇率并行，缩短首屏等待
+      await Promise.all([
+        getFeeCodeList(),
+        loadCurrencyList(),
+        loadExchangeRateCache(),
+      ]);
     } catch (error) {
       console.error('❌ [initDropdownSources] 初始化失败:', error);
     }

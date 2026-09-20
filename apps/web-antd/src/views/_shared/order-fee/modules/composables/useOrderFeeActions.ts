@@ -4,13 +4,14 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
-import { nextTick, h } from 'vue';
+import { nextTick, h, inject } from 'vue';
 import { message, Modal, Textarea } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 
 import * as feeConstants from '../../data';
 import { useOrderFeeAdapter } from '../../use-adapter';
+import { ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY } from '../../types';
 
 import {
   submitOrderFee,
@@ -48,6 +49,7 @@ export function useOrderFeeActions(
   emit: any,
 ) {
   const adapter = useOrderFeeAdapter();
+  const getFeesByPaySide = inject(ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY, null);
   let rowKeyCounter = 0;
 
   /**
@@ -247,7 +249,7 @@ export function useOrderFeeActions(
         key: 'action_process_msg',
       });
 
-      await dataContext.getTableDate();
+      // 互生只改对立侧；本表无需重拉，对立表由父级 refresh
       dataContext.syncFee();
       emit('refresh-opposite-table');
     } catch (error) {
@@ -286,16 +288,23 @@ export function useOrderFeeActions(
     const oppositePaySide = props.type === 0 ? 1 : 0;
     let oppositeFees: any[] = [];
     try {
-      const oppositeRes = await adapter.api.getOrderFeePagedList({
-        TransportOrderId: dataContext.editId.value,
-        PaySide: oppositePaySide,
-        PageIndex: 1,
-        PageSize: 999,
-      });
-      oppositeFees = (oppositeRes?.items ?? []).filter(
-        (fee: any) =>
-          normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
-      );
+      if (getFeesByPaySide) {
+        oppositeFees = (getFeesByPaySide(oppositePaySide) ?? []).filter(
+          (fee: any) =>
+            normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+        );
+      } else {
+        const oppositeRes = await adapter.api.getOrderFeePagedList({
+          TransportOrderId: dataContext.editId.value,
+          PaySide: oppositePaySide,
+          PageIndex: 1,
+          PageSize: 999,
+        });
+        oppositeFees = (oppositeRes?.items ?? []).filter(
+          (fee: any) =>
+            normalizeOrderFeeChangeOrderKey(fee.changeOrderId) === scopeKey,
+        );
+      }
     } catch (error) {
       console.error('加载对立费用失败，无法校验提交后利润:', error);
       message.error('无法校验提交后利润，请稍后重试');

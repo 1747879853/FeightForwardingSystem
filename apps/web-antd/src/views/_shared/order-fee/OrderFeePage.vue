@@ -18,7 +18,11 @@ import {
   getCurrencyEnumSymbolOptions,
   getFeeStatusValue,
 } from './data';
-import { ORDER_FEE_ADAPTER_KEY, type OrderFeeModuleAdapter } from './types';
+import {
+  ORDER_FEE_ADAPTER_KEY,
+  type OrderFeeModuleAdapter,
+  ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY,
+} from './types';
 import { useOrderFeeI18n } from './use-adapter';
 import { Page } from '@vben/common-ui';
 
@@ -94,6 +98,13 @@ const props = defineProps<{
 
 // 为子组件（表格/弹窗/composables）提供适配器
 provide(ORDER_FEE_ADAPTER_KEY, props.adapter);
+
+/** 提交利润校验：复用对立表已加载行，避免再拉 PageSize:999 */
+provide(ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY, (paySide: number) => {
+  const table =
+    paySide === 0 ? recOrderFeeTableRef.value : payOrderFeeTableRef.value;
+  return table?.getAllFees?.() ?? [];
+});
 
 // 绑定模块级 i18n 前缀。必须在 setup 同步执行：子组件（表格等）在 setup 阶段就会
 // 构建列定义（useOrderFeeColumns/useOrderFeeDetailColumns），setup 先于 onActivated，

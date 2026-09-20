@@ -51,7 +51,10 @@ import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table-han
 import type { DisplayFieldConfig } from '#/views/_shared/order-fee/modules/display-fields-config-modal.vue';
 import { useDisplayFieldConfig } from '#/views/_shared/order-fee/composables/use-display-field-config';
 import { seaImportAdapter } from '#/views/_shared/order-fee/adapter/sea-import';
-import { ORDER_FEE_ADAPTER_KEY } from '#/views/_shared/order-fee/types';
+import {
+  ORDER_FEE_ADAPTER_KEY,
+  ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY,
+} from '#/views/_shared/order-fee/types';
 
 import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 
@@ -74,6 +77,10 @@ const props = defineProps<{
 
 // 为共享费用表格提供海运进口适配器
 provide(ORDER_FEE_ADAPTER_KEY, seaImportAdapter);
+provide(ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY, (paySide: number) => {
+  const table = paySide === 0 ? RecOrderFeeRef.value : PayOrderFeeRef.value;
+  return table?.getAllFees?.() ?? [];
+});
 
 // setup 同步绑定模块级 i18n 前缀：子组件（费用表格）setup 阶段构建列定义，先于 onActivated
 bindOrderFeeDataI18n('seaImport.import', 'seaImport');

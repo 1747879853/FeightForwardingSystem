@@ -109,3 +109,11 @@ export interface OrderFeeModuleAdapter {
  */
 export const ORDER_FEE_ADAPTER_KEY: InjectionKey<OrderFeeModuleAdapter> =
   Symbol('order-fee-adapter');
+
+/**
+ * 按收付方向取已加载费用（供提交后利润校验复用对立表内存数据，避免再 PageSize:999）
+ * 由 OrderFeePage / 更改单页 provide
+ */
+export const ORDER_FEE_GET_FEES_BY_PAY_SIDE_KEY: InjectionKey<
+  (paySide: number) => any[]
+> = Symbol('order-fee-get-fees-by-pay-side');

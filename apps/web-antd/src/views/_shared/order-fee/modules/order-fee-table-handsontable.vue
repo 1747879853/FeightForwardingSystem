@@ -38,6 +38,12 @@ import { useOrderFeeActions } from './composables/useOrderFeeActions';
 import { useOrderFeeLinkage } from './composables/useOrderFeeLinkage';
 import { useFinishStatus } from './composables/useFinishStatus';
 import { useOrderFeePrint } from './composables/useOrderFeePrint';
+import {
+  applyHotWarningHighlightClasses,
+  refreshHotVisualRows,
+  resolveVisualRowsForSelectionChange,
+} from './utils/hot-refresh';
+import { useThrottleFn } from '@vueuse/core';
 import { useDropdownSources } from './composables/useDropdownSources';
 import { useOrderFeeSort } from './composables/useOrderFeeSort';
 import { useHotColumns } from './composables/useHotColumns';
@@ -106,7 +112,6 @@ const {
   getExchangeRateFromCache, // ✅ 新增：获取汇率的方法
   initDropdownSources,
   updateUnitList,
-  getFeeCodeList,
   loadClientList,
   getSettlementIndustryCategory,
 } = useDropdownSources(orderCtnList);
@@ -224,8 +229,8 @@ const handleOpenDropdown = (
   // ✅ 关键修复：设置单元格的 source，确保 autocomplete 编辑器有下拉列表
   hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
 
-  // 强制刷新单元格以确保 meta 生效
-  hotInstance.render();
+  // 强制刷新单元格以确保 meta 生效（仅当前格所属行）
+  refreshHotVisualRows(hotInstance, [rowIndex], { fullRenderThreshold: 1 });
 };
 
 // 模态框管理（需要在 useHotSettings 之前定义）
@@ -786,18 +791,6 @@ const getAllFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
 const getSanitizedFees = (): OrderFeeAdminApi.OrderFeeEditDto[] =>
   sanitizeOrderFee(dataSource.value);
 
-// 监听选中行变化，发射事件通知父组件
-watch(
-  () => selectedRowKeys.value,
-  (newKeys) => {
-    emit('selection-change', {
-      type: props.type,
-      selectedIds: getSelectedFeeIds(),
-    });
-  },
-  { deep: true },
-);
-
 defineExpose({
   getTableDate,
   getSelectedFeeIds,
@@ -1012,34 +1005,44 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
-onMounted(async () => {
+onMounted(() => {
   initOrderFeeEnumCache();
-  // 列表页 AI 识别跳转而来：应付表挂载即消费跨页暂存，命中则自动弹出确认弹窗
   if (!isChangeOrderMode.value) {
     tryConsumePendingBillFees();
   }
-  // 本次进入费用页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率（ETD+本位币匹配用）
-  await ensureExchangeRateCache(true);
-  await initDropdownSources();
-  await getFeeCodeList();
 
-  // 客户按行业在结算下拉打开时懒加载（模块级共享缓存）
+  // 表格先出：费用列表与下拉源并行；主单不阻塞等下拉
+  const dropdownReady = (async () => {
+    await Promise.all([ensureExchangeRateCache(true), initDropdownSources()]);
+    updateUnitList();
+  })();
 
-  // 初始化单位列表，确保 unit 下拉框有数据
-  updateUnitList();
-
-  // 更改单：等下拉源就绪后再拉费用，避免父页 nextTick 早于下拉初始化导致 ID 无法转成标签
   if (isChangeOrderMode.value) {
-    const id = changeOrderId.value || props.parentChangeOrderId || '';
-    if (id) {
-      await getTableDate(id);
-    }
+    // 更改单：等下拉就绪再拉费用，避免 ID→标签转换缺源
+    void (async () => {
+      await dropdownReady;
+      const id = changeOrderId.value || props.parentChangeOrderId || '';
+      if (id) {
+        await getTableDate(id);
+      }
+    })();
   } else {
-    getTableDate();
-    loadFinishStatus();
+    void getTableDate();
+    void loadFinishStatus();
+    void dropdownReady.then(() => {
+      // 下拉补齐后把已加载行的 ID 转成标签
+      if (dataSource.value?.length) {
+        isConvertingIds.value = true;
+        try {
+          convertIdsToLabels();
+        } finally {
+          isConvertingIds.value = false;
+        }
+        getHotInstance()?.render();
+      }
+    });
   }
 
-  // 添加键盘事件监听器
   document.addEventListener('keydown', handleKeyDown);
 });
 
@@ -1112,23 +1115,47 @@ watch(
   { deep: true },
 );
 
+const prevSelectedRowKeys = ref<(string | number)[]>([]);
+
+const scheduleSelectionRefresh = useThrottleFn((visualRows: number[]) => {
+  const hot = getHotInstance();
+  if (!hot) return;
+  refreshHotVisualRows(hot, visualRows);
+}, 48);
+
 watch(
   () => selectedRowKeys.value,
-  () => {
-    nextTick(() => {
-      if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        coreTableRef.value.hotTableRef.hotInstance.render();
-      }
+  (newKeys) => {
+    emit('selection-change', {
+      type: props.type,
+      selectedIds: getSelectedFeeIds(),
     });
+
+    const hot = getHotInstance();
+    const visualRows = resolveVisualRowsForSelectionChange(
+      hot,
+      dataSource.value ?? [],
+      prevSelectedRowKeys.value,
+      newKeys,
+    );
+    prevSelectedRowKeys.value = [...newKeys];
+    if (visualRows.length === 0) return;
+    nextTick(() => scheduleSelectionRefresh(visualRows));
   },
   { deep: true },
 );
 
 watch(
   () => props.highlightFeeIds,
-  () => {
+  (ids) => {
     nextTick(() => {
-      getHotInstance()?.render();
+      const hot = getHotInstance();
+      if (!hot) return;
+      applyHotWarningHighlightClasses(
+        hot,
+        dataSource.value ?? [],
+        (ids ?? []).map(String),
+      );
     });
   },
   { deep: true },
