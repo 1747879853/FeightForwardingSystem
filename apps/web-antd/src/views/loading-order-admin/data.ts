@@ -64,6 +64,16 @@ const getStatusOptions = () =>
     value: Number(value),
   }));
 
+/** 列 field → LoadingOrder.ApplySorting 路径（含 customPaths） */
+export const LOADING_ORDER_SORT_FIELD_MAP: Record<string, string> = {
+  'seaExport.transportOrder.mblNum': 'SeaExport.TransportOrder.MblNum',
+  'seaExport.vessel': 'SeaExport.Vessel',
+  'seaExport.carrier.cnShortName': 'SeaExport.Carrier.CnShortName',
+  'seaExport.transportOrder.pkgs': 'SeaExport.TransportOrder.Pkgs',
+  'carrierYard.name': 'CarrierYard.Name',
+  loadingOrderUsers: 'LoadingOrderUsers.UserId',
+};
+
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
@@ -260,12 +270,16 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.mblNum'),
       minWidth: 140,
       showOverflow: true,
+      sortable: true,
+      sortField: 'SeaExport.TransportOrder.MblNum',
     },
     {
       field: 'seaExport.vessel',
       title: $t('seaExport.loadingOrder.vesselVoyage'),
       minWidth: 160,
       showOverflow: true,
+      sortable: true,
+      sortField: 'SeaExport.Vessel',
       ...rowTextColumn(({ row }) => formatVesselVoyage(row)),
     },
     {
@@ -273,6 +287,8 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.carrier'),
       minWidth: 120,
       showOverflow: true,
+      sortable: true,
+      sortField: 'SeaExport.Carrier.CnShortName',
       ...rowTextColumn(({ row }) => formatCarrier(row)),
     },
     {
@@ -280,6 +296,7 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.goods'),
       minWidth: 140,
       showOverflow: true,
+      sortable: false,
       formatter: ({ row }) => formatGoods(row),
     },
     {
@@ -287,6 +304,8 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.mainPkgs'),
       width: 90,
       align: 'right',
+      sortable: true,
+      sortField: 'SeaExport.TransportOrder.Pkgs',
       formatter: ({ row }) => {
         const pkgs = row.seaExport?.transportOrder?.pkgs;
         return pkgs == null ? '-' : String(pkgs);
@@ -304,12 +323,17 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.carrierYard'),
       minWidth: 140,
       showOverflow: true,
+      sortable: true,
+      sortField: 'CarrierYard.Name',
     },
     {
       field: 'loadingOrderUsers',
       title: $t('seaExport.loadingOrder.supervisors'),
       minWidth: 120,
       showOverflow: true,
+      sortable: true,
+      // 一对多不能按集合路径反射；后端按先输入师傅的 UserId 排（SortId 最小）
+      sortField: 'LoadingOrderUsers.UserId',
       formatter: ({ cellValue }) => formatSupervisors(cellValue),
     },
     {
@@ -319,7 +343,7 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       showOverflow: true,
       formatter: ({ cellValue }) =>
         (typeof cellValue === 'string' ? cellValue.trim() : cellValue) || '-',
-      sortable: true,
+      sortable: false,
     },
     {
       field: 'submitTime',
@@ -347,6 +371,7 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.list.remark'),
       minWidth: 160,
       showOverflow: true,
+      sortable: true,
     },
     {
       field: 'creationTime',

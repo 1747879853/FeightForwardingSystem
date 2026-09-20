@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,7 +18,7 @@ last_updated: 2026-09-19
 - **摄像头认领：** 仅已认领工单可操作。点「摄像头」调 `GET /api/services/app/LoadingOrder/GetCameraListAsync` 拉台账，对照机身号牌选择后立即 `PUT .../EditCameraNoAsync`；占用项置灰，同公司显示工单号、跨公司只提示已被其它工单占用。解绑需确认后传 null。已完成只读提示已释放，取消完成后需重新选择。选摄像头不会覆盖未提交的箱型照片草稿。不手填编号，也不在非已认领状态拉列表。
 
 - **底栏四个 Tab：** 首页、监装、积分兑换、个人中心。第一期只有「监装」（监装列表）与「个人中心」有内容，首页与积分兑换是占位页。
-- **列表（`pages/loading/list`）：** 顶部分段「新派 / 进行中 / 已完成」分别打接口状态 1/2/3；分段用 `components/skew-tabs/skew-tabs`（Canvas 2D 斜切白滑块），点击插值滑动。打开检索抽屉时卸掉 canvas；切底栏或进出详情不再控制 canvas。Tab 与卡片间距 24rpx；过渡写在列表里：`.list__fade` 为 `180deg #F9FAFD → #F0F2F8`，与选中滑块衔接，垫在内容卡片下面。视觉按 Figma「检索条件」稿：蓝渐变顶、口号渐变字、3D 插图压在 Tab 右侧、白卡片展示监装工号、状态徽标、主提单号、明细包装\*件数、船名航次、堆场、品名、下单日期与预计到货日期。`submitUserName` 有值时在标题行状态徽标左侧用 20rpx 灰色小字显示「派单人 + 姓名」；拨打只绑在该小按钮上（`catchtap` + `hover-stop-propagation`），卡片其它区域各自 `@tap` 进详情，避免整卡冒泡误弹拨打。空则不渲染。支持下拉刷新、触底加载。
+- **列表（`pages/loading/list`）：** 顶部分段「新派 / 进行中 / 已完成」分别打接口状态 1/2/3；分段用 `components/skew-tabs/skew-tabs`（Canvas 2D 斜切白滑块），点击插值滑动。打开检索抽屉时卸掉 canvas；切底栏或进出详情不再控制 canvas。Tab 与卡片间距 24rpx；过渡写在列表里：`.list__fade` 为 `180deg #F9FAFD → #F0F2F8`，与选中滑块衔接，垫在内容卡片下面。视觉按 Figma「检索条件」稿：蓝渐变顶、口号渐变字、3D 插图压在 Tab 右侧、白卡片展示监装工号、状态徽标、主提单号、明细包装\*件数、船名航次、堆场、品名、下单日期与预计到货日期。`submitUserName` 有值时在标题行状态徽标左侧用 20rpx 灰色小字显示「派单人 + 姓名」；拨打只绑在该小按钮上（`catchtap` + `hover-stop-propagation`），卡片其它区域各自 `@tap` 进详情，避免整卡冒泡误弹拨打。空则不渲染。支持下拉刷新、触底加载。默认 `sorting=EstimatedArrivalTime DESC`，与 PC 监装列表一致。
 - **检索：** 点顶栏放大镜从右侧弹出「检索条件」抽屉，支持监装工单号（模糊）、主提单号（模糊）、监装堆场关键字（名称/地址/备注）、起运港、船公司、品名、预计到货日；有生效条件时放大镜带红点。起运港/船公司/品名点开底部面板，可搜关键字、每页 20 条、触底加载。起运港下拉两行对齐 PC：`EDI码/英文名` + `国家英文名 / 中文名`；船公司对齐 PC：`CODE(简称)`，下拉与选中回显都带 logo（无图则只显示文字）。检索用本地 `search-drawer`（右侧遮罩，不引用 `wd-popup`，避免微信把 `node-modules/wot-design-uni` 当无依赖丢掉）。打开时把 Tab 的 `hidden` 设为 true，`v-if` 卸掉 2d canvas，关掉再挂回。
 - **详情（`pages/loading/detail`）：** 基本卡片——基本信息（13 行）、监装要求（胶囊标签 + 详细说明）、集装箱要求（紧凑两行展示序号、箱型、箱号、封号、状态和照片数；箱号 34rpx、封号 28rpx，整行可点且最小高 76px）。视觉对齐 Figma「检索条件-详情」。基本信息「监装堆场」有名称或地址时可点「导航」：腾讯 `geocoder` 把中文地址转经纬度后 `uni.openLocation`。
 - **监装处理：** 箱行只留一个入口，展示待处理/已完成与已传张数；点开面板可改该箱箱号、封号、完成状态并按附件类型分区传图（每类支持多张，缩略图每行三张，标题显示张数）。箱号旁可「识别」：拍照/相册一张图只用来识别箱号，不进入监装照片。已认领时面板底栏点「保存」立即提交；点遮罩或关闭且未保存则还原该箱打开时的值。拍照与相册分入口，避免误开相机。
@@ -84,6 +84,7 @@ last_updated: 2026-09-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 师傅端列表默认按预计到货时间倒序，与 PC 监装列表一致。 | `getMyLoadingOrders` 不传 `sorting` 时补 `EstimatedArrivalTime DESC`。详见[变更记录](../../changelogs/change-log-2026-09-20-监装列表默认预计到货倒序.md)。 |
 | 2026-09-14 | `Fix` | 监装箱照类型槽按原始 `sortId` 降序，历史组不再固定垫后。 | `toEditableCtns`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-07 | `Fix` | 监装处理弹层内滚动不再带动背后详情页。 | 遮罩 catchtouchmove + 面板固定高度。详见 `changelogs/change-log-2026-09-07-mp-loading-photo-panel-scroll.md`。 |
 | 2026-09-07 | `Fix` | 堆场导航改为直调腾讯地理编码；补齐 manifest / Key 配额说明。 | 去掉运行时对 qqmap CJS SDK 依赖。详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |

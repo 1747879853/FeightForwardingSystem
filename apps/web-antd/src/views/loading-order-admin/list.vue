@@ -19,6 +19,7 @@ import {
 
 import {
   getLoadingOrderStatusMeta,
+  LOADING_ORDER_SORT_FIELD_MAP,
   useColumns,
   useGridFormSchema,
 } from './data';
@@ -102,7 +103,8 @@ const [Grid, gridApi] =
       proxyConfig: {
         ajax: {
           query: createPagedListQuery(getLoadingOrderPagedList, {
-            defaultSort: 'CreationTime DESC',
+            defaultSort: 'EstimatedArrivalTime DESC',
+            fieldMap: LOADING_ORDER_SORT_FIELD_MAP,
             mapParams: normalizeQuery,
           }),
         },

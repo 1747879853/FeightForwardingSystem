@@ -211,6 +211,9 @@ export function editLoadingOrderCameraNo(id: string, cameraNo: null | number) {
   });
 }
 
+/** 与 PC 监装列表一致；不传时后端基类默认是 CreationTime DESC */
+export const DEFAULT_LIST_SORTING = 'EstimatedArrivalTime DESC';
+
 /**
  * 分页查询。status 必填：1 看公共池，2/3 只看自己的。
  */
@@ -221,6 +224,7 @@ export function getMyLoadingOrders(query: LoadingOrderQuery) {
       pageIndex: 1,
       pageSize: 10,
       ...query,
+      sorting: query.sorting ?? DEFAULT_LIST_SORTING,
     },
   });
 }
