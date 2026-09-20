@@ -42,6 +42,7 @@ export const RECEIVE_FEE_PAY_SIDE_FILTER_OPTIONS = [
 /** 重置检索时恢复的默认值（收付类型默认应收） */
 export const ADD_FEE_SEARCH_DEFAULTS = {
   keyword: '',
+  statementNum: '',
   clientId: undefined as string | undefined,
   etdRange: undefined as undefined,
   saleIds: [] as Array<number | string>,
@@ -64,8 +65,14 @@ export function buildFeeGroupSearchQuery(values: Record<string, any>) {
     : [];
   const paySide = values.paySide;
 
+  const statementNum =
+    typeof values.statementNum === 'string'
+      ? values.statementNum.trim()
+      : undefined;
+
   return {
     keyword: values.keyword || undefined,
+    statementNum: statementNum || undefined,
     clientId: values.clientId || undefined,
     etdStart: toIsoStartOfDay(etdStart),
     etdEnd: toIsoEndOfDay(etdEnd),
@@ -112,6 +119,16 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       label: '编号',
       componentProps: {
         placeholder: '委托编号 / 主提单号',
+        allowClear: true,
+      },
+    },
+    {
+      ...searchFieldCommon,
+      component: 'Input',
+      fieldName: 'statementNum',
+      label: '客户对账',
+      componentProps: {
+        placeholder: '请输入客户对账单号',
         allowClear: true,
       },
     },

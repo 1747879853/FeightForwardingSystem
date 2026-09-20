@@ -66,6 +66,8 @@ export namespace ReceiveSettlementAdminApi {
     keyword?: string;
     commissionNum?: string;
     mblNum?: string;
+    /** 客户对账单号（模糊）；只返回命中对账单里的费用 */
+    statementNum?: string;
     /** 委托单位 */
     clientId?: string;
     etdStart?: string;
