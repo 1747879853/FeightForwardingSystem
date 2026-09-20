@@ -17,6 +17,7 @@ import {
   Dropdown,
   MenuItem,
   Menu,
+  SubMenu,
   Card,
   Modal,
 } from 'ant-design-vue';
@@ -33,6 +34,8 @@ import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 import BatchImportFeeModal from './batch-import-fee-modal.vue';
 import AiBillFeeUploadModal from './ai-bill-fee-upload-modal.vue';
 import AiBillFeeResultModal from './ai-bill-fee-result-modal.vue';
+import OrderFeeTemplateForm from '#/views/system/basic-data/OrderFeeTemplateAdmin/modules/form.vue';
+import { buildOrderFeeTemplateDraft } from './utils/build-fee-template-draft';
 import { useOrderFeeData } from './composables/useOrderFeeData';
 import { useOrderFeeActions } from './composables/useOrderFeeActions';
 import { useOrderFeeLinkage } from './composables/useOrderFeeLinkage';
@@ -75,6 +78,7 @@ const props = defineProps<{
 const isChangeOrderMode = computed(() => props.mode === 'changeOrder');
 const isTableReadonly = computed(() => Boolean(props.readonly));
 const orderFeePerm = createAbpPermission('Admin.OrderFee');
+const orderFeeTemplatePerm = createAbpPermission('Admin.OrderFeeTemplate');
 
 const adapter = useOrderFeeAdapter();
 
@@ -520,6 +524,10 @@ const handleMoreMenuClick = (info: { key: string | number }) => {
       openBatchImportModal();
       break;
     }
+    case 'generateTemplate': {
+      openGenerateTemplateModal();
+      break;
+    }
     case 'generateOpposite': {
       ImportOther({ key: 'submit' });
       break;
@@ -565,6 +573,53 @@ const handleBatchImportConfirm = () => {
   getTableDate();
   syncFee();
   emit('refresh-opposite-table');
+};
+
+// ==================== 反向生成自动费用模板 ====================
+
+const generateTemplateFormRef =
+  ref<InstanceType<typeof OrderFeeTemplateForm>>();
+
+const canGenerateFeeTemplate = computed(
+  () =>
+    !isChangeOrderMode.value && !isTableReadonly.value && adapter.bizType === 0,
+);
+
+const openGenerateTemplateModal = () => {
+  if (isChangeOrderMode.value) {
+    message.warning('更改单暂不支持生成费用模板');
+    return;
+  }
+  if (adapter.bizType !== 0) {
+    message.warning('当前仅海运出口支持生成自动费用模板');
+    return;
+  }
+  if (!editId.value) {
+    message.warning('请先保存业务信息');
+    return;
+  }
+  const orderDetail = orderBaseData.value;
+  if (!orderDetail) {
+    message.warning('订单详情未加载');
+    return;
+  }
+
+  const draft = buildOrderFeeTemplateDraft({
+    orderDetail,
+    fees: dataSource.value || [],
+    paySide: props.type,
+    bizType: adapter.bizType,
+  });
+
+  if (!draft.items.length) {
+    message.warning(
+      '当前侧没有可生成模板的费用明细（需含费用代码、币别、单位、单价）',
+    );
+    return;
+  }
+
+  generateTemplateFormRef.value?.modalApi.setData({ draft });
+  generateTemplateFormRef.value?.modalApi.open();
 };
 
 // ==================== AI 识别账单费用（仅应付表 type===1） ====================
@@ -1335,13 +1390,28 @@ watch(
                       />
                       打印
                     </MenuItem>
-                    <MenuItem
-                      key="batchImport"
-                      v-access:code="orderFeePerm.add"
+                    <SubMenu
+                      key="historyImportGroup"
                       :disabled="isTableReadonly || isChangeOrderMode"
                     >
-                      {{ orderFeeDataT('batchImport') }}
-                    </MenuItem>
+                      <template #title>
+                        {{ orderFeeDataT('batchImport') }}
+                      </template>
+                      <MenuItem
+                        key="batchImport"
+                        v-access:code="orderFeePerm.add"
+                        :disabled="isTableReadonly || isChangeOrderMode"
+                      >
+                        {{ orderFeeDataT('batchImport') }}
+                      </MenuItem>
+                      <MenuItem
+                        key="generateTemplate"
+                        v-access:code="orderFeeTemplatePerm.add"
+                        :disabled="!canGenerateFeeTemplate"
+                      >
+                        {{ orderFeeDataT('generateTemplate') }}
+                      </MenuItem>
+                    </SubMenu>
                     <MenuItem
                       key="generateOpposite"
                       v-access:code="orderFeePerm.add"
@@ -1399,6 +1469,8 @@ watch(
       ref="batchImportModalRef"
       @confirm="handleBatchImportConfirm"
     />
+
+    <OrderFeeTemplateForm ref="generateTemplateFormRef" />
 
     <AiBillFeeUploadModal
       v-if="type === 1"

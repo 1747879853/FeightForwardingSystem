@@ -204,6 +204,7 @@
       "auditHistory": "Audit History",
       "batchImport": "Import Fees",
       "batchImportFee": "Batch Import Fees",
+      "generateTemplate": "Generate Template",
       "feeStatusOptions": {
         "entering": "Entering",
         "submitted": "Submitted",

@@ -211,6 +211,7 @@
       "auditHistory": "审核历史",
       "batchImport": "历史引入",
       "batchImportFee": "批量引入费用",
+      "generateTemplate": "生成模板",
       "feeStatusOptions": {
         "entering": "录入状态",
         "submitted": "提交审核",

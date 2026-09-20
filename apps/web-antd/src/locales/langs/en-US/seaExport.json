@@ -481,6 +481,7 @@
       "auditHistory": "Audit History",
       "batchImport": "Import Fees",
       "batchImportFee": "Batch Import Fees",
+      "generateTemplate": "Generate Template",
       "canInvoice": "Allow Invoice",
       "currency": "Currency",
       "dataEntryMethod": "Data Entry Method",

@@ -52,15 +52,16 @@ async function reloadFeeCodeData() {
   try {
     console.log('🔄 [OrderFeeTemplateTable] 开始重新加载费用代码数据...');
 
-    const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    // 与费用录入 / form.loadDropdownData 一致：全量列表，value 保持原始 id（勿 Number）
+    const feeCodeData = await getFeeCodeListAsync();
     if (feeCodeData && Array.isArray(feeCodeData)) {
       dropdownSources.feeCodeList.value = feeCodeData.map((item: any) => {
         const surLabel = item.cnName || item.enName || '';
         const label = item.code ? `${item.code}-${surLabel}` : surLabel;
         return {
           label: label || item.cnName || item.enName || item.code || '',
-          value: Number(item.id),
-          currencyId: item.currencyId ? Number(item.currencyId) : undefined,
+          value: item.id,
+          currencyId: item.currencyId,
           unit: item.defaultUnitName || undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
@@ -576,14 +577,22 @@ function updateData(newData: any[]) {
     }
 
     // 费用代码：保存 ID 到 feeCodeId_value，显示 Label
+    // 用 String 比较：费用录入侧 id 常为 string，模板下拉若 Number() 会 === 失败从而残留 id
     if (converted.feeCodeId) {
       const feeCodeItem = dropdownSources.feeCodeList.value.find(
-        (f: any) => f.value === converted.feeCodeId,
+        (f: any) => String(f.value) === String(converted.feeCodeId),
       );
       if (feeCodeItem) {
-        converted.feeCodeId_value = converted.feeCodeId; // 保存原始ID
-        converted.feeCodeId = feeCodeItem.label; // 显示Label
+        converted.feeCodeId_value = feeCodeItem.value;
+        converted.feeCodeId = feeCodeItem.label;
+      } else if (
+        converted.feeCodeLabel &&
+        typeof converted.feeCodeLabel === 'string'
+      ) {
+        converted.feeCodeId_value = converted.feeCodeId;
+        converted.feeCodeId = converted.feeCodeLabel;
       }
+      delete converted.feeCodeLabel;
     }
 
     // ✅ 行业类别：保存枚举值到 industryCategory_value，显示 Label
@@ -631,7 +640,7 @@ function updateData(newData: any[]) {
         const clientList =
           localAllClientsByIndustry.value[industryValueForClient] || [];
         clientItem = clientList.find(
-          (c: any) => c.value === converted.settlementId,
+          (c: any) => String(c.value) === String(converted.settlementId),
         );
       }
 
@@ -645,32 +654,32 @@ function updateData(newData: any[]) {
         });
         const uniqueMap = new Map();
         allClients.forEach((client) => {
-          if (!uniqueMap.has(client.value)) {
-            uniqueMap.set(client.value, client);
+          if (!uniqueMap.has(String(client.value))) {
+            uniqueMap.set(String(client.value), client);
           }
         });
         allClients = Array.from(uniqueMap.values());
 
         clientItem = allClients.find(
-          (c: any) => c.value === converted.settlementId,
+          (c: any) => String(c.value) === String(converted.settlementId),
         );
       }
 
       // 设置结算对象的 Label 和 _value
       if (clientItem) {
-        converted.settlementId_value = converted.settlementId; // 保存原始ID
-        converted.settlementId = clientItem.label; // 显示Label
+        converted.settlementId_value = clientItem.value;
+        converted.settlementId = clientItem.label;
       }
     }
 
     // 币别：保存 ID 到 currencyId_value，显示 Label
     if (converted.currencyId) {
       const currencyItem = dropdownSources.currencyList.value.find(
-        (c: any) => c.value === converted.currencyId,
+        (c: any) => String(c.value) === String(converted.currencyId),
       );
       if (currencyItem) {
-        converted.currencyId_value = converted.currencyId; // 保存原始ID
-        converted.currencyId = currencyItem.label; // 显示Label
+        converted.currencyId_value = currencyItem.value;
+        converted.currencyId = currencyItem.label;
       }
     }
 

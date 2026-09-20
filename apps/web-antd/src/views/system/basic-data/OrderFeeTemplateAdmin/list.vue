@@ -85,12 +85,12 @@ const polGroupList = ref<
 const dropdownData = ref({
   feeCodeList: [] as Array<{
     label: string;
-    value: number;
-    currencyId?: number;
+    value: any;
+    currencyId?: any;
     unit?: string;
     taxRate?: number;
   }>,
-  currencyList: [] as Array<{ label: string; value: number }>,
+  currencyList: [] as Array<{ label: string; value: any }>,
   ctnCodeList: [] as Array<{ label: string; value: string }>, // ✅ 新增：箱型列表
   clientListByIndustry: {} as Record<
     string,
@@ -107,16 +107,16 @@ async function loadDropdownData() {
   try {
     console.log('🔄 [list.vue] 开始加载下拉数据...');
 
-    // 1. 加载费用代码列表
-    const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    // 与费用录入一致：全量已启用费用代码，value 保持原始 id（勿 Number）
+    const feeCodeData = await getFeeCodeListAsync();
     if (feeCodeData && Array.isArray(feeCodeData)) {
       dropdownData.value.feeCodeList = feeCodeData.map((item: any) => {
         const surLabel = item.cnName || item.enName || '';
         const label = item.code ? `${item.code}-${surLabel}` : surLabel;
         return {
           label: label || item.cnName || item.enName || item.code || '',
-          value: Number(item.id),
-          currencyId: item.currencyId ? Number(item.currencyId) : undefined,
+          value: item.id,
+          currencyId: item.currencyId,
           unit: item.defaultUnitName ?? undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
@@ -137,7 +137,7 @@ async function loadDropdownData() {
     if (currencyRes?.items) {
       dropdownData.value.currencyList = currencyRes.items.map((item: any) => ({
         label: item.code || item.cnName || item.enName || '',
-        value: Number(item.id),
+        value: item.id,
       }));
       console.log(
         `✅ [list.vue] 币别加载完成，共 ${dropdownData.value.currencyList.length} 条`,

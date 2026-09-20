@@ -378,8 +378,8 @@ async function loadDropdownData() {
   try {
     console.log('🔄 [loadDropdownData] 开始加载下拉数据...');
 
-    // ✅ 1. 加载费用代码列表（使用真实API）
-    const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    // 与费用录入一致：全量已启用费用代码，value 保持原始 id（勿 Number）
+    const feeCodeData = await getFeeCodeListAsync();
 
     if (feeCodeData && Array.isArray(feeCodeData)) {
       dropdownSources.feeCodeList.value = feeCodeData.map((item: any) => {
@@ -389,8 +389,8 @@ async function loadDropdownData() {
 
         return {
           label: label || item.cnName || item.enName || item.code || '',
-          value: Number(item.id),
-          currencyId: item.currencyId ? Number(item.currencyId) : undefined,
+          value: item.id,
+          currencyId: item.currencyId,
           unit: item.defaultUnitName || undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
@@ -414,7 +414,7 @@ async function loadDropdownData() {
       dropdownSources.currencyList.value = currencyRes.items.map(
         (item: any) => ({
           label: item.code || item.cnName || item.enName || '',
-          value: Number(item.id),
+          value: item.id,
         }),
       );
       console.log(

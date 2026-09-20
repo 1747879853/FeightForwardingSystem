@@ -220,7 +220,7 @@ flowchart TB
 | 项 | 条件 | 行为 |
 | --- | --- | --- |
 | 打印 | — | 应收 `PrintJsonType=1000` / 应付 `1500`；可按勾选 id 只打部分；模板按 `bizType` + 签单/船公司/组织筛选 |
-| 批量引入 | 非更改单、非只读 | 按船公司/港口等搜历史票费用 → `ImportOrderFeesToTransportOrderAsync` |
+| 历史引入 | 非更改单、非只读 | 子菜单：① 历史引入 — 按船公司/港口等搜历史票费用 → `ImportOrderFeesToTransportOrderAsync`；② 生成模板（`Admin.OrderFeeTemplate.Add`，**仅海运出口**）— 本侧有效费用 + 本票匹配条件预填自动费用模板弹窗 → `AddAsync` |
 | 应收生成应付 / 应付生成应收 | 非只读 | 勾选已保存行 → `GenerateOppositeOrderFeesAsync` → 刷新本表 + 对立表 |
 | 设为已完结 / 未完结 | **仅应收**、非更改单 | `TransportOrderAdmin/ChangeIsUnfinishedAsync` |
 
@@ -590,6 +590,7 @@ apps/web-antd/src/views/_shared/order-fee/
 
 | 日期 | 说明 |
 | --- | --- |
+| 2026-09-20 | 费用页支持反向生成自动费用模板（历史引入子菜单，仅海出）。 |
 | 2026-09-20 | 滚动绘制优化：轻量 renderer、行级缓存、状态底色 class。 |
 | 2026-09-20 | 列定义收敛为 `order-fee-column-meta.ts`；联动改脏行刷新。 |
 | 2026-09-20 | 初版：整理应收应付费用录入全量功能（布局、工具栏收纳后现状、联动、状态、API、更改单差异）。 |

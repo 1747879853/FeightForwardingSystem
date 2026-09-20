@@ -9,7 +9,7 @@ export function useFieldLinkage(dropdownSources: any) {
    */
   const onFeeCodeChange = async (
     rowIndex: number,
-    feeCodeId: number,
+    feeCodeId: any,
     hotInstance: any,
     formApi?: any, // ✅ 新增：接收表单API以获取基础信息的收付类型
   ) => {
@@ -20,7 +20,7 @@ export function useFieldLinkage(dropdownSources: any) {
     // 自动填充币别
     if (feeDetail.currencyId) {
       const currencyLabel = dropdownSources.currencyList.value.find(
-        (c: any) => c.value === feeDetail.currencyId,
+        (c: any) => String(c.value) === String(feeDetail.currencyId),
       )?.label;
       if (currencyLabel) {
         // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell

@@ -9,19 +9,19 @@ import { message } from 'ant-design-vue';
  * 费用模板表格下拉数据源管理
  */
 export function useDropdownSources() {
-  // 费用代码列表
+  // 费用代码列表（value 为原始雪花 id，可能是 string）
   const feeCodeList = ref<
     Array<{
       label: string;
-      value: number;
-      currencyId?: number;
+      value: any;
+      currencyId?: any;
       unit?: string;
       taxRate?: number;
     }>
   >([]);
 
-  // 币别列表
-  const currencyList = ref<Array<{ label: string; value: number }>>([]);
+  // 币别列表（value 为原始 id）
+  const currencyList = ref<Array<{ label: string; value: any }>>([]);
 
   // ✅ 新增：箱型列表（用于单位下拉框）
   const ctnCodeList = ref<Array<{ label: string; value: string }>>([]);
@@ -198,10 +198,15 @@ export function useDropdownSources() {
   };
 
   /**
-   * 根据费用代码ID获取费用详情
+   * 根据费用代码ID获取费用详情（String 比较，兼容雪花 string/number）
    */
-  const getFeeCodeDetail = (feeCodeId: number) => {
-    return feeCodeList.value.find((item) => item.value === feeCodeId);
+  const getFeeCodeDetail = (feeCodeId: any) => {
+    if (feeCodeId === null || feeCodeId === undefined || feeCodeId === '') {
+      return undefined;
+    }
+    return feeCodeList.value.find(
+      (item) => String(item.value) === String(feeCodeId),
+    );
   };
 
   return {

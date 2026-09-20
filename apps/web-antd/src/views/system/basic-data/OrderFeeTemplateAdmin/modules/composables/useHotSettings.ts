@@ -137,40 +137,29 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // ✅ 关键修复：如果值是数字（ID），需要从费用代码列表中查找对应的Label
+        // 按 id 反查 Label；雪花 id 用 String 比较，禁止 Number()
         let displayName = '';
 
         if (value !== null && value !== undefined && value !== '') {
-          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue =
-            typeof value === 'number' ? value : Number(value);
+          const feeCodeItem = dropdownSources.feeCodeList.value.find(
+            (item: any) => String(item.value) === String(value),
+          );
 
-          if (!isNaN(numericValue)) {
-            // 这是一个ID，需要在费用代码列表中查找
-            const feeCodeItem = dropdownSources.feeCodeList.value.find(
-              (item: any) => item.value === numericValue,
-            );
-
-            if (feeCodeItem) {
-              // 找到了对应的费用代码，使用其Label
-              const label = feeCodeItem.label;
-              // 只显示"-"后面的字符串（费用名称）
-              if (label && typeof label === 'string') {
-                const parts = label.split('-');
-                displayName =
-                  parts.length > 1 ? parts.slice(1).join('-') : label;
-              } else {
-                displayName = label || '';
-              }
+          if (feeCodeItem) {
+            const label = feeCodeItem.label;
+            if (label && typeof label === 'string') {
+              const parts = label.split('-');
+              displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
             } else {
-              // 没找到对应的费用代码，显示原始值
-              displayName = String(value);
+              displayName = label || '';
             }
           } else if (typeof value === 'string') {
             // 值已经是字符串（Label），直接处理
             const parts = value.split('-');
             // 如果有"-"，取后面的部分；否则使用原值
             displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+          } else {
+            displayName = String(value);
           }
         }
 
@@ -452,44 +441,31 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // ✅ 关键修复：如果值是数字（ID），需要从客户列表中查找对应的Label
+        // 按 id 反查 Label；雪花 id 用 String 比较，禁止 Number()
         let displayName = '';
 
         if (value !== null && value !== undefined && value !== '') {
-          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue =
-            typeof value === 'number' ? value : Number(value);
-
-          if (!isNaN(numericValue)) {
-            // 这是一个ID，需要在所有客户列表中查找对应的Label
-            let foundClient: any = null;
-            Object.values(dropdownSources.allClientsByIndustry.value).forEach(
-              (clients: any) => {
-                if (Array.isArray(clients) && !foundClient) {
-                  const client = clients.find(
-                    (c: any) => c.value === numericValue,
-                  );
-                  if (client) {
-                    foundClient = client;
-                  }
+          let foundClient: any = null;
+          Object.values(dropdownSources.allClientsByIndustry.value).forEach(
+            (clients: any) => {
+              if (Array.isArray(clients) && !foundClient) {
+                const client = clients.find(
+                  (c: any) => String(c.value) === String(value),
+                );
+                if (client) {
+                  foundClient = client;
                 }
-              },
-            );
-
-            if (foundClient) {
-              // 找到了对应的客户，使用其Label
-              const label = foundClient.label;
-              // 只显示"-"后面的字符串（客户名称）
-              if (label && typeof label === 'string') {
-                const parts = label.split('-');
-                displayName =
-                  parts.length > 1 ? parts.slice(1).join('-') : label;
-              } else {
-                displayName = label || '';
               }
+            },
+          );
+
+          if (foundClient) {
+            const label = foundClient.label;
+            if (label && typeof label === 'string') {
+              const parts = label.split('-');
+              displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
             } else {
-              // 没找到对应的客户，显示原始值
-              displayName = String(value);
+              displayName = label || '';
             }
           } else if (typeof value === 'string') {
             // 值已经是字符串（Label），直接处理
@@ -538,28 +514,20 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // ✅ 关键修复：如果值是数字（ID），需要从币别列表中查找对应的Label
+        // 按 id 反查 Label；雪花 id 用 String 比较，禁止 Number()
         let displayValue = '';
 
         if (value !== null && value !== undefined && value !== '') {
-          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue =
-            typeof value === 'number' ? value : Number(value);
+          const currencyItem = dropdownSources.currencyList.value.find(
+            (item: any) => String(item.value) === String(value),
+          );
 
-          if (!isNaN(numericValue)) {
-            // 这是一个ID，需要在币别列表中查找
-            const currencyItem = dropdownSources.currencyList.value.find(
-              (item: any) => item.value === numericValue,
-            );
-
-            if (currencyItem) {
-              displayValue = currencyItem.label;
-            } else {
-              displayValue = String(value);
-            }
+          if (currencyItem) {
+            displayValue = currencyItem.label;
           } else if (typeof value === 'string') {
-            // 值已经是字符串（Label），直接使用
             displayValue = value;
+          } else {
+            displayValue = String(value);
           }
         }
 

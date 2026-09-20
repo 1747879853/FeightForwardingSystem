@@ -319,7 +319,8 @@
       "profitDifference": "利润差额",
       "auditHistory": "审核历史",
       "batchImport": "历史引入",
-      "batchImportFee": "批量引入费用"
+      "batchImportFee": "批量引入费用",
+      "generateTemplate": "生成模板"
     },
     "dispatch": {
       "title": "派车",
