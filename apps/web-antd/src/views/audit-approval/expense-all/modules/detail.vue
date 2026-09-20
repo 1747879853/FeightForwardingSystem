@@ -760,7 +760,9 @@ onMounted(() => {
                 :warnings="sharedWarnings"
                 @highlight="handleWarningHighlight"
               />
-              <div class="flex items-center">
+              <div
+                class="fee-detail-actions ml-auto flex shrink-0 items-center"
+              >
                 <Space size="small">
                   <DropdownButton
                     @click="showConfirmWithRemark(true, 'all')"
@@ -792,7 +794,9 @@ onMounted(() => {
                   </Button>
                 </Space>
               </div>
-              <div class="select-name flex flex-1 text-xs font-normal">
+              <div
+                class="select-name flex min-w-0 shrink-0 text-xs font-normal"
+              >
                 {{ props.orderName }}
               </div>
             </div>
@@ -899,9 +903,12 @@ onMounted(() => {
 </template>
 <style scoped lang="scss">
 .select-name {
-  flex-direction: row-reverse;
+  max-width: 40%;
   padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #52607a;
+  white-space: nowrap;
   border-radius: 6px;
 }
 
@@ -931,6 +938,8 @@ onMounted(() => {
   }
 
   :deep(.ant-card-head-title) {
+    flex: 1;
+    width: 100%;
     padding: 4px 0;
     overflow: visible;
   }
@@ -940,6 +949,7 @@ onMounted(() => {
   }
 
   .fee-detail-head {
+    width: 100%;
     min-height: 28px;
   }
 
