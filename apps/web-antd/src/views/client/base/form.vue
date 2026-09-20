@@ -826,7 +826,7 @@ const updateReconcilers = (values: number[]) => {
 /**
  * 提交表单
  */
-const handleSubmit = async () => {
+const handleSubmit = async (closeAfterSave = false) => {
   try {
     submitting.value = true;
 
@@ -1147,6 +1147,11 @@ const handleSubmit = async () => {
         //（与开票信息 tab 同类问题）
         await syncFormSnapshot();
         markListShouldRefresh('ClientList');
+        if (closeAfterSave) {
+          const currentTabKey = route.fullPath;
+          await router.push('/clients');
+          await closeTabByKey(currentTabKey);
+        }
       }
     } else {
       // 新增模式：使用ClientStakeholderAddDto（不需要id和clientId）
@@ -1612,10 +1617,24 @@ onMounted(() => {
                 type="primary"
                 :loading="submitting"
                 class="flex items-center justify-center"
-                @click="handleSubmit"
+                @click="handleSubmit(false)"
               >
                 <Save class="mr-1 inline-block size-4 align-middle" />
                 <span class="align-middle">{{ $t('common.save') }}</span>
+              </Button>
+              <Button
+                v-if="isEdit"
+                type="primary"
+                ghost
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleSubmit(true)"
+              >
+                <IconifyIcon
+                  icon="mdi:content-save-move-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">保存并关闭</span>
               </Button>
               <Button
                 :type="isDishonest ? 'default' : 'primary'"
