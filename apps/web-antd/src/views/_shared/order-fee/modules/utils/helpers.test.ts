@@ -3,11 +3,47 @@ import { describe, expect, it } from 'vitest';
 import {
   calcOrderFeeProfitRmb,
   collectFeesForPostSubmitProfit,
+  isOrderFeeEnteringOrRejectedStatus,
   isOrderFeeRejectedStatus,
   isPostSubmitProfitNegative,
+  isSavableOrderFeeRow,
   normalizeOrderFeeChangeOrderKey,
   resolveLatestOrderFeeRejectRemark,
+  resolveOrderFeeDisplayStatus,
 } from './helpers';
+
+describe('order-fee savable / display status', () => {
+  it('展示状态优先 combinedFeeStatus', () => {
+    expect(
+      resolveOrderFeeDisplayStatus({ combinedFeeStatus: 5, feeStatus: 0 }),
+    ).toBe(5);
+    expect(resolveOrderFeeDisplayStatus({ feeStatus: 0 })).toBe(0);
+  });
+
+  it('录入或驳回（含字符串）', () => {
+    expect(isOrderFeeEnteringOrRejectedStatus(0)).toBe(true);
+    expect(isOrderFeeEnteringOrRejectedStatus(5)).toBe(true);
+    expect(isOrderFeeEnteringOrRejectedStatus('5')).toBe(true);
+    expect(isOrderFeeEnteringOrRejectedStatus(6)).toBe(false);
+    expect(isOrderFeeEnteringOrRejectedStatus(7)).toBe(false);
+  });
+
+  it('可保存行：录入/驳回且未对账；申请修改/删除不可', () => {
+    expect(isSavableOrderFeeRow({ feeStatus: 0 })).toBe(true);
+    expect(isSavableOrderFeeRow({ combinedFeeStatus: 5, feeStatus: 2 })).toBe(
+      true,
+    );
+    expect(isSavableOrderFeeRow({ feeStatus: 6 })).toBe(false);
+    expect(isSavableOrderFeeRow({ feeStatus: 7 })).toBe(false);
+    expect(isSavableOrderFeeRow({ feeStatus: 0, isStatemented: true })).toBe(
+      false,
+    );
+    expect(
+      isSavableOrderFeeRow({ feeStatus: 0, statements: [{ id: '1' }] }),
+    ).toBe(false);
+    expect(isSavableOrderFeeRow(null)).toBe(false);
+  });
+});
 
 describe('order-fee reject remark helpers', () => {
   it('识别驳回状态', () => {

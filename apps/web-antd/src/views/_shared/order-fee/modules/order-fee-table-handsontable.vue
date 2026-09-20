@@ -23,6 +23,7 @@ import {
 import { ChevronDown, IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
+import { createAbpPermission } from '#/utils/abp-permission';
 import weiwanjie from '#/assets/img/base/weiwanjie.png';
 import yiwanjie from '#/assets/img/base/yiwanjie.png';
 // 导入拆分后的组件和 composables
@@ -67,6 +68,7 @@ const props = defineProps<{
 
 const isChangeOrderMode = computed(() => props.mode === 'changeOrder');
 const isTableReadonly = computed(() => Boolean(props.readonly));
+const orderFeePerm = createAbpPermission('Admin.OrderFee');
 
 const adapter = useOrderFeeAdapter();
 
@@ -1278,6 +1280,7 @@ watch(
             </div>
             <Space v-show="!feeSortMode" size="small" class="toolbar-actions">
               <Button
+                v-access:code="orderFeePerm.add"
                 size="small"
                 type="primary"
                 :disabled="isTableReadonly"
@@ -1287,6 +1290,7 @@ watch(
               </Button>
               <Button
                 v-show="!isChangeOrderMode"
+                v-access:code="orderFeePerm.edit"
                 size="small"
                 type="primary"
                 @click="actions.saveRow"
@@ -1294,6 +1298,7 @@ watch(
                 {{ $t('common.save') }}
               </Button>
               <Button
+                v-access:code="orderFeePerm.delete"
                 size="small"
                 danger
                 ghost
@@ -1305,6 +1310,7 @@ watch(
 
               <Button
                 v-if="type === 1 && !isChangeOrderMode"
+                v-access:code="orderFeePerm.edit"
                 size="small"
                 type="primary"
                 ghost
@@ -1335,12 +1341,14 @@ watch(
                     </MenuItem>
                     <MenuItem
                       key="batchImport"
+                      v-access:code="orderFeePerm.add"
                       :disabled="isTableReadonly || isChangeOrderMode"
                     >
                       {{ orderFeeDataT('batchImport') }}
                     </MenuItem>
                     <MenuItem
                       key="generateOpposite"
+                      v-access:code="orderFeePerm.add"
                       :disabled="isTableReadonly"
                     >
                       {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
@@ -1348,6 +1356,7 @@ watch(
                     <MenuItem
                       v-if="type === 0 && !isChangeOrderMode"
                       key="finishStatus"
+                      v-access:code="orderFeePerm.edit"
                       :disabled="loadingFinishStatus"
                     >
                       {{ isFinished ? '设为未完结' : '设为已完结' }}

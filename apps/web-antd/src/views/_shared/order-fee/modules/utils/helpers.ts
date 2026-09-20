@@ -104,13 +104,35 @@ export function isOrderFeeEnteringStatus(feeStatus: unknown): boolean {
   return Number(feeStatus) === 0;
 }
 
-/** 录入或驳回：提交后利润口径中不计入（除非本批正在提交） */
+/** 录入或驳回：提交后利润口径中不计入（除非本批正在提交）；亦为可内联编辑/批量保存状态 */
 export function isOrderFeeEnteringOrRejectedStatus(
   feeStatus: unknown,
 ): boolean {
   return (
     isOrderFeeEnteringStatus(feeStatus) || isOrderFeeRejectedStatus(feeStatus)
   );
+}
+
+/**
+ * 展示/校验用费用状态：优先组合状态（含结算派生），否则原始 feeStatus。
+ */
+export function resolveOrderFeeDisplayStatus(fee: {
+  combinedFeeStatus?: null | number;
+  feeStatus?: null | number;
+}): unknown {
+  return fee?.combinedFeeStatus ?? fee?.feeStatus;
+}
+
+/**
+ * 是否可内联编辑并批量保存：录入/驳回，且未对账。
+ * 申请修改/删除须走弹窗，不允许在表格内直接改。
+ */
+export function isSavableOrderFeeRow(row: any): boolean {
+  if (!row) return false;
+  // 与 data.isFeeStatemented 同口径，避免 helpers↔data 循环依赖：此处内联判断
+  if (row.isStatemented === true) return false;
+  if (Array.isArray(row.statements) && row.statements.length > 0) return false;
+  return isOrderFeeEnteringOrRejectedStatus(resolveOrderFeeDisplayStatus(row));
 }
 
 /** 主单 / 更改单归属键：空串表示主单 */
@@ -133,7 +155,7 @@ export type FeeProfitCalcRow = {
 };
 
 function resolveFeeStatus(fee: FeeProfitCalcRow): unknown {
-  return fee.combinedFeeStatus ?? fee.feeStatus;
+  return resolveOrderFeeDisplayStatus(fee);
 }
 
 /**

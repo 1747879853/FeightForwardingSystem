@@ -47,7 +47,7 @@ import {
 } from '#/views/_shared/order-fee/data';
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table.vue';
+import OrderFeeTable from '#/views/_shared/order-fee/modules/order-fee-table-handsontable.vue';
 import { useDisplayFieldConfig } from '#/views/_shared/order-fee/composables/use-display-field-config';
 import { airExportAdapter } from '#/views/_shared/order-fee/adapter/air-export';
 import { ORDER_FEE_ADAPTER_KEY } from '#/views/_shared/order-fee/types';

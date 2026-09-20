@@ -10,6 +10,7 @@ import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-par
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
+import { clearOrderDetailCache } from '#/views/_shared/order-fee/modules/composables/useOrderFeeLinkage';
 
 import attachments from './attachments/index.vue';
 import changeOrder from './changeOrder/index.vue';
@@ -110,6 +111,7 @@ const onFormSaved = (detail: AirExportAdminApi.AirExportDto) => {
   applyTabTitleFromDetail(detail);
   // 顺带用最新详情刷新费用 Tab 徽标，不再重复拉详情接口
   updateFeeNumber(detail);
+  clearOrderDetailCache(editId.value);
   emit('saved', detail);
 };
 

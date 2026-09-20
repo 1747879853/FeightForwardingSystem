@@ -1,9 +1,9 @@
 ---
 title: 更改单业务逻辑
-module: 海运出口 / 海运进口
+module: 海运出口 / 海运进口 / 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
-last_change: sea-import-change-order-align-export
+last_updated: 2026-09-20
+last_change: air-export-change-order-hot
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,7 +18,7 @@ last_change: sea-import-change-order-align-export
 | 海引进口 | `/sea-imports/:id/edit` → Tab「更改单」 |
 | 海出页面 | `src/views/sea-export-admin/changeOrder/index.vue` |
 | 海进页面 | `src/views/sea-import-admin/changeOrder/index.vue` |
-| 费用表（复用） | 海出/海进：`order-fee-table-handsontable.vue`，`mode='changeOrder'`；空出仍为 `order-fee-table.vue` |
+| 费用表（复用） | 海出/海进/空出：`order-fee-table-handsontable.vue`，`mode='changeOrder'`（VXE `order-fee-table.vue` 已移除） |
 | API | `/services/app/ChangeOrderAdmin`（海出/海进各一份封装，路径相同） |
 | 锁费入口 | `/settlement-management/fee-lock`（树形：主单 + 子级更改单） |
 

@@ -75,6 +75,7 @@ import {
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
 import { promptSubmitRemarkIfNegativeProfit } from './modules/utils/prompt-submit-remark';
+import { isSavableOrderFeeRow } from './modules/utils/helpers';
 import BatchModifySettlementModal from './modules/batch-modify-settlement-modal.vue';
 
 const emit = defineEmits<{
@@ -534,73 +535,9 @@ watch(
   },
 );
 
-const getOrderFeeNumber = async () => {
-  let params = {
-    TransportOrderId: editId.value,
-    PaySide: 0, // 应收
-    PageIndex: 1,
-    PageSize: 999,
-  };
-  const res = await props.adapter.api.getOrderFeePagedList(params);
-  let dataSourceRec = res.items.filter((item) => item.paySide === 0);
-  recAmountMap.value = {};
-  const currencyIdList = dataSourceRec.map((item) => item.currencyId);
-  currencyIdList.forEach((item) => {
-    let list = dataSourceRec.filter((item2) => item2.currencyId === item);
-    let totalRecAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0);
-    }, 0);
-    let totalRMBRecAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
-    }, 0);
-    let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
-    let currencyId = list[0]?.currencyId;
-    if (currencyId !== undefined) {
-      recAmountMap.value[currencyId] = {
-        totalRMBRecAmount,
-        totalRecAmount,
-        exchangeRate,
-        currencyName,
-        currencyId,
-      };
-    }
-    //console.log('recAmountMap', recAmountMap);
-  });
-
-  // 查询应付费用
-  params.PaySide = 1; // 应付
-  const resPay = await props.adapter.api.getOrderFeePagedList(params);
-  let dataSourcePay = resPay.items.filter((item) => item.paySide === 1);
-  payAmountMap.value = {};
-  const currencyIdListPay = dataSourcePay.map((item) => item.currencyId);
-  currencyIdListPay.forEach((item) => {
-    let list = dataSourcePay.filter((item2) => item2.currencyId === item);
-    let totalPayAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0);
-    }, 0);
-    let totalRMBPayAmount = list.reduce((acc, cur) => {
-      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
-    }, 0);
-    let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
-    let currencyId = list[0]?.currencyId;
-    if (currencyId !== undefined) {
-      payAmountMap.value[currencyId] = {
-        totalRMBPayAmount,
-        totalPayAmount,
-        exchangeRate,
-        currencyName,
-        currencyId,
-      };
-    }
-    // console.log('payAmountMap', payAmountMap);
-  });
-};
-
 /**
- * ✅ 新增：获取业务费用数量统计（应收/应付数量）
- * 使用新的 getOrderFeeCount 接口，性能更优
+ * 获取业务费用数量统计（应收/应付数量）
+ * 使用 getOrderFeeCount 接口；金额汇总由子表 @update-amount 上报，不再额外拉全量列表
  */
 const getOrderFeeCountStats = async () => {
   if (!editId.value) return;
@@ -824,13 +761,9 @@ const handleSubmitAllFees = async () => {
     const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
     const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
 
-    // 过滤出未提交的费用：录入状态(0) 和 驳回状态(5)
-    recFees = allRecFees.filter(
-      (fee) => fee.feeStatus === 0 || fee.feeStatus === 5,
-    );
-    payFees = allPayFees.filter(
-      (fee) => fee.feeStatus === 0 || fee.feeStatus === 5,
-    );
+    // 过滤出可提交费用：录入/驳回且未对账（与保存口径一致）
+    recFees = allRecFees.filter((fee) => isSavableOrderFeeRow(fee));
+    payFees = allPayFees.filter((fee) => isSavableOrderFeeRow(fee));
 
     console.log('📊 [整票提交] 未提交费用统计:', {
       应收未提交: recFees.length,
@@ -1109,9 +1042,8 @@ onMounted(async () => {
   clientsLoading.value = true;
 
   loadOrderDetail();
-  getOrderFeeNumber();
 
-  // ✅ 新增：使用新接口获取费用数量统计
+  // 费用数量统计（角标）；金额汇总由子表加载后经 update-amount 上报
   getOrderFeeCountStats();
 
   try {

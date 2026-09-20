@@ -13,6 +13,7 @@ import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-par
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
+import { clearOrderDetailCache } from '#/views/_shared/order-fee/modules/composables/useOrderFeeLinkage';
 
 import attachments from './attachments/index.vue';
 import Form from './basic-info-form/form.vue';
@@ -98,6 +99,7 @@ function applyTabTitleFromDetail(
 const onFormSaved = (detail: SeaImportAdminApi.SeaImportDto) => {
   savedDetail.value = detail;
   applyTabTitleFromDetail(detail);
+  clearOrderDetailCache(editId.value);
   emit('saved', detail);
 };
 

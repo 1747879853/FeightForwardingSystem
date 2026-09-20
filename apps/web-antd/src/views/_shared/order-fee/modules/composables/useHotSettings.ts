@@ -3,12 +3,11 @@ import { orderFeeFieldPermission } from '#/composables/field-permission-profiles
 import { shallowRef, nextTick, type Ref } from 'vue';
 import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import { getFeeStatusOptions, markUserEditedCell } from '../../data';
 import {
-  getFeeStatusOptions,
-  isFeeStatemented,
-  markUserEditedCell,
-} from '../../data';
-import { ensureEmptyTableHorizontalScroll } from '../utils/helpers';
+  ensureEmptyTableHorizontalScroll,
+  isSavableOrderFeeRow,
+} from '../utils/helpers';
 
 /** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
 const USER_EDIT_SOURCES = new Set([
@@ -111,7 +110,7 @@ export function useHotSettings(
     autoColumnSize: false,
     renderAllRows: false,
 
-    // 已对账费用（statements 不为空）整行只读，不可编辑、不可保存
+    // 仅录入/驳回且未对账可内联编辑；已对账、权限遮罩、其它状态整格只读
     cells: function (row: number, col: number, prop: string | number) {
       const cellProperties: Record<string, any> = {};
       // 初始化阶段 handsontable 会以 null 调用获取模板，跳过
@@ -121,7 +120,7 @@ export function useHotSettings(
       const rowData = getDataSource()[row];
       if (
         rowData &&
-        (isFeeStatemented(rowData) ||
+        (!isSavableOrderFeeRow(rowData) ||
           fieldPermission.masked(
             String(prop),
             rowData?.id ? rowData : undefined,
@@ -151,8 +150,13 @@ export function useHotSettings(
       for (let index = changes.length - 1; index >= 0; index--) {
         const [row, field] = changes[index];
         const item = getDataSource()[row];
-        if (fieldPermission.masked(String(field), item?.id ? item : undefined))
+        if (
+          !item ||
+          !isSavableOrderFeeRow(item) ||
+          fieldPermission.masked(String(field), item?.id ? item : undefined)
+        ) {
           changes.splice(index, 1);
+        }
       }
     },
     afterOnCellMouseDown: function (

@@ -134,20 +134,20 @@ export const markLinkedCell = (row: any, prop: string): void => {
 };
 
 /**
- * 判断费用是否可编辑
- * @param feeStatus 费用状态
+ * 判断费用是否可内联编辑（表格单元格）。
+ * @param feeStatus 费用状态（建议传 combinedFeeStatus ?? feeStatus）
  * @param statemented 是否已对账（已对账费用一律不可编辑）
  * @returns true 表示可编辑，false 表示不可编辑
+ *
+ * 与批量保存口径一致：仅「录入(0)」「驳回(5)」。
+ * 申请修改(6)/申请删除(7) 走弹窗流程，不可在表内直接改。
+ * （历史注释曾误写驳回=3、申请修改=4，3 实际为部分结算。）
  */
 export const canEditFee = (feeStatus: number, statemented = false): boolean => {
-  // 已对账费用不可编辑，只能对录入状态且未对账的费用进行编辑保存
   if (statemented) return false;
-  // 可编辑的状态：录入中(0)、审核驳回(3)、申请修改(4)、申请删除(5)
   const editableStatuses = [
-    getFeeStatusValue.Entering, // 0 - 录入中
-    getFeeStatusValue.Rejected, // 3 - 审核驳回
-    getFeeStatusValue.ApplyModify, // 4 - 申请修改
-    getFeeStatusValue.ApplyDelete, // 5 - 申请删除
+    getFeeStatusValue.Entering, // 0
+    getFeeStatusValue.Rejected, // 5
   ];
   return editableStatuses.includes(feeStatus);
 };

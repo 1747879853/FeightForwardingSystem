@@ -19,7 +19,10 @@ import {
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
 import { promptSubmitRemarkIfNegativeProfit } from '../utils/prompt-submit-remark';
-import { normalizeOrderFeeChangeOrderKey } from '../utils/helpers';
+import {
+  isSavableOrderFeeRow,
+  normalizeOrderFeeChangeOrderKey,
+} from '../utils/helpers';
 
 // 类型别名
 type OrderFeeRow = OrderFeeAdminApi.OrderFeeDto & { _rowKey?: string };
@@ -518,19 +521,16 @@ export function useOrderFeeActions(
   };
 
   /**
-   * 保存行：只保存录入状态且未对账的费用（已对账费用不可保存）
+   * 保存行：只保存录入/驳回且未对账的费用
    */
   const saveRow = () => {
-    const list = (dataContext.dataSource.value ?? []).filter(
-      (row) =>
-        (row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
-          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected) &&
-        !feeConstants.isFeeStatemented(row),
+    const list = (dataContext.dataSource.value ?? []).filter((row) =>
+      isSavableOrderFeeRow(row),
     );
 
     if (!list.length) {
       message.warning({
-        content: '只能对录入状态且未对账的费用进行保存',
+        content: '只能对录入/驳回且未对账的费用进行保存',
         key: 'action_process_msg',
       });
       return;
