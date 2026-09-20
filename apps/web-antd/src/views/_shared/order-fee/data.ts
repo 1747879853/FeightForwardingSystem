@@ -4,6 +4,10 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h, ref } from 'vue';
 import { Checkbox, Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
+import {
+  ORDER_FEE_EDIT_COLUMN_META,
+  type OrderFeeColumnMeta,
+} from './order-fee-column-meta';
 
 // --------------------------------------------------------
 // 模块级 i18n 前缀状态（由 OrderFeePage / 兼容层初始化时绑定）
@@ -28,6 +32,22 @@ export const orderFeeDataT = (key: string) =>
 /** 取客户域文案：clientDataT('industryCategories') */
 export const clientDataT = (key: string) =>
   $t(`${currentClientI18nModule.value}.client.${key}`);
+
+/** 解析列元数据标题（HOT / VXE 共用） */
+export function resolveOrderFeeColumnTitle(meta: OrderFeeColumnMeta): string {
+  switch (meta.title.kind) {
+    case 'orderFee':
+      return orderFeeDataT(meta.title.key);
+    case 'client':
+      return clientDataT(meta.title.key);
+    case 'literal':
+      return meta.title.text;
+    case 'i18n':
+      return $t(meta.title.path);
+    default:
+      return '';
+  }
+}
 
 // --------------------------------------------------------
 // 费用编辑权限判断
@@ -906,388 +926,164 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 }
 
 /**
- * 列表列配置（无操作列，第一列为 radio 单选列）
+ * 列表列配置（VXE 薄适配；主路径 Handsontable 直接读 ORDER_FEE_EDIT_COLUMN_META）
  */
-
 export function useOrderFeeColumns(
   type: number,
 ): VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'] {
-  return [
-    // { type: 'checkbox', width: 48, fixed: 'left' },
-    // {
-    //   title: $t('common.index'),
-    //   field: '_rowIndex',
-    //   width: 60,
-    //   align: 'center',
-    //   slots: {
-    //     default: ({ rowIndex }: any) => {
-    //       return h('span', {}, String(rowIndex + 1));
-    //     },
-    //   },
-    // },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.invoiceStatus`),
-      field: 'invoiceStatus',
-      width: 65,
-      sortable: true,
-      cellRender: {
-        name: 'CellTag',
-        options: getInvoiceStatusOptions(),
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.feeStatus`),
-      align: 'center',
-      field: 'combinedFeeStatus',
-      width: 75,
-      sortable: true,
-      cellRender: {
-        name: 'CellFeeStatusTag',
-        options: getFeeStatusOptions(),
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.feecodeName`),
+  const formatMoney = ({ cellValue }: any) => {
+    if (cellValue === null || cellValue === undefined || cellValue === '')
+      return '';
+    return Number(cellValue).toLocaleString('zh-CN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
-      field: 'feeCodeId',
-      width: 150,
-      sortable: true,
-      cellRender: {
-        name: 'CellFeeCodeSelect',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
+  const isRowEditDisabled = (row: any) =>
+    !canEditFee(row.feeStatus, isFeeStatemented(row));
 
-    {
-      title: $t(`${currentClientI18nModule.value}.client.industryCategories`),
+  return ORDER_FEE_EDIT_COLUMN_META.map((meta) => {
+    const col: Record<string, any> = {
+      title: resolveOrderFeeColumnTitle(meta),
+      field: meta.field,
+      width: meta.width,
+      sortable: meta.sortable ?? false,
+    };
+    if (meta.align) col.align = meta.align;
 
-      field: 'industryCategory',
-      width: 100,
-      sortable: true,
-      cellRender: {
-        name: 'CellIndustryCategorySelect',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.settlement`),
-
-      field: 'settlementId',
-      width: 130,
-      sortable: true,
-      cellRender: {
-        name: 'CellClientSelect',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.currency`),
-
-      field: 'currencyId',
-      align: 'center',
-      width: 60,
-      sortable: true,
-      cellRender: {
-        name: 'CurrencySelect',
-        props: {
-          type: type,
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.ExchangeRate`),
-      field: 'exchangeRate',
-      align: 'right',
-      width: 60,
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)) ||
-            row['__isLocalCurrency'] === true,
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.unitPrice`),
-      field: 'unitPrice',
-      width: 80,
-      align: 'right',
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.amount`),
-      field: 'amount',
-      width: 100,
-      align: 'right',
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.unitEmum`),
-      field: 'unit',
-      width: 70,
-      sortable: true,
-      cellRender: {
-        name: 'CellUnitSelect',
-        props: {
-          // 使用普通箭头函数，而不是 getter，确保函数不会被立即执行
-          unitOptions: () => {
-            const list = orderCtnListRef.value;
-            return list.map((ctn) => ({
-              label: ctn.ctnCodeName,
-              value: ctn.ctnCodeName,
-            }));
+    switch (meta.field) {
+      case 'invoiceStatus':
+        col.cellRender = {
+          name: 'CellTag',
+          options: getInvoiceStatusOptions(),
+        };
+        break;
+      case 'combinedFeeStatus':
+        col.cellRender = {
+          name: 'CellFeeStatusTag',
+          options: getFeeStatusOptions(),
+        };
+        break;
+      case 'feeCodeId':
+        col.cellRender = {
+          name: 'CellFeeCodeSelect',
+          props: { disabled: isRowEditDisabled },
+        };
+        break;
+      case 'industryCategory':
+        col.cellRender = {
+          name: 'CellIndustryCategorySelect',
+          props: { disabled: isRowEditDisabled },
+        };
+        break;
+      case 'settlementId':
+        col.cellRender = {
+          name: 'CellClientSelect',
+          props: { disabled: isRowEditDisabled },
+        };
+        break;
+      case 'currencyId':
+        col.cellRender = {
+          name: 'CurrencySelect',
+          props: {
+            type,
+            disabled: isRowEditDisabled,
           },
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.quantity`),
-
-      field: 'quantity',
-      width: 70,
-      align: 'right',
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.taxRate`),
-
-      field: 'taxRate',
-      width: 60,
-      align: 'right',
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.noTaxUnitPrice`),
-      field: 'noTaxUnitPrice',
-      width: 90,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.noTaxAmount`),
-
-      field: 'noTaxAmount',
-      width: 100,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-    },
-    {
-      title: '对账单',
-      field: 'statementNum',
-      width: 120,
-      align: 'center',
-      sortable: false,
-      formatter: ({ row }: any) => {
-        // 从 statements 数组中获取 statementNum，多个用“，”分割展示
-        return getStatementNumsText(row);
-      },
-    },
-    {
-      title: $t(
-        `${currentOrderFeeI18nPrefix.value}.orderFee.rqstPaymentAmount`,
-      ),
-      field: 'rqstPaymentAmount',
-      width: 105,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) => true, // 申请付款金额不能修改
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.invoicedAmount`),
-      field: 'invoicedAmount',
-      width: 100,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-    },
-    {
-      title: $t(
-        `${currentOrderFeeI18nPrefix.value}.orderFee.orderInvoiceAmount`,
-      ),
-      field: 'orderInvoiceAmount',
-      width: 105,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.settledAmount`),
-      field: 'settledAmount',
-      width: 100,
-      align: 'right',
-      sortable: true,
-      formatter: ({ cellValue }: any) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '')
-          return '';
-        return Number(cellValue).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.canInvoice`),
-
-      field: 'invoiceBlocked',
-      width: 75,
-      align: 'center',
-      sortable: true,
-      slots: {
-        default: ({ row }: any) => {
-          return h(Checkbox, {
-            checked: row.invoiceBlocked === true,
-            disabled: !canEditFee(row.feeStatus, isFeeStatemented(row)),
-            onChange: (e: any) => {
-              row.invoiceBlocked = !e.target.checked;
+        };
+        break;
+      case 'exchangeRate':
+        col.cellRender = {
+          name: 'CellInput',
+          props: {
+            disabled: (row: any) =>
+              isRowEditDisabled(row) || row['__isLocalCurrency'] === true,
+          },
+        };
+        break;
+      case 'unitPrice':
+      case 'amount':
+      case 'quantity':
+      case 'taxRate':
+      case 'remark':
+        col.cellRender = {
+          name: 'CellInput',
+          props: { disabled: isRowEditDisabled },
+        };
+        break;
+      case 'unit':
+        col.cellRender = {
+          name: 'CellUnitSelect',
+          props: {
+            unitOptions: () => {
+              const list = orderCtnListRef.value;
+              return list.map((ctn) => ({
+                label: ctn.ctnCodeName,
+                value: ctn.ctnCodeName,
+              }));
             },
-          });
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.isConfidential`),
+            disabled: isRowEditDisabled,
+          },
+        };
+        break;
+      case 'noTaxUnitPrice':
+      case 'noTaxAmount':
+      case 'invoicedAmount':
+      case 'orderInvoiceAmount':
+      case 'settledAmount':
+        col.formatter = formatMoney;
+        break;
+      case 'statementNum':
+        col.formatter = ({ row }: any) => getStatementNumsText(row);
+        break;
+      case 'rqstPaymentAmount':
+        col.formatter = formatMoney;
+        col.cellRender = {
+          name: 'CellInput',
+          props: { disabled: () => true },
+        };
+        break;
+      case 'invoiceBlocked':
+        col.slots = {
+          default: ({ row }: any) => {
+            return h(Checkbox, {
+              checked: row.invoiceBlocked === true,
+              disabled: isRowEditDisabled(row),
+              onChange: (e: any) => {
+                row.invoiceBlocked = !e.target.checked;
+              },
+            });
+          },
+        };
+        break;
+      case 'isConfidential':
+        col.slots = {
+          default: ({ row }: any) => {
+            return h(Checkbox, {
+              checked: row.isConfidential === true,
+              disabled: isRowEditDisabled(row),
+              onChange: (e: any) => {
+                row.isConfidential = e.target.checked;
+              },
+            });
+          },
+        };
+        break;
+      case 'dataEntryMethod':
+        col.cellRender = {
+          name: 'CellTag',
+          options: getDataEntryMethodOptions(),
+        };
+        break;
+      case 'creationTime':
+        col.formatter = 'formatDateTime';
+        break;
+      default:
+        break;
+    }
 
-      field: 'isConfidential',
-      width: 75,
-      align: 'center',
-      sortable: true,
-      slots: {
-        default: ({ row }: any) => {
-          return h(Checkbox, {
-            checked: row.isConfidential === true,
-            disabled: !canEditFee(row.feeStatus, isFeeStatemented(row)),
-            onChange: (e: any) => {
-              row.isConfidential = e.target.checked;
-            },
-          });
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.remark`),
-      field: 'remark',
-      width: 120,
-      sortable: true,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) =>
-            !canEditFee(row.feeStatus, isFeeStatemented(row)),
-        },
-      },
-    },
-    {
-      title: $t(`${currentOrderFeeI18nPrefix.value}.orderFee.dataEntryMethod`),
-      field: 'dataEntryMethod',
-      width: 80,
-      sortable: true,
-      cellRender: {
-        name: 'CellTag',
-        options: getDataEntryMethodOptions(),
-      },
-    },
-
-    {
-      title: $t('auditApproval.task.creatorUserName'),
-      field: 'creatorUserName',
-      width: 90,
-      sortable: true,
-    },
-    {
-      title: $t('auditApproval.task.createTime'),
-      field: 'creationTime',
-      width: 155,
-      sortable: true,
-      formatter: 'formatDateTime',
-    },
-  ];
+    return col;
+  }) as VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'];
 }
 
 // --------------------------------------------------------

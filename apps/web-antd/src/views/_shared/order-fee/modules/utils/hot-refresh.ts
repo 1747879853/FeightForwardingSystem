@@ -97,8 +97,47 @@ export function refreshHotVisualRows(
           cellMeta,
         );
       }
+      // 联动改脏行后需重跑 afterRenderer（状态底色、编辑标记、预警）
+      if (typeof hot.runHooks === 'function') {
+        hot.runHooks(
+          'afterRenderer',
+          td,
+          visual,
+          col,
+          cellMeta.prop,
+          value,
+          cellMeta,
+        );
+      }
     }
   }
+}
+
+/**
+ * 按 dataSource 物理行下标刷新（先 toVisualRow）；过滤隐藏时退回整表 render。
+ */
+export function refreshHotSourceRows(
+  hot: any,
+  sourceRows: number[],
+  options?: { fullRenderThreshold?: number },
+) {
+  if (!hot || hot.isDestroyed) return;
+  const visualRows: number[] = [];
+  for (const physical of sourceRows) {
+    if (typeof physical !== 'number' || physical < 0) continue;
+    const visual =
+      typeof hot.toVisualRow === 'function'
+        ? hot.toVisualRow(physical)
+        : physical;
+    if (typeof visual === 'number' && visual >= 0) {
+      visualRows.push(visual);
+    }
+  }
+  if (visualRows.length === 0) {
+    if (sourceRows.length > 0) hot.render();
+    return;
+  }
+  refreshHotVisualRows(hot, visualRows, options);
 }
 
 /** 根据选中 key 变化，算出需要刷新的 visual 行 */
