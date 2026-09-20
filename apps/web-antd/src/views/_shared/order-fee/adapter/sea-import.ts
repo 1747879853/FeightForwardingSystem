@@ -13,6 +13,8 @@ import {
   batchDeleteOrderFee,
   generateOppositeOrderFees,
 } from '#/api/sea-import/order-fee-admin';
+/** 预警与海出同源 OrderFeeAdmin，类型与实现复用海出封装 */
+import { getOrderFeeWarnings } from '#/api/sea-export/order-fee-admin';
 import { GetDetail } from '#/api/sea-import/change-order-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
 import {
@@ -158,6 +160,7 @@ export const seaImportAdapter: OrderFeeModuleAdapter = {
     getChangeOrderDetail: GetDetail,
     getOrderFeePagedList,
     getOrderFeeCount,
+    getOrderFeeWarnings,
     getTransportOrderFees,
     importOrderFeesToTransportOrder,
     batchEditOrderFee,

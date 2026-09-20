@@ -22,7 +22,7 @@ export type OrderFeeWarningFetcher = (
 export function useOrderFeeWarnings(options: {
   transportOrderId: MaybeRefOrGetter<null | string | undefined>;
   changeOrderId?: MaybeRefOrGetter<null | string | undefined>;
-  /** 未提供 fetcher 时不请求（例如非海出模块） */
+  /** 未提供 fetcher 时不请求 */
   fetcher?: OrderFeeWarningFetcher | null;
   /** 表格频繁 change 时合并请求 */
   debounceMs?: number;
