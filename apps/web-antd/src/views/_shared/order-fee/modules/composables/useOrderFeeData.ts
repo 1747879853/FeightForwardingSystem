@@ -400,6 +400,25 @@ export function useOrderFeeData(
   /**
    * 计算并发送金额汇总数据
    */
+  /**
+   * 计算并发送金额汇总数据。
+   * HOT 格内 currencyId 常已转成 Label（如 RMB），必须用 currencyId_value 作聚合 key，
+   * 否则应收/应付一侧用 id、一侧用 label，底栏会按「相同币别」显示两遍。
+   */
+  const resolveCurrencyIdKey = (item: any): null | string => {
+    const raw = item?.currencyId_value ?? item?.currencyId;
+    if (raw === null || raw === undefined || raw === '') return null;
+    // 格内已是非数字 Label 且无 _value 时无法可靠聚合
+    if (
+      item?.currencyId_value == null &&
+      typeof raw === 'string' &&
+      Number.isNaN(Number(raw))
+    ) {
+      return null;
+    }
+    return String(raw);
+  };
+
   const calculateAndEmitAmount = (list: OrderFeeAdminApi.OrderFeeDto[]) => {
     if (!list || list.length === 0) {
       emit('update-amount', {
@@ -410,12 +429,14 @@ export function useOrderFeeData(
     }
 
     const amountMap: Record<string, any> = {};
-    const currencyIdList = list.map((item) => item.currencyId).filter(Boolean);
+    const currencyIdList = list
+      .map((item) => resolveCurrencyIdKey(item))
+      .filter((id): id is string => !!id);
     const uniqueCurrencyIds = [...new Set(currencyIdList)];
 
-    uniqueCurrencyIds.forEach((currencyId) => {
+    uniqueCurrencyIds.forEach((currencyKey) => {
       const currencyList = list.filter(
-        (item) => item.currencyId === currencyId,
+        (item) => resolveCurrencyIdKey(item) === currencyKey,
       );
 
       const totalAmount = currencyList.reduce((acc, cur) => {
@@ -426,30 +447,28 @@ export function useOrderFeeData(
         return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
       }, 0);
 
-      const exchangeRate = currencyList[0]?.exchangeRate || 1;
+      const first = currencyList[0] as any;
+      const exchangeRate = first?.exchangeRate || 1;
       const currencyName =
-        currencyList[0]?.currency?.cnName ||
-        currencyList[0]?.currency?.code ||
-        '';
+        first?.currency?.cnName || first?.currency?.code || '';
+      const currencyId = first?.currencyId_value ?? first?.currencyId;
 
-      if (currencyId !== undefined && currencyId !== null) {
-        if (props.type === 0) {
-          amountMap[currencyId] = {
-            totalRecAmount: totalAmount,
-            totalRMBRecAmount: totalRMBAmount,
-            exchangeRate,
-            currencyName,
-            currencyId,
-          };
-        } else {
-          amountMap[currencyId] = {
-            totalPayAmount: totalAmount,
-            totalRMBPayAmount: totalRMBAmount,
-            exchangeRate,
-            currencyName,
-            currencyId,
-          };
-        }
+      if (props.type === 0) {
+        amountMap[currencyKey] = {
+          totalRecAmount: totalAmount,
+          totalRMBRecAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
+      } else {
+        amountMap[currencyKey] = {
+          totalPayAmount: totalAmount,
+          totalRMBPayAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
       }
     });
 

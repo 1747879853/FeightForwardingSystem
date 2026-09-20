@@ -380,32 +380,56 @@ const transCurrencySymbol = (currencyId: number | string) => {
 let recAmountMap: any = ref({} as any);
 let payAmountMap: any = ref({} as any);
 const totalAmount = computed(() => {
-  const allKeys = new Set([
-    ...Object.keys(recAmountMap.value),
-    ...Object.keys(payAmountMap.value),
-  ]);
-  const total: any = {};
+  // 按币别 id 合并应收/应付（兼容历史 map key 为 Label 的脏数据）
+  const merged = new Map<
+    string,
+    {
+      currencyId: any;
+      currencyName: string;
+      exchangeRate: number;
+      totalPayAmount: number;
+      totalRMBPayAmount: number;
+      totalRMBRecAmount: number;
+      totalRecAmount: number;
+    }
+  >();
 
-  allKeys.forEach((key) => {
-    total[key] = {
-      totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
-      totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
-      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
-      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
-      exchangeRate:
-        (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
-      currencyId:
-        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyId || 1,
-      currencyName:
-        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
-        '人民币',
+  const upsert = (side: 'pay' | 'rec', entry: any, fallbackKey: string) => {
+    if (!entry) return;
+    const currencyKey = String(entry.currencyId ?? fallbackKey);
+    if (!currencyKey || currencyKey === 'undefined' || currencyKey === 'null') {
+      return;
+    }
+    const prev = merged.get(currencyKey) || {
+      totalPayAmount: 0,
+      totalRecAmount: 0,
+      totalRMBPayAmount: 0,
+      totalRMBRecAmount: 0,
+      exchangeRate: entry.exchangeRate || 1,
+      currencyId: entry.currencyId ?? fallbackKey,
+      currencyName: entry.currencyName || '人民币',
     };
+    if (side === 'rec') {
+      prev.totalRecAmount = entry.totalRecAmount || 0;
+      prev.totalRMBRecAmount = entry.totalRMBRecAmount || 0;
+    } else {
+      prev.totalPayAmount = entry.totalPayAmount || 0;
+      prev.totalRMBPayAmount = entry.totalRMBPayAmount || 0;
+    }
+    prev.exchangeRate = entry.exchangeRate || prev.exchangeRate || 1;
+    prev.currencyId = entry.currencyId ?? prev.currencyId;
+    prev.currencyName = entry.currencyName || prev.currencyName;
+    merged.set(currencyKey, prev);
+  };
+
+  Object.entries(recAmountMap.value || {}).forEach(([key, entry]) => {
+    upsert('rec', entry, key);
   });
-  // 转换为对象数组
-  const totalList = Object.keys(total).map((key) => ({
-    id: key,
-    ...total[key],
-  }));
+  Object.entries(payAmountMap.value || {}).forEach(([key, entry]) => {
+    upsert('pay', entry, key);
+  });
+
+  const totalList = [...merged.values()];
   let list = [];
   let totalPay = 0;
   let totalRec = 0;
