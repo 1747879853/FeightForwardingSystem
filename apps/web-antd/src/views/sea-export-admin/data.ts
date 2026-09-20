@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -774,7 +775,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
  * 列表列配置（无操作列，第一列为 checkbox 多选列）
  */
 export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
-  return applySeaExportListDefaultColumns([
+  return applySeaExportListDefaultColumns<
+    NonNullable<
+      VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns']
+    >[number]
+  >([
     {
       type: 'checkbox',
       width: 48,
@@ -949,8 +954,9 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('system.user.userAttributeOptions.operation'),
       minWidth: 100,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
+      ),
       showOverflow: true,
     },
     {
@@ -958,8 +964,9 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('system.user.userAttributeOptions.sales'),
       minWidth: 100,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
+      ),
       showOverflow: true,
     },
     {
@@ -967,11 +974,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('system.user.userAttributeOptions.customerService'),
       minWidth: 120,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
           USER_ATTRIBUTE.customerService,
         ),
+      ),
       showOverflow: true,
     },
     {
@@ -979,11 +987,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('system.user.userAttributeOptions.documentation'),
       minWidth: 100,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
           USER_ATTRIBUTE.documentation,
         ),
+      ),
       showOverflow: true,
     },
     {
@@ -991,8 +1000,9 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('system.user.userAttributeOptions.business'),
       minWidth: 100,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
+      ),
       showOverflow: true,
     },
     {
@@ -1014,11 +1024,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.shipperId'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.shipper?.name,
           row.transportOrder?.shipperContent,
         ),
+      ),
       showOverflow: true,
     },
     {
@@ -1026,11 +1037,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.consigneeId'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.consignee?.name,
           row.transportOrder?.consigneeContent,
         ),
+      ),
       showOverflow: true,
     },
     {
@@ -1038,11 +1050,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.notifierId'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.notifier?.name,
           row.transportOrder?.notifierContent,
         ),
+      ),
       showOverflow: true,
     },
     {

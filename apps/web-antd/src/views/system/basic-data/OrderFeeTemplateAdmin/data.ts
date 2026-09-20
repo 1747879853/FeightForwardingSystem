@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-template-admin';
@@ -175,13 +176,17 @@ export function useColumns(
       field: 'pol.portName',
       title: '起运港',
       width: 120,
-      formatter: ({ row }) => row.pol?.portName || row.pol?.cnName || '-',
+      ...rowTextColumn(
+        ({ row }) => row.pol?.portName || row.pol?.cnName || '-',
+      ),
     },
     {
       field: 'pod.portName',
       title: '目的港',
       width: 120,
-      formatter: ({ row }) => row.pod?.portName || row.pod?.cnName || '-',
+      ...rowTextColumn(
+        ({ row }) => row.pod?.portName || row.pod?.cnName || '-',
+      ),
     },
     {
       field: 'carrier.cnName',

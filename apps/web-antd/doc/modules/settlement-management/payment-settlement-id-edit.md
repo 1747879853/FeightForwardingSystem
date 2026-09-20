@@ -2,7 +2,7 @@
 title: 付费结算编辑
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 ---
 
 > [!TIP] 模块实现总览：[付费结算](./payment-settlement.md)。
@@ -12,6 +12,8 @@ last_updated: 2026-09-19
 **白话解释：** 付费结算是把已审核通过的「付费申请」按结算币别折算后合并成一张对外付款单。页面维护结算时间、付款方式、结算对象、结算币别、双方银行与手续费；结算粒度是「付费申请 + 原币币别」一行，详情与选择列表结构一致。结算对象与币别一经确定即随第一张付费申请锁定。
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 选择付款申请抽屉的币别与原币回退文案使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **抽屉选择规则：** 筛选条件变化时清空旧选择及输入金额；分页抽屉在同一筛选范围内缓存已访问页，跨页选择、合计与确认共用缓存。当前页取消全选不影响其他页。重新打开或重置会使旧请求失效，加载期间禁止确认。
 
@@ -53,6 +55,7 @@ last_updated: 2026-09-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复选择付款申请抽屉的币别与原币回退文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-09 | `Refactor` | 编辑页结构整理：回填守护、去重复错误提示与死代码；保存校验至少一行明细。 | 拆 `use-form-state` / `use-bank-options` / `use-load-detail` / `use-form-effects` / `use-submit`。详见 `changelogs/change-log-2026-09-09-payment-settlement-form-refactor.md`。 |
 | 2026-09-09 | `Fix` | 付费申请附件下载改为 blob + `friendlyFileName`。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Refactor` | 对接按原币+付费申请一套接口；选择列表检索失败自动重试 1 次。 | 抽屉修正 `settlementCurrencyId`/`currencyId` 传参；`existingRowKeys` 禁用已选组合。详见 `doc/付费结算/付费结算-按原币和付费申请-接口文档.md`。 |

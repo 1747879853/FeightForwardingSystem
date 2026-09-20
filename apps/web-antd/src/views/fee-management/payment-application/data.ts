@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -366,11 +367,10 @@ function buildStaticColumns(): Array<Record<string, any>> {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({
-        row,
-      }: {
-        row: PaymentApplicationAdminApi.PaymentApplicationDto;
-      }) => formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({ row }: { row: PaymentApplicationAdminApi.PaymentApplicationDto }) =>
+          formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     {
       field: 'commissionNums',
@@ -378,11 +378,10 @@ function buildStaticColumns(): Array<Record<string, any>> {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({
-        row,
-      }: {
-        row: PaymentApplicationAdminApi.PaymentApplicationDto;
-      }) => formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({ row }: { row: PaymentApplicationAdminApi.PaymentApplicationDto }) =>
+          formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     {
       field: 'status',

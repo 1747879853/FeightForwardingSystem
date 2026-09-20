@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,6 +21,8 @@ last_updated: 2026-09-19
 | 关键源码 | `src/views/audit-approval/payment-review/index.vue`<br/>`src/views/audit-approval/payment-review/detail-panel.vue`<br/>`src/views/audit-approval/payment-review/data.ts`<br/>`src/api/audit-approval/payment-review-admin.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/views/fee-management/payment-application/form-data.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 主提单号、委托编号和结算对象名称使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。任务状态默认「审核中」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认状态写入「最近提交值」（翻页/刷新不丢）。清空后可看全部。
 - **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接；一组付费申请可跨多票，过长省略号。组内金额字段恒为 `null`，不要拿来展示。
@@ -92,6 +94,7 @@ last_updated: 2026-09-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复主提单号、委托编号和结算对象名称刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-19 | `Fix` | #0967 审核状态合并并支持流程浮层；右侧改为应收未结算、发票表、附件；一级行新增应收结算状态。 | 后端字段依赖 #0147，空值展示「—」；快速切换单据时忽略旧详情响应。 |
 | 2026-09-14 | `Fix` | 审批详情申请附件分组按类型原始 `sortId` 降序。 | 详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-09 | `Fix` | 进入付费审批首查与翻页稳定带上「任务状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `TaskStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |

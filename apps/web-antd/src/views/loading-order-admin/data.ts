@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -265,14 +266,14 @@ export function useColumns(): VxeTableGridOptions<LoadingOrderAdminApi.LoadingOr
       title: $t('seaExport.loadingOrder.vesselVoyage'),
       minWidth: 160,
       showOverflow: true,
-      formatter: ({ row }) => formatVesselVoyage(row),
+      ...rowTextColumn(({ row }) => formatVesselVoyage(row)),
     },
     {
       field: 'seaExport.carrier.cnShortName',
       title: $t('seaExport.loadingOrder.carrier'),
       minWidth: 120,
       showOverflow: true,
-      formatter: ({ row }) => formatCarrier(row),
+      ...rowTextColumn(({ row }) => formatCarrier(row)),
     },
     {
       field: 'seaExport.transportOrder.orderCodeGoodss',

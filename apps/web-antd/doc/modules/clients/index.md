@@ -2,7 +2,7 @@
 title: 客户列表
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-11
 | 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/base/options.ts`<br/>`src/views/client/payment-terms/list.vue`<br/>`src/utils/business-type-options.ts`<br/>`src/api/sea-export/client-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 客户与供应商组合身份使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **列表查询：** 通过客户列表页筛选并分页加载客户资料。
 - **顶部操作：** 遵循项目规范，基于勾选记录执行新增、修改、删除等动作；**仅点击 checkbox 才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。
@@ -49,6 +51,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复客户与供应商组合身份刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-11 | `Feature` | 列表增加可空「税率」列；费用录入按结算对象税率优先、费用名称其次。 | 详见 `changelogs/change-log-2026-09-11-client-tax-rate-fee-linkage.md`。 |
 | 2026-07-12 | `Fix` | 行业类别列补齐 `a`→船公司、`k`→代理 映射，不再露出字母。 | `formatIndustryCategories` 依赖全量 `getIndustryCategoryOptions`；`a` 曾被注释、`k` 整项缺失导致回退显示字母码。 |
 | 2026-07-12 | `Fix` | 客户列表仅点击 checkbox 才选中，单击行不再切换勾选；联系人/付款条件子表 radio 同步改为仅点控件选中。 | `checkboxConfig`/`radioConfig` 的 `trigger` 由 `'row'` 改为 `'default'`。 |

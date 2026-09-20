@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -717,7 +718,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       field: 'clientType',
       title: '客户 / 供应商',
       minWidth: 120,
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         const isClient = row.isClient;
         const isSupplier = row.isSupplier;
         if (isClient && isSupplier) {
@@ -728,7 +729,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
           return '供应商';
         }
         return '';
-      },
+      }),
     },
     {
       field: 'isDishonest',

@@ -2,7 +2,7 @@
 title: 港口代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-03
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-03
 | 关键源码 | `src/router/routes/modules/basic-data.ts`<br/>`src/views/system/basic-data/PortCodeAdmin/list.vue`<br/>`src/views/system/basic-data/PortCodeAdmin/data.ts`<br/>`src/views/system/basic-data/PortCodeAdmin/modules/form.vue`<br/>`src/api/system/base-data/port-code-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 大洲字段的国家资料回退值使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **列表维护：** 在 `港口代码` 页面查询、创建、编辑和删除基础资料。检索支持港口查询（中英文名）、航线中文名、EDI 代码、国家名称与状态；列表展示排序号与创建人。首次加载主动传 `sorting=sortId desc`；用户点击列头后改按所选列远程排序；搜索或重置后恢复默认排序箭头，创建人昵称不可排。
 - **弹窗表单：** 新增、编辑港口时可维护排序号；值越大越靠前，不填写按 `0` 处理。
@@ -56,6 +58,7 @@ last_updated: 2026-09-03
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复大洲字段的国家资料回退值刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-03 | `Feature/Fix` | 港口新增排序号维护与列表列；管理列表及分页港口选择器按排序号降序，搜索后保持排序箭头高亮；全量港口列表沿用后端顺序。 | 管理 DTO 使用 `sortId`，精简全量 DTO 使用 `s`；分页 `PortSelect` 传 `Sorting`，全量接口不传；搜索 `reload` 后恢复默认排序指示器。详见 `changelogs/change-log-2026-09-03-port-code-sort-id.md`。 |
 | 2026-08-12 | `Feature` | 列表列头排序对齐港口本表及 Country/Lane 导航可排字段；默认按国家中文名升序；创建人列关闭排序。 | `defaultSort: Country.CountryName ASC`；国家列 field 用 `country.countryName`；大洲/航线 `sortField` 映射；详见 `changelogs/change-log-2026-08-12-port-code-list-sortable-fields.md`。 |
 | 2026-08-10 | `Feature` | 列表检索改为「港口查询」并增加航线/EDI/国家筛选；列表增加创建人列。 | 查询传 `Keyword`/`LaneId`/`EdiCode`/`CountryId`/`Status`；展示 `creatorUserName`。后端对齐见 `backend-tasks/port-code-admin-港口列表检索条件与创建人.md`。 |

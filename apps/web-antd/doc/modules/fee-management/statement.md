@@ -2,7 +2,7 @@
 title: 对账单列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-08
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-08
 | 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 各币别应收、应付、发票占用与结算占用金额使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **对账查询：** 按对象、期间、状态查询对账单。
 - **新增对账：** 进入对账单新增页选择费用生成对账。
@@ -46,6 +48,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复各币别应收、应付、发票占用与结算占用金额刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-08 | `Fix` | 选费业务日期筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-09 | `Refactor` | 列表「客户」列改读对象化后的 `client.name`，接口不再返回 `clientName`/`clientCode`。 | `StatementDto` 删 `clientName`/`clientCode` 新增 `client`（`ClientSimpleDto`），`StatementCurrencyDto` 删 `currencyCode`/`currencyCnName`/`currencyEnName` 新增 `currency`；vxe 列 `field` 改点号路径 `client.name`，删除确认提示同步取 `rows[0]?.client?.name`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/statement` 对应组件 `src/views/fee-management/statement/index.vue`，权限口径为 Admin.Statement / Admin.Statement.Get。 |

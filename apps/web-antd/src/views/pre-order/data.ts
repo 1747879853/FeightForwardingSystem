@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type {
@@ -257,14 +258,14 @@ export function buildColumns(): Array<Record<string, any>> {
       title: '起运港',
       minWidth: 140,
       showOverflow: true,
-      formatter: ({ row }) => row.polRemark ?? '',
+      ...rowTextColumn(({ row }) => row.polRemark ?? ''),
     },
     {
       field: 'podName',
       title: '目的港',
       minWidth: 140,
       showOverflow: true,
-      formatter: ({ row }) => row.podRemark ?? '',
+      ...rowTextColumn(({ row }) => row.podRemark ?? ''),
     },
     {
       field: 'carrierName',

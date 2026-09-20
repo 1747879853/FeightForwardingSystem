@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -518,10 +519,11 @@ export function useCommissionConfigColumns(): VxeTableGridOptions<CommissionConf
       field: 'effectiveStartDate',
       title: $t('commission.effectivePeriod'),
       width: 170,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         formatEffectivePeriod(
           row as CommissionConfigAdminApi.CommissionConfigDto,
         ),
+      ),
     },
     {
       field: 'periodType',

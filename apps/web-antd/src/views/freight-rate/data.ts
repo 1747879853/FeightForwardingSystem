@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
@@ -610,11 +611,11 @@ export function useColumns(
       width: 120,
       align: 'left',
       // showOverflow: true,
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         return row.poT1
           ? `${row.poT1?.portName},${row.poT1?.country.countryEnName}`
           : '-';
-      },
+      }),
     },
     {
       field: 'poT2.portName',
@@ -622,11 +623,11 @@ export function useColumns(
       width: 120,
       align: 'left',
       //showOverflow: true,
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         return row.poT2
           ? `${row.poT2?.portName},${row.poT2?.country.countryEnName}`
           : '-';
-      },
+      }),
     },
     {
       field: 'voyage',
@@ -639,7 +640,7 @@ export function useColumns(
       title: '开船日期',
       width: 150,
       align: 'left',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
           const dates = row.seFreiPriceDays
@@ -675,14 +676,14 @@ export function useColumns(
           return days.length > 0 ? days.join(', ') : '-';
         }
         return '-';
-      },
+      }),
     },
     {
       field: 'closeDocTime',
       title: '截单时间',
       width: 150,
       align: 'left',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
           const times = row.seFreiPriceDays
@@ -718,14 +719,14 @@ export function useColumns(
           return times.length > 0 ? times.join(', ') : '-';
         }
         return '-';
-      },
+      }),
     },
     {
       field: 'closingTime',
       title: '截关时间',
       width: 150,
       align: 'left',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
           const times = row.seFreiPriceDays
@@ -761,14 +762,14 @@ export function useColumns(
           return times.length > 0 ? times.join(', ') : '-';
         }
         return '-';
-      },
+      }),
     },
     {
       field: 'validTimeRange',
       title: $t('seaExport.freightRate.validTimeStart'),
       width: 220,
       align: 'left',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         const startDate = row.validTimeStart;
         const endDate = row.validTimeEnd;
 
@@ -785,7 +786,7 @@ export function useColumns(
         } else {
           return '-';
         }
-      },
+      }),
     },
     {
       field: 'isValid',

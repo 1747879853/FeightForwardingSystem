@@ -73,3 +73,9 @@ src/views/settlement-management/payment-settlement/
 | 日期 | 说明 |
 | :-- | :-- |
 | 2026-09-12 | 从 `src/views/.../README.md` 迁入 `doc/modules/settlement-management/` |
+
+# 6. 变更与解析日志 (Changelog & Insights)
+
+| 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
+| --- | --- | --- | --- |
+| 2026-09-20 | `Fix` | 修复主提单号、委托编号及手续费币别组合文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |

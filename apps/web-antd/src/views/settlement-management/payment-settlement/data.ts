@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -93,11 +94,13 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({
-        row,
-      }: {
-        row: PaymentSettlementAdminApi.PaymentSettlementListDto;
-      }) => formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({
+          row,
+        }: {
+          row: PaymentSettlementAdminApi.PaymentSettlementListDto;
+        }) => formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     {
       field: 'commissionNums',
@@ -105,11 +108,13 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({
-        row,
-      }: {
-        row: PaymentSettlementAdminApi.PaymentSettlementListDto;
-      }) => formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({
+          row,
+        }: {
+          row: PaymentSettlementAdminApi.PaymentSettlementListDto;
+        }) => formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     // {
     //   field: 'status',
@@ -157,13 +162,13 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       title: '手续费',
       width: 140,
       align: 'right',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         const amount = formatAmount(row.transactionFee);
         if (amount === '-' || amount === '') return amount;
         const code =
           row.transactionFeeCurrency?.code || row.currency?.code || '';
         return code ? `${amount} ${code}` : amount;
-      },
+      }),
     },
     {
       field: 'creatorUserName',

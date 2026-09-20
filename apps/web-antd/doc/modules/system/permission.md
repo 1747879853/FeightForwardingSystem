@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-15
 | 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/views/system/permission/list.vue`<br/>`src/api/system/*.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 明细数、条件字段显示名与条件值显示文案使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **字段权限保存或删除后刷新当前用户共享规则，已接入页面响应更新；退出登录清空缓存，防止跨用户复用。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
@@ -51,6 +53,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复明细数、条件字段显示名与条件值显示文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-08-24 | `Fix` | 模块权限树优先显示接口中文名；报表、提成配置不再显示 `auth.Admin_Report` 这类码。 | TAPD `#1161580498001000856`。`buildPermissionTree` 先用 `displayName`。详见 `changelogs/change-log-2026-08-24-permission-tree-display-name.md`。 |
 | 2026-08-10 | `Fix` | 表级/字段权限模块下拉同步「客户管理」`FrightModule.Client=9`，与后端枚举对齐。 | 仅补枚举与选项/标签；Client 暂无 `TablePermissionFieldMetaMap` 字段元数据，条件字段待后端确认后再补。 |
 | 2026-07-29 | `Style` | 顶部配置对象区卡片仍占满，内容改为横向 flex 靠左；角色/用户下拉固定 `w-56`。 | 去掉 `Row`/`Col` 满宽栅格，避免控件被拉满。 |

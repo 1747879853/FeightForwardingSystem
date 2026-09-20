@@ -37,6 +37,7 @@ import { getCurrentUserMaskedFields } from '#/api/system/permission';
 import { loadMaskedFields, resetMaskedFields } from './use-masked-fields';
 import { useFieldPermission } from './use-field-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { rowTextColumn } from '#/utils/row-text-column';
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 function setup() {
@@ -246,6 +247,35 @@ it('列配置函数插槽会被转发（审核费用状态 Tag）', async () => 
   expect(slot).toBeTypeOf('function');
   expect(slot({ row: { combinedFeeStatus: 2 } })).toBe('状态:2');
   expect(feeSlot).toHaveBeenCalled();
+});
+
+it('派生文本列保留列键和排序，刷新读新值且受限行仍显示掩码', async () => {
+  const permission = setup();
+  const [Grid, api] = permission.usePermissionGrid({
+    gridOptions: {
+      columns: [
+        {
+          field: 'vessel',
+          ...rowTextColumn(({ row }) => `${row.vessel} / ${row.voyage}`),
+        },
+      ],
+      proxyConfig: { ajax: { query: createPagedListQuery(vi.fn()) } },
+    },
+  });
+  await mask(false);
+  const render = (Grid as any).setup({}, { attrs: {}, slots: {} });
+  const slot = render().children.permission_vessel;
+  expect((api as any).state.columns[0]).toMatchObject({
+    field: 'vessel',
+    sortable: true,
+  });
+  expect(slot({ row: { vessel: 'SAME', voyage: '001' } })[0].children).toBe(
+    'SAME / 001',
+  );
+  expect(slot({ row: { vessel: 'SAME', voyage: '002' } })[0].children).toBe(
+    'SAME / 002',
+  );
+  expect(slot({ row: { voyage: '002' } })[0].children).toBe('***');
 });
 
 it('列表筛选在表格未挂载时不抛错，规则到位后写入 schema', async () => {

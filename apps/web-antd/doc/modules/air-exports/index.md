@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-17
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-17
 | 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/air-export-admin/list.vue`<br/>`src/views/air-export-admin/data.ts`<br/>`src/views/air-export-admin/list-column-defaults.ts`<br/>`src/views/air-export-admin/use-air-export-copy.ts`<br/>`src/api/air-export/air-export-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 业务人员、收发通回退文本、计费重量和体积重量合计、机场组合文案使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
@@ -66,6 +68,7 @@ last_updated: 2026-09-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复业务人员、收发通回退文本、计费重量和体积重量合计、机场组合文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-17 | `Fix` | 移除会计期间检索，首屏按起飞日期倒序并高亮列头；默认列顺序对齐海运出口业务结构。 | 前端列字段 `transportOrder.etd` 经 `AIR_EXPORT_SORT_FIELD_MAP` 转成后端 `TransportOrder.ETD`；个人列设置仍优先。详见 [变更日志](../../changelogs/change-log-2026-09-17-air-export-list-default-layout.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |

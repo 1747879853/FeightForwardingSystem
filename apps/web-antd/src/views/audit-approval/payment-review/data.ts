@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -333,8 +334,10 @@ function buildStaticColumns(): Array<Record<string, any>> {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
-        formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+          formatPayAppMblNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     {
       field: 'commissionNums',
@@ -342,8 +345,10 @@ function buildStaticColumns(): Array<Record<string, any>> {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
-        formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ...rowTextColumn(
+        ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+          formatPayAppCommissionNums(row.payAppFeeBySeaExportGroup),
+      ),
     },
     {
       field: 'settlementName',
@@ -351,8 +356,10 @@ function buildStaticColumns(): Array<Record<string, any>> {
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
-        row.settlement?.name ?? '',
+      ...rowTextColumn(
+        ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+          row.settlement?.name ?? '',
+      ),
     },
     {
       field: 'taskStatus',

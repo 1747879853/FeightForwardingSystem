@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -972,8 +973,9 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
+      ),
     },
     {
       field: 'saleUserName',
@@ -981,8 +983,9 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
+      ),
     },
     {
       field: 'customerServiceUserName',
@@ -990,11 +993,12 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 120,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
           USER_ATTRIBUTE.customerService,
         ),
+      ),
     },
     {
       field: 'documentationUserName',
@@ -1002,11 +1006,12 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
           USER_ATTRIBUTE.documentation,
         ),
+      ),
     },
     {
       field: 'businessUserName',
@@ -1014,8 +1019,9 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
+      ),
     },
     {
       field: 'orgs',
@@ -1037,11 +1043,12 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 140,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.shipper?.name ?? undefined,
           row.transportOrder?.shipperContent ?? undefined,
         ),
+      ),
     },
     {
       field: 'transportOrder.consignee.name',
@@ -1049,11 +1056,12 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 140,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.consignee?.name ?? undefined,
           row.transportOrder?.consigneeContent ?? undefined,
         ),
+      ),
     },
     {
       field: 'transportOrder.notifier.name',
@@ -1061,11 +1069,12 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 140,
       sortable: false,
       showOverflow: true,
-      formatter: ({ row }) =>
+      ...rowTextColumn(({ row }) =>
         getPartyName(
           row.transportOrder?.notifier?.name ?? undefined,
           row.transportOrder?.notifierContent ?? undefined,
         ),
+      ),
     },
     {
       field: 'transportOrder.pkgs',

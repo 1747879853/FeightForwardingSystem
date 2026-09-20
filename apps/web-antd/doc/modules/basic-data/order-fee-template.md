@@ -2,7 +2,7 @@
 title: 自动费用模板
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-11
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-11
 | 关键源码 | `src/router/routes/modules/basic-data.ts`<br/>`src/api/sea-export/order-fee-template-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 港口中英文名称回退值使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **列表：** 检索、新建、双击编辑、删除模板。
 - **新建 / 编辑：** 统一页头与分区面板；表头条件 + Handsontable 费用明细（样式对齐费用录入）；未保存切走可 KeepAlive，点 X 才销毁。
@@ -48,6 +50,7 @@ last_updated: 2026-09-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复港口中英文名称回退值刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-11 | `Fix` | 小分辨率下费用明细可滚全行；标题行/分区头在小屏紧凑化，多留给表格高度。 | 去掉 `100vh` 估高 + 小屏媒体查询压 hero。详见 `changelogs/change-log-2026-09-11-order-fee-template-table-height-fill.md`。 |
 | 2026-09-10 | `Style` | 编辑页整体：页头标题区、分区面板、背景与表单控件观感统一；恢复返回列表。 | `oft-editor` / `oft-panel` 结构。详见 `changelogs/change-log-2026-09-10-order-fee-template-editor-layout.md`。 |
 | 2026-09-10 | `Style` | 编辑页费用明细表对齐费用录入的面板与 Handsontable 观感；隐藏 `*_value` 列。 | 详见 `changelogs/change-log-2026-09-10-order-fee-template-table-style.md`。 |

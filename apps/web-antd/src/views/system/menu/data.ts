@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemMenuApi } from '#/api/system/menu';
 
@@ -56,7 +57,7 @@ export function useColumns(
     {
       align: 'left',
       field: 'component',
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         switch (row.type) {
           case 'catalog':
           case 'menu': {
@@ -70,7 +71,7 @@ export function useColumns(
           }
         }
         return '';
-      },
+      }),
       minWidth: 200,
       title: $t('system.menu.component'),
     },

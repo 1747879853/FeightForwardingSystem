@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemPermissionApi } from '#/api/system/permission';
@@ -185,13 +186,13 @@ export function useDataPermissionColumns<
       field: 'itemCount',
       title: $t('system.permission.itemCount'),
       width: 100,
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         const record = row as SystemPermissionApi.UserDataPermissionDto;
         if (!needsDataPermissionItems(record.dataPermissionType)) {
           return '-';
         }
         return String(record.items?.length ?? 0);
-      },
+      }),
     },
     {
       field: 'creationTime',
@@ -506,9 +507,12 @@ export function useTableConditionColumns<
       field: 'propName',
       title: $t('system.permission.conditionPropName'),
       width: 120,
-      formatter: ({ row }) =>
-        (row as SystemPermissionApi.UserTablePermissionConditionDto).showName ||
-        (row as SystemPermissionApi.UserTablePermissionConditionDto).propName,
+      ...rowTextColumn(
+        ({ row }) =>
+          (row as SystemPermissionApi.UserTablePermissionConditionDto)
+            .showName ||
+          (row as SystemPermissionApi.UserTablePermissionConditionDto).propName,
+      ),
     },
     {
       field: 'operator',
@@ -521,11 +525,11 @@ export function useTableConditionColumns<
       field: 'value',
       title: $t('system.permission.conditionValue'),
       minWidth: 120,
-      formatter: ({ row }) => {
+      ...rowTextColumn(({ row }) => {
         const condition =
           row as SystemPermissionApi.UserTablePermissionConditionDto;
         return condition.showValue || condition.value;
-      },
+      }),
     },
     {
       align: 'center',

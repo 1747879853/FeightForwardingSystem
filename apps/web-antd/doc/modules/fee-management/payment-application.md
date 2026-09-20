@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-09
 | 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/payment-application/settlement-detail-modal.vue`<br/>`src/views/fee-management/payment-application/invoice-edit-modal.vue`<br/>`src/api/settlement-management/payment-application-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 主提单号和委托编号使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **申请单查询：** 按申请状态、客户/供应商、币别、时间等条件查询付款申请（筛选项「币别」保留）。
 - **主提单号 / 委托编号列：** 分别从本行 `payAppFeeBySeaExportGroup[].transportOrder.mblNum`、`commissionNum` 保序去重后逗号拼接，默认插在申请单号后；过长省略号。组内金额字段不要用来展示。
@@ -77,6 +79,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复主提单号和委托编号刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-09 | `Feature` | 列表分页行嵌入当页按币别的申请合计（付 − 收）。 | TAPD 1000938。`collectPageAppliedTotals` 复用列口径；`pagerConfig.slots.left` 插在条数和翻页按钮之间。详见 `changelogs/change-log-2026-09-09-payment-application-page-total.md`。 |
 | 2026-09-09 | `Fix` | 批量下载发票 zip 改为 blob 保存，跨域也能用后端返回的包名。 | `downloadAttachmentWithFriendlyName`。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 开票日期、提交时间、最晚付款筛选改为自然日闭区间。 | 三个条件都无 `showTime`。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |

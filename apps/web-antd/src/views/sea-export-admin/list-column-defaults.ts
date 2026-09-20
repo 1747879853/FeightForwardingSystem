@@ -1,3 +1,5 @@
+import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
+
 /**
  * 海运出口台账默认列配置（无用户列配置时生效）。
  *
@@ -225,13 +227,10 @@ export function stringifySeaExportListDefaultColumnSetting(): string {
   return JSON.stringify(SEA_EXPORT_LIST_DEFAULT_COLUMN_SETTING);
 }
 
-type ColumnLike = {
-  field?: string;
-  type?: string;
-  visible?: boolean;
-  fixed?: string;
-  width?: number;
-};
+type ColumnLike = Pick<
+  NonNullable<VxeTableGridOptions['columns']>[number],
+  'field' | 'fixed' | 'type' | 'visible' | 'width'
+>;
 
 /** 与 vxe 列持久化稳定键一致：优先 field，其次 type */
 function persistKeyOf(column: ColumnLike): string {

@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -220,7 +221,7 @@ export function useColumns(
       minWidth: 120,
       // 大洲属 Country；列表 DTO 的 chau 由 MapPortCodeDto 从关联国家带出
       sortField: 'Country.Chau',
-      formatter: ({ row }) => row.chau ?? row.country?.chau ?? '',
+      ...rowTextColumn(({ row }) => row.chau ?? row.country?.chau ?? ''),
     },
     {
       field: 'portType',

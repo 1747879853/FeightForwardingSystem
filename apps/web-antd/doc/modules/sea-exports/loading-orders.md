@@ -2,7 +2,7 @@
 title: 监装列表
 module: 操作管理 / 监装
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-09-14
 | 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/loading-order-admin/list.vue`<br/>`src/views/loading-order-admin/data.ts`<br/>`src/api/sea-export/loading-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **列表派生文本刷新：** 船名航次组合文案、船公司名称回退使用函数插槽直接读取当前行，避免绑定字段不变时复用旧格式化文本；列键、排序、显隐、宽度和字段权限沿用原配置，导出取值同步。
 
 - **分页检索：** `createPagedListQuery(getLoadingOrderPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery })` 调 `LoadingOrderAdmin/GetPagedListAsync`。搜索不自动查询（`submitOnChange: false`），需点「查询」。
 - **无操作列：** 不提供行内编辑/删除；双击行进入 `/sea-exports/:seaExportId/edit?tab=loadingOrder`。海出已被删（`seaExportId` 空或全 0）时 toast「关联的海运出口已删除，无法打开监装页」。
@@ -58,6 +60,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 修复船名航次组合文案、船公司名称回退刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-15 | `Fix` | 主提单号列改绑 `seaExport.transportOrder.mblNum`；堆场列删多余 formatter。 | 详见 [变更日志](../../changelogs/change-log-2026-09-15-list-column-object-path.md)。 |
 | 2026-09-14 | `Fix` | PC 监装列表派单人改为纯文本，去掉拨打弹窗。 | 小程序仍走 `submitUserPhone` + `tel:`；PC 列 field 保持 `submitUserName`。 |
 | 2026-09-14 | `Fix` | 状态列采用灰、橙、蓝、绿区分状态，去除描边并加深文字。 | 仅调整展示，状态枚举与筛选不变。 |

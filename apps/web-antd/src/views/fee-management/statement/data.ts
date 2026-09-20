@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -232,12 +233,12 @@ export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto
       field: `currency_${currencyCode}_receive`,
       title: `${currencyCode}应收`,
       minWidth: 100,
-      formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+      ...rowTextColumn(({ row }: { row: StatementAdminApi.StatementDto }) => {
         const currencyGroup = row.statementCurrencyGroup?.find(
           (c) => c.currency?.code === currencyCode,
         );
         return currencyGroup ? currencyGroup.receiveAmount : '';
-      },
+      }),
       sortable: false,
     });
 
@@ -246,12 +247,12 @@ export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto
       field: `currency_${currencyCode}_pay`,
       title: `${currencyCode}应付`,
       minWidth: 100,
-      formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+      ...rowTextColumn(({ row }: { row: StatementAdminApi.StatementDto }) => {
         const currencyGroup = row.statementCurrencyGroup?.find(
           (c) => c.currency?.code === currencyCode,
         );
         return currencyGroup ? currencyGroup.payAmount : '';
-      },
+      }),
       sortable: false,
     });
 
@@ -261,12 +262,12 @@ export function useColumns(): VxeTableGridOptions<StatementAdminApi.StatementDto
         field: `currency_${currencyCode}_${field}`,
         title: `${currencyCode}${label}`,
         minWidth: 120,
-        formatter: ({ row }: { row: StatementAdminApi.StatementDto }) => {
+        ...rowTextColumn(({ row }: { row: StatementAdminApi.StatementDto }) => {
           const currencyGroup = row.statementCurrencyGroup?.find(
             (c) => c.currency?.code === currencyCode,
           );
           return currencyGroup?.[field] ?? '';
-        },
+        }),
         sortable: false,
       });
     });

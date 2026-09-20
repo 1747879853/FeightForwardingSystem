@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
@@ -216,49 +217,43 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.POLPortName',
       title: $t('seaExport.export.polId'),
       minWidth: 100,
-      formatter: ({
-        row,
-      }: {
-        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
-      }) => {
-        const to = row.transportOrder;
-        if (to?.bizType === 0) return to.seaExport?.pol?.portName || '--';
-        if (to?.bizType === 1) return to.seaImport?.pol?.portName || '--';
-        if (to?.bizType === 2) return to.airExport?.pol?.cnName || '--';
-        return '--';
-      },
+      ...rowTextColumn(
+        ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+          const to = row.transportOrder;
+          if (to?.bizType === 0) return to.seaExport?.pol?.portName || '--';
+          if (to?.bizType === 1) return to.seaImport?.pol?.portName || '--';
+          if (to?.bizType === 2) return to.airExport?.pol?.cnName || '--';
+          return '--';
+        },
+      ),
     },
     {
       field: 'transportOrder.PODPortName',
       title: $t('seaExport.export.podId'),
       minWidth: 100,
-      formatter: ({
-        row,
-      }: {
-        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
-      }) => {
-        const to = row.transportOrder;
-        if (to?.bizType === 0) return to.seaExport?.pod?.portName || '--';
-        if (to?.bizType === 1) return to.seaImport?.pod?.portName || '--';
-        if (to?.bizType === 2) return to.airExport?.pod?.cnName || '--';
-        return '--';
-      },
+      ...rowTextColumn(
+        ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+          const to = row.transportOrder;
+          if (to?.bizType === 0) return to.seaExport?.pod?.portName || '--';
+          if (to?.bizType === 1) return to.seaImport?.pod?.portName || '--';
+          if (to?.bizType === 2) return to.airExport?.pod?.cnName || '--';
+          return '--';
+        },
+      ),
     },
     {
       field: 'transportOrder.seaExportVessel',
       title: $t('seaExport.export.vessel'),
       minWidth: 100,
-      formatter: ({
-        row,
-      }: {
-        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
-      }) => {
-        const to = row.transportOrder;
-        if (to?.bizType === 0) return to.seaExport?.carrier?.code || '--';
-        if (to?.bizType === 1) return to.seaImport?.carrier?.code || '--';
-        if (to?.bizType === 2) return to.airExport?.flightNo || '--';
-        return '--';
-      },
+      ...rowTextColumn(
+        ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+          const to = row.transportOrder;
+          if (to?.bizType === 0) return to.seaExport?.carrier?.code || '--';
+          if (to?.bizType === 1) return to.seaImport?.carrier?.code || '--';
+          if (to?.bizType === 2) return to.airExport?.flightNo || '--';
+          return '--';
+        },
+      ),
     },
     {
       field: 'transportOrder.pkgs',
@@ -274,13 +269,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.codePackageName',
       title: $t('seaExport.export.orderCodeGoodss'),
       minWidth: 100,
-      formatter: ({
-        row,
-      }: {
-        row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
-      }) => {
-        return row.transportOrder?.codePackage?.name || '--';
-      },
+      ...rowTextColumn(
+        ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
+          return row.transportOrder?.codePackage?.name || '--';
+        },
+      ),
     },
     {
       field: 'creatorUserName',

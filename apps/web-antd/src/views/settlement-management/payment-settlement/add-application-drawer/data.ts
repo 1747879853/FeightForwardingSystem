@@ -1,3 +1,4 @@
+import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
@@ -126,13 +127,15 @@ export function useApplicationColumns(): VxeTableGridOptions['columns'] {
       field: 'currency.code',
       title: '币别',
       width: 80,
-      formatter: ({
-        row,
-      }: {
-        row: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
-      }) =>
-        row.currency?.code ??
-        (row.currencyId == null || row.currencyId === 0 ? '原币' : ''),
+      ...rowTextColumn(
+        ({
+          row,
+        }: {
+          row: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+        }) =>
+          row.currency?.code ??
+          (row.currencyId == null || row.currencyId === 0 ? '原币' : ''),
+      ),
     },
     {
       field: 'totalPayPrice',
