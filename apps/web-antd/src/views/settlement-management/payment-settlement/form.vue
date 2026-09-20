@@ -311,7 +311,7 @@ onMounted(() => {
             </div>
           </template>
 
-          <div class="attach-section">
+          <div class="attach-section attach-section--upload">
             <div class="attach-section-title">结算单附件</div>
             <FileUploadInput
               v-model="attachments"
@@ -323,40 +323,42 @@ onMounted(() => {
 
           <div
             v-if="paymentApplicationAttachments.length > 0"
-            class="attach-section"
+            class="attach-section attach-section--app-files"
           >
             <div class="attach-section-title">付费申请附件</div>
-            <div
-              v-for="(item, index) in paymentApplicationAttachments"
-              :key="index"
-              class="attach-item"
-            >
-              <IconifyIcon
-                icon="ant-design:file-outlined"
-                class="attach-item-icon size-4"
-              />
-              <span
-                class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm"
-                :title="item.friendlyFileName"
+            <div class="attach-app-list">
+              <div
+                v-for="(item, index) in paymentApplicationAttachments"
+                :key="index"
+                class="attach-item"
               >
-                {{ item.friendlyFileName }}
-              </span>
-              <Space size="small">
-                <Button
-                  type="link"
-                  size="small"
-                  @click="handlePreviewAttachment(item)"
+                <IconifyIcon
+                  icon="ant-design:file-outlined"
+                  class="attach-item-icon size-4"
+                />
+                <span
+                  class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm"
+                  :title="item.friendlyFileName"
                 >
-                  预览
-                </Button>
-                <Button
-                  type="link"
-                  size="small"
-                  @click="handleDownloadAttachment(item)"
-                >
-                  下载
-                </Button>
-              </Space>
+                  {{ item.friendlyFileName }}
+                </span>
+                <Space size="small">
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handlePreviewAttachment(item)"
+                  >
+                    预览
+                  </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    @click="handleDownloadAttachment(item)"
+                  >
+                    下载
+                  </Button>
+                </Space>
+              </div>
             </div>
           </div>
         </Card>
@@ -515,6 +517,11 @@ onMounted(() => {
   flex-direction: column;
   min-height: 0;
   padding: 18px 16px;
+}
+
+/* 附件卡 body：上传区固定，付费申请附件列表区内滚动 */
+:deep(.attach-card.ant-card-small > .ant-card-body) {
+  overflow: hidden;
 }
 
 /* 结算信息表单：三行在卡片内均匀分布 */
@@ -694,15 +701,31 @@ onMounted(() => {
 }
 
 /* ==================== 附件卡片 ==================== */
-.attach-section + .attach-section {
+.attach-section--upload {
+  flex-shrink: 0;
+}
+
+.attach-section--app-files {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   margin-top: 16px;
 }
 
 .attach-section-title {
+  flex-shrink: 0;
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 600;
   color: #333;
+}
+
+.attach-app-list {
+  flex: 1;
+  min-height: 0;
+  padding-right: 2px;
+  overflow: hidden auto;
 }
 
 .attach-item {
