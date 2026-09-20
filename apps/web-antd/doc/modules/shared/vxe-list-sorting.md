@@ -2,7 +2,7 @@
 title: vxe 分页列表列头排序
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-09-16
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,10 +53,15 @@ proxyConfig: {
 
 > [!IMPORTANT] **搜索 reload 也会冲掉默认排序箭头** 查询层仍会用 `defaultSort` 生成 `sorting`，但 VXE 表头状态不会自行恢复。搜索和重置完成后都必须调用 `restoreDefaultSortIndicators`。
 
+> [!IMPORTANT] **程序同步表头不要 clearSort** `handleRemoteSortChange` 若先 `clearSort()` 再 `sort()`，远程排序会再打一枪空 `sorts`，会话被当成取消排序清掉。默认排序列（空运起飞日期、海出开船日期）点了会看起来没高亮。只许 `setSort(..., false)`。
+
+> [!IMPORTANT] **字段权限换列也会冲掉箭头** `maskedFieldIndex` 异步返回后 `setGridOptions({ columns })` 重建列对象，`column.order` 再丢一次。权限包装列表必须在换列后按 `sortConfig.defaultSort` 补 `setSort(..., false)`。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | Fix | 点默认排序列（如起飞日期）后列头继续高亮；字段权限换列后补回箭头。 | `syncGridSortFromSession` 改为 `setSort(..., false)`，禁止 `clearSort`；权限 `watch` 换列后按 `defaultSort` 补箭头。见 `changelogs/change-log-2026-09-20-空运出口起飞日期排序高亮.md`。 |
 | 2026-09-16 | Fix | 恢复字段权限包装列表的列头排序入口。 | 权限监听用原始列覆盖适配器增强列；生成列时复用默认排序规则，并排除运价动态箱型列。回归测试共 19 项通过。 |
 | 2026-09-03 | Fix | 搜索或重置筛选条件后，默认排序列头继续保持高亮。 | `reload` 完成后等待视图更新，再调用 `restoreDefaultSortIndicators`；请求排序与表头状态重新一致。 |
 | 2026-08-28 | Fix | 列设置加载/恢复默认列后，默认排序列头箭头不再消失。 | `refreshColumn` 冲掉 `column.order`；补 `restoreDefaultSortIndicators`。见海出/海进默认开船日期排序 changelog。 |

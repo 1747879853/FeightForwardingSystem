@@ -499,17 +499,52 @@ export function isRemoteSortEnabled(
   return true;
 }
 
+export function parseVxeDefaultSort(defaultSort: unknown): SortItem[] {
+  const list = (
+    Array.isArray(defaultSort) ? defaultSort : [defaultSort]
+  ).filter(
+    (item: any) =>
+      item &&
+      typeof item.field === 'string' &&
+      item.field &&
+      (item.order === 'asc' || item.order === 'desc'),
+  );
+  return list.map((item: any) => ({
+    field: String(item.field),
+    order: item.order as SortOrder,
+  }));
+}
+
+/**
+ * 只改列头箭头，不触发远程查询。
+ * 禁止 clearSort()：远程排序下它会再打一枪空 sorts，会话被当成「取消排序」清掉，
+ * 默认排序列（如起飞日期）点了就会看起来没高亮。
+ */
+export function applySortIndicators(
+  grid: Record<string, any> | undefined,
+  sortList: SortItem[],
+) {
+  if (!grid || sortList.length === 0) {
+    return;
+  }
+  const confs = sortList.map((item) => ({
+    field: item.field,
+    order: item.order,
+  }));
+  const payload = confs.length === 1 ? confs[0] : confs;
+  if (typeof grid.setSort === 'function') {
+    return grid.setSort(payload, false);
+  }
+  if (typeof grid.sort === 'function') {
+    return grid.sort(payload);
+  }
+}
+
 export function syncGridSortFromSession(
   grid: Record<string, any> | undefined,
   sortList: SortItem[],
 ) {
-  if (!grid?.clearSort || !grid?.sort) {
-    return;
-  }
-  grid.clearSort();
-  sortList.forEach((item) => {
-    grid.sort({ field: item.field, order: item.order });
-  });
+  applySortIndicators(grid, sortList);
 }
 
 export function createPagedListQuery<

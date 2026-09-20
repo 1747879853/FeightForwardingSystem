@@ -1,4 +1,4 @@
-import { defineComponent, h, shallowRef, watch } from 'vue';
+import { defineComponent, h, nextTick, shallowRef, watch } from 'vue';
 import { useVbenForm } from '#/adapter/form';
 import {
   renderOriginalPermissionCell,
@@ -11,8 +11,10 @@ import {
 import { useMaskedFields } from './use-masked-fields';
 import {
   applyDefaultSortable,
+  applySortIndicators,
   isPagedListQuery,
   isRemoteSortEnabled,
+  parseVxeDefaultSort,
 } from '#/utils/paged-list-query';
 
 /** 页面显式选择 DTO 配置；不依赖路由猜测模块。 */
@@ -111,6 +113,16 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
       () => {
         // 此处调用的是原始 setGridOptions，需先 renderColumns
         setGridOptions({ columns: renderColumns(columns) });
+        void nextTick(() => {
+          const api = result[1] as any;
+          applySortIndicators(
+            api.grid,
+            parseVxeDefaultSort(
+              api.state?.gridOptions?.sortConfig?.defaultSort ??
+                api.state?.sortConfig?.defaultSort,
+            ),
+          );
+        });
         if (!options.formOptions) return;
         const nextSchema = filterSearchSchema();
         // Grid 的 formApi 要等表格 onMounted 才挂上，setup 阶段是空对象。

@@ -13,6 +13,8 @@ vi.mock('#/adapter/form', () => ({
     ];
   },
 }));
+const gridMocks = { setSort: vi.fn() };
+
 vi.mock('#/adapter/vxe-table', () => ({
   renderOriginalPermissionCell: vi.fn(() => '原渲染器'),
   useVbenVxeGrid: (options: any) => {
@@ -24,6 +26,7 @@ vi.mock('#/adapter/vxe-table', () => ({
       {},
       {
         state,
+        grid: gridMocks,
         setGridOptions: (patch: any) => Object.assign(state, patch),
         setState: (patch: any) => Object.assign(state, patch),
         // 与真实 VxeGridApi 一致：挂载前 formApi 是空对象
@@ -48,6 +51,7 @@ function setup() {
 afterEach(() => {
   scopes.splice(0).forEach((scope) => scope.stop());
   resetMaskedFields();
+  gridMocks.setSort.mockReset();
 });
 async function mask(alwaysMasked: boolean) {
   await loadMaskedFields();
@@ -57,6 +61,31 @@ async function mask(alwaysMasked: boolean) {
   await loadMaskedFields(true);
   await nextTick();
 }
+
+it('权限刷新换列后按 defaultSort 补回列头高亮', async () => {
+  const permission = setup();
+  permission.usePermissionGrid({
+    gridOptions: {
+      columns: [{ field: 'transportOrder.etd' }, { field: 'remark' }],
+      sortConfig: {
+        defaultSort: { field: 'transportOrder.etd', order: 'desc' },
+      },
+      proxyConfig: { ajax: { query: createPagedListQuery(vi.fn()) } },
+    },
+  });
+  await nextTick();
+  expect(gridMocks.setSort).toHaveBeenCalledWith(
+    { field: 'transportOrder.etd', order: 'desc' },
+    false,
+  );
+  gridMocks.setSort.mockClear();
+  await mask(true);
+  await nextTick();
+  expect(gridMocks.setSort).toHaveBeenCalledWith(
+    { field: 'transportOrder.etd', order: 'desc' },
+    false,
+  );
+});
 
 it('分页列表初始渲染、权限刷新与动态换列均保留排序能力', async () => {
   const permission = setup();

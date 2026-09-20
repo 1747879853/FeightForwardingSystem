@@ -1810,6 +1810,20 @@ setupVbenVxeTable({
   useVbenForm,
 });
 
+function resolveSortableGrid(params: Recordable<any>) {
+  const table = params?.$table;
+  const grid = params?.$grid;
+  const canSort = (target: any) =>
+    typeof target?.setSort === 'function' || typeof target?.sort === 'function';
+  if (canSort(table)) {
+    return table;
+  }
+  if (canSort(grid)) {
+    return grid;
+  }
+  return table ?? grid;
+}
+
 function handleRemoteSortChange(
   params: Recordable<any>,
   listKey: string,
@@ -1817,7 +1831,7 @@ function handleRemoteSortChange(
   onSyncStart?: () => void,
   onSyncEnd?: () => void,
 ) {
-  const grid = params?.$grid ?? params?.$table;
+  const grid = resolveSortableGrid(params);
   if (!listKey) {
     return;
   }

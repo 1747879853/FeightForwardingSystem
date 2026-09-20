@@ -68,6 +68,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Fix` | 起飞日期列头排序点了会高亮；字段权限换列后默认倒序箭头不再丢。 | 远程排序同步表头改为 `setSort(..., false)`，不再 `clearSort`；权限换列后补回 `transportOrder.etd` 箭头。详见[变更记录](../../changelogs/change-log-2026-09-20-空运出口起飞日期排序高亮.md)。 |
 | 2026-09-20 | `Fix` | 修复业务人员、收发通回退文本、计费重量和体积重量合计、机场组合文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-17 | `Fix` | 移除会计期间检索，首屏按起飞日期倒序并高亮列头；默认列顺序对齐海运出口业务结构。 | 前端列字段 `transportOrder.etd` 经 `AIR_EXPORT_SORT_FIELD_MAP` 转成后端 `TransportOrder.ETD`；个人列设置仍优先。详见 [变更日志](../../changelogs/change-log-2026-09-17-air-export-list-default-layout.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
