@@ -907,6 +907,7 @@ const loadEditData = async (): Promise<
     await whenOrderUserRolesReady();
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     await syncFormSnapshot();
+    emit('saved', detail);
     return detail;
   } finally {
     pageLoading.value = false;

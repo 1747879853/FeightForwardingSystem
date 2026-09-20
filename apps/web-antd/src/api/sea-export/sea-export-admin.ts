@@ -6,6 +6,11 @@ import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admi
 import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 
 import { requestClient } from '#/api/request';
+import {
+  buildOrderDetailParams,
+  hasRepeatableQueryArray,
+  readOrderAdjacentQuery,
+} from '#/utils/order-adjacent-query';
 
 export namespace SeaExportAdminApi {
   /** 后端 Long 主键，序列化为 JSON 后可能超 JS 安全整数，统一按 number | string 处理 */
@@ -534,6 +539,16 @@ export namespace SeaExportAdminApi {
      * `true` 才能改 / 删 / 重新生成委托编号；缺字段按 `false`。
      */
     isEditable?: boolean;
+    /**
+     * 上一票 Id。仅详情返回；列表恒为 null。
+     * 当前票是结果集第一条、或不在该搜索结果里时为 null。
+     */
+    previousId?: null | string;
+    /**
+     * 下一票 Id。仅详情返回；列表恒为 null。
+     * 当前票是结果集最后一条、或不在该搜索结果里时为 null。
+     */
+    nextId?: null | string;
     blType?: number;
     billType?: number;
     secondNotifierId?: number;
@@ -800,6 +815,13 @@ export namespace SeaExportAdminApi {
     PageSize?: number;
   }
 
+  /** 详情入参 = 当前票 Id + 与列表完全相同的搜索条件/排序 */
+  export interface GetDetailParams extends GetPagedListParams {
+    Id: string | number;
+    isPrint?: boolean;
+    IsPrint?: boolean;
+  }
+
   /** 分组统计入参：列表查询参数 + 分组字段 */
   export interface GetGroupedListParams extends GetPagedListParams {
     /** 分组字段，1装运方式~9签单方式 */
@@ -948,10 +970,21 @@ export const getSeaExportGroupedList = (
   );
 };
 
-export const getSeaExportDetail = (id: string | number) => {
+export const getSeaExportDetail = (
+  id: string | number,
+  listQuery?: Record<string, unknown>,
+) => {
+  const params = buildOrderDetailParams(id, {
+    listQuery: listQuery ?? readOrderAdjacentQuery('sea-export'),
+  });
   return requestClient.get<SeaExportAdminApi.SeaExportDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    {
+      params,
+      ...(hasRepeatableQueryArray(params)
+        ? { paramsSerializer: 'repeat' as const }
+        : {}),
+    },
   );
 };
 

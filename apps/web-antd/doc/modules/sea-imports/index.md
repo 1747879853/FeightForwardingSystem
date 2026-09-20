@@ -63,6 +63,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后，不再单独挂在按钮外。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |

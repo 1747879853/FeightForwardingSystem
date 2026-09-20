@@ -1083,6 +1083,7 @@ const loadEditData = async (): Promise<
     bindLinkages();
     refreshPortLabelTargets();
     await syncFormSnapshot();
+    emit('saved', detail);
     return detail;
   } finally {
     pageLoading.value = false;

@@ -6,7 +6,9 @@ import { Page } from '@vben/common-ui';
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
+import OrderAdjacentNavButtons from '#/composables/order-adjacent-nav-buttons.vue';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
+import { useOrderAdjacentNav } from '#/composables/use-order-adjacent-nav';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -98,6 +100,15 @@ function applyTabTitleFromDetail(
   tabCommissionNum.value = to?.commissionNum?.trim() || undefined;
 }
 
+const {
+  applyAdjacentFromDetail,
+  canGoNext,
+  canGoPrev,
+  goNext,
+  goPrev,
+  navigating: adjacentNavigating,
+} = useOrderAdjacentNav({ routeName: 'AirExportEdit' });
+
 /** 由详情计算费用 Tab 徽标上的收 - 付计数 */
 const updateFeeNumber = (detail: AirExportAdminApi.AirExportDto) => {
   const fees = detail.transportOrder?.orderFees ?? [];
@@ -109,6 +120,7 @@ const updateFeeNumber = (detail: AirExportAdminApi.AirExportDto) => {
 const onFormSaved = (detail: AirExportAdminApi.AirExportDto) => {
   savedDetail.value = detail;
   applyTabTitleFromDetail(detail);
+  applyAdjacentFromDetail(detail);
   // 顺带用最新详情刷新费用 Tab 徽标，不再重复拉详情接口
   updateFeeNumber(detail);
   clearOrderDetailCache(editId.value);
@@ -131,6 +143,7 @@ async function syncEditorFromOrder(id: string | undefined) {
     // 切单过程中以最新 editId 为准，避免慢请求回写旧票
     if (String(editId.value ?? '') !== String(id)) return;
     applyTabTitleFromDetail(detail);
+    applyAdjacentFromDetail(detail);
     updateFeeNumber(detail);
   } catch {
     // 详情失败时保留路由默认「空运出口」，费用徽标静默
@@ -195,7 +208,6 @@ const contentTabsStyle = {
   gap: '8px',
   alignItems: 'center',
   padding: '8px',
-  overflowX: 'auto',
   position: 'sticky',
   top: '0',
   zIndex: 20,
@@ -228,16 +240,25 @@ const getContentTabStyle = (isActive: boolean) =>
   <Page auto-content-height content-class="!p-0">
     <div class="flex min-w-0 flex-1 flex-col">
       <div class="content-tabs" :style="contentTabsStyle">
-        <span
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="content-tab"
-          :class="{ 'content-tab--active': activeTab === tab.key }"
-          :style="getContentTabStyle(activeTab === tab.key)"
-          @click="onTabClick(tab)"
-        >
-          {{ tab.label }}
-        </span>
+        <div class="content-tabs__list">
+          <span
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="content-tab"
+            :class="{ 'content-tab--active': activeTab === tab.key }"
+            :style="getContentTabStyle(activeTab === tab.key)"
+            @click="onTabClick(tab)"
+          >
+            {{ tab.label }}
+          </span>
+        </div>
+        <OrderAdjacentNavButtons
+          :can-go-prev="canGoPrev"
+          :can-go-next="canGoNext"
+          :loading="adjacentNavigating"
+          @prev="goPrev"
+          @next="goNext"
+        />
       </div>
       <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
@@ -276,3 +297,14 @@ const getContentTabStyle = (isActive: boolean) =>
     </div>
   </Page>
 </template>
+
+<style scoped>
+.content-tabs__list {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+}
+</style>

@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,6 +23,7 @@ last_updated: 2026-09-15
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
+- **上一票 / 下一票：** 工作台顶栏右侧。详情带上最近一次空出列表的筛选和排序，按全量顺序取 `previousId` / `nextId`。Id 为空则禁用；未保存离开走现有脏检查。
 - **标签容器：** 基础信息 / 应收应付（只读）/ 附件 / 运踪信息四个标签，按委托 ID 记忆上次停留的标签。
 - **浏览器标签栏标题：** 工作台进页拉详情、基础信息 Form 回填/录入主运单号时由 `useAirExportTabTitle` 动态设置：有主运单号显示「空运出口-{主运单号}」，否则显示「空运出口-{委托编号}」；切到费用等 Tab 时 Form 未挂载，标题仍由工作台保持。
 - **基础信息：** 与新建同一组件，回显由详情接口一次性带回，各下拉的 `selectedItems` 直接由详情对象构造，避免逐个再调详情接口。收发通为灰色折叠条，点击展开/收起，**默认展开**；折叠用 `v-show`，不销毁表单。货物区从左到右为唛头货描、件重尺（件数与包装合并为一行）、内外部备注（顶部 Tab 切换，多行 textarea 撑满卡片）。航班与订舱代理在「航段信息」标题右侧，订舱代理回显写 header 表单。顶栏支持 AI 识别预填（与新建同一套 `form.vue`）。
@@ -82,6 +83,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 与海出/海进共用 `useOrderAdjacentNav`。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-14 | `Fix` | 附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 与海出附件 Tab 共用比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |

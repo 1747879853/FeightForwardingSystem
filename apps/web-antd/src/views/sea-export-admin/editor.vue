@@ -17,7 +17,9 @@ import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 import { ContainerTrackingPanel } from '#/components/tracking';
 import { clearOrderDetailCache } from '#/views/_shared/order-fee/modules/composables/useOrderFeeLinkage';
+import OrderAdjacentNavButtons from '#/composables/order-adjacent-nav-buttons.vue';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
+import { useOrderAdjacentNav } from '#/composables/use-order-adjacent-nav';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -153,9 +155,19 @@ function applyTabTitleFromDetail(
   tabCommissionNum.value = to?.commissionNum?.trim() || undefined;
 }
 
+const {
+  applyAdjacentFromDetail,
+  canGoNext,
+  canGoPrev,
+  goNext,
+  goPrev,
+  navigating: adjacentNavigating,
+} = useOrderAdjacentNav({ routeName: 'SeaExportEdit' });
+
 const onFormSaved = (detail: SeaExportAdminApi.SeaExportDto) => {
   savedDetail.value = detail;
   applyTabTitleFromDetail(detail);
+  applyAdjacentFromDetail(detail);
   // 清掉费用联动里永不过期的订单详情缓存，避免结算对象/箱型等沿用旧数据
   clearOrderDetailCache(editId.value);
   emit('saved', detail);
@@ -180,6 +192,7 @@ async function syncTabTitleFromOrder(id: string | undefined) {
     // 切单过程中以最新 editId 为准，避免慢请求回写旧票
     if (String(editId.value ?? '') !== String(id)) return;
     applyTabTitleFromDetail(detail);
+    applyAdjacentFromDetail(detail);
   } catch {
     // 详情失败时保留路由默认「海运出口」，不阻断进页
   }
@@ -228,6 +241,7 @@ async function refreshCachedDetailIfBatchEdited() {
     if (String(editId.value ?? '') !== String(id)) return;
     savedDetail.value = detail;
     applyTabTitleFromDetail(detail);
+    applyAdjacentFromDetail(detail);
     clearOrderDetailCache(id);
   } catch {
     // 批量改后进缓存页以 Form 重拉为准，这里失败不挡切 Tab
@@ -323,7 +337,6 @@ const contentTabsStyle = {
   gap: '8px',
   alignItems: 'center',
   padding: '8px',
-  overflowX: 'auto',
   position: 'sticky',
   top: '0',
   zIndex: 20,
@@ -356,16 +369,26 @@ const getContentTabStyle = (isActive: boolean) =>
   <Page auto-content-height content-class="!p-0">
     <div class="flex min-w-0 flex-1 flex-col">
       <div class="content-tabs" :style="contentTabsStyle">
-        <span
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="content-tab"
-          :class="{ 'content-tab--active': activeTab === tab.key }"
-          :style="getContentTabStyle(activeTab === tab.key)"
-          @click="onTabClick(tab)"
-        >
-          {{ tab.label }}
-        </span>
+        <div class="content-tabs__list">
+          <span
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="content-tab"
+            :class="{ 'content-tab--active': activeTab === tab.key }"
+            :style="getContentTabStyle(activeTab === tab.key)"
+            @click="onTabClick(tab)"
+          >
+            {{ tab.label }}
+          </span>
+        </div>
+        <OrderAdjacentNavButtons
+          v-if="!disableTabTitle"
+          :can-go-prev="canGoPrev"
+          :can-go-next="canGoNext"
+          :loading="adjacentNavigating"
+          @prev="goPrev"
+          @next="goNext"
+        />
       </div>
       <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
@@ -432,5 +455,14 @@ const getContentTabStyle = (isActive: boolean) =>
 <style scoped>
 .tracking-tab {
   background: #f2f2f7;
+}
+
+.content-tabs__list {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
 }
 </style>

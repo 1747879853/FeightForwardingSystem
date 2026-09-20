@@ -52,6 +52,7 @@ import {
   buildAttachmentUrl,
   createPagedListQuery,
   isTicketEditable,
+  rememberOrderAdjacentQuery,
   toIsoEndOfDay,
   toIsoEndOfMonth,
   toIsoStartOfDay,
@@ -313,11 +314,17 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaImportAdminApi.SeaImportDto>({
       // 避免分组恢复与首查竞态。
       autoLoad: false,
       ajax: {
-        query: createPagedListQuery(getSeaImportPagedList, {
-          defaultSort: 'TransportOrder.Etd DESC',
-          mapParams: normalizeQuery,
-          fieldMap: SEA_IMPORT_SORT_FIELD_MAP,
-        }),
+        query: createPagedListQuery(
+          (params) => {
+            rememberOrderAdjacentQuery('sea-import', params);
+            return getSeaImportPagedList(params);
+          },
+          {
+            defaultSort: 'TransportOrder.Etd DESC',
+            mapParams: normalizeQuery,
+            fieldMap: SEA_IMPORT_SORT_FIELD_MAP,
+          },
+        ),
       },
     },
     toolbarConfig: {

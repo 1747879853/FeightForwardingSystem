@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -27,6 +27,7 @@ last_updated: 2026-09-19
 
 - **监装摄像头：** 监装工单只读展示 camera.name，不允许管理端编辑摄像头。直播在「分享」预览的客户页里点「查看监装视频」观看，工具栏不再单独放查看按钮。绑定维护由现场师傅在小程序执行。
 
+- **上一票 / 下一票：** 工作台顶栏右侧。详情 `DetailAsync` 带上最近一次海出列表的筛选和排序（`sessionStorage`，去掉分页），按全量顺序取 `previousId` / `nextId`。Id 为空则禁用；点击打开相邻票编辑页，未保存离开走现有脏检查。业务联系单内嵌时不展示。只传 `id`、本会话没查过列表时，按可见全量 + 创建时间倒序算。
 - **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、**监装**、分单、运踪信息。「监装」需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
 - **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/码头航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；`filteredByTerminalVoyno=false` 时提示这是该船在该港的全部挂靠计划。弹窗**不展示码头航次列**。点「确定引入」后前端回填 `atd`（实际开船）、**`terminalVoyno`（出口 `evoyage`，码头航次，界面隐藏）**、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。**不要把 `evoyage` 写进 `innerVoyno`。** 无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
 - **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/船代/订舱代理（车队落到下一行）（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；码头航次 `terminalVoyno` 表单 `hidden`，保存与码头计划引入仍写该字段；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
@@ -73,6 +74,7 @@ last_updated: 2026-09-19
 | 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
 | :-- | :-- | :-- | :-- |
 | 页面初始 | 用户进入 `/sea-exports/:id/edit` | 工作台加载 | 路由只匹配 36 位 GUID，工作台以该 ID 作为海出上下文。 |
+| 编辑工作台 | 点击上一票 / 下一票 | 相邻票编辑页 | 只换 `Id`，检索条件不变；无相邻 Id 时按钮禁用；未保存先确认。 |
 | 基础信息标签 | 组件挂载 | 详情回填 | 调用 `DetailAsync`，把海出字段和运输单字段展开到多分区表单。 |
 | 基础信息编辑中 | 点击保存且校验通过 | 编辑成功 | 调用 `EditAsync`，成功提示后停留当前编辑上下文，`loadEditData` 重新拉取详情并 `emit('saved')`，联动刷新费用/更改单且清理费用联动缓存。 |
 | 基础信息编辑中 | 点击取消 | 返回列表 | 跳转 `/sea-exports`。 |
@@ -175,11 +177,14 @@ last_updated: 2026-09-19
 > **[卡点 16：明细包装空态要拆两种]** 主单没包装才说「未填写包装」。主单有包装但 `codePackageItems` 为空，占位要写成「包装「x」未维护明细包装」，去基础资料补子表；不要和没填包装共用一句。
 >
 > **[卡点 17：列表批量改不会自动刷新已打开的详情]** 编辑页 KeepAlive，列表 `BatchEditAsync` 只改库。必须靠 `entity-refresh:SeaExport:{id}`：再进入该票时 `onActivated` 才 `DetailAsync`。不要改成每次切回编辑页都重拉，会冲掉未保存草稿。
+>
+> **[卡点 18：上一票/下一票必须带当时列表 Query]** 详情只传 `id` 会按可见全量 + 创建时间倒序算邻票，和当前列表对不上。列表查询写入 sessionStorage 后 `DetailAsync` 原样带上；翻票只换 `Id`。顶栏以 `loadEditData` 的 `saved` 为准，因为切票时标题那次详情请求可能被取消。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 列表 Query 记入 sessionStorage；`DetailAsync` 原样带上；`loadEditData` 成功后 `emit('saved')` 回写相邻 Id。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开收起加高度过渡；横向时间轴改为细线小圆点苹果风。 | 手风琴不再用 `details`。详见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间，船名航次落在航线下方，少占一行。 | 三列网格，不再通栏航线。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |
 | 2026-09-17 | `Style` | 运踪箱轨迹改回横向时间轴；顶部改为一行四列 + 航段横排时间，去掉「01」序号；Tab 浅灰底苹果风。 | 首箱默认展开。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-apple-layout.md)。 |

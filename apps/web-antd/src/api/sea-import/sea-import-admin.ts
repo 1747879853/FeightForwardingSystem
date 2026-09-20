@@ -11,6 +11,11 @@ import type { UserAttribute } from '#/api/system/user-admin';
 import type { FeituoTrackingAdminApi } from '#/api/tracking/feituo-tracking-admin';
 
 import { requestClient } from '#/api/request';
+import {
+  buildOrderDetailParams,
+  hasRepeatableQueryArray,
+  readOrderAdjacentQuery,
+} from '#/utils/order-adjacent-query';
 
 export namespace SeaImportAdminApi {
   /** 长整型主键：雪花 id 到前端是字符串，禁止 Number() 转换 */
@@ -548,6 +553,16 @@ export namespace SeaImportAdminApi {
      * `true` 才能改 / 删 / 重新生成委托编号；缺字段按 `false`。
      */
     isEditable?: boolean;
+    /**
+     * 上一票 Id。仅详情返回；列表恒为 null。
+     * 当前票是结果集第一条、或不在该搜索结果里时为 null。
+     */
+    previousId?: null | string;
+    /**
+     * 下一票 Id。仅详情返回；列表恒为 null。
+     * 当前票是结果集最后一条、或不在该搜索结果里时为 null。
+     */
+    nextId?: null | string;
     userId?: number;
     orgId?: LongId | null;
     orgs?: OrganizationUnitSimpleDto[];
@@ -755,9 +770,9 @@ export namespace SeaImportAdminApi {
     copyOrderFees: boolean;
   }
 
-  export interface GetDetailParams {
+  export interface GetDetailParams extends GetPagedListParams {
     Id: string;
-    /** true 时额外返回公司打印信息 */
+    /** true 时额外返回公司打印信息，且不计算上一票/下一票 */
     IsPrint?: boolean;
   }
 
@@ -793,14 +808,23 @@ export const getSeaImportGroupedList = (
   );
 };
 
-export const getSeaImportDetail = (id: string, isPrint?: boolean) => {
-  const params: SeaImportAdminApi.GetDetailParams = { Id: String(id) };
-  if (isPrint) {
-    params.IsPrint = true;
-  }
+export const getSeaImportDetail = (
+  id: string,
+  isPrint?: boolean,
+  listQuery?: Record<string, unknown>,
+) => {
+  const params = buildOrderDetailParams(id, {
+    isPrint,
+    listQuery: listQuery ?? readOrderAdjacentQuery('sea-import'),
+  });
   return requestClient.get<SeaImportAdminApi.SeaImportDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params },
+    {
+      params,
+      ...(hasRepeatableQueryArray(params)
+        ? { paramsSerializer: 'repeat' as const }
+        : {}),
+    },
   );
 };
 

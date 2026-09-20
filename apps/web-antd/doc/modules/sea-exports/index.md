@@ -25,7 +25,7 @@ last_updated: 2026-09-20
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
-- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。
+- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。每次列表查询会记住筛选和排序（去掉分页），编辑页「上一票 / 下一票」按这份条件定位。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
@@ -116,6 +116,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 去掉分页后写入 sessionStorage。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-16 | `Feature` | 批量修改港口区改成编辑页同款流转卡片（每个港口自带可编辑备注），并新增时间信息区（货好/开船/实开/预抵/截单/截港/截关）。 | 港口与时间 schema 分别复用 `usePortFormSchema` / `useShipmentFormSchema`；日期按单条编辑口径序列化，`SeaExportBatchEditDto` 补齐 7 个日期字段。详见 [变更日志](../../changelogs/change-log-2026-09-16-sea-export-batch-edit-port-remark-and-dates.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |

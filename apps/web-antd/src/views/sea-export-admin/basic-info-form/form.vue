@@ -2631,6 +2631,7 @@ const loadEditData = async (): Promise<
     await nextTick();
     await syncFormSnapshot();
     void refreshUploadedAttachmentTypeIds();
+    emit('saved', detail);
     return detail;
   } finally {
     suppressServiceTypeLinkage.value = false;

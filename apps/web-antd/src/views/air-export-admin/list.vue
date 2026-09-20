@@ -50,6 +50,7 @@ import { useTableConfigStore } from '#/store/table-config';
 import {
   createPagedListQuery,
   isTicketEditable,
+  rememberOrderAdjacentQuery,
   toIsoEndOfDay,
   toIsoStartOfDay,
 } from '#/utils';
@@ -308,12 +309,18 @@ const [Grid, gridApi] = useVbenVxeGrid<AirExportAdminApi.AirExportDto>({
       // 避免分组恢复与首查竞态。
       autoLoad: false,
       ajax: {
-        query: createPagedListQuery(getAirExportPagedList, {
-          // defaultSort 使用前端列 field，列头才能同步高亮；请求层再由 fieldMap 转成后端字段。
-          defaultSort: 'transportOrder.etd DESC',
-          mapParams: normalizeQuery,
-          fieldMap: AIR_EXPORT_SORT_FIELD_MAP,
-        }),
+        query: createPagedListQuery(
+          (params) => {
+            rememberOrderAdjacentQuery('air-export', params);
+            return getAirExportPagedList(params);
+          },
+          {
+            // defaultSort 使用前端列 field，列头才能同步高亮；请求层再由 fieldMap 转成后端字段。
+            defaultSort: 'transportOrder.etd DESC',
+            mapParams: normalizeQuery,
+            fieldMap: AIR_EXPORT_SORT_FIELD_MAP,
+          },
+        ),
       },
     },
     toolbarConfig: {
