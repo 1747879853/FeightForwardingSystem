@@ -55,11 +55,11 @@ const {
   clientBankOptions,
   applicationItems,
   selectedRowKeys,
-  orgCompanies,
+  displayOrgCompanyName,
   hasExistingFees,
   existingSettlementRowKeys,
   totalSettledAmount,
-  currentUserName,
+  displaySettlerName,
 } = state;
 
 const { loadOrgBankOptions, loadClientBankOptions } = useBankOptions(state);
@@ -182,26 +182,16 @@ onMounted(() => {
           <!-- 表单区：左半为结算基础字段（两小列），右半为银行/费用字段（填满） -->
           <div class="settle-form">
             <!-- 第 1 行 -->
-            <!-- 归属组织（换算到公司层级） -->
-            <div v-if="orgCompanies.length > 0" class="form-item form-col-1">
+            <!-- 归属公司：只读展示详情 orgs，不用当前登录人组织树强绑 -->
+            <div class="form-item form-col-1">
               <div class="form-label">归属公司</div>
-              <Select
-                :value="orgCompanies.map((c) => c.id)"
-                :options="
-                  orgCompanies.map((c) => ({
-                    label: c.name,
-                    value: c.id,
-                  }))
-                "
-                disabled
-                style="width: 100%"
-              />
+              <Input :value="displayOrgCompanyName" disabled />
             </div>
 
             <!-- 结算人 -->
             <div class="form-item form-col-2">
               <div class="form-label">结算人</div>
-              <Input :value="currentUserName" disabled />
+              <Input :value="displaySettlerName" disabled />
             </div>
 
             <!-- 手续费 + 币别 -->

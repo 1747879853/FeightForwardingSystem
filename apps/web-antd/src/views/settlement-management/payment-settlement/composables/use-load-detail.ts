@@ -33,6 +33,7 @@ export function useLoadDetail(
     attachments,
     paymentApplicationAttachments,
     applicationItems,
+    settlerUserName,
   } = state;
 
   async function loadEditData() {
@@ -64,6 +65,8 @@ export function useLoadDetail(
       transactionFeeCurrencyId.value =
         detail.transactionFeeCurrencyId ?? detail.currencyId;
       remark.value = detail.remark || '';
+      // 结算人：详情创建人名称（与列表「创建人」同源）
+      settlerUserName.value = detail.creatorUserName || '';
 
       applicationItems.value = (detail.paymentApplicationCurrencies || []).map(
         (item) => ({

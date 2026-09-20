@@ -50,6 +50,9 @@ export function useFormState() {
     PaymentSettlementAdminApi.AttachmentItemDto[]
   >([]);
 
+  /** 结算人展示名：编辑回显详情；新建用当前登录用户 */
+  const settlerUserName = ref('');
+
   const orgBankOptions = ref<BankOption[]>([]);
   const clientBankOptions = ref<BankOption[]>([]);
 
@@ -58,19 +61,45 @@ export function useFormState() {
   >([]);
   const selectedRowKeys = ref<string[]>([]);
 
+  /**
+   * 归属公司：优先用详情 orgs 接口字段（isCompany / name），
+   * 不依赖当前登录人组织树；仅在无公司标记时再尝试本地换算。
+   */
   const orgCompanies = computed(() => {
     const seen = new Map<number, { id: number; name: string }>();
-    orgs.value.forEach((org) => {
-      if (!org.id) return;
-      const companyNode = getMyOrgCompanyNode(org.id);
-      if (companyNode?.id != null && !seen.has(companyNode.id)) {
-        seen.set(companyNode.id, {
-          id: companyNode.id,
-          name: companyNode.displayName || '',
-        });
+    const add = (id: number, name?: string) => {
+      if (id == null || seen.has(id)) return;
+      seen.set(id, { id, name: (name || '').trim() || '-' });
+    };
+
+    for (const org of orgs.value) {
+      if (org?.isCompany && org.id != null) {
+        add(org.id, org.name);
       }
-    });
+    }
+    if (seen.size > 0) {
+      return Array.from(seen.values());
+    }
+
+    for (const org of orgs.value) {
+      if (org?.id == null) continue;
+      const companyNode = getMyOrgCompanyNode(org.id);
+      if (companyNode?.id != null) {
+        add(companyNode.id as number, companyNode.displayName || org.name);
+      } else if (org.name) {
+        // 登录人不在该组织树时仍展示接口名称，避免整块隐藏
+        add(org.id, org.name);
+      }
+    }
     return Array.from(seen.values());
+  });
+
+  /** 归属公司展示文案（只读） */
+  const displayOrgCompanyName = computed(() => {
+    const names = orgCompanies.value
+      .map((c) => c.name)
+      .filter((n) => n && n !== '-');
+    return names.length > 0 ? names.join('、') : '-';
   });
 
   const hasExistingFees = computed(() => applicationItems.value.length > 0);
@@ -91,6 +120,14 @@ export function useFormState() {
   const currentUserName = computed(
     () => userStore.userInfo?.realName || userStore.userInfo?.username || '-',
   );
+
+  /** 结算人：编辑用详情 creatorUserName，新建用当前登录用户 */
+  const displaySettlerName = computed(() => {
+    if (isEdit.value) {
+      return settlerUserName.value || '-';
+    }
+    return currentUserName.value;
+  });
 
   return {
     route,
@@ -115,15 +152,18 @@ export function useFormState() {
     remark,
     attachments,
     paymentApplicationAttachments,
+    settlerUserName,
     orgBankOptions,
     clientBankOptions,
     applicationItems,
     selectedRowKeys,
     orgCompanies,
+    displayOrgCompanyName,
     hasExistingFees,
     existingSettlementRowKeys,
     totalSettledAmount,
     currentUserName,
+    displaySettlerName,
   };
 }
 
