@@ -457,6 +457,8 @@ stateDiagram-v2
 - `useKeepAliveRouteParamId` 冻结路由 id，避免切到其它业务页同名 `:id` 时串单。
 - 基础信息保存成功：海出/海进/空出编辑页均 `clearOrderDetailCache(editId)`，避免费用联动仍用旧详情。
 - 费用页挂载只调 `getOrderFeeCount` 刷角标；金额汇总由子表 `@update-amount` 上报，**不再**额外 `PageSize:999` 拉全量列表。
+- 客户按行业懒加载（打开结算对象下拉时拉取；未选行业才走全量分组接口），挂载不再全量 Spin。
+- 空运 `dataI18nPrefix` 使用 `airExport.export`（列文案与海出键对齐）。
 - `onActivated` 重绑 i18n。
 
 ---

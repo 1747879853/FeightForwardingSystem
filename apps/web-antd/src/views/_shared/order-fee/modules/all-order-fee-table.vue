@@ -101,7 +101,6 @@ const loadCurrencySymbols = async () => {
         }
       });
       currencySymbolMap.value = symbolMap;
-      console.log('✅ 已加载币别符号映射:', symbolMap);
     }
   } catch (error) {
     console.error('❌ 加载币别符号失败:', error);
@@ -365,7 +364,6 @@ const handleModifyTask = (
     };
   });
   tasks = tasks.concat(modifyData);
-  console.log('tasks', tasks);
   tasks.forEach((item) => {
     item.taskStatus = '';
     if (item.task && item.task?.taskType === 1 && item.task?.taskStatus === 0) {
@@ -387,7 +385,6 @@ const handleModifyTask = (
 const normalizeOrderFeeWithRowKey = (
   items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
 ) => {
-  console.log('normalizeOrderFeeWithRowKey items', items);
   if (!items?.length) return [];
   return items.map((item, i) => ({
     ...item,
@@ -431,7 +428,6 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
         query: async () => {
           // 如果 transportOrderId 为空，清空数据并返回空数组
           if (props.transportOrderId === '') {
-            console.log('📋 OrderFeeTable: transportOrderId 为空，清空数据');
             dataSource.value = [];
             emit('updateTableData', dataSource.value);
             return [];
@@ -439,12 +435,6 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
           const detail = await OrderFeeTaskDetailAsync({
             id: props.transportOrderId,
             changeOrderId: selectChangeOrderId.value || undefined,
-          });
-
-          console.log('📋 [费用任务详情] 查询结果:', {
-            transportOrderId: props.transportOrderId,
-            changeOrderId: selectChangeOrderId.value,
-            orderFeeTasksCount: detail.orderFeeTasks?.length || 0,
           });
 
           const orderFeeTasks =
@@ -460,7 +450,6 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
 
           dataSource.value = normalizeOrderFeeWithRowKey(sortedData);
           emit('updateTableData', dataSource.value);
-          console.log('dataSource.value', dataSource.value);
           return dataSource.value;
         },
       },
@@ -491,9 +480,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
 
     // 单选模式下的选择事件（如果使用 radio 类型）
-    radioChange: ({ row }: any) => {
-      console.log('单选选中:', row);
-    },
+    radioChange: ({ row }: any) => {},
   },
 });
 
@@ -530,17 +517,6 @@ watch(
       newEntityId !== oldEntityId ||
       newChangeOrderId !== oldChangeOrderId
     ) {
-      console.log(
-        '🔄 OrderFeeTable: transportOrderId、entityId 或 changeOrderId 发生变化',
-        {
-          newSubmissionId,
-          newEntityId,
-          newChangeOrderId,
-          oldSubmissionId,
-          oldEntityId,
-          oldChangeOrderId,
-        },
-      );
       getTableDate(newChangeOrderId);
     }
   },

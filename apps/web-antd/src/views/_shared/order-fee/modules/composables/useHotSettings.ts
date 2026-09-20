@@ -359,9 +359,6 @@ export function useHotSettings(
                 'source',
                 options.map((opt: any) => opt.label),
               );
-              console.log(
-                `✅ [beforeBeginEditing] settlementId 已加载 ${options.length} 个客户选项`,
-              );
             })
             .catch((error) => {
               console.error('❌ [beforeBeginEditing] 加载客户列表失败:', error);
@@ -373,9 +370,6 @@ export function useHotSettings(
             dropdownSources.value.unitList?.map((item: any) => item.label) ||
             [];
           this.setCellMeta(row, col, 'source', source);
-          console.log(
-            `✅ [beforeBeginEditing] unit 已设置 ${source.length} 个单位选项`,
-          );
         }
       }
     },
@@ -442,15 +436,12 @@ export function useHotSettings(
         // ✅ 关键修复：检查是否正在编辑单元格，如果是则不触发新增行
         const activeEditor = this.getActiveEditor();
         if (activeEditor && activeEditor.isOpened && activeEditor.isOpened()) {
-          console.log('⚠️ [beforeKeyDown] 编辑器打开中，跳过新增行逻辑');
           return;
         }
 
         // 阻止默认的向下移动行为
         event.preventDefault();
         event.stopPropagation();
-
-        console.log('⬇️ [beforeKeyDown] 检测到最后一行按向下键，准备新增行');
 
         // 延迟执行，确保当前编辑完成
         setTimeout(() => {
@@ -462,7 +453,6 @@ export function useHotSettings(
               detail: { rowIndex: startRow, columnIndex: 0 },
             });
             cell.dispatchEvent(customEvent);
-            console.log('✅ [beforeKeyDown] 已触发 addNewRow 事件');
           }
         }, 50);
       }

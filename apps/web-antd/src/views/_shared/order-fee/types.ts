@@ -59,7 +59,7 @@ export interface OrderFeeModuleAdapter {
   bizType: number;
   /** i18n 前缀：seaExport.export / seaImport.import / airExport.export（页面级文案） */
   i18nPrefix: string;
-  /** data.ts 费用列等选项文案前缀（AE 现状复用 seaExport.export 的 40 键文案） */
+  /** data.ts 费用列等选项文案前缀（与 i18nPrefix 对齐：*.export.orderFee） */
   dataI18nPrefix: string;
   /** 行业类别文案模块：seaExport / seaImport（client.industryCategories） */
   clientI18nModule: string;

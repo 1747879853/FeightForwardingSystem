@@ -2,14 +2,31 @@ import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 // ✅ 修改：使用新的 getFeeCodeListAsync 接口（非 Admin，无需权限）
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
-// ✅ 修改：使用通用客户API接口，一次性按行业类别分组获取客户数据
-import { getClientGroupedByIndustryCategory } from '#/api/common/client';
+import {
+  getClientGroupedByIndustryCategory,
+  getClientPagedList,
+} from '#/api/common/client';
 // ✅ 新增：导入币别列表接口
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 // ✅ 新增：导入汇率列表接口
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 import { getIndustryCategoryOptions as getIndustryCategoryOptionsFromData } from '../../data';
 import * as clientConstants from '#/views/client/base/data';
+
+type ClientOption = { label: string; value: any; [key: string]: any };
+
+/** 应收/应付表共享客户缓存，按行业懒加载，避免挂载全量阻塞 */
+const sharedAllClientsByIndustry = ref<Record<string, ClientOption[]>>({});
+let loadAllClientsPromise: null | Promise<void> = null;
+const industryLoadPromises = new Map<string, Promise<void>>();
+
+function mapClientOptions(list: any[]): ClientOption[] {
+  return (list || []).map((client: any) => ({
+    label: `${client.code}-${client.name}`,
+    value: client.id,
+    ...client,
+  }));
+}
 
 /**
  * 下拉框数据源管理 Composable
@@ -25,10 +42,8 @@ export function useDropdownSources(orderCtnList: any) {
   // ✅ 当前选项缓存（用于结算对象等动态加载的字段）
   const currentOptionsCache = ref<Array<{ label: string; value: any }>>([]);
 
-  // ✅ 新增：全量客户缓存（按行业类别分组）
-  const allClientsByIndustry = ref<
-    Record<string, Array<{ label: string; value: any }>>
-  >({});
+  // 模块级共享：多表实例读写同一缓存
+  const allClientsByIndustry = sharedAllClientsByIndustry;
 
   // ✅ 新增：费用代码详情缓存（用于快速填充其他字段）
   // Key: feeCodeId (string), Value: FeeCodeSimpleDto
@@ -71,8 +86,6 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const loadCurrencyList = async () => {
     try {
-      console.log('🔄 [loadCurrencyList] 开始加载币别列表...');
-
       const res = await getCurrencyPagedList({
         PageIndex: 1,
         PageSize: 100, // 获取足够多的币别数据
@@ -87,10 +100,6 @@ export function useDropdownSources(orderCtnList: any) {
           label: item.code || item.cnName || item.enName || String(item.id),
           value: item.id,
         }));
-
-      console.log(
-        `✅ [loadCurrencyList] 加载完成，共 ${dropdownSources.value.currencyList.length} 个币别`,
-      );
     } catch (error) {
       console.error('❌ [loadCurrencyList] 加载币别列表失败:', error);
       message.error('加载币别列表失败');
@@ -103,8 +112,6 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const loadExchangeRateCache = async () => {
     try {
-      console.log('🔄 [loadExchangeRateCache] 开始加载汇率缓存...');
-
       // 获取所有启用的汇率记录（PageSize设置较大值以获取全部数据）
       const res = await getExchangeRatePagedList({
         PageIndex: 1,
@@ -150,30 +157,9 @@ export function useDropdownSources(orderCtnList: any) {
 
           if (shouldReplace) {
             exchangeRateCache.value.set(currencyIdStr, rate);
-            console.log(
-              '🔄 [loadExchangeRateCache] 更新汇率 - 币别:',
-              rate.currencyCode,
-              '新ID:',
-              rate.id,
-            );
           }
         }
       });
-
-      console.log(
-        `✅ [loadExchangeRateCache] 加载完成，共缓存 ${validCount} 个币别的汇率`,
-      );
-      console.log(
-        '💾 [loadExchangeRateCache] 缓存详情:',
-        Array.from(exchangeRateCache.value.entries()).map(
-          ([currencyId, rate]) => ({
-            currencyId,
-            currencyCode: rate.currencyCode,
-            drValue: rate.drValue,
-            crValue: rate.crValue,
-          }),
-        ),
-      );
     } catch (error) {
       console.error('❌ [loadExchangeRateCache] 加载汇率缓存失败:', error);
       // 不显示错误提示，避免影响用户体验，汇率可以从费用代码缓存中获取
@@ -219,15 +205,6 @@ export function useDropdownSources(orderCtnList: any) {
       return undefined;
     }
 
-    console.log(
-      '💱 [getExchangeRateFromCache] 从缓存获取汇率 - 币别:',
-      rate.currencyCode || currencyId,
-      '收付类型:',
-      paySide === 1 ? '应付(crValue)' : '应收(drValue)',
-      '汇率:',
-      rateValue,
-    );
-
     return rateValue;
   };
 
@@ -236,7 +213,6 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const clearExchangeRateCache = () => {
     exchangeRateCache.value.clear();
-    console.log('🗑️ [clearExchangeRateCache] 已清空汇率缓存');
   };
 
   /**
@@ -270,8 +246,6 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const getFeeCodeList = async () => {
     try {
-      console.log('🔄 [getFeeCodeList] 开始加载费用代码列表...');
-
       // ✅ 使用新接口，无需传参即可获取所有已启用的费用代码
       const feeCodeListData: any[] = (await getFeeCodeListAsync()) as any;
 
@@ -312,13 +286,6 @@ export function useDropdownSources(orderCtnList: any) {
           exchangeRate: feeCode.exchangeRate, // ✅ 包含汇率信息
         });
       });
-
-      console.log(
-        `✅ [getFeeCodeList] 加载完成，共 ${dropdownSources.value.feeCodeList.length} 个费用代码`,
-      );
-      console.log(
-        `💾 [getFeeCodeList] 费用代码详情缓存大小: ${feeCodeDetailCache.value.size}`,
-      );
     } catch (error) {
       console.error('❌ [getFeeCodeList] 加载失败:', error);
       message.error('加载费用代码列表失败');
@@ -341,77 +308,95 @@ export function useDropdownSources(orderCtnList: any) {
    */
   const clearFeeCodeDetailCache = () => {
     feeCodeDetailCache.value.clear();
-    console.log('🗑️ [clearFeeCodeDetailCache] 已清空费用代码详情缓存');
   };
 
   /**
-   * ✅ 新增：一次性加载全部客户数据并按行业类别缓存
-   * 使用 getClientGroupedByIndustryCategory 接口，无需遍历行业类别
+   * 一次性加载全部客户（按行业分组）。仅在「未选行业」打开结算对象时调用。
    */
   const loadAllClients = async () => {
-    try {
-      console.log('🔄 [loadAllClients] 开始加载全部客户数据...');
-
-      // ✅ 调用新接口，一次性获取按行业类别分组的客户数据
-      const groupedData = await getClientGroupedByIndustryCategory();
-
-      if (!groupedData || !Array.isArray(groupedData)) {
-        console.warn('⚠️ [loadAllClients] 返回数据格式不正确');
-        return;
-      }
-
-      // 构建按行业类别分组的缓存
-      let totalClientCount = 0;
-      groupedData.forEach((group) => {
-        if (group.key && group.value && group.value.length > 0) {
-          // 转换为统一的格式：{label: "编码-名称", value: id, ...client}
-          const clients = group.value.map((client: any) => ({
-            label: `${client.code}-${client.name}`,
-            value: client.id,
-            ...client,
-          }));
-
-          allClientsByIndustry.value[group.key] = clients;
-          totalClientCount += clients.length;
-        }
-      });
-
-      console.log(
-        `✅ [loadAllClients] 加载完成，共缓存 ${Object.keys(allClientsByIndustry.value).length} 个行业类别，总计 ${totalClientCount} 个客户`,
-      );
-      Object.entries(allClientsByIndustry.value).forEach(
-        ([industry, clients]) => {
-          console.log(`   - ${industry}: ${clients.length} 个客户`);
-        },
-      );
-    } catch (error) {
-      console.error('❌ [loadAllClients] 加载全部客户失败:', error);
-      message.error('加载客户数据失败');
+    if (Object.keys(allClientsByIndustry.value).length > 0) return;
+    if (loadAllClientsPromise) {
+      await loadAllClientsPromise;
+      return;
     }
+
+    loadAllClientsPromise = (async () => {
+      try {
+        const groupedData = await getClientGroupedByIndustryCategory();
+        if (!groupedData || !Array.isArray(groupedData)) return;
+
+        groupedData.forEach((group) => {
+          if (group.key && group.value?.length) {
+            allClientsByIndustry.value[group.key] = mapClientOptions(
+              group.value,
+            );
+          }
+        });
+      } catch (error) {
+        console.error('[loadAllClients] failed:', error);
+        message.error('加载客户数据失败');
+      } finally {
+        loadAllClientsPromise = null;
+      }
+    })();
+
+    await loadAllClientsPromise;
+  };
+
+  /** 按行业懒加载客户；同行业并发请求去重 */
+  const ensureIndustryClients = async (industryCategory: string) => {
+    const key = String(industryCategory).trim();
+    if (!key) {
+      await loadAllClients();
+      return;
+    }
+    if (allClientsByIndustry.value[key]?.length) return;
+
+    const inflight = industryLoadPromises.get(key);
+    if (inflight) {
+      await inflight;
+      return;
+    }
+
+    const task = (async () => {
+      try {
+        const res = await getClientPagedList({
+          industryCategory: key,
+          pageIndex: 1,
+          pageSize: 1000,
+        });
+        allClientsByIndustry.value[key] = mapClientOptions(res.items || []);
+      } catch (error) {
+        console.error('[ensureIndustryClients] failed:', key, error);
+        message.error('加载客户列表失败');
+        allClientsByIndustry.value[key] = [];
+      }
+    })().finally(() => {
+      industryLoadPromises.delete(key);
+    });
+
+    industryLoadPromises.set(key, task);
+    await task;
   };
 
   /**
-   * ✅ 修改：根据行业类别从缓存中获取客户列表（同步操作）
-   * 如果 industryCategory 为空，则返回所有行业类别的客户
+   * 根据行业类别获取客户列表（缓存未命中则按行业拉取）
    */
   const loadClientList = async (
     industryCategory?: string,
     keyword?: string,
   ) => {
     try {
-      let cachedClients: Array<{ label: string; value: any }> = [];
+      let cachedClients: ClientOption[] = [];
 
-      // ✅ 关键修改：如果没有指定行业类别，合并所有行业类别的客户
       if (!industryCategory || industryCategory.trim() === '') {
-        console.log('🔄 [loadClientList] 未指定行业类别，加载全部客户');
-        // 合并所有行业类别的客户
+        await loadAllClients();
         const allIndustryKeys = Object.keys(allClientsByIndustry.value);
         allIndustryKeys.forEach((key) => {
           const clients = allClientsByIndustry.value[key] || [];
           cachedClients = [...cachedClients, ...clients];
         });
 
-        // 去重（基于value/id）
         const uniqueMap = new Map();
         cachedClients.forEach((client) => {
           if (!uniqueMap.has(client.value)) {
@@ -419,27 +404,11 @@ export function useDropdownSources(orderCtnList: any) {
           }
         });
         cachedClients = Array.from(uniqueMap.values());
-
-        console.log(
-          `✅ [loadClientList] 加载全部客户完成，共 ${cachedClients.length} 个`,
-        );
       } else {
-        // 从缓存中获取对应行业类别的客户
+        await ensureIndustryClients(industryCategory);
         cachedClients = allClientsByIndustry.value[industryCategory] || [];
-
-        if (!cachedClients || cachedClients.length === 0) {
-          console.warn(
-            `⚠️ [loadClientList] 行业类别 ${industryCategory} 没有缓存的客户数据`,
-          );
-          return [];
-        }
-
-        console.log(
-          `✅ [loadClientList] 从缓存获取行业类别 ${industryCategory} 的客户，共 ${cachedClients.length} 个`,
-        );
       }
 
-      // 如果有搜索关键词，进行本地过滤
       let filteredClients = cachedClients;
       if (keyword && keyword.trim()) {
         const keywordLower = keyword.toLowerCase().trim();
@@ -457,7 +426,7 @@ export function useDropdownSources(orderCtnList: any) {
 
       return filteredClients;
     } catch (error) {
-      console.error('❌ [loadClientList] 处理失败:', error);
+      console.error('[loadClientList] failed:', error);
       message.error('加载客户列表失败');
       return [];
     }

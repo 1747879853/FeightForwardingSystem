@@ -31,7 +31,6 @@ const [modal, modalApi] = useVbenModal({
         podId?: number;
         bizType?: number; // 新增：业务类型
       };
-      console.log('🚀 [handleOpen] 传入的参数:', data);
       if (data) {
         currentTransportOrderId.value = data.transportOrderId;
         currentPaySide.value = data.paySide;
@@ -248,10 +247,6 @@ const handleSearch = async () => {
     // 如果查询结果不为空，自动选中第一条并加载其费用
     if (transportOrderList.value.length > 0) {
       selectedTransportOrder.value = transportOrderList.value[0] || null;
-      console.log(
-        '✅ [handleSearch] 自动选中第一条业务:',
-        selectedTransportOrder.value,
-      );
     }
 
     message.success({
@@ -273,24 +268,12 @@ const handleSearch = async () => {
 const handleSelectTransportOrder = (
   record: OrderFeeAdminApi.TransportOrderFeeListDto,
 ) => {
-  console.log('👆 [handleSelectTransportOrder] 点击业务:', record);
-  console.log(
-    '📋 [handleSelectTransportOrder] 该业务的费用数量:',
-    record.orderFees?.length || 0,
-  );
-
   selectedTransportOrder.value = record;
   selectedFeeIds.value = []; // 清空已选费用
-
-  console.log(
-    '✅ [handleSelectTransportOrder] 已选中业务，selectedTransportOrder:',
-    selectedTransportOrder.value,
-  );
 };
 
 // 复选框变化处理
 const handleFeeSelectionChange = (selectedRowKeys: any[]) => {
-  console.log('☑️ [handleFeeSelectionChange] 选中的费用ID:', selectedRowKeys);
   selectedFeeIds.value = selectedRowKeys as string[];
 };
 

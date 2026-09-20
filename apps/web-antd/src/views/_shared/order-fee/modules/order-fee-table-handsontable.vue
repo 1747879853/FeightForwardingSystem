@@ -107,7 +107,6 @@ const {
   initDropdownSources,
   updateUnitList,
   getFeeCodeList,
-  loadAllClients, // ✅ 新增：一次性加载全部客户
   loadClientList,
   getSettlementIndustryCategory,
 } = useDropdownSources(orderCtnList);
@@ -120,7 +119,6 @@ watch(
   () => props.allClientsByIndustry,
   (newVal) => {
     if (newVal && Object.keys(newVal).length > 0) {
-      console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存');
       // 将父组件的缓存赋值给本地的 allClientsByIndustry
       Object.assign(localAllClientsByIndustry.value, newVal);
     }
@@ -216,9 +214,6 @@ const handleOpenDropdown = (
 
   // ✅ 关键修复：在打开下拉框前，先获取并保存原值
   const originalValue = hotInstance.getDataAtCell(rowIndex, colIndex);
-  console.log(
-    `💾 [handleOpenDropdown] ${field} - 保存原值: "${originalValue}"`,
-  );
 
   // 保存到单元格元数据中，以便用户取消编辑时可以恢复
   hotInstance.setCellMeta(rowIndex, colIndex, 'originalValue', originalValue);
@@ -228,9 +223,6 @@ const handleOpenDropdown = (
 
   // ✅ 关键修复：设置单元格的 source，确保 autocomplete 编辑器有下拉列表
   hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-  console.log(
-    `✅ [handleOpenDropdown] 已设置 source，共 ${source.length} 个选项`,
-  );
 
   // 强制刷新单元格以确保 meta 生效
   hotInstance.render();
@@ -798,7 +790,6 @@ const getSanitizedFees = (): OrderFeeAdminApi.OrderFeeEditDto[] =>
 watch(
   () => selectedRowKeys.value,
   (newKeys) => {
-    console.log('📋 [selectedRowKeys] 选中状态变化:', newKeys.length, '条');
     emit('selection-change', {
       type: props.type,
       selectedIds: getSelectedFeeIds(),
@@ -936,9 +927,6 @@ const convertIdsToLabels = () => {
   });
 
   if (convertedCount > 0) {
-    console.log(
-      `✅ [convertIdsToLabels] 转换完成，共转换 ${convertedCount} 个字段`,
-    );
   }
 };
 
@@ -1002,7 +990,6 @@ const extendedActions = {
   ...actions,
   addRow: async () => {
     if (isTableReadonly.value) return;
-    console.log('🚀 [extendedActions.addRow] 开始执行新增行操作');
     actions.addRow();
     // 在添加新行后延迟执行滚动和选中操作
     setTimeout(() => {
@@ -1036,22 +1023,10 @@ onMounted(async () => {
   await initDropdownSources();
   await getFeeCodeList();
 
-  // ✅ 关键修改：只有当父组件没有传入客户缓存时，才在子组件中加载
-  if (
-    !props.allClientsByIndustry ||
-    Object.keys(props.allClientsByIndustry).length === 0
-  ) {
-    console.log('⚠️ [OrderFeeTable] 父组件未传入客户缓存，将在子组件中加载');
-    await loadAllClients();
-  } else {
-    console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存，跳过加载');
-  }
+  // 客户按行业在结算下拉打开时懒加载（模块级共享缓存）
 
-  // ✅ 关键修复：初始化时也调用 updateUnitList，确保 unit 下拉框有数据
+  // 初始化单位列表，确保 unit 下拉框有数据
   updateUnitList();
-  console.log(
-    `✅ [onMounted] 已初始化单位列表，共 ${dropdownSources.value.unitList.length} 个选项`,
-  );
 
   // 更改单：等下拉源就绪后再拉费用，避免父页 nextTick 早于下拉初始化导致 ID 无法转成标签
   if (isChangeOrderMode.value) {
@@ -1066,16 +1041,11 @@ onMounted(async () => {
 
   // 添加键盘事件监听器
   document.addEventListener('keydown', handleKeyDown);
-  console.log('✅ [键盘快捷键] 已注册 Ctrl+S 保存快捷键');
 });
 
 onUnmounted(() => {
-  // 移除键盘事件监听器，防止内存泄漏
   document.removeEventListener('keydown', handleKeyDown);
-  console.log('✅ [键盘快捷键] 已移除 Ctrl+S 保存快捷键');
-
-  console.log('🧹 [OrderFeeTable] 组件卸载，清理缓存');
-  localAllClientsByIndustry.value = {};
+  // 客户缓存为模块级共享，卸载单表时不清空
   feeCodeDetailCache.value.clear();
   exchangeRateCache.value.clear();
 });
@@ -1099,7 +1069,6 @@ watch(
   (newData) => {
     // ✅ 修复：防止循环触发
     if (isConvertingIds.value) {
-      console.log('⏭️ [watch dataSource] 正在转换ID，跳过本次触发');
       return;
     }
 

@@ -125,7 +125,6 @@ const fillSettlementNames = (
       const name = settlementNameMap.get(feeWithKey.settlementId);
       if (name) {
         feeWithKey.__settlementName = name;
-        console.log('✅ [fillSettlementNames] 填充结算对象名称:', name);
       }
     }
     return feeWithKey;
@@ -266,10 +265,6 @@ export function useOrderFeeData(
     if (id) {
       let res = await adapter.api.getChangeOrderDetail(id);
       res.orderFees = res.orderFees.map(rememberPermissionRow);
-      console.log(
-        'res',
-        res.orderFees.filter((item) => item.paySide === props.type),
-      );
       let orderFees = res.orderFees.filter(
         (item) => item.paySide === props.type,
       );
@@ -369,7 +364,6 @@ export function useOrderFeeData(
     const normalizedData = normalizeOrderFeeWithRowKey(
       sortOrderFeeList(feesWithNames),
     );
-    console.log('📊 [queryTableData] 加载数据:', normalizedData.length, '条');
     dataSource.value = normalizedData;
 
     // 触发 syncFee 以通知父组件和计算金额
@@ -397,7 +391,6 @@ export function useOrderFeeData(
       type: props.type ?? 0,
       orderFees: list,
     };
-    console.log('费用同步', syncFeeDto);
     emit('sync-fee', syncFeeDto);
 
     // 实时计算当前表格的金额汇总
@@ -460,11 +453,6 @@ export function useOrderFeeData(
       }
     });
 
-    console.log(
-      `💰 [${props.type === 0 ? '应收' : '应付'}] 金额汇总更新:`,
-      amountMap,
-    );
-
     emit('update-amount', {
       type: props.type ?? 0,
       amountMap,
@@ -519,7 +507,6 @@ export function useOrderFeeData(
     ]);
 
     return items.map((item) => {
-      //console.log("AAA", item)
       const dto: Record<string, any> = {};
       for (const key of ORDER_CTN_API_KEYS) {
         if (
@@ -548,11 +535,6 @@ export function useOrderFeeData(
           const numericValue = typeof val === 'number' ? val : Number(val);
           if (!isNaN(numericValue)) {
             dto['IndustryCategory'] = numericValue;
-            console.log(
-              '✅ [sanitizeOrderFee] 保存 industryCategory:',
-              numericValue,
-              '(数值ID) → IndustryCategory',
-            );
           } else {
             console.warn(
               '⚠️ [sanitizeOrderFee] industryCategory 不是有效数字:',

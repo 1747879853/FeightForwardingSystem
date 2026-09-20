@@ -147,8 +147,7 @@ export const airExportAdapter: OrderFeeModuleAdapter = {
   module: 'air-export',
   bizType: 2,
   i18nPrefix: 'airExport.export',
-  // AE 现状：data.ts 与海出完全一致（airExport.export.orderFee 仅有 32 键，不足以覆盖全部列文案）
-  dataI18nPrefix: 'seaExport.export',
+  dataI18nPrefix: 'airExport.export',
   clientI18nModule: 'seaExport',
   displayFields,
   getDisplayValue,

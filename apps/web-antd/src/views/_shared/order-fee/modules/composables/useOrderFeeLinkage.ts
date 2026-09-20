@@ -80,12 +80,10 @@ export function useOrderFeeLinkage(
    */
   async function loadOrderDetailCached(transportOrderId: string) {
     if (orderDetailCache.has(transportOrderId)) {
-      console.log('✅ [loadOrderDetailCached] 使用缓存数据:', transportOrderId);
       return orderDetailCache.get(transportOrderId);
     }
 
     if (orderDetailLoading.has(transportOrderId)) {
-      console.log('⏳ [loadOrderDetailCached] 等待已有请求:', transportOrderId);
       return await orderDetailLoading.get(transportOrderId);
     }
 
@@ -94,10 +92,6 @@ export function useOrderFeeLinkage(
       .then((detail) => {
         if (detail) {
           orderDetailCache.set(transportOrderId, detail);
-          console.log(
-            '✅ [loadOrderDetailCached] 缓存订单详情:',
-            transportOrderId,
-          );
         }
         orderDetailLoading.delete(transportOrderId);
         return detail;
@@ -271,15 +265,6 @@ export function useOrderFeeLinkage(
         return undefined;
       }
 
-      console.log(
-        '💱 [getExchangeRateFromCache] 从缓存获取汇率 - 币别:',
-        rate.currencyCode || currencyId,
-        '收付类型:',
-        paySide === 1 ? '应付(crValue)' : '应收(drValue)',
-        '汇率:',
-        rateValue,
-      );
-
       return rateValue;
     } catch (error) {
       console.error('❌ [getExchangeRateFromCache] 获取失败:', error);
@@ -332,15 +317,6 @@ export function useOrderFeeLinkage(
       const rateValue =
         props.type === 0 ? exchangeRate.drValue : exchangeRate.crValue;
 
-      console.log(
-        '💱 [getExchangeRateFromFeeCodeCache] 从缓存获取汇率 - 费用代码:',
-        feeCodeId,
-        '币别:',
-        currencyId,
-        '汇率:',
-        rateValue,
-      );
-
       return rateValue ?? undefined;
     } catch (error) {
       console.error('❌ [getExchangeRateFromFeeCodeCache] 获取失败:', error);
@@ -380,17 +356,6 @@ export function useOrderFeeLinkage(
         row['__settlementName'] = settlement.name;
         // 订单往来单位上的客户税率（缓存未命中时兜底）
         row['__settlementTaxRate'] = settlement.taxRate ?? null;
-
-        console.log(
-          '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
-          industryCategoryValue,
-          '结算对象ID:',
-          settlement.id,
-          '名称:',
-          settlement.name,
-          '税率:',
-          settlement.taxRate,
-        );
       } else {
         console.warn(
           '⚠️ [fillSettlementIdByIndustryCategory] 未找到对应的结算对象:',
@@ -414,9 +379,6 @@ export function useOrderFeeLinkage(
       const ctns = orderDetail.transportOrder?.orderCtns || [];
 
       if (ctns.length === 0) {
-        console.log(
-          '📦 [fillOnlyCtnQuantity] 无箱型数据，设置单位为票，数量为1',
-        );
         row['unit'] = '票';
         row['quantity'] = 1;
         return;
@@ -432,12 +394,6 @@ export function useOrderFeeLinkage(
       ).length;
 
       row['quantity'] = sameCtnCount;
-      console.log(
-        '📦 [fillOnlyCtnQuantity] 箱型:',
-        firstCtnName,
-        '数量:',
-        sameCtnCount,
-      );
     } catch (error) {
       console.error('❌ [fillOnlyCtnQuantity] 填充失败:', error);
     }
@@ -455,7 +411,6 @@ export function useOrderFeeLinkage(
       const ctns = orderDetail.transportOrder?.orderCtns || [];
 
       if (ctns.length === 0) {
-        console.log('📦 [fillCtnQuantity] 无箱型数据，设置单位为票，数量为1');
         row['unit'] = '票';
         row['quantity'] = 1;
         return;
@@ -471,12 +426,6 @@ export function useOrderFeeLinkage(
       ).length;
 
       row['quantity'] = sameCtnCount;
-      console.log(
-        '📦 [fillCtnQuantity] 箱型:',
-        firstCtnName,
-        '数量:',
-        sameCtnCount,
-      );
     } catch (error) {
       console.error('❌ [fillCtnQuantity] 填充失败:', error);
     }
@@ -497,17 +446,14 @@ export function useOrderFeeLinkage(
         case '毛重':
         case 'kgs':
           row['quantity'] = transportOrder.kgs || 0;
-          console.log('⚖️ [fillOrderQuantity] 毛重:', row['quantity']);
           break;
         case '尺码':
         case 'cbm':
           row['quantity'] = transportOrder.cbm || 0;
-          console.log('📐 [fillOrderQuantity] 尺码:', row['quantity']);
           break;
         case '件数':
         case 'pkgs':
           row['quantity'] = transportOrder.pkgs || 0;
-          console.log('📦 [fillOrderQuantity] 件数:', row['quantity']);
           break;
         case 'teu':
           // 累加所有箱型的TEU值
@@ -519,7 +465,6 @@ export function useOrderFeeLinkage(
             }
           }
           row['quantity'] = totalTeu;
-          console.log('🚢 [fillOrderQuantity] TEU:', totalTeu);
           break;
       }
     } catch (error) {
@@ -535,7 +480,6 @@ export function useOrderFeeLinkage(
 
     if (unitNameLower === '票' || unitNameLower === 'order') {
       row['quantity'] = 1;
-      console.log('🎫 [fillQuantityByUnit] 票/ORDER，数量设为1');
     } else if (unitNameLower === '毛重' || unitNameLower === 'kgs') {
       await fillOrderQuantity(row, unitName);
     } else if (unitNameLower === '尺码' || unitNameLower === 'cbm') {
@@ -587,10 +531,6 @@ export function useOrderFeeLinkage(
 
     row['taxRate'] = resolved;
     markLinkedCell(row, 'taxRate');
-    console.log('📊 [applyTaxRateToRow] 税率:', resolved, {
-      settlementTaxRate,
-      feeCodeTaxRate,
-    });
 
     // 已有含税单价时同步重算不含税金额
     if (
@@ -617,8 +557,6 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || !feeCodeId) return;
 
-      console.log('🔵 [handleFeeCodeChange] 费用代码变化:', feeCodeId);
-
       // ✅ 同步设置 _value 字段
       row['feeCodeId_value'] = feeCodeId;
 
@@ -626,15 +564,6 @@ export function useOrderFeeLinkage(
       const sources = getDropdownSources();
 
       // 🔍 调试日志：检查 sources 对象
-      console.log('🔍 [handleFeeCodeChange] sources 对象:', {
-        hasIndustryCategoryList: !!sources.industryCategoryList,
-        industryCategoryListLength: sources.industryCategoryList?.length || 0,
-        hasCurrencyList: !!sources.currencyList,
-        currencyListLength: sources.currencyList?.length || 0,
-        hasFeeCodeDetailCache: !!sources.feeCodeDetailCache,
-        feeCodeDetailCacheSize: sources.feeCodeDetailCache?.size || 0,
-        feeCodeDetailCacheType: typeof sources.feeCodeDetailCache,
-      });
 
       const feeCodeCache = sources.feeCodeDetailCache;
 
@@ -652,17 +581,6 @@ export function useOrderFeeLinkage(
         console.warn('💡 缓存中的所有键:', Array.from(feeCodeCache.keys()));
         return;
       }
-
-      console.log('✅ [handleFeeCodeChange] 从缓存获取费用代码详情成功');
-      console.log('📋 [handleFeeCodeChange] 费用代码详情:', {
-        id: feeCodeDetail.id,
-        code: feeCodeDetail.code,
-        cnName: feeCodeDetail.cnName,
-        currencyId: feeCodeDetail.currencyId,
-        defaultUnitName: feeCodeDetail.defaultUnitName,
-        taxRate: feeCodeDetail.taxRate,
-        hasExchangeRate: !!feeCodeDetail.exchangeRate,
-      });
 
       // 根据收付类型自动填充行业类别和结算对象
       const paySide = props.type;
@@ -688,15 +606,6 @@ export function useOrderFeeLinkage(
             // _value 字段存储数值ID（用于联动和保存）
             row['industryCategory_value'] = categoryKey;
 
-            console.log(
-              '📋 [handleFeeCodeChange] 应收-行业类别:',
-              debitCategory,
-              '(字母代码) →',
-              categoryKey,
-              '(数值ID) →',
-              industryLabel,
-              '(label)',
-            );
             await fillSettlementIdByIndustryCategory(row, debitCategory);
           } else {
             console.warn(
@@ -727,15 +636,6 @@ export function useOrderFeeLinkage(
             // _value 字段存储数值ID（用于联动和保存）
             row['industryCategory_value'] = categoryKey;
 
-            console.log(
-              '📋 [handleFeeCodeChange] 应付-行业类别:',
-              creditCategory,
-              '(字母代码) →',
-              categoryKey,
-              '(数值ID) →',
-              industryLabel,
-              '(label)',
-            );
             await fillSettlementIdByIndustryCategory(row, creditCategory);
           } else {
             console.warn(
@@ -761,14 +661,6 @@ export function useOrderFeeLinkage(
         // _value 字段存储币别ID（用于联动和保存）
         row['currencyId_value'] = feeCodeDetail.currencyId;
 
-        console.log(
-          '💰 [handleFeeCodeChange] 设置币别:',
-          feeCodeDetail.currencyId,
-          '(ID) →',
-          currencyLabel,
-          '(label)',
-        );
-
         // 优先按业务 ETD 与本位币从汇率表查符合条件的汇率（本位币严格匹配）
         const rateFromTable = await resolveRateByOrderContext(
           feeCodeDetail.currencyId,
@@ -779,10 +671,6 @@ export function useOrderFeeLinkage(
         if (rateFromTable !== undefined) {
           row['exchangeRate'] = rateFromTable;
           row['__isLocalCurrency'] = false;
-          console.log(
-            '💱 [handleFeeCodeChange] 按 ETD+本位币从汇率表获取汇率:',
-            rateFromTable,
-          );
         } else {
           // 汇率表没有符合条件的记录时，退回费用代码自带的汇率（后端维护的当前有效汇率）
           const exchangeRate = getExchangeRateFromFeeCodeCache(
@@ -793,10 +681,6 @@ export function useOrderFeeLinkage(
           if (exchangeRate !== undefined) {
             row['exchangeRate'] = exchangeRate;
             row['__isLocalCurrency'] = false;
-            console.log(
-              '💱 [handleFeeCodeChange] 从缓存获取汇率:',
-              exchangeRate,
-            );
           } else {
             // 如果缓存中没有汇率，判断是否为本位币
             const currencyIdNum =
@@ -809,7 +693,6 @@ export function useOrderFeeLinkage(
               row['exchangeRate'] = 1;
               row['__isLocalCurrency'] = true;
               row['__editing_exchangeRate'] = false;
-              console.log('💱 [handleFeeCodeChange] 本位币，汇率设为1');
             } else {
               console.warn(
                 '⚠️ [handleFeeCodeChange] 无法获取汇率，请检查费用代码配置',
@@ -828,14 +711,12 @@ export function useOrderFeeLinkage(
         row['unit'] = defaultUnitName;
         // ✅ 同步设置 _value 字段
         row['unit_value'] = defaultUnitName;
-        console.log('📏 [handleFeeCodeChange] 单位:', defaultUnitName);
 
         // 根据单位类型填充数量
         if (defaultUnitName === '箱型' || defaultUnitName === 'CTN') {
           await fillCtnQuantity(row);
         } else if (defaultUnitName === '票' || defaultUnitName === 'ORDER') {
           row['quantity'] = 1;
-          console.log('🎫 [handleFeeCodeChange] 票/ORDER，数量设为1');
         } else if (['毛重', '尺码', '件数', 'TEU'].includes(defaultUnitName)) {
           await fillOrderQuantity(row, defaultUnitName);
         }
@@ -854,22 +735,10 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         // 在刷新前检查数据
         const currentRow = dataContext.dataSource.value[rowIndex];
-        console.log('🔍 [handleFeeCodeChange] 刷新前检查行数据:', {
-          rowIndex,
-          settlementId: currentRow?.settlementId,
-          settlementName: (currentRow as any)?.__settlementName,
-          currencyId: currentRow?.currencyId,
-        });
 
         // 使用 loadData 重新加载数据以确保响应式更新
         hotInstance.loadData(dataContext.dataSource.value);
-        console.log('🔄 [handleFeeCodeChange] 已刷新表格数据');
       }
-
-      console.log(
-        '✅ [handleFeeCodeChange] 联动完成',
-        dataContext.dataSource.value,
-      );
     } catch (error) {
       console.error('❌ [handleFeeCodeChange] 处理失败:', error);
     }
@@ -886,11 +755,6 @@ export function useOrderFeeLinkage(
     try {
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || !industryCategory) return;
-
-      console.log(
-        '🔵 [handleIndustryCategoryChange] 行业类别变化:',
-        industryCategory,
-      );
 
       // ✅ 使用 getter 获取行业类别选项并查找对应的 label
       const industryOptions = getIndustryCategoryOptions();
@@ -919,10 +783,6 @@ export function useOrderFeeLinkage(
       }
 
       if (industryCategoryCode) {
-        console.log(
-          '🔵 [handleIndustryCategoryChange] 使用字母代码进行联动:',
-          industryCategoryCode,
-        );
         await fillSettlementIdByIndustryCategory(row, industryCategoryCode);
 
         // ✅ 行业类别带出结算对象后，按结算对象/费用名称刷新税率
@@ -935,10 +795,7 @@ export function useOrderFeeLinkage(
         if (hotInstance) {
           // 使用 loadData 重新加载数据以确保响应式更新
           hotInstance.loadData(dataContext.dataSource.value);
-          console.log('🔄 [handleIndustryCategoryChange] 已刷新表格数据');
         }
-
-        console.log('✅ [handleIndustryCategoryChange] 联动完成');
       } else {
         console.warn(
           '⚠️ [handleIndustryCategoryChange] 无法获取字母代码:',
@@ -961,8 +818,6 @@ export function useOrderFeeLinkage(
     try {
       const row = dataContext.dataSource.value[rowIndex];
       if (!row) return;
-
-      console.log('🔵 [handleCurrencyChange] 币别变化:', currencyId);
 
       // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
       const sources = getDropdownSources();
@@ -988,10 +843,6 @@ export function useOrderFeeLinkage(
         if (rateFromTable !== undefined) {
           row['exchangeRate'] = rateFromTable;
           row['__isLocalCurrency'] = false;
-          console.log(
-            '💱 [handleCurrencyChange] 按 ETD+本位币从汇率表获取汇率:',
-            rateFromTable,
-          );
         } else {
           // 汇率表没有符合条件的记录时，尝试从费用代码缓存中获取
           const feeCodeId = row['feeCodeId_value'];
@@ -1004,10 +855,6 @@ export function useOrderFeeLinkage(
             if (feeCodeExchangeRate !== undefined) {
               row['exchangeRate'] = feeCodeExchangeRate;
               row['__isLocalCurrency'] = false;
-              console.log(
-                '💱 [handleCurrencyChange] 从费用代码缓存获取汇率:',
-                feeCodeExchangeRate,
-              );
             } else {
               // 如果两个缓存都没有，判断是否为本位币
               const isLocalCurrency = await checkIfIsLocalCurrency(currencyId);
@@ -1016,7 +863,6 @@ export function useOrderFeeLinkage(
                 row['exchangeRate'] = 1;
                 row['__isLocalCurrency'] = true;
                 row['__editing_exchangeRate'] = false;
-                console.log('💱 [handleCurrencyChange] 本位币，汇率设为1');
               } else {
                 console.warn(
                   '⚠️ [handleCurrencyChange] 无法从缓存获取汇率，请手动输入',
@@ -1031,7 +877,6 @@ export function useOrderFeeLinkage(
               row['exchangeRate'] = 1;
               row['__isLocalCurrency'] = true;
               row['__editing_exchangeRate'] = false;
-              console.log('💱 [handleCurrencyChange] 本位币，汇率设为1');
             } else {
               console.warn(
                 '⚠️ [handleCurrencyChange] 无费用代码，无法从缓存获取汇率',
@@ -1043,7 +888,6 @@ export function useOrderFeeLinkage(
         // 清空币别时同时清空汇率
         row['exchangeRate'] = undefined;
         row['__isLocalCurrency'] = false;
-        console.log('💱 [handleCurrencyChange] 清空币别和汇率');
       }
 
       // ✅ 标记联动写入的汇率（值与原值相同不产生标记）
@@ -1053,8 +897,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleCurrencyChange] 联动完成');
     } catch (error) {
       console.error('❌ [handleCurrencyChange] 处理失败:', error);
     }
@@ -1072,8 +914,6 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || !unitName) return;
 
-      console.log('🔵 [handleUnitChange] 单位变化:', unitName);
-
       // ✅ 单位的 label 和 value 相同，都存储到主字段和 _value 字段
       row['unit'] = unitName;
       row['unit_value'] = unitName;
@@ -1087,8 +927,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleUnitChange] 联动完成');
     } catch (error) {
       console.error('❌ [handleUnitChange] 处理失败:', error);
     }
@@ -1106,14 +944,11 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || unitPrice === '' || unitPrice === undefined) return;
 
-      console.log('🔵 [handleUnitPriceChange] 含税单价变化:', unitPrice);
-
       const priceValue = Number(unitPrice);
 
       // 计算含税金额 = 单价 × 数量
       if (row['quantity']) {
         row['amount'] = Number((priceValue * row['quantity']).toFixed(2));
-        console.log('💰 [handleUnitPriceChange] 含税金额:', row['amount']);
       }
 
       // 如果存在税率，计算不含税单价和金额
@@ -1128,12 +963,6 @@ export function useOrderFeeLinkage(
           row['noTaxAmount'] = Number(
             (noTaxUnitPrice * row['quantity']).toFixed(2),
           );
-          console.log(
-            '💰 [handleUnitPriceChange] 不含税单价:',
-            row['noTaxUnitPrice'],
-            '不含税金额:',
-            row['noTaxAmount'],
-          );
         }
       }
 
@@ -1146,8 +975,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleUnitPriceChange] 计算完成');
     } catch (error) {
       console.error('❌ [handleUnitPriceChange] 处理失败:', error);
     }
@@ -1165,14 +992,11 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || quantity === '' || quantity === undefined) return;
 
-      console.log('🔵 [handleQuantityChange] 数量变化:', quantity);
-
       const qtyValue = Number(quantity);
 
       // 计算含税金额 = 单价 × 数量
       if (row['unitPrice']) {
         row['amount'] = Number((qtyValue * row['unitPrice']).toFixed(2));
-        console.log('💰 [handleQuantityChange] 含税金额:', row['amount']);
       }
 
       // 如果存在税率，计算不含税金额
@@ -1184,10 +1008,6 @@ export function useOrderFeeLinkage(
         const taxRate = Number(row['taxRate']);
         const noTaxUnitPrice = row['unitPrice'] / (1 + taxRate / 100);
         row['noTaxAmount'] = Number((noTaxUnitPrice * qtyValue).toFixed(2));
-        console.log(
-          '💰 [handleQuantityChange] 不含税金额:',
-          row['noTaxAmount'],
-        );
       }
 
       // ✅ 标记联动计算写入的金额字段（值与原值相同不产生标记）
@@ -1198,8 +1018,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleQuantityChange] 计算完成');
     } catch (error) {
       console.error('❌ [handleQuantityChange] 处理失败:', error);
     }
@@ -1217,8 +1035,6 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || taxRate === '' || taxRate === undefined) return;
 
-      console.log('🔵 [handleTaxRateChange] 税率变化:', taxRate);
-
       const rateValue = Number(taxRate);
 
       if (row['unitPrice']) {
@@ -1231,12 +1047,6 @@ export function useOrderFeeLinkage(
           row['noTaxAmount'] = Number(
             (noTaxUnitPrice * row['quantity']).toFixed(2),
           );
-          console.log(
-            '💰 [handleTaxRateChange] 不含税单价:',
-            row['noTaxUnitPrice'],
-            '不含税金额:',
-            row['noTaxAmount'],
-          );
         }
       }
 
@@ -1248,8 +1058,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleTaxRateChange] 计算完成');
     } catch (error) {
       console.error('❌ [handleTaxRateChange] 处理失败:', error);
     }
@@ -1263,8 +1071,6 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || amount === '' || amount === undefined) return;
 
-      console.log('🔵 [handleAmountChange] 含税金额变化:', amount);
-
       const amountValue = Number(amount);
       const quantity = row['quantity'];
       const taxRate = row['taxRate'];
@@ -1272,7 +1078,6 @@ export function useOrderFeeLinkage(
       if (quantity && quantity !== 0) {
         // 1. 计算含税单价 = 含税金额 / 数量
         row['unitPrice'] = Number((amountValue / quantity).toFixed(4));
-        console.log('💰 [handleAmountChange] 含税单价:', row['unitPrice']);
 
         // 2. 如果存在税率，计算不含税单价和金额
         if (taxRate !== undefined && taxRate !== null) {
@@ -1280,12 +1085,6 @@ export function useOrderFeeLinkage(
           const noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
           row['noTaxUnitPrice'] = Number(noTaxUnitPrice.toFixed(4));
           row['noTaxAmount'] = Number((noTaxUnitPrice * quantity).toFixed(2));
-          console.log(
-            '💰 [handleAmountChange] 不含税单价:',
-            row['noTaxUnitPrice'],
-            '不含税金额:',
-            row['noTaxAmount'],
-          );
         }
       }
 
@@ -1298,8 +1097,6 @@ export function useOrderFeeLinkage(
       if (hotInstance) {
         hotInstance.render();
       }
-
-      console.log('✅ [handleAmountChange] 计算完成');
     } catch (error) {
       console.error('❌ [handleAmountChange] 处理失败:', error);
     }
@@ -1331,9 +1128,6 @@ export function useOrderFeeLinkage(
       );
 
       if (matchedClient) {
-        console.log(
-          `✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`,
-        );
         return matchedClient.value;
       }
     }
@@ -1346,8 +1140,6 @@ export function useOrderFeeLinkage(
    */
   function handleAfterChange(changes: any, source: string, hotInstance: any) {
     if (source === 'loadData' || !changes) return;
-
-    console.log('🔄 [handleAfterChange] 数据变化:', changes);
 
     // 处理数据变化时的联动逻辑
     changes.forEach(([rowIndex, prop, oldValue, newValue]: any[]) => {
@@ -1397,10 +1189,6 @@ export function useOrderFeeLinkage(
           // 切换结算对象时清空订单往来单位兜底税率，改走客户缓存
           row['__settlementTaxRate'] = undefined;
         }
-        console.log(
-          '👤 [handleAfterChange] 结算对象变化:',
-          row['settlementId_value'],
-        );
         // 结算对象变化：优先用其税率，否则回退费用名称税率
         applyTaxRateToRow(row, undefined, hotInstance);
       }

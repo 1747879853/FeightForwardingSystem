@@ -64,28 +64,13 @@ const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
 };
 // 统一的订单详情加载函数（带缓存和防重复加载）
 const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
-  console.log(
-    '🔍 [loadOrderDetailIfNeeded] 被调用, transportOrderId:',
-    transportOrderId,
-  );
-  console.log(
-    '🔍 [loadOrderDetailIfNeeded] 当前 orderBaseData.value:',
-    orderBaseData.value,
-  );
-  console.log(
-    '🔍 [loadOrderDetailIfNeeded] 当前 isLoadingOrderDetail:',
-    isLoadingOrderDetail.value,
-  );
-
   // 如果已经有订单数据，直接返回
   if (orderBaseData.value) {
-    console.log('✅ [loadOrderDetailIfNeeded] 使用缓存的订单数据');
     return orderBaseData.value;
   }
 
   // 防止并发加载
   if (isLoadingOrderDetail.value) {
-    console.log('⏳ [loadOrderDetailIfNeeded] 正在加载中，等待...');
     // 等待加载完成
     await new Promise<void>((resolve) => {
       const checkInterval = setInterval(() => {
@@ -95,7 +80,6 @@ const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
         }
       }, 50);
     });
-    console.log('✅ [loadOrderDetailIfNeeded] 等待结束，返回缓存数据');
     return orderBaseData.value;
   }
 
@@ -106,17 +90,11 @@ const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
 
   try {
     isLoadingOrderDetail.value = true;
-    console.log(
-      '🔄 [loadOrderDetailIfNeeded] 开始加载订单详情:',
-      transportOrderId,
-    );
 
     const orderDetail = await adapter.api.getDetail(transportOrderId);
-    console.log('📥 [loadOrderDetailIfNeeded] API返回数据:', !!orderDetail);
 
     if (orderDetail) {
       orderBaseData.value = orderDetail;
-      console.log('✅ [loadOrderDetailIfNeeded] 订单详情加载成功并已缓存');
     } else {
       console.warn('⚠️ [loadOrderDetailIfNeeded] 订单详情为空');
     }
@@ -127,9 +105,6 @@ const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
     return null;
   } finally {
     isLoadingOrderDetail.value = false;
-    console.log(
-      '🏁 [loadOrderDetailIfNeeded] 加载完成，isLoadingOrderDetail设为false',
-    );
   }
 };
 
@@ -147,7 +122,6 @@ const [Modal, modalApi] = useVbenModal({
   class: 'w-[1400px]',
   onConfirm: async () => {
     const formValues = await orderFeeFormApi.getValues();
-    console.log('表单提交数据:', formValues);
 
     const remark = modifyRemarkInput.value.trim();
     if (!remark) {
@@ -174,21 +148,11 @@ const [Modal, modalApi] = useVbenModal({
     if (isOpen) {
       const data = modalApi.getData<any>();
       modifyRemarkInput.value = data?.remark || '';
-      console.log('📊 [编辑模态框] 打开，接收到的数据:', data);
-      console.log(
-        '📊 [编辑模态框] data.orderBaseData 是否存在:',
-        !!data?.orderBaseData,
-      );
-      console.log(
-        '📊 [编辑模态框] data.feeData.transportOrderId:',
-        data?.feeData?.transportOrderId,
-      );
 
       if (data) {
         // 兼容旧的数据格式（直接传递费用数据）和新的数据格式（包含orderBaseData）
         const feeData = data.feeData || data;
         rawDetail.value = capturePermissionRow(feeData);
-        console.log('📊 [编辑模态框] 费用数据:', feeData);
 
         currentFeeData.value = { ...feeData };
         originalFeeData.value = { ...feeData };
@@ -196,38 +160,13 @@ const [Modal, modalApi] = useVbenModal({
         // 如果父组件已经传入了orderBaseData，直接使用；否则后续按需加载
         if (data.orderBaseData) {
           orderBaseData.value = data.orderBaseData;
-          console.log('✅ [编辑模态框] 使用父组件传入的订单数据');
-          console.log(
-            '✅ [编辑模态框] orderBaseData.value 已设置:',
-            !!orderBaseData.value,
-          );
         } else {
           orderBaseData.value = null;
-          console.log('⚠️ [编辑模态框] 未传入订单数据，将按需加载');
-          console.log(
-            '⚠️ [编辑模态框] 当前 orderBaseData.value:',
-            orderBaseData.value,
-          );
         }
-
-        console.log(
-          '📊 [编辑模态框] 设置的originalFeeData:',
-          originalFeeData.value,
-        );
-        console.log(
-          '📊 [编辑模态框] paySide值:',
-          originalFeeData.value?.paySide,
-        );
 
         // 在nextTick中设置表单值，确保表单已完全初始化
         nextTick(async () => {
-          console.log('📊 [编辑模态框] 开始设置表单值...');
-
           // 打印feeData的所有字段名，用于对比
-          console.log(
-            '📊 [编辑模态框] feeData的字段列表:',
-            Object.keys(feeData),
-          );
 
           // ✅ 关键修复：确保currencyId和feeCodeId是ID而不是名称
           const processedFeeData = { ...feeData };
@@ -237,29 +176,14 @@ const [Modal, modalApi] = useVbenModal({
             processedFeeData.currencyId !== undefined &&
             processedFeeData.currencyId !== null
           ) {
-            console.log(
-              '🔍 [数据预处理] currencyId原始值:',
-              processedFeeData.currencyId,
-              '类型:',
-              typeof processedFeeData.currencyId,
-            );
-
             // 如果是对象，提取id或value字段
             if (typeof processedFeeData.currencyId === 'object') {
               const currencyObj = processedFeeData.currencyId as any;
               processedFeeData.currencyId =
                 currencyObj.id || currencyObj.value || currencyObj.currencyId;
-              console.log(
-                '✅ [数据预处理] 从对象中提取currencyId:',
-                processedFeeData.currencyId,
-              );
             }
             // 如果是字符串，可能是名称，需要保持原样（后续通过监听器处理）
             else if (typeof processedFeeData.currencyId === 'string') {
-              console.log(
-                '⚠️ [数据预处理] currencyId是字符串，可能是名称:',
-                processedFeeData.currencyId,
-              );
               // 暂时保持原样，等待费用代码变化监听器会重新查询
             }
           }
@@ -269,22 +193,11 @@ const [Modal, modalApi] = useVbenModal({
             processedFeeData.feeCodeId !== undefined &&
             processedFeeData.feeCodeId !== null
           ) {
-            console.log(
-              '🔍 [数据预处理] feeCodeId原始值:',
-              processedFeeData.feeCodeId,
-              '类型:',
-              typeof processedFeeData.feeCodeId,
-            );
-
             // 如果是对象，提取id或value字段
             if (typeof processedFeeData.feeCodeId === 'object') {
               const feeCodeObj = processedFeeData.feeCodeId as any;
               processedFeeData.feeCodeId =
                 feeCodeObj.id || feeCodeObj.value || feeCodeObj.feeCodeId;
-              console.log(
-                '✅ [数据预处理] 从对象中提取feeCodeId:',
-                processedFeeData.feeCodeId,
-              );
             }
           }
 
@@ -293,13 +206,6 @@ const [Modal, modalApi] = useVbenModal({
             processedFeeData.settlementId !== undefined &&
             processedFeeData.settlementId !== null
           ) {
-            console.log(
-              '🔍 [数据预处理] settlementId原始值:',
-              processedFeeData.settlementId,
-              '类型:',
-              typeof processedFeeData.settlementId,
-            );
-
             // 如果是对象，提取id或value字段
             if (typeof processedFeeData.settlementId === 'object') {
               const settlementObj = processedFeeData.settlementId as any;
@@ -307,10 +213,6 @@ const [Modal, modalApi] = useVbenModal({
                 settlementObj.id ||
                 settlementObj.value ||
                 settlementObj.settlementId;
-              console.log(
-                '✅ [数据预处理] 从对象中提取settlementId:',
-                processedFeeData.settlementId,
-              );
             }
           }
 
@@ -336,10 +238,7 @@ const [Modal, modalApi] = useVbenModal({
             'remark',
           ];
 
-          console.log('📊 [编辑模态框] 准备设置的字段值:');
-          fieldsToSet.forEach((field) => {
-            console.log(`  - ${field}:`, processedFeeData[field]);
-          });
+          fieldsToSet.forEach((field) => {});
           processedFeeData['feeCodeId'] = processedFeeData['feeCodeId_value'];
           processedFeeData['currencyId'] = processedFeeData['currencyId_value'];
           processedFeeData['settlementId'] =
@@ -352,11 +251,6 @@ const [Modal, modalApi] = useVbenModal({
 
           // 验证表单值是否设置成功
           const formValues = await orderFeeFormApi.getValues();
-          console.log('📊 [编辑模态框] 表单当前值:', formValues);
-          console.log(
-            '📊 [编辑模态框] 表单字段列表:',
-            Object.keys(formValues || {}),
-          );
 
           // ✅ 关键修复：动态更新ClientSelect的selectedItems，确保结算单位名称正确显示
           if (currentFeeData.value) {
@@ -380,10 +274,6 @@ const [Modal, modalApi] = useVbenModal({
                   },
                 },
               ]);
-              console.log(
-                '✅ [编辑模态框] 动态更新ClientSelect selectedItems:',
-                { settlementIdValue, settlementName },
-              );
             }
           }
 
@@ -392,10 +282,7 @@ const [Modal, modalApi] = useVbenModal({
           //   processedFeeData.feeCodeId &&
           //   typeof processedFeeData.feeCodeId === 'string'
           // ) {
-          //   console.log(
-          //     '⚠️ [编辑模态框] feeCodeId可能是名称，尝试通过onChange重新查询...',
-          //   );
-
+          //
           //   // 获取费用代码详情，将其转换为ID
           //   try {
           //     // 尝试将字符串作为ID查询
@@ -403,11 +290,7 @@ const [Modal, modalApi] = useVbenModal({
           //       processedFeeData.feeCodeId_value,
           //     );
           //     if (feeCodeDetail && feeCodeDetail.id) {
-          //       console.log(
-          //         '✅ [编辑模态框] 成功获取费用代码详情，ID:',
-          //         feeCodeDetail.id,
-          //       );
-          //       // 更新为正确的ID
+          //          //       // 更新为正确的ID
           //       await orderFeeFormApi.setFieldValue(
           //         'feeCodeId',
           //         feeCodeDetail.id,
@@ -419,11 +302,7 @@ const [Modal, modalApi] = useVbenModal({
           //           'currencyId',
           //           feeCodeDetail.currencyId,
           //         );
-          //         console.log(
-          //           '✅ [编辑模态框] 更新currencyId为:',
-          //           feeCodeDetail.currencyId,
-          //         );
-          //       }
+          //          //       }
           //     } else {
           //       console.warn('⚠️ [编辑模态框] 未能获取有效的费用代码详情');
           //     }
@@ -438,10 +317,7 @@ const [Modal, modalApi] = useVbenModal({
           //   typeof processedFeeData.currencyId === 'string' &&
           //   !processedFeeData.feeCodeId
           // ) {
-          //   console.log(
-          //     '⚠️ [编辑模态框] currencyId是名称且没有feeCodeId，尝试查询币别详情...',
-          //   );
-
+          //
           //   try {
           //     // 尝试根据名称查询币别列表
           //     const currencyList = await getCurrencyPagedList({
@@ -464,11 +340,7 @@ const [Modal, modalApi] = useVbenModal({
           //           'currencyId',
           //           matchedCurrency.id,
           //         );
-          //         console.log(
-          //           '✅ [编辑模态框] 更新currencyId为ID:',
-          //           matchedCurrency.id,
-          //         );
-          //       } else {
+          //          //       } else {
           //         console.warn('⚠️ [编辑模态框] 未找到匹配的币别');
           //       }
           //     }
@@ -480,21 +352,9 @@ const [Modal, modalApi] = useVbenModal({
           // 预加载订单详情（只加载一次，后续所有监听器共享）
           const transportOrderId =
             feeData?.transportOrderId || currentFeeData.value?.transportOrderId;
-          console.log(
-            '🔄 [编辑模态框] 准备预加载订单详情，transportOrderId:',
-            transportOrderId,
-          );
-          console.log(
-            '🔄 [编辑模态框] 当前 orderBaseData.value 状态:',
-            !!orderBaseData.value,
-          );
 
           if (transportOrderId) {
             await loadOrderDetailIfNeeded(transportOrderId);
-            console.log(
-              '✅ [编辑模态框] 预加载完成，orderBaseData.value 状态:',
-              !!orderBaseData.value,
-            );
           }
 
           // 为industryCategory字段添加onChange事件监听
@@ -510,7 +370,6 @@ const [Modal, modalApi] = useVbenModal({
         console.warn('⚠️ [编辑模态框] 没有接收到数据');
       }
     } else {
-      console.log('📊 [编辑模态框] 关闭');
       currentFeeData.value = null;
       originalFeeData.value = null;
       orderBaseData.value = null;
@@ -555,10 +414,7 @@ const setupIndustryCategoryChangeListener = async () => {
         fieldName: 'industryCategory',
         componentProps: {
           onChange: async (value: any) => {
-            console.log('📊 行业类别发生变化:', value);
-
             if (!value && value !== 0) {
-              console.log('行业类别被清空');
               return;
             }
 
@@ -568,7 +424,6 @@ const setupIndustryCategoryChangeListener = async () => {
             )?.value;
 
             if (industryCategoryValue) {
-              console.log('行业类别value:', industryCategoryValue);
               // 根据行业类别自动切换结算对象
               await fillSettlementIdByIndustryCategory(industryCategoryValue);
               // 结算对象变化后按结算对象/费用名称刷新税率
@@ -623,9 +478,6 @@ const fillSettlementIdByIndustryCategory = async (industryCategory: string) => {
         'settlementId',
         String(settlement.id),
       );
-      console.log(
-        `✅ 自动填充结算对象: ${settlement.id} (行业类别: ${industryCategory}, 税率: ${settlement.taxRate})`,
-      );
     } else {
       console.warn(`订单中未找到行业类别 ${industryCategory} 对应的结算对象`);
     }
@@ -664,8 +516,6 @@ const setupUnitChangeListener = async () => {
         fieldName: 'unit',
         componentProps: {
           onChange: async (value: any) => {
-            console.log('📦 [UnitSelect.onChange] 单位变化:', value);
-
             if (!value) {
               // 清空单位时，不自动清空数量（保留用户手动输入的值）
               return;
@@ -701,20 +551,12 @@ const fillQuantityByUnit = async (unitName: string) => {
     const transportOrder = orderDetail.transportOrder;
     const unitNameLower = unitName.toLowerCase();
 
-    console.log(
-      '🔍 [fillQuantityByUnit] 单位:',
-      unitName,
-      '单位小写:',
-      unitNameLower,
-    );
-
     let quantity = 0;
 
     // 根据单位类型填充数量
     if (unitNameLower === '票' || unitNameLower === 'order') {
       // 票：数量固定为 1
       quantity = 1;
-      console.log('✅ [fillQuantityByUnit] 票数量: 1');
     } else if (
       unitNameLower === '毛重' ||
       unitNameLower === 'kgs' ||
@@ -722,7 +564,6 @@ const fillQuantityByUnit = async (unitName: string) => {
     ) {
       // 重量：从订单获取 KGS
       quantity = transportOrder.kgs || 0;
-      console.log('✅ [fillQuantityByUnit] 重量:', quantity);
     } else if (
       unitNameLower === '尺码' ||
       unitNameLower === 'cbm' ||
@@ -730,7 +571,6 @@ const fillQuantityByUnit = async (unitName: string) => {
     ) {
       // 尺码：从订单获取 CBM
       quantity = transportOrder.cbm || 0;
-      console.log('✅ [fillQuantityByUnit] 尺码:', quantity);
     } else if (
       unitNameLower === '件数' ||
       unitNameLower === 'pkgs' ||
@@ -738,26 +578,21 @@ const fillQuantityByUnit = async (unitName: string) => {
     ) {
       // 件数：从订单获取 PKGS
       quantity = transportOrder.pkgs || 0;
-      console.log('✅ [fillQuantityByUnit] 件数:', quantity);
     } else if (unitNameLower === 'teu') {
       // TEU：从订单获取 TEU
       quantity = transportOrder.teu || 0;
-      console.log('✅ [fillQuantityByUnit] TEU:', quantity);
     } else if (unitNameLower !== '') {
       // 箱型：查询订单的箱型列表数量
       if (transportOrder.orderCtns && transportOrder.orderCtns.length > 0) {
         quantity = transportOrder.orderCtns.filter(
           (ctn: any) => (ctn.ctnCode?.ctnName ?? ctn.ctnCodeName) === unitName,
         ).length;
-        console.log('✅ [fillQuantityByUnit] 箱型数量:', quantity);
       } else {
         quantity = 0;
-        console.log('✅ [fillQuantityByUnit] 箱型数量为 0');
       }
     } else {
       // 其他单位：默认数量为 1
       quantity = 1;
-      console.log('✅ [fillQuantityByUnit] 默认数量: 1');
     }
 
     // 更新数量字段
@@ -772,7 +607,6 @@ const fillQuantityByUnit = async (unitName: string) => {
 
 // 处理表单值变化 - 实现与VxeTable相同的联动计算逻辑
 const handleFieldChange = async (fieldName: string) => {
-  console.log('表单字段变化:', fieldName);
   const values = await orderFeeFormApi.getValues();
   if (!values) return;
 
@@ -1005,12 +839,6 @@ const setupFeeCodeChangeListener = async () => {
         fieldName: 'feeCodeId',
         componentProps: {
           onChange: async (newVal: any) => {
-            console.log('💰 [FeeCodeSelect.onChange] 费用代码变化:', newVal);
-            console.log(
-              '💰 [FeeCodeSelect.onChange] newVal类型:',
-              typeof newVal,
-            );
-
             if (!newVal) {
               return;
             }
@@ -1020,16 +848,7 @@ const setupFeeCodeChangeListener = async () => {
               let feeCodeId = newVal;
               if (typeof newVal === 'object' && newVal !== null) {
                 feeCodeId = newVal.id || newVal.value;
-                console.log(
-                  '💰 [FeeCodeSelect.onChange] 从对象中提取ID:',
-                  feeCodeId,
-                );
               }
-
-              console.log(
-                '💰 [FeeCodeSelect.onChange] 最终使用的费用代码ID:',
-                feeCodeId,
-              );
 
               // 获取费用代码详情
               const feeCodeDetail = await getFeeCodeDetail(feeCodeId);
@@ -1037,14 +856,6 @@ const setupFeeCodeChangeListener = async () => {
                 console.warn('未找到费用代码详情');
                 return;
               }
-
-              console.log('费用代码详情:', feeCodeDetail);
-              console.log(
-                '费用代码详情中的currencyId:',
-                feeCodeDetail.currencyId,
-                '类型:',
-                typeof feeCodeDetail.currencyId,
-              );
 
               // 获取收付类型
               const paySide = originalFeeData.value?.paySide; // 0=应收, 1=应付
@@ -1054,11 +865,6 @@ const setupFeeCodeChangeListener = async () => {
                 // 应收费用：使用收费客户类型（defaultDebitName）
                 const debitCategory = feeCodeDetail.defaultDebitName;
                 if (debitCategory) {
-                  console.log(
-                    '自动填充行业类别:',
-                    debitCategory,
-                    getCategoryNumber(debitCategory),
-                  );
                   await orderFeeFormApi.setFieldValue(
                     'industryCategory',
                     getCategoryNumber(debitCategory),
@@ -1106,10 +912,6 @@ const setupFeeCodeChangeListener = async () => {
                       currencyIdForApi =
                         (currencyIdForApi as any).id ||
                         (currencyIdForApi as any).value;
-                      console.log(
-                        '✅ [汇率查询] 从对象中提取币别ID:',
-                        currencyIdForApi,
-                      );
                     }
 
                     // 单据上的 localCurrencyId 已是「所属公司」的本位币，别再自己遍历 orgs：
@@ -1128,7 +930,6 @@ const setupFeeCodeChangeListener = async () => {
                     // 如果是本位币，汇率固定为1
                     if (isLocalCurrency) {
                       await orderFeeFormApi.setFieldValue('exchangeRate', 1);
-                      console.log('检测到本位币，汇率固定为1');
                     } else {
                       // 按「ETD 落在汇率有效期内 + 本位币匹配」从汇率表取汇率，
                       // 本位币严格匹配，找不到时置空由用户手填
@@ -1144,7 +945,6 @@ const setupFeeCodeChangeListener = async () => {
                           'exchangeRate',
                           exchangeRate,
                         );
-                        console.log('✅ [汇率设置] 设置汇率为:', exchangeRate);
                       } else {
                         console.warn(
                           '⚠️ [汇率设置] 未找到符合 ETD+本位币条件的汇率，请手动输入',
@@ -1389,7 +1189,6 @@ function useOrderFeeFormSchema() {
         // 使用computed确保响应式更新箱型列表
         unitOptions: computed(() => {
           const list = orderCtnListRef.value;
-          console.log('🔍 [unitOptions] 当前箱型列表:', list);
           return list.map((ctn) => ({
             label: ctn.ctnCodeName,
             value: ctn.ctnCodeName,
@@ -1533,8 +1332,6 @@ const originalProfit = computed(() => {
 
 // 计算更改后的利润
 const updatedProfit = computed(() => {
-  console.log('currentFeeData', currentFeeData.value);
-
   if (!currentFeeData.value || !originalFeeData.value) {
     return originalProfit.value;
   }

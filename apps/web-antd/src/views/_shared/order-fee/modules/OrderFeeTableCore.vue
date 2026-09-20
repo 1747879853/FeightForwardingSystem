@@ -236,7 +236,6 @@ const handleAfterChange = (
 // ✅ 新增：处理自定义的新增行事件
 const handleAddNewRowEvent = (event: Event) => {
   const customEvent = event as CustomEvent;
-  console.log('📍 [OrderFeeTableCore] 接收到新增行事件', customEvent.detail);
   emit('add-new-row', customEvent.detail);
 };
 
@@ -256,7 +255,6 @@ onMounted(() => {
           'addNewRow',
           handleAddNewRowEvent as EventListener,
         );
-        console.log('✅ [OrderFeeTableCore] 已添加 addNewRow 事件监听器');
       } else {
         console.warn('⚠️ [OrderFeeTableCore] rootElement 不存在');
       }

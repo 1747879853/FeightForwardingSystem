@@ -269,8 +269,6 @@ onBeforeUnmount(() => {
 const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<string>();
-// ✅ 新增：客户数据加载状态
-const clientsLoading = ref(false);
 
 /** ISO 字符串转正常日期格式 */
 const formatNormalDate = (
@@ -287,31 +285,12 @@ const to = ref<Record<string, any>>();
 
 // ✅ 新增：使用下拉框数据源管理（用于加载客户数据）
 const orderCtnList = ref<any[]>([]); // 临时空数组，仅用于初始化
-const { allClientsByIndustry, loadAllClients } =
-  useDropdownSources(orderCtnList);
+const { allClientsByIndustry } = useDropdownSources(orderCtnList);
 
 // 使用共享的显示字段配置管理
 const { displayFieldConfig, handleConfigConfirm } = useDisplayFieldConfig(
   props.adapter.displayFields,
   'order_fee_display_config',
-);
-
-// 监听 formValues 变化
-watch(
-  formValues,
-  (newVal) => {
-    console.log('\n📦 formValues 变化:', newVal ? '已加载' : '清空');
-  },
-  { deep: true },
-);
-
-// 监听 to 变化
-watch(
-  to,
-  (newVal) => {
-    console.log('\n🎯 to 变化:', newVal ? '已加载' : '清空');
-  },
-  { deep: true },
 );
 
 // 根据配置生成显示列表
@@ -417,7 +396,6 @@ const totalAmount = computed(() => {
     ...total[key],
   }));
   let list = [];
-  console.log('totalList', totalList);
   let totalPay = 0;
   let totalRec = 0;
 
@@ -430,7 +408,6 @@ const totalAmount = computed(() => {
       color: recColor,
       value: transCurrencySymbol(item.currencyId) + recAmount,
     });
-    console.log('应收recAmount', item.totalRMBRecAmount);
     totalRec += item.totalRMBRecAmount;
 
     let payName = `应付${transCurrency(item.currencyId)}:`;
@@ -466,7 +443,6 @@ const totalAmount = computed(() => {
       ? (((totalRec - totalPay) / totalPay) * 100).toFixed(1) + '%'
       : '--',
   });
-  console.log(list);
   return list;
 });
 
@@ -493,18 +469,11 @@ const openConfigModal = () => {
 
 // 处理刷新对立表格事件（收付互生后调用）
 const handleRefreshOppositeTable = (type: number) => {
-  console.log(
-    '🔄 [handleRefreshOppositeTable] 收到刷新对立表格事件，当前类型:',
-    type,
-  );
-
   if (type === 0) {
     // 当前是应收表，需要刷新生成的应付表
-    console.log('✅ 刷新生成的应付表格');
     payOrderFeeTableRef.value?.getTableDate();
   } else {
     // 当前是应付表，需要刷新生成的应收表
-    console.log('✅ 刷新生成的应收表格');
     recOrderFeeTableRef.value?.getTableDate();
   }
 };
@@ -512,13 +481,11 @@ const handleRefreshOppositeTable = (type: number) => {
 const loadOrderDetail = async () => {
   if (!editId.value) return;
 
-  //pageLoading.value = true;
   try {
     const detail = await props.adapter.api.getDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     formValues.value = detail;
     to.value = detail.transportOrder;
-    // console.log('detail', formValues.value);
   } finally {
     pageLoading.value = false;
   }
@@ -546,8 +513,6 @@ const getOrderFeeCountStats = async () => {
     const result = await props.adapter.api.getOrderFeeCount({
       transportOrderId: editId.value,
     });
-
-    console.log('✅ [getOrderFeeCountStats] 费用数量统计:', result);
 
     // 更新费用数量映射
     feeCountMap.value = {
@@ -603,16 +568,12 @@ const handleAmountUpdate = (data: {
   type: number;
   amountMap: Record<string, any>;
 }) => {
-  console.log('📊 收到金额更新事件:', data);
-
   if (data.type === 0) {
     // 应收
     recAmountMap.value = { ...data.amountMap };
-    console.log('✅ 应收金额已更新:', recAmountMap.value);
   } else if (data.type === 1) {
     // 应付
     payAmountMap.value = { ...data.amountMap };
-    console.log('✅ 应付金额已更新:', payAmountMap.value);
   }
 };
 
@@ -626,7 +587,6 @@ const collectSelectedFeeIds = () => {
   const recIds = recOrderFeeTableRef.value?.getSelectedFeeIds() || [];
   const payIds = payOrderFeeTableRef.value?.getSelectedFeeIds() || [];
   selectedFeeIds.value = [...recIds, ...payIds];
-  console.log('📋 收集选中的费用ID:', selectedFeeIds.value);
   return selectedFeeIds.value;
 };
 
@@ -635,7 +595,6 @@ const handleSelectionChange = (payload: {
   type: number;
   selectedIds: string[];
 }) => {
-  console.log('📋 收到选中变化事件:', payload);
   collectSelectedFeeIds();
 };
 
@@ -756,7 +715,6 @@ const handleSubmitAllFees = async () => {
 
   if (selectedFeeIds.length === 0) {
     // 如果没有勾选费用，则获取所有未提交的费用（录入状态0和驳回状态5）
-    console.log('⚠️ [整票提交] 未勾选任何费用，自动获取未提交的费用');
 
     const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
     const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
@@ -764,12 +722,6 @@ const handleSubmitAllFees = async () => {
     // 过滤出可提交费用：录入/驳回且未对账（与保存口径一致）
     recFees = allRecFees.filter((fee) => isSavableOrderFeeRow(fee));
     payFees = allPayFees.filter((fee) => isSavableOrderFeeRow(fee));
-
-    console.log('📊 [整票提交] 未提交费用统计:', {
-      应收未提交: recFees.length,
-      应付未提交: payFees.length,
-      合计: recFees.length + payFees.length,
-    });
 
     if (recFees.length === 0 && payFees.length === 0) {
       message.warning('没有未提交的费用（录入状态或驳回状态）');
@@ -789,7 +741,6 @@ const handleSubmitAllFees = async () => {
     });
   } else {
     // 如果勾选了费用，则只提交勾选的费用
-    console.log('✅ [整票提交] 提交勾选的费用，数量:', selectedFeeIds.length);
 
     recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
     payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
@@ -1036,26 +987,12 @@ const handleMenuClick = (info: any) => {
   }
 };
 
-onMounted(async () => {
-  console.log('\n========== 费用页面挂载开始 ==========');
-  // ✅ 新增：显示客户数据加载状态
-  clientsLoading.value = true;
-
+onMounted(() => {
   loadOrderDetail();
 
   // 费用数量统计（角标）；金额汇总由子表加载后经 update-amount 上报
+  // 客户按行业在结算下拉打开时懒加载，不阻塞首屏
   getOrderFeeCountStats();
-
-  try {
-    // ✅ 新增：在父组件中一次性加载全部客户数据
-    await loadAllClients();
-  } finally {
-    // ✅ 新增：加载完成后隐藏 loading
-    clientsLoading.value = false;
-    console.log('✅ [onMounted] 客户数据加载完成，已隐藏 loading');
-  }
-
-  console.log('========== 页面挂载结束 ==========\n');
 });
 </script>
 <template>
@@ -1065,10 +1002,7 @@ onMounted(async () => {
     :height-offset="58"
     content-class="!p-0 flex flex-col overflow-hidden"
   >
-    <Spin
-      :spinning="pageLoading || clientsLoading"
-      wrapper-class-name="order-fee-spin"
-    >
+    <Spin :spinning="pageLoading" wrapper-class-name="order-fee-spin">
       <div
         ref="mainSplitRef"
         class="order-fee-main-split flex h-full min-h-0 items-stretch p-3"

@@ -57,7 +57,6 @@ const isOpen = modalApi.useStore((state) => state.isOpen);
 watch(isOpen, (isOpenValue) => {
   if (isOpenValue) {
     const feeData = modalApi.getData<any>();
-    console.log('审核历史 - 原始数据:', feeData);
 
     if (!feeData) {
       auditTasks.value = [];
@@ -72,26 +71,18 @@ watch(isOpen, (isOpenValue) => {
 
     // 收集所有类型的审核任务（每次审核操作都是一条独立记录）
     if (feeData.submitOrderFeeTasks?.length) {
-      console.log('提交费用审核任务:', feeData.submitOrderFeeTasks);
       allTasks.push(...feeData.submitOrderFeeTasks);
     }
     if (feeData.modifyOrderFeeTasks?.length) {
-      console.log('修改费用审核任务:', feeData.modifyOrderFeeTasks);
       allTasks.push(...feeData.modifyOrderFeeTasks);
     }
     if (feeData.deleteOrderFeeTasks?.length) {
-      console.log('删除费用审核任务:', feeData.deleteOrderFeeTasks);
       allTasks.push(...feeData.deleteOrderFeeTasks);
     }
-
-    console.log('所有审核任务数量:', allTasks.length);
-    console.log('所有审核任务详情:', allTasks);
 
     // 不再过滤，显示所有任务（包括待审核、已通过、已驳回）
     // 这样用户在未审核完成之前也能查看本次申请修改的原值及修改值
     const displayTasks = allTasks;
-
-    console.log('显示的任务数量:', displayTasks.length);
 
     // 排序逻辑：
     // 1. 有审核时间的按审核时间倒序（最新的在前）
@@ -118,8 +109,6 @@ watch(isOpen, (isOpenValue) => {
       const createTimeB = b.creationTime ? dayjs(b.creationTime).valueOf() : 0;
       return createTimeB - createTimeA;
     });
-
-    console.log('最终显示的审核历史记录:', auditTasks.value);
   } else {
     // 关闭时清空数据
     auditTasks.value = [];
@@ -166,7 +155,6 @@ const parseAndCompareFields = (
 
   // 场景1：驳回任务（taskStatus === 1），使用上一条修改任务的 info 作为"修改前"
   if (previousTaskInfo && info) {
-    console.log('=== 驳回任务 - 使用上一条任务的 info 作为修改前 ===');
     try {
       original = JSON.parse(previousTaskInfo);
       modified = JSON.parse(info);
@@ -177,7 +165,6 @@ const parseAndCompareFields = (
   }
   // 场景2：待审核的修改任务（没有 originalInfo 和 auditTime）
   else if (currentFeeData && !originalInfo && info) {
-    console.log('=== 待审核修改任务 - 使用当前费用作为修改前 ===');
     original = currentFeeData;
     try {
       modified = JSON.parse(info);
@@ -188,7 +175,6 @@ const parseAndCompareFields = (
   }
   // 场景3：正常的已审核修改任务
   else if (originalInfo && info) {
-    console.log('=== 正常修改任务 - 使用 originalInfo 和 info ===');
     try {
       original = JSON.parse(originalInfo);
       modified = JSON.parse(info);
@@ -207,10 +193,6 @@ const parseAndCompareFields = (
     });
     return [];
   }
-
-  console.log('=== 费用字段对比调试 ===');
-  console.log('修改前数据 (original):', original);
-  console.log('修改后数据 (modified):', modified);
 
   // 需要对比的字段列表（排除一些不需要展示的字段）
   const excludeFields = [
@@ -600,8 +582,6 @@ const parseAndCompareFields = (
     ...Object.keys(modified).filter((key) => !isExcludedField(key)),
   ]);
 
-  console.log('需要对比的所有字段:', Array.from(allFields));
-
   const seenNormalizedKeys = new Set<string>();
 
   // 费用名 / 币别 / 结算对象：始终按 Id+展示名解析（不依赖快照是否带嵌套对象）
@@ -668,10 +648,6 @@ const parseAndCompareFields = (
       after,
     });
   });
-
-  console.log('检测到的字段变化数量:', changes.length);
-  console.log('变化的字段详情:', changes);
-  console.log('========================');
 
   return changes;
 };

@@ -1,5 +1,4 @@
 import { $t } from '#/locales';
-import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h, ref } from 'vue';
@@ -1061,7 +1060,6 @@ export function useOrderFeeColumns(
           // 使用普通箭头函数，而不是 getter，确保函数不会被立即执行
           unitOptions: () => {
             const list = orderCtnListRef.value;
-            console.log('🔍 [unitOptions函数] 当前箱型列表:', list);
             return list.map((ctn) => ({
               label: ctn.ctnCodeName,
               value: ctn.ctnCodeName,
@@ -1320,8 +1318,6 @@ export async function initOrderFeeEnumCache() {
       label: item.displayName || '',
       color: item.remark || undefined,
     }));
-
-    console.log('[OrderFee Enum Cache] 枚举数据缓存已更新');
   } catch (error) {
     console.error('[OrderFee Enum Cache] 枚举数据缓存更新失败:', error);
   }

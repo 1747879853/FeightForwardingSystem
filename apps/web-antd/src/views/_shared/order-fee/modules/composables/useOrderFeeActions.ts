@@ -54,12 +54,6 @@ export function useOrderFeeActions(
    * 添加新行
    */
   const addRow = (onAdded?: () => void) => {
-    console.log('🔵 [addRow] 开始添加新行');
-    console.log(
-      '🔵 [addRow] 当前数据源长度:',
-      dataContext.dataSource.value?.length || 0,
-    );
-
     const list = [...(dataContext.dataSource.value ?? [])];
     const maxSortId = list.reduce((max, row) => {
       const sid = Number((row as any).sortId ?? -1);
@@ -84,17 +78,13 @@ export function useOrderFeeActions(
     } as any;
 
     list.push(newRow);
-    console.log('🔵 [addRow] 新行的 _rowKey:', newRow._rowKey);
-    console.log('🔵 [addRow] 添加后数据源长度:', list.length);
 
     // 直接更新 dataSource，触发响应式更新
     dataContext.dataSource.value = list;
-    console.log('🔵 [addRow] 已更新 dataSource.value');
 
     // 等待 DOM 更新后同步费用
     nextTick(() => {
       dataContext.syncFee();
-      console.log('🔵 [addRow] 已同步费用');
 
       // 执行回调函数，用于滚动到最后一条记录并选中费用名称单元格
       if (onAdded) {
@@ -249,11 +239,8 @@ export function useOrderFeeActions(
       changeOrderId: changeOrderId,
     };
 
-    console.log('🔄 [generateOppositeFees] 收付互生参数:', params);
-
     try {
       const result = await adapter.api.generateOppositeOrderFees(params);
-      console.log('✅ [generateOppositeFees] 生成的费用ID列表:', result);
 
       message.success({
         content: `成功生成 ${result.length} 条${props.type === 0 ? '应付' : '应收'}费用`,
@@ -342,7 +329,6 @@ export function useOrderFeeActions(
       remark: remark || undefined,
       orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
     };
-    console.log(SubmitOrderFeeDto);
     submitOrderFee(SubmitOrderFeeDto).then(() => {
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
@@ -462,7 +448,6 @@ export function useOrderFeeActions(
       TransportOrderId: dataContext.editId.value,
       orderFees: [...(list ?? [])],
     };
-    console.log(ModifyOrderFeeDto);
     modifyOrderFee(ModifyOrderFeeDto).then(() => {
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
@@ -486,7 +471,6 @@ export function useOrderFeeActions(
       TransportOrderId: dataContext.editId.value,
       orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
     };
-    console.log(ModifyOrderFeeDto);
     modifyOrderFee(ModifyOrderFeeDto).then(() => {
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
@@ -510,7 +494,6 @@ export function useOrderFeeActions(
       TransportOrderId: dataContext.editId.value,
       orderFeeIds: list.map((item) => item.id),
     };
-    console.log(DeleteOrderFeeDto);
     deleteOrderFee(DeleteOrderFeeDto).then(() => {
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),

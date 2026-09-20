@@ -45,7 +45,6 @@ export function useModals() {
     updatedData: OrderFeeAdminApi.OrderFeeDto | null;
   }) => {
     // 这里应该调用 actions 中的处理方法
-    console.log('Modal confirmed:', data);
   };
 
   return {

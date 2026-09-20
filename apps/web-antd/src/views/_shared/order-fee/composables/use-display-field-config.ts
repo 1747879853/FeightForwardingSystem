@@ -1,5 +1,4 @@
-import type { Ref } from 'vue';
-import { computed, ref, watch } from 'vue';
+import { ref } from 'vue';
 import { $t } from '#/locales';
 import { message } from 'ant-design-vue';
 
@@ -82,19 +81,6 @@ export function useDisplayFieldConfig(
 
   // 当前的显示字段配置
   const displayFieldConfig = ref<DisplayFieldConfig[]>(loadUserConfig());
-
-  // 监听配置变化
-  watch(
-    displayFieldConfig,
-    (newConfig) => {
-      console.log('displayFieldConfig 发生变化:', newConfig.length, '个字段');
-      console.log(
-        '可见字段:',
-        newConfig.filter((f) => f.visible).map((f) => f.key),
-      );
-    },
-    { deep: true },
-  );
 
   // 确认配置
   const handleConfigConfirm = async (newConfig: DisplayFieldConfig[]) => {
