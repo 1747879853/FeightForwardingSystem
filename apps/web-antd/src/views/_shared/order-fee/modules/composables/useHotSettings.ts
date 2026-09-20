@@ -538,6 +538,14 @@ export function useHotSettings(
         !!rowData?.id &&
         highlightIds.size > 0 &&
         highlightIds.has(String(rowData.id));
+      const feeStatus =
+        (rowData as any)?.combinedFeeStatus ?? (rowData as any)?.feeStatus;
+      const statusOption = getFeeStatusOptions().find(
+        (option) => option.value === feeStatus,
+      );
+      const rowBackgroundColor = statusOption?.color
+        ? `${statusOption.color}30`
+        : null;
 
       /** 预警高亮必须在任何 early-return 前同步，否则 *** 遮罩格会残留红底 */
       const applyWarningHighlight = (bgFallback: null | string = null) => {
@@ -558,26 +566,12 @@ export function useHotSettings(
       ) {
         td.textContent = '***';
         td.removeAttribute('title');
-        applyWarningHighlight(null);
+        applyWarningHighlight(rowBackgroundColor);
         return;
       }
       // 费用状态着色 - 使用 setProperty 确保优先级
       if (rowData) {
-        const feeStatus =
-          (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
-
-        let backgroundColor: null | string = null;
-        if (feeStatus !== undefined && feeStatus !== null) {
-          const statusOptions = getFeeStatusOptions();
-          const statusOption = statusOptions.find(
-            (opt) => opt.value === feeStatus,
-          );
-          if (statusOption?.color) {
-            backgroundColor = `${statusOption.color}30`;
-          }
-        }
-
-        applyWarningHighlight(backgroundColor);
+        applyWarningHighlight(rowBackgroundColor);
 
         // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现（无 DOM 增删开销）
         const editedFields = (rowData as any)._editedFields as
