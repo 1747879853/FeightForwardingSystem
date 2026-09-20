@@ -80,7 +80,7 @@ export interface OrderFeeModuleAdapter {
     /** 费用数量统计 */
     getOrderFeeCount(params: any): Promise<OrderFeeCountResult>;
     /**
-     * 费用预警（可选：未实现的模块不展示预警条）
+     * 费用预警（海出/海进/空出均接入；未挂载则不请求）
      * @see apps/web-antd/doc/业务费用/业务费用模块接口文档.md §7
      */
     getOrderFeeWarnings?(params: {

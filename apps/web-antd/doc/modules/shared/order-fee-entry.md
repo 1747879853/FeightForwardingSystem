@@ -81,10 +81,10 @@ last_updated: 2026-09-20
 | 详情 API | `SeaExportAdmin` | `SeaImportAdmin` | `AirExportAdmin` |
 | 费用 CRUD API | `sea-export/order-fee-admin` | `sea-import/order-fee-admin` | **复用海出** order-fee-admin |
 | 完结锁 API | `sea-export/fee-lock` | `sea-import/fee-lock` | **复用海出** fee-lock |
-| 费用预警 | ✅ `getOrderFeeWarnings` | ❌ 不展示 | ❌ 不展示 |
+| 费用预警 | ✅ `getOrderFeeWarnings` | ✅ 同左 | ✅ 同左 |
 | 左侧订单字段 | 港口链 / 船名航次 / 截单等 | 到港 / 换单 / 提箱等 | 主单号 / 航班等 |
 | 页面 i18n 前缀 | `seaExport.export` | `seaImport.import` | `airExport.export` |
-| 列文案 dataI18n | `seaExport.export` | `seaImport.import` | **仍用** `seaExport.export` |
+| 列文案 dataI18n | `seaExport.export` | `seaImport.import` | `airExport.export` |
 | 打印 `printBizType` | SeaExport | SeaImport | AirExport |
 
 ### 2.3 架构示意
@@ -402,9 +402,10 @@ stateDiagram-v2
 
 见 §4.1。一次只能改一种收付方向的已审核费用。
 
-### 9.8 费用预警（海出）
+### 9.8 费用预警（海出 / 海进 / 空出）
 
 `GetOrderFeeWarningsAsync` 返回分组项（含费用名、币别、相关费用 id）。  
+三模块 adapter 均挂载 `getOrderFeeWarnings`（后端同属 `OrderFeeAdmin`）。  
 展示在：面板顶栏共享区、应收/应付表头 ticker。悬停高亮对应行。
 
 ---

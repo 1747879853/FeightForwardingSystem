@@ -7,6 +7,7 @@ import { PrintFormatBizType } from '#/components/print-format';
 import {
   getOrderFeePagedList,
   getOrderFeeCount,
+  getOrderFeeWarnings,
   getTransportOrderFees,
   importOrderFeesToTransportOrder,
   batchEditOrderFee,
@@ -157,6 +158,7 @@ export const airExportAdapter: OrderFeeModuleAdapter = {
     getChangeOrderDetail: GetDetail,
     getOrderFeePagedList,
     getOrderFeeCount,
+    getOrderFeeWarnings,
     getTransportOrderFees,
     importOrderFeesToTransportOrder,
     batchEditOrderFee,
