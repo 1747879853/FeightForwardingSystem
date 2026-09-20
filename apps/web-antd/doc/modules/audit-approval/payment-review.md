@@ -31,7 +31,7 @@ last_updated: 2026-09-20
 - **三栏拖动：** 列表与右侧合计/附件之间、上方面板与下方费用明细之间的间隙可拖动改宽高；比例写入 `localStorage`（`payment-review-layout-split`），刷新后保留。
 - **应收未结算展示：** 移除右上原币合计及其银行区。卡片标题为「应收未结算：结算单位」，问号解释用于判断费用互抵；按币别展示结算对象应收未结算金额。申请金额仍在列表和底部合计显示。
 - **审核状态：** 列表合并为任务状态一列，个人状态保留在提示中；未通过的任务可点击打开审核流程浮层，点击不触发行勾选。
-- **应收结算状态：** 费用明细一级行读取 `transportOrder.recSettlementStatus`，0/1/2 显示未结算/部分结算/结算完毕，空值显示「—」。后端尚未在付费申请详情赋值，依赖 [需求 #0147](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000147)，禁止用本申请局部费用推算整票状态。
+- **应收结算状态：** 费用明细一级行读取 `transportOrder.recSettlementStatus`，0/1/2 显示未结算/部分结算/结算完毕，空值显示「—」。详情接口已按该票全部应收费用汇总赋值（[需求 #0147](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000147)），禁止用本申请局部费用推算整票状态。
 - **通过：** 对勾选中的**待审**任务弹出备注框后批量通过（`payAppAudit` → `AuditAsync`，`success: true`）。
 - **驳回：** 工具栏只留一个【驳回】。勾选「审核中」或「审核通过」可用；已驳回、部分通过不可驳。待审与整单已通过走 `AuditAsync(success: false)`；整单仍在审但本人节点已过走 `RejectAsync`（同一按钮内分流，页面不再露出「审核后驳回」）。
 
@@ -69,7 +69,7 @@ last_updated: 2026-09-20
 | **应收未结算** | 该行结算对象已审核通过的应收费用未结算合计（原币、按币别）。展示在右侧独立卡片，标题带结算单位，不进列表列。 | 列表 `PayAppTaskListAsync` → `settlementReceivableGroup[]`（随选中行传入详情面板） | **触发/依赖：** 点击列表行后回填；与本申请 `currencyGroup` 无关；空数组兜底 `?? []`。 | 已结清币别不出现；无欠款显示「无欠款」。不要当成「本申请可结算余额」。 |
 | **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 | **申请合计** | 各币别申请净额（付 − 收）。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 保留列表与明细底部合计；右上原币合计已移除 | 只读 |
-| **应收结算状态** | 该票全部应收费用的整票结算状态。 | `DetailAsync` → `payAppFeeBySeaExportGroup[].transportOrder.recSettlementStatus` | 0 未结算 / 1 部分结算 / 2 结算完毕；空值「—」 | 待后端需求 #0147 补值，不从申请局部费用推算 |
+| **应收结算状态** | 该票全部应收费用的整票结算状态。 | `DetailAsync` → `payAppFeeBySeaExportGroup[].transportOrder.recSettlementStatus` | 0 未结算 / 1 部分结算 / 2 结算完毕；无应收为 `null` 显示「—」 | 只读；不从申请局部费用推算 |
 | **发票与附件** | 独立发票表展示发票子表（票号/抬头/日期/金额/单附件，有金额时显示总额），再按附件明细类型分组展示申请附件，另含结算附件。 | `DetailAsync` → `paymentApplicationInvoices[].attachment` / `attachmentGroup` / `paymentSettlements[].attachments` | 申请分组按类型原始 `sortId` 降序；点击调用 `openAttachmentViewer`；无发票附件显示「无附件」；总额前端求和 | 只读 |
 | **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑与 `NestedDataTable`（`fill-height`，外层表头纵滚吸顶）；加载后 `expandedGroupKeys` 为空，默认不展开 | 只读 |
 | **审核意见** | 通过或驳回备注。 | 审核弹窗输入 | 写入 `AuditAsync`；本人节点已过的驳回写入 `RejectAsync` | 建议驳回时填写 |
@@ -94,6 +94,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-20 | `Parsing` | 无 | 核对 #0147 已在付费申请 `DetailAsync` 按整票应收汇总 `recSettlementStatus`；无应收为 `null` 显示「—」。文档去掉「待后端」。详见 [解析日志](../../parsing-logs/parse-log-2026-09-20-付费审批整票应收结算状态对接.md)。 |
 | 2026-09-20 | `Fix` | 修复主提单号、委托编号和结算对象名称刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-19 | `Fix` | #0967 审核状态合并并支持流程浮层；右侧改为应收未结算、发票表、附件；一级行新增应收结算状态。 | 后端字段依赖 #0147，空值展示「—」；快速切换单据时忽略旧详情响应。 |
 | 2026-09-14 | `Fix` | 审批详情申请附件分组按类型原始 `sortId` 降序。 | 详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
