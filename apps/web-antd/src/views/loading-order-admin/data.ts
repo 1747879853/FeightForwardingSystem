@@ -87,10 +87,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Select',
-      fieldName: 'status',
+      fieldName: 'statuses',
       label: $t('seaExport.loadingOrder.list.status'),
       componentProps: {
         allowClear: true,
+        mode: 'multiple',
+        maxTagCount: 2,
         options: getStatusOptions(),
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',

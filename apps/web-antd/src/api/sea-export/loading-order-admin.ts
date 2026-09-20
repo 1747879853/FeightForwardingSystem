@@ -216,7 +216,10 @@ export namespace LoadingOrderAdminApi {
 
   /** 监装工单分页列表查询 */
   export interface LoadingOrderQueryDto {
+    /** 单选；与 statuses 同时传时两个条件都生效，列表筛选用 statuses */
     status?: number;
+    /** 多选。GET 需 repeat：statuses=1&statuses=2；空/不传不筛 */
+    statuses?: number[];
     loadingOrderNum?: string;
     carrierYardId?: string;
     estimatedArrivalDate?: string;
@@ -286,7 +289,11 @@ export const getLoadingOrderPagedList = (
 ) => {
   return requestClient.get<LoadingOrderAdminApi.PagedListOfLoadingOrderListDto>(
     `${ADMIN_PREFIX}/GetPagedListAsync`,
-    { params },
+    {
+      params,
+      // statuses 为 List<enum>，ABP [FromQuery] 需 repeat：statuses=1&statuses=2
+      paramsSerializer: 'repeat',
+    },
   );
 };
 

@@ -42,8 +42,22 @@ const getRangeValue = (
     : [undefined, undefined];
 };
 
+const toStatusList = (value: unknown) => {
+  const raw = Array.isArray(value) ? value : value == null ? [] : [value];
+  const next = [
+    ...new Set(
+      raw
+        .map((item) =>
+          typeof item === 'number' ? item : Number.parseInt(String(item), 10),
+        )
+        .filter((item) => Number.isInteger(item)),
+    ),
+  ];
+  return next.length > 0 ? next : undefined;
+};
+
 const normalizeQuery = (formValues: Record<string, unknown>) => {
-  const { creationTimeRange, ...rest } = formValues;
+  const { creationTimeRange, statuses, ...rest } = formValues;
   const [creationTimeStart, creationTimeEnd] = getRangeValue(creationTimeRange);
 
   const trimText = (value: unknown) =>
@@ -56,9 +70,11 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     commissionNum: trimText(rest.commissionNum),
     vessel: trimText(rest.vessel),
     innerVoyno: trimText(rest.innerVoyno),
+    statuses: toStatusList(statuses),
     creationTimeStart: toIsoStartOfDay(creationTimeStart),
     creationTimeEnd: toIsoEndOfDay(creationTimeEnd),
     creationTimeRange: undefined,
+    status: undefined,
   };
 };
 
