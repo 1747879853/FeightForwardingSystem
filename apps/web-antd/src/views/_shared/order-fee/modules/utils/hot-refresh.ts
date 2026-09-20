@@ -2,22 +2,10 @@
  * Handsontable 局部刷新：选中 / 预警高亮避免动辄整表 render。
  */
 
-import { getFeeStatusOptions } from '../../data';
-
-const WARNING_BG = '#ffccc7';
-
-function resolveRowStatusBackground(row: any): null | string {
-  if (!row) return null;
-  const feeStatus = row.combinedFeeStatus ?? row.feeStatus;
-  const statusOption = getFeeStatusOptions().find(
-    (option) => option.value === feeStatus,
-  );
-  return statusOption?.color ? `${statusOption.color}30` : null;
-}
+import { applyHotCellChrome } from './hot-cell-render';
 
 /**
- * 预警高亮：须同步改内联 background（afterRenderer 用 important 写过状态色，
- * 仅 toggle class 无法盖过内联 important）。
+ * 预警高亮：用 class 切换（与 afterRenderer 一致），不再写内联 !important。
  */
 export function applyHotWarningHighlightClasses(
   hot: any,
@@ -35,19 +23,18 @@ export function applyHotWarningHighlightClasses(
     if (typeof physical !== 'number' || physical < 0) continue;
     const row = dataSource[physical];
     const on = !!(row?.id && idSet.has(String(row.id)));
-    const statusBg = resolveRowStatusBackground(row);
+    const statusValue = row?.combinedFeeStatus ?? row?.feeStatus;
 
     for (let col = 0; col < colCount; col++) {
       const td = hot.getCell(visual, col, true);
       if (!td) continue;
-      td.classList.toggle('ht-fee-warning-highlight', on);
-      if (on) {
-        td.style.setProperty('background-color', WARNING_BG, 'important');
-      } else if (statusBg) {
-        td.style.setProperty('background-color', statusBg, 'important');
-      } else {
-        td.style.removeProperty('background-color');
-      }
+      applyHotCellChrome(td, {
+        warning: on,
+        statusValue:
+          statusValue === null || statusValue === undefined
+            ? null
+            : Number(statusValue),
+      });
     }
   }
 }

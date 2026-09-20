@@ -345,10 +345,110 @@ defineExpose({
 }
 
 :deep(.handsontable) {
-  /* 只读底色交给 afterRenderer 内联样式；激活编辑时隐藏单元格文字避免重影 */
+  /* 只读底色交给状态/预警 class；激活编辑时隐藏单元格文字避免重影 */
   td.ht__active_highlight {
     color: transparent !important;
     background-color: transparent !important;
+  }
+
+  /* 轻量文本格：替代每帧 span + 内联 style */
+  td.ht-fee-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #262626;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  td.ht-fee-ellipsis.ht-fee-cell-empty {
+    color: #999;
+  }
+
+  td.ht-fee-align-right {
+    text-align: right;
+  }
+
+  td.ht-fee-align-center {
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  /* 新增未保存行「新」角标（费用代码列） */
+  td.ht-fee-new-row {
+    position: relative;
+    padding-right: 22px;
+
+    &::after {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      z-index: 1;
+      padding: 1px 4px;
+      font-size: 10px;
+      line-height: 1.2;
+      color: #fff;
+      pointer-events: none;
+      content: '新';
+      background: #ff4d4f;
+      border-radius: 2px;
+    }
+  }
+
+  /* 费用状态底色（与 getFeeStatusOptions 色值 + 30 透明一致） */
+  td.ht-fee-status-0 {
+    background-color: #b8cdd730 !important;
+  }
+
+  td.ht-fee-status-1 {
+    background-color: #ffc10730 !important;
+  }
+
+  td.ht-fee-status-2 {
+    background-color: #67c23a30 !important;
+  }
+
+  td.ht-fee-status-3 {
+    background-color: #87ceeb30 !important;
+  }
+
+  td.ht-fee-status-4 {
+    background-color: #1e90ff30 !important;
+  }
+
+  td.ht-fee-status-5 {
+    background-color: #f56c6c30 !important;
+  }
+
+  td.ht-fee-status-6,
+  td.ht-fee-status-7 {
+    background-color: #ff990030 !important;
+  }
+
+  /* 预警高亮优先于状态底色 */
+  td.ht-fee-warning-highlight {
+    background-color: #ffccc7 !important;
+  }
+
+  .fee-status-cell {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .fee-status-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #262626;
+  }
+
+  .fee-status-mod-count {
+    flex-shrink: 0;
+    font-weight: bold;
+    color: #ff4d4f;
   }
 
   .htAutocompleteArrow {

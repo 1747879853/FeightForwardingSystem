@@ -3,11 +3,12 @@ import { orderFeeFieldPermission } from '#/composables/field-permission-profiles
 import { shallowRef, nextTick, type Ref } from 'vue';
 import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { getFeeStatusOptions, markUserEditedCell } from '../../data';
+import { markUserEditedCell } from '../../data';
 import {
   ensureEmptyTableHorizontalScroll,
   isSavableOrderFeeRow,
 } from '../utils/helpers';
+import { applyHotCellChrome } from '../utils/hot-cell-render';
 
 /** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
 const USER_EDIT_SOURCES = new Set([
@@ -55,9 +56,49 @@ export function useHotSettings(
     Array.isArray(dataSource) ? dataSource : dataSource.value;
   const getSelectedRowKeys = () =>
     Array.isArray(selectedRowKeys) ? selectedRowKeys : selectedRowKeys.value;
-  const getHighlightIds = () => {
+
+  /** 同一帧渲染内复用：高亮 Set / 行级状态色与可编辑判定 */
+  let highlightCacheKey = '';
+  let highlightCacheSet = new Set<string>();
+  const rowPaintCache = new Map<
+    number,
+    {
+      statusValue: null | number;
+      warning: boolean;
+      savable: boolean;
+    }
+  >();
+
+  const getHighlightIdsCached = () => {
     const ids = getHighlightFeeIds?.() ?? [];
-    return new Set(ids.map((id) => String(id)));
+    const key = ids.map(String).join('\0');
+    if (key === highlightCacheKey) return highlightCacheSet;
+    highlightCacheKey = key;
+    highlightCacheSet = new Set(ids.map(String));
+    return highlightCacheSet;
+  };
+
+  const getRowPaintMeta = (row: number, rowData: any) => {
+    const cached = rowPaintCache.get(row);
+    if (cached) return cached;
+    const statusValue = (rowData?.combinedFeeStatus ?? rowData?.feeStatus) as
+      | null
+      | number;
+    const highlightIds = getHighlightIdsCached();
+    const meta = {
+      savable: !!rowData && isSavableOrderFeeRow(rowData),
+      statusValue:
+        statusValue === null || statusValue === undefined
+          ? null
+          : Number(statusValue),
+      warning: !!(
+        rowData?.id &&
+        highlightIds.size > 0 &&
+        highlightIds.has(String(rowData.id))
+      ),
+    };
+    rowPaintCache.set(row, meta);
+    return meta;
   };
 
   const hotSettings = shallowRef({
@@ -109,6 +150,12 @@ export function useHotSettings(
     autoRowSize: false,
     autoColumnSize: false,
     renderAllRows: false,
+    // 略增预渲染行数，拖滚动条时少露白
+    viewportRowRenderingOffset: 20,
+
+    beforeRender: function () {
+      rowPaintCache.clear();
+    },
 
     // 仅录入/驳回且未对账可内联编辑；已对账、权限遮罩、其它状态整格只读
     cells: function (row: number, col: number, prop: string | number) {
@@ -118,9 +165,10 @@ export function useHotSettings(
         return cellProperties;
       }
       const rowData = getDataSource()[row];
+      const paint = getRowPaintMeta(row, rowData);
       if (
         rowData &&
-        (!isSavableOrderFeeRow(rowData) ||
+        (!paint.savable ||
           fieldPermission.masked(
             String(prop),
             rowData?.id ? rowData : undefined,
@@ -128,13 +176,7 @@ export function useHotSettings(
       ) {
         cellProperties.readOnly = true;
       }
-      // 预警悬停：对应费用行标红
-      const highlightIds = getHighlightIds();
-      if (
-        highlightIds.size > 0 &&
-        rowData?.id &&
-        highlightIds.has(String(rowData.id))
-      ) {
+      if (paint.warning) {
         cellProperties.className = [
           cellProperties.className,
           'ht-fee-warning-highlight',
@@ -527,47 +569,27 @@ export function useHotSettings(
       cellProperties: any,
     ) {
       const rowData = getDataSource()[row];
-      const highlightIds = getHighlightIds();
-      const isWarningHighlight =
-        !!rowData?.id &&
-        highlightIds.size > 0 &&
-        highlightIds.has(String(rowData.id));
-      const feeStatus =
-        (rowData as any)?.combinedFeeStatus ?? (rowData as any)?.feeStatus;
-      const statusOption = getFeeStatusOptions().find(
-        (option) => option.value === feeStatus,
-      );
-      const rowBackgroundColor = statusOption?.color
-        ? `${statusOption.color}30`
-        : null;
-
-      /** 预警高亮必须在任何 early-return 前同步，否则 *** 遮罩格会残留红底 */
-      const applyWarningHighlight = (bgFallback: null | string = null) => {
-        td.classList.toggle('ht-fee-warning-highlight', isWarningHighlight);
-        if (isWarningHighlight) {
-          td.style.setProperty('background-color', '#ffccc7', 'important');
-          return;
-        }
-        if (bgFallback) {
-          td.style.setProperty('background-color', bgFallback, 'important');
-        } else {
-          td.style.removeProperty('background-color');
-        }
-      };
+      const paint = getRowPaintMeta(row, rowData);
 
       if (
         fieldPermission.masked(String(prop), rowData?.id ? rowData : undefined)
       ) {
         td.textContent = '***';
         td.removeAttribute('title');
-        applyWarningHighlight(rowBackgroundColor);
+        applyHotCellChrome(td, {
+          warning: paint.warning,
+          statusValue: paint.statusValue,
+        });
         return;
       }
-      // 费用状态着色 - 使用 setProperty 确保优先级
-      if (rowData) {
-        applyWarningHighlight(rowBackgroundColor);
 
-        // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现（无 DOM 增删开销）
+      applyHotCellChrome(td, {
+        warning: paint.warning,
+        statusValue: paint.statusValue,
+      });
+
+      // ✅ 已修改单元格标记：一次 Set 查找 + class 开关，角标由纯 CSS 呈现
+      if (rowData) {
         const editedFields = (rowData as any)._editedFields as
           | Set<string>
           | undefined;
@@ -581,8 +603,6 @@ export function useHotSettings(
         } else if (td.title === EDITED_CELL_TITLE) {
           td.title = '';
         }
-      } else {
-        applyWarningHighlight(null);
       }
     },
 
