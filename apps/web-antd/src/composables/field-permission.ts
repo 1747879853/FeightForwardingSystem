@@ -1,5 +1,9 @@
 import type { FrightModule } from '#/api/system/permission';
-import { hasMaskRule, isAlwaysMasked } from './use-masked-fields';
+import {
+  hasAnyMaskRules,
+  hasMaskRule,
+  isAlwaysMasked,
+} from './use-masked-fields';
 
 /** JSON 路径必须指向原始 DTO；共享 SimpleDto 的子属性归属于整个对象。 */
 export interface FieldPermissionProfile {
@@ -40,6 +44,18 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
       value,
     ]),
   );
+  /** 行对象字段名小写集合，避免 masked 每格 Object.keys */
+  const rowKeyCache = new WeakMap<object, Set<string>>();
+
+  function rowHasKey(object: object, key: string): boolean {
+    let set = rowKeyCache.get(object);
+    if (!set) {
+      set = new Set(Object.keys(object).map((name) => name.toLowerCase()));
+      rowKeyCache.set(object, set);
+    }
+    return set.has(key.toLowerCase());
+  }
+
   function paths(field: string): string[] {
     return (
       aliases.get(field.toLowerCase()) ??
@@ -64,6 +80,8 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
     );
   }
   function masked(field: string, input: any): boolean {
+    // 无任何屏蔽规则时整表短路，滚动路径上每格可省掉路径解析与键扫描
+    if (!hasAnyMaskRules()) return false;
     if (always(field)) return true;
     const row = input?.[RAW_PERMISSION_ROW] ?? input;
     if (!row) return always(field);
@@ -73,10 +91,7 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
         if (!object || typeof object !== 'object') return false;
         return (
           isAlwaysMasked(module, key) ||
-          (hasMaskRule(module, key) &&
-            !Object.keys(object).some(
-              (name) => name.toLowerCase() === key.toLowerCase(),
-            ))
+          (hasMaskRule(module, key) && !rowHasKey(object, key))
         );
       }),
     );

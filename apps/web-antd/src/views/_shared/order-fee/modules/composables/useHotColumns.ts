@@ -17,6 +17,12 @@ import {
   isOrderFeeRejectedStatus,
   resolveLatestOrderFeeRejectRemark,
 } from '../utils/helpers';
+import {
+  NEW_ROW_CLASS,
+  formatMoney2,
+  paintCheckboxCell,
+  paintEllipsisCell,
+} from '../utils/hot-cell-render';
 import { getFeeInvoiceStatusTextColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 const FEE_REJECT_TIP_CLASS = 'fee-reject-help-floating-tip';
@@ -104,12 +110,7 @@ export function useHotColumns(
         instance: any,
         td: HTMLTableCellElement,
         row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
       ) {
-        // ✅ 关键修复：在渲染器执行时动态获取最新的 selectedRowKeys，确保响应式更新
         const currentDataSource = Array.isArray(dataSource)
           ? dataSource
           : dataSource.value;
@@ -119,22 +120,10 @@ export function useHotColumns(
 
         const rowData = currentDataSource[row];
         const rowKey = (rowData as any)?._rowKey;
-        const isSelected = rowKey && currentSelectedRowKeys.includes(rowKey);
-
-        td.innerHTML = '';
-        td.style.textAlign = 'center';
-        td.style.verticalAlign = 'middle';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = !!isSelected;
-        checkbox.style.width = '16px';
-        checkbox.style.height = '16px';
-        checkbox.style.cursor = 'pointer';
-        checkbox.style.pointerEvents = 'none';
-
-        td.appendChild(checkbox);
-        return td;
+        const isSelected = !!(
+          rowKey && currentSelectedRowKeys.includes(rowKey)
+        );
+        return paintCheckboxCell(td, isSelected);
       },
     };
 
@@ -185,11 +174,10 @@ export function useHotColumns(
           const invoiceStatus = (rowData as any)?.invoiceStatus;
           const statusLabel = getInvoiceStatusLabel(invoiceStatus);
           const statusColor = getFeeInvoiceStatusTextColor(invoiceStatus);
-
-          td.innerHTML = '';
-          td.style.textAlign = 'center';
-          td.style.verticalAlign = 'middle';
-          td.innerHTML = `<span style="color: ${statusColor}; font-weight: bold; font-size: 12px;">${statusLabel || ''}</span>`;
+          paintEllipsisCell(td, statusLabel || '', { align: 'center' });
+          td.style.color = statusColor;
+          td.style.fontWeight = 'bold';
+          td.style.fontSize = '12px';
           return td;
         };
       } else if (meta.field === 'feeCodeId') {
@@ -226,44 +214,23 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-
-          // ✅ 获取当前行数据，判断是否为新增未保存的行
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
           const rowData = actualDataSource[row] as any;
           const isNewRow = !rowData?.id || rowData.id === '';
 
-          // ✅ 关键修改：只显示"-"后面的字符串（费用名称）
           let displayName = '';
           if (value && typeof value === 'string') {
             const parts = value.split('-');
-            // 如果有"-"，取后面的部分；否则使用原值
             displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
           }
 
-          // ✅ 修复：直接设置单元格样式和内容，不使用额外的 div 容器
-          td.style.position = 'relative';
-
-          // ✅ 如果是未保存的新增行，添加小标签
-          if (isNewRow) {
-            const labelSpan = document.createElement('span');
-            labelSpan.textContent = '新';
-            labelSpan.style.cssText =
-              'position: absolute; top: 2px; right: 4px; background: #ff4d4f; color: white; font-size: 10px; padding: 1px 4px; border-radius: 2px; line-height: 1.2; z-index: 1; pointer-events: none;';
-            td.appendChild(labelSpan);
-          }
-
-          // ✅ 添加费用名称文本
-          const textSpan = document.createElement('span');
-          textSpan.textContent = displayName || '请选择';
-          textSpan.style.cssText = `color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;`;
-          td.appendChild(textSpan);
-
-          return td;
+          return paintEllipsisCell(td, displayName, {
+            placeholder: '请选择',
+            extraClass: isNewRow ? NEW_ROW_CLASS : undefined,
+          });
         };
       } else if (meta.field === 'industryCategory') {
         hotCol.type = 'autocomplete';
@@ -313,13 +280,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-          const label = value || '';
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'settlementId') {
         hotCol.type = 'autocomplete';
@@ -367,19 +329,13 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-          // ✅ 关键修改：只显示"-"后面的字符串（客户名称）
           let displayName = '';
           if (value && typeof value === 'string') {
             const parts = value.split('-');
-            // 如果有"-"，取后面的部分；否则使用原值
             displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
           }
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
-          return td;
+          return paintEllipsisCell(td, displayName, { placeholder: '请选择' });
         };
       } else if (meta.field === 'currencyId') {
         hotCol.type = 'autocomplete';
@@ -415,13 +371,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-          const label = value || '';
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'unit') {
         hotCol.type = 'autocomplete';
@@ -459,13 +410,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-          const label = value || '';
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'unitPrice') {
         hotCol.type = 'numeric';
@@ -479,26 +425,10 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-          td.innerHTML = '';
-
-          // ✅ 新增：格式化数值，添加千位逗号分隔符
-          let displayValue = '0.00';
-          if (value !== null && value !== undefined && value !== '') {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
-              displayValue = numValue.toLocaleString('zh-CN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-            }
-          }
-
-          // ✅ 新增：右对齐样式 + 省略号
-          td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
-          return td;
+          return paintEllipsisCell(td, formatMoney2(value) || '0.00', {
+            align: 'right',
+          });
         };
       } else if (meta.field === 'quantity') {
         hotCol.type = 'numeric';
@@ -512,9 +442,7 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
           let displayValue = '0';
           if (value !== null && value !== undefined && value !== '') {
             const numValue = Number.parseFloat(value);
@@ -522,8 +450,7 @@ export function useHotColumns(
               displayValue = formatWeightVolumeLocale(numValue) || '0';
             }
           }
-          td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
-          return td;
+          return paintEllipsisCell(td, displayValue, { align: 'right' });
         };
       } else if (meta.field === 'amount') {
         hotCol.type = 'numeric';
@@ -537,26 +464,10 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-          td.innerHTML = '';
-
-          // ✅ 新增：格式化数值，添加千位逗号分隔符
-          let displayValue = '0.00';
-          if (value !== null && value !== undefined && value !== '') {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
-              displayValue = numValue.toLocaleString('zh-CN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-            }
-          }
-
-          // ✅ 新增：右对齐样式 + 省略号
-          td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
-          return td;
+          return paintEllipsisCell(td, formatMoney2(value) || '0.00', {
+            align: 'right',
+          });
         };
       } else if (meta.field === 'taxRate') {
         hotCol.type = 'numeric';
@@ -570,14 +481,10 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-          td.innerHTML = '';
-          const label = value || '';
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '0.00%'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', {
+            placeholder: '0.00%',
+          });
         };
       } else if (meta.field === 'taxAmount') {
         hotCol.type = 'numeric';
@@ -591,11 +498,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', { placeholder: '0.00' });
         };
       } else if (meta.field === 'totalAmount') {
         hotCol.type = 'numeric';
@@ -609,11 +513,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '', { placeholder: '0.00' });
         };
       } else if (meta.field === 'remark') {
         hotCol.type = 'text';
@@ -625,13 +526,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-          td.innerHTML = '';
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || ''}</span>`;
-          return td;
+          return paintEllipsisCell(td, value || '');
         };
       } else if (
         meta.field === 'combinedFeeStatus' ||
@@ -647,7 +543,6 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
           const currentDataSource = Array.isArray(dataSource)
             ? dataSource
@@ -662,29 +557,29 @@ export function useHotColumns(
             rowData?.MODIFICATIONCOUNT ??
             0;
           const rejected = isOrderFeeRejectedStatus(statusValue);
+          const reason = rejected
+            ? resolveLatestOrderFeeRejectRemark(rowData)
+            : '';
+          const sig = `${statusValue}|${modificationCount}|${rejected ? 1 : 0}|${reason}`;
 
-          td.innerHTML = '';
           td.style.cursor = 'pointer';
           td.style.textAlign = 'center';
           td.style.verticalAlign = 'middle';
           td.style.overflow = 'hidden';
 
+          // 内容未变则复用 DOM，避免滚动时反复拆装与重复绑监听
+          if (td.dataset.feeStatusSig === sig && td.childElementCount > 0) {
+            return td;
+          }
+          td.dataset.feeStatusSig = sig;
+          td.replaceChildren();
+
           const wrap = document.createElement('span');
           wrap.className = 'fee-status-cell';
-          wrap.style.display = 'inline-flex';
-          wrap.style.alignItems = 'center';
-          wrap.style.justifyContent = 'center';
-          wrap.style.gap = '4px';
-          wrap.style.maxWidth = '100%';
-          wrap.style.whiteSpace = 'nowrap';
-          wrap.style.overflow = 'hidden';
 
           const statusSpan = document.createElement('span');
           statusSpan.className = 'fee-status-label';
           statusSpan.textContent = label || '';
-          statusSpan.style.color = '#262626';
-          statusSpan.style.overflow = 'hidden';
-          statusSpan.style.textOverflow = 'ellipsis';
           if (!rejected) {
             statusSpan.title = modificationCount
               ? `双击查看审核历史(共 ${modificationCount} 次修改)`
@@ -697,23 +592,16 @@ export function useHotColumns(
             help.className = 'fee-reject-help';
             help.setAttribute('aria-label', '查看驳回原因');
             help.textContent = '?';
-
-            const reason = resolveLatestOrderFeeRejectRemark(rowData);
-            help.addEventListener('mouseenter', () => {
-              showFeeRejectHelpTip(help, reason);
-            });
-            help.addEventListener('mouseleave', () => {
-              hideFeeRejectHelpTip();
-            });
+            // 属性赋值覆盖旧 handler，避免 addEventListener 累积
+            help.onmouseenter = () => showFeeRejectHelpTip(help, reason);
+            help.onmouseleave = () => hideFeeRejectHelpTip();
             wrap.appendChild(help);
           }
 
           if (modificationCount && modificationCount > 0) {
             const countSpan = document.createElement('span');
+            countSpan.className = 'fee-status-mod-count';
             countSpan.textContent = `+${modificationCount}`;
-            countSpan.style.color = '#ff4d4f';
-            countSpan.style.fontWeight = 'bold';
-            countSpan.style.flexShrink = '0';
             countSpan.title = `点击查看 ${modificationCount} 次修改记录`;
             wrap.appendChild(countSpan);
           }
@@ -735,12 +623,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          const formattedDate = formatDateTime(value);
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${formattedDate}</span>`;
-          return td;
+          return paintEllipsisCell(td, formatDateTime(value));
         };
       } else if (meta.field === 'dataEntryMethod') {
         hotCol.type = 'text';
@@ -753,12 +637,8 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          const label = getDataEntryMethodLabel(value);
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || ''}</span>`;
-          return td;
+          return paintEllipsisCell(td, getDataEntryMethodLabel(value) || '');
         };
       } else if (
         ['exchangeRate', 'unitPrice', 'amount', 'quantity', 'taxRate'].includes(
@@ -776,38 +656,27 @@ export function useHotColumns(
           col: number,
           prop: string,
           value: any,
-          cellProperties: any,
         ) {
-          // 先清空单元格内容，防止与编辑器残留内容重叠
-          td.innerHTML = '';
-
-          // 根据字段类型格式化显示值
           let displayValue = '';
           if (value !== null && value !== undefined && value !== '') {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
+            const numValue = Number.parseFloat(value);
+            if (!Number.isNaN(numValue)) {
               if (
                 prop === 'exchangeRate' ||
                 prop === 'unitPrice' ||
                 prop === 'amount'
               ) {
-                displayValue = numValue.toLocaleString('zh-CN', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                });
+                displayValue = formatMoney2(numValue);
               } else if (prop === 'quantity') {
                 displayValue = formatWeightVolumeLocale(numValue) || '0';
               } else if (prop === 'taxRate') {
-                displayValue = (numValue * 100).toFixed(2) + '%';
+                displayValue = `${(numValue * 100).toFixed(2)}%`;
               } else {
-                displayValue = value.toString();
+                displayValue = String(value);
               }
             }
           }
-
-          // ✅ 新增：添加省略号样式
-          td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '0'}</span>`;
-          return td;
+          return paintEllipsisCell(td, displayValue || '0', { align: 'right' });
         };
       } else if (
         meta.field === 'invoiceBlocked' ||
@@ -841,21 +710,16 @@ export function useHotColumns(
           instance: any,
           td: HTMLTableCellElement,
           row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
         ) {
-          td.innerHTML = '';
-          // 从 statements 数组中获取 statementNum，多个用“，”分割展示
           const currentDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
           const rowData = currentDataSource[row] as any;
           const statementNum = getStatementNumsText(rowData);
-          // ✅ 添加省略号样式，title 展示完整对账单号
-          td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="${statementNum}">${statementNum}</span>`;
-          return td;
+          return paintEllipsisCell(td, statementNum, {
+            align: 'center',
+            title: statementNum,
+          });
         };
       } else if (meta.field === 'creatorUserName') {
         hotCol.type = 'text';

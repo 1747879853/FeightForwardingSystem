@@ -122,6 +122,14 @@ export function getAlwaysMaskedProps(module: number): string[] {
 }
 
 /**
+ * 当前用户是否配置了任意字段屏蔽规则。
+ * 费用表滚动路径上用于短路 masked()，无规则时不做逐格扫描。
+ */
+export function hasAnyMaskRules(): boolean {
+  return loaded.value && maskedFieldIndex.value.size > 0;
+}
+
+/**
  * 字段级权限（PropMask）规则是否已加载完成。
  * 未加载时所有查询函数都返回「未屏蔽」，调用方据此跳过过滤，避免误隐藏
  */

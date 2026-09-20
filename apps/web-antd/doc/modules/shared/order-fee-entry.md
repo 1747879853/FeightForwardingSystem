@@ -465,6 +465,7 @@ stateDiagram-v2
 - 客户按行业懒加载（打开结算对象下拉时拉取；未选行业才走全量分组接口），挂载不再全量 Spin。
 - 选中/预警高亮：行级刷新或 DOM class，避免动辄整表 `render()`。
 - 字段联动（费用代码/币别/价税等）：脏行 `refreshHotSourceRows`，不再整表 `loadData`/`render`。
+- 滚动绘制：轻量 `textContent` renderer、行级 paint 缓存、状态/预警用 CSS class；`masked` 无规则短路。
 - 提交利润校验复用对立表内存行；收付互生只刷对立侧。
 - 挂载时费用列表与下拉源并行，主单表格先出。
 - 空运 `dataI18nPrefix` 使用 `airExport.export`（列文案与海出键对齐）。
@@ -589,5 +590,6 @@ apps/web-antd/src/views/_shared/order-fee/
 
 | 日期 | 说明 |
 | --- | --- |
+| 2026-09-20 | 滚动绘制优化：轻量 renderer、行级缓存、状态底色 class。 |
 | 2026-09-20 | 列定义收敛为 `order-fee-column-meta.ts`；联动改脏行刷新。 |
 | 2026-09-20 | 初版：整理应收应付费用录入全量功能（布局、工具栏收纳后现状、联动、状态、API、更改单差异）。 |
