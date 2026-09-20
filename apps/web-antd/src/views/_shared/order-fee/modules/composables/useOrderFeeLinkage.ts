@@ -14,6 +14,13 @@ import {
   findClientTaxRateFromCache,
   resolveFeeTaxRate,
 } from '../utils/helpers';
+import { refreshHotSourceRows } from '../utils/hot-refresh';
+
+/** 联动写入后只刷新脏行，避免整表 loadData/render */
+function refreshLinkedRow(hotInstance: any, rowIndex: number) {
+  if (!hotInstance) return;
+  refreshHotSourceRows(hotInstance, [rowIndex], { fullRenderThreshold: 1 });
+}
 
 /**
  * 订单详情缓存提升到模块级：编辑页保存成功后可通过 clearOrderDetailCache
@@ -731,14 +738,8 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'unit');
       markLinkedCell(row, 'quantity');
 
-      // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
-      if (hotInstance) {
-        // 在刷新前检查数据
-        const currentRow = dataContext.dataSource.value[rowIndex];
-
-        // 使用 loadData 重新加载数据以确保响应式更新
-        hotInstance.loadData(dataContext.dataSource.value);
-      }
+      // 只刷新脏行，确保联动写入的展示字段（含结算对象等）被正确渲染
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleFeeCodeChange] 处理失败:', error);
     }
@@ -791,11 +792,7 @@ export function useOrderFeeLinkage(
         // ✅ 标记联动写入的结算对象（值与原值相同不产生标记）
         markLinkedCell(row, 'settlementId');
 
-        // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
-        if (hotInstance) {
-          // 使用 loadData 重新加载数据以确保响应式更新
-          hotInstance.loadData(dataContext.dataSource.value);
-        }
+        refreshLinkedRow(hotInstance, rowIndex);
       } else {
         console.warn(
           '⚠️ [handleIndustryCategoryChange] 无法获取字母代码:',
@@ -893,10 +890,7 @@ export function useOrderFeeLinkage(
       // ✅ 标记联动写入的汇率（值与原值相同不产生标记）
       markLinkedCell(row, 'exchangeRate');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleCurrencyChange] 处理失败:', error);
     }
@@ -923,10 +917,7 @@ export function useOrderFeeLinkage(
       // ✅ 标记联动写入的数量（值与原值相同不产生标记）
       markLinkedCell(row, 'quantity');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleUnitChange] 处理失败:', error);
     }
@@ -971,10 +962,7 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'noTaxUnitPrice');
       markLinkedCell(row, 'noTaxAmount');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleUnitPriceChange] 处理失败:', error);
     }
@@ -1014,10 +1002,7 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'amount');
       markLinkedCell(row, 'noTaxAmount');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleQuantityChange] 处理失败:', error);
     }
@@ -1054,10 +1039,7 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'noTaxUnitPrice');
       markLinkedCell(row, 'noTaxAmount');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleTaxRateChange] 处理失败:', error);
     }
@@ -1093,10 +1075,7 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'noTaxUnitPrice');
       markLinkedCell(row, 'noTaxAmount');
 
-      // 刷新表格显示
-      if (hotInstance) {
-        hotInstance.render();
-      }
+      refreshLinkedRow(hotInstance, rowIndex);
     } catch (error) {
       console.error('❌ [handleAmountChange] 处理失败:', error);
     }

@@ -235,6 +235,8 @@ flowchart TB
 
 ## 6. 表格列与展示规则
 
+列 field / title / width 以 `order-fee-column-meta.ts` 为单一来源；`useHotColumns` 直接按 meta 适配 Handsontable，`useOrderFeeColumns`（`data.ts`）仅作 VXE 薄适配。
+
 ### 6.1 列顺序（左 → 右）
 
 勾选 | 序号 | 开票状态 | 费用状态 | 费用代码 | 行业类别 | 结算对象 | 币别 | 汇率 | 含税单价 | 含税金额 | 单位 | 数量 | 税率 | 不含税单价 | 不含税金额 | 对账单号 | 申请付款金额 | 已开票 | 发票申请金额 | 已结算 | 不开发票 | 保密 | 备注 | 录入方式 | 创建人 | 创建时间
@@ -318,6 +320,8 @@ flowchart TB
 | 含税单价 / 数量 | `金额 = 单价 × 数量`；重算不含税价税 |
 | 含税金额 | 反推单价；重算不含税 |
 | 税率 | `不含税单价 = 含税单价 / (1 + 税率/100)`；`不含税金额 = 不含税单价 × 数量` |
+
+联动写入后通过 `refreshHotSourceRows` 只刷脏行（含 `afterRenderer` 编辑标记/状态底色），不再整表 `loadData` / `render`。
 
 ### 7.3 下拉数据源
 
@@ -460,6 +464,7 @@ stateDiagram-v2
 - 费用页挂载只调 `getOrderFeeCount` 刷角标；金额汇总由子表 `@update-amount` 上报，**不再**额外 `PageSize:999` 拉全量列表。
 - 客户按行业懒加载（打开结算对象下拉时拉取；未选行业才走全量分组接口），挂载不再全量 Spin。
 - 选中/预警高亮：行级刷新或 DOM class，避免动辄整表 `render()`。
+- 字段联动（费用代码/币别/价税等）：脏行 `refreshHotSourceRows`，不再整表 `loadData`/`render`。
 - 提交利润校验复用对立表内存行；收付互生只刷对立侧。
 - 挂载时费用列表与下拉源并行，主单表格先出。
 - 空运 `dataI18nPrefix` 使用 `airExport.export`（列文案与海出键对齐）。
@@ -492,7 +497,8 @@ stateDiagram-v2
 apps/web-antd/src/views/_shared/order-fee/
 ├── OrderFeePage.vue                 # 页面壳：布局、顶栏、汇总
 ├── types.ts / use-adapter.ts        # Adapter 协议
-├── data.ts                          # 列定义、状态枚举、可编辑规则
+├── data.ts                          # 状态枚举、可编辑规则、VXE 薄适配
+├── order-fee-column-meta.ts         # 费用表列 field/title/width 单一来源
 ├── display-field-groups.ts          # 左侧订单信息分组
 ├── adapter/
 │   ├── sea-export.ts
@@ -583,4 +589,5 @@ apps/web-antd/src/views/_shared/order-fee/
 
 | 日期 | 说明 |
 | --- | --- |
+| 2026-09-20 | 列定义收敛为 `order-fee-column-meta.ts`；联动改脏行刷新。 |
 | 2026-09-20 | 初版：整理应收应付费用录入全量功能（布局、工具栏收纳后现状、联动、状态、API、更改单差异）。 |

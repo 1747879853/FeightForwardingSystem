@@ -2,8 +2,11 @@ import { createFieldPermission } from '#/composables/field-permission';
 import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
 import { loadMaskedFields } from '#/composables/use-masked-fields';
 import { computed, type Ref } from 'vue';
-import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { useOrderFeeColumns, getStatementNumsText } from '../../data';
+import {
+  ORDER_FEE_EDIT_COLUMN_META,
+  resolveHotColumnWidth,
+} from '../../order-fee-column-meta';
+import { getStatementNumsText, resolveOrderFeeColumnTitle } from '../../data';
 import { formatWeightVolumeLocale } from '#/utils/weight-volume-precision';
 
 import {
@@ -50,7 +53,7 @@ function showFeeRejectHelpTip(anchor: HTMLElement, reason: string) {
  * Handsontable 列配置生成器
  */
 export function useHotColumns(
-  props: { type: number },
+  _props: { type: number },
   dropdownSources: any,
   dataSource: Ref<any[]> | any[],
   selectedRowKeys: (string | number)[] | Ref<(string | number)[]>,
@@ -80,12 +83,6 @@ export function useHotColumns(
   void loadMaskedFields();
   const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const hotColumns = computed(() => {
-    const vxeColumns = useOrderFeeColumns(props.type);
-
-    if (!vxeColumns || !Array.isArray(vxeColumns)) {
-      return [];
-    }
-
     // 解构 Ref 获取实际值
     const actualDataSource = Array.isArray(dataSource)
       ? dataSource
@@ -165,22 +162,16 @@ export function useHotColumns(
 
     const columns = [checkboxColumn, indexColumn];
 
-    const mappedColumns = vxeColumns.map((col) => {
+    const mappedColumns = ORDER_FEE_EDIT_COLUMN_META.map((meta) => {
       const hotCol: any = {
-        data: col.field,
-        title: col.title,
-        width: col.width || col.minWidth || 100,
+        data: meta.field,
+        title: resolveOrderFeeColumnTitle(meta),
+        width: resolveHotColumnWidth(meta),
       };
 
-      // ✅ 录入方式列宽增加30px
-      if (col.field === 'dataEntryMethod') {
-        hotCol.width = (col.width || 100) + 50;
-      }
-
-      if (col.field === 'invoiceStatus') {
+      if (meta.field === 'invoiceStatus') {
         hotCol.type = 'text';
         hotCol.readOnly = true;
-        hotCol.width = 100;
         hotCol.renderer = function (
           this: any,
           instance: any,
@@ -201,7 +192,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${statusColor}; font-weight: bold; font-size: 12px;">${statusLabel || ''}</span>`;
           return td;
         };
-      } else if (col.field === 'feeCodeId') {
+      } else if (meta.field === 'feeCodeId') {
         hotCol.type = 'autocomplete';
         hotCol.source = function (
           query: string,
@@ -274,7 +265,7 @@ export function useHotColumns(
 
           return td;
         };
-      } else if (col.field === 'industryCategory') {
+      } else if (meta.field === 'industryCategory') {
         hotCol.type = 'autocomplete';
         hotCol.source = function (
           query: string,
@@ -330,7 +321,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
           return td;
         };
-      } else if (col.field === 'settlementId') {
+      } else if (meta.field === 'settlementId') {
         hotCol.type = 'autocomplete';
         // ✅ 关键修复：配置动态 source 函数，支持回车键触发下拉框
         hotCol.source = function (
@@ -390,7 +381,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
           return td;
         };
-      } else if (col.field === 'currencyId') {
+      } else if (meta.field === 'currencyId') {
         hotCol.type = 'autocomplete';
         hotCol.source = function (
           query: string,
@@ -432,7 +423,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
           return td;
         };
-      } else if (col.field === 'unit') {
+      } else if (meta.field === 'unit') {
         hotCol.type = 'autocomplete';
         // ✅ 关键修复：将空数组改为动态 source 函数
         hotCol.source = function (
@@ -476,7 +467,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
           return td;
         };
-      } else if (col.field === 'unitPrice') {
+      } else if (meta.field === 'unitPrice') {
         hotCol.type = 'numeric';
         hotCol.format = '0,0.00';
         hotCol.allowInvalid = false;
@@ -509,7 +500,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
           return td;
         };
-      } else if (col.field === 'quantity') {
+      } else if (meta.field === 'quantity') {
         hotCol.type = 'numeric';
         hotCol.format = '0,0.[0000]';
         hotCol.allowInvalid = false;
@@ -534,7 +525,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
           return td;
         };
-      } else if (col.field === 'amount') {
+      } else if (meta.field === 'amount') {
         hotCol.type = 'numeric';
         hotCol.format = '0,0.00';
         hotCol.allowInvalid = false;
@@ -567,7 +558,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
           return td;
         };
-      } else if (col.field === 'taxRate') {
+      } else if (meta.field === 'taxRate') {
         hotCol.type = 'numeric';
         hotCol.format = '0.00%';
         hotCol.allowInvalid = false;
@@ -588,7 +579,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '0.00%'}</span>`;
           return td;
         };
-      } else if (col.field === 'taxAmount') {
+      } else if (meta.field === 'taxAmount') {
         hotCol.type = 'numeric';
         hotCol.format = '0,0.00';
         hotCol.allowInvalid = false;
@@ -606,7 +597,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
           return td;
         };
-      } else if (col.field === 'totalAmount') {
+      } else if (meta.field === 'totalAmount') {
         hotCol.type = 'numeric';
         hotCol.format = '0,0.00';
         hotCol.allowInvalid = false;
@@ -624,7 +615,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
           return td;
         };
-      } else if (col.field === 'remark') {
+      } else if (meta.field === 'remark') {
         hotCol.type = 'text';
         hotCol.renderer = function (
           this: any,
@@ -643,11 +634,10 @@ export function useHotColumns(
           return td;
         };
       } else if (
-        col.field === 'combinedFeeStatus' ||
-        col.field === 'feeStatus'
+        meta.field === 'combinedFeeStatus' ||
+        meta.field === 'feeStatus'
       ) {
         hotCol.type = 'text';
-        hotCol.width = 110;
         hotCol.readOnly = true;
         hotCol.renderer = function (
           this: any,
@@ -732,8 +722,8 @@ export function useHotColumns(
           return td;
         };
       } else if (
-        col.field === 'creationTime' ||
-        col.field === 'task.auditTime'
+        meta.field === 'creationTime' ||
+        meta.field === 'task.auditTime'
       ) {
         hotCol.type = 'text';
         hotCol.readOnly = true;
@@ -752,7 +742,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${formattedDate}</span>`;
           return td;
         };
-      } else if (col.field === 'dataEntryMethod') {
+      } else if (meta.field === 'dataEntryMethod') {
         hotCol.type = 'text';
         hotCol.readOnly = true;
         hotCol.renderer = function (
@@ -772,7 +762,7 @@ export function useHotColumns(
         };
       } else if (
         ['exchangeRate', 'unitPrice', 'amount', 'quantity', 'taxRate'].includes(
-          col.field || '',
+          meta.field || '',
         )
       ) {
         hotCol.type = 'numeric';
@@ -820,8 +810,8 @@ export function useHotColumns(
           return td;
         };
       } else if (
-        col.field === 'invoiceBlocked' ||
-        col.field === 'isConfidential'
+        meta.field === 'invoiceBlocked' ||
+        meta.field === 'isConfidential'
       ) {
         hotCol.type = 'checkbox';
       } else if (
@@ -832,7 +822,7 @@ export function useHotColumns(
           'invoicedAmount',
           'orderInvoiceAmount',
           'settledAmount',
-        ].includes(col.field || '')
+        ].includes(meta.field || '')
       ) {
         hotCol.type = 'numeric';
         hotCol.readOnly = true;
@@ -842,7 +832,7 @@ export function useHotColumns(
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         };
-      } else if (col.field === 'statementNum') {
+      } else if (meta.field === 'statementNum') {
         // 对账单列 - 只读文本，不可编辑；多个对账单号用“，”分割展示
         hotCol.type = 'text';
         hotCol.readOnly = true;
@@ -867,7 +857,7 @@ export function useHotColumns(
           td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="${statementNum}">${statementNum}</span>`;
           return td;
         };
-      } else if (col.field === 'creatorUserName') {
+      } else if (meta.field === 'creatorUserName') {
         hotCol.type = 'text';
         hotCol.readOnly = true;
       } else {
