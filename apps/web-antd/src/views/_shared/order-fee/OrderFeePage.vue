@@ -22,7 +22,7 @@ import { ORDER_FEE_ADAPTER_KEY, type OrderFeeModuleAdapter } from './types';
 import { useOrderFeeI18n } from './use-adapter';
 import { Page } from '@vben/common-ui';
 
-import { FileText, Settings } from '@vben/icons';
+import { ChevronDown, FileText, Settings } from '@vben/icons';
 
 import {
   Button,
@@ -1068,6 +1068,23 @@ const handleBatchModifySettlementSuccess = () => {
 };
 
 // 下拉菜单操作
+const handleSettlementMenuClick = (info: { key: string | number }) => {
+  switch (String(info.key)) {
+    case 'invoice': {
+      handleCreateInvoiceApplication();
+      break;
+    }
+    case 'payment': {
+      handleCreatePaymentApplication();
+      break;
+    }
+    case 'settlement': {
+      handleBatchModifySettlement();
+      break;
+    }
+  }
+};
+
 const handleMenuClick = (info: any) => {
   const key = info.key;
   switch (key) {
@@ -1229,34 +1246,56 @@ onMounted(async () => {
                 @highlight="handleWarningHighlight"
               />
             </div>
-            <Space class="fee-entry-panel__toolbar-actions">
-              <Button
-                v-access:code="invoiceApplicationPerm.add"
-                :disabled="selectedFeeIds.length === 0"
-                :loading="invoiceApplicationNavLoading"
-                @click="handleCreateInvoiceApplication"
+            <Space size="small" class="fee-entry-panel__toolbar-actions">
+              <Dropdown
+                :trigger="['click']"
+                :disabled="
+                  invoiceApplicationNavLoading || paymentApplicationNavLoading
+                "
               >
-                创建开票申请
-              </Button>
+                <Button
+                  size="small"
+                  :loading="
+                    invoiceApplicationNavLoading || paymentApplicationNavLoading
+                  "
+                >
+                  结算申请
+                  <ChevronDown
+                    class="ml-0.5 inline-block size-3.5 align-middle opacity-70"
+                  />
+                </Button>
+                <template #overlay>
+                  <Menu @click="handleSettlementMenuClick">
+                    <MenuItem
+                      key="invoice"
+                      v-access:code="invoiceApplicationPerm.add"
+                      :disabled="selectedFeeIds.length === 0"
+                    >
+                      创建开票申请
+                    </MenuItem>
+                    <MenuItem
+                      key="payment"
+                      v-access:code="paymentApplicationPerm.add"
+                      :disabled="selectedFeeIds.length === 0"
+                    >
+                      创建付费申请
+                    </MenuItem>
+                    <MenuItem
+                      key="settlement"
+                      v-access:code="orderFeePerm.edit"
+                      :disabled="selectedFeeIds.length === 0"
+                    >
+                      批量改结算对象
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </Dropdown>
 
-              <Button
-                v-access:code="paymentApplicationPerm.add"
-                :disabled="selectedFeeIds.length === 0"
-                :loading="paymentApplicationNavLoading"
-                @click="handleCreatePaymentApplication"
+              <DropdownButton
+                size="small"
+                type="primary"
+                @click="handleSubmitAllFees"
               >
-                创建付费申请
-              </Button>
-
-              <Button
-                v-access:code="orderFeePerm.edit"
-                :disabled="selectedFeeIds.length === 0"
-                @click="handleBatchModifySettlement"
-              >
-                批量改结算对象
-              </Button>
-
-              <DropdownButton type="primary" @click="handleSubmitAllFees">
                 整票提交
                 <template #overlay>
                   <Menu @click="handleMenuClick">
@@ -1585,7 +1624,7 @@ onMounted(async () => {
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 14px;
   background: linear-gradient(
     90deg,
     hsl(var(--primary) / 8%) 0%,
@@ -1634,6 +1673,11 @@ onMounted(async () => {
 
 .fee-entry-panel__toolbar-actions {
   flex-shrink: 0;
+
+  :deep(.ant-space-item) {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .fee-entry-panel__body {
@@ -1664,7 +1708,8 @@ onMounted(async () => {
 }
 
 .fee-entry-panel :deep(.order-fee-card .table-header) {
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 8px 12px;
   background: #fafbfd;
   border-bottom: 1px solid #eef1f6;
 }

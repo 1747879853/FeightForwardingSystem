@@ -14,13 +14,13 @@ import {
   Button,
   Space,
   message,
-  DropdownButton,
+  Dropdown,
   MenuItem,
   Menu,
   Card,
   Modal,
 } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
+import { ChevronDown, IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 import { orderFeeDataT, clientDataT } from '../data';
 import weiwanjie from '#/assets/img/base/weiwanjie.png';
@@ -498,6 +498,37 @@ const feeSummary = computed(() => {
 const ImportOther = async (e: any) => {
   if (e.key === 'submit') {
     actions.generateOppositeFees();
+  }
+};
+
+const handleMoreMenuClick = (info: { key: string | number }) => {
+  const key = String(info.key);
+  switch (key) {
+    case 'print': {
+      handlePrint({
+        feeType: props.type,
+        transportOrderId: editId.value,
+        orderDetail: orderBaseData.value,
+        selectedFeeIds: selectedFeeIds.value,
+        isChangeOrderPrint: isChangeOrderMode.value,
+        changeOrderId: isChangeOrderMode.value
+          ? changeOrderId.value || props.parentChangeOrderId
+          : undefined,
+      });
+      break;
+    }
+    case 'batchImport': {
+      openBatchImportModal();
+      break;
+    }
+    case 'generateOpposite': {
+      ImportOther({ key: 'submit' });
+      break;
+    }
+    case 'finishStatus': {
+      toggleFinishStatus();
+      break;
+    }
   }
 };
 
@@ -1245,66 +1276,36 @@ watch(
                 </div>
               </div>
             </div>
-            <Space v-show="!feeSortMode" class="toolbar-actions">
+            <Space v-show="!feeSortMode" size="small" class="toolbar-actions">
               <Button
+                size="small"
                 type="primary"
                 :disabled="isTableReadonly"
                 @click="extendedActions.addRow"
-                >{{ $t('common.create') }}</Button
               >
+                {{ $t('common.create') }}
+              </Button>
               <Button
+                v-show="!isChangeOrderMode"
+                size="small"
                 type="primary"
                 @click="actions.saveRow"
-                v-show="!isChangeOrderMode"
               >
                 {{ $t('common.save') }}
               </Button>
               <Button
-                :loading="printing"
-                @click="
-                  handlePrint({
-                    feeType: type,
-                    transportOrderId: editId,
-                    orderDetail: orderBaseData,
-                    selectedFeeIds,
-                    isChangeOrderPrint: isChangeOrderMode,
-                    changeOrderId: isChangeOrderMode
-                      ? changeOrderId || parentChangeOrderId
-                      : undefined,
-                  })
-                "
-              >
-                <IconifyIcon
-                  icon="mdi:printer-outline"
-                  class="mr-1 inline-block size-3.5 align-middle"
-                />
-                打印
-              </Button>
-              <Button
+                size="small"
                 danger
+                ghost
                 :disabled="isTableReadonly || !selectedRowKeys.length"
                 @click="actions.removeSelectedRows"
               >
                 {{ $t('common.delete') }}
               </Button>
 
-              <DropdownButton
-                :disabled="isTableReadonly"
-                @click="openBatchImportModal"
-                type="primary"
-              >
-                {{ orderFeeDataT('batchImport') }}
-                <template #overlay>
-                  <Menu @click="ImportOther">
-                    <MenuItem key="submit">{{
-                      type === 0 ? '应收生成应付' : '应付生成应收'
-                    }}</MenuItem>
-                  </Menu>
-                </template>
-              </DropdownButton>
-
               <Button
                 v-if="type === 1 && !isChangeOrderMode"
+                size="small"
                 type="primary"
                 ghost
                 @click="openAiBillFeeModal"
@@ -1316,15 +1317,44 @@ watch(
                 <span class="align-middle">AI识别</span>
               </Button>
 
-              <Button
-                v-show="type === 0 && !isChangeOrderMode"
-                type="default"
-                :loading="loadingFinishStatus"
-                @click="toggleFinishStatus"
-                class="finish-status-btn"
-              >
-                {{ isFinished ? '设为未完结' : '设为已完结' }}
-              </Button>
+              <Dropdown :trigger="['click']">
+                <Button size="small">
+                  更多
+                  <ChevronDown
+                    class="ml-0.5 inline-block size-3.5 align-middle opacity-70"
+                  />
+                </Button>
+                <template #overlay>
+                  <Menu @click="handleMoreMenuClick">
+                    <MenuItem key="print" :disabled="printing">
+                      <IconifyIcon
+                        icon="mdi:printer-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      打印
+                    </MenuItem>
+                    <MenuItem
+                      key="batchImport"
+                      :disabled="isTableReadonly || isChangeOrderMode"
+                    >
+                      {{ orderFeeDataT('batchImport') }}
+                    </MenuItem>
+                    <MenuItem
+                      key="generateOpposite"
+                      :disabled="isTableReadonly"
+                    >
+                      {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
+                    </MenuItem>
+                    <MenuItem
+                      v-if="type === 0 && !isChangeOrderMode"
+                      key="finishStatus"
+                      :disabled="loadingFinishStatus"
+                    >
+                      {{ isFinished ? '设为未完结' : '设为已完结' }}
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </Dropdown>
             </Space>
           </div>
 
@@ -1416,10 +1446,10 @@ watch(
   .table-header {
     display: flex;
     flex-shrink: 0;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 8px 12px;
     background: #fafbfd;
     border-bottom: 1px solid #eef1f6;
 
@@ -1442,45 +1472,8 @@ watch(
     .toolbar-actions {
       display: flex;
       flex-shrink: 0;
-      gap: 8px;
-
-      // ✅ 完结状态按钮特殊样式
-      :deep(.finish-status-btn) {
-        color: #faad14;
-        background: linear-gradient(
-          135deg,
-          rgb(250 173 20 / 8%) 0%,
-          rgb(250 173 20 / 4%) 100%
-        );
-        border-color: #faad14;
-
-        &:hover:not(:disabled) {
-          color: #ffc53d;
-          background: linear-gradient(
-            135deg,
-            rgb(250 173 20 / 15%) 0%,
-            rgb(250 173 20 / 8%) 100%
-          );
-          border-color: #ffc53d;
-          box-shadow: 0 2px 8px rgb(250 173 20 / 20%);
-        }
-
-        &:active:not(:disabled) {
-          color: #d48806;
-          background: linear-gradient(
-            135deg,
-            rgb(250 173 20 / 20%) 0%,
-            rgb(250 173 20 / 12%) 100%
-          );
-          border-color: #d48806;
-        }
-
-        &:disabled {
-          color: rgb(0 0 0 / 25%);
-          background: #f5f5f5;
-          border-color: #d9d9d9;
-        }
-      }
+      gap: 6px;
+      align-items: center;
     }
   }
 }
