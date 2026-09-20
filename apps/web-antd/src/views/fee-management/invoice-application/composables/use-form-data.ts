@@ -91,12 +91,13 @@ export function useFormData() {
    * 初始化申请人信息
    */
   async function initApplicantInfo() {
+    // 编辑/查看：申请人与组织均等详情回填，勿先写成当前登录人
+    if (isEdit.value) return;
+
     const userInfo = userStore.userInfo;
     if (userInfo) {
       applicantName.value = userInfo.realName || userInfo.username || '';
     }
-    // 编辑/查看保留单据上的部门 id，不能先写成当前登录人的默认组织
-    if (isEdit.value) return;
     if (!formData.value.orgId) {
       formData.value.orgId = getMyDefaultOrgId() ?? 0;
     }

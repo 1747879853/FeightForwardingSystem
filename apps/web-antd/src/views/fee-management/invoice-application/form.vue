@@ -718,6 +718,7 @@ onMounted(async () => {
                       v-model="formData.orgId"
                       placeholder="请选择归属组织"
                       style="width: 100%"
+                      :auto-default="!isEdit"
                       :disabled="isReadOnly"
                       :selected-items="orgSelectEchoItems"
                     />

@@ -86,11 +86,13 @@ export function useFormData() {
    * 初始化申请人信息
    */
   async function initApplicantInfo() {
+    // 编辑：开票人与组织等详情回填，勿先写成当前登录人
+    if (isEdit.value) return;
+
     const userInfo = userStore.userInfo;
     if (userInfo) {
       applicantName.value = userInfo.realName || userInfo.username || '';
     }
-    if (isEdit.value) return;
     if (!formData.value.orgId) {
       formData.value.orgId = getMyDefaultOrgId() ?? 0;
     }

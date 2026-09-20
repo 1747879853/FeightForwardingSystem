@@ -39,6 +39,7 @@ import {
   MyOrgSelect,
   OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import {
   addStatement,
   getStatementDetail,
@@ -148,8 +149,9 @@ const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer> | null>(null);
 // 存储对账单详情，用于获取paySide
 const statementDetail = ref<StatementAdminApi.StatementDto | null>(null);
 
-const applicantName = computed(
-  () => userStore.userInfo?.realName ?? userStore.userInfo?.username ?? '',
+/** 申请人：新建用当前登录用户，编辑回显详情 creatorUserName */
+const applicantName = ref(
+  userStore.userInfo?.realName ?? userStore.userInfo?.username ?? '',
 );
 const creationTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
@@ -170,8 +172,16 @@ const clientSelectedItems = computed(() => {
   ];
 });
 
-// 新增：所属组织id
+// 所属组织 id + 详情 orgs（用于回显，不依赖当前登录人组织树）
 const orgId = ref<number | undefined>(undefined);
+const statementOrgs = ref<StatementAdminApi.OrganizationUnitSimpleDto[]>([]);
+
+const orgSelectedItems = computed(() => {
+  if (orgId.value == null) return [];
+  const label = formatOrgPathLabel(statementOrgs.value);
+  if (!label) return [];
+  return [{ label, value: orgId.value }];
+});
 
 // 新增：我司银行id
 const orgBankAccountId = ref<string | undefined>(undefined);
@@ -664,8 +674,12 @@ async function loadEditData() {
       orgBankAccountId: detail.orgBankAccountId,
     });
 
-    // 新增：先加载所属组织id
+    // 申请人：详情创建人，勿用当前登录用户覆盖
+    applicantName.value = detail.creatorUserName ?? '';
+
+    // 所属组织：id + orgs 路径名回显
     orgId.value = detail.orgId || undefined;
+    statementOrgs.value = detail.orgs ?? [];
     console.log('✅ 设置 orgId:', orgId.value);
 
     // 新增：再加载我司银行id（组件会在 orgId 变化后重新加载银行列表，然后自动匹配该值）
@@ -1265,11 +1279,13 @@ function formatMonth(val: string | undefined | null): string {
                       @update:value="(val) => (remark = val)"
                     />
                   </div>
-                  <!-- 新增：所属组织 -->
+                  <!-- 所属组织：编辑禁用自动默认当前用户，并用详情 orgs 回显 -->
                   <div class="info-field">
                     <label class="field-label">所属组织</label>
                     <myOrgSelect
                       v-model:model-value="orgId"
+                      :auto-default="!isEdit"
+                      :selected-items="orgSelectedItems"
                       placeholder="请选择所属公司"
                       allow-clear
                       size="middle"
