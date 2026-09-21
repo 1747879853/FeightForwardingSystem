@@ -171,6 +171,15 @@ describe('监装直播', () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
+  it('全屏云台暂不展示放大缩小，方向盘仍可用', async () => {
+    await openPlayer();
+    overlay()?.querySelector('video')?.dispatchEvent(new Event('playing'));
+    expect(overlay()?.querySelector('.live-video__zoom')).toBeNull();
+    expect(overlay()?.querySelector('button[aria-label="放大"]')).toBeNull();
+    expect(overlay()?.querySelector('button[aria-label="缩小"]')).toBeNull();
+    expect(overlay()?.querySelector('button[aria-label="向左"]')).toBeTruthy();
+  });
+
   it('开始云台请求较慢时，松开后仍在开始完成之后发停止', async () => {
     let resolve!: () => void;
     mocks.ptz.mockImplementationOnce(

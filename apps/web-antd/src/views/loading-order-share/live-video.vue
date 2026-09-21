@@ -65,6 +65,9 @@ const pad = [
   { command: 8, place: 'se', zh: '右下', en: 'Down right' },
 ] as const;
 
+/** 变倍（放大/缩小）暂不对客户开放，方向盘仍可用。改 true 即恢复。 */
+const showZoom = false;
+
 function destroyPlayer() {
   needGesture.value = false;
   clearTimeout(firstFrameTimeout);
@@ -440,7 +443,7 @@ onBeforeUnmount(() => {
                   <span />
                 </button>
               </div>
-              <div class="live-video__zoom">
+              <div v-if="showZoom" class="live-video__zoom">
                 <button
                   type="button"
                   :aria-label="english ? 'Zoom in' : '放大'"
