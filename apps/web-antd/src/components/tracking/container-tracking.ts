@@ -107,6 +107,7 @@ export function buildContainerWarningProps(row: ContainerTrackingRowLike) {
     warningCount: summary?.warningCount ?? 0,
     description: summary?.latestWarningDescription ?? '',
     time: summary?.latestWarningTime ?? '',
+    category: summary?.latestWarningCategory ?? '',
   };
 }
 

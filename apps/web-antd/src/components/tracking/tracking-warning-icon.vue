@@ -8,9 +8,12 @@ import { Tooltip } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { sanitizeVendorText } from '#/utils/vendor-text';
 
+import { getTrackingWarningAccentColor } from './warning-category';
+
 /**
  * 列表主提单号/主运单号列前的运踪异常预警叹号。
  * 无预警时不渲染任何内容，避免干扰单号本身的展示与复制。
+ * DELAY / DUMPING / DETENTION / OVERDUE 用红色，CHANGE 等其余类型保持原黄。
  */
 interface Props {
   /** 是否存在异常预警（取运踪摘要 hasWarning） */
@@ -21,6 +24,8 @@ interface Props {
   description?: null | string;
   /** 最近一条预警发生时间（服务商原样字符串，直接展示不解析） */
   time?: null | string;
+  /** 最近一条预警类型（DELAY / DUMPING / DETENTION / OVERDUE / CHANGE） */
+  category?: null | string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,7 +33,10 @@ const props = withDefaults(defineProps<Props>(), {
   warningCount: 0,
   description: '',
   time: '',
+  category: '',
 });
+
+const iconColor = computed(() => getTrackingWarningAccentColor(props.category));
 
 const tooltipText = computed(() => {
   const lines: string[] = [];
@@ -55,7 +63,8 @@ const tooltipText = computed(() => {
     </template>
     <IconifyIcon
       icon="ant-design:exclamation-circle-filled"
-      class="mr-1 inline-block size-3.5 shrink-0 cursor-help align-[-2px] text-[#faad14]"
+      class="mr-1 inline-block size-3.5 shrink-0 cursor-help align-[-2px]"
+      :style="{ color: iconColor }"
       :aria-label="$t('tracking.warning.iconLabel')"
     />
   </Tooltip>

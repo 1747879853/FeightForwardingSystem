@@ -824,7 +824,7 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       title: $t('seaImport.import.mblNum'),
       minWidth: 160,
       showOverflow: true,
-      // 有运踪异常预警时，在单号前展示黄色叹号（悬停看原因）
+      // DELAY/DUMPING/DETENTION/OVERDUE 红色叹号，CHANGE 等仍为黄色
       slots: { default: 'mblNum' },
     },
     {

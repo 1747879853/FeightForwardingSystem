@@ -2,7 +2,7 @@
 title: 运踪能力品牌分流（现有运踪 / 新服务商运踪）
 module: 共享能力 / 运踪
 author: auto-doc-sync
-last_updated: 2026-08-20
+last_updated: 2026-09-21
 status: 已实现（空运地图地址待服务商确认）
 ---
 
@@ -88,7 +88,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 | 项 | 约定 |
 | :-- | :-- |
 | 位置 | 列表「主提单号」列文字**前方** |
-| 样式 | 黄色叹号图标 |
+| 样式 | DELAY / DUMPING / DETENTION / OVERDUE 为红色叹号；CHANGE 等其余类型仍为黄色 |
 | 交互 | 有预警才显示；鼠标悬停 Tooltip 展示预警原因 |
 | 无预警 | 不展示图标，不干扰提单号复制/点击 |
 | 适用范围 | 走新服务商的列表（海进全品牌；非 sjtd 海出；空出）；sjtd 海出维持现有运踪，暂不做该叹号 |
@@ -97,10 +97,10 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 字段 | 用途 |
 | :-- | :-- |
-| `hasWarning` | 是否渲染黄色叹号 |
+| `hasWarning` | 是否渲染叹号 |
 | `warningCount` | 累计条数，可拼进 Tooltip（如「共 N 条」） |
 | `latestWarningDescription` | Tooltip 主文案（预警原因） |
-| `latestWarningTime` / `latestWarningCode` / `latestWarningCategory` | Tooltip 补充信息（时间、类型） |
+| `latestWarningTime` / `latestWarningCode` / `latestWarningCategory` | Tooltip 补充信息（时间、类型）；`latestWarningCategory` 决定叹号红/黄 |
 
 **要点：**
 
@@ -218,6 +218,7 @@ const useNewVendorTracking = !useLegacyOceanExportTracking; // 其余业务线/�
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Style` | 列表叹号与预警类型：DELAY / DUMPING / DETENTION / OVERDUE 改红色，CHANGE 仍黄色。 | 共享 `warning-category.ts`，颜色跟最近一条 `latestWarningCategory`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-17 | `Fix` | 海运改为按箱独立纵向轨迹，保留接口顺序和无时间节点 | 移除海运合并、去重、预计删除与当前节点推断；空运处理逻辑保留。 |
 | 2026-08-20 | `Fix` | 免登录分享页页头补展示单号：新服务商 `/cargo-tracking/*` 与现有运踪 `/tracking-map/:mblNo` 均展示，与登录后地图弹窗一致 | 空运 URL 本就带 `?no=`、旧页路径本就有 `mblNo`，页头却只渲染品牌与标题。海运新服务商令牌解不出可读单号，复制时额外带上弹窗已有的 `referenceNo`。详见 `changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md` |
 | 2026-08-16 | `Fix` | 海运进口编辑页基础信息工具栏补齐单票「运踪订阅」按钮，与列表、海出/空出编辑页对齐 | 首版只做了列表订阅与编辑页运踪 Tab，漏了表单入口。复用 `useContainerTrackingSubscribe(SeaImport)`，权限 `Admin.ExternalApi.Use`。详见 `changelogs/change-log-2026-08-16-sea-import-edit-tracking-subscribe.md` |

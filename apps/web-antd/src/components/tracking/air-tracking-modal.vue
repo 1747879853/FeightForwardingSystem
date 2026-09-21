@@ -30,6 +30,7 @@ import {
 import { buildAirTimelineNodes } from './timeline-nodes';
 import TrackingTimeline from './tracking-timeline.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
+import { getTrackingWarningAlertType } from './warning-category';
 
 /**
  * 空运运踪详情弹窗。
@@ -121,6 +122,10 @@ const cargoText = computed(() => {
 
 const warningText = computed(() =>
   sanitizeVendorText(summary.value?.latestWarningDescription),
+);
+
+const warningAlertType = computed(() =>
+  getTrackingWarningAlertType(summary.value?.latestWarningCategory),
 );
 
 const subscribeFailedReason = computed(
@@ -232,7 +237,7 @@ const [Modal, modalApi] = useVbenModal({
 
       <Alert
         v-if="summary?.hasWarning"
-        type="warning"
+        :type="warningAlertType"
         show-icon
         class="mb-4"
         :message="
