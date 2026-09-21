@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onHide, onLaunch } from '@dcloudio/uni-app';
+import { onHide, onLaunch, onShow } from '@dcloudio/uni-app';
 
 import { restoreSession } from './stores/auth';
 import { appBackgroundEpoch } from './stores/app-visibility';
+import { checkUpdateOnAppShow, setupAutoUpdateCheck } from './utils/mp-update';
 
 onHide(() => {
   appBackgroundEpoch.value += 1;
@@ -11,6 +12,11 @@ onHide(() => {
 onLaunch(() => {
   // 启动即尝试恢复会话：本地 token 优先，其次微信静默登录
   void restoreSession();
+  setupAutoUpdateCheck();
+});
+
+onShow(() => {
+  checkUpdateOnAppShow();
 });
 </script>
 

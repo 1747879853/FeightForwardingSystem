@@ -2,7 +2,7 @@
 title: 小程序 - 监装师傅端
 module: 小程序（apps/mp）
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -30,7 +30,8 @@ last_updated: 2026-09-20
 - **监装照片：** 详情加载时并行调 `AttachmentDtlType/GetListByModuleTypesAsync`（`moduleTypes: [160100]`），把维护的类型铺成空槽，再叠上该箱已有 `attachmentGroups`，按类型原始 `sortId` 降序横排。面板按类型横排网格，每类型限 1 张；有图则隐藏添加槽，相册/拍照都只选 1 张。拍照先出本地缩略图再上传，展示地址必须拼 `VITE_API_ORIGIN`。上传后先记本地，点「保存」才随箱提交。未配置类型时提示「未配置监装附件类型」，并保留一个未分类「监装照片」槽。
 - **登录：** 启动静默登录（`wx.login` → `WxOpenSilentAuthenticate`）；未绑账号时登录页展示「手机号一键登录」。开发态可用账密（`VITE_ENABLE_PASSWORD_LOGIN=true`）。
 - **会话失效：** 请求返回 401 或 ABP 未授权标志时同步清理缓存与内存登录态、个人资料，跳转登录页；已在登录页不重复跳转。登录后个人信息接口鉴权失败不能继续进入列表。
-- **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。
+- **个人中心：** 头像、昵称、账号、工号、手机号与退出登录。不提供「检测更新」入口。
+- **版本更新：** 冷启动在 `App.onLaunch` 绑定 `getUpdateManager`；每次打开或从后台回到前台走 `App.onShow`。微信客户端自动检查并异步下载新包，下载完成后弹「更新提示」，用户点「立即重启」才 `applyUpdate`。无更新不提示。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -80,10 +81,13 @@ last_updated: 2026-09-20
 
 > [!IMPORTANT] **[卡点 10：堆场导航靠腾讯编码 + 微信 openLocation]** Key 配在 `VITE_QQMAP_KEY`，`uni.request` 调 WebService 地理编码；`openLocation` 不吃 Key，也不进 `requiredPrivateInfos`。微信后台须加 `https://apis.map.qq.com`。控台须给该 Key **分配地址解析日配额**（`limit_pv=0` 会误报每日上限）。地址越完整编码越准；本期不存经纬度。
 
+> [!IMPORTANT] **[卡点 11：小程序更新没有主动检查 API]** `wx.getUpdateManager` 只能监听微信自己的检查结果，没有 `checkForUpdate`。冷启动会异步检查；短时间热启动不一定再查。新包已下好时 `onShow` 再弹一次重启确认。开发版/体验版检测不到线上正式版。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Feature` | 小程序冷启动与从后台回到前台自动检查更新；新版本就绪后由用户确认重启。个人中心去掉「检测更新」。 | `getUpdateManager` 无主动检查 API，监听器只绑一次；`onShow` 在包已下好时再弹窗。详见[变更记录](../../changelogs/change-log-2026-09-21-小程序自动检查更新.md)。 |
 | 2026-09-20 | `Fix` | 师傅端列表默认按预计到货时间倒序，与 PC 监装列表一致。 | `getMyLoadingOrders` 不传 `sorting` 时补 `EstimatedArrivalTime DESC`。详见[变更记录](../../changelogs/change-log-2026-09-20-监装列表默认预计到货倒序.md)。 |
 | 2026-09-14 | `Fix` | 监装箱照类型槽按原始 `sortId` 降序，历史组不再固定垫后。 | `toEditableCtns`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-07 | `Fix` | 监装处理弹层内滚动不再带动背后详情页。 | 遮罩 catchtouchmove + 面板固定高度。详见 `changelogs/change-log-2026-09-07-mp-loading-photo-panel-scroll.md`。 |
