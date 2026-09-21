@@ -31,7 +31,9 @@
               >
                 <a-radio value="user">审批用户</a-radio>
                 <a-radio value="role">审批角色</a-radio>
-                <a-radio value="attribute">用户属性</a-radio>
+                <a-radio v-if="allowUserAttribute" value="attribute"
+                  >用户属性</a-radio
+                >
               </a-radio-group>
             </div>
 
@@ -101,6 +103,7 @@ import { useWorkflowStore } from '../../store';
 import { UserSelect, RoleSelect } from '#/adapter/component';
 import {
   getPassMethodOptions,
+  supportsUserAttributeAuditor,
   WorkFlowPassMethod,
 } from '#/api/system/workflow-admin';
 import { getUserAttributeOptions } from '#/views/system/user/data';
@@ -132,6 +135,10 @@ const roleShowTexts = ref({});
 const store = useWorkflowStore();
 const approverConfig1 = computed(() => store.approverConfig1);
 const visible = computed(() => store.approverDrawer);
+/** 客户 / 付费申请 / 提单签出不支持用户属性，配置页直接隐藏 */
+const allowUserAttribute = computed(() =>
+  supportsUserAttributeAuditor(store.taskType),
+);
 
 const passMethodOptions = getPassMethodOptions().map((o) => ({
   label: o.label,
@@ -174,7 +181,14 @@ function clearApproverSelections() {
 }
 
 function mergeAuditorsToSelections(auditors) {
-  const type = inferApproverType(auditors);
+  let type = inferApproverType(auditors);
+  // 当前任务类型不支持用户属性时，回落到用户，避免残留不可保存的配置
+  if (type === 'attribute' && !allowUserAttribute.value) {
+    type = 'user';
+    clearApproverSelections();
+    approverType.value = type;
+    return;
+  }
   approverType.value = type;
 
   const userIds = [];

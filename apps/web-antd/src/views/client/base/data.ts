@@ -7,6 +7,7 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 
+import { getClientStatusOptions } from './client-status';
 import {
   getAddressTypeOptions,
   getClientLevelOptions,
@@ -167,6 +168,21 @@ export function useGridFormSchema(): VbenFormSchema[] {
         options: getClientSharedTypeOptions().map((item) => ({
           label: item.label,
           value: item.value,
+        })),
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'ClientStatus',
+      label: '客户审核状态',
+      // 未启用客户审核的租户由 list.vue 按租户配置隐藏本项
+      hide: true,
+      componentProps: {
+        allowClear: true,
+        options: getClientStatusOptions().map(({ label, value }) => ({
+          label,
+          value,
         })),
         placeholder: $t('ui.placeholder.select'),
       },
@@ -620,8 +636,11 @@ export function useAddressFormSchema(): VbenFormSchema[] {
 /**
  * 表格列配置
  */
-export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] {
-  return [
+export function useColumns(options?: {
+  /** 启用客户审核的租户才显示「客户审核状态」列 */
+  showClientStatus?: boolean;
+}): VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] {
+  const columns: VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] = [
     {
       type: 'checkbox',
       width: 56,
@@ -637,6 +656,16 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       field: 'code',
       title: $t('seaExport.client.code'),
       minWidth: 100,
+    },
+    {
+      field: 'clientStatus',
+      title: '客户审核状态',
+      minWidth: 120,
+      align: 'center',
+      cellRender: {
+        name: 'CellTag',
+        options: getClientStatusOptions(),
+      },
     },
     {
       field: 'fullName',
@@ -828,6 +857,11 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       formatter: 'formatDateTime',
     },
   ];
+
+  // 未启用客户审核的租户整列去掉，避免用户从列设置里又把它勾出来
+  return options?.showClientStatus
+    ? columns
+    : columns?.filter((column) => (column as any).field !== 'clientStatus');
 }
 
 export {

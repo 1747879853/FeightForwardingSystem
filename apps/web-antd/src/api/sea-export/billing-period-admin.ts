@@ -1,7 +1,8 @@
-import { requestClient } from '#/api/request';
-
-const API_PREFIX = '/services/app/ClientBillingPeriodAdmin';
-
+/**
+ * 账期类型仍供客户表单使用。
+ * 独立服务 ClientBillingPeriodAdmin 已删除，禁止再请求这些地址。
+ * 增删改随 ClientAdmin 的 billingPeriods；同步走 ClientAdmin/SyncBillingPeriodAsync。
+ */
 export namespace BillingPeriodAdminApi {
   /** 附件项输入DTO */
   export interface AttachmentItemForItemInputDto {
@@ -214,8 +215,22 @@ export namespace BillingPeriodAdminApi {
     warningLimit?: number | null;
     /** 组织机构 */
     cbpOrgs: CbpOrgDto[];
-
     cbpUsers: CbpUserDto[];
+    /** 适用业务来源 */
+    cbpCodeSources?: CbpCodeSourceDto[];
+    /** 录入时间 */
+    creationTime?: string;
+  }
+
+  export interface CbpCodeSourceDto {
+    id?: number;
+    codeSourceId: number;
+    codeSource?: {
+      id?: number;
+      code?: string;
+      cnName?: string;
+      enName?: string;
+    } | null;
   }
 
   export interface ClientBillingPeriodForViewDto extends ClientBillingPeriodDto {
@@ -255,83 +270,3 @@ export namespace BillingPeriodAdminApi {
     ids?: (number | string)[];
   }
 }
-/** 不分页列表响应 */
-// export interface ListOfBillingPeriodDto <BillingPeriodDetailDto[]>
-
-/**
- * 新增账单期
- */
-export const addBillingPeriod = (
-  data: BillingPeriodAdminApi.BillingPeriodAddDto,
-) => {
-  return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
-};
-
-/**
- * 修改账单期
- */
-export const editBillingPeriod = (
-  data: BillingPeriodAdminApi.BillingPeriodEditDto,
-) => {
-  return requestClient.put<number>(`${API_PREFIX}/EditAsync`, data);
-};
-/**
- * 删除账单期
- */
-export const deleteBillingPeriod = (id: BillingPeriodAdminApi.IdDto) => {
-  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
-    data: id,
-  });
-};
-
-/**
- * 获取账单期分页列表
- */
-export const getBillingPeriodPagedList = (
-  params: BillingPeriodAdminApi.GetPagedListParams,
-) => {
-  return requestClient.get<BillingPeriodAdminApi.PagedListOfBillingPeriodDto>(
-    `${API_PREFIX}/GetPagedListAsync`,
-    { params },
-  );
-};
-
-/**
- * 获取账单期不分页列表
- */
-export const getBillingPeriodList = (
-  params: BillingPeriodAdminApi.GetPagedListParams,
-) => {
-  return requestClient.get<BillingPeriodAdminApi.BillingPeriodDetailDto[]>(
-    `${API_PREFIX}/GetListAsync`,
-    { params },
-  );
-};
-
-/**
- * 获取账单期详情
- * @param id 建议传 string 避免大数精度丢失
- */
-export const getBillingPeriodDetail = (id: number | string) => {
-  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
-  return requestClient.get<BillingPeriodAdminApi.BillingPeriodDetailDto>(
-    `${API_PREFIX}/DetailAsync`,
-    { params: { Id: idStr } },
-  );
-};
-
-/**
- * 同步账期
- * 账期规则是下单当时的快照，改规则不会自动回刷历史业务。本接口把该客户
- * 【票结（settlementType=0）】的历史业务按当前账期规则重算应结日期与结算方式，
- * 月结/约定天数的业务不动。客户由账期 id 带出。
- * 权限：Admin.Client.BillingPeriod.Sync
- * @param data id=账期id（必填）；ids 本接口不用
- * @returns result 为实际改动的业务票数，返回 0 表示没有需要回刷的业务
- */
-export const syncBillingPeriod = (data: BillingPeriodAdminApi.IdDto) => {
-  return requestClient.post<number>(
-    `${API_PREFIX}/SyncBillingPeriodAsync`,
-    data,
-  );
-};

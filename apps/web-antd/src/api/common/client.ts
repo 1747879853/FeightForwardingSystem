@@ -58,6 +58,12 @@ export namespace ClientAppApi {
     enterpriseType?: number;
     /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人） */
     isShared?: ClientSharedType;
+    /**
+     * 客户审核状态 0未提交/1待审核/2已通过/3已驳回/4申请修改/5申请修改驳回。
+     * 本服务不接收 clientStatus 筛选：业务侧能选到哪些状态由租户配置
+     * `可搜索未审核通过客户` 决定（不为 true 时后端只返回 2 与 5）。
+     */
+    clientStatus?: number;
     /** 客户税率(%)，可空表示未设置 */
     taxRate?: null | number;
     /** 归属组织id */

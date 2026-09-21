@@ -13,6 +13,14 @@ export const getClientTypeOptions = () => [
   },
 ];
 
+/** 企业类型选项（前端自定义枚举，后端只存 int） */
+export const getEnterpriseTypeOptions = () => [
+  { value: 1, label: '国有企业' },
+  { value: 2, label: '民营企业' },
+  { value: 3, label: '外资企业' },
+  { value: 4, label: '合资企业' },
+];
+
 /** 客户等级枚举选项 */
 export const getClientLevelOptions = () => [
   {
@@ -258,7 +266,6 @@ export const getCustomerIndustryCategoryOptions = () => [
     value: 'u',
     label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
-
 ];
 
 export const getSupplierIndustryCategoryOptions = () => [

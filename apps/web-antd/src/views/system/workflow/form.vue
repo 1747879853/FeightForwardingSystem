@@ -8,6 +8,7 @@ import {
   editWorkFlow,
   getTaskTypeOptions,
   getWorkFlowDetail,
+  supportsUserAttributeAuditor,
   TaskType,
 } from '#/api/system/workflow-admin';
 import { $t } from '#/locales';
@@ -77,10 +78,48 @@ function clearBranchConditions(node) {
   return cleared + clearBranchConditions(node.childNode);
 }
 
+/**
+ * 切到不支持用户属性的任务类型时，清掉节点上残留的 userAttribute 审核人，
+ * 否则保存能过、提交审核时才被后端拦住。
+ */
+function clearUnsupportedUserAttributeAuditors(node) {
+  if (!node) return 0;
+  let cleared = 0;
+  if (Array.isArray(node.auditors) && node.auditors.length > 0) {
+    const next = node.auditors.filter(
+      (a) => a.userAttribute == null || a.userAttribute === 0,
+    );
+    if (next.length !== node.auditors.length) {
+      node.auditors = next;
+      if (next.length === 0 && node.passMethod !== 0) {
+        node.error = true;
+        node._displayStr = '请设置审批人';
+      }
+      cleared++;
+    }
+  }
+  if (Array.isArray(node.conditionNodes)) {
+    for (const cond of node.conditionNodes) {
+      cleared += clearUnsupportedUserAttributeAuditors(cond.childNode);
+    }
+  }
+  return cleared + clearUnsupportedUserAttributeAuditors(node.childNode);
+}
+
 /** 仅用户手动切换任务类型时触发，避免详情加载阶段误清条件 */
 function onTaskTypeChange() {
+  const tips = [];
   if (clearBranchConditions(nodeConfig.value) > 0) {
-    message.warning('任务类型已切换，原有条件字段不再适用，请重新设置条件');
+    tips.push('原有条件字段不再适用，请重新设置条件');
+  }
+  if (
+    !supportsUserAttributeAuditor(taskType.value) &&
+    clearUnsupportedUserAttributeAuditors(nodeConfig.value) > 0
+  ) {
+    tips.push('当前任务类型不支持用户属性审核人，已清空相关配置');
+  }
+  if (tips.length > 0) {
+    message.warning(`任务类型已切换：${tips.join('；')}`);
   }
 }
 
