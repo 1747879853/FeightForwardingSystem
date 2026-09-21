@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-22
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -184,6 +184,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与新建页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 列表 Query 记入 sessionStorage；`DetailAsync` 原样带上；`loadEditData` 成功后 `emit('saved')` 回写相邻 Id。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开收起加高度过渡；横向时间轴改为细线小圆点苹果风。 | 手风琴不再用 `details`。详见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间，船名航次落在航线下方，少占一行。 | 三列网格，不再通栏航线。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |

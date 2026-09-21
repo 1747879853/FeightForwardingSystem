@@ -2,7 +2,7 @@
 title: 登录页
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-09-10
+last_updated: 2026-09-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-09-10
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **账号密码登录：** 提交用户名、密码；`authLogin` 调用后端登录接口，成功后写入 Token 并跳转首页/原目标页。
+- **账号密码登录：** 提交用户名、密码；`authLogin` 调用后端登录接口，成功后写入 Token 并跳转首页/原目标页。登录会清空上一会话的组织 map / 组织树 / 字段权限，并重拉字段权限；组织选项进页或打开下拉再拉。登出同样清空这些会话缓存。
 - **滑动验证：** 非开发构建下展示 `SliderCaptcha`，未通过不可提交。
 - **开发模式跳过验证：** `import.meta.env.DEV === true` 时不渲染滑动验证字段，可直接账号密码登录。
 - **记住我：** 按品牌维度使用独立 storage key 持久化。
@@ -52,6 +52,7 @@ last_updated: 2026-09-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-22 | `Fix` | 登录/登出清空组织路径与组织树会话缓存，字段权限登录重拉；组织下拉不在登录时预拉。 | `reloadSessionIdentityCaches` / `resetSessionIdentityCaches`。详见 `changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md`。 |
 | 2026-09-10 | `Fix` | 青港登录后页签不再粘住旧标题「青港」，改为始终显示「青港国际」 | `initPreferences` 强制 `overrides.app.name`；浏览器硬刷新即可，不必清整个 localStorage |
 | 2026-09-10 | `Chore` | 青港登录页/浏览器标题改为「青港国际」 | 读 `.env.qinggang` 的 `VITE_APP_TITLE`（`preferences.ts` `app.name`）；须重启 `dev:antd:qinggang` 或重新 `build:antd:qinggang` 后生效 |
 | 2026-09-10 | `Feature` | 新增青港 / 青岛海鼎 / 山东金冠打包环境，登录页标题与 Logo 随对应 `.env.*` 与素材目录切换 | 别名 `qinggang` / `qdhd` / `sdjg`；API `:86`；Logo 目录先占位。详见 `changelogs/change-log-2026-09-10-qinggang-qdhd-sdjg-brand-pack.md` |

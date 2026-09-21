@@ -43,6 +43,7 @@ const {
   getUserDefaultOrgId,
   getUserOrgOptions,
   loadAllUserOrganizations,
+  loaded,
   loading,
 } = useAllUserOrg();
 
@@ -86,6 +87,17 @@ const handleChange = (value: any) => {
   modelValue.value = value ?? null;
 };
 
+const handleDropdownVisibleChange = (visible: boolean) => {
+  if (!visible) return;
+  void loadAllUserOrganizations();
+};
+
+watch(loaded, (isLoaded) => {
+  if (isLoaded) return;
+  if (userIdRef.value === undefined || userIdRef.value === null) return;
+  void loadAllUserOrganizations();
+});
+
 watch(
   userIdRef,
   async (newId, oldId) => {
@@ -119,6 +131,7 @@ watch(
     :allow-clear="true"
     class="biz-select w-full"
     @update:value="handleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
   >
     <template v-for="(_, name) in $slots" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}"></slot>

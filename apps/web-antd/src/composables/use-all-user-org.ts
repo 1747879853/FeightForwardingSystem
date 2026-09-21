@@ -19,32 +19,68 @@ const loaded = ref(false);
 const loading = ref(false);
 /** 进行中的请求（并发合并为一次网络调用） */
 let inflight: Promise<void> | null = null;
+/** 会话代次：登出/登录 reset 后，旧请求不得写回新会话 */
+let generation = 0;
 
-/**
- * 加载并缓存「全部用户所属组织」。
- * 默认命中缓存直接返回；force=true 时强制刷新。
- */
-async function loadAllUserOrganizations(force = false): Promise<void> {
-  if (loaded.value && !force) return;
+/** 退出/切换用户时清理缓存，旧会话请求不能写回新会话。 */
+export function resetAllUserOrganizations() {
+  generation += 1;
+  allUserOrgMap.value = new Map();
+  loaded.value = false;
+  loading.value = false;
+  inflight = null;
+}
+
+function applyUserOrgList(
+  list: Awaited<ReturnType<typeof getAllUserOrganizations>>,
+) {
+  const map = new Map<number, MyUserOrganizationPathDto[]>();
+  for (const item of list) {
+    map.set(item.userId, item.organizations ?? []);
+  }
+  allUserOrgMap.value = map;
+  loaded.value = true;
+}
+
+function runFetch(): Promise<void> {
   if (inflight) return inflight;
 
-  loading.value = true;
+  const requestGeneration = generation;
+  const hasSnapshot = loaded.value;
+  if (!hasSnapshot) loading.value = true;
+
   inflight = (async () => {
     try {
       const list = await getAllUserOrganizations();
-      const map = new Map<number, MyUserOrganizationPathDto[]>();
-      for (const item of list) {
-        map.set(item.userId, item.organizations ?? []);
-      }
-      allUserOrgMap.value = map;
-      loaded.value = true;
+      if (requestGeneration !== generation) return;
+      applyUserOrgList(list);
+    } catch (error) {
+      if (hasSnapshot && requestGeneration === generation) return;
+      throw error;
     } finally {
-      loading.value = false;
-      inflight = null;
+      if (requestGeneration === generation) {
+        loading.value = false;
+        inflight = null;
+      }
     }
   })();
 
   return inflight;
+}
+
+/**
+ * 加载并缓存「全部用户所属组织」。
+ * 对齐 UserSelect / createBizSelectCache：已有快照时立刻返回，后台静默刷新；
+ * 失败保留旧 map。force=true 时等待本次请求结束（登录用）。
+ */
+export async function loadAllUserOrganizations(force = false): Promise<void> {
+  if (loaded.value && !force) {
+    void runFetch().catch(() => {
+      // 保留旧缓存，不打断归属组织下拉
+    });
+    return;
+  }
+  await runFetch();
 }
 
 /** 读取某用户的组织路径列表（未加载或不存在时返回空数组） */
@@ -187,6 +223,7 @@ export function useAllUserOrg() {
     getUserOrgOptions,
     getUserOrgPath,
     loadAllUserOrganizations,
+    resetAllUserOrganizations,
     pickCompanyNodeFromPath,
     userBelongsToCompanyIds,
     loaded,

@@ -335,6 +335,11 @@ let allOrganizationUnitsPromise: null | Promise<
   SystemOrganizationUnitApi.OrganizationUnitDto[]
 > = null;
 
+/** 登录/登出时丢弃会话内组织树缓存，下一会话按需重拉 */
+function clearOrganizationUnitsCache() {
+  allOrganizationUnitsPromise = null;
+}
+
 async function getCachedOrganizationUnits(): Promise<
   null | SystemOrganizationUnitApi.OrganizationUnitDto[]
 > {
@@ -749,6 +754,7 @@ async function deleteOrgBankAccount(id: string): Promise<void> {
 
 export {
   addUsersToOrganizationUnit,
+  clearOrganizationUnitsCache,
   createOrgBankAccount,
   createOrganizationUnit,
   deleteOrgBankAccount,

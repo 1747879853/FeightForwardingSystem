@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-22
 ---
 
 > [!TIP] 表单目录与文件职责：[基础信息表单](./basic-info-form.md)。
@@ -95,6 +95,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与编辑页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 64）。 | 与编辑页共用 `form.vue`；详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |
