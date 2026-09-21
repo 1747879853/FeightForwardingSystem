@@ -27,11 +27,19 @@ import {
 
 defineOptions({ name: 'ClientPaymentList' });
 
+const props = withDefaults(
+  defineProps<{
+    /** 客户未进入申请修改时，账期只读 */
+    readonly?: boolean;
+  }>(),
+  { readonly: false },
+);
+
 /** 账期随客户权限，不再使用已删除的 Admin.Client.BillingPeriod.* */
 const perm = createAbpPermission('Admin.Client');
 const { hasAccessByCodes } = useAccess();
-const canMutateBillingPeriod = computed(() =>
-  hasAccessByCodes([perm.add, perm.edit]),
+const canMutateBillingPeriod = computed(
+  () => !props.readonly && hasAccessByCodes([perm.add, perm.edit]),
 );
 
 type BillingPeriodRow = BillingPeriodAdminApi.ClientBillingPeriodForViewDto & {
@@ -406,6 +414,7 @@ const [Grid, gridApi] = useVbenVxeGrid<BillingPeriodRow>({
   },
   gridEvents: {
     cellDblclick: ({ row }: { row: BillingPeriodRow }) => {
+      if (props.readonly) return;
       editContact(row);
     },
   },
@@ -462,7 +471,10 @@ const editContact = (data: BillingPeriodRow) => {
             <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
             {{ $t('common.create') }}
           </Button>
-          <Button v-if="hasAccessByCodes([perm.edit])" @click="handleSync">
+          <Button
+            v-if="!readonly && hasAccessByCodes([perm.edit])"
+            @click="handleSync"
+          >
             <IconifyIcon icon="ant-design:sync-outlined" class="size-4" />
             同步账期
           </Button>

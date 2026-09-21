@@ -35,11 +35,20 @@ type ClientEdit = ClientAdminApi.ClientEditDto;
 interface Props {
   /** 发起申请那一刻客户的原值 */
   from?: ClientEdit | null;
-  /** 要修改为的客户全量信息 */
+  /** 要修改为的客户全量信息；客户提交时作为新增内容 */
   to?: ClientEdit | null;
+  /**
+   * diff：申请修改前后对比。
+   * create：客户提交，只展示新增内容。
+   */
+  mode?: 'create' | 'diff';
 }
 
-const props = withDefaults(defineProps<Props>(), { from: null, to: null });
+const props = withDefaults(defineProps<Props>(), {
+  from: null,
+  mode: 'diff',
+  to: null,
+});
 
 const EMPTY_TEXT = '—';
 
@@ -670,16 +679,31 @@ const rows = computed(() => {
 
 const changedCount = computed(() => rows.value.filter((r) => r.changed).length);
 
-const visibleRows = computed(() =>
-  showAll.value ? rows.value : rows.value.filter((row) => row.changed),
+const isCreateMode = computed(() => props.mode === 'create');
+
+const filledCount = computed(
+  () => rows.value.filter((row) => row.to !== EMPTY_TEXT).length,
 );
+
+const visibleRows = computed(() => {
+  if (isCreateMode.value) {
+    return showAll.value
+      ? rows.value
+      : rows.value.filter((row) => row.to !== EMPTY_TEXT);
+  }
+  return showAll.value ? rows.value : rows.value.filter((row) => row.changed);
+});
 </script>
 
 <template>
   <div class="client-modify-diff">
     <div class="client-modify-diff__toolbar">
       <span class="client-modify-diff__count">
-        共 {{ changedCount }} 个字段有改动
+        {{
+          isCreateMode
+            ? `共 ${filledCount} 个已填写字段`
+            : `共 ${changedCount} 个字段有改动`
+        }}
       </span>
       <span class="client-modify-diff__switch">
         显示全部字段
@@ -690,28 +714,34 @@ const visibleRows = computed(() =>
     <Empty
       v-if="visibleRows.length === 0"
       :image-style="{ height: '36px' }"
-      description="本次申请没有字段变化"
+      :description="
+        isCreateMode ? '暂无已填写的新增内容' : '本次申请没有字段变化'
+      "
     />
 
     <table v-else class="client-modify-diff__table">
       <thead>
         <tr>
           <th class="w-28">字段</th>
-          <th>原值</th>
-          <th>申请修改为</th>
+          <th v-if="!isCreateMode">原值</th>
+          <th>{{ isCreateMode ? '新增内容' : '申请修改为' }}</th>
         </tr>
       </thead>
       <tbody>
         <tr
           v-for="row in visibleRows"
           :key="`${row.group}-${row.label}`"
-          :class="{ 'is-changed': row.changed }"
+          :class="{
+            'is-changed': isCreateMode ? row.to !== EMPTY_TEXT : row.changed,
+          }"
         >
           <td>
             <span class="client-modify-diff__group">{{ row.group }}</span>
             {{ row.label }}
           </td>
-          <td class="client-modify-diff__from">{{ row.from }}</td>
+          <td v-if="!isCreateMode" class="client-modify-diff__from">
+            {{ row.from }}
+          </td>
           <td class="client-modify-diff__to">{{ row.to }}</td>
         </tr>
       </tbody>

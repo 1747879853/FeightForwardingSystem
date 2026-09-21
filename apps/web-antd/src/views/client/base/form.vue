@@ -59,17 +59,20 @@ import {
   addDishonest,
   cancelDishonest,
   modifyClientAudit,
+  submitClientAudit,
 } from '#/api/sea-export/client-admin';
 import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import {
   canApplyClientModify,
   canEditClient,
+  canSubmitClientAudit,
   getClientStatusLabel,
 } from './client-status';
 import { $t } from '#/locales';
 import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { setFormApisDisabled } from '#/utils/ticket-editable';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -121,7 +124,15 @@ const canDirectEdit = computed(
 /** 已通过(2)/申请修改驳回(5) 可发起申请修改 */
 const canApplyModify = computed(() => canApplyClientModify(clientStatus.value));
 
-/** 保存按钮可用性：新增不受限；编辑受审核状态限制，申请修改模式下按申请提交 */
+/** 未提交(0)/已驳回(3) 可从编辑页提交审核 */
+const canSubmitAudit = computed(() => canSubmitClientAudit(clientStatus.value));
+
+/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑 */
+const formLocked = computed(() => {
+  if (!isEdit.value || !auditEnabled.value || isModifyMode.value) return false;
+  if (clientStatus.value === undefined) return false;
+  return !canDirectEdit.value;
+});
 const canSaveClient = computed(() => {
   if (!isEdit.value) return true;
   // 详情还没回来时不提前拦，避免一进页面就闪一条状态提示；后端另有兜底校验
@@ -139,6 +150,28 @@ const clientStatusTagColor = computed(() => {
 /** 停在同一个编辑页切到申请修改模式，只换提交出口，表单已填内容不丢 */
 const enterModifyMode = () => {
   modifyModeOverride.value = true;
+};
+
+/** 未提交/已驳回的客户从编辑页提交审核；未保存的改动不带进审核 */
+const handleSubmitAudit = async () => {
+  const id = editId.value;
+  if (!id || !canSubmitAudit.value) return;
+  if (await isFormDirty()) {
+    message.warning('请先保存客户信息，再提交审核');
+    return;
+  }
+  Modal.confirm({
+    title: '提交审核',
+    content: '确定提交当前客户进入审核流程吗？一条客户生成一个独立审批任务。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await submitClientAudit({ ids: [id] });
+      message.success('已提交审核');
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
 };
 
 const clientStatusHint = computed(() => {
@@ -272,7 +305,9 @@ function bindOrgSharedLabel() {
             return () =>
               h(OrgSharedLabel, {
                 value: isSharedValue.value,
+                disabled: formLocked.value,
                 'onUpdate:value': async (value: ClientSharedType) => {
+                  if (formLocked.value) return;
                   isSharedValue.value = value;
                   await baseFormApi.setFieldValue('isShared', value);
                 },
@@ -304,6 +339,17 @@ const [SupplierForm, supplierFormApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-3',
 });
+
+watch(
+  formLocked,
+  (locked) => {
+    setFormApisDisabled(
+      [baseFormApi, businessFormApi, clientFormApi, supplierFormApi],
+      locked,
+    );
+  },
+  { immediate: true },
+);
 
 const [AddressModalComponent, modalApi] = useVbenModal({
   // 连接抽离的组件
@@ -375,6 +421,7 @@ const formatBusinessTerm = (
  * 打开风鸟企业查询弹窗
  */
 const openRiskbirdSearch = async () => {
+  if (formLocked.value) return;
   // 获取当前表单中的全称
   const values = await baseFormApi.getValues();
   const fullName = values.fullName;
@@ -806,6 +853,7 @@ const updateStakeholders = async (
   userAttribute: number | undefined,
   values: number[],
 ) => {
+  if (formLocked.value) return;
   defaultOrderUsers.value.forEach((orderUser) => {
     if (orderUser.userAttribute === userAttribute) {
       // 更新 userIds
@@ -881,6 +929,7 @@ const updateStakeholders = async (
  * 更新对账人列表
  */
 const updateReconcilers = (values: number[]) => {
+  if (formLocked.value) return;
   reconcilerUserIds.value = values;
 };
 
@@ -1574,12 +1623,14 @@ const handleDishonestToggle = async () => {
  * 添加地址
  */
 const addAddress = () => {
+  if (formLocked.value) return;
   modalApi.setData(null).open();
 };
 /**
  * 编辑地址
  */
 const editAddress = (data: ClientAdminApi.ClientAddressEditDto) => {
+  if (formLocked.value) return;
   modalApi.setData(data).open();
 };
 const addressList = ref<ClientAdminApi.ClientAddressEditDto[]>([]);
@@ -1661,6 +1712,7 @@ const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
  * 删除地址
  */
 const delAddress = (index: number) => {
+  if (formLocked.value) return;
   addressList.value = addressList.value.filter((_, i) => i !== index);
 };
 
@@ -1729,6 +1781,7 @@ onMounted(() => {
               {
                 type: 'link',
                 size: 'small',
+                disabled: formLocked.value,
                 onClick: openRiskbirdSearch,
                 class: 'ml-1',
               },
@@ -1757,6 +1810,7 @@ onMounted(() => {
               {
                 type: 'link',
                 size: 'small',
+                disabled: formLocked.value,
                 onClick: openRiskbirdSearch,
                 class: 'ml-1',
               },
@@ -1826,6 +1880,19 @@ onMounted(() => {
                 <span class="align-middle">保存并关闭</span>
               </Button>
               <Button
+                v-if="isEdit && auditEnabled && !isModifyMode && canSubmitAudit"
+                type="primary"
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleSubmitAudit"
+              >
+                <IconifyIcon
+                  icon="mdi:file-send-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">提交审核</span>
+              </Button>
+              <Button
                 v-if="isEdit && auditEnabled && !isModifyMode && canApplyModify"
                 type="primary"
                 ghost
@@ -1866,6 +1933,7 @@ onMounted(() => {
                     <CheckboxGroup
                       name="customerTypePrimary"
                       v-model:value="isCustomerType"
+                      :disabled="formLocked"
                       :onChange="handleIsClientChange"
                     >
                       <Checkbox :value="1">
@@ -1882,6 +1950,7 @@ onMounted(() => {
                     name="customerIndustry"
                     class="type-row__attr-group"
                     v-model:value="customerType"
+                    :disabled="formLocked"
                     :options="
                       ClientConstants.getCustomerIndustryCategoryOptions()
                     "
@@ -1901,6 +1970,7 @@ onMounted(() => {
                     <CheckboxGroup
                       name="supplierTypePrimary"
                       v-model:value="isSupplierType"
+                      :disabled="formLocked"
                       :onChange="handleIsSupplierChange"
                     >
                       <Checkbox :value="2">
@@ -1917,6 +1987,7 @@ onMounted(() => {
                     name="supplierIndustry"
                     class="type-row__attr-group"
                     v-model:value="supplierType"
+                    :disabled="formLocked"
                     :options="
                       ClientConstants.getSupplierIndustryCategoryOptions()
                     "
@@ -1992,6 +2063,7 @@ onMounted(() => {
               <div class="">
                 <Button
                   type="primary"
+                  :disabled="formLocked"
                   :loading="submitting"
                   class="flex items-center justify-center"
                   @click="addAddress"
@@ -2034,10 +2106,20 @@ onMounted(() => {
                     </tag>
                   </div>
                   <div>
-                    <Button type="text" @click="editAddress(item)" size="small">
+                    <Button
+                      type="text"
+                      :disabled="formLocked"
+                      @click="editAddress(item)"
+                      size="small"
+                    >
                       <span class="align-middle">{{ $t('common.edit') }}</span>
                     </Button>
-                    <Button type="text" @click="delAddress(index)" size="small">
+                    <Button
+                      type="text"
+                      :disabled="formLocked"
+                      @click="delAddress(index)"
+                      size="small"
+                    >
                       <span class="align-middle">{{
                         $t('common.delete')
                       }}</span>
@@ -2085,7 +2167,10 @@ onMounted(() => {
               </span>
             </div>
             <div class="content-section__body">
-              <PaymentTermsPanel v-model="billingPeriods" />
+              <PaymentTermsPanel
+                v-model="billingPeriods"
+                :readonly="formLocked"
+              />
             </div>
           </section>
         </div>
@@ -2129,6 +2214,7 @@ onMounted(() => {
             </div>
             <UserSelect
               mode="multiple"
+              :disabled="formLocked"
               :model-value="item.userIds"
               label-key="nickName"
               :user-attribute="item.userAttribute"
@@ -2164,6 +2250,7 @@ onMounted(() => {
             </div>
             <UserSelect
               mode="multiple"
+              :disabled="formLocked"
               :model-value="reconcilerUserIds"
               label-key="nickName"
               class="stakeholder-block__select"

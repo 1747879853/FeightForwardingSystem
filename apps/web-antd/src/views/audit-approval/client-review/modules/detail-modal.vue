@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import {
   ClientAdminApi,
   getClientAuditDetail,
+  getClientDetail,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { getClientStatusOptions } from '#/views/client/base/client-status';
@@ -27,14 +28,86 @@ const { ClientTaskType } = ClientAdminApi;
 
 const loading = ref(false);
 const detail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
+/** 客户提交任务没有前后快照，用当前客户档案作为新增内容 */
+const submitSnapshot = ref<ClientAdminApi.ClientEditDto | null>(null);
+const snapshotLoading = ref(false);
 /** 展开中的历史轮次 round 集合，当前轮默认展开 */
 const expandedRounds = ref<number[]>([]);
+
+/** 详情接口的客户档案映射成与申请修改同一套字段表 */
+function mapClientToEditSnapshot(
+  clientDetail: ClientAdminApi.ClientDto,
+): ClientAdminApi.ClientEditDto {
+  return {
+    id: clientDetail.id,
+    name: clientDetail.name,
+    code: clientDetail.code,
+    phone: clientDetail.phone,
+    mobile: clientDetail.mobile,
+    fullName: clientDetail.fullName,
+    enName: clientDetail.enName,
+    enFullName: clientDetail.enFullName,
+    countryId: clientDetail.countryId,
+    areaId: clientDetail.areaId,
+    address: clientDetail.address,
+    enAddress: clientDetail.enAddress,
+    mainProduct: clientDetail.mainProduct,
+    codeSourceId: clientDetail.codeSourceId,
+    enable: clientDetail.enable,
+    clientType: clientDetail.clientType,
+    industryCategories: clientDetail.industryCategories,
+    remark: clientDetail.remark,
+    taxNo: clientDetail.taxNo,
+    taxRate: clientDetail.taxRate,
+    email: clientDetail.email,
+    url: clientDetail.url,
+    legalPerson: clientDetail.legalPerson,
+    registeredCapital: clientDetail.registeredCapital,
+    establishmentDate: clientDetail.establishmentDate,
+    businessTerm: clientDetail.businessTerm,
+    isClient: clientDetail.isClient,
+    clientLevel: clientDetail.clientLevel,
+    source: clientDetail.source,
+    cargoType: clientDetail.cargoType,
+    clientCurrencyId: clientDetail.clientCurrencyId,
+    isSupplier: clientDetail.isSupplier,
+    supplierLevel: clientDetail.supplierLevel,
+    supplierCurrencyId: clientDetail.supplierCurrencyId,
+    laneIds: clientDetail.clientLaneCodes?.map((item) => item.id),
+    enterpriseType: clientDetail.enterpriseType ?? undefined,
+    isShared: clientDetail.isShared,
+    orgId: clientDetail.orgId,
+    sales: clientDetail.sales,
+    customerServices: clientDetail.customerServices,
+    operations: clientDetail.operations,
+    documentations: clientDetail.documentations,
+    addresses: clientDetail.addresses,
+    reconcilerUserIds: clientDetail.reconcilers?.map((item) => item.userId),
+    billingPeriods: (clientDetail.billingPeriods ?? []).map((item) => ({
+      contractNo: item.contractNo,
+      permanent: item.permanent,
+      creditCurrencyId: item.creditCurrencyId,
+      creditCurrency: item.creditCurrency,
+      creditLimit: item.creditLimit,
+      organizationUnitIds: item.organizationUnitIds?.length
+        ? item.organizationUnitIds
+        : item.cbpOrgs?.map((org) => org.organizationUnitId),
+      userIds: item.userIds?.length
+        ? item.userIds
+        : item.cbpUsers?.map((user) => user.userId),
+      codeSourceIds: item.codeSourceIds?.length
+        ? item.codeSourceIds
+        : item.cbpCodeSources?.map((source) => source.codeSourceId),
+    })),
+  };
+}
 
 const [Modal, modalApi] = useVbenModal({
   class: 'w-[1100px] client-review-detail-modal',
   async onOpenChange(isOpen) {
     if (!isOpen) {
       detail.value = null;
+      submitSnapshot.value = null;
       expandedRounds.value = [];
       return;
     }
@@ -45,6 +118,18 @@ const [Modal, modalApi] = useVbenModal({
       detail.value = await getClientAuditDetail(data.clientId);
       const current = detail.value?.histories?.find((item) => item.isCurrent);
       expandedRounds.value = current ? [current.round] : [];
+      const isSubmit =
+        detail.value?.taskType === ClientTaskType.SubmitClient ||
+        current?.taskType === ClientTaskType.SubmitClient;
+      if (isSubmit) {
+        snapshotLoading.value = true;
+        try {
+          const clientDetail = await getClientDetail(data.clientId);
+          submitSnapshot.value = mapClientToEditSnapshot(clientDetail);
+        } finally {
+          snapshotLoading.value = false;
+        }
+      }
     } finally {
       loading.value = false;
     }
@@ -69,6 +154,9 @@ const histories = computed(() =>
 
 const isModifyTask = (taskType?: null | number) =>
   taskType === ClientTaskType.ModifyClient;
+
+const isSubmitTask = (taskType?: null | number) =>
+  taskType === ClientTaskType.SubmitClient;
 
 const formatTime = (value?: null | string) => {
   if (!value) return '--';
@@ -288,6 +376,29 @@ const toggleRound = (round: number) => {
                           :from="round.modifyFrom"
                           :to="round.modifyTo"
                         />
+                      </div>
+                    </div>
+
+                    <div
+                      v-else-if="
+                        isSubmitTask(round.taskType) && round.isCurrent
+                      "
+                      class="round-block"
+                    >
+                      <div class="round-block__title">新增内容</div>
+                      <div class="round-block__content">
+                        <Spin :spinning="snapshotLoading">
+                          <ClientModifyDiff
+                            v-if="submitSnapshot"
+                            mode="create"
+                            :to="submitSnapshot"
+                          />
+                          <Empty
+                            v-else-if="!snapshotLoading"
+                            :image-style="{ height: '36px' }"
+                            description="暂无新增内容"
+                          />
+                        </Spin>
                       </div>
                     </div>
                   </div>
