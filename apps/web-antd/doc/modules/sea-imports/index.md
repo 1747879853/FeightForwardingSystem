@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,7 +28,7 @@ last_updated: 2026-09-20
 - **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。进入列表**不预填会计期间**；默认按到港日期（`transportOrder.etd` / `TransportOrder.ETD`）降序，与海出开船日期同一字段。搜索条件变更不自动查询，需点「查询」；重置清空全部条件且不自动重查。
 - **分组统计：** 支持列表分组 Tabs。点分组 Tab 只重查列表；删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选复制费用）、删除。删除需 `Admin.SeaImport.Delete` **且** `row.isEditable === true`；复制与进详情不看 `isEditable`。
-- **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`）；规则问号嵌在按钮文案后。
+- **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`）；规则问号嵌在按钮文案后。主提单号前预警：`DELAY` / `DUMPING` / `DETENTION` / `OVERDUE` 红色，`CHANGE` 仍黄色。
 - **进入编辑：** 进入 `/sea-imports/:id/edit`。
 - **进入新建：** 进入 `/sea-imports/create`。
 
@@ -63,6 +63,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Style` | 主提单号前延误/甩柜/滞留/超期预警改红色，CHANGE 仍黄色。 | 共享 `warning-category.ts`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-15 | `Fix` | 进列表不再因字段权限包装层访问未挂载的 `formApi` 而白屏报错。 | `usePermissionGrid` 改写 `formOptions.schema`，`formApi.setState` 改为可选调用。详见 [变更日志](../../changelogs/change-log-2026-09-15-field-permission-grid-form-api.md)。 |

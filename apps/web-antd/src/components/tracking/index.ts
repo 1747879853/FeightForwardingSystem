@@ -51,6 +51,12 @@ export { default as TrackingWarningModal } from './tracking-warning-modal.vue';
 export { default as ContainerTrackingPanel } from './container-tracking-panel.vue';
 export { default as TrackingSubscribeHelp } from './tracking-subscribe-help.vue';
 export { default as TrackingWarningIcon } from './tracking-warning-icon.vue';
+export {
+  getTrackingWarningAccentColor,
+  getTrackingWarningAlertType,
+  isSevereTrackingWarningCategory,
+  SEVERE_TRACKING_WARNING_CATEGORIES,
+} from './warning-category';
 export type {
   TrackingSubscribeResultRow,
   TrackingSubscribeResultView,

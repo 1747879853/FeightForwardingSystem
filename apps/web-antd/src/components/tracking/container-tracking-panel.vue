@@ -27,6 +27,7 @@ import { buildContainerTimelineGroups } from './timeline-nodes';
 import TrackingTimeline from './tracking-timeline.vue';
 import TrackingWarningModal from './tracking-warning-modal.vue';
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
+import { getTrackingWarningAlertType } from './warning-category';
 
 /**
  * 海运集装箱运踪面板（列表运踪弹窗与编辑页运踪 Tab 共用）。
@@ -169,6 +170,10 @@ const rolledContainers = computed(
 
 const latestWarningText = computed(() =>
   sanitizeVendorText(summary.value?.latestWarningDescription),
+);
+
+const warningAlertType = computed(() =>
+  getTrackingWarningAlertType(summary.value?.latestWarningCategory),
 );
 
 const subscribeFailedReason = computed(
@@ -442,7 +447,7 @@ const handleRefresh = async () => {
         <!-- 列表场景只有最近一条预警；编辑页场景走「异常预警」按钮看全量明细，这里不重复提示 -->
         <Alert
           v-if="summary?.hasWarning && warnings.length === 0"
-          type="warning"
+          :type="warningAlertType"
           show-icon
           class="mb-4"
           :message="

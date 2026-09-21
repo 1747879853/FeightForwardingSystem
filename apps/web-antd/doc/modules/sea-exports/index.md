@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -35,6 +35,7 @@ last_updated: 2026-09-20
 - **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、时间信息、干系人四区，控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。港口区用编辑页同款流转卡片，六段港口各自带一格备注：选港后自动填 `PORTNAME, COUNTRYENNAME` 且可手工改，备注只在对应港口有值时随 id 提交（后端亦只在改港时写备注），列表港口列读的就是这些备注。时间信息区与编辑页船期区同源，含货好时间、开船日期、实际开船日期、预抵日期、截单日期、截港日期、截关日期；日期只能改成某个值，不能用批量修改清空。仅 `isEditable === true` 的票 id 参与提交。成功后给这些 id 打详情重拉标记：之前开过、仍挂在页签里的编辑页再点进去会重新 `DetailAsync`，不会继续显示 KeepAlive 里的旧数据。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；规则问号嵌在按钮文案后（船公司、主提单号/箱号），点问号不触发订阅。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
+- **主提单号预警色：** 有运踪异常时主提单号前出叹号。`DELAY` / `DUMPING` / `DETENTION` / `OVERDUE` 为红色，`CHANGE` 等其余类型仍为黄色；悬停看最近一条原因。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **删除委托：** 选中一条后点击顶部「删除」（需 `Admin.SeaExport.Delete` 权限 **且** `row.isEditable === true`），二次确认后调用 `SeaExportAdmin/DeleteAsync`；删除成功会清理勾选状态并刷新当前列表。`isEditable` 为假时按钮禁用（tooltip：当前记录没有编辑权限，不能删除）。复制、双击进详情不看 `isEditable`。接口 ID 按 `number | string` 原样透传，兼容 GUID。
@@ -116,6 +117,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Style` | 主提单号前延误/甩柜/滞留/超期预警改红色，开港截港等 CHANGE 仍黄色。 | 跟最近一条 `latestWarningCategory`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 去掉分页后写入 sessionStorage。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-16 | `Feature` | 批量修改港口区改成编辑页同款流转卡片（每个港口自带可编辑备注），并新增时间信息区（货好/开船/实开/预抵/截单/截港/截关）。 | 港口与时间 schema 分别复用 `usePortFormSchema` / `useShipmentFormSchema`；日期按单条编辑口径序列化，`SeaExportBatchEditDto` 补齐 7 个日期字段。详见 [变更日志](../../changelogs/change-log-2026-09-16-sea-export-batch-edit-port-remark-and-dates.md)。 |

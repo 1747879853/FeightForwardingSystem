@@ -8,6 +8,11 @@ import { Empty, Modal, Table } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { sanitizeVendorText } from '#/utils/vendor-text';
 
+import {
+  getTrackingWarningAccentColor,
+  isSevereTrackingWarningCategory,
+} from './warning-category';
+
 /**
  * 异常预警明细弹窗。
  *
@@ -27,6 +32,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{ 'update:open': [boolean] }>();
+
+function warningCategoryColor(category?: null | string) {
+  if (!isSevereTrackingWarningCategory(category)) return undefined;
+  return getTrackingWarningAccentColor(category);
+}
 
 const columns = computed(() => [
   {
@@ -94,6 +104,18 @@ const rows = computed(() => {
       size="small"
     >
       <template #bodyCell="{ column, record }">
+        <template v-if="column.dataIndex === 'eventCategory'">
+          <span
+            :class="
+              isSevereTrackingWarningCategory(record.eventCategory)
+                ? 'font-medium'
+                : undefined
+            "
+            :style="{ color: warningCategoryColor(record.eventCategory) }"
+          >
+            {{ record.eventCategory || '--' }}
+          </span>
+        </template>
         <template v-if="column.dataIndex === 'description'">
           <span class="whitespace-pre-line">{{ record.description }}</span>
         </template>

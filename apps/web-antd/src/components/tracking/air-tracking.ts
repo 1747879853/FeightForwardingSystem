@@ -100,6 +100,7 @@ export function buildAirWarningProps(row: AirTrackingRowLike) {
     warningCount: summary?.warningCount ?? 0,
     description: summary?.latestWarningDescription ?? '',
     time: summary?.latestWarningTime ?? '',
+    category: summary?.latestWarningCategory ?? '',
   };
 }
 

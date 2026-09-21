@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -30,7 +30,7 @@ last_updated: 2026-09-20
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化；起运地/中转地/目的地/订舱代理分组仍可通过分组项「未填写」追加 `*Empty` 参数。删除/工具栏刷新/表单返回走 `handleRefresh`，会在重查列表后同步 `refreshGroupData()`。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
 - **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则问号嵌在按钮文案后（订阅单号=主运单号、航司系统自动识别）。
-- **运踪状态列：** 付费状态列后展示四态文案（未订阅/订阅失败/等待数据/节点描述）；有 `Admin.ExternalApi.Get` 时可点击打开运踪详情 Modal。
+- **运踪状态列：** 付费状态列后展示四态文案（未订阅/订阅失败/等待数据/节点描述）；有 `Admin.ExternalApi.Get` 时可点击打开运踪详情 Modal。主运单号前预警：`DELAY` / `DUMPING` / `DETENTION` / `OVERDUE` 红色，`CHANGE` 仍黄色。
 - **进入编辑 / 新建：** 双击行进 `/air-exports/:id/edit`；新建进 `/air-exports/create`。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -68,6 +68,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Style` | 主运单号前延误/甩柜/滞留/超期预警改红色，CHANGE 仍黄色。 | 共享 `warning-category.ts`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 起飞日期列头排序点了会高亮；字段权限换列后默认倒序箭头不再丢。 | 远程排序同步表头改为 `setSort(..., false)`，不再 `clearSort`；权限换列后补回 `transportOrder.etd` 箭头。详见[变更记录](../../changelogs/change-log-2026-09-20-空运出口起飞日期排序高亮.md)。 |
 | 2026-09-20 | `Fix` | 修复业务人员、收发通回退文本、计费重量和体积重量合计、机场组合文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
