@@ -42,7 +42,6 @@ import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
 import {
-  ArrowLeft,
   FileText,
   IconifyIcon,
   MapPin,
@@ -1572,13 +1571,6 @@ const handleDishonestToggle = async () => {
 };
 
 /**
- * 取消返回
- */
-const handleCancel = () => {
-  router.push('/clients');
-};
-
-/**
  * 添加地址
  */
 const addAddress = () => {
@@ -1790,10 +1782,7 @@ onMounted(() => {
       <div class="content-column">
         <section :ref="sectionRefs.basic" class="content-section">
           <div class="content-section__actions">
-            <Space>
-              <Button @click="handleCancel">
-                {{ $t('common.back') }}
-              </Button>
+            <div class="content-section__status">
               <Tag
                 v-if="isEdit && auditEnabled && clientStatus !== undefined"
                 :color="clientStatusTagColor"
@@ -1802,11 +1791,13 @@ onMounted(() => {
               </Tag>
               <span
                 v-if="clientStatusHint"
-                class="text-xs text-orange-500"
+                class="content-section__status-hint"
                 :title="clientStatusHint"
               >
                 {{ clientStatusHint }}
               </span>
+            </div>
+            <Space>
               <Button
                 type="primary"
                 :disabled="!canSaveClient"
@@ -2536,9 +2527,26 @@ onMounted(() => {
 
 .content-section__actions {
   display: flex;
-  justify-content: flex-end;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 18px;
   border-bottom: 1px solid #edf2f7;
+}
+
+.content-section__status {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.content-section__status-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #f97316;
 }
 
 .card-title {

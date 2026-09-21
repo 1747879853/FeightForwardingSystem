@@ -11,7 +11,6 @@ import { Button, Form, FormItem, Input, message, Modal } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteClient,
   getClientPagedList,
   addDishonest,
   cancelDishonest,
@@ -75,7 +74,6 @@ const handleRowDblclick = ({
 const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
-const canDelete = computed(() => selectedRows.value.length > 0);
 const canAddDishonest = computed(
   () => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest,
 );
@@ -93,21 +91,12 @@ const hasEditPermission = computed(() => {
   return accessStore.accessCodes.includes('Admin.Client.Edit');
 });
 
-// 添加删除权限检查
-const hasDeletePermission = computed(() => {
-  return accessStore.accessCodes.includes('Admin.Client.Delete');
-});
-
-// 更新编辑和删除的可用性计算属性
 // 启用审核后只有未提交(0)/已驳回(3)能直接编辑，其余状态后端也会拦
 const canEditWithPermission = computed(() => {
   if (!canEdit.value || !hasEditPermission.value) return false;
   if (!auditEnabled.value) return true;
   return canEditClient(selectedRows.value[0]?.clientStatus);
 });
-const canDeleteWithPermission = computed(
-  () => canDelete.value && hasDeletePermission.value,
-);
 
 /** 提交审核：批量，选中客户须全部是未提交/已驳回 */
 const canSubmitAudit = computed(
@@ -215,42 +204,6 @@ const handleApplyModifySelected = () => {
     return;
   }
   handleApplyModify(selectedRows.value[0]!);
-};
-
-const handleDeleteSelected = () => {
-  if (!canDelete.value) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
-    return;
-  }
-
-  const names = selectedRows.value.map((row) => getRowName(row));
-  const displayName = names.length === 1 ? names[0]! : `${names.length}条记录`;
-
-  Modal.confirm({
-    title: $t('ui.actionTitle.delete', [$t('seaExport.client.name')]),
-    content: $t('ui.actionMessage.deleteConfirm', [displayName]),
-    okType: 'danger',
-    async onOk() {
-      const hideLoading = message.loading({
-        content: $t('ui.actionMessage.deleting', [displayName]),
-        duration: 0,
-        key: 'action_process_msg',
-      });
-
-      try {
-        await deleteClient({
-          ids: selectedRows.value.map((row) => row.id),
-        });
-        message.success({
-          content: $t('ui.actionMessage.deleteSuccess', [displayName]),
-          key: 'action_process_msg',
-        });
-        handleRefresh();
-      } catch {
-        hideLoading();
-      }
-    },
-  });
 };
 
 const handleAddDishonest = async () => {
@@ -513,14 +466,6 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
           @click="handleCancelDishonest"
         >
           取消失信
-        </Button>
-        <Button
-          class="mr-2"
-          :disabled="!canDeleteWithPermission"
-          danger
-          @click="handleDeleteSelected"
-        >
-          {{ $t('common.delete') }}
         </Button>
         <Button
           class="mr-2"

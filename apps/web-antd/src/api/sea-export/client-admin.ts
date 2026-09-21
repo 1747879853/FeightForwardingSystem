@@ -1096,7 +1096,7 @@ export const syncClientBillingPeriod = (data: { id: number | string }) => {
 };
 
 /**
- * 删除客户
+ * @deprecated 客户不允许删除，前端已去掉删除入口，勿再调用。
  */
 export const deleteClient = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {

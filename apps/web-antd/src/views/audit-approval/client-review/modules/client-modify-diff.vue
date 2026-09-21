@@ -6,9 +6,19 @@ import { computed, ref, watch } from 'vue';
 import { Empty, Switch } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
+import { getAreaAndParents } from '#/api/common/area';
+import { getCodeSourceDetail } from '#/api/system/base-data/code-source-admin';
+import { getCountryCodeDetail } from '#/api/system/base-data/country-code-admin';
+import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
+import { getLaneCodeDetail } from '#/api/system/base-data/lane-code-admin';
+import {
+  getMyPermissionCompanies,
+  getOrganizationUnit,
+} from '#/api/system/organization-unit';
 import { getUserListByIds } from '#/api/system/user-admin';
 import { formatIndustryCategories } from '#/views/client/base/data';
 import {
+  getAddressTypeOptions,
   getClientLevelOptions,
   getClientSourceOptions,
   getClientTypeOptions,
@@ -33,8 +43,25 @@ const props = withDefaults(defineProps<Props>(), { from: null, to: null });
 
 const EMPTY_TEXT = '—';
 
-/** 干系人/对账人只有 userId，昵称按 id 补齐，否则逐字段对比只能看到一串数字 */
+/** 按 id 补齐展示名；详情快照通常只带外键 id */
 const userNameMap = ref(new Map<string, string>());
+const orgNameMap = ref(new Map<string, string>());
+const currencyNameMap = ref(new Map<string, string>());
+const countryNameMap = ref(new Map<string, string>());
+const areaNameMap = ref(new Map<string, string>());
+const codeSourceNameMap = ref(new Map<string, string>());
+const laneNameMap = ref(new Map<string, string>());
+
+const requestedUserIds = new Set<string>();
+const requestedOrgIds = new Set<string>();
+const requestedCurrencyIds = new Set<string>();
+const requestedCountryIds = new Set<string>();
+const requestedAreaIds = new Set<string>();
+const requestedCodeSourceIds = new Set<string>();
+const requestedLaneIds = new Set<string>();
+
+let companiesLoaded = false;
+let companiesLoading = false;
 
 const collectUserIds = (dto?: ClientEdit | null): number[] => {
   if (!dto) return [];
@@ -44,31 +71,254 @@ const collectUserIds = (dto?: ClientEdit | null): number[] => {
     ...(dto.operations ?? []),
     ...(dto.documentations ?? []),
   ].map((item) => item.userId);
-  return [...stakeholderIds, ...(dto.reconcilerUserIds ?? [])].filter(
-    (id): id is number => id !== undefined && id !== null,
+  const billingUserIds = (dto.billingPeriods ?? []).flatMap(
+    (item) => item.userIds ?? [],
   );
+  return [
+    ...stakeholderIds,
+    ...(dto.reconcilerUserIds ?? []),
+    ...billingUserIds,
+  ].filter((id): id is number => id !== undefined && id !== null);
 };
+
+const collectIds = (
+  values: Array<null | number | string | undefined>,
+): string[] => [
+  ...new Set(
+    values
+      .filter((id) => id !== undefined && id !== null && id !== '')
+      .map((id) => String(id)),
+  ),
+];
+
+const missingIds = (
+  values: Array<null | number | string | undefined>,
+  known: Map<string, string>,
+  requested: Set<string>,
+) => collectIds(values).filter((id) => !known.has(id) && !requested.has(id));
+
+const mapLabel = (
+  map: Map<string, string>,
+  id: null | number | string | undefined,
+) => {
+  if (id === undefined || id === null || id === '') return EMPTY_TEXT;
+  // 名称还在请求中时先显示 id，回来后 computed 会刷成文案
+  return map.get(String(id)) || String(id);
+};
+
+const seedNestedLabels = (dto?: ClientEdit | null) => {
+  if (!dto) return;
+  const codeSource = dto.codeSource;
+  if (dto.codeSourceId && codeSource) {
+    const name = codeSource.cnName || codeSource.code || '';
+    if (name) codeSourceNameMap.value.set(String(dto.codeSourceId), name);
+  }
+  for (const period of dto.billingPeriods ?? []) {
+    const currency = (
+      period as { creditCurrency?: { cnName?: string; code?: string } }
+    ).creditCurrency;
+    if (period.creditCurrencyId && currency) {
+      const name = currency.cnName || currency.code || '';
+      if (name)
+        currencyNameMap.value.set(String(period.creditCurrencyId), name);
+    }
+  }
+};
+
+async function resolveUserNames(dtos: Array<ClientEdit | null | undefined>) {
+  const missing = missingIds(
+    dtos.flatMap((dto) => collectUserIds(dto)),
+    userNameMap.value,
+    requestedUserIds,
+  );
+  if (missing.length === 0) return;
+  for (const id of missing) requestedUserIds.add(id);
+  try {
+    const users = await getUserListByIds(missing, { silent: true });
+    for (const user of users) {
+      const name = (user.nickName || user.userName || '').trim();
+      if (name) userNameMap.value.set(String(user.id), name);
+    }
+  } catch {
+    for (const id of missing) requestedUserIds.delete(id);
+  }
+}
+
+async function resolveOrgNames(dtos: Array<ClientEdit | null | undefined>) {
+  const ids = collectIds([
+    ...dtos.map((dto) => dto?.orgId),
+    ...dtos.flatMap((dto) =>
+      (dto?.billingPeriods ?? []).flatMap(
+        (item) => item.organizationUnitIds ?? [],
+      ),
+    ),
+  ]);
+  const missing = ids.filter((id) => !orgNameMap.value.has(id));
+  if (missing.length === 0) return;
+
+  if (!companiesLoaded && !companiesLoading) {
+    companiesLoading = true;
+    try {
+      const companies = await getMyPermissionCompanies();
+      for (const company of companies) {
+        if (company.name)
+          orgNameMap.value.set(String(company.id), company.name);
+      }
+      companiesLoaded = true;
+    } catch {
+      // 权限公司拉不到时再逐条补
+    } finally {
+      companiesLoading = false;
+    }
+  }
+
+  const stillMissing = missingIds(missing, orgNameMap.value, requestedOrgIds);
+  await Promise.all(
+    stillMissing.map(async (id) => {
+      requestedOrgIds.add(id);
+      try {
+        const org = await getOrganizationUnit(id);
+        if (org.displayName) orgNameMap.value.set(id, org.displayName);
+      } catch {
+        requestedOrgIds.delete(id);
+      }
+    }),
+  );
+}
+
+async function resolveCurrencyNames(
+  dtos: Array<ClientEdit | null | undefined>,
+) {
+  const missing = missingIds(
+    [
+      ...dtos.map((dto) => dto?.clientCurrencyId),
+      ...dtos.map((dto) => dto?.supplierCurrencyId),
+      ...dtos.flatMap((dto) =>
+        (dto?.billingPeriods ?? []).map((item) => item.creditCurrencyId),
+      ),
+    ],
+    currencyNameMap.value,
+    requestedCurrencyIds,
+  );
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedCurrencyIds.add(id);
+      try {
+        const detail = await getCurrencyDetail(id);
+        const name = detail.cnName || detail.code || '';
+        if (name) currencyNameMap.value.set(id, name);
+      } catch {
+        requestedCurrencyIds.delete(id);
+      }
+    }),
+  );
+}
+
+async function resolveCountryNames(dtos: Array<ClientEdit | null | undefined>) {
+  const missing = missingIds(
+    dtos.map((dto) => dto?.countryId),
+    countryNameMap.value,
+    requestedCountryIds,
+  );
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedCountryIds.add(id);
+      try {
+        const detail = await getCountryCodeDetail(id);
+        const name = detail.countryName || detail.code || '';
+        if (name) countryNameMap.value.set(id, name);
+      } catch {
+        requestedCountryIds.delete(id);
+      }
+    }),
+  );
+}
+
+async function resolveAreaNames(dtos: Array<ClientEdit | null | undefined>) {
+  const missing = missingIds(
+    dtos.map((dto) => dto?.areaId),
+    areaNameMap.value,
+    requestedAreaIds,
+  );
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedAreaIds.add(id);
+      try {
+        const areas = await getAreaAndParents(id);
+        const name = (areas ?? [])
+          .map((item) => item.displayName)
+          .filter(Boolean)
+          .join(' / ');
+        if (name) areaNameMap.value.set(id, name);
+      } catch {
+        requestedAreaIds.delete(id);
+      }
+    }),
+  );
+}
+
+async function resolveCodeSourceNames(
+  dtos: Array<ClientEdit | null | undefined>,
+) {
+  const missing = missingIds(
+    [
+      ...dtos.map((dto) => dto?.codeSourceId),
+      ...dtos.flatMap((dto) =>
+        (dto?.billingPeriods ?? []).flatMap((item) => item.codeSourceIds ?? []),
+      ),
+    ],
+    codeSourceNameMap.value,
+    requestedCodeSourceIds,
+  );
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedCodeSourceIds.add(id);
+      try {
+        const detail = await getCodeSourceDetail(id);
+        const name = detail.cnName || detail.code || '';
+        if (name) codeSourceNameMap.value.set(id, name);
+      } catch {
+        requestedCodeSourceIds.delete(id);
+      }
+    }),
+  );
+}
+
+async function resolveLaneNames(dtos: Array<ClientEdit | null | undefined>) {
+  const missing = missingIds(
+    dtos.flatMap((dto) => dto?.laneIds ?? []),
+    laneNameMap.value,
+    requestedLaneIds,
+  );
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedLaneIds.add(id);
+      try {
+        const detail = await getLaneCodeDetail(id);
+        const name = detail.laneName || detail.code || '';
+        if (name) laneNameMap.value.set(id, name);
+      } catch {
+        requestedLaneIds.delete(id);
+      }
+    }),
+  );
+}
 
 watch(
   () => [props.from, props.to],
   async () => {
-    const ids = [
-      ...new Set(
-        [...collectUserIds(props.from), ...collectUserIds(props.to)].map(
-          String,
-        ),
-      ),
-    ].filter((id) => !userNameMap.value.has(id));
-    if (ids.length === 0) return;
-    try {
-      const users = await getUserListByIds(ids, { silent: true });
-      for (const user of users) {
-        const name = (user.nickName || user.userName || '').trim();
-        if (name) userNameMap.value.set(String(user.id), name);
-      }
-    } catch {
-      // 拉不到昵称就退回显示 id，不影响对比本身
-    }
+    const dtos = [props.from, props.to];
+    seedNestedLabels(props.from);
+    seedNestedLabels(props.to);
+    await Promise.all([
+      resolveUserNames(dtos),
+      resolveOrgNames(dtos),
+      resolveCurrencyNames(dtos),
+      resolveCountryNames(dtos),
+      resolveAreaNames(dtos),
+      resolveCodeSourceNames(dtos),
+      resolveLaneNames(dtos),
+    ]);
   },
   { immediate: true },
 );
@@ -77,25 +327,68 @@ const optionLabel = (
   options: Array<{ label: string; value: any }>,
   value: unknown,
 ) => {
-  const hit = options.find((item) => item.value === value);
+  const hit = options.find(
+    (item) => item.value === value || String(item.value) === String(value),
+  );
   return hit?.label ?? String(value);
 };
 
-const userNames = (ids: Array<number | undefined>) =>
-  ids
-    .filter((id): id is number => id !== undefined && id !== null)
+const userNames = (ids: Array<number | undefined>) => {
+  const list = ids.filter(
+    (id): id is number => id !== undefined && id !== null,
+  );
+  if (list.length === 0) return EMPTY_TEXT;
+  return list
     .map((id) => userNameMap.value.get(String(id)) || `用户${id}`)
     .join('、');
+};
 
 const stakeholderText = (list?: Array<{ userId: number }> | null): string =>
   userNames((list ?? []).map((item) => item.userId));
+
+const orgNames = (ids?: Array<number | undefined> | null) => {
+  const list = (ids ?? []).filter(
+    (id): id is number => id !== undefined && id !== null,
+  );
+  if (list.length === 0) return EMPTY_TEXT;
+  return list
+    .map((id) => orgNameMap.value.get(String(id)) || `组织${id}`)
+    .join('、');
+};
+
+const codeSourceNames = (ids?: Array<number | undefined> | null) => {
+  const list = (ids ?? []).filter(
+    (id): id is number => id !== undefined && id !== null,
+  );
+  if (list.length === 0) return EMPTY_TEXT;
+  return list
+    .map((id) => codeSourceNameMap.value.get(String(id)) || `来源${id}`)
+    .join('、');
+};
+
+const laneNames = (ids?: number[] | null) => {
+  if (!ids || ids.length === 0) return EMPTY_TEXT;
+  return ids
+    .map((id) => laneNameMap.value.get(String(id)) || `航线${id}`)
+    .join('、');
+};
 
 const addressesText = (dto?: ClientEdit | null): string => {
   const list = dto?.addresses ?? [];
   if (list.length === 0) return EMPTY_TEXT;
   return list
     .map((item) => {
-      const parts = [item.name, item.address, item.contactPerson, item.mobile]
+      const typeLabel =
+        item.addressType === undefined || item.addressType === null
+          ? ''
+          : optionLabel(getAddressTypeOptions(), item.addressType);
+      const parts = [
+        typeLabel,
+        item.name,
+        item.address,
+        item.contactPerson,
+        item.mobile,
+      ]
         .filter(Boolean)
         .join('/');
       return item.isDefault ? `${parts}（默认）` : parts;
@@ -108,12 +401,27 @@ const billingPeriodsText = (dto?: ClientEdit | null): string => {
   if (list.length === 0) return EMPTY_TEXT;
   return list
     .map((item) => {
+      const currency =
+        item.creditCurrencyId === undefined || item.creditCurrencyId === null
+          ? undefined
+          : currencyNameMap.value.get(String(item.creditCurrencyId)) ||
+            `币别${item.creditCurrencyId}`;
       const pieces = [
         item.contractNo,
         item.permanent ? '长期有效' : undefined,
+        currency,
         item.creditLimit === undefined || item.creditLimit === null
           ? undefined
           : `授信${item.creditLimit}`,
+        orgNames(item.organizationUnitIds) === EMPTY_TEXT
+          ? undefined
+          : `组织:${orgNames(item.organizationUnitIds)}`,
+        userNames(item.userIds ?? []) === EMPTY_TEXT
+          ? undefined
+          : `销售:${userNames(item.userIds ?? [])}`,
+        codeSourceNames(item.codeSourceIds) === EMPTY_TEXT
+          ? undefined
+          : `来源:${codeSourceNames(item.codeSourceIds)}`,
       ].filter(Boolean);
       return pieces.length > 0 ? pieces.join('/') : '账期';
     })
@@ -146,7 +454,8 @@ type FieldDef = {
   read: (dto?: ClientEdit | null) => string;
 };
 
-const FIELD_DEFS: FieldDef[] = [
+/** 依赖 nameMap 的字段放在 computed 里，名称补齐后会自动重算对比行 */
+const fieldDefs = computed<FieldDef[]>(() => [
   { group: '基础信息', label: '客户简称', read: (d) => plainText(d?.name) },
   { group: '基础信息', label: '客户代码', read: (d) => plainText(d?.code) },
   { group: '基础信息', label: '客户全称', read: (d) => plainText(d?.fullName) },
@@ -188,8 +497,8 @@ const FIELD_DEFS: FieldDef[] = [
   },
   {
     group: '基础信息',
-    label: '归属公司id',
-    read: (d) => plainText(d?.orgId),
+    label: '归属公司',
+    read: (d) => mapLabel(orgNameMap.value, d?.orgId),
   },
   {
     group: '基础信息',
@@ -201,11 +510,19 @@ const FIELD_DEFS: FieldDef[] = [
   },
   {
     group: '基础信息',
-    label: '业务来源id',
-    read: (d) => plainText(d?.codeSourceId),
+    label: '业务来源',
+    read: (d) => mapLabel(codeSourceNameMap.value, d?.codeSourceId),
   },
-  { group: '基础信息', label: '国家id', read: (d) => plainText(d?.countryId) },
-  { group: '基础信息', label: '所在省市', read: (d) => plainText(d?.areaId) },
+  {
+    group: '基础信息',
+    label: '国家',
+    read: (d) => mapLabel(countryNameMap.value, d?.countryId),
+  },
+  {
+    group: '基础信息',
+    label: '所在省市',
+    read: (d) => mapLabel(areaNameMap.value, d?.areaId),
+  },
   { group: '基础信息', label: '地址', read: (d) => plainText(d?.address) },
   {
     group: '基础信息',
@@ -272,8 +589,8 @@ const FIELD_DEFS: FieldDef[] = [
   },
   {
     group: '客户信息',
-    label: '客户结算币种id',
-    read: (d) => plainText(d?.clientCurrencyId),
+    label: '客户结算币种',
+    read: (d) => mapLabel(currencyNameMap.value, d?.clientCurrencyId),
   },
 
   {
@@ -291,13 +608,13 @@ const FIELD_DEFS: FieldDef[] = [
   },
   {
     group: '供应商信息',
-    label: '供应商结算币种id',
-    read: (d) => plainText(d?.supplierCurrencyId),
+    label: '供应商结算币种',
+    read: (d) => mapLabel(currencyNameMap.value, d?.supplierCurrencyId),
   },
   {
     group: '供应商信息',
-    label: '优质航线ids',
-    read: (d) => plainText(d?.laneIds),
+    label: '优质航线',
+    read: (d) => laneNames(d?.laneIds),
   },
 
   { group: '业务子表', label: '销售', read: (d) => stakeholderText(d?.sales) },
@@ -323,13 +640,22 @@ const FIELD_DEFS: FieldDef[] = [
   },
   { group: '业务子表', label: '地址', read: (d) => addressesText(d) },
   { group: '业务子表', label: '账期', read: (d) => billingPeriodsText(d) },
-];
+]);
 
 /** 默认只看改动过的字段；打开开关看全部 */
 const showAll = ref(false);
 
 const rows = computed(() => {
-  return FIELD_DEFS.map((def) => {
+  // 读一遍 map.size，保证名称补齐后 computed 会刷新
+  void userNameMap.value.size;
+  void orgNameMap.value.size;
+  void currencyNameMap.value.size;
+  void countryNameMap.value.size;
+  void areaNameMap.value.size;
+  void codeSourceNameMap.value.size;
+  void laneNameMap.value.size;
+
+  return fieldDefs.value.map((def) => {
     const from = def.read(props.from) || EMPTY_TEXT;
     const to = def.read(props.to) || EMPTY_TEXT;
     return {
@@ -399,9 +725,18 @@ const visibleRows = computed(() =>
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+  padding: 6px 8px;
   margin-bottom: 8px;
   font-size: 12px;
-  color: #64748b;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--primary) / 4%);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+}
+
+.client-modify-diff__count {
+  font-weight: 500;
+  color: hsl(var(--foreground) / 78%);
 }
 
 .client-modify-diff__switch {
@@ -412,38 +747,50 @@ const visibleRows = computed(() =>
 
 .client-modify-diff__table {
   width: 100%;
+  overflow: hidden;
   font-size: 12px;
   border-collapse: collapse;
+  border-radius: 6px;
 }
 
 .client-modify-diff__table th,
 .client-modify-diff__table td {
-  padding: 6px 8px;
+  padding: 7px 8px;
   vertical-align: top;
   text-align: left;
   overflow-wrap: anywhere;
   border: 1px solid hsl(var(--border));
+  transition: background 0.15s ease;
 }
 
 .client-modify-diff__table th {
   font-weight: 600;
-  color: #475569;
+  color: hsl(var(--foreground) / 78%);
   background: hsl(var(--primary) / 6%);
+}
+
+.client-modify-diff__table tbody tr:hover td {
+  background: hsl(var(--primary) / 4%);
 }
 
 .client-modify-diff__group {
   margin-right: 4px;
   font-size: 11px;
-  color: #94a3b8;
+  color: hsl(var(--muted-foreground));
 }
 
 .client-modify-diff__table tr.is-changed .client-modify-diff__from {
-  color: #dc2626;
+  color: hsl(0deg 55% 46%);
   text-decoration: line-through;
+  text-decoration-color: hsl(0deg 55% 46% / 45%);
 }
 
 .client-modify-diff__table tr.is-changed .client-modify-diff__to {
   font-weight: 600;
-  color: #16a34a;
+  color: hsl(142deg 40% 34%);
+}
+
+.client-modify-diff__table tr.is-changed:hover td {
+  background: hsl(var(--primary) / 6%);
 }
 </style>
