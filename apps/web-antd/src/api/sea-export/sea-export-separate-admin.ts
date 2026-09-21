@@ -37,6 +37,7 @@ export namespace SeaExportSeparateAdminApi {
 
   export interface SeparateAddDto {
     seaExportId: string;
+    settlementId: string;
     consigneeId?: string;
     consigneeContent?: string;
     shipperId?: string;
@@ -71,6 +72,9 @@ export namespace SeaExportSeparateAdminApi {
   export interface SeparateDto {
     id: string;
     seaExportId: string;
+    settlementId?: string;
+    settlement?: ClientAdminApi.ClientDto | null;
+    settlementDate?: string;
     consigneeId?: string;
     consigneeContent?: string;
     /** 收货人对象（替代 consigneeName） */

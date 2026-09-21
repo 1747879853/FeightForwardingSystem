@@ -18,6 +18,7 @@ export enum TaskType {
   ModifyClient = 91,
   DeleteClient = 92,
   CommissionOrder = 10,
+  SignOutBillOfLading = 11,
 }
 
 /** 通过方式 */
@@ -59,6 +60,9 @@ export enum TaskTypeCondition {
   PreOrderUserId = 8001,
   /** 业务联系单申请人组织（仅属于/不属于） */
   PreOrderOrgID = 8002,
+  BillOfLadingClient = 11001,
+  BillOfLadingOrg = 11002,
+  BillOfLadingOverdue = 11003,
 }
 
 /** 费用条件-收付类型可选值 */
@@ -83,7 +87,13 @@ export enum OrderFeeConditionBizType {
  * - `number`：数值输入
  * - `none`：介词自身即完整语义，无需填值
  */
-export type ConditionValueKind = 'enum' | 'none' | 'number' | 'org' | 'user';
+export type ConditionValueKind =
+  | 'client'
+  | 'enum'
+  | 'none'
+  | 'number'
+  | 'org'
+  | 'user';
 
 /** 条件介词 */
 export enum ShouldBe {
@@ -236,6 +246,7 @@ export function getTaskTypeOptions(): { label: string; value: TaskType }[] {
     { label: '付费申请', value: TaskType.PaymentApplication },
     { label: '业务联系单', value: TaskType.PreOrder },
     { label: '提成申请', value: TaskType.CommissionOrder },
+    { label: '提单签出', value: TaskType.SignOutBillOfLading },
     { label: '客户提交', value: TaskType.SubmitClient },
     { label: '客户变更', value: TaskType.ModifyClient },
     { label: '客户删除', value: TaskType.DeleteClient },
@@ -256,6 +267,9 @@ export function getPassMethodOptions(): {
 
 /** 条件字段展示名 */
 const CONDITION_FIELD_LABELS: Record<TaskTypeCondition, string> = {
+  [TaskTypeCondition.BillOfLadingClient]: '提单-委托单位',
+  [TaskTypeCondition.BillOfLadingOrg]: '提单-提交人组织',
+  [TaskTypeCondition.BillOfLadingOverdue]: '提单-是否超期',
   [TaskTypeCondition.OrderFeeUserId]: '业务所属人',
   [TaskTypeCondition.OrderFeeOrgID]: '业务所属组织',
   [TaskTypeCondition.OrderFeePaySide]: '收付类型',
@@ -305,6 +319,13 @@ export function getTaskTypeConditionOptions(
   taskType: TaskType,
 ): { label: string; value: TaskTypeCondition }[] {
   switch (taskType) {
+    case TaskType.SignOutBillOfLading: {
+      return toConditionOptions([
+        TaskTypeCondition.BillOfLadingClient,
+        TaskTypeCondition.BillOfLadingOrg,
+        TaskTypeCondition.BillOfLadingOverdue,
+      ]);
+    }
     case TaskType.ModifyOrderFee:
     case TaskType.SubmitOrderFee: {
       return toConditionOptions(ORDER_FEE_CONDITIONS);
@@ -332,6 +353,10 @@ export function getConditionValueKind(
   taskTypeCondition: TaskTypeCondition,
 ): ConditionValueKind {
   switch (taskTypeCondition) {
+    case TaskTypeCondition.BillOfLadingClient:
+      return 'client';
+    case TaskTypeCondition.BillOfLadingOrg:
+      return 'org';
     case TaskTypeCondition.OrderFeeOrgID:
     case TaskTypeCondition.PaymentApplicationOrgID:
     case TaskTypeCondition.PreOrderOrgID: {
@@ -399,6 +424,7 @@ export function getShouldBeOptionsForCondition(
         { label: '小于等于', value: ShouldBe.LessOrEqual },
       ];
     }
+    case 'client':
     case 'org': {
       return [
         { label: '属于', value: ShouldBe.In },

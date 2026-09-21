@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-15
+last_updated: 2026-09-21
 ---
 
 > [!TIP] 表单目录与文件职责：[基础信息表单](./basic-info-form.md)。
@@ -22,6 +22,8 @@ last_updated: 2026-09-15
 | 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/basic-info-form/form.vue`（及同目录 README 与私有拆分文件）<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **提单配套（2026-09-21）：** 海出主单签单方式必填，存量空值在单条保存前必须补齐。
 
 - **字段权限展示：新建表单隐藏无条件受限项目，未取得已有详情时不推断条件屏蔽；创建数据仍需满足后端必填与默认值规则。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
@@ -95,6 +97,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Feature` | 海出主单签单方式必填，存量空值在单条保存前必须补齐。 | 依据提单后端契约对齐，见提单管理与签出审核变更日志。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 64）。 | 与编辑页共用 `form.vue`；详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |

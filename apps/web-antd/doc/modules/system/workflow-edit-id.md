@@ -2,7 +2,7 @@
 title: 工作流编辑
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-11
+last_updated: 2026-09-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,6 +20,8 @@ last_updated: 2026-08-11
 | 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/views/system/workflow/form.vue`<br/>`src/api/system/workflow-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **提单配套（2026-09-21）：** 提单签出工作流支持三个专属条件，客户 Guid 与组织雪花 ID 原样保存；用户属性审核在节点及整单保存时拦截，切换任务类型仍清空旧分支条件。
 
 - **列表/页面访问：** 通过 `/system/workflow/edit/:id` 进入 `工作流编辑` 页面。
 - **任务类型：** 可改选费用提交、费用变更、付费申请、**业务联系单（PreOrder=8）**（不再提供「费用删除」）；条件字段随任务类型切换（费用提交与费用变更共用同一套费用条件）。
@@ -50,6 +52,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-21 | `Feature` | 提单签出工作流支持三个专属条件，客户 Guid 与组织雪花 ID 原样保存；用户属性审核在节点及整单保存时拦截，切换任务类型仍清空旧分支条件。 | 依据提单后端契约对齐，见提单管理与签出审核变更日志。 |
 | 2026-08-11 | `Fix` | 分支只配「或条件」时，保存后不再有一条被改判为「且条件」；画布上的条件文案改为 `(A 且 B) 且 (C 或 D)` 的分组写法 | 根因是 `converter.uiConditionsToApi` 按下标把首条强制成 `isOr: false`，而抽屉合并后的 `conditionList` 是 `[...且, ...或]`，无且条件时首条恰好是或条件，每保存一次吞一条；`isOr` 是分组标记而非顺序连接符。`func.conditionStr` 同步改为按 `isOr` 分组拼串，与抽屉 `buildConditionStr` 对齐。新增 `utils/converter.test.ts` 覆盖往返。详见 `changelogs/change-log-2026-08-11-workflow-or-condition-lost.md` |
 | 2026-08-08 | `Feature` | 条件字段对齐后端新枚举（费用类共用 9 个条件），值输入按字段切换；改任务类型会清空原有条件 | 与新建页共用抽屉；历史工作流若存有废弃段位值 0/1000/2000/3000，打开条件抽屉即被丢弃，需重新配置 |
 | 2026-08-08 | `Feature` | 「费用修改」展示名改为「费用变更」 | 与新建页共用 `getTaskTypeOptions` 文案 |

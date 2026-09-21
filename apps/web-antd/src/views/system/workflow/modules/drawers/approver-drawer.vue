@@ -31,7 +31,11 @@
               >
                 <a-radio value="user">审批用户</a-radio>
                 <a-radio value="role">审批角色</a-radio>
-                <a-radio value="attribute">用户属性</a-radio>
+                <a-radio
+                  v-if="store.taskType !== TaskType.SignOutBillOfLading"
+                  value="attribute"
+                  >用户属性</a-radio
+                >
               </a-radio-group>
             </div>
 
@@ -101,6 +105,7 @@ import { useWorkflowStore } from '../../store';
 import { UserSelect, RoleSelect } from '#/adapter/component';
 import {
   getPassMethodOptions,
+  TaskType,
   WorkFlowPassMethod,
 } from '#/api/system/workflow-admin';
 import { getUserAttributeOptions } from '#/views/system/user/data';
@@ -338,6 +343,14 @@ function hasCurrentApproverSelection() {
 
 function saveApprover() {
   const isPass = approverConfig.value.passMethod === WorkFlowPassMethod.Pass;
+  if (
+    !isPass &&
+    store.taskType === TaskType.SignOutBillOfLading &&
+    approverType.value === 'attribute'
+  ) {
+    message.warning('提单签出只支持用户或角色审核');
+    return;
+  }
 
   if (needsApproverConfig.value && !hasCurrentApproverSelection()) {
     const typeLabel =

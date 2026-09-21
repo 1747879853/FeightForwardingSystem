@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -22,6 +22,8 @@ last_updated: 2026-09-20
 | 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/basic-info-form/form.vue`（及同目录 README 与私有拆分文件）<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
+
+- **提单配套（2026-09-21）：** 海出主单签单方式必填；分单增加必填结算对象和只读应结日期，更改结算对象后保存重拉后端重算日期。提单审核中、已签出、已扣单的删除限制由后端提示。
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
@@ -184,6 +186,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-21 | `Feature` | 海出主单签单方式必填；分单增加必填结算对象和只读应结日期，更改结算对象后保存重拉后端重算日期。提单审核中、已签出、已扣单的删除限制由后端提示。 | 依据提单后端契约对齐，见提单管理与签出审核变更日志。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 列表 Query 记入 sessionStorage；`DetailAsync` 原样带上；`loadEditData` 成功后 `emit('saved')` 回写相邻 Id。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开收起加高度过渡；横向时间轴改为细线小圆点苹果风。 | 手风琴不再用 `details`。详见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间，船名航次落在航线下方，少占一行。 | 三列网格，不再通栏航线。详见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |

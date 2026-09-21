@@ -201,6 +201,17 @@ async function save() {
       taskType: taskType.value,
       enable: enable.value,
     });
+    if (
+      taskType.value === TaskType.SignOutBillOfLading &&
+      editDto.nodes.some((node) =>
+        node.auditors?.some((auditor) => auditor.userAttribute),
+      )
+    ) {
+      message.warning(
+        '提单签出工作流只支持用户或角色审核，请修改用户属性审核节点',
+      );
+      return;
+    }
     await editWorkFlow(editDto);
     message.success($t('common.save'));
     returnToListWithRefresh('SystemWorkflow', () => {

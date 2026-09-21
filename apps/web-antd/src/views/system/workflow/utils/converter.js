@@ -338,7 +338,8 @@ function apiConditionValueToUi(taskTypeCondition, value) {
   if (value == null || value === '') return undefined;
   const kind = getConditionValueKind(taskTypeCondition);
   if (kind === 'none') return undefined;
-  if (kind === 'org' || kind === 'user') return String(value);
+  if (kind === 'org' || kind === 'user' || kind === 'client')
+    return String(value);
   const num = Number(value);
   return isNaN(num) ? value : num;
 }
