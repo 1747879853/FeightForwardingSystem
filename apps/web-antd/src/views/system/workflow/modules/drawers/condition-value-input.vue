@@ -1,7 +1,11 @@
 <script setup>
 import { computed } from 'vue';
 import { InputNumber as AInputNumber, Select as ASelect } from 'ant-design-vue';
-import { OrganizationSelect, UserSelect } from '#/adapter/component';
+import {
+  ClientSelect,
+  OrganizationSelect,
+  UserSelect,
+} from '#/adapter/component';
 import {
   getConditionEnumOptions,
   getConditionFieldLabel,
@@ -41,6 +45,13 @@ const userSelectedItems = computed(() => {
   return [{ id: value, nickName: valueText || String(value) }];
 });
 
+/** ClientSelect 编辑回显 */
+const clientSelectedItems = computed(() => {
+  const { value, valueText } = props.condition;
+  if (value == null || value === '') return [];
+  return [{ id: value, name: valueText || String(value) }];
+});
+
 function emitUpdate(value, valueText) {
   emit('update', { value, valueText });
 }
@@ -62,6 +73,17 @@ function onUserChange(val, option) {
   emitUpdate(
     val,
     pickOptionLabel(option, ['nickName', 'label']) || String(val),
+  );
+}
+
+function onClientChange(val, option) {
+  if (val == null || val === '') {
+    emitUpdate(undefined, undefined);
+    return;
+  }
+  emitUpdate(
+    val,
+    pickOptionLabel(option, ['name', 'label', 'fullName']) || String(val),
   );
 }
 
@@ -101,6 +123,15 @@ function onNumberChange(val) {
     style="width: 100%"
     :allow-clear="false"
     @change="onOptionChange"
+  />
+  <ClientSelect
+    v-else-if="kind === 'client'"
+    :model-value="condition.value"
+    :placeholder="placeholder"
+    :selected-items="clientSelectedItems"
+    style="width: 100%"
+    :allow-clear="false"
+    @change="onClientChange"
   />
   <ASelect
     v-else-if="kind === 'enum'"

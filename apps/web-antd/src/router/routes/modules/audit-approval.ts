@@ -15,6 +15,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.PaymentApplication.Audit',
         'Admin.PreOrder.Audit',
         'Admin.CommissionOrder.Audit',
+        'Admin.Client.Audit',
       ]),
     },
     name: 'AuditApproval',
@@ -70,6 +71,19 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/audit-approval/commission-review/index.vue'),
+      },
+      {
+        path: 'client-review',
+        name: 'ClientReview',
+        meta: {
+          icon: 'mdi:account-check-outline',
+          keepAlive: true,
+          title: $t('auditApproval.clientReview.title'),
+          activePath: '/audit-approval/client-review',
+          authority: abpPageAuthority('Admin.Client.Audit'),
+        },
+        component: () =>
+          import('#/views/audit-approval/client-review/index.vue'),
       },
       {
         path: 'expense-review/:id/expense-detail/:entityId',

@@ -1,5 +1,7 @@
 import { requestClient } from '#/api/request';
 
+import type { BillingPeriodAdminApi } from './billing-period-admin';
+
 export namespace ClientAdminApi {
   /** 客户类型枚举 */
   export enum ClientType {
@@ -20,6 +22,43 @@ export namespace ClientAdminApi {
     Company = 1,
     /** 共享所有人：全集团可见 */
     All = 2,
+  }
+
+  /**
+   * 客户审核状态（2026-09-21 客户建档接入审批）
+   * 判「能不能做某操作」时 3≈0、5≈2 必须成对判，见 client-status.ts 的 helper
+   */
+  export enum ClientStatus {
+    /** 未提交：可编辑、可提交审核 */
+    NotSubmitted = 0,
+    /** 待审核：可撤回 */
+    Auditing = 1,
+    /** 已通过：只能申请修改 */
+    Passed = 2,
+    /** 已驳回：业务上等同未提交 */
+    Rejected = 3,
+    /** 申请修改：可撤回 */
+    ModifyAuditing = 4,
+    /** 申请修改驳回：业务上等同已通过 */
+    ModifyRejected = 5,
+  }
+
+  /** 客户审核任务类型 */
+  export enum ClientTaskType {
+    /** 客户提交 */
+    SubmitClient = 90,
+    /** 客户申请修改 */
+    ModifyClient = 91,
+  }
+
+  /** 任务状态 / 我的审核状态 */
+  export enum ClientTaskStatus {
+    /** 审核中（待我审核） */
+    Auditing = 0,
+    /** 驳回（我已驳回） */
+    Rejected = 1,
+    /** 通过（我已通过） */
+    Passed = 2,
   }
 
   /** 合作状态枚举 */
@@ -121,6 +160,22 @@ export namespace ClientAdminApi {
     remark?: string;
   }
 
+  /** 账期出参（客户列表/详情 billingPeriods 元素） */
+  export type ClientBillingPeriodDto =
+    BillingPeriodAdminApi.ClientBillingPeriodDto;
+
+  /**
+   * 随客户新增/编辑提交的账期。
+   * id>0 修改；id=0 或不传 新增。不要传 clientId。
+   */
+  export type ClientBillingPeriodInputDto = Omit<
+    BillingPeriodAdminApi.BillingPeriodAddDto,
+    'clientId'
+  > & {
+    id?: number | string;
+    attachments?: BillingPeriodAdminApi.AttachmentItemForItemInputDto[];
+  };
+
   /** 新增客户参数 */
   export interface ClientAddDto {
     /** 客户简称 */
@@ -203,6 +258,11 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderAddDto[];
     /** 地址列表 */
     addresses?: ClientAddressAddDto[];
+    /**
+     * 账期。不传或空数组表示暂无账期。
+     * 不要传 clientId，所属客户由本次新建客户带出。
+     */
+    billingPeriods?: ClientBillingPeriodInputDto[];
     /** 对账人用户ID列表 */
     reconcilerUserIds?: number[];
     /** 企业类型（前端自定义枚举） */
@@ -344,6 +404,11 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderEditDto[];
     /** 地址列表 */
     addresses?: ClientAddressEditDto[];
+    /**
+     * 账期整包。id>0 修改原条；id=0 或不传 新增；
+     * 库里有、本次没带的删除。不传或空数组会删光该客户账期。
+     */
+    billingPeriods?: ClientBillingPeriodInputDto[];
     /** 对账人用户ID列表 */
     reconcilerUserIds?: number[];
     /** 企业类型（前端自定义枚举） */
@@ -633,6 +698,8 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderDto[];
     /** 地址列表 详情有 列表没有 */
     addresses?: ClientAddressDto[];
+    /** 账期（含子表与附件）。没有时为 [] */
+    billingPeriods?: ClientBillingPeriodDto[];
     /** 对账人列表 */
     reconcilers?: ClientReconcilerDto[];
     /** 国家 */
@@ -649,6 +716,8 @@ export namespace ClientAdminApi {
     isDishonest?: boolean;
     /** 失信备注（只读） */
     dishonestRemark?: string;
+    /** 客户审核状态（只读，只能由审核相关接口改） */
+    clientStatus?: ClientStatus;
 
     isDeleted: boolean;
     deleterUserId?: number;
@@ -710,6 +779,9 @@ export namespace ClientAdminApi {
     EnterpriseType?: number;
     /** 共享类型（0不共享 / 1共享本公司 / 2共享所有人） */
     IsShared?: ClientSharedType;
+
+    /** 客户审核状态（0~5），为空不筛选；仅管理端列表认这个筛选 */
+    ClientStatus?: ClientStatus;
 
     /** 归属组织ID，为空不筛选 */
     OrgId?: number;
@@ -800,6 +872,170 @@ export namespace ClientAdminApi {
     name?: string | null;
     sortId?: number;
   }
+
+  // ==================== 客户审核 ====================
+
+  /** 客户简易DTO（审核列表行上的客户信息） */
+  export interface ClientSimpleDto {
+    id: string;
+    /** 客户简称 */
+    name?: string;
+    /** 客户代码 */
+    code?: string;
+    /** 客户全称 */
+    fullName?: string;
+    /** 客户英文名 */
+    enName?: string;
+    /** 是否失信 */
+    isDishonest?: boolean;
+    /** 失信备注 */
+    dishonestRemark?: string;
+    /** 企业类型 */
+    enterpriseType?: null | number;
+    /** 客户性质 0同行 / 1直客 */
+    clientType?: ClientType | null;
+    /** 共享类型 */
+    isShared?: ClientSharedType;
+    /** 客户审核状态 */
+    clientStatus?: ClientStatus;
+    /** 税率(%) */
+    taxRate?: null | number;
+    /** 归属公司id */
+    orgId?: null | number;
+    /** 归属组织串，顶→底 */
+    orgs?: null | OrganizationUnitSimpleDto[];
+  }
+
+  /** 工作流明细（某一级里的一个审核人） */
+  export interface ClientWorkFlowInstanceItemDto {
+    id: string;
+    /** 审核人id */
+    userId: number;
+    /** 审核人昵称 */
+    userNickName?: string;
+    /** 0审核中 / 1驳回 / 2通过；null 代表还没走到这一步 */
+    taskStatus?: null | number;
+    /** 审批意见 */
+    comment?: null | string;
+    /** 审批时间 */
+    auditTime?: null | string;
+  }
+
+  /** 工作流按层级分组的审批路径 */
+  export interface ClientWorkFlowInstanceLevelGroupDto {
+    /** 层级，从 1 开始 */
+    level: number;
+    /** 本级通过方式（与签/或签） */
+    passMethod?: number;
+    itemList?: ClientWorkFlowInstanceItemDto[];
+  }
+
+  /** 工作流实例（算不出审核人而直接通过时整体为 null） */
+  export interface ClientWorkFlowInstanceDto {
+    id: string;
+    /** 0活动 / 1通过 / 2拒绝 */
+    status?: number;
+    levelGroup?: ClientWorkFlowInstanceLevelGroupDto[];
+  }
+
+  /** 审核任务行（一条客户一行，挂该客户最新一条任务） */
+  export interface ClientTaskDto {
+    /** 任务id（客户id在 client.id） */
+    id: string;
+    /** 90客户提交 / 91客户申请修改 */
+    taskType: ClientTaskType;
+    /** 0审核中 / 1驳回 / 2通过 */
+    taskStatus: ClientTaskStatus;
+    /** 提交时间 */
+    submitTime?: string;
+    /** 提交人昵称 */
+    submitUserName?: string;
+    /** 终审时间，审核中为 null */
+    auditTime?: null | string;
+    /** 终审人昵称，审核中为 null */
+    auditUserName?: null | string;
+    /** 审核意见，审核中为 null */
+    remark?: null | string;
+    /** 申请修改原因，仅 taskType==91 有值 */
+    applyRemark?: null | string;
+    /** 我在这条任务上的状态；null 代表还没轮到我 */
+    myTaskStatus?: ClientTaskStatus | null;
+    /** 客户当前信息 */
+    client?: ClientSimpleDto | null;
+    /** 要修改为的客户全量信息，仅 taskType==91 有值 */
+    modifyTo?: ClientEditDto | null;
+    /** 发起申请那一刻客户的原值，仅 taskType==91 有值 */
+    modifyFrom?: ClientEditDto | null;
+    /** 审批路径；工作流直接通过时为 null */
+    workFlowInstance?: ClientWorkFlowInstanceDto | null;
+  }
+
+  /** 审批历史轮次（字段与列表行同构，client 恒为 null） */
+  export interface ClientTaskHistoryDto extends ClientTaskDto {
+    /** 轮次序号，正序从 1 开始 */
+    round: number;
+    /** 是否当前轮（= 详情主体那一条） */
+    isCurrent: boolean;
+  }
+
+  /** 审核任务详情：主体与列表行同构，另挂全部轮次 */
+  export interface ClientAuditDetailDto extends ClientTaskDto {
+    /** 该客户全部轮次，按提交时间正序 */
+    histories?: ClientTaskHistoryDto[];
+  }
+
+  /** 审核任务分页列表入参 */
+  export interface GetAuditPagedListParams {
+    /** 我的审核状态：0待我审核 / 2我已审核；不传=并集（含还没轮到我的） */
+    myAuditStatus?: ClientTaskStatus | null;
+    /** 任务类型：90客户提交 / 91客户申请修改；不传=两种都要 */
+    taskType?: ClientTaskType | null;
+    /** 任务状态：0审核中 / 1驳回 / 2通过 */
+    taskStatus?: ClientTaskStatus | null;
+    /** 客户审核状态 0~5 */
+    clientStatus?: ClientStatus | null;
+    /** 模糊匹配客户简称/代码/全称/英文名 */
+    keyword?: string;
+    /** 客户归属公司，按「本组织+其所有下属组织」筛 */
+    orgId?: null | number;
+    /** 提交时间起，含当天 */
+    submitTimeStart?: string;
+    /** 提交时间止，含当天 */
+    submitTimeEnd?: string;
+    pageIndex?: number;
+    pageSize?: number;
+    sorting?: string;
+  }
+
+  /** 审核任务分页响应 */
+  export interface PagedListOfClientTaskDto {
+    items?: ClientTaskDto[];
+    totalCount: number;
+  }
+
+  /** 提交审核 / 撤回入参（批量） */
+  export interface ClientAuditIdsDto {
+    /** 客户id */
+    ids: string[];
+  }
+
+  /** 审核入参（批量，通过 / 驳回 / 通过后驳回共用） */
+  export interface ClientAuditDto {
+    /** 客户id（不是任务id） */
+    ids: string[];
+    /** true 通过、false 驳回 */
+    success: boolean;
+    /** 审核意见，驳回时必填 */
+    remark?: string;
+  }
+
+  /** 申请修改入参（单条） */
+  export interface ClientModifyAuditDto {
+    /** 要修改为的客户完整信息，与 EditAsync 入参一致 */
+    client: ClientEditDto;
+    /** 申请修改原因，必填，≤4096 */
+    applyRemark: string;
+  }
 }
 
 const API_PREFIX = '/services/app/ClientAdmin';
@@ -849,7 +1085,18 @@ export const editClient = (data: ClientAdminApi.ClientEditDto) => {
 };
 
 /**
- * 删除客户
+ * 同步账期：按当前账期规则回刷该客户票结历史业务的应结日期与结算方式。
+ * 权限：Admin.Client.Edit
+ */
+export const syncClientBillingPeriod = (data: { id: number | string }) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/SyncBillingPeriodAsync`,
+    data,
+  );
+};
+
+/**
+ * @deprecated 客户不允许删除，前端已去掉删除入口，勿再调用。
  */
 export const deleteClient = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
@@ -932,4 +1179,67 @@ export const addDishonest = (data: { id: string; dishonestRemark: string }) => {
  */
 export const cancelDishonest = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.put<void>(`${API_PREFIX}/CancelDishonestAsync`, data);
+};
+
+// ==================== 客户审核 ====================
+
+/**
+ * 提交审核（批量）。一条客户一个任务一条工作流，互不影响。
+ * 权限 Admin.Client.Edit；仅未提交(0)/已驳回(3)可提交。
+ * @returns 本次生成的任务id
+ */
+export const submitClientAudit = (data: ClientAdminApi.ClientAuditIdsDto) => {
+  return requestClient.post<string[]>(`${API_PREFIX}/SubmitAuditAsync`, data);
+};
+
+/**
+ * 申请修改（单条）。client 为客户全量编辑提交体，子表整份替换。
+ * 权限 Admin.Client.Edit；仅已通过(2)/申请修改驳回(5)可申请。
+ * @returns 本次生成的任务id
+ */
+export const modifyClientAudit = (
+  data: ClientAdminApi.ClientModifyAuditDto,
+) => {
+  return requestClient.post<string>(`${API_PREFIX}/ModifyAuditAsync`, data);
+};
+
+/**
+ * 撤回（批量）。提交审核与申请修改共用，只撤最新那一轮。
+ * 权限 Admin.Client.Edit；仅待审核(1)/申请修改(4)可撤回。
+ */
+export const withdrawClientAudit = (data: ClientAdminApi.ClientAuditIdsDto) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/WithdrawAuditAsync`, data);
+};
+
+/**
+ * 审核（批量）。通过 / 驳回 / 通过后驳回三种动作与两种任务类型合并在这一个接口。
+ * ids 传客户id；轮不到当前登录人的会被后端跳过而不是整批失败。
+ * 权限 Admin.Client.Audit。
+ */
+export const auditClient = (data: ClientAdminApi.ClientAuditDto) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/AuditAsync`, data);
+};
+
+/**
+ * 审核任务分页列表。一条客户一行、挂该客户最新一条任务，只返回与当前登录人有关的行。
+ * 权限 Admin.Client.Audit。
+ */
+export const getClientAuditPagedList = (
+  params: ClientAdminApi.GetAuditPagedListParams,
+) => {
+  return requestClient.get<ClientAdminApi.PagedListOfClientTaskDto>(
+    `${API_PREFIX}/GetAuditPagedListAsync`,
+    { params },
+  );
+};
+
+/**
+ * 审核任务详情，按**客户id**查（取列表行上的 client.id，不是行上的 id）。
+ * 主体为最新那一条任务，另挂全部轮次 histories。权限 Admin.Client.Audit。
+ */
+export const getClientAuditDetail = (clientId: string) => {
+  return requestClient.get<ClientAdminApi.ClientAuditDetailDto>(
+    `${API_PREFIX}/GetAuditDetailAsync`,
+    { params: { id: clientId } },
+  );
 };

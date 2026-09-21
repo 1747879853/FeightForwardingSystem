@@ -14,9 +14,11 @@ import {
 
 const props = withDefaults(
   defineProps<{
+    disabled?: boolean;
     value?: ClientSharedType | boolean | number | null;
   }>(),
   {
+    disabled: false,
     value: ClientSharedType.None,
   },
 );
@@ -69,6 +71,7 @@ const toneClass = computed(() => {
       <Segmented
         v-model:value="model"
         size="small"
+        :disabled="disabled"
         :options="segmentedOptions"
         class="client-shared-segmented"
       />

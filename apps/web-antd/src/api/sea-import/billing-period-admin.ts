@@ -1,7 +1,7 @@
-import { requestClient } from '#/api/request';
-
-const API_PREFIX = '/services/app/ClientBillingPeriodAdmin';
-
+/**
+ * 海进侧旧账期服务已删除，请使用 ClientAdmin.billingPeriods / SyncBillingPeriodAsync。
+ * 本文件不再发起 ClientBillingPeriodAdmin 请求。
+ */
 export namespace BillingPeriodAdminApi {
   /** 新增账单期参数 */
   export interface BillingPeriodAddDto {
@@ -93,67 +93,3 @@ export namespace BillingPeriodAdminApi {
     totalPages?: number;
   }
 }
-/** 不分页列表响应 */
-// export interface ListOfBillingPeriodDto <BillingPeriodDetailDto[]>
-
-/**
- * 新增账单期
- */
-export const addBillingPeriod = (
-  data: BillingPeriodAdminApi.BillingPeriodAddDto,
-) => {
-  return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
-};
-
-/**
- * 修改账单期
- */
-export const editBillingPeriod = (
-  data: BillingPeriodAdminApi.BillingPeriodEditDto,
-) => {
-  return requestClient.put<number>(`${API_PREFIX}/EditAsync`, data);
-};
-/**
- * 删除账单期
- */
-export const deleteBillingPeriod = (id: number | string) => {
-  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
-    data: { id },
-  });
-};
-
-/**
- * 获取账单期分页列表
- */
-export const getBillingPeriodPagedList = (
-  params: BillingPeriodAdminApi.GetPagedListParams,
-) => {
-  return requestClient.get<BillingPeriodAdminApi.PagedListOfBillingPeriodDto>(
-    `${API_PREFIX}/GetPagedListAsync`,
-    { params },
-  );
-};
-
-/**
- * 获取账单期不分页列表
- */
-export const getBillingPeriodList = (
-  params: BillingPeriodAdminApi.GetPagedListParams,
-) => {
-  return requestClient.get<BillingPeriodAdminApi.BillingPeriodDetailDto[]>(
-    `${API_PREFIX}/GetListAsync`,
-    { params },
-  );
-};
-
-/**
- * 获取账单期详情
- * @param id 建议传 string 避免大数精度丢失
- */
-export const getBillingPeriodDetail = (id: number | string) => {
-  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
-  return requestClient.get<BillingPeriodAdminApi.BillingPeriodDetailDto>(
-    `${API_PREFIX}/DetailAsync`,
-    { params: { Id: idStr } },
-  );
-};

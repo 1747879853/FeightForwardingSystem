@@ -190,7 +190,7 @@ export const editClient = (data: ClientAdminApi.ClientEditDto) => {
 };
 
 /**
- * 删除客户
+ * @deprecated 客户不允许删除，前端已去掉删除入口，勿再调用。
  */
 export const deleteClient = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {

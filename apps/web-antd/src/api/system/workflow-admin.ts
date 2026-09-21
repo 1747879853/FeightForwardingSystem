@@ -10,14 +10,20 @@ export { UserAttribute };
 export enum TaskType {
   SubmitOrderFee = 0,
   ModifyOrderFee = 1,
+  /** 禁止新建：与费用修改共用同一条工作流 */
   DeleteOrderFee = 2,
   PaymentApplication = 3,
   /** 业务联系单（与后端 FrightModule.PreOrder 同值） */
   PreOrder = 8,
-  SubmitClient = 90,
-  ModifyClient = 91,
-  DeleteClient = 92,
   CommissionOrder = 10,
+  /** 提单签出 */
+  BillSignOut = 11,
+  /** 新建客户审核 */
+  SubmitClient = 90,
+  /** 申请修改客户 */
+  ModifyClient = 91,
+  /** 枚举占位，客户模块未接入删除审核，配置页不要当作可用项 */
+  DeleteClient = 92,
 }
 
 /** 通过方式 */
@@ -59,6 +65,39 @@ export enum TaskTypeCondition {
   PreOrderUserId = 8001,
   /** 业务联系单申请人组织（仅属于/不属于） */
   PreOrderOrgID = 8002,
+  /** 提成人（仅等于/不等于） */
+  CommissionOrderUserId = 10_001,
+  /** 提成人组织（仅属于/不属于） */
+  CommissionOrderOrgID = 10_002,
+  /** 最终应发金额（仅大小比较，允许为负） */
+  CommissionOrderFinalAmount = 10_003,
+  /** 提单签出-委托单位（仅属于/不属于，值为客户 Guid） */
+  BillSignOutClientId = 11_001,
+  /** 提单签出-提交人组织（仅属于/不属于） */
+  BillSignOutOrgID = 11_002,
+  /** 提单签出-是否超期（仅是/不是，无需填值） */
+  BillSignOutIsOverdue = 11_003,
+  /** 客户所属人（取建档时写入的 userId，非提交人；仅等于/不等于） */
+  ClientUserId = 90_001,
+  /** 客户归属公司（取 OrgId 并覆盖下属；仅属于/不属于） */
+  ClientOrgID = 90_002,
+  /** 客户性质（ClientType：0 同行 / 1 直客；仅等于/不等于） */
+  ClientClientType = 90_003,
+  /** 共享类型（ClientSharedType：0/1/2；仅等于/不等于） */
+  ClientIsShared = 90_004,
+}
+
+/** 客户性质（工作流条件枚举，与 ClientAdmin.ClientType 同值） */
+export enum ClientConditionClientType {
+  Peer = 0,
+  DirectCustomer = 1,
+}
+
+/** 共享类型（工作流条件枚举，与 ClientAdmin.ClientSharedType 同值） */
+export enum ClientConditionSharedType {
+  None = 0,
+  Company = 1,
+  All = 2,
 }
 
 /** 费用条件-收付类型可选值 */
@@ -79,11 +118,18 @@ export enum OrderFeeConditionBizType {
  *
  * - `user`：用户下拉，值为用户 ID
  * - `org`：组织下拉，值为组织 ID
+ * - `client`：客户下拉，值为客户 Guid
  * - `enum`：固定枚举下拉
  * - `number`：数值输入
  * - `none`：介词自身即完整语义，无需填值
  */
-export type ConditionValueKind = 'enum' | 'none' | 'number' | 'org' | 'user';
+export type ConditionValueKind =
+  | 'client'
+  | 'enum'
+  | 'none'
+  | 'number'
+  | 'org'
+  | 'user';
 
 /** 条件介词 */
 export enum ShouldBe {
@@ -228,7 +274,7 @@ export namespace WorkFlowAdminApi {
 
 const API_PREFIX = '/services/app/WorkFlowAdmin';
 
-/** 任务类型选项（用于 Select） */
+/** 任务类型选项（用于 Select；不含禁止新建的费用删除、未接入的客户删除） */
 export function getTaskTypeOptions(): { label: string; value: TaskType }[] {
   return [
     { label: '费用提交', value: TaskType.SubmitOrderFee },
@@ -236,10 +282,33 @@ export function getTaskTypeOptions(): { label: string; value: TaskType }[] {
     { label: '付费申请', value: TaskType.PaymentApplication },
     { label: '业务联系单', value: TaskType.PreOrder },
     { label: '提成申请', value: TaskType.CommissionOrder },
-    { label: '客户提交', value: TaskType.SubmitClient },
-    { label: '客户变更', value: TaskType.ModifyClient },
-    { label: '客户删除', value: TaskType.DeleteClient },
+    { label: '提单签出', value: TaskType.BillSignOut },
+    { label: '新建客户审核', value: TaskType.SubmitClient },
+    { label: '申请修改客户', value: TaskType.ModifyClient },
   ];
+}
+
+/**
+ * 节点审核人是否支持「用户属性」。
+ * 付费申请配置时后端会拦；客户 / 提单签出提交时才拦——配置页统一隐藏，避免误配。
+ */
+export function supportsUserAttributeAuditor(
+  taskType?: null | TaskType,
+): boolean {
+  if (taskType == null) return true;
+  return (
+    taskType !== TaskType.PaymentApplication &&
+    taskType !== TaskType.BillSignOut &&
+    taskType !== TaskType.SubmitClient &&
+    taskType !== TaskType.ModifyClient
+  );
+}
+
+/** 是否客户类任务（提交 / 申请修改共用同一套进入条件） */
+export function isClientWorkflowTaskType(taskType?: null | TaskType): boolean {
+  return (
+    taskType === TaskType.SubmitClient || taskType === TaskType.ModifyClient
+  );
 }
 
 /** 通过方式选项 */
@@ -271,6 +340,16 @@ const CONDITION_FIELD_LABELS: Record<TaskTypeCondition, string> = {
   [TaskTypeCondition.PaymentApplicationOrgID]: '付费申请人组织',
   [TaskTypeCondition.PreOrderUserId]: '业务联系单申请人',
   [TaskTypeCondition.PreOrderOrgID]: '业务联系单申请人组织',
+  [TaskTypeCondition.CommissionOrderUserId]: '提成人',
+  [TaskTypeCondition.CommissionOrderOrgID]: '提成人组织',
+  [TaskTypeCondition.CommissionOrderFinalAmount]: '最终应发金额',
+  [TaskTypeCondition.BillSignOutClientId]: '委托单位',
+  [TaskTypeCondition.BillSignOutOrgID]: '提交人组织',
+  [TaskTypeCondition.BillSignOutIsOverdue]: '是否超期',
+  [TaskTypeCondition.ClientUserId]: '客户所属人',
+  [TaskTypeCondition.ClientOrgID]: '客户归属公司',
+  [TaskTypeCondition.ClientClientType]: '客户性质',
+  [TaskTypeCondition.ClientIsShared]: '共享类型',
 };
 
 /** 费用类任务（费用提交 / 费用变更）共用的条件字段 */
@@ -284,6 +363,28 @@ const ORDER_FEE_CONDITIONS: TaskTypeCondition[] = [
   TaskTypeCondition.OrderFeeHasReceiveLessThanPay,
   TaskTypeCondition.OrderFeeHasPayWithoutReceive,
   TaskTypeCondition.OrderFeeHasReceiveWithoutPay,
+];
+
+/** 客户提交 / 申请修改共用的进入条件 */
+const CLIENT_CONDITIONS: TaskTypeCondition[] = [
+  TaskTypeCondition.ClientUserId,
+  TaskTypeCondition.ClientOrgID,
+  TaskTypeCondition.ClientClientType,
+  TaskTypeCondition.ClientIsShared,
+];
+
+/** 提成单条件 */
+const COMMISSION_ORDER_CONDITIONS: TaskTypeCondition[] = [
+  TaskTypeCondition.CommissionOrderUserId,
+  TaskTypeCondition.CommissionOrderOrgID,
+  TaskTypeCondition.CommissionOrderFinalAmount,
+];
+
+/** 提单签出条件 */
+const BILL_SIGN_OUT_CONDITIONS: TaskTypeCondition[] = [
+  TaskTypeCondition.BillSignOutClientId,
+  TaskTypeCondition.BillSignOutOrgID,
+  TaskTypeCondition.BillSignOutIsOverdue,
 ];
 
 /** 条件字段展示名（未知值回退为原始值） */
@@ -321,6 +422,16 @@ export function getTaskTypeConditionOptions(
         TaskTypeCondition.PreOrderOrgID,
       ]);
     }
+    case TaskType.CommissionOrder: {
+      return toConditionOptions(COMMISSION_ORDER_CONDITIONS);
+    }
+    case TaskType.BillSignOut: {
+      return toConditionOptions(BILL_SIGN_OUT_CONDITIONS);
+    }
+    case TaskType.ModifyClient:
+    case TaskType.SubmitClient: {
+      return toConditionOptions(CLIENT_CONDITIONS);
+    }
     default: {
       return [];
     }
@@ -332,19 +443,30 @@ export function getConditionValueKind(
   taskTypeCondition: TaskTypeCondition,
 ): ConditionValueKind {
   switch (taskTypeCondition) {
+    case TaskTypeCondition.BillSignOutOrgID:
+    case TaskTypeCondition.ClientOrgID:
+    case TaskTypeCondition.CommissionOrderOrgID:
     case TaskTypeCondition.OrderFeeOrgID:
     case TaskTypeCondition.PaymentApplicationOrgID:
     case TaskTypeCondition.PreOrderOrgID: {
       return 'org';
     }
+    case TaskTypeCondition.BillSignOutClientId: {
+      return 'client';
+    }
+    case TaskTypeCondition.ClientClientType:
+    case TaskTypeCondition.ClientIsShared:
     case TaskTypeCondition.OrderFeeBizType:
     case TaskTypeCondition.OrderFeePaySide: {
       return 'enum';
     }
+    case TaskTypeCondition.CommissionOrderFinalAmount:
     case TaskTypeCondition.OrderFeeProfit:
     case TaskTypeCondition.OrderFeeProfitRate: {
       return 'number';
     }
+    case TaskTypeCondition.ClientUserId:
+    case TaskTypeCondition.CommissionOrderUserId:
     case TaskTypeCondition.OrderFeeUserId:
     case TaskTypeCondition.PaymentApplicationUserId:
     case TaskTypeCondition.PreOrderUserId: {
@@ -361,6 +483,19 @@ export function getConditionEnumOptions(
   taskTypeCondition: TaskTypeCondition,
 ): { label: string; value: number }[] {
   switch (taskTypeCondition) {
+    case TaskTypeCondition.ClientClientType: {
+      return [
+        { label: '同行', value: ClientConditionClientType.Peer },
+        { label: '直客', value: ClientConditionClientType.DirectCustomer },
+      ];
+    }
+    case TaskTypeCondition.ClientIsShared: {
+      return [
+        { label: '不共享', value: ClientConditionSharedType.None },
+        { label: '共享本公司', value: ClientConditionSharedType.Company },
+        { label: '共享所有人', value: ClientConditionSharedType.All },
+      ];
+    }
     case TaskTypeCondition.OrderFeeBizType: {
       return [
         { label: '海运出口', value: OrderFeeConditionBizType.SeaExport },
@@ -399,6 +534,7 @@ export function getShouldBeOptionsForCondition(
         { label: '小于等于', value: ShouldBe.LessOrEqual },
       ];
     }
+    case 'client':
     case 'org': {
       return [
         { label: '属于', value: ShouldBe.In },

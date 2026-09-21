@@ -1,96 +1,237 @@
-<script lang="ts" setup>
+﻿<script lang="ts" setup>
+import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
+
+import { computed, nextTick, ref, watch } from 'vue';
+
+import { useAccess } from '@vben/access';
+import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+
+import { Button, message, Modal as AntModal, Space } from 'ant-design-vue';
+
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import type { OnActionClickParams } from '#/adapter/vxe-table';
+import { syncClientBillingPeriod } from '#/api/sea-export/client-admin';
+import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
+import { getMyPermissionCompanies } from '#/api/system/organization-unit';
+import { getUserListByIds } from '#/api/system/user-admin';
+import { $t } from '#/locales';
+import { createAbpPermission } from '#/utils/abp-permission';
+
+import AddModal from './add-modal.vue';
 import {
-  useColumns,
-  SettlementTypeOptions,
   MonthsOptions,
   SettlementDayOptions,
+  SettlementTypeOptions,
+  useColumns,
 } from './data';
-import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
-import {
-  addBillingPeriod,
-  getBillingPeriodPagedList,
-  editBillingPeriod,
-  deleteBillingPeriod,
-  syncBillingPeriod,
-} from '#/api/sea-export/billing-period-admin';
-import { useVbenModal } from '@vben/common-ui';
-import AddModal from './add-modal.vue';
-import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
-import { IconifyIcon } from '@vben/icons';
-import { Page } from '@vben/common-ui';
-import { Button, Space, message } from 'ant-design-vue';
-import { $t } from '#/locales';
-import { createPagedListQuery } from '#/utils/paged-list-query';
-import { createAbpPermission } from '#/utils/abp-permission';
-import { Modal as AntModal } from 'ant-design-vue';
 
 defineOptions({ name: 'ClientPaymentList' });
 
-const route = useRoute();
+const props = withDefaults(
+  defineProps<{
+    /** 客户未进入申请修改时，账期只读 */
+    readonly?: boolean;
+  }>(),
+  { readonly: false },
+);
 
-/** 账期独立权限（Admin.Client.BillingPeriod.*），不再共用客户的 Edit/Get 权限 */
-const perm = createAbpPermission('Admin.Client.BillingPeriod');
-/** 同步账期是账期特有的非 CRUD 动作，直接用权限码字符串（与项目 Submit/Audit 范式一致） */
-const billingPeriodSyncCode = 'Admin.Client.BillingPeriod.Sync';
+/** 账期随客户权限，不再使用已删除的 Admin.Client.BillingPeriod.* */
+const perm = createAbpPermission('Admin.Client');
+const { hasAccessByCodes } = useAccess();
+const canMutateBillingPeriod = computed(
+  () => !props.readonly && hasAccessByCodes([perm.add, perm.edit]),
+);
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
-
-const selectedRowKeys = ref<(string | number)[]>([]);
-
-/**
- * 获取选中的行数据
- */
-const getSelectedRows = () => {
-  const records = (gridApi.grid?.getCheckboxRecords?.() ??
-    []) as BillingPeriodAdminApi.ClientBillingPeriodForViewDto[];
-  return records;
+type BillingPeriodRow = BillingPeriodAdminApi.ClientBillingPeriodForViewDto & {
+  _localKey: string;
+  organizationUnitIds?: number[];
+  userIds?: number[];
+  codeSourceIds?: number[];
 };
 
-/**
- * 批量删除
- */
-const handleBatchDelete = async () => {
-  const selectedRows = getSelectedRows();
+const periods = defineModel<BillingPeriodRow[]>({ default: () => [] });
 
+function hasPersistedId(id: unknown) {
+  return id !== undefined && id !== null && id !== '' && id !== 0 && id !== '0';
+}
+
+function createLocalKey() {
+  return `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ensureRow(row: BillingPeriodRow): BillingPeriodRow {
+  const organizationUnitIds =
+    row.organizationUnitIds ??
+    row.cbpOrgs
+      ?.map((item) => item.organizationUnitId)
+      .filter((id) => id !== undefined && id !== null) ??
+    [];
+  const userIds =
+    row.userIds ??
+    row.cbpUsers
+      ?.map((item) => item.userId)
+      .filter((id) => id !== undefined && id !== null) ??
+    [];
+  const codeSourceIds =
+    row.codeSourceIds ??
+    row.cbpCodeSources
+      ?.map((item) => item.codeSourceId)
+      .filter((id) => id !== undefined && id !== null) ??
+    [];
+  return {
+    ...row,
+    _localKey:
+      row._localKey ||
+      (hasPersistedId(row.id) ? `id-${row.id}` : createLocalKey()),
+    organizationUnitIds,
+    userIds,
+    codeSourceIds,
+  };
+}
+
+watch(
+  periods,
+  (list) => {
+    if (!list?.some((row) => !row._localKey)) return;
+    periods.value = list.map((row) => ensureRow(row));
+  },
+  { deep: true, immediate: true },
+);
+
+/** 弹窗只回传 id，组织/销售/币别名称按 id 补齐，否则新增的行这几列是空的 */
+const orgNameMap = ref(new Map<string, string>());
+const userNameMap = ref(new Map<string, string>());
+const currencyNameMap = ref(new Map<string, string>());
+
+let companiesLoaded = false;
+let companiesLoading = false;
+const requestedUserIds = new Set<string>();
+const requestedCurrencyIds = new Set<string>();
+
+function collectMissingIds(
+  ids: Array<null | number | string | undefined>,
+  known: Map<string, string>,
+) {
+  return [
+    ...new Set(
+      ids
+        .filter((id) => id !== undefined && id !== null && id !== '')
+        .map((id) => String(id)),
+    ),
+  ].filter((id) => !known.has(id));
+}
+
+function seedLabelsFromRows(rows: BillingPeriodRow[]) {
+  for (const row of rows) {
+    for (const org of row.cbpOrgs ?? []) {
+      const name = org.organizationUnit?.name;
+      if (name) orgNameMap.value.set(String(org.organizationUnitId), name);
+    }
+    for (const user of row.cbpUsers ?? []) {
+      if (user.userNickName) {
+        userNameMap.value.set(String(user.userId), user.userNickName);
+      }
+    }
+    const currencyName = row.creditCurrency?.cnName || row.creditCurrency?.code;
+    if (row.creditCurrencyId && currencyName) {
+      currencyNameMap.value.set(String(row.creditCurrencyId), currencyName);
+    }
+  }
+}
+
+async function resolveOrgNames(rows: BillingPeriodRow[]) {
+  const missing = collectMissingIds(
+    rows.flatMap((row) => row.organizationUnitIds ?? []),
+    orgNameMap.value,
+  );
+  if (missing.length === 0 || companiesLoaded || companiesLoading) return;
+  companiesLoading = true;
+  try {
+    const companies = await getMyPermissionCompanies();
+    for (const company of companies) {
+      if (company.name) orgNameMap.value.set(String(company.id), company.name);
+    }
+    companiesLoaded = true;
+  } finally {
+    companiesLoading = false;
+  }
+}
+
+async function resolveUserNames(rows: BillingPeriodRow[]) {
+  const missing = collectMissingIds(
+    rows.flatMap((row) => row.userIds ?? []),
+    userNameMap.value,
+  ).filter((id) => !requestedUserIds.has(id));
+  if (missing.length === 0) return;
+  for (const id of missing) requestedUserIds.add(id);
+  try {
+    const users = await getUserListByIds(missing, { silent: true });
+    for (const user of users) {
+      const name = (user.nickName || user.userName || '').trim();
+      if (name) userNameMap.value.set(String(user.id), name);
+    }
+  } catch {
+    for (const id of missing) requestedUserIds.delete(id);
+  }
+}
+
+async function resolveCurrencyNames(rows: BillingPeriodRow[]) {
+  const missing = collectMissingIds(
+    rows.map((row) => row.creditCurrencyId),
+    currencyNameMap.value,
+  ).filter((id) => !requestedCurrencyIds.has(id));
+  if (missing.length === 0) return;
+  await Promise.all(
+    missing.map(async (id) => {
+      requestedCurrencyIds.add(id);
+      try {
+        const detail = await getCurrencyDetail(id);
+        const name = detail.cnName || detail.code || '';
+        if (name) currencyNameMap.value.set(id, name);
+      } catch {
+        requestedCurrencyIds.delete(id);
+      }
+    }),
+  );
+}
+
+watch(
+  periods,
+  (list) => {
+    const rows = list ?? [];
+    if (rows.length === 0) return;
+    seedLabelsFromRows(rows);
+    void resolveOrgNames(rows);
+    void resolveUserNames(rows);
+    void resolveCurrencyNames(rows);
+  },
+  { deep: true, immediate: true },
+);
+
+function getSelectedRows() {
+  return (gridApi.grid?.getCheckboxRecords?.() ?? []) as BillingPeriodRow[];
+}
+
+const handleBatchDelete = () => {
+  const selectedRows = getSelectedRows();
   if (selectedRows.length === 0) {
     message.warning($t('common.selectAtLeastOne'));
     return;
   }
-
   AntModal.confirm({
     title: $t('common.confirmDelete'),
     content: $t('common.confirmDeleteItems', [selectedRows.length]),
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     okType: 'danger',
-    onOk: async () => {
-      try {
-        // 批量删除，逐个调用删除接口
-        for (const row of selectedRows) {
-          await deleteBillingPeriod({ id: row.id });
-        }
-        message.success($t('common.deleteSuccess'));
-        gridApi.query();
-        selectedRowKeys.value = [];
-      } catch (error) {
-        console.error('批量删除失败:', error);
-        message.error($t('common.deleteFailed'));
-      }
+    onOk: () => {
+      const keys = new Set(selectedRows.map((row) => row._localKey));
+      periods.value = periods.value.filter((row) => !keys.has(row._localKey));
+      message.success($t('common.deleteSuccess'));
     },
   });
 };
 
-/**
- * 同步账期：把该客户票结历史业务按当前账期规则重算应结日期与结算方式。
- * 入参为账期 id（客户由它带出），故需选中且仅选中一条账期记录。
- */
 const handleSync = () => {
   const selectedRows = getSelectedRows();
   if (selectedRows.length !== 1) {
@@ -98,6 +239,10 @@ const handleSync = () => {
     return;
   }
   const row = selectedRows[0];
+  if (!row || !hasPersistedId(row.id)) {
+    message.warning('请先保存客户后再同步账期');
+    return;
+  }
   AntModal.confirm({
     title: '同步账期',
     content:
@@ -105,46 +250,12 @@ const handleSync = () => {
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     onOk: async () => {
-      const changedCount = await syncBillingPeriod({ id: row.id });
+      const changedCount = await syncClientBillingPeriod({ id: row.id });
       message.success(`同步完成，共改动 ${changedCount ?? 0} 票业务`);
     },
   });
 };
 
-const handleActionClick = ({
-  code,
-  row,
-}: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>) => {
-  switch (code) {
-    case 'delete': {
-      // row.id 可能是大数 string，原样透传，禁止 Number() 转换（丢精度）
-      delContact({ id: row.id });
-      break;
-    }
-    case 'manageAttachments': {
-      manageAttachments(row);
-      break;
-    }
-  }
-};
-
-/**
- * 管理附件
- */
-const manageAttachments = (
-  row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
-) => {
-  // 这里可以打开附件管理模态框或跳转到附件管理页面
-  AntModal.info({
-    title: '附件管理',
-    content: `账期ID: ${row.id} 的附件管理功能待开发`,
-  });
-};
-
-/**
- * 格式化账期周期描述
- * 根据结算方式、月份、结算日等生成可读的周期字符串
- */
 const formatPeriod = (
   row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
 ): string => {
@@ -157,288 +268,228 @@ const formatPeriod = (
   }
 
   let periodText = settlementTypeText;
-
-  // 票结加天数（仅票结）
   if (row.settlementType === 0 && row.addDays) {
     periodText += ` - +${row.addDays}天`;
   }
-
-  // 月结
   if (row.settlementType === 1 && row.months) {
     const monthsText =
       MonthsOptions.find((item) => item.value === row.months)?.label || '';
     periodText += ` - ${monthsText}`;
   }
-
-  // 指定日结
   if (row.settlementType === 2 && row.settlementDay) {
     const dayText =
       SettlementDayOptions.find((item) => item.value === row.settlementDay)
         ?.label || '';
     periodText += ` - ${dayText}`;
   }
-
-  // 天数结算
   if (row.days) {
     periodText += ` - ${row.days}天`;
   }
-
   return periodText;
 };
 
-/**
- * 格式化组织单元名称
- * 将组织ID数组转换为组织名称字符串(逗号分隔)
- * 注意:这里假设后端返回的数据中已经包含了 organizationUnitName 字段
- * 如果后端未返回,则需要调用 API 获取组织信息
- */
-const formatOrganizationUnitName = (
-  cbpOrgs?: BillingPeriodAdminApi.CbpOrgDto[],
-): string => {
-  if (!cbpOrgs || cbpOrgs.length === 0) {
-    return '';
-  }
-
-  // TODO: 如果需要从 ID 转换为名称,需要调用 API
-  // 目前假设后端已经在 ClientBillingPeriodForViewDto 中返回了 organizationUnitName
-  // 这里暂时返回 ID 列表,实际使用时应该从 row.organizationUnitName 获取
-  return cbpOrgs.map((item) => item.organizationUnit?.name ?? '').join(', ');
+const formatOrganizationUnitName = (row: BillingPeriodRow): string => {
+  const ids = row.organizationUnitIds ?? [];
+  return ids
+    .map(
+      (id) =>
+        row.cbpOrgs?.find(
+          (item) => String(item.organizationUnitId) === String(id),
+        )?.organizationUnit?.name ||
+        orgNameMap.value.get(String(id)) ||
+        '',
+    )
+    .filter(Boolean)
+    .join(', ');
 };
 
-/**
- * 格式化用户名称
- * 将用户ID数组转换为用户名称字符串(逗号分隔)
- * 注意:这里假设后端返回的数据中已经包含了 userName 字段
- * 如果后端未返回,则需要调用 API 获取用户信息
- */
-const formatUserNames = (
-  cbpUsers?: BillingPeriodAdminApi.CbpUserDto[],
-): string => {
-  if (!cbpUsers || cbpUsers.length === 0) {
-    return '';
-  }
-
-  // TODO: 如果需要从 ID 转换为名称,需要调用 API
-  // 目前假设后端已经在 ClientBillingPeriodForViewDto 中返回了 userName
-  // 这里暂时返回 ID 列表,实际使用时应该从 row.userName 获取
-  return cbpUsers.map((item) => item.userNickName).join(', ');
+const formatUserNames = (row: BillingPeriodRow): string => {
+  const ids = row.userIds ?? [];
+  return ids
+    .map(
+      (id) =>
+        row.cbpUsers?.find((item) => String(item.userId) === String(id))
+          ?.userNickName ||
+        userNameMap.value.get(String(id)) ||
+        '',
+    )
+    .filter(Boolean)
+    .join(', ');
 };
 
-const formatPayment = (row: BillingPeriodAdminApi.ClientBillingPeriodDto) => {
-  const newRow = {
-    ...row,
-  } as BillingPeriodAdminApi.ClientBillingPeriodForViewDto;
-  newRow.period = formatPeriod(row);
-  newRow.organizationUnitName = formatOrganizationUnitName(row.cbpOrgs);
-  newRow.userName = formatUserNames(row.cbpUsers);
-  return newRow;
+const formatCreditCurrency = (
+  row: BillingPeriodRow,
+): BillingPeriodAdminApi.CurrencySimpleDto | undefined => {
+  if (!row.creditCurrencyId) return undefined;
+  const cnName =
+    row.creditCurrency?.cnName ||
+    currencyNameMap.value.get(String(row.creditCurrencyId)) ||
+    row.creditCurrency?.code ||
+    '';
+  return { code: '', enName: '', ...row.creditCurrency, cnName };
 };
-const fetchBillingPeriodPagedList = (params: Record<string, any>) =>
-  getBillingPeriodPagedList({
-    ...params,
-    ClientId: editId.value,
+
+const formatPayment = (row: BillingPeriodRow) => {
+  const next = { ...row };
+  next.period = formatPeriod(row);
+  next.organizationUnitName = formatOrganizationUnitName(row);
+  next.userName = formatUserNames(row);
+  next.creditCurrency = formatCreditCurrency(row);
+  return next;
+};
+
+function mergeFormRow(
+  prev: BillingPeriodRow | undefined,
+  form: Record<string, any>,
+): BillingPeriodRow {
+  const organizationUnitIds = (form.organizationUnitIds ?? []) as number[];
+  const userIds = (form.userIds ?? []) as number[];
+  const codeSourceIds = (form.codeSourceIds ?? []) as number[];
+  const id = hasPersistedId(form.id) ? form.id : (prev?.id ?? 0);
+  /** 改了币别就丢掉旧的币别对象，否则列上还是旧币别名 */
+  const keepCurrency =
+    String(prev?.creditCurrencyId ?? '') ===
+    String(form.creditCurrencyId ?? '');
+  return ensureRow({
+    ...(prev ?? ({} as BillingPeriodRow)),
+    ...form,
+    id,
+    _localKey: form._localKey || prev?._localKey || createLocalKey(),
+    organizationUnitIds,
+    userIds,
+    codeSourceIds,
+    cbpOrgs: organizationUnitIds.map((organizationUnitId) => {
+      const old = prev?.cbpOrgs?.find(
+        (item) => item.organizationUnitId === organizationUnitId,
+      );
+      return old ?? { id: 0, organizationUnitId };
+    }),
+    cbpUsers: userIds.map((userId) => {
+      const old = prev?.cbpUsers?.find((item) => item.userId === userId);
+      return old ?? { id: 0, userId, userNickName: '' };
+    }),
+    cbpCodeSources: codeSourceIds.map((codeSourceId) => {
+      const old = prev?.cbpCodeSources?.find(
+        (item) => item.codeSourceId === codeSourceId,
+      );
+      return old ?? { id: 0, codeSourceId };
+    }),
+    attachments: form.attachments ?? prev?.attachments ?? [],
+    permanent: !!form.permanent,
+    dateType: form.dateType ?? 0,
+    creditCurrency: keepCurrency ? prev?.creditCurrency : undefined,
+    /** 未保存的行后端还没有录入时间，先用本地时间占位，保存后按详情回填 */
+    creationTime: prev?.creationTime ?? new Date().toISOString(),
   });
+}
 
-const [Grid, gridApi] =
-  useVbenVxeGrid<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>({
-    gridOptions: {
-      columns: useColumns(),
-      height: 'auto',
-      keepSource: true,
-      checkboxConfig: {
-        highlight: true,
-        reserve: true,
-        trigger: 'default',
-      },
-      rowConfig: {
-        keyField: 'id',
-        isHover: true,
-      },
-      pagerConfig: {
-        enabled: true,
-      },
-      proxyConfig: {
-        ajax: {
-          query: createPagedListQuery(fetchBillingPeriodPagedList, {
-            afterFetch: (res: any) => {
-              const items =
-                res.items?.map(
-                  (item: BillingPeriodAdminApi.ClientBillingPeriodDto) =>
-                    formatPayment(item),
-                ) || [];
-              return {
-                ...res,
-                items,
-              };
-            },
-          }),
-        },
-      },
-      toolbarConfig: {
-        custom: true,
-        export: false,
-        refresh: { code: 'query' },
-        zoom: true,
-      },
+const tableRows = computed(() =>
+  periods.value.map((row) => formatPayment(ensureRow(row))),
+);
+
+const [Grid, gridApi] = useVbenVxeGrid<BillingPeriodRow>({
+  gridOptions: {
+    columns: useColumns(),
+    data: [],
+    height: 360,
+    keepSource: true,
+    checkboxConfig: {
+      highlight: true,
+      reserve: true,
+      trigger: 'default',
     },
-    gridEvents: {
-      // 双击行事件 - 进入编辑页面
-      cellDblclick: ({
-        row,
-      }: {
-        row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto;
-      }) => {
-        const editData: BillingPeriodAdminApi.BillingPeriodEditDto = {
-          ...row,
-        };
-        editContact(editData);
-      },
-
-      // 单行选择变化事件
-      checkboxChange: () => {
-        const records = (gridApi.grid?.getCheckboxRecords?.() ??
-          []) as (BillingPeriodAdminApi.ClientBillingPeriodForViewDto & {
-          _rowKey?: string | number;
-        })[];
-
-        selectedRowKeys.value = records
-          .map((r) => r._rowKey)
-          .filter((key): key is string | number => key !== undefined);
-
-        // 可以在这里处理业务逻辑
-      },
-
-      // 全选/取消全选事件
-      checkboxAll: () => {
-        const records = (gridApi.grid?.getCheckboxRecords?.() ??
-          []) as (BillingPeriodAdminApi.ClientBillingPeriodForViewDto & {
-          _rowKey?: string | number;
-        })[];
-
-        selectedRowKeys.value = records
-          .map((r) => r._rowKey)
-          .filter((key): key is string | number => key !== undefined);
-      },
-
-      // 单选模式下的选择事件（如果使用 radio 类型）
-      radioChange: ({
-        row,
-      }: {
-        row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto;
-      }) => {},
+    rowConfig: {
+      keyField: '_localKey',
+      isHover: true,
     },
-  });
+    pagerConfig: {
+      enabled: false,
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: false,
+      zoom: false,
+    },
+  },
+  gridEvents: {
+    cellDblclick: ({ row }: { row: BillingPeriodRow }) => {
+      if (props.readonly) return;
+      editContact(row);
+    },
+  },
+});
+
+watch(
+  tableRows,
+  async (rows) => {
+    await nextTick();
+    gridApi.grid?.loadData?.(rows);
+  },
+  { deep: true, immediate: true },
+);
 
 const [Modal, modalApi] = useVbenModal({
-  // 连接抽离的组件
   connectedComponent: AddModal,
-  class: 'w-[1200px]', // ✅ 官方推荐的宽度入口
+  class: 'w-[1200px]',
 });
-const addContactData = async (
-  data: BillingPeriodAdminApi.BillingPeriodEditDto,
-) => {
-  data.clientId = editId.value || '';
-  // 提交期间锁定弹窗（确认按钮 loading、禁止手动关闭），避免重复提交
-  modalApi.lock();
-  try {
-    await addBillingPeriod(data);
-    message.success($t('ui.actionMessage.operationSuccess'));
-    gridApi.query();
-    // 仅保存成功才关闭弹窗
-    modalApi.close();
-  } catch (error) {
-    // 保存失败：全局拦截器已弹出错误提示，保持弹窗打开以保留用户已填写内容
-    console.error('新增账期失败:', error);
-  } finally {
-    modalApi.unlock();
-  }
+
+const addContactData = (data: Record<string, any>) => {
+  periods.value = [...periods.value, mergeFormRow(undefined, data)];
+  modalApi.close();
 };
-const editContactData = async (
-  data: BillingPeriodAdminApi.BillingPeriodEditDto,
-) => {
-  data.clientId = editId.value || '';
-  // 提交期间锁定弹窗（确认按钮 loading、禁止手动关闭），避免重复提交
-  modalApi.lock();
-  try {
-    await editBillingPeriod(data);
-    message.success($t('ui.actionMessage.operationSuccess'));
-    gridApi.query();
-    // 仅保存成功才关闭弹窗
-    modalApi.close();
-  } catch (error) {
-    // 保存失败：全局拦截器已弹出错误提示，保持弹窗打开以保留用户已填写内容
-    console.error('编辑账期失败:', error);
-  } finally {
-    modalApi.unlock();
-  }
+
+const editContactData = (data: Record<string, any>) => {
+  periods.value = periods.value.map((row) => {
+    const sameKey = data._localKey && row._localKey === data._localKey;
+    const sameId = hasPersistedId(data.id) && row.id === data.id;
+    return sameKey || sameId ? mergeFormRow(row, data) : row;
+  });
+  modalApi.close();
 };
 
 const addContact = () => {
-  // 清空之前设置的编辑数据，避免新增弹窗显示编辑数据
   modalApi.setData(undefined);
   modalApi.open();
 };
-const editContact = (data: BillingPeriodAdminApi.BillingPeriodEditDto) => {
-  modalApi.setData(data).open();
-};
 
-const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
-  await deleteBillingPeriod(data);
-  gridApi.query();
+const editContact = (data: BillingPeriodRow) => {
+  modalApi.setData(data).open();
 };
 </script>
 
 <template>
-  <!-- 本组件作为「账期」tab 嵌在客户编辑页(client/editor.vue)的 Page auto-content-height 内。
-       嵌套的 Page 会按全局视口高度(--vben-content-height)计算内容高，但它实际位于 editor 的
-       内容 tab 栏(50px) + gap-2(8px) 下方，导致底部分页被挤出可视区、需滚动才能看到。
-       用 height-offset 扣除这段被 tab 栏占用的高度(58px)，使表格+分页正好收在屏幕内、无滚动条。 -->
-  <Page auto-content-height :height-offset="58">
+  <div class="client-billing-period-panel">
     <Grid :table-title="$t('seaExport.client.paymentTerms.title')">
       <template #toolbar-tools>
         <Space>
-          <Button v-access:code="perm.add" type="primary" @click="addContact">
+          <Button
+            v-if="canMutateBillingPeriod"
+            type="primary"
+            @click="addContact"
+          >
             <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
             {{ $t('common.create') }}
           </Button>
-          <Button v-access:code="billingPeriodSyncCode" @click="handleSync">
+          <Button
+            v-if="!readonly && hasAccessByCodes([perm.edit])"
+            @click="handleSync"
+          >
             <IconifyIcon icon="ant-design:sync-outlined" class="size-4" />
             同步账期
           </Button>
-          <Button v-access:code="perm.delete" danger @click="handleBatchDelete">
+          <Button
+            v-if="canMutateBillingPeriod"
+            danger
+            @click="handleBatchDelete"
+          >
             <IconifyIcon icon="ant-design:delete-outlined" class="size-4" />
             {{ $t('common.batchDelete') }}
           </Button>
         </Space>
       </template>
     </Grid>
-  </Page>
+  </div>
 
   <Modal @add="addContactData" @edit="editContactData" />
 </template>
-
-<style scoped lang="scss">
-.payment-card {
-  :deep(.ant-card-body) {
-    padding: 0 20px 20px !important;
-  }
-
-  :deep(.ant-table-content) {
-    min-height: 270px;
-    // max-height: 500px;
-    // overflow-y: auto;
-  }
-}
-
-// .custom-table {
-//   min-height: 300px;
-// }
-
-.attachments-list {
-  .attachment-item {
-    &:not(:last-child) {
-      border-bottom: 1px solid #f0f0f0;
-    }
-  }
-}
-</style>

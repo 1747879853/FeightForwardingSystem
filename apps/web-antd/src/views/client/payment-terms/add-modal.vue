@@ -73,7 +73,8 @@ const [paymentForm, paymentFormApi] = useVbenForm({
 
 const emits = defineEmits(['add', 'edit']);
 
-const editId = ref('');
+const editId = ref<number | string>('');
+const localKey = ref('');
 const isEdit = ref(false);
 const attachments = ref<BillingPeriodAdminApi.AttachmentItemDto[]>([]);
 const loading = ref(false);
@@ -345,6 +346,7 @@ const [Modal, modalApi] = useVbenModal({
       emits('add', paymentValues);
     } else {
       paymentValues.id = editId.value;
+      paymentValues._localKey = localKey.value;
       emits('edit', paymentValues);
     }
 
@@ -355,8 +357,9 @@ const [Modal, modalApi] = useVbenModal({
     if (isOpen) {
       let data = modalApi.getData<Record<string, any>>();
       console.info('data', data);
-      if (data.id) {
-        editId.value = data.id;
+      if (data?.id || data?._localKey) {
+        editId.value = data.id ?? 0;
+        localKey.value = data._localKey || '';
         isEdit.value = true;
 
         // 先根据 settlementType 更新字段显示状态
@@ -410,21 +413,26 @@ const [Modal, modalApi] = useVbenModal({
           days: data.days,
           addDays: data.addDays,
           remark: data.remark,
-          codeSourceIds:
-            (data.cbpCodeSources as any[])?.map(
-              (item: any) => item?.codeSourceId,
-            ) || [],
-          organizationUnitIds:
-            (data.cbpOrgs as any[])?.map(
-              (item: any) => item?.organizationUnitId,
-            ) || [],
-          userIds:
-            (data.cbpUsers as any[])?.map((item: any) => item?.userId) || [],
+          codeSourceIds: data.codeSourceIds?.length
+            ? data.codeSourceIds
+            : (data.cbpCodeSources as any[])?.map(
+                (item: any) => item?.codeSourceId,
+              ) || [],
+          organizationUnitIds: data.organizationUnitIds?.length
+            ? data.organizationUnitIds
+            : (data.cbpOrgs as any[])?.map(
+                (item: any) => item?.organizationUnitId,
+              ) || [],
+          userIds: data.userIds?.length
+            ? data.userIds
+            : (data.cbpUsers as any[])?.map((item: any) => item?.userId) || [],
         };
         paymentFormApi.setValues(formData);
         loadAttachments(data);
       } else {
         isEdit.value = false;
+        editId.value = 0;
+        localKey.value = '';
         paymentFormApi.resetForm();
         // 新增默认结算方式为票结，重置动态字段显隐：仅显示票结加天数
         paymentFormApi.updateSchema([

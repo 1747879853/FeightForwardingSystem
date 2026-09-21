@@ -101,6 +101,15 @@
     "batchAuditSuccess": "批量审核完成，共处理 {count} 张",
     "batchRejectSuccess": "批量驳回完成，共处理 {count} 张"
   },
+  "clientReview": {
+    "title": "客户审核",
+    "myStatus": "我的审核状态",
+    "clientStatus": "客户审核状态",
+    "auditPass": "通过",
+    "selectReject": "驳回",
+    "postReject": "通过后驳回",
+    "detail": "审核详情"
+  },
   "creatorUserName": "创建人",
   "taskItemCount": "任务项数量",
   "submitOrderFeeItemCount": "费用提交待处理数量",

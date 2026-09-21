@@ -1,29 +1,25 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
-import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
 
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
-import { createAbpPermission } from '#/utils/abp-permission';
 
 import Attachments from './attachments/list.vue';
 import Form from './base/form.vue';
 import ContactList from './contact/list.vue';
 import ExceptService from './except-service/index.vue';
 import InvoiceList from './invoice/list.vue';
-import PaymentList from './payment-terms/list.vue';
 
 defineOptions({ name: 'ClientEdit' });
 
-type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice' | 'payment';
+type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice';
 type FormSectionTabKey =
   | 'attachments'
   | 'basic'
   | 'contact'
   | 'exceptService'
-  | 'invoice'
-  | 'payment';
+  | 'invoice';
 type TabKey = FormSectionTabKey;
 type FormExpose = {
   isFormDirty?: () => boolean | Promise<boolean>;
@@ -37,28 +33,13 @@ const contactRef = ref<ContactExpose | null>(null);
 const invoiceRef = ref<InvoiceExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
 
-/** 账期独立权限：拥有 Admin.Client.BillingPeriod 或其 .Get 任一权限即可见账期 tab */
-const billingPeriodPerm = createAbpPermission('Admin.Client.BillingPeriod');
-const { hasAccessByCodes } = useAccess();
-const canAccessBillingPeriod = computed(() =>
-  hasAccessByCodes(billingPeriodPerm.pageAuthority),
-);
-
-const allTabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
+const tabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
   { key: 'contact', label: '联系人' },
-  { key: 'payment', label: '账期' },
   { key: 'invoice', label: '开票信息' },
   { key: 'attachments', label: '附件' },
   { key: 'exceptService', label: '海运出口服务项目' },
 ];
-
-/** 账期 tab 受独立权限控制：无权限则从列表移除，用户看不到也点不到 */
-const tabs = computed(() =>
-  allTabs.filter(
-    (tab) => tab.key !== 'payment' || canAccessBillingPeriod.value,
-  ),
-);
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
@@ -127,9 +108,6 @@ const contentTabsStyle = {
           </KeepAlive>
           <KeepAlive include="ClientContactList">
             <ContactList v-if="activeTab === 'contact'" ref="contactRef" />
-          </KeepAlive>
-          <KeepAlive include="ClientPaymentList">
-            <PaymentList v-if="activeTab === 'payment'" />
           </KeepAlive>
           <KeepAlive include="ClientInvoiceList">
             <InvoiceList v-if="activeTab === 'invoice'" ref="invoiceRef" />

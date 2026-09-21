@@ -33,6 +33,7 @@ import { useVbenForm } from '#/adapter/form';
 import { getAreaAndParents } from '#/api/common/area';
 import AddressModal from './address-modal.vue';
 import RiskbirdSearchModal from './riskbird-search-modal.vue';
+import PaymentTermsPanel from '../payment-terms/list.vue';
 import OrgSharedLabel from './org-shared-label.vue';
 import { ClientSharedType, normalizeClientSharedType } from './shared-type';
 import { useVbenModal } from '@vben/common-ui';
@@ -41,7 +42,6 @@ import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
 import {
-  ArrowLeft,
   FileText,
   IconifyIcon,
   MapPin,
@@ -58,11 +58,21 @@ import {
   getClientDetail,
   addDishonest,
   cancelDishonest,
+  modifyClientAudit,
+  submitClientAudit,
 } from '#/api/sea-export/client-admin';
+import { useClientAuditConfig } from '#/composables/use-client-audit-config';
+import {
+  canApplyClientModify,
+  canEditClient,
+  canSubmitClientAudit,
+  getClientStatusLabel,
+} from './client-status';
 import { $t } from '#/locales';
 import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { setFormApisDisabled } from '#/utils/ticket-editable';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -91,6 +101,86 @@ const editId = computed<string | undefined>(() => {
 });
 
 const isEdit = computed(() => !!editId.value);
+
+/** 租户启用客户审核时才按 clientStatus 卡编辑/申请修改 */
+const { auditEnabled } = useClientAuditConfig();
+
+/** 页内点「申请修改」切换出口，不改路由，省去标签与离开守卫的干扰 */
+const modifyModeOverride = ref(false);
+
+/** 申请修改模式：复用同一套编辑 UI，提交走 ModifyAuditAsync 并多带申请原因 */
+const isModifyMode = computed(
+  () =>
+    isEdit.value && (modifyModeOverride.value || route.query.mode === 'modify'),
+);
+
+const clientStatus = ref<ClientAdminApi.ClientStatus | undefined>();
+
+/** 可直接编辑：未提交(0)/已驳回(3)；其余状态只能走申请修改 */
+const canDirectEdit = computed(
+  () => !auditEnabled.value || canEditClient(clientStatus.value),
+);
+
+/** 已通过(2)/申请修改驳回(5) 可发起申请修改 */
+const canApplyModify = computed(() => canApplyClientModify(clientStatus.value));
+
+/** 未提交(0)/已驳回(3) 可从编辑页提交审核 */
+const canSubmitAudit = computed(() => canSubmitClientAudit(clientStatus.value));
+
+/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑 */
+const formLocked = computed(() => {
+  if (!isEdit.value || !auditEnabled.value || isModifyMode.value) return false;
+  if (clientStatus.value === undefined) return false;
+  return !canDirectEdit.value;
+});
+const canSaveClient = computed(() => {
+  if (!isEdit.value) return true;
+  // 详情还没回来时不提前拦，避免一进页面就闪一条状态提示；后端另有兜底校验
+  if (clientStatus.value === undefined) return true;
+  return isModifyMode.value ? canApplyModify.value : canDirectEdit.value;
+});
+
+const clientStatusTagColor = computed(() => {
+  const status = clientStatus.value;
+  if (status === undefined) return 'default';
+  if (canDirectEdit.value) return 'default';
+  return canApplyModify.value ? 'success' : 'processing';
+});
+
+/** 停在同一个编辑页切到申请修改模式，只换提交出口，表单已填内容不丢 */
+const enterModifyMode = () => {
+  modifyModeOverride.value = true;
+};
+
+/** 未提交/已驳回的客户从编辑页提交审核；未保存的改动不带进审核 */
+const handleSubmitAudit = async () => {
+  const id = editId.value;
+  if (!id || !canSubmitAudit.value) return;
+  if (await isFormDirty()) {
+    message.warning('请先保存客户信息，再提交审核');
+    return;
+  }
+  Modal.confirm({
+    title: '提交审核',
+    content: '确定提交当前客户进入审核流程吗？一条客户生成一个独立审批任务。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await submitClientAudit({ ids: [id] });
+      message.success('已提交审核');
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
+};
+
+const clientStatusHint = computed(() => {
+  if (canSaveClient.value) return '';
+  const label = getClientStatusLabel(clientStatus.value);
+  return isModifyMode.value
+    ? `客户当前为${label}，不可发起申请修改`
+    : `客户当前为${label}，不可直接编辑，请发起申请修改`;
+});
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 const sectionRefs = {
@@ -215,7 +305,9 @@ function bindOrgSharedLabel() {
             return () =>
               h(OrgSharedLabel, {
                 value: isSharedValue.value,
+                disabled: formLocked.value,
                 'onUpdate:value': async (value: ClientSharedType) => {
+                  if (formLocked.value) return;
                   isSharedValue.value = value;
                   await baseFormApi.setFieldValue('isShared', value);
                 },
@@ -247,6 +339,17 @@ const [SupplierForm, supplierFormApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-3',
 });
+
+watch(
+  formLocked,
+  (locked) => {
+    setFormApisDisabled(
+      [baseFormApi, businessFormApi, clientFormApi, supplierFormApi],
+      locked,
+    );
+  },
+  { immediate: true },
+);
 
 const [AddressModalComponent, modalApi] = useVbenModal({
   // 连接抽离的组件
@@ -318,6 +421,7 @@ const formatBusinessTerm = (
  * 打开风鸟企业查询弹窗
  */
 const openRiskbirdSearch = async () => {
+  if (formLocked.value) return;
   // 获取当前表单中的全称
   const values = await baseFormApi.getValues();
   const fullName = values.fullName;
@@ -584,6 +688,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
 
   // 设置失信状态
   isDishonest.value = (detail as any).isDishonest ?? false;
+  clientStatus.value = detail.clientStatus;
 
   // 设置行业类别
   if (isClient.value) {
@@ -631,6 +736,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     tel: addr.tel || '',
     remark: addr.remark || '',
   }));
+  billingPeriods.value = (detail.billingPeriods ?? []) as any[];
 
   return {
     // 基础信息表单
@@ -690,6 +796,8 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
 const loadEditData = async () => {
   if (!editId.value) return;
 
+  // 换客户或保存后重新拉详情，页内的申请修改开关回到路由本身的口径
+  modifyModeOverride.value = false;
   pageLoading.value = true;
   try {
     const detail = await getClientDetail(editId.value);
@@ -745,6 +853,7 @@ const updateStakeholders = async (
   userAttribute: number | undefined,
   values: number[],
 ) => {
+  if (formLocked.value) return;
   defaultOrderUsers.value.forEach((orderUser) => {
     if (orderUser.userAttribute === userAttribute) {
       // 更新 userIds
@@ -820,15 +929,78 @@ const updateStakeholders = async (
  * 更新对账人列表
  */
 const updateReconcilers = (values: number[]) => {
+  if (formLocked.value) return;
   reconcilerUserIds.value = values;
 };
 
 /**
  * 提交表单
  */
+/**
+ * 申请修改原因弹窗。取消返回 null，确认返回 trim 后的原因（必填，≤4096）。
+ */
+const promptApplyRemark = (): Promise<null | string> => {
+  return new Promise((resolve) => {
+    const formData = ref({ applyRemark: '' });
+    let settled = false;
+    const settle = (value: null | string) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    Modal.confirm({
+      title: '申请修改',
+      width: 600,
+      icon: null,
+      // 用渲染函数而非静态 VNode，否则字数统计跟不上输入
+      content: () =>
+        h('div', { style: 'margin-top: 8px;' }, [
+          h(
+            'p',
+            { style: 'margin-bottom: 12px; color: #595959;' },
+            '本次修改需审批通过后才会生效，请填写申请原因。',
+          ),
+          h(Input.TextArea, {
+            value: formData.value.applyRemark,
+            placeholder: '请输入申请修改原因（必填，最多4096字符）',
+            rows: 4,
+            maxlength: 4096,
+            showCount: true,
+            onChange: (e: any) => {
+              formData.value.applyRemark = e.target?.value ?? '';
+            },
+          }),
+        ]),
+      okText: '提交申请',
+      cancelText: $t('common.cancel'),
+      onOk() {
+        const remark = formData.value.applyRemark?.trim();
+        if (!remark) {
+          message.error('申请修改原因不能为空');
+          return Promise.reject(new Error('applyRemark required'));
+        }
+        settle(remark);
+      },
+      onCancel() {
+        settle(null);
+      },
+    });
+  });
+};
+
 const handleSubmit = async (closeAfterSave = false) => {
   try {
     submitting.value = true;
+
+    if (isEdit.value && !canSaveClient.value) {
+      Modal.warning({
+        title: '提示',
+        content: clientStatusHint.value,
+        okText: '确定',
+      });
+      return;
+    }
 
     // 验证所有表单
     let baseValid = true;
@@ -1136,21 +1308,36 @@ const handleSubmit = async (closeAfterSave = false) => {
         documentations: documentationsEdit,
 
         addresses,
+        billingPeriods: toBillingPeriodInputs(billingPeriods.value),
         // 对账人用户ID列表
         reconcilerUserIds: reconcilerUserIds.value,
       };
+      // 申请修改：同一份编辑提交体交给审核接口，子表按整份替换，审批通过后才落到客户上
+      if (isModifyMode.value) {
+        const applyRemark = await promptApplyRemark();
+        if (!applyRemark) return;
+        await modifyClientAudit({ applyRemark, client: editData });
+        message.success('申请修改已提交，等待审批');
+        markListShouldRefresh('ClientList');
+        await syncFormSnapshot();
+        const currentTabKey = route.fullPath;
+        await router.push('/clients');
+        await closeTabByKey(currentTabKey);
+        return;
+      }
+
       createdId = await editClient(editData);
       if (createdId) {
         message.success($t('ui.actionMessage.operationSuccess'));
-        // 编辑保存成功后重新同步脏值快照，否则未保存守卫会一直认为基础信息未保存，
-        // 从而拦截系统 tab（路由级）跳转，导致点击系统 tab 无法切换页面
-        //（与开票信息 tab 同类问题）
-        await syncFormSnapshot();
         markListShouldRefresh('ClientList');
         if (closeAfterSave) {
+          await syncFormSnapshot();
           const currentTabKey = route.fullPath;
           await router.push('/clients');
           await closeTabByKey(currentTabKey);
+        } else {
+          // 重新拉详情，把新建账期的 id 写回，避免下次保存被当成新增并删掉原条
+          await loadEditData();
         }
       }
     } else {
@@ -1250,6 +1437,7 @@ const handleSubmit = async (closeAfterSave = false) => {
         documentations: documentationsAdd,
 
         addresses,
+        billingPeriods: toBillingPeriodInputs(billingPeriods.value),
         // 对账人用户ID列表
         reconcilerUserIds: reconcilerUserIds.value,
       };
@@ -1432,25 +1620,60 @@ const handleDishonestToggle = async () => {
 };
 
 /**
- * 取消返回
- */
-const handleCancel = () => {
-  router.push('/clients');
-};
-
-/**
  * 添加地址
  */
 const addAddress = () => {
+  if (formLocked.value) return;
   modalApi.setData(null).open();
 };
 /**
  * 编辑地址
  */
 const editAddress = (data: ClientAdminApi.ClientAddressEditDto) => {
+  if (formLocked.value) return;
   modalApi.setData(data).open();
 };
 const addressList = ref<ClientAdminApi.ClientAddressEditDto[]>([]);
+const billingPeriods = ref<any[]>([]);
+
+function toBillingPeriodInputs(
+  rows: any[],
+): ClientAdminApi.ClientBillingPeriodInputDto[] {
+  return (rows ?? []).map((row) => ({
+    ...(row.id && row.id !== 0 && row.id !== '0' ? { id: row.id } : { id: 0 }),
+    permanent: !!row.permanent,
+    effectiveTime: row.effectiveTime,
+    expiringTime: row.expiringTime,
+    settlementType: row.settlementType,
+    months: row.months,
+    settlementDay: row.settlementDay,
+    days: row.days,
+    addDays: row.addDays,
+    remark: row.remark,
+    contractNo: row.contractNo,
+    dateType: row.dateType ?? 0,
+    creditCurrencyId: row.creditCurrencyId,
+    creditLimit: row.creditLimit,
+    warningLimit: row.warningLimit,
+    bizTypes: row.bizTypes,
+    organizationUnitIds:
+      row.organizationUnitIds ??
+      row.cbpOrgs?.map((item: any) => item.organizationUnitId) ??
+      [],
+    userIds: row.userIds ?? row.cbpUsers?.map((item: any) => item.userId) ?? [],
+    codeSourceIds:
+      row.codeSourceIds ??
+      row.cbpCodeSources?.map((item: any) => item.codeSourceId) ??
+      [],
+    attachments: (row.attachments ?? []).map((item: any) => ({
+      id: item.id,
+      attachmentId: item.attachmentId,
+      attachmentDtlTypeId: item.attachmentDtlTypeId,
+      clientVisible: item.clientVisible,
+      displayOrder: item.displayOrder,
+    })),
+  }));
+}
 
 /**
  * 添加地址数据
@@ -1489,6 +1712,7 @@ const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
  * 删除地址
  */
 const delAddress = (index: number) => {
+  if (formLocked.value) return;
   addressList.value = addressList.value.filter((_, i) => i !== index);
 };
 
@@ -1510,6 +1734,7 @@ async function buildClientDirtySnapshot() {
     ]);
   return JSON.stringify({
     addressList: addressList.value,
+    billingPeriods: toBillingPeriodInputs(billingPeriods.value),
     baseValues,
     businessValues,
     clientValues,
@@ -1556,6 +1781,7 @@ onMounted(() => {
               {
                 type: 'link',
                 size: 'small',
+                disabled: formLocked.value,
                 onClick: openRiskbirdSearch,
                 class: 'ml-1',
               },
@@ -1584,6 +1810,7 @@ onMounted(() => {
               {
                 type: 'link',
                 size: 'small',
+                disabled: formLocked.value,
                 onClick: openRiskbirdSearch,
                 class: 'ml-1',
               },
@@ -1609,23 +1836,39 @@ onMounted(() => {
       <div class="content-column">
         <section :ref="sectionRefs.basic" class="content-section">
           <div class="content-section__actions">
+            <div class="content-section__status">
+              <Tag
+                v-if="isEdit && auditEnabled && clientStatus !== undefined"
+                :color="clientStatusTagColor"
+              >
+                {{ getClientStatusLabel(clientStatus) }}
+              </Tag>
+              <span
+                v-if="clientStatusHint"
+                class="content-section__status-hint"
+                :title="clientStatusHint"
+              >
+                {{ clientStatusHint }}
+              </span>
+            </div>
             <Space>
-              <Button @click="handleCancel">
-                {{ $t('common.back') }}
-              </Button>
               <Button
                 type="primary"
+                :disabled="!canSaveClient"
                 :loading="submitting"
                 class="flex items-center justify-center"
                 @click="handleSubmit(false)"
               >
                 <Save class="mr-1 inline-block size-4 align-middle" />
-                <span class="align-middle">{{ $t('common.save') }}</span>
+                <span class="align-middle">
+                  {{ isModifyMode ? '提交申请修改' : $t('common.save') }}
+                </span>
               </Button>
               <Button
-                v-if="isEdit"
+                v-if="isEdit && !isModifyMode"
                 type="primary"
                 ghost
+                :disabled="!canSaveClient"
                 :loading="submitting"
                 class="flex items-center justify-center"
                 @click="handleSubmit(true)"
@@ -1635,6 +1878,31 @@ onMounted(() => {
                   class="mr-1 inline-block size-4 align-middle"
                 />
                 <span class="align-middle">保存并关闭</span>
+              </Button>
+              <Button
+                v-if="isEdit && auditEnabled && !isModifyMode && canSubmitAudit"
+                type="primary"
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleSubmitAudit"
+              >
+                <IconifyIcon
+                  icon="mdi:file-send-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">提交审核</span>
+              </Button>
+              <Button
+                v-if="isEdit && auditEnabled && !isModifyMode && canApplyModify"
+                type="primary"
+                ghost
+                @click="enterModifyMode"
+              >
+                <IconifyIcon
+                  icon="mdi:file-edit-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">申请修改</span>
               </Button>
               <Button
                 :type="isDishonest ? 'default' : 'primary'"
@@ -1665,6 +1933,7 @@ onMounted(() => {
                     <CheckboxGroup
                       name="customerTypePrimary"
                       v-model:value="isCustomerType"
+                      :disabled="formLocked"
                       :onChange="handleIsClientChange"
                     >
                       <Checkbox :value="1">
@@ -1681,6 +1950,7 @@ onMounted(() => {
                     name="customerIndustry"
                     class="type-row__attr-group"
                     v-model:value="customerType"
+                    :disabled="formLocked"
                     :options="
                       ClientConstants.getCustomerIndustryCategoryOptions()
                     "
@@ -1700,6 +1970,7 @@ onMounted(() => {
                     <CheckboxGroup
                       name="supplierTypePrimary"
                       v-model:value="isSupplierType"
+                      :disabled="formLocked"
                       :onChange="handleIsSupplierChange"
                     >
                       <Checkbox :value="2">
@@ -1716,6 +1987,7 @@ onMounted(() => {
                     name="supplierIndustry"
                     class="type-row__attr-group"
                     v-model:value="supplierType"
+                    :disabled="formLocked"
                     :options="
                       ClientConstants.getSupplierIndustryCategoryOptions()
                     "
@@ -1775,99 +2047,133 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="content-column">
-        <section class="content-section">
-          <div class="content-section__header flex justify-between">
-            <div>
+      <div class="flex items-stretch gap-3">
+        <div class="content-column min-w-0 flex-1">
+          <section class="content-section">
+            <div class="content-section__header flex justify-between">
+              <div>
+                <span class="card-title">
+                  <IconifyIcon
+                    icon="entypo:location-pin"
+                    class="size-4"
+                  ></IconifyIcon>
+                  {{ $t('seaExport.client.smallTitle.address') }}
+                </span>
+              </div>
+              <div class="">
+                <Button
+                  type="primary"
+                  :disabled="formLocked"
+                  :loading="submitting"
+                  class="flex items-center justify-center"
+                  @click="addAddress"
+                  size="small"
+                >
+                  <Plus class="mr-1 inline-block size-4 align-middle" />
+                  <span class="align-middle">{{
+                    $t('seaExport.client.addAddress')
+                  }}</span>
+                </Button>
+              </div>
+            </div>
+            <div class="content-section__body flex space-x-2">
+              <div
+                v-for="(item, index) in addressList"
+                class="address-card mt-2 w-[450px] cursor-pointer rounded-md border-gray-200 p-2 shadow-md transition-all"
+                :class="{ 'address-card-default': item.isDefault }"
+              >
+                <div class="address-heard flex justify-between py-2">
+                  <div class="flex font-semibold">
+                    <span class="mr-2">{{ item.name }}</span>
+                    <tag color="blue" v-if="item.isDefault">{{
+                      ClientConstants.getDefaultOptions().find(
+                        (o) => o.value === item.isDefault,
+                      )?.label
+                    }}</tag>
+                    <tag
+                      v-if="
+                        item.addressType !== undefined &&
+                        item.addressType !== null
+                      "
+                      color="green"
+                      class="ml-2"
+                    >
+                      {{
+                        ClientConstants.getAddressTypeOptions().find(
+                          (o) => o.value === item.addressType,
+                        )?.label
+                      }}
+                    </tag>
+                  </div>
+                  <div>
+                    <Button
+                      type="text"
+                      :disabled="formLocked"
+                      @click="editAddress(item)"
+                      size="small"
+                    >
+                      <span class="align-middle">{{ $t('common.edit') }}</span>
+                    </Button>
+                    <Button
+                      type="text"
+                      :disabled="formLocked"
+                      @click="delAddress(index)"
+                      size="small"
+                    >
+                      <span class="align-middle">{{
+                        $t('common.delete')
+                      }}</span>
+                    </Button>
+                  </div>
+                </div>
+                <div class="address-content flex flex-col">
+                  <div class="address-item flex space-x-2 py-1">
+                    <span class="pt-1">
+                      <IconifyIcon
+                        icon="mdi:location"
+                        width="1.2em"
+                        height="1.2em"
+                        style="color: #109ae8"
+                      />
+                    </span>
+                    <span class="text-normal">{{ item.address }}</span>
+                  </div>
+                  <div class="flex space-x-2">
+                    <span class="pt-1">
+                      <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
+                    </span>
+                    <span class="text-sm text-gray-500">
+                      {{ item.contactPerson }}
+                    </span>
+                    <span class="pt-1">
+                      <IconifyIcon
+                        icon="mdi:telephone"
+                        style="color: #ced3dd"
+                      />
+                    </span>
+                    <span class="text-sm text-gray-500">{{ item.mobile }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="content-column min-w-0 flex-[1.15]">
+          <section class="content-section">
+            <div class="content-section__header">
               <span class="card-title">
-                <IconifyIcon
-                  icon="entypo:location-pin"
-                  class="size-4"
-                ></IconifyIcon>
-                {{ $t('seaExport.client.smallTitle.address') }}
+                <IconifyIcon icon="mdi:calendar-clock" class="size-4" />
+                {{ $t('seaExport.client.paymentTerms.title') }}
               </span>
             </div>
-            <div class="">
-              <Button
-                type="primary"
-                :loading="submitting"
-                class="flex items-center justify-center"
-                @click="addAddress"
-                size="small"
-              >
-                <Plus class="mr-1 inline-block size-4 align-middle" />
-                <span class="align-middle">{{
-                  $t('seaExport.client.addAddress')
-                }}</span>
-              </Button>
+            <div class="content-section__body">
+              <PaymentTermsPanel
+                v-model="billingPeriods"
+                :readonly="formLocked"
+              />
             </div>
-          </div>
-          <div class="content-section__body flex space-x-2">
-            <div
-              v-for="(item, index) in addressList"
-              class="address-card mt-2 w-[450px] cursor-pointer rounded-md border-gray-200 p-2 shadow-md transition-all"
-              :class="{ 'address-card-default': item.isDefault }"
-            >
-              <div class="address-heard flex justify-between py-2">
-                <div class="flex font-semibold">
-                  <span class="mr-2">{{ item.name }}</span>
-                  <tag color="blue" v-if="item.isDefault">{{
-                    ClientConstants.getDefaultOptions().find(
-                      (o) => o.value === item.isDefault,
-                    )?.label
-                  }}</tag>
-                  <tag
-                    v-if="
-                      item.addressType !== undefined &&
-                      item.addressType !== null
-                    "
-                    color="green"
-                    class="ml-2"
-                  >
-                    {{
-                      ClientConstants.getAddressTypeOptions().find(
-                        (o) => o.value === item.addressType,
-                      )?.label
-                    }}
-                  </tag>
-                </div>
-                <div>
-                  <Button type="text" @click="editAddress(item)" size="small">
-                    <span class="align-middle">{{ $t('common.edit') }}</span>
-                  </Button>
-                  <Button type="text" @click="delAddress(index)" size="small">
-                    <span class="align-middle">{{ $t('common.delete') }}</span>
-                  </Button>
-                </div>
-              </div>
-              <div class="address-content flex flex-col">
-                <div class="address-item flex space-x-2 py-1">
-                  <span class="pt-1">
-                    <IconifyIcon
-                      icon="mdi:location"
-                      width="1.2em"
-                      height="1.2em"
-                      style="color: #109ae8"
-                    />
-                  </span>
-                  <span class="text-normal">{{ item.address }}</span>
-                </div>
-                <div class="flex space-x-2">
-                  <span class="pt-1">
-                    <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
-                  </span>
-                  <span class="text-sm text-gray-500">
-                    {{ item.contactPerson }}
-                  </span>
-                  <span class="pt-1">
-                    <IconifyIcon icon="mdi:telephone" style="color: #ced3dd" />
-                  </span>
-                  <span class="text-sm text-gray-500">{{ item.mobile }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -1908,6 +2214,7 @@ onMounted(() => {
             </div>
             <UserSelect
               mode="multiple"
+              :disabled="formLocked"
               :model-value="item.userIds"
               label-key="nickName"
               :user-attribute="item.userAttribute"
@@ -1943,6 +2250,7 @@ onMounted(() => {
             </div>
             <UserSelect
               mode="multiple"
+              :disabled="formLocked"
               :model-value="reconcilerUserIds"
               label-key="nickName"
               class="stakeholder-block__select"
@@ -2306,9 +2614,26 @@ onMounted(() => {
 
 .content-section__actions {
   display: flex;
-  justify-content: flex-end;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 18px;
   border-bottom: 1px solid #edf2f7;
+}
+
+.content-section__status {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.content-section__status-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #f97316;
 }
 
 .card-title {

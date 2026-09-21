@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, h, ref } from 'vue';
+import { computed, h, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -11,15 +11,24 @@ import { Button, Form, FormItem, Input, message, Modal } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteClient,
   getClientPagedList,
   addDishonest,
   cancelDishonest,
+  submitClientAudit,
+  withdrawClientAudit,
 } from '#/api/sea-export/client-admin';
+import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
+import {
+  canApplyClientModify,
+  canEditClient,
+  canSubmitClientAudit,
+  canWithdrawClientAudit,
+  getClientStatusLabel,
+} from './base/client-status';
 import { useColumns, useGridFormSchema } from './base/data';
 
 // 添加权限检查相关导入
@@ -30,12 +39,20 @@ const router = useRouter();
 // 获取权限存储
 const accessStore = useAccessStore();
 
+/** 租户配置为 true 时等于没在用客户审核：不显示审核状态列与审核相关按钮 */
+const { auditEnabled, resolved: auditConfigResolved } = useClientAuditConfig();
+
 const handleCreate = () => {
   router.push('/clients/create');
 };
 
 const handleEdit = (row: ClientAdminApi.ClientDto) => {
   router.push(`/clients/${row.id}/edit`);
+};
+
+/** 申请修改复用编辑表单，只多一个必填的申请原因（由表单页在提交时收集） */
+const handleApplyModify = (row: ClientAdminApi.ClientDto) => {
+  router.push(`/clients/${row.id}/edit?mode=modify`);
 };
 
 const handleRowDblclick = ({
@@ -57,7 +74,6 @@ const handleRowDblclick = ({
 const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
-const canDelete = computed(() => selectedRows.value.length > 0);
 const canAddDishonest = computed(
   () => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest,
 );
@@ -75,14 +91,39 @@ const hasEditPermission = computed(() => {
   return accessStore.accessCodes.includes('Admin.Client.Edit');
 });
 
-// 添加删除权限检查  
-const hasDeletePermission = computed(() => {
-  return accessStore.accessCodes.includes('Admin.Client.Delete');
+// 启用审核后只有未提交(0)/已驳回(3)能直接编辑，其余状态后端也会拦
+const canEditWithPermission = computed(() => {
+  if (!canEdit.value || !hasEditPermission.value) return false;
+  if (!auditEnabled.value) return true;
+  return canEditClient(selectedRows.value[0]?.clientStatus);
 });
 
-// 更新编辑和删除的可用性计算属性
-const canEditWithPermission = computed(() => canEdit.value && hasEditPermission.value);
-const canDeleteWithPermission = computed(() => canDelete.value && hasDeletePermission.value);
+/** 提交审核：批量，选中客户须全部是未提交/已驳回 */
+const canSubmitAudit = computed(
+  () =>
+    auditEnabled.value &&
+    hasEditPermission.value &&
+    selectedRows.value.length > 0 &&
+    selectedRows.value.every((row) => canSubmitClientAudit(row.clientStatus)),
+);
+
+/** 撤回：批量，选中客户须全部是待审核/申请修改 */
+const canWithdrawAudit = computed(
+  () =>
+    auditEnabled.value &&
+    hasEditPermission.value &&
+    selectedRows.value.length > 0 &&
+    selectedRows.value.every((row) => canWithdrawClientAudit(row.clientStatus)),
+);
+
+/** 申请修改：只能单条，且客户须是已通过/申请修改驳回 */
+const canApplyModify = computed(
+  () =>
+    auditEnabled.value &&
+    hasEditPermission.value &&
+    selectedRows.value.length === 1 &&
+    canApplyClientModify(selectedRows.value[0]?.clientStatus),
+);
 
 const syncSelectedRows = () => {
   selectedRows.value =
@@ -104,43 +145,65 @@ const handleEditSelected = () => {
     message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
-  handleEdit(selectedRows.value[0]!);
-};
-
-const handleDeleteSelected = () => {
-  if (!canDelete.value) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
+  const row = selectedRows.value[0]!;
+  if (auditEnabled.value && !canEditClient(row.clientStatus)) {
+    message.warning(
+      `客户当前为${getClientStatusLabel(row.clientStatus)}，不可直接编辑，请发起申请修改`,
+    );
     return;
   }
+  handleEdit(row);
+};
 
-  const names = selectedRows.value.map((row) => getRowName(row));
-  const displayName = names.length === 1 ? names[0]! : `${names.length}条记录`;
-
+const handleSubmitAudit = () => {
+  if (!canSubmitAudit.value) {
+    message.warning('请选择未提交或已驳回的客户');
+    return;
+  }
+  const rows = [...selectedRows.value];
+  const displayName =
+    rows.length === 1 ? getRowName(rows[0]!) : `${rows.length}条记录`;
   Modal.confirm({
-    title: $t('ui.actionTitle.delete', [$t('seaExport.client.name')]),
-    content: $t('ui.actionMessage.deleteConfirm', [displayName]),
-    okType: 'danger',
+    title: '提交审核',
+    content: `确定提交 "${displayName}" 进入审核流程吗？一条客户生成一个独立审批任务。`,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
     async onOk() {
-      const hideLoading = message.loading({
-        content: $t('ui.actionMessage.deleting', [displayName]),
-        duration: 0,
-        key: 'action_process_msg',
-      });
-
-      try {
-        await deleteClient({
-          ids: selectedRows.value.map((row) => row.id),
-        });
-        message.success({
-          content: $t('ui.actionMessage.deleteSuccess', [displayName]),
-          key: 'action_process_msg',
-        });
-        handleRefresh();
-      } catch {
-        hideLoading();
-      }
+      await submitClientAudit({ ids: rows.map((row) => row.id) });
+      message.success(`已提交 ${rows.length} 条客户审核`);
+      handleRefresh();
     },
   });
+};
+
+const handleWithdrawAudit = () => {
+  if (!canWithdrawAudit.value) {
+    message.warning('请选择待审核或申请修改中的客户');
+    return;
+  }
+  const rows = [...selectedRows.value];
+  const displayName =
+    rows.length === 1 ? getRowName(rows[0]!) : `${rows.length}条记录`;
+  Modal.confirm({
+    title: '撤回审核',
+    content: `确定撤回 "${displayName}" 的审核申请吗？撤回只影响最新一轮，历史轮次留档。`,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    async onOk() {
+      await withdrawClientAudit({ ids: rows.map((row) => row.id) });
+      message.success(`已撤回 ${rows.length} 条客户审核`);
+      handleRefresh();
+    },
+  });
+};
+
+const handleApplyModifySelected = () => {
+  if (!canApplyModify.value) {
+    message.warning('请选择一条已通过或申请修改驳回的客户');
+    return;
+  }
+  handleApplyModify(selectedRows.value[0]!);
 };
 
 const handleAddDishonest = async () => {
@@ -347,6 +410,22 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
+// 审核状态列与筛选项跟随租户配置：未启用客户审核的租户完全看不到这一套
+watch(
+  [auditEnabled, auditConfigResolved],
+  async ([enabled, isResolved]) => {
+    if (!isResolved) return;
+    await nextTick();
+    gridApi.setGridOptions({
+      columns: useColumns({ showClientStatus: enabled }),
+    });
+    gridApi.formApi?.updateSchema([
+      { fieldName: 'ClientStatus', hide: !enabled },
+    ]);
+  },
+  { immediate: true },
+);
+
 useRefreshListOnFormReturn('ClientList', handleRefresh);
 </script>
 
@@ -354,6 +433,30 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
   <Page auto-content-height>
     <Grid :table-title="$t('seaExport.client.list')">
       <template #toolbar-tools>
+        <Button
+          v-if="auditEnabled"
+          class="mr-2"
+          :disabled="!canSubmitAudit"
+          @click="handleSubmitAudit"
+        >
+          提交审核
+        </Button>
+        <Button
+          v-if="auditEnabled"
+          class="mr-2"
+          :disabled="!canApplyModify"
+          @click="handleApplyModifySelected"
+        >
+          申请修改
+        </Button>
+        <Button
+          v-if="auditEnabled"
+          class="mr-2"
+          :disabled="!canWithdrawAudit"
+          @click="handleWithdrawAudit"
+        >
+          撤回
+        </Button>
         <Button v-if="canAddDishonest" class="mr-2" @click="handleAddDishonest">
           加入失信
         </Button>
@@ -366,20 +469,12 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
         </Button>
         <Button
           class="mr-2"
-          :disabled="!canDeleteWithPermission"
-          danger
-          @click="handleDeleteSelected"
+          :disabled="!canEditWithPermission"
+          @click="handleEditSelected"
         >
-          {{ $t('common.delete') }}
-        </Button>
-        <Button class="mr-2" :disabled="!canEditWithPermission" @click="handleEditSelected">
           {{ $t('common.edit') }}
         </Button>
-        <Button 
-          type="primary" 
-          :disabled="!canCreate"
-          @click="handleCreate"
-        >
+        <Button type="primary" :disabled="!canCreate" @click="handleCreate">
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create') }}
         </Button>
