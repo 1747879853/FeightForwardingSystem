@@ -1,6 +1,10 @@
 import { createFieldPermission } from '#/composables/field-permission';
 import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
-import { loadMaskedFields } from '#/composables/use-masked-fields';
+import {
+  isAlwaysMasked,
+  loadMaskedFields,
+} from '#/composables/use-masked-fields';
+import { FrightModule } from '#/api/system/permission';
 import { computed } from 'vue';
 
 /**
@@ -417,28 +421,97 @@ export function useBatchAddColumns(
       },
     ];
 
-    // 添加动态箱型列
+    // 箱型：成本 / 指导两列可各自编辑；表头用 nestedHeaders 合并为箱型名
+    const ctnModule = FrightModule.SeFreiPriceCtn;
     addedCtnTypes.value.forEach((ctn: any) => {
-      const colConfig = {
-        data: `ctn_${String(ctn.ctnCodeId)}`,
-        title: ctn.ctnName,
-        width: 120,
-        type: 'numeric',
-        numericFormat: {
-          pattern: '0.00',
-          culture: 'zh-CN',
-        },
-        className: 'htRight',
-      };
-      columns.push(colConfig);
+      const ctnId = String(ctn.ctnCodeId);
+      const costProp = `ctn_${ctnId}`;
+      const sugProp = `ctnSug_${ctnId}`;
+      const ctnName = ctn.ctnName;
+
+      if (!isAlwaysMasked(ctnModule, 'Cost')) {
+        columns.push({
+          data: costProp,
+          // 列配置弹窗区分成本/指导；表格表头由 nestedHeaders 合并为箱型名
+          title: `${ctnName}·成本`,
+          ctnName,
+          ctnPriceRole: 'cost',
+          width: 100,
+          type: 'numeric',
+          numericFormat: {
+            pattern: '0',
+            culture: 'zh-CN',
+          },
+          className: 'htRight htCtnCost',
+        });
+      }
+
+      if (!isAlwaysMasked(ctnModule, 'SugPrice')) {
+        columns.push({
+          data: sugProp,
+          title: `${ctnName}·指导`,
+          ctnName,
+          ctnPriceRole: 'sug',
+          width: 100,
+          type: 'numeric',
+          numericFormat: {
+            pattern: '0',
+            culture: 'zh-CN',
+          },
+          className: 'htRight htCtnSug',
+        });
+      }
     });
 
-    return columns.filter(
-      (column) => !fieldPermission.always(String(column.data ?? '')),
-    );
+    return columns.filter((column) => {
+      const data = String(column.data ?? '');
+      if (data.startsWith('ctnSug_') || data.startsWith('ctn_')) return true;
+      return !fieldPermission.always(data);
+    });
   });
+
+  /** 成本+指导价相邻时合并表头为箱型名称 */
+  const nestedHeaders = computed(() => buildCtnNestedHeaders(hotColumns.value));
 
   return {
     hotColumns,
+    nestedHeaders,
+    buildCtnNestedHeaders,
   };
+}
+
+/** 按列顺序生成 Handsontable nestedHeaders（成本+指导相邻则 colspan=2） */
+export function buildCtnNestedHeaders(cols: any[]) {
+  const row: Array<string | { label: string; colspan: number }> = [];
+  let i = 0;
+  while (i < cols.length) {
+    const col = cols[i] as any;
+    const data = String(col?.data ?? '');
+    const ctnName = col?.ctnName as string | undefined;
+
+    if (data.startsWith('ctn_') && !data.startsWith('ctnSug_') && ctnName) {
+      const ctnId = data.slice(4);
+      const next = cols[i + 1] as any;
+      if (String(next?.data ?? '') === `ctnSug_${ctnId}`) {
+        row.push({ label: ctnName, colspan: 2 });
+        i += 2;
+        continue;
+      }
+      row.push(ctnName);
+      i += 1;
+      continue;
+    }
+
+    if (data.startsWith('ctnSug_') && ctnName) {
+      row.push(ctnName);
+      i += 1;
+      continue;
+    }
+
+    const title =
+      typeof col?.title === 'function' ? col.title() : (col?.title ?? '');
+    row.push(String(title));
+    i += 1;
+  }
+  return [row];
 }

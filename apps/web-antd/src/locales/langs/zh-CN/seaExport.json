@@ -686,6 +686,7 @@
     "addCtnQuote": "添加箱型报价",
     "ctnCodeId": "箱型",
     "cost": "成本",
+    "sugPrice": "指导价",
     "feeDetails": "费用明细",
     "feeCodeId": "费用代码",
     "price": "价格",

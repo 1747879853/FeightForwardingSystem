@@ -18,7 +18,10 @@ import {
 // 导入 composables
 import { useBatchAddData } from './composables/useBatchAddData';
 import { useBatchAddDropdownSources } from './composables/useBatchAddDropdownSources';
-import { useBatchAddColumns } from './composables/useBatchAddColumns';
+import {
+  useBatchAddColumns,
+  buildCtnNestedHeaders,
+} from './composables/useBatchAddColumns';
 import { useBatchAddSettings } from './composables/useBatchAddSettings';
 import { useBatchAddActions } from './composables/useBatchAddActions';
 import { usePortRemoteAutocomplete } from './composables/usePortRemoteAutocomplete';
@@ -29,6 +32,8 @@ import { useBookingAgentRemoteAutocomplete } from './composables/useBookingAgent
 import BatchAddTableCore from './batch-add-table-core.vue';
 // 导入列配置组件
 import ColumnConfigModal from './batch-add-column-config-modal.vue';
+import CtnSugPriceMarkupModal from './ctn-sug-price-markup-modal.vue';
+import { useCtnSugPriceMarkup } from './composables/useCtnSugPriceMarkup';
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
@@ -37,6 +42,12 @@ import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin'
 import { useBaseStore } from '#/store/base';
 
 const emit = defineEmits<{ success: [] }>();
+const { applyMarkupsToRows } = useCtnSugPriceMarkup();
+const markupModalRef = ref<{ open: () => void }>();
+
+function openMarkupModal() {
+  markupModalRef.value?.open();
+}
 
 // ==================== 使用 Composables ====================
 
@@ -230,7 +241,10 @@ async function handleAIData(aiDataList: any[]) {
     if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
       row.seFreiPriceCtns.forEach((ctn: any) => {
         const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+        const sugField = `ctnSug_${String(ctn.ctnCodeId)}`;
         transformedRow[dynamicField] = ctn.cost;
+        // AI 识别无指导价，留空；若已配置加价规则可稍后点「应用」生成
+        transformedRow[sugField] = ctn.sugPrice;
       });
     }
 
@@ -256,7 +270,16 @@ async function handleAIData(aiDataList: any[]) {
     hotInstance.updateSettings({
       data: transformedAiData,
       columns: hotColumns.value,
+      nestedHeaders: nestedHeaders.value,
+      colHeaders: false,
     });
+    hotSettings.value = {
+      ...hotSettings.value,
+      data: transformedAiData,
+      columns: hotColumns.value,
+      nestedHeaders: nestedHeaders.value,
+      colHeaders: false,
+    };
 
     console.log(
       '✅ AI 数据已加载到 Handsontable，共',
@@ -317,6 +340,44 @@ interface BatchAddTableCoreInstance {
 }
 
 const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
+
+/** 同步 Handsontable 列/表头/数据，避免 updateSettings 时带回初始空 data */
+function syncHotTable(
+  patch: Record<string, any> = {},
+  options?: { updateSettingsRef?: boolean },
+) {
+  const headers = nestedHeaders.value;
+  const columns = hotColumns.value;
+  const data = dataSource.value;
+  const next = {
+    columns,
+    nestedHeaders: headers,
+    colHeaders: false,
+    data,
+    ...patch,
+  };
+
+  const hot = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (hot) {
+    hot.updateSettings(next);
+  }
+
+  if (options?.updateSettingsRef !== false) {
+    hotSettings.value = {
+      ...hotSettings.value,
+      ...next,
+    };
+  }
+}
+
+function handleMarkupApplied() {
+  applyMarkupsToRows(dataSource.value);
+  const hot = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (hot) {
+    hot.loadData(dataSource.value);
+    hot.render();
+  }
+}
 
 function resolveActiveAutocompleteEditor() {
   const table = coreTableRef.value?.hotTableRef;
@@ -486,7 +547,7 @@ const linkage = {
   },
 };
 
-const { hotColumns } = useBatchAddColumns(
+const { hotColumns, nestedHeaders } = useBatchAddColumns(
   addedCtnTypes,
   { getCarrierName, getPortName, getCurrencyName, getClientName },
   dataSource,
@@ -517,6 +578,7 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
   getColumnIndex,
   handleOpenDropdown,
   getSortIcon,
+  nestedHeaders,
 );
 
 // ==================== 列配置管理 ====================
@@ -587,10 +649,13 @@ const applyColumnConfig = (config: any[]) => {
   const fixedColumnsLeft = sortedLeftFixed.length;
   const fixedColumnsRight = sortedRightFixed.length;
 
-  // 创建新的hotSettings
+  // 创建新的hotSettings（必须带上当前 data，否则会把表格打回空表）
   const newHotSettings = {
     ...currentSettings,
     columns: finalColumns,
+    nestedHeaders: buildCtnNestedHeaders(finalColumns),
+    colHeaders: false,
+    data: dataSource.value,
     fixedColumnsLeft: fixedColumnsLeft,
     fixedColumnsRight: fixedColumnsRight,
   };
@@ -602,6 +667,9 @@ const applyColumnConfig = (config: any[]) => {
   if (coreTableRef.value?.hotTableRef?.hotInstance) {
     coreTableRef.value.hotTableRef.hotInstance.updateSettings({
       columns: finalColumns,
+      nestedHeaders: buildCtnNestedHeaders(finalColumns),
+      colHeaders: false,
+      data: dataSource.value,
       fixedColumnsLeft: fixedColumnsLeft,
       fixedColumnsRight: fixedColumnsRight,
     });
@@ -801,17 +869,13 @@ const [Modal, modalApi] = useVbenModal({
     } else {
       // 如果没有 AI 数据且表格为空，则添加一行空数据（仅在新增模式下）
       if (dataSource.value.length === 0 && !isEditMode.value) {
-        addRow(1);
+        addRow(1, true);
         await nextTick();
       }
     }
 
-    // 确保 Handsontable 使用最新的数据源和列配置
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-        columns: hotColumns.value,
-      });
-    }
+    // 同步列/表头/数据（必须带 data，避免空 data 把已加行冲掉）
+    syncHotTable();
   },
 });
 
@@ -921,19 +985,26 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         ];
       }
 
-      // 处理箱型成本 - 从动态字段中提取
+      // 处理箱型成本/指导价 - 从动态字段中提取
       const seFreiPriceCtns: any[] = [];
       Object.keys(row).forEach((key) => {
-        if (key.startsWith('ctn_')) {
+        if (key.startsWith('ctn_') && !key.startsWith('ctnSug_')) {
           const ctnCodeId = key.replace('ctn_', '');
           const cost = row[key];
-
-          if (cost !== undefined && cost !== null && cost !== '') {
-            seFreiPriceCtns.push({
-              ctnCodeId,
-              cost: Number(cost),
-            });
-          }
+          const sugPrice = row[`ctnSug_${ctnCodeId}`];
+          const hasCost = cost !== undefined && cost !== null && cost !== '';
+          const hasSug =
+            sugPrice !== undefined && sugPrice !== null && sugPrice !== '';
+          if (!hasCost && !hasSug) return;
+          const item: Record<string, any> = { ctnCodeId };
+          if (hasCost) item.cost = Number(cost);
+          if (hasSug) item.sugPrice = Number(sugPrice);
+          // 编辑模式带上原箱型行 id（若有）
+          const original = (row.seFreiPriceCtns || []).find(
+            (c: any) => String(c.ctnCodeId) === String(ctnCodeId),
+          );
+          if (original?.id) item.id = original.id;
+          seFreiPriceCtns.push(item);
         }
       });
 
@@ -968,16 +1039,10 @@ async function handleEditSubmit(labelToIdMapValue: any) {
 
 watch(
   addedCtnTypes,
-  async (newVal, oldVal) => {
+  async () => {
     await nextTick();
-
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
-      // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
-      coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-        columns: hotColumns.value,
-      });
-    }
+    // 更新列配置时必须带上当前 data，否则会把表格冲成初始空数组
+    syncHotTable();
   },
   { deep: true },
 );
@@ -1049,7 +1114,8 @@ defineExpose({
               <ul class="batch-add__tips">
                 <li v-if="!isEditMode">「新增行」可一次追加 1 / 5 / 10 行</li>
                 <li v-if="!isEditMode">选中行后可复制或删除</li>
-                <li>「添加箱型」可为表格追加箱型成本列</li>
+                <li>「添加箱型」追加成本/指导价列，可各自编辑</li>
+                <li>「指导价规则」配置加价后立即按「成本+加价」生成指导价</li>
                 <li>齿轮按钮可配置列显隐与顺序</li>
               </ul>
             </template>
@@ -1118,6 +1184,16 @@ defineExpose({
               :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
               @change="actions.handleAddCtnType"
             />
+            <Button size="small" @click="openMarkupModal">
+              <IconifyIcon
+                icon="mdi:calculator-variant-outline"
+                class="size-4"
+              />
+              指导价规则
+            </Button>
+            <Button size="small" @click="handleMarkupApplied">
+              应用指导价
+            </Button>
             <div class="batch-add__column-config">
               <Button
                 shape="circle"
@@ -1147,6 +1223,12 @@ defineExpose({
           />
         </div>
       </section>
+
+      <CtnSugPriceMarkupModal
+        ref="markupModalRef"
+        :ctn-types="addedCtnTypes"
+        @applied="handleMarkupApplied"
+      />
     </div>
 
     <AntModal
@@ -1474,5 +1556,18 @@ defineExpose({
 
 .batch-add__custom-rows-input {
   width: 100%;
+}
+</style>
+
+<style lang="scss">
+/* Handsontable 箱型价列着色 */
+.htCtnCost {
+  font-weight: 600;
+  color: #d48806 !important;
+}
+
+.htCtnSug {
+  font-weight: 600;
+  color: #cf1322 !important;
 }
 </style>

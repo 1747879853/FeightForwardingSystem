@@ -128,12 +128,17 @@ export function useBatchAddActions(
       row.seFreiPriceCtns.push({
         ctnCodeId: ctn.ctnCodeId,
         cost: undefined,
+        sugPrice: undefined,
       });
 
-      // 添加动态字段
+      // 添加动态字段（成本 + 指导价）
       const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+      const sugField = `ctnSug_${String(ctn.ctnCodeId)}`;
       if (!(dynamicField in row)) {
         row[dynamicField] = undefined;
+      }
+      if (!(sugField in row)) {
+        row[sugField] = undefined;
       }
 
       return row;

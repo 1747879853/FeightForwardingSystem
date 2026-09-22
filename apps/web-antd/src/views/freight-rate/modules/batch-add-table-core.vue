@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted } from 'vue';
 import { HotTable } from '@handsontable/vue3';
+import { useCtnSugPriceMarkup } from './composables/useCtnSugPriceMarkup';
 
 interface Props {
   dataSource: any[];
@@ -16,17 +17,9 @@ interface Props {
 
 const props = defineProps<Props>();
 const emit = defineEmits(['update:selectedRowKeys']);
+const { calcSugPrice } = useCtnSugPriceMarkup();
 
 const hotTableRef = ref<any>(null);
-
-/**
- * 获取列索引的辅助函数
- */
-const getColumnIndex = (field: string): number => {
-  const columns = props.hotSettings?.columns;
-  if (!columns || !Array.isArray(columns)) return -1;
-  return columns.findIndex((col: any) => col.data === field);
-};
 
 // ⚠️ 关键修复：在组件挂载时加载初始数据
 onMounted(() => {
@@ -72,58 +65,69 @@ defineExpose({
 
 /**
  * 处理下拉选择后的值转换（将 Label 转换为 ID）
+ * 以及箱型成本→指导价自动计算
  */
 const handleAfterChange = (changes: any, source: string) => {
-  if (source === 'edit' && changes) {
-    const hotInstance = hotTableRef.value?.hotInstance;
-    if (!hotInstance) return;
+  if (!changes || source === 'loadData' || source === 'markup') return;
 
-    changes.forEach(([row, prop, oldValue, newValue]: any) => {
-      if (!prop) return;
+  const hotInstance = hotTableRef.value?.hotInstance;
+  if (!hotInstance) return;
 
-      // ⚠️ 关键修复：不再在 handleAfterChange 中同步 seFreiPriceCtns
-      // 因为修改 rowData.seFreiPriceCtns 会触发 Vue 响应式，导致 hotSettings 重新计算
-      // 箱型列的数据会在提交时从 Handsontable 中直接提取
-      if (prop.startsWith('ctn_')) {
-        // 箱型列的值已经保存在 Handsontable 内部，不需要额外同步
-        // prepareSubmitData 时会从 dataSource（即 Handsontable 的数据源）中提取
-        return; // 箱型列不需要进行 Label 到 ID 的转换
-      }
+  changes.forEach(([row, prop, oldValue, newValue]: any) => {
+    if (!prop) return;
+    const propKey = String(prop);
 
-      // 原有的 Label 到 ID 转换逻辑
-      if (props.labelToIdMap && newValue) {
-        // 确定字段类型和对应的映射表
-        let labelMap: Map<string, string> | undefined;
-        if (prop === 'carrierId') {
-          // 船公司列保留展示文案，提交时经 labelToIdMap 映射
-          return;
-        } else if (
-          prop === 'polId' ||
-          prop === 'podId' ||
-          prop === 'poT1Id' ||
-          prop === 'poT2Id'
-        ) {
-          // 港口列保留「名称/国家」展示文案，提交时经 labelToIdMap 映射；
-          // 若此处写成 id，远程搜索场景下回显会变成纯数字且提交映射失效。
-          return;
-        } else if (prop === 'currencyId') {
-          labelMap = props.labelToIdMap.currencies;
-        } else if (prop === 'bookingAgentId') {
-          // 订舱代理列保留展示文案，提交时经 labelToIdMap 映射
-          return;
-        }
-
-        // 如果找到映射表，将 Label 转换为 ID
-        if (labelMap && typeof newValue === 'string') {
-          const id = labelMap.get(newValue);
-          if (id !== undefined) {
-            // 更新单元格的实际值为 ID
-            hotInstance.setDataAtCell(row, hotInstance.propToCol(prop), id);
-          }
+    // 改成本后：若配置了加价则自动填指导价；指导价列仍可再单独改
+    if (propKey.startsWith('ctn_') && !propKey.startsWith('ctnSug_')) {
+      const ctnCodeId = propKey.slice(4);
+      const sug = calcSugPrice(newValue, ctnCodeId);
+      if (sug !== undefined) {
+        const sugCol = hotInstance.propToCol(`ctnSug_${ctnCodeId}`);
+        if (typeof sugCol === 'number' && sugCol >= 0) {
+          hotInstance.setDataAtCell(row, sugCol, sug, 'markup');
         }
       }
-    });
-  }
+      return;
+    }
+
+    if (propKey.startsWith('ctnSug_')) {
+      // 指导价单独修改，不回写成本
+      return;
+    }
+
+    // 原有的 Label 到 ID 转换逻辑
+    if (props.labelToIdMap && newValue) {
+      // 确定字段类型和对应的映射表
+      let labelMap: Map<string, string> | undefined;
+      if (prop === 'carrierId') {
+        // 船公司列保留展示文案，提交时经 labelToIdMap 映射
+        return;
+      } else if (
+        prop === 'polId' ||
+        prop === 'podId' ||
+        prop === 'poT1Id' ||
+        prop === 'poT2Id'
+      ) {
+        // 港口列保留「名称/国家」展示文案，提交时经 labelToIdMap 映射；
+        // 若此处写成 id，远程搜索场景下回显会变成纯数字且提交映射失效。
+        return;
+      } else if (prop === 'currencyId') {
+        labelMap = props.labelToIdMap.currencies;
+      } else if (prop === 'bookingAgentId') {
+        // 订舱代理列保留展示文案，提交时经 labelToIdMap 映射
+        return;
+      }
+
+      // 如果找到映射表，将 Label 转换为 ID
+      if (labelMap && typeof newValue === 'string') {
+        const id = labelMap.get(newValue);
+        if (id !== undefined) {
+          // 更新单元格的实际值为 ID
+          hotInstance.setDataAtCell(row, hotInstance.propToCol(prop), id);
+        }
+      }
+    }
+  });
 };
 
 // 监听数据变化，同步到 Handsontable

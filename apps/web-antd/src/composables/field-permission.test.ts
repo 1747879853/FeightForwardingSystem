@@ -8,6 +8,7 @@ vi.mock('#/api/system/permission', () => ({
     SeaImport: 4,
     AirExport: 5,
     SeFreiPrice: 7,
+    SeFreiPriceCtn: 11,
   },
   getCurrentUserMaskedFields: vi.fn(),
 }));
@@ -21,6 +22,7 @@ import {
 import {
   orderFeeFieldPermission,
   seaExportFieldPermission,
+  freightRateFieldPermission,
 } from './field-permission-profiles';
 import {
   getMaskedField,
@@ -30,6 +32,7 @@ import {
 
 const query = vi.mocked(getCurrentUserMaskedFields);
 const permission = createFieldPermission(seaExportFieldPermission);
+const freightPermission = createFieldPermission(freightRateFieldPermission);
 async function rule(module: number, propName: string, alwaysMasked = false) {
   query.mockResolvedValue([
     { frightModule: module, fields: [{ propName, alwaysMasked }] },
@@ -154,5 +157,56 @@ describe('DTO 字段权限', () => {
     await oldRequest;
     expect(getMaskedField(0, 'Vessel')).toBeUndefined();
     expect(getMaskedField(2, 'Client')?.alwaysMasked).toBe(true);
+  });
+});
+
+describe('运价箱型嵌套字段权限', () => {
+  it('Cost 无条件屏蔽时仍可看指导价列', async () => {
+    await rule(11, 'Cost', true);
+    expect(freightPermission.always('ctn_20GP')).toBe(false);
+    expect(freightPermission.always('seFreiPriceCtns.cost')).toBe(true);
+    expect(freightPermission.always('carrierId')).toBe(false);
+  });
+  it('Cost 与 SugPrice 均无条件屏蔽时整列隐藏', async () => {
+    query.mockResolvedValue([
+      {
+        frightModule: 11,
+        fields: [
+          { propName: 'Cost', alwaysMasked: true },
+          { propName: 'SugPrice', alwaysMasked: true },
+        ],
+      },
+    ] as any);
+    await loadMaskedFields(true);
+    expect(freightPermission.always('ctn_20GP')).toBe(true);
+  });
+  it('Cost 条件屏蔽时有指导价仍显示列；两者规则都命中才打码', async () => {
+    await rule(11, 'Cost');
+    expect(
+      freightPermission.masked('ctn_20GP', {
+        seFreiPriceCtns: [{ ctnCodeId: 1, sugPrice: 120 }],
+      }),
+    ).toBe(false);
+    expect(
+      freightPermission.masked('ctn_20GP', {
+        seFreiPriceCtns: [{ ctnCodeId: 1, cost: 100 }],
+      }),
+    ).toBe(false);
+
+    query.mockResolvedValue([
+      {
+        frightModule: 11,
+        fields: [
+          { propName: 'Cost', alwaysMasked: false },
+          { propName: 'SugPrice', alwaysMasked: false },
+        ],
+      },
+    ] as any);
+    await loadMaskedFields(true);
+    expect(
+      freightPermission.masked('ctn_20GP', {
+        seFreiPriceCtns: [{ ctnCodeId: 1 }],
+      }),
+    ).toBe(true);
   });
 });

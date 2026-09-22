@@ -39,6 +39,17 @@ export const FreightRateLabelOptions = [
   { label: '关联周几列表', value: 'seFreiPriceWeekDays' },
 ];
 
+/** 运价箱型模块（FrightModule.SeFreiPriceCtn）字段中文名；PropName 用 PascalCase */
+export const FreightRateCtnLabelOptions = [
+  { label: '箱型行ID', value: 'Id' },
+  { label: '运价ID', value: 'SeFreiPriceId' },
+  { label: '箱型ID', value: 'CtnCodeId' },
+  { label: '箱型对象', value: 'CtnCode' },
+  { label: '成本', value: 'Cost' },
+  { label: '指导价', value: 'SugPrice' },
+  { label: '备注', value: 'Remark' },
+];
+
 /**
  * 海运出口运价相关类型定义
  */
@@ -351,7 +362,9 @@ export interface SeFreiPriceCtnAddDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价（可空；字段权限屏蔽时响应中省略该 key） */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
 }
@@ -365,7 +378,9 @@ export interface SeFreiPriceCtnEditDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价（可空；不传或 null 时编辑接口用库内原值回填） */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
 }
@@ -381,7 +396,9 @@ export interface SeFreiPriceCtnOutDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价 */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
   /** 箱型信息（关联对象） */

@@ -945,6 +945,7 @@
     "moduleAirExport": "空运出口",
     "moduleAirImport": "空运进口",
     "moduleSeFreiPrice": "运价",
+    "moduleSeFreiPriceCtn": "运价箱型",
     "propName": "字段名称",
     "conditionPropName": "条件字段",
     "conditionOperator": "操作符",

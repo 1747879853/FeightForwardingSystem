@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import Handsontable from 'handsontable';
+import { useCtnSugPriceMarkup } from './useCtnSugPriceMarkup';
 
 /**
  * 批量新增运价 - Handsontable 设置 Composable
@@ -21,7 +22,10 @@ export function useBatchAddSettings(
     source: string[],
   ) => void,
   getSortIcon: (field: string) => string,
+  nestedHeaders?: any,
 ) {
+  const { calcSugPrice } = useCtnSugPriceMarkup();
+
   /**
    * Handsontable 配置
    */
@@ -31,7 +35,9 @@ export function useBatchAddSettings(
     data: dataSource.value,
     columns: hotColumns.value,
     rowHeaders: true,
-    colHeaders: true,
+    // 箱型成本+指导相邻时用 nestedHeaders 合并表头
+    colHeaders: nestedHeaders ? false : true,
+    ...(nestedHeaders ? { nestedHeaders: nestedHeaders.value } : {}),
     height: '100%',
     width: '100%',
     stretchH: 'all',
@@ -75,12 +81,26 @@ export function useBatchAddSettings(
     },
 
     afterChange: function (this: any, changes: any, source: string) {
-      if (!changes || source === 'loadData') return;
+      if (!changes || source === 'loadData' || source === 'markup') return;
 
       // ⚠️ 关键修复：获取 hotInstance，使用其 API 更新数据，避免触发 Vue 响应式
       const hotInstance = this; // afterChange 中的 this 指向 hotInstance
 
       changes.forEach(([row, prop, oldValue, newValue]: any) => {
+        const propKey = String(prop ?? '');
+
+        // 成本价变更：有加价规则则自动写指导价
+        if (propKey.startsWith('ctn_') && !propKey.startsWith('ctnSug_')) {
+          const ctnCodeId = propKey.slice(4);
+          const sug = calcSugPrice(newValue, ctnCodeId);
+          if (sug === undefined) return;
+          const sugCol = hotInstance.propToCol(`ctnSug_${ctnCodeId}`);
+          if (typeof sugCol === 'number' && sugCol >= 0) {
+            hotInstance.setDataAtCell(row, sugCol, sug, 'markup');
+          }
+          return;
+        }
+
         // ✅ 处理 isDirect 变化时的中转港单元格刷新
         if (prop === 'isDirect') {
           // 强制刷新中转港1和中转港2的单元格配置

@@ -932,6 +932,7 @@
     "moduleAirExport": "Air Export",
     "moduleAirImport": "Air Import",
     "moduleSeFreiPrice": "Freight Rate",
+    "moduleSeFreiPriceCtn": "Freight Rate Container",
     "propName": "Field Name",
     "conditionPropName": "Condition Field",
     "conditionOperator": "Operator",

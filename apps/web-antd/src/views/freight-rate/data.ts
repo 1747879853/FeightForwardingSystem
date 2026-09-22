@@ -4,8 +4,6 @@ import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
 import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
-import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
-import { message } from 'ant-design-vue';
 
 /** 运价列表列配置持久化 key（与 gridOptions.id 对应） */
 export const FREIGHT_RATE_LIST_TABLE_ID = 'FreightRateList';
@@ -62,16 +60,6 @@ function extractUniqueCtnNames(data: SeFreiPriceOutDto[]): string[] {
     });
   });
   return Array.from(ctnNames).sort();
-}
-
-/**
- * 获取指定箱型名称的成本值
- */
-function getCtnCost(row: SeFreiPriceOutDto, ctnName: string): number | string {
-  const ctn = row.seFreiPriceCtns?.find(
-    (item) => item.ctnCode?.ctnName === ctnName,
-  );
-  return ctn?.cost ?? '-';
 }
 
 /**
@@ -481,80 +469,34 @@ export function useColumns(
       // 集合展开的展示列没有对应的后端排序字段。
       sortable: false,
       title: ctnName,
-      width: 140,
+      width: 160,
       align: 'left',
       showOverflow: false,
       slots: { default: 'ctnEditableCell' },
       params: {
         ctnName,
-        onConfirm: async (newValue: number, row: any) => {
-          // 找到对应的箱型信息
-          const ctnInfo = row.seFreiPriceCtns?.find(
-            (ctn: any) => ctn.ctnCode?.ctnName === ctnName,
-          );
-
-          if (!ctnInfo) {
-            message.error('未找到对应的箱型信息');
-            return false;
-          }
-
-          try {
-            // 构建完整的箱型列表，只更新当前修改的箱型
-            const updatedCtns = row.seFreiPriceCtns?.map((ctn: any) => {
-              if (ctn.id === ctnInfo.id) {
-                return {
-                  id: ctn.id,
-                  ctnCodeId: ctn.ctnCodeId,
-                  cost: newValue,
-                  remark: ctn.remark,
-                };
-              }
-              return {
-                id: ctn.id,
-                ctnCodeId: ctn.ctnCodeId,
-                cost: ctn.cost,
-                remark: ctn.remark,
-              };
-            });
-
-            // 调用编辑接口更新运价
-            await editSeFreiPrice({
-              id: row.id,
-              recommend: row.recommend,
-              carrierId: row.carrierId,
-              polId: row.polId,
-              podId: row.podId,
-              isDirect: row.isDirect,
-              poT1Id: row.poT1Id,
-              poT2Id: row.poT2Id,
-              polFreeDays: row.polFreeDays,
-              podFreeDays: row.podFreeDays,
-              poddem: row.poddem,
-              poddet: row.poddet,
-              voyage: row.voyage,
-              contractNo: row.contractNo,
-              validTimeStart: row.validTimeStart,
-              validTimeEnd: row.validTimeEnd,
-              remark: row.remark,
-              currencyId: row.currencyId,
-              seFreiPriceCtns: updatedCtns,
-              seFreiPriceFees: row.seFreiPriceFees,
-              seFreiPriceDays: row.seFreiPriceDays,
-              seFreiPriceWeekDays: row.seFreiPriceWeekDays,
-            });
-
-            message.success('修改成功');
-            return true;
-          } catch (error) {
-            console.error('保存失败:', error);
-            message.error('保存失败');
-            return false;
-          }
-        },
       },
       formatter: ({ row }) => {
-        const cost = getCtnCost(row as SeFreiPriceOutDto, ctnName);
-        return cost === '-' ? '-' : Number(cost).toFixed(2);
+        const ctn = (row as SeFreiPriceOutDto).seFreiPriceCtns?.find(
+          (item) => item.ctnCode?.ctnName === ctnName,
+        );
+        if (!ctn) return '-';
+        const parts: string[] = [];
+        if (Object.prototype.hasOwnProperty.call(ctn, 'cost')) {
+          parts.push(
+            ctn.cost === undefined || ctn.cost === null
+              ? '-'
+              : Number(ctn.cost).toFixed(2),
+          );
+        }
+        if (Object.prototype.hasOwnProperty.call(ctn, 'sugPrice')) {
+          parts.push(
+            ctn.sugPrice === undefined || ctn.sugPrice === null
+              ? '-'
+              : Number(ctn.sugPrice).toFixed(2),
+          );
+        }
+        return parts.length > 0 ? parts.join(' / ') : '-';
       },
     }));
   }

@@ -738,6 +738,7 @@
     "addCtnQuote": "Add Container Quote",
     "ctnCodeId": "Container Type",
     "cost": "Cost",
+    "sugPrice": "Guide Price",
     "feeDetails": "Fee Details",
     "feeCodeId": "Fee Code",
     "price": "Price",

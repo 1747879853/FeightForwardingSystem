@@ -1,7 +1,12 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { Input, Button, message } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
+/**
+ * 运价列表箱型价格只读展示：成本（黄）在前、指导价（红）在后。
+ * 字段权限：Cost / SugPrice 被屏蔽时响应省略 key，对应价不展示。
+ */
+import { computed } from 'vue';
+
+import { FrightModule } from '#/api/system/permission';
+import { hasMaskRule, isAlwaysMasked } from '#/composables/use-masked-fields';
 
 interface Props {
   row: any;
@@ -9,150 +14,122 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits(['success']);
+const MODULE = FrightModule.SeFreiPriceCtn;
 
-// 编辑状态
-const isEditing = ref(false);
-const editingValue = ref<number | string>('');
-const loading = ref(false);
-
-// 获取箱型名称
-const ctnName = props.column.params?.ctnName || '';
-
-// 进入编辑模式
-function handleEdit() {
-  isEditing.value = true;
-
-  // 从 seFreiPriceCtns 中获取当前箱型的成本值
-  const ctn = props.row.seFreiPriceCtns?.find(
-    (item: any) => item.ctnCode?.ctnName === ctnName,
+const ctnItem = computed(() => {
+  const name = (props.column?.params?.ctnName as string) || '';
+  if (!name || !props.row?.seFreiPriceCtns) return undefined;
+  return props.row.seFreiPriceCtns.find(
+    (item: any) => item.ctnCode?.ctnName === name,
   );
-  editingValue.value = ctn?.cost ?? '';
+});
+
+function hasKey(obj: Record<string, any> | undefined, key: string) {
+  return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
 }
 
-// 确认保存
-async function handleConfirm() {
-  const newValue = Number(editingValue.value);
-  if (isNaN(newValue)) {
-    message.warning('请输入有效的数字');
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const result = await props.column.params?.onConfirm?.(newValue, props.row);
-    if (result !== false) {
-      isEditing.value = false;
-      emit('success');
-    }
-  } catch (error) {
-    console.error('保存失败:', error);
-    message.error('保存失败');
-  } finally {
-    loading.value = false;
-  }
+function formatPrice(value: unknown): string {
+  if (value === undefined || value === null || value === '') return '-';
+  const num = Number(value);
+  return Number.isNaN(num) ? '-' : num.toFixed(2);
 }
 
-// 取消编辑
-function handleCancel() {
-  isEditing.value = false;
-  // 从 seFreiPriceCtns 中恢复原始值
-  const ctn = props.row.seFreiPriceCtns?.find(
-    (item: any) => item.ctnCode?.ctnName === ctnName,
-  );
-  editingValue.value = ctn?.cost ?? '';
+function canShowProp(prop: 'cost' | 'sugPrice', pascal: string) {
+  if (isAlwaysMasked(MODULE, pascal)) return false;
+  // 有屏蔽规则时：只有响应里出现该 key 才展示（缺 key = 被裁掉）
+  if (hasMaskRule(MODULE, pascal)) return hasKey(ctnItem.value, prop);
+  // 无规则：有 key 才展示（兼容未返回字段）
+  return hasKey(ctnItem.value, prop);
 }
 
-// 键盘事件
-function handleKeyPress(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    handleConfirm();
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    handleCancel();
-  }
-}
-
-// 格式化显示值
-const displayValue = computed(() => {
-  // 从 row.seFreiPriceCtns 中查找对应的箱型成本
-  const ctnName = props.column.params?.ctnName;
-  if (!ctnName || !props.row.seFreiPriceCtns) {
-    return '-';
+const display = computed(() => {
+  const item = ctnItem.value;
+  if (!item) {
+    return { fullyMasked: false, empty: true, costText: '', sugText: '' };
   }
 
-  const ctn = props.row.seFreiPriceCtns.find(
-    (item: any) => item.ctnCode?.ctnName === ctnName,
-  );
+  const showCost = canShowProp('cost', 'Cost');
+  const showSug = canShowProp('sugPrice', 'SugPrice');
 
-  if (!ctn || ctn.cost === undefined || ctn.cost === null || ctn.cost === '') {
-    return '-';
+  if (!showCost && !showSug) {
+    const bothAlways =
+      isAlwaysMasked(MODULE, 'Cost') && isAlwaysMasked(MODULE, 'SugPrice');
+    const bothRuledOut =
+      (hasMaskRule(MODULE, 'Cost') || isAlwaysMasked(MODULE, 'Cost')) &&
+      (hasMaskRule(MODULE, 'SugPrice') || isAlwaysMasked(MODULE, 'SugPrice'));
+    return {
+      fullyMasked: bothAlways || bothRuledOut,
+      empty: true,
+      costText: '',
+      sugText: '',
+      showCost: false,
+      showSug: false,
+    };
   }
 
-  const numValue = Number(ctn.cost);
-  return isNaN(numValue) ? '-' : numValue.toFixed(2);
+  return {
+    fullyMasked: false,
+    empty: false,
+    showCost,
+    showSug,
+    costText: showCost ? formatPrice(item.cost) : '',
+    sugText: showSug ? formatPrice(item.sugPrice) : '',
+  };
 });
 </script>
 
 <template>
-  <div v-if="isEditing" class="flex items-center gap-1">
-    <Button
-      type="primary"
-      size="small"
-      @click="handleConfirm"
-      :loading="loading"
-      title="确认"
-    >
-      <IconifyIcon icon="mdi:check" class="size-4" />
-    </Button>
-    <Button size="small" @click="handleCancel" title="取消">
-      <IconifyIcon icon="mdi:close" class="size-4" />
-    </Button>
-    <Input
-      v-model:value="editingValue"
-      size="small"
-      placeholder="请输入"
-      @press-enter="handleConfirm"
-      @keydown="handleKeyPress"
-      :style="{ flex: 1 }"
-      autofocus
-    />
-  </div>
-  <div
-    v-else
-    class="cell-editable-number flex items-center justify-between rounded px-2 py-1 transition-colors hover:bg-blue-50"
-  >
-    <span class="cost-value">{{ displayValue }}</span>
-    <Button
-      type="text"
-      size="small"
-      @click.stop="handleEdit"
-      class="edit-icon-btn"
-      title="编辑"
-    >
-      <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
-    </Button>
+  <div class="ctn-price-cell">
+    <template v-if="display.fullyMasked">
+      <span class="ctn-price-cell__masked">***</span>
+    </template>
+    <template v-else-if="display.empty">
+      <span class="ctn-price-cell__empty">-</span>
+    </template>
+    <template v-else>
+      <span v-if="display.showCost" class="ctn-price-cell__cost" title="成本价">
+        {{ display.costText }}
+      </span>
+      <span
+        v-if="display.showCost && display.showSug"
+        class="ctn-price-cell__sep"
+      >
+        /
+      </span>
+      <span v-if="display.showSug" class="ctn-price-cell__sug" title="指导价">
+        {{ display.sugText }}
+      </span>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.cell-editable-number {
+.ctn-price-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  align-items: baseline;
   min-height: 28px;
-  user-select: none;
+  padding: 2px 4px;
+  line-height: 1.3;
 }
 
-.cost-value {
+.ctn-price-cell__cost {
   font-weight: 600;
-  color: #fa8c16;
+  color: #d48806;
 }
 
-.edit-icon-btn {
-  opacity: 0;
-  transition: opacity 0.2s ease;
+.ctn-price-cell__sug {
+  font-weight: 600;
+  color: #cf1322;
 }
 
-.cell-editable-number:hover .edit-icon-btn {
-  opacity: 1;
+.ctn-price-cell__sep {
+  color: hsl(var(--muted-foreground));
+}
+
+.ctn-price-cell__empty,
+.ctn-price-cell__masked {
+  color: hsl(var(--muted-foreground));
 }
 </style>

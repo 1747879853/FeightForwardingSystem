@@ -324,8 +324,14 @@ function onBatchUpdate() {
       currencyId: row.currencyId,
       bookingAgentId: row.bookingAgentId,
       seFreiPriceCtns: (row.seFreiPriceCtns || []).map((ctn) => ({
+        ...(ctn.id ? { id: ctn.id } : {}),
         ctnCodeId: ctn.ctnCodeId,
-        cost: ctn.cost,
+        ...(Object.prototype.hasOwnProperty.call(ctn, 'cost')
+          ? { cost: ctn.cost }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(ctn, 'sugPrice')
+          ? { sugPrice: ctn.sugPrice }
+          : {}),
       })),
     };
   });
@@ -801,7 +807,7 @@ onUnmounted(() => {
       </template>
 
       <template #ctnEditableCell="{ row, column }">
-        <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
+        <CtnEditableCell :row="row" :column="column" />
       </template>
 
       <template #toolbar-actions>
