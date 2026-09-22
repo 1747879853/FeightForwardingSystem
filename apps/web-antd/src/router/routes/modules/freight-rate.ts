@@ -29,6 +29,28 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/freight-rate/list.vue'),
       },
       {
+        path: 'batch-add',
+        name: 'FreightRateBatchAdd',
+        meta: {
+          hideInMenu: true,
+          title: '批量新增运价',
+          activePath: '/freight-rate',
+          authority: abpPageAuthority('Admin.SeFreiPrice'),
+        },
+        component: () => import('#/views/freight-rate/batch-add-page.vue'),
+      },
+      {
+        path: 'batch-edit',
+        name: 'FreightRateBatchEdit',
+        meta: {
+          hideInMenu: true,
+          title: '批量编辑运价',
+          activePath: '/freight-rate',
+          authority: abpPageAuthority('Admin.SeFreiPrice'),
+        },
+        component: () => import('#/views/freight-rate/batch-add-page.vue'),
+      },
+      {
         path: '/schedule',
         name: 'ScheduleQueryList',
         meta: {

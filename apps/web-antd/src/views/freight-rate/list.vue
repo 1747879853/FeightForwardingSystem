@@ -11,6 +11,7 @@ import type {
 } from '#/api/sea-export/freight-rate-admin';
 
 import { nextTick, ref, watch, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import {
@@ -44,12 +45,13 @@ import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useBaseStore } from '#/store/base';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
-import BatchAddModal from './modules/batch-add-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
+import { setPendingFreightBatchRows } from './pending-batch-rows';
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
   useColumns,
@@ -101,10 +103,7 @@ const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const [BatchAddModalComponent, batchAddModalApi] = useVbenModal({
-  connectedComponent: BatchAddModal,
-  destroyOnClose: true,
-});
+const router = useRouter();
 
 // ==================== 查询 / 表格 ====================
 
@@ -249,6 +248,8 @@ function onRefresh() {
   void getLines();
 }
 
+useRefreshListOnFormReturn('FreightRateList', onRefresh);
+
 function onCreate() {
   editFormModalApi.setData({ permission: hasAddPermission.value }).open();
 }
@@ -336,7 +337,8 @@ function onBatchUpdate() {
     };
   });
 
-  batchAddModalApi.setData({ aiData: editData, isEditMode: true }).open();
+  setPendingFreightBatchRows({ aiData: editData, isEditMode: true });
+  router.push({ name: 'FreightRateBatchEdit' });
 }
 
 /** 菜单「批量更改」：同步字段到多条记录 */
@@ -354,7 +356,8 @@ function onBatchAdd() {
     message.warning('您没有批量新增运价的权限');
     return;
   }
-  batchAddModalApi.open();
+  setPendingFreightBatchRows({ isEditMode: false });
+  router.push({ name: 'FreightRateBatchAdd' });
 }
 
 function onBatchDelete() {
@@ -668,7 +671,8 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
     }));
 
     aiExtractModalOpen.value = false;
-    batchAddModalApi.setData({ aiData: convertedData }).open();
+    setPendingFreightBatchRows({ aiData: convertedData, isEditMode: false });
+    router.push({ name: 'FreightRateBatchAdd' });
     message.success(
       `AI识别完成，共识别出 ${recognitionResult.length} 条运价数据`,
     );
@@ -958,7 +962,6 @@ onUnmounted(() => {
 
     <EditFormModal @success="onRefresh" />
     <SyncUpdateModal @success="onRefresh" />
-    <BatchAddModalComponent @success="onRefresh" />
 
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"

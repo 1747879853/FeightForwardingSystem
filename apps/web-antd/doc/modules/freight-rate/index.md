@@ -2,7 +2,7 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,7 +17,7 @@ last_updated: 2026-09-20
 | 路由名称 | `FreightRateList` |
 | 页面组件 | `src/views/freight-rate/list.vue` |
 | 权限口径 | `Admin.SeFreiPrice` / `Admin.SeFreiPrice.Get`（父级另聚合 `Admin.Schedule`） |
-| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/freight-rate/list.vue`<br/>`src/views/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
+| 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/freight-rate/list.vue`<br/>`src/views/freight-rate/batch-add-page.vue`<br/>`src/views/freight-rate/pending-batch-rows.ts`<br/>`src/views/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
 | 列持久化 tableId | 列表 `FreightRateList`；批量编辑 `FreightRateBatchEdit`；批量新增 `FreightRateBatchAdd`（经 `gridOptions.id` 注入，常量见 `data.ts`） |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -28,10 +28,10 @@ last_updated: 2026-09-20
 
 - **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。有效状态默认「已生效 + 未生效」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认值写入「最近提交值」（切航线 Tab / 翻页 / 刷新不丢）。
 - **搜索项设置：** 可通过列表工具栏入口调整搜索字段的显示与顺序，设置弹层显示在工具栏下方。
-- **列配置持久化：** 列表与批量新增/编辑弹窗表格各自在 `gridOptions.id` 声明独立 id，列显隐/顺序/固定/列宽互不覆盖。
+- **列配置持久化：** 列表与批量新增/编辑 Tab 页表格各自在 `gridOptions.id` 声明独立 id，列显隐/顺序/固定/列宽互不覆盖。
 - **航线 Tab 筛选：** 列表工具栏左侧展示「全部 + 各航线」Tab；超出可视区域时可点击左右箭头平滑滚动浏览，并与右侧操作按钮保持固定间距。
 - **运价维护：** 通过运价表单或弹窗维护费率明细。
-- **批量新增：** 列表页打开批量新增弹窗，支持一次新增多行运价；新增/复制行采用批量 `loadData` 插入并显示 loading，减少多行插入卡顿。
+- **批量新增 / 更新：** 列表「批量新增」「更新」「AI批量新增」打开独立 Tab（`/freight-rate/batch-add`、`/freight-rate/batch-edit`），行数据经 `pending-batch-rows` 内存传递；提交或取消后关 Tab 并刷新列表。菜单「批量更改」（多字段同步）仍为弹窗。
 - **批量/同步：** 相关模块包含同步更新与箱型费用维护能力。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -58,6 +58,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-22 | `Refactor` | 批量新增、更新、AI 批量新增由弹窗改为独立 Tab 页编辑。 | 新增 `batch-add-page.vue`、`pending-batch-rows.ts`；路由 `FreightRateBatchAdd`/`FreightRateBatchEdit`；列表 `router.push` + `markListShouldRefresh`；「批量更改」仍为 `SyncUpdateModal`。 |
 | 2026-09-20 | `Fix` | 修复中转港组合文案、开船日期、截单时间、截关时间和有效期刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-11 | `Style` | 批量更改弹窗主色顶栏与分区卡片对齐新增/编辑风格；单层滚动防末段裁切。 | `sync-update-form.vue`。详见 `changelogs/change-log-2026-09-11-freight-rate-batch-update-form-polish.md`。 |
 | 2026-09-11 | `Refactor` | 删除未接线弹窗；按功能重命名剩余 modules 组件。 | 删 `add-ctn`/`batch-edit`/旧 `batch-add`/旧 `sync-update`；`form`→`sync-update-form`，`*-handsontable`→`batch-add-modal`，`edit-form`→`freight-rate-form`，`column-config`→`batch-add-column-config-modal`。详见 `changelogs/change-log-2026-09-11-freight-rate-modules-cleanup-rename.md`。 |
