@@ -49,6 +49,9 @@ const tokenTheme = computed(() => {
     token: {
       ...unref(tokens),
       fontFamily: globalFontFamily,
+      // 禁用文字默认过浅；全局 CSS 再兜底 -webkit-text-fill-color / opacity
+      colorTextDisabled: 'hsl(var(--foreground) / 82%)',
+      colorBgContainerDisabled: 'hsl(var(--muted) / 45%)',
     },
   };
 });

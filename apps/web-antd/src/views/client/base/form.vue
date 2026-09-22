@@ -2521,44 +2521,6 @@ onMounted(() => {
   display: flex;
   gap: 14px;
   //padding: 12px;
-
-  /*
-   * 不可编辑（disabled）时 Ant 默认字色过浅。
-   * 保持浅底表示只读，但前景提高到接近正文，便于审阅已审核客户。
-   */
-  :deep(.ant-input-disabled),
-  :deep(.ant-input[disabled]),
-  :deep(textarea.ant-input-disabled),
-  :deep(.ant-input-affix-wrapper-disabled),
-  :deep(.ant-input-affix-wrapper-disabled .ant-input),
-  :deep(.ant-input-number-disabled),
-  :deep(.ant-input-number-disabled .ant-input-number-input),
-  :deep(.ant-select-disabled .ant-select-selector),
-  :deep(.ant-select-disabled .ant-select-selection-item),
-  :deep(.ant-select-disabled .ant-select-selection-placeholder),
-  :deep(.ant-picker-disabled),
-  :deep(.ant-picker-disabled input),
-  :deep(.ant-checkbox-disabled + span),
-  :deep(.ant-radio-disabled + span) {
-    color: hsl(var(--foreground) / 82%) !important;
-    -webkit-text-fill-color: hsl(var(--foreground) / 82%) !important;
-    opacity: 1 !important;
-  }
-
-  :deep(.ant-input-disabled),
-  :deep(.ant-input[disabled]),
-  :deep(textarea.ant-input-disabled),
-  :deep(.ant-input-affix-wrapper-disabled),
-  :deep(.ant-input-number-disabled),
-  :deep(.ant-select-disabled .ant-select-selector),
-  :deep(.ant-picker-disabled) {
-    background: hsl(var(--muted) / 45%) !important;
-  }
-
-  :deep(.ant-checkbox-disabled .ant-checkbox-inner),
-  :deep(.ant-radio-disabled .ant-radio-inner) {
-    opacity: 0.85;
-  }
 }
 
 .lineheight-32 {

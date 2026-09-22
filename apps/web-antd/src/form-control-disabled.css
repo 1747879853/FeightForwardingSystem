@@ -1,0 +1,44 @@
+/*
+ * 全局：禁用/只读表单控件文字对比度。
+ * Ant Design 默认 disabled 字色约 25% 黑，业务审阅页几乎看不清。
+ * 保持浅底表示不可编辑，前景提高到接近正文；biz-select 只读样式优先（选择器更具体）。
+ * 不覆盖 Button：禁用按钮仍走组件自身语义色。
+ */
+.ant-input-disabled,
+.ant-input[disabled],
+textarea.ant-input-disabled,
+.ant-input-affix-wrapper-disabled,
+.ant-input-affix-wrapper-disabled .ant-input,
+.ant-input-number-disabled,
+.ant-input-number-disabled .ant-input-number-input,
+.ant-select-disabled .ant-select-selector,
+.ant-select-disabled .ant-select-selection-item,
+.ant-select-disabled .ant-select-selection-placeholder,
+.ant-cascader-picker-disabled .ant-select-selector,
+.ant-picker-disabled,
+.ant-picker-disabled input,
+.ant-mentions-disabled,
+.ant-mentions-disabled textarea,
+.ant-checkbox-disabled + span,
+.ant-radio-disabled + span {
+  color: hsl(var(--foreground) / 82%) !important;
+  -webkit-text-fill-color: hsl(var(--foreground) / 82%) !important;
+  opacity: 1 !important;
+}
+
+.ant-input-disabled,
+.ant-input[disabled],
+textarea.ant-input-disabled,
+.ant-input-affix-wrapper-disabled,
+.ant-input-number-disabled,
+.ant-select-disabled .ant-select-selector,
+.ant-cascader-picker-disabled .ant-select-selector,
+.ant-picker-disabled,
+.ant-mentions-disabled {
+  background: hsl(var(--muted) / 45%) !important;
+}
+
+.ant-checkbox-disabled .ant-checkbox-inner,
+.ant-radio-disabled .ant-radio-inner {
+  opacity: 0.85;
+}
