@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, toRef, useAttrs } from 'vue';
+import { computed, onMounted, ref, useAttrs } from 'vue';
 
 import { $t } from '@vben/locales';
 
@@ -17,8 +17,8 @@ interface Props {
   /** placeholder */
   placeholder?: string;
   /**
-   * 回显兜底选项：value=公司节点id，label=完整公司名。
-   * 用于编辑回显（如详情 orgs 路径），在数据加载完成前也能正确显示已选项。
+   * 回显兜底选项：value=公司节点id，label=公司简称（或全称兜底）。
+   * 用于编辑回显，在数据加载完成前也能正确显示已选项。
    */
   selectedItems?: Array<{ label: string; value: number }>;
 }
@@ -41,7 +41,6 @@ const loadCompanies = async () => {
   loading.value = true;
   try {
     const data = await getOrganizationUnits({ isCompany: true });
-    console.log('公司列表数据:', data);
     companyList.value = data || [];
   } catch (error) {
     console.error('加载公司列表失败:', error);
@@ -51,21 +50,14 @@ const loadCompanies = async () => {
   }
 };
 
-/**
- * 将组织名称拼接为「完整公司名」：父级 → 末级用 / 连接。
- * 兼容 displayName 与 name 两种节点结构。
- */
-function formatOrgPathLabel(
-  path:
-    | Array<{ displayName?: null | string; name?: null | string }>
-    | null
-    | undefined,
+/** 下拉与选中展示优先简称，缺省再回退全称 */
+function formatCompanyLabel(
+  company: Pick<
+    SystemOrganizationUnitApi.OrganizationUnitDto,
+    'displayName' | 'shortName'
+  >,
 ): string {
-  if (!path?.length) return '';
-  return path
-    .map((node) => (node.displayName ?? node.name ?? '').trim())
-    .filter(Boolean)
-    .join('/');
+  return (company.shortName || company.displayName || '').trim();
 }
 
 const options = computed(() => {
@@ -75,7 +67,7 @@ const options = computed(() => {
   for (const company of companyList.value) {
     if (!map.has(company.id)) {
       map.set(company.id, {
-        label: company.displayName || '',
+        label: formatCompanyLabel(company),
         value: company.id,
       });
     }
