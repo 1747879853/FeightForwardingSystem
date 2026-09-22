@@ -176,9 +176,17 @@ const canApplyModify = computed(() => canApplyClientModify(clientStatus.value));
 const canSubmitAudit = computed(() => canSubmitClientAudit(clientStatus.value));
 
 /**
- * 取消申请修改：仅 clientStatus=申请修改(4)。
- * 走 WithdrawAuditAsync（与列表「撤回」同一接口）；待审核(1)仍在列表撤回。
+ * 撤销提交：新增客户待审核(1)。
+ * 取消申请修改：申请修改进行中(4)。
+ * 均走 WithdrawAuditAsync（与列表「撤回」同一接口），只撤最新一轮。
  */
+const canWithdrawSubmit = computed(
+  () =>
+    auditEnabled.value &&
+    clientStatus.value === ClientStatus.Auditing &&
+    canWithdrawClientAudit(clientStatus.value),
+);
+
 const canCancelModifyApply = computed(
   () =>
     auditEnabled.value &&
@@ -234,6 +242,26 @@ const handleSubmitAudit = async () => {
   });
 };
 
+/** 新增客户待审核：撤销提交（撤回最新一轮 SubmitClient 任务） */
+const handleWithdrawSubmit = () => {
+  const id = editId.value;
+  if (!id || !canWithdrawSubmit.value) return;
+  Modal.confirm({
+    title: '撤销提交',
+    content:
+      '确定撤销当前客户的审核提交吗？仅撤回最新一轮，历史审批留档；撤销后可继续编辑并重新提交。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    async onOk() {
+      await withdrawClientAudit({ ids: [id] });
+      message.success('已撤销提交');
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
+};
+
 /** 申请修改进行中：取消申请（撤回最新一轮 ModifyClient 任务） */
 const handleCancelModifyApply = () => {
   const id = editId.value;
@@ -258,9 +286,16 @@ const handleCancelModifyApply = () => {
 const clientStatusHint = computed(() => {
   if (canSaveClient.value) return '';
   const label = getClientStatusLabel(clientStatus.value);
-  return isModifyMode.value
-    ? `客户当前为${label}，不可发起申请修改`
-    : `客户当前为${label}，不可直接编辑，请发起申请修改`;
+  if (isModifyMode.value) {
+    return `客户当前为${label}，不可发起申请修改`;
+  }
+  if (clientStatus.value === ClientStatus.Auditing) {
+    return `客户当前为${label}，不可编辑，可撤销提交后修改`;
+  }
+  if (clientStatus.value === ClientStatus.ModifyAuditing) {
+    return `客户当前为${label}，审核进行中，可取消申请`;
+  }
+  return `客户当前为${label}，不可直接编辑，请发起申请修改`;
 });
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
@@ -2362,6 +2397,19 @@ watch(
                   class="mr-1 inline-block size-4 align-middle"
                 />
                 <span class="align-middle">申请修改</span>
+              </Button>
+              <Button
+                v-if="isEdit && !isModifyMode && canWithdrawSubmit"
+                danger
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleWithdrawSubmit"
+              >
+                <IconifyIcon
+                  icon="mdi:file-undo-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">撤销提交</span>
               </Button>
               <Button
                 v-if="isEdit && canCancelModifyApply"
