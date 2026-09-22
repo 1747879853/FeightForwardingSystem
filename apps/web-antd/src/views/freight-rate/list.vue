@@ -44,6 +44,7 @@ import { extractSeFreiPriceByGemini } from '#/api/sea-export/gemini-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useBaseStore } from '#/store/base';
+import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
@@ -54,6 +55,8 @@ import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { setPendingFreightBatchRows } from './pending-batch-rows';
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
+  getFreightRateCtnColumnSignature,
+  mergeFreightRateListPersistedColumns,
   useColumns,
   useGridFormSchema,
   getSurchargeFeeNames,
@@ -225,13 +228,38 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   },
 });
 
+/** 上次已挂载的箱型列签名；null 表示尚未按数据换过列 */
+let lastFreightRateCtnColumnSignature: string | null = null;
+
 watch(
   tableData,
   async (newData) => {
     if (!newData?.length) return;
     await nextTick();
+
+    const nextColumns = useColumns(newData);
+    const nextCtnSignature = getFreightRateCtnColumnSignature(nextColumns);
+    // 箱型列集合未变时不要整表换列，否则会冲掉已应用/刚保存的列配置
+    if (
+      lastFreightRateCtnColumnSignature !== null &&
+      nextCtnSignature === lastFreightRateCtnColumnSignature
+    ) {
+      return;
+    }
+    lastFreightRateCtnColumnSignature = nextCtnSignature;
+
+    const tableConfigStore = useTableConfigStore();
+    await tableConfigStore.loadTableConfigsOnce();
+    const persisted = tableConfigStore.getTableConfigByName(
+      `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
+    );
+    const mergedColumns = mergeFreightRateListPersistedColumns(
+      nextColumns,
+      persisted?.setting,
+    );
+
     gridApi.setGridOptions({
-      columns: useColumns(newData),
+      columns: mergedColumns,
     });
   },
   { deep: true },

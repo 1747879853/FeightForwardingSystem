@@ -7,10 +7,63 @@ import { $t } from '#/locales';
 
 /** 运价列表列配置持久化 key（与 gridOptions.id 对应） */
 export const FREIGHT_RATE_LIST_TABLE_ID = 'FreightRateList';
-/** 批量编辑弹窗表格列配置持久化 key（与 gridOptions.id 对应） */
+/** 批量编辑弹窗 / Tab 表格列配置持久化 key（与 UserSetting table_config_ 对应） */
 export const FREIGHT_RATE_BATCH_EDIT_TABLE_ID = 'FreightRateBatchEdit';
-/** 批量新增弹窗表格列配置持久化 key（与 gridOptions.id 对应） */
+/** 批量新增弹窗 / Tab 表格列配置持久化 key（与 UserSetting table_config_ 对应） */
 export const FREIGHT_RATE_BATCH_ADD_TABLE_ID = 'FreightRateBatchAdd';
+
+/**
+ * 运价列表默认可见列（其余列 `visible: false`）。
+ * 箱型动态列 `ctn_*`、checkbox 始终默认可见。
+ */
+export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
+  'validTimeRange',
+  'isValid',
+  'carrier.enName',
+  'pol.portName',
+  'country.countryName',
+  'pod.portName',
+  'etd',
+  'isDirect',
+  'poT1.portName',
+  'podFreeDaysCombined',
+  'voyage',
+  'remark',
+  'creatorUserName',
+  'creationTime',
+]);
+
+/**
+ * 批量新增/编辑 Handsontable 默认可见列（按 data 字段）。
+ * `ctn_*` / `ctnSug_*` 箱型列始终默认可见；列表专有列（国家/是否有效/录入人等）此处不存在。
+ * 目的港免箱使：批量页拆为 DEM / DET / 免箱使期三列，均默认显示。
+ */
+export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
+  'validTimeStart',
+  'carrierId',
+  'polId',
+  'podId',
+  'etd',
+  'isDirect',
+  'poT1Id',
+  'poddem',
+  'podFreeDays',
+  'poddet',
+  'voyage',
+  'remark',
+]);
+
+/** 箱型价列（成本/指导）默认可见 */
+export function isFreightRateBatchCtnColumnKey(key: string) {
+  return key.startsWith('ctn_') || key.startsWith('ctnSug_');
+}
+
+export function isFreightRateBatchDefaultVisibleColumn(key: string) {
+  return (
+    isFreightRateBatchCtnColumnKey(key) ||
+    FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS.has(key)
+  );
+}
 
 // 定义明确的接口类型
 interface FreightConditionItemOption {
@@ -776,6 +829,16 @@ export function useColumns(
     ...baseColumnsAfterCtn,
   ];
 
+  // 默认显隐：仅白名单列 + checkbox + 箱型列可见，其余隐藏（用户列配置可覆盖）
+  for (const column of allColumns ?? []) {
+    if (!column || column.type === 'checkbox') continue;
+    const field = String(column.field ?? '');
+    if (!field || field.startsWith('ctn_')) continue;
+    if (!FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS.has(field)) {
+      column.visible = false;
+    }
+  }
+
   // 根据字段权限过滤列
   return filterColumnsByPermission(allColumns, maskedFields || []);
 }
@@ -864,4 +927,135 @@ function formatDateStr(dateValue: string | Date | undefined): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * 动态箱型列签名：仅当集合变化时才允许整表换列，避免冲掉列持久化。
+ */
+export function getFreightRateCtnColumnSignature(
+  columns: VxeTableGridOptions['columns'] | undefined,
+): string {
+  if (!columns?.length) return '';
+  return columns
+    .map((col) => String(col?.field ?? ''))
+    .filter((field) => field.startsWith('ctn_'))
+    .sort()
+    .join('|');
+}
+
+type FreightRateColumnPersistSetting = {
+  visibleColumnKeys?: string[];
+  columnVisibility?: Record<string, boolean>;
+  columnFixed?: Record<string, string>;
+  columnWidths?: Record<string, number>;
+};
+
+function freightRateColumnPersistKey(column: {
+  field?: string;
+  type?: string;
+}): string {
+  if (column.type === 'checkbox') return 'type:checkbox';
+  const field = String(column.field ?? '').trim();
+  return field ? `field:${field}` : '';
+}
+
+/**
+ * 把 UserSetting 中的列配置合并进新列定义（动态换箱型列后用）。
+ * 认不出的列保留 useColumns 默认显隐，避免整表被旧配置误藏。
+ */
+export function mergeFreightRateListPersistedColumns(
+  columns: VxeTableGridOptions['columns'],
+  rawSetting: string | null | undefined,
+): VxeTableGridOptions['columns'] {
+  if (!columns?.length || !rawSetting) {
+    return columns ?? [];
+  }
+
+  let parsed: FreightRateColumnPersistSetting;
+  try {
+    parsed = JSON.parse(rawSetting) as FreightRateColumnPersistSetting;
+  } catch {
+    return columns;
+  }
+
+  const visibility = parsed.columnVisibility ?? {};
+  const fixedMap = parsed.columnFixed ?? {};
+  const widthMap = parsed.columnWidths ?? {};
+  const visibleKeys = Array.isArray(parsed.visibleColumnKeys)
+    ? parsed.visibleColumnKeys
+    : [];
+  const visibleKeySet = new Set(visibleKeys);
+  const knownKeys = new Set([
+    ...visibleKeys,
+    ...Object.keys(visibility),
+    ...Object.keys(fixedMap),
+    ...Object.keys(widthMap),
+  ]);
+  const visibilityValues = Object.values(visibility);
+  const useVisibleKeysAsCompact =
+    visibilityValues.length > 0 &&
+    visibilityValues.every((val) => val === true);
+
+  const next = columns.map((column) => {
+    if (!column) return column;
+    const key = freightRateColumnPersistKey(column);
+    if (!key) return { ...column };
+
+    const cloned: Record<string, any> = { ...column };
+
+    if (Object.prototype.hasOwnProperty.call(visibility, key)) {
+      cloned.visible = visibility[key] !== false;
+    } else if (knownKeys.has(key) && useVisibleKeysAsCompact) {
+      cloned.visible = visibleKeySet.has(key);
+    } else if (knownKeys.has(key) && visibleKeys.length > 0) {
+      // 有 keys 但无该键 visibility：按是否在可见列表
+      cloned.visible = visibleKeySet.has(key);
+    }
+    // 配置完全不认识的列：保留 useColumns 默认 visible
+
+    if (Object.prototype.hasOwnProperty.call(fixedMap, key)) {
+      const fixed = fixedMap[key];
+      cloned.fixed = fixed === 'left' || fixed === 'right' ? fixed : undefined;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(widthMap, key)) {
+      const width = Number(widthMap[key]);
+      if (Number.isFinite(width) && width > 0) {
+        cloned.width = width;
+      }
+    }
+
+    return cloned;
+  });
+
+  if (visibleKeys.length === 0) {
+    return next;
+  }
+
+  const byKey = new Map<string, any>();
+  next.forEach((column) => {
+    const key = freightRateColumnPersistKey(column ?? {});
+    if (key && column) byKey.set(key, column);
+  });
+
+  const ordered: any[] = [];
+  const used = new Set<any>();
+  visibleKeys.forEach((rawKey) => {
+    const column = byKey.get(String(rawKey ?? '').trim());
+    if (column && column.visible !== false && !used.has(column)) {
+      ordered.push(column);
+      used.add(column);
+    }
+  });
+
+  const restVisible = next.filter(
+    (column) => column && column.visible !== false && !used.has(column),
+  );
+  const hidden = next.filter((column) => column && column.visible === false);
+
+  const merged = [...ordered, ...restVisible, ...hidden];
+  if (merged.length > 0 && merged.every((col) => col.visible === false)) {
+    return columns;
+  }
+  return merged;
 }

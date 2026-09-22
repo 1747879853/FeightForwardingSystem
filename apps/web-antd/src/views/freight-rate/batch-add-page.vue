@@ -44,7 +44,15 @@ import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin'
 // 导入 store
 import { useBaseStore } from '#/store/base';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  FREIGHT_RATE_BATCH_ADD_TABLE_ID,
+  FREIGHT_RATE_BATCH_EDIT_TABLE_ID,
+} from './data';
 import { consumePendingFreightBatchRows } from './pending-batch-rows';
+import {
+  buildFreightRateBatchDefaultColumnConfig,
+  useBatchAddColumnPersist,
+} from './modules/composables/useBatchAddColumnPersist';
 
 defineOptions({ name: 'FreightRateBatchAddPage' });
 
@@ -78,6 +86,26 @@ const {
 
 // 是否为编辑模式
 const isEditMode = ref(route.name === 'FreightRateBatchEdit');
+
+/** 列配置持久化 tableId：新增 / 编辑互不覆盖 */
+const columnPersistTableId = computed(() =>
+  isEditMode.value
+    ? FREIGHT_RATE_BATCH_EDIT_TABLE_ID
+    : FREIGHT_RATE_BATCH_ADD_TABLE_ID,
+);
+
+const {
+  loadColumnConfig: loadPersistedColumnConfig,
+  saveColumnConfig: persistColumnConfig,
+} = useBatchAddColumnPersist(columnPersistTableId);
+
+/** 用户自定义列显隐 / 固定 / 顺序（内存 + UserSetting 回放） */
+const userColumnConfig = ref<
+  Map<
+    string,
+    { visible: boolean; fixed: 'left' | 'right' | false; order: number }
+  >
+>(new Map());
 
 // ==================== AI 数据管理 ====================
 
@@ -358,19 +386,84 @@ interface BatchAddTableCoreInstance {
 
 const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 
+/** 按用户列配置重排/过滤后的列与左右固定数 */
+function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
+  if (userColumnConfig.value.size === 0) {
+    return {
+      finalColumns: sourceColumns,
+      fixedColumnsLeft: 0,
+      fixedColumnsRight: 0,
+    };
+  }
+
+  const visibleColumns = sourceColumns.filter((col) => {
+    const config = userColumnConfig.value.get(col.data);
+    return config ? config.visible !== false : true;
+  });
+
+  const leftFixedColumns: any[] = [];
+  const rightFixedColumns: any[] = [];
+  const normalColumns: any[] = [];
+
+  visibleColumns.forEach((col) => {
+    const config = userColumnConfig.value.get(col.data);
+    if (config?.fixed === 'left') {
+      leftFixedColumns.push(col);
+    } else if (config?.fixed === 'right') {
+      rightFixedColumns.push(col);
+    } else {
+      normalColumns.push(col);
+    }
+  });
+
+  const sortColumnsByOrder = (cols: any[]) =>
+    [...cols].sort((a, b) => {
+      const orderA = userColumnConfig.value.get(a.data)?.order ?? 999;
+      const orderB = userColumnConfig.value.get(b.data)?.order ?? 999;
+      return orderA - orderB;
+    });
+
+  const sortedLeftFixed = sortColumnsByOrder(leftFixedColumns);
+  const sortedNormal = sortColumnsByOrder(normalColumns);
+  const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
+
+  const finalColumns = [
+    ...sortedLeftFixed,
+    ...sortedNormal,
+    ...sortedRightFixed,
+  ];
+
+  // 配置异常导致无可见列时回退默认，避免整表空白
+  if (finalColumns.length === 0) {
+    return {
+      finalColumns: sourceColumns,
+      fixedColumnsLeft: 0,
+      fixedColumnsRight: 0,
+    };
+  }
+
+  return {
+    finalColumns,
+    fixedColumnsLeft: sortedLeftFixed.length,
+    fixedColumnsRight: sortedRightFixed.length,
+  };
+}
+
 /** 同步 Handsontable 列/表头/数据，避免 updateSettings 时带回初始空 data */
 function syncHotTable(
   patch: Record<string, any> = {},
   options?: { updateSettingsRef?: boolean },
 ) {
-  const headers = nestedHeaders.value;
-  const columns = hotColumns.value;
+  const { finalColumns, fixedColumnsLeft, fixedColumnsRight } =
+    resolveConfiguredColumns();
   const data = dataSource.value;
   const next = {
-    columns,
-    nestedHeaders: headers,
+    columns: finalColumns,
+    nestedHeaders: buildCtnNestedHeaders(finalColumns),
     colHeaders: false,
     data,
+    fixedColumnsLeft,
+    fixedColumnsRight,
     ...patch,
   };
 
@@ -604,12 +697,8 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
 // 列配置弹窗可见性
 const columnConfigVisible = ref(false);
 
-// 存储用户自定义的列配置
-const userColumnConfig = ref<Map<string, any>>(new Map());
-
-// 应用列配置到Handsontable
+// 应用列配置到 Handsontable（先写入内存 Map，再 sync）
 const applyColumnConfig = (config: any[]) => {
-  // 更新用户配置
   config.forEach((colConfig) => {
     userColumnConfig.value.set(colConfig.data, {
       visible: colConfig.visible,
@@ -617,81 +706,7 @@ const applyColumnConfig = (config: any[]) => {
       order: colConfig.order,
     });
   });
-
-  // 获取当前的hotSettings值
-  const currentSettings = { ...rawHotSettings.value };
-
-  // 过滤可见列
-  const visibleColumns = hotColumns.value.filter((col) => {
-    const config = userColumnConfig.value.get(col.data);
-    return config ? config.visible !== false : true;
-  });
-
-  // 分离不同类型的列
-  const leftFixedColumns: any[] = [];
-  const rightFixedColumns: any[] = [];
-  const normalColumns: any[] = [];
-
-  visibleColumns.forEach((col) => {
-    const config = userColumnConfig.value.get(col.data);
-    if (config?.fixed === 'left') {
-      leftFixedColumns.push(col);
-    } else if (config?.fixed === 'right') {
-      rightFixedColumns.push(col);
-    } else {
-      normalColumns.push(col);
-    }
-  });
-
-  // 按order排序每种类型的列
-  const sortColumnsByOrder = (cols: any[]) => {
-    return [...cols].sort((a, b) => {
-      const orderA = userColumnConfig.value.get(a.data)?.order ?? 999;
-      const orderB = userColumnConfig.value.get(b.data)?.order ?? 999;
-      return orderA - orderB;
-    });
-  };
-
-  const sortedLeftFixed = sortColumnsByOrder(leftFixedColumns);
-  const sortedNormal = sortColumnsByOrder(normalColumns);
-  const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
-
-  // 组合最终的列顺序：左侧固定 + 普通 + 右侧固定
-  const finalColumns = [
-    ...sortedLeftFixed,
-    ...sortedNormal,
-    ...sortedRightFixed,
-  ];
-
-  // 计算固定列数量
-  const fixedColumnsLeft = sortedLeftFixed.length;
-  const fixedColumnsRight = sortedRightFixed.length;
-
-  // 创建新的hotSettings（必须带上当前 data，否则会把表格打回空表）
-  const newHotSettings = {
-    ...currentSettings,
-    columns: finalColumns,
-    nestedHeaders: buildCtnNestedHeaders(finalColumns),
-    colHeaders: false,
-    data: dataSource.value,
-    fixedColumnsLeft: fixedColumnsLeft,
-    fixedColumnsRight: fixedColumnsRight,
-  };
-
-  // 更新shallowRef
-  hotSettings.value = newHotSettings;
-
-  // 更新Handsontable实例
-  if (coreTableRef.value?.hotTableRef?.hotInstance) {
-    coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-      columns: finalColumns,
-      nestedHeaders: buildCtnNestedHeaders(finalColumns),
-      colHeaders: false,
-      data: dataSource.value,
-      fixedColumnsLeft: fixedColumnsLeft,
-      fixedColumnsRight: fixedColumnsRight,
-    });
-  }
+  syncHotTable();
 };
 
 const hotSettings = shallowRef(rawHotSettings.value);
@@ -710,11 +725,8 @@ const currentColumnConfig = computed(() => {
   });
 });
 
-// 保存列配置
-const saveColumnConfig = (config: any[]) => {
-  console.log('💾 保存列配置:', config);
-
-  // 验证是否有可见列
+// 保存列配置（本地应用 + UserSetting 持久化）
+const saveColumnConfig = async (config: any[]) => {
   const visibleCount = config.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
@@ -723,7 +735,14 @@ const saveColumnConfig = (config: any[]) => {
 
   applyColumnConfig(config);
   columnConfigVisible.value = false;
-  message.success('列配置已保存');
+
+  try {
+    await persistColumnConfig(config);
+    message.success('列配置已保存');
+  } catch (error) {
+    console.error('列配置持久化失败:', error);
+    message.warning('列配置已应用，但同步到服务器失败');
+  }
 };
 
 // 定义 BatchAddTableCore 组件的类型
@@ -836,8 +855,36 @@ async function initPage() {
     addedCtnTypes.value = defaultCtns;
   }
 
+  // 回放用户列配置；无配置时套用产品默认显隐白名单
+  try {
+    const persisted = await loadPersistedColumnConfig();
+    if (persisted && persisted.size > 0) {
+      userColumnConfig.value = persisted;
+    } else {
+      userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
+        hotColumns.value,
+      );
+    }
+  } catch (error) {
+    console.error('加载列配置失败:', error);
+    userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
+      hotColumns.value,
+    );
+  }
+
   await nextTick();
   await nextTick();
+
+  // 箱型列可能刚加入，补齐默认显隐（已有用户配置的键不覆盖）
+  hotColumns.value.forEach((col: any, index: number) => {
+    const key = String(col?.data ?? '');
+    if (!key || userColumnConfig.value.has(key)) return;
+    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
+    const entry = defaults.get(key);
+    if (entry) {
+      userColumnConfig.value.set(key, { ...entry, order: index });
+    }
+  });
 
   if (aiData.value && aiData.value.length > 0) {
     await handleAIData(aiData.value);
@@ -845,6 +892,17 @@ async function initPage() {
     addRow(1, true);
     await nextTick();
   }
+
+  // AI/箱型追加后再次补齐未登记列的默认显隐
+  hotColumns.value.forEach((col: any, index: number) => {
+    const key = String(col?.data ?? '');
+    if (!key || userColumnConfig.value.has(key)) return;
+    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
+    const entry = defaults.get(key);
+    if (entry) {
+      userColumnConfig.value.set(key, { ...entry, order: index });
+    }
+  });
 
   syncHotTable();
 }
