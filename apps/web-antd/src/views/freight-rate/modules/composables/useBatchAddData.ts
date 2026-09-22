@@ -316,7 +316,7 @@ export function useBatchAddData() {
       }
 
       return {
-        recommend: row.recommend || false,
+        recommend: false,
         carrierId: carrierId!,
         polId: polId!,
         podId: podId!,

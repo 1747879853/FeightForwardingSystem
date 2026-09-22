@@ -2,7 +2,6 @@ import { requestClient } from '#/api/request';
 
 export const FreightRateLabelOptions = [
   { label: '运价主键ID', value: 'id' },
-  { label: '是否推荐', value: 'recommend' },
   { label: '船公司ID', value: 'carrierId' },
   { label: '起运港ID', value: 'polId' },
   { label: '目的港ID', value: 'podId' },
@@ -750,16 +749,6 @@ export interface BatchEditSeFreiPriceInput {
 }
 
 /**
- * 改变推荐状态请求
- */
-export interface ChangeRecommendInput {
-  /** 运价ID */
-  id: string;
-  /** 是否推荐 */
-  recommend: boolean;
-}
-
-/**
  * 查询运价列表请求
  */
 export interface GetSeFreiPriceListInput {
@@ -769,8 +758,6 @@ export interface GetSeFreiPriceListInput {
   polId?: number;
   /** 目的港ID筛选 */
   podId?: number;
-  /** 是否推荐筛选 */
-  recommend?: boolean;
   /** 目的港的国家ID筛选 */
   countryId?: number;
   /** 目的港的航线ID筛选 */
@@ -878,15 +865,6 @@ export function getAllLaneCodes() {
  */
 export function batchEditSeFreiPrice(data: BatchEditSeFreiPriceInput) {
   return requestClient.put<boolean>(`${BASE_URL}/BatchEditAsync`, data);
-}
-
-/**
- * 改变推荐状态
- * @param data 推荐状态参数
- * @returns 返回操作结果
- */
-export function changeRecommendStatus(data: ChangeRecommendInput) {
-  return requestClient.put<boolean>(`${BASE_URL}/ChangeRecommendAsync`, data);
 }
 
 /**

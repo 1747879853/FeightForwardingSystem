@@ -193,7 +193,7 @@ async function handleAIData(aiDataList: any[]) {
       _rowKey: generateRowKey(),
       _isCopied: false,
       _originalId: row.id, // ✅ 保留原始 ID 用于编辑模式
-      recommend: row.recommend || false,
+      recommend: false,
       carrierId: carrierName, // ✅ 使用名称
       polId: polName, // ✅ 使用名称
       podId: podName, // ✅ 使用名称
@@ -854,7 +854,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       // 构建提交数据（使用 SeFreiPriceSimpleEditDto 格式）
       const submitData: any = {
         id: row._originalId,
-        recommend: row.recommend,
+        recommend: false,
         carrierId: carrierId,
         polId: polId,
         podId: podId,

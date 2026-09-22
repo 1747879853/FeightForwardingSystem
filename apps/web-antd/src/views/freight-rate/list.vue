@@ -35,7 +35,6 @@ import {
 } from 'ant-design-vue';
 
 import {
-  changeRecommendStatus,
   deleteSeFreiPrice,
   getSeFreiPriceList,
   getAllLaneCodes,
@@ -352,33 +351,6 @@ function onBatchAdd() {
   batchAddModalApi.open();
 }
 
-async function onBatchRecommend(recommend: boolean) {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择要操作的运价记录');
-    return;
-  }
-
-  const hideLoading = message.loading({
-    content: `正在批量${recommend ? '推荐' : '取消推荐'}...`,
-    duration: 0,
-    key: 'action_process_msg',
-  });
-
-  try {
-    await Promise.all(
-      records.map((row) => changeRecommendStatus({ id: row.id, recommend })),
-    );
-    message.success({
-      content: `批量${recommend ? '推荐' : '取消推荐'}成功`,
-      key: 'action_process_msg',
-    });
-    onRefresh();
-  } catch {
-    hideLoading();
-  }
-}
-
 function onBatchDelete() {
   const records = getCheckboxRecords();
   if (records.length === 0) {
@@ -408,17 +380,6 @@ function onBatchDelete() {
         });
     },
   });
-}
-
-async function handleRecommendClick(row: SeFreiPriceOutDto) {
-  const newRecommend = !row.recommend;
-  try {
-    await changeRecommendStatus({ id: row.id, recommend: newRecommend });
-    message.success(newRecommend ? '推荐成功' : '取消推荐成功');
-    onRefresh();
-  } catch {
-    message.error('操作失败');
-  }
 }
 
 // ==================== 有效状态展示 ====================
@@ -806,17 +767,6 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <template #recommend="{ row }">
-        <div class="flex items-center justify-center">
-          <IconifyIcon
-            :icon="row.recommend ? 'mdi:star' : 'mdi:star-outline'"
-            class="size-5 cursor-pointer transition-all duration-200 hover:scale-110"
-            :class="row.recommend ? 'text-yellow-500' : 'text-gray-300'"
-            @click="handleRecommendClick(row)"
-          />
-        </div>
-      </template>
-
       <template #surchargeFees="{ row }">
         <div class="surcharge-fees-container px-2 py-1">
           <div
@@ -976,20 +926,6 @@ onUnmounted(() => {
                   @click="onBatchSyncUpdate"
                 >
                   {{ $t('seaExport.freightRate.batchEdit') }}
-                </Menu.Item>
-                <Menu.Item
-                  key="recommend"
-                  :disabled="!hasEditPermission"
-                  @click="onBatchRecommend(true)"
-                >
-                  {{ $t('seaExport.freightRate.batchRecommend') }}
-                </Menu.Item>
-                <Menu.Item
-                  key="cancelRecommend"
-                  :disabled="!hasEditPermission"
-                  @click="onBatchRecommend(false)"
-                >
-                  {{ $t('seaExport.freightRate.batchCancelRecommend') }}
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item

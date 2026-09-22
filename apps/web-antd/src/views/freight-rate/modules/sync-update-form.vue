@@ -284,21 +284,6 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
-      component: 'RadioGroup',
-      fieldName: 'recommend',
-      label: '是否推荐',
-      defaultValue: undefined,
-      componentProps: {
-        options: [
-          { label: '不改', value: undefined },
-          { label: '是', value: true },
-          { label: '否', value: false },
-        ],
-        optionType: 'button',
-        style: { width: '100%' },
-      },
-    },
-    {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
@@ -715,7 +700,6 @@ const [Modal, modalApi] = useVbenModal({
       poddem: values.poddem ?? null,
       poddet: values.poddet ?? null,
       voyage: values.voyage ?? null,
-      recommend: values.recommend ?? null,
       validTimeStart: values.validTimeStart ?? null,
       validTimeEnd: values.validTimeEnd ?? null,
       remark: values.remark ?? null,

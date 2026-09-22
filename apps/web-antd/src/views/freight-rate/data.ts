@@ -242,20 +242,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Select',
-      fieldName: 'recommend',
-      label: $t('seaExport.freightRate.recommend'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-        options: [
-          { label: $t('common.all'), value: null },
-          { label: $t('common.yes'), value: true },
-          { label: $t('common.no'), value: false },
-        ],
-      },
-    },
-    {
-      component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
       defaultValue: [0, 1], // 默认选择"已生效"，过滤掉无效数据
@@ -404,13 +390,6 @@ export function useColumns(
       width: 60,
       fixed: 'left',
       align: 'center',
-    },
-    {
-      field: 'recommend',
-      title: $t('seaExport.freightRate.recommend'),
-      width: 80,
-      align: 'center',
-      slots: { default: 'recommend' },
     },
     {
       field: 'carrier.enName',
@@ -865,7 +844,6 @@ export function useColumns(
  */
 export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
   // 基础字段
-  recommend: 'Recommend',
   'carrier.enName': 'CarrierId',
   'pol.portName': 'PolId',
   'country.countryName': 'CountryId',
