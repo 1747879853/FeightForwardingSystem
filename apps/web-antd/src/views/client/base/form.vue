@@ -37,6 +37,7 @@ import PaymentTermsPanel from '../payment-terms/list.vue';
 import OrgSharedLabel from './org-shared-label.vue';
 import { ClientSharedType, normalizeClientSharedType } from './shared-type';
 import { useVbenModal } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
 import { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
@@ -83,6 +84,9 @@ import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { setFormApisDisabled } from '#/utils/ticket-editable';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
+import { findMyPendingWorkFlowItemId } from '#/views/audit-approval/client-review/find-pending-item';
+import ApprovalPath from '#/views/audit-approval/client-review/modules/approval-path.vue';
+import TransferModal from '#/views/audit-approval/client-review/modules/transfer-modal.vue';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -103,6 +107,7 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
 const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
+const userStore = useUserStore();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -435,6 +440,12 @@ const [AddressModalComponent, modalApi] = useVbenModal({
 /** 风鸟企业查询弹窗 */
 const [RiskbirdModal, riskbirdModalApi] = useVbenModal({
   connectedComponent: RiskbirdSearchModal,
+});
+
+/** 客户审核转交（登录即可，不挂 Admin.Client.Audit） */
+const [TransferModalComp, transferModalApi] = useVbenModal({
+  connectedComponent: TransferModal,
+  destroyOnClose: true,
 });
 
 /** 用于存储当前的客户全称，用于 watch 监听 */
@@ -1157,6 +1168,23 @@ const handleAuditPostReject = () => {
     maxlength: 4096,
     onConfirm: (remark) => doPageAudit(false, remark),
   });
+};
+
+const handleAuditTransfer = () => {
+  if (!canPendingAudit.value) return;
+  const itemId = findMyPendingWorkFlowItemId(
+    auditDetail.value?.workFlowInstance,
+    userStore.userInfo?.userId,
+  );
+  if (!itemId) {
+    message.warning('未找到当前待审的工作流明细，请刷新后重试');
+    return;
+  }
+  transferModalApi.setData({ itemIds: [itemId] }).open();
+};
+
+const onAuditTransferSuccess = async () => {
+  await leaveAuditPage();
 };
 
 /**
@@ -2274,6 +2302,13 @@ watch(
               >
                 {{ $t('auditApproval.clientReview.postReject') }}
               </Button>
+              <Button
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditTransfer"
+              >
+                转交
+              </Button>
             </Space>
             <Space v-else>
               <Button
@@ -2349,6 +2384,10 @@ watch(
                 {{ isDishonest ? '取消失信' : '加入失信' }}
               </Button>
             </Space>
+          </div>
+          <div v-if="isAuditMode" class="client-audit-path mx-4 mb-3">
+            <div class="client-audit-path__title">审批路径</div>
+            <ApprovalPath :instance="auditDetail?.workFlowInstance" />
           </div>
           <div class="content-section__header">
             <span class="card-title">
@@ -2746,6 +2785,7 @@ watch(
       :footer="false"
       @import="handleRiskbirdImport"
     />
+    <TransferModalComp @success="onAuditTransferSuccess" />
   </div>
 </template>
 
@@ -3111,6 +3151,20 @@ watch(
   font-size: 12px;
   line-height: 1.4;
   color: #f97316;
+}
+
+.client-audit-path {
+  padding: 10px 12px;
+  background: hsl(var(--primary) / 3%);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.client-audit-path__title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 80%);
 }
 
 /* 申请修改：有改动的字段/区块用独立色标出 */

@@ -919,6 +919,21 @@ export namespace ClientAdminApi {
     comment?: null | string;
     /** 审批时间 */
     auditTime?: null | string;
+    /**
+     * 转交历史，按时间从早到晚。
+     * 从未转过为 []；不要当成错误，也不要画空履历。
+     */
+    transfers?: ClientWorkFlowInstanceItemTransferDto[] | null;
+  }
+
+  /** 工作流明细上的一跳转交记录 */
+  export interface ClientWorkFlowInstanceItemTransferDto {
+    /** 转出人昵称 */
+    fromUserNickName?: string;
+    /** 被转交人昵称 */
+    toUserNickName?: string;
+    /** 转交时间 */
+    creationTime?: string;
   }
 
   /** 工作流按层级分组的审批路径 */

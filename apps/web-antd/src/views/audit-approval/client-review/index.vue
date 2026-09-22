@@ -2,7 +2,8 @@
 import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
 
 import { Button, message } from 'ant-design-vue';
 
@@ -23,6 +24,8 @@ import {
   useClientReviewColumns,
   useClientReviewFormSchema,
 } from './data';
+import { findMyPendingWorkFlowItemId } from './find-pending-item';
+import TransferModal from './modules/transfer-modal.vue';
 
 defineOptions({ name: 'ClientReview' });
 
@@ -32,6 +35,7 @@ type ClientTaskRow = ClientAdminApi.ClientTaskDto;
 
 const auditCode = 'Admin.Client.Audit';
 const router = useRouter();
+const userStore = useUserStore();
 
 const t = (key: string) => $t(`auditApproval.clientReview.${key}`);
 
@@ -43,6 +47,11 @@ const openAuditPage = (row: ClientTaskRow) => {
   }
   router.push(`/clients/${row.client.id}/edit?mode=audit`);
 };
+
+const [TransferModalComp, transferModalApi] = useVbenModal({
+  connectedComponent: TransferModal,
+  destroyOnClose: true,
+});
 
 // ==================== 选中行与按钮可用性 ====================
 
@@ -245,6 +254,24 @@ const showPostRejectConfirm = () => {
   });
 };
 
+/** 转交：登录即可，不要挂 Admin.Client.Audit */
+const showTransfer = () => {
+  if (!hasPendingSelection.value) {
+    message.warning('请勾选待我审核的客户');
+    return;
+  }
+  const userId = userStore.userInfo?.userId;
+  const itemIds = selectedRows.value
+    .filter(isPendingMyAudit)
+    .map((row) => findMyPendingWorkFlowItemId(row.workFlowInstance, userId))
+    .filter((id): id is string => !!id);
+  if (itemIds.length === 0) {
+    message.warning('未找到当前待审的工作流明细，请刷新后重试');
+    return;
+  }
+  transferModalApi.setData({ itemIds }).open();
+};
+
 const pendingSelectedCount = computed(
   () => selectedRows.value.filter(isPendingMyAudit).length,
 );
@@ -255,7 +282,7 @@ const postRejectSelectedCount = computed(
 
 const selectionHint = computed(() => {
   if (selectedRows.value.length === 0) {
-    return '勾选待审客户后可批量通过 / 驳回；双击行进入客户详情审核';
+    return '勾选待审客户后可批量通过 / 驳回 / 转交；双击行进入客户详情审核';
   }
   const parts = [`已选 ${selectedRows.value.length} 条`];
   if (pendingSelectedCount.value > 0) {
@@ -302,6 +329,13 @@ const selectionHint = computed(() => {
             >
               {{ t('postReject') }}
             </Button>
+            <Button
+              class="client-review-btn"
+              :disabled="!hasPendingSelection"
+              @click="showTransfer"
+            >
+              转交
+            </Button>
           </div>
         </div>
       </template>
@@ -317,6 +351,8 @@ const selectionHint = computed(() => {
       <span class="client-review-hint__dot" />
       <span class="client-review-hint__text">{{ selectionHint }}</span>
     </div>
+
+    <TransferModalComp @success="reloadGrid" />
   </Page>
 </template>
 

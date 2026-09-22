@@ -148,6 +148,22 @@ const formatTime = (value?: null | string) => {
               item.comment
             }}
           </div>
+          <div
+            v-if="item.transfers && item.transfers.length > 0"
+            class="client-approval-path__transfers"
+          >
+            <div
+              v-for="(transfer, index) in item.transfers"
+              :key="`${item.id}-${index}-${transfer.creationTime}`"
+              class="client-approval-path__transfer"
+            >
+              {{ transfer.fromUserNickName || '—' }} 转交给
+              {{ transfer.toUserNickName || '—' }}
+              <span v-if="transfer.creationTime">
+                {{ formatTime(transfer.creationTime) }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -281,5 +297,23 @@ const formatTime = (value?: null | string) => {
   color: hsl(var(--foreground) / 68%);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.client-approval-path__transfers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  margin-top: 4px;
+  background: hsl(var(--primary) / 4%);
+  border-left: 2px solid hsl(var(--primary) / 35%);
+  border-radius: 0 4px 4px 0;
+}
+
+.client-approval-path__transfer {
+  font-size: 11px;
+  line-height: 17px;
+  color: hsl(var(--foreground) / 72%);
+  overflow-wrap: anywhere;
 }
 </style>

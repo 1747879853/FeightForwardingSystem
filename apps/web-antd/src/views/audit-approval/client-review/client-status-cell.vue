@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import { Popover, Tag, Tooltip } from 'ant-design-vue';
+import { Empty, Popover, Tag, Tooltip } from 'ant-design-vue';
 
-import { TaskType } from '#/api/audit-approval/payment-review-admin';
 import { ClientAdminApi } from '#/api/sea-export/client-admin';
-import { WorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { getClientStatusOptions } from '#/views/client/base/client-status';
 
 import { getMyTaskStatusLabel } from './data';
+import ApprovalPath from './modules/approval-path.vue';
+
+defineOptions({ name: 'ClientReviewStatusCell' });
 
 const props = defineProps<{ row: ClientAdminApi.ClientTaskDto }>();
 
-const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
+const { ClientTaskStatus } = ClientAdminApi;
 
 const open = ref(false);
 
@@ -28,40 +29,30 @@ const myStatusTitle = computed(
     `${$t('auditApproval.clientReview.myStatus')}：${getMyTaskStatusLabel(props.row.myTaskStatus)}`,
 );
 
-/** 与行上 taskType 对齐，拉对应客户工作流实例 */
-const workflowTaskType = computed(() =>
-  props.row.taskType === ClientTaskType.ModifyClient
-    ? TaskType.ModifyClient
-    : TaskType.SubmitClient,
-);
-
-/** 整单已通过时只展示标签（与付费申请任务状态列一致） */
+/** 整单已通过时只展示标签；未通过时用行上挂的审批路径（含转交历史） */
 const canViewWorkflow = computed(
   () => props.row.taskStatus !== ClientTaskStatus.Passed,
 );
 
-const entityId = computed(() => props.row.client?.id);
+const workFlowInstance = computed(() => props.row.workFlowInstance);
 </script>
 
 <template>
   <Popover
-    v-if="canViewWorkflow && entityId"
+    v-if="canViewWorkflow"
     v-model:open="open"
     trigger="click"
     placement="rightTop"
     title="审核流程"
   >
     <template #content>
-      <div class="max-h-96 w-72 overflow-y-auto">
+      <div class="max-h-96 w-80 overflow-y-auto">
         <div class="mb-2 text-xs">{{ myStatusTitle }}</div>
-        <WorkflowTimeline
-          v-if="open"
-          :key="`${entityId}-${workflowTaskType}`"
-          :entity-id="entityId"
-          :task-type="workflowTaskType"
-          :applicant-name="row.submitUserName"
-          :application-time="row.submitTime"
-          :show-header="false"
+        <ApprovalPath v-if="workFlowInstance" :instance="workFlowInstance" />
+        <Empty
+          v-else
+          :image-style="{ height: '36px' }"
+          description="无审批节点（工作流直接通过）"
         />
       </div>
     </template>
