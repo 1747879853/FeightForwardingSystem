@@ -3,15 +3,17 @@ import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
-import { Button, Empty, Spin, Tag } from 'ant-design-vue';
+import { Button, Empty, Space, Spin, Tag, message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import {
+  auditClient,
   ClientAdminApi,
   getClientAuditDetail,
   getClientDetail,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import { getClientStatusOptions } from '#/views/client/base/client-status';
 
 import {
@@ -24,9 +26,13 @@ import ClientModifyDiff from './client-modify-diff.vue';
 
 defineOptions({ name: 'ClientReviewDetailModal' });
 
-const { ClientTaskType } = ClientAdminApi;
+const emit = defineEmits<{ audited: [] }>();
+
+const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
+const auditCode = 'Admin.Client.Audit';
 
 const loading = ref(false);
+const auditing = ref(false);
 const detail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
 /** 客户提交任务没有前后快照，用当前客户档案作为新增内容 */
 const submitSnapshot = ref<ClientAdminApi.ClientEditDto | null>(null);
@@ -104,11 +110,15 @@ function mapClientToEditSnapshot(
 
 const [Modal, modalApi] = useVbenModal({
   class: 'w-[1100px] client-review-detail-modal',
+  // 标题行铺满，右侧留给全屏/关闭图标
+  headerClass: 'client-review-detail-header pr-20',
+  showConfirmButton: false,
   async onOpenChange(isOpen) {
     if (!isOpen) {
       detail.value = null;
       submitSnapshot.value = null;
       expandedRounds.value = [];
+      auditing.value = false;
       return;
     }
     const data = modalApi.getData<{ clientId?: string }>();
@@ -137,6 +147,18 @@ const [Modal, modalApi] = useVbenModal({
 });
 
 const client = computed(() => detail.value?.client ?? null);
+
+/** 待我审核：详情内可直接通过 / 驳回 */
+const canPendingAudit = computed(
+  () => detail.value?.myTaskStatus === ClientTaskStatus.Auditing,
+);
+
+/** 通过后驳回：任务已通过且我投过通过票 */
+const canPostReject = computed(
+  () =>
+    detail.value?.taskStatus === ClientTaskStatus.Passed &&
+    detail.value?.myTaskStatus === ClientTaskStatus.Passed,
+);
 
 const clientStatusTag = computed(() =>
   getClientStatusOptions().find(
@@ -182,10 +204,108 @@ const toggleRound = (round: number) => {
     expandedRounds.value = expandedRounds.value.filter((it) => it !== round);
   }
 };
+
+async function doAudit(success: boolean, remark: string) {
+  const id = client.value?.id;
+  if (!id) {
+    message.warning('缺少客户信息，无法审核');
+    return;
+  }
+  auditing.value = true;
+  try {
+    await auditClient({
+      ids: [id],
+      remark: remark || undefined,
+      success,
+    });
+    message.success(success ? '已通过客户审核' : '已驳回客户');
+    emit('audited');
+    modalApi.close();
+  } finally {
+    auditing.value = false;
+  }
+}
+
+function handlePass() {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: $t('auditApproval.task.okPass'),
+    remarkRequired: false,
+    maxlength: 4096,
+    onConfirm: (remark) => doAudit(true, remark),
+  });
+}
+
+function handleReject() {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: '确认驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doAudit(false, remark),
+  });
+}
+
+function handlePostReject() {
+  if (!canPostReject.value) return;
+  openAuditRemarkConfirm({
+    title: '确认通过后驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doAudit(false, remark),
+  });
+}
 </script>
 
 <template>
   <Modal title="客户审核详情">
+    <template #title>
+      <div class="detail-modal-title" @mousedown.stop @pointerdown.stop>
+        <span class="detail-modal-title__text">客户审核详情</span>
+        <Space
+          v-if="canPendingAudit || canPostReject"
+          class="detail-modal-title__actions"
+          size="small"
+        >
+          <Button
+            v-if="canPendingAudit"
+            v-access:code="auditCode"
+            type="primary"
+            size="small"
+            :loading="auditing"
+            @click="handlePass"
+          >
+            {{ $t('auditApproval.clientReview.auditPass') }}
+          </Button>
+          <Button
+            v-if="canPendingAudit"
+            v-access:code="auditCode"
+            danger
+            size="small"
+            :loading="auditing"
+            @click="handleReject"
+          >
+            {{ $t('auditApproval.clientReview.selectReject') }}
+          </Button>
+          <Button
+            v-if="canPostReject"
+            v-access:code="auditCode"
+            danger
+            ghost
+            size="small"
+            :loading="auditing"
+            @click="handlePostReject"
+          >
+            {{ $t('auditApproval.clientReview.postReject') }}
+          </Button>
+        </Space>
+      </div>
+    </template>
+
     <Spin :spinning="loading">
       <div v-if="detail" class="client-detail">
         <!-- 客户摘要：一眼看清是谁、当前什么状态 -->
@@ -412,7 +532,13 @@ const toggleRound = (round: number) => {
     </Spin>
 
     <template #footer>
-      <Button type="primary" class="detail-close-btn" @click="modalApi.close()">
+      <Button
+        type="primary"
+        ghost
+        class="detail-close-btn"
+        :disabled="auditing"
+        @click="modalApi.close()"
+      >
         {{ $t('common.close') }}
       </Button>
     </template>
@@ -428,6 +554,38 @@ const toggleRound = (round: number) => {
   .round-facts {
     grid-template-columns: 1fr;
   }
+}
+
+:deep(.client-review-detail-header) {
+  flex-shrink: 0;
+}
+
+:deep(.client-review-detail-header h2) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.detail-modal-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+}
+
+.detail-modal-title__text {
+  flex: none;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.detail-modal-title__actions {
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
 }
 
 .client-detail {

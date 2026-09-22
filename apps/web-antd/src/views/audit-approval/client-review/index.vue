@@ -244,15 +244,6 @@ const showPostRejectConfirm = () => {
   });
 };
 
-const handleOpenDetail = () => {
-  const rows = selectedRows.value;
-  if (rows.length !== 1) {
-    message.warning('请勾选一条客户查看审核详情');
-    return;
-  }
-  openDetail(rows[0]!);
-};
-
 const pendingSelectedCount = computed(
   () => selectedRows.value.filter(isPendingMyAudit).length,
 );
@@ -263,7 +254,7 @@ const postRejectSelectedCount = computed(
 
 const selectionHint = computed(() => {
   if (selectedRows.value.length === 0) {
-    return '勾选待审客户后可批量通过 / 驳回；双击行查看审核详情';
+    return '勾选待审客户后可批量通过 / 驳回；双击行打开详情并可在详情内操作';
   }
   const parts = [`已选 ${selectedRows.value.length} 条`];
   if (pendingSelectedCount.value > 0) {
@@ -311,10 +302,6 @@ const selectionHint = computed(() => {
               {{ t('postReject') }}
             </Button>
           </div>
-          <span class="client-review-toolbar__split" aria-hidden="true" />
-          <Button class="client-review-btn" @click="handleOpenDetail">
-            {{ t('detail') }}
-          </Button>
         </div>
       </template>
     </Grid>
@@ -327,7 +314,7 @@ const selectionHint = computed(() => {
       <span class="client-review-hint__text">{{ selectionHint }}</span>
     </div>
 
-    <DetailModalComp />
+    <DetailModalComp @audited="reloadGrid" />
   </Page>
 </template>
 
@@ -344,13 +331,6 @@ const selectionHint = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.client-review-toolbar__split {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: hsl(var(--border));
 }
 
 .client-review-btn {
