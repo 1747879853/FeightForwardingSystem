@@ -141,7 +141,14 @@ async function handleAIData(aiDataList: any[]) {
   await nextTick();
   await nextTick();
 
-  // 港口/船公司：嵌套 DTO 优先，否则按 id 拉详情写入远程缓存
+  // 先用列表/详情已带的嵌套港口写缓存；不要一上来拉 PortCode/GetListAsync 全量
+  for (const row of aiDataList) {
+    resolvePortLabelFromRow(row, 'pol');
+    resolvePortLabelFromRow(row, 'pod');
+    resolvePortLabelFromRow(row, 'poT1');
+    resolvePortLabelFromRow(row, 'poT2');
+  }
+  // 仅对仍缺 label 的 id 兜底（正常运价列表行几乎不会走到）
   await ensurePortLabelsByIds(
     aiDataList.flatMap((row) => [row.polId, row.podId, row.poT1Id, row.poT2Id]),
   );
