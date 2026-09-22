@@ -1094,5 +1094,29 @@
     "refreshPageContent": "Cache has been cleared. It is recommended to refresh the page to apply changes.",
     "refreshPageTip": "Please refresh the page to apply configuration",
     "detailTitle": "Cache Details"
+  },
+  "tenantConfig": {
+    "title": "Tenant Config",
+    "list": "Tenant Config List",
+    "name": "Tenant Config",
+    "configName": "Name",
+    "configValue": "Value",
+    "keyword": "Keyword",
+    "keywordPlaceholder": "Match name or value",
+    "namePlaceholder": "e.g. Web.OrderList.DefaultColumns",
+    "nameHelp": "Prefer Web.<module>.<key>. The name cannot be changed after create. Do not use App. / Abp. prefixes — those are system settings.",
+    "nameReservedPrefix": "Names cannot start with App. or Abp. Please choose another name",
+    "valuePlaceholder": "Stored as a raw string. Serialize objects or arrays as JSON yourself",
+    "valueHelp": "The backend does not parse the value. Edit replaces the whole value, it does not merge fields.",
+    "creatorUserName": "Created By",
+    "creationTime": "Created At",
+    "lastModifierUserName": "Last Modified By",
+    "lastModificationTime": "Last Modified At",
+    "operation": "Operation",
+    "notFound": "This config name does not exist and may have been deleted",
+    "selectBeforeDelete": "Select configs to delete first",
+    "batchDeleteTitle": "Confirm Delete",
+    "batchDeleteConfirm": "This permanently deletes the {0} selected config(s). Continue?",
+    "batchDeleteSuccess": "Batch delete succeeded"
   }
 }

@@ -1107,5 +1107,29 @@
     "refreshPageContent": "缓存已清空，建议刷新页面以应用更改。",
     "refreshPageTip": "请刷新页面以使配置生效",
     "detailTitle": "缓存详情"
+  },
+  "tenantConfig": {
+    "title": "租户配置",
+    "list": "租户配置列表",
+    "name": "租户配置",
+    "configName": "配置名",
+    "configValue": "配置值",
+    "keyword": "关键字",
+    "keywordPlaceholder": "模糊匹配配置名或配置值",
+    "namePlaceholder": "例如 Web.OrderList.DefaultColumns",
+    "nameHelp": "建议使用 Web.模块.配置项。创建后不可改名；不要使用 App. / Abp. 前缀，那些是系统预定义设置。",
+    "nameReservedPrefix": "配置名不能使用 App. 或 Abp. 前缀，请换一个名称",
+    "valuePlaceholder": "字符串原样存储，对象或数组请自行写成 JSON",
+    "valueHelp": "后端不解析值。编辑是整体覆盖，不是字段合并。",
+    "creatorUserName": "创建人",
+    "creationTime": "创建时间",
+    "lastModifierUserName": "最后修改人",
+    "lastModificationTime": "最后修改时间",
+    "operation": "操作",
+    "notFound": "该配置名不存在，可能已被删除",
+    "selectBeforeDelete": "请先选择要删除的配置",
+    "batchDeleteTitle": "确认删除",
+    "batchDeleteConfirm": "删除后不可恢复，确定删除选中的 {0} 条配置吗？",
+    "batchDeleteSuccess": "批量删除成功"
   }
 }
