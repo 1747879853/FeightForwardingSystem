@@ -60,13 +60,16 @@ import {
   cancelDishonest,
   modifyClientAudit,
   submitClientAudit,
+  withdrawClientAudit,
 } from '#/api/sea-export/client-admin';
 import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import {
   canApplyClientModify,
   canEditClient,
   canSubmitClientAudit,
+  canWithdrawClientAudit,
   getClientStatusLabel,
+  ClientStatus,
 } from './client-status';
 import { $t } from '#/locales';
 import { useTabs } from '@vben/hooks';
@@ -127,6 +130,17 @@ const canApplyModify = computed(() => canApplyClientModify(clientStatus.value));
 /** 未提交(0)/已驳回(3) 可从编辑页提交审核 */
 const canSubmitAudit = computed(() => canSubmitClientAudit(clientStatus.value));
 
+/**
+ * 取消申请修改：仅 clientStatus=申请修改(4)。
+ * 走 WithdrawAuditAsync（与列表「撤回」同一接口）；待审核(1)仍在列表撤回。
+ */
+const canCancelModifyApply = computed(
+  () =>
+    auditEnabled.value &&
+    clientStatus.value === ClientStatus.ModifyAuditing &&
+    canWithdrawClientAudit(clientStatus.value),
+);
+
 /** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑 */
 const formLocked = computed(() => {
   if (!isEdit.value || !auditEnabled.value || isModifyMode.value) return false;
@@ -168,6 +182,27 @@ const handleSubmitAudit = async () => {
     async onOk() {
       await submitClientAudit({ ids: [id] });
       message.success('已提交审核');
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
+};
+
+/** 申请修改进行中：取消申请（撤回最新一轮 ModifyClient 任务） */
+const handleCancelModifyApply = () => {
+  const id = editId.value;
+  if (!id || !canCancelModifyApply.value) return;
+  Modal.confirm({
+    title: '取消申请',
+    content:
+      '确定取消当前的申请修改吗？仅撤回最新一轮，历史审批留档；取消后客户恢复为可再次申请修改的状态。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    async onOk() {
+      await withdrawClientAudit({ ids: [id] });
+      message.success('已取消申请修改');
+      modifyModeOverride.value = false;
       markListShouldRefresh('ClientList');
       await loadEditData();
     },
@@ -1903,6 +1938,19 @@ onMounted(() => {
                   class="mr-1 inline-block size-4 align-middle"
                 />
                 <span class="align-middle">申请修改</span>
+              </Button>
+              <Button
+                v-if="isEdit && canCancelModifyApply"
+                danger
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleCancelModifyApply"
+              >
+                <IconifyIcon
+                  icon="mdi:file-cancel-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">取消申请</span>
               </Button>
               <Button
                 :type="isDishonest ? 'default' : 'primary'"

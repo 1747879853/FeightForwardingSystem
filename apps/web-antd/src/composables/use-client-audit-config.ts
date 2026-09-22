@@ -6,8 +6,8 @@ import { getTenantConfigDetail } from '#/api/system/tenant-config';
 export const CLIENT_AUDIT_CONFIG_NAME = '可搜索未审核通过客户';
 
 /**
- * 配置为 true 等于「没在用客户审核」：业务单据能直接搜到未审核客户，
- * 这时客户列表不显示审核状态与提交审核等按钮，摆着只会误导。
+ * 配置为 true 等于「业务侧可搜未审核通过客户」：此时不展示审核状态列、筛选项
+ * 与提交审核等操作按钮（能直接搜到未审客户就等于暂未强制走审核流程）。
  */
 const auditEnabled = ref(false);
 /** 是否已取到配置结果，未取到前先按「不启用」渲染，避免按钮一闪 */

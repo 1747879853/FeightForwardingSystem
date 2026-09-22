@@ -15,6 +15,7 @@ import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 
+import ClientStatusCell from './client-status-cell.vue';
 import {
   mapClientReviewParams,
   useClientReviewColumns,
@@ -303,6 +304,9 @@ const selectionHint = computed(() => {
             </Button>
           </div>
         </div>
+      </template>
+      <template #clientStatus="{ row }">
+        <ClientStatusCell :row="row" />
       </template>
     </Grid>
 
