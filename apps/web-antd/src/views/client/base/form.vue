@@ -2096,7 +2096,8 @@ onMounted(() => {
       </div>
 
       <div class="flex items-stretch gap-3">
-        <div class="content-column min-w-0 flex-1">
+        <!-- 地址列略窄于原先，但仍够展示地址卡片（约 1:1.7） -->
+        <div class="content-column min-w-0 flex-[1]">
           <section class="content-section">
             <div class="content-section__header flex justify-between">
               <div>
@@ -2124,15 +2125,18 @@ onMounted(() => {
                 </Button>
               </div>
             </div>
-            <div class="content-section__body flex space-x-2">
+            <div class="content-section__body address-list">
               <div
                 v-for="(item, index) in addressList"
-                class="address-card mt-2 w-[450px] cursor-pointer rounded-md border-gray-200 p-2 shadow-md transition-all"
+                :key="item.id ?? `${item.name}-${index}`"
+                class="address-card cursor-pointer rounded-md border-gray-200 shadow-md transition-all"
                 :class="{ 'address-card-default': item.isDefault }"
               >
                 <div class="address-heard flex justify-between py-2">
-                  <div class="flex font-semibold">
-                    <span class="mr-2">{{ item.name }}</span>
+                  <div
+                    class="flex min-w-0 flex-wrap items-center font-semibold"
+                  >
+                    <span class="mr-2 truncate">{{ item.name }}</span>
                     <tag color="blue" v-if="item.isDefault">{{
                       ClientConstants.getDefaultOptions().find(
                         (o) => o.value === item.isDefault,
@@ -2153,7 +2157,7 @@ onMounted(() => {
                       }}
                     </tag>
                   </div>
-                  <div>
+                  <div class="ml-3 shrink-0">
                     <Button
                       type="text"
                       :disabled="formLocked"
@@ -2184,29 +2188,37 @@ onMounted(() => {
                         style="color: #109ae8"
                       />
                     </span>
-                    <span class="text-normal">{{ item.address }}</span>
+                    <span class="text-normal break-words">{{
+                      item.address
+                    }}</span>
                   </div>
-                  <div class="flex space-x-2">
-                    <span class="pt-1">
-                      <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
+                  <div class="flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="flex items-start space-x-2">
+                      <span class="pt-1">
+                        <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
+                      </span>
+                      <span class="text-sm text-gray-500">
+                        {{ item.contactPerson }}
+                      </span>
                     </span>
-                    <span class="text-sm text-gray-500">
-                      {{ item.contactPerson }}
+                    <span class="flex items-start space-x-2">
+                      <span class="pt-1">
+                        <IconifyIcon
+                          icon="mdi:telephone"
+                          style="color: #ced3dd"
+                        />
+                      </span>
+                      <span class="text-sm text-gray-500">{{
+                        item.mobile
+                      }}</span>
                     </span>
-                    <span class="pt-1">
-                      <IconifyIcon
-                        icon="mdi:telephone"
-                        style="color: #ced3dd"
-                      />
-                    </span>
-                    <span class="text-sm text-gray-500">{{ item.mobile }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
         </div>
-        <div class="content-column min-w-0 flex-[1.15]">
+        <div class="content-column min-w-0 flex-[1.7]">
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">
@@ -2697,8 +2709,18 @@ onMounted(() => {
   padding: 0 4px;
 }
 
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  padding-bottom: 16px;
+}
+
 .address-card {
-  border: 1px solid transparent;
+  width: 100%;
+  padding: 10px 14px 12px;
+  border: 1px solid #e8edf3;
 
   &:hover {
     background: linear-gradient(
@@ -2710,7 +2732,13 @@ onMounted(() => {
   }
 
   .address-heard {
+    margin-bottom: 4px;
     border-bottom: 1px solid #edf2f7;
+  }
+
+  .address-content {
+    gap: 4px;
+    padding-top: 2px;
   }
 }
 
