@@ -8,7 +8,6 @@ import {
   Input,
   Select,
   DatePicker,
-  Space,
   Checkbox,
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
@@ -605,177 +604,333 @@ const isIndeterminate = computed(() => {
     title="费用明细"
     width="1200px"
     :footer="null"
-    :body-style="{ padding: '16px' }"
+    class="fee-detail-manage-modal"
+    :body-style="{ padding: '0' }"
     @cancel="handleClose"
   >
     <Spin :spinning="loading">
-      <!-- 筛选区域 -->
-      <div
-        style="
-          padding: 16px;
-          margin-bottom: 16px;
-          background: #fafafa;
-          border-radius: 4px;
-        "
-      >
-        <Space wrap>
-          <div>
-            <span style="margin-right: 8px">编号：</span>
-            <Input
-              v-model:value="filterKeyword"
-              placeholder="委托编号/主提单号/订舱编号"
-              allow-clear
-              style="width: 200px"
-            />
+      <div class="fdm">
+        <section class="fdm-section fdm-filters">
+          <div class="fdm-filters__head">
+            <span class="fdm-indicator" />
+            <span class="fdm-filters__title">筛选条件</span>
           </div>
-          <div>
-            <span style="margin-right: 8px">业务类型：</span>
-            <Select
-              v-model:value="filterBizType"
-              placeholder="请选择"
-              allow-clear
-              style="width: 150px"
-            >
-              <Select.Option
-                v-for="option in getBizTypeOptions()"
-                :key="option.value"
-                :value="option.value"
+          <div class="fdm-filters__body">
+            <div class="fdm-field">
+              <span class="fdm-field__label">编号</span>
+              <Input
+                v-model:value="filterKeyword"
+                placeholder="委托编号 / 主提单号 / 订舱编号"
+                allow-clear
+                class="fdm-field__control fdm-field__control--lg"
+              />
+            </div>
+            <div class="fdm-field">
+              <span class="fdm-field__label">业务类型</span>
+              <Select
+                v-model:value="filterBizType"
+                placeholder="请选择"
+                allow-clear
+                class="fdm-field__control"
               >
-                {{ option.label }}
-              </Select.Option>
-            </Select>
-          </div>
-          <div>
-            <span style="margin-right: 8px">委托编号：</span>
-            <Input
-              v-model:value="filterCommissionNum"
-              placeholder="请输入委托编号"
-              allow-clear
-              style="width: 180px"
-            />
-          </div>
-          <div>
-            <span style="margin-right: 8px">开船日期：</span>
-            <DatePicker.RangePicker
-              v-model:value="filterEtdRange"
-              style="width: 240px"
-              :placeholder="['开始日期', '结束日期']"
-              value-format="YYYY-MM-DD"
-            />
-          </div>
-          <Button type="primary" @click="handleFilter">查询</Button>
-          <Button @click="handleResetFilter">重置</Button>
-        </Space>
-      </div>
-
-      <!-- 操作按钮区域 -->
-      <div
-        style="
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 12px;
-        "
-      >
-        <div>
-          <span style="font-size: 13px; color: #666">
-            已选中 {{ selectedParentIds.size }} 个订单，{{
-              selectedFeeIds.size
-            }}
-            条费用
-          </span>
-        </div>
-        <Space>
-          <Button
-            type="primary"
-            danger
-            :disabled="
-              selectedParentIds.size === 0 && selectedFeeIds.size === 0
-            "
-            @click="handleBatchDelete"
-          >
-            <template #icon>
-              <IconifyIcon icon="ant-design:delete-outlined" />
-            </template>
-            批量删除
-          </Button>
-        </Space>
-      </div>
-
-      <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-        <NestedDataTable
-          :columns="outerColumns"
-          :data-source="filteredFeeDetails"
-          :inner-columns="innerColumns"
-          inner-data-key="feeDetails"
-          inner-row-key="id"
-          row-key="id"
-          fill-height
-          v-model:expanded-row-keys="expandedRowKeys"
-        >
-          <template #outerHeaderCell="{ column }">
-            <template v-if="column.key === 'seq'">
-              <Checkbox
-                :checked="isAllSelected"
-                :indeterminate="isIndeterminate"
-                @change="(e: any) => toggleSelectAll(e.target.checked)"
+                <Select.Option
+                  v-for="option in getBizTypeOptions()"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </Select.Option>
+              </Select>
+            </div>
+            <div class="fdm-field">
+              <span class="fdm-field__label">委托编号</span>
+              <Input
+                v-model:value="filterCommissionNum"
+                placeholder="请输入委托编号"
+                allow-clear
+                class="fdm-field__control"
               />
-            </template>
-            <template v-else>
-              {{ column.title }}
-            </template>
-          </template>
-
-          <template #outerBodyCell="{ column, record, index }">
-            <template v-if="column.key === 'seq'">
-              <Checkbox
-                :checked="isParentChecked(record)"
-                :indeterminate="isParentIndeterminate(record)"
-                @change="
-                  (e: any) => toggleParentCheck(record, e.target.checked)
-                "
+            </div>
+            <div class="fdm-field">
+              <span class="fdm-field__label">开船日期</span>
+              <DatePicker.RangePicker
+                v-model:value="filterEtdRange"
+                class="fdm-field__control fdm-field__control--range"
+                :placeholder="['开始日期', '结束日期']"
+                value-format="YYYY-MM-DD"
               />
-            </template>
-            <template v-else-if="column.dataIndex === 'bizType'">
-              {{ getBizTypeLabel(record.bizType) }}
-            </template>
-            <template v-else>
-              {{ record[column.dataIndex] }}
-            </template>
-          </template>
+            </div>
+            <div class="fdm-filters__actions">
+              <Button type="primary" size="small" @click="handleFilter">
+                查询
+              </Button>
+              <Button size="small" @click="handleResetFilter">重置</Button>
+            </div>
+          </div>
+        </section>
 
-          <template #innerHeaderCell="{ column }">
-            <template v-if="column.key === 'seq'">
-              {{ column.title }}
-            </template>
-            <template v-else>
-              {{ column.title }}
-            </template>
-          </template>
-
-          <template #innerBodyCell="{ column, record, index }">
-            <template v-if="column.key === 'seq'">
-              <Checkbox
-                :checked="selectedFeeIds.has(record.id)"
-                @change="(e: any) => toggleChildCheck(record, e.target.checked)"
-              />
-            </template>
-            <template v-else-if="column.dataIndex === 'appliedAmount'">
-              <span style="font-size: 14px; font-weight: bold; color: #ff4d4f">
-                {{
-                  convertToRMB(
-                    record.appliedAmount || 0,
-                    record.currencyCode || '',
-                  ).toFixed(2)
+        <section class="fdm-section fdm-table-panel">
+          <div class="fdm-table-panel__head">
+            <div class="fdm-table-panel__title-wrap">
+              <span class="fdm-indicator" />
+              <span class="fdm-table-panel__title">明细列表</span>
+              <span class="fdm-count">{{ filteredFeeDetails.length }}</span>
+            </div>
+            <div class="fdm-table-panel__actions">
+              <span
+                v-if="selectedParentIds.size > 0 || selectedFeeIds.size > 0"
+                class="fdm-selected-hint"
+              >
+                已选 {{ selectedParentIds.size }} 个订单，{{
+                  selectedFeeIds.size
                 }}
+                条费用
               </span>
-            </template>
-            <template v-else>
-              {{ record[column.dataIndex] }}
-            </template>
-          </template>
-        </NestedDataTable>
+              <Button
+                type="primary"
+                danger
+                size="small"
+                :disabled="
+                  selectedParentIds.size === 0 && selectedFeeIds.size === 0
+                "
+                @click="handleBatchDelete"
+              >
+                <template #icon>
+                  <IconifyIcon icon="ant-design:delete-outlined" />
+                </template>
+                批量删除
+              </Button>
+            </div>
+          </div>
+
+          <div class="fdm-table-wrap">
+            <NestedDataTable
+              :columns="outerColumns"
+              :data-source="filteredFeeDetails"
+              :inner-columns="innerColumns"
+              inner-data-key="feeDetails"
+              inner-row-key="id"
+              row-key="id"
+              fill-height
+              v-model:expanded-row-keys="expandedRowKeys"
+            >
+              <template #outerHeaderCell="{ column }">
+                <template v-if="column.key === 'seq'">
+                  <Checkbox
+                    :checked="isAllSelected"
+                    :indeterminate="isIndeterminate"
+                    @change="(e: any) => toggleSelectAll(e.target.checked)"
+                  />
+                </template>
+                <template v-else>
+                  {{ column.title }}
+                </template>
+              </template>
+
+              <template #outerBodyCell="{ column, record, index }">
+                <template v-if="column.key === 'seq'">
+                  <Checkbox
+                    :checked="isParentChecked(record)"
+                    :indeterminate="isParentIndeterminate(record)"
+                    @change="
+                      (e: any) => toggleParentCheck(record, e.target.checked)
+                    "
+                  />
+                </template>
+                <template v-else-if="column.dataIndex === 'bizType'">
+                  {{ getBizTypeLabel(record.bizType) }}
+                </template>
+                <template v-else>
+                  {{ record[column.dataIndex] }}
+                </template>
+              </template>
+
+              <template #innerHeaderCell="{ column }">
+                <template v-if="column.key === 'seq'">
+                  {{ column.title }}
+                </template>
+                <template v-else>
+                  {{ column.title }}
+                </template>
+              </template>
+
+              <template #innerBodyCell="{ column, record, index }">
+                <template v-if="column.key === 'seq'">
+                  <Checkbox
+                    :checked="selectedFeeIds.has(record.id)"
+                    @change="
+                      (e: any) => toggleChildCheck(record, e.target.checked)
+                    "
+                  />
+                </template>
+                <template v-else-if="column.dataIndex === 'appliedAmount'">
+                  <span class="fdm-amount">
+                    {{
+                      convertToRMB(
+                        record.appliedAmount || 0,
+                        record.currencyCode || '',
+                      ).toFixed(2)
+                    }}
+                  </span>
+                </template>
+                <template v-else>
+                  {{ record[column.dataIndex] }}
+                </template>
+              </template>
+            </NestedDataTable>
+          </div>
+        </section>
       </div>
     </Spin>
   </Modal>
 </template>
+
+<style scoped>
+.fdm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 20px;
+  background: #f8fafc;
+}
+
+.fdm-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.fdm-indicator {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-radius: 2px;
+}
+
+.fdm-filters__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px 0;
+}
+
+.fdm-filters__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fdm-filters__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  padding: 12px 14px 14px;
+}
+
+.fdm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fdm-field__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.fdm-field__control {
+  width: 160px;
+}
+
+.fdm-field__control--lg {
+  width: 220px;
+}
+
+.fdm-field__control--range {
+  width: 240px;
+}
+
+.fdm-filters__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 1px;
+}
+
+.fdm-table-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fdm-table-panel__title-wrap,
+.fdm-table-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fdm-table-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fdm-count {
+  min-width: 22px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary, 212 100% 40%));
+  text-align: center;
+  background: hsl(var(--primary, 212 100% 45%) / 10%);
+  border-radius: 999px;
+}
+
+.fdm-selected-hint {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--primary, 212 100% 38%));
+}
+
+.fdm-table-wrap {
+  padding: 0 4px 4px;
+}
+
+.fdm-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ef4444;
+}
+</style>
+
+<style>
+.fee-detail-manage-modal .ant-modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.fee-detail-manage-modal .ant-modal-header {
+  padding: 14px 20px;
+  margin: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fee-detail-manage-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+</style>
