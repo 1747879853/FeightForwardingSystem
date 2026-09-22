@@ -112,7 +112,7 @@ const contentTabsStyle = {
       >
         <span class="content-tab content-tab--active">客户审核</span>
         <span class="content-tabs__audit-hint">
-          只读查看 · 右上角可审核 / 驳回
+          只读查看 · 右上角可审核 / 驳回 / 转交
         </span>
       </div>
       <div class="flex items-stretch gap-3">

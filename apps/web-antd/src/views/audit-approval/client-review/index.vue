@@ -39,7 +39,7 @@ const userStore = useUserStore();
 
 const t = (key: string) => $t(`auditApproval.clientReview.${key}`);
 
-/** 双击进入客户详情审核模式（不再弹详情窗） */
+/** 双击进入客户表单只读审核页（客户提交 / 申请修改同一套，含转交） */
 const openAuditPage = (row: ClientTaskRow) => {
   if (!row.client?.id) {
     message.warning('该行没有客户信息');
@@ -52,7 +52,6 @@ const [TransferModalComp, transferModalApi] = useVbenModal({
   connectedComponent: TransferModal,
   destroyOnClose: true,
 });
-
 // ==================== 选中行与按钮可用性 ====================
 
 const selectedRows = ref<ClientTaskRow[]>([]);

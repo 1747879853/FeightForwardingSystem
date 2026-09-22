@@ -11,12 +11,13 @@ export function findMyPendingWorkFlowItemId(
   if (!instance || userId === undefined || userId === null || userId === '') {
     return undefined;
   }
-  const uid = Number(userId);
-  if (!Number.isFinite(uid)) return undefined;
+  const uid = String(userId);
 
   for (const group of instance.levelGroup ?? []) {
     for (const item of group.itemList ?? []) {
-      if (item.taskStatus === 0 && Number(item.userId) === uid && item.id) {
+      // taskStatus：0 待审；兼容数字/字符串
+      const pending = Number(item.taskStatus) === 0;
+      if (pending && String(item.userId) === uid && item.id) {
         return item.id;
       }
     }
