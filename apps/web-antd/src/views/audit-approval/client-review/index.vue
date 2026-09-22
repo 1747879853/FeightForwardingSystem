@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { Page, useVbenModal } from '@vben/common-ui';
+import { Page } from '@vben/common-ui';
 
 import { Button, message } from 'ant-design-vue';
 
@@ -12,6 +13,7 @@ import {
   getClientAuditPagedList,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { consumeListShouldRefresh } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 
@@ -21,7 +23,6 @@ import {
   useClientReviewColumns,
   useClientReviewFormSchema,
 } from './data';
-import DetailModal from './modules/detail-modal.vue';
 
 defineOptions({ name: 'ClientReview' });
 
@@ -30,24 +31,17 @@ const { ClientTaskStatus } = ClientAdminApi;
 type ClientTaskRow = ClientAdminApi.ClientTaskDto;
 
 const auditCode = 'Admin.Client.Audit';
+const router = useRouter();
 
 const t = (key: string) => $t(`auditApproval.clientReview.${key}`);
 
-// ==================== 详情弹窗 ====================
-
-const [DetailModalComp, detailModalApi] = useVbenModal({
-  connectedComponent: DetailModal,
-  destroyOnClose: true,
-});
-
-/** 详情按客户id查（行上的 id 是任务id） */
-const openDetail = (row: ClientTaskRow) => {
+/** 双击进入客户详情审核模式（不再弹详情窗） */
+const openAuditPage = (row: ClientTaskRow) => {
   if (!row.client?.id) {
     message.warning('该行没有客户信息');
     return;
   }
-  detailModalApi.setData({ clientId: row.client.id });
-  detailModalApi.open();
+  router.push(`/clients/${row.client.id}/edit?mode=audit`);
 };
 
 // ==================== 选中行与按钮可用性 ====================
@@ -95,7 +89,7 @@ const handleRowDblclick = ({
   row: ClientTaskRow;
 }) => {
   if (column?.type === 'checkbox') return;
-  openDetail(row);
+  openAuditPage(row);
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<ClientTaskRow>({
@@ -149,6 +143,12 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientTaskRow>({
 
 onMounted(async () => {
   await gridApi.formApi.submitForm();
+});
+
+onActivated(async () => {
+  if (consumeListShouldRefresh('ClientReview')) {
+    await reloadGrid();
+  }
 });
 
 const reloadGrid = async () => {
@@ -255,7 +255,7 @@ const postRejectSelectedCount = computed(
 
 const selectionHint = computed(() => {
   if (selectedRows.value.length === 0) {
-    return '勾选待审客户后可批量通过 / 驳回；双击行打开详情并可在详情内操作';
+    return '勾选待审客户后可批量通过 / 驳回；双击行进入客户详情审核';
   }
   const parts = [`已选 ${selectedRows.value.length} 条`];
   if (pendingSelectedCount.value > 0) {
@@ -317,8 +317,6 @@ const selectionHint = computed(() => {
       <span class="client-review-hint__dot" />
       <span class="client-review-hint__text">{{ selectionHint }}</span>
     </div>
-
-    <DetailModalComp @audited="reloadGrid" />
   </Page>
 </template>
 

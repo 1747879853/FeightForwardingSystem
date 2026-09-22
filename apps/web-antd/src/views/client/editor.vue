@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
@@ -28,12 +29,16 @@ type FormExpose = {
 type ContactExpose = { isContactDirty?: () => boolean };
 type InvoiceExpose = { isInvoiceDirty?: () => boolean | Promise<boolean> };
 
+const route = useRoute();
+/** 客户审核列表双击进入：只读审基础信息，其他 Tab 隐藏 */
+const isAuditMode = computed(() => route.query.mode === 'audit');
+
 const formRef = ref<FormExpose | null>(null);
 const contactRef = ref<ContactExpose | null>(null);
 const invoiceRef = ref<InvoiceExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
 
-const tabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
+const allTabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
   { key: 'contact', label: '联系人' },
   { key: 'invoice', label: '开票信息' },
@@ -41,10 +46,12 @@ const tabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
   { key: 'exceptService', label: '海运出口服务项目' },
 ];
 
+const tabs = computed(() =>
+  isAuditMode.value ? allTabs.filter((tab) => tab.key === 'basic') : allTabs,
+);
+
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
-  // 先取局部常量再判空：nextTick 回调是延迟执行的闭包，直接用 tab.sectionKey 时
-  // TS 无法保持收窄（会退回 SectionKey | undefined），导致 scrollToSection 传参报错
   const sectionKey = tab.sectionKey;
   if (!sectionKey) return;
   nextTick(() => {
@@ -57,7 +64,9 @@ const onSectionChange = (sectionKey: SectionKey) => {
 };
 
 useUnsavedGuard({
+  enabled: () => !isAuditMode.value,
   isDirty: async () => {
+    if (isAuditMode.value) return false;
     const formDirty = formRef.value?.isFormDirty;
     if (formDirty && (await formDirty())) return true;
     if (contactRef.value?.isContactDirty?.()) return true;
@@ -85,7 +94,7 @@ const contentTabsStyle = {
 <template>
   <Page auto-content-height content-class="!p-0">
     <div class="flex min-w-0 flex-1 flex-col gap-2">
-      <div class="content-tabs" :style="contentTabsStyle">
+      <div v-if="!isAuditMode" class="content-tabs" :style="contentTabsStyle">
         <span
           v-for="tab in tabs"
           :key="tab.key"
@@ -96,26 +105,36 @@ const contentTabsStyle = {
           {{ tab.label }}
         </span>
       </div>
+      <div
+        v-else
+        class="content-tabs content-tabs--audit"
+        :style="contentTabsStyle"
+      >
+        <span class="content-tab content-tab--active">客户审核</span>
+        <span class="content-tabs__audit-hint">
+          只读查看 · 右上角可审核 / 驳回
+        </span>
+      </div>
       <div class="flex items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="ClientAdminForm">
             <Form
-              v-if="activeTab === 'basic'"
+              v-if="activeTab === 'basic' || isAuditMode"
               ref="formRef"
               embedded
               @section-change="onSectionChange"
             />
           </KeepAlive>
-          <KeepAlive include="ClientContactList">
+          <KeepAlive v-if="!isAuditMode" include="ClientContactList">
             <ContactList v-if="activeTab === 'contact'" ref="contactRef" />
           </KeepAlive>
-          <KeepAlive include="ClientInvoiceList">
+          <KeepAlive v-if="!isAuditMode" include="ClientInvoiceList">
             <InvoiceList v-if="activeTab === 'invoice'" ref="invoiceRef" />
           </KeepAlive>
-          <KeepAlive include="ClientAttachments">
+          <KeepAlive v-if="!isAuditMode" include="ClientAttachments">
             <Attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
-          <KeepAlive include="ClientExceptService">
+          <KeepAlive v-if="!isAuditMode" include="ClientExceptService">
             <ExceptService v-if="activeTab === 'exceptService'" />
           </KeepAlive>
         </div>
@@ -138,5 +157,15 @@ const contentTabsStyle = {
   font-weight: 600;
   color: hsl(var(--primary));
   border-bottom-color: hsl(var(--primary));
+}
+
+.content-tabs--audit {
+  justify-content: space-between;
+}
+
+.content-tabs__audit-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
 }
 </style>

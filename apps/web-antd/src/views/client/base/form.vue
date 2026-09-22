@@ -37,7 +37,7 @@ import PaymentTermsPanel from '../payment-terms/list.vue';
 import OrgSharedLabel from './org-shared-label.vue';
 import { ClientSharedType, normalizeClientSharedType } from './shared-type';
 import { useVbenModal } from '@vben/common-ui';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
@@ -54,7 +54,9 @@ import {
 } from '@vben/icons';
 import {
   addClient,
+  auditClient,
   editClient,
+  getClientAuditDetail,
   getClientDetail,
   addDishonest,
   cancelDishonest,
@@ -71,11 +73,16 @@ import {
   getClientStatusLabel,
   ClientStatus,
 } from './client-status';
+import {
+  type AuditChangedSections,
+  computeAuditModifyChanges,
+} from './audit-modify-highlight';
 import { $t } from '#/locales';
 import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { setFormApisDisabled } from '#/utils/ticket-editable';
+import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -117,6 +124,39 @@ const isModifyMode = computed(
     isEdit.value && (modifyModeOverride.value || route.query.mode === 'modify'),
 );
 
+/** 客户审核列表双击进入：只读 + 右上角仅审核操作 */
+const isAuditMode = computed(
+  () => isEdit.value && route.query.mode === 'audit',
+);
+
+const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
+
+const auditDetail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
+const auditSubmitting = ref(false);
+const changedAuditFields = ref<Set<string>>(new Set());
+const changedAuditSections = ref<AuditChangedSections>({
+  addresses: false,
+  billingPeriods: false,
+  industry: false,
+  stakeholders: false,
+  type: false,
+});
+
+const canPendingAudit = computed(
+  () =>
+    isAuditMode.value &&
+    auditDetail.value?.myTaskStatus === ClientTaskStatus.Auditing,
+);
+
+const canPostRejectAudit = computed(
+  () =>
+    isAuditMode.value &&
+    auditDetail.value?.taskStatus === ClientTaskStatus.Passed &&
+    auditDetail.value?.myTaskStatus === ClientTaskStatus.Passed,
+);
+
+const auditActionCode = 'Admin.Client.Audit';
+
 const clientStatus = ref<ClientAdminApi.ClientStatus | undefined>();
 
 /** 可直接编辑：未提交(0)/已驳回(3)；其余状态只能走申请修改 */
@@ -141,8 +181,9 @@ const canCancelModifyApply = computed(
     canWithdrawClientAudit(clientStatus.value),
 );
 
-/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑 */
+/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑；审核模式始终只读 */
 const formLocked = computed(() => {
+  if (isAuditMode.value) return true;
   if (!isEdit.value || !auditEnabled.value || isModifyMode.value) return false;
   if (clientStatus.value === undefined) return false;
   return !canDirectEdit.value;
@@ -825,6 +866,299 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   };
 };
 
+function clearAuditHighlights() {
+  changedAuditFields.value = new Set();
+  changedAuditSections.value = {
+    addresses: false,
+    billingPeriods: false,
+    industry: false,
+    stakeholders: false,
+    type: false,
+  };
+  baseFormApi.updateSchema(
+    [
+      'name',
+      'fullName',
+      'code',
+      'enName',
+      'taxNo',
+      'taxRate',
+      'codeSourceId',
+      'phone',
+      'mobile',
+      'email',
+      'url',
+      'enterpriseType',
+      'orgId',
+      'remark',
+    ].map((fieldName) => ({
+      fieldName,
+      formItemClass: fieldName === 'remark' ? 'col-span-2' : undefined,
+    })),
+  );
+  businessFormApi.updateSchema(
+    [
+      'legalPerson',
+      'registeredCapital',
+      'establishmentDate',
+      'businessTerm',
+    ].map((fieldName) => ({ fieldName, formItemClass: undefined })),
+  );
+  clientFormApi.updateSchema(
+    [
+      'clientType',
+      'clientLevel',
+      'cargoType',
+      'clientCurrencyId',
+      'remark',
+    ].map((fieldName) => ({
+      fieldName,
+      formItemClass: fieldName === 'remark' ? 'col-span-3' : undefined,
+    })),
+  );
+  supplierFormApi.updateSchema(
+    ['supplierLevel', 'supplierCurrencyId', 'laneIds'].map((fieldName) => ({
+      fieldName,
+      formItemClass: undefined,
+    })),
+  );
+}
+
+function applyAuditFieldHighlights(fields: Set<string>) {
+  const mark = (
+    api: typeof baseFormApi,
+    names: string[],
+    remarkSpan?: string,
+  ) => {
+    api.updateSchema(
+      names
+        .filter((name) => fields.has(name))
+        .map((fieldName) => ({
+          fieldName,
+          formItemClass:
+            fieldName === 'remark' && remarkSpan
+              ? `${remarkSpan} client-audit-field--changed`
+              : 'client-audit-field--changed',
+        })),
+    );
+  };
+  mark(
+    baseFormApi,
+    [
+      'name',
+      'fullName',
+      'code',
+      'enName',
+      'taxNo',
+      'taxRate',
+      'codeSourceId',
+      'phone',
+      'mobile',
+      'email',
+      'url',
+      'enterpriseType',
+      'orgId',
+      'remark',
+    ],
+    'col-span-2',
+  );
+  mark(businessFormApi, [
+    'legalPerson',
+    'registeredCapital',
+    'establishmentDate',
+    'businessTerm',
+  ]);
+  mark(
+    clientFormApi,
+    ['clientType', 'clientLevel', 'cargoType', 'clientCurrencyId', 'remark'],
+    'col-span-3',
+  );
+  mark(supplierFormApi, ['supplierLevel', 'supplierCurrencyId', 'laneIds']);
+}
+
+/** 把申请修改的目标快照写入表单，审核人看到的是「申请后的内容」 */
+async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
+  const areaIdPath = await buildAreaPath(to.areaId);
+  const industryCategoriesArray = to.industryCategories
+    ? to.industryCategories
+        .split('')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : [];
+
+  isClient.value = !!to.isClient;
+  isCustomerType.value = to.isClient ? [1] : [];
+  isSupplier.value = !!to.isSupplier;
+  isSupplierType.value = to.isSupplier ? [2] : [];
+  customerType.value = to.isClient ? industryCategoriesArray : [];
+  supplierType.value = to.isSupplier ? industryCategoriesArray : [];
+
+  defaultOrderUsers.value.forEach((orderUser) => {
+    switch (orderUser.userAttribute) {
+      case UserAttribute.Sales:
+        orderUser.userIds = to.sales?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.sales as any) || [];
+        break;
+      case UserAttribute.Operation:
+        orderUser.userIds = to.operations?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.operations as any) || [];
+        break;
+      case UserAttribute.CustomerService:
+        orderUser.userIds = to.customerServices?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.customerServices as any) || [];
+        break;
+      case UserAttribute.Documentation:
+        orderUser.userIds = to.documentations?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.documentations as any) || [];
+        break;
+    }
+  });
+  reconcilerUserIds.value = to.reconcilerUserIds ?? [];
+  addressList.value = (to.addresses || []).map((addr, index) => ({
+    id: (addr as { id?: number }).id ?? index,
+    name: addr.name || '',
+    isDefault: !!addr.isDefault,
+    addressType: addr.addressType,
+    address: addr.address || '',
+    contactPerson: addr.contactPerson || '',
+    mobile: addr.mobile || '',
+    tel: addr.tel || '',
+    remark: addr.remark || '',
+  }));
+  billingPeriods.value = (to.billingPeriods ?? []) as any[];
+
+  const formValues = {
+    name: to.name,
+    fullName: to.fullName,
+    code: to.code,
+    enName: to.enName,
+    taxNo: to.taxNo,
+    taxRate: to.taxRate ?? undefined,
+    codeSourceId: to.codeSourceId,
+    phone: to.phone,
+    mobile: to.mobile,
+    email: to.email,
+    url: to.url,
+    enterpriseType: to.enterpriseType,
+    orgId: to.orgId,
+    isShared: normalizeClientSharedType(to.isShared),
+    remark: to.remark,
+    country: to.countryId,
+    areaId: areaIdPath,
+    address: to.address,
+    enAddress: to.enAddress,
+    mainProduct: to.mainProduct,
+    enable: to.enable,
+    legalPerson: to.legalPerson,
+    registeredCapital: to.registeredCapital,
+    establishmentDate: toDayjs(to.establishmentDate),
+    businessTerm: to.businessTerm,
+    clientType: to.clientType,
+    clientLevel: to.clientLevel,
+    source: to.source,
+    cargoType: to.cargoType,
+    clientCurrencyId: to.clientCurrencyId,
+    supplierLevel: to.supplierLevel,
+    laneIds: to.laneIds,
+    supplierCurrencyId: to.supplierCurrencyId,
+  };
+
+  await baseFormApi.setValues(formValues);
+  isSharedValue.value = normalizeClientSharedType(formValues.isShared);
+  await businessFormApi.setValues(formValues);
+  await nextTick();
+  if (isClient.value) {
+    await clientFormApi.setValues(formValues);
+  }
+  if (isSupplier.value) {
+    await supplierFormApi.setValues(formValues);
+  }
+}
+
+async function loadAuditContext() {
+  if (!editId.value || !isAuditMode.value) return;
+  clearAuditHighlights();
+  try {
+    auditDetail.value = await getClientAuditDetail(editId.value);
+    if (
+      auditDetail.value.taskType === ClientTaskType.ModifyClient &&
+      auditDetail.value.modifyTo
+    ) {
+      const { fields, sections } = computeAuditModifyChanges(
+        auditDetail.value.modifyFrom,
+        auditDetail.value.modifyTo,
+      );
+      changedAuditFields.value = fields;
+      changedAuditSections.value = sections;
+      await applyModifySnapshotToForm(auditDetail.value.modifyTo);
+      await nextTick();
+      await nextTick();
+      applyAuditFieldHighlights(fields);
+    }
+  } catch (error) {
+    console.error('加载客户审核详情失败:', error);
+    message.error('加载客户审核详情失败');
+  }
+}
+
+async function leaveAuditPage() {
+  markListShouldRefresh('ClientReview');
+  const currentTabKey = route.fullPath;
+  await router.push('/audit-approval/client-review');
+  await closeTabByKey(currentTabKey);
+}
+
+async function doPageAudit(success: boolean, remark: string) {
+  const id = editId.value;
+  if (!id) return;
+  auditSubmitting.value = true;
+  try {
+    await auditClient({
+      ids: [id],
+      remark: remark || undefined,
+      success,
+    });
+    message.success(success ? '已通过客户审核' : '已驳回客户');
+    await leaveAuditPage();
+  } finally {
+    auditSubmitting.value = false;
+  }
+}
+
+const handleAuditPass = () => {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: $t('auditApproval.task.okPass'),
+    remarkRequired: false,
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(true, remark),
+  });
+};
+
+const handleAuditReject = () => {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: '确认驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(false, remark),
+  });
+};
+
+const handleAuditPostReject = () => {
+  if (!canPostRejectAudit.value) return;
+  openAuditRemarkConfirm({
+    title: '确认通过后驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(false, remark),
+  });
+};
+
 /**
  * 加载编辑数据
  */
@@ -853,6 +1187,12 @@ const loadEditData = async () => {
 
     // 触发响应式更新
     await nextTick();
+    if (isAuditMode.value) {
+      await loadAuditContext();
+    } else {
+      clearAuditHighlights();
+      auditDetail.value = null;
+    }
     await syncFormSnapshot();
   } catch (error) {
     console.error('加载编辑数据失败:', error);
@@ -1863,6 +2203,14 @@ onMounted(() => {
     }
   }, 100); // 延迟100ms确保表单完全渲染
 });
+
+watch(
+  () => `${editId.value ?? ''}:${String(route.query.mode ?? '')}`,
+  (key, prev) => {
+    if (!editId.value || key === prev) return;
+    void loadEditData();
+  },
+);
 </script>
 
 <template>
@@ -1873,20 +2221,61 @@ onMounted(() => {
           <div class="content-section__actions">
             <div class="content-section__status">
               <Tag
-                v-if="isEdit && auditEnabled && clientStatus !== undefined"
+                v-if="
+                  isEdit &&
+                  (auditEnabled || isAuditMode) &&
+                  clientStatus !== undefined
+                "
                 :color="clientStatusTagColor"
               >
                 {{ getClientStatusLabel(clientStatus) }}
               </Tag>
               <span
-                v-if="clientStatusHint"
+                v-if="isAuditMode && auditDetail?.applyRemark"
+                class="content-section__status-hint"
+                :title="auditDetail.applyRemark"
+              >
+                申请原因：{{ auditDetail.applyRemark }}
+              </span>
+              <span
+                v-else-if="clientStatusHint"
                 class="content-section__status-hint"
                 :title="clientStatusHint"
               >
                 {{ clientStatusHint }}
               </span>
             </div>
-            <Space>
+            <Space v-if="isAuditMode">
+              <Button
+                v-access:code="auditActionCode"
+                type="primary"
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditPass"
+              >
+                {{ $t('auditApproval.clientReview.auditPass') }}
+              </Button>
+              <Button
+                v-access:code="auditActionCode"
+                danger
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditReject"
+              >
+                {{ $t('auditApproval.clientReview.selectReject') }}
+              </Button>
+              <Button
+                v-access:code="auditActionCode"
+                danger
+                ghost
+                :disabled="!canPostRejectAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditPostReject"
+              >
+                {{ $t('auditApproval.clientReview.postReject') }}
+              </Button>
+            </Space>
+            <Space v-else>
               <Button
                 type="primary"
                 :disabled="!canSaveClient"
@@ -1970,7 +2359,13 @@ onMounted(() => {
           <div class="content-section__body">
             <div class="mb-2 px-3">
               <!-- 客户：一级勾选 + 二级属性（同行样式，增强区分） -->
-              <div class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow">
+              <div
+                class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow"
+                :class="{
+                  'client-audit-section--changed':
+                    changedAuditSections.type || changedAuditSections.industry,
+                }"
+              >
                 <div class="type-row__primary">
                   <div
                     class="role-chip"
@@ -2007,7 +2402,13 @@ onMounted(() => {
               </div>
 
               <!-- 供应商：一级勾选 + 二级属性 -->
-              <div class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow">
+              <div
+                class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow"
+                :class="{
+                  'client-audit-section--changed':
+                    changedAuditSections.type || changedAuditSections.industry,
+                }"
+              >
                 <div class="type-row__primary">
                   <div
                     class="role-chip"
@@ -2097,7 +2498,12 @@ onMounted(() => {
 
       <div class="flex items-stretch gap-3">
         <!-- 地址列略窄于原先，但仍够展示地址卡片（约 1:1.7） -->
-        <div class="content-column min-w-0 flex-[1]">
+        <div
+          class="content-column min-w-0 flex-[1]"
+          :class="{
+            'client-audit-section--changed': changedAuditSections.addresses,
+          }"
+        >
           <section class="content-section">
             <div class="content-section__header flex justify-between">
               <div>
@@ -2218,7 +2624,13 @@ onMounted(() => {
             </div>
           </section>
         </div>
-        <div class="content-column min-w-0 flex-[1.7]">
+        <div
+          class="content-column min-w-0 flex-[1.7]"
+          :class="{
+            'client-audit-section--changed':
+              changedAuditSections.billingPeriods,
+          }"
+        >
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">
@@ -2237,7 +2649,12 @@ onMounted(() => {
       </div>
     </div>
 
-    <Card class="right-column stakeholders-panel mr-2">
+    <Card
+      class="right-column stakeholders-panel mr-2"
+      :class="{
+        'client-audit-section--changed': changedAuditSections.stakeholders,
+      }"
+    >
       <template #title>
         <span class="card-title">
           <span class="stakeholders-panel__title-icon" aria-hidden="true">
@@ -2694,6 +3111,25 @@ onMounted(() => {
   font-size: 12px;
   line-height: 1.4;
   color: #f97316;
+}
+
+/* 申请修改：有改动的字段/区块用独立色标出 */
+:deep(.client-audit-field--changed) {
+  padding: 4px 6px;
+  outline: 1px solid hsl(32deg 90% 48% / 35%);
+  background: hsl(38deg 96% 92%);
+  border-radius: 6px;
+}
+
+:deep(.client-audit-field--changed .ant-form-item-label > label) {
+  color: hsl(28deg 80% 36%);
+}
+
+.client-audit-section--changed {
+  padding: 4px;
+  outline: 1px solid hsl(32deg 90% 48% / 30%);
+  background: hsl(38deg 96% 94%);
+  border-radius: 8px;
 }
 
 .card-title {
