@@ -12,7 +12,7 @@
     "allowedTypes": "Allowed types",
     "maxSize": "Max size",
     "maxCount": "Max count",
-    "dragTip": "Click or drag files here to upload",
+    "dragTip": "Click, drag, or paste with Ctrl+V",
     "dragHint": "Multiple files supported. Paste a screenshot with Ctrl+V",
     "uploadedFiles": "Uploaded Files"
   },

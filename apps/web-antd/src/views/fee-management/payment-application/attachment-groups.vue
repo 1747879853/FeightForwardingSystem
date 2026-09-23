@@ -20,6 +20,7 @@ import {
   getAttachmentDtlTypesByModuleTypes,
 } from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { useAttachmentZonePaste } from '#/composables/use-attachment-zone-paste';
 import { $t } from '#/locales';
 import { compareAttachmentTypeSortIdDesc } from '#/utils';
 
@@ -162,6 +163,19 @@ async function onDrop(group: AttachmentGroupView, event: DragEvent) {
     await handleUpload(file as unknown as UploadFile, group);
   }
 }
+
+const { onZoneEnter, onZoneLeave } = useAttachmentZonePaste({
+  enabled: canUpload,
+  onPaste: async (zoneId, files) => {
+    const group = groups.value.find(
+      (item) => groupKey(item.attachmentDtlTypeId) === zoneId,
+    );
+    if (!group) return;
+    for (const file of files) {
+      await handleUpload(file as unknown as UploadFile, group);
+    }
+  },
+});
 
 async function loadAttachmentTypes() {
   loading.value = true;
@@ -320,6 +334,8 @@ onMounted(loadAttachmentTypes);
         @dragover.prevent="onDragOver(group, $event)"
         @dragleave="onDragLeave(group, $event)"
         @drop.prevent="onDrop(group, $event)"
+        @mouseenter="onZoneEnter(groupKey(group.attachmentDtlTypeId))"
+        @mouseleave="onZoneLeave(groupKey(group.attachmentDtlTypeId))"
       >
         <header class="attachment-group__header">
           <span class="attachment-group__title">{{ group.name }}</span>
@@ -387,7 +403,7 @@ onMounted(loadAttachmentTypes);
           </div>
         </div>
         <div v-else class="attachment-group__empty">
-          {{ canUpload ? '点击或拖拽上传' : '暂无文件' }}
+          {{ canUpload ? '点击、拖拽或 Ctrl+V 粘贴上传' : '暂无文件' }}
         </div>
       </section>
     </div>

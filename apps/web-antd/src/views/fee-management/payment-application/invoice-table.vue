@@ -20,6 +20,7 @@ import {
 } from 'ant-design-vue';
 
 import { mapResultToAttachment } from '#/api/common/upload';
+import { useAttachmentZonePaste } from '#/composables/use-attachment-zone-paste';
 import {
   INVOICE_UPLOAD_ACCEPT,
   extractInvoice,
@@ -214,6 +215,17 @@ async function recognizeInvoice(index: number) {
     extractingKey.value = null;
   }
 }
+
+const { onZoneEnter, onZoneLeave } = useAttachmentZonePaste({
+  enabled: computed(() => !props.disabled),
+  onPaste: async (zoneId, files) => {
+    const index = rows.value.findIndex((row) => row.key === zoneId);
+    if (index < 0) return;
+    for (const file of files) {
+      await handleUpload(file as unknown as UploadFile, index);
+    }
+  },
+});
 </script>
 
 <template>
@@ -279,7 +291,11 @@ async function recognizeInvoice(index: number) {
           "
         />
       </div>
-      <div class="invoice-table__actions">
+      <div
+        class="invoice-table__actions"
+        @mouseenter="onZoneEnter(row.key)"
+        @mouseleave="onZoneLeave(row.key)"
+      >
         <template v-if="row.attachment">
           <button
             type="button"
@@ -321,7 +337,12 @@ async function recognizeInvoice(index: number) {
           :disabled="uploadingKey === row.key"
           :show-upload-list="false"
         >
-          <Button type="link" size="small" :loading="uploadingKey === row.key">
+          <Button
+            type="link"
+            size="small"
+            title="点击或 Ctrl+V 粘贴上传"
+            :loading="uploadingKey === row.key"
+          >
             上传
           </Button>
         </Upload>

@@ -23,6 +23,7 @@ import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import { getAttachmentDtlTypesByModuleTypes } from '#/api/system/attachment-dtl-type';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { useAttachmentZonePaste } from '#/composables/use-attachment-zone-paste';
 import { buildAttachmentUrl } from '#/utils';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
@@ -282,6 +283,17 @@ const handleBeforeUpload = async (file: UploadFile) => {
   return false;
 };
 
+const BILLING_PASTE_ZONE = 'billing';
+
+const { onZoneEnter, onZoneLeave } = useAttachmentZonePaste({
+  enabled: computed(() => !uploading.value),
+  onPaste: async (_zoneId, files) => {
+    for (const file of files) {
+      await handleBeforeUpload(file as unknown as UploadFile);
+    }
+  },
+});
+
 const handleDownload = (row: BillingPeriodAdminApi.AttachmentItemDto) => {
   if (!row.url) {
     message.warning($t('seaExport.export.attachments.noFileUrl'));
@@ -494,7 +506,11 @@ const pageTitle = computed(() => {
           </div>
         </header>
 
-        <div class="billing-panel__body billing-panel__body--attach">
+        <div
+          class="billing-panel__body billing-panel__body--attach"
+          @mouseenter="onZoneEnter(BILLING_PASTE_ZONE)"
+          @mouseleave="onZoneLeave(BILLING_PASTE_ZONE)"
+        >
           <Spin class="billing-attach-spin" :spinning="loading || uploading">
             <Upload
               :before-upload="handleBeforeUpload"
@@ -510,7 +526,9 @@ const pageTitle = computed(() => {
                 <span class="billing-upload__icon">
                   <IconifyIcon icon="mdi:cloud-upload-outline" class="size-7" />
                 </span>
-                <p class="billing-upload__title">点击或拖拽文件到此处上传</p>
+                <p class="billing-upload__title">
+                  点击、拖拽或 Ctrl+V 粘贴上传
+                </p>
                 <p class="billing-upload__hint">
                   {{ $t('seaExport.export.attachments.uploadTip') }}
                 </p>
