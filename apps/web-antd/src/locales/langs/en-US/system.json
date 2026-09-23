@@ -319,6 +319,7 @@
       "title": "Currency Management",
       "list": "Currency List",
       "name": "Currency",
+      "symbol": "Currency Symbol",
       "code": "Currency Code",
       "cnName": "Chinese Name",
       "enName": "English Name",

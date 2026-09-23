@@ -506,17 +506,27 @@ const getTableDate = (changeOrderId?: string | null) => {
   }
   void refreshWarnings();
 };
-const transCurrencySymbol = (currencyId: number) => {
-  // 优先从API获取的映射表中查找
-  if (currencySymbolMap.value[currencyId]) {
-    return currencySymbolMap.value[currencyId];
+/** 币别符号；未维护时返回空串，禁止拼出 "undefined" */
+const transCurrencySymbol = (
+  currencyId: number | string | undefined | null,
+) => {
+  if (currencyId === undefined || currencyId === null || currencyId === '') {
+    return '';
+  }
+  const normalizedId = Number(currencyId);
+  if (!Number.isFinite(normalizedId)) {
+    return '';
   }
 
-  // 如果映射表中没有，则使用默认的硬编码选项
+  const fromApi = currencySymbolMap.value[normalizedId];
+  if (fromApi) {
+    return fromApi;
+  }
+
   const option = getCurrencyEnumSymbolOptions().find(
-    (o) => o.value === currencyId,
+    (o) => o.value === normalizedId,
   );
-  return option ? option.label : currencyId;
+  return option?.label ?? '';
 };
 let recAmountMap: any = ref({} as any);
 let payAmountMap: any = ref({} as any);
@@ -621,7 +631,8 @@ const handleReceivableTableUpdate = (
       );
     }, 0);
     let exchangeRate = toNumberAmount(list[0]?.exchangeRate) || 1;
-    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
+    let currencyName =
+      list[0]?.currency?.cnName ?? list[0]?.currency?.code ?? '';
     let currencyId = item;
     recAmountMap.value[item] = {
       totalRecAmount,
@@ -658,7 +669,8 @@ const handlePayableTableUpdate = (
       );
     }, 0);
     let exchangeRate = toNumberAmount(list[0]?.exchangeRate) || 1;
-    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
+    let currencyName =
+      list[0]?.currency?.cnName ?? list[0]?.currency?.code ?? '';
     let currencyId = item;
     payAmountMap.value[item] = {
       totalPayAmount,
