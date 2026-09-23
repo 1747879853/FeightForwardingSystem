@@ -218,13 +218,6 @@ export function useClientReviewColumns(): VxeTableGridOptions<ClientTaskRow>['co
       showOverflow: true,
     },
     {
-      field: 'taskType',
-      title: $t('auditApproval.task.type'),
-      minWidth: 120,
-      align: 'center',
-      cellRender: { name: 'CellTag', options: getClientTaskTypeOptions() },
-    },
-    {
       field: 'client.clientStatus',
       title: $t('auditApproval.clientReview.clientStatus'),
       minWidth: 120,
