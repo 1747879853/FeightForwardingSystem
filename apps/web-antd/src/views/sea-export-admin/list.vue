@@ -740,7 +740,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           </span>
           <span
             v-else
-            class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
+            class="business-status inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
             :style="{
               color: resolveBusinessStatus(row).colors.color,
               backgroundColor: resolveBusinessStatus(row).colors.background,
@@ -824,6 +824,17 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 <style scoped>
 :deep(.sea-export-keyword-input input::placeholder) {
   font-size: 12px;
+}
+
+.business-status {
+  transition:
+    filter 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.business-status:hover {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+  filter: brightness(0.98);
 }
 
 .business-status__pending {
