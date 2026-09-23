@@ -23,11 +23,11 @@ import {
 } from './rules';
 import { billColumns, billSearchSchema, normalizeBillQuery } from './data';
 import ActionModal from './action-modal.vue';
-import HistoryDrawer from './history-drawer.vue';
+import DetailModal from './detail-modal.vue';
 defineOptions({ name: 'BillOfLadingList' });
 const router = useRouter();
 const actionModal = ref<InstanceType<typeof ActionModal>>();
-const historyDrawer = ref<InstanceType<typeof HistoryDrawer>>();
+const detailModal = ref<InstanceType<typeof DetailModal>>();
 const selected = ref<BillOfLading[]>([]);
 const counts = ref<BillCount>();
 const cardFilter = ref<'all' | 'overdue' | 'pending'>('all');
@@ -116,7 +116,7 @@ const [Grid, gridApi] = useVbenVxeGrid<BillOfLading>({
     checkboxChange: syncSelection,
     checkboxAll: syncSelection,
     cellDblclick: ({ row }: { row: BillOfLading }) =>
-      historyDrawer.value?.open(row),
+      detailModal.value?.open(row),
   },
   gridOptions: {
     columns: billColumns(),
@@ -145,6 +145,9 @@ function selectCard(value: typeof cardFilter.value) {
 function changeGrouping(value: number | undefined) {
   if (value === undefined) grouping.disable();
   else grouping.enableField(value);
+}
+function onDetailAction(payload: { action: BillAction; bill: BillOfLading }) {
+  actionModal.value?.open(payload.action, [payload.bill]);
 }
 onMounted(async () => {
   await grouping.restorePersistedField();
@@ -228,8 +231,9 @@ onActivated(() => {
         </Grid>
       </div>
     </div>
-    <ActionModal ref="actionModal" @success="refresh" /><HistoryDrawer
-      ref="historyDrawer"
+    <ActionModal ref="actionModal" @success="refresh" /><DetailModal
+      ref="detailModal"
+      @action="onDetailAction"
     />
   </Page>
 </template>

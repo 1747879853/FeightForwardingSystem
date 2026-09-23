@@ -44,8 +44,16 @@ export interface BillSeaExport {
     cnShortName?: string;
     cnName?: string;
   } | null;
-  pol?: { portName?: string; cnName?: string } | null;
-  pod?: { portName?: string; cnName?: string } | null;
+  pol?: {
+    portName?: string;
+    cnName?: string;
+    ediCode?: string | null;
+  } | null;
+  pod?: {
+    portName?: string;
+    cnName?: string;
+    ediCode?: string | null;
+  } | null;
   transportOrder: {
     id: string;
     commissionNum?: string;
