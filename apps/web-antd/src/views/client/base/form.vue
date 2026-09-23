@@ -163,9 +163,12 @@ const ARCHIVE_SHOW_LAST_AUDIT = new Set<ClientAdminApi.ClientStatus>([
  */
 const showApprovalPath = computed(() => {
   if (isAuditMode.value) return true;
-  if (!auditEnabled.value || !isEdit.value) return false;
-  if (clientStatus.value === undefined) return false;
-  if (!ARCHIVE_SHOW_LAST_AUDIT.has(clientStatus.value)) return false;
+  if (!isEdit.value) return false;
+  if (clientStatus.value === undefined || clientStatus.value === null) {
+    return false;
+  }
+  const status = Number(clientStatus.value) as ClientAdminApi.ClientStatus;
+  if (!ARCHIVE_SHOW_LAST_AUDIT.has(status)) return false;
   return lastAuditTask.value != null;
 });
 
@@ -862,7 +865,11 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   // 设置失信状态
   isDishonest.value = (detail as any).isDishonest ?? false;
   clientStatus.value = detail.clientStatus;
-  lastAuditTask.value = detail.lastAuditTask ?? null;
+  lastAuditTask.value =
+    detail.lastAuditTask ??
+    (detail as { LastAuditTask?: ClientAdminApi.ClientTaskDto | null })
+      .LastAuditTask ??
+    null;
 
   // 设置行业类别
   if (isClient.value) {
@@ -2819,151 +2826,146 @@ watch(
       </div>
     </div>
 
-    <Card
-      class="right-column stakeholders-panel mr-2"
-      :class="{
-        'client-audit-section--changed': changedAuditSections.stakeholders,
-      }"
-    >
-      <template #title>
-        <span class="card-title">
-          <span class="stakeholders-panel__title-icon" aria-hidden="true">
-            <IconifyIcon icon="gridicons:multiple-users" class="size-4" />
+    <div class="right-rail">
+      <Card
+        class="right-column stakeholders-panel"
+        :class="{
+          'client-audit-section--changed': changedAuditSections.stakeholders,
+        }"
+      >
+        <template #title>
+          <span class="card-title">
+            <span class="stakeholders-panel__title-icon" aria-hidden="true">
+              <IconifyIcon icon="gridicons:multiple-users" class="size-4" />
+            </span>
+            {{ $t('seaExport.client.stakeholders') }}
           </span>
-          {{ $t('seaExport.client.stakeholders') }}
-        </span>
-      </template>
-
-      <div class="stakeholders-panel__body">
-        <div class="stakeholders-panel__group">
-          <div class="stakeholders-panel__group-label">业务干系人</div>
-          <div
-            v-for="item in defaultOrderUsers"
-            :key="item.userAttribute"
-            class="stakeholder-block"
-            :class="{
-              'stakeholder-block--filled': getStakeholderCount(item) > 0,
-            }"
-          >
-            <div class="stakeholder-block__head">
-              <span class="stakeholder-block__icon" aria-hidden="true">
-                <IconifyIcon
-                  :icon="getOrderUserRoleIcon(item.userAttribute)"
-                  class="size-3.5"
-                />
-              </span>
-              <span class="stakeholder-block__title">
-                {{ getOrderUserRoleLabel(item.userAttribute) }}
-              </span>
-              <span class="stakeholder-block__count">
-                {{ getStakeholderCount(item) }}
-              </span>
-            </div>
-            <UserSelect
-              mode="multiple"
-              :disabled="formLocked"
-              :model-value="item.userIds"
-              label-key="nickName"
-              :user-attribute="item.userAttribute"
-              :selected-items="toUserSelectSelectedItems(item.stakeholderList)"
-              class="stakeholder-block__select"
-              @update:model-value="
-                (v) => updateStakeholders(item.userAttribute, v as number[])
-              "
-            />
-          </div>
-        </div>
-
-        <div class="stakeholders-panel__divider" role="separator"></div>
-
-        <div class="stakeholders-panel__group">
-          <div class="stakeholders-panel__group-label">结算对账</div>
-          <div
-            class="stakeholder-block stakeholder-block--reconciler"
-            :class="{
-              'stakeholder-block--filled': reconcilerUserIds.length > 0,
-            }"
-          >
-            <div class="stakeholder-block__head">
-              <span class="stakeholder-block__icon" aria-hidden="true">
-                <IconifyIcon
-                  icon="mdi:file-table-box-outline"
-                  class="size-3.5"
-                />
-              </span>
-              <span class="stakeholder-block__title">对账人</span>
-              <span class="stakeholder-block__count">
-                {{ reconcilerUserIds.length }}
-              </span>
-            </div>
-            <UserSelect
-              mode="multiple"
-              :disabled="formLocked"
-              :model-value="reconcilerUserIds"
-              label-key="nickName"
-              :selected-items="toUserSelectSelectedItems(reconcilerList)"
-              class="stakeholder-block__select"
-              @update:model-value="updateReconcilers($event as number[])"
-            />
-          </div>
-        </div>
-
-        <template v-if="showApprovalPath">
-          <div class="stakeholders-panel__divider" role="separator"></div>
-          <div class="client-audit-path">
-            <div class="client-audit-path__title">审批信息</div>
-            <div
-              v-if="
-                panelAuditTask?.submitUserName || panelAuditTask?.submitTime
-              "
-              class="client-audit-path__meta"
-            >
-              <span class="client-audit-path__meta-label">提交</span>
-              <span>
-                {{ panelAuditTask?.submitUserName || '—' }}
-                <template
-                  v-if="formatAuditPanelTime(panelAuditTask?.submitTime)"
-                >
-                  · {{ formatAuditPanelTime(panelAuditTask?.submitTime) }}
-                </template>
-              </span>
-            </div>
-            <div
-              v-if="panelAuditTask?.auditUserName || panelAuditTask?.auditTime"
-              class="client-audit-path__meta"
-            >
-              <span class="client-audit-path__meta-label">终审</span>
-              <span>
-                {{ panelAuditTask?.auditUserName || '—' }}
-                <template
-                  v-if="formatAuditPanelTime(panelAuditTask?.auditTime)"
-                >
-                  · {{ formatAuditPanelTime(panelAuditTask?.auditTime) }}
-                </template>
-              </span>
-            </div>
-            <div
-              v-if="panelAuditTask?.applyRemark"
-              class="client-audit-path__remark"
-            >
-              <span class="client-audit-path__meta-label">申请原因</span>
-              <span>{{ panelAuditTask.applyRemark }}</span>
-            </div>
-            <div
-              v-if="panelAuditTask?.remark"
-              class="client-audit-path__remark client-audit-path__remark--final"
-            >
-              <span class="client-audit-path__meta-label">终审意见</span>
-              <span>{{ panelAuditTask.remark }}</span>
-            </div>
-            <template v-if="approvalPathInstance">
-              <div class="client-audit-path__flow-title">审批路径</div>
-              <ApprovalPath :instance="approvalPathInstance" />
-            </template>
-          </div>
         </template>
-      </div>
-    </Card>
+
+        <div class="stakeholders-panel__body">
+          <div class="stakeholders-panel__group">
+            <div class="stakeholders-panel__group-label">业务干系人</div>
+            <div
+              v-for="item in defaultOrderUsers"
+              :key="item.userAttribute"
+              class="stakeholder-block"
+              :class="{
+                'stakeholder-block--filled': getStakeholderCount(item) > 0,
+              }"
+            >
+              <div class="stakeholder-block__head">
+                <span class="stakeholder-block__icon" aria-hidden="true">
+                  <IconifyIcon
+                    :icon="getOrderUserRoleIcon(item.userAttribute)"
+                    class="size-3.5"
+                  />
+                </span>
+                <span class="stakeholder-block__title">
+                  {{ getOrderUserRoleLabel(item.userAttribute) }}
+                </span>
+                <span class="stakeholder-block__count">
+                  {{ getStakeholderCount(item) }}
+                </span>
+              </div>
+              <UserSelect
+                mode="multiple"
+                :disabled="formLocked"
+                :model-value="item.userIds"
+                label-key="nickName"
+                :user-attribute="item.userAttribute"
+                :selected-items="
+                  toUserSelectSelectedItems(item.stakeholderList)
+                "
+                class="stakeholder-block__select"
+                @update:model-value="
+                  (v) => updateStakeholders(item.userAttribute, v as number[])
+                "
+              />
+            </div>
+          </div>
+
+          <div class="stakeholders-panel__divider" role="separator"></div>
+
+          <div class="stakeholders-panel__group">
+            <div class="stakeholders-panel__group-label">结算对账</div>
+            <div
+              class="stakeholder-block stakeholder-block--reconciler"
+              :class="{
+                'stakeholder-block--filled': reconcilerUserIds.length > 0,
+              }"
+            >
+              <div class="stakeholder-block__head">
+                <span class="stakeholder-block__icon" aria-hidden="true">
+                  <IconifyIcon
+                    icon="mdi:file-table-box-outline"
+                    class="size-3.5"
+                  />
+                </span>
+                <span class="stakeholder-block__title">对账人</span>
+                <span class="stakeholder-block__count">
+                  {{ reconcilerUserIds.length }}
+                </span>
+              </div>
+              <UserSelect
+                mode="multiple"
+                :disabled="formLocked"
+                :model-value="reconcilerUserIds"
+                label-key="nickName"
+                :selected-items="toUserSelectSelectedItems(reconcilerList)"
+                class="stakeholder-block__select"
+                @update:model-value="updateReconcilers($event as number[])"
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <section v-if="showApprovalPath" class="client-audit-dock">
+        <div class="client-audit-path__title">审批信息</div>
+        <div
+          v-if="panelAuditTask?.submitUserName || panelAuditTask?.submitTime"
+          class="client-audit-path__meta"
+        >
+          <span class="client-audit-path__meta-label">提交</span>
+          <span>
+            {{ panelAuditTask?.submitUserName || '—' }}
+            <template v-if="formatAuditPanelTime(panelAuditTask?.submitTime)">
+              · {{ formatAuditPanelTime(panelAuditTask?.submitTime) }}
+            </template>
+          </span>
+        </div>
+        <div
+          v-if="panelAuditTask?.auditUserName || panelAuditTask?.auditTime"
+          class="client-audit-path__meta"
+        >
+          <span class="client-audit-path__meta-label">终审</span>
+          <span>
+            {{ panelAuditTask?.auditUserName || '—' }}
+            <template v-if="formatAuditPanelTime(panelAuditTask?.auditTime)">
+              · {{ formatAuditPanelTime(panelAuditTask?.auditTime) }}
+            </template>
+          </span>
+        </div>
+        <div
+          v-if="panelAuditTask?.applyRemark"
+          class="client-audit-path__remark"
+        >
+          <span class="client-audit-path__meta-label">申请原因</span>
+          <span>{{ panelAuditTask.applyRemark }}</span>
+        </div>
+        <div
+          v-if="panelAuditTask?.remark"
+          class="client-audit-path__remark client-audit-path__remark--final"
+        >
+          <span class="client-audit-path__meta-label">终审意见</span>
+          <span>{{ panelAuditTask.remark }}</span>
+        </div>
+        <template v-if="approvalPathInstance">
+          <div class="client-audit-path__flow-title">审批路径</div>
+          <ApprovalPath :instance="approvalPathInstance" />
+        </template>
+      </section>
+    </div>
 
     <AddressModalComponent @add="addAddressData" @edit="editAddressData" />
     <RiskbirdModal
@@ -2978,12 +2980,22 @@ watch(
 </template>
 
 <style scoped lang="scss">
-.right-column {
+.right-rail {
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
+  gap: 10px;
+  align-self: flex-start;
   width: 280px;
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 140px);
+}
+
+.right-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 280px;
+  min-height: 0;
   overflow: hidden;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -3008,11 +3020,34 @@ watch(
   }
 
   :deep(.ant-card-body) {
+    display: flex;
     flex: 1;
+    flex-direction: column;
     min-height: 0;
-    padding: 12px !important;
-    overflow: auto;
+    padding: 0 !important;
+    overflow: hidden;
   }
+}
+
+.stakeholders-panel__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+}
+
+.client-audit-dock {
+  flex-shrink: 0;
+  max-height: 46%;
+  padding: 10px 12px 12px;
+  overflow: auto;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .stakeholders-panel__title-icon {
@@ -3025,12 +3060,6 @@ watch(
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 12%);
   border-radius: 6px;
-}
-
-.stakeholders-panel__body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .stakeholders-panel__group {
@@ -3346,13 +3375,6 @@ watch(
   font-size: 12px;
   line-height: 1.4;
   color: #f97316;
-}
-
-.client-audit-path {
-  padding: 10px 10px 8px;
-  background: hsl(var(--primary) / 3%);
-  border: 1px solid hsl(var(--border));
-  border-radius: 8px;
 }
 
 .client-audit-path__title {

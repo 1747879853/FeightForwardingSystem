@@ -102,6 +102,10 @@ const actionWrapperClass = computed(() => {
     }
     case 'rowEnd': {
       cls.push('col-[-2/-1]');
+      // 收起时钉在第一行末列。第一行字段占满后，只写末列会把按钮挤到下一行单独占高。
+      if (collapsed.value) {
+        cls.push('row-start-1');
+      }
       break;
     }
     // 'inline' 不需要额外类名，保持默认

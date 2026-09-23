@@ -46,6 +46,7 @@
     "fileCount": "{0} files",
     "empty": "No attachment type configured",
     "emptyType": "No attachments",
+    "clickOrDragUpload": "Click or drag to upload",
     "uncategorized": "Uncategorized",
     "loadFailed": "Failed to load attachments",
     "uploadSuccess": "Upload successful",

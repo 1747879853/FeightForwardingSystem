@@ -707,10 +707,11 @@ onMounted(() => {
 
 .attach-section--app-files {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
   margin-top: 16px;
+  overflow: hidden;
 }
 
 .attach-section-title {
@@ -721,11 +722,15 @@ onMounted(() => {
   color: #333;
 }
 
+/* 卡片固定 375px，上传区不收缩。列表若随内容撑高，会被卡片 overflow:hidden 裁掉且没有滚动条。
+   高度按约两行附件封顶，多出来的在列表内滚动。 */
 .attach-app-list {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: 80px;
   padding-right: 2px;
   overflow: hidden auto;
+  overscroll-behavior: contain;
 }
 
 .attach-item {

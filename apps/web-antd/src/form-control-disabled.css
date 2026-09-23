@@ -1,7 +1,8 @@
 /*
  * 全局：禁用/只读表单控件文字对比度。
  * Ant Design 默认 disabled 字色约 25% 黑，业务审阅页几乎看不清。
- * 保持浅底表示不可编辑，前景提高到接近正文；biz-select 只读样式优先（选择器更具体）。
+ * 保持浅底表示不可编辑，已录入文字提高到接近正文。
+ * 占位提示保持浅色，避免「请输入 / 请选择日期」被看成已填写内容。
  * 不覆盖 Button：禁用按钮仍走组件自身语义色。
  */
 .ant-input-disabled,
@@ -13,7 +14,6 @@ textarea.ant-input-disabled,
 .ant-input-number-disabled .ant-input-number-input,
 .ant-select-disabled .ant-select-selector,
 .ant-select-disabled .ant-select-selection-item,
-.ant-select-disabled .ant-select-selection-placeholder,
 .ant-cascader-picker-disabled .ant-select-selector,
 .ant-picker-disabled,
 .ant-picker-disabled input,
@@ -24,6 +24,23 @@ textarea.ant-input-disabled,
   color: hsl(var(--foreground) / 82%) !important;
   -webkit-text-fill-color: hsl(var(--foreground) / 82%) !important;
   opacity: 1 !important;
+}
+
+/*
+ * 占位文案（请输入 / 请选择 / 请选择日期）不要跟已录入值一样深。
+ * -webkit-text-fill-color 会画进 placeholder，必须在伪元素上单独改回浅色。
+ */
+.ant-input-disabled::placeholder,
+.ant-input[disabled]::placeholder,
+textarea.ant-input-disabled::placeholder,
+.ant-input-affix-wrapper-disabled .ant-input::placeholder,
+.ant-input-number-disabled .ant-input-number-input::placeholder,
+.ant-picker-disabled input::placeholder,
+.ant-mentions-disabled textarea::placeholder,
+.ant-select-disabled .ant-select-selection-placeholder,
+.ant-cascader-picker-disabled .ant-select-selection-placeholder {
+  color: hsl(var(--foreground) / 32%) !important;
+  -webkit-text-fill-color: hsl(var(--foreground) / 32%) !important;
 }
 
 .ant-input-disabled,

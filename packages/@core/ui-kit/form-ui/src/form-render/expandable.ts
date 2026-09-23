@@ -69,37 +69,40 @@ export function useExpandable(props: FormRenderProps) {
     //   return;
     // }
 
-    const formItems = [...wrapperRef.value.children];
+    const formItems = [...wrapperRef.value.children] as HTMLElement[];
 
-    const container = wrapperRef.value;
-    const containerStyles = window.getComputedStyle(container);
-    const rowHeights = containerStyles
-      .getPropertyValue('grid-template-rows')
-      .split(' ');
-
-    const containerRect = container?.getBoundingClientRect();
-
-    formItems.forEach((el) => {
-      const itemRect = el.getBoundingClientRect();
-
-      // 计算元素在第几行
-      const itemTop = itemRect.top - containerRect.top;
-      let rowStart = 0;
-      let cumulativeHeight = 0;
-
-      for (const [i, rowHeight] of rowHeights.entries()) {
-        cumulativeHeight += Number.parseFloat(rowHeight);
-        if (itemTop < cumulativeHeight) {
-          rowStart = i + 1;
-          break;
-        }
+    // 不用 grid-template-rows：操作按钮钉在第一行末列后，计算值经常把两行合成一条轨道，
+    // 折叠保留数偏大，收起时第二行条件仍占高度。
+    // 按钮比输入框略矮，顶边会差几像素，12px 内视为同一行。
+    const visibleItems = formItems.filter(
+      (el) => !el.classList.contains('hidden') && el.offsetHeight > 0,
+    );
+    const tops = visibleItems.map((el) => el.offsetTop).sort((a, b) => a - b);
+    const rowStarts: number[] = [];
+    for (const top of tops) {
+      const current = rowStarts[rowStarts.length - 1];
+      if (current === undefined || top - current > 12) {
+        rowStarts.push(top);
       }
-      if (rowStart > (props?.collapsedRows ?? 1)) {
+    }
+
+    const mapping: Record<number, number> = {};
+    const collapsedRows = props.collapsedRows ?? 1;
+    rowStarts.forEach((rowTop, index) => {
+      const rowStart = index + 1;
+      if (rowStart > collapsedRows) {
         return;
       }
-      rowMapping.value[rowStart] = (rowMapping.value[rowStart] ?? 0) + 1;
-      isCalculated.value = true;
+      const nextTop = rowStarts[index + 1];
+      mapping[rowStart] = visibleItems.filter((el) => {
+        return (
+          el.offsetTop >= rowTop &&
+          (nextTop === undefined || el.offsetTop < nextTop)
+        );
+      }).length;
     });
+    rowMapping.value = mapping;
+    isCalculated.value = rowStarts.length > 0;
   }
 
   onMounted(() => {
