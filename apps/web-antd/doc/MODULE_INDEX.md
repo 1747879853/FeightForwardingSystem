@@ -37,7 +37,7 @@
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；发票号/开票日期/销售方抬头从发票子表拼接，发票总额前端求和；支持批量下载发票附件；申请合计按原币/固定币别分口径展示，分页行嵌入当页按币别合计；先票后付提交前须有发票，列表可点发票流程补录（含从进项发票选择）。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-09-20 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；发票子表含销售方抬头与金额，总额前端求和；「从进项发票选择」在发票方式「不开票」右侧（已填票号排除，已选银行带开票信息 id）；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付可先空着保存、提交时才必填；可从海出/海进/空出应收应付带 orderFeeIds 预填（同一套发票校验）；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索，可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-09-19 |
-| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；发票子表含销售方抬头与金额，总额前端求和，保存全量覆盖；「从进项发票选择」在发票方式「不开票」右侧；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付提交时才要求至少一条发票；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索并筛业务类型，按业务简要读港口备注；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-09-19 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；发票子表含销售方抬头与金额，总额前端求和，保存全量覆盖；「从进项发票选择」在发票方式「不开票」右侧；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付提交时才要求至少一条发票；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索并筛业务类型，按业务简要读港口备注；驳回后可再次提交。编辑页固定打开时的申请单，审核时间轴不跟全局路由。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-09-24 |
 | fee-management | `/fee-management/invoice-application` | 费用管理 | 开票申请列表：检索、新建、双击编辑或查看、提交与撤销；申请时间筛选按自然日闭区间；列表展示关联费用聚合的结算状态；编辑提交进查看、查看撤回进编辑；跨部门查看时归属组织回显公司名、销售方按所属公司拉取。 | [开票申请列表](./modules/fee-management/invoice-application.md) | 2026-09-19 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-09-20 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-09-19 |
@@ -46,9 +46,9 @@
 | settlement-management | `/settlement-management/payment-settlement` | 财务管理 | 付费结算列表与模块实现说明（筛选、锁定、权限、代码结构）。 | [付费结算](./modules/settlement-management/payment-settlement.md) | 2026-09-20 |
 | settlement-management | `/settlement-management/payment-settlement/edit/:id` | 财务管理 | 付费结算编辑：按「付费申请+原币」扁平行对接 `*ByCurrencyAsync`；汇率由后端从申请快照；结算对象与币别随第一张申请锁定；表单逻辑拆 composable。 | [付费结算编辑](./modules/settlement-management/payment-settlement-id-edit.md) | 2026-09-20 |
 | settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名；支持付款方/银行/核销状态分组，删除后同步刷新分组条数。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-09-08 |
-| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号、客户对账与收付类型等检索，业务行可全选当前页费用明细。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-20 |
+| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号、客户对账与收付类型等检索，业务行可全选当前页费用明细。编辑页固定打开时的流水，切页不重载。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-24 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-09-08 |
-| settlement-management | `/settlement-management/input-invoice` | 财务管理 | 进项发票台账：检索、分组、手动拉取、双击进详情；拉取成功后同步刷新分组条数。付费申请可从本台账勾选回填。 | [进项发票列表](./modules/settlement-management/input-invoice.md) | 2026-09-09 |
+| settlement-management | `/settlement-management/input-invoice` | 财务管理 | 进项发票台账：检索、分组、手动拉取、双击进详情；详情固定打开时的发票，切页不重拉；拉取成功后同步刷新分组条数。付费申请可从本台账勾选回填。 | [进项发票列表](./modules/settlement-management/input-invoice.md) | 2026-09-24 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底；首查稳定带上费用审核状态默认「未处理」；审核成功后同步刷新分组条数。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-09-20 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」，首查经 `submitForm` 写入最近提交值；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表（含抬头、金额、总额）及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-20 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；「我的审核状态」默认审核中，首查经 `submitForm` 写入最近提交值；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-09-09 |
@@ -76,7 +76,7 @@
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-09-13 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
 | basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板：列表 + 编辑页；明细表 flex 填高，小屏可滚全行；未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-20 |
-| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。 | [用户管理](./modules/system/user.md) | 2026-09-10 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。编辑页缓存后仍固定打开时的用户。 | [用户管理](./modules/system/user.md) | 2026-09-24 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-09-20 |
 | system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-20 |

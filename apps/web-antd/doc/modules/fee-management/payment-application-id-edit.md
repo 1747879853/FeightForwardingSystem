@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-09-19
 - **添加费用筛选范围：** 首次查询即记录筛选条件；切换结算对象或其他筛选条件时清空旧选择和金额缓存，翻页或调整每页条数保留选择。重置、重新打开抽屉会使旧请求失效，避免旧结果覆盖当前列表。
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
-- **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
+- **审核流程：** 右侧 `WorkflowTimeline` 按打开本页时记下的申请 ID 拉取工作流，切到其他 `:id` 页不会改拉对方流程。若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建；这个标记同样在打开时记下。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。右侧附件卡片随左侧内容撑开，铺满审核流程下方剩余高度。
 - **发票明细子表：** 任意可保存状态均可维护多张发票（每行发票号/开票日期/销售方抬头/发票金额/单个附件，底部展示总额）。「从进项发票选择」在发票方式 Tab「不开票」右侧（不开票时隐藏）；已填票号（含未保存）进 `excludeInvoiceNos`，结算币别已选银行时传 `clientInvoiceInfoId`。保存走 `EditAsync.paymentApplicationInvoices` **全量覆盖**。发票行上传 PDF/图片即自动识别回填该行，**不自动保存**；已有发票行附件可点「重新识别」。点击发票附件、申请分组附件、结算附件均打开全站附件查看器。申请附件区仍按 `attachmentGroup` 分组上传（与发票行附件模块不同），上传不识别、不回填发票行；名称含「发票」的分组仍可对已有附件点「重新识别」。关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。费用合计银行下拉与账号列加宽，户名、账号完整显示。
@@ -84,6 +84,7 @@ last_updated: 2026-09-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-24 | `Fix` | 编辑页切到其他单据时，审核流程仍查本张申请，不会去拉对方的流程。 | 申请 ID 与 `fromCreate` 在实例创建时记下。时间轴监听的是这个 ID。详见 [变更日志](../../changelogs/change-log-2026-09-24-编辑页固定本页业务ID.md)。 |
 | 2026-09-14 | `Fix` | 申请附件分组按类型原始 `sortId` 降序。 | 与海出附件同一比较函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-09 | `Fix` | 全站附件预览/下载统一：查看器 + blob 友好文件名；打印除外。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 附件预览下载保存名改为 `friendlyFileName`（与列表展示一致）。 | 全站 `openAttachmentViewer`；详见 `changelogs/change-log-2026-09-08-attachment-download-friendly-filename.md`。 |

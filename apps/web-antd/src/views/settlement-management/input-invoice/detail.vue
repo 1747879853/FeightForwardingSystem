@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -28,12 +28,13 @@ import { buildNestedTables } from './detail-columns';
 const route = useRoute();
 const { closeCurrentTab } = useTabs();
 
-/** 详情主键来自路由参数，支持在多个详情 tab 间切换时重新加载 */
-const detailId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] ? String(id[0]) : undefined;
-  return id ? String(id) : undefined;
-});
+function readRouteParam(raw: unknown): string | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value ? String(value) : undefined;
+}
+
+/** 本页只认打开时的发票 ID，切到其他 :id 页时不重新请求详情。 */
+const detailId = readRouteParam(route.params.id);
 
 const loading = ref(false);
 const detail = ref<Api.InputInvoiceDetailDto | null>(null);
@@ -122,16 +123,8 @@ function handleClose() {
 }
 
 onMounted(() => {
-  if (detailId.value) {
-    void loadDetail(detailId.value);
-  }
-});
-
-watch(detailId, (id) => {
-  if (id) {
-    void loadDetail(id);
-  } else {
-    detail.value = null;
+  if (detailId) {
+    void loadDetail(detailId);
   }
 });
 </script>

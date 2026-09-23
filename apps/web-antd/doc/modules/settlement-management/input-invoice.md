@@ -2,7 +2,7 @@
 title: 进项发票列表
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-09-09
 - **分页检索：** 关键字、发票类型、购销方、开票/创建日期等；日期按自然日闭区间提交。
 - **分组统计：** 发票类型、购方名称、销方名称；「未填写」项追加 `*Empty=true`。持久化 `group_config_InputInvoiceList`。
 - **手动拉取：** 打开拉取弹窗，成功后 `handlePullSuccess` 重查列表并 `refreshGroupData()`。
-- **进入详情：** 双击行进 `/settlement-management/input-invoice/detail/:id`；详情里版式文件附件点开走全站查看器，下载用友好文件名。
+- **进入详情：** 双击行进 `/settlement-management/input-invoice/detail/:id`；详情只认打开时的发票 ID，切到其他单据不会把本页重拉成对方的发票。版式文件附件点开走全站查看器，下载用友好文件名。
 - **底部合计：** 当前页含税/不含税/税额合计（进项票均为人民币）。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -53,5 +53,6 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-24 | `Fix` | 发票详情切到其他单据时，不再按对方 ID 重拉本页。 | 详情 ID 在实例创建时记下，去掉对全局 `params.id` 的监听。详见 [变更日志](../../changelogs/change-log-2026-09-24-编辑页固定本页业务ID.md)。 |
 | 2026-09-09 | `Fix` | 详情版式文件附件改为全站查看器预览，不再新开直链。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 手动拉取成功后同步刷新分组 Tab 条数。 | `handlePullSuccess` 在 `gridApi.query()` 后调用 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

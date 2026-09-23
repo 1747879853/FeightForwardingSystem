@@ -65,11 +65,13 @@ const canAddReceiveSettlement = computed(() =>
   hasAccessByCodes([receiveSettlementPerm.add]),
 );
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+function readRouteParam(raw: unknown): string | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value ? String(value) : undefined;
+}
+
+/** 本页只认打开时的流水 ID。新建保存会换路由并新建实例，不能跟着全局 :id 重载。 */
+const editId = ref<string | undefined>(readRouteParam(route.params.id));
 const isEdit = computed(() => !!editId.value);
 
 const pageLoading = ref(false);
@@ -507,10 +509,6 @@ onMounted(async () => {
     await nextTick();
     savedFormFingerprint.value = formFingerprint.value;
   }
-});
-
-watch(editId, async (value, previousValue) => {
-  if (value && value !== previousValue) await loadEditData();
 });
 
 onUnmounted(() => {

@@ -30,12 +30,14 @@ type FormExpose = {
 
 const route = useRoute();
 
-/** 从路由参数解析用户ID */
-const userId = computed<number | undefined>(() => {
-  const raw = route.params.id;
-  const id = Number(Array.isArray(raw) ? raw[0] : raw);
+/** 每个缓存标签只认打开时的用户 ID，切到其他 :id 页时不改子面板。 */
+function readRouteUserId(raw: unknown): number | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const id = Number(value);
   return Number.isFinite(id) && id > 0 ? id : undefined;
-});
+}
+
+const userId = readRouteUserId(route.params.id);
 
 const { resetTabTitle, setTabTitle } = useTabs();
 
@@ -43,14 +45,14 @@ const { resetTabTitle, setTabTitle } = useTabs();
 const resolvedUserName = ref('');
 
 async function syncTabTitle() {
-  if (userId.value == null) return;
+  if (userId == null) return;
   // 已有用户名时直接回写（keep-alive 重新激活时页签可能保留旧标题）
   if (resolvedUserName.value) {
     void setTabTitle(tabTitle.value);
     return;
   }
   try {
-    const user = await getUser(userId.value, { silent: true });
+    const user = await getUser(userId, { silent: true });
     const name = user.nickName || user.userName || '';
     if (name) {
       resolvedUserName.value = name;

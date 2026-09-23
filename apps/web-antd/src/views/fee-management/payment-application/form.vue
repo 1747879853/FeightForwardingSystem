@@ -132,11 +132,14 @@ const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+function readRouteParam(raw: unknown): string | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value ? String(value) : undefined;
+}
+
+/** 本页只认打开时的申请 ID。审核时间轴会监听该 ID，不能跟着全局路由改。 */
+const editId = ref<string | undefined>(readRouteParam(route.params.id));
+const openedFromCreate = route.query.fromCreate === '1';
 const isEdit = computed(() => !!editId.value);
 /** 提交/撤销提交后后端审核流可能尚未更新，延迟再拉 */
 const WORKFLOW_STATUS_CHANGE_DELAY_MS = 2000;
@@ -149,7 +152,7 @@ const workflowLoadDelayMs = computed(() => {
   if (workflowDelayAfterStatusChange.value) {
     return WORKFLOW_STATUS_CHANGE_DELAY_MS;
   }
-  return route.query.fromCreate === '1' ? WORKFLOW_STATUS_CHANGE_DELAY_MS : 0;
+  return openedFromCreate ? WORKFLOW_STATUS_CHANGE_DELAY_MS : 0;
 });
 
 function reloadWorkflowAfterStatusChange() {
