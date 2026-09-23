@@ -44,6 +44,8 @@ const EMPTY_STATE: AttachmentViewerState = {
 
 const visible = ref(false);
 const current = ref<AttachmentViewerState>({ ...EMPTY_STATE });
+const playlist = ref<AttachmentViewerState[]>([]);
+const playlistIndex = ref(0);
 
 function formatUploadTime(value?: null | string) {
   if (!value) return '';
@@ -64,42 +66,93 @@ function pickFileName(target: AttachmentViewerTarget) {
   );
 }
 
-/**
- * 打开全站附件查看器。可传入附件 DTO、部分字段，或直接传 URL 字符串。
- * 相对路径会按当前品牌后端根补全；图片/PDF/OFD/Office 在弹窗内预览。
- */
-export function openAttachmentViewer(
-  target?: AttachmentViewerTarget | null | string,
-) {
-  const params: AttachmentViewerTarget =
-    typeof target === 'string' ? { url: target } : (target ?? {});
-  const fileUrl = pickFileUrl(params);
-  if (!fileUrl) {
-    message.warning($t('component.filePreview.missingUrl'));
-    return false;
-  }
+export interface AttachmentViewerOpenOptions {
+  /** 同一批附件。多于一个时，预览弹窗可前后翻页 */
+  files?: Array<AttachmentViewerTarget | string>;
+}
 
-  current.value = {
+function toViewerState(
+  target: AttachmentViewerTarget | string,
+): AttachmentViewerState | null {
+  const params: AttachmentViewerTarget =
+    typeof target === 'string' ? { url: target } : target;
+  const fileUrl = pickFileUrl(params);
+  if (!fileUrl) return null;
+  return {
     fileUrl,
     fileName: pickFileName(params),
     uploader: String(params.uploader || params.creatorUserName || '').trim(),
     uploadTime: formatUploadTime(params.uploadTime || params.creationTime),
     title: String(params.title || '').trim(),
   };
+}
+
+/**
+ * 打开全站附件查看器。可传入附件 DTO、部分字段，或直接传 URL 字符串。
+ * 传入 files 后，预览弹窗可翻到上一张 / 下一张。
+ * 相对路径会按当前品牌后端根补全；图片/PDF/OFD/Office 在弹窗内预览。
+ */
+export function openAttachmentViewer(
+  target?: AttachmentViewerTarget | null | string,
+  options?: AttachmentViewerOpenOptions,
+) {
+  const primary = target ? toViewerState(target) : null;
+  const fromList = (options?.files ?? [])
+    .map((item) => toViewerState(item))
+    .filter((item): item is AttachmentViewerState => item !== null);
+  const list = fromList.length > 0 ? fromList : primary ? [primary] : [];
+  if (!primary && list.length === 0) {
+    message.warning($t('component.filePreview.missingUrl'));
+    return false;
+  }
+
+  const currentItem = primary ?? list[0]!;
+  let index = list.findIndex((item) => item.fileUrl === currentItem.fileUrl);
+  if (index < 0) {
+    list.unshift(currentItem);
+    index = 0;
+  }
+
+  playlist.value = list;
+  playlistIndex.value = index;
+  current.value = { ...list[index]! };
   visible.value = true;
   return true;
+}
+
+export function showAttachmentAt(index: number) {
+  const item = playlist.value[index];
+  if (!item) return;
+  playlistIndex.value = index;
+  current.value = { ...item };
+}
+
+export function showPrevAttachment() {
+  if (playlistIndex.value <= 0) return;
+  showAttachmentAt(playlistIndex.value - 1);
+}
+
+export function showNextAttachment() {
+  if (playlistIndex.value >= playlist.value.length - 1) return;
+  showAttachmentAt(playlistIndex.value + 1);
 }
 
 export function closeAttachmentViewer() {
   visible.value = false;
   current.value = { ...EMPTY_STATE };
+  playlist.value = [];
+  playlistIndex.value = 0;
 }
 
 export function useAttachmentViewer() {
   return {
     visible,
     current,
+    playlist,
+    playlistIndex,
     open: openAttachmentViewer,
     close: closeAttachmentViewer,
+    showPrev: showPrevAttachment,
+    showNext: showNextAttachment,
   };
 }

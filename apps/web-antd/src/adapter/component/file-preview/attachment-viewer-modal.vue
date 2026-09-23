@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+} from 'vue';
 import { useRouter } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
@@ -40,6 +47,12 @@ interface Props {
   title?: string;
   /** dialog：弹窗；page：独立预览页 */
   mode?: 'dialog' | 'page';
+  /** 多附件时的页码，如 2 / 5。空字符串表示不显示翻页 */
+  pageLabel?: string;
+  /** 是否有上一张 */
+  hasPrev?: boolean;
+  /** 是否有下一张 */
+  hasNext?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,11 +63,16 @@ const props = withDefaults(defineProps<Props>(), {
   uploadTime: '',
   title: '',
   mode: 'dialog',
+  pageLabel: '',
+  hasPrev: false,
+  hasNext: false,
 });
 
 const emit = defineEmits<{
   'update:open': [value: boolean];
   close: [];
+  prev: [];
+  next: [];
 }>();
 
 const router = useRouter();
@@ -194,6 +212,30 @@ const handleCancel = () => {
 const toggleFullscreen = () => {
   fullscreen.value = !fullscreen.value;
 };
+
+const onPreviewKeydown = (event: KeyboardEvent) => {
+  if (!modelOpen.value || isPageMode.value || !props.pageLabel) return;
+  const target = event.target as HTMLElement | null;
+  const tag = target?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) {
+    return;
+  }
+  if (event.key === 'ArrowLeft' && props.hasPrev) {
+    event.preventDefault();
+    emit('prev');
+  } else if (event.key === 'ArrowRight' && props.hasNext) {
+    event.preventDefault();
+    emit('next');
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', onPreviewKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onPreviewKeydown);
+});
 
 /** 下载走统一 blob + 友好文件名，避免跨域落到存储名 */
 const handleDownload = async () => {
@@ -348,6 +390,7 @@ watch(
           <span v-if="uploadTime">
             {{ $t('component.filePreview.uploadTime') }}：{{ uploadTime }}
           </span>
+          <span v-if="pageLabel">{{ pageLabel }}</span>
         </div>
         <Space>
           <Button v-if="!isPageMode" size="small" @click="toggleFullscreen">
@@ -377,6 +420,26 @@ watch(
       </div>
 
       <div class="attachment-viewer-body">
+        <button
+          v-if="pageLabel"
+          type="button"
+          class="attachment-viewer-nav attachment-viewer-nav--prev"
+          :disabled="!hasPrev"
+          :title="$t('component.filePreview.prev')"
+          @click="emit('prev')"
+        >
+          <IconifyIcon icon="mdi:chevron-left" class="size-7" />
+        </button>
+        <button
+          v-if="pageLabel"
+          type="button"
+          class="attachment-viewer-nav attachment-viewer-nav--next"
+          :disabled="!hasNext"
+          :title="$t('component.filePreview.next')"
+          @click="emit('next')"
+        >
+          <IconifyIcon icon="mdi:chevron-right" class="size-7" />
+        </button>
         <!-- 图片预览 -->
         <div v-if="category === 'image'" class="attachment-viewer-image-wrap">
           <Image
@@ -422,7 +485,7 @@ watch(
           </div>
           <div
             v-else-if="officeSrc"
-            :key="`${officeKind}-${isExpanded}`"
+            :key="`${officeKind}-${fileUrl}-${isExpanded}`"
             class="attachment-viewer-office"
           >
             <VueOfficeExcel
@@ -540,6 +603,40 @@ watch(
   height: 64vh;
   overflow: hidden;
   background: hsl(var(--background));
+}
+
+.attachment-viewer-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 64px;
+  color: #fff;
+  cursor: pointer;
+  background: hsl(var(--foreground) / 45%);
+  border: 0;
+  border-radius: 8px;
+  transform: translateY(-50%);
+}
+
+.attachment-viewer-nav:hover:not(:disabled) {
+  background: hsl(var(--foreground) / 62%);
+}
+
+.attachment-viewer-nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.attachment-viewer-nav--prev {
+  left: 12px;
+}
+
+.attachment-viewer-nav--next {
+  right: 12px;
 }
 
 .attachment-viewer-shell.is-expanded .attachment-viewer-body {

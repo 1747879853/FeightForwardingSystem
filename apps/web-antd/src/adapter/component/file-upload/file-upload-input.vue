@@ -7,7 +7,7 @@ import type {
 
 import type { Attachment } from '#/api/common/upload';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 import { $t } from '@vben/locales';
@@ -251,11 +251,7 @@ const handlePreview = (file: UploadFile) => {
   );
 
   if (attachment?.url) {
-    openAttachmentViewer({
-      url: attachment.url,
-      fileName: attachment.fileName,
-      friendlyFileName: attachment.friendlyFileName,
-    });
+    openPreview(attachment);
   } else {
     message.warning($t('component.fileUpload.previewFailed'));
   }
@@ -270,149 +266,71 @@ const handleChange = (info: UploadChangeParam) => {
   }
 };
 
+/** 逐个上传本地文件（拖拽、选择、粘贴共用） */
+const uploadMany = async (files: File[]) => {
+  if (props.disabled || files.length === 0) return;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (!file) continue;
+
+    if (innerValue.value.length >= props.maxCount) {
+      message.warning(
+        $t('component.fileUpload.maxCountExceeded', [props.maxCount]),
+      );
+      break;
+    }
+
+    if (!isAllowedType(file)) {
+      message.error($t('component.fileUpload.typeNotAllowed'));
+      continue;
+    }
+
+    if (!isAllowedSize(file)) {
+      message.error($t('component.fileUpload.sizeExceeded', [props.maxSizeMB]));
+      continue;
+    }
+
+    const uid = `${Date.now()}-${i}`;
+    uploadingUids.value.add(uid);
+
+    try {
+      const formData = new FormData();
+      formData.append(props.fieldName, file);
+      const resultList = await uploadFile(formData);
+
+      if (resultList && resultList.length > 0 && resultList[0]) {
+        innerValue.value.push(mapResultToAttachment(resultList[0]));
+        emitUpdate();
+        message.success($t('component.fileUpload.uploadSuccess'));
+      } else {
+        message.error($t('component.fileUpload.uploadFailed'));
+      }
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      message.error($t('component.fileUpload.uploadFailed'));
+    } finally {
+      uploadingUids.value.delete(uid);
+    }
+  }
+};
+
 /** 处理拖拽区域的文件放置 */
 const handleDrop = async (e: DragEvent) => {
   e.preventDefault();
   e.stopPropagation();
-
-  if (props.disabled || isMaxCount.value) {
-    return;
-  }
-
-  const files = e.dataTransfer?.files;
-  if (!files || files.length === 0) return;
-
-  // 逐个处理文件
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (file) {
-      // 检查是否达到最大数量
-      if (innerValue.value.length >= props.maxCount) {
-        message.warning(
-          $t('component.fileUpload.maxCountExceeded', [props.maxCount]),
-        );
-        break;
-      }
-
-      // 验证文件类型
-      if (!isAllowedType(file)) {
-        message.error($t('component.fileUpload.typeNotAllowed'));
-        continue;
-      }
-
-      // 验证文件大小
-      if (!isAllowedSize(file)) {
-        message.error(
-          $t('component.fileUpload.sizeExceeded', [props.maxSizeMB]),
-        );
-        continue;
-      }
-
-      // 开始上传
-      const uid = `${Date.now()}-${i}`;
-      uploadingUids.value.add(uid);
-
-      try {
-        const formData = new FormData();
-        formData.append(props.fieldName, file);
-
-        const resultList = await uploadFile(formData);
-
-        // 接口返回的是数组，取第一个结果
-        if (resultList && resultList.length > 0) {
-          const resultItem = resultList[0];
-          if (resultItem) {
-            const attachment = mapResultToAttachment(resultItem);
-            innerValue.value.push(attachment);
-            emitUpdate();
-            message.success($t('component.fileUpload.uploadSuccess'));
-          } else {
-            message.error($t('component.fileUpload.uploadFailed'));
-          }
-        } else {
-          message.error($t('component.fileUpload.uploadFailed'));
-        }
-      } catch (error: any) {
-        console.error('Upload failed:', error);
-        message.error($t('component.fileUpload.uploadFailed'));
-      } finally {
-        uploadingUids.value.delete(uid);
-      }
-    }
-  }
+  if (props.disabled || isMaxCount.value) return;
+  const files = Array.from(e.dataTransfer?.files ?? []);
+  await uploadMany(files);
 };
 
 /** 处理文件选择（通过点击） */
 const handleFileSelect = async (e: Event) => {
   const target = e.target as HTMLInputElement;
-  const files = target.files;
-  if (!files || files.length === 0) return;
-
-  if (props.disabled || isMaxCount.value) {
-    return;
-  }
-
-  // 逐个处理文件
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (file) {
-      // 检查是否达到最大数量
-      if (innerValue.value.length >= props.maxCount) {
-        message.warning(
-          $t('component.fileUpload.maxCountExceeded', [props.maxCount]),
-        );
-        break;
-      }
-
-      // 验证文件类型
-      if (!isAllowedType(file)) {
-        message.error($t('component.fileUpload.typeNotAllowed'));
-        continue;
-      }
-
-      // 验证文件大小
-      if (!isAllowedSize(file)) {
-        message.error(
-          $t('component.fileUpload.sizeExceeded', [props.maxSizeMB]),
-        );
-        continue;
-      }
-
-      // 开始上传
-      const uid = `${Date.now()}-${i}`;
-      uploadingUids.value.add(uid);
-
-      try {
-        const formData = new FormData();
-        formData.append(props.fieldName, file);
-
-        const resultList = await uploadFile(formData);
-
-        // 接口返回的是数组，取第一个结果
-        if (resultList && resultList.length > 0) {
-          const resultItem = resultList[0];
-          if (resultItem) {
-            const attachment = mapResultToAttachment(resultItem);
-            innerValue.value.push(attachment);
-            emitUpdate();
-            message.success($t('component.fileUpload.uploadSuccess'));
-          } else {
-            message.error($t('component.fileUpload.uploadFailed'));
-          }
-        } else {
-          message.error($t('component.fileUpload.uploadFailed'));
-        }
-      } catch (error: any) {
-        console.error('Upload failed:', error);
-        message.error($t('component.fileUpload.uploadFailed'));
-      } finally {
-        uploadingUids.value.delete(uid);
-      }
-    }
-  }
-
-  // 清空input，允许重复选择同一文件
+  const files = Array.from(target.files ?? []);
   target.value = '';
+  if (props.disabled || isMaxCount.value || files.length === 0) return;
+  await uploadMany(files);
 };
 
 /** 触发文件选择 */
@@ -425,6 +343,83 @@ const triggerFileSelect = () => {
 
 /** 文件输入引用 */
 const fileInput = ref<HTMLInputElement>();
+const rootRef = ref<HTMLElement>();
+const hovered = ref(false);
+
+const previewFiles = () =>
+  innerValue.value
+    .filter((item) => item.url)
+    .map((item) => ({
+      url: item.url,
+      fileName: item.fileName,
+      friendlyFileName: item.friendlyFileName,
+    }));
+
+const openPreview = (attachment: Attachment) => {
+  if (!attachment.url) {
+    message.warning($t('component.fileUpload.previewFailed'));
+    return;
+  }
+  openAttachmentViewer(
+    {
+      url: attachment.url,
+      fileName: attachment.fileName,
+      friendlyFileName: attachment.friendlyFileName,
+    },
+    { files: previewFiles() },
+  );
+};
+
+const isTextEditingTarget = (target: EventTarget | null) => {
+  const el = target as HTMLElement | null;
+  const field = el?.closest?.(
+    'input, textarea, [contenteditable="true"]',
+  ) as HTMLInputElement | null;
+  if (!field) return false;
+  if (field.tagName === 'INPUT' && field.type === 'file') return false;
+  return true;
+};
+
+const clipboardFiles = (event: ClipboardEvent) => {
+  const data = event.clipboardData;
+  if (!data) return [];
+  const named = Array.from(data.files ?? []);
+  const fromItems =
+    named.length > 0
+      ? named
+      : Array.from(data.items ?? [])
+          .filter((item) => item.kind === 'file')
+          .map((item) => item.getAsFile())
+          .filter((file): file is File => !!file);
+
+  return fromItems.map((file, index) => {
+    if (file.name) return file;
+    const ext = file.type === 'image/jpeg' ? 'jpg' : 'png';
+    return new File([file], `screenshot-${Date.now()}-${index}.${ext}`, {
+      type: file.type || 'image/png',
+    });
+  });
+};
+
+const onPaste = (event: ClipboardEvent) => {
+  if (props.disabled || isMaxCount.value) return;
+  if (isTextEditingTarget(event.target)) return;
+  const inside =
+    hovered.value || !!rootRef.value?.contains(document.activeElement);
+  if (!inside) return;
+  const files = clipboardFiles(event);
+  if (files.length === 0) return;
+  event.preventDefault();
+  void uploadMany(files);
+};
+
+onMounted(() => {
+  window.addEventListener('paste', onPaste);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onPaste);
+});
 
 /** 暴露方法 */
 defineExpose({
@@ -440,8 +435,11 @@ defineExpose({
 
 <template>
   <div
+    ref="rootRef"
     class="file-upload-input"
     :class="{ 'file-upload-input--card': isPictureCard }"
+    @mouseenter="hovered = true"
+    @mouseleave="hovered = false"
   >
     <!-- 拖拽上传模式 -->
     <template v-if="drag && !disabled">
@@ -547,13 +545,7 @@ defineExpose({
           v-for="file in innerValue"
           :key="file.attachmentId"
           class="flex cursor-pointer items-center justify-between rounded px-2 py-1.5 hover:bg-gray-50"
-          @click="
-            openAttachmentViewer({
-              url: file.url,
-              fileName: file.fileName,
-              friendlyFileName: file.friendlyFileName,
-            })
-          "
+          @click="openPreview(file)"
         >
           <div class="flex min-w-0 flex-1 items-center gap-2">
             <IconifyIcon

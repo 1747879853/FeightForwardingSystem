@@ -580,18 +580,24 @@ const getBillingPeriodFileIconColor = (
   return '#8c8c8c';
 };
 
-const handlePreview = (row: ClientAdminApi.ClientAttachmentItemDto) => {
+const handlePreview = (
+  row: ClientAdminApi.ClientAttachmentItemDto,
+  files: ClientAdminApi.ClientAttachmentItemDto[] = [],
+) => {
   if (!row.url) {
     message.warning($t('client.attachment.noFileUrl'));
     return;
   }
-  openAttachmentViewer({
-    url: row.url,
-    fileName: getFileName(row),
-    friendlyFileName: row.friendlyFileName,
-    uploader: row.creatorUserName,
-    creationTime: row.creationTime,
-  });
+  openAttachmentViewer(
+    {
+      url: row.url,
+      fileName: getFileName(row),
+      friendlyFileName: row.friendlyFileName,
+      uploader: row.creatorUserName,
+      creationTime: row.creationTime,
+    },
+    { files },
+  );
 };
 
 /** 预览账期附件 */
@@ -600,13 +606,16 @@ const handleBillingPeriodPreview = (row: BillingPeriodAttachmentItem) => {
     message.warning($t('client.attachment.noFileUrl'));
     return;
   }
-  openAttachmentViewer({
-    url: row.url,
-    fileName: getBillingPeriodFileName(row),
-    friendlyFileName: row.friendlyFileName,
-    uploader: row.creatorUserName,
-    creationTime: row.creationTime,
-  });
+  openAttachmentViewer(
+    {
+      url: row.url,
+      fileName: getBillingPeriodFileName(row),
+      friendlyFileName: row.friendlyFileName,
+      uploader: row.creatorUserName,
+      creationTime: row.creationTime,
+    },
+    { files: billingPeriodAttachments.value },
+  );
 };
 
 onMounted(() => {
@@ -785,7 +794,7 @@ onMounted(() => {
               v-for="item in group.items"
               :key="item.attachmentId"
               class="attachment-file-item"
-              @click="handlePreview(item)"
+              @click="handlePreview(item, group.items)"
             >
               <img
                 v-if="isImageFile(item) && item.url"

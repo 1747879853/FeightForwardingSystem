@@ -7,7 +7,8 @@ import { useAttachmentViewer } from './use-attachment-viewer';
 
 defineOptions({ name: 'AttachmentViewerHost' });
 
-const { visible, current, close } = useAttachmentViewer();
+const { visible, current, playlist, playlistIndex, close, showPrev, showNext } =
+  useAttachmentViewer();
 
 const open = computed({
   get: () => visible.value,
@@ -15,6 +16,15 @@ const open = computed({
     if (!value) close();
   },
 });
+
+const pageLabel = computed(() =>
+  playlist.value.length > 1
+    ? `${playlistIndex.value + 1} / ${playlist.value.length}`
+    : '',
+);
+
+const hasPrev = computed(() => playlistIndex.value > 0);
+const hasNext = computed(() => playlistIndex.value < playlist.value.length - 1);
 </script>
 
 <template>
@@ -25,5 +35,10 @@ const open = computed({
     :uploader="current.uploader"
     :upload-time="current.uploadTime"
     :title="current.title"
+    :page-label="pageLabel"
+    :has-prev="hasPrev"
+    :has-next="hasNext"
+    @prev="showPrev"
+    @next="showNext"
   />
 </template>

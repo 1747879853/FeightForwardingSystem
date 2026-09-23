@@ -13,7 +13,7 @@
     "maxSize": "最大大小",
     "maxCount": "最多数量",
     "dragTip": "点击或拖拽文件到此区域上传",
-    "dragHint": "支持多文件上传",
+    "dragHint": "支持多文件上传，可 Ctrl+V 粘贴截图",
     "uploadedFiles": "已上传文件"
   },
   "filePreview": {
@@ -25,6 +25,8 @@
     "downloadFailed": "无法按指定文件名下载，已尝试直接打开",
     "uploader": "上传人",
     "uploadTime": "上传时间",
+    "prev": "上一张",
+    "next": "下一张",
     "unsupported": "该文件类型暂不支持在线预览，请下载后查看",
     "missingUrl": "附件链接不存在",
     "officeFailed": "文档预览失败，请下载后查看",
