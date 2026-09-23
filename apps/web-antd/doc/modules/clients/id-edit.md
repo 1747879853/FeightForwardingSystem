@@ -52,7 +52,8 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-09-23 | `Feature` | 客户审核 / 待审编辑页：「审批路径」放到右侧干系人栏底部；录入人可看当前审核人。 | TAPD 需求 `#1161580498001000167`。详见 [变更日志](../../changelogs/change-log-2026-09-23-client-audit-path-bottom-right.md)。 |
+| 2026-09-23 | `Feature` | 档案详情按 `clientStatus` 展示/隐藏最后一轮审批流程与意见（审核中、驳回展示；已通过不展示）。 | TAPD `#1161580498001000169`；数据用 `DetailAsync.lastAuditTask`。详见 [变更日志](../../changelogs/change-log-2026-09-23-client-detail-last-audit-task.md)。 |
+| 2026-09-23 | `Feature` | 客户审核 / 待审编辑页：「审批路径」放到右侧干系人栏底部。 | TAPD 需求 `#1161580498001000167`。数据源随后由 `#1000169` 改为 `lastAuditTask`。详见 [变更日志](../../changelogs/change-log-2026-09-23-client-audit-path-bottom-right.md)。 |
 | 2026-09-14 | `Fix` | 客户附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 共用 `compareAttachmentTypeSortIdDesc`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-11 | `Feature` | 基础信息可维护可空「税率」；费用录入优先取结算对象税率。 | 详见 `changelogs/change-log-2026-09-11-client-tax-rate-fee-linkage.md`。 |
 | 2026-09-11 | `Style` | 「是否共享」挪到所属公司标题右侧并加问号提示；提交补传 `isShared`。 | 详见 `changelogs/change-log-2026-09-11-client-is-shared-beside-org.md`。 |

@@ -718,6 +718,11 @@ export namespace ClientAdminApi {
     dishonestRemark?: string;
     /** 客户审核状态（只读，只能由审核相关接口改） */
     clientStatus?: ClientStatus;
+    /**
+     * 最近一次审核任务（与审核列表行同构；内层 client 恒为 null，无 histories）。
+     * 档案详情按 clientStatus 决定是否展示：审核中/驳回展示，已通过不展示。
+     */
+    lastAuditTask?: ClientTaskDto | null;
 
     isDeleted: boolean;
     deleterUserId?: number;

@@ -2,20 +2,12 @@
 
 ## 背景
 
-[需求 #1161580498001000167](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000167)：客户管理审核时，审批信息放到页面右下角；客户编辑页在走审核流时，录入人也要能看到当前流转到哪位审核人。
-
-> 注意：同号缺陷 #1000167 是币别符号 `undefined`，属另一实体。
+[需求 #1161580498001000167](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000167)：客户管理审核时，审批信息放到页面右下角。
 
 ## 改动
 
-`views/client/base/form.vue`：
+`views/client/base/form.vue`：去掉主内容区顶部「审批路径」，挪到右侧「干系人信息」卡片底部（结算对账下方）。
 
-1. 去掉主内容区顶部「审批路径」块。
-2. 挪到右侧「干系人信息」卡片底部（结算对账下方）。
-3. **审核模式**（`?mode=audit`）：继续用 `GetAuditDetail` 的 `workFlowInstance`。
-4. **编辑页** 客户状态为待审核 / 申请修改中：用 `WorkFlowInstanceAdmin/GetAsync`（`TaskType` 90/91）拉路径，无需 Audit 权限，录入人可看当前审核人。
+## 后续
 
-## 验收
-
-- 客户审核页：右侧干系人栏底部可见「审批路径」，主表上方不再出现。
-- 客户编辑页提交审核后：同位置出现路径，能看到待处理审核人。
+档案详情的数据源与显隐规则由 [TAPD #1000169](./change-log-2026-09-23-client-detail-last-audit-task.md) 改为 `DetailAsync.lastAuditTask`，并按 `clientStatus` 控制展示。

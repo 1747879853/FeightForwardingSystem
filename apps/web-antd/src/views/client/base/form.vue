@@ -83,10 +83,6 @@ import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { setFormApisDisabled } from '#/utils/ticket-editable';
-import {
-  getWorkFlowInstanceDetail,
-  TaskType,
-} from '#/api/audit-approval/payment-review-admin';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import { findMyPendingWorkFlowItemId } from '#/views/audit-approval/client-review/find-pending-item';
 import ApprovalPath from '#/views/audit-approval/client-review/modules/approval-path.vue';
@@ -141,9 +137,8 @@ const isAuditMode = computed(
 const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
 
 const auditDetail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
-/** 普通编辑页拉到的审批路径（录入人无 Audit 权限时走 WorkFlowInstanceAdmin） */
-const editWorkFlowInstance =
-  ref<ClientAdminApi.ClientWorkFlowInstanceDto | null>(null);
+/** 档案 DetailAsync.lastAuditTask；审核中/驳回展示，已通过不展示 */
+const lastAuditTask = ref<ClientAdminApi.ClientTaskDto | null>(null);
 const auditSubmitting = ref(false);
 const changedAuditFields = ref<Set<string>>(new Set());
 const changedAuditSections = ref<AuditChangedSections>({
@@ -154,19 +149,33 @@ const changedAuditSections = ref<AuditChangedSections>({
   type: false,
 });
 
-/** 审核页始终展示；编辑页在待审 / 申请修改中也展示，便于录入人看当前审核人 */
+/** 档案详情按 clientStatus 决定是否挂最后一轮审核信息（勿用 taskStatus 猜） */
+const ARCHIVE_SHOW_LAST_AUDIT = new Set<ClientAdminApi.ClientStatus>([
+  ClientStatus.Auditing,
+  ClientStatus.Rejected,
+  ClientStatus.ModifyAuditing,
+  ClientStatus.ModifyRejected,
+]);
+
+/**
+ * 审核工作台始终展示当前任务路径；
+ * 档案详情：仅 clientStatus∈{待审/驳回/申请修改/申请修改驳回} 且 lastAuditTask 有值时展示。
+ */
 const showApprovalPath = computed(() => {
   if (isAuditMode.value) return true;
   if (!auditEnabled.value || !isEdit.value) return false;
-  return (
-    clientStatus.value === ClientStatus.Auditing ||
-    clientStatus.value === ClientStatus.ModifyAuditing
-  );
+  if (clientStatus.value === undefined) return false;
+  if (!ARCHIVE_SHOW_LAST_AUDIT.has(clientStatus.value)) return false;
+  return lastAuditTask.value != null;
 });
 
+/** 右侧栏展示用的任务：审核模式用详情接口，档案页用 lastAuditTask */
+const panelAuditTask = computed(
+  () => (isAuditMode.value ? auditDetail.value : lastAuditTask.value) ?? null,
+);
+
 const approvalPathInstance = computed(
-  () =>
-    auditDetail.value?.workFlowInstance ?? editWorkFlowInstance.value ?? null,
+  () => panelAuditTask.value?.workFlowInstance ?? null,
 );
 
 const canPendingAudit = computed(
@@ -853,6 +862,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   // 设置失信状态
   isDishonest.value = (detail as any).isDishonest ?? false;
   clientStatus.value = detail.clientStatus;
+  lastAuditTask.value = detail.lastAuditTask ?? null;
 
   // 设置行业类别
   if (isClient.value) {
@@ -1180,7 +1190,6 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
 async function loadAuditContext() {
   if (!editId.value || !isAuditMode.value) return;
   clearAuditHighlights();
-  editWorkFlowInstance.value = null;
   try {
     auditDetail.value = await getClientAuditDetail(editId.value);
     if (
@@ -1204,36 +1213,10 @@ async function loadAuditContext() {
   }
 }
 
-/**
- * 编辑页在待审状态下拉审批路径，让录入人看到当前流转到哪位审核人。
- * 不走 GetAuditDetail（需 Audit 权限），改用通用 WorkFlowInstance。
- */
-async function loadEditApprovalPath() {
-  editWorkFlowInstance.value = null;
-  if (!editId.value || isAuditMode.value || !auditEnabled.value) return;
-  const status = clientStatus.value;
-  if (
-    status !== ClientStatus.Auditing &&
-    status !== ClientStatus.ModifyAuditing
-  ) {
-    return;
-  }
-  try {
-    const detail = await getWorkFlowInstanceDetail(
-      {
-        EntityId: editId.value,
-        TaskType:
-          status === ClientStatus.ModifyAuditing
-            ? TaskType.ModifyClient
-            : TaskType.SubmitClient,
-      },
-      { silent: true },
-    );
-    editWorkFlowInstance.value =
-      detail as ClientAdminApi.ClientWorkFlowInstanceDto;
-  } catch {
-    editWorkFlowInstance.value = null;
-  }
+function formatAuditPanelTime(value?: null | string) {
+  if (!value) return '';
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY-MM-DD HH:mm') : '';
 }
 
 async function leaveAuditPage() {
@@ -1346,7 +1329,6 @@ const loadEditData = async () => {
     } else {
       clearAuditHighlights();
       auditDetail.value = null;
-      await loadEditApprovalPath();
     }
     await syncFormSnapshot();
   } catch (error) {
@@ -2929,8 +2911,55 @@ watch(
         <template v-if="showApprovalPath">
           <div class="stakeholders-panel__divider" role="separator"></div>
           <div class="client-audit-path">
-            <div class="client-audit-path__title">审批路径</div>
-            <ApprovalPath :instance="approvalPathInstance" />
+            <div class="client-audit-path__title">审批信息</div>
+            <div
+              v-if="
+                panelAuditTask?.submitUserName || panelAuditTask?.submitTime
+              "
+              class="client-audit-path__meta"
+            >
+              <span class="client-audit-path__meta-label">提交</span>
+              <span>
+                {{ panelAuditTask?.submitUserName || '—' }}
+                <template
+                  v-if="formatAuditPanelTime(panelAuditTask?.submitTime)"
+                >
+                  · {{ formatAuditPanelTime(panelAuditTask?.submitTime) }}
+                </template>
+              </span>
+            </div>
+            <div
+              v-if="panelAuditTask?.auditUserName || panelAuditTask?.auditTime"
+              class="client-audit-path__meta"
+            >
+              <span class="client-audit-path__meta-label">终审</span>
+              <span>
+                {{ panelAuditTask?.auditUserName || '—' }}
+                <template
+                  v-if="formatAuditPanelTime(panelAuditTask?.auditTime)"
+                >
+                  · {{ formatAuditPanelTime(panelAuditTask?.auditTime) }}
+                </template>
+              </span>
+            </div>
+            <div
+              v-if="panelAuditTask?.applyRemark"
+              class="client-audit-path__remark"
+            >
+              <span class="client-audit-path__meta-label">申请原因</span>
+              <span>{{ panelAuditTask.applyRemark }}</span>
+            </div>
+            <div
+              v-if="panelAuditTask?.remark"
+              class="client-audit-path__remark client-audit-path__remark--final"
+            >
+              <span class="client-audit-path__meta-label">终审意见</span>
+              <span>{{ panelAuditTask.remark }}</span>
+            </div>
+            <template v-if="approvalPathInstance">
+              <div class="client-audit-path__flow-title">审批路径</div>
+              <ApprovalPath :instance="approvalPathInstance" />
+            </template>
           </div>
         </template>
       </div>
@@ -3331,6 +3360,38 @@ watch(
   font-size: 12px;
   font-weight: 600;
   color: hsl(var(--foreground) / 80%);
+}
+
+.client-audit-path__flow-title {
+  margin: 8px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.client-audit-path__meta,
+.client-audit-path__remark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--foreground) / 78%);
+  overflow-wrap: anywhere;
+}
+
+.client-audit-path__meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.client-audit-path__remark--final {
+  padding: 6px 8px;
+  color: hsl(0deg 62% 40%);
+  background: hsl(0deg 70% 96%);
+  border-radius: 6px;
 }
 
 /* 申请修改：有改动的字段/区块用独立色标出 */
