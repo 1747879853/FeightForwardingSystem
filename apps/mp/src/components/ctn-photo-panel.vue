@@ -48,7 +48,16 @@ const busy = computed(
   () => uploading.value || recognizing.value || choosing.value,
 );
 
-const groups = computed(() => props.ctn?.groups ?? []);
+function allowsMultiple(typeName: string) {
+  return typeName.trim() === '空箱箱内';
+}
+
+const groups = computed(() =>
+  [...(props.ctn?.groups ?? [])].sort(
+    (a, b) =>
+      Number(allowsMultiple(b.typeName)) - Number(allowsMultiple(a.typeName)),
+  ),
+);
 const statusText = computed(() =>
   props.ctn?.isLoadingCompleted ? '已完成' : '待处理',
 );
@@ -149,6 +158,7 @@ async function recognizeCtnNo() {
 async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
   if (!group || !props.editable || busy.value || props.saving) return;
+  if (!allowsMultiple(group.typeName) && group.items.length > 0) return;
   if (props.locationPending || !props.locationAddress) {
     uni.showToast({
       icon: 'none',
@@ -164,7 +174,10 @@ async function addPhotos(groupIndex: number) {
   try {
     sourceType = await choosePhotoSource();
     if (!sourceType) return;
-    paths = await chooseImages([sourceType], sourceType === 'camera' ? 1 : 9);
+    paths = await chooseImages(
+      [sourceType],
+      sourceType === 'album' && allowsMultiple(group.typeName) ? 9 : 1,
+    );
   } catch (error) {
     uni.showToast({
       icon: 'none',
@@ -198,6 +211,7 @@ async function addPhotos(groupIndex: number) {
   let failureReason = '';
   try {
     for (const [index, path] of paths.entries()) {
+      if (!allowsMultiple(group.typeName) && group.items.length > 0) break;
       uni.showLoading({
         mask: true,
         title: `上传 ${index + 1}/${paths.length}`,
@@ -386,6 +400,7 @@ function lockMaskScroll() {}
             v-for="(group, gi) in groups"
             :key="String(group.attachmentDtlTypeId ?? 'untyped')"
             class="photo-slot"
+            :class="{ 'photo-slot--multiple': allowsMultiple(group.typeName) }"
           >
             <text class="photo-slot__title"
               >{{ group.typeName }} · {{ group.items.length }} 张</text
@@ -413,7 +428,10 @@ function lockMaskScroll() {}
               </view>
 
               <view
-                v-if="editable"
+                v-if="
+                  editable &&
+                  (allowsMultiple(group.typeName) || group.items.length === 0)
+                "
                 :class="[
                   'thumb',
                   'thumb--add',
@@ -633,13 +651,17 @@ function lockMaskScroll() {}
 
 .photo-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 28rpx;
   padding: 24rpx 0;
 }
 
 .photo-slot {
   min-width: 0;
+}
+
+.photo-slot--multiple {
+  grid-column: 1 / -1;
 }
 
 .photo-slot__title {
@@ -657,8 +679,12 @@ function lockMaskScroll() {}
 
 .photo-slot__body {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16rpx;
+}
+
+.photo-slot--multiple .photo-slot__body {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .thumb {

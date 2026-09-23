@@ -133,6 +133,10 @@ type EditableGroup = {
 const photoEditGroups = ref<EditableGroup[]>([]);
 
 const DEFAULT_PHOTO_GROUP_NAME = '监装照片';
+
+function allowsMultiple(typeName: string) {
+  return typeName.trim() === '空箱箱内';
+}
 /** 采集槽固定边长，与 antd picture-card 一致，避免已传图把格子撑爆 */
 const PHOTO_TILE_PX = 104;
 
@@ -153,7 +157,7 @@ function resolveExistingTypeName(
   );
 }
 
-/** 先铺维护的附件类型空槽，再填该箱已有照片；全部按类型原始 sortId 降序 */
+/** 先铺维护的附件类型空槽，再填该箱已有照片；空箱箱内置顶，其余按类型原始 sortId 降序 */
 function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
   const existing = ctn.attachmentGroups ?? [];
   const itemsByType = new Map<string, EditablePhoto[]>();
@@ -206,8 +210,10 @@ function toEditableGroups(ctn: LoadingOrderAdminApi.LoadingOrderCtnDto) {
     });
   }
 
-  return groups.sort((a, b) =>
-    compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
+  return groups.sort(
+    (a, b) =>
+      Number(allowsMultiple(b.typeName)) - Number(allowsMultiple(a.typeName)) ||
+      compareAttachmentTypeSortIdDesc(a.sortId, b.sortId),
   );
 }
 
@@ -258,12 +264,14 @@ function removePhotoFromGroup(groupIndex: number, photoIndex: number) {
 function handlePhotoUpload(file: File, groupIndex: number) {
   const group = photoEditGroups.value[groupIndex];
   if (!canEdit.value || !group || photoEditSaving.value) return false;
+  if (!allowsMultiple(group.typeName) && group.items.length > 0) return false;
   // beforeUpload 对一次多选逐个调用，先计数，再串行处理，保存等待整个队列。
   photoUploadPending.value += 1;
   const uploader =
     userStore.userInfo?.realName || userStore.userInfo?.username || '';
   photoUploadQueue = photoUploadQueue.then(async () => {
     try {
+      if (!allowsMultiple(group.typeName) && group.items.length > 0) return;
       const watermarked = await watermarkLoadingPhoto(file, uploader);
       const formData = new FormData();
       formData.append('file', watermarked);
@@ -1535,13 +1543,16 @@ const displayValue = (value: null | number | string | undefined) => {
           {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
         </div>
         <p v-if="canEdit" class="photo-edit-hint">
-          每类可添加多张，支持一次多选；新图片自动添加上传人和上传时间水印。
+          空箱箱内可添加多张，其他类型限一张；新图片自动添加上传人和上传时间水印。
         </p>
         <div class="photo-edit-grid">
           <div
             v-for="(group, gi) in photoEditGroups"
             :key="String(group.attachmentDtlTypeId ?? 'untyped')"
             class="photo-edit-slot"
+            :class="{
+              'photo-edit-slot--multiple': allowsMultiple(group.typeName),
+            }"
           >
             <div class="photo-edit-slot__title">
               {{ group.typeName }}
@@ -1570,10 +1581,13 @@ const displayValue = (value: null | number | string | undefined) => {
                 </button>
               </div>
               <Upload
-                v-if="canEdit"
+                v-if="
+                  canEdit &&
+                  (allowsMultiple(group.typeName) || group.items.length === 0)
+                "
                 :show-upload-list="false"
                 accept="image/*"
-                :multiple="true"
+                :multiple="allowsMultiple(group.typeName)"
                 :before-upload="(file) => handlePhotoUpload(file, gi)"
                 :disabled="photoEditUploading || photoEditSaving"
               >
@@ -2241,7 +2255,7 @@ const displayValue = (value: null | number | string | undefined) => {
 
 .photo-edit-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 20px;
   max-height: 60vh;
   overflow-y: auto;
@@ -2251,6 +2265,10 @@ const displayValue = (value: null | number | string | undefined) => {
   min-width: 0;
   padding-bottom: 16px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.photo-edit-slot--multiple {
+  grid-column: 1 / -1;
 }
 
 .photo-edit-slot__title {
