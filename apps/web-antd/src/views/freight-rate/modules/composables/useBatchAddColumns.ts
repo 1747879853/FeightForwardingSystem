@@ -480,6 +480,50 @@ export function useBatchAddColumns(
   };
 }
 
+/**
+ * 保证同一箱型的「成本 / 指导」列相邻（指导紧跟成本）。
+ * 列配置持久化若只含旧的成本列 order，补登记的 ctnSug_* 会与后续成本列抢序，
+ * 导致仅第一对能合并表头；此处在渲染前纠偏。
+ */
+export function ensureCtnCostSugAdjacent(cols: any[]): any[] {
+  if (!cols?.length) return cols;
+
+  const sugById = new Map<string, any>();
+  for (const col of cols) {
+    const data = String(col?.data ?? '');
+    if (data.startsWith('ctnSug_')) {
+      sugById.set(data.slice('ctnSug_'.length), col);
+    }
+  }
+
+  const result: any[] = [];
+  const placedSug = new Set<any>();
+
+  for (const col of cols) {
+    const data = String(col?.data ?? '');
+    if (data.startsWith('ctnSug_')) {
+      continue;
+    }
+    result.push(col);
+    if (data.startsWith('ctn_')) {
+      const sug = sugById.get(data.slice(4));
+      if (sug) {
+        result.push(sug);
+        placedSug.add(sug);
+      }
+    }
+  }
+
+  for (const col of cols) {
+    const data = String(col?.data ?? '');
+    if (data.startsWith('ctnSug_') && !placedSug.has(col)) {
+      result.push(col);
+    }
+  }
+
+  return result;
+}
+
 /** 按列顺序生成 Handsontable nestedHeaders（成本+指导相邻则 colspan=2） */
 export function buildCtnNestedHeaders(cols: any[]) {
   const row: Array<string | { label: string; colspan: number }> = [];

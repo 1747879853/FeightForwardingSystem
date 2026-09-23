@@ -24,6 +24,7 @@ import { useBatchAddDropdownSources } from './modules/composables/useBatchAddDro
 import {
   useBatchAddColumns,
   buildCtnNestedHeaders,
+  ensureCtnCostSugAdjacent,
 } from './modules/composables/useBatchAddColumns';
 import { useBatchAddSettings } from './modules/composables/useBatchAddSettings';
 import { useBatchAddActions } from './modules/composables/useBatchAddActions';
@@ -305,33 +306,15 @@ async function handleAIData(aiDataList: any[]) {
   // 替换 dataSource
   dataSource.value = transformedAiData;
 
-  // 等待数据更新后，同步到 Handsontable
+  // 等待数据更新后，按用户列配置同步（含箱型表头合并）
   await nextTick();
+  syncHotTable({ data: transformedAiData });
 
-  if (coreTableRef.value?.hotTableRef?.hotInstance) {
-    const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
-
-    // 更新 Handsontable 的数据和列配置
-    hotInstance.updateSettings({
-      data: transformedAiData,
-      columns: hotColumns.value,
-      nestedHeaders: nestedHeaders.value,
-      colHeaders: false,
-    });
-    hotSettings.value = {
-      ...hotSettings.value,
-      data: transformedAiData,
-      columns: hotColumns.value,
-      nestedHeaders: nestedHeaders.value,
-      colHeaders: false,
-    };
-
-    console.log(
-      '✅ AI 数据已加载到 Handsontable，共',
-      transformedAiData.length,
-      '条记录',
-    );
-  }
+  console.log(
+    '✅ AI 数据已加载到 Handsontable，共',
+    transformedAiData.length,
+    '条记录',
+  );
 
   message.success(`已加载 ${transformedAiData.length} 条数据`);
 }
@@ -390,7 +373,7 @@ const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
   if (userColumnConfig.value.size === 0) {
     return {
-      finalColumns: sourceColumns,
+      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -423,9 +406,16 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
       return orderA - orderB;
     });
 
-  const sortedLeftFixed = sortColumnsByOrder(leftFixedColumns);
-  const sortedNormal = sortColumnsByOrder(normalColumns);
-  const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
+  // 各组内先按用户 order，再强制成本/指导成对相邻（避免持久化 order 错位导致表头无法合并）
+  const sortedLeftFixed = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(leftFixedColumns),
+  );
+  const sortedNormal = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(normalColumns),
+  );
+  const sortedRightFixed = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(rightFixedColumns),
+  );
 
   const finalColumns = [
     ...sortedLeftFixed,
@@ -436,7 +426,7 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
   // 配置异常导致无可见列时回退默认，避免整表空白
   if (finalColumns.length === 0) {
     return {
-      finalColumns: sourceColumns,
+      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -478,6 +468,37 @@ function syncHotTable(
       ...next,
     };
   }
+}
+
+/**
+ * 为尚未登记的列补默认显隐；指导价列紧跟对应成本列的 order/fixed，
+ * 避免旧持久化配置只有成本列时，新 ctnSug_* 插序打乱成对相邻。
+ */
+function ensureMissingColumnConfig(sourceColumns: any[]) {
+  sourceColumns.forEach((col: any, index: number) => {
+    const key = String(col?.data ?? '');
+    if (!key || userColumnConfig.value.has(key)) return;
+
+    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
+    const entry = defaults.get(key);
+    if (!entry) return;
+
+    if (key.startsWith('ctnSug_')) {
+      const costKey = `ctn_${key.slice('ctnSug_'.length)}`;
+      const costCfg = userColumnConfig.value.get(costKey);
+      if (costCfg) {
+        userColumnConfig.value.set(key, {
+          visible: entry.visible,
+          fixed: costCfg.fixed,
+          // 插在成本列之后；同整数 order 时稳定排序仍可能乱序，故用 +0.5
+          order: costCfg.order + 0.5,
+        });
+        return;
+      }
+    }
+
+    userColumnConfig.value.set(key, { ...entry, order: index });
+  });
 }
 
 function handleMarkupApplied() {
@@ -876,15 +897,7 @@ async function initPage() {
   await nextTick();
 
   // 箱型列可能刚加入，补齐默认显隐（已有用户配置的键不覆盖）
-  hotColumns.value.forEach((col: any, index: number) => {
-    const key = String(col?.data ?? '');
-    if (!key || userColumnConfig.value.has(key)) return;
-    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
-    const entry = defaults.get(key);
-    if (entry) {
-      userColumnConfig.value.set(key, { ...entry, order: index });
-    }
-  });
+  ensureMissingColumnConfig(hotColumns.value);
 
   if (aiData.value && aiData.value.length > 0) {
     await handleAIData(aiData.value);
@@ -894,15 +907,7 @@ async function initPage() {
   }
 
   // AI/箱型追加后再次补齐未登记列的默认显隐
-  hotColumns.value.forEach((col: any, index: number) => {
-    const key = String(col?.data ?? '');
-    if (!key || userColumnConfig.value.has(key)) return;
-    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
-    const entry = defaults.get(key);
-    if (entry) {
-      userColumnConfig.value.set(key, { ...entry, order: index });
-    }
-  });
+  ensureMissingColumnConfig(hotColumns.value);
 
   syncHotTable();
 }
@@ -1071,6 +1076,7 @@ watch(
   addedCtnTypes,
   async () => {
     await nextTick();
+    ensureMissingColumnConfig(hotColumns.value);
     // 更新列配置时必须带上当前 data，否则会把表格冲成初始空数组
     syncHotTable();
   },
