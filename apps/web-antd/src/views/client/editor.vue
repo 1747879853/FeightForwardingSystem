@@ -30,7 +30,7 @@ type ContactExpose = { isContactDirty?: () => boolean };
 type InvoiceExpose = { isInvoiceDirty?: () => boolean | Promise<boolean> };
 
 const route = useRoute();
-/** 客户审核列表双击进入：只读审基础信息，其他 Tab 隐藏 */
+/** 客户审核列表双击进入：基础信息只读；联系人/开票/附件等 Tab 仍可切换查看 */
 const isAuditMode = computed(() => route.query.mode === 'audit');
 
 const formRef = ref<FormExpose | null>(null);
@@ -38,17 +38,13 @@ const contactRef = ref<ContactExpose | null>(null);
 const invoiceRef = ref<InvoiceExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
 
-const allTabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
+const tabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
   { key: 'contact', label: '联系人' },
   { key: 'invoice', label: '开票信息' },
   { key: 'attachments', label: '附件' },
   { key: 'exceptService', label: '海运出口服务项目' },
 ];
-
-const tabs = computed(() =>
-  isAuditMode.value ? allTabs.filter((tab) => tab.key === 'basic') : allTabs,
-);
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
@@ -94,7 +90,11 @@ const contentTabsStyle = {
 <template>
   <Page auto-content-height content-class="!p-0">
     <div class="flex min-w-0 flex-1 flex-col gap-2">
-      <div v-if="!isAuditMode" class="content-tabs" :style="contentTabsStyle">
+      <div
+        class="content-tabs"
+        :class="{ 'content-tabs--audit': isAuditMode }"
+        :style="contentTabsStyle"
+      >
         <span
           v-for="tab in tabs"
           :key="tab.key"
@@ -104,14 +104,7 @@ const contentTabsStyle = {
         >
           {{ tab.label }}
         </span>
-      </div>
-      <div
-        v-else
-        class="content-tabs content-tabs--audit"
-        :style="contentTabsStyle"
-      >
-        <span class="content-tab content-tab--active">客户审核</span>
-        <span class="content-tabs__audit-hint">
+        <span v-if="isAuditMode" class="content-tabs__audit-hint">
           只读查看 · 右上角可审核 / 驳回 / 转交
         </span>
       </div>
@@ -119,22 +112,22 @@ const contentTabsStyle = {
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="ClientAdminForm">
             <Form
-              v-if="activeTab === 'basic' || isAuditMode"
+              v-if="activeTab === 'basic'"
               ref="formRef"
               embedded
               @section-change="onSectionChange"
             />
           </KeepAlive>
-          <KeepAlive v-if="!isAuditMode" include="ClientContactList">
+          <KeepAlive include="ClientContactList">
             <ContactList v-if="activeTab === 'contact'" ref="contactRef" />
           </KeepAlive>
-          <KeepAlive v-if="!isAuditMode" include="ClientInvoiceList">
+          <KeepAlive include="ClientInvoiceList">
             <InvoiceList v-if="activeTab === 'invoice'" ref="invoiceRef" />
           </KeepAlive>
-          <KeepAlive v-if="!isAuditMode" include="ClientAttachments">
+          <KeepAlive include="ClientAttachments">
             <Attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
-          <KeepAlive v-if="!isAuditMode" include="ClientExceptService">
+          <KeepAlive include="ClientExceptService">
             <ExceptService v-if="activeTab === 'exceptService'" />
           </KeepAlive>
         </div>
@@ -160,12 +153,13 @@ const contentTabsStyle = {
 }
 
 .content-tabs--audit {
-  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .content-tabs__audit-hint {
   margin-left: auto;
   font-size: 12px;
   color: hsl(var(--muted-foreground));
+  white-space: nowrap;
 }
 </style>
