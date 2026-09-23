@@ -83,6 +83,10 @@ import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { setFormApisDisabled } from '#/utils/ticket-editable';
+import {
+  getWorkFlowInstanceDetail,
+  TaskType,
+} from '#/api/audit-approval/payment-review-admin';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import { findMyPendingWorkFlowItemId } from '#/views/audit-approval/client-review/find-pending-item';
 import ApprovalPath from '#/views/audit-approval/client-review/modules/approval-path.vue';
@@ -137,6 +141,9 @@ const isAuditMode = computed(
 const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
 
 const auditDetail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
+/** 普通编辑页拉到的审批路径（录入人无 Audit 权限时走 WorkFlowInstanceAdmin） */
+const editWorkFlowInstance =
+  ref<ClientAdminApi.ClientWorkFlowInstanceDto | null>(null);
 const auditSubmitting = ref(false);
 const changedAuditFields = ref<Set<string>>(new Set());
 const changedAuditSections = ref<AuditChangedSections>({
@@ -146,6 +153,21 @@ const changedAuditSections = ref<AuditChangedSections>({
   stakeholders: false,
   type: false,
 });
+
+/** 审核页始终展示；编辑页在待审 / 申请修改中也展示，便于录入人看当前审核人 */
+const showApprovalPath = computed(() => {
+  if (isAuditMode.value) return true;
+  if (!auditEnabled.value || !isEdit.value) return false;
+  return (
+    clientStatus.value === ClientStatus.Auditing ||
+    clientStatus.value === ClientStatus.ModifyAuditing
+  );
+});
+
+const approvalPathInstance = computed(
+  () =>
+    auditDetail.value?.workFlowInstance ?? editWorkFlowInstance.value ?? null,
+);
 
 const canPendingAudit = computed(
   () =>
@@ -1158,6 +1180,7 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
 async function loadAuditContext() {
   if (!editId.value || !isAuditMode.value) return;
   clearAuditHighlights();
+  editWorkFlowInstance.value = null;
   try {
     auditDetail.value = await getClientAuditDetail(editId.value);
     if (
@@ -1178,6 +1201,38 @@ async function loadAuditContext() {
   } catch (error) {
     console.error('加载客户审核详情失败:', error);
     message.error('加载客户审核详情失败');
+  }
+}
+
+/**
+ * 编辑页在待审状态下拉审批路径，让录入人看到当前流转到哪位审核人。
+ * 不走 GetAuditDetail（需 Audit 权限），改用通用 WorkFlowInstance。
+ */
+async function loadEditApprovalPath() {
+  editWorkFlowInstance.value = null;
+  if (!editId.value || isAuditMode.value || !auditEnabled.value) return;
+  const status = clientStatus.value;
+  if (
+    status !== ClientStatus.Auditing &&
+    status !== ClientStatus.ModifyAuditing
+  ) {
+    return;
+  }
+  try {
+    const detail = await getWorkFlowInstanceDetail(
+      {
+        EntityId: editId.value,
+        TaskType:
+          status === ClientStatus.ModifyAuditing
+            ? TaskType.ModifyClient
+            : TaskType.SubmitClient,
+      },
+      { silent: true },
+    );
+    editWorkFlowInstance.value =
+      detail as ClientAdminApi.ClientWorkFlowInstanceDto;
+  } catch {
+    editWorkFlowInstance.value = null;
   }
 }
 
@@ -1291,6 +1346,7 @@ const loadEditData = async () => {
     } else {
       clearAuditHighlights();
       auditDetail.value = null;
+      await loadEditApprovalPath();
     }
     await syncFormSnapshot();
   } catch (error) {
@@ -2482,10 +2538,6 @@ watch(
               </Button>
             </Space>
           </div>
-          <div v-if="isAuditMode" class="client-audit-path mx-4 mb-3">
-            <div class="client-audit-path__title">审批路径</div>
-            <ApprovalPath :instance="auditDetail?.workFlowInstance" />
-          </div>
           <div class="content-section__header">
             <span class="card-title">
               <FileText class="size-4" />
@@ -2873,6 +2925,14 @@ watch(
             />
           </div>
         </div>
+
+        <template v-if="showApprovalPath">
+          <div class="stakeholders-panel__divider" role="separator"></div>
+          <div class="client-audit-path">
+            <div class="client-audit-path__title">审批路径</div>
+            <ApprovalPath :instance="approvalPathInstance" />
+          </div>
+        </template>
       </div>
     </Card>
 
@@ -2890,8 +2950,11 @@ watch(
 
 <style scoped lang="scss">
 .right-column {
+  display: flex;
   flex-shrink: 0;
+  flex-direction: column;
   width: 280px;
+  max-height: calc(100vh - 160px);
   overflow: hidden;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -2899,6 +2962,7 @@ watch(
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 
   :deep(.ant-card-head) {
+    flex-shrink: 0;
     min-height: 44px;
     padding: 0 14px;
     background: linear-gradient(
@@ -2915,7 +2979,10 @@ watch(
   }
 
   :deep(.ant-card-body) {
+    flex: 1;
+    min-height: 0;
     padding: 12px !important;
+    overflow: auto;
   }
 }
 
@@ -3253,7 +3320,7 @@ watch(
 }
 
 .client-audit-path {
-  padding: 10px 12px;
+  padding: 10px 10px 8px;
   background: hsl(var(--primary) / 3%);
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
