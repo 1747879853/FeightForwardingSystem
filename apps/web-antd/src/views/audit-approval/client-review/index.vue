@@ -268,7 +268,7 @@ const showTransfer = () => {
     message.warning('未找到当前待审的工作流明细，请刷新后重试');
     return;
   }
-  transferModalApi.setData({ itemIds }).open();
+  transferModalApi.setData({ itemIds, permissions: [auditCode] }).open();
 };
 
 const pendingSelectedCount = computed(

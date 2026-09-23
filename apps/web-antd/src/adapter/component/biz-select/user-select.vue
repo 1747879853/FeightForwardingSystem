@@ -2,18 +2,23 @@
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import type { OptionItem } from './use-paged-select';
 
-import { computed, toRef, useAttrs, useSlots, watch } from 'vue';
+import { computed, ref, toRef, useAttrs, useSlots, watch } from 'vue';
 
+import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
-import { getUserListByIds } from '#/api/system/user-admin';
+import {
+  getUserListByIds,
+  getUserSimplePagedList,
+} from '#/api/system/user-admin';
 
 import { userSimpleListCache } from './cache/user-simple-cache';
 import { useCachedSelect } from './use-cached-select';
+import { usePagedSelect } from './use-paged-select';
 
 defineOptions({ inheritAttrs: false });
 
@@ -32,9 +37,15 @@ interface Props {
   /**
    * 按公司过滤候选（与 UserSimpleDto.companyIds 求交）。
    * 不传则不过滤公司。已选人始终 pin，不受过滤影响。
+   * 仅全量缓存模式生效；带 permissions 的远程分页模式不按公司筛。
    */
   companyIds?: Array<number | string>;
-  /** 兼容旧调用，全量缓存后不再分页 */
+  /**
+   * 按权限筛选（AND）。有值时改为远程分页请求，不走全量缓存。
+   * 审核转交必传对应 Audit 权限；普通选人不要传。
+   */
+  permissions?: string[];
+  /** 兼容旧调用，全量缓存后不再分页；带 permissions 时作为远程每页条数 */
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
@@ -52,6 +63,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   selectedItems: () => [],
   companyIds: undefined,
+  permissions: undefined,
   valueKey: 'id',
 });
 
@@ -66,6 +78,12 @@ const modelValue = defineModel<any>();
 const selectedItemsRef = toRef(props, 'selectedItems');
 const userAttributeRef = toRef(props, 'userAttribute');
 const companyIdsRef = toRef(props, 'companyIds');
+const permissionsRef = toRef(props, 'permissions');
+
+/** 有权限过滤时走远程分页；否则全量缓存 + 前端筛 */
+const usePermissionFilter = computed(
+  () => (permissionsRef.value?.filter(Boolean).length ?? 0) > 0,
+);
 
 const bindProps = computed(() =>
   objectOmit(attrs, ['value', 'onUpdate:value', 'onUpdate:modelValue']),
@@ -146,13 +164,13 @@ const matchesKeyword = (
 };
 
 const {
-  handleDropdownVisibleChange,
-  handleSearch,
-  loading,
+  handleDropdownVisibleChange: handleCachedDropdownVisibleChange,
+  handleSearch: handleCachedSearch,
+  loading: cachedLoading,
   mergeSelectedItems,
-  options,
-  pinSelectedFromOptions,
-  searchValue,
+  options: cachedOptions,
+  pinSelectedFromOptions: pinCachedSelected,
+  searchValue: cachedSearchValue,
   findCachedOption,
 } = useCachedSelect({
   cache: userSimpleListCache,
@@ -163,19 +181,72 @@ const {
   selectedValuesRef: modelValue,
 });
 
+const pagedExtraParams = computed(() => ({
+  permissionsKey: (permissionsRef.value ?? []).filter(Boolean).join('|'),
+  userAttribute: userAttributeRef.value ?? 0,
+}));
+
+const fetchUserPage = async (params: {
+  KeyWords?: string;
+  PageIndex: number;
+  PageSize: number;
+}) => {
+  const permissions = (permissionsRef.value ?? [])
+    .map((p) => String(p ?? '').trim())
+    .filter(Boolean);
+  const res = await getUserSimplePagedList({
+    keyWords: params.KeyWords,
+    pageIndex: params.PageIndex,
+    pageSize: params.PageSize,
+    permissions,
+    userAttribute: userAttributeRef.value,
+  });
+  return {
+    items: res.items ?? [],
+    total: res.totalCount ?? 0,
+  };
+};
+
+const {
+  api: pagedApi,
+  handleDropdownVisibleChange: handlePagedDropdownVisibleChange,
+  handlePopupScroll,
+  handleSearch: handlePagedSearch,
+  params: pagedParams,
+  pinSelectedFromOptions: pinPagedSelected,
+  searchValue: pagedSearchValue,
+} = usePagedSelect({
+  extraParamsRef: pagedExtraParams,
+  fetchPage: fetchUserPage,
+  mapItemToOption: mapUserToOption,
+  pageSize: props.pageSize,
+  queryKey: ['user-simple-by-permission'],
+  selectedItemsRef,
+  selectedValuesRef: modelValue,
+  valueKey: props.valueKey,
+});
+
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
 const loadedSelectedIds = new Set<string>();
+const apiComponentRef = ref();
 
 const parseIdToSafeString = (value: unknown): string | null => {
   if (value === undefined || value === null || value === '') return null;
   return String(value);
 };
 
-const handleChange = (value: any) => {
-  pinSelectedFromOptions(value, options.value);
+const handleCachedChange = (value: any) => {
+  pinCachedSelected(value, cachedOptions.value);
+  modelValue.value = value;
+  emit('update:modelValue', value);
+};
+
+const handlePagedChange = (value: any) => {
+  const options = apiComponentRef.value?.getOptions?.() ?? [];
+  pinPagedSelected(value, options);
   modelValue.value = value;
   emit('update:modelValue', value);
 };
@@ -195,6 +266,7 @@ const toSimpleFromCacheOrDetail = (
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
+  if (usePermissionFilter.value) return;
   if (rawValue === undefined || rawValue === null || rawValue === '') return;
   const values = Array.isArray(rawValue) ? rawValue : [rawValue];
 
@@ -202,7 +274,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     const idStr = parseIdToSafeString(value);
     if (idStr === null) continue;
 
-    if (options.value.some((option) => String(option.value) === idStr)) {
+    if (cachedOptions.value.some((option) => String(option.value) === idStr)) {
       loadedSelectedIds.add(idStr);
       continue;
     }
@@ -259,28 +331,80 @@ watch(
 );
 
 defineExpose({
-  getApiComponentRef: () => undefined,
-  getOptions: () => options.value,
+  getApiComponentRef: () =>
+    usePermissionFilter.value ? apiComponentRef.value : undefined,
+  getOptions: () =>
+    usePermissionFilter.value
+      ? apiComponentRef.value?.getOptions?.() || []
+      : cachedOptions.value,
   getValue: () => modelValue.value,
 });
 </script>
 
 <template>
+  <!-- 转交等场景：按 permissions 远程分页，不污染全量用户缓存 -->
+  <ApiComponent
+    v-if="usePermissionFilter"
+    ref="apiComponentRef"
+    v-bind="bindProps"
+    :component="Select"
+    :api="pagedApi"
+    :params="pagedParams"
+    :model-value="modelValue"
+    :placeholder="computedPlaceholder"
+    :option-label-prop="optionLabelProp || 'label'"
+    :search-value="pagedSearchValue"
+    :filter-option="false"
+    :show-search="true"
+    :allow-clear="true"
+    loading-slot="suffixIcon"
+    model-prop-name="value"
+    class="biz-select w-full"
+    @update:model-value="handlePagedChange"
+    @dropdown-visible-change="handlePagedDropdownVisibleChange"
+    @search="handlePagedSearch"
+    @popup-scroll="handlePopupScroll"
+  >
+    <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->
+    <template v-for="name in forwardSlotNames" :key="name" #[name]="slotData">
+      <slot :name="name" v-bind="slotData || {}"></slot>
+    </template>
+    <template #option="opt">
+      <div class="flex flex-col gap-0.5 py-0.5">
+        <span
+          class="text-sm font-medium"
+          :class="opt?.disabled ? 'text-gray-400' : 'text-gray-900'"
+        >
+          {{ opt?.line1 }}
+        </span>
+        <span
+          v-if="opt?.line2"
+          class="text-xs"
+          :class="opt?.disabled ? 'text-gray-300' : 'text-gray-500'"
+        >
+          {{ opt?.line2 }}
+        </span>
+      </div>
+    </template>
+  </ApiComponent>
+
+  <!-- 默认：全量缓存 + 前端筛选 -->
   <Select
+    v-else
     v-bind="bindProps"
     :value="modelValue"
-    :options="options"
+    :options="cachedOptions"
     :placeholder="computedPlaceholder"
     :option-label-prop="optionLabelProp || 'label'"
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
-    :loading="loading"
-    :search-value="searchValue"
+    :loading="cachedLoading"
+    :search-value="cachedSearchValue"
     class="biz-select w-full"
-    @update:value="handleChange"
-    @dropdown-visible-change="handleDropdownVisibleChange"
-    @search="handleSearch"
+    @update:value="handleCachedChange"
+    @dropdown-visible-change="handleCachedDropdownVisibleChange"
+    @search="handleCachedSearch"
   >
     <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->
     <template v-for="name in forwardSlotNames" :key="name" #[name]="slotData">

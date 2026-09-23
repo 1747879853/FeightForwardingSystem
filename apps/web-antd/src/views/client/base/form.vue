@@ -1215,7 +1215,9 @@ const handleAuditTransfer = () => {
     message.warning('未找到当前待审的工作流明细，请刷新后重试');
     return;
   }
-  transferModalApi.setData({ itemIds: [itemId] }).open();
+  transferModalApi
+    .setData({ itemIds: [itemId], permissions: [auditActionCode] })
+    .open();
 };
 
 const onAuditTransferSuccess = async () => {

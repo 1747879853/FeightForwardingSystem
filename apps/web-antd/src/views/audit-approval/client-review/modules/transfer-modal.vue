@@ -17,6 +17,8 @@ const userStore = useUserStore();
 const toUserId = ref<null | number | undefined>();
 const submitting = ref(false);
 const itemIds = ref<string[]>([]);
+/** 当前审核任务对应权限；选人接口 AND 过滤，勿写死客户权限 */
+const permissions = ref<string[]>([]);
 
 const [Modal, modalApi] = useVbenModal({
   class: 'w-[480px]',
@@ -27,10 +29,17 @@ const [Modal, modalApi] = useVbenModal({
     if (!isOpen) {
       toUserId.value = undefined;
       itemIds.value = [];
+      permissions.value = [];
       return;
     }
-    const data = modalApi.getData<{ itemIds?: string[] }>();
+    const data = modalApi.getData<{
+      itemIds?: string[];
+      permissions?: string[];
+    }>();
     itemIds.value = data?.itemIds ?? [];
+    permissions.value = (data?.permissions ?? [])
+      .map((p) => String(p ?? '').trim())
+      .filter(Boolean);
     toUserId.value = undefined;
   },
 });
@@ -38,6 +47,10 @@ const [Modal, modalApi] = useVbenModal({
 async function handleSubmit() {
   if (itemIds.value.length === 0) {
     message.warning('缺少待转交的审核明细');
+    return;
+  }
+  if (permissions.value.length === 0) {
+    message.warning('缺少审核权限参数，无法筛选被转交人');
     return;
   }
   if (!toUserId.value) {
@@ -82,10 +95,12 @@ async function handleSubmit() {
       <div>
         <div class="mb-1 text-sm">被转交人</div>
         <UserSelect
+          :key="permissions.join('|')"
           v-model="toUserId"
           class="w-full"
           label-key="nickName"
-          placeholder="请选择被转交人"
+          :permissions="permissions"
+          placeholder="请选择被转交人（仅有对应审核权限）"
         />
       </div>
     </div>
