@@ -79,6 +79,7 @@ import {
 } from './list-column-defaults';
 import {
   buildServiceTypeLabelMap,
+  buildServiceTypeProcessMap,
   loadSeServiceTypeOptions,
 } from './service-type';
 import { useSeaExportCopy } from './use-sea-export-copy';
@@ -97,6 +98,7 @@ import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-
 import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
 import BatchEditBusinessModal from './modules/batch-edit-business-modal.vue';
+import ServiceTasksPopover from './modules/service-tasks-popover.vue';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const [BatchEditModal, batchEditModalApi] = useVbenModal({
@@ -143,10 +145,12 @@ const handleAiBillFeeFile = async (file: File) => {
 
 /** 服务项类型枚举 label 映射（用于「业务状态」列展示服务名称） */
 const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
+const serviceTypeProcessMap = ref<Map<number, boolean>>(new Map());
 
 onMounted(async () => {
   const options = await loadSeServiceTypeOptions();
   serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+  serviceTypeProcessMap.value = buildServiceTypeProcessMap(options);
 });
 
 /** 分组设置持久化 key（与列表 listKey 对齐，路由名 SeaExportList） */
@@ -721,28 +725,36 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
       <template #businessStatus="{ row }">
-        <span
-          v-if="resolveBusinessStatus(row).text === '-'"
-          class="text-gray-400"
-        >
-          -
-        </span>
-        <span
-          v-else
-          class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
-          :style="{
-            color: resolveBusinessStatus(row).colors.color,
-            backgroundColor: resolveBusinessStatus(row).colors.background,
-          }"
+        <ServiceTasksPopover
+          :key="row.id"
+          :sea-export-id="String(row.id)"
+          :labels="serviceTypeLabelMap"
+          :processes="serviceTypeProcessMap"
+          @refreshed="row.seaExportServices = $event"
         >
           <span
-            v-if="resolveBusinessStatus(row).state === 'active'"
-            class="business-status__pending"
+            v-if="resolveBusinessStatus(row).text === '-'"
+            class="text-gray-400"
           >
-            待
+            -
           </span>
-          {{ resolveBusinessStatus(row).text }}
-        </span>
+          <span
+            v-else
+            class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
+            :style="{
+              color: resolveBusinessStatus(row).colors.color,
+              backgroundColor: resolveBusinessStatus(row).colors.background,
+            }"
+          >
+            <span
+              v-if="resolveBusinessStatus(row).state === 'active'"
+              class="business-status__pending"
+            >
+              待
+            </span>
+            {{ resolveBusinessStatus(row).text }}
+          </span>
+        </ServiceTasksPopover>
       </template>
       <template #mblNum="{ row }">
         <span class="inline-flex min-w-0 items-center">

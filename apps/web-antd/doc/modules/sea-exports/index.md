@@ -28,6 +28,7 @@ last_updated: 2026-09-23
 - **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。每次列表查询会记住筛选和排序（去掉分页），编辑页「上一票 / 下一票」按这份条件定位。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
+- **业务状态悬浮任务：** 悬停或键盘聚焦业务状态时查询 `GetServicesAsync`，展示本票已选服务项、处理人、状态、完成时间及主流程标识。同优先级并行，当前处理人且具备操作权限时可点完成；复用详情完成接口校验字段、附件和费用。完成人可经确认取消完成。操作后重查任务、刷新本行状态并标记已打开的详情下次进入时重拉；加载失败可重试，未生成任务或无权限时不展示操作按钮。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。六段港口列直接绑定 `*Remark` 真实字段，排序通过 `fieldMap` 仍走 `*.PortName`；个人列设置加载时迁移旧港口键，保留顺序、显隐、固定和宽度。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
@@ -118,6 +119,7 @@ last_updated: 2026-09-23
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
+| 2026-09-23 | `Feature` | 业务状态悬浮展示本票全部任务，支持完成和取消完成，刷新列表状态与详情缓存。 | 使用实际后端 GetServicesAsync 契约；详见[变更记录](../../changelogs/change-log-2026-09-23-海运出口业务状态悬浮任务.md)。 |
 | 2026-09-21 | `Style` | 主提单号前延误/甩柜/滞留/超期预警改红色，开港截港等 CHANGE 仍黄色。 | 跟最近一条 `latestWarningCategory`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 去掉分页后写入 sessionStorage。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |

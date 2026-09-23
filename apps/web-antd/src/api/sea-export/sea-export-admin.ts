@@ -951,6 +951,13 @@ export namespace SeaExportAdminApi {
 
 const API_PREFIX = '/services/app/SeaExportAdmin';
 
+/** 本票已选服务项及任务，结构与详情 seaExportServices 一致。 */
+export const getSeaExportServices = (id: string) =>
+  requestClient.get<SeaExportAdminApi.SeaExportServiceDto[]>(
+    `${API_PREFIX}/GetServicesAsync`,
+    { params: { id } },
+  );
+
 export const getSeaExportPagedList = (
   params: SeaExportAdminApi.GetPagedListParams,
 ) => {
