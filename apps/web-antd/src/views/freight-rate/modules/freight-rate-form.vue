@@ -6,7 +6,30 @@ const {
   usePermissionForm: useVbenForm,
   rawDetail,
   masked,
+  always,
 } = useFieldPermission(freightRateFieldPermission);
+
+import { FrightModule } from '#/api/system/permission';
+import { isAlwaysMasked } from '#/composables/use-masked-fields';
+import { useCtnSugPriceMarkup } from './composables/useCtnSugPriceMarkup';
+
+const CTN_MODULE = FrightModule.SeFreiPriceCtn;
+const { calcSugPrice } = useCtnSugPriceMarkup();
+
+function canEditCtnCost() {
+  return !isAlwaysMasked(CTN_MODULE, 'Cost');
+}
+function canEditCtnSugPrice() {
+  return !isAlwaysMasked(CTN_MODULE, 'SugPrice');
+}
+
+function onCtnCostInput(ctn: { ctnCodeId: any; cost?: any; sugPrice?: any }) {
+  if (!canEditCtnSugPrice()) return;
+  const sug = calcSugPrice(ctn.cost, ctn.ctnCodeId);
+  if (sug !== undefined) {
+    ctn.sugPrice = sug;
+  }
+}
 
 import type {
   AddSeFreiPriceInput,
@@ -258,6 +281,7 @@ async function loadDefaultCtns() {
         seFreiPriceId: '',
         ctnCodeId: item.id,
         cost: 0,
+        sugPrice: undefined,
         remark: undefined,
         ctnCode: {
           id: item.id,
@@ -944,6 +968,7 @@ async function addCtn() {
     seFreiPriceId: '',
     ctnCodeId: ctn.ctnCodeId,
     cost: 0,
+    sugPrice: undefined,
     remark: undefined,
     ctnCode: {
       id: ctn.ctnCodeId,
@@ -1276,14 +1301,22 @@ async function handleSubmit() {
       return;
     }
 
-    // 构建箱型数据
+    // 构建箱型数据（缺 key 表示字段权限屏蔽，提交时省略以免误写）
     const seFreiPriceCtns =
-      formData.value?.seFreiPriceCtns?.map((ctn) => ({
-        ...(ctn.id ? { id: ctn.id } : {}),
-        ctnCodeId: ctn.ctnCodeId,
-        cost: ctn.cost,
-        remark: ctn.remark,
-      })) || [];
+      formData.value?.seFreiPriceCtns?.map((ctn) => {
+        const item: Record<string, any> = {
+          ...(ctn.id ? { id: ctn.id } : {}),
+          ctnCodeId: ctn.ctnCodeId,
+          remark: ctn.remark,
+        };
+        if (Object.prototype.hasOwnProperty.call(ctn, 'cost')) {
+          item.cost = ctn.cost;
+        }
+        if (Object.prototype.hasOwnProperty.call(ctn, 'sugPrice')) {
+          item.sugPrice = ctn.sugPrice;
+        }
+        return item;
+      }) || [];
 
     // 构建附加费数据
     const seFreiPriceFees = surchargeFees.value.map((fee, feeIndex) => {
@@ -1895,19 +1928,44 @@ onMounted(() => {
                 <tr>
                   <td class="border border-gray-300 px-3 py-2 font-medium">
                     海运费
+                    <div class="mt-1 text-xs font-normal text-gray-400">
+                      <span class="text-amber-600">成本</span>
+                      /
+                      <span class="text-red-600">指导价</span>
+                    </div>
                   </td>
-                  <!-- 箱型成本输入 -->
                   <td
-                    v-for="(ctn, index) in formData?.seFreiPriceCtns || []"
+                    v-for="ctn in formData?.seFreiPriceCtns || []"
                     :key="ctn.ctnCodeId"
                     class="border border-gray-300 px-2 py-2"
                   >
-                    <input
-                      v-model.number="ctn.cost"
-                      type="number"
-                      class="w-full rounded border border-gray-300 px-2 py-1 text-center text-sm"
-                      placeholder="-"
-                    />
+                    <div class="flex flex-col gap-1">
+                      <input
+                        v-if="canEditCtnCost()"
+                        v-model.number="ctn.cost"
+                        type="number"
+                        class="ctn-price-input ctn-price-input--cost w-full rounded border px-2 py-1 text-center text-sm"
+                        placeholder="成本"
+                        @change="onCtnCostInput(ctn)"
+                      />
+                      <span
+                        v-else-if="always('seFreiPriceCtns.cost')"
+                        class="block text-center text-gray-400"
+                        >***</span
+                      >
+                      <input
+                        v-if="canEditCtnSugPrice()"
+                        v-model.number="ctn.sugPrice"
+                        type="number"
+                        class="ctn-price-input ctn-price-input--sug w-full rounded border px-2 py-1 text-center text-sm"
+                        placeholder="指导价"
+                      />
+                      <span
+                        v-else-if="always('seFreiPriceCtns.sugPrice')"
+                        class="block text-center text-gray-400"
+                        >***</span
+                      >
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -3591,5 +3649,17 @@ input[type='text']:focus {
 .section-body--surcharge :deep(.ant-select-selector:hover) {
   border-color: hsl(var(--primary)) !important;
   box-shadow: 0 0 0 2px hsl(var(--primary) / 12%) !important;
+}
+
+.ctn-price-input--cost {
+  font-weight: 600;
+  color: #d48806;
+  border-color: #ffe58f;
+}
+
+.ctn-price-input--sug {
+  font-weight: 600;
+  color: #cf1322;
+  border-color: #ffa39e;
 }
 </style>

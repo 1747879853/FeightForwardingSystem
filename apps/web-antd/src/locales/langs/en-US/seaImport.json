@@ -56,6 +56,9 @@
   },
   "import": {
     "accountDate": "Account Date",
+    "attachments": {
+      "clickOrDragUpload": "Click, drag, or paste with Ctrl+V"
+    },
     "addCtn": "Add Container",
     "batchAddCtn": "Batch Add",
     "batchAddCtnConfirm": "Confirm",

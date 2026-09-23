@@ -157,7 +157,8 @@ const computedSchema = computed(
         },
         formItemClass: cn(
           'flex-shrink-0',
-          { hidden },
+          // FormItem 自带 flex，普通 hidden 会被 display:flex 盖掉，折叠字段仍占格子，按钮就被挤到下一行
+          hidden ? '!hidden' : '',
           formItemClass,
           resolvedSchemaFormItemClass,
         ),

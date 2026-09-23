@@ -462,7 +462,17 @@ export const orderFeeFieldPermission: FieldPermissionProfile = {
 };
 export const freightRateFieldPermission: FieldPermissionProfile = {
   module: FrightModule.SeFreiPrice,
-  prefixes: { ctn_: ['seFreiPriceCtns'] },
+  /** 箱型子表独立模块；成本等字段配在 SeFreiPriceCtn，PropName 写 Cost 而非路径 */
+  nested: { seFreiPriceCtns: FrightModule.SeFreiPriceCtn },
+  /** 成本+指导价同列：仅两者都无条件屏蔽时才整列隐藏 */
+  prefixes: {
+    ctnSug_: { paths: ['seFreiPriceCtns.sugPrice'], mode: 'any' },
+    /** 列表同格：成本+指导价都屏蔽才整列隐藏 */
+    ctn_: {
+      paths: ['seFreiPriceCtns.cost', 'seFreiPriceCtns.sugPrice'],
+      mode: 'all',
+    },
+  },
   aliases: {
     'currency.code': ['currency', 'currencyId'],
     currencyid: ['currency', 'currencyId'],

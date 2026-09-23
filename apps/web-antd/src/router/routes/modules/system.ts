@@ -180,6 +180,22 @@ const routes: RouteRecordRaw[] = [
         },
         component: () => import('#/views/system/cache/index.vue'),
       },
+      {
+        path: '/system/tenant-config',
+        name: 'SystemTenantConfig',
+        meta: {
+          icon: 'mdi:tune-variant',
+          keepAlive: true,
+          title: $t('system.tenantConfig.title'),
+          // 暂借「权限配置」权限点（后端尚未单独挂 Admin.TenantConfig.*）
+          authority: abpPageAuthority([
+            'Admin.UserDataPermission',
+            'Admin.UserPropPermission',
+            'Admin.UserTablePermission',
+          ]),
+        },
+        component: () => import('#/views/system/tenant-config/list.vue'),
+      },
     ],
   },
 ];

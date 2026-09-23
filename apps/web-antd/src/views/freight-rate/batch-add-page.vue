@@ -1,6 +1,9 @@
 ﻿<script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
-import { useVbenModal } from '@vben/common-ui';
+import { useRoute, useRouter } from 'vue-router';
+
+import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { Plus, Copy, IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 import {
@@ -16,27 +19,54 @@ import {
 } from 'ant-design-vue';
 
 // 导入 composables
-import { useBatchAddData } from './composables/useBatchAddData';
-import { useBatchAddDropdownSources } from './composables/useBatchAddDropdownSources';
-import { useBatchAddColumns } from './composables/useBatchAddColumns';
-import { useBatchAddSettings } from './composables/useBatchAddSettings';
-import { useBatchAddActions } from './composables/useBatchAddActions';
-import { usePortRemoteAutocomplete } from './composables/usePortRemoteAutocomplete';
-import { useCarrierRemoteAutocomplete } from './composables/useCarrierRemoteAutocomplete';
-import { useBookingAgentRemoteAutocomplete } from './composables/useBookingAgentRemoteAutocomplete';
+import { useBatchAddData } from './modules/composables/useBatchAddData';
+import { useBatchAddDropdownSources } from './modules/composables/useBatchAddDropdownSources';
+import {
+  useBatchAddColumns,
+  buildCtnNestedHeaders,
+  ensureCtnCostSugAdjacent,
+} from './modules/composables/useBatchAddColumns';
+import { useBatchAddSettings } from './modules/composables/useBatchAddSettings';
+import { useBatchAddActions } from './modules/composables/useBatchAddActions';
+import { usePortRemoteAutocomplete } from './modules/composables/usePortRemoteAutocomplete';
+import { useCarrierRemoteAutocomplete } from './modules/composables/useCarrierRemoteAutocomplete';
+import { useBookingAgentRemoteAutocomplete } from './modules/composables/useBookingAgentRemoteAutocomplete';
 
 // 导入核心表格组件
-import BatchAddTableCore from './batch-add-table-core.vue';
+import BatchAddTableCore from './modules/batch-add-table-core.vue';
 // 导入列配置组件
-import ColumnConfigModal from './batch-add-column-config-modal.vue';
+import ColumnConfigModal from './modules/batch-add-column-config-modal.vue';
+import CtnSugPriceMarkupModal from './modules/ctn-sug-price-markup-modal.vue';
+import { useCtnSugPriceMarkup } from './modules/composables/useCtnSugPriceMarkup';
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 
 // 导入 store
 import { useBaseStore } from '#/store/base';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  FREIGHT_RATE_BATCH_ADD_TABLE_ID,
+  FREIGHT_RATE_BATCH_EDIT_TABLE_ID,
+} from './data';
+import { consumePendingFreightBatchRows } from './pending-batch-rows';
+import {
+  buildFreightRateBatchDefaultColumnConfig,
+  useBatchAddColumnPersist,
+} from './modules/composables/useBatchAddColumnPersist';
 
-const emit = defineEmits<{ success: [] }>();
+defineOptions({ name: 'FreightRateBatchAddPage' });
+
+const route = useRoute();
+const router = useRouter();
+const { closeTabByKey } = useTabs();
+
+const { applyMarkupsToRows } = useCtnSugPriceMarkup();
+const markupModalRef = ref<{ open: () => void }>();
+
+function openMarkupModal() {
+  markupModalRef.value?.open();
+}
 
 // ==================== 使用 Composables ====================
 
@@ -56,7 +86,27 @@ const {
 // ==================== 编辑模式管理 ====================
 
 // 是否为编辑模式
-const isEditMode = ref(false);
+const isEditMode = ref(route.name === 'FreightRateBatchEdit');
+
+/** 列配置持久化 tableId：新增 / 编辑互不覆盖 */
+const columnPersistTableId = computed(() =>
+  isEditMode.value
+    ? FREIGHT_RATE_BATCH_EDIT_TABLE_ID
+    : FREIGHT_RATE_BATCH_ADD_TABLE_ID,
+);
+
+const {
+  loadColumnConfig: loadPersistedColumnConfig,
+  saveColumnConfig: persistColumnConfig,
+} = useBatchAddColumnPersist(columnPersistTableId);
+
+/** 用户自定义列显隐 / 固定 / 顺序（内存 + UserSetting 回放） */
+const userColumnConfig = ref<
+  Map<
+    string,
+    { visible: boolean; fixed: 'left' | 'right' | false; order: number }
+  >
+>(new Map());
 
 // ==================== AI 数据管理 ====================
 
@@ -130,7 +180,14 @@ async function handleAIData(aiDataList: any[]) {
   await nextTick();
   await nextTick();
 
-  // 港口/船公司：嵌套 DTO 优先，否则按 id 拉详情写入远程缓存
+  // 先用列表/详情已带的嵌套港口写缓存；不要一上来拉 PortCode/GetListAsync 全量
+  for (const row of aiDataList) {
+    resolvePortLabelFromRow(row, 'pol');
+    resolvePortLabelFromRow(row, 'pod');
+    resolvePortLabelFromRow(row, 'poT1');
+    resolvePortLabelFromRow(row, 'poT2');
+  }
+  // 仅对仍缺 label 的 id 兜底（正常运价列表行几乎不会走到）
   await ensurePortLabelsByIds(
     aiDataList.flatMap((row) => [row.polId, row.podId, row.poT1Id, row.poT2Id]),
   );
@@ -193,7 +250,7 @@ async function handleAIData(aiDataList: any[]) {
       _rowKey: generateRowKey(),
       _isCopied: false,
       _originalId: row.id, // ✅ 保留原始 ID 用于编辑模式
-      recommend: row.recommend || false,
+      recommend: false,
       carrierId: carrierName, // ✅ 使用名称
       polId: polName, // ✅ 使用名称
       podId: podName, // ✅ 使用名称
@@ -230,7 +287,10 @@ async function handleAIData(aiDataList: any[]) {
     if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
       row.seFreiPriceCtns.forEach((ctn: any) => {
         const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+        const sugField = `ctnSug_${String(ctn.ctnCodeId)}`;
         transformedRow[dynamicField] = ctn.cost;
+        // AI 识别无指导价，留空；若已配置加价规则可稍后点「应用」生成
+        transformedRow[sugField] = ctn.sugPrice;
       });
     }
 
@@ -246,24 +306,15 @@ async function handleAIData(aiDataList: any[]) {
   // 替换 dataSource
   dataSource.value = transformedAiData;
 
-  // 等待数据更新后，同步到 Handsontable
+  // 等待数据更新后，按用户列配置同步（含箱型表头合并）
   await nextTick();
+  syncHotTable({ data: transformedAiData });
 
-  if (coreTableRef.value?.hotTableRef?.hotInstance) {
-    const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
-
-    // 更新 Handsontable 的数据和列配置
-    hotInstance.updateSettings({
-      data: transformedAiData,
-      columns: hotColumns.value,
-    });
-
-    console.log(
-      '✅ AI 数据已加载到 Handsontable，共',
-      transformedAiData.length,
-      '条记录',
-    );
-  }
+  console.log(
+    '✅ AI 数据已加载到 Handsontable，共',
+    transformedAiData.length,
+    '条记录',
+  );
 
   message.success(`已加载 ${transformedAiData.length} 条数据`);
 }
@@ -318,6 +369,147 @@ interface BatchAddTableCoreInstance {
 
 const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 
+/** 按用户列配置重排/过滤后的列与左右固定数 */
+function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
+  if (userColumnConfig.value.size === 0) {
+    return {
+      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      fixedColumnsLeft: 0,
+      fixedColumnsRight: 0,
+    };
+  }
+
+  const visibleColumns = sourceColumns.filter((col) => {
+    const config = userColumnConfig.value.get(col.data);
+    return config ? config.visible !== false : true;
+  });
+
+  const leftFixedColumns: any[] = [];
+  const rightFixedColumns: any[] = [];
+  const normalColumns: any[] = [];
+
+  visibleColumns.forEach((col) => {
+    const config = userColumnConfig.value.get(col.data);
+    if (config?.fixed === 'left') {
+      leftFixedColumns.push(col);
+    } else if (config?.fixed === 'right') {
+      rightFixedColumns.push(col);
+    } else {
+      normalColumns.push(col);
+    }
+  });
+
+  const sortColumnsByOrder = (cols: any[]) =>
+    [...cols].sort((a, b) => {
+      const orderA = userColumnConfig.value.get(a.data)?.order ?? 999;
+      const orderB = userColumnConfig.value.get(b.data)?.order ?? 999;
+      return orderA - orderB;
+    });
+
+  // 各组内先按用户 order，再强制成本/指导成对相邻（避免持久化 order 错位导致表头无法合并）
+  const sortedLeftFixed = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(leftFixedColumns),
+  );
+  const sortedNormal = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(normalColumns),
+  );
+  const sortedRightFixed = ensureCtnCostSugAdjacent(
+    sortColumnsByOrder(rightFixedColumns),
+  );
+
+  const finalColumns = [
+    ...sortedLeftFixed,
+    ...sortedNormal,
+    ...sortedRightFixed,
+  ];
+
+  // 配置异常导致无可见列时回退默认，避免整表空白
+  if (finalColumns.length === 0) {
+    return {
+      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      fixedColumnsLeft: 0,
+      fixedColumnsRight: 0,
+    };
+  }
+
+  return {
+    finalColumns,
+    fixedColumnsLeft: sortedLeftFixed.length,
+    fixedColumnsRight: sortedRightFixed.length,
+  };
+}
+
+/** 同步 Handsontable 列/表头/数据，避免 updateSettings 时带回初始空 data */
+function syncHotTable(
+  patch: Record<string, any> = {},
+  options?: { updateSettingsRef?: boolean },
+) {
+  const { finalColumns, fixedColumnsLeft, fixedColumnsRight } =
+    resolveConfiguredColumns();
+  const data = dataSource.value;
+  const next = {
+    columns: finalColumns,
+    nestedHeaders: buildCtnNestedHeaders(finalColumns),
+    colHeaders: false,
+    data,
+    fixedColumnsLeft,
+    fixedColumnsRight,
+    ...patch,
+  };
+
+  const hot = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (hot) {
+    hot.updateSettings(next);
+  }
+
+  if (options?.updateSettingsRef !== false) {
+    hotSettings.value = {
+      ...hotSettings.value,
+      ...next,
+    };
+  }
+}
+
+/**
+ * 为尚未登记的列补默认显隐；指导价列紧跟对应成本列的 order/fixed，
+ * 避免旧持久化配置只有成本列时，新 ctnSug_* 插序打乱成对相邻。
+ */
+function ensureMissingColumnConfig(sourceColumns: any[]) {
+  sourceColumns.forEach((col: any, index: number) => {
+    const key = String(col?.data ?? '');
+    if (!key || userColumnConfig.value.has(key)) return;
+
+    const defaults = buildFreightRateBatchDefaultColumnConfig([col]);
+    const entry = defaults.get(key);
+    if (!entry) return;
+
+    if (key.startsWith('ctnSug_')) {
+      const costKey = `ctn_${key.slice('ctnSug_'.length)}`;
+      const costCfg = userColumnConfig.value.get(costKey);
+      if (costCfg) {
+        userColumnConfig.value.set(key, {
+          visible: entry.visible,
+          fixed: costCfg.fixed,
+          // 插在成本列之后；同整数 order 时稳定排序仍可能乱序，故用 +0.5
+          order: costCfg.order + 0.5,
+        });
+        return;
+      }
+    }
+
+    userColumnConfig.value.set(key, { ...entry, order: index });
+  });
+}
+
+function handleMarkupApplied() {
+  applyMarkupsToRows(dataSource.value);
+  const hot = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (hot) {
+    hot.loadData(dataSource.value);
+    hot.render();
+  }
+}
+
 function resolveActiveAutocompleteEditor() {
   const table = coreTableRef.value?.hotTableRef;
   const hot =
@@ -346,7 +538,8 @@ const actions = useBatchAddActions(
   validateForm,
   prepareSubmitData,
   reset,
-  emit,
+  // 成功关 Tab 由 syncHotDataThenSubmit 统一处理，避免与 emit 重复导航
+  () => {},
 );
 
 const currentOptionsCache = computed(() => ({
@@ -486,7 +679,7 @@ const linkage = {
   },
 };
 
-const { hotColumns } = useBatchAddColumns(
+const { hotColumns, nestedHeaders } = useBatchAddColumns(
   addedCtnTypes,
   { getCarrierName, getPortName, getCurrencyName, getClientName },
   dataSource,
@@ -517,6 +710,7 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
   getColumnIndex,
   handleOpenDropdown,
   getSortIcon,
+  nestedHeaders,
 );
 
 // ==================== 列配置管理 ====================
@@ -524,12 +718,8 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
 // 列配置弹窗可见性
 const columnConfigVisible = ref(false);
 
-// 存储用户自定义的列配置
-const userColumnConfig = ref<Map<string, any>>(new Map());
-
-// 应用列配置到Handsontable
+// 应用列配置到 Handsontable（先写入内存 Map，再 sync）
 const applyColumnConfig = (config: any[]) => {
-  // 更新用户配置
   config.forEach((colConfig) => {
     userColumnConfig.value.set(colConfig.data, {
       visible: colConfig.visible,
@@ -537,75 +727,7 @@ const applyColumnConfig = (config: any[]) => {
       order: colConfig.order,
     });
   });
-
-  // 获取当前的hotSettings值
-  const currentSettings = { ...rawHotSettings.value };
-
-  // 过滤可见列
-  const visibleColumns = hotColumns.value.filter((col) => {
-    const config = userColumnConfig.value.get(col.data);
-    return config ? config.visible !== false : true;
-  });
-
-  // 分离不同类型的列
-  const leftFixedColumns: any[] = [];
-  const rightFixedColumns: any[] = [];
-  const normalColumns: any[] = [];
-
-  visibleColumns.forEach((col) => {
-    const config = userColumnConfig.value.get(col.data);
-    if (config?.fixed === 'left') {
-      leftFixedColumns.push(col);
-    } else if (config?.fixed === 'right') {
-      rightFixedColumns.push(col);
-    } else {
-      normalColumns.push(col);
-    }
-  });
-
-  // 按order排序每种类型的列
-  const sortColumnsByOrder = (cols: any[]) => {
-    return [...cols].sort((a, b) => {
-      const orderA = userColumnConfig.value.get(a.data)?.order ?? 999;
-      const orderB = userColumnConfig.value.get(b.data)?.order ?? 999;
-      return orderA - orderB;
-    });
-  };
-
-  const sortedLeftFixed = sortColumnsByOrder(leftFixedColumns);
-  const sortedNormal = sortColumnsByOrder(normalColumns);
-  const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
-
-  // 组合最终的列顺序：左侧固定 + 普通 + 右侧固定
-  const finalColumns = [
-    ...sortedLeftFixed,
-    ...sortedNormal,
-    ...sortedRightFixed,
-  ];
-
-  // 计算固定列数量
-  const fixedColumnsLeft = sortedLeftFixed.length;
-  const fixedColumnsRight = sortedRightFixed.length;
-
-  // 创建新的hotSettings
-  const newHotSettings = {
-    ...currentSettings,
-    columns: finalColumns,
-    fixedColumnsLeft: fixedColumnsLeft,
-    fixedColumnsRight: fixedColumnsRight,
-  };
-
-  // 更新shallowRef
-  hotSettings.value = newHotSettings;
-
-  // 更新Handsontable实例
-  if (coreTableRef.value?.hotTableRef?.hotInstance) {
-    coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-      columns: finalColumns,
-      fixedColumnsLeft: fixedColumnsLeft,
-      fixedColumnsRight: fixedColumnsRight,
-    });
-  }
+  syncHotTable();
 };
 
 const hotSettings = shallowRef(rawHotSettings.value);
@@ -624,11 +746,8 @@ const currentColumnConfig = computed(() => {
   });
 });
 
-// 保存列配置
-const saveColumnConfig = (config: any[]) => {
-  console.log('💾 保存列配置:', config);
-
-  // 验证是否有可见列
+// 保存列配置（本地应用 + UserSetting 持久化）
+const saveColumnConfig = async (config: any[]) => {
   const visibleCount = config.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
@@ -637,7 +756,14 @@ const saveColumnConfig = (config: any[]) => {
 
   applyColumnConfig(config);
   columnConfigVisible.value = false;
-  message.success('列配置已保存');
+
+  try {
+    await persistColumnConfig(config);
+    message.success('列配置已保存');
+  } catch (error) {
+    console.error('列配置持久化失败:', error);
+    message.warning('列配置已应用，但同步到服务器失败');
+  }
 };
 
 // 定义 BatchAddTableCore 组件的类型
@@ -662,159 +788,133 @@ const selectedCtnId = computed({
 });
 const availableCtnOptions = computed(() => actions.availableCtnOptions.value);
 
-const [Modal, modalApi] = useVbenModal({
-  title: '批量新增运价', // 标题将在模板中动态设置
-  confirmLoading: false,
-  closeOnClickModal: false,
-  draggable: true,
-  onConfirm: async () => {
-    // ⚠️ 关键修复：在提交前，先从 Handsontable 同步最新数据到 dataSource
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
+async function leaveToList() {
+  markListShouldRefresh('FreightRateList');
+  const tabKey = route.fullPath;
+  await router.push('/freight-rate');
+  await closeTabByKey(tabKey);
+}
 
-      const hotData = hotInstance.getSourceData();
-      console.log(
-        '🔍 Handsontable getSourceData() 返回的数据类型:',
-        Array.isArray(hotData) ? '数组' : '其他',
-        hotData,
-      );
-
-      if (hotData && hotData.length > 0) {
-        // ⚠️ 关键修复：getSourceData() 返回的是对象数组，不是二维数组
-        // 直接使用这些数据，但需要保留额外字段
-        const objectData = hotData.map((hotRow: any, rowIndex: number) => {
-          const rowObject: any = {};
-
-          // 如果 hotRow 已经是对象，直接复制所有字段
-          if (typeof hotRow === 'object' && !Array.isArray(hotRow)) {
-            Object.assign(rowObject, hotRow);
-          } else if (Array.isArray(hotRow)) {
-            // 如果是数组（兼容旧逻辑），按列映射
-            const columns = hotInstance.getSettings().columns;
-            columns.forEach((col: any, index: number) => {
-              if (col.data && hotRow[index] !== undefined) {
-                rowObject[col.data] = hotRow[index];
-              }
-            });
+async function syncHotDataThenSubmit() {
+  if (coreTableRef.value?.hotTableRef?.hotInstance) {
+    const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
+    const hotData = hotInstance.getSourceData();
+    if (hotData && hotData.length > 0) {
+      const objectData = hotData.map((hotRow: any, rowIndex: number) => {
+        const rowObject: any = {};
+        if (typeof hotRow === 'object' && !Array.isArray(hotRow)) {
+          Object.assign(rowObject, hotRow);
+        } else if (Array.isArray(hotRow)) {
+          const columns = hotInstance.getSettings().columns;
+          columns.forEach((col: any, index: number) => {
+            if (col.data && hotRow[index] !== undefined) {
+              rowObject[col.data] = hotRow[index];
+            }
+          });
+        }
+        const originalRow = dataSource.value[rowIndex];
+        if (originalRow) {
+          if (originalRow._originalId && !rowObject._originalId) {
+            rowObject._originalId = originalRow._originalId;
           }
-
-          // ⚠️ 关键修复：从 dataSource 中保留额外字段（如 _originalId, _rowKey, seFreiPriceCtns 等）
-          const originalRow = dataSource.value[rowIndex];
-          if (originalRow) {
-            // 保留以下关键字段（优先级：原始数据 > Handsontable 数据）
-            if (originalRow._originalId && !rowObject._originalId) {
-              rowObject._originalId = originalRow._originalId;
-            }
-            if (originalRow._rowKey && !rowObject._rowKey) {
-              rowObject._rowKey = originalRow._rowKey;
-            }
-            if (
-              originalRow._isCopied !== undefined &&
-              rowObject._isCopied === undefined
-            ) {
-              rowObject._isCopied = originalRow._isCopied;
-            }
-            if (originalRow.seFreiPriceCtns && !rowObject.seFreiPriceCtns) {
-              rowObject.seFreiPriceCtns = originalRow.seFreiPriceCtns;
-            }
+          if (originalRow._rowKey && !rowObject._rowKey) {
+            rowObject._rowKey = originalRow._rowKey;
           }
-
-          return rowObject;
-        });
-
-        console.log(
-          '📊 同步后的数据（检查 _originalId 和其他字段）:',
-          objectData.map((row: any) => ({
-            _originalId: row._originalId,
-            carrierId: row.carrierId,
-            polId: row.polId,
-            podId: row.podId,
-          })),
-        );
-
-        dataSource.value = objectData;
-      }
-    }
-
-    // 根据模式调用不同的提交逻辑；仅成功时关弹窗
-    if (isEditMode.value) {
-      await handleEditSubmit(labelToIdMap.value);
-    } else {
-      const ok = await actions.handleSubmit(labelToIdMap.value);
-      if (ok) {
-        modalApi.close();
-      }
-    }
-  },
-  onCancel: () => {
-    modalApi.close();
-  },
-  onOpened: async () => {
-    console.log('📦 弹窗已打开');
-
-    // 获取传递的数据
-    const data = modalApi.getData<any>();
-    aiData.value = data.aiData;
-    isEditMode.value = data.isEditMode || false; // 设置编辑模式标志
-    console.log('当前 AI 数据:', aiData.value);
-    console.log('是否为编辑模式:', isEditMode.value);
-
-    // Clear remote-search caches each open
-    clearPortCache();
-    clearCarrierCache();
-    clearBookingAgentCache();
-
-    // ✅ 关键修复：确保下拉选项已加载
-    if (allCtnOptions.value.length === 0) {
-      await initDropdownSources(defaultCurrencyId);
-    }
-
-    // ✅ 关键修复：每次打开弹窗时都重新初始化默认箱型
-    // 从 allCtnOptions 中筛选出 status 为 0 且 isDefault 为 true 的箱型
-    // 注意：由于 store 中只缓存了必要字段，这里简化处理，使用所有箱型作为默认箱型
-    if (addedCtnTypes.value.length === 0 && allCtnOptions.value.length > 0) {
-      // 尝试从 baseStore 获取原始箱型数据以筛选默认箱型
-      const baseStore = useBaseStore();
-      const defaultCtns = baseStore.ctnOptions
-        .filter((ctn) => ctn.isDefault === true)
-        .map((ctn) => ({
-          ctnCodeId: String(ctn.ctnCodeId),
-          ctnName: ctn.ctnName,
-        }));
-
-      addedCtnTypes.value = defaultCtns;
-      console.log('✅ 已初始化默认箱型:', addedCtnTypes.value.length, '个');
-    }
-
-    // 等待 DOM 和列配置完全初始化
-    await nextTick();
-    await nextTick();
-
-    // 如果有 AI 数据，则处理并填充表格
-    if (aiData.value && aiData.value.length > 0) {
-      console.log(
-        '✅ 检测到 AI 数据，开始处理:',
-        aiData.value.length,
-        '条记录',
-      );
-      await handleAIData(aiData.value);
-    } else {
-      // 如果没有 AI 数据且表格为空，则添加一行空数据（仅在新增模式下）
-      if (dataSource.value.length === 0 && !isEditMode.value) {
-        addRow(1);
-        await nextTick();
-      }
-    }
-
-    // 确保 Handsontable 使用最新的数据源和列配置
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-        columns: hotColumns.value,
+          if (
+            originalRow._isCopied !== undefined &&
+            rowObject._isCopied === undefined
+          ) {
+            rowObject._isCopied = originalRow._isCopied;
+          }
+          if (originalRow.seFreiPriceCtns && !rowObject.seFreiPriceCtns) {
+            rowObject.seFreiPriceCtns = originalRow.seFreiPriceCtns;
+          }
+        }
+        return rowObject;
       });
+      dataSource.value = objectData;
     }
-  },
-});
+  }
 
+  if (isEditMode.value) {
+    await handleEditSubmit(labelToIdMap.value);
+  } else {
+    const ok = await actions.handleSubmit(labelToIdMap.value);
+    if (ok) {
+      await leaveToList();
+    }
+  }
+}
+
+async function handleCancel() {
+  await leaveToList();
+}
+
+async function initPage() {
+  const data = consumePendingFreightBatchRows() || {};
+  aiData.value = data.aiData;
+  if (data.isEditMode !== undefined) {
+    isEditMode.value = !!data.isEditMode;
+  }
+
+  clearPortCache();
+  clearCarrierCache();
+  clearBookingAgentCache();
+
+  if (allCtnOptions.value.length === 0) {
+    await initDropdownSources(defaultCurrencyId);
+  }
+
+  if (addedCtnTypes.value.length === 0 && allCtnOptions.value.length > 0) {
+    const baseStore = useBaseStore();
+    const defaultCtns = baseStore.ctnOptions
+      .filter((ctn) => ctn.isDefault === true)
+      .map((ctn) => ({
+        ctnCodeId: String(ctn.ctnCodeId),
+        ctnName: ctn.ctnName,
+      }));
+    addedCtnTypes.value = defaultCtns;
+  }
+
+  // 回放用户列配置；无配置时套用产品默认显隐白名单
+  try {
+    const persisted = await loadPersistedColumnConfig();
+    if (persisted && persisted.size > 0) {
+      userColumnConfig.value = persisted;
+    } else {
+      userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
+        hotColumns.value,
+      );
+    }
+  } catch (error) {
+    console.error('加载列配置失败:', error);
+    userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
+      hotColumns.value,
+    );
+  }
+
+  await nextTick();
+  await nextTick();
+
+  // 箱型列可能刚加入，补齐默认显隐（已有用户配置的键不覆盖）
+  ensureMissingColumnConfig(hotColumns.value);
+
+  if (aiData.value && aiData.value.length > 0) {
+    await handleAIData(aiData.value);
+  } else if (dataSource.value.length === 0 && !isEditMode.value) {
+    addRow(1, true);
+    await nextTick();
+  }
+
+  // AI/箱型追加后再次补齐未登记列的默认显隐
+  ensureMissingColumnConfig(hotColumns.value);
+
+  syncHotTable();
+}
+
+onMounted(() => {
+  void initPage();
+});
 // ==================== 编辑提交处理 ====================
 
 /**
@@ -854,7 +954,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       // 构建提交数据（使用 SeFreiPriceSimpleEditDto 格式）
       const submitData: any = {
         id: row._originalId,
-        recommend: row.recommend,
+        recommend: false,
         carrierId: carrierId,
         polId: polId,
         podId: podId,
@@ -921,19 +1021,26 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         ];
       }
 
-      // 处理箱型成本 - 从动态字段中提取
+      // 处理箱型成本/指导价 - 从动态字段中提取
       const seFreiPriceCtns: any[] = [];
       Object.keys(row).forEach((key) => {
-        if (key.startsWith('ctn_')) {
+        if (key.startsWith('ctn_') && !key.startsWith('ctnSug_')) {
           const ctnCodeId = key.replace('ctn_', '');
           const cost = row[key];
-
-          if (cost !== undefined && cost !== null && cost !== '') {
-            seFreiPriceCtns.push({
-              ctnCodeId,
-              cost: Number(cost),
-            });
-          }
+          const sugPrice = row[`ctnSug_${ctnCodeId}`];
+          const hasCost = cost !== undefined && cost !== null && cost !== '';
+          const hasSug =
+            sugPrice !== undefined && sugPrice !== null && sugPrice !== '';
+          if (!hasCost && !hasSug) return;
+          const item: Record<string, any> = { ctnCodeId };
+          if (hasCost) item.cost = Number(cost);
+          if (hasSug) item.sugPrice = Number(sugPrice);
+          // 编辑模式带上原箱型行 id（若有）
+          const original = (row.seFreiPriceCtns || []).find(
+            (c: any) => String(c.ctnCodeId) === String(ctnCodeId),
+          );
+          if (original?.id) item.id = original.id;
+          seFreiPriceCtns.push(item);
         }
       });
 
@@ -956,8 +1063,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
     await batchEditSimpleSeFreiPrice(submitDataList);
 
     message.success('批量编辑成功');
-    modalApi.close();
-    emit('success');
+    await leaveToList();
   } catch (error) {
     console.error('❌ 批量编辑失败:', error);
     message.error('批量编辑失败');
@@ -968,47 +1074,20 @@ async function handleEditSubmit(labelToIdMapValue: any) {
 
 watch(
   addedCtnTypes,
-  async (newVal, oldVal) => {
+  async () => {
     await nextTick();
-
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
-      // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
-      coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-        columns: hotColumns.value,
-      });
-    }
+    ensureMissingColumnConfig(hotColumns.value);
+    // 更新列配置时必须带上当前 data，否则会把表格冲成初始空数组
+    syncHotTable();
   },
   { deep: true },
 );
-
-defineExpose({
-  open: () => {
-    if (allCtnOptions.value.length === 0) {
-      initDropdownSources(defaultCurrencyId);
-    }
-    modalApi.open();
-  },
-  close: () => {
-    modalApi.close();
-  },
-  setData: (data: { aiData?: any[]; isEditMode?: boolean }) => {
-    console.log('收到外部设置的数据:', data);
-    if (data.aiData && data.aiData.length > 0) {
-      aiData.value = data.aiData;
-      isEditMode.value = data.isEditMode || false;
-      // 如果模态框已经打开，立即处理数据
-      handleAIData(data.aiData);
-    }
-  },
-});
 </script>
 
 <template>
-  <Modal
-    :title="isEditMode ? '编辑数据' : '批量新增运价'"
-    class="freight-batch-add-modal w-[1400px]"
-    :confirm-loading="loading"
+  <Page
+    auto-content-height
+    content-class="freight-batch-add-page flex flex-col"
   >
     <div class="batch-add">
       <header class="batch-add__hero">
@@ -1049,7 +1128,8 @@ defineExpose({
               <ul class="batch-add__tips">
                 <li v-if="!isEditMode">「新增行」可一次追加 1 / 5 / 10 行</li>
                 <li v-if="!isEditMode">选中行后可复制或删除</li>
-                <li>「添加箱型」可为表格追加箱型成本列</li>
+                <li>「添加箱型」追加成本/指导价列，可各自编辑</li>
+                <li>「指导价规则」配置加价后立即按「成本+加价」生成指导价</li>
                 <li>齿轮按钮可配置列显隐与顺序</li>
               </ul>
             </template>
@@ -1118,6 +1198,16 @@ defineExpose({
               :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
               @change="actions.handleAddCtnType"
             />
+            <Button size="small" @click="openMarkupModal">
+              <IconifyIcon
+                icon="mdi:calculator-variant-outline"
+                class="size-4"
+              />
+              指导价规则
+            </Button>
+            <Button size="small" @click="handleMarkupApplied">
+              应用指导价
+            </Button>
             <div class="batch-add__column-config">
               <Button
                 shape="circle"
@@ -1147,6 +1237,12 @@ defineExpose({
           />
         </div>
       </section>
+
+      <CtnSugPriceMarkupModal
+        ref="markupModalRef"
+        :ctn-types="addedCtnTypes"
+        @applied="handleMarkupApplied"
+      />
     </div>
 
     <AntModal
@@ -1168,7 +1264,20 @@ defineExpose({
         />
       </div>
     </AntModal>
-  </Modal>
+
+    <template #footer>
+      <div class="batch-add__footer">
+        <Button @click="handleCancel">取消</Button>
+        <Button
+          type="primary"
+          :loading="loading"
+          @click="syncHotDataThenSubmit"
+        >
+          {{ isEditMode ? '保存修改' : '提交新增' }}
+        </Button>
+      </div>
+    </template>
+  </Page>
 </template>
 
 <style scoped lang="scss">
@@ -1186,9 +1295,11 @@ defineExpose({
 
 .batch-add {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 14px;
-  height: 600px;
+  height: 100%;
+  min-height: 0;
   padding: 2px 2px 4px;
 }
 
@@ -1474,5 +1585,29 @@ defineExpose({
 
 .batch-add__custom-rows-input {
   width: 100%;
+}
+
+.freight-batch-add-page {
+  min-height: 0;
+}
+
+.batch-add__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+</style>
+
+<style lang="scss">
+/* Handsontable 箱型价列着色 */
+.htCtnCost {
+  font-weight: 600;
+  color: #d48806 !important;
+}
+
+.htCtnSug {
+  font-weight: 600;
+  color: #cf1322 !important;
 }
 </style>

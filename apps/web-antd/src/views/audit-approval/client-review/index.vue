@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page, useVbenModal } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
 
 import { Button, message } from 'ant-design-vue';
 
@@ -12,15 +14,18 @@ import {
   getClientAuditPagedList,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { consumeListShouldRefresh } from '#/utils/list-refresh-flag';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 
+import ClientStatusCell from './client-status-cell.vue';
 import {
   mapClientReviewParams,
   useClientReviewColumns,
   useClientReviewFormSchema,
 } from './data';
-import DetailModal from './modules/detail-modal.vue';
+import { findMyPendingWorkFlowItemId } from './find-pending-item';
+import TransferModal from './modules/transfer-modal.vue';
 
 defineOptions({ name: 'ClientReview' });
 
@@ -29,26 +34,24 @@ const { ClientTaskStatus } = ClientAdminApi;
 type ClientTaskRow = ClientAdminApi.ClientTaskDto;
 
 const auditCode = 'Admin.Client.Audit';
+const router = useRouter();
+const userStore = useUserStore();
 
 const t = (key: string) => $t(`auditApproval.clientReview.${key}`);
 
-// ==================== 详情弹窗 ====================
-
-const [DetailModalComp, detailModalApi] = useVbenModal({
-  connectedComponent: DetailModal,
-  destroyOnClose: true,
-});
-
-/** 详情按客户id查（行上的 id 是任务id） */
-const openDetail = (row: ClientTaskRow) => {
+/** 双击进入客户表单只读审核页（客户提交 / 申请修改同一套，含转交） */
+const openAuditPage = (row: ClientTaskRow) => {
   if (!row.client?.id) {
     message.warning('该行没有客户信息');
     return;
   }
-  detailModalApi.setData({ clientId: row.client.id });
-  detailModalApi.open();
+  router.push(`/clients/${row.client.id}/edit?mode=audit`);
 };
 
+const [TransferModalComp, transferModalApi] = useVbenModal({
+  connectedComponent: TransferModal,
+  destroyOnClose: true,
+});
 // ==================== 选中行与按钮可用性 ====================
 
 const selectedRows = ref<ClientTaskRow[]>([]);
@@ -94,7 +97,7 @@ const handleRowDblclick = ({
   row: ClientTaskRow;
 }) => {
   if (column?.type === 'checkbox') return;
-  openDetail(row);
+  openAuditPage(row);
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<ClientTaskRow>({
@@ -148,6 +151,12 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientTaskRow>({
 
 onMounted(async () => {
   await gridApi.formApi.submitForm();
+});
+
+onActivated(async () => {
+  if (consumeListShouldRefresh('ClientReview')) {
+    await reloadGrid();
+  }
 });
 
 const reloadGrid = async () => {
@@ -244,13 +253,22 @@ const showPostRejectConfirm = () => {
   });
 };
 
-const handleOpenDetail = () => {
-  const rows = selectedRows.value;
-  if (rows.length !== 1) {
-    message.warning('请勾选一条客户查看审核详情');
+/** 转交：登录即可，不要挂 Admin.Client.Audit */
+const showTransfer = () => {
+  if (!hasPendingSelection.value) {
+    message.warning('请勾选待我审核的客户');
     return;
   }
-  openDetail(rows[0]!);
+  const userId = userStore.userInfo?.userId;
+  const itemIds = selectedRows.value
+    .filter(isPendingMyAudit)
+    .map((row) => findMyPendingWorkFlowItemId(row.workFlowInstance, userId))
+    .filter((id): id is string => !!id);
+  if (itemIds.length === 0) {
+    message.warning('未找到当前待审的工作流明细，请刷新后重试');
+    return;
+  }
+  transferModalApi.setData({ itemIds, permissions: [auditCode] }).open();
 };
 
 const pendingSelectedCount = computed(
@@ -263,7 +281,7 @@ const postRejectSelectedCount = computed(
 
 const selectionHint = computed(() => {
   if (selectedRows.value.length === 0) {
-    return '勾选待审客户后可批量通过 / 驳回；双击行查看审核详情';
+    return '勾选待审客户后可批量通过 / 驳回 / 转交；双击行进入客户详情审核';
   }
   const parts = [`已选 ${selectedRows.value.length} 条`];
   if (pendingSelectedCount.value > 0) {
@@ -310,12 +328,18 @@ const selectionHint = computed(() => {
             >
               {{ t('postReject') }}
             </Button>
+            <Button
+              class="client-review-btn"
+              :disabled="!hasPendingSelection"
+              @click="showTransfer"
+            >
+              转交
+            </Button>
           </div>
-          <span class="client-review-toolbar__split" aria-hidden="true" />
-          <Button class="client-review-btn" @click="handleOpenDetail">
-            {{ t('detail') }}
-          </Button>
         </div>
+      </template>
+      <template #clientStatus="{ row }">
+        <ClientStatusCell :row="row" />
       </template>
     </Grid>
 
@@ -327,7 +351,7 @@ const selectionHint = computed(() => {
       <span class="client-review-hint__text">{{ selectionHint }}</span>
     </div>
 
-    <DetailModalComp />
+    <TransferModalComp @success="reloadGrid" />
   </Page>
 </template>
 
@@ -344,13 +368,6 @@ const selectionHint = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.client-review-toolbar__split {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  background: hsl(var(--border));
 }
 
 .client-review-btn {

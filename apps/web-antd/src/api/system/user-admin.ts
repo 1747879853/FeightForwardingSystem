@@ -135,6 +135,11 @@ export namespace SystemUserAdminApi {
     pageIndex?: number;
     pageSize?: number;
     sorting?: string;
+    /**
+     * 按权限筛选（AND）。不传或空 = 不按权限筛。
+     * GET 须 repeat：`permissions=A&permissions=B`，勿传 JSON 字符串。
+     */
+    permissions?: string[];
   }
 
   /** 按 id 批量获取用户查询参数（空 ids 语义为返回全部用户，前端务必显式传 ids） */
@@ -695,11 +700,16 @@ async function getAllUserOrganizations(): Promise<
  * 获取用户简易分页列表
  * @description 仅需登录，返回精简字段，适合下拉搜索选人。仅返回审核已通过且已激活的用户。
  * UserSelect 全量缓存会以 pageSize=1000 翻页拼齐，再在前端按角色/关键词/公司筛选。
+ * 审核转交选人应传 `permissions`（repeat query），只列出有对应审核权限的人。
  * @param params 查询参数
  */
 async function getUserSimplePagedList(
   params: SystemUserAdminApi.UserSimplePagedQueryDto,
 ): Promise<SystemUserAdminApi.PagedList<SystemUserAdminApi.UserSimpleDto>> {
+  const permissions = (params.permissions ?? [])
+    .map((p) => String(p ?? '').trim())
+    .filter(Boolean);
+
   const queryParams: Recordable<any> = {
     keyWords: params.keyWords,
     userAttribute: params.userAttribute,
@@ -708,6 +718,10 @@ async function getUserSimplePagedList(
     sorting: params.sorting || 'CreationTime DESC',
   };
 
+  if (permissions.length > 0) {
+    queryParams.permissions = permissions;
+  }
+
   // 过滤掉 undefined 值
   const filteredParams = Object.fromEntries(
     Object.entries(queryParams).filter(([_, v]) => v !== undefined),
@@ -715,6 +729,8 @@ async function getUserSimplePagedList(
 
   return requestClient.get('/services/app/User/GetUserSimplePagedListAsync', {
     params: filteredParams,
+    // permissions 为 List<string>：ABP [FromQuery] 需 repeat，勿用 brackets/JSON
+    ...(permissions.length > 0 ? { paramsSerializer: 'repeat' as const } : {}),
   });
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, h, nextTick, ref, watch } from 'vue';
+import { computed, h, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -11,6 +11,7 @@ import { Button, Form, FormItem, Input, message, Modal } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  deleteClient,
   getClientPagedList,
   addDishonest,
   cancelDishonest,
@@ -39,8 +40,17 @@ const router = useRouter();
 // 获取权限存储
 const accessStore = useAccessStore();
 
-/** 租户配置为 true 时等于没在用客户审核：不显示审核状态列与审核相关按钮 */
-const { auditEnabled, resolved: auditConfigResolved } = useClientAuditConfig();
+/**
+ * 租户配置为 true 时等于「业务侧可搜未审客户」：不显示审核状态列、筛选项
+ * 与提交审核等操作按钮。
+ *
+ * 须等配置就绪后再挂载表格：列持久化会在 mount 时快照 columns，
+ * 若先无审核列再异步加列，会被持久化回写冲掉。
+ */
+const { auditEnabled, ready: auditConfigReady } = useClientAuditConfig();
+
+/** 配置就绪且已写入正确列定义后才挂载 Grid */
+const gridBootstrapped = ref(false);
 
 const handleCreate = () => {
   router.push('/clients/create');
@@ -74,6 +84,7 @@ const handleRowDblclick = ({
 const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
+const canDelete = computed(() => selectedRows.value.length > 0);
 const canAddDishonest = computed(
   () => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest,
 );
@@ -91,12 +102,20 @@ const hasEditPermission = computed(() => {
   return accessStore.accessCodes.includes('Admin.Client.Edit');
 });
 
+// 添加删除权限检查
+const hasDeletePermission = computed(() => {
+  return accessStore.accessCodes.includes('Admin.Client.Delete');
+});
+
 // 启用审核后只有未提交(0)/已驳回(3)能直接编辑，其余状态后端也会拦
 const canEditWithPermission = computed(() => {
   if (!canEdit.value || !hasEditPermission.value) return false;
   if (!auditEnabled.value) return true;
   return canEditClient(selectedRows.value[0]?.clientStatus);
 });
+const canDeleteWithPermission = computed(
+  () => canDelete.value && hasDeletePermission.value,
+);
 
 /** 提交审核：批量，选中客户须全部是未提交/已驳回 */
 const canSubmitAudit = computed(
@@ -204,6 +223,42 @@ const handleApplyModifySelected = () => {
     return;
   }
   handleApplyModify(selectedRows.value[0]!);
+};
+
+const handleDeleteSelected = () => {
+  if (!canDelete.value) {
+    message.warning($t('seaExport.export.pleaseSelectOne'));
+    return;
+  }
+
+  const names = selectedRows.value.map((row) => getRowName(row));
+  const displayName = names.length === 1 ? names[0]! : `${names.length}条记录`;
+
+  Modal.confirm({
+    title: $t('ui.actionTitle.delete', [$t('seaExport.client.name')]),
+    content: $t('ui.actionMessage.deleteConfirm', [displayName]),
+    okType: 'danger',
+    async onOk() {
+      const hideLoading = message.loading({
+        content: $t('ui.actionMessage.deleting', [displayName]),
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        await deleteClient({
+          ids: selectedRows.value.map((row) => row.id),
+        });
+        message.success({
+          content: $t('ui.actionMessage.deleteSuccess', [displayName]),
+          key: 'action_process_msg',
+        });
+        handleRefresh();
+      } catch {
+        hideLoading();
+      }
+    },
+  });
 };
 
 const handleAddDishonest = async () => {
@@ -377,7 +432,8 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientAdminApi.ClientDto>({
     wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
-    columns: useColumns(),
+    // 占位；真正列在 auditConfigReady 后、Grid 挂载前写入
+    columns: useColumns({ showClientStatus: false }),
     height: 'auto',
     keepSource: true,
     checkboxConfig: {
@@ -410,28 +466,42 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-// 审核状态列与筛选项跟随租户配置：未启用客户审核的租户完全看不到这一套
-watch(
-  [auditEnabled, auditConfigResolved],
-  async ([enabled, isResolved]) => {
-    if (!isResolved) return;
-    await nextTick();
-    gridApi.setGridOptions({
-      columns: useColumns({ showClientStatus: enabled }),
-    });
-    gridApi.formApi?.updateSchema([
-      { fieldName: 'ClientStatus', hide: !enabled },
-    ]);
-  },
-  { immediate: true },
-);
+function applyClientAuditColumns(enabled: boolean) {
+  gridApi.setGridOptions({
+    columns: useColumns({ showClientStatus: enabled }),
+  });
+  gridApi.formApi?.updateSchema([
+    { fieldName: 'ClientStatus', hide: !enabled },
+  ]);
+}
+
+onMounted(async () => {
+  await auditConfigReady;
+  const enabled = auditEnabled.value;
+  // 先写入正确列，再挂载 Grid，避免列持久化用「无审核列」的快照冲掉后续更新
+  gridApi.setGridOptions({
+    columns: useColumns({ showClientStatus: enabled }),
+  });
+  gridBootstrapped.value = true;
+  await nextTick();
+  // formApi 在 Grid mount 后才注入
+  gridApi.formApi?.updateSchema([
+    { fieldName: 'ClientStatus', hide: !enabled },
+  ]);
+});
+
+// 会话内刷新配置后同步列/筛选项（表格已挂载）
+watch(auditEnabled, (enabled) => {
+  if (!gridBootstrapped.value) return;
+  applyClientAuditColumns(enabled);
+});
 
 useRefreshListOnFormReturn('ClientList', handleRefresh);
 </script>
 
 <template>
   <Page auto-content-height>
-    <Grid :table-title="$t('seaExport.client.list')">
+    <Grid v-if="gridBootstrapped" :table-title="$t('seaExport.client.list')">
       <template #toolbar-tools>
         <Button
           v-if="auditEnabled"
@@ -466,6 +536,14 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
           @click="handleCancelDishonest"
         >
           取消失信
+        </Button>
+        <Button
+          class="mr-2"
+          :disabled="!canDeleteWithPermission"
+          danger
+          @click="handleDeleteSelected"
+        >
+          {{ $t('common.delete') }}
         </Button>
         <Button
           class="mr-2"

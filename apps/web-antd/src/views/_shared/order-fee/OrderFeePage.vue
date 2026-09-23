@@ -370,11 +370,17 @@ const transCurrency = (currencyId: number) => {
   const option = getCurrencyEnumOptions().find((o) => o.value === currencyId);
   return option ? option.label : currencyId;
 };
-const transCurrencySymbol = (currencyId: number | string) => {
+/** 币别符号；未维护时返回空串，禁止拼出 "undefined" */
+const transCurrencySymbol = (
+  currencyId: number | string | undefined | null,
+) => {
+  if (currencyId === undefined || currencyId === null || currencyId === '') {
+    return '';
+  }
   const option = getCurrencyEnumSymbolOptions().find(
     (o) => o.value === currencyId || o.key === currencyId,
   );
-  return option ? option.label : currencyId;
+  return option?.label ?? '';
 };
 
 let recAmountMap: any = ref({} as any);

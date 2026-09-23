@@ -46,7 +46,8 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           keepAlive: true,
           activePath: '/clients',
-          authority: abpPageAuthority('Admin.Client'),
+          // 客户维护与客户审核均可进入；审核模式在页面内只读
+          authority: abpPageAuthority(['Admin.Client', 'Admin.Client.Audit']),
         },
         component: () => import('#/views/client/editor.vue'),
       },

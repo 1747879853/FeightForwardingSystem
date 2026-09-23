@@ -384,7 +384,11 @@ export function usePortRemoteAutocomplete(options?: {
     return getCachedPortLabel(id);
   }
 
-  /** 仅有 ID 时用 PortCode 全量精简列表补全 label（编辑回显兜底，无需 Admin 权限） */
+  /**
+   * 仅有 ID、缓存仍缺 label 时的兜底。
+   * 调用方应先用嵌套港口 DTO（resolvePortLabelFromRow）写缓存；
+   * 运价列表「更新」场景通常不会再请求。PortCode 无 Detail/按 id 筛选，只能拉精简全量。
+   */
   async function ensurePortLabelsByIds(
     ids: Array<number | string | null | undefined>,
   ) {

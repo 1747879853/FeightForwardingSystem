@@ -46,6 +46,7 @@
     "fileCount": "共 {0} 个文件",
     "empty": "暂无附件类型配置",
     "emptyType": "暂无附件",
+    "clickOrDragUpload": "点击、拖拽或 Ctrl+V 粘贴上传",
     "uncategorized": "未分类",
     "loadFailed": "加载附件失败",
     "uploadSuccess": "上传成功",

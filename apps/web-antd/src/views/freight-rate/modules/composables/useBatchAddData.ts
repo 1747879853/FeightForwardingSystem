@@ -66,20 +66,27 @@ export function useBatchAddData() {
       remark: '',
       currencyId: defaultCurrencyId.value,
       bookingAgentId: undefined,
-      seFreiPriceCtns: [] as Array<{ ctnCodeId: string; cost?: number }>,
+      seFreiPriceCtns: [] as Array<{
+        ctnCodeId: string;
+        cost?: number;
+        sugPrice?: number;
+      }>,
     };
 
     // ⚠️ 关键修复：如果已经有添加的箱型，为新行初始化动态字段
     if (addedCtnTypes.value.length > 0) {
       addedCtnTypes.value.forEach((ctn) => {
         const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+        const sugField = `ctnSug_${String(ctn.ctnCodeId)}`;
         row[dynamicField] = undefined;
+        row[sugField] = undefined;
       });
 
       // 同时初始化 seFreiPriceCtns
       row.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
         ctnCodeId: ctn.ctnCodeId,
         cost: undefined,
+        sugPrice: undefined,
       }));
     }
 
@@ -88,8 +95,9 @@ export function useBatchAddData() {
 
   /**
    * 新增行
+   * @param silent 静默（打开弹窗自动补空行时不弹 toast）
    */
-  function addRow(count: number = 1) {
+  function addRow(count: number = 1, silent = false) {
     const newRows = [];
 
     for (let i = 0; i < count; i++) {
@@ -101,7 +109,9 @@ export function useBatchAddData() {
     // push() 不会改变引用，所以需要创建新数组
     dataSource.value = [...dataSource.value, ...newRows];
 
-    message.success(`已新增 ${count} 行`);
+    if (!silent) {
+      message.success(`已新增 ${count} 行`);
+    }
   }
 
   /**
@@ -206,17 +216,23 @@ export function useBatchAddData() {
 
       // 遍历所有以 ctn_ 开头的字段，提取箱型费用
       Object.keys(row).forEach((key) => {
-        if (key.startsWith('ctn_')) {
+        if (key.startsWith('ctn_') && !key.startsWith('ctnSug_')) {
           const ctnCodeId = key.replace('ctn_', '');
           const cost = row[key];
+          const sugPrice = row[`ctnSug_${ctnCodeId}`];
 
-          // 只包含有值的箱型
-          if (cost !== undefined && cost !== null && cost !== '') {
-            seFreiPriceCtns.push({
-              ctnCodeId,
-              cost: Number(cost),
-            });
-          }
+          // 成本或指导价有值才提交该箱型
+          const hasCost = cost !== undefined && cost !== null && cost !== '';
+          const hasSug =
+            sugPrice !== undefined && sugPrice !== null && sugPrice !== '';
+          if (!hasCost && !hasSug) return;
+
+          const item: SeFreiPriceCtnEditDto = {
+            ctnCodeId,
+          };
+          if (hasCost) item.cost = Number(cost);
+          if (hasSug) item.sugPrice = Number(sugPrice);
+          seFreiPriceCtns.push(item);
         }
       });
 
@@ -316,7 +332,7 @@ export function useBatchAddData() {
       }
 
       return {
-        recommend: row.recommend || false,
+        recommend: false,
         carrierId: carrierId!,
         polId: polId!,
         podId: podId!,

@@ -37,7 +37,8 @@ import PaymentTermsPanel from '../payment-terms/list.vue';
 import OrgSharedLabel from './org-shared-label.vue';
 import { ClientSharedType, normalizeClientSharedType } from './shared-type';
 import { useVbenModal } from '@vben/common-ui';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import { useUserStore } from '@vben/stores';
+import { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
@@ -54,25 +55,38 @@ import {
 } from '@vben/icons';
 import {
   addClient,
+  auditClient,
   editClient,
+  getClientAuditDetail,
   getClientDetail,
   addDishonest,
   cancelDishonest,
   modifyClientAudit,
   submitClientAudit,
+  withdrawClientAudit,
 } from '#/api/sea-export/client-admin';
 import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import {
   canApplyClientModify,
   canEditClient,
   canSubmitClientAudit,
+  canWithdrawClientAudit,
   getClientStatusLabel,
+  ClientStatus,
 } from './client-status';
+import {
+  type AuditChangedSections,
+  computeAuditModifyChanges,
+} from './audit-modify-highlight';
 import { $t } from '#/locales';
 import { useTabs } from '@vben/hooks';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { setFormApisDisabled } from '#/utils/ticket-editable';
+import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
+import { findMyPendingWorkFlowItemId } from '#/views/audit-approval/client-review/find-pending-item';
+import ApprovalPath from '#/views/audit-approval/client-review/modules/approval-path.vue';
+import TransferModal from '#/views/audit-approval/client-review/modules/transfer-modal.vue';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -96,6 +110,7 @@ const props = withDefaults(
 const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
+const userStore = useUserStore();
 
 // 新增页也会缓存：只在创建实例时读取路由，避免切页后变成编辑其他业务。
 const initialRouteId =
@@ -119,6 +134,73 @@ const isModifyMode = computed(
   () => isEdit.value && (modifyModeOverride.value || initialModifyMode),
 );
 
+/** 客户审核列表双击进入：只读 + 右上角仅审核操作 */
+const isAuditMode = computed(
+  () => isEdit.value && route.query.mode === 'audit',
+);
+
+const { ClientTaskStatus, ClientTaskType } = ClientAdminApi;
+
+const auditDetail = ref<ClientAdminApi.ClientAuditDetailDto | null>(null);
+/** 档案 DetailAsync.lastAuditTask；审核中/驳回展示，已通过不展示 */
+const lastAuditTask = ref<ClientAdminApi.ClientTaskDto | null>(null);
+const auditSubmitting = ref(false);
+const changedAuditFields = ref<Set<string>>(new Set());
+const changedAuditSections = ref<AuditChangedSections>({
+  addresses: false,
+  billingPeriods: false,
+  industry: false,
+  stakeholders: false,
+  type: false,
+});
+
+/** 档案详情按 clientStatus 决定是否挂最后一轮审核信息（勿用 taskStatus 猜） */
+const ARCHIVE_SHOW_LAST_AUDIT = new Set<ClientAdminApi.ClientStatus>([
+  ClientStatus.Auditing,
+  ClientStatus.Rejected,
+  ClientStatus.ModifyAuditing,
+  ClientStatus.ModifyRejected,
+]);
+
+/**
+ * 审核工作台始终展示当前任务路径；
+ * 档案详情：仅 clientStatus∈{待审/驳回/申请修改/申请修改驳回} 且 lastAuditTask 有值时展示。
+ */
+const showApprovalPath = computed(() => {
+  if (isAuditMode.value) return true;
+  if (!isEdit.value) return false;
+  if (clientStatus.value === undefined || clientStatus.value === null) {
+    return false;
+  }
+  const status = Number(clientStatus.value) as ClientAdminApi.ClientStatus;
+  if (!ARCHIVE_SHOW_LAST_AUDIT.has(status)) return false;
+  return lastAuditTask.value != null;
+});
+
+/** 右侧栏展示用的任务：审核模式用详情接口，档案页用 lastAuditTask */
+const panelAuditTask = computed(
+  () => (isAuditMode.value ? auditDetail.value : lastAuditTask.value) ?? null,
+);
+
+const approvalPathInstance = computed(
+  () => panelAuditTask.value?.workFlowInstance ?? null,
+);
+
+const canPendingAudit = computed(
+  () =>
+    isAuditMode.value &&
+    auditDetail.value?.myTaskStatus === ClientTaskStatus.Auditing,
+);
+
+const canPostRejectAudit = computed(
+  () =>
+    isAuditMode.value &&
+    auditDetail.value?.taskStatus === ClientTaskStatus.Passed &&
+    auditDetail.value?.myTaskStatus === ClientTaskStatus.Passed,
+);
+
+const auditActionCode = 'Admin.Client.Audit';
+
 const clientStatus = ref<ClientAdminApi.ClientStatus | undefined>();
 
 /** 可直接编辑：未提交(0)/已驳回(3)；其余状态只能走申请修改 */
@@ -132,8 +214,28 @@ const canApplyModify = computed(() => canApplyClientModify(clientStatus.value));
 /** 未提交(0)/已驳回(3) 可从编辑页提交审核 */
 const canSubmitAudit = computed(() => canSubmitClientAudit(clientStatus.value));
 
-/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑 */
+/**
+ * 撤销提交：新增客户待审核(1)。
+ * 取消申请修改：申请修改进行中(4)。
+ * 均走 WithdrawAuditAsync（与列表「撤回」同一接口），只撤最新一轮。
+ */
+const canWithdrawSubmit = computed(
+  () =>
+    auditEnabled.value &&
+    clientStatus.value === ClientStatus.Auditing &&
+    canWithdrawClientAudit(clientStatus.value),
+);
+
+const canCancelModifyApply = computed(
+  () =>
+    auditEnabled.value &&
+    clientStatus.value === ClientStatus.ModifyAuditing &&
+    canWithdrawClientAudit(clientStatus.value),
+);
+
+/** 已通过 / 申请修改驳回等不可直接改的状态，点「申请修改」后才放开编辑；审核模式始终只读 */
 const formLocked = computed(() => {
+  if (isAuditMode.value) return true;
   if (!isEdit.value || !auditEnabled.value || isModifyMode.value) return false;
   if (clientStatus.value === undefined) return false;
   return !canDirectEdit.value;
@@ -179,12 +281,60 @@ const handleSubmitAudit = async () => {
   });
 };
 
+/** 新增客户待审核：撤销提交（撤回最新一轮 SubmitClient 任务） */
+const handleWithdrawSubmit = () => {
+  const id = editId.value;
+  if (!id || !canWithdrawSubmit.value) return;
+  Modal.confirm({
+    title: '撤销提交',
+    content:
+      '确定撤销当前客户的审核提交吗？仅撤回最新一轮，历史审批留档；撤销后可继续编辑并重新提交。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    async onOk() {
+      await withdrawClientAudit({ ids: [id] });
+      message.success('已撤销提交');
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
+};
+
+/** 申请修改进行中：取消申请（撤回最新一轮 ModifyClient 任务） */
+const handleCancelModifyApply = () => {
+  const id = editId.value;
+  if (!id || !canCancelModifyApply.value) return;
+  Modal.confirm({
+    title: '取消申请',
+    content:
+      '确定取消当前的申请修改吗？仅撤回最新一轮，历史审批留档；取消后客户恢复为可再次申请修改的状态。',
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    async onOk() {
+      await withdrawClientAudit({ ids: [id] });
+      message.success('已取消申请修改');
+      modifyModeOverride.value = false;
+      markListShouldRefresh('ClientList');
+      await loadEditData();
+    },
+  });
+};
+
 const clientStatusHint = computed(() => {
   if (canSaveClient.value) return '';
   const label = getClientStatusLabel(clientStatus.value);
-  return isModifyMode.value
-    ? `客户当前为${label}，不可发起申请修改`
-    : `客户当前为${label}，不可直接编辑，请发起申请修改`;
+  if (isModifyMode.value) {
+    return `客户当前为${label}，不可发起申请修改`;
+  }
+  if (clientStatus.value === ClientStatus.Auditing) {
+    return `客户当前为${label}，不可编辑，可撤销提交后修改`;
+  }
+  if (clientStatus.value === ClientStatus.ModifyAuditing) {
+    return `客户当前为${label}，审核进行中，可取消申请`;
+  }
+  return `客户当前为${label}，不可直接编辑，请发起申请修改`;
 });
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
@@ -246,6 +396,26 @@ const defaultOrderUsers = ref<ClientAdminApi.ClientStakeholderListDto[]>([
   { userAttribute: UserAttribute.CustomerService, stakeholderList: [] },
   { userAttribute: UserAttribute.Documentation, stakeholderList: [] },
 ]);
+
+/**
+ * 详情已带 userNickName 时立刻交给 UserSelect 回显，
+ * 避免等全量用户缓存时先闪数字 id（TAPD #1000544）。
+ */
+const toUserSelectSelectedItems = (
+  list?: Array<{ userId?: number; userNickName?: string }> | null,
+): SystemUserAdminApi.UserSimpleDto[] => {
+  if (!list?.length) return [];
+  return list
+    .filter((item) => item.userId != null && String(item.userId) !== '')
+    .map((item) => {
+      const nickName = (item.userNickName ?? '').trim();
+      return {
+        id: item.userId as number,
+        nickName,
+      };
+    })
+    .filter((item) => item.nickName);
+};
 
 /** 对账人用户ID列表 */
 const reconcilerUserIds = ref<number[]>([]);
@@ -364,6 +534,12 @@ const [AddressModalComponent, modalApi] = useVbenModal({
 /** 风鸟企业查询弹窗 */
 const [RiskbirdModal, riskbirdModalApi] = useVbenModal({
   connectedComponent: RiskbirdSearchModal,
+});
+
+/** 客户审核转交（登录即可，不挂 Admin.Client.Audit） */
+const [TransferModalComp, transferModalApi] = useVbenModal({
+  connectedComponent: TransferModal,
+  destroyOnClose: true,
 });
 
 /** 用于存储当前的客户全称，用于 watch 监听 */
@@ -694,6 +870,11 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   // 设置失信状态
   isDishonest.value = (detail as any).isDishonest ?? false;
   clientStatus.value = detail.clientStatus;
+  lastAuditTask.value =
+    detail.lastAuditTask ??
+    (detail as { LastAuditTask?: ClientAdminApi.ClientTaskDto | null })
+      .LastAuditTask ??
+    null;
 
   // 设置行业类别
   if (isClient.value) {
@@ -795,6 +976,338 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   };
 };
 
+function clearAuditHighlights() {
+  changedAuditFields.value = new Set();
+  changedAuditSections.value = {
+    addresses: false,
+    billingPeriods: false,
+    industry: false,
+    stakeholders: false,
+    type: false,
+  };
+  baseFormApi.updateSchema(
+    [
+      'name',
+      'fullName',
+      'code',
+      'enName',
+      'taxNo',
+      'taxRate',
+      'codeSourceId',
+      'phone',
+      'mobile',
+      'email',
+      'url',
+      'enterpriseType',
+      'orgId',
+      'remark',
+    ].map((fieldName) => ({
+      fieldName,
+      formItemClass: fieldName === 'remark' ? 'col-span-2' : undefined,
+    })),
+  );
+  businessFormApi.updateSchema(
+    [
+      'legalPerson',
+      'registeredCapital',
+      'establishmentDate',
+      'businessTerm',
+    ].map((fieldName) => ({ fieldName, formItemClass: undefined })),
+  );
+  clientFormApi.updateSchema(
+    [
+      'clientType',
+      'clientLevel',
+      'cargoType',
+      'clientCurrencyId',
+      'remark',
+    ].map((fieldName) => ({
+      fieldName,
+      formItemClass: fieldName === 'remark' ? 'col-span-3' : undefined,
+    })),
+  );
+  supplierFormApi.updateSchema(
+    ['supplierLevel', 'supplierCurrencyId', 'laneIds'].map((fieldName) => ({
+      fieldName,
+      formItemClass: undefined,
+    })),
+  );
+}
+
+function applyAuditFieldHighlights(fields: Set<string>) {
+  const mark = (
+    api: typeof baseFormApi,
+    names: string[],
+    remarkSpan?: string,
+  ) => {
+    api.updateSchema(
+      names
+        .filter((name) => fields.has(name))
+        .map((fieldName) => ({
+          fieldName,
+          formItemClass:
+            fieldName === 'remark' && remarkSpan
+              ? `${remarkSpan} client-audit-field--changed`
+              : 'client-audit-field--changed',
+        })),
+    );
+  };
+  mark(
+    baseFormApi,
+    [
+      'name',
+      'fullName',
+      'code',
+      'enName',
+      'taxNo',
+      'taxRate',
+      'codeSourceId',
+      'phone',
+      'mobile',
+      'email',
+      'url',
+      'enterpriseType',
+      'orgId',
+      'remark',
+    ],
+    'col-span-2',
+  );
+  mark(businessFormApi, [
+    'legalPerson',
+    'registeredCapital',
+    'establishmentDate',
+    'businessTerm',
+  ]);
+  mark(
+    clientFormApi,
+    ['clientType', 'clientLevel', 'cargoType', 'clientCurrencyId', 'remark'],
+    'col-span-3',
+  );
+  mark(supplierFormApi, ['supplierLevel', 'supplierCurrencyId', 'laneIds']);
+}
+
+/** 把申请修改的目标快照写入表单，审核人看到的是「申请后的内容」 */
+async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
+  const areaIdPath = await buildAreaPath(to.areaId);
+  const industryCategoriesArray = to.industryCategories
+    ? to.industryCategories
+        .split('')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : [];
+
+  isClient.value = !!to.isClient;
+  isCustomerType.value = to.isClient ? [1] : [];
+  isSupplier.value = !!to.isSupplier;
+  isSupplierType.value = to.isSupplier ? [2] : [];
+  customerType.value = to.isClient ? industryCategoriesArray : [];
+  supplierType.value = to.isSupplier ? industryCategoriesArray : [];
+
+  defaultOrderUsers.value.forEach((orderUser) => {
+    switch (orderUser.userAttribute) {
+      case UserAttribute.Sales:
+        orderUser.userIds = to.sales?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.sales as any) || [];
+        break;
+      case UserAttribute.Operation:
+        orderUser.userIds = to.operations?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.operations as any) || [];
+        break;
+      case UserAttribute.CustomerService:
+        orderUser.userIds = to.customerServices?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.customerServices as any) || [];
+        break;
+      case UserAttribute.Documentation:
+        orderUser.userIds = to.documentations?.map((s) => s.userId) || [];
+        orderUser.stakeholderList = (to.documentations as any) || [];
+        break;
+    }
+  });
+  const nextReconcilerIds = to.reconcilerUserIds ?? [];
+  reconcilerUserIds.value = nextReconcilerIds;
+  const prevReconcilerMap = new Map(
+    reconcilerList.value.map((item) => [item.userId, item]),
+  );
+  reconcilerList.value = nextReconcilerIds.map((userId) => {
+    const prev = prevReconcilerMap.get(userId);
+    if (prev) return prev;
+    return {
+      id: '0',
+      clientId: editId.value || '',
+      userId,
+      userNickName: '',
+    };
+  });
+  addressList.value = (to.addresses || []).map((addr, index) => ({
+    id: (addr as { id?: number }).id ?? index,
+    name: addr.name || '',
+    isDefault: !!addr.isDefault,
+    addressType: addr.addressType,
+    address: addr.address || '',
+    contactPerson: addr.contactPerson || '',
+    mobile: addr.mobile || '',
+    tel: addr.tel || '',
+    remark: addr.remark || '',
+  }));
+  billingPeriods.value = (to.billingPeriods ?? []) as any[];
+
+  const formValues = {
+    name: to.name,
+    fullName: to.fullName,
+    code: to.code,
+    enName: to.enName,
+    taxNo: to.taxNo,
+    taxRate: to.taxRate ?? undefined,
+    codeSourceId: to.codeSourceId,
+    phone: to.phone,
+    mobile: to.mobile,
+    email: to.email,
+    url: to.url,
+    enterpriseType: to.enterpriseType,
+    orgId: to.orgId,
+    isShared: normalizeClientSharedType(to.isShared),
+    remark: to.remark,
+    country: to.countryId,
+    areaId: areaIdPath,
+    address: to.address,
+    enAddress: to.enAddress,
+    mainProduct: to.mainProduct,
+    enable: to.enable,
+    legalPerson: to.legalPerson,
+    registeredCapital: to.registeredCapital,
+    establishmentDate: toDayjs(to.establishmentDate),
+    businessTerm: to.businessTerm,
+    clientType: to.clientType,
+    clientLevel: to.clientLevel,
+    source: to.source,
+    cargoType: to.cargoType,
+    clientCurrencyId: to.clientCurrencyId,
+    supplierLevel: to.supplierLevel,
+    laneIds: to.laneIds,
+    supplierCurrencyId: to.supplierCurrencyId,
+  };
+
+  await baseFormApi.setValues(formValues);
+  isSharedValue.value = normalizeClientSharedType(formValues.isShared);
+  await businessFormApi.setValues(formValues);
+  await nextTick();
+  if (isClient.value) {
+    await clientFormApi.setValues(formValues);
+  }
+  if (isSupplier.value) {
+    await supplierFormApi.setValues(formValues);
+  }
+}
+
+async function loadAuditContext() {
+  if (!editId.value || !isAuditMode.value) return;
+  clearAuditHighlights();
+  try {
+    auditDetail.value = await getClientAuditDetail(editId.value);
+    if (
+      auditDetail.value.taskType === ClientTaskType.ModifyClient &&
+      auditDetail.value.modifyTo
+    ) {
+      const { fields, sections } = computeAuditModifyChanges(
+        auditDetail.value.modifyFrom,
+        auditDetail.value.modifyTo,
+      );
+      changedAuditFields.value = fields;
+      changedAuditSections.value = sections;
+      await applyModifySnapshotToForm(auditDetail.value.modifyTo);
+      await nextTick();
+      await nextTick();
+      applyAuditFieldHighlights(fields);
+    }
+  } catch (error) {
+    console.error('加载客户审核详情失败:', error);
+    message.error('加载客户审核详情失败');
+  }
+}
+
+function formatAuditPanelTime(value?: null | string) {
+  if (!value) return '';
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY-MM-DD HH:mm') : '';
+}
+
+async function leaveAuditPage() {
+  markListShouldRefresh('ClientReview');
+  const currentTabKey = route.fullPath;
+  await router.push('/audit-approval/client-review');
+  await closeTabByKey(currentTabKey);
+}
+
+async function doPageAudit(success: boolean, remark: string) {
+  const id = editId.value;
+  if (!id) return;
+  auditSubmitting.value = true;
+  try {
+    await auditClient({
+      ids: [id],
+      remark: remark || undefined,
+      success,
+    });
+    message.success(success ? '已通过客户审核' : '已驳回客户');
+    await leaveAuditPage();
+  } finally {
+    auditSubmitting.value = false;
+  }
+}
+
+const handleAuditPass = () => {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: $t('auditApproval.task.okPass'),
+    remarkRequired: false,
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(true, remark),
+  });
+};
+
+const handleAuditReject = () => {
+  if (!canPendingAudit.value) return;
+  openAuditRemarkConfirm({
+    title: '确认驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(false, remark),
+  });
+};
+
+const handleAuditPostReject = () => {
+  if (!canPostRejectAudit.value) return;
+  openAuditRemarkConfirm({
+    title: '确认通过后驳回',
+    danger: true,
+    remarkRequired: true,
+    remarkRequiredMessage: '驳回原因不能为空',
+    maxlength: 4096,
+    onConfirm: (remark) => doPageAudit(false, remark),
+  });
+};
+
+const handleAuditTransfer = () => {
+  if (!canPendingAudit.value) return;
+  const itemId = findMyPendingWorkFlowItemId(
+    auditDetail.value?.workFlowInstance,
+    userStore.userInfo?.userId,
+  );
+  if (!itemId) {
+    message.warning('未找到当前待审的工作流明细，请刷新后重试');
+    return;
+  }
+  transferModalApi
+    .setData({ itemIds: [itemId], permissions: [auditActionCode] })
+    .open();
+};
+
+const onAuditTransferSuccess = async () => {
+  await leaveAuditPage();
+};
+
 /**
  * 加载编辑数据
  */
@@ -823,6 +1336,12 @@ const loadEditData = async () => {
 
     // 触发响应式更新
     await nextTick();
+    if (isAuditMode.value) {
+      await loadAuditContext();
+    } else {
+      clearAuditHighlights();
+      auditDetail.value = null;
+    }
     await syncFormSnapshot();
   } catch (error) {
     console.error('加载编辑数据失败:', error);
@@ -936,6 +1455,19 @@ const updateStakeholders = async (
 const updateReconcilers = (values: number[]) => {
   if (formLocked.value) return;
   reconcilerUserIds.value = values;
+  const existingMap = new Map(
+    reconcilerList.value.map((item) => [item.userId, item]),
+  );
+  reconcilerList.value = values.map((userId) => {
+    const existing = existingMap.get(userId);
+    if (existing) return existing;
+    return {
+      id: '0',
+      clientId: editId.value || '',
+      userId,
+      userNickName: '',
+    };
+  });
 };
 
 /**
@@ -1833,6 +2365,14 @@ onMounted(() => {
     }
   }, 100); // 延迟100ms确保表单完全渲染
 });
+
+watch(
+  () => `${editId.value ?? ''}:${String(route.query.mode ?? '')}`,
+  (key, prev) => {
+    if (!editId.value || key === prev) return;
+    void loadEditData();
+  },
+);
 </script>
 
 <template>
@@ -1843,20 +2383,68 @@ onMounted(() => {
           <div class="content-section__actions">
             <div class="content-section__status">
               <Tag
-                v-if="isEdit && auditEnabled && clientStatus !== undefined"
+                v-if="
+                  isEdit &&
+                  (auditEnabled || isAuditMode) &&
+                  clientStatus !== undefined
+                "
                 :color="clientStatusTagColor"
               >
                 {{ getClientStatusLabel(clientStatus) }}
               </Tag>
               <span
-                v-if="clientStatusHint"
+                v-if="isAuditMode && auditDetail?.applyRemark"
+                class="content-section__status-hint"
+                :title="auditDetail.applyRemark"
+              >
+                申请原因：{{ auditDetail.applyRemark }}
+              </span>
+              <span
+                v-else-if="clientStatusHint"
                 class="content-section__status-hint"
                 :title="clientStatusHint"
               >
                 {{ clientStatusHint }}
               </span>
             </div>
-            <Space>
+            <Space v-if="isAuditMode">
+              <Button
+                v-access:code="auditActionCode"
+                type="primary"
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditPass"
+              >
+                {{ $t('auditApproval.clientReview.auditPass') }}
+              </Button>
+              <Button
+                v-access:code="auditActionCode"
+                danger
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditReject"
+              >
+                {{ $t('auditApproval.clientReview.selectReject') }}
+              </Button>
+              <Button
+                v-access:code="auditActionCode"
+                danger
+                ghost
+                :disabled="!canPostRejectAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditPostReject"
+              >
+                {{ $t('auditApproval.clientReview.postReject') }}
+              </Button>
+              <Button
+                :disabled="!canPendingAudit"
+                :loading="auditSubmitting"
+                @click="handleAuditTransfer"
+              >
+                转交
+              </Button>
+            </Space>
+            <Space v-else>
               <Button
                 type="primary"
                 :disabled="!canSaveClient"
@@ -1910,6 +2498,32 @@ onMounted(() => {
                 <span class="align-middle">申请修改</span>
               </Button>
               <Button
+                v-if="isEdit && !isModifyMode && canWithdrawSubmit"
+                danger
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleWithdrawSubmit"
+              >
+                <IconifyIcon
+                  icon="mdi:file-undo-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">撤销提交</span>
+              </Button>
+              <Button
+                v-if="isEdit && canCancelModifyApply"
+                danger
+                :loading="submitting"
+                class="flex items-center justify-center"
+                @click="handleCancelModifyApply"
+              >
+                <IconifyIcon
+                  icon="mdi:file-cancel-outline"
+                  class="mr-1 inline-block size-4 align-middle"
+                />
+                <span class="align-middle">取消申请</span>
+              </Button>
+              <Button
                 :type="isDishonest ? 'default' : 'primary'"
                 :danger="!isDishonest"
                 @click="handleDishonestToggle"
@@ -1927,7 +2541,13 @@ onMounted(() => {
           <div class="content-section__body">
             <div class="mb-2 px-3">
               <!-- 客户：一级勾选 + 二级属性（同行样式，增强区分） -->
-              <div class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow">
+              <div
+                class="type-row my-2 rounded-lg bg-gray-50 py-2 shadow"
+                :class="{
+                  'client-audit-section--changed':
+                    changedAuditSections.type || changedAuditSections.industry,
+                }"
+              >
                 <div class="type-row__primary">
                   <div
                     class="role-chip"
@@ -1964,7 +2584,13 @@ onMounted(() => {
               </div>
 
               <!-- 供应商：一级勾选 + 二级属性 -->
-              <div class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow">
+              <div
+                class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow"
+                :class="{
+                  'client-audit-section--changed':
+                    changedAuditSections.type || changedAuditSections.industry,
+                }"
+              >
                 <div class="type-row__primary">
                   <div
                     class="role-chip"
@@ -2053,7 +2679,13 @@ onMounted(() => {
       </div>
 
       <div class="flex items-stretch gap-3">
-        <div class="content-column min-w-0 flex-1">
+        <!-- 地址列略窄于原先，但仍够展示地址卡片（约 1:1.7） -->
+        <div
+          class="content-column min-w-0 flex-[1]"
+          :class="{
+            'client-audit-section--changed': changedAuditSections.addresses,
+          }"
+        >
           <section class="content-section">
             <div class="content-section__header flex justify-between">
               <div>
@@ -2081,15 +2713,18 @@ onMounted(() => {
                 </Button>
               </div>
             </div>
-            <div class="content-section__body flex space-x-2">
+            <div class="content-section__body address-list">
               <div
                 v-for="(item, index) in addressList"
-                class="address-card mt-2 w-[450px] cursor-pointer rounded-md border-gray-200 p-2 shadow-md transition-all"
+                :key="item.id ?? `${item.name}-${index}`"
+                class="address-card cursor-pointer rounded-md border-gray-200 shadow-md transition-all"
                 :class="{ 'address-card-default': item.isDefault }"
               >
                 <div class="address-heard flex justify-between py-2">
-                  <div class="flex font-semibold">
-                    <span class="mr-2">{{ item.name }}</span>
+                  <div
+                    class="flex min-w-0 flex-wrap items-center font-semibold"
+                  >
+                    <span class="mr-2 truncate">{{ item.name }}</span>
                     <tag color="blue" v-if="item.isDefault">{{
                       ClientConstants.getDefaultOptions().find(
                         (o) => o.value === item.isDefault,
@@ -2110,7 +2745,7 @@ onMounted(() => {
                       }}
                     </tag>
                   </div>
-                  <div>
+                  <div class="ml-3 shrink-0">
                     <Button
                       type="text"
                       :disabled="formLocked"
@@ -2141,29 +2776,43 @@ onMounted(() => {
                         style="color: #109ae8"
                       />
                     </span>
-                    <span class="text-normal">{{ item.address }}</span>
+                    <span class="text-normal break-words">{{
+                      item.address
+                    }}</span>
                   </div>
-                  <div class="flex space-x-2">
-                    <span class="pt-1">
-                      <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
+                  <div class="flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="flex items-start space-x-2">
+                      <span class="pt-1">
+                        <IconifyIcon icon="mdi:user" style="color: #ced3dd" />
+                      </span>
+                      <span class="text-sm text-gray-500">
+                        {{ item.contactPerson }}
+                      </span>
                     </span>
-                    <span class="text-sm text-gray-500">
-                      {{ item.contactPerson }}
+                    <span class="flex items-start space-x-2">
+                      <span class="pt-1">
+                        <IconifyIcon
+                          icon="mdi:telephone"
+                          style="color: #ced3dd"
+                        />
+                      </span>
+                      <span class="text-sm text-gray-500">{{
+                        item.mobile
+                      }}</span>
                     </span>
-                    <span class="pt-1">
-                      <IconifyIcon
-                        icon="mdi:telephone"
-                        style="color: #ced3dd"
-                      />
-                    </span>
-                    <span class="text-sm text-gray-500">{{ item.mobile }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
         </div>
-        <div class="content-column min-w-0 flex-[1.15]">
+        <div
+          class="content-column min-w-0 flex-[1.7]"
+          :class="{
+            'client-audit-section--changed':
+              changedAuditSections.billingPeriods,
+          }"
+        >
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">
@@ -2182,89 +2831,146 @@ onMounted(() => {
       </div>
     </div>
 
-    <Card class="right-column stakeholders-panel mr-2">
-      <template #title>
-        <span class="card-title">
-          <span class="stakeholders-panel__title-icon" aria-hidden="true">
-            <IconifyIcon icon="gridicons:multiple-users" class="size-4" />
+    <div class="right-rail">
+      <Card
+        class="right-column stakeholders-panel"
+        :class="{
+          'client-audit-section--changed': changedAuditSections.stakeholders,
+        }"
+      >
+        <template #title>
+          <span class="card-title">
+            <span class="stakeholders-panel__title-icon" aria-hidden="true">
+              <IconifyIcon icon="gridicons:multiple-users" class="size-4" />
+            </span>
+            {{ $t('seaExport.client.stakeholders') }}
           </span>
-          {{ $t('seaExport.client.stakeholders') }}
-        </span>
-      </template>
+        </template>
 
-      <div class="stakeholders-panel__body">
-        <div class="stakeholders-panel__group">
-          <div class="stakeholders-panel__group-label">业务干系人</div>
-          <div
-            v-for="item in defaultOrderUsers"
-            :key="item.userAttribute"
-            class="stakeholder-block"
-            :class="{
-              'stakeholder-block--filled': getStakeholderCount(item) > 0,
-            }"
-          >
-            <div class="stakeholder-block__head">
-              <span class="stakeholder-block__icon" aria-hidden="true">
-                <IconifyIcon
-                  :icon="getOrderUserRoleIcon(item.userAttribute)"
-                  class="size-3.5"
-                />
-              </span>
-              <span class="stakeholder-block__title">
-                {{ getOrderUserRoleLabel(item.userAttribute) }}
-              </span>
-              <span class="stakeholder-block__count">
-                {{ getStakeholderCount(item) }}
-              </span>
+        <div class="stakeholders-panel__body">
+          <div class="stakeholders-panel__group">
+            <div class="stakeholders-panel__group-label">业务干系人</div>
+            <div
+              v-for="item in defaultOrderUsers"
+              :key="item.userAttribute"
+              class="stakeholder-block"
+              :class="{
+                'stakeholder-block--filled': getStakeholderCount(item) > 0,
+              }"
+            >
+              <div class="stakeholder-block__head">
+                <span class="stakeholder-block__icon" aria-hidden="true">
+                  <IconifyIcon
+                    :icon="getOrderUserRoleIcon(item.userAttribute)"
+                    class="size-3.5"
+                  />
+                </span>
+                <span class="stakeholder-block__title">
+                  {{ getOrderUserRoleLabel(item.userAttribute) }}
+                </span>
+                <span class="stakeholder-block__count">
+                  {{ getStakeholderCount(item) }}
+                </span>
+              </div>
+              <UserSelect
+                mode="multiple"
+                :disabled="formLocked"
+                :model-value="item.userIds"
+                label-key="nickName"
+                :user-attribute="item.userAttribute"
+                :selected-items="
+                  toUserSelectSelectedItems(item.stakeholderList)
+                "
+                class="stakeholder-block__select"
+                @update:model-value="
+                  (v) => updateStakeholders(item.userAttribute, v as number[])
+                "
+              />
             </div>
-            <UserSelect
-              mode="multiple"
-              :disabled="formLocked"
-              :model-value="item.userIds"
-              label-key="nickName"
-              :user-attribute="item.userAttribute"
-              class="stakeholder-block__select"
-              @update:model-value="
-                (v) => updateStakeholders(item.userAttribute, v as number[])
-              "
-            />
+          </div>
+
+          <div class="stakeholders-panel__divider" role="separator"></div>
+
+          <div class="stakeholders-panel__group">
+            <div class="stakeholders-panel__group-label">结算对账</div>
+            <div
+              class="stakeholder-block stakeholder-block--reconciler"
+              :class="{
+                'stakeholder-block--filled': reconcilerUserIds.length > 0,
+              }"
+            >
+              <div class="stakeholder-block__head">
+                <span class="stakeholder-block__icon" aria-hidden="true">
+                  <IconifyIcon
+                    icon="mdi:file-table-box-outline"
+                    class="size-3.5"
+                  />
+                </span>
+                <span class="stakeholder-block__title">对账人</span>
+                <span class="stakeholder-block__count">
+                  {{ reconcilerUserIds.length }}
+                </span>
+              </div>
+              <UserSelect
+                mode="multiple"
+                :disabled="formLocked"
+                :model-value="reconcilerUserIds"
+                label-key="nickName"
+                :selected-items="toUserSelectSelectedItems(reconcilerList)"
+                class="stakeholder-block__select"
+                @update:model-value="updateReconcilers($event as number[])"
+              />
+            </div>
           </div>
         </div>
+      </Card>
 
-        <div class="stakeholders-panel__divider" role="separator"></div>
-
-        <div class="stakeholders-panel__group">
-          <div class="stakeholders-panel__group-label">结算对账</div>
-          <div
-            class="stakeholder-block stakeholder-block--reconciler"
-            :class="{
-              'stakeholder-block--filled': reconcilerUserIds.length > 0,
-            }"
-          >
-            <div class="stakeholder-block__head">
-              <span class="stakeholder-block__icon" aria-hidden="true">
-                <IconifyIcon
-                  icon="mdi:file-table-box-outline"
-                  class="size-3.5"
-                />
-              </span>
-              <span class="stakeholder-block__title">对账人</span>
-              <span class="stakeholder-block__count">
-                {{ reconcilerUserIds.length }}
-              </span>
-            </div>
-            <UserSelect
-              mode="multiple"
-              :disabled="formLocked"
-              :model-value="reconcilerUserIds"
-              label-key="nickName"
-              class="stakeholder-block__select"
-              @update:model-value="updateReconcilers($event as number[])"
-            />
-          </div>
+      <section v-if="showApprovalPath" class="client-audit-dock">
+        <div class="client-audit-path__title">审批信息</div>
+        <div
+          v-if="panelAuditTask?.submitUserName || panelAuditTask?.submitTime"
+          class="client-audit-path__meta"
+        >
+          <span class="client-audit-path__meta-label">提交</span>
+          <span>
+            {{ panelAuditTask?.submitUserName || '—' }}
+            <template v-if="formatAuditPanelTime(panelAuditTask?.submitTime)">
+              · {{ formatAuditPanelTime(panelAuditTask?.submitTime) }}
+            </template>
+          </span>
         </div>
-      </div>
-    </Card>
+        <div
+          v-if="panelAuditTask?.auditUserName || panelAuditTask?.auditTime"
+          class="client-audit-path__meta"
+        >
+          <span class="client-audit-path__meta-label">终审</span>
+          <span>
+            {{ panelAuditTask?.auditUserName || '—' }}
+            <template v-if="formatAuditPanelTime(panelAuditTask?.auditTime)">
+              · {{ formatAuditPanelTime(panelAuditTask?.auditTime) }}
+            </template>
+          </span>
+        </div>
+        <div
+          v-if="panelAuditTask?.applyRemark"
+          class="client-audit-path__remark"
+        >
+          <span class="client-audit-path__meta-label">申请原因</span>
+          <span>{{ panelAuditTask.applyRemark }}</span>
+        </div>
+        <div
+          v-if="panelAuditTask?.remark"
+          class="client-audit-path__remark client-audit-path__remark--final"
+        >
+          <span class="client-audit-path__meta-label">终审意见</span>
+          <span>{{ panelAuditTask.remark }}</span>
+        </div>
+        <template v-if="approvalPathInstance">
+          <div class="client-audit-path__flow-title">审批路径</div>
+          <ApprovalPath :instance="approvalPathInstance" />
+        </template>
+      </section>
+    </div>
 
     <AddressModalComponent @add="addAddressData" @edit="editAddressData" />
     <RiskbirdModal
@@ -2274,13 +2980,27 @@ onMounted(() => {
       :footer="false"
       @import="handleRiskbirdImport"
     />
+    <TransferModalComp @success="onAuditTransferSuccess" />
   </div>
 </template>
 
 <style scoped lang="scss">
-.right-column {
+.right-rail {
+  display: flex;
   flex-shrink: 0;
+  flex-direction: column;
+  gap: 10px;
+  align-self: flex-start;
   width: 280px;
+  max-height: calc(100vh - 140px);
+}
+
+.right-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 280px;
+  min-height: 0;
   overflow: hidden;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
@@ -2288,6 +3008,7 @@ onMounted(() => {
   box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 
   :deep(.ant-card-head) {
+    flex-shrink: 0;
     min-height: 44px;
     padding: 0 14px;
     background: linear-gradient(
@@ -2304,8 +3025,34 @@ onMounted(() => {
   }
 
   :deep(.ant-card-body) {
-    padding: 12px !important;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0 !important;
+    overflow: hidden;
   }
+}
+
+.stakeholders-panel__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+}
+
+.client-audit-dock {
+  flex-shrink: 0;
+  max-height: 46%;
+  padding: 10px 12px 12px;
+  overflow: auto;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .stakeholders-panel__title-icon {
@@ -2318,12 +3065,6 @@ onMounted(() => {
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 12%);
   border-radius: 6px;
-}
-
-.stakeholders-panel__body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .stakeholders-panel__group {
@@ -2641,6 +3382,64 @@ onMounted(() => {
   color: #f97316;
 }
 
+.client-audit-path__title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 80%);
+}
+
+.client-audit-path__flow-title {
+  margin: 8px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.client-audit-path__meta,
+.client-audit-path__remark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: hsl(var(--foreground) / 78%);
+  overflow-wrap: anywhere;
+}
+
+.client-audit-path__meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+.client-audit-path__remark--final {
+  padding: 6px 8px;
+  color: hsl(0deg 62% 40%);
+  background: hsl(0deg 70% 96%);
+  border-radius: 6px;
+}
+
+/* 申请修改：有改动的字段/区块用独立色标出 */
+:deep(.client-audit-field--changed) {
+  padding: 4px 6px;
+  outline: 1px solid hsl(32deg 90% 48% / 35%);
+  background: hsl(38deg 96% 92%);
+  border-radius: 6px;
+}
+
+:deep(.client-audit-field--changed .ant-form-item-label > label) {
+  color: hsl(28deg 80% 36%);
+}
+
+.client-audit-section--changed {
+  padding: 4px;
+  outline: 1px solid hsl(32deg 90% 48% / 30%);
+  background: hsl(38deg 96% 94%);
+  border-radius: 8px;
+}
+
 .card-title {
   display: flex;
   gap: 8px;
@@ -2654,8 +3453,18 @@ onMounted(() => {
   padding: 0 4px;
 }
 
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  padding-bottom: 16px;
+}
+
 .address-card {
-  border: 1px solid transparent;
+  width: 100%;
+  padding: 10px 14px 12px;
+  border: 1px solid #e8edf3;
 
   &:hover {
     background: linear-gradient(
@@ -2667,7 +3476,13 @@ onMounted(() => {
   }
 
   .address-heard {
+    margin-bottom: 4px;
     border-bottom: 1px solid #edf2f7;
+  }
+
+  .address-content {
+    gap: 4px;
+    padding-top: 2px;
   }
 }
 

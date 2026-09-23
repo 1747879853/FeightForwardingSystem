@@ -51,6 +51,41 @@
   background: #fafbfd !important;
 }
 
+/*
+ * 报表表头：覆盖上方全局浅灰黑字，改为主色淡底 + 前景色文字（对比舒适）
+ * 容器 class 见 report-hot-table.vue
+ */
+.report-handsontable .handsontable:not(.listbox) thead th,
+.report-handsontable .handsontable:not(.listbox) .ht_clone_top th,
+.report-handsontable
+  .handsontable:not(.listbox)
+  .ht_clone_top_inline_start_corner
+  th,
+.report-handsontable .handsontable:not(.listbox) .ht_clone_bottom th,
+.report-handsontable
+  .handsontable:not(.listbox)
+  .ht_clone_bottom_inline_start_corner
+  th {
+  color: hsl(var(--foreground) / 88%) !important;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 5.5%) 100%
+  ) !important;
+  border-bottom-color: hsl(var(--primary) / 22%) !important;
+}
+
+.report-handsontable
+  .handsontable:not(.listbox)
+  .ht_clone_inline_start
+  tbody
+  th,
+.report-handsontable .handsontable:not(.listbox) tbody th {
+  font-weight: 500 !important;
+  color: hsl(var(--muted-foreground)) !important;
+  background: hsl(var(--muted) / 55%) !important;
+}
+
 /* ---------- 数据单元格 ---------- */
 .handsontable:not(.listbox) td {
   color: #252a31;
@@ -72,6 +107,7 @@
 }
 
 /* ---------- 选中 / 当前格 ---------- */
+
 /*
  * Handsontable 已用 .wtBorder（绝对定位细条）画选区与当前格边框。
  * 勿再给 td 加 outline/box-shadow，否则会与 wtBorder 叠成双层粗边。

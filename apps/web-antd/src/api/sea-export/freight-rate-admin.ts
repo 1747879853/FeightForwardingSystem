@@ -2,7 +2,6 @@ import { requestClient } from '#/api/request';
 
 export const FreightRateLabelOptions = [
   { label: '运价主键ID', value: 'id' },
-  { label: '是否推荐', value: 'recommend' },
   { label: '船公司ID', value: 'carrierId' },
   { label: '起运港ID', value: 'polId' },
   { label: '目的港ID', value: 'podId' },
@@ -38,6 +37,17 @@ export const FreightRateLabelOptions = [
   { label: '费用列表（含每个费用下的箱型费用）', value: 'seFreiPriceFees' },
   { label: '关联日列表', value: 'seFreiPriceDays' },
   { label: '关联周几列表', value: 'seFreiPriceWeekDays' },
+];
+
+/** 运价箱型模块（FrightModule.SeFreiPriceCtn）字段中文名；PropName 用 PascalCase */
+export const FreightRateCtnLabelOptions = [
+  { label: '箱型行ID', value: 'Id' },
+  { label: '运价ID', value: 'SeFreiPriceId' },
+  { label: '箱型ID', value: 'CtnCodeId' },
+  { label: '箱型对象', value: 'CtnCode' },
+  { label: '成本', value: 'Cost' },
+  { label: '指导价', value: 'SugPrice' },
+  { label: '备注', value: 'Remark' },
 ];
 
 /**
@@ -352,7 +362,9 @@ export interface SeFreiPriceCtnAddDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价（可空；字段权限屏蔽时响应中省略该 key） */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
 }
@@ -366,7 +378,9 @@ export interface SeFreiPriceCtnEditDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价（可空；不传或 null 时编辑接口用库内原值回填） */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
 }
@@ -382,7 +396,9 @@ export interface SeFreiPriceCtnOutDto {
   /** 箱型ID */
   ctnCodeId: string | number;
   /** 成本 */
-  cost: number;
+  cost?: number | null;
+  /** 指导价 */
+  sugPrice?: number | null;
   /** 备注 */
   remark?: string;
   /** 箱型信息（关联对象） */
@@ -750,16 +766,6 @@ export interface BatchEditSeFreiPriceInput {
 }
 
 /**
- * 改变推荐状态请求
- */
-export interface ChangeRecommendInput {
-  /** 运价ID */
-  id: string;
-  /** 是否推荐 */
-  recommend: boolean;
-}
-
-/**
  * 查询运价列表请求
  */
 export interface GetSeFreiPriceListInput {
@@ -769,8 +775,6 @@ export interface GetSeFreiPriceListInput {
   polId?: number;
   /** 目的港ID筛选 */
   podId?: number;
-  /** 是否推荐筛选 */
-  recommend?: boolean;
   /** 目的港的国家ID筛选 */
   countryId?: number;
   /** 目的港的航线ID筛选 */
@@ -878,15 +882,6 @@ export function getAllLaneCodes() {
  */
 export function batchEditSeFreiPrice(data: BatchEditSeFreiPriceInput) {
   return requestClient.put<boolean>(`${BASE_URL}/BatchEditAsync`, data);
-}
-
-/**
- * 改变推荐状态
- * @param data 推荐状态参数
- * @returns 返回操作结果
- */
-export function changeRecommendStatus(data: ChangeRecommendInput) {
-  return requestClient.put<boolean>(`${BASE_URL}/ChangeRecommendAsync`, data);
 }
 
 /**

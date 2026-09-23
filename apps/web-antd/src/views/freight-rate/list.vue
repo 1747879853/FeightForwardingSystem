@@ -11,6 +11,7 @@ import type {
 } from '#/api/sea-export/freight-rate-admin';
 
 import { nextTick, ref, watch, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import {
@@ -35,7 +36,6 @@ import {
 } from 'ant-design-vue';
 
 import {
-  changeRecommendStatus,
   deleteSeFreiPrice,
   getSeFreiPriceList,
   getAllLaneCodes,
@@ -44,15 +44,19 @@ import { extractSeFreiPriceByGemini } from '#/api/sea-export/gemini-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useBaseStore } from '#/store/base';
+import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
-import BatchAddModal from './modules/batch-add-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
+import { setPendingFreightBatchRows } from './pending-batch-rows';
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
+  getFreightRateCtnColumnSignature,
+  mergeFreightRateListPersistedColumns,
   useColumns,
   useGridFormSchema,
   getSurchargeFeeNames,
@@ -102,10 +106,7 @@ const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
-const [BatchAddModalComponent, batchAddModalApi] = useVbenModal({
-  connectedComponent: BatchAddModal,
-  destroyOnClose: true,
-});
+const router = useRouter();
 
 // ==================== 查询 / 表格 ====================
 
@@ -227,13 +228,38 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   },
 });
 
+/** 上次已挂载的箱型列签名；null 表示尚未按数据换过列 */
+let lastFreightRateCtnColumnSignature: string | null = null;
+
 watch(
   tableData,
   async (newData) => {
     if (!newData?.length) return;
     await nextTick();
+
+    const nextColumns = useColumns(newData);
+    const nextCtnSignature = getFreightRateCtnColumnSignature(nextColumns);
+    // 箱型列集合未变时不要整表换列，否则会冲掉已应用/刚保存的列配置
+    if (
+      lastFreightRateCtnColumnSignature !== null &&
+      nextCtnSignature === lastFreightRateCtnColumnSignature
+    ) {
+      return;
+    }
+    lastFreightRateCtnColumnSignature = nextCtnSignature;
+
+    const tableConfigStore = useTableConfigStore();
+    await tableConfigStore.loadTableConfigsOnce();
+    const persisted = tableConfigStore.getTableConfigByName(
+      `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
+    );
+    const mergedColumns = mergeFreightRateListPersistedColumns(
+      nextColumns,
+      persisted?.setting,
+    );
+
     gridApi.setGridOptions({
-      columns: useColumns(newData),
+      columns: mergedColumns,
     });
   },
   { deep: true },
@@ -249,6 +275,8 @@ function onRefresh() {
   gridApi.query();
   void getLines();
 }
+
+useRefreshListOnFormReturn('FreightRateList', onRefresh);
 
 function onCreate() {
   editFormModalApi.setData({ permission: hasAddPermission.value }).open();
@@ -325,13 +353,20 @@ function onBatchUpdate() {
       currencyId: row.currencyId,
       bookingAgentId: row.bookingAgentId,
       seFreiPriceCtns: (row.seFreiPriceCtns || []).map((ctn) => ({
+        ...(ctn.id ? { id: ctn.id } : {}),
         ctnCodeId: ctn.ctnCodeId,
-        cost: ctn.cost,
+        ...(Object.prototype.hasOwnProperty.call(ctn, 'cost')
+          ? { cost: ctn.cost }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(ctn, 'sugPrice')
+          ? { sugPrice: ctn.sugPrice }
+          : {}),
       })),
     };
   });
 
-  batchAddModalApi.setData({ aiData: editData, isEditMode: true }).open();
+  setPendingFreightBatchRows({ aiData: editData, isEditMode: true });
+  router.push({ name: 'FreightRateBatchEdit' });
 }
 
 /** 菜单「批量更改」：同步字段到多条记录 */
@@ -349,34 +384,8 @@ function onBatchAdd() {
     message.warning('您没有批量新增运价的权限');
     return;
   }
-  batchAddModalApi.open();
-}
-
-async function onBatchRecommend(recommend: boolean) {
-  const records = getCheckboxRecords();
-  if (records.length === 0) {
-    message.warning('请先选择要操作的运价记录');
-    return;
-  }
-
-  const hideLoading = message.loading({
-    content: `正在批量${recommend ? '推荐' : '取消推荐'}...`,
-    duration: 0,
-    key: 'action_process_msg',
-  });
-
-  try {
-    await Promise.all(
-      records.map((row) => changeRecommendStatus({ id: row.id, recommend })),
-    );
-    message.success({
-      content: `批量${recommend ? '推荐' : '取消推荐'}成功`,
-      key: 'action_process_msg',
-    });
-    onRefresh();
-  } catch {
-    hideLoading();
-  }
+  setPendingFreightBatchRows({ isEditMode: false });
+  router.push({ name: 'FreightRateBatchAdd' });
 }
 
 function onBatchDelete() {
@@ -408,17 +417,6 @@ function onBatchDelete() {
         });
     },
   });
-}
-
-async function handleRecommendClick(row: SeFreiPriceOutDto) {
-  const newRecommend = !row.recommend;
-  try {
-    await changeRecommendStatus({ id: row.id, recommend: newRecommend });
-    message.success(newRecommend ? '推荐成功' : '取消推荐成功');
-    onRefresh();
-  } catch {
-    message.error('操作失败');
-  }
 }
 
 // ==================== 有效状态展示 ====================
@@ -701,7 +699,8 @@ async function performAiRecognition(params: { file?: File; text?: string }) {
     }));
 
     aiExtractModalOpen.value = false;
-    batchAddModalApi.setData({ aiData: convertedData }).open();
+    setPendingFreightBatchRows({ aiData: convertedData, isEditMode: false });
+    router.push({ name: 'FreightRateBatchAdd' });
     message.success(
       `AI识别完成，共识别出 ${recognitionResult.length} 条运价数据`,
     );
@@ -806,17 +805,6 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <template #recommend="{ row }">
-        <div class="flex items-center justify-center">
-          <IconifyIcon
-            :icon="row.recommend ? 'mdi:star' : 'mdi:star-outline'"
-            class="size-5 cursor-pointer transition-all duration-200 hover:scale-110"
-            :class="row.recommend ? 'text-yellow-500' : 'text-gray-300'"
-            @click="handleRecommendClick(row)"
-          />
-        </div>
-      </template>
-
       <template #surchargeFees="{ row }">
         <div class="surcharge-fees-container px-2 py-1">
           <div
@@ -851,7 +839,7 @@ onUnmounted(() => {
       </template>
 
       <template #ctnEditableCell="{ row, column }">
-        <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
+        <CtnEditableCell :row="row" :column="column" />
       </template>
 
       <template #toolbar-actions>
@@ -977,20 +965,6 @@ onUnmounted(() => {
                 >
                   {{ $t('seaExport.freightRate.batchEdit') }}
                 </Menu.Item>
-                <Menu.Item
-                  key="recommend"
-                  :disabled="!hasEditPermission"
-                  @click="onBatchRecommend(true)"
-                >
-                  {{ $t('seaExport.freightRate.batchRecommend') }}
-                </Menu.Item>
-                <Menu.Item
-                  key="cancelRecommend"
-                  :disabled="!hasEditPermission"
-                  @click="onBatchRecommend(false)"
-                >
-                  {{ $t('seaExport.freightRate.batchCancelRecommend') }}
-                </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
                   key="delete"
@@ -1016,7 +990,6 @@ onUnmounted(() => {
 
     <EditFormModal @success="onRefresh" />
     <SyncUpdateModal @success="onRefresh" />
-    <BatchAddModalComponent @success="onRefresh" />
 
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"

@@ -34,6 +34,7 @@ import {
   getAttachmentDtlTypeList,
   getAttachmentDtlTypesByModuleTypes,
 } from '#/api/system/attachment-dtl-type';
+import { useAttachmentZonePaste } from '#/composables/use-attachment-zone-paste';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
@@ -506,6 +507,19 @@ const onDrop = async (group: AttachmentTypeGroup, event: DragEvent) => {
   }
 };
 
+const { onZoneEnter, onZoneLeave } = useAttachmentZonePaste({
+  enabled: canEdit,
+  onPaste: async (zoneId, files) => {
+    const group = groups.value.find(
+      (item) => getGroupKey(item.attachmentDtlTypeId) === zoneId,
+    );
+    if (!group) return;
+    for (const file of files) {
+      await handleBeforeUpload(file as unknown as UploadFile, group);
+    }
+  },
+});
+
 const handleDownload = (row: SeaExportAdminApi.AttachmentItemDto) => {
   if (!row.url) {
     message.warning($t('seaExport.export.attachments.noFileUrl'));
@@ -628,6 +642,8 @@ onMounted(() => {
           @dragover.prevent="onDragOver(group, $event)"
           @dragleave="onDragLeave(group, $event)"
           @drop.prevent="onDrop(group, $event)"
+          @mouseenter="onZoneEnter(getGroupKey(group.attachmentDtlTypeId))"
+          @mouseleave="onZoneLeave(getGroupKey(group.attachmentDtlTypeId))"
         >
           <template #title>
             <div class="flex items-center gap-2">

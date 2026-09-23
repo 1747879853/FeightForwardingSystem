@@ -738,8 +738,17 @@ export function useOrderFeeLinkage(
       markLinkedCell(row, 'unit');
       markLinkedCell(row, 'quantity');
 
-      // 只刷新脏行，确保联动写入的展示字段（含结算对象等）被正确渲染
-      refreshLinkedRow(hotInstance, rowIndex);
+      // 默认单位带出数量后，若已有单价则同步重算金额
+      if (
+        row['quantity'] !== undefined &&
+        row['quantity'] !== null &&
+        row['quantity'] !== ''
+      ) {
+        handleQuantityChange(rowIndex, row['quantity'], hotInstance);
+      } else {
+        // 只刷新脏行，确保联动写入的展示字段（含结算对象等）被正确渲染
+        refreshLinkedRow(hotInstance, rowIndex);
+      }
     } catch (error) {
       console.error('❌ [handleFeeCodeChange] 处理失败:', error);
     }
@@ -917,7 +926,8 @@ export function useOrderFeeLinkage(
       // ✅ 标记联动写入的数量（值与原值相同不产生标记）
       markLinkedCell(row, 'quantity');
 
-      refreshLinkedRow(hotInstance, rowIndex);
+      // 带出数量后按现有单价/税率重算含税、不含税金额（与弹窗录入一致）
+      handleQuantityChange(rowIndex, row['quantity'], hotInstance);
     } catch (error) {
       console.error('❌ [handleUnitChange] 处理失败:', error);
     }

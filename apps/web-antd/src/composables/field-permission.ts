@@ -10,7 +10,15 @@ export interface FieldPermissionProfile {
   module: FrightModule;
   nested?: Record<string, FrightModule>;
   formDependencies?: Record<string, string[]>;
-  prefixes?: Record<string, string[]>;
+  /**
+   * 字段前缀 → 原始路径列表。
+   * 默认 mode=any：任一路径被屏蔽即视为屏蔽（如组合列）。
+   * mode=all：全部路径都被屏蔽才隐藏（如运价箱型成本+指导价同列）。
+   */
+  prefixes?: Record<
+    string,
+    string[] | { paths: string[]; mode?: 'any' | 'all' }
+  >;
   search?: Record<string, string[]>;
   aliases?: Record<string, string[]>;
 }
@@ -56,14 +64,44 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
     return set.has(key.toLowerCase());
   }
 
+  /** 嵌套集合：任一条含 key 即视为该字段在本行存在（屏蔽后 key 整条省略） */
+  function objectHasKey(object: unknown, key: string): boolean {
+    if (!object || typeof object !== 'object') return false;
+    if (Array.isArray(object)) {
+      if (object.length === 0) return false;
+      return object.some(
+        (item) => item && typeof item === 'object' && rowHasKey(item, key),
+      );
+    }
+    return rowHasKey(object, key);
+  }
+
+  function resolvePrefix(field: string): {
+    paths: string[];
+    mode: 'any' | 'all';
+  } | null {
+    const entry = Object.entries(profile.prefixes ?? {}).find(([prefix]) =>
+      field.startsWith(prefix),
+    );
+    if (!entry) return null;
+    const config = entry[1];
+    if (Array.isArray(config)) {
+      return { paths: config, mode: 'any' };
+    }
+    return { paths: config.paths, mode: config.mode ?? 'any' };
+  }
+
   function paths(field: string): string[] {
     return (
-      aliases.get(field.toLowerCase()) ??
-      Object.entries(profile.prefixes ?? {}).find(([prefix]) =>
-        field.startsWith(prefix),
-      )?.[1] ?? [field]
+      aliases.get(field.toLowerCase()) ?? resolvePrefix(field)?.paths ?? [field]
     );
   }
+
+  function pathMatchMode(field: string): 'any' | 'all' {
+    if (aliases.has(field.toLowerCase())) return 'any';
+    return resolvePrefix(field)?.mode ?? 'any';
+  }
+
   function checks(path: string) {
     const keys = path.split('.');
     const nestedModule = profile.nested?.[keys[0]!];
@@ -74,27 +112,43 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
           { module: nestedModule, key: keys[1]!, parent: keys[0]! },
         ];
   }
-  function always(field: string): boolean {
-    return paths(field).some((path) =>
-      checks(path).some(({ module, key }) => isAlwaysMasked(module, key)),
-    );
+
+  function pathAlwaysMasked(path: string): boolean {
+    return checks(path).some(({ module, key }) => isAlwaysMasked(module, key));
   }
+
+  function pathMasked(path: string, row: any): boolean {
+    return checks(path).some(({ module, key, parent }) => {
+      const object = parent ? row[parent] : row;
+      if (!object || typeof object !== 'object') return false;
+      return (
+        isAlwaysMasked(module, key) ||
+        (hasMaskRule(module, key) && !objectHasKey(object, key))
+      );
+    });
+  }
+
+  function always(field: string): boolean {
+    const pathList = paths(field);
+    if (pathList.length === 0) return false;
+    const mode = pathMatchMode(field);
+    return mode === 'all'
+      ? pathList.every(pathAlwaysMasked)
+      : pathList.some(pathAlwaysMasked);
+  }
+
   function masked(field: string, input: any): boolean {
     // 无任何屏蔽规则时整表短路，滚动路径上每格可省掉路径解析与键扫描
     if (!hasAnyMaskRules()) return false;
     if (always(field)) return true;
     const row = input?.[RAW_PERMISSION_ROW] ?? input;
     if (!row) return always(field);
-    return paths(field).some((path) =>
-      checks(path).some(({ module, key, parent }) => {
-        const object = parent ? row[parent] : row;
-        if (!object || typeof object !== 'object') return false;
-        return (
-          isAlwaysMasked(module, key) ||
-          (hasMaskRule(module, key) && !rowHasKey(object, key))
-        );
-      }),
-    );
+    const pathList = paths(field);
+    if (pathList.length === 0) return false;
+    const mode = pathMatchMode(field);
+    return mode === 'all'
+      ? pathList.every((path) => pathMasked(path, row))
+      : pathList.some((path) => pathMasked(path, row));
   }
   function searchAlways(field: string): boolean {
     const sources = Object.entries(profile.search ?? {}).find(

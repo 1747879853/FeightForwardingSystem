@@ -86,7 +86,9 @@ function handleAddApplication() {
 function handlePreviewAttachment(
   item: PaymentSettlementAdminApi.AttachmentItemDto,
 ) {
-  openAttachmentViewer(item);
+  openAttachmentViewer(item, {
+    files: paymentApplicationAttachments.value,
+  });
 }
 
 function handleDownloadAttachment(
@@ -312,7 +314,6 @@ onMounted(() => {
           </template>
 
           <div class="attach-section attach-section--upload">
-            <div class="attach-section-title">结算单附件</div>
             <FileUploadInput
               v-model="attachments"
               module-type-id="160011"
@@ -701,16 +702,22 @@ onMounted(() => {
 }
 
 /* ==================== 附件卡片 ==================== */
+
+/* 结算单附件占剩余高度，文件变多时在本区内滚动，不把下方付费申请附件顶出卡片 */
 .attach-section--upload {
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .attach-section--app-files {
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
-  margin-top: 16px;
+  max-height: 42%;
+  margin-top: 12px;
+  overflow: hidden;
 }
 
 .attach-section-title {
@@ -721,11 +728,14 @@ onMounted(() => {
   color: #333;
 }
 
+/* 付费申请附件固定留在卡片底部，多出来的在列表内滚动 */
 .attach-app-list {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 40px;
+  max-height: 120px;
   padding-right: 2px;
   overflow: hidden auto;
+  overscroll-behavior: contain;
 }
 
 .attach-item {

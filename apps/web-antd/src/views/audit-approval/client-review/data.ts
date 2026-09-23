@@ -218,32 +218,12 @@ export function useClientReviewColumns(): VxeTableGridOptions<ClientTaskRow>['co
       showOverflow: true,
     },
     {
-      field: 'taskType',
-      title: $t('auditApproval.task.type'),
-      minWidth: 120,
-      align: 'center',
-      cellRender: { name: 'CellTag', options: getClientTaskTypeOptions() },
-    },
-    {
-      field: 'taskStatus',
-      title: $t('auditApproval.task.status'),
-      minWidth: 100,
-      align: 'center',
-      cellRender: { name: 'CellTag', options: getClientTaskStatusOptions() },
-    },
-    {
-      field: 'myTaskStatus',
-      title: $t('auditApproval.clientReview.myStatus'),
-      minWidth: 110,
-      align: 'center',
-      formatter: ({ cellValue }) => getMyTaskStatusLabel(cellValue),
-    },
-    {
       field: 'client.clientStatus',
       title: $t('auditApproval.clientReview.clientStatus'),
       minWidth: 120,
       align: 'center',
-      cellRender: { name: 'CellTag', options: getClientStatusOptions() },
+      // 点击 Tag 弹出审核流程（交互对齐付费申请任务状态列）
+      slots: { default: 'clientStatus' },
     },
     {
       field: 'submitTime',

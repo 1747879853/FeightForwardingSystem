@@ -87,6 +87,7 @@
 | system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。附件类型默认展示模块消费 `ModuleType`（含 160050 业务联系单、160100 监装箱型附件）。 | [枚举管理](./modules/system/enumeration.md) | 2026-09-05 |
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-09-09 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
+| system | `/system/tenant-config` | 系统管理 | 当前租户自定义键值对（`Sys_Settings` 租户层）；菜单与增删改查暂借权限配置权限点；配置名建议 `Web.` 前缀，创建后不可改。 | [租户配置](./modules/system/tenant-config.md) | 2026-09-22 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
 | shared | （全站附件查看器） | 共享能力 | 附件查看器单例弹窗：`openAttachmentViewer(item)` 打开；图片/PDF 内嵌预览，OFD 用 vue-liteofd 本地渲染，Office 用 vue-office 本地渲染（不走微软）。下载走 blob + `friendlyFileName`。开发预览走 Vite `/Uploads` 代理，生产直连后端附件地址。付费申请/审批、海出附件 Tab、开票、公告等已接入。打印除外。 | [全局附件查看器](./modules/shared/attachment-viewer.md) | 2026-09-09 |
 | shared | （全局偏好） | 共享能力 | 项目级 `preferences.ts` 覆盖：布局/主题/侧边栏/页签/Logo；默认主题圆角 `0.5`；`app.name` 与 Logo 启动时强制跟构建期 overrides；hhyy 顶栏用整图 `logo-text`。 | [全局偏好覆盖](./modules/shared/preferences.md) | 2026-09-11 |

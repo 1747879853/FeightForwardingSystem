@@ -9,6 +9,7 @@ import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
 import './biz-select-readonly.css';
+import './form-control-disabled.css';
 import './global-font.css';
 import './handsontable-dropdown.css';
 import './handsontable-theme.css';

@@ -1388,7 +1388,10 @@ componentInstance.applyGrouping = applyGrouping;
 
   <Card class="table-card" :bordered="false">
     <Spin :spinning="loading || exporting">
-      <div ref="containerRef" class="handsontable-container">
+      <div
+        ref="containerRef"
+        class="handsontable-container report-handsontable"
+      >
         <HotTable ref="hotTableRef" :settings="hotSettings" />
         <div v-if="!loading && recordCount === 0" class="report-empty-overlay">
           <Empty description="暂无数据，请调整筛选条件后查询" />
@@ -1730,10 +1733,16 @@ componentInstance.applyGrouping = applyGrouping;
         padding: 4px;
         font-weight: 600;
         vertical-align: middle;
-        color: #fff;
+        color: hsl(var(--foreground) / 88%) !important;
         text-align: center;
+        letter-spacing: 0.01em;
         cursor: pointer;
-        background-color: hsl(var(--primary)) !important;
+        background: linear-gradient(
+          180deg,
+          hsl(var(--primary) / 10%) 0%,
+          hsl(var(--primary) / 5.5%) 100%
+        ) !important;
+        border-bottom-color: hsl(var(--primary) / 22%) !important;
       }
 
       thead th:first-child {
@@ -1744,14 +1753,22 @@ componentInstance.applyGrouping = applyGrouping;
     .ht_clone_inline_start .htCore tbody th {
       box-sizing: border-box;
       height: 32px !important;
+      font-weight: 500 !important;
+      color: hsl(var(--muted-foreground)) !important;
+      background: hsl(var(--muted) / 55%) !important;
     }
 
     .ht_clone_top th,
     .ht_clone_top_inline_start_corner th,
     .ht_clone_bottom th,
     .ht_clone_bottom_inline_start_corner th {
-      color: #fff;
-      background-color: hsl(var(--primary)) !important;
+      color: hsl(var(--foreground) / 88%) !important;
+      background: linear-gradient(
+        180deg,
+        hsl(var(--primary) / 10%) 0%,
+        hsl(var(--primary) / 5.5%) 100%
+      ) !important;
+      border-bottom-color: hsl(var(--primary) / 22%) !important;
     }
 
     /*

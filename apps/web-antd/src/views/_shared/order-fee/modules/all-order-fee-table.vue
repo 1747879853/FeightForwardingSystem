@@ -136,11 +136,11 @@ const transCurrencySymbol = (currencyId: number | string | undefined) => {
     return currencySymbolMap.value[normalizedId];
   }
 
-  // 如果映射表中没有，则使用默认的硬编码选项
+  // 未维护符号时展示空白，勿回退成 id / undefined
   const option = feeConstants
     .getCurrencyEnumSymbolOptions()
     .find((o) => o.value === normalizedId);
-  return option ? option.label : String(normalizedId);
+  return option?.label ?? '';
 };
 
 /**
@@ -391,16 +391,16 @@ const normalizeOrderFeeWithRowKey = (
     _rowKey: `ofee_${i}_${Date.now()}`,
     creationTime: dayjs(item.creationTime).format('YYYY-MM-DD HH:mm:ss'),
 
-    unitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.unitPrice}`,
-    amountStr: `${transCurrencySymbol(item.currencyId)}${item.amount}`,
-    noTaxUnitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxUnitPrice}`,
-    noTaxAmountStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxAmount}`,
+    unitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.unitPrice ?? ''}`,
+    amountStr: `${transCurrencySymbol(item.currencyId)}${item.amount ?? ''}`,
+    noTaxUnitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxUnitPrice ?? ''}`,
+    noTaxAmountStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxAmount ?? ''}`,
 
-    rqstPaymentAmountStr: `${transCurrencySymbol(item.currencyId)}${item.rqstPaymentAmount}`,
-    invoicedAmountStr: `${transCurrencySymbol(item.currencyId)}${item.invoicedAmount}`,
+    rqstPaymentAmountStr: `${transCurrencySymbol(item.currencyId)}${item.rqstPaymentAmount ?? ''}`,
+    invoicedAmountStr: `${transCurrencySymbol(item.currencyId)}${item.invoicedAmount ?? ''}`,
 
-    orderInvoiceAmountStr: `${transCurrencySymbol(item.currencyId)}${item.orderInvoiceAmount}`,
-    settledAmountStr: `${transCurrencySymbol(item.currencyId)}${item.settledAmount}`,
+    orderInvoiceAmountStr: `${transCurrencySymbol(item.currencyId)}${item.orderInvoiceAmount ?? ''}`,
+    settledAmountStr: `${transCurrencySymbol(item.currencyId)}${item.settledAmount ?? ''}`,
   })) as any[];
 };
 const selectChangeOrderId = ref<string | null>(null);

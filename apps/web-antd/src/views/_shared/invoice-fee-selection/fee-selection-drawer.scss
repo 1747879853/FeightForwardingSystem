@@ -1,0 +1,422 @@
+/* 开票申请 / 发票开出「导入费用」抽屉共享样式 */
+
+.fsd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  background: #f8fafc;
+}
+
+.fsd-section {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.fsd-indicator {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  background: hsl(var(--primary, 212 100% 45%));
+  border-radius: 2px;
+}
+
+.fsd-filters__head,
+.fsd-table-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fsd-filters__title,
+.fsd-table-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fsd-filters__hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.fsd-selected-hint {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--primary, 212 100% 38%));
+}
+
+.fsd-count {
+  min-width: 22px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary, 212 100% 40%));
+  text-align: center;
+  background: hsl(var(--primary, 212 100% 45%) / 10%);
+  border-radius: 999px;
+}
+
+.fsd-filters__body {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+  padding: 12px 14px 14px;
+}
+
+.fsd-filters__body--collapsed .fsd-field--more {
+  display: none;
+}
+
+.fsd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+}
+
+.fsd-field--span-2 {
+  grid-column: span 2;
+}
+
+.fsd-field__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.fsd-field__control {
+  width: 100%;
+}
+
+.fsd-field :deep(.ant-picker),
+.fsd-field :deep(.ant-select),
+.fsd-field :deep(.ant-input-affix-wrapper),
+.fsd-field :deep(.ant-input) {
+  width: 100%;
+}
+
+.fsd-filters__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 32px;
+  padding-bottom: 1px;
+}
+
+.fsd-filters__toggle {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding-inline: 4px;
+  font-size: 13px;
+  color: hsl(var(--primary, 212 100% 40%));
+}
+
+.fsd-filters__toggle:hover {
+  color: hsl(var(--primary, 212 100% 35%));
+}
+
+.fsd-filters__toggle-icon {
+  font-size: 12px;
+  transition: transform 0.18s ease;
+}
+
+.fsd-filters__toggle-icon--expanded {
+  transform: rotate(180deg);
+}
+
+.fsd-table-panel__head {
+  justify-content: space-between;
+}
+
+.fsd-table-panel__title-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fsd-table-wrap {
+  padding: 0 4px 4px;
+}
+
+.fsd-table-wrap--bordered {
+  margin: 0;
+  border: none;
+}
+
+/* 勾选合计：对齐列表页底部合计条 */
+.fsd-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--background, 0 0% 100%)) 55%,
+    hsl(var(--primary) / 6%) 100%
+  );
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.fsd-summary__label {
+  margin-right: 8px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.fsd-summary__pair {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.fsd-summary__code {
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.fsd-summary__value {
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.fsd-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.fsd-footer__rate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fsd-footer__rate-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.fsd-footer__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.fsd-status {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fsd-status--ok {
+  color: #16a34a;
+}
+
+.fsd-status--warn {
+  color: #d97706;
+}
+
+.fsd-status--error {
+  color: #dc2626;
+}
+
+.fsd-added {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  transform-origin: center;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.expand-toggle:hover {
+  color: hsl(var(--primary, 212 100% 45%));
+}
+
+.expand-toggle--expanded {
+  transform: rotate(90deg);
+}
+
+/* ========== 表格细节（NestedDataTable） ========== */
+.fsd-table-wrap .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fsd-table-wrap :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.fsd-table-wrap :deep(.fee-applied-amount-input .ant-input-number-input) {
+  padding-right: 28px;
+  font-weight: 600;
+  color: hsl(var(--primary, 212 100% 45%));
+  text-align: right;
+}
+
+.fsd-table-wrap :deep(.ant-input-number-input) {
+  text-align: right;
+}
+
+.fsd-table-wrap :deep(.ant-table) {
+  border: none;
+}
+
+.fsd-table-wrap :deep(.ant-table-thead > tr > th) {
+  height: 35px;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: nowrap;
+  background: #f8fafc;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.fsd-table-wrap :deep(.ant-table-thead > tr > th:last-child) {
+  border-right: none;
+}
+
+.fsd-table-wrap :deep(.ant-table-tbody > tr > td) {
+  height: 46px;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+  transition: background 0.15s ease;
+}
+
+.fsd-table-wrap :deep(.ant-table-tbody > tr > td:last-child) {
+  border-right: none;
+}
+
+.fsd-table-wrap :deep(.ant-table-tbody > tr:hover > td) {
+  background: hsl(var(--primary) / 6%);
+}
+
+.fsd-table-wrap :deep(.ant-table-expand-icon-th),
+.fsd-table-wrap :deep(.ant-table-row-expand-icon-cell) {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 0 !important;
+  text-align: center;
+  border-right: 1px solid #e8e8e8;
+}
+
+.fsd-table-wrap :deep(.ant-table-row-expand-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  font-size: 10px;
+  color: #4b5563;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.fsd-table-wrap :deep(.ant-table-expanded-row .ant-table) {
+  margin: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+}
+
+.fsd-table-wrap :deep(.ant-table-expanded-row .ant-table-thead > tr > th) {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #657286;
+  background: #f1f5f9;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.fsd-table-wrap
+  :deep(.ant-table-expanded-row .ant-table-thead > tr > th:last-child) {
+  border-right: none;
+}
+
+.fsd-table-wrap :deep(.ant-table-expanded-row .ant-table-tbody > tr > td) {
+  height: 32px;
+  padding: 0 10px;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.fsd-table-wrap
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr > td:last-child) {
+  border-right: none;
+}
+
+.fsd-table-wrap
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr:last-child > td) {
+  border-bottom: none;
+}
+
+.fsd-table-wrap
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr:hover > td) {
+  background: hsl(var(--primary) / 6%);
+}
+
+.fsd-table-wrap :deep(.ant-tag) {
+  padding: 2px 8px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}

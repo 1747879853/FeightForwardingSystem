@@ -718,6 +718,11 @@ export namespace ClientAdminApi {
     dishonestRemark?: string;
     /** 客户审核状态（只读，只能由审核相关接口改） */
     clientStatus?: ClientStatus;
+    /**
+     * 最近一次审核任务（与审核列表行同构；内层 client 恒为 null，无 histories）。
+     * 档案详情按 clientStatus 决定是否展示：审核中/驳回展示，已通过不展示。
+     */
+    lastAuditTask?: ClientTaskDto | null;
 
     isDeleted: boolean;
     deleterUserId?: number;
@@ -919,6 +924,21 @@ export namespace ClientAdminApi {
     comment?: null | string;
     /** 审批时间 */
     auditTime?: null | string;
+    /**
+     * 转交历史，按时间从早到晚。
+     * 从未转过为 []；不要当成错误，也不要画空履历。
+     */
+    transfers?: ClientWorkFlowInstanceItemTransferDto[] | null;
+  }
+
+  /** 工作流明细上的一跳转交记录 */
+  export interface ClientWorkFlowInstanceItemTransferDto {
+    /** 转出人昵称 */
+    fromUserNickName?: string;
+    /** 被转交人昵称 */
+    toUserNickName?: string;
+    /** 转交时间 */
+    creationTime?: string;
   }
 
   /** 工作流按层级分组的审批路径 */
@@ -1096,7 +1116,7 @@ export const syncClientBillingPeriod = (data: { id: number | string }) => {
 };
 
 /**
- * @deprecated 客户不允许删除，前端已去掉删除入口，勿再调用。
+ * 删除客户（支持单条/批量，权限 Admin.Client.Delete）
  */
 export const deleteClient = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {

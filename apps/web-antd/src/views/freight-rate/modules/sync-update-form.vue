@@ -1,9 +1,65 @@
 ﻿<script lang="ts" setup>
 import { useFieldPermission } from '#/composables/use-field-permission';
 import { freightRateFieldPermission } from '#/composables/field-permission-profiles';
-const { usePermissionForm: useVbenForm } = useFieldPermission(
+import { isAlwaysMasked } from '#/composables/use-masked-fields';
+import { FrightModule } from '#/api/system/permission';
+import CtnSugPriceMarkupModal from './ctn-sug-price-markup-modal.vue';
+import { useCtnSugPriceMarkup } from './composables/useCtnSugPriceMarkup';
+
+const { usePermissionForm: useVbenForm, always } = useFieldPermission(
   freightRateFieldPermission,
 );
+
+const CTN_MODULE = FrightModule.SeFreiPriceCtn;
+const { calcSugPrice } = useCtnSugPriceMarkup();
+const markupModalRef = ref<{ open: () => void }>();
+
+function canEditCtnCost() {
+  return !isAlwaysMasked(CTN_MODULE, 'Cost');
+}
+function canEditCtnSugPrice() {
+  return !isAlwaysMasked(CTN_MODULE, 'SugPrice');
+}
+
+function showCtnPriceSection() {
+  return canEditCtnCost() || canEditCtnSugPrice();
+}
+
+function openMarkupModal() {
+  markupModalRef.value?.open();
+}
+
+function applyMarkupToInputs() {
+  if (!canEditCtnSugPrice()) return;
+  let changed = 0;
+  ctnCodes.value.forEach((ctn) => {
+    const costEl = document.getElementById(
+      `ctn_${ctn.id}`,
+    ) as HTMLInputElement | null;
+    const sugEl = document.getElementById(
+      `ctnSug_${ctn.id}`,
+    ) as HTMLInputElement | null;
+    if (!costEl || !sugEl) return;
+    const sug = calcSugPrice(costEl.value, ctn.id);
+    if (sug === undefined) return;
+    sugEl.value = String(sug);
+    changed += 1;
+  });
+  if (changed > 0) message.success(`已按规则更新 ${changed} 个指导价`);
+}
+
+function onSyncCostChange(ctnId: string | number) {
+  if (!canEditCtnSugPrice()) return;
+  const costEl = document.getElementById(
+    `ctn_${ctnId}`,
+  ) as HTMLInputElement | null;
+  const sugEl = document.getElementById(
+    `ctnSug_${ctnId}`,
+  ) as HTMLInputElement | null;
+  if (!costEl || !sugEl) return;
+  const sug = calcSugPrice(costEl.value, ctnId);
+  if (sug !== undefined) sugEl.value = String(sug);
+}
 
 import type {
   BatchEditSeFreiPriceInput,
@@ -25,7 +81,14 @@ import {
   GetCtnCodesByPriceIdsAsync,
 } from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
-import { Button, Select, Input, DatePicker, TimePicker } from 'ant-design-vue';
+import {
+  Button,
+  Select,
+  Input,
+  DatePicker,
+  TimePicker,
+  message,
+} from 'ant-design-vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
@@ -280,21 +343,6 @@ const [Form, formApi] = useVbenForm({
         placeholder: '留空不修改',
         format: 'YYYY-MM-DD',
         valueFormat: 'YYYY-MM-DD',
-        style: { width: '100%' },
-      },
-    },
-    {
-      component: 'RadioGroup',
-      fieldName: 'recommend',
-      label: '是否推荐',
-      defaultValue: undefined,
-      componentProps: {
-        options: [
-          { label: '不改', value: undefined },
-          { label: '是', value: true },
-          { label: '否', value: false },
-        ],
-        optionType: 'button',
         style: { width: '100%' },
       },
     },
@@ -567,20 +615,24 @@ const [Modal, modalApi] = useVbenModal({
     // 构建箱型列表（seFreiPriceCtns）
     const seFreiPriceCtns: SeFreiPriceCtnAddDto[] = [];
 
-    // 从 ctnCodes 中获取所有箱型，并检查是否有修改的 cost
     ctnCodes.value.forEach((ctn) => {
       const costInput = document.getElementById(
         `ctn_${ctn.id}`,
-      ) as HTMLInputElement;
+      ) as HTMLInputElement | null;
+      const sugInput = document.getElementById(
+        `ctnSug_${ctn.id}`,
+      ) as HTMLInputElement | null;
       const cost = costInput?.value ? Number(costInput.value) : undefined;
-
-      // 只有当用户填写了 cost 时才包含该箱型
-      if (cost !== undefined && !isNaN(cost)) {
-        seFreiPriceCtns.push({
-          ctnCodeId: ctn.id, // 使用 ctn.id 作为 ctnCodeId
-          cost: cost,
-        });
-      }
+      const sugPrice = sugInput?.value ? Number(sugInput.value) : undefined;
+      const hasCost = cost !== undefined && !Number.isNaN(cost);
+      const hasSug = sugPrice !== undefined && !Number.isNaN(sugPrice);
+      if (!hasCost && !hasSug) return;
+      const item: SeFreiPriceCtnAddDto = {
+        ctnCodeId: ctn.id,
+      };
+      if (hasCost) item.cost = cost;
+      if (hasSug) item.sugPrice = sugPrice;
+      seFreiPriceCtns.push(item);
     });
 
     // 构建费用列表（seFreiPriceFees）
@@ -715,7 +767,6 @@ const [Modal, modalApi] = useVbenModal({
       poddem: values.poddem ?? null,
       poddet: values.poddet ?? null,
       voyage: values.voyage ?? null,
-      recommend: values.recommend ?? null,
       validTimeStart: values.validTimeStart ?? null,
       validTimeEnd: values.validTimeEnd ?? null,
       remark: values.remark ?? null,
@@ -1156,9 +1207,9 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- 箱型费率 -->
+      <!-- 箱型费率（海运费）：成本黄 / 指导价红；两者皆屏蔽时隐藏 -->
       <section
-        v-if="ctnCodes.length > 0"
+        v-if="ctnCodes.length > 0 && showCtnPriceSection()"
         class="form-section form-section--detail"
       >
         <header class="section-header">
@@ -1168,6 +1219,12 @@ onMounted(async () => {
             </div>
             <span class="section-title-text">箱型费率（海运费）</span>
             <span class="section-hint">留空则不修改</span>
+          </div>
+          <div class="section-actions flex gap-2">
+            <Button size="small" @click="openMarkupModal">指导价规则</Button>
+            <Button size="small" @click="applyMarkupToInputs"
+              >应用指导价</Button
+            >
           </div>
         </header>
         <div class="section-body">
@@ -1183,18 +1240,36 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr>
-                  <td>海运费</td>
+                  <td>
+                    海运费
+                    <div class="text-xs text-gray-400">
+                      <span class="text-amber-600">成本</span>
+                      /
+                      <span class="text-red-600">指导价</span>
+                    </div>
+                  </td>
                   <td
                     v-for="ctn in ctnCodes"
                     :key="ctn.id"
                     class="rate-table__cell"
                   >
-                    <input
-                      :id="`ctn_${ctn.id}`"
-                      type="number"
-                      class="rate-input"
-                      placeholder="留空不修改"
-                    />
+                    <div class="flex flex-col gap-1">
+                      <input
+                        v-if="canEditCtnCost()"
+                        :id="`ctn_${ctn.id}`"
+                        type="number"
+                        class="rate-input rate-input--cost"
+                        placeholder="成本"
+                        @change="onSyncCostChange(ctn.id)"
+                      />
+                      <input
+                        v-if="canEditCtnSugPrice()"
+                        :id="`ctnSug_${ctn.id}`"
+                        type="number"
+                        class="rate-input rate-input--sug"
+                        placeholder="指导价"
+                      />
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -1202,6 +1277,14 @@ onMounted(async () => {
           </div>
         </div>
       </section>
+
+      <CtnSugPriceMarkupModal
+        ref="markupModalRef"
+        :ctn-types="
+          ctnCodes.map((c) => ({ ctnCodeId: c.id, ctnName: c.ctnName }))
+        "
+        @applied="applyMarkupToInputs"
+      />
 
       <!-- 附加费明细 -->
       <section
@@ -2041,6 +2124,18 @@ onMounted(async () => {
     outline: none;
     border-color: hsl(var(--primary));
     box-shadow: 0 0 0 2px hsl(var(--primary) / 15%);
+  }
+
+  &--cost {
+    font-weight: 600;
+    color: #d48806;
+    border-color: #ffe58f;
+  }
+
+  &--sug {
+    font-weight: 600;
+    color: #cf1322;
+    border-color: #ffa39e;
   }
 }
 

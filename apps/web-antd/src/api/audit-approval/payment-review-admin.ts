@@ -189,6 +189,10 @@ export enum TaskType {
   PreOrder = 8,
   /** 提成单（与后端 TaskType.CommissionOrder 同值） */
   CommissionOrder = 10,
+  /** 新建客户审核（与后端 TaskType.SubmitClient 同值） */
+  SubmitClient = 90,
+  /** 申请修改客户（与后端 TaskType.ModifyClient 同值） */
+  ModifyClient = 91,
 }
 
 /** 工作流实例状态 */

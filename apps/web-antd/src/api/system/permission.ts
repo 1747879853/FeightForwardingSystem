@@ -50,6 +50,8 @@ export enum FrightModule {
   PreOrder = 8,
   /** 客户管理 */
   Client = 9,
+  /** 运价箱型（箱型成本等，独立于运价主表） */
+  SeFreiPriceCtn = 11,
 }
 
 /** 权限条件的比较操作符 */
@@ -130,6 +132,7 @@ export const FrightModuleOptions = [
   { label: '运价', value: FrightModule.SeFreiPrice },
   { label: '业务联系单', value: FrightModule.PreOrder },
   { label: '客户管理', value: FrightModule.Client },
+  { label: '运价箱型', value: FrightModule.SeFreiPriceCtn },
 ];
 
 /** 操作符选项 */

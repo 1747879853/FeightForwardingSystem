@@ -51,6 +51,7 @@ import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getCodePackageDetail } from '#/api/system/base-data/code-package-admin';
 import { getLoadingRequirementPagedList } from '#/api/system/base-data/loading-requirement-admin';
 import { UserAttribute } from '#/api/system/user-admin';
+import { useAttachmentZonePaste } from '#/composables/use-attachment-zone-paste';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { $t } from '#/locales';
 import { buildAttachmentUrl, compareAttachmentTypeSortIdDesc } from '#/utils';
@@ -293,6 +294,21 @@ function handlePhotoUpload(file: File, groupIndex: number) {
   });
   return false;
 }
+
+const { onZoneEnter, onZoneLeave } = useAttachmentZonePaste({
+  enabled: computed(
+    () => photoEditOpen.value && canEdit.value && !photoEditSaving.value,
+  ),
+  onPaste: async (zoneId, files) => {
+    const groupIndex = photoEditGroups.value.findIndex(
+      (group) => String(group.attachmentDtlTypeId ?? 'untyped') === zoneId,
+    );
+    if (groupIndex < 0) return;
+    for (const file of files) {
+      handlePhotoUpload(file, groupIndex);
+    }
+  },
+});
 
 async function savePhotoEdit() {
   const ctn = photoEditCtn.value;
@@ -1543,7 +1559,8 @@ const displayValue = (value: null | number | string | undefined) => {
           {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
         </div>
         <p v-if="canEdit" class="photo-edit-hint">
-          空箱箱内可添加多张，其他类型限一张；新图片自动添加上传人和上传时间水印。
+          空箱箱内可添加多张，其他类型限一张；可一次多选或 Ctrl+V
+          粘贴，新图片自动添加上传人和上传时间水印。
         </p>
         <div class="photo-edit-grid">
           <div
@@ -1553,6 +1570,12 @@ const displayValue = (value: null | number | string | undefined) => {
             :class="{
               'photo-edit-slot--multiple': allowsMultiple(group.typeName),
             }"
+            @mouseenter="
+              onZoneEnter(String(group.attachmentDtlTypeId ?? 'untyped'))
+            "
+            @mouseleave="
+              onZoneLeave(String(group.attachmentDtlTypeId ?? 'untyped'))
+            "
           >
             <div class="photo-edit-slot__title">
               {{ group.typeName }}

@@ -12,8 +12,8 @@
     "allowedTypes": "Allowed types",
     "maxSize": "Max size",
     "maxCount": "Max count",
-    "dragTip": "Click or drag files here to upload",
-    "dragHint": "Multiple files supported",
+    "dragTip": "Click, drag, or paste with Ctrl+V",
+    "dragHint": "Multiple files supported. Paste a screenshot with Ctrl+V",
     "uploadedFiles": "Uploaded Files"
   },
   "filePreview": {
@@ -25,6 +25,8 @@
     "downloadFailed": "Could not download with the display name; opened the file directly instead",
     "uploader": "Uploaded by",
     "uploadTime": "Uploaded at",
+    "prev": "Previous",
+    "next": "Next",
     "unsupported": "Online preview is not supported for this file type. Please download to view.",
     "missingUrl": "Attachment URL is missing",
     "officeFailed": "Failed to preview the document. Please download it instead.",
