@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { nextTick, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
@@ -12,6 +13,13 @@ import ExceptService from './except-service/index.vue';
 import InvoiceList from './invoice/list.vue';
 
 defineOptions({ name: 'ClientEdit' });
+
+// 每个缓存标签保存自己的客户 ID，子页面不能跟随全局路由变化。
+const route = useRoute();
+const routeClientId = route.params.id;
+const clientId = Array.isArray(routeClientId)
+  ? (routeClientId[0] ?? '')
+  : String(routeClientId ?? '');
 
 type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice';
 type FormSectionTabKey =
@@ -102,21 +110,36 @@ const contentTabsStyle = {
             <Form
               v-if="activeTab === 'basic'"
               ref="formRef"
+              :client-id="clientId"
               embedded
               @section-change="onSectionChange"
             />
           </KeepAlive>
           <KeepAlive include="ClientContactList">
-            <ContactList v-if="activeTab === 'contact'" ref="contactRef" />
+            <ContactList
+              v-if="activeTab === 'contact'"
+              ref="contactRef"
+              :client-id="clientId"
+            />
           </KeepAlive>
           <KeepAlive include="ClientInvoiceList">
-            <InvoiceList v-if="activeTab === 'invoice'" ref="invoiceRef" />
+            <InvoiceList
+              v-if="activeTab === 'invoice'"
+              ref="invoiceRef"
+              :client-id="clientId"
+            />
           </KeepAlive>
           <KeepAlive include="ClientAttachments">
-            <Attachments v-if="activeTab === 'attachments'" />
+            <Attachments
+              v-if="activeTab === 'attachments'"
+              :client-id="clientId"
+            />
           </KeepAlive>
           <KeepAlive include="ClientExceptService">
-            <ExceptService v-if="activeTab === 'exceptService'" />
+            <ExceptService
+              v-if="activeTab === 'exceptService'"
+              :client-id="clientId"
+            />
           </KeepAlive>
         </div>
       </div>

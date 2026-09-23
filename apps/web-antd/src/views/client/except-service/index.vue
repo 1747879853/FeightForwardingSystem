@@ -2,7 +2,6 @@
 import type { ClientExceptServiceAdminApi } from '#/api/sea-export/client-except-service-admin';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
@@ -41,13 +40,8 @@ import {
 
 defineOptions({ name: 'ClientExceptService' });
 
-const route = useRoute();
-
-const clientId = computed(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const props = defineProps<{ clientId: string }>();
+const clientId = computed(() => props.clientId);
 
 const loading = ref(false);
 const saving = ref(false);

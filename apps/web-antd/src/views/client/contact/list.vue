@@ -2,7 +2,6 @@
 import type { ClientContactAdminApi } from '#/api/sea-export/client-contact-admin';
 
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -22,13 +21,8 @@ const dataSource = defineModel<ClientContactAdminApi.ClientContactDto[]>({
   default: () => [],
 });
 
-const route = useRoute();
-
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+const props = defineProps<{ clientId: string }>();
+const editId = computed(() => props.clientId);
 
 /** 为联系人行注入 _rowKey，供 Handsontable 使用 */
 const normalizeWithRowKey = (

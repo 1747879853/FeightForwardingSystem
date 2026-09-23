@@ -86,19 +86,25 @@ import type { RiskbirdApi } from '#/api/riskbird/riskbird';
 
 defineOptions({ name: 'ClientAdminForm' });
 
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
-  embedded: false,
-});
+const props = withDefaults(
+  defineProps<{ clientId?: string; embedded?: boolean }>(),
+  {
+    embedded: false,
+  },
+);
 
 const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
 
-const editId = computed<string | undefined>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) return id[0];
-  return id ? String(id) : undefined;
-});
+// 新增页也会缓存：只在创建实例时读取路由，避免切页后变成编辑其他业务。
+const initialRouteId =
+  route.name === 'ClientEdit' ? route.params.id : undefined;
+const initialClientId = Array.isArray(initialRouteId)
+  ? initialRouteId[0]
+  : initialRouteId;
+const initialModifyMode = route.query.mode === 'modify';
+const editId = computed(() => props.clientId ?? initialClientId);
 
 const isEdit = computed(() => !!editId.value);
 
@@ -110,8 +116,7 @@ const modifyModeOverride = ref(false);
 
 /** 申请修改模式：复用同一套编辑 UI，提交走 ModifyAuditAsync 并多带申请原因 */
 const isModifyMode = computed(
-  () =>
-    isEdit.value && (modifyModeOverride.value || route.query.mode === 'modify'),
+  () => isEdit.value && (modifyModeOverride.value || initialModifyMode),
 );
 
 const clientStatus = ref<ClientAdminApi.ClientStatus | undefined>();

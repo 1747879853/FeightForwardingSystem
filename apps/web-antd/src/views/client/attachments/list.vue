@@ -3,7 +3,6 @@ import type { UploadFile } from 'ant-design-vue';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
@@ -104,7 +103,7 @@ const IMAGE_EXTENSIONS = new Set([
 
 const perm = createAbpPermission('Admin.Client');
 const { hasAccessByCodes } = useAccess();
-const route = useRoute();
+const props = defineProps<{ clientId: string }>();
 
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
@@ -139,11 +138,7 @@ const billingPeriodGroup = computed<AttachmentTypeGroup>(() => ({
   })),
 }));
 
-const clientId = computed<string>(() => {
-  const id = route.params.id || route.query.id;
-  if (Array.isArray(id)) return id[0] || '';
-  return id ? String(id) : '';
-});
+const clientId = computed(() => props.clientId);
 
 const canEdit = computed(() => hasAccessByCodes([perm.edit]));
 

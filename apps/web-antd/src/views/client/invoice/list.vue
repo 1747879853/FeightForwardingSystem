@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
   Collapse,
@@ -30,13 +29,8 @@ import {
 
 defineOptions({ name: 'ClientInvoiceList' });
 
-const route = useRoute();
-const router = useRouter();
-
-// 客户ID（从路由参数或query中获取）
-const clientId = computed(() => {
-  return (route.params.id || route.query.id) as string;
-});
+const props = defineProps<{ clientId: string }>();
+const clientId = computed(() => props.clientId);
 
 // 开票信息列表
 const invoiceList = ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto[]>([]);
