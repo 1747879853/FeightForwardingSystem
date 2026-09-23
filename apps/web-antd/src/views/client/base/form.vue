@@ -358,6 +358,26 @@ const defaultOrderUsers = ref<ClientAdminApi.ClientStakeholderListDto[]>([
   { userAttribute: UserAttribute.Documentation, stakeholderList: [] },
 ]);
 
+/**
+ * 详情已带 userNickName 时立刻交给 UserSelect 回显，
+ * 避免等全量用户缓存时先闪数字 id（TAPD #1000544）。
+ */
+const toUserSelectSelectedItems = (
+  list?: Array<{ userId?: number; userNickName?: string }> | null,
+): SystemUserAdminApi.UserSimpleDto[] => {
+  if (!list?.length) return [];
+  return list
+    .filter((item) => item.userId != null && String(item.userId) !== '')
+    .map((item) => {
+      const nickName = (item.userNickName ?? '').trim();
+      return {
+        id: item.userId as number,
+        nickName,
+      };
+    })
+    .filter((item) => item.nickName);
+};
+
 /** 对账人用户ID列表 */
 const reconcilerUserIds = ref<number[]>([]);
 /** 对账人列表（带详细信息） */
@@ -1059,7 +1079,21 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
         break;
     }
   });
-  reconcilerUserIds.value = to.reconcilerUserIds ?? [];
+  const nextReconcilerIds = to.reconcilerUserIds ?? [];
+  reconcilerUserIds.value = nextReconcilerIds;
+  const prevReconcilerMap = new Map(
+    reconcilerList.value.map((item) => [item.userId, item]),
+  );
+  reconcilerList.value = nextReconcilerIds.map((userId) => {
+    const prev = prevReconcilerMap.get(userId);
+    if (prev) return prev;
+    return {
+      id: '0',
+      clientId: editId.value || '',
+      userId,
+      userNickName: '',
+    };
+  });
   addressList.value = (to.addresses || []).map((addr, index) => ({
     id: (addr as { id?: number }).id ?? index,
     name: addr.name || '',
@@ -1371,6 +1405,19 @@ const updateStakeholders = async (
 const updateReconcilers = (values: number[]) => {
   if (formLocked.value) return;
   reconcilerUserIds.value = values;
+  const existingMap = new Map(
+    reconcilerList.value.map((item) => [item.userId, item]),
+  );
+  reconcilerList.value = values.map((userId) => {
+    const existing = existingMap.get(userId);
+    if (existing) return existing;
+    return {
+      id: '0',
+      clientId: editId.value || '',
+      userId,
+      userNickName: '',
+    };
+  });
 };
 
 /**
@@ -2784,6 +2831,7 @@ watch(
               :model-value="item.userIds"
               label-key="nickName"
               :user-attribute="item.userAttribute"
+              :selected-items="toUserSelectSelectedItems(item.stakeholderList)"
               class="stakeholder-block__select"
               @update:model-value="
                 (v) => updateStakeholders(item.userAttribute, v as number[])
@@ -2819,6 +2867,7 @@ watch(
               :disabled="formLocked"
               :model-value="reconcilerUserIds"
               label-key="nickName"
+              :selected-items="toUserSelectSelectedItems(reconcilerList)"
               class="stakeholder-block__select"
               @update:model-value="updateReconcilers($event as number[])"
             />

@@ -86,13 +86,16 @@ export const formatIndustryCategories = (value?: string): string => {
 };
 
 /**
- * 格式化干系人列表为可读字符串（显示昵称）
+ * 格式化干系人列表为可读字符串（只显示昵称；缺昵称时不回退成 userId，避免列表闪数字）
  */
 export const formatStakeholders = (
   stakeholders?: ClientAdminApi.ClientStakeholderDto[],
 ): string => {
   if (!stakeholders || stakeholders.length === 0) return '';
-  return stakeholders.map((s) => s.userNickName || String(s.userId)).join(', ');
+  return stakeholders
+    .map((s) => (s.userNickName ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
 };
 
 /**
