@@ -913,6 +913,7 @@ export namespace SeaExportAdminApi {
     carrierId?: LongId | null;
     vessel?: string | null;
     innerVoyno?: string | null;
+    closingTime?: string | null;
     /** 日期只能改成某个值，不能用本接口清空 */
     goodsCompleteTime?: string | null;
     etd?: string | null;

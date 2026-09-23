@@ -88,6 +88,11 @@ const displayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   {
+    key: 'closingTime',
+    label: $t('seaExport.export.closingTime'),
+    visible: true,
+  },
+  {
     key: 'closeVgmTime',
     label: $t('seaExport.export.closeVgmTime'),
     visible: true,

@@ -269,10 +269,10 @@ const generateContent = () => {
     实际开船: formatDate(getValue('atd')),
     预抵日期: formatDate(getValue('eta')),
     货好日期: formatDate(getValue('goodsCompleteTime')),
-    截港日期: formatDate(getValue('closeVgmTime')),
     截单日期: formatDate(getValue('closeDocTime')),
     截VGM日期: formatDate(getValue('closeVgmTime')),
-    截关日期: formatDate(getValue('closeManifestTime')),
+    截关日期: formatDate(getValue('closingTime')),
+    截舱单日期: formatDate(getValue('closeManifestTime')),
     签单日期: formatDate(getValue('signingTime')),
 
     // 货物信息类

@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-21
+last_updated: 2026-09-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -32,7 +32,7 @@ last_updated: 2026-09-21
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。六段港口列直接绑定 `*Remark` 真实字段，排序通过 `fieldMap` 仍走 `*.PortName`；个人列设置加载时迁移旧港口键，保留顺序、显隐、固定和宽度。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`（开始当天 00:00:00、结束当天 23:59:59.999，再转 ISO），`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`（带时分秒原样转 ISO）。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
-- **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、时间信息、干系人四区，控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。港口区用编辑页同款流转卡片，六段港口各自带一格备注：选港后自动填 `PORTNAME, COUNTRYENNAME` 且可手工改，备注只在对应港口有值时随 id 提交（后端亦只在改港时写备注），列表港口列读的就是这些备注。时间信息区与编辑页船期区同源，含货好时间、开船日期、实际开船日期、预抵日期、截单日期、截港日期、截关日期；日期只能改成某个值，不能用批量修改清空。仅 `isEditable === true` 的票 id 参与提交。成功后给这些 id 打详情重拉标记：之前开过、仍挂在页签里的编辑页再点进去会重新 `DetailAsync`，不会继续显示 KeepAlive 里的旧数据。
+- **批量修改：** 勾选 ≥1 条后，有 `Admin.SeaExport.Edit` 权限的用户可点工具栏「批量修改」。未勾选 toast「请先勾选需要修改的数据」；所选票全部不可编辑时 toast「所选记录都没有编辑权限」。弹窗分基础信息、港口、时间信息、干系人四区，控件与编辑页同源 biz-select；**只提交已填字段**，留空不覆盖。提交 `SeaExportAdmin/BatchEditAsync`；改起运港前二次确认（将按新港重新生成服务项目）；选目的港时弹窗内只读预览航线。港口区用编辑页同款流转卡片，六段港口各自带一格备注：选港后自动填 `PORTNAME, COUNTRYENNAME` 且可手工改，备注只在对应港口有值时随 id 提交（后端亦只在改港时写备注），列表港口列读的就是这些备注。时间信息区与编辑页船期区同源，含货好时间、开船日期、实际开船日期、预抵日期、截单日期、截VGM、截关日期、截舱单日期；日期只能改成某个值，不能用批量修改清空。仅 `isEditable === true` 的票 id 参与提交。成功后给这些 id 打详情重拉标记：之前开过、仍挂在页签里的编辑页再点进去会重新 `DetailAsync`，不会继续显示 KeepAlive 里的旧数据。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；规则问号嵌在按钮文案后（船公司、主提单号/箱号），点问号不触发订阅。超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示，失败原因完整可读。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **主提单号预警色：** 有运踪异常时主提单号前出叹号。`DELAY` / `DUMPING` / `DETENTION` / `OVERDUE` 为红色，`CHANGE` 等其余类型仍为黄色；悬停看最近一条原因。
@@ -65,7 +65,7 @@ last_updated: 2026-09-21
 | **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
 | **报关发票号** | 报关用的商业发票号；列表列与独立模糊筛选。 | 列 `transportOrder.invoiceNum`；筛 `InvoiceNum` | **触发/依赖：** 默认列隐藏，与合同号同款；复制入库由后端置空。 | 可空；最长 64。 |
 | **开船日期** | 按运输单 ETD 过滤海出委托；列表默认按该字段降序。 | 筛 `ETDRange` -> `ETDStart` / `ETDEnd`；列 `transportOrder.etd`；`sorting`=`TransportOrder.ETD` | **触发/依赖：** 前端拆分日期区间：开始 `startOf('day')`、结束 `endOf('day')` 再转 ISO，避免点「今天」带上当前时分。`defaultSort` 写成 `TransportOrder.Etd DESC` 才能把列头箭头落到本列。 | RangePicker 可为空；开始/结束均可由组件约束。 |
-| **货好 / 实际开船 / 预抵 / 截港 / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截港/截关在海出根级；`formatDate`。 | 无值时空。 |
+| **货好 / 实际开船 / 预抵 / 截VGM / 截关（列表列）** | 台账补充的五个日期列，只显示年月日。 | `transportOrder.goodsCompleteTime`、`transportOrder.atd`、`transportOrder.eta`、`closeVgmTime`、`closingTime` | **触发/依赖：** 前三个在运输单，截VGM/截关在海出根级；`formatDate`。 | 无值时空。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
 | **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，列 `field` 直接绑定），通过 `fieldMap` 保持**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
@@ -117,6 +117,7 @@ last_updated: 2026-09-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
 | 2026-09-21 | `Style` | 主提单号前延误/甩柜/滞留/超期预警改红色，开港截港等 CHANGE 仍黄色。 | 跟最近一条 `latestWarningCategory`。详见[变更记录](../../changelogs/change-log-2026-09-21-运踪严重异常类型改红色.md)。 |
 | 2026-09-20 | `Feature` | 列表查询记住筛选和排序，供编辑页上一票/下一票使用。 | 去掉分页后写入 sessionStorage。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-20 | `Fix` | 修复操作、销售、客服、单证、业务人员及收发通回退文本刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |

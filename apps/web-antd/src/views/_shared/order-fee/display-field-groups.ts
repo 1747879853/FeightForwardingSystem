@@ -86,6 +86,7 @@ export const DISPLAY_FIELD_META: Record<string, DisplayFieldMeta> = {
   codeFrtName: { group: 'party' },
 
   // 时间节点
+  closingTime: { group: 'schedule' },
   closeDocTime: { group: 'schedule' },
   closeVgmTime: { group: 'schedule' },
   closeManifestTime: { group: 'schedule' },

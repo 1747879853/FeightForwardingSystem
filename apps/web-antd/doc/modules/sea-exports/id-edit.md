@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-22
+last_updated: 2026-09-23
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -29,7 +29,7 @@ last_updated: 2026-09-22
 
 - **上一票 / 下一票：** 工作台顶栏右侧。详情 `DetailAsync` 带上最近一次海出列表的筛选和排序（`sessionStorage`，去掉分页），按全量顺序取 `previousId` / `nextId`。Id 为空则禁用；点击打开相邻票编辑页，未保存离开走现有脏检查。业务联系单内嵌时不展示。只传 `id`、本会话没查过列表时，按可见全量 + 创建时间倒序算。
 - **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、**监装**、分单、运踪信息。「监装」需 `Admin.SeaExport.LoadingOrder.Get`，无权限时整 Tab 不出现、也不参与 Tab 记忆恢复。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
-- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/码头航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；`filteredByTerminalVoyno=false` 时提示这是该船在该港的全部挂靠计划。弹窗**不展示码头航次列**。点「确定引入」后前端回填 `atd`（实际开船）、**`terminalVoyno`（出口 `evoyage`，码头航次，界面隐藏）**、`closeVgmTime`（截港）、`closeDocTime`（截单）、`closeManifestTime`（截关），并立刻走原有编辑保存。**不要把 `evoyage` 写进 `innerVoyno`。** 无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
+- **码头船舶：** 编辑态在船名/航次字段右侧展示一个图标按钮，点击调 `FeituoAdmin/QueryTerminalScheduleAsync`（只传业务单 Id，船名/码头航次/起运港由后端自取；**纯查询，不写库**）。有可引入字段则弹窗让用户选一条（即使只有一条也不自动取）；`filteredByTerminalVoyno=false` 时提示这是该船在该港的全部挂靠计划。弹窗**不展示码头航次列**。点「确定引入」后前端回填 `atd`（实际开船）、**`terminalVoyno`（出口 `evoyage`，码头航次，界面隐藏）**、`closingTime`（截关）、`closeDocTime`（截单），并立刻走原有编辑保存。**不要把 `evoyage` 写进 `innerVoyno`。** 无数据或没有可引入字段只提示。不回填计划离港 `etd`，也不把 `eta`/`ata`（抵达起运港）当成预抵。新建态不显示该按钮。
 - **基础信息字段布局：** 6 列栅格顺序为：第 1 行委托单位/船公司/船名航次/船代/订舱代理（车队落到下一行）（由 `BASIC_INFO_FIELD_ORDER` 控制）。船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；码头航次 `terminalVoyno` 表单 `hidden`，保存与码头计划引入仍写该字段；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。仅恢复当前可见且有对应面板的 Tab key；关闭浏览器标签后会话清空，下次默认回到「基础信息」。工作台「前往上传」会先写 pending Tab，再带 `?tab=attachments`；二者都优先于会话记忆。路由 `fullPathKey: false`，避免 query 变化整页重挂。命中后会立刻写入记忆并 `replace` 掉 `tab` 参数。基础信息表单内滚动**不再**改写工作台 `activeTab`（已移除分区 Tab 双向联动）。
 - **缓存页冻结委托 id：** 编辑工作台及费用/更改单/附件/派车/监装/分单从路由取 id 时走 `useKeepAliveRouteParamId`。本页可见才同步地址栏；KeepAlive 藏起来后冻结上次 id，避免海进等同名 `:id` 页把海出缓存页带去打进口详情（或反过来）。
@@ -47,7 +47,7 @@ last_updated: 2026-09-22
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
 - **委托单位 / 订舱代理联系人：** 与场站同款挂在标签右侧。编辑回填详情对象 `clientContact` / `bookingAgentContact`；用户改选客户后改拉默认联系人。保存带回 `transportOrder.clientContactId` 与 `bookingAgentContactId`。无独立联系人下拉。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。港口字段已对象化（`pol`/`pod`/`pot1`/`pot2`/`receivePort`/`deliverPort`/`prepareAt`/`signingPort`），编辑回填用 `toPortObjectSelectedItems` 整对象注入；航线/国家取自目的港 `pod.lane` / `pod.country`。
-- **船期与付费联动：** 船期截关节点展示顺序为截单 → 截港 → 截关（字段仍为 `closeDocTime` / `closeVgmTime` / `closeManifestTime`）；保存时校验上述日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
+- **船期与付费联动：** 船期截关节点展示顺序为截单 → 截VGM → 截关 → 截舱单（字段为 `closeDocTime` / `closeVgmTime` / `closingTime` / `closeManifestTime`）；保存时校验上述日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
 - **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
 - **箱型箱量批量新增：** 标题栏「批量新增」打开 Popover，分页拉取全部启用箱型并可按名称搜索；按箱型填数量后确认，一次生成对应条数「一行一柜」记录（预填箱型，带出总包装默认值）；单条「+」添加仍保留。
 - **船公司选中回显：** 详情接口返回同级 `carrierLogo` 与对象 `carrier`（含 `cnShortName`/`cnName`/`code`/`ediCode`）后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `carrier.cnShortName || carrier.cnName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。往来单位（委托单位/收发通/船代/订舱代理/场站/车队等）回显统一取 `*.name`。
@@ -184,6 +184,7 @@ last_updated: 2026-09-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
 | 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与新建页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 列表 Query 记入 sessionStorage；`DetailAsync` 原样带上；`loadEditData` 成功后 `emit('saved')` 回写相邻 Id。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开收起加高度过渡；横向时间轴改为细线小圆点苹果风。 | 手风琴不再用 `details`。详见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |

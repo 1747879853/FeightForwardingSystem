@@ -67,13 +67,14 @@ const PORT_LABEL_OVERRIDE: Record<string, string> = {
   poT2Id: $t('seaExport.export.batchEditPoT2'),
 };
 
-/** 与编辑页船期区一致的时间字段（截港日期即 closeVgmTime，closingTime 编辑页未展示） */
+/** 与编辑页船期区一致的时间字段（截关为 closingTime，截VGM 为 closeVgmTime） */
 const TIME_FIELD_NAMES = new Set([
   'goodsCompleteTime',
   'etd',
   'atd',
   'eta',
   'closeDocTime',
+  'closingTime',
   'closeVgmTime',
   'closeManifestTime',
 ]);
@@ -169,6 +170,7 @@ const buildBatchEditPayload = (
     { field: 'atd', format: toDateOnlyString },
     { field: 'eta', format: toDateString },
     { field: 'closeDocTime', format: toDateString },
+    { field: 'closingTime', format: toDateString },
     { field: 'closeVgmTime', format: toDateString },
     { field: 'closeManifestTime', format: toDateString },
   ] as const;

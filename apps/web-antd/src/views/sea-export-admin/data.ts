@@ -1678,7 +1678,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       fieldName: 'closingTime',
       label: $t('seaExport.export.closingTime'),
       componentProps: { class: 'w-full', showTime: true },
-      formItemClass: 'shipment-time-item shipment-time-pos--5 hidden',
+      formItemClass: 'shipment-time-item shipment-time-pos--7',
     },
     {
       component: 'DatePicker',
@@ -1700,7 +1700,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.closeManifestTime'),
       componentProps: { class: 'w-full', showTime: true },
       formItemClass:
-        'shipment-time-item shipment-time-item--last shipment-time-pos--7',
+        'shipment-time-item shipment-time-item--last shipment-time-pos--8',
     },
     {
       component: 'PortSelect',

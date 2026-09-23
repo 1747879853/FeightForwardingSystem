@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-22
+last_updated: 2026-09-23
 ---
 
 > [!TIP] 表单目录与文件职责：[基础信息表单](./basic-info-form.md)。
@@ -71,7 +71,7 @@ last_updated: 2026-09-22
 | **订单类型** | 直单或分单。 | `billType`；枚举 `0` 直单 / `1` 分单 | **触发/依赖：** 默认直单。 | - |
 | **货物类型** | 普通货/冻柜/危险品/超限箱；货物卡片标题栏内联。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 新建默认普通货（`CARGO_TYPE.S`）；编辑回填详情；危险品/冻柜才展示扩展字段。 | 可改可清。 |
 
-| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **起运港** | 装货港。 | `polId`；`PortSelect` | **触发/依赖：** 变更时触发 `GetServiceTypesByPOLAsync`；选择港口可联动 `polRemark`。 | 联动查询依赖起运港有值。 | | **服务项目** | 订舱、拖车、报关、仓库、保险、代收支是否启用及对应服务商。 | 服务项卡片；`getServiceTypesByPOL`；提交字段 `serviceTypes`（`0-5`） | **触发/依赖：** `clientId`/`polId` 变化后按接口 `checked` 自动勾选/取消；`checked=true` 才可选手动服务商；取消勾选清空主体。代收支勾选时 `serviceTypes` 含 `5` 且可选组织部门。 | 只提交已勾选对应类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 固定角色不可删除且不可重复，新增仅补齐缺失角色，提交前按 `sortId` 排序并清洗无效行。 | 销售必须且仅一人；销售与操作必须选择人员。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、实际开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/atd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
+| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **起运港** | 装货港。 | `polId`；`PortSelect` | **触发/依赖：** 变更时触发 `GetServiceTypesByPOLAsync`；选择港口可联动 `polRemark`。 | 联动查询依赖起运港有值。 | | **服务项目** | 订舱、拖车、报关、仓库、保险、代收支是否启用及对应服务商。 | 服务项卡片；`getServiceTypesByPOL`；提交字段 `serviceTypes`（`0-5`） | **触发/依赖：** `clientId`/`polId` 变化后按接口 `checked` 自动勾选/取消；`checked=true` 才可选手动服务商；取消勾选清空主体。代收支勾选时 `serviceTypes` 含 `5` 且可选组织部门。 | 只提交已勾选对应类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 固定角色不可删除且不可重复，新增仅补齐缺失角色，提交前按 `sortId` 排序并清洗无效行。 | 销售必须且仅一人；销售与操作必须选择人员。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、实际开船、到港、截关、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/atd/eta/closingTime/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -95,6 +95,7 @@ last_updated: 2026-09-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
 | 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与编辑页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |

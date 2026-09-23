@@ -772,7 +772,7 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
     ),
   ),
   showDefaultActions: false,
-  wrapperClass: 'shipment-flow-wrap form-controls-small grid-cols-7 gap-x-8',
+  wrapperClass: 'shipment-flow-wrap form-controls-small grid-cols-8 gap-x-8',
   handleValuesChange: (values, fieldsChanged) => {
     if (fieldsChanged.includes('etd')) {
       syncDateEtd.value = values.etd;
@@ -2640,12 +2640,13 @@ const loadEditData = async (): Promise<
 };
 
 /**
- * 校验截关类时间（截单/截港/截关）需早于开船日期与实际开船。
+ * 校验截关类时间（截单/截VGM/截关/截舱单）需早于开船日期与实际开船。
  * 任一截关时间晚于开船日期或实际开船（按日期比较）时提示并阻止保存。
  */
 const validateShipmentDates = async (): Promise<boolean> => {
   const values = await shipmentFormApi.getValues();
   const cutTimeFields = [
+    { field: 'closingTime', labelKey: 'seaExport.export.closingTime' },
     { field: 'closeDocTime', labelKey: 'seaExport.export.closeDocTime' },
     { field: 'closeVgmTime', labelKey: 'seaExport.export.closeVgmTime' },
     {
@@ -2730,9 +2731,8 @@ const applyTerminalSchedulePatch = async (item: TerminalScheduleItem) => {
   }
   const dateFields = [
     ['atd', patch.atd],
-    ['closeVgmTime', patch.closeVgmTime],
+    ['closingTime', patch.closingTime],
     ['closeDocTime', patch.closeDocTime],
-    ['closeManifestTime', patch.closeManifestTime],
   ] as const;
   for (const [field, raw] of dateFields) {
     const value = toDayjs(raw);

@@ -34,9 +34,8 @@ export interface TerminalScheduleFormPatch {
   /** 码头航次（港区航次）。飞驼 evoyage/ivoyage 只能填这里，不能填 innerVoyno */
   terminalVoyno?: string;
   atd?: string;
-  closeVgmTime?: string;
+  closingTime?: string;
   closeDocTime?: string;
-  closeManifestTime?: string;
 }
 
 export interface UseTerminalScheduleSyncOptions {
@@ -50,7 +49,7 @@ function hasText(value: null | string | undefined): value is string {
 
 /**
  * 按业务类型把飞驼条目映射成表单补丁。
- * 出口：实际开船 / 码头航次 / 截港 / 截单 / 截关；进口表单没有实际开船与截关类字段，只回填码头航次。
+ * 出口：实际开船 / 码头航次 / 截单 / 截关；进口表单没有实际开船与截关类字段，只回填码头航次。
  * 不映射 etd（计划离港）和 eta/ata（抵达起运港）。
  * 不映射船公司航次 innerVoyno：evoyage/ivoyage 都是码头航次。
  */
@@ -63,12 +62,12 @@ export function buildTerminalScheduleFormPatch(
   const voyage = isImport ? item.ivoyage : item.evoyage;
   if (hasText(voyage)) patch.terminalVoyno = voyage.trim();
   if (!isImport && hasText(item.atd)) patch.atd = item.atd;
-  if (!isImport && hasText(item.cyClosing)) patch.closeVgmTime = item.cyClosing;
+  // cyClosing 是截港时间，不能写入截VGM。
   if (!isImport && hasText(item.portCloseDate)) {
     patch.closeDocTime = item.portCloseDate;
   }
   if (!isImport && hasText(item.customsCloseDate)) {
-    patch.closeManifestTime = item.customsCloseDate;
+    patch.closingTime = item.customsCloseDate;
   }
   return patch;
 }
