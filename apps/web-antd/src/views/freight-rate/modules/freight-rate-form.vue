@@ -60,6 +60,11 @@ import {
 } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
 
+import {
+  applyDefaultFreightRateValue,
+  loadDefaultFreightRateConfig,
+} from './composables/use-default-freight-rate-config';
+
 const emits = defineEmits(['success']);
 
 // ==================== 状态定义 ====================
@@ -672,27 +677,80 @@ const [Modal, modalApi] = useVbenModal({
         };
       }
     } else {
-      // 新增模式 - 初始化并加载默认箱型
+      // 新增模式 - 初始化并加载默认箱型 + 个人默认值配置
       const defaultCtns = await loadDefaultCtns();
+      const { value: tenantDefaults } = await loadDefaultFreightRateConfig();
 
-      formData.value = {
-        id: '',
-        recommend: false,
-        carrierId: 0,
-        polId: 0,
-        podId: 0,
-        isDirect: true,
-        validTimeStart: '',
-        validTimeEnd: '',
-        currencyId: defaultCurrencyId.value || 0, // 默认设置为 USD，如果未找到则为 0
-        creationTime: '',
-        isValid: 0, // 0=已生效
-        seFreiPriceCtns: defaultCtns,
-        seFreiPriceFees: [],
-      } as SeFreiPriceOutDto;
+      const draft = applyDefaultFreightRateValue(
+        {
+          id: '',
+          recommend: false,
+          carrierId: 0,
+          polId: 0,
+          podId: 0,
+          isDirect: true,
+          validTimeStart: '',
+          validTimeEnd: '',
+          currencyId: defaultCurrencyId.value || 0,
+          creationTime: '',
+          isValid: 0,
+          seFreiPriceCtns: defaultCtns,
+          seFreiPriceFees: [],
+        } as SeFreiPriceOutDto,
+        tenantDefaults,
+      );
+
+      formData.value = draft;
       surchargeFees.value = [];
       etdList.value = [];
       etdDayList.value = [];
+
+      if (draft.carrierId) {
+        await formApi.updateSchema([
+          {
+            fieldName: 'carrierId',
+            componentProps: {
+              selectedItems: [{ id: draft.carrierId }],
+            },
+          },
+        ]);
+      }
+      if (draft.polId) {
+        await formApi.updateSchema([
+          {
+            fieldName: 'polId',
+            componentProps: {
+              selectedItems: [{ id: draft.polId }],
+            },
+          },
+        ]);
+      }
+      if (draft.bookingAgentId) {
+        await formApi.updateSchema([
+          {
+            fieldName: 'bookingAgentId',
+            componentProps: {
+              selectedItems: [{ id: draft.bookingAgentId }],
+            },
+          },
+        ]);
+      }
+
+      await formApi.setValues({
+        recommend: draft.recommend,
+        isDirect: draft.isDirect,
+        currencyId: draft.currencyId || undefined,
+        carrierId: draft.carrierId || undefined,
+        polId: draft.polId || undefined,
+        bookingAgentId: draft.bookingAgentId || undefined,
+        polFreeDays: draft.polFreeDays,
+        podFreeDays: draft.podFreeDays,
+        poddem: draft.poddem,
+        poddet: draft.poddet,
+        voyage: draft.voyage,
+        contractNo: draft.contractNo,
+        remark: draft.remark,
+      });
     }
   },
   closeOnClickModal: false,
@@ -1386,7 +1444,7 @@ async function handleSubmit() {
 
     // 构建提交数据
     const baseData = {
-      recommend: false,
+      recommend: formData.value?.recommend ?? false,
       carrierId: values.carrierId,
       polId: values.polId,
       podId: values.podId,

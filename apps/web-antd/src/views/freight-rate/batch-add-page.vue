@@ -80,6 +80,9 @@ const {
   copySelectedRows,
   validateForm,
   prepareSubmitData,
+  refreshTenantDefaults,
+  setTenantDefaultLabelResolvers,
+  tenantDefaults,
   reset,
 } = useBatchAddData();
 
@@ -338,6 +341,7 @@ const {
   ensurePortLabelsByIds,
   clearPortCache,
   getCachedPortLabel,
+  rememberPort,
 } = usePortRemoteAutocomplete();
 
 const {
@@ -347,14 +351,17 @@ const {
   ensureCarrierLabelsByIds,
   clearCarrierCache,
   getCachedCarrierLabel,
+  rememberCarrier,
 } = useCarrierRemoteAutocomplete();
 
 const {
   bookingAgentLabelToId,
   createBookingAgentSource,
   resolveBookingAgentLabelFromRow,
+  ensureBookingAgentLabelsByIds,
   clearBookingAgentCache,
   getCachedBookingAgentLabel,
+  rememberBookingAgent,
 } = useBookingAgentRemoteAutocomplete();
 
 interface BatchAddTableCoreInstance {
@@ -861,8 +868,40 @@ async function initPage() {
   clearCarrierCache();
   clearBookingAgentCache();
 
-  if (allCtnOptions.value.length === 0) {
-    await initDropdownSources(defaultCurrencyId);
+  // 并行：个人默认值 / 下拉预载 / 列配置，避免串行拖慢首行
+  const needDropdownInit = allCtnOptions.value.length === 0;
+  const [persistedResult] = await Promise.all([
+    loadPersistedColumnConfig()
+      .then((persisted) => ({ ok: true as const, persisted }))
+      .catch((error) => {
+        console.error('加载列配置失败:', error);
+        return { ok: false as const, persisted: null };
+      }),
+    isEditMode.value ? Promise.resolve() : refreshTenantDefaults(),
+    needDropdownInit
+      ? initDropdownSources(defaultCurrencyId)
+      : Promise.resolve(),
+  ]);
+
+  if (!isEditMode.value) {
+    const defaults = tenantDefaults.value;
+    // 配置里已存 Label：同步写入远程缓存，提交时可 label→id，且不阻塞首行
+    if (defaults.carrierId != null && defaults.carrierLabel) {
+      rememberCarrier(defaults.carrierId, defaults.carrierLabel);
+    }
+    if (defaults.polId != null && defaults.polLabel) {
+      rememberPort(defaults.polId, defaults.polLabel);
+    }
+    if (defaults.bookingAgentId && defaults.bookingAgentLabel) {
+      rememberBookingAgent(defaults.bookingAgentId, defaults.bookingAgentLabel);
+    }
+    setTenantDefaultLabelResolvers({
+      carrier: (id) => getCachedCarrierLabel(id) || getCarrierName(id),
+      pol: (id) =>
+        getCachedPortLabel(id) || getPortName(id, portIdToLabel.value),
+      currency: (id) => getCurrencyName(id),
+      bookingAgent: (id) => getCachedBookingAgentLabel(id) || getClientName(id),
+    });
   }
 
   if (addedCtnTypes.value.length === 0 && allCtnOptions.value.length > 0) {
@@ -876,24 +915,18 @@ async function initPage() {
     addedCtnTypes.value = defaultCtns;
   }
 
-  // 回放用户列配置；无配置时套用产品默认显隐白名单
-  try {
-    const persisted = await loadPersistedColumnConfig();
-    if (persisted && persisted.size > 0) {
-      userColumnConfig.value = persisted;
-    } else {
-      userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
-        hotColumns.value,
-      );
-    }
-  } catch (error) {
-    console.error('加载列配置失败:', error);
+  if (
+    persistedResult.ok &&
+    persistedResult.persisted &&
+    persistedResult.persisted.size > 0
+  ) {
+    userColumnConfig.value = persistedResult.persisted;
+  } else {
     userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
       hotColumns.value,
     );
   }
 
-  await nextTick();
   await nextTick();
 
   // 箱型列可能刚加入，补齐默认显隐（已有用户配置的键不覆盖）
@@ -910,6 +943,84 @@ async function initPage() {
   ensureMissingColumnConfig(hotColumns.value);
 
   syncHotTable();
+
+  // 旧配置缺 Label 时后台补齐，不挡首屏；补完后刷新首行显示名
+  if (!isEditMode.value) {
+    void hydrateLegacyTenantDefaultLabels();
+  }
+}
+
+/** 兼容仅存 id 的旧 DefaultFreightRate：后台补 Label 并回写首行 */
+async function hydrateLegacyTenantDefaultLabels() {
+  const defaults = tenantDefaults.value;
+  const needCarrier = defaults.carrierId != null && !defaults.carrierLabel;
+  const needPol = defaults.polId != null && !defaults.polLabel;
+  const needAgent = !!defaults.bookingAgentId && !defaults.bookingAgentLabel;
+  if (!needCarrier && !needPol && !needAgent) return;
+
+  await Promise.all([
+    needCarrier
+      ? ensureCarrierLabelsByIds([defaults.carrierId])
+      : Promise.resolve(),
+    needPol ? ensurePortLabelsByIds([defaults.polId]) : Promise.resolve(),
+    needAgent
+      ? ensureBookingAgentLabelsByIds([defaults.bookingAgentId])
+      : Promise.resolve(),
+  ]);
+
+  if (needCarrier && defaults.carrierId != null) {
+    const label =
+      getCachedCarrierLabel(defaults.carrierId) ||
+      getCarrierName(defaults.carrierId);
+    if (label && label !== '-' && label !== String(defaults.carrierId)) {
+      defaults.carrierLabel = label;
+    }
+  }
+  if (needPol && defaults.polId != null) {
+    const label =
+      getCachedPortLabel(defaults.polId) ||
+      getPortName(defaults.polId, portIdToLabel.value);
+    if (label && label !== '-' && label !== String(defaults.polId)) {
+      defaults.polLabel = label;
+    }
+  }
+  if (needAgent && defaults.bookingAgentId) {
+    const label =
+      getCachedBookingAgentLabel(defaults.bookingAgentId) ||
+      getClientName(defaults.bookingAgentId);
+    if (label && label !== '-' && label !== String(defaults.bookingAgentId)) {
+      defaults.bookingAgentLabel = label;
+    }
+  }
+
+  // 刷新已生成的空行显示名（仅当单元格仍是裸 id）
+  if (dataSource.value.length === 0) return;
+  let changed = false;
+  const nextRows = dataSource.value.map((row) => {
+    const next = { ...row };
+    if (
+      defaults.carrierLabel &&
+      String(next.carrierId) === String(defaults.carrierId)
+    ) {
+      next.carrierId = defaults.carrierLabel;
+      changed = true;
+    }
+    if (defaults.polLabel && String(next.polId) === String(defaults.polId)) {
+      next.polId = defaults.polLabel;
+      changed = true;
+    }
+    if (
+      defaults.bookingAgentLabel &&
+      String(next.bookingAgentId) === String(defaults.bookingAgentId)
+    ) {
+      next.bookingAgentId = defaults.bookingAgentLabel;
+      changed = true;
+    }
+    return next;
+  });
+  if (!changed) return;
+  dataSource.value = nextRows;
+  syncHotTable({ data: nextRows });
 }
 
 onMounted(() => {

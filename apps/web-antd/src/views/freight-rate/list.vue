@@ -50,6 +50,7 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
+import DefaultFreightRateConfigModal from './modules/default-freight-rate-config-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { setPendingFreightBatchRows } from './pending-batch-rows';
 import {
@@ -102,6 +103,11 @@ const [EditFormModal, editFormModalApi] = useVbenModal({
 
 const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   connectedComponent: SyncUpdateForm,
+  destroyOnClose: true,
+});
+
+const [DefaultConfigModal, defaultConfigModalApi] = useVbenModal({
+  connectedComponent: DefaultFreightRateConfigModal,
   destroyOnClose: true,
 });
 
@@ -281,6 +287,10 @@ useRefreshListOnFormReturn('FreightRateList', onRefresh);
 
 function onCreate() {
   editFormModalApi.setData({ permission: hasAddPermission.value }).open();
+}
+
+function onOpenDefaultConfig() {
+  defaultConfigModalApi.open();
 }
 
 function onEditByDblClick(row: SeFreiPriceOutDto) {
@@ -913,6 +923,11 @@ onUnmounted(() => {
             {{ $t('seaExport.freightRate.copy') }}
           </Button>
 
+          <Button @click="onOpenDefaultConfig">
+            <IconifyIcon icon="mdi:cog-outline" class="size-5" />
+            默认值配置
+          </Button>
+
           <Dropdown
             v-access:code="perm.edit"
             :disabled="!hasEditPermission && !hasDeletePermission"
@@ -963,6 +978,7 @@ onUnmounted(() => {
 
     <EditFormModal @success="onRefresh" />
     <SyncUpdateModal @success="onRefresh" />
+    <DefaultConfigModal />
 
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"
