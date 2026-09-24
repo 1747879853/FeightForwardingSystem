@@ -51,6 +51,8 @@ import ClientInvoiceInfoSelector from './components/ClientInvoiceInfoSelector.vu
 import { Select } from 'ant-design-vue';
 import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { getMyOrgPath } from '#/composables/use-my-org';
 
 // ==================== 初始化路由 ====================
 const router = useRouter();
@@ -96,10 +98,14 @@ const settlementObjectName = computed(() => {
   return '-';
 });
 
-/** 跨部门回显：下拉选项是本人部门 id，已选值用所属公司名兜底 */
+/** 归属组织回显：简称优先；销售方名称仍用 applicantCompanyName 全称 */
 const orgSelectEchoItems = computed(() => {
-  if (!formData.value.orgId || !applicantCompanyName.value) return [];
-  return [{ value: formData.value.orgId, label: applicantCompanyName.value }];
+  if (!formData.value.orgId) return [];
+  const label =
+    formatOrgPathLabel(getMyOrgPath(formData.value.orgId)) ||
+    applicantCompanyName.value;
+  if (!label) return [];
+  return [{ value: formData.value.orgId, label }];
 });
 
 const {

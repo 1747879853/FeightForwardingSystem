@@ -294,8 +294,10 @@ export namespace PaymentApplicationAdminApi {
   export interface OrganizationUnitSimpleDto {
     /** 组织id */
     id: number;
-    /** 组织名 */
+    /** 组织名（全称） */
     name?: string;
+    /** 简称；展示优先于 name */
+    shortName?: string;
     /** 本位币id，可空 */
     localCurrencyId?: null | number;
     /** 本位币编码，可空 */

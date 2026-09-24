@@ -7,9 +7,17 @@ import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
 import { useUserStore } from '@vben/stores';
 
+import { formatOrgNodeLabel } from '#/composables/use-all-user-org';
 import { getMyOrgCompanyNode } from '#/composables/use-my-org';
 
 import type { BankOption } from '../form-data';
+
+type SettlementOrgNode = {
+  id: number;
+  isCompany?: boolean;
+  name?: string;
+  shortName?: string;
+};
 
 /**
  * 付费结算表单基础状态
@@ -32,7 +40,7 @@ export function useFormState() {
   const submitting = ref(false);
 
   const settlementNo = ref('');
-  const orgs = ref<Array<{ id: number; name?: string }>>([]);
+  const orgs = ref<SettlementOrgNode[]>([]);
   const settlementTime = ref(dayjs());
   const payType = ref<number | undefined>(undefined);
   const settlementId = ref<string>('');
@@ -62,8 +70,8 @@ export function useFormState() {
   const selectedRowKeys = ref<string[]>([]);
 
   /**
-   * 归属公司：优先用详情 orgs 接口字段（isCompany / name），
-   * 不依赖当前登录人组织树；仅在无公司标记时再尝试本地换算。
+   * 归属公司：优先用详情 orgs 接口字段（isCompany），
+   * 展示简称优先、全称兜底；不依赖当前登录人组织树做权限绑定。
    */
   const orgCompanies = computed(() => {
     const seen = new Map<number, { id: number; name: string }>();
@@ -72,9 +80,22 @@ export function useFormState() {
       seen.set(id, { id, name: (name || '').trim() || '-' });
     };
 
+    const resolveCompanyLabel = (org: SettlementOrgNode) => {
+      const companyNode = getMyOrgCompanyNode(org.id);
+      return (
+        formatOrgNodeLabel(companyNode) ||
+        formatOrgNodeLabel({
+          displayName: org.name,
+          name: org.name,
+          shortName: org.shortName,
+        }) ||
+        org.name
+      );
+    };
+
     for (const org of orgs.value) {
       if (org?.isCompany && org.id != null) {
-        add(org.id, org.name);
+        add(org.id, resolveCompanyLabel(org));
       }
     }
     if (seen.size > 0) {
@@ -85,10 +106,20 @@ export function useFormState() {
       if (org?.id == null) continue;
       const companyNode = getMyOrgCompanyNode(org.id);
       if (companyNode?.id != null) {
-        add(companyNode.id as number, companyNode.displayName || org.name);
-      } else if (org.name) {
+        add(
+          companyNode.id as number,
+          formatOrgNodeLabel(companyNode) || org.name,
+        );
+      } else if (org.name || org.shortName) {
         // 登录人不在该组织树时仍展示接口名称，避免整块隐藏
-        add(org.id, org.name);
+        add(
+          org.id,
+          formatOrgNodeLabel({
+            displayName: org.name,
+            name: org.name,
+            shortName: org.shortName,
+          }),
+        );
       }
     }
     return Array.from(seen.values());

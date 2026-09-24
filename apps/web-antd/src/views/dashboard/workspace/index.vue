@@ -35,6 +35,7 @@ import {
   transferSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
 import { showGeneratedFeesIfAny } from '#/views/_shared/se-service-task/show-generated-fees';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import {
   getSeServiceConfigDetail,
   getSeServiceConfigPagedList,
@@ -811,10 +812,7 @@ function mapPaymentTaskToBusinessRow(
     etd: toDateText(item.submitTime),
     id: item.id,
     route:
-      item.orgs
-        ?.map((org) => org.name)
-        .filter(Boolean)
-        .join(' / ') ||
+      formatDetailOrgPathLabel(item.orgs, ' / ') ||
       item.settlement?.name ||
       '--',
     seaExportId: item.paymentApplicationId,

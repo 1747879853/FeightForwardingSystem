@@ -77,11 +77,11 @@ import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { useAllUserOrg } from '#/composables/use-all-user-org';
 import {
-  formatOrgPathLabel,
-  useAllUserOrg,
-} from '#/composables/use-all-user-org';
-import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
+  formatDetailOrgPathLabel,
+  resolveOrderUserCompanyIds,
+} from '#/composables/use-my-org';
 import {
   getServiceTypesByPOL,
   getSeaExportAttachments,
@@ -2596,7 +2596,12 @@ const loadEditData = async (): Promise<
     const detailOrgs = detail.orgs ?? [];
     const detailOrgLast = detailOrgs[detailOrgs.length - 1];
     headerOrgSelectedItems.value = detailOrgLast?.id
-      ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
+      ? [
+          {
+            value: detailOrgLast.id,
+            label: formatDetailOrgPathLabel(detailOrgs),
+          },
+        ]
       : [];
     await syncBasicInfoHeaderFields();
     await refreshSyncShipmentDateParams();

@@ -80,7 +80,10 @@ import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { isTicketEditable, setFormApisDisabled } from '#/utils/ticket-editable';
 import { useAllUserOrg } from '#/composables/use-all-user-org';
-import { resolveOrderUserCompanyIds } from '#/composables/use-my-org';
+import {
+  formatDetailOrgPathLabel,
+  resolveOrderUserCompanyIds,
+} from '#/composables/use-my-org';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 
@@ -1072,7 +1075,7 @@ const loadEditData = async (): Promise<
       ? [
           {
             value: Number(detail.orgId),
-            label: detail.orgs.map((org) => org?.name).join('、'),
+            label: formatDetailOrgPathLabel(detail.orgs, '、'),
           },
         ]
       : [];

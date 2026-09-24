@@ -35,6 +35,7 @@ import {
   isRmbLocalCurrencyRate,
 } from '#/utils/exchange-rate-cache';
 import { useAntTableColumnResize } from '#/utils/table-column-resize';
+import { formatCompanySimpleLabel } from '#/composables/use-my-org';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
@@ -895,7 +896,7 @@ function transformToTreeData(
       rowKey: String(app.id), // NestedDataTable 需要的 rowKey
       parentId: null,
       // 一级字段
-      companyName: app.company?.displayName || '-',
+      companyName: formatCompanySimpleLabel(app.company) || '-',
       orgId: app.orgId,
       applicationNo: app.applicationNo || '-',
       header: app.clientInvoiceInfo?.header || '-',

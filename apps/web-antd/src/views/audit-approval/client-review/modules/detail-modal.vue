@@ -12,6 +12,7 @@ import {
   getClientAuditDetail,
   getClientDetail,
 } from '#/api/sea-export/client-admin';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import { $t } from '#/locales';
 import { openAuditRemarkConfirm } from '#/views/audit-approval/composables/use-audit-remark-confirm';
 import { getClientStatusOptions } from '#/views/client/base/client-status';
@@ -187,11 +188,7 @@ const formatTime = (value?: null | string) => {
 };
 
 const orgsText = computed(
-  () =>
-    (client.value?.orgs ?? [])
-      .map((org) => org.name)
-      .filter(Boolean)
-      .join(' / ') || '--',
+  () => formatDetailOrgPathLabel(client.value?.orgs, ' / ') || '--',
 );
 
 const isRoundExpanded = (round: number) => expandedRounds.value.includes(round);

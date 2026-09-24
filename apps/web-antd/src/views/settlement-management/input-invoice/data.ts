@@ -2,6 +2,8 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import dayjs from 'dayjs';
 
+import { formatCompanySimpleLabel } from '#/composables/use-my-org';
+
 import {
   boolOptions,
   checkedStatusOptions,
@@ -126,6 +128,7 @@ export const columns: VxeTableGridOptions['columns'] = [
     width: 200,
     align: 'left',
     showOverflow: true,
+    formatter: ({ row }) => formatCompanySimpleLabel(row?.company) || '-',
   },
   {
     title: '查验状态',

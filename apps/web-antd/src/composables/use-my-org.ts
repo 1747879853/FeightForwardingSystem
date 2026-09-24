@@ -199,6 +199,93 @@ export function getCompanyIdByOrgId(
   return companyNode?.id;
 }
 
+type DetailOrgNode = {
+  displayName?: null | string;
+  id?: null | number | string;
+  isCompany?: boolean;
+  name?: null | string;
+  shortName?: null | string;
+};
+
+/**
+ * 从本人组织缓存里按 id 取节点（用于给详情 orgs 补 shortName）。
+ */
+function findMyOrgNodeById(
+  orgId?: null | number | string,
+): SystemOrganizationUnitApi.OrganizationUnitDto | undefined {
+  if (orgId === undefined || orgId === null || orgId === '') return undefined;
+  const key = String(orgId);
+  for (const item of getMyOrganizations()) {
+    const hit = item.oneOrganizationPath?.find((n) => String(n.id) === key);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+/**
+ * 详情 orgs 路径展示：接口常只有全称 name，用本地组织缓存补简称后再拼接。
+ * @param separator 默认 `/`；审核/工作台等可用 ` / `
+ */
+export function formatDetailOrgPathLabel(
+  path?: DetailOrgNode[] | null,
+  separator = '/',
+): string {
+  if (!path?.length) return '';
+  return path
+    .map((node) => {
+      if (!node) return '';
+      const local = findMyOrgNodeById(node.id);
+      return formatOrgNodeLabel({
+        displayName: node.displayName || local?.displayName,
+        name: node.name || local?.displayName || local?.name,
+        shortName: node.shortName || local?.shortName,
+      });
+    })
+    .filter(Boolean)
+    .join(separator);
+}
+
+/**
+ * 详情 orgs 中的所属公司展示：优先公司节点，简称优先、全称兜底。
+ */
+export function formatDetailOrgCompanyLabel(
+  orgs?: DetailOrgNode[] | null,
+): string {
+  if (!orgs?.length) return '';
+  const company = orgs.find((o) => o.isCompany) ?? orgs[0];
+  if (!company) return '';
+  const local =
+    (company.id != null ? getMyOrgCompanyNode(company.id) : undefined) ??
+    findMyOrgNodeById(company.id);
+  return (
+    formatOrgNodeLabel(local) ||
+    formatOrgNodeLabel({
+      displayName: company.displayName || company.name,
+      name: company.name,
+      shortName: company.shortName,
+    })
+  );
+}
+
+/**
+ * 公司简易对象展示（如开票申请列表所属公司列）：简称优先。
+ */
+export function formatCompanySimpleLabel(
+  company?: DetailOrgNode | null,
+): string {
+  if (!company) return '';
+  const local =
+    (company.id != null ? getMyOrgCompanyNode(company.id) : undefined) ??
+    findMyOrgNodeById(company.id);
+  return (
+    formatOrgNodeLabel({
+      displayName: company.displayName || company.name,
+      name: company.name,
+      shortName: company.shortName || local?.shortName,
+    }) || formatOrgNodeLabel(local)
+  );
+}
+
 /**
  * 解析任意组织 id 对应的开票公司节点（含税号、开票地址、公司银行账户）。
  *

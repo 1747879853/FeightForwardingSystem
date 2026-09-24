@@ -11,6 +11,7 @@ import {
   getOperationDetail,
   getSalesDetail,
 } from '#/api/commission/commission-order-admin';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import { $t } from '#/locales';
 
 import CalcPanels from './calc-panels.vue';
@@ -70,11 +71,7 @@ const isSales = computed(
 const order = computed(() => detail.value?.commissionOrder);
 
 const orgsText = computed(
-  () =>
-    (order.value?.orgs ?? [])
-      .map((org) => org.name)
-      .filter(Boolean)
-      .join(' / ') || '-',
+  () => formatDetailOrgPathLabel(order.value?.orgs, ' / ') || '-',
 );
 
 const statusOption = computed(() => {

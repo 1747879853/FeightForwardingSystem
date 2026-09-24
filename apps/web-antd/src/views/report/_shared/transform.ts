@@ -1,5 +1,7 @@
 import type { ReportApi } from '#/api/system/report';
 
+import { formatDetailOrgCompanyLabel } from '#/composables/use-my-org';
+
 import type { CurrencyFieldDef } from './types';
 
 import { applyFieldMask } from './field-permission';
@@ -131,11 +133,8 @@ function buildCommonRow(item: ReportRowItem): Record<string, any> {
     ctns: formatCtns(transportOrder?.ctns || []),
     teu: formatTeu(transportOrder?.ctns || []),
     blType: formatBlType(biz.blType),
-    // 组织机构只显示所属公司（公司节点），无公司节点时回退第一个组织
-    org:
-      (transportOrder?.orgs || []).find((o) => o.isCompany)?.name ||
-      (transportOrder?.orgs || [])[0]?.name ||
-      '-',
+    // 组织机构只显示所属公司（公司节点），简称优先、全称兜底
+    org: formatDetailOrgCompanyLabel(transportOrder?.orgs) || '-',
     localCurrencyCode: item.localCurrencyCode || '',
     _originalData: item,
     _isDataRow: true,
