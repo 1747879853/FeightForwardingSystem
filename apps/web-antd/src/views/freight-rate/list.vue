@@ -34,6 +34,8 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+const DropdownButton = Dropdown.Button;
+
 import {
   deleteSeFreiPrice,
   getSeFreiPriceList,
@@ -940,34 +942,57 @@ onUnmounted(() => {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
-          <Button
+          <DropdownButton
             type="primary"
             :disabled="!hasAddPermission"
+            :trigger="['hover']"
             @click="onCreate"
           >
             <Plus class="size-5" />
             {{ $t('ui.actionTitle.create') }}
-          </Button>
+            <template #overlay>
+              <Menu>
+                <Menu.Item
+                  key="copy"
+                  :disabled="!hasAddPermission"
+                  @click="onCopy"
+                >
+                  <Copy class="mr-1 inline-block size-4 align-middle" />
+                  <span class="align-middle">{{
+                    $t('seaExport.freightRate.copy')
+                  }}</span>
+                </Menu.Item>
+              </Menu>
+            </template>
+          </DropdownButton>
 
-          <Button
+          <DropdownButton
             type="primary"
             ghost
-            :disabled="!hasAddPermission"
+            :disabled="!hasAddPermission && !hasEditPermission"
+            :trigger="['hover']"
             @click="onAIBatchAdd"
           >
             <IconifyIcon icon="mdi:robot-outline" class="size-5" />
             AI批量新增
-          </Button>
-
-          <Button :disabled="!hasEditPermission" @click="onBatchUpdate">
-            <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
-            {{ $t('seaExport.freightRate.update') }}
-          </Button>
-
-          <Button :disabled="!hasAddPermission" @click="onCopy">
-            <Copy class="size-5" />
-            {{ $t('seaExport.freightRate.copy') }}
-          </Button>
+            <template #overlay>
+              <Menu>
+                <Menu.Item
+                  key="update"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchUpdate"
+                >
+                  <IconifyIcon
+                    icon="mdi:square-edit-outline"
+                    class="mr-1 inline-block size-4 align-middle"
+                  />
+                  <span class="align-middle">{{
+                    $t('seaExport.freightRate.update')
+                  }}</span>
+                </Menu.Item>
+              </Menu>
+            </template>
+          </DropdownButton>
 
           <Button
             :disabled="!hasExportPermission"
