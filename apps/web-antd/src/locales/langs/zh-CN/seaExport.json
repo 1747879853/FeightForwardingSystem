@@ -697,6 +697,7 @@
     "create": "新增",
     "copy": "复制",
     "update": "更新",
+    "exportExcel": "导出Excel",
     "batchOperation": "批量操作",
     "batchAdd": "批量新增",
     "batchEdit": "批量修改",

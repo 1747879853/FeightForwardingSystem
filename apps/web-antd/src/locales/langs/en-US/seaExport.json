@@ -747,6 +747,7 @@
     "otherPrice": "Other Price",
     "delete": "Delete",
     "copy": "Copy",
+    "exportExcel": "Export Excel",
     "batchAdd": "Batch Add",
     "batchEdit": "Batch Edit",
     "batchDelete": "Batch Delete",

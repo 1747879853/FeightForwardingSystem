@@ -62,6 +62,10 @@ import {
   getSurchargeFeeNames,
   getSurchargeFeeTooltip,
 } from './data';
+import {
+  fetchAllSeFreiPriceForExport,
+  writeFreightRateExcelFile,
+} from './modules/composables/export-freight-rate-excel';
 
 // ==================== 权限 ====================
 
@@ -79,6 +83,11 @@ const hasEditPermission = computed(() =>
 const hasDeletePermission = computed(() =>
   accessCodes.value.includes('Admin.SeFreiPrice.Delete'),
 );
+/** 导出 Excel：有新增或编辑权限即可 */
+const hasExportPermission = computed(
+  () => hasAddPermission.value || hasEditPermission.value,
+);
+const exporting = ref(false);
 
 // ==================== 列表状态 ====================
 
@@ -291,6 +300,43 @@ function onCreate() {
 
 function onOpenDefaultConfig() {
   defaultConfigModalApi.open();
+}
+
+async function onExportExcel() {
+  if (!hasExportPermission.value) {
+    message.warning('无导出权限');
+    return;
+  }
+  if (exporting.value) return;
+
+  exporting.value = true;
+  try {
+    const formValues =
+      (await gridApi.formApi?.getValues?.()) || ({} as Record<string, any>);
+    const sortColumns = gridApi.grid?.getSortColumns?.() || [];
+    const firstSort = sortColumns[0];
+    const sortParams = firstSort?.field
+      ? {
+          field: firstSort.field,
+          order: firstSort.order === 'asc' ? 'asc' : 'desc',
+        }
+      : { field: 'creationTime', order: 'desc' as const };
+
+    const queryParams = mapFreightRateParams(formValues, sortParams);
+    const rows = await fetchAllSeFreiPriceForExport(queryParams);
+    if (rows.length === 0) {
+      message.warning('没有可导出的数据');
+      return;
+    }
+
+    await writeFreightRateExcelFile(rows);
+    message.success(`已导出 ${rows.length} 条运价`);
+  } catch (error) {
+    console.error('运价导出失败:', error);
+    message.error('导出失败，请稍后重试');
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function onEditByDblClick(row: SeFreiPriceOutDto) {
@@ -921,6 +967,15 @@ onUnmounted(() => {
           <Button :disabled="!hasAddPermission" @click="onCopy">
             <Copy class="size-5" />
             {{ $t('seaExport.freightRate.copy') }}
+          </Button>
+
+          <Button
+            :disabled="!hasExportPermission"
+            :loading="exporting"
+            @click="onExportExcel"
+          >
+            <IconifyIcon icon="mdi:file-excel-outline" class="size-5" />
+            {{ $t('seaExport.freightRate.exportExcel') }}
           </Button>
 
           <Button @click="onOpenDefaultConfig">
