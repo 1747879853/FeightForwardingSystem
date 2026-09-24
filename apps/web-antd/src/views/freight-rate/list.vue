@@ -248,6 +248,27 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
 
 /** 上次已挂载的箱型列签名；null 表示尚未按数据换过列 */
 let lastFreightRateCtnColumnSignature: string | null = null;
+/** 抵消 loadColumnConfig 与动态换列的竞态：后者先完成时会被前者用无箱型列覆盖 */
+let freightRateColumnApplyTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function applyFreightRateDynamicColumns(data: SeFreiPriceOutDto[]) {
+  const tableConfigStore = useTableConfigStore();
+  await tableConfigStore.loadTableConfigsOnce();
+  const persisted = tableConfigStore.getTableConfigByName(
+    `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
+  );
+  const mergedColumns = mergeFreightRateListPersistedColumns(
+    useColumns(data),
+    persisted?.setting,
+  );
+
+  gridApi.setGridOptions({
+    columns: mergedColumns,
+  });
+  await nextTick();
+  // 动态换列后显式 refresh，确保 fixed 冻结态落到运行时列
+  gridApi.grid?.refreshColumn?.();
+}
 
 watch(
   tableData,
@@ -266,19 +287,17 @@ watch(
     }
     lastFreightRateCtnColumnSignature = nextCtnSignature;
 
-    const tableConfigStore = useTableConfigStore();
-    await tableConfigStore.loadTableConfigsOnce();
-    const persisted = tableConfigStore.getTableConfigByName(
-      `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
-    );
-    const mergedColumns = mergeFreightRateListPersistedColumns(
-      nextColumns,
-      persisted?.setting,
-    );
+    if (freightRateColumnApplyTimer !== undefined) {
+      clearTimeout(freightRateColumnApplyTimer);
+      freightRateColumnApplyTimer = undefined;
+    }
 
-    gridApi.setGridOptions({
-      columns: mergedColumns,
-    });
+    await applyFreightRateDynamicColumns(newData);
+    // loadColumnConfig 常在首查之后才结束并 setGridOptions；再补一次合并回放固定/显隐
+    freightRateColumnApplyTimer = setTimeout(() => {
+      freightRateColumnApplyTimer = undefined;
+      void applyFreightRateDynamicColumns(newData);
+    }, 120);
   },
   { deep: true },
 );
@@ -770,6 +789,10 @@ onUnmounted(() => {
   laneTabBarRef.value?.removeEventListener('scroll', onLaneTabScroll);
   if (laneTabScrollIdleTimer) {
     window.clearTimeout(laneTabScrollIdleTimer);
+  }
+  if (freightRateColumnApplyTimer !== undefined) {
+    clearTimeout(freightRateColumnApplyTimer);
+    freightRateColumnApplyTimer = undefined;
   }
   stopLaneTabScrollAnimation();
   laneTabResizeObserver?.disconnect();

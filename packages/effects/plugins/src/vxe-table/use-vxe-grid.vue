@@ -427,7 +427,20 @@ function normalizeFixedValue(value: unknown): '' | 'left' | 'right' {
   if (value === 'left' || value === 'right') {
     return value;
   }
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (normalized === 'left' || normalized === 'right') {
+    return normalized;
+  }
   return '';
+}
+
+/** 运行时列上的 fixed：兼容 own / renderFixed 等 VXE 内部字段 */
+function resolveRuntimeColumnFixed(column: any): '' | 'left' | 'right' {
+  return normalizeFixedValue(
+    column?.fixed ?? column?.own?.fixed ?? column?.renderFixed,
+  );
 }
 
 function resolveNumericWidth(value: unknown): number | undefined {
@@ -519,6 +532,109 @@ function listOrphanColumnPersistKeys(
   Object.keys(config.columnFixed ?? {}).forEach(consider);
   Object.keys(config.columnWidths ?? {}).forEach(consider);
   return [...orphans];
+}
+
+/**
+ * 运价等「先空列、数据到达后再补动态列」的页面：初始化时列定义尚无 `field:ctn_*`，
+ * 若把它们当脏键自愈回写，会丢掉动态列上的固定/显隐，且用无箱型列覆盖远端。
+ * 这类键等动态列挂上后再由正常保存收敛即可。
+ */
+function isProvisionalDynamicColumnPersistKey(key: string): boolean {
+  return /^field:ctn_/i.test(String(key ?? '').trim());
+}
+
+function listHealOrphanColumnPersistKeys(
+  config: ColumnPersistConfig,
+  knownKeys: Set<string>,
+): string[] {
+  return listOrphanColumnPersistKeys(config, knownKeys).filter(
+    (key) => !isProvisionalDynamicColumnPersistKey(key),
+  );
+}
+
+/** 当前列集合的 field/type 身份（用于识别业务侧动态换列） */
+function getColumnIdentitySet(columns: any[]): Set<string> {
+  const identities = new Set<string>();
+  getLeafColumns(columns).forEach((column) => {
+    const field = String(column?.field ?? '').trim();
+    const type = String(column?.type ?? '').trim();
+    if (field) {
+      identities.add(`field:${field}`);
+      return;
+    }
+    if (type) {
+      identities.add(`type:${type}`);
+    }
+  });
+  return identities;
+}
+
+/**
+ * 业务侧 setGridOptions 动态换列后，同步列持久化基线，
+ * 否则 collect 仍按初始列（无动态列）采集，固定/显隐会丢键或对不上运行时。
+ */
+function syncOriginalColumnsAfterDynamicChange(nextColumns: any[]) {
+  if (!Array.isArray(nextColumns) || nextColumns.length === 0) {
+    return;
+  }
+  const prevLeaf = getLeafColumns(originalColumns.value);
+  const nextIdentity = getColumnIdentitySet(nextColumns);
+  const prevIdentity = getColumnIdentitySet(prevLeaf);
+  if (nextIdentity.size === prevIdentity.size) {
+    let same = true;
+    for (const key of nextIdentity) {
+      if (!prevIdentity.has(key)) {
+        same = false;
+        break;
+      }
+    }
+    if (same) {
+      return;
+    }
+  }
+
+  const prevDefaultByKey = new Map<
+    string,
+    { fixed: '' | 'left' | 'right'; visible: boolean; width?: number }
+  >();
+  prevLeaf.forEach((column) => {
+    const key = String(
+      column?.[columnUniqueKeyField] ?? column?.id ?? '',
+    ).trim();
+    if (!key) {
+      return;
+    }
+    prevDefaultByKey.set(key, {
+      fixed: normalizeFixedValue(column?.[columnDefaultFixedField]),
+      visible: column?.[columnDefaultVisibleField] !== false,
+      width: resolveNumericWidth(column?.[columnDefaultWidthField]),
+    });
+  });
+
+  const snapshot = cloneDeep(toRaw(nextColumns));
+  normalizeColumns(snapshot);
+  getLeafColumns(snapshot).forEach((column) => {
+    const key = String(
+      column?.[columnUniqueKeyField] ?? column?.id ?? '',
+    ).trim();
+    const prev = key ? prevDefaultByKey.get(key) : undefined;
+    if (!prev) {
+      return;
+    }
+    // 保留首次加载时的默认显隐/固定/列宽，避免把用户已合并的固定写成“默认”
+    column[columnDefaultVisibleField] = prev.visible;
+    column[columnDefaultFixedField] = prev.fixed;
+    if (prev.width !== undefined) {
+      column[columnDefaultWidthField] = prev.width;
+    }
+  });
+  originalColumns.value = snapshot;
+  baselineWidthsCaptured.value = false;
+  debugLog('动态换列后已同步列持久化基线', {
+    columnCount: getLeafColumns(snapshot).length,
+    identities: [...nextIdentity],
+  });
+  void captureColumnBaselineWidthsWithRetry();
 }
 
 function isColumnPersistEnabled() {
@@ -885,7 +1001,7 @@ function collectColumnConfigFromGrid(
       });
     }
     runtimeVisibilityMap.set(meta.key, column?.visible !== false);
-    runtimeFixedMap.set(meta.key, normalizeFixedValue(column?.fixed));
+    runtimeFixedMap.set(meta.key, resolveRuntimeColumnFixed(column));
     const runtimeWidth = resolveRuntimeColumnWidth(column);
     if (runtimeWidth !== undefined) {
       runtimeWidthMap.set(meta.key, runtimeWidth);
@@ -1317,7 +1433,7 @@ async function loadColumnConfig() {
         const hasRemoteKeys =
           remoteConfig.visibleColumnKeys.length > 0 ||
           Object.keys(remoteConfig.columnVisibility).length > 0;
-        const orphanKeys = listOrphanColumnPersistKeys(
+        const orphanKeys = listHealOrphanColumnPersistKeys(
           remoteConfig,
           collectKnownColumnPersistKeys(rawColumns),
         );
@@ -1366,7 +1482,7 @@ async function loadColumnConfig() {
       const hasLocalKeys =
         localConfig.visibleColumnKeys.length > 0 ||
         Object.keys(localConfig.columnVisibility).length > 0;
-      const orphanKeys = listOrphanColumnPersistKeys(
+      const orphanKeys = listHealOrphanColumnPersistKeys(
         localConfig,
         collectKnownColumnPersistKeys(rawColumns),
       );
@@ -2221,6 +2337,20 @@ watch(
   },
   {
     immediate: true,
+  },
+);
+
+// 运价等业务页在数据到达后 setGridOptions 换列：同步持久化基线，避免固定列采集仍用初始列集
+watch(
+  () => gridOptions.value?.columns,
+  (columns) => {
+    if (!initializedColumns.value || isApplyingColumnConfig.value) {
+      return;
+    }
+    if (!Array.isArray(columns) || columns.length === 0) {
+      return;
+    }
+    syncOriginalColumnsAfterDynamicChange(columns);
   },
 );
 
