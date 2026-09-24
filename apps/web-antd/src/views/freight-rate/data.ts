@@ -521,7 +521,7 @@ export function useColumns(
       // 集合展开的展示列没有对应的后端排序字段。
       sortable: false,
       title: ctnName,
-      width: 160,
+      width: 180,
       align: 'left',
       showOverflow: false,
       slots: { default: 'ctnEditableCell' },

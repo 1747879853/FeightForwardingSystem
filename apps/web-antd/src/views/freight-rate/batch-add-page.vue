@@ -41,6 +41,8 @@ import { useCtnSugPriceMarkup } from './modules/composables/useCtnSugPriceMarkup
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
+import { fetchLatestRouteHistory } from './freight-price-change';
+import type { BatchRouteFieldsChangedContext } from './modules/composables/useBatchAddSettings';
 
 // 导入 store
 import { useBaseStore } from '#/store/base';
@@ -705,6 +707,64 @@ const { hotColumns, nestedHeaders } = useBatchAddColumns(
   bookingAgentSource,
 );
 
+function isBlankCell(value: unknown) {
+  return value === undefined || value === null || value === '';
+}
+
+function setHotIfBlank(
+  hotInstance: any,
+  rowIndex: number,
+  prop: string,
+  value: unknown,
+) {
+  const rowData = dataSource.value[rowIndex];
+  if (!rowData || !isBlankCell(rowData[prop])) return;
+  if (value === undefined || value === null || value === '') return;
+  const col = hotInstance.propToCol(prop);
+  if (typeof col !== 'number' || col < 0) return;
+  hotInstance.setDataAtCell(rowIndex, col, value, 'routeHistory');
+  rowData[prop] = value;
+}
+
+/** 起运港+目的港+是否直达齐了以后，带出历史 DEM/DET/免箱使/航程（中转还带中转港） */
+async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
+  if (isEditMode.value) return;
+  const { hotInstance, rowIndex, rowData } = ctx;
+  const polId = Number(labelToIdMap.value.ports.get(String(rowData.polId)));
+  const podId = Number(labelToIdMap.value.ports.get(String(rowData.podId)));
+  const isDirect =
+    rowData.isDirect === '是' || rowData.isDirect === true
+      ? true
+      : rowData.isDirect === '否' || rowData.isDirect === false
+        ? false
+        : undefined;
+  if (!polId || !podId || isDirect === undefined) return;
+
+  try {
+    const history = await fetchLatestRouteHistory({ polId, podId, isDirect });
+    if (!history) return;
+
+    setHotIfBlank(hotInstance, rowIndex, 'poddem', history.poddem);
+    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
+    setHotIfBlank(hotInstance, rowIndex, 'podFreeDays', history.podFreeDays);
+    setHotIfBlank(hotInstance, rowIndex, 'voyage', history.voyage || undefined);
+
+    if (!isDirect) {
+      await ensurePortLabelsByIds([history.poT1Id, history.poT2Id]);
+      const pot1Label =
+        getCachedPortLabel(history.poT1Id) ||
+        getPortName(history.poT1Id, portIdToLabel.value);
+      const pot2Label =
+        getCachedPortLabel(history.poT2Id) ||
+        getPortName(history.poT2Id, portIdToLabel.value);
+      setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label || undefined);
+      setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label || undefined);
+    }
+  } catch {
+    // 带出失败不打断录入
+  }
+}
+
 const { hotSettings: rawHotSettings } = useBatchAddSettings(
   dataSource,
   selectedRowKeys,
@@ -718,6 +778,7 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
   handleOpenDropdown,
   getSortIcon,
   nestedHeaders,
+  onRouteFieldsChanged,
 );
 
 // ==================== 列配置管理 ====================

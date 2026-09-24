@@ -51,6 +51,7 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
+import QuoteModal from './modules/quote-modal.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
 import DefaultFreightRateConfigModal from './modules/default-freight-rate-config-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
@@ -68,6 +69,7 @@ import {
   fetchAllSeFreiPriceForExport,
   writeFreightRateExcelFile,
 } from './modules/composables/export-freight-rate-excel';
+import { enrichFreightListPriceChanges } from './freight-price-change';
 
 // ==================== 权限 ====================
 
@@ -119,6 +121,11 @@ const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
 
 const [DefaultConfigModal, defaultConfigModalApi] = useVbenModal({
   connectedComponent: DefaultFreightRateConfigModal,
+  destroyOnClose: true,
+});
+
+const [QuoteFormModal, quoteModalApi] = useVbenModal({
+  connectedComponent: QuoteModal,
   destroyOnClose: true,
 });
 
@@ -215,9 +222,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
             'currency.code': 'CurrencyId',
             isDirect: 'IsDirect',
           },
-          afterFetch: (result: any) => {
-            tableData.value = result.items || [];
-            return result;
+          afterFetch: async (result: any) => {
+            const items = result.items || [];
+            const enriched = await enrichFreightListPriceChanges(items);
+            tableData.value = enriched;
+            return { ...result, items: enriched };
           },
         }),
       },
@@ -381,6 +390,22 @@ async function onCopy() {
       permission: hasAddPermission.value,
     })
     .open();
+}
+
+/** 生成报价：只能选中一条，弹出默认可复制运价文案 */
+function onGenerateQuote() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning($t('seaExport.freightRate.quoteSelectOne'));
+    return;
+  }
+  if (records.length > 1) {
+    message.warning($t('seaExport.freightRate.quoteSelectOnlyOne'));
+    return;
+  }
+  const row = records[0];
+  if (!row) return;
+  quoteModalApi.setData({ row }).open();
 }
 
 /** 工具栏「更新」：Handsontable 批量编辑选中行 */
@@ -965,6 +990,11 @@ onUnmounted(() => {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
+          <Button @click="onGenerateQuote">
+            <IconifyIcon icon="mdi:file-document-outline" class="size-5" />
+            {{ $t('seaExport.freightRate.generateQuote') }}
+          </Button>
+
           <DropdownButton
             type="primary"
             :disabled="!hasAddPermission"
@@ -1082,6 +1112,7 @@ onUnmounted(() => {
     <EditFormModal @success="onRefresh" />
     <SyncUpdateModal @success="onRefresh" />
     <DefaultConfigModal />
+    <QuoteFormModal />
 
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"

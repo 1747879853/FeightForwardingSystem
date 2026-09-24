@@ -2,6 +2,13 @@ import { computed } from 'vue';
 import Handsontable from 'handsontable';
 import { useCtnSugPriceMarkup } from './useCtnSugPriceMarkup';
 
+export type BatchRouteFieldsChangedContext = {
+  hotInstance: any;
+  rowIndex: number;
+  prop: string;
+  rowData: Record<string, any>;
+};
+
 /**
  * 批量新增运价 - Handsontable 设置 Composable
  */
@@ -23,6 +30,9 @@ export function useBatchAddSettings(
   ) => void,
   getSortIcon: (field: string) => string,
   nestedHeaders?: any,
+  onRouteFieldsChanged?: (
+    ctx: BatchRouteFieldsChangedContext,
+  ) => void | Promise<void>,
 ) {
   const { calcSugPrice } = useCtnSugPriceMarkup();
 
@@ -82,6 +92,7 @@ export function useBatchAddSettings(
 
     afterChange: function (this: any, changes: any, source: string) {
       if (!changes || source === 'loadData' || source === 'markup') return;
+      if (source === 'routeHistory') return;
 
       // ⚠️ 关键修复：获取 hotInstance，使用其 API 更新数据，避免触发 Vue 响应式
       const hotInstance = this; // afterChange 中的 this 指向 hotInstance
@@ -201,6 +212,22 @@ export function useBatchAddSettings(
             hotInstance.propToCol('closingTime'),
             '',
           );
+        }
+
+        if (
+          onRouteFieldsChanged &&
+          (prop === 'polId' || prop === 'podId' || prop === 'isDirect') &&
+          newValue !== oldValue
+        ) {
+          const rowData = dataSource.value[row];
+          if (rowData) {
+            void onRouteFieldsChanged({
+              hotInstance,
+              rowIndex: row,
+              prop: String(prop),
+              rowData,
+            });
+          }
         }
       });
     },
