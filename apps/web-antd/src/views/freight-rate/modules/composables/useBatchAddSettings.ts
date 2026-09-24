@@ -228,6 +228,16 @@ export function useBatchAddSettings(
         cellProperties.className = 'disabled-cell';
       }
 
+      // 是否直达选中值着色（是=绿，否=红）
+      if (prop === 'isDirect') {
+        const val = rowData.isDirect;
+        if (val === '是' || val === true || val === '直达') {
+          cellProperties.className = 'is-direct-yes';
+        } else if (val === '否' || val === false || val === '中转') {
+          cellProperties.className = 'is-direct-no';
+        }
+      }
+
       // 币别仍用本地缓存；港口/船公司/订舱代理用列配置里的远程 source，勿在此覆盖为全量数组
       if (prop === 'currencyId') {
         const currencies = dropdownSourceCache?.value?.currencies || [];
