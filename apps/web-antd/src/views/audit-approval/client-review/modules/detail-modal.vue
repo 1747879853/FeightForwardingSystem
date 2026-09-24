@@ -161,6 +161,9 @@ const canPostReject = computed(
     detail.value?.myTaskStatus === ClientTaskStatus.Passed,
 );
 
+/** 统一驳回：待审驳回 或 通过后驳回 */
+const canReject = computed(() => canPendingAudit.value || canPostReject.value);
+
 const clientStatusTag = computed(() =>
   getClientStatusOptions().find(
     (item) => item.value === client.value?.clientStatus,
@@ -234,21 +237,12 @@ function handlePass() {
 }
 
 function handleReject() {
-  if (!canPendingAudit.value) return;
+  if (!canReject.value) return;
   openAuditRemarkConfirm({
-    title: '确认驳回',
-    danger: true,
-    remarkRequired: true,
-    remarkRequiredMessage: '驳回原因不能为空',
-    maxlength: 4096,
-    onConfirm: (remark) => doAudit(false, remark),
-  });
-}
-
-function handlePostReject() {
-  if (!canPostReject.value) return;
-  openAuditRemarkConfirm({
-    title: '确认通过后驳回',
+    title:
+      canPostReject.value && !canPendingAudit.value
+        ? '确认通过后驳回'
+        : '确认驳回',
     danger: true,
     remarkRequired: true,
     remarkRequiredMessage: '驳回原因不能为空',
@@ -264,7 +258,7 @@ function handlePostReject() {
       <div class="detail-modal-title" @mousedown.stop @pointerdown.stop>
         <span class="detail-modal-title__text">客户审核详情</span>
         <Space
-          v-if="canPendingAudit || canPostReject"
+          v-if="canReject"
           class="detail-modal-title__actions"
           size="small"
         >
@@ -279,7 +273,7 @@ function handlePostReject() {
             {{ $t('auditApproval.clientReview.auditPass') }}
           </Button>
           <Button
-            v-if="canPendingAudit"
+            v-if="canReject"
             v-access:code="auditCode"
             danger
             size="small"
@@ -287,17 +281,6 @@ function handlePostReject() {
             @click="handleReject"
           >
             {{ $t('auditApproval.clientReview.selectReject') }}
-          </Button>
-          <Button
-            v-if="canPostReject"
-            v-access:code="auditCode"
-            danger
-            ghost
-            size="small"
-            :loading="auditing"
-            @click="handlePostReject"
-          >
-            {{ $t('auditApproval.clientReview.postReject') }}
           </Button>
         </Space>
       </div>
