@@ -571,6 +571,10 @@ export interface SeFreiPriceOutDto {
   poddet?: number;
   /** 航程 */
   voyage?: string;
+  /**
+   * 船名航次（自由文本）。后端尚未落库时提交会被忽略，见 changelog #1001004。
+   */
+  vesselVoyage?: string;
   /** 约号 */
   contractNo?: string;
   /** 有效时间起始 */
@@ -673,6 +677,10 @@ export interface AddSeFreiPriceInput {
   poddet?: number;
   /** 航程 */
   voyage?: string;
+  /**
+   * 船名航次（自由文本）。后端尚未落库时提交会被忽略，见 changelog #1001004。
+   */
+  vesselVoyage?: string;
   /** 约号 */
   contractNo?: string;
   /** 有效时间起始 */
@@ -743,6 +751,8 @@ export interface BatchEditSeFreiPriceInput {
   poddet?: number | null;
   /** 航程（为null不修改） */
   voyage?: string | null;
+  /** 船名航次（为null不修改；后端落库后生效） */
+  vesselVoyage?: string | null;
   /** 约号（为null不修改） */
   contractNo?: string | null;
   /** 有效时间起始（为null不修改） */
@@ -921,6 +931,10 @@ export interface SeFreiPriceSimpleAddDto {
   poddet?: number;
   /** 航程 */
   voyage?: string;
+  /**
+   * 船名航次（自由文本）。后端尚未落库时提交会被忽略，见 changelog #1001004。
+   */
+  vesselVoyage?: string;
   /** 约号 */
   contractNo?: string;
   /** 有效时间起始 */
@@ -971,6 +985,10 @@ export interface SeFreiPriceSimpleEditDto {
   poddet?: number;
   /** 航程 */
   voyage?: string;
+  /**
+   * 船名航次（自由文本）。后端尚未落库时提交会被忽略，见 changelog #1001004。
+   */
+  vesselVoyage?: string;
   /** 约号 */
   contractNo?: string;
   /** 有效时间起始 */

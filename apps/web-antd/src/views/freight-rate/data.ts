@@ -39,6 +39,7 @@ export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
  */
 export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'validTimeStart',
+  'validTimeEnd',
   'carrierId',
   'polId',
   'podId',
@@ -49,6 +50,7 @@ export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'podFreeDays',
   'poddet',
   'voyage',
+  'vesselVoyage',
   'remark',
 ]);
 

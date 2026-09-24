@@ -25,6 +25,8 @@ import {
   useBatchAddColumns,
   buildCtnNestedHeaders,
   ensureCtnCostSugAdjacent,
+  ensureValidTimeAdjacent,
+  normalizeValidTimePairConfig,
 } from './modules/composables/useBatchAddColumns';
 import { useBatchAddSettings } from './modules/composables/useBatchAddSettings';
 import { useBatchAddActions } from './modules/composables/useBatchAddActions';
@@ -267,8 +269,9 @@ async function handleAIData(aiDataList: any[]) {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage || '',
+      vesselVoyage: row.vesselVoyage || '',
       contractNo: row.contractNo || '',
-      etd: row.etd || '',
+      etd: row.etd ? dayjs(row.etd).format('YYYY-MM-DD') : '',
       closeDocTime: row.closeDocTime || '',
       closingTime: row.closingTime || '',
       etdDayOfWeek: row.etdDayOfWeek,
@@ -286,6 +289,8 @@ async function handleAIData(aiDataList: any[]) {
       currencyId: currencyName, // ✅ 使用名称
       bookingAgentId: bookingAgentName, // ✅ 使用名称
       seFreiPriceCtns: row.seFreiPriceCtns || [],
+      // 列表涨跌徽标带到批量更新页继续展示
+      _priceChange: row._priceChange,
     };
 
     // ⚠️ 关键修复：为每个箱型设置动态字段值（Handsontable 使用这些字段）
@@ -380,9 +385,12 @@ const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 
 /** 按用户列配置重排/过滤后的列与左右固定数 */
 function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
+  const pairColumns = (cols: any[]) =>
+    ensureValidTimeAdjacent(ensureCtnCostSugAdjacent(cols));
+
   if (userColumnConfig.value.size === 0) {
     return {
-      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      finalColumns: pairColumns(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -415,16 +423,10 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
       return orderA - orderB;
     });
 
-  // 各组内先按用户 order，再强制成本/指导成对相邻（避免持久化 order 错位导致表头无法合并）
-  const sortedLeftFixed = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(leftFixedColumns),
-  );
-  const sortedNormal = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(normalColumns),
-  );
-  const sortedRightFixed = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(rightFixedColumns),
-  );
+  // 各组内先按用户 order，再强制成本/指导、有效日期对相邻
+  const sortedLeftFixed = pairColumns(sortColumnsByOrder(leftFixedColumns));
+  const sortedNormal = pairColumns(sortColumnsByOrder(normalColumns));
+  const sortedRightFixed = pairColumns(sortColumnsByOrder(rightFixedColumns));
 
   const finalColumns = [
     ...sortedLeftFixed,
@@ -435,7 +437,7 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
   // 配置异常导致无可见列时回退默认，避免整表空白
   if (finalColumns.length === 0) {
     return {
-      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      finalColumns: pairColumns(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -816,17 +818,18 @@ const currentColumnConfig = computed(() => {
 
 // 保存列配置（本地应用 + UserSetting 持久化）
 const saveColumnConfig = async (config: any[]) => {
-  const visibleCount = config.filter((col) => col.visible).length;
+  const normalized = normalizeValidTimePairConfig(config);
+  const visibleCount = normalized.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
     return;
   }
 
-  applyColumnConfig(config);
+  applyColumnConfig(normalized);
   columnConfigVisible.value = false;
 
   try {
-    await persistColumnConfig(config);
+    await persistColumnConfig(normalized);
     message.success('列配置已保存');
   } catch (error) {
     console.error('列配置持久化失败:', error);
@@ -1138,6 +1141,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage || undefined,
+        vesselVoyage: row.vesselVoyage || undefined,
         contractNo: row.contractNo || undefined,
         validTimeStart: row.validTimeStart || undefined,
         validTimeEnd: row.validTimeEnd || undefined,
@@ -1781,5 +1785,53 @@ watch(
 .htCtnSug {
   font-weight: 600;
   color: #cf1322 !important;
+}
+
+/* 直达列：是绿否红 */
+.handsontable td.ht-is-direct--yes {
+  font-weight: 600;
+  color: #389e0d !important;
+  background: #f6ffed !important;
+}
+
+.handsontable td.ht-is-direct--no {
+  font-weight: 600;
+  color: #cf1322 !important;
+  background: #fff1f0 !important;
+}
+
+.handsontable td.ht-is-direct--yes .htAutocompleteArrow,
+.handsontable td.ht-is-direct--no .htAutocompleteArrow {
+  color: inherit !important;
+}
+
+/* 箱型价单元格：数字 + 右上角涨跌徽标 */
+.handsontable td.ht-ctn-price--delta {
+  position: relative;
+  padding-right: 26px !important;
+  overflow: visible;
+}
+
+.ht-price-delta {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  z-index: 1;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.ht-price-delta--up {
+  background: #f5222d;
+}
+
+.ht-price-delta--down {
+  background: #52c41a;
 }
 </style>

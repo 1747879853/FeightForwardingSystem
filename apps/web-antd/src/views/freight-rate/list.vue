@@ -440,6 +440,7 @@ function onBatchUpdate() {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage || '',
+      vesselVoyage: (row as any).vesselVoyage || '',
       contractNo: row.contractNo || '',
       etd: dayData?.etd || '',
       closeDocTime: dayData?.closeDocTime || '',
@@ -465,6 +466,7 @@ function onBatchUpdate() {
           ? { sugPrice: ctn.sugPrice }
           : {}),
       })),
+      _priceChange: (row as any)._priceChange,
     };
   });
 

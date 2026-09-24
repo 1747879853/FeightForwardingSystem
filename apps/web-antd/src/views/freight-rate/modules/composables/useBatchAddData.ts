@@ -94,6 +94,7 @@ export function useBatchAddData() {
       poddem: undefined,
       poddet: undefined,
       voyage: '',
+      vesselVoyage: '',
       contractNo: '',
       etd: '',
       closeDocTime: '',
@@ -262,11 +263,11 @@ export function useBatchAddData() {
         return false;
       }
       if (!row.validTimeStart) {
-        message.warning(`第 ${rowNum} 行：请选择有效起始日期`);
+        message.warning(`第 ${rowNum} 行：请选择有效日期`);
         return false;
       }
       if (!row.validTimeEnd) {
-        message.warning(`第 ${rowNum} 行：请选择有效截止日期`);
+        message.warning(`第 ${rowNum} 行：请选择截止日期`);
         return false;
       }
     }
@@ -419,6 +420,7 @@ export function useBatchAddData() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
+        vesselVoyage: row.vesselVoyage || undefined,
         contractNo: row.contractNo,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
