@@ -81,6 +81,7 @@ beforeEach(() => {
       seaExportId: 'order',
       labels: new Map([[1, '订舱']]),
       processes: new Map([[1, true]]),
+      commissionNum: 'WT20260924001',
     },
   });
 });
@@ -94,6 +95,7 @@ describe('业务状态悬浮任务', () => {
     expect(mocks.get).not.toHaveBeenCalled();
     await open();
     expect(mocks.get).toHaveBeenCalledWith('order');
+    expect(wrapper.text()).toContain('委托编号 WT20260924001');
     expect(wrapper.text()).toContain('处理人');
     mocks.get.mockResolvedValue(done);
     await wrapper.get('button').trigger('click');
@@ -132,6 +134,33 @@ describe('业务状态悬浮任务', () => {
     expect(mocks.cancel).not.toHaveBeenCalled();
     await mocks.confirm.mock.calls[0]![0].onOk();
     expect(mocks.cancel).toHaveBeenCalledWith({ id: 'task' });
+  });
+  it('未生成任务只显示名称和主流程，不显示状态与处理人', async () => {
+    mocks.get.mockResolvedValue([
+      {
+        id: 2,
+        seaExportId: 'order',
+        serviceType: 2,
+        sortId: 20,
+        seServiceTask: null,
+      },
+    ]);
+    await wrapper.setProps({
+      labels: new Map([
+        [1, '订舱'],
+        [2, '加固'],
+      ]),
+      processes: new Map([
+        [1, true],
+        [2, true],
+      ]),
+    });
+    await open();
+    expect(wrapper.text()).toContain('加固');
+    expect(wrapper.text()).toContain('主流程');
+    expect(wrapper.text()).not.toContain('未生成任务');
+    expect(wrapper.text()).not.toContain('处理人');
+    expect(wrapper.text()).not.toContain('未分配');
   });
   it('切换记录后旧请求不能覆盖新记录状态', async () => {
     let resolve: (value: typeof pending) => void = () => {};

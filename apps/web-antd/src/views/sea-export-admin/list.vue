@@ -728,6 +728,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <ServiceTasksPopover
           :key="row.id"
           :sea-export-id="String(row.id)"
+          :commission-num="row.transportOrder?.commissionNum"
           :labels="serviceTypeLabelMap"
           :processes="serviceTypeProcessMap"
           @refreshed="row.seaExportServices = $event"

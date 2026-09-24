@@ -23,6 +23,7 @@ const props = defineProps<{
   seaExportId: string;
   labels: Map<number, string>;
   processes: Map<number, boolean>;
+  commissionNum?: null | string;
 }>();
 const emit = defineEmits<{ refreshed: [services: Service[]] }>();
 const { hasAccessByCodes } = useAccess();
@@ -39,6 +40,8 @@ const doneCount = computed(
     services.value.filter((item) => item.seServiceTask?.serviceTaskStatus === 1)
       .length,
 );
+const commissionNumText = computed(() => props.commissionNum?.trim() || '-');
+const hasTask = (item: Service) => Boolean(item.seServiceTask?.id);
 const groups = computed(() => {
   const buckets: { sortId: number; items: Service[] }[] = [];
   for (const item of services.value) {
@@ -163,6 +166,7 @@ function cancel(item: Service) {
 <template>
   <Popover
     :open="open"
+    :z-index="1990"
     placement="rightTop"
     overlay-class-name="sea-export-service-tasks-popover"
     :trigger="['hover', 'focus']"
@@ -173,7 +177,12 @@ function cancel(item: Service) {
     <template #content>
       <div class="service-flow" @click.stop @dblclick.stop>
         <div class="service-flow__head">
-          <span class="service-flow__title">本票业务流程</span>
+          <div class="service-flow__head-main">
+            <span class="service-flow__title">本票业务流程</span>
+            <span class="service-flow__commission" :title="commissionNumText">
+              委托编号 {{ commissionNumText }}
+            </span>
+          </div>
           <span v-if="services.length" class="service-flow__count">
             已完成 {{ doneCount }}/{{ services.length }}
           </span>
@@ -219,9 +228,12 @@ function cancel(item: Service) {
                     >
                       主流程
                     </span>
-                    <span class="service-flow__status">{{ status(item) }}</span>
+                    <span v-if="hasTask(item)" class="service-flow__status">
+                      {{ status(item) }}
+                    </span>
                   </div>
                   <div
+                    v-if="hasTask(item)"
                     class="service-flow__meta"
                     :class="{
                       'is-plain': item.seServiceTask?.serviceTaskStatus === 1,
@@ -299,10 +311,17 @@ function cancel(item: Service) {
 .service-flow__head {
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 12px 14px 10px;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.service-flow__head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .service-flow__title {
@@ -312,8 +331,18 @@ function cancel(item: Service) {
   color: #0f172a;
 }
 
+.service-flow__commission {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 18px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 .service-flow__count {
   flex-shrink: 0;
+  margin-top: 1px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 18px;
@@ -344,8 +373,8 @@ function cancel(item: Service) {
 }
 
 .service-flow__group.is-current.is-parallel {
-  background: #fffbeb;
-  box-shadow: inset 0 0 0 1px #fde68a;
+  background: #faf7f2;
+  box-shadow: inset 0 0 0 1px #eadfce;
 }
 
 .service-flow__parallel {
@@ -413,8 +442,8 @@ function cancel(item: Service) {
 
 .service-flow__item.is-active .service-flow__dot {
   background: #fff;
-  border-color: #d97706;
-  box-shadow: 0 0 0 3px rgb(217 119 6 / 18%);
+  border-color: #b89a72;
+  box-shadow: 0 0 0 3px rgb(184 154 114 / 22%);
 }
 
 .service-flow__card {
@@ -426,8 +455,8 @@ function cancel(item: Service) {
 
 .service-flow__item.is-active .service-flow__card {
   padding: 8px 8px 10px;
-  background: #fffbeb;
-  box-shadow: inset 0 0 0 1px #fde68a;
+  background: #faf7f2;
+  box-shadow: inset 0 0 0 1px #eadfce;
 }
 
 .service-flow__group.is-current.is-parallel
@@ -486,8 +515,8 @@ function cancel(item: Service) {
 }
 
 .service-flow__item.is-active .service-flow__status {
-  color: #854d0e;
-  background: #fef3c7;
+  color: #7c6548;
+  background: #f3ebe1;
 }
 
 .service-flow__item.is-upcoming .service-flow__status,
