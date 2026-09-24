@@ -7,6 +7,9 @@ vi.mock('#/api/system/user-admin', () => ({
 import { getAllUserOrganizations } from '#/api/system/user-admin';
 
 import {
+  formatCompanyPathLabel,
+  formatOrgNodeLabel,
+  formatOrgPathLabel,
   loadAllUserOrganizations,
   resetAllUserOrganizations,
   useAllUserOrg,
@@ -70,4 +73,28 @@ it('已有快照时再次 load 会静默刷新并覆盖 map', async () => {
     expect(useAllUserOrg().getUserDefaultOrgId(1)).toBe(11);
   });
   expect(getAllUserOrganizations).toHaveBeenCalledTimes(2);
+});
+
+it('组织展示名优先简称，缺省回退全称', () => {
+  expect(
+    formatOrgNodeLabel({
+      shortName: '青岛海运',
+      displayName: '青岛海运有限公司',
+    }),
+  ).toBe('青岛海运');
+  expect(formatOrgNodeLabel({ displayName: '青岛海运有限公司' })).toBe(
+    '青岛海运有限公司',
+  );
+  expect(
+    formatCompanyPathLabel([
+      { shortName: 'HH', displayName: '海和' },
+      { displayName: '操作部' },
+    ]),
+  ).toBe('HH');
+  expect(
+    formatOrgPathLabel([
+      { shortName: 'HH', displayName: '海和公司' },
+      { displayName: '操作部' },
+    ]),
+  ).toBe('HH/操作部');
 });

@@ -131,30 +131,57 @@ function pickDirectOrgNode(
 }
 
 /**
- * 将组织路径拼接为「完整公司名」：父级 → 末级用 / 连接。
- * 兼容 displayName（GetAll/GetMy）与 name（详情 orgs）两种节点结构。
+ * 组织/公司节点展示名：优先简称，缺省再回退全称（displayName / name）。
+ */
+export function formatOrgNodeLabel(
+  node?: {
+    displayName?: null | string;
+    name?: null | string;
+    shortName?: null | string;
+  } | null,
+): string {
+  if (!node) return '';
+  return (
+    String(node.shortName ?? '').trim() ||
+    String(node.displayName ?? '').trim() ||
+    String(node.name ?? '').trim()
+  );
+}
+
+/**
+ * 将组织路径拼接为展示文案：父级 → 末级用 / 连接。
+ * 各节点优先简称；兼容 displayName（GetAll/GetMy）与 name（详情 orgs）。
  */
 export function formatOrgPathLabel(
   path:
-    | Array<{ displayName?: null | string; name?: null | string }>
+    | Array<{
+        displayName?: null | string;
+        name?: null | string;
+        shortName?: null | string;
+      }>
     | null
     | undefined,
 ): string {
   if (!path?.length) return '';
   return path
-    .map((node) => (node.displayName ?? node.name ?? '').trim())
+    .map((node) => formatOrgNodeLabel(node))
     .filter(Boolean)
     .join('/');
 }
 
+/** 归属组织下拉：取路径顶层公司节点，简称优先、全称兜底 */
 export function formatCompanyPathLabel(
   path:
-    | Array<{ displayName?: null | string; name?: null | string }>
+    | Array<{
+        displayName?: null | string;
+        name?: null | string;
+        shortName?: null | string;
+      }>
     | null
     | undefined,
 ): string {
   if (!path?.length) return '';
-  return path.at(0)?.displayName ?? path.at(0)?.name ?? '';
+  return formatOrgNodeLabel(path.at(0));
 }
 
 /**

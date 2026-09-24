@@ -21,7 +21,7 @@ interface Props {
   /** 从「另一个用户」切换过来时是否清空已选值（首次赋值/回显不清空），默认 true */
   clearOnUserChange?: boolean;
   /**
-   * 回显兜底选项：value=末级组织id，label=完整公司名。
+   * 回显兜底选项：value=末级组织id，label=公司/组织展示名（简称优先）。
    * 用于编辑回显（如详情 orgs 路径），在该用户组织加载完成前也能正确显示已选项。
    */
   selectedItems?: Array<{ label: string; value: number }>;

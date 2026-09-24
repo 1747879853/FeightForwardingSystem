@@ -30,6 +30,8 @@ export namespace SystemOrganizationUnitApi {
     parentId?: number | null;
     code?: string | null;
     displayName?: string | null;
+    /** 简称；展示优先于 displayName */
+    shortName?: string | null;
     memberCount?: number;
     memberCountTotal?: number;
     isCompany?: boolean;
@@ -298,6 +300,7 @@ function flattenOrganizationTree(
 
 /**
  * 根据组织节点 id 解析所属公司名称（向上查找 isCompany 节点）
+ * 展示优先简称，缺省再回退全称。
  */
 function resolveOrganizationCompanyName(
   tree: OrganizationTreeNode[],
@@ -312,7 +315,7 @@ function resolveOrganizationCompanyName(
 
   while (current) {
     if (current.isCompany) {
-      return current.displayName?.trim() || '';
+      return current.shortName?.trim() || current.displayName?.trim() || '';
     }
     const parentId = current.parentId;
     current =

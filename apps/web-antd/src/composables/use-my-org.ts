@@ -10,6 +10,7 @@ import {
 
 import {
   formatCompanyPathLabel,
+  formatOrgNodeLabel,
   formatOrgPathLabel,
   getUserOrgCompanyNode,
   pickCompanyNodeFromPath,
@@ -72,7 +73,7 @@ export function getMyTrueCompanyOptions(): MyOrgOption[] {
       if (!node || !node.isCompany) return null;
       return {
         isDefault: !!item.default,
-        label: node.displayName || '',
+        label: formatOrgNodeLabel(node),
         value: node.id,
       };
     })
