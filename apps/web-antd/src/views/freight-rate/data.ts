@@ -18,7 +18,6 @@ export const FREIGHT_RATE_BATCH_ADD_TABLE_ID = 'FreightRateBatchAdd';
  */
 export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'validTimeRange',
-  'isValid',
   'carrier.enName',
   'pol.portName',
   'country.countryName',
@@ -35,7 +34,7 @@ export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
 
 /**
  * 批量新增/编辑 Handsontable 默认可见列（按 data 字段）。
- * `ctn_*` / `ctnSug_*` 箱型列始终默认可见；列表专有列（国家/是否有效/录入人等）此处不存在。
+ * `ctn_*` / `ctnSug_*` 箱型列始终默认可见；列表专有列（国家/录入人等）此处不存在。
  * 目的港免箱使：批量页拆为 DEM / DET / 免箱使期三列，均默认显示。
  */
 export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
@@ -763,13 +762,6 @@ export function useColumns(
       }),
     },
     {
-      field: 'isValid',
-      title: $t('seaExport.freightRate.isValid'),
-      width: 100,
-      align: 'center',
-      slots: { default: 'isValid' },
-    },
-    {
       field: 'polFreeDays',
       title: '起运港免用箱',
       width: 110,
@@ -866,7 +858,6 @@ export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
   closeDocTime: 'SeFreiPriceDays',
   closingTime: 'SeFreiPriceDays',
   validTimeRange: 'ValidTimeStart',
-  isValid: 'IsValid',
   polFreeDays: 'PolFreeDays',
   podFreeDaysCombined: 'PodFreeDays',
   remark: 'Remark',

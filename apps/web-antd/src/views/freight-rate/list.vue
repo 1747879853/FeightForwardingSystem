@@ -32,7 +32,6 @@ import {
   Dropdown,
   Menu,
   Tooltip,
-  Tag,
 } from 'ant-design-vue';
 
 import {
@@ -210,6 +209,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       keyField: 'id',
       isHover: true,
     },
+    rowClassName: ({ row }: { row: SeFreiPriceOutDto }) =>
+      isFreightRateExpired(row) ? 'freight-rate-expired-row' : '',
     checkboxConfig: {
       highlight: true,
       reserve: true,
@@ -419,38 +420,18 @@ function onBatchDelete() {
   });
 }
 
-// ==================== 有效状态展示 ====================
+// ==================== 过期行样式 ====================
 
 function startOfLocalDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function getIsValidText(row: SeFreiPriceOutDto): string {
+/** 有效截止日期早于今天本地日 → 已过期；未生效 / 生效不加样式 */
+function isFreightRateExpired(row: SeFreiPriceOutDto): boolean {
+  if (!row.validTimeEnd) return false;
   const today = startOfLocalDay(new Date());
-
-  if (row.validTimeStart) {
-    const startDay = startOfLocalDay(new Date(row.validTimeStart));
-    if (startDay > today) return '未生效';
-  }
-
-  if (row.validTimeEnd) {
-    const endDay = startOfLocalDay(new Date(row.validTimeEnd));
-    if (endDay < today) return '已过期';
-  }
-
-  if (!row.isValid) return '无效';
-  return '已生效';
-}
-
-function getIsValidColor(row: SeFreiPriceOutDto): string {
-  switch (getIsValidText(row)) {
-    case '已生效':
-      return '#389e0d';
-    case '未生效':
-      return '#faad14';
-    default:
-      return '#cf1322';
-  }
+  const endDay = startOfLocalDay(new Date(row.validTimeEnd));
+  return endDay < today;
 }
 
 // ==================== 航线 Tab ====================
@@ -830,14 +811,6 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <template #isValid="{ row }">
-        <div class="flex items-center justify-center">
-          <Tag :color="getIsValidColor(row)">
-            {{ getIsValidText(row) }}
-          </Tag>
-        </div>
-      </template>
-
       <template #ctnEditableCell="{ row, column }">
         <CtnEditableCell :row="row" :column="column" />
       </template>
@@ -1087,5 +1060,13 @@ onUnmounted(() => {
   height: 24px;
   object-fit: contain;
   border-radius: 2px;
+}
+
+:deep(.freight-rate-expired-row) {
+  color: #cf1322;
+}
+
+:deep(.freight-rate-expired-row > td) {
+  color: #cf1322;
 }
 </style>
