@@ -1005,7 +1005,9 @@ export function mergeFreightRateListPersistedColumns(
     // 配置完全不认识的列：保留 useColumns 默认 visible
 
     if (Object.prototype.hasOwnProperty.call(fixedMap, key)) {
-      const fixed = fixedMap[key];
+      const fixed = String(fixedMap[key] ?? '')
+        .trim()
+        .toLowerCase();
       cloned.fixed = fixed === 'left' || fixed === 'right' ? fixed : undefined;
     }
 
