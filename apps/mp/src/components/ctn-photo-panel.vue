@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
+
+import LPainter from 'lime-painter/components/l-painter/l-painter.vue';
 
 import type { EditableCtn, EditablePhoto } from '@/utils/ctn-model';
 
@@ -36,7 +38,8 @@ const emit = defineEmits<{
   (event: 'open-location-settings'): void;
 }>();
 
-const { watermark } = useLoadingPhotoWatermark(getCurrentInstance()?.proxy);
+const painter = ref<InstanceType<typeof LPainter> | null>(null);
+const { watermark } = useLoadingPhotoWatermark(painter);
 const uploading = ref(false);
 const choosing = ref(false);
 const recognizing = ref(false);
@@ -300,11 +303,14 @@ function lockMaskScroll() {}
     @tap="onDismiss"
     @touchmove.stop.prevent="lockMaskScroll"
   >
-    <canvas
-      id="loading-photo-watermark"
-      canvas-id="loading-photo-watermark"
+    <l-painter
+      ref="painter"
+      hidden
       type="2d"
-      class="watermark-canvas"
+      file-type="jpg"
+      path-type="url"
+      :pixel-ratio="1"
+      :after-delay="120"
     />
     <view class="panel" @tap.stop @touchmove.stop>
       <view class="panel__head">
@@ -471,19 +477,6 @@ function lockMaskScroll() {}
 </template>
 
 <style lang="scss" scoped>
-.watermark-canvas {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  width: 1px;
-  height: 1px;
-
-  /* 仍留在视口内，避免安卓不分配离屏画布；显示区域缩到 1px，不再铺到主界面 */
-  pointer-events: none;
-  opacity: 0.01;
-}
-
 .mask {
   position: fixed;
   top: 0;

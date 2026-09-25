@@ -13,6 +13,12 @@ packages:
   - docs
   - playground
 
+# 此版本小程序编译器通过 require 使用 estree-walker，但未声明该依赖。
+packageExtensions:
+  '@dcloudio/uni-mp-vite@3.0.0-alpha-5020520260821001':
+    dependencies:
+      estree-walker: 2.0.2
+
 catalog:
   '@ast-grep/napi': ^0.39.9
   '@changesets/changelog-github': ^0.5.2

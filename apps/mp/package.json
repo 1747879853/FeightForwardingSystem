@@ -17,7 +17,8 @@
     "@dcloudio/uni-h5": "3.0.0-alpha-5020520260821001",
     "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020520260821001",
     "vue": "catalog:",
-    "wot-design-uni": "^1.14.0"
+    "wot-design-uni": "^1.14.0",
+    "lime-painter": "11.11.11"
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.32",
