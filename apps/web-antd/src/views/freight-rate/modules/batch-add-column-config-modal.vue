@@ -113,7 +113,29 @@ function handleSectionSort(section: FixedSection, evt: SortableEvent) {
 
   const [moved] = target.splice(oldIndex, 1);
   if (!moved) return;
-  target.splice(newIndex, 0, moved);
+
+  // 拖有效日期对其中一列时，成对插入，防止拆开
+  if (moved.data === 'validTimeStart' || moved.data === 'validTimeEnd') {
+    const pairKey =
+      moved.data === 'validTimeStart' ? 'validTimeEnd' : 'validTimeStart';
+    const pairIdx = target.findIndex((col) => col.data === pairKey);
+    let pair: ColumnConfig | undefined;
+    if (pairIdx >= 0) {
+      [pair] = target.splice(pairIdx, 1);
+      // pair 在 moved 之前被移除时，newIndex 需回退一格
+      const adjustedNewIndex =
+        pairIdx < newIndex ? Math.max(0, newIndex - 1) : newIndex;
+      const start =
+        moved.data === 'validTimeStart' ? moved : (pair as ColumnConfig);
+      const end =
+        moved.data === 'validTimeEnd' ? moved : (pair as ColumnConfig);
+      target.splice(adjustedNewIndex, 0, start, end);
+    } else {
+      target.splice(newIndex, 0, moved);
+    }
+  } else {
+    target.splice(newIndex, 0, moved);
+  }
 
   rebuildLocalColumns(
     section === 'left' ? target : left,
@@ -184,23 +206,39 @@ function toggleColumnVisibility(data: string, checked: boolean) {
   if (column) {
     column.visible = checked;
   }
+  // 有效日期 / 截止日期绑定：显隐同步
+  if (data === 'validTimeStart' || data === 'validTimeEnd') {
+    const pairKey =
+      data === 'validTimeStart' ? 'validTimeEnd' : 'validTimeStart';
+    const pair = localColumns.value.find((col) => col.data === pairKey);
+    if (pair) pair.visible = checked;
+  }
 }
 
 function setColumnFixed(data: string, position: 'left' | 'right' | false) {
-  const column = localColumns.value.find((col) => col.data === data);
-  if (!column) return;
+  const keys =
+    data === 'validTimeStart' || data === 'validTimeEnd'
+      ? (['validTimeStart', 'validTimeEnd'] as const)
+      : ([data] as const);
 
-  column.fixed = position;
+  const moving = keys
+    .map((key) => localColumns.value.find((col) => col.data === key))
+    .filter(Boolean) as ColumnConfig[];
+  if (moving.length === 0) return;
 
-  // 固定变更后将该列移到对应分区末尾，并重排 order
-  const rest = localColumns.value.filter((col) => col.data !== data);
+  moving.forEach((col) => {
+    col.fixed = position;
+  });
+
+  const moveKeys = new Set<string>([...keys]);
+  const rest = localColumns.value.filter((col) => !moveKeys.has(col.data));
   const left = rest.filter((col) => col.fixed === 'left');
   const normal = rest.filter((col) => col.fixed === false);
   const right = rest.filter((col) => col.fixed === 'right');
 
-  if (position === 'left') left.push(column);
-  else if (position === 'right') right.push(column);
-  else normal.push(column);
+  if (position === 'left') left.push(...moving);
+  else if (position === 'right') right.push(...moving);
+  else normal.push(...moving);
 
   rebuildLocalColumns(left, normal, right);
 }

@@ -39,7 +39,7 @@ import {
   MyOrgSelect,
   OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
-import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import {
   addStatement,
   getStatementDetail,
@@ -178,7 +178,7 @@ const statementOrgs = ref<StatementAdminApi.OrganizationUnitSimpleDto[]>([]);
 
 const orgSelectedItems = computed(() => {
   if (orgId.value == null) return [];
-  const label = formatOrgPathLabel(statementOrgs.value);
+  const label = formatDetailOrgPathLabel(statementOrgs.value);
   if (!label) return [];
   return [{ label, value: orgId.value }];
 });

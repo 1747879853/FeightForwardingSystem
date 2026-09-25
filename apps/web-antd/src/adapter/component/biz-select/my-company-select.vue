@@ -7,7 +7,12 @@ import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
-import { getMyOrgOptions, getMyDefaultOrgId, getMyOrgCompanyNode } from '#/composables/use-my-org';
+import { formatOrgNodeLabel } from '#/composables/use-all-user-org';
+import {
+  getMyDefaultOrgId,
+  getMyOrgCompanyNode,
+  getMyOrgOptions,
+} from '#/composables/use-my-org';
 
 defineOptions({ inheritAttrs: false });
 
@@ -37,10 +42,10 @@ const options = computed(() => {
   orgOptions.forEach((orgOption) => {
     // 获取该组织对应的公司节点
     const companyNode = getMyOrgCompanyNode(orgOption.value);
-    
+
     if (companyNode && !companyMap.has(companyNode.id)) {
-      // 使用公司节点的 displayName 作为标签
-      const label = companyNode.displayName || '';
+      // 公司简称优先，全称兜底
+      const label = formatOrgNodeLabel(companyNode);
       companyMap.set(companyNode.id, {
         label,
         value: companyNode.id,
@@ -70,7 +75,7 @@ const handleChange = (value: any) => {
 const getDefaultCompanyId = (): number | undefined => {
   const defaultOrgId = getMyDefaultOrgId();
   if (!defaultOrgId) return undefined;
-  
+
   const companyNode = getMyOrgCompanyNode(defaultOrgId);
   return companyNode?.id;
 };

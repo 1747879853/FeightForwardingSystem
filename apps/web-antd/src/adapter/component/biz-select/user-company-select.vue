@@ -10,6 +10,7 @@ import { Select } from 'ant-design-vue';
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { getOrganizationUnits } from '#/api/system/organization-unit';
+import { formatOrgNodeLabel } from '#/composables/use-all-user-org';
 
 defineOptions({ inheritAttrs: false });
 
@@ -50,16 +51,6 @@ const loadCompanies = async () => {
   }
 };
 
-/** 下拉与选中展示优先简称，缺省再回退全称 */
-function formatCompanyLabel(
-  company: Pick<
-    SystemOrganizationUnitApi.OrganizationUnitDto,
-    'displayName' | 'shortName'
-  >,
-): string {
-  return (company.shortName || company.displayName || '').trim();
-}
-
 const options = computed(() => {
   const map = new Map<number, { label: string; value: number }>();
 
@@ -67,7 +58,7 @@ const options = computed(() => {
   for (const company of companyList.value) {
     if (!map.has(company.id)) {
       map.set(company.id, {
-        label: formatCompanyLabel(company),
+        label: formatOrgNodeLabel(company),
         value: company.id,
       });
     }

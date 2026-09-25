@@ -199,6 +199,11 @@ const canPostRejectAudit = computed(
     auditDetail.value?.myTaskStatus === ClientTaskStatus.Passed,
 );
 
+/** 统一驳回：待审驳回 或 通过后驳回 */
+const canRejectAudit = computed(
+  () => canPendingAudit.value || canPostRejectAudit.value,
+);
+
 const auditActionCode = 'Admin.Client.Audit';
 
 const clientStatus = ref<ClientAdminApi.ClientStatus | undefined>();
@@ -1266,21 +1271,12 @@ const handleAuditPass = () => {
 };
 
 const handleAuditReject = () => {
-  if (!canPendingAudit.value) return;
+  if (!canRejectAudit.value) return;
   openAuditRemarkConfirm({
-    title: '确认驳回',
-    danger: true,
-    remarkRequired: true,
-    remarkRequiredMessage: '驳回原因不能为空',
-    maxlength: 4096,
-    onConfirm: (remark) => doPageAudit(false, remark),
-  });
-};
-
-const handleAuditPostReject = () => {
-  if (!canPostRejectAudit.value) return;
-  openAuditRemarkConfirm({
-    title: '确认通过后驳回',
+    title:
+      canPostRejectAudit.value && !canPendingAudit.value
+        ? '确认通过后驳回'
+        : '确认驳回',
     danger: true,
     remarkRequired: true,
     remarkRequiredMessage: '驳回原因不能为空',
@@ -2420,21 +2416,11 @@ watch(
               <Button
                 v-access:code="auditActionCode"
                 danger
-                :disabled="!canPendingAudit"
+                :disabled="!canRejectAudit"
                 :loading="auditSubmitting"
                 @click="handleAuditReject"
               >
                 {{ $t('auditApproval.clientReview.selectReject') }}
-              </Button>
-              <Button
-                v-access:code="auditActionCode"
-                danger
-                ghost
-                :disabled="!canPostRejectAudit"
-                :loading="auditSubmitting"
-                @click="handleAuditPostReject"
-              >
-                {{ $t('auditApproval.clientReview.postReject') }}
               </Button>
               <Button
                 :disabled="!canPendingAudit"

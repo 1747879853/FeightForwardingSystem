@@ -10,13 +10,17 @@ import { objectOmit } from '@vueuse/core';
 import { Select } from 'ant-design-vue';
 
 import { getOrganizationUnits } from '#/api/system/organization-unit';
+import { formatOrgNodeLabel } from '#/composables/use-all-user-org';
 
 defineOptions({ inheritAttrs: false });
 
 interface Props {
   /** 是否是公司。true=公司，false=部门，不传=全部 */
   isCompany?: boolean;
-  /** label 字段名，默认 'displayName'，可用值：'displayName' | 'code' */
+  /**
+   * label 字段名，默认按「简称优先、全称兜底」展示。
+   * 传 `code` 时以编码为主；传 `displayName` / `shortName` 时仍走简称优先规则。
+   */
   labelKey?: string;
   /** placeholder */
   placeholder?: string;
@@ -24,7 +28,7 @@ interface Props {
   selectedItems?: SystemOrganizationUnitApi.OrganizationUnitDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
-  /** 使用 displayName 作为 label 时，是否追加显示 code */
+  /** 展示名称时是否追加显示 code */
   appendCodeOnDisplayName?: boolean;
 }
 
@@ -57,19 +61,16 @@ const parseIdToSafeString = (value: unknown): string | null => {
 };
 
 const pickLabel = (item: SystemOrganizationUnitApi.OrganizationUnitDto) => {
-  const itemAny = item as any;
-  let label = itemAny?.[props.labelKey];
-  if (!label && props.labelKey === 'code') {
-    label = item.code || item.displayName;
+  let label = '';
+  if (props.labelKey === 'code') {
+    label = item.code || formatOrgNodeLabel(item);
+  } else {
+    // displayName / shortName：统一简称优先、全称兜底
+    label = formatOrgNodeLabel(item) || item.code || '';
   }
-  label = label || item.displayName || item.code || '';
 
-  // 默认展示“名称（编码）”，提升同名组织的区分度
-  if (
-    props.appendCodeOnDisplayName &&
-    props.labelKey === 'displayName' &&
-    item.code
-  ) {
+  // 默认展示「名称（编码）」，提升同名组织的区分度
+  if (props.appendCodeOnDisplayName && props.labelKey !== 'code' && item.code) {
     return `${label} (${item.code})`;
   }
   return label;
@@ -94,6 +95,7 @@ const options = computed(() => {
     .filter((item) => {
       if (!kw) return true;
       return (
+        (item.shortName || '').toLowerCase().includes(kw) ||
         (item.displayName || '').toLowerCase().includes(kw) ||
         (item.code || '').toLowerCase().includes(kw)
       );

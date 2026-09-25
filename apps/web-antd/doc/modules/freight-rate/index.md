@@ -26,13 +26,14 @@ last_updated: 2026-09-22
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
-- **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。有效状态默认「已生效 + 未生效」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认值写入「最近提交值」（切航线 Tab / 翻页 / 刷新不丢）。
+- **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。有效状态默认「已生效 + 未生效」；关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认值写入「最近提交值」（切航线 Tab / 翻页 / 刷新不丢）。同航线（船公司+起运港+目的港+直达+中转港1）相对上一条有效截止日的运价，箱型成本/指导价旁显示红涨绿跌差额。
 - **搜索项设置：** 可通过列表工具栏入口调整搜索字段的显示与顺序，设置弹层显示在工具栏下方。
-- **列配置持久化：** 列表走 vxe `columnPersist`；批量新增/编辑 Tab 的 Handsontable 列显隐、顺序、固定通过齿轮「列配置」保存到同一套 `UserSetting`（`table_config_FreightRateBatchAdd` / `table_config_FreightRateBatchEdit`），与列表 key 互不覆盖。
-- **默认可见列：** 有效时间起、是否有效、船公司、起运港、国家、目的港、开船日期、是否直达、中转港1、目的港免箱使天数、航程、箱型、备注、录入人、录入时间；其余默认隐藏。批量页无「国家/是否有效/录入人/录入时间」，目的港免箱使对应 DEM/DET/免箱使期；无用户配置时生效，已保存的列设置优先。
+- **列配置持久化：** 列表走 vxe `columnPersist`；批量新增/编辑 Tab 的 Handsontable 列显隐、顺序、固定通过齿轮「列配置」保存到同一套 `UserSetting`（`table_config_FreightRateBatchAdd` / `table_config_FreightRateBatchEdit`），与列表 key 互不覆盖。批量页「有效日期 / 截止日期」成对绑定，列配置不可拆开。
+- **默认可见列：** 有效时间起、是否有效、船公司、起运港、国家、目的港、开船日期、是否直达、中转港1、目的港免箱使天数、航程、箱型、备注、录入人、录入时间；其余默认隐藏。批量页无「国家/是否有效/录入人/录入时间」，目的港免箱使对应 DEM/DET/免箱使期；默认另含截止日期、船名航次；无用户配置时生效，已保存的列设置优先。
 - **航线 Tab 筛选：** 列表工具栏左侧展示「全部 + 各航线」Tab；超出可视区域时可点击左右箭头平滑滚动浏览，并与右侧操作按钮保持固定间距。
 - **运价维护：** 通过运价表单或弹窗维护费率明细。
-- **批量新增 / 更新：** 列表「批量新增」「更新」「AI批量新增」打开独立 Tab（`/freight-rate/batch-add`、`/freight-rate/batch-edit`），行数据经 `pending-batch-rows` 内存传递；提交或取消后关 Tab 并刷新列表。菜单「批量更改」（多字段同步）仍为弹窗。
+- **生成报价：** 工具栏「生成报价」仅允许勾选一条；弹出默认可复制运价文案（含国家、币别与币别符号、目的港免箱期；附加费取备注），点「复制报价信息」写入剪贴板。详见 [变更日志](../../changelogs/change-log-2026-09-24-freight-rate-generate-quote.md)。
+- **批量新增 / 更新：** 列表「批量新增」「更新」「AI批量新增」打开独立 Tab（`/freight-rate/batch-add`、`/freight-rate/batch-edit`），行数据经 `pending-batch-rows` 内存传递；提交或取消后关 Tab 并刷新列表。菜单「批量更改」（多字段同步）仍为弹窗。批量新增填齐起运港+目的港+是否直达后，空字段自动带出历史 DEM/DET/免箱使期/航程（中转时含中转港）。开船日期 YYYY-MM-DD；表头「直达」；箱型价无千分位并带涨跌徽标；船名航次文本列（后端落库后持久化）。详见 [变更日志](../../changelogs/change-log-2026-09-24-freight-rate-price-change.md)、[#1001004](../../changelogs/change-log-2026-09-24-freight-rate-batch-fields.md)。
 - **批量/同步：** 相关模块包含同步更新与箱型费用维护能力。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -59,6 +60,9 @@ last_updated: 2026-09-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-24 | `Feature` | 批量页：开船日期 YYYY-MM-DD；有效日期/截止日期成对；箱型价收窄+涨跌徽标；「直达」；新增船名航次（待后端落库）。 | `useBatchAddColumns` + 列配置成对绑定；TAPD #1001004。 |
+| 2026-09-24 | `Feature` | 列表箱型成本/指导价相对上一条同航线运价显示红涨绿跌；批量新增按港口+直达带出历史 DEM/DET/免箱使/航程/中转港。 | `freight-price-change.ts` + `ctn-editable-cell`；TAPD #1001003。 |
+| 2026-09-24 | `Feature` | 列表「生成报价」：单选后弹报价信息并支持一键复制。 | `build-freight-quote-text.ts` + `modules/quote-modal.vue`；TAPD #1001005。 |
 | 2026-09-22 | `Fix` | 修复运价列表列设置保存后查询/翻页被冲掉、看起来无法持久化的问题。 | 根因：`tableData` watch 每次 `setGridOptions({ columns })` 整表换列；改为仅箱型列集合变化时换列，并合并 `table_config_FreightRateList`。 |
 | 2026-09-22 | `Feature` | 列表与批量页约定默认可见列白名单，其余列默认隐藏。 | `FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS` / `FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS`；列表写 `visible:false`，批量无 UserSetting 时套用默认 Map。 |
 | 2026-09-22 | `Feature` | 批量新增/更新 Tab 表格列配置（显隐/顺序/固定）可持久化记忆。 | `useBatchAddColumnPersist` 复用 `useTableConfigStore`；key 为既有 `FreightRateBatchAdd`/`FreightRateBatchEdit`；`syncHotTable` 回放用户配置。 |

@@ -61,7 +61,7 @@ const syncSelectedRows = () => {
     []) as ClientTaskRow[];
 };
 
-/** 待我审核：轮到我了才显示通过/驳回 */
+/** 待我审核：轮到我了才显示通过/驳回/转交 */
 const isPendingMyAudit = (row: ClientTaskRow) =>
   row.myTaskStatus === ClientTaskStatus.Auditing;
 
@@ -70,13 +70,15 @@ const canPostReject = (row: ClientTaskRow) =>
   row.taskStatus === ClientTaskStatus.Passed &&
   row.myTaskStatus === ClientTaskStatus.Passed;
 
+/** 统一驳回：待审驳回 或 通过后驳回，按行状态自动分流（接口相同） */
+const canReject = (row: ClientTaskRow) =>
+  isPendingMyAudit(row) || canPostReject(row);
+
 const hasPendingSelection = computed(() =>
   selectedRows.value.some(isPendingMyAudit),
 );
 
-const hasPostRejectSelection = computed(() =>
-  selectedRows.value.some(canPostReject),
-);
+const hasRejectSelection = computed(() => selectedRows.value.some(canReject));
 
 // ==================== 列表查询 ====================
 
@@ -222,32 +224,23 @@ const showAuditConfirm = () => {
   });
 };
 
+/**
+ * 统一驳回：按勾选行状态自动走「待审驳回」或「通过后驳回」。
+ * 二者同一 AuditAsync（success=false）；通过后驳回时客户退回已驳回(3)，数据不回滚。
+ */
 const showRejectConfirm = () => {
-  if (!hasPendingSelection.value) {
-    message.warning('请勾选待我审核的客户');
+  if (!hasRejectSelection.value) {
+    message.warning('请勾选待我审核或已由我通过的客户');
     return;
   }
+  const onlyPostReject =
+    selectedRows.value.some(canPostReject) &&
+    !selectedRows.value.some(isPendingMyAudit);
   openConfirm({
-    title: '确认驳回',
+    title: onlyPostReject ? '确认通过后驳回' : '确认驳回',
     danger: true,
-    pickRows: () => selectedRows.value.filter(isPendingMyAudit),
-    emptyMessage: '请勾选待我审核的客户',
-    onConfirm: (remark, ids) => doAudit(false, remark, ids),
-    remarkRequired: true,
-  });
-};
-
-/** 通过后驳回：同一个接口 success 传 false，客户退回已驳回(3)，数据不回滚 */
-const showPostRejectConfirm = () => {
-  if (!hasPostRejectSelection.value) {
-    message.warning('请勾选已审核通过且由我通过的客户');
-    return;
-  }
-  openConfirm({
-    title: '确认通过后驳回',
-    danger: true,
-    pickRows: () => selectedRows.value.filter(canPostReject),
-    emptyMessage: '请勾选已审核通过且由我通过的客户',
+    pickRows: () => selectedRows.value.filter(canReject),
+    emptyMessage: '请勾选待我审核或已由我通过的客户',
     onConfirm: (remark, ids) => doAudit(false, remark, ids),
     remarkRequired: true,
   });
@@ -275,20 +268,22 @@ const pendingSelectedCount = computed(
   () => selectedRows.value.filter(isPendingMyAudit).length,
 );
 
-const postRejectSelectedCount = computed(
-  () => selectedRows.value.filter(canPostReject).length,
+const rejectSelectedCount = computed(
+  () => selectedRows.value.filter(canReject).length,
 );
 
 const selectionHint = computed(() => {
   if (selectedRows.value.length === 0) {
-    return '勾选待审客户后可批量通过 / 驳回 / 转交；双击行进入客户详情审核';
+    return '勾选待审客户后可批量通过 / 驳回 / 转交；已通过且由我通过的可驳回；双击行进入客户详情审核';
   }
   const parts = [`已选 ${selectedRows.value.length} 条`];
   if (pendingSelectedCount.value > 0) {
     parts.push(`待我审核 ${pendingSelectedCount.value}`);
   }
-  if (postRejectSelectedCount.value > 0) {
-    parts.push(`可驳回 ${postRejectSelectedCount.value}`);
+  if (rejectSelectedCount.value > pendingSelectedCount.value) {
+    parts.push(
+      `可驳回 ${rejectSelectedCount.value - pendingSelectedCount.value}`,
+    );
   }
   return parts.join(' · ');
 });
@@ -313,20 +308,10 @@ const selectionHint = computed(() => {
               v-access:code="auditCode"
               danger
               class="client-review-btn"
-              :disabled="!hasPendingSelection"
+              :disabled="!hasRejectSelection"
               @click="showRejectConfirm"
             >
               {{ t('selectReject') }}
-            </Button>
-            <Button
-              v-access:code="auditCode"
-              danger
-              ghost
-              class="client-review-btn"
-              :disabled="!hasPostRejectSelection"
-              @click="showPostRejectConfirm"
-            >
-              {{ t('postReject') }}
             </Button>
             <Button
               class="client-review-btn"

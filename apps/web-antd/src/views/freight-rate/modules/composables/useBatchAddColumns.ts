@@ -5,7 +5,94 @@ import {
   loadMaskedFields,
 } from '#/composables/use-masked-fields';
 import { FrightModule } from '#/api/system/permission';
+import Handsontable from 'handsontable';
 import { computed } from 'vue';
+
+/** 有效日期 / 截止日期：列配置中绑定成对，避免拆开 */
+export const VALID_TIME_COLUMN_PAIR = [
+  'validTimeStart',
+  'validTimeEnd',
+] as const;
+
+function formatPriceDelta(delta: number): string {
+  const abs = Math.abs(delta);
+  const text = Number.isInteger(abs) ? String(abs) : abs.toFixed(2);
+  return delta > 0 ? `↑${text}` : `↓${text}`;
+}
+
+/** 箱型价：最多约 5 位数字 + 涨跌徽标，不加千分位 */
+function createCtnPriceRenderer(role: 'cost' | 'sug') {
+  return function ctnPriceRenderer(
+    this: any,
+    instance: Handsontable.Core,
+    td: HTMLTableCellElement,
+    row: number,
+    _col: number,
+    _prop: string | number,
+    value: any,
+    cellProperties: Handsontable.CellProperties,
+  ) {
+    Handsontable.renderers.NumericRenderer.apply(this, [
+      instance,
+      td,
+      row,
+      _col,
+      _prop,
+      value,
+      cellProperties,
+    ] as any);
+
+    td.querySelectorAll('.ht-price-delta').forEach((el) => el.remove());
+
+    const ctnName = (cellProperties as any).ctnName as string | undefined;
+    if (!ctnName) return;
+
+    const rowData = instance.getSourceDataAtRow(row) as Record<
+      string,
+      any
+    > | null;
+    const change = rowData?._priceChange?.[ctnName];
+    const delta = role === 'cost' ? change?.costDelta : change?.sugDelta;
+    if (delta === undefined || delta === 0) return;
+
+    const badge = document.createElement('span');
+    badge.className = `ht-price-delta ${
+      delta > 0 ? 'ht-price-delta--up' : 'ht-price-delta--down'
+    }`;
+    badge.textContent = formatPriceDelta(delta);
+    badge.title =
+      role === 'cost'
+        ? `成本较上期 ${formatPriceDelta(delta)}`
+        : `指导价较上期 ${formatPriceDelta(delta)}`;
+    td.classList.add('ht-ctn-price--delta');
+    td.appendChild(badge);
+  };
+}
+
+/** 直达列：是=绿、否=红 */
+function isDirectRenderer(
+  this: any,
+  instance: Handsontable.Core,
+  td: HTMLTableCellElement,
+  row: number,
+  col: number,
+  prop: string | number,
+  value: any,
+  cellProperties: Handsontable.CellProperties,
+) {
+  const baseRenderer =
+    Handsontable.renderers.getRenderer('dropdown') ||
+    Handsontable.renderers.AutocompleteRenderer ||
+    Handsontable.renderers.TextRenderer;
+  baseRenderer.call(this, instance, td, row, col, prop, value, cellProperties);
+
+  td.classList.remove('ht-is-direct--yes', 'ht-is-direct--no');
+  if (value === '是' || value === true) {
+    td.classList.add('ht-is-direct--yes');
+  } else if (value === '否' || value === false) {
+    td.classList.add('ht-is-direct--no');
+  }
+}
 
 /**
  * 批量新增运价 - Handsontable 列配置 Composable
@@ -165,10 +252,12 @@ export function useBatchAddColumns(
       },
       {
         data: 'isDirect',
-        title: '是否直达',
-        width: 100,
+        title: '直达',
+        width: 72,
         type: 'dropdown',
         source: ['是', '否'],
+        className: 'htCenter',
+        renderer: isDirectRenderer,
 
         afterChange: function (this: any, changes: any, source: string) {
           if (source === 'edit' && changes) {
@@ -303,7 +392,13 @@ export function useBatchAddColumns(
       {
         data: 'voyage',
         title: '航程',
-        width: 120,
+        width: 80,
+        type: 'text',
+      },
+      {
+        data: 'vesselVoyage',
+        title: '船名航次',
+        width: 140,
         type: 'text',
       },
       {
@@ -315,10 +410,11 @@ export function useBatchAddColumns(
       {
         data: 'etd',
         title: '开船日期',
-        width: 120,
+        width: 110,
         type: 'date',
         dateFormat: 'YYYY-MM-DD',
         correctFormat: true,
+        defaultDate: undefined,
       },
       {
         data: 'etdDayOfWeek',
@@ -399,16 +495,16 @@ export function useBatchAddColumns(
       },
       {
         data: 'validTimeStart',
-        title: '有效起始日期',
-        width: 130,
+        title: '有效日期',
+        width: 110,
         type: 'date',
         dateFormat: 'YYYY-MM-DD',
         correctFormat: true,
       },
       {
         data: 'validTimeEnd',
-        title: '有效截止日期',
-        width: 130,
+        title: '截止日期',
+        width: 110,
         type: 'date',
         dateFormat: 'YYYY-MM-DD',
         correctFormat: true,
@@ -436,13 +532,14 @@ export function useBatchAddColumns(
           title: `${ctnName}·成本`,
           ctnName,
           ctnPriceRole: 'cost',
-          width: 100,
+          // 约 5 位数字 + 涨跌徽标，不加千分位
+          width: 78,
           type: 'numeric',
           numericFormat: {
             pattern: '0',
-            culture: 'zh-CN',
           },
           className: 'htRight htCtnCost',
+          renderer: createCtnPriceRenderer('cost'),
         });
       }
 
@@ -452,13 +549,13 @@ export function useBatchAddColumns(
           title: `${ctnName}·指导`,
           ctnName,
           ctnPriceRole: 'sug',
-          width: 100,
+          width: 78,
           type: 'numeric',
           numericFormat: {
             pattern: '0',
-            culture: 'zh-CN',
           },
           className: 'htRight htCtnSug',
+          renderer: createCtnPriceRenderer('sug'),
         });
       }
     });
@@ -478,6 +575,74 @@ export function useBatchAddColumns(
     nestedHeaders,
     buildCtnNestedHeaders,
   };
+}
+
+/**
+ * 保证「有效日期 / 截止日期」相邻且同显隐、同固定（列配置不可拆开）。
+ */
+export function ensureValidTimeAdjacent(cols: any[]): any[] {
+  if (!cols?.length) return cols;
+
+  const startIdx = cols.findIndex((c) => c?.data === 'validTimeStart');
+  const endIdx = cols.findIndex((c) => c?.data === 'validTimeEnd');
+  if (startIdx < 0 || endIdx < 0) return cols;
+
+  const start = cols[startIdx];
+  const end = cols[endIdx];
+  const without = cols.filter(
+    (c) => c?.data !== 'validTimeStart' && c?.data !== 'validTimeEnd',
+  );
+  const insertAt = Math.min(startIdx, endIdx);
+  without.splice(insertAt, 0, start, end);
+  return without;
+}
+
+/** 列配置保存前：有效日期对同 visible / fixed，且截止日期紧跟有效日期 */
+export function normalizeValidTimePairConfig<
+  T extends {
+    data: string;
+    visible?: boolean;
+    fixed?: 'left' | 'right' | false;
+    order?: number;
+  },
+>(columns: T[]): T[] {
+  const start = columns.find((c) => c.data === 'validTimeStart');
+  const end = columns.find((c) => c.data === 'validTimeEnd');
+  if (!start || !end) return columns;
+
+  end.visible = start.visible;
+  end.fixed = start.fixed;
+
+  const rest = columns.filter(
+    (c) => c.data !== 'validTimeStart' && c.data !== 'validTimeEnd',
+  );
+  const ordered = [...columns].sort(
+    (a, b) => (a.order ?? 999) - (b.order ?? 999),
+  );
+  const startOrder = ordered.findIndex((c) => c.data === 'validTimeStart');
+  const endOrder = ordered.findIndex((c) => c.data === 'validTimeEnd');
+  const insertAt = Math.min(
+    startOrder >= 0 ? startOrder : 0,
+    endOrder >= 0 ? endOrder : 0,
+  );
+
+  const result: T[] = [];
+  let inserted = false;
+  let cursor = 0;
+  for (const col of rest) {
+    if (!inserted && cursor === insertAt) {
+      result.push(start, end);
+      inserted = true;
+    }
+    result.push(col);
+    cursor += 1;
+  }
+  if (!inserted) result.push(start, end);
+
+  result.forEach((col, index) => {
+    col.order = index;
+  });
+  return result;
 }
 
 /**

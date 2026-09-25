@@ -53,7 +53,7 @@ import {
   FeeCodeSelect,
   MyOrgSelect,
 } from '#/adapter/component';
-import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import {
   addPaymentApplication,
@@ -1012,7 +1012,7 @@ async function loadEditData() {
     orgId.value = detail.orgId ?? undefined;
     orgs.value = detail.orgs ?? [];
     if (detail.orgs?.length) {
-      companyName.value = formatOrgPathLabel(detail.orgs) || '-';
+      companyName.value = formatDetailOrgPathLabel(detail.orgs) || '-';
     }
 
     feeDetailRows.value = mapDetailToFeeRows(detail);

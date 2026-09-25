@@ -201,6 +201,17 @@ watch(
       background-color: #f3f5f8 !important;
     }
 
+    /* 是否直达：是=绿，否=红 */
+    .is-direct-yes {
+      font-weight: 600;
+      color: #52c41a !important;
+    }
+
+    .is-direct-no {
+      font-weight: 600;
+      color: #ff4d4f !important;
+    }
+
     td input[type='checkbox'] {
       width: 15px;
       height: 15px;

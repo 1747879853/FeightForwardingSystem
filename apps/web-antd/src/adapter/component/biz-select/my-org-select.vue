@@ -8,9 +8,10 @@ import { objectOmit } from '@vueuse/core';
 import { Select } from 'ant-design-vue';
 
 import { resolveOrganizationCompany } from '#/api/system/organization-unit';
+import { formatOrgNodeLabel } from '#/composables/use-all-user-org';
 import {
-  getMyDefaultOrgId,
   getMyCompanyOptions,
+  getMyDefaultOrgId,
 } from '#/composables/use-my-org';
 
 defineOptions({ inheritAttrs: false });
@@ -21,7 +22,7 @@ interface Props {
   /** 挂载时若未选值，是否自动填充默认组织，默认 true */
   autoDefault?: boolean;
   /**
-   * 回显兜底：value 必须是部门/直属组织 id，label 为所属公司名。
+   * 回显兜底：value 必须是部门/直属组织 id，label 为所属公司简称（全称兜底）。
    * 只用于关闭态显示，不进入本人下拉候选，提交值仍是该部门 id。
    */
   selectedItems?: Array<{ label: string; value: number | string }>;
@@ -108,7 +109,7 @@ async function ensureEchoOption(orgId?: null | number | string) {
   extraOption.value = {
     class: 'my-org-select-echo-option',
     disabled: true,
-    label: company?.displayName?.trim() || String(orgId),
+    label: formatOrgNodeLabel(company) || String(orgId),
     value: orgId,
   };
 }

@@ -25,6 +25,8 @@ import {
   useBatchAddColumns,
   buildCtnNestedHeaders,
   ensureCtnCostSugAdjacent,
+  ensureValidTimeAdjacent,
+  normalizeValidTimePairConfig,
 } from './modules/composables/useBatchAddColumns';
 import { useBatchAddSettings } from './modules/composables/useBatchAddSettings';
 import { useBatchAddActions } from './modules/composables/useBatchAddActions';
@@ -41,6 +43,8 @@ import { useCtnSugPriceMarkup } from './modules/composables/useCtnSugPriceMarkup
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
+import { fetchLatestRouteHistory } from './freight-price-change';
+import type { BatchRouteFieldsChangedContext } from './modules/composables/useBatchAddSettings';
 
 // 导入 store
 import { useBaseStore } from '#/store/base';
@@ -80,6 +84,9 @@ const {
   copySelectedRows,
   validateForm,
   prepareSubmitData,
+  refreshTenantDefaults,
+  setTenantDefaultLabelResolvers,
+  tenantDefaults,
   reset,
 } = useBatchAddData();
 
@@ -262,8 +269,9 @@ async function handleAIData(aiDataList: any[]) {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage || '',
+      vesselVoyage: row.vesselVoyage || '',
       contractNo: row.contractNo || '',
-      etd: row.etd || '',
+      etd: row.etd ? dayjs(row.etd).format('YYYY-MM-DD') : '',
       closeDocTime: row.closeDocTime || '',
       closingTime: row.closingTime || '',
       etdDayOfWeek: row.etdDayOfWeek,
@@ -281,6 +289,8 @@ async function handleAIData(aiDataList: any[]) {
       currencyId: currencyName, // ✅ 使用名称
       bookingAgentId: bookingAgentName, // ✅ 使用名称
       seFreiPriceCtns: row.seFreiPriceCtns || [],
+      // 列表涨跌徽标带到批量更新页继续展示
+      _priceChange: row._priceChange,
     };
 
     // ⚠️ 关键修复：为每个箱型设置动态字段值（Handsontable 使用这些字段）
@@ -338,6 +348,7 @@ const {
   ensurePortLabelsByIds,
   clearPortCache,
   getCachedPortLabel,
+  rememberPort,
 } = usePortRemoteAutocomplete();
 
 const {
@@ -347,14 +358,17 @@ const {
   ensureCarrierLabelsByIds,
   clearCarrierCache,
   getCachedCarrierLabel,
+  rememberCarrier,
 } = useCarrierRemoteAutocomplete();
 
 const {
   bookingAgentLabelToId,
   createBookingAgentSource,
   resolveBookingAgentLabelFromRow,
+  ensureBookingAgentLabelsByIds,
   clearBookingAgentCache,
   getCachedBookingAgentLabel,
+  rememberBookingAgent,
 } = useBookingAgentRemoteAutocomplete();
 
 interface BatchAddTableCoreInstance {
@@ -371,9 +385,12 @@ const coreTableRef = ref<BatchAddTableCoreInstance | null>(null);
 
 /** 按用户列配置重排/过滤后的列与左右固定数 */
 function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
+  const pairColumns = (cols: any[]) =>
+    ensureValidTimeAdjacent(ensureCtnCostSugAdjacent(cols));
+
   if (userColumnConfig.value.size === 0) {
     return {
-      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      finalColumns: pairColumns(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -406,16 +423,10 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
       return orderA - orderB;
     });
 
-  // 各组内先按用户 order，再强制成本/指导成对相邻（避免持久化 order 错位导致表头无法合并）
-  const sortedLeftFixed = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(leftFixedColumns),
-  );
-  const sortedNormal = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(normalColumns),
-  );
-  const sortedRightFixed = ensureCtnCostSugAdjacent(
-    sortColumnsByOrder(rightFixedColumns),
-  );
+  // 各组内先按用户 order，再强制成本/指导、有效日期对相邻
+  const sortedLeftFixed = pairColumns(sortColumnsByOrder(leftFixedColumns));
+  const sortedNormal = pairColumns(sortColumnsByOrder(normalColumns));
+  const sortedRightFixed = pairColumns(sortColumnsByOrder(rightFixedColumns));
 
   const finalColumns = [
     ...sortedLeftFixed,
@@ -426,7 +437,7 @@ function resolveConfiguredColumns(sourceColumns: any[] = hotColumns.value) {
   // 配置异常导致无可见列时回退默认，避免整表空白
   if (finalColumns.length === 0) {
     return {
-      finalColumns: ensureCtnCostSugAdjacent(sourceColumns),
+      finalColumns: pairColumns(sourceColumns),
       fixedColumnsLeft: 0,
       fixedColumnsRight: 0,
     };
@@ -698,6 +709,64 @@ const { hotColumns, nestedHeaders } = useBatchAddColumns(
   bookingAgentSource,
 );
 
+function isBlankCell(value: unknown) {
+  return value === undefined || value === null || value === '';
+}
+
+function setHotIfBlank(
+  hotInstance: any,
+  rowIndex: number,
+  prop: string,
+  value: unknown,
+) {
+  const rowData = dataSource.value[rowIndex];
+  if (!rowData || !isBlankCell(rowData[prop])) return;
+  if (value === undefined || value === null || value === '') return;
+  const col = hotInstance.propToCol(prop);
+  if (typeof col !== 'number' || col < 0) return;
+  hotInstance.setDataAtCell(rowIndex, col, value, 'routeHistory');
+  rowData[prop] = value;
+}
+
+/** 起运港+目的港+是否直达齐了以后，带出历史 DEM/DET/免箱使/航程（中转还带中转港） */
+async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
+  if (isEditMode.value) return;
+  const { hotInstance, rowIndex, rowData } = ctx;
+  const polId = Number(labelToIdMap.value.ports.get(String(rowData.polId)));
+  const podId = Number(labelToIdMap.value.ports.get(String(rowData.podId)));
+  const isDirect =
+    rowData.isDirect === '是' || rowData.isDirect === true
+      ? true
+      : rowData.isDirect === '否' || rowData.isDirect === false
+        ? false
+        : undefined;
+  if (!polId || !podId || isDirect === undefined) return;
+
+  try {
+    const history = await fetchLatestRouteHistory({ polId, podId, isDirect });
+    if (!history) return;
+
+    setHotIfBlank(hotInstance, rowIndex, 'poddem', history.poddem);
+    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
+    setHotIfBlank(hotInstance, rowIndex, 'podFreeDays', history.podFreeDays);
+    setHotIfBlank(hotInstance, rowIndex, 'voyage', history.voyage || undefined);
+
+    if (!isDirect) {
+      await ensurePortLabelsByIds([history.poT1Id, history.poT2Id]);
+      const pot1Label =
+        getCachedPortLabel(history.poT1Id) ||
+        getPortName(history.poT1Id, portIdToLabel.value);
+      const pot2Label =
+        getCachedPortLabel(history.poT2Id) ||
+        getPortName(history.poT2Id, portIdToLabel.value);
+      setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label || undefined);
+      setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label || undefined);
+    }
+  } catch {
+    // 带出失败不打断录入
+  }
+}
+
 const { hotSettings: rawHotSettings } = useBatchAddSettings(
   dataSource,
   selectedRowKeys,
@@ -711,6 +780,7 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
   handleOpenDropdown,
   getSortIcon,
   nestedHeaders,
+  onRouteFieldsChanged,
 );
 
 // ==================== 列配置管理 ====================
@@ -748,17 +818,18 @@ const currentColumnConfig = computed(() => {
 
 // 保存列配置（本地应用 + UserSetting 持久化）
 const saveColumnConfig = async (config: any[]) => {
-  const visibleCount = config.filter((col) => col.visible).length;
+  const normalized = normalizeValidTimePairConfig(config);
+  const visibleCount = normalized.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
     return;
   }
 
-  applyColumnConfig(config);
+  applyColumnConfig(normalized);
   columnConfigVisible.value = false;
 
   try {
-    await persistColumnConfig(config);
+    await persistColumnConfig(normalized);
     message.success('列配置已保存');
   } catch (error) {
     console.error('列配置持久化失败:', error);
@@ -861,8 +932,40 @@ async function initPage() {
   clearCarrierCache();
   clearBookingAgentCache();
 
-  if (allCtnOptions.value.length === 0) {
-    await initDropdownSources(defaultCurrencyId);
+  // 并行：个人默认值 / 下拉预载 / 列配置，避免串行拖慢首行
+  const needDropdownInit = allCtnOptions.value.length === 0;
+  const [persistedResult] = await Promise.all([
+    loadPersistedColumnConfig()
+      .then((persisted) => ({ ok: true as const, persisted }))
+      .catch((error) => {
+        console.error('加载列配置失败:', error);
+        return { ok: false as const, persisted: null };
+      }),
+    isEditMode.value ? Promise.resolve() : refreshTenantDefaults(),
+    needDropdownInit
+      ? initDropdownSources(defaultCurrencyId)
+      : Promise.resolve(),
+  ]);
+
+  if (!isEditMode.value) {
+    const defaults = tenantDefaults.value;
+    // 配置里已存 Label：同步写入远程缓存，提交时可 label→id，且不阻塞首行
+    if (defaults.carrierId != null && defaults.carrierLabel) {
+      rememberCarrier(defaults.carrierId, defaults.carrierLabel);
+    }
+    if (defaults.polId != null && defaults.polLabel) {
+      rememberPort(defaults.polId, defaults.polLabel);
+    }
+    if (defaults.bookingAgentId && defaults.bookingAgentLabel) {
+      rememberBookingAgent(defaults.bookingAgentId, defaults.bookingAgentLabel);
+    }
+    setTenantDefaultLabelResolvers({
+      carrier: (id) => getCachedCarrierLabel(id) || getCarrierName(id),
+      pol: (id) =>
+        getCachedPortLabel(id) || getPortName(id, portIdToLabel.value),
+      currency: (id) => getCurrencyName(id),
+      bookingAgent: (id) => getCachedBookingAgentLabel(id) || getClientName(id),
+    });
   }
 
   if (addedCtnTypes.value.length === 0 && allCtnOptions.value.length > 0) {
@@ -876,24 +979,18 @@ async function initPage() {
     addedCtnTypes.value = defaultCtns;
   }
 
-  // 回放用户列配置；无配置时套用产品默认显隐白名单
-  try {
-    const persisted = await loadPersistedColumnConfig();
-    if (persisted && persisted.size > 0) {
-      userColumnConfig.value = persisted;
-    } else {
-      userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
-        hotColumns.value,
-      );
-    }
-  } catch (error) {
-    console.error('加载列配置失败:', error);
+  if (
+    persistedResult.ok &&
+    persistedResult.persisted &&
+    persistedResult.persisted.size > 0
+  ) {
+    userColumnConfig.value = persistedResult.persisted;
+  } else {
     userColumnConfig.value = buildFreightRateBatchDefaultColumnConfig(
       hotColumns.value,
     );
   }
 
-  await nextTick();
   await nextTick();
 
   // 箱型列可能刚加入，补齐默认显隐（已有用户配置的键不覆盖）
@@ -910,6 +1007,84 @@ async function initPage() {
   ensureMissingColumnConfig(hotColumns.value);
 
   syncHotTable();
+
+  // 旧配置缺 Label 时后台补齐，不挡首屏；补完后刷新首行显示名
+  if (!isEditMode.value) {
+    void hydrateLegacyTenantDefaultLabels();
+  }
+}
+
+/** 兼容仅存 id 的旧 DefaultFreightRate：后台补 Label 并回写首行 */
+async function hydrateLegacyTenantDefaultLabels() {
+  const defaults = tenantDefaults.value;
+  const needCarrier = defaults.carrierId != null && !defaults.carrierLabel;
+  const needPol = defaults.polId != null && !defaults.polLabel;
+  const needAgent = !!defaults.bookingAgentId && !defaults.bookingAgentLabel;
+  if (!needCarrier && !needPol && !needAgent) return;
+
+  await Promise.all([
+    needCarrier
+      ? ensureCarrierLabelsByIds([defaults.carrierId])
+      : Promise.resolve(),
+    needPol ? ensurePortLabelsByIds([defaults.polId]) : Promise.resolve(),
+    needAgent
+      ? ensureBookingAgentLabelsByIds([defaults.bookingAgentId])
+      : Promise.resolve(),
+  ]);
+
+  if (needCarrier && defaults.carrierId != null) {
+    const label =
+      getCachedCarrierLabel(defaults.carrierId) ||
+      getCarrierName(defaults.carrierId);
+    if (label && label !== '-' && label !== String(defaults.carrierId)) {
+      defaults.carrierLabel = label;
+    }
+  }
+  if (needPol && defaults.polId != null) {
+    const label =
+      getCachedPortLabel(defaults.polId) ||
+      getPortName(defaults.polId, portIdToLabel.value);
+    if (label && label !== '-' && label !== String(defaults.polId)) {
+      defaults.polLabel = label;
+    }
+  }
+  if (needAgent && defaults.bookingAgentId) {
+    const label =
+      getCachedBookingAgentLabel(defaults.bookingAgentId) ||
+      getClientName(defaults.bookingAgentId);
+    if (label && label !== '-' && label !== String(defaults.bookingAgentId)) {
+      defaults.bookingAgentLabel = label;
+    }
+  }
+
+  // 刷新已生成的空行显示名（仅当单元格仍是裸 id）
+  if (dataSource.value.length === 0) return;
+  let changed = false;
+  const nextRows = dataSource.value.map((row) => {
+    const next = { ...row };
+    if (
+      defaults.carrierLabel &&
+      String(next.carrierId) === String(defaults.carrierId)
+    ) {
+      next.carrierId = defaults.carrierLabel;
+      changed = true;
+    }
+    if (defaults.polLabel && String(next.polId) === String(defaults.polId)) {
+      next.polId = defaults.polLabel;
+      changed = true;
+    }
+    if (
+      defaults.bookingAgentLabel &&
+      String(next.bookingAgentId) === String(defaults.bookingAgentId)
+    ) {
+      next.bookingAgentId = defaults.bookingAgentLabel;
+      changed = true;
+    }
+    return next;
+  });
+  if (!changed) return;
+  dataSource.value = nextRows;
+  syncHotTable({ data: nextRows });
 }
 
 onMounted(() => {
@@ -966,6 +1141,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage || undefined,
+        vesselVoyage: row.vesselVoyage || undefined,
         contractNo: row.contractNo || undefined,
         validTimeStart: row.validTimeStart || undefined,
         validTimeEnd: row.validTimeEnd || undefined,
@@ -1609,5 +1785,53 @@ watch(
 .htCtnSug {
   font-weight: 600;
   color: #cf1322 !important;
+}
+
+/* 直达列：是绿否红 */
+.handsontable td.ht-is-direct--yes {
+  font-weight: 600;
+  color: #389e0d !important;
+  background: #f6ffed !important;
+}
+
+.handsontable td.ht-is-direct--no {
+  font-weight: 600;
+  color: #cf1322 !important;
+  background: #fff1f0 !important;
+}
+
+.handsontable td.ht-is-direct--yes .htAutocompleteArrow,
+.handsontable td.ht-is-direct--no .htAutocompleteArrow {
+  color: inherit !important;
+}
+
+/* 箱型价单元格：数字 + 右上角涨跌徽标 */
+.handsontable td.ht-ctn-price--delta {
+  position: relative;
+  padding-right: 26px !important;
+  overflow: visible;
+}
+
+.ht-price-delta {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  z-index: 1;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.ht-price-delta--up {
+  background: #f5222d;
+}
+
+.ht-price-delta--down {
+  background: #52c41a;
 }
 </style>

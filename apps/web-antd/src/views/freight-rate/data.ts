@@ -18,7 +18,6 @@ export const FREIGHT_RATE_BATCH_ADD_TABLE_ID = 'FreightRateBatchAdd';
  */
 export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'validTimeRange',
-  'isValid',
   'carrier.enName',
   'pol.portName',
   'country.countryName',
@@ -35,11 +34,12 @@ export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
 
 /**
  * 批量新增/编辑 Handsontable 默认可见列（按 data 字段）。
- * `ctn_*` / `ctnSug_*` 箱型列始终默认可见；列表专有列（国家/是否有效/录入人等）此处不存在。
+ * `ctn_*` / `ctnSug_*` 箱型列始终默认可见；列表专有列（国家/录入人等）此处不存在。
  * 目的港免箱使：批量页拆为 DEM / DET / 免箱使期三列，均默认显示。
  */
 export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'validTimeStart',
+  'validTimeEnd',
   'carrierId',
   'polId',
   'podId',
@@ -50,6 +50,7 @@ export const FREIGHT_RATE_BATCH_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'podFreeDays',
   'poddet',
   'voyage',
+  'vesselVoyage',
   'remark',
 ]);
 
@@ -522,7 +523,7 @@ export function useColumns(
       // 集合展开的展示列没有对应的后端排序字段。
       sortable: false,
       title: ctnName,
-      width: 160,
+      width: 180,
       align: 'left',
       showOverflow: false,
       slots: { default: 'ctnEditableCell' },
@@ -763,13 +764,6 @@ export function useColumns(
       }),
     },
     {
-      field: 'isValid',
-      title: $t('seaExport.freightRate.isValid'),
-      width: 100,
-      align: 'center',
-      slots: { default: 'isValid' },
-    },
-    {
       field: 'polFreeDays',
       title: '起运港免用箱',
       width: 110,
@@ -866,7 +860,6 @@ export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
   closeDocTime: 'SeFreiPriceDays',
   closingTime: 'SeFreiPriceDays',
   validTimeRange: 'ValidTimeStart',
-  isValid: 'IsValid',
   polFreeDays: 'PolFreeDays',
   podFreeDaysCombined: 'PodFreeDays',
   remark: 'Remark',
@@ -1014,7 +1007,9 @@ export function mergeFreightRateListPersistedColumns(
     // 配置完全不认识的列：保留 useColumns 默认 visible
 
     if (Object.prototype.hasOwnProperty.call(fixedMap, key)) {
-      const fixed = fixedMap[key];
+      const fixed = String(fixedMap[key] ?? '')
+        .trim()
+        .toLowerCase();
       cloned.fixed = fixed === 'left' || fixed === 'right' ? fixed : undefined;
     }
 

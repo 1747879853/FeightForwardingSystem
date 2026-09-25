@@ -32,8 +32,9 @@ import {
   Dropdown,
   Menu,
   Tooltip,
-  Tag,
 } from 'ant-design-vue';
+
+const DropdownButton = Dropdown.Button;
 
 import {
   deleteSeFreiPrice,
@@ -50,7 +51,9 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
 import FreightRateForm from './modules/freight-rate-form.vue';
+import QuoteModal from './modules/quote-modal.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
+import DefaultFreightRateConfigModal from './modules/default-freight-rate-config-modal.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { setPendingFreightBatchRows } from './pending-batch-rows';
 import {
@@ -62,6 +65,11 @@ import {
   getSurchargeFeeNames,
   getSurchargeFeeTooltip,
 } from './data';
+import {
+  fetchAllSeFreiPriceForExport,
+  writeFreightRateExcelFile,
+} from './modules/composables/export-freight-rate-excel';
+import { enrichFreightListPriceChanges } from './freight-price-change';
 
 // ==================== 权限 ====================
 
@@ -79,6 +87,11 @@ const hasEditPermission = computed(() =>
 const hasDeletePermission = computed(() =>
   accessCodes.value.includes('Admin.SeFreiPrice.Delete'),
 );
+/** 导出 Excel：有新增或编辑权限即可 */
+const hasExportPermission = computed(
+  () => hasAddPermission.value || hasEditPermission.value,
+);
+const exporting = ref(false);
 
 // ==================== 列表状态 ====================
 
@@ -103,6 +116,16 @@ const [EditFormModal, editFormModalApi] = useVbenModal({
 
 const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   connectedComponent: SyncUpdateForm,
+  destroyOnClose: true,
+});
+
+const [DefaultConfigModal, defaultConfigModalApi] = useVbenModal({
+  connectedComponent: DefaultFreightRateConfigModal,
+  destroyOnClose: true,
+});
+
+const [QuoteFormModal, quoteModalApi] = useVbenModal({
+  connectedComponent: QuoteModal,
   destroyOnClose: true,
 });
 
@@ -199,9 +222,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
             'currency.code': 'CurrencyId',
             isDirect: 'IsDirect',
           },
-          afterFetch: (result: any) => {
-            tableData.value = result.items || [];
-            return result;
+          afterFetch: async (result: any) => {
+            const items = result.items || [];
+            const enriched = await enrichFreightListPriceChanges(items);
+            tableData.value = enriched;
+            return { ...result, items: enriched };
           },
         }),
       },
@@ -210,6 +235,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       keyField: 'id',
       isHover: true,
     },
+    rowClassName: ({ row }: { row: SeFreiPriceOutDto }) =>
+      isFreightRateExpired(row) ? 'freight-rate-expired-row' : '',
     checkboxConfig: {
       highlight: true,
       reserve: true,
@@ -230,6 +257,27 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
 
 /** 上次已挂载的箱型列签名；null 表示尚未按数据换过列 */
 let lastFreightRateCtnColumnSignature: string | null = null;
+/** 抵消 loadColumnConfig 与动态换列的竞态：后者先完成时会被前者用无箱型列覆盖 */
+let freightRateColumnApplyTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function applyFreightRateDynamicColumns(data: SeFreiPriceOutDto[]) {
+  const tableConfigStore = useTableConfigStore();
+  await tableConfigStore.loadTableConfigsOnce();
+  const persisted = tableConfigStore.getTableConfigByName(
+    `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
+  );
+  const mergedColumns = mergeFreightRateListPersistedColumns(
+    useColumns(data),
+    persisted?.setting,
+  );
+
+  gridApi.setGridOptions({
+    columns: mergedColumns,
+  });
+  await nextTick();
+  // 动态换列后显式 refresh，确保 fixed 冻结态落到运行时列
+  gridApi.grid?.refreshColumn?.();
+}
 
 watch(
   tableData,
@@ -248,19 +296,17 @@ watch(
     }
     lastFreightRateCtnColumnSignature = nextCtnSignature;
 
-    const tableConfigStore = useTableConfigStore();
-    await tableConfigStore.loadTableConfigsOnce();
-    const persisted = tableConfigStore.getTableConfigByName(
-      `table_config_${FREIGHT_RATE_LIST_TABLE_ID}`,
-    );
-    const mergedColumns = mergeFreightRateListPersistedColumns(
-      nextColumns,
-      persisted?.setting,
-    );
+    if (freightRateColumnApplyTimer !== undefined) {
+      clearTimeout(freightRateColumnApplyTimer);
+      freightRateColumnApplyTimer = undefined;
+    }
 
-    gridApi.setGridOptions({
-      columns: mergedColumns,
-    });
+    await applyFreightRateDynamicColumns(newData);
+    // loadColumnConfig 常在首查之后才结束并 setGridOptions；再补一次合并回放固定/显隐
+    freightRateColumnApplyTimer = setTimeout(() => {
+      freightRateColumnApplyTimer = undefined;
+      void applyFreightRateDynamicColumns(newData);
+    }, 120);
   },
   { deep: true },
 );
@@ -280,6 +326,47 @@ useRefreshListOnFormReturn('FreightRateList', onRefresh);
 
 function onCreate() {
   editFormModalApi.setData({ permission: hasAddPermission.value }).open();
+}
+
+function onOpenDefaultConfig() {
+  defaultConfigModalApi.open();
+}
+
+async function onExportExcel() {
+  if (!hasExportPermission.value) {
+    message.warning('无导出权限');
+    return;
+  }
+  if (exporting.value) return;
+
+  exporting.value = true;
+  try {
+    const formValues =
+      (await gridApi.formApi?.getValues?.()) || ({} as Record<string, any>);
+    const sortColumns = gridApi.grid?.getSortColumns?.() || [];
+    const firstSort = sortColumns[0];
+    const sortParams = firstSort?.field
+      ? {
+          field: firstSort.field,
+          order: firstSort.order === 'asc' ? 'asc' : 'desc',
+        }
+      : { field: 'creationTime', order: 'desc' as const };
+
+    const queryParams = mapFreightRateParams(formValues, sortParams);
+    const rows = await fetchAllSeFreiPriceForExport(queryParams);
+    if (rows.length === 0) {
+      message.warning('没有可导出的数据');
+      return;
+    }
+
+    await writeFreightRateExcelFile(rows);
+    message.success(`已导出 ${rows.length} 条运价`);
+  } catch (error) {
+    console.error('运价导出失败:', error);
+    message.error('导出失败，请稍后重试');
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function onEditByDblClick(row: SeFreiPriceOutDto) {
@@ -303,6 +390,22 @@ async function onCopy() {
       permission: hasAddPermission.value,
     })
     .open();
+}
+
+/** 生成报价：只能选中一条，弹出默认可复制运价文案 */
+function onGenerateQuote() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning($t('seaExport.freightRate.quoteSelectOne'));
+    return;
+  }
+  if (records.length > 1) {
+    message.warning($t('seaExport.freightRate.quoteSelectOnlyOne'));
+    return;
+  }
+  const row = records[0];
+  if (!row) return;
+  quoteModalApi.setData({ row }).open();
 }
 
 /** 工具栏「更新」：Handsontable 批量编辑选中行 */
@@ -337,6 +440,7 @@ function onBatchUpdate() {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage || '',
+      vesselVoyage: (row as any).vesselVoyage || '',
       contractNo: row.contractNo || '',
       etd: dayData?.etd || '',
       closeDocTime: dayData?.closeDocTime || '',
@@ -362,6 +466,7 @@ function onBatchUpdate() {
           ? { sugPrice: ctn.sugPrice }
           : {}),
       })),
+      _priceChange: (row as any)._priceChange,
     };
   });
 
@@ -419,38 +524,18 @@ function onBatchDelete() {
   });
 }
 
-// ==================== 有效状态展示 ====================
+// ==================== 过期行样式 ====================
 
 function startOfLocalDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function getIsValidText(row: SeFreiPriceOutDto): string {
+/** 有效截止日期早于今天本地日 → 已过期；未生效 / 生效不加样式 */
+function isFreightRateExpired(row: SeFreiPriceOutDto): boolean {
+  if (!row.validTimeEnd) return false;
   const today = startOfLocalDay(new Date());
-
-  if (row.validTimeStart) {
-    const startDay = startOfLocalDay(new Date(row.validTimeStart));
-    if (startDay > today) return '未生效';
-  }
-
-  if (row.validTimeEnd) {
-    const endDay = startOfLocalDay(new Date(row.validTimeEnd));
-    if (endDay < today) return '已过期';
-  }
-
-  if (!row.isValid) return '无效';
-  return '已生效';
-}
-
-function getIsValidColor(row: SeFreiPriceOutDto): string {
-  switch (getIsValidText(row)) {
-    case '已生效':
-      return '#389e0d';
-    case '未生效':
-      return '#faad14';
-    default:
-      return '#cf1322';
-  }
+  const endDay = startOfLocalDay(new Date(row.validTimeEnd));
+  return endDay < today;
 }
 
 // ==================== 航线 Tab ====================
@@ -732,6 +817,10 @@ onUnmounted(() => {
   if (laneTabScrollIdleTimer) {
     window.clearTimeout(laneTabScrollIdleTimer);
   }
+  if (freightRateColumnApplyTimer !== undefined) {
+    clearTimeout(freightRateColumnApplyTimer);
+    freightRateColumnApplyTimer = undefined;
+  }
   stopLaneTabScrollAnimation();
   laneTabResizeObserver?.disconnect();
 });
@@ -830,14 +919,6 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <template #isValid="{ row }">
-        <div class="flex items-center justify-center">
-          <Tag :color="getIsValidColor(row)">
-            {{ getIsValidText(row) }}
-          </Tag>
-        </div>
-      </template>
-
       <template #ctnEditableCell="{ row, column }">
         <CtnEditableCell :row="row" :column="column" />
       </template>
@@ -911,33 +992,75 @@ onUnmounted(() => {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
-          <Button
+          <Button @click="onGenerateQuote">
+            <IconifyIcon icon="mdi:file-document-outline" class="size-5" />
+            {{ $t('seaExport.freightRate.generateQuote') }}
+          </Button>
+
+          <DropdownButton
             type="primary"
             :disabled="!hasAddPermission"
+            :trigger="['hover']"
             @click="onCreate"
           >
             <Plus class="size-5" />
             {{ $t('ui.actionTitle.create') }}
-          </Button>
+            <template #overlay>
+              <Menu>
+                <Menu.Item
+                  key="copy"
+                  :disabled="!hasAddPermission"
+                  @click="onCopy"
+                >
+                  <Copy class="mr-1 inline-block size-4 align-middle" />
+                  <span class="align-middle">{{
+                    $t('seaExport.freightRate.copy')
+                  }}</span>
+                </Menu.Item>
+              </Menu>
+            </template>
+          </DropdownButton>
 
-          <Button
+          <DropdownButton
             type="primary"
             ghost
-            :disabled="!hasAddPermission"
+            :disabled="!hasAddPermission && !hasEditPermission"
+            :trigger="['hover']"
             @click="onAIBatchAdd"
           >
             <IconifyIcon icon="mdi:robot-outline" class="size-5" />
             AI批量新增
+            <template #overlay>
+              <Menu>
+                <Menu.Item
+                  key="update"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchUpdate"
+                >
+                  <IconifyIcon
+                    icon="mdi:square-edit-outline"
+                    class="mr-1 inline-block size-4 align-middle"
+                  />
+                  <span class="align-middle">{{
+                    $t('seaExport.freightRate.update')
+                  }}</span>
+                </Menu.Item>
+              </Menu>
+            </template>
+          </DropdownButton>
+
+          <Button
+            :disabled="!hasExportPermission"
+            :loading="exporting"
+            @click="onExportExcel"
+          >
+            <IconifyIcon icon="mdi:file-excel-outline" class="size-5" />
+            {{ $t('seaExport.freightRate.exportExcel') }}
           </Button>
 
-          <Button :disabled="!hasEditPermission" @click="onBatchUpdate">
-            <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
-            {{ $t('seaExport.freightRate.update') }}
-          </Button>
-
-          <Button :disabled="!hasAddPermission" @click="onCopy">
-            <Copy class="size-5" />
-            {{ $t('seaExport.freightRate.copy') }}
+          <Button @click="onOpenDefaultConfig">
+            <IconifyIcon icon="mdi:cog-outline" class="size-5" />
+            默认值配置
           </Button>
 
           <Dropdown
@@ -990,6 +1113,8 @@ onUnmounted(() => {
 
     <EditFormModal @success="onRefresh" />
     <SyncUpdateModal @success="onRefresh" />
+    <DefaultConfigModal />
+    <QuoteFormModal />
 
     <FreightRateAiUploadModal
       v-model:open="aiExtractModalOpen"
@@ -1087,5 +1212,13 @@ onUnmounted(() => {
   height: 24px;
   object-fit: contain;
   border-radius: 2px;
+}
+
+:deep(.freight-rate-expired-row) {
+  color: #cf1322;
+}
+
+:deep(.freight-rate-expired-row > td) {
+  color: #cf1322;
 }
 </style>

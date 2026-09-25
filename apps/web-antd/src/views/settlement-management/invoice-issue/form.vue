@@ -34,6 +34,8 @@ import {
   queryRedResult,
 } from '#/api/Invoice/InvoiceIssue';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { getMyOrgPath } from '#/composables/use-my-org';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 // 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
@@ -115,9 +117,14 @@ const isRedInvolved = computed(() => {
   return !!redStatus && redStatus !== 0;
 });
 
+/** 归属组织回显：简称优先；销售方名称仍用 applicantCompanyName 全称 */
 const orgSelectEchoItems = computed(() => {
-  if (!formData.value.orgId || !applicantCompanyName.value) return [];
-  return [{ value: formData.value.orgId, label: applicantCompanyName.value }];
+  if (!formData.value.orgId) return [];
+  const label =
+    formatOrgPathLabel(getMyOrgPath(formData.value.orgId)) ||
+    applicantCompanyName.value;
+  if (!label) return [];
+  return [{ value: formData.value.orgId, label }];
 });
 
 // ✅ 新增：发票是否已通过接口开出——开票完成(2) 或签章失败(24)。

@@ -10,6 +10,7 @@ import {
   removeApplicationsFromInvoiceIssue,
 } from '#/api/Invoice/InvoiceIssue';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
+import { formatCompanySimpleLabel } from '#/composables/use-my-org';
 import { mergeInvoiceGoodsLines } from '#/views/_shared/invoice-goods';
 
 interface Props {
@@ -220,7 +221,7 @@ function transformToTreeData(applications: any[]): any[] {
       rowKey: String(app.id), // NestedDataTable 需要的 rowKey
       parentId: null,
       // 一级字段
-      companyName: app.company.displayName || '-',
+      companyName: formatCompanySimpleLabel(app.company) || '-',
       orgId: app.orgId,
       applicationNo: app.applicationNo || '-',
       header: app.clientInvoiceInfo?.header || '-',

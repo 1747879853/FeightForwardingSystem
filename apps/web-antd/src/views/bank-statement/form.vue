@@ -31,7 +31,7 @@ import {
   ClientBankAccountSelect,
 } from '#/adapter/component';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
-import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import {
   BankStatementAdminApi,
@@ -322,7 +322,7 @@ async function loadEditData() {
     writeOffStatus.value = detail.writeOffStatus;
     settledAmount.value = detail.settledAmount ?? 0;
     creatorUserName.value = detail.creatorUserName || '';
-    orgDisplayName.value = formatOrgPathLabel(detail.orgs) || '-';
+    orgDisplayName.value = formatDetailOrgPathLabel(detail.orgs) || '-';
     orgBankAccountDisplay.value = formatBankLabel(detail.orgBankAccount);
     clientInvoiceBankDisplay.value = formatBankLabel(detail.clientInvoiceBank);
     applySavedBankStatementSnapshot(detail);

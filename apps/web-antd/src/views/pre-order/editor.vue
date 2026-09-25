@@ -47,7 +47,7 @@ import {
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { resolveOrganizationLocalCurrency } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
-import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { formatDetailOrgPathLabel } from '#/composables/use-my-org';
 import { useOrderUserRoles } from '#/composables/use-order-user-roles';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -1001,7 +1001,12 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   const detailOrgs = dto.orgs ?? [];
   const detailOrgLast = detailOrgs.at(-1);
   headerOrgSelectedItems.value = detailOrgLast?.id
-    ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
+    ? [
+        {
+          value: detailOrgLast.id,
+          label: formatDetailOrgPathLabel(detailOrgs),
+        },
+      ]
     : [];
   headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
   headerBlType.value =

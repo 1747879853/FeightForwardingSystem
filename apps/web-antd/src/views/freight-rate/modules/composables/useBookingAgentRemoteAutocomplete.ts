@@ -1,4 +1,5 @@
 import { getClientPagedList } from '#/api/common/client';
+import { getClientDetail } from '#/api/sea-export/client-admin';
 
 import { useRemoteAutocomplete } from './useRemoteAutocomplete';
 
@@ -78,6 +79,35 @@ export function useBookingAgentRemoteAutocomplete(options?: {
     return remote.getCachedLabel(row.bookingAgentId);
   }
 
+  async function ensureBookingAgentLabelsByIds(
+    ids: Array<number | string | null | undefined>,
+  ) {
+    const missing = [
+      ...new Set(
+        ids
+          .filter((id) => id !== undefined && id !== null && id !== '')
+          .map((id) => String(id))
+          .filter((id) => !remote.idToLabel.value.has(id)),
+      ),
+    ];
+    if (missing.length === 0) return;
+
+    await Promise.all(
+      missing.map(async (id) => {
+        try {
+          // 按 id 拉详情；keyword=雪花 id 的分页搜索通常对不上
+          const detail = await getClientDetail(id);
+          rememberBookingAgentDto(detail);
+        } catch (error) {
+          console.warn(
+            `[booking-agent autocomplete] resolve failed for ${id}:`,
+            error,
+          );
+        }
+      }),
+    );
+  }
+
   return {
     bookingAgentIdToLabel: remote.idToLabel,
     bookingAgentLabelToId: remote.labelToId,
@@ -86,6 +116,7 @@ export function useBookingAgentRemoteAutocomplete(options?: {
     getCachedBookingAgentLabel: remote.getCachedLabel,
     createBookingAgentSource: remote.createSource,
     resolveBookingAgentLabelFromRow,
+    ensureBookingAgentLabelsByIds,
     clearBookingAgentCache: remote.clearCache,
     formatBookingAgentLabel,
   };

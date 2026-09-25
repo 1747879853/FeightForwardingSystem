@@ -5,6 +5,12 @@ import type {
 } from '#/api/sea-export/freight-rate-admin';
 import { message } from 'ant-design-vue';
 
+import {
+  applyDefaultFreightRateValue,
+  loadDefaultFreightRateConfig,
+  type DefaultFreightRateValue,
+} from './use-default-freight-rate-config';
+
 /**
  * 批量新增运价 - 数据管理 Composable
  */
@@ -22,6 +28,21 @@ export function useBatchAddData() {
   // USD 币别 ID（默认值）
   const defaultCurrencyId = ref<number | string | undefined>('USD');
 
+  /** 个人运价新增默认值（批量页打开时拉取一次） */
+  const tenantDefaults = ref<DefaultFreightRateValue>({});
+
+  /**
+   * Handsontable 下拉存的是中文名，不是 id。
+   * 由批量页在拉齐下拉缓存后注入解析函数。
+   */
+  type TenantDefaultLabelResolvers = {
+    bookingAgent?: (id: number | string) => string;
+    carrier?: (id: number | string) => string;
+    currency?: (id: number | string) => string;
+    pol?: (id: number | string) => string;
+  };
+  const tenantDefaultLabelResolvers = ref<TenantDefaultLabelResolvers>({});
+
   // 行 key 计数器
   let rowKeyCounter = 0;
 
@@ -32,11 +53,33 @@ export function useBatchAddData() {
     return `freight_${Date.now()}_${++rowKeyCounter}`;
   }
 
+  async function refreshTenantDefaults() {
+    const { value } = await loadDefaultFreightRateConfig();
+    tenantDefaults.value = value;
+  }
+
+  function setTenantDefaultLabelResolvers(
+    resolvers: TenantDefaultLabelResolvers,
+  ) {
+    tenantDefaultLabelResolvers.value = resolvers;
+  }
+
+  function resolveTenantDefaultLabel(
+    id: null | number | string | undefined,
+    resolve?: (id: number | string) => string,
+  ): null | string {
+    if (id === undefined || id === null || id === '') return null;
+    if (!resolve) return null;
+    const label = String(resolve(id) ?? '').trim();
+    if (!label || label === '-' || label === String(id)) return null;
+    return label;
+  }
+
   /**
    * 创建默认行数据
    */
   function createDefaultRow(isCopied: boolean = false) {
-    const row: any = {
+    const base: any = {
       _rowKey: generateRowKey(),
       _isCopied: isCopied,
       recommend: false,
@@ -51,6 +94,7 @@ export function useBatchAddData() {
       poddem: undefined,
       poddet: undefined,
       voyage: '',
+      vesselVoyage: '',
       contractNo: '',
       etd: '',
       closeDocTime: '',
@@ -72,6 +116,38 @@ export function useBatchAddData() {
         sugPrice?: number;
       }>,
     };
+
+    const row = applyDefaultFreightRateValue(base, tenantDefaults.value);
+    if (typeof row.isDirect === 'boolean') {
+      row.isDirect = row.isDirect ? '是' : '否';
+    }
+
+    // Handsontable 存显示名：优先用配置里缓存的 Label（进页零请求）
+    const defaults = tenantDefaults.value;
+    const resolvers = tenantDefaultLabelResolvers.value;
+
+    const carrierLabel =
+      String(defaults.carrierLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.carrierId, resolvers.carrier);
+    if (carrierLabel) row.carrierId = carrierLabel;
+
+    const polLabel =
+      String(defaults.polLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.polId, resolvers.pol);
+    if (polLabel) row.polId = polLabel;
+
+    const currencyLabel =
+      String(defaults.currencyLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.currencyId, resolvers.currency);
+    if (currencyLabel) row.currencyId = currencyLabel;
+
+    const bookingAgentLabel =
+      String(defaults.bookingAgentLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(
+        defaults.bookingAgentId,
+        resolvers.bookingAgent,
+      );
+    if (bookingAgentLabel) row.bookingAgentId = bookingAgentLabel;
 
     // ⚠️ 关键修复：如果已经有添加的箱型，为新行初始化动态字段
     if (addedCtnTypes.value.length > 0) {
@@ -187,11 +263,11 @@ export function useBatchAddData() {
         return false;
       }
       if (!row.validTimeStart) {
-        message.warning(`第 ${rowNum} 行：请选择有效起始日期`);
+        message.warning(`第 ${rowNum} 行：请选择有效日期`);
         return false;
       }
       if (!row.validTimeEnd) {
-        message.warning(`第 ${rowNum} 行：请选择有效截止日期`);
+        message.warning(`第 ${rowNum} 行：请选择截止日期`);
         return false;
       }
     }
@@ -344,6 +420,7 @@ export function useBatchAddData() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
+        vesselVoyage: row.vesselVoyage || undefined,
         contractNo: row.contractNo,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
@@ -375,6 +452,9 @@ export function useBatchAddData() {
     defaultCurrencyId,
     generateRowKey,
     createDefaultRow,
+    refreshTenantDefaults,
+    setTenantDefaultLabelResolvers,
+    tenantDefaults,
     addRow,
     deleteSelectedRows,
     copySelectedRows,
