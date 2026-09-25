@@ -36,9 +36,7 @@ const emit = defineEmits<{
   (event: 'open-location-settings'): void;
 }>();
 
-const { canvasWidth, canvasHeight, watermark } = useLoadingPhotoWatermark(
-  getCurrentInstance()?.proxy,
-);
+const { watermark } = useLoadingPhotoWatermark(getCurrentInstance()?.proxy);
 const uploading = ref(false);
 const choosing = ref(false);
 const recognizing = ref(false);
@@ -303,9 +301,10 @@ function lockMaskScroll() {}
     @touchmove.stop.prevent="lockMaskScroll"
   >
     <canvas
+      id="loading-photo-watermark"
       canvas-id="loading-photo-watermark"
+      type="2d"
       class="watermark-canvas"
-      :style="{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }"
     />
     <view class="panel" @tap.stop @touchmove.stop>
       <view class="panel__head">
@@ -475,8 +474,14 @@ function lockMaskScroll() {}
 .watermark-canvas {
   position: fixed;
   top: 0;
-  left: -10000px;
+  left: 0;
+  z-index: 1;
+  width: 100vw;
+  height: 100vw;
+
+  /* 移出屏幕或 opacity:0 时，部分安卓不分配画布，导出就是黑底或红底 */
   pointer-events: none;
+  opacity: 0.02;
 }
 
 .mask {
@@ -492,6 +497,8 @@ function lockMaskScroll() {}
 }
 
 .panel {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   width: 100%;

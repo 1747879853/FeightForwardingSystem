@@ -81,7 +81,8 @@ export function chooseImages(sourceType: ImageSource[], count = 9) {
   return new Promise<string[]>((resolve, reject) => {
     uni.chooseImage({
       count,
-      sizeType: ['compressed'],
+      // 系统压缩在部分安卓上会直接交出黑图或红图，原图交给画布再缩小。
+      sizeType: ['original'],
       sourceType,
       success: (res) => resolve(res.tempFilePaths as string[]),
       fail: (err) => {
