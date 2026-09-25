@@ -62,3 +62,9 @@ ai-extract-upload-modal.vue → ai-extract-utils.ts（accept / 文件类型）
 | `../use-yundang-ocean-track.ts` | 运踪详情查询与弹窗 | 是（`list.vue`） |
 
 > 说明：`use-sea-export-tab-title` / `use-yard-real-query` / `use-sync-shipment-dates` / `order-ctn-table.vue` 目前仅本表单使用，为控制本次改动范围暂留上级目录；如需进一步内聚可后续一并迁入本目录。
+
+# 6. 变更与解析日志 (Changelog & Insights)
+
+| 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
+| :-- | :-- | :-- | :-- |
+| 2026-09-25 | `Fix` | 折叠的中转港、收发通不再压住当前项标题。 | 表单项自带 flex，隐藏类需 `display: none !important`。详见 [变更记录](../../changelogs/change-log-2026-09-25-海运出口隐藏港口收发通不再压标题.md)。 |

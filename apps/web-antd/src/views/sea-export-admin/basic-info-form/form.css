@@ -1626,7 +1626,8 @@
 }
 
 :deep(.port-flow-item--hidden) {
-  display: none;
+  /* 表单项自带 flex，普通 display:none 盖不住，中转港2 会压住中转港1 的标题 */
+  display: none !important;
 }
 
 :deep(.port-flow-pos--receive) {
@@ -1957,7 +1958,7 @@
 }
 
 :deep(.party-flow-item--hidden) {
-  display: none;
+  display: none !important;
 }
 
 :deep(.party-flow-item) {
