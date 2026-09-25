@@ -1713,14 +1713,14 @@
   white-space: nowrap;
 }
 
-.transit-port-inline-switch {
+:deep(.transit-port-inline-switch) {
   display: inline-flex;
   gap: 6px;
   align-items: center;
   margin-left: auto;
 }
 
-.transit-port-inline-switch--in-label {
+:deep(.transit-port-inline-switch--in-label) {
   flex-shrink: 0;
 }
 
@@ -1780,7 +1780,7 @@
   align-items: center;
 }
 
-.transit-port-tabs__item {
+:deep(.transit-port-tabs__item) {
   padding: 4px 8px;
   font-size: 11px;
   line-height: 1;
@@ -1792,7 +1792,7 @@
   transition: all 0.2s ease;
 }
 
-.transit-port-tabs__item--active {
+:deep(.transit-port-tabs__item--active) {
   font-weight: 600;
   color: #1677ff;
   background: #e6f4ff;

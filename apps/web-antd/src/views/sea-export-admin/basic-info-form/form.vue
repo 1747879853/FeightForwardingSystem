@@ -1706,6 +1706,62 @@ const handlePortSelectChange = (
   void api.setFieldValue(remarkField, remark);
 };
 
+const transitPortTab = ref<'poT1' | 'poT2'>('poT1');
+const transitPortActions = {
+  switchTab: (_tab: 'poT1' | 'poT2') => {},
+};
+
+/** 中转港标题直接画在字段上。Teleport 进空 label 会在权限刷新重渲染后丢掉。 */
+const TransitPortLabel = defineComponent({
+  name: 'SeaExportTransitPortLabel',
+  setup() {
+    return () =>
+      h(
+        'span',
+        {
+          class:
+            'transit-port-inline-switch transit-port-inline-switch--in-label',
+        },
+        [
+          h(
+            'button',
+            {
+              type: 'button',
+              class: [
+                'transit-port-tabs__item',
+                transitPortTab.value === 'poT1' &&
+                  'transit-port-tabs__item--active',
+              ],
+              onClick: (event: MouseEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+                transitPortActions.switchTab('poT1');
+              },
+            },
+            '中转港1',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              class: [
+                'transit-port-tabs__item',
+                transitPortTab.value === 'poT2' &&
+                  'transit-port-tabs__item--active',
+              ],
+              onClick: (event: MouseEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+                transitPortActions.switchTab('poT2');
+              },
+            },
+            '中转港2',
+          ),
+        ],
+      );
+  },
+});
+
 /** 右侧表单：港口信息 */
 const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
@@ -1715,14 +1771,27 @@ const [PortForm, portFormApi] = useVbenForm({
   },
   schema: usePortFormSchema({ onPortChange: handlePortSelectChange })
     .filter((item) => !PORT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName))
-    .map((item) =>
-      String(item.formItemClass ?? '').includes('port-flow-remark')
-        ? item
+    .map((item) => {
+      const isTransitPort =
+        item.fieldName === 'poT1Id' || item.fieldName === 'poT2Id';
+      const hideByDefault =
+        item.fieldName === 'poT2Id' || item.fieldName === 'poT2Remark';
+      const next = {
+        ...item,
+        ...(isTransitPort ? { label: TransitPortLabel } : {}),
+        ...(hideByDefault
+          ? {
+              formItemClass: `${item.formItemClass ?? ''} port-flow-item--hidden`,
+            }
+          : {}),
+      };
+      return String(item.formItemClass ?? '').includes('port-flow-remark')
+        ? next
         : {
-            ...item,
+            ...next,
             componentProps: withSmallComponentProps(item.componentProps),
-          },
-    ),
+          };
+    }),
   showDefaultActions: false,
   wrapperClass: 'port-flow-wrap form-controls-small grid-cols-5 gap-x-8',
 });
@@ -1997,8 +2066,6 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
   };
 };
 
-const transitPortTab = ref<'poT1' | 'poT2'>('poT1');
-const transitPortLabelTarget = ref<HTMLElement | null>(null);
 const podPortLabelTarget = ref<HTMLElement | null>(null);
 const consigneePartyLabelTarget = ref<HTMLElement | null>(null);
 const notifierPartyTab = ref<'notifier' | 'podAgent' | 'secondNotifier'>(
@@ -2065,13 +2132,9 @@ const refreshPortLabelTargets = () => {
     // 本页可被业务联系单内嵌，其港口区块结构相同，需限定在本组件的港口区块内查找
     const portSection = sectionRefs.port.value;
     if (!portSection) {
-      transitPortLabelTarget.value = null;
       podPortLabelTarget.value = null;
       return;
     }
-    transitPortLabelTarget.value = portSection.querySelector(
-      '.port-flow-wrap .port-flow-item--transit:not(.port-flow-item--hidden) > label',
-    ) as HTMLElement | null;
     podPortLabelTarget.value = portSection.querySelector(
       '.port-flow-wrap .port-flow-pos--pod > label',
     ) as HTMLElement | null;
@@ -2083,14 +2146,14 @@ const applyTransitPortTabSchema = () => {
   portFormApi.updateSchema([
     {
       fieldName: 'poT1Id',
-      label: '',
+      label: TransitPortLabel,
       formItemClass: `port-flow-item port-flow-item--transit port-flow-pos--transit${
         isPoT1Active ? '' : ' port-flow-item--hidden'
       }`,
     },
     {
       fieldName: 'poT2Id',
-      label: '',
+      label: TransitPortLabel,
       formItemClass: `port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit${
         isPoT1Active ? ' port-flow-item--hidden' : ''
       }`,
@@ -2111,7 +2174,7 @@ const applyTransitPortTabSchema = () => {
   refreshPortLabelTargets();
 };
 
-const switchTransitPortTab = (tab: 'poT1' | 'poT2') => {
+transitPortActions.switchTab = (tab: 'poT1' | 'poT2') => {
   if (transitPortTab.value === tab) return;
   transitPortTab.value = tab;
   applyTransitPortTabSchema();
@@ -3960,37 +4023,6 @@ defineExpose({
                 </div>
                 <div class="content-section__body">
                   <PortForm />
-                  <Teleport
-                    v-if="transitPortLabelTarget"
-                    :to="transitPortLabelTarget"
-                  >
-                    <span
-                      class="transit-port-inline-switch transit-port-inline-switch--in-label"
-                    >
-                      <button
-                        type="button"
-                        class="transit-port-tabs__item"
-                        :class="{
-                          'transit-port-tabs__item--active':
-                            transitPortTab === 'poT1',
-                        }"
-                        @click.stop="switchTransitPortTab('poT1')"
-                      >
-                        中转港1
-                      </button>
-                      <button
-                        type="button"
-                        class="transit-port-tabs__item"
-                        :class="{
-                          'transit-port-tabs__item--active':
-                            transitPortTab === 'poT2',
-                        }"
-                        @click.stop="switchTransitPortTab('poT2')"
-                      >
-                        中转港2
-                      </button>
-                    </span>
-                  </Teleport>
                   <Teleport v-if="podPortLabelTarget" :to="podPortLabelTarget">
                     <span
                       v-if="

@@ -149,6 +149,25 @@ it.each([undefined, false])(
   },
 );
 
+it('权限刷新保留 updateSchema 改过的 label 和 class', async () => {
+  const permission = setup();
+  const schema = [
+    { fieldName: 'poT1Id', label: '中转港', formItemClass: 'port-flow-item' },
+    { fieldName: 'remark' },
+  ];
+  const [, api] = permission.usePermissionForm({ schema } as any);
+  (api as any).state.schema[0] = {
+    ...schema[0],
+    label: '中转港1',
+    formItemClass: 'port-flow-item port-flow-item--transit',
+  };
+  permission.rawDetail.value = {};
+  expect((api as any).state.schema[0]).toMatchObject({
+    label: '中转港1',
+    formItemClass: 'port-flow-item port-flow-item--transit',
+  });
+});
+
 it('隐藏必填字段并在切换到可见记录时恢复原 schema', async () => {
   const permission = setup();
   const schema = [

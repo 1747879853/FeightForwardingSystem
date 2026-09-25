@@ -30,10 +30,17 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
     watch(
       [maskedFieldIndex, rawDetail],
       () => {
+        // 用初始 schema 决定字段是否展示，但保留 updateSchema 改过的 label / class。
+        // 否则详情权限刷新会把中转港标题和隐藏状态冲掉。
+        const current = new Map(
+          (result[1].state?.schema ?? []).map((item) => [item.fieldName, item]),
+        );
         result[1].setState({
-          schema: schema.filter(
-            (item) => !permission.formMasked(item.fieldName, rawDetail.value),
-          ),
+          schema: schema
+            .filter(
+              (item) => !permission.formMasked(item.fieldName, rawDetail.value),
+            )
+            .map((item) => current.get(item.fieldName) ?? item),
         });
       },
       { immediate: true, flush: 'sync' },
