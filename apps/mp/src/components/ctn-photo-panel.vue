@@ -473,15 +473,15 @@ function lockMaskScroll() {}
 <style lang="scss" scoped>
 .watermark-canvas {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   z-index: 1;
-  width: 100vw;
-  height: 100vw;
+  width: 1px;
+  height: 1px;
 
-  /* 移出屏幕或 opacity:0 时，部分安卓不分配画布，导出就是黑底或红底 */
+  /* 仍留在视口内，避免安卓不分配离屏画布；显示区域缩到 1px，不再铺到主界面 */
   pointer-events: none;
-  opacity: 0.02;
+  opacity: 0.01;
 }
 
 .mask {
