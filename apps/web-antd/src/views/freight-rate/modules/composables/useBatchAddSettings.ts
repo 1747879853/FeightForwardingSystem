@@ -3,6 +3,11 @@ import Handsontable from 'handsontable';
 import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
 
 import { useCtnSugPriceMarkup } from './useCtnSugPriceMarkup';
+import {
+  appendHotClassName,
+  clearHotFieldOrigin,
+  getHotFieldOriginClass,
+} from './hot-field-origin';
 
 registerLanguageDictionary(zhCN);
 
@@ -104,6 +109,16 @@ export function useBatchAddSettings(
 
       changes.forEach(([row, prop, oldValue, newValue]: any) => {
         const propKey = String(prop ?? '');
+        const rowData = dataSource.value[row];
+        // 用户改过的格子去掉 AI/默认值来源色标（并清 cellMeta，避免旧 className 残留）
+        if (rowData && oldValue !== newValue) {
+          clearHotFieldOrigin(rowData, propKey);
+          const colIndex =
+            typeof prop === 'number' ? prop : hotInstance.propToCol(propKey);
+          if (typeof colIndex === 'number' && colIndex >= 0) {
+            hotInstance.removeCellMeta(row, colIndex, 'className');
+          }
+        }
 
         // 成本价变更：有加价规则则自动写指导价
         if (propKey.startsWith('ctn_') && !propKey.startsWith('ctnSug_')) {
@@ -268,6 +283,15 @@ export function useBatchAddSettings(
         } else if (val === '否' || val === false || val === '中转') {
           cellProperties.className = 'is-direct-no';
         }
+      }
+
+      // AI 识别 / 默认值补齐来源色标（与直达色、禁用色并存）
+      const originClass = getHotFieldOriginClass(rowData, String(prop ?? ''));
+      if (originClass) {
+        cellProperties.className = appendHotClassName(
+          cellProperties.className,
+          originClass,
+        );
       }
 
       // 币别仍用本地缓存；港口/船公司/订舱代理用列配置里的远程 source，勿在此覆盖为全量数组

@@ -44,6 +44,12 @@ import { useCtnSugPriceMarkup } from './modules/composables/useCtnSugPriceMarkup
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { fetchLatestRouteHistory } from './freight-price-change';
+import {
+  collectFilledOriginKeys,
+  markDefaultsFilledOrigins,
+  rowHasFieldOrigin,
+  setHotFieldOrigins,
+} from './modules/composables/hot-field-origin';
 import type { BatchRouteFieldsChangedContext } from './modules/composables/useBatchAddSettings';
 
 // 导入 store
@@ -91,6 +97,9 @@ const {
   applyTenantDefaultsToHotRow,
   reset,
 } = useBatchAddData();
+
+/** 表格中是否展示 AI/默认值来源图例（AI 批量新增加载后） */
+const showFieldOriginLegend = ref(false);
 
 // ==================== 编辑模式管理 ====================
 
@@ -315,8 +324,15 @@ async function handleAIData(aiDataList: any[]) {
       });
     }
 
-    // AI 识别后：空字段用运价新增默认值补齐（不覆盖已识别内容）
+    // 先标记 AI 已填字段，再补默认值并标记默认来源
+    const beforeDefaults = { ...transformedRow };
+    setHotFieldOrigins(
+      transformedRow,
+      collectFilledOriginKeys(transformedRow),
+      'ai',
+    );
     const filledRow = applyTenantDefaultsToHotRow(transformedRow);
+    markDefaultsFilledOrigins(beforeDefaults, filledRow);
 
     console.log(
       `✅ 转换后的第 ${index + 1} 条数据 _originalId:`,
@@ -338,6 +354,10 @@ async function handleAIData(aiDataList: any[]) {
     '✅ AI 数据已加载到 Handsontable，共',
     transformedAiData.length,
     '条记录',
+  );
+
+  showFieldOriginLegend.value = transformedAiData.some((row) =>
+    rowHasFieldOrigin(row),
   );
 
   message.success(`已加载 ${transformedAiData.length} 条数据`);
@@ -1398,6 +1418,24 @@ watch(
             <span class="batch-add__section-hint">
               共 {{ addedCtnTypes.length }} 个箱型列
             </span>
+            <span
+              v-if="showFieldOriginLegend"
+              class="batch-add__origin-legend"
+              title="色块表示单元格值来源；手工修改后色标会消失"
+            >
+              <span class="batch-add__origin-item">
+                <i
+                  class="batch-add__origin-swatch batch-add__origin-swatch--ai"
+                ></i>
+                AI识别
+              </span>
+              <span class="batch-add__origin-item">
+                <i
+                  class="batch-add__origin-swatch batch-add__origin-swatch--default"
+                ></i>
+                默认值
+              </span>
+            </span>
           </div>
 
           <div class="batch-add__section-actions">
@@ -1741,6 +1779,39 @@ watch(
   color: #9aa3af;
 }
 
+.batch-add__origin-legend {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.batch-add__origin-item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.batch-add__origin-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.batch-add__origin-swatch--ai {
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.batch-add__origin-swatch--default {
+  background: #f9f0ff;
+  border-color: #d3adf7;
+}
+
 .batch-add__section-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1916,5 +1987,30 @@ watch(
 
 .ht-price-delta--down {
   background: #52c41a;
+}
+
+/* AI 识别值：浅蓝底 */
+.handsontable td.ht-from-ai {
+  background-color: #e6f4ff !important;
+}
+
+/* 运价新增默认值补齐：浅紫底 */
+.handsontable td.ht-from-default {
+  background-color: #f9f0ff !important;
+}
+
+/* 直达色与来源色并存时，保留来源底、覆盖文字色 */
+.handsontable td.ht-from-ai.ht-is-direct--yes,
+.handsontable td.ht-from-default.ht-is-direct--yes,
+.handsontable td.ht-from-ai.is-direct-yes,
+.handsontable td.ht-from-default.is-direct-yes {
+  color: #389e0d !important;
+}
+
+.handsontable td.ht-from-ai.ht-is-direct--no,
+.handsontable td.ht-from-default.ht-is-direct--no,
+.handsontable td.ht-from-ai.is-direct-no,
+.handsontable td.ht-from-default.is-direct-no {
+  color: #cf1322 !important;
 }
 </style>
