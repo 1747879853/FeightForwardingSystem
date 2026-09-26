@@ -62,6 +62,7 @@ import { getEnumItems } from '#/utils/init-enum';
 
 import {
   applyDefaultFreightRateValue,
+  isEmptyFreightDefaultField,
   loadDefaultFreightRateConfig,
 } from './composables/use-default-freight-rate-config';
 
@@ -688,20 +689,15 @@ const [Modal, modalApi] = useVbenModal({
       }
     } else {
       // 新增模式 - 初始化并加载默认箱型 + 个人默认值配置
+      // 草稿勿预填 0/true 等占位，否则 fill-blank 会跳过个人默认值
       const defaultCtns = await loadDefaultCtns();
       const { value: tenantDefaults } = await loadDefaultFreightRateConfig();
 
       const draft = applyDefaultFreightRateValue(
         {
           id: '',
-          recommend: false,
-          carrierId: 0,
-          polId: 0,
-          podId: 0,
-          isDirect: true,
           validTimeStart: '',
           validTimeEnd: '',
-          currencyId: defaultCurrencyId.value || 0,
           creationTime: '',
           isValid: 0,
           seFreiPriceCtns: defaultCtns,
@@ -709,6 +705,16 @@ const [Modal, modalApi] = useVbenModal({
         } as SeFreiPriceOutDto,
         tenantDefaults,
       );
+
+      // 个人配置未覆盖时的 UI 兜底
+      if (draft.recommend === undefined) draft.recommend = false;
+      if (draft.isDirect === undefined) draft.isDirect = true;
+      if (
+        isEmptyFreightDefaultField(draft.currencyId) &&
+        defaultCurrencyId.value
+      ) {
+        draft.currencyId = defaultCurrencyId.value;
+      }
 
       formData.value = draft;
       surchargeFees.value = [];
@@ -720,7 +726,12 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'carrierId',
             componentProps: {
-              selectedItems: [{ id: draft.carrierId }],
+              selectedItems: [
+                {
+                  id: draft.carrierId,
+                  cnShortName: tenantDefaults.carrierLabel || undefined,
+                },
+              ],
             },
           },
         ]);
@@ -730,7 +741,13 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'polId',
             componentProps: {
-              selectedItems: [{ id: draft.polId }],
+              selectedItems: [
+                {
+                  id: draft.polId,
+                  enName: tenantDefaults.polLabel || undefined,
+                  name: tenantDefaults.polLabel || undefined,
+                },
+              ],
             },
           },
         ]);
@@ -740,7 +757,12 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'bookingAgentId',
             componentProps: {
-              selectedItems: [{ id: draft.bookingAgentId }],
+              selectedItems: [
+                {
+                  id: draft.bookingAgentId,
+                  name: tenantDefaults.bookingAgentLabel || undefined,
+                },
+              ],
             },
           },
         ]);

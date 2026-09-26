@@ -245,9 +245,9 @@ export function applyDefaultFreightRateValue<T extends Record<string, any>>(
   return next;
 }
 
-/** 空串 / null / undefined 视为可被默认值补齐 */
+/** 空串 / null / undefined / 0 视为可被默认值补齐（表单占位 id 常用 0） */
 export function isEmptyFreightDefaultField(value: unknown): boolean {
-  return value === undefined || value === null || value === '';
+  return value === undefined || value === null || value === '' || value === 0;
 }
 
 /**
