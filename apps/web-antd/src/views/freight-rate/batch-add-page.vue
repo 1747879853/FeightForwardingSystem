@@ -82,6 +82,7 @@ const {
   addRow,
   deleteSelectedRows,
   copySelectedRows,
+  convertNameToId,
   validateForm,
   prepareSubmitData,
   refreshTenantDefaults,
@@ -1098,8 +1099,8 @@ onMounted(() => {
 async function handleEditSubmit(labelToIdMapValue: any) {
   console.log('📝 开始编辑提交');
 
-  // 验证表单
-  if (!validateForm()) {
+  // 验证表单（含 label→id）
+  if (!validateForm(labelToIdMapValue)) {
     return;
   }
 
@@ -1117,14 +1118,26 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         return;
       }
 
-      // 将 Label 转换回 ID
-      const carrierId = labelToIdMapValue.carriers.get(row.carrierId);
-      const polId = labelToIdMapValue.ports.get(row.polId);
-      const podId = labelToIdMapValue.ports.get(row.podId);
-      const currencyId = labelToIdMapValue.currencies.get(row.currencyId);
-      const bookingAgentId = labelToIdMapValue.clients.get(row.bookingAgentId);
-      const poT1Id = labelToIdMapValue.ports.get(row.poT1Id);
-      const poT2Id = labelToIdMapValue.ports.get(row.poT2Id);
+      // 将 Label 转换回 ID（兼容单元格已是 id 的情况）
+      const carrierId = convertNameToId(
+        row.carrierId,
+        labelToIdMapValue.carriers,
+      );
+      const polId = convertNameToId(row.polId, labelToIdMapValue.ports);
+      const podId = convertNameToId(row.podId, labelToIdMapValue.ports);
+      const currencyId = convertNameToId(
+        row.currencyId,
+        labelToIdMapValue.currencies,
+      );
+      const bookingAgentId = row.bookingAgentId
+        ? convertNameToId(row.bookingAgentId, labelToIdMapValue.clients)
+        : undefined;
+      const poT1Id = row.poT1Id
+        ? convertNameToId(row.poT1Id, labelToIdMapValue.ports)
+        : undefined;
+      const poT2Id = row.poT2Id
+        ? convertNameToId(row.poT2Id, labelToIdMapValue.ports)
+        : undefined;
 
       // 构建提交数据（使用 SeFreiPriceSimpleEditDto 格式）
       const submitData: any = {
@@ -1785,6 +1798,17 @@ watch(
 .htCtnSug {
   font-weight: 600;
   color: #cf1322 !important;
+}
+
+/* 箱型列标题居中（含 clone 表头与合并 colspan） */
+.handsontable thead th.htCtnHeader,
+.handsontable thead th.htCenter,
+.handsontable thead th[colspan]:not([colspan='1']),
+.ht_clone_top thead th.htCtnHeader,
+.ht_clone_top thead th.htCenter,
+.ht_clone_top thead th[colspan]:not([colspan='1']) {
+  vertical-align: middle !important;
+  text-align: center !important;
 }
 
 /* 直达列：是绿否红 */
