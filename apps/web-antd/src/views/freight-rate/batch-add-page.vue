@@ -714,19 +714,29 @@ function isBlankCell(value: unknown) {
   return value === undefined || value === null || value === '';
 }
 
-function setHotIfBlank(
+function setHotCell(
   hotInstance: any,
   rowIndex: number,
   prop: string,
   value: unknown,
+  options?: { force?: boolean },
 ) {
   const rowData = dataSource.value[rowIndex];
-  if (!rowData || !isBlankCell(rowData[prop])) return;
-  if (value === undefined || value === null || value === '') return;
+  if (!rowData) return;
+  const force = options?.force === true;
+  const nextValue =
+    value === undefined || value === null || value === '' ? undefined : value;
+  if (!force) {
+    // 非航线字段变更：只填空，保留手工录入
+    if (!isBlankCell(rowData[prop]) || nextValue === undefined) return;
+  } else if (nextValue === undefined && isBlankCell(rowData[prop])) {
+    // 强制清空但本身已空：跳过
+    return;
+  }
   const col = hotInstance.propToCol(prop);
   if (typeof col !== 'number' || col < 0) return;
-  hotInstance.setDataAtCell(rowIndex, col, value, 'routeHistory');
-  rowData[prop] = value;
+  hotInstance.setDataAtCell(rowIndex, col, nextValue, 'routeHistory');
+  rowData[prop] = nextValue;
 }
 
 function resolveTransitPortLabel(portId: unknown): string | undefined {
@@ -745,7 +755,7 @@ function resolveTransitPortLabel(portId: unknown): string | undefined {
 /** 起运港+目的港+是否直达齐了以后，带出历史 DEM/DET/免箱使/航程（中转还带中转港） */
 async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
   if (isEditMode.value) return;
-  const { hotInstance, rowIndex, rowData } = ctx;
+  const { hotInstance, rowIndex, rowData, prop } = ctx;
   const polId = convertNameToId(rowData.polId, labelToIdMap.value.ports);
   const podId = convertNameToId(rowData.podId, labelToIdMap.value.ports);
   const isDirect =
@@ -757,29 +767,46 @@ async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
   // 港口必须能解析成 id；雪花 id 字符串透传，勿 Number()
   if (!polId || !podId || isDirect === undefined) return;
 
+  // 起运港 / 目的港 / 是否直达任一变更：按新航线重算默认值并覆盖原带出值
+  const force = prop === 'isDirect' || prop === 'polId' || prop === 'podId';
+
   try {
     const history = await fetchLatestRouteHistory({ polId, podId, isDirect });
-    if (!history) return;
 
-    // 直达：DEM / DET / 免箱使期 / 航程（仅填空，不覆盖手工录入）
-    setHotIfBlank(hotInstance, rowIndex, 'poddem', history.poddem);
-    setHotIfBlank(hotInstance, rowIndex, 'podFreeDays', history.podFreeDays);
-    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
-    setHotIfBlank(hotInstance, rowIndex, 'voyage', history.voyage || undefined);
+    setHotCell(hotInstance, rowIndex, 'poddem', history?.poddem, { force });
+    setHotCell(hotInstance, rowIndex, 'podFreeDays', history?.podFreeDays, {
+      force,
+    });
+    setHotCell(hotInstance, rowIndex, 'poddet', history?.poddet, { force });
+    setHotCell(hotInstance, rowIndex, 'voyage', history?.voyage || undefined, {
+      force,
+    });
 
-    // 中转：额外带出中转港1/2，并写入 label→id 缓存便于提交
-    if (!isDirect) {
+    if (isDirect) {
+      // 直达：清空中转港
+      if (force) {
+        setHotCell(hotInstance, rowIndex, 'poT1Id', undefined, { force: true });
+        setHotCell(hotInstance, rowIndex, 'poT2Id', undefined, { force: true });
+      }
+      return;
+    }
+
+    // 中转：带出中转港1/2，并写入 label→id 缓存便于提交
+    if (history) {
       await ensurePortLabelsByIds([history.poT1Id, history.poT2Id]);
       const pot1Label = resolveTransitPortLabel(history.poT1Id);
       const pot2Label = resolveTransitPortLabel(history.poT2Id);
       if (pot1Label && history.poT1Id != null) {
         rememberPort(history.poT1Id, pot1Label);
-        setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label);
       }
       if (pot2Label && history.poT2Id != null) {
         rememberPort(history.poT2Id, pot2Label);
-        setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label);
       }
+      setHotCell(hotInstance, rowIndex, 'poT1Id', pot1Label, { force });
+      setHotCell(hotInstance, rowIndex, 'poT2Id', pot2Label, { force });
+    } else if (force) {
+      setHotCell(hotInstance, rowIndex, 'poT1Id', undefined, { force: true });
+      setHotCell(hotInstance, rowIndex, 'poT2Id', undefined, { force: true });
     }
   } catch {
     // 带出失败不打断录入
