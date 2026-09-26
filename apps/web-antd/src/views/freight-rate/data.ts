@@ -27,6 +27,7 @@ export const FREIGHT_RATE_LIST_DEFAULT_VISIBLE_FIELDS = new Set<string>([
   'poT1.portName',
   'podFreeDaysCombined',
   'voyage',
+  'vesselVoyage',
   'remark',
   'creatorUserName',
   'creationTime',
@@ -612,6 +613,12 @@ export function useColumns(
       align: 'left',
     },
     {
+      field: 'vesselVoyage',
+      title: $t('seaExport.freightRate.vesselVoyage'),
+      width: 140,
+      align: 'left',
+    },
+    {
       field: 'etd',
       title: '开船日期',
       width: 150,
@@ -857,6 +864,7 @@ export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
   'poT1.portName': 'PoT1Id',
   'poT2.portName': 'PoT2Id',
   voyage: 'Voyage',
+  vesselVoyage: 'VesselVoyage',
   etd: 'SeFreiPriceDays',
   closeDocTime: 'SeFreiPriceDays',
   closingTime: 'SeFreiPriceDays',

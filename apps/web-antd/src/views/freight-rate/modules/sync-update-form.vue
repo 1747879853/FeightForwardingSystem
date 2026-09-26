@@ -228,6 +228,17 @@ const [Form, formApi] = useVbenForm({
       formItemClass: 'w-full',
     },
     {
+      component: 'Input',
+      fieldName: 'vesselVoyage',
+      label: '船名航次',
+      componentProps: {
+        placeholder: '留空不修改',
+        maxlength: 100,
+        style: { width: '100%' },
+      },
+      formItemClass: 'w-full',
+    },
+    {
       component: PortSelect,
       fieldName: 'polId',
       label: '起运港',
@@ -767,6 +778,10 @@ const [Modal, modalApi] = useVbenModal({
       poddem: values.poddem ?? null,
       poddet: values.poddet ?? null,
       voyage: values.voyage ?? null,
+      // 批量编辑：空白不覆盖；有内容才更新
+      vesselVoyage: values.vesselVoyage?.trim()
+        ? values.vesselVoyage.trim()
+        : null,
       validTimeStart: values.validTimeStart ?? null,
       validTimeEnd: values.validTimeEnd ?? null,
       remark: values.remark ?? null,

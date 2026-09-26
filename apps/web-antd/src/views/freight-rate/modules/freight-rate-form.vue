@@ -399,6 +399,16 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
+    {
+      component: 'Input',
+      fieldName: 'vesselVoyage',
+      label: '船名航次',
+      componentProps: {
+        placeholder: '请输入船名航次',
+        maxlength: 100,
+        style: { width: '100%' },
+      },
+    },
     // 第三行：约号、免用箱天数等
     {
       component: 'Input',
@@ -748,6 +758,7 @@ const [Modal, modalApi] = useVbenModal({
         poddem: draft.poddem,
         poddet: draft.poddet,
         voyage: draft.voyage,
+        vesselVoyage: draft.vesselVoyage,
         contractNo: draft.contractNo,
         remark: draft.remark,
       });
@@ -799,6 +810,7 @@ async function loadDetail(priceId: string) {
       poT1Id: detail.poT1Id,
       poT2Id: detail.poT2Id,
       voyage: detail.voyage,
+      vesselVoyage: detail.vesselVoyage,
       contractNo: detail.contractNo,
       polFreeDays: detail.polFreeDays,
       podFreeDays: detail.podFreeDays,
@@ -1454,6 +1466,7 @@ async function handleSubmit() {
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,
       voyage: values.voyage,
+      vesselVoyage: values.vesselVoyage?.trim() || null,
       contractNo: values.contractNo,
       polFreeDays: values.polFreeDays,
       podFreeDays: values.podFreeDays,

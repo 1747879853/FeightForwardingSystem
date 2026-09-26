@@ -1172,7 +1172,8 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage || undefined,
-        vesselVoyage: row.vesselVoyage || undefined,
+        // 简单编辑：空值传 null，清空已有船名航次
+        vesselVoyage: row.vesselVoyage?.trim() || null,
         contractNo: row.contractNo || undefined,
         validTimeStart: row.validTimeStart || undefined,
         validTimeEnd: row.validTimeEnd || undefined,

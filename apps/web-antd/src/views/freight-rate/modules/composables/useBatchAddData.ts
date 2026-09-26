@@ -493,7 +493,8 @@ export function useBatchAddData() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
-        vesselVoyage: row.vesselVoyage || undefined,
+        // 简单新增/编辑：空值传 null（编辑时清空已有值）
+        vesselVoyage: row.vesselVoyage?.trim() || null,
         contractNo: row.contractNo,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,

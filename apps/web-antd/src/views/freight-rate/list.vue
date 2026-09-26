@@ -440,7 +440,7 @@ function onBatchUpdate() {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage || '',
-      vesselVoyage: (row as any).vesselVoyage || '',
+      vesselVoyage: row.vesselVoyage || '',
       contractNo: row.contractNo || '',
       etd: dayData?.etd || '',
       closeDocTime: dayData?.closeDocTime || '',

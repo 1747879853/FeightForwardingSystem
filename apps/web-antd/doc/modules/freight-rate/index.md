@@ -33,7 +33,7 @@ last_updated: 2026-09-22
 - **航线 Tab 筛选：** 列表工具栏左侧展示「全部 + 各航线」Tab；超出可视区域时可点击左右箭头平滑滚动浏览，并与右侧操作按钮保持固定间距。
 - **运价维护：** 通过运价表单或弹窗维护费率明细。
 - **生成报价：** 工具栏「生成报价」仅允许勾选一条；弹出默认可复制运价文案（含国家、币别与币别符号、目的港免箱期；附加费取备注），点「复制报价信息」写入剪贴板。详见 [变更日志](../../changelogs/change-log-2026-09-24-freight-rate-generate-quote.md)。
-- **批量新增 / 更新：** 列表「批量新增」「更新」「AI批量新增」打开独立 Tab（`/freight-rate/batch-add`、`/freight-rate/batch-edit`），行数据经 `pending-batch-rows` 内存传递；提交或取消后关 Tab 并刷新列表。菜单「批量更改」（多字段同步）仍为弹窗。批量新增填齐起运港+目的港+是否直达后，空字段自动带出历史 DEM/DET/免箱使期/航程（中转时含中转港）。开船日期 YYYY-MM-DD；表头「直达」；箱型价无千分位并带涨跌徽标；船名航次文本列（后端落库后持久化）。详见 [变更日志](../../changelogs/change-log-2026-09-24-freight-rate-price-change.md)、[#1001004](../../changelogs/change-log-2026-09-24-freight-rate-batch-fields.md)。
+- **批量新增 / 更新：** 列表「批量新增」「更新」「AI批量新增」打开独立 Tab（`/freight-rate/batch-add`、`/freight-rate/batch-edit`），行数据经 `pending-batch-rows` 内存传递；提交或取消后关 Tab 并刷新列表。菜单「批量更改」（多字段同步）仍为弹窗。批量新增填齐起运港+目的港+是否直达后，空字段自动带出历史 DEM/DET/免箱使期/航程（中转时含中转港）。开船日期 YYYY-MM-DD；表头「直达」；箱型价无千分位并带涨跌徽标；**船名航次** `vesselVoyage` 已对接后端落库（与航程 `voyage` 分立）。详见 [变更日志](../../changelogs/change-log-2026-09-24-freight-rate-price-change.md)、[#1001004](../../changelogs/change-log-2026-09-24-freight-rate-batch-fields.md)、[#1000174](../../changelogs/change-log-2026-09-26-freight-rate-vessel-voyage.md)。
 - **批量/同步：** 相关模块包含同步更新与箱型费用维护能力。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -60,6 +60,7 @@ last_updated: 2026-09-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-26 | `Feature` | 船名航次对接后端：列表列、单条表单、批量更改提交/回显；与航程分立。 | `vesselVoyage`；TAPD 需求 #1000174。 |
 | 2026-09-24 | `Feature` | 批量页：开船日期 YYYY-MM-DD；有效日期/截止日期成对；箱型价收窄+涨跌徽标；「直达」；新增船名航次（待后端落库）。 | `useBatchAddColumns` + 列配置成对绑定；TAPD #1001004。 |
 | 2026-09-24 | `Feature` | 列表箱型成本/指导价相对上一条同航线运价显示红涨绿跌；批量新增按港口+直达带出历史 DEM/DET/免箱使/航程/中转港。 | `freight-price-change.ts` + `ctn-editable-cell`；TAPD #1001003。 |
 | 2026-09-24 | `Feature` | 列表「生成报价」：单选后弹报价信息并支持一键复制。 | `build-freight-quote-text.ts` + `modules/quote-modal.vue`；TAPD #1001005。 |
