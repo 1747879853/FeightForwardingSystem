@@ -729,39 +729,57 @@ function setHotIfBlank(
   rowData[prop] = value;
 }
 
+function resolveTransitPortLabel(portId: unknown): string | undefined {
+  if (portId === undefined || portId === null || portId === '') {
+    return undefined;
+  }
+  const label =
+    getCachedPortLabel(portId) || getPortName(portId, portIdToLabel.value);
+  const text = String(label ?? '').trim();
+  if (!text || text === '-' || text === String(portId)) {
+    return undefined;
+  }
+  return text;
+}
+
 /** 起运港+目的港+是否直达齐了以后，带出历史 DEM/DET/免箱使/航程（中转还带中转港） */
 async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
   if (isEditMode.value) return;
   const { hotInstance, rowIndex, rowData } = ctx;
-  const polId = Number(labelToIdMap.value.ports.get(String(rowData.polId)));
-  const podId = Number(labelToIdMap.value.ports.get(String(rowData.podId)));
+  const polId = convertNameToId(rowData.polId, labelToIdMap.value.ports);
+  const podId = convertNameToId(rowData.podId, labelToIdMap.value.ports);
   const isDirect =
     rowData.isDirect === '是' || rowData.isDirect === true
       ? true
       : rowData.isDirect === '否' || rowData.isDirect === false
         ? false
         : undefined;
+  // 港口必须能解析成 id；雪花 id 字符串透传，勿 Number()
   if (!polId || !podId || isDirect === undefined) return;
 
   try {
     const history = await fetchLatestRouteHistory({ polId, podId, isDirect });
     if (!history) return;
 
+    // 直达：DEM / DET / 免箱使期 / 航程（仅填空，不覆盖手工录入）
     setHotIfBlank(hotInstance, rowIndex, 'poddem', history.poddem);
-    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
     setHotIfBlank(hotInstance, rowIndex, 'podFreeDays', history.podFreeDays);
+    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
     setHotIfBlank(hotInstance, rowIndex, 'voyage', history.voyage || undefined);
 
+    // 中转：额外带出中转港1/2，并写入 label→id 缓存便于提交
     if (!isDirect) {
       await ensurePortLabelsByIds([history.poT1Id, history.poT2Id]);
-      const pot1Label =
-        getCachedPortLabel(history.poT1Id) ||
-        getPortName(history.poT1Id, portIdToLabel.value);
-      const pot2Label =
-        getCachedPortLabel(history.poT2Id) ||
-        getPortName(history.poT2Id, portIdToLabel.value);
-      setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label || undefined);
-      setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label || undefined);
+      const pot1Label = resolveTransitPortLabel(history.poT1Id);
+      const pot2Label = resolveTransitPortLabel(history.poT2Id);
+      if (pot1Label && history.poT1Id != null) {
+        rememberPort(history.poT1Id, pot1Label);
+        setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label);
+      }
+      if (pot2Label && history.poT2Id != null) {
+        rememberPort(history.poT2Id, pot2Label);
+        setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label);
+      }
     }
   } catch {
     // 带出失败不打断录入
