@@ -88,6 +88,7 @@ const {
   refreshTenantDefaults,
   setTenantDefaultLabelResolvers,
   tenantDefaults,
+  applyTenantDefaultsToHotRow,
   reset,
 } = useBatchAddData();
 
@@ -262,7 +263,16 @@ async function handleAIData(aiDataList: any[]) {
       carrierId: carrierName, // ✅ 使用名称
       polId: polName, // ✅ 使用名称
       podId: podName, // ✅ 使用名称
-      isDirect: (row.isDirect ?? true) ? '是' : '否', // ✅ 转换为"是/否"文本
+      // AI 未返回直达时留空，由运价新增默认值补齐
+      isDirect:
+        row.isDirect === true ||
+        row.isDirect === false ||
+        row.isDirect === '是' ||
+        row.isDirect === '否'
+          ? row.isDirect === true || row.isDirect === '是'
+            ? '是'
+            : '否'
+          : '',
       poT1Id: poT1Name, // ✅ 使用名称
       poT2Id: poT2Name, // ✅ 使用名称
       polFreeDays: row.polFreeDays,
@@ -305,11 +315,14 @@ async function handleAIData(aiDataList: any[]) {
       });
     }
 
+    // AI 识别后：空字段用运价新增默认值补齐（不覆盖已识别内容）
+    const filledRow = applyTenantDefaultsToHotRow(transformedRow);
+
     console.log(
       `✅ 转换后的第 ${index + 1} 条数据 _originalId:`,
-      transformedRow._originalId,
+      filledRow._originalId,
     );
-    return transformedRow;
+    return filledRow;
   });
 
   console.log('🔄 转换后的 AI 数据:', transformedAiData);

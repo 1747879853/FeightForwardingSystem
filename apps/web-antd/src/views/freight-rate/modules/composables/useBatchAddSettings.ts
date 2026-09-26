@@ -1,6 +1,10 @@
 import { computed } from 'vue';
 import Handsontable from 'handsontable';
+import { registerLanguageDictionary, zhCN } from 'handsontable/i18n';
+
 import { useCtnSugPriceMarkup } from './useCtnSugPriceMarkup';
+
+registerLanguageDictionary(zhCN);
 
 export type BatchRouteFieldsChangedContext = {
   hotInstance: any;
@@ -56,6 +60,7 @@ export function useBatchAddSettings(
     fixedRowsTop: 0,
     fixedColumnsLeft: 0, // 不默认固定任何列
     contextMenu: ['row_above', 'row_below', 'remove_row'],
+    language: zhCN.languageCode,
     licenseKey: 'non-commercial-and-evaluation',
     enterMoves: { row: 0, col: 1 },
     // 选择配置

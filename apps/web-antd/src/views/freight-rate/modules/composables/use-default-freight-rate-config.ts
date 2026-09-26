@@ -209,24 +209,45 @@ export function applyDefaultFreightRateValue<T extends Record<string, any>>(
 
   const next = { ...target };
 
-  if (defaults.recommend !== undefined) next.recommend = defaults.recommend;
-  if (defaults.isDirect !== undefined) next.isDirect = defaults.isDirect;
+  const fill = (key: keyof DefaultFreightRateValue, value: unknown) => {
+    if (value === undefined || value === null || value === '') return;
+    if (!isEmptyFreightDefaultField(next[key as string])) return;
+    (next as Record<string, unknown>)[key as string] = value;
+  };
 
-  if (defaults.currencyId != null) next.currencyId = defaults.currencyId;
-  if (defaults.carrierId != null) next.carrierId = defaults.carrierId;
-  if (defaults.polId != null) next.polId = defaults.polId;
-  if (defaults.bookingAgentId) next.bookingAgentId = defaults.bookingAgentId;
+  if (
+    defaults.recommend !== undefined &&
+    isEmptyFreightDefaultField(next.recommend)
+  ) {
+    next.recommend = defaults.recommend;
+  }
+  if (
+    defaults.isDirect !== undefined &&
+    isEmptyFreightDefaultField(next.isDirect)
+  ) {
+    next.isDirect = defaults.isDirect;
+  }
 
-  if (defaults.polFreeDays != null) next.polFreeDays = defaults.polFreeDays;
-  if (defaults.podFreeDays != null) next.podFreeDays = defaults.podFreeDays;
-  if (defaults.poddem != null) next.poddem = defaults.poddem;
-  if (defaults.poddet != null) next.poddet = defaults.poddet;
+  fill('currencyId', defaults.currencyId);
+  fill('carrierId', defaults.carrierId);
+  fill('polId', defaults.polId);
+  fill('bookingAgentId', defaults.bookingAgentId);
 
-  if (defaults.voyage) next.voyage = defaults.voyage;
-  if (defaults.contractNo) next.contractNo = defaults.contractNo;
-  if (defaults.remark) next.remark = defaults.remark;
+  fill('polFreeDays', defaults.polFreeDays);
+  fill('podFreeDays', defaults.podFreeDays);
+  fill('poddem', defaults.poddem);
+  fill('poddet', defaults.poddet);
+
+  fill('voyage', defaults.voyage);
+  fill('contractNo', defaults.contractNo);
+  fill('remark', defaults.remark);
 
   return next;
+}
+
+/** 空串 / null / undefined 视为可被默认值补齐 */
+export function isEmptyFreightDefaultField(value: unknown): boolean {
+  return value === undefined || value === null || value === '';
 }
 
 /**

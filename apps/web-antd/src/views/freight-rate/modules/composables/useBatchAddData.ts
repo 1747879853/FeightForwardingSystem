@@ -75,6 +75,81 @@ export function useBatchAddData() {
     return label;
   }
 
+  function isEmptyHotCell(value: unknown) {
+    return value === undefined || value === null || value === '';
+  }
+
+  /** 空单元格，或仍是默认配置的 id（需换成显示名） */
+  function shouldFillLookupLabel(
+    current: unknown,
+    defaultId: null | number | string | undefined,
+  ) {
+    if (isEmptyHotCell(current)) return true;
+    if (defaultId != null && String(current) === String(defaultId)) return true;
+    return false;
+  }
+
+  /**
+   * 对 Handsontable 行补齐运价新增默认值（仅空字段）。
+   * 船公司/起运港/币别/订舱代理写成显示名，供下拉回显。
+   */
+  function applyTenantDefaultsToHotRow(row: Record<string, any>) {
+    const next = applyDefaultFreightRateValue(row, tenantDefaults.value);
+
+    if (typeof next.isDirect === 'boolean') {
+      next.isDirect = next.isDirect ? '是' : '否';
+    }
+
+    const defaults = tenantDefaults.value;
+    const resolvers = tenantDefaultLabelResolvers.value;
+
+    const carrierLabel =
+      String(defaults.carrierLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.carrierId, resolvers.carrier);
+    if (
+      carrierLabel &&
+      shouldFillLookupLabel(next.carrierId, defaults.carrierId)
+    ) {
+      next.carrierId = carrierLabel;
+    }
+
+    const polLabel =
+      String(defaults.polLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.polId, resolvers.pol);
+    if (polLabel && shouldFillLookupLabel(next.polId, defaults.polId)) {
+      next.polId = polLabel;
+    }
+
+    const currencyLabel =
+      String(defaults.currencyLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.currencyId, resolvers.currency);
+    if (
+      currencyLabel &&
+      shouldFillLookupLabel(next.currencyId, defaults.currencyId)
+    ) {
+      next.currencyId = currencyLabel;
+    }
+
+    const bookingAgentLabel =
+      String(defaults.bookingAgentLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(
+        defaults.bookingAgentId,
+        resolvers.bookingAgent,
+      );
+    if (
+      bookingAgentLabel &&
+      shouldFillLookupLabel(next.bookingAgentId, defaults.bookingAgentId)
+    ) {
+      next.bookingAgentId = bookingAgentLabel;
+    }
+
+    if (isEmptyHotCell(next.isDirect)) {
+      next.isDirect = '是';
+    }
+
+    return next;
+  }
+
   /**
    * 创建默认行数据
    */
@@ -86,7 +161,7 @@ export function useBatchAddData() {
       carrierId: undefined,
       polId: undefined,
       podId: undefined,
-      isDirect: '是',
+      isDirect: undefined,
       poT1Id: undefined,
       poT2Id: undefined,
       polFreeDays: undefined,
@@ -108,7 +183,7 @@ export function useBatchAddData() {
       validTimeStart: '',
       validTimeEnd: '',
       remark: '',
-      currencyId: defaultCurrencyId.value,
+      currencyId: undefined,
       bookingAgentId: undefined,
       seFreiPriceCtns: [] as Array<{
         ctnCodeId: string;
@@ -117,37 +192,19 @@ export function useBatchAddData() {
       }>,
     };
 
-    const row = applyDefaultFreightRateValue(base, tenantDefaults.value);
-    if (typeof row.isDirect === 'boolean') {
-      row.isDirect = row.isDirect ? '是' : '否';
+    const row = applyTenantDefaultsToHotRow(base);
+
+    if (
+      isEmptyHotCell(row.currencyId) &&
+      defaultCurrencyId.value != null &&
+      defaultCurrencyId.value !== ''
+    ) {
+      row.currencyId =
+        resolveTenantDefaultLabel(
+          defaultCurrencyId.value,
+          tenantDefaultLabelResolvers.value.currency,
+        ) || String(defaultCurrencyId.value);
     }
-
-    // Handsontable 存显示名：优先用配置里缓存的 Label（进页零请求）
-    const defaults = tenantDefaults.value;
-    const resolvers = tenantDefaultLabelResolvers.value;
-
-    const carrierLabel =
-      String(defaults.carrierLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.carrierId, resolvers.carrier);
-    if (carrierLabel) row.carrierId = carrierLabel;
-
-    const polLabel =
-      String(defaults.polLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.polId, resolvers.pol);
-    if (polLabel) row.polId = polLabel;
-
-    const currencyLabel =
-      String(defaults.currencyLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.currencyId, resolvers.currency);
-    if (currencyLabel) row.currencyId = currencyLabel;
-
-    const bookingAgentLabel =
-      String(defaults.bookingAgentLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(
-        defaults.bookingAgentId,
-        resolvers.bookingAgent,
-      );
-    if (bookingAgentLabel) row.bookingAgentId = bookingAgentLabel;
 
     // ⚠️ 关键修复：如果已经有添加的箱型，为新行初始化动态字段
     if (addedCtnTypes.value.length > 0) {
@@ -526,6 +583,7 @@ export function useBatchAddData() {
     defaultCurrencyId,
     generateRowKey,
     createDefaultRow,
+    applyTenantDefaultsToHotRow,
     refreshTenantDefaults,
     setTenantDefaultLabelResolvers,
     tenantDefaults,
