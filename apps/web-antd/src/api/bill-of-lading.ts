@@ -100,6 +100,12 @@ export interface BillOfLading {
   swap?: BillHistory | null;
   deduct?: BillHistory | null;
   taskBaseId?: string | null;
+  /** 最近一次签出审核意见。从没提交过为 null，审了但没填为 ""。已驳回时即驳回原因 */
+  auditRemark?: string | null;
+  /** 最近一次签出审核时间 */
+  auditTime?: string | null;
+  /** 最近一次签出审核人昵称 */
+  auditUserName?: string | null;
   seaExport: BillSeaExport;
   seaExportSeparate?: { id: string; blNum?: string; totalCtn?: string } | null;
 }

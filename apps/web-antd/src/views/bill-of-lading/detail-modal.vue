@@ -11,10 +11,9 @@ import { IconifyIcon } from '@vben/icons';
 import { Button, Modal, Spin, TabPane, Tabs, Tag } from 'ant-design-vue';
 import { getBill, getBillHistory } from '#/api/bill-of-lading';
 import {
-  loadRejectReason,
   rejectMeta,
+  rejectReasonOf,
   rejectReasonText,
-  type RejectReason,
 } from '#/views/bill-of-lading/reject-reason';
 import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
@@ -84,7 +83,6 @@ const loading = ref(false);
 const activeTab = ref('basic');
 const bill = ref<BillOfLading>();
 const history = ref<BillHistory[]>([]);
-const rejectReason = ref<RejectReason>();
 const businessGroups = ref<SeaExportAdminApi.AttachmentGroupDto[]>([]);
 let request = 0;
 const canViewBusinessFiles = computed(() => hasAccessByCodes([seaExportGet]));
@@ -148,6 +146,9 @@ const mainShortcuts = computed(() =>
 const riskShortcuts = computed(() =>
   shortcuts.value.filter((action) => dangerActions.has(action)),
 );
+const rejectReason = computed(() =>
+  bill.value ? rejectReasonOf(bill.value) : undefined,
+);
 const rejectMetaText = computed(() => rejectMeta(rejectReason.value));
 
 async function open(row: BillOfLading) {
@@ -157,7 +158,6 @@ async function open(row: BillOfLading) {
   activeTab.value = 'basic';
   bill.value = undefined;
   history.value = [];
-  rejectReason.value = undefined;
   businessGroups.value = [];
   try {
     const [detail, items] = await Promise.all([
@@ -167,14 +167,6 @@ async function open(row: BillOfLading) {
     if (token !== request) return;
     bill.value = detail;
     history.value = items;
-    if (detail.status === 2) {
-      const reason = await loadRejectReason(
-        detail,
-        hasAccessByCodes(['Admin.BillOfLading.Audit']),
-      );
-      if (token !== request) return;
-      rejectReason.value = reason;
-    }
     const seaExportId = detail.seaExport?.id;
     if (canViewBusinessFiles.value && seaExportId) {
       const groups =
@@ -289,7 +281,7 @@ defineExpose({ open });
       <Tabs v-if="bill" v-model:activeKey="activeTab" class="detail-tabs">
         <TabPane key="basic" tab="基础信息">
           <section class="main">
-            <div v-if="bill.status === 2" class="reject-banner note">
+            <div v-if="rejectReason" class="reject-banner note">
               <span class="field__label">驳回原因</span>
               <div>
                 <p class="reject-banner__text">
