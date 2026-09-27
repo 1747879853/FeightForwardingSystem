@@ -1414,9 +1414,10 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       component: 'CodeIssueTypeSelect',
       fieldName: 'codeIssueTypeId',
       label: $t('seaExport.export.issueType'),
+      rules: 'required',
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
+        allowClear: false,
       },
     },
     {

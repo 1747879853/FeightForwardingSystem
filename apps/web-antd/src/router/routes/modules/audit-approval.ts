@@ -16,11 +16,24 @@ const routes: RouteRecordRaw[] = [
         'Admin.PreOrder.Audit',
         'Admin.CommissionOrder.Audit',
         'Admin.Client.Audit',
+        'Admin.BillOfLading.Audit',
       ]),
     },
     name: 'AuditApproval',
     path: '/audit-approval',
     children: [
+      {
+        path: 'bill-of-lading-review',
+        name: 'BillOfLadingReview',
+        meta: {
+          title: '提单签出审核',
+          icon: 'lucide:file-check',
+          keepAlive: true,
+          authority: abpPageAuthority('Admin.BillOfLading.Audit'),
+        },
+        component: () =>
+          import('#/views/audit-approval/bill-of-lading-review/index.vue'),
+      },
       {
         path: 'expense-review',
         name: 'ExpenseAll',

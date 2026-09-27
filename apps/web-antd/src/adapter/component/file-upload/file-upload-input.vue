@@ -423,6 +423,7 @@ onUnmounted(() => {
 
 /** 暴露方法 */
 defineExpose({
+  isUploading,
   /** 获取当前附件列表 */
   getAttachments: () => [...innerValue.value],
   /** 清空附件列表 */

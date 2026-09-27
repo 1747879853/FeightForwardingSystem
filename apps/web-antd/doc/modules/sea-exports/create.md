@@ -23,6 +23,8 @@ last_updated: 2026-09-23
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **提单配套（2026-09-21）：** 海出主单签单方式必填，存量空值在单条保存前必须补齐。
+
 - **字段权限展示：新建表单隐藏无条件受限项目，未取得已有详情时不推断条件屏蔽；创建数据仍需满足后端必填与默认值规则。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
 - **AI 识别辅助：** 顶栏「AI识别」点击后弹出拖拽上传区（`ai-extract-upload-modal.vue`），支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf）；拖入或点击选文件后自动调用 TextIn `ExtractSeaExportToAddDtoAsync`，由后端完成名称→id 匹配并回填表单；六段港口 Id 与对应 `*Remark` 一并映射进港口表单（空值、`0`、空 Guid 不回填）。识别成功自动关窗；失败可在弹窗内重试。
@@ -97,6 +99,7 @@ last_updated: 2026-09-23
 | :-- | :-- | :-- | :-- |
 | 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
 | 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与编辑页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
+| 2026-09-21 | `Feature` | 海出主单签单方式必填，存量空值在单条保存前必须补齐。 | 依据提单后端契约对齐，见提单管理与签出审核变更日志。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |
 | 2026-09-01 | `Feature` | 基础信息在航次后新增「码头航次」`terminalVoyno`（上限 64）。 | 与编辑页共用 `form.vue`；详见 `changelogs/change-log-2026-09-01-sea-export-import-terminal-voyno.md`。 |

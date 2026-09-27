@@ -329,6 +329,9 @@ const fillFormFromRecord = (
       }
     : masterSecondNotifierFields();
   formData.value = {
+    settlementId: record.settlementId,
+    settlementName: record.settlement?.name,
+    settlementDate: record.settlementDate,
     consigneeId: record.consigneeId,
     consigneeName: record.consignee?.name,
     consigneeContent: record.consigneeContent,
@@ -552,6 +555,7 @@ const buildCtnPayload = () =>
     });
 
 const buildPayload = () => ({
+  settlementId: formData.value.settlementId,
   seaExportId: seaExportId.value,
   consigneeId: formData.value.consigneeId,
   consigneeContent: formData.value.consigneeContent,
@@ -579,6 +583,10 @@ const buildPayload = () => ({
 });
 
 const handleSubmit = async () => {
+  if (!formData.value.settlementId) {
+    message.warning('请选择分单结算对象');
+    return;
+  }
   if (!formData.value.codeIssueTypeId) {
     message.warning(
       $t('ui.formRules.required', [$t('seaExport.export.issueType')]),
@@ -1044,6 +1052,39 @@ watch(seaExportId, () => {
                   size="small"
                   class="flex-1"
                   :placeholder="$t('ui.placeholder.select')"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label inline-label--required"
+                  >结算对象</label
+                >
+                <ClientSelect
+                  v-model="formData.settlementId"
+                  :selected-items="
+                    toSelectedItems(
+                      formData.settlementId,
+                      formData.settlementName,
+                    )
+                  "
+                  size="small"
+                  class="flex-1"
+                  :allow-clear="false"
+                  @change="formData.settlementDate = undefined"
+                />
+              </div>
+              <div class="inline-field">
+                <label class="inline-label">应结日期</label>
+                <Input
+                  :value="
+                    formData.settlementDate &&
+                    !formData.settlementDate.startsWith('0001')
+                      ? formatDate(formData.settlementDate)
+                      : ''
+                  "
+                  readonly
+                  size="small"
+                  class="readonly-input"
+                  placeholder="保存后按结算对象账期计算"
                 />
               </div>
               <div class="inline-field">

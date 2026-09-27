@@ -240,6 +240,20 @@ async function save() {
       taskType: taskType.value,
       enable: enable.value,
     });
+    if (
+      !supportsUserAttributeAuditor(taskType.value) &&
+      editDto.nodes.some((node) =>
+        node.auditors?.some(
+          (auditor) =>
+            auditor.userAttribute != null && auditor.userAttribute !== 0,
+        ),
+      )
+    ) {
+      message.warning(
+        '当前任务类型只支持用户或角色审核，请修改用户属性审核节点',
+      );
+      return;
+    }
     await editWorkFlow(editDto);
     message.success($t('common.save'));
     returnToListWithRefresh('SystemWorkflow', () => {

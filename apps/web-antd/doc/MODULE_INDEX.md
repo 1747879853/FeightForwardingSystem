@@ -1,5 +1,7 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
+| bill-of-lading | `/bill-of-lading` | 操作管理 | 提单检索、分组、白底紧凑数量卡（超期只标红数字，待我审核以「进入」跳审核页）、签入/换签/扣单/签出、审核提交；已驳回悬浮和详情顶部直接显示列表、详情带回的驳回原因，不另要审核权限；双击详情为三个 Tab：基础信息按三列排布、操作记录、只读业务附件（无海出查看权限则隐藏），底部操作跨 Tab 常驻。 | [提单管理](./modules/bill-of-lading/index.md) | 2026-09-27 |
+| audit-approval | `/audit-approval/bill-of-lading-review` | 审核审批 | 批次列表、六部分审核依据、部分审核和通过后驳回；批次状态与我的审核状态合成一列，悬浮查看本人状态和审批流程；申请放单的提单状态与我的审核状态同样合成一列，悬浮查看本人审核状态、驳回原因和本批审批流程；详情摘要含本批未收和客户欠款，压单行用淡橙底并在行首标红；申请放单的通过和驳回固定在表下，页签数量为浅底胶囊；各表占满剩余高度，滚动时表头和合计不动；应收欠费未到期天数绿色、表上为折算后本位币，悬浮金额以及申请放单、压单、后续新单、历史异常和摘要中的未收金额可查看折算前原币，并在表底按本位币合计；申请放单、压单、后续新单按提单行展示超期证明。 | [提单签出审核](./modules/audit-approval/bill-of-lading-review.md) | 2026-09-27 |
 | mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情及摄像头列表选择认领、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型分区支持多图，进入详情获取位置和中文地址、同任务上传复用且后台返回刷新，新图片通过隐藏的 lime-painter 画板写入上传人、时间及中文地址水印；详情监装堆场可一键导航（腾讯地理编码 + 微信 openLocation）；微信静默登录 + 手机号绑定，失效会话同步清理并回登录页；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通。默认 `pnpm build` 不带该包。列表默认按预计到货时间倒序。冷启动与从后台回到前台自动检查小程序更新，新版本由用户确认重启。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-27 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋；青港标题为「青港国际」，青岛海鼎/山东金冠按各自 mode 切换标题与 Logo。 | [登录页](./modules/_core/login.md) | 2026-09-22 |
@@ -81,9 +83,9 @@
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-09-20 |
 | system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-20 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken；新增银行账户时账户名称默认带出公司名称。 | [部门管理](./modules/system/dept.md) | 2026-09-14 |
-| system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
-| system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型（含业务联系单 PreOrder=8）、条件和审批节点；分支条件分「且组 / 或组」，可只配或条件。 | [工作流新建](./modules/system/workflow-create.md) | 2026-08-11 |
-| system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型（含业务联系单）；分支条件分「且组 / 或组」，可只配或条件。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-08-11 |
+| system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-09-21 |
+| system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型（含业务联系单 PreOrder=8）、条件和审批节点；分支条件分「且组 / 或组」，可只配或条件。 | [工作流新建](./modules/system/workflow-create.md) | 2026-09-21 |
+| system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型（含业务联系单）；分支条件分「且组 / 或组」，可只配或条件。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-09-21 |
 | system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。附件类型默认展示模块消费 `ModuleType`（含 160050 业务联系单、160100 监装箱型附件）。 | [枚举管理](./modules/system/enumeration.md) | 2026-09-05 |
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-09-09 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |

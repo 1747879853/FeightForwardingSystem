@@ -105,8 +105,24 @@ function onNumberChange(val) {
 </script>
 
 <template>
+  <ClientSelect
+    v-if="kind === 'client'"
+    :model-value="condition.value"
+    :selected-items="
+      condition.value
+        ? [{ id: condition.value, name: condition.valueText }]
+        : []
+    "
+    :placeholder="placeholder"
+    :allow-clear="false"
+    style="width: 100%"
+    @change="
+      (value, option) =>
+        emitUpdate(value, pickOptionLabel(option, ['name', 'label']))
+    "
+  />
   <UserSelect
-    v-if="kind === 'user'"
+    v-else-if="kind === 'user'"
     :model-value="condition.value"
     :placeholder="placeholder"
     use-rich-option-label
