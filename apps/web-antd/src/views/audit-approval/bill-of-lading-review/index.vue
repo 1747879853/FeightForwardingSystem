@@ -4,16 +4,32 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getBillTasks } from '#/api/bill-of-lading';
+import { getBillTask, getBillTasks } from '#/api/bill-of-lading';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { normalizeBillQuery } from '#/views/bill-of-lading/data';
+import CopyBillNo from '#/views/bill-of-lading/copy-bill-no.vue';
 import MoneyCell from '#/views/bill-of-lading/money-cell.vue';
 
 import Detail from './detail.vue';
+import { summarizeBatchOrigin } from './origin-summary';
 import TaskStatusCell from './task-status-cell.vue';
 defineOptions({ name: 'BillOfLadingReview' });
 const route = useRoute();
 const detail = ref<InstanceType<typeof Detail>>();
+const originCache = new Map<
+  string,
+  { code: string; lines: ReturnType<typeof summarizeBatchOrigin>['lines'] }
+>();
+
+function loadRowOrigin(id: string) {
+  const cached = originCache.get(id);
+  if (cached) return Promise.resolve(cached);
+  return getBillTask(id).then((task) => {
+    const summary = summarizeBatchOrigin(task);
+    originCache.set(id, summary);
+    return summary;
+  });
+}
 const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
   formOptions: {
     submitOnChange: true,
@@ -82,15 +98,13 @@ const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
         field: 'mblNums',
         title: '主提单号',
         minWidth: 180,
-        formatter: ({ cellValue }: { cellValue?: string[] }) =>
-          cellValue?.join('、'),
+        slots: { default: 'mblNums' },
       },
       {
         field: 'blNums',
         title: '分提单号',
         minWidth: 180,
-        formatter: ({ cellValue }: { cellValue?: string[] }) =>
-          cellValue?.join('、'),
+        slots: { default: 'blNums' },
       },
       { field: 'settlement.name', title: '结算对象', minWidth: 160 },
       { field: 'client.name', title: '委托单位', minWidth: 160 },
@@ -119,6 +133,7 @@ const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
         field: 'totalUnReceivedAmount',
         title: '未收金额',
         minWidth: 155,
+        align: 'right',
         slots: { default: 'totalUnReceivedAmount' },
       },
       { field: 'totalCtn', title: '箱型箱量', minWidth: 130 },
@@ -148,6 +163,12 @@ watch(
 <template>
   <Page auto-content-height>
     <Grid table-title="提单签出审核">
+      <template #mblNums="{ row }">
+        <CopyBillNo :texts="row.mblNums" />
+      </template>
+      <template #blNums="{ row }">
+        <CopyBillNo :texts="row.blNums" />
+      </template>
       <template #taskStatus="{ row }">
         <TaskStatusCell :row="row" />
       </template>
@@ -156,6 +177,7 @@ watch(
           :value="row.totalUnReceivedAmount"
           :code="row.localCurrencyCode"
           :lines="row.currencies"
+          :load="() => loadRowOrigin(row.id)"
         />
       </template>
     </Grid>

@@ -12,8 +12,14 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       title: '主提单号',
       minWidth: 180,
       fixed: 'left',
+      slots: { default: 'mblNum' },
     },
-    { field: 'seaExportSeparate.blNum', title: '分提单号', minWidth: 180 },
+    {
+      field: 'seaExportSeparate.blNum',
+      title: '分提单号',
+      minWidth: 180,
+      slots: { default: 'blNum' },
+    },
     {
       field: 'isSeparate',
       title: '主/分单',
@@ -31,7 +37,7 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       field: 'status',
       title: '提单状态',
       minWidth: 115,
-      cellRender: { name: 'CellTag', options: billStatusOptions },
+      slots: { default: 'status' },
     },
     {
       field: 'codeIssueType.billType',

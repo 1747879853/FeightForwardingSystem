@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import CodeIssueTypeSelect from '#/adapter/component/biz-select/code-issue-type-select.vue';
 import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import { getBill, runBillAction } from '#/api/bill-of-lading';
+import CopyBillNo from './copy-bill-no.vue';
 import {
   actionLabels,
   billNumber,
@@ -47,7 +48,7 @@ const requiresDate = computed(() =>
 );
 const overdueRows = computed(() => rows.value.filter((row) => row.isOverdue));
 const settlementName = computed(() => rows.value[0]?.settlement?.name || '');
-const numberText = computed(() =>
+const numbers = computed(() =>
   rows.value
     .map((row) =>
       (row.isSeparate
@@ -55,8 +56,7 @@ const numberText = computed(() =>
         : row.seaExport.transportOrder.mblNum
       )?.trim(),
     )
-    .filter(Boolean)
-    .join('、'),
+    .filter((item): item is string => !!item),
 );
 const modalWidth = computed(() =>
   action.value === 'Submit' && !overdueRows.value.length ? 420 : 640,
@@ -233,7 +233,9 @@ async function submit() {
           · {{ settlementName }}
         </template>
       </p>
-      <p v-if="numberText" class="summary__sub">{{ numberText }}</p>
+      <p v-if="numbers.length" class="summary__sub">
+        <CopyBillNo :texts="numbers" />
+      </p>
     </div>
     <p v-if="action === 'UnSubmit'" class="hint">
       撤销这张提单所在的整批审核。已有审核结果时不能撤销。
@@ -277,7 +279,7 @@ async function submit() {
       <template v-if="action === 'Submit'">
         <section v-for="row in overdueRows" :key="row.id" class="overdue-card">
           <p class="overdue-card__head">
-            <span>{{ billNumber(row) }}</span>
+            <CopyBillNo :text="billNumber(row)" />
             <span>
               应结
               {{
@@ -364,7 +366,7 @@ async function submit() {
   color: #1f2329;
 }
 
-.overdue-card__head span:last-child {
+.overdue-card__head > span:last-child {
   font-weight: 400;
   color: #8c95a3;
 }

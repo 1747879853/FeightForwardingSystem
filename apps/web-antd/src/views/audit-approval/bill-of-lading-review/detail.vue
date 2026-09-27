@@ -568,6 +568,7 @@ defineExpose({ open });
                 <ReviewSheet
                   :columns="applyColumns"
                   :data-source="applyRows"
+                  :flow="detail.workFlowInstance"
                   :row-key="taskRowKey"
                   :row-selection="selection"
                   :scroll-x="1972"
@@ -813,7 +814,6 @@ defineExpose({ open });
   display: inline-block;
   width: fit-content;
   max-width: 100%;
-  cursor: help;
   border-bottom: 1px dotted currentcolor;
 }
 

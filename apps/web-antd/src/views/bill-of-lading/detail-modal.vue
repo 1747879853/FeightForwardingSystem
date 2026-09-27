@@ -8,20 +8,19 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, ref } from 'vue';
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
-import {
-  Button,
-  Modal,
-  Spin,
-  TabPane,
-  Tabs,
-  Tag,
-  message,
-} from 'ant-design-vue';
+import { Button, Modal, Spin, TabPane, Tabs, Tag } from 'ant-design-vue';
 import { getBill, getBillHistory } from '#/api/bill-of-lading';
+import {
+  loadRejectReason,
+  rejectMeta,
+  rejectReasonText,
+  type RejectReason,
+} from '#/views/bill-of-lading/reject-reason';
 import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { createAbpPermission } from '#/utils/abp-permission';
+import CopyBillNo from './copy-bill-no.vue';
 import {
   actionLabels,
   actionPermission,
@@ -85,6 +84,7 @@ const loading = ref(false);
 const activeTab = ref('basic');
 const bill = ref<BillOfLading>();
 const history = ref<BillHistory[]>([]);
+const rejectReason = ref<RejectReason>();
 const businessGroups = ref<SeaExportAdminApi.AttachmentGroupDto[]>([]);
 let request = 0;
 const canViewBusinessFiles = computed(() => hasAccessByCodes([seaExportGet]));
@@ -99,7 +99,6 @@ const businessFileGroups = computed(() =>
 );
 
 const number = computed(() => (bill.value ? billNumber(bill.value) : ''));
-const canCopy = computed(() => !!number.value && number.value !== '未填提单号');
 const status = computed(() =>
   bill.value ? billStatusOptions[bill.value.status] : undefined,
 );
@@ -149,6 +148,7 @@ const mainShortcuts = computed(() =>
 const riskShortcuts = computed(() =>
   shortcuts.value.filter((action) => dangerActions.has(action)),
 );
+const rejectMetaText = computed(() => rejectMeta(rejectReason.value));
 
 async function open(row: BillOfLading) {
   const token = ++request;
@@ -157,6 +157,7 @@ async function open(row: BillOfLading) {
   activeTab.value = 'basic';
   bill.value = undefined;
   history.value = [];
+  rejectReason.value = undefined;
   businessGroups.value = [];
   try {
     const [detail, items] = await Promise.all([
@@ -166,6 +167,14 @@ async function open(row: BillOfLading) {
     if (token !== request) return;
     bill.value = detail;
     history.value = items;
+    if (detail.status === 2) {
+      const reason = await loadRejectReason(
+        detail,
+        hasAccessByCodes(['Admin.BillOfLading.Audit']),
+      );
+      if (token !== request) return;
+      rejectReason.value = reason;
+    }
     const seaExportId = detail.seaExport?.id;
     if (canViewBusinessFiles.value && seaExportId) {
       const groups =
@@ -238,16 +247,6 @@ function shortcutLabel(action: BillAction) {
   return actionLabels[action];
 }
 
-async function copyNumber() {
-  if (!canCopy.value) return;
-  try {
-    await navigator.clipboard.writeText(number.value);
-    message.success('已复制提单号');
-  } catch {
-    message.warning('复制失败，请手动复制');
-  }
-}
-
 function run(action: BillAction) {
   if (!bill.value) return;
   visible.value = false;
@@ -270,16 +269,7 @@ defineExpose({ open });
         <span>提单详情</span>
         <template v-if="number">
           <span class="modal-title__dot">·</span>
-          <span class="modal-title__num">{{ number }}</span>
-          <button
-            v-if="canCopy"
-            type="button"
-            class="copy-btn"
-            title="复制提单号"
-            @click="copyNumber"
-          >
-            <IconifyIcon icon="ant-design:copy-outlined" />
-          </button>
+          <CopyBillNo :text="number" mono large />
         </template>
         <div v-if="bill" class="modal-title__tags">
           <Tag class="tag tag-kind">{{
@@ -299,6 +289,17 @@ defineExpose({ open });
       <Tabs v-if="bill" v-model:activeKey="activeTab" class="detail-tabs">
         <TabPane key="basic" tab="基础信息">
           <section class="main">
+            <div v-if="bill.status === 2" class="reject-banner note">
+              <span class="field__label">驳回原因</span>
+              <div>
+                <p class="reject-banner__text">
+                  {{ rejectReasonText(rejectReason) }}
+                </p>
+                <p v-if="rejectMetaText" class="reject-banner__meta">
+                  {{ rejectMetaText }}
+                </p>
+              </div>
+            </div>
             <div class="group">
               <h4 class="group__title"><i class="group__bar" />航程 / 物流</h4>
               <div class="fields">
@@ -656,29 +657,6 @@ defineExpose({ open });
   color: #c0c4cc;
 }
 
-.modal-title__num {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.copy-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  color: #8c95a3;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-}
-
-.copy-btn:hover {
-  color: hsl(var(--primary));
-  background: hsl(var(--accent));
-}
-
 .modal-title__tags {
   display: flex;
   flex-wrap: wrap;
@@ -871,6 +849,26 @@ defineExpose({ open });
   margin: 0;
   font-size: 13px;
   line-height: 22px;
+}
+
+.reject-banner {
+  margin-bottom: 20px;
+}
+
+.reject-banner__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 22px;
+  color: #cf1322;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.reject-banner__meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #8c95a3;
 }
 
 .aside__head {

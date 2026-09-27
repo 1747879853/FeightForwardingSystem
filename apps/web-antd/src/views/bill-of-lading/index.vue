@@ -24,8 +24,10 @@ import {
 } from './rules';
 import { billColumns, billSearchSchema, normalizeBillQuery } from './data';
 import ActionModal from './action-modal.vue';
+import CopyBillNo from './copy-bill-no.vue';
 import DetailModal from './detail-modal.vue';
 import MoneyCell from './money-cell.vue';
+import StatusCell from './status-cell.vue';
 defineOptions({ name: 'BillOfLadingList' });
 const router = useRouter();
 const actionModal = ref<InstanceType<typeof ActionModal>>();
@@ -266,6 +268,15 @@ onActivated(() => {
     <div class="flex min-h-0 flex-1 gap-3 overflow-hidden">
       <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
         <Grid>
+          <template #mblNum="{ row }">
+            <CopyBillNo :text="row.seaExport?.transportOrder?.mblNum" />
+          </template>
+          <template #blNum="{ row }">
+            <CopyBillNo :text="row.seaExportSeparate?.blNum" />
+          </template>
+          <template #status="{ row }">
+            <StatusCell :key="row.id" :row="row" />
+          </template>
           <template #unReceivedAmount="{ row }">
             <MoneyCell
               :value="row.unReceivedAmount"

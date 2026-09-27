@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { BillAttachment } from '#/api/bill-of-lading';
+import type { BillAttachment, BillTask } from '#/api/bill-of-lading';
 
 import { computed } from 'vue';
 
-import { Button, Popover, Table } from 'ant-design-vue';
+import { Button, Table } from 'ant-design-vue';
 import {
   TableSummary,
   TableSummaryCell,
@@ -11,14 +11,18 @@ import {
 } from 'ant-design-vue/es/table';
 
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import CopyBillNo from '#/views/bill-of-lading/copy-bill-no.vue';
 import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { billStatusOptions } from '#/views/bill-of-lading/rules';
 
 import OriginMoneyTip from './origin-money-tip.vue';
+import StatusFlowPop from './status-flow-pop.vue';
 
 const props = defineProps<{
   columns: any[];
   dataSource?: null | readonly any[];
+  /** 本批审批流程，申请放单状态悬浮与列表状态列共用 */
+  flow?: BillTask['workFlowInstance'];
   /** 按本位币合计应收、已收、未收，用于应收欠费 */
   moneyTotal?: boolean;
   rowKey: any;
@@ -112,7 +116,6 @@ const statusTone = [
   'done',
   'held',
 ];
-const myStates = ['待我审核', '我已驳回', '我已通过'];
 const dateFields = new Set([
   'etd',
   'settlementDate',
@@ -181,6 +184,15 @@ function isClipColumn(column: { dataIndex?: unknown }) {
   return clipFields.has(fieldKey(column.dataIndex));
 }
 
+const billNumberFields = new Set(['blNum', 'blNums', 'mblNum']);
+
+function isBillNumberColumn(column: { dataIndex?: unknown; key?: unknown }) {
+  if (column.key != null && billNumberFields.has(String(column.key))) {
+    return true;
+  }
+  return billNumberFields.has(fieldKey(column.dataIndex));
+}
+
 function moneyCode(record?: {
   billOfLading?: { localCurrencyCode?: null | string };
   localCurrencyCode?: null | string;
@@ -230,11 +242,6 @@ function billStatusLabel(status: unknown) {
   return billStatusOptions[status]?.label ?? '—';
 }
 
-function myStatusLabel(status: unknown) {
-  if (typeof status !== 'number') return '未到当前步骤';
-  return myStates[status] ?? '—';
-}
-
 function isAuditItem(record: { taskItemId?: string }) {
   return !!record?.taskItemId;
 }
@@ -275,21 +282,19 @@ function daysTone(value: unknown) {
       :locale="{ emptyText: '暂无数据' }"
     >
       <template #bodyCell="{ column, record, text }">
-        <Popover
+        <StatusFlowPop
           v-if="column.key === 'status' && isAuditItem(record)"
-          trigger="hover"
-          placement="rightTop"
-          :mouse-enter-delay="0.2"
+          :my-task-status="record.myTaskStatus"
+          :bill-task-status="record.taskStatus"
+          :audit-user-name="record.auditUserName"
+          :audit-time="record.auditTime"
+          :remark="record.remark"
+          :work-flow-instance="flow"
         >
-          <template #content>
-            <div class="status-pop">
-              我的审核状态：{{ myStatusLabel(record.myTaskStatus) }}
-            </div>
-          </template>
           <span class="pill" :class="billStatusClass(text)">{{
             billStatusLabel(text)
           }}</span>
-        </Popover>
+        </StatusFlowPop>
         <span
           v-else-if="column.key === 'status'"
           class="pill"
@@ -302,9 +307,12 @@ function daysTone(value: unknown) {
             text ? '是' : '否'
           }}</span>
         </template>
-        <template v-else-if="column.key === 'blNums'">
-          {{ Array.isArray(text) && text.length ? text.join('、') : '—' }}
-        </template>
+        <CopyBillNo
+          v-else-if="isBillNumberColumn(column)"
+          :text="typeof text === 'string' ? text : undefined"
+          :texts="Array.isArray(text) ? text : undefined"
+          :placeholder="column.key === 'blNums' ? '—' : undefined"
+        />
         <span
           v-else-if="column.key === 'arrearsDays'"
           class="days"
@@ -539,13 +547,6 @@ function daysTone(value: unknown) {
   background: #f4f5f7;
 }
 
-.status-pop {
-  font-size: 12px;
-  line-height: 20px;
-  color: #3d4450;
-  white-space: nowrap;
-}
-
 .days {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -583,7 +584,6 @@ function daysTone(value: unknown) {
   display: inline-block;
   width: fit-content;
   max-width: 100%;
-  cursor: help;
   border-bottom: 1px dotted #c0c4cc;
 }
 
