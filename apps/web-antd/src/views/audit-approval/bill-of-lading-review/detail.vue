@@ -327,7 +327,13 @@ defineExpose({ open });
     width="92vw"
     :closable="!saving"
     :mask-closable="!saving"
-    :body-style="{ padding: '16px', background: '#f5f6f8' }"
+    :body-style="{
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '16px',
+      overflow: 'hidden',
+      background: '#f5f6f8',
+    }"
     :header-style="{ borderBottom: '1px solid #eef0f3' }"
   >
     <template #title>
@@ -344,177 +350,179 @@ defineExpose({ open });
         }}</span>
       </div>
     </template>
-    <Spin :spinning="loading">
-      <div v-if="detail" class="review">
-        <section class="summary">
-          <div class="summary__item">
-            <span>申请人</span>
-            <strong>{{ detail.creatorUserName || '—' }}</strong>
-          </div>
-          <div class="summary__item">
-            <span>申请时间</span>
-            <strong>{{ dateTime(detail.creationTime) }}</strong>
-          </div>
-          <div class="summary__item">
-            <span>提单 / 未完成</span>
-            <strong>
-              {{ detail.itemCount }}
-              <em>/</em>
-              <b :class="{ 'is-hot': detail.pendingItemCount > 0 }">{{
-                detail.pendingItemCount
-              }}</b>
-            </strong>
-          </div>
-          <div class="summary__item">
-            <span>未收金额（本位币）</span>
-            <strong
-              class="amount"
-              :class="{
-                'is-hot': (detail.totalUnReceivedAmount ?? 0) > 0,
-                'is-empty': detail.totalUnReceivedAmount == null,
-              }"
-              >{{ formatMoney(detail.totalUnReceivedAmount) }}</strong
-            >
-          </div>
-        </section>
-        <section class="panel">
-          <Tabs class="review-tabs">
-            <TabPane key="application">
-              <template #tab>
-                申请放单
-                <span class="tab-count">{{
-                  detail.billOfLadingTasks.length
-                }}</span>
-              </template>
-              <div class="toolbar">
-                <div class="toolbar__actions">
-                  <Button
-                    v-access:code="'Admin.BillOfLading.Audit'"
-                    type="primary"
-                    :disabled="!allowed(true) || saving"
-                    @click="confirm(true)"
-                    >通过所选提单</Button
-                  >
-                  <Button
-                    v-access:code="'Admin.BillOfLading.Audit'"
-                    danger
-                    :disabled="!allowed(false) || saving"
-                    @click="confirm(false)"
-                    >驳回 / 通过后驳回</Button
-                  >
-                </div>
-                <span
-                  class="toolbar__count"
-                  :class="{ 'is-on': selected.length > 0 }"
-                  >已选 <strong>{{ selected.length }}</strong> 张</span
-                >
-              </div>
-              <ReviewSheet
-                :columns="applyColumns"
-                :data-source="detail.billOfLadingTasks"
-                :row-key="taskRowKey"
-                :row-selection="selection"
-                :scroll-x="2100"
-              />
-            </TabPane>
-            <TabPane key="held">
-              <template #tab>
-                压单业务
-                <span class="tab-count">{{
-                  detail.heldUpBillOfLadings.length
-                }}</span>
-              </template>
-              <ReviewSheet
-                :columns="billColumns"
-                :data-source="detail.heldUpBillOfLadings"
-                row-key="id"
-                :scroll-x="1560"
-              />
-            </TabPane>
-            <TabPane key="following">
-              <template #tab>
-                后续新单
-                <span class="tab-count">{{
-                  detail.followingBillOfLadings.length
-                }}</span>
-              </template>
-              <ReviewSheet
-                :columns="billColumns"
-                :data-source="detail.followingBillOfLadings"
-                row-key="id"
-                :scroll-x="1560"
-              />
-            </TabPane>
-            <TabPane key="client" tab="客户信息">
-              <div v-if="detail.clientDetail" class="client">
-                <div
-                  v-for="field in clientFields"
-                  :key="field.label"
-                  class="field"
-                  :class="{ 'field--full': field.full }"
-                >
-                  <span class="field__label">{{ field.label }}</span>
+    <div class="review-spin">
+      <Spin :spinning="loading">
+        <div v-if="detail" class="review">
+          <section class="summary">
+            <div class="summary__item">
+              <span>申请人</span>
+              <strong>{{ detail.creatorUserName || '—' }}</strong>
+            </div>
+            <div class="summary__item">
+              <span>申请时间</span>
+              <strong>{{ dateTime(detail.creationTime) }}</strong>
+            </div>
+            <div class="summary__item">
+              <span>提单 / 未完成</span>
+              <strong>
+                {{ detail.itemCount }}
+                <em>/</em>
+                <b :class="{ 'is-hot': detail.pendingItemCount > 0 }">{{
+                  detail.pendingItemCount
+                }}</b>
+              </strong>
+            </div>
+            <div class="summary__item">
+              <span>未收金额（本位币）</span>
+              <strong
+                class="amount"
+                :class="{
+                  'is-hot': (detail.totalUnReceivedAmount ?? 0) > 0,
+                  'is-empty': detail.totalUnReceivedAmount == null,
+                }"
+                >{{ formatMoney(detail.totalUnReceivedAmount) }}</strong
+              >
+            </div>
+          </section>
+          <section class="panel">
+            <Tabs class="review-tabs">
+              <TabPane key="application">
+                <template #tab>
+                  申请放单
+                  <span class="tab-count">{{
+                    detail.billOfLadingTasks.length
+                  }}</span>
+                </template>
+                <div class="toolbar">
+                  <div class="toolbar__actions">
+                    <Button
+                      v-access:code="'Admin.BillOfLading.Audit'"
+                      type="primary"
+                      :disabled="!allowed(true) || saving"
+                      @click="confirm(true)"
+                      >通过所选提单</Button
+                    >
+                    <Button
+                      v-access:code="'Admin.BillOfLading.Audit'"
+                      danger
+                      :disabled="!allowed(false) || saving"
+                      @click="confirm(false)"
+                      >驳回 / 通过后驳回</Button
+                    >
+                  </div>
                   <span
-                    class="field__value"
-                    :class="{
-                      'is-empty': field.value === '未维护',
-                      amount: field.amount && field.value !== '未维护',
-                    }"
-                    >{{ field.value }}</span
+                    class="toolbar__count"
+                    :class="{ 'is-on': selected.length > 0 }"
+                    >已选 <strong>{{ selected.length }}</strong> 张</span
                   >
                 </div>
-              </div>
-              <div v-else class="empty-box">
-                <Empty
-                  :image="Empty.PRESENTED_IMAGE_SIMPLE"
-                  description="客户详情不可查看或暂无数据"
+                <ReviewSheet
+                  :columns="applyColumns"
+                  :data-source="detail.billOfLadingTasks"
+                  :row-key="taskRowKey"
+                  :row-selection="selection"
+                  :scroll-x="2100"
                 />
-              </div>
-            </TabPane>
-            <TabPane key="arrears">
-              <template #tab>
-                应收欠费
-                <span v-if="detail.arrearsReports" class="tab-count">{{
-                  detail.arrearsReports.length
-                }}</span>
-              </template>
-              <ReviewSheet
-                v-if="detail.arrearsReports"
-                money-total
-                :columns="arrearsColumns"
-                :data-source="detail.arrearsReports"
-                :row-key="arrearsRowKey"
-                :scroll-x="1000"
-              />
-              <div v-else class="empty-box">
-                <Empty
-                  :image="Empty.PRESENTED_IMAGE_SIMPLE"
-                  description="无欠费报表查看权限或暂无数据"
+              </TabPane>
+              <TabPane key="held">
+                <template #tab>
+                  压单业务
+                  <span class="tab-count">{{
+                    detail.heldUpBillOfLadings.length
+                  }}</span>
+                </template>
+                <ReviewSheet
+                  :columns="billColumns"
+                  :data-source="detail.heldUpBillOfLadings"
+                  row-key="id"
+                  :scroll-x="1560"
                 />
-              </div>
-            </TabPane>
-            <TabPane key="overdues">
-              <template #tab>
-                客户历史异常
-                <span class="tab-count">{{
-                  detail.clientOverdues.length
-                }}</span>
-              </template>
-              <p class="hint">
-                按本批结算对象汇总历史超期、当前超期、历史承诺超期及超承诺时间未结，金额为本位币。
-              </p>
-              <ReviewSheet
-                :columns="overdueColumns"
-                :data-source="detail.clientOverdues"
-                row-key="transportOrderId"
-                :scroll-x="1650"
-              />
-            </TabPane>
-          </Tabs>
-        </section>
-      </div>
-      <div v-else class="review-placeholder" />
-    </Spin>
+              </TabPane>
+              <TabPane key="following">
+                <template #tab>
+                  后续新单
+                  <span class="tab-count">{{
+                    detail.followingBillOfLadings.length
+                  }}</span>
+                </template>
+                <ReviewSheet
+                  :columns="billColumns"
+                  :data-source="detail.followingBillOfLadings"
+                  row-key="id"
+                  :scroll-x="1560"
+                />
+              </TabPane>
+              <TabPane key="client" tab="客户信息">
+                <div v-if="detail.clientDetail" class="client">
+                  <div
+                    v-for="field in clientFields"
+                    :key="field.label"
+                    class="field"
+                    :class="{ 'field--full': field.full }"
+                  >
+                    <span class="field__label">{{ field.label }}</span>
+                    <span
+                      class="field__value"
+                      :class="{
+                        'is-empty': field.value === '未维护',
+                        amount: field.amount && field.value !== '未维护',
+                      }"
+                      >{{ field.value }}</span
+                    >
+                  </div>
+                </div>
+                <div v-else class="empty-box">
+                  <Empty
+                    :image="Empty.PRESENTED_IMAGE_SIMPLE"
+                    description="客户详情不可查看或暂无数据"
+                  />
+                </div>
+              </TabPane>
+              <TabPane key="arrears">
+                <template #tab>
+                  应收欠费
+                  <span v-if="detail.arrearsReports" class="tab-count">{{
+                    detail.arrearsReports.length
+                  }}</span>
+                </template>
+                <ReviewSheet
+                  v-if="detail.arrearsReports"
+                  money-total
+                  :columns="arrearsColumns"
+                  :data-source="detail.arrearsReports"
+                  :row-key="arrearsRowKey"
+                  :scroll-x="1000"
+                />
+                <div v-else class="empty-box">
+                  <Empty
+                    :image="Empty.PRESENTED_IMAGE_SIMPLE"
+                    description="无欠费报表查看权限或暂无数据"
+                  />
+                </div>
+              </TabPane>
+              <TabPane key="overdues">
+                <template #tab>
+                  客户历史异常
+                  <span class="tab-count">{{
+                    detail.clientOverdues.length
+                  }}</span>
+                </template>
+                <p class="hint">
+                  按本批结算对象汇总历史超期、当前超期、历史承诺超期及超承诺时间未结，金额为本位币。
+                </p>
+                <ReviewSheet
+                  :columns="overdueColumns"
+                  :data-source="detail.clientOverdues"
+                  row-key="transportOrderId"
+                  :scroll-x="1650"
+                />
+              </TabPane>
+            </Tabs>
+          </section>
+        </div>
+        <div v-else class="review-placeholder" />
+      </Spin>
+    </div>
   </Drawer>
   <Modal
     v-model:open="confirmVisible"
@@ -565,18 +573,39 @@ defineExpose({ open });
   white-space: nowrap;
 }
 
+.review-spin {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.review-spin :deep(.ant-spin-nested-loading),
+.review-spin :deep(.ant-spin-container) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 .review {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .review-placeholder {
-  min-height: 320px;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .summary {
   display: grid;
+  flex: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   background: #fff;
@@ -644,15 +673,49 @@ defineExpose({ open });
 }
 
 .panel {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   padding: 4px 16px 16px;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #e8eaed;
   border-radius: 10px;
 }
 
+.review-tabs {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .review-tabs :deep(.ant-tabs-nav) {
   margin-bottom: 12px;
+}
+
+.review-tabs :deep(.ant-tabs-content-holder) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.review-tabs :deep(.ant-tabs-content) {
+  flex: 1 1 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.review-tabs :deep(.ant-tabs-tabpane-active) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .tab-count {
@@ -665,6 +728,7 @@ defineExpose({ open });
 
 .toolbar {
   display: flex;
+  flex: none;
   gap: 12px;
   align-items: center;
   justify-content: space-between;
@@ -700,6 +764,7 @@ defineExpose({ open });
 }
 
 .hint {
+  flex: none;
   margin: 0 0 12px;
   font-size: 12px;
   line-height: 20px;
@@ -708,9 +773,13 @@ defineExpose({ open });
 
 .client {
   display: grid;
+  flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px 28px;
+  align-content: start;
+  min-height: 0;
   padding: 4px 4px 8px;
+  overflow: auto;
 }
 
 .field {
@@ -744,7 +813,10 @@ defineExpose({ open });
 }
 
 .empty-box {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 24px 0 32px;
+  overflow: auto;
 }
 
 .pill {

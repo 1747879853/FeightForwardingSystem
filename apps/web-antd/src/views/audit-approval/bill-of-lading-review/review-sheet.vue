@@ -13,6 +13,8 @@ import {
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { billStatusOptions } from '#/views/bill-of-lading/rules';
 
+import OriginMoneyTip from './origin-money-tip.vue';
+
 const props = defineProps<{
   columns: any[];
   dataSource?: null | readonly any[];
@@ -22,6 +24,31 @@ const props = defineProps<{
   rowSelection?: any;
   scrollX: number;
 }>();
+
+interface OriginLine {
+  code: string;
+  name: string;
+  receivable: number;
+  received: number;
+  unReceived: number;
+}
+
+function originLines(currencies: unknown): OriginLine[] {
+  if (!Array.isArray(currencies)) return [];
+  return currencies.flatMap((item) => {
+    const code = item?.currency?.code;
+    if (!code) return [];
+    return [
+      {
+        code: String(code),
+        name: String(item.currency?.cnName ?? ''),
+        receivable: Number(item.receivable) || 0,
+        received: Number(item.received) || 0,
+        unReceived: Number(item.unReceived) || 0,
+      },
+    ];
+  });
+}
 
 const totals = computed(() => {
   if (!props.moneyTotal) return [];
@@ -45,6 +72,35 @@ const totals = computed(() => {
   }
   return [...grouped.values()];
 });
+
+const summaryOrigins = computed(() => {
+  const grouped = new Map<string, Map<string, OriginLine>>();
+  if (!props.moneyTotal) return grouped;
+  for (const row of props.dataSource ?? []) {
+    const localCode = String(row.localCurrencyCode ?? '');
+    const bucket = grouped.get(localCode) ?? new Map<string, OriginLine>();
+    for (const line of originLines(row.currencies)) {
+      const current = bucket.get(line.code) ?? {
+        code: line.code,
+        name: line.name,
+        receivable: 0,
+        received: 0,
+        unReceived: 0,
+      };
+      current.receivable += line.receivable;
+      current.received += line.received;
+      current.unReceived += line.unReceived;
+      if (!current.name && line.name) current.name = line.name;
+      bucket.set(line.code, current);
+    }
+    grouped.set(localCode, bucket);
+  }
+  return grouped;
+});
+
+function summaryOriginLines(localCode: string) {
+  return [...(summaryOrigins.value.get(localCode)?.values() ?? [])];
+}
 
 const statusTone = [
   'pending',
@@ -79,6 +135,25 @@ function fieldKey(dataIndex: unknown) {
 
 function isMoneyColumn(column: { dataIndex?: unknown }) {
   return moneyFields.has(fieldKey(column.dataIndex));
+}
+
+const convertedMoneyFields = new Set([
+  'totalReceivable',
+  'totalReceived',
+  'totalUnReceived',
+]);
+
+function isConvertedMoneyColumn(column: { dataIndex?: unknown }) {
+  return (
+    !!props.moneyTotal && convertedMoneyFields.has(fieldKey(column.dataIndex))
+  );
+}
+
+function originFocus(column: { dataIndex?: unknown }) {
+  const key = fieldKey(column.dataIndex);
+  if (key === 'totalReceived') return 'received';
+  if (key === 'totalUnReceived') return 'unReceived';
+  return 'receivable';
 }
 
 function isDateColumn(column: { dataIndex?: unknown }) {
@@ -159,104 +234,203 @@ function daysTone(value: unknown) {
 </script>
 
 <template>
-  <Table
-    class="sheet"
-    size="small"
-    :columns="columns"
-    :data-source="dataSource ?? []"
-    :pagination="false"
-    :row-key="rowKey"
-    :row-selection="rowSelection"
-    :scroll="{ x: scrollX }"
-    :locale="{ emptyText: '暂无数据' }"
-  >
-    <template #bodyCell="{ column, record, text }">
-      <span
-        v-if="column.key === 'status'"
-        class="pill"
-        :class="billStatusClass(text)"
-        >{{ billStatusLabel(text) }}</span
-      >
-      <template v-else-if="column.key === 'held'">
-        <span v-if="text == null" class="muted">—</span>
-        <span v-else class="pill" :class="text ? 'is-held' : 'is-idle'">{{
-          text ? '是' : '否'
-        }}</span>
+  <div class="sheet-host">
+    <Table
+      class="sheet"
+      size="small"
+      :columns="columns"
+      :data-source="dataSource ?? []"
+      :pagination="false"
+      :row-key="rowKey"
+      :row-selection="rowSelection"
+      :scroll="{ x: scrollX }"
+      :locale="{ emptyText: '暂无数据' }"
+    >
+      <template #bodyCell="{ column, record, text }">
+        <span
+          v-if="column.key === 'status'"
+          class="pill"
+          :class="billStatusClass(text)"
+          >{{ billStatusLabel(text) }}</span
+        >
+        <template v-else-if="column.key === 'held'">
+          <span v-if="text == null" class="muted">—</span>
+          <span v-else class="pill" :class="text ? 'is-held' : 'is-idle'">{{
+            text ? '是' : '否'
+          }}</span>
+        </template>
+        <span
+          v-else-if="column.key === 'mine'"
+          class="pill"
+          :class="myStatusClass(text)"
+          >{{ myStatusLabel(text) }}</span
+        >
+        <template v-else-if="column.key === 'blNums'">
+          {{ Array.isArray(text) && text.length ? text.join('、') : '—' }}
+        </template>
+        <span
+          v-else-if="column.key === 'arrearsDays'"
+          class="days"
+          :class="daysTone(text)"
+          >{{ text == null || text === '' ? '—' : text }}</span
+        >
+        <OriginMoneyTip
+          v-else-if="
+            isConvertedMoneyColumn(column) &&
+            originLines(record.currencies).length
+          "
+          :lines="originLines(record.currencies)"
+          :focus="originFocus(column)"
+          title="折算前原币"
+        >
+          <span class="cell amount is-tip">{{
+            displayCell(column, text)
+          }}</span>
+        </OriginMoneyTip>
+        <template v-else-if="column.key === 'proof'">
+          <div v-if="proofFiles(record).length" class="files">
+            <Button
+              v-for="file in proofFiles(record)"
+              :key="String(file.attachmentId)"
+              type="link"
+              class="file-link"
+              :title="proofName(file)"
+              @click.stop="openAttachmentViewer(file)"
+              >{{ proofName(file) }}</Button
+            >
+          </div>
+          <span v-else class="muted">—</span>
+        </template>
+        <span
+          v-else
+          class="cell"
+          :class="{
+            amount: isMoneyColumn(column) && !isPlaceholder(column, text),
+            clip: isClipColumn(column),
+            muted: isPlaceholder(column, text),
+          }"
+          :title="isClipColumn(column) ? displayCell(column, text) : undefined"
+          >{{ displayCell(column, text) }}</span
+        >
       </template>
-      <span
-        v-else-if="column.key === 'mine'"
-        class="pill"
-        :class="myStatusClass(text)"
-        >{{ myStatusLabel(text) }}</span
-      >
-      <template v-else-if="column.key === 'blNums'">
-        {{ Array.isArray(text) && text.length ? text.join('、') : '—' }}
+      <template v-if="totals.length" #summary>
+        <TableSummary>
+          <TableSummaryRow v-for="line in totals" :key="line.code || 'local'">
+            <TableSummaryCell :index="0" :col-span="3">合计</TableSummaryCell>
+            <TableSummaryCell :index="3">{{
+              line.code || '—'
+            }}</TableSummaryCell>
+            <TableSummaryCell :index="4" align="right">
+              <OriginMoneyTip
+                v-if="summaryOriginLines(line.code).length"
+                :lines="summaryOriginLines(line.code)"
+                focus="receivable"
+                title="折算前原币合计"
+              >
+                <span class="cell amount is-tip">{{
+                  formatMoney(line.receivable)
+                }}</span>
+              </OriginMoneyTip>
+              <span v-else class="cell amount">{{
+                formatMoney(line.receivable)
+              }}</span>
+            </TableSummaryCell>
+            <TableSummaryCell :index="5" align="right">
+              <OriginMoneyTip
+                v-if="summaryOriginLines(line.code).length"
+                :lines="summaryOriginLines(line.code)"
+                focus="received"
+                title="折算前原币合计"
+              >
+                <span class="cell amount is-tip">{{
+                  formatMoney(line.received)
+                }}</span>
+              </OriginMoneyTip>
+              <span v-else class="cell amount">{{
+                formatMoney(line.received)
+              }}</span>
+            </TableSummaryCell>
+            <TableSummaryCell :index="6" align="right">
+              <OriginMoneyTip
+                v-if="summaryOriginLines(line.code).length"
+                :lines="summaryOriginLines(line.code)"
+                focus="unReceived"
+                title="折算前原币合计"
+              >
+                <span class="cell amount is-tip">{{
+                  formatMoney(line.unreceived)
+                }}</span>
+              </OriginMoneyTip>
+              <span v-else class="cell amount">{{
+                formatMoney(line.unreceived)
+              }}</span>
+            </TableSummaryCell>
+          </TableSummaryRow>
+        </TableSummary>
       </template>
-      <span
-        v-else-if="column.key === 'arrearsDays'"
-        class="days"
-        :class="daysTone(text)"
-        >{{ text == null || text === '' ? '—' : text }}</span
-      >
-      <template v-else-if="column.key === 'proof'">
-        <div v-if="proofFiles(record).length" class="files">
-          <Button
-            v-for="file in proofFiles(record)"
-            :key="String(file.attachmentId)"
-            type="link"
-            class="file-link"
-            :title="proofName(file)"
-            @click.stop="openAttachmentViewer(file)"
-            >{{ proofName(file) }}</Button
-          >
-        </div>
-        <span v-else class="muted">—</span>
-      </template>
-      <span
-        v-else
-        class="cell"
-        :class="{
-          amount: isMoneyColumn(column) && !isPlaceholder(column, text),
-          clip: isClipColumn(column),
-          muted: isPlaceholder(column, text),
-        }"
-        :title="isClipColumn(column) ? displayCell(column, text) : undefined"
-        >{{ displayCell(column, text) }}</span
-      >
-    </template>
-    <template v-if="totals.length" #summary>
-      <TableSummary>
-        <TableSummaryRow v-for="line in totals" :key="line.code || 'local'">
-          <TableSummaryCell :index="0" :col-span="3">合计</TableSummaryCell>
-          <TableSummaryCell :index="3">{{ line.code || '—' }}</TableSummaryCell>
-          <TableSummaryCell :index="4" align="right">
-            <span class="cell amount">{{ formatMoney(line.receivable) }}</span>
-          </TableSummaryCell>
-          <TableSummaryCell :index="5" align="right">
-            <span class="cell amount">{{ formatMoney(line.received) }}</span>
-          </TableSummaryCell>
-          <TableSummaryCell :index="6" align="right">
-            <span class="cell amount">{{ formatMoney(line.unreceived) }}</span>
-          </TableSummaryCell>
-        </TableSummaryRow>
-      </TableSummary>
-    </template>
-  </Table>
+    </Table>
+  </div>
 </template>
 
 <style scoped>
+.sheet-host {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sheet {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.sheet :deep(.ant-spin-nested-loading),
+.sheet :deep(.ant-spin-container) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 .sheet :deep(.ant-table) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   color: #1f2329;
   border: 1px solid #eef0f3;
   border-radius: 8px;
 }
 
 .sheet :deep(.ant-table-container) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   border-start-start-radius: 8px;
   border-start-end-radius: 8px;
 }
 
+.sheet :deep(.ant-table-content) {
+  flex: 1 1 0;
+  height: 100%;
+  min-height: 0;
+  overflow: auto !important;
+}
+
 .sheet :deep(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   font-size: 12px;
   font-weight: 600;
   color: #5b6472;
@@ -346,11 +520,25 @@ function daysTone(value: unknown) {
   color: #f5222d;
 }
 
+.sheet :deep(.ant-table-summary) {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+}
+
 .sheet :deep(.ant-table-summary > tr > td) {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   font-size: 13px;
   font-weight: 600;
   background: #f7f8fa;
   border-bottom: 0;
+}
+
+.cell.amount.is-tip {
+  cursor: help;
+  border-bottom: 1px dotted #c0c4cc;
 }
 
 .cell.amount {
