@@ -6,6 +6,8 @@ import { IconifyIcon } from '@vben/icons';
 import { message, Tooltip } from 'ant-design-vue';
 
 const props = defineProps<{
+  /** 只保留点击号码复制，不显示复制图标 */
+  hideIcon?: boolean;
   /** 详情标题等需要稍大的复制按钮 */
   large?: boolean;
   /** 等宽字体，用于详情标题 */
@@ -104,6 +106,7 @@ onBeforeUnmount(clearTimer);
             item
           }}</span>
           <button
+            v-if="!hideIcon"
             type="button"
             class="copy-bill-no__btn"
             :class="{ 'is-lg': large }"

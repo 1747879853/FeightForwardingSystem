@@ -338,7 +338,7 @@ defineExpose({ open });
                 <div class="field">
                   <span class="field__label">船名 / 航次</span>
                   <span class="field__value" :class="{ 'is-empty': !voyage }">{{
-                    voyage || '未排载'
+                    voyage || '未维护'
                   }}</span>
                 </div>
                 <div class="field">
@@ -390,7 +390,7 @@ defineExpose({ open });
                     >{{ text(order?.client?.name) }}</span
                   >
                 </div>
-                <div class="field field--full">
+                <div class="field">
                   <span class="field__label">销售 / 操作</span>
                   <span class="field__value" :class="{ 'is-empty': !staff }">{{
                     staff || '未维护'
@@ -769,7 +769,7 @@ defineExpose({ open });
 
 .fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 24px;
 }
 
@@ -1093,6 +1093,12 @@ defineExpose({ open });
   padding-left: 16px;
   margin-left: 8px;
   border-left: 1px solid hsl(var(--border));
+}
+
+@media (max-width: 960px) {
+  .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
