@@ -62,6 +62,7 @@ import { getEnumItems } from '#/utils/init-enum';
 
 import {
   applyDefaultFreightRateValue,
+  isEmptyFreightDefaultField,
   loadDefaultFreightRateConfig,
 } from './composables/use-default-freight-rate-config';
 
@@ -399,6 +400,16 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
+    {
+      component: 'Input',
+      fieldName: 'vesselVoyage',
+      label: '船名航次',
+      componentProps: {
+        placeholder: '请输入船名航次',
+        maxlength: 100,
+        style: { width: '100%' },
+      },
+    },
     // 第三行：约号、免用箱天数等
     {
       component: 'Input',
@@ -678,20 +689,15 @@ const [Modal, modalApi] = useVbenModal({
       }
     } else {
       // 新增模式 - 初始化并加载默认箱型 + 个人默认值配置
+      // 草稿勿预填 0/true 等占位，否则 fill-blank 会跳过个人默认值
       const defaultCtns = await loadDefaultCtns();
       const { value: tenantDefaults } = await loadDefaultFreightRateConfig();
 
       const draft = applyDefaultFreightRateValue(
         {
           id: '',
-          recommend: false,
-          carrierId: 0,
-          polId: 0,
-          podId: 0,
-          isDirect: true,
           validTimeStart: '',
           validTimeEnd: '',
-          currencyId: defaultCurrencyId.value || 0,
           creationTime: '',
           isValid: 0,
           seFreiPriceCtns: defaultCtns,
@@ -699,6 +705,16 @@ const [Modal, modalApi] = useVbenModal({
         } as SeFreiPriceOutDto,
         tenantDefaults,
       );
+
+      // 个人配置未覆盖时的 UI 兜底
+      if (draft.recommend === undefined) draft.recommend = false;
+      if (draft.isDirect === undefined) draft.isDirect = true;
+      if (
+        isEmptyFreightDefaultField(draft.currencyId) &&
+        defaultCurrencyId.value
+      ) {
+        draft.currencyId = defaultCurrencyId.value;
+      }
 
       formData.value = draft;
       surchargeFees.value = [];
@@ -710,7 +726,12 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'carrierId',
             componentProps: {
-              selectedItems: [{ id: draft.carrierId }],
+              selectedItems: [
+                {
+                  id: draft.carrierId,
+                  cnShortName: tenantDefaults.carrierLabel || undefined,
+                },
+              ],
             },
           },
         ]);
@@ -720,7 +741,13 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'polId',
             componentProps: {
-              selectedItems: [{ id: draft.polId }],
+              selectedItems: [
+                {
+                  id: draft.polId,
+                  enName: tenantDefaults.polLabel || undefined,
+                  name: tenantDefaults.polLabel || undefined,
+                },
+              ],
             },
           },
         ]);
@@ -730,7 +757,12 @@ const [Modal, modalApi] = useVbenModal({
           {
             fieldName: 'bookingAgentId',
             componentProps: {
-              selectedItems: [{ id: draft.bookingAgentId }],
+              selectedItems: [
+                {
+                  id: draft.bookingAgentId,
+                  name: tenantDefaults.bookingAgentLabel || undefined,
+                },
+              ],
             },
           },
         ]);
@@ -748,6 +780,7 @@ const [Modal, modalApi] = useVbenModal({
         poddem: draft.poddem,
         poddet: draft.poddet,
         voyage: draft.voyage,
+        vesselVoyage: draft.vesselVoyage,
         contractNo: draft.contractNo,
         remark: draft.remark,
       });
@@ -799,6 +832,7 @@ async function loadDetail(priceId: string) {
       poT1Id: detail.poT1Id,
       poT2Id: detail.poT2Id,
       voyage: detail.voyage,
+      vesselVoyage: detail.vesselVoyage,
       contractNo: detail.contractNo,
       polFreeDays: detail.polFreeDays,
       podFreeDays: detail.podFreeDays,
@@ -1454,6 +1488,7 @@ async function handleSubmit() {
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,
       voyage: values.voyage,
+      vesselVoyage: values.vesselVoyage?.trim() || null,
       contractNo: values.contractNo,
       polFreeDays: values.polFreeDays,
       podFreeDays: values.podFreeDays,

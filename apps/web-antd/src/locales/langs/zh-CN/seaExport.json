@@ -670,6 +670,7 @@
     "pot2Id": "中转港2",
     "freeDays": "免用箱天数",
     "voyage": "航程",
+    "vesselVoyage": "船名航次",
     "etd": "开船日期",
     "closeDocTime": "截单时间",
     "closingTime": "截关时间",

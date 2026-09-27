@@ -75,6 +75,81 @@ export function useBatchAddData() {
     return label;
   }
 
+  function isEmptyHotCell(value: unknown) {
+    return value === undefined || value === null || value === '';
+  }
+
+  /** 空单元格，或仍是默认配置的 id（需换成显示名） */
+  function shouldFillLookupLabel(
+    current: unknown,
+    defaultId: null | number | string | undefined,
+  ) {
+    if (isEmptyHotCell(current)) return true;
+    if (defaultId != null && String(current) === String(defaultId)) return true;
+    return false;
+  }
+
+  /**
+   * 对 Handsontable 行补齐运价新增默认值（仅空字段）。
+   * 船公司/起运港/币别/订舱代理写成显示名，供下拉回显。
+   */
+  function applyTenantDefaultsToHotRow(row: Record<string, any>) {
+    const next = applyDefaultFreightRateValue(row, tenantDefaults.value);
+
+    if (typeof next.isDirect === 'boolean') {
+      next.isDirect = next.isDirect ? '是' : '否';
+    }
+
+    const defaults = tenantDefaults.value;
+    const resolvers = tenantDefaultLabelResolvers.value;
+
+    const carrierLabel =
+      String(defaults.carrierLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.carrierId, resolvers.carrier);
+    if (
+      carrierLabel &&
+      shouldFillLookupLabel(next.carrierId, defaults.carrierId)
+    ) {
+      next.carrierId = carrierLabel;
+    }
+
+    const polLabel =
+      String(defaults.polLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.polId, resolvers.pol);
+    if (polLabel && shouldFillLookupLabel(next.polId, defaults.polId)) {
+      next.polId = polLabel;
+    }
+
+    const currencyLabel =
+      String(defaults.currencyLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(defaults.currencyId, resolvers.currency);
+    if (
+      currencyLabel &&
+      shouldFillLookupLabel(next.currencyId, defaults.currencyId)
+    ) {
+      next.currencyId = currencyLabel;
+    }
+
+    const bookingAgentLabel =
+      String(defaults.bookingAgentLabel ?? '').trim() ||
+      resolveTenantDefaultLabel(
+        defaults.bookingAgentId,
+        resolvers.bookingAgent,
+      );
+    if (
+      bookingAgentLabel &&
+      shouldFillLookupLabel(next.bookingAgentId, defaults.bookingAgentId)
+    ) {
+      next.bookingAgentId = bookingAgentLabel;
+    }
+
+    if (isEmptyHotCell(next.isDirect)) {
+      next.isDirect = '是';
+    }
+
+    return next;
+  }
+
   /**
    * 创建默认行数据
    */
@@ -86,7 +161,7 @@ export function useBatchAddData() {
       carrierId: undefined,
       polId: undefined,
       podId: undefined,
-      isDirect: '是',
+      isDirect: undefined,
       poT1Id: undefined,
       poT2Id: undefined,
       polFreeDays: undefined,
@@ -108,7 +183,7 @@ export function useBatchAddData() {
       validTimeStart: '',
       validTimeEnd: '',
       remark: '',
-      currencyId: defaultCurrencyId.value,
+      currencyId: undefined,
       bookingAgentId: undefined,
       seFreiPriceCtns: [] as Array<{
         ctnCodeId: string;
@@ -117,37 +192,19 @@ export function useBatchAddData() {
       }>,
     };
 
-    const row = applyDefaultFreightRateValue(base, tenantDefaults.value);
-    if (typeof row.isDirect === 'boolean') {
-      row.isDirect = row.isDirect ? '是' : '否';
+    const row = applyTenantDefaultsToHotRow(base);
+
+    if (
+      isEmptyHotCell(row.currencyId) &&
+      defaultCurrencyId.value != null &&
+      defaultCurrencyId.value !== ''
+    ) {
+      row.currencyId =
+        resolveTenantDefaultLabel(
+          defaultCurrencyId.value,
+          tenantDefaultLabelResolvers.value.currency,
+        ) || String(defaultCurrencyId.value);
     }
-
-    // Handsontable 存显示名：优先用配置里缓存的 Label（进页零请求）
-    const defaults = tenantDefaults.value;
-    const resolvers = tenantDefaultLabelResolvers.value;
-
-    const carrierLabel =
-      String(defaults.carrierLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.carrierId, resolvers.carrier);
-    if (carrierLabel) row.carrierId = carrierLabel;
-
-    const polLabel =
-      String(defaults.polLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.polId, resolvers.pol);
-    if (polLabel) row.polId = polLabel;
-
-    const currencyLabel =
-      String(defaults.currencyLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(defaults.currencyId, resolvers.currency);
-    if (currencyLabel) row.currencyId = currencyLabel;
-
-    const bookingAgentLabel =
-      String(defaults.bookingAgentLabel ?? '').trim() ||
-      resolveTenantDefaultLabel(
-        defaults.bookingAgentId,
-        resolvers.bookingAgent,
-      );
-    if (bookingAgentLabel) row.bookingAgentId = bookingAgentLabel;
 
     // ⚠️ 关键修复：如果已经有添加的箱型，为新行初始化动态字段
     if (addedCtnTypes.value.length > 0) {
@@ -233,10 +290,44 @@ export function useBatchAddData() {
     message.success(`已复制 ${selectedRows.length} 行`);
   }
 
+  type LabelToIdMaps = {
+    carriers: Map<string, string>;
+    ports: Map<string, string>;
+    currencies: Map<string, string>;
+    clients: Map<string, string>;
+  };
+
   /**
-   * 验证表单
+   * 单元格可能是下拉展示名，也可能已被写回为 id（历史币别 afterChange）。
+   * 两种都要能解析；解析不到返回 undefined，由校验拦下，避免静默丢行。
    */
-  function validateForm(): boolean {
+  function convertNameToId(
+    value: unknown,
+    map?: Map<string, string>,
+  ): string | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    const key = String(value).trim();
+    if (!key) return undefined;
+    if (!map) return key;
+
+    const fromLabel = map.get(key);
+    if (fromLabel !== undefined && fromLabel !== null && fromLabel !== '') {
+      return String(fromLabel);
+    }
+
+    // 已是 id：映射表 value 里能找到
+    for (const id of map.values()) {
+      if (String(id) === key) return key;
+    }
+    return undefined;
+  }
+
+  /**
+   * 验证表单（含 label→id 可解析性，防止多行提交时外键静默变 undefined）
+   */
+  function validateForm(labelToIdMap?: LabelToIdMaps): boolean {
     if (dataSource.value.length === 0) {
       message.warning('请至少添加一行数据');
       return false;
@@ -269,6 +360,54 @@ export function useBatchAddData() {
       if (!row.validTimeEnd) {
         message.warning(`第 ${rowNum} 行：请选择截止日期`);
         return false;
+      }
+
+      if (labelToIdMap) {
+        if (!convertNameToId(row.carrierId, labelToIdMap.carriers)) {
+          message.warning(
+            `第 ${rowNum} 行：船公司「${row.carrierId}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (!convertNameToId(row.polId, labelToIdMap.ports)) {
+          message.warning(
+            `第 ${rowNum} 行：起运港「${row.polId}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (!convertNameToId(row.podId, labelToIdMap.ports)) {
+          message.warning(
+            `第 ${rowNum} 行：目的港「${row.podId}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (!convertNameToId(row.currencyId, labelToIdMap.currencies)) {
+          message.warning(
+            `第 ${rowNum} 行：币别「${row.currencyId}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (row.poT1Id && !convertNameToId(row.poT1Id, labelToIdMap.ports)) {
+          message.warning(
+            `第 ${rowNum} 行：中转港1「${row.poT1Id}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (row.poT2Id && !convertNameToId(row.poT2Id, labelToIdMap.ports)) {
+          message.warning(
+            `第 ${rowNum} 行：中转港2「${row.poT2Id}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
+        if (
+          row.bookingAgentId &&
+          !convertNameToId(row.bookingAgentId, labelToIdMap.clients)
+        ) {
+          message.warning(
+            `第 ${rowNum} 行：订舱代理「${row.bookingAgentId}」无法识别，请从下拉重新选择`,
+          );
+          return false;
+        }
       }
     }
 
@@ -363,19 +502,7 @@ export function useBatchAddData() {
             ]
           : [];
 
-      // 辅助函数:将名称转换为ID（保持字符串类型，避免大数精度丢失）
-      const convertNameToId = (
-        value: any,
-        map?: Map<string, string>,
-      ): string | undefined => {
-        // 如果是字符串名称，尝试从映射表中查找ID
-        if (map) {
-          return map.get(value);
-        }
-        return undefined;
-      };
-
-      // 转换所有需要ID的字段
+      // 转换所有需要ID的字段（展示名或已写回的 id）
       const carrierId = convertNameToId(row.carrierId, labelToIdMap?.carriers);
       const polId = convertNameToId(row.polId, labelToIdMap?.ports);
       const podId = convertNameToId(row.podId, labelToIdMap?.ports);
@@ -383,12 +510,15 @@ export function useBatchAddData() {
         row.currencyId,
         labelToIdMap?.currencies,
       );
-      const poT1Id = convertNameToId(row.poT1Id, labelToIdMap?.ports);
-      const poT2Id = convertNameToId(row.poT2Id, labelToIdMap?.ports);
-      const bookingAgentId = convertNameToId(
-        row.bookingAgentId,
-        labelToIdMap?.clients,
-      ); // bookingAgentId 保持原值,不需要转换
+      const poT1Id = row.poT1Id
+        ? convertNameToId(row.poT1Id, labelToIdMap?.ports)
+        : undefined;
+      const poT2Id = row.poT2Id
+        ? convertNameToId(row.poT2Id, labelToIdMap?.ports)
+        : undefined;
+      const bookingAgentId = row.bookingAgentId
+        ? convertNameToId(row.bookingAgentId, labelToIdMap?.clients)
+        : undefined;
 
       // ⚠️ 关键修复：直接传递字符串 ID，后端会自行处理类型转换
       // 避免前端使用 Number() 转换导致大数精度丢失
@@ -420,7 +550,8 @@ export function useBatchAddData() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
-        vesselVoyage: row.vesselVoyage || undefined,
+        // 简单新增/编辑：空值传 null（编辑时清空已有值）
+        vesselVoyage: row.vesselVoyage?.trim() || null,
         contractNo: row.contractNo,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
@@ -452,12 +583,14 @@ export function useBatchAddData() {
     defaultCurrencyId,
     generateRowKey,
     createDefaultRow,
+    applyTenantDefaultsToHotRow,
     refreshTenantDefaults,
     setTenantDefaultLabelResolvers,
     tenantDefaults,
     addRow,
     deleteSelectedRows,
     copySelectedRows,
+    convertNameToId,
     validateForm,
     prepareSubmitData,
     reset,

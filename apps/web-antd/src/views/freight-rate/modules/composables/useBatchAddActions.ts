@@ -10,7 +10,12 @@ export function useBatchAddActions(
   selectedRowKeys: any,
   addedCtnTypes: any,
   allCtnOptions: any,
-  validateForm: () => boolean,
+  validateForm: (labelToIdMap?: {
+    carriers: Map<string, string>;
+    ports: Map<string, string>;
+    currencies: Map<string, string>;
+    clients: Map<string, string>;
+  }) => boolean,
   prepareSubmitData: (labelToIdMap?: {
     carriers: Map<string, string>;
     ports: Map<string, string>;
@@ -184,7 +189,7 @@ export function useBatchAddActions(
     currencies: Map<string, string>;
     clients: Map<string, string>;
   }): Promise<boolean> {
-    if (!validateForm()) {
+    if (!validateForm(labelToIdMap)) {
       return false;
     }
 
@@ -194,9 +199,24 @@ export function useBatchAddActions(
 
       console.log('提交数据:', submitData);
 
-      await batchAddSimpleSeFreiPrice(submitData);
+      const createdIds = await batchAddSimpleSeFreiPrice(submitData);
+      const createdCount = Array.isArray(createdIds) ? createdIds.length : 0;
+      const submitCount = submitData.length;
 
-      message.success('批量新增成功');
+      if (createdCount > 0 && createdCount < submitCount) {
+        message.warning(
+          `仅成功新增 ${createdCount}/${submitCount} 条，请检查未成功行后重试`,
+        );
+        emit('success');
+        return true;
+      }
+
+      if (createdCount === 0 && submitCount > 0) {
+        message.error('批量新增未返回新记录，请检查数据后重试');
+        return false;
+      }
+
+      message.success(`批量新增成功（${submitCount} 条）`);
       emit('success');
       return true;
     } catch (error) {

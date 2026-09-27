@@ -44,6 +44,12 @@ import { useCtnSugPriceMarkup } from './modules/composables/useCtnSugPriceMarkup
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { fetchLatestRouteHistory } from './freight-price-change';
+import {
+  collectFilledOriginKeys,
+  markDefaultsFilledOrigins,
+  rowHasFieldOrigin,
+  setHotFieldOrigins,
+} from './modules/composables/hot-field-origin';
 import type { BatchRouteFieldsChangedContext } from './modules/composables/useBatchAddSettings';
 
 // 导入 store
@@ -82,13 +88,18 @@ const {
   addRow,
   deleteSelectedRows,
   copySelectedRows,
+  convertNameToId,
   validateForm,
   prepareSubmitData,
   refreshTenantDefaults,
   setTenantDefaultLabelResolvers,
   tenantDefaults,
+  applyTenantDefaultsToHotRow,
   reset,
 } = useBatchAddData();
+
+/** 表格中是否展示 AI/默认值来源图例（AI 批量新增加载后） */
+const showFieldOriginLegend = ref(false);
 
 // ==================== 编辑模式管理 ====================
 
@@ -261,7 +272,16 @@ async function handleAIData(aiDataList: any[]) {
       carrierId: carrierName, // ✅ 使用名称
       polId: polName, // ✅ 使用名称
       podId: podName, // ✅ 使用名称
-      isDirect: (row.isDirect ?? true) ? '是' : '否', // ✅ 转换为"是/否"文本
+      // AI 未返回直达时留空，由运价新增默认值补齐
+      isDirect:
+        row.isDirect === true ||
+        row.isDirect === false ||
+        row.isDirect === '是' ||
+        row.isDirect === '否'
+          ? row.isDirect === true || row.isDirect === '是'
+            ? '是'
+            : '否'
+          : '',
       poT1Id: poT1Name, // ✅ 使用名称
       poT2Id: poT2Name, // ✅ 使用名称
       polFreeDays: row.polFreeDays,
@@ -304,11 +324,21 @@ async function handleAIData(aiDataList: any[]) {
       });
     }
 
+    // 先标记 AI 已填字段，再补默认值并标记默认来源
+    const beforeDefaults = { ...transformedRow };
+    setHotFieldOrigins(
+      transformedRow,
+      collectFilledOriginKeys(transformedRow),
+      'ai',
+    );
+    const filledRow = applyTenantDefaultsToHotRow(transformedRow);
+    markDefaultsFilledOrigins(beforeDefaults, filledRow);
+
     console.log(
       `✅ 转换后的第 ${index + 1} 条数据 _originalId:`,
-      transformedRow._originalId,
+      filledRow._originalId,
     );
-    return transformedRow;
+    return filledRow;
   });
 
   console.log('🔄 转换后的 AI 数据:', transformedAiData);
@@ -324,6 +354,10 @@ async function handleAIData(aiDataList: any[]) {
     '✅ AI 数据已加载到 Handsontable，共',
     transformedAiData.length,
     '条记录',
+  );
+
+  showFieldOriginLegend.value = transformedAiData.some((row) =>
+    rowHasFieldOrigin(row),
   );
 
   message.success(`已加载 ${transformedAiData.length} 条数据`);
@@ -713,54 +747,99 @@ function isBlankCell(value: unknown) {
   return value === undefined || value === null || value === '';
 }
 
-function setHotIfBlank(
+function setHotCell(
   hotInstance: any,
   rowIndex: number,
   prop: string,
   value: unknown,
+  options?: { force?: boolean },
 ) {
   const rowData = dataSource.value[rowIndex];
-  if (!rowData || !isBlankCell(rowData[prop])) return;
-  if (value === undefined || value === null || value === '') return;
+  if (!rowData) return;
+  const force = options?.force === true;
+  const nextValue =
+    value === undefined || value === null || value === '' ? undefined : value;
+  if (!force) {
+    // 非航线字段变更：只填空，保留手工录入
+    if (!isBlankCell(rowData[prop]) || nextValue === undefined) return;
+  } else if (nextValue === undefined && isBlankCell(rowData[prop])) {
+    // 强制清空但本身已空：跳过
+    return;
+  }
   const col = hotInstance.propToCol(prop);
   if (typeof col !== 'number' || col < 0) return;
-  hotInstance.setDataAtCell(rowIndex, col, value, 'routeHistory');
-  rowData[prop] = value;
+  hotInstance.setDataAtCell(rowIndex, col, nextValue, 'routeHistory');
+  rowData[prop] = nextValue;
+}
+
+function resolveTransitPortLabel(portId: unknown): string | undefined {
+  if (portId === undefined || portId === null || portId === '') {
+    return undefined;
+  }
+  const label =
+    getCachedPortLabel(portId) || getPortName(portId, portIdToLabel.value);
+  const text = String(label ?? '').trim();
+  if (!text || text === '-' || text === String(portId)) {
+    return undefined;
+  }
+  return text;
 }
 
 /** 起运港+目的港+是否直达齐了以后，带出历史 DEM/DET/免箱使/航程（中转还带中转港） */
 async function onRouteFieldsChanged(ctx: BatchRouteFieldsChangedContext) {
   if (isEditMode.value) return;
-  const { hotInstance, rowIndex, rowData } = ctx;
-  const polId = Number(labelToIdMap.value.ports.get(String(rowData.polId)));
-  const podId = Number(labelToIdMap.value.ports.get(String(rowData.podId)));
+  const { hotInstance, rowIndex, rowData, prop } = ctx;
+  const polId = convertNameToId(rowData.polId, labelToIdMap.value.ports);
+  const podId = convertNameToId(rowData.podId, labelToIdMap.value.ports);
   const isDirect =
     rowData.isDirect === '是' || rowData.isDirect === true
       ? true
       : rowData.isDirect === '否' || rowData.isDirect === false
         ? false
         : undefined;
+  // 港口必须能解析成 id；雪花 id 字符串透传，勿 Number()
   if (!polId || !podId || isDirect === undefined) return;
+
+  // 起运港 / 目的港 / 是否直达任一变更：按新航线重算默认值并覆盖原带出值
+  const force = prop === 'isDirect' || prop === 'polId' || prop === 'podId';
 
   try {
     const history = await fetchLatestRouteHistory({ polId, podId, isDirect });
-    if (!history) return;
 
-    setHotIfBlank(hotInstance, rowIndex, 'poddem', history.poddem);
-    setHotIfBlank(hotInstance, rowIndex, 'poddet', history.poddet);
-    setHotIfBlank(hotInstance, rowIndex, 'podFreeDays', history.podFreeDays);
-    setHotIfBlank(hotInstance, rowIndex, 'voyage', history.voyage || undefined);
+    setHotCell(hotInstance, rowIndex, 'poddem', history?.poddem, { force });
+    setHotCell(hotInstance, rowIndex, 'podFreeDays', history?.podFreeDays, {
+      force,
+    });
+    setHotCell(hotInstance, rowIndex, 'poddet', history?.poddet, { force });
+    setHotCell(hotInstance, rowIndex, 'voyage', history?.voyage || undefined, {
+      force,
+    });
 
-    if (!isDirect) {
+    if (isDirect) {
+      // 直达：清空中转港
+      if (force) {
+        setHotCell(hotInstance, rowIndex, 'poT1Id', undefined, { force: true });
+        setHotCell(hotInstance, rowIndex, 'poT2Id', undefined, { force: true });
+      }
+      return;
+    }
+
+    // 中转：带出中转港1/2，并写入 label→id 缓存便于提交
+    if (history) {
       await ensurePortLabelsByIds([history.poT1Id, history.poT2Id]);
-      const pot1Label =
-        getCachedPortLabel(history.poT1Id) ||
-        getPortName(history.poT1Id, portIdToLabel.value);
-      const pot2Label =
-        getCachedPortLabel(history.poT2Id) ||
-        getPortName(history.poT2Id, portIdToLabel.value);
-      setHotIfBlank(hotInstance, rowIndex, 'poT1Id', pot1Label || undefined);
-      setHotIfBlank(hotInstance, rowIndex, 'poT2Id', pot2Label || undefined);
+      const pot1Label = resolveTransitPortLabel(history.poT1Id);
+      const pot2Label = resolveTransitPortLabel(history.poT2Id);
+      if (pot1Label && history.poT1Id != null) {
+        rememberPort(history.poT1Id, pot1Label);
+      }
+      if (pot2Label && history.poT2Id != null) {
+        rememberPort(history.poT2Id, pot2Label);
+      }
+      setHotCell(hotInstance, rowIndex, 'poT1Id', pot1Label, { force });
+      setHotCell(hotInstance, rowIndex, 'poT2Id', pot2Label, { force });
+    } else if (force) {
+      setHotCell(hotInstance, rowIndex, 'poT1Id', undefined, { force: true });
+      setHotCell(hotInstance, rowIndex, 'poT2Id', undefined, { force: true });
     }
   } catch {
     // 带出失败不打断录入
@@ -1098,8 +1177,8 @@ onMounted(() => {
 async function handleEditSubmit(labelToIdMapValue: any) {
   console.log('📝 开始编辑提交');
 
-  // 验证表单
-  if (!validateForm()) {
+  // 验证表单（含 label→id）
+  if (!validateForm(labelToIdMapValue)) {
     return;
   }
 
@@ -1117,14 +1196,26 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         return;
       }
 
-      // 将 Label 转换回 ID
-      const carrierId = labelToIdMapValue.carriers.get(row.carrierId);
-      const polId = labelToIdMapValue.ports.get(row.polId);
-      const podId = labelToIdMapValue.ports.get(row.podId);
-      const currencyId = labelToIdMapValue.currencies.get(row.currencyId);
-      const bookingAgentId = labelToIdMapValue.clients.get(row.bookingAgentId);
-      const poT1Id = labelToIdMapValue.ports.get(row.poT1Id);
-      const poT2Id = labelToIdMapValue.ports.get(row.poT2Id);
+      // 将 Label 转换回 ID（兼容单元格已是 id 的情况）
+      const carrierId = convertNameToId(
+        row.carrierId,
+        labelToIdMapValue.carriers,
+      );
+      const polId = convertNameToId(row.polId, labelToIdMapValue.ports);
+      const podId = convertNameToId(row.podId, labelToIdMapValue.ports);
+      const currencyId = convertNameToId(
+        row.currencyId,
+        labelToIdMapValue.currencies,
+      );
+      const bookingAgentId = row.bookingAgentId
+        ? convertNameToId(row.bookingAgentId, labelToIdMapValue.clients)
+        : undefined;
+      const poT1Id = row.poT1Id
+        ? convertNameToId(row.poT1Id, labelToIdMapValue.ports)
+        : undefined;
+      const poT2Id = row.poT2Id
+        ? convertNameToId(row.poT2Id, labelToIdMapValue.ports)
+        : undefined;
 
       // 构建提交数据（使用 SeFreiPriceSimpleEditDto 格式）
       const submitData: any = {
@@ -1141,7 +1232,8 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage || undefined,
-        vesselVoyage: row.vesselVoyage || undefined,
+        // 简单编辑：空值传 null，清空已有船名航次
+        vesselVoyage: row.vesselVoyage?.trim() || null,
         contractNo: row.contractNo || undefined,
         validTimeStart: row.validTimeStart || undefined,
         validTimeEnd: row.validTimeEnd || undefined,
@@ -1325,6 +1417,24 @@ watch(
             <span class="batch-add__section-text">运价明细</span>
             <span class="batch-add__section-hint">
               共 {{ addedCtnTypes.length }} 个箱型列
+            </span>
+            <span
+              v-if="showFieldOriginLegend"
+              class="batch-add__origin-legend"
+              title="色块表示单元格值来源；手工修改后色标会消失"
+            >
+              <span class="batch-add__origin-item">
+                <i
+                  class="batch-add__origin-swatch batch-add__origin-swatch--ai"
+                ></i>
+                AI识别
+              </span>
+              <span class="batch-add__origin-item">
+                <i
+                  class="batch-add__origin-swatch batch-add__origin-swatch--default"
+                ></i>
+                默认值
+              </span>
             </span>
           </div>
 
@@ -1669,6 +1779,39 @@ watch(
   color: #9aa3af;
 }
 
+.batch-add__origin-legend {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.batch-add__origin-item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.batch-add__origin-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.batch-add__origin-swatch--ai {
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.batch-add__origin-swatch--default {
+  background: #f9f0ff;
+  border-color: #d3adf7;
+}
+
 .batch-add__section-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1787,6 +1930,17 @@ watch(
   color: #cf1322 !important;
 }
 
+/* 箱型列标题居中（含 clone 表头与合并 colspan） */
+.handsontable thead th.htCtnHeader,
+.handsontable thead th.htCenter,
+.handsontable thead th[colspan]:not([colspan='1']),
+.ht_clone_top thead th.htCtnHeader,
+.ht_clone_top thead th.htCenter,
+.ht_clone_top thead th[colspan]:not([colspan='1']) {
+  vertical-align: middle !important;
+  text-align: center !important;
+}
+
 /* 直达列：是绿否红 */
 .handsontable td.ht-is-direct--yes {
   font-weight: 600;
@@ -1833,5 +1987,30 @@ watch(
 
 .ht-price-delta--down {
   background: #52c41a;
+}
+
+/* AI 识别值：浅蓝底 */
+.handsontable td.ht-from-ai {
+  background-color: #e6f4ff !important;
+}
+
+/* 运价新增默认值补齐：浅紫底 */
+.handsontable td.ht-from-default {
+  background-color: #f9f0ff !important;
+}
+
+/* 直达色与来源色并存时，保留来源底、覆盖文字色 */
+.handsontable td.ht-from-ai.ht-is-direct--yes,
+.handsontable td.ht-from-default.ht-is-direct--yes,
+.handsontable td.ht-from-ai.is-direct-yes,
+.handsontable td.ht-from-default.is-direct-yes {
+  color: #389e0d !important;
+}
+
+.handsontable td.ht-from-ai.ht-is-direct--no,
+.handsontable td.ht-from-default.ht-is-direct--no,
+.handsontable td.ht-from-ai.is-direct-no,
+.handsontable td.ht-from-default.is-direct-no {
+  color: #cf1322 !important;
 }
 </style>

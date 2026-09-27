@@ -538,6 +538,7 @@ export function useBatchAddColumns(
           numericFormat: {
             pattern: '0',
           },
+          headerClassName: 'htCenter htCtnHeader',
           className: 'htRight htCtnCost',
           renderer: createCtnPriceRenderer('cost'),
         });
@@ -554,6 +555,7 @@ export function useBatchAddColumns(
           numericFormat: {
             pattern: '0',
           },
+          headerClassName: 'htCenter htCtnHeader',
           className: 'htRight htCtnSug',
           renderer: createCtnPriceRenderer('sug'),
         });

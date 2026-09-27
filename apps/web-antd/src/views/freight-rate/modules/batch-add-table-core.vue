@@ -95,37 +95,17 @@ const handleAfterChange = (changes: any, source: string) => {
       return;
     }
 
-    // 原有的 Label 到 ID 转换逻辑
-    if (props.labelToIdMap && newValue) {
-      // 确定字段类型和对应的映射表
-      let labelMap: Map<string, string> | undefined;
-      if (prop === 'carrierId') {
-        // 船公司列保留展示文案，提交时经 labelToIdMap 映射
-        return;
-      } else if (
-        prop === 'polId' ||
-        prop === 'podId' ||
-        prop === 'poT1Id' ||
-        prop === 'poT2Id'
-      ) {
-        // 港口列保留「名称/国家」展示文案，提交时经 labelToIdMap 映射；
-        // 若此处写成 id，远程搜索场景下回显会变成纯数字且提交映射失效。
-        return;
-      } else if (prop === 'currencyId') {
-        labelMap = props.labelToIdMap.currencies;
-      } else if (prop === 'bookingAgentId') {
-        // 订舱代理列保留展示文案，提交时经 labelToIdMap 映射
-        return;
-      }
-
-      // 如果找到映射表，将 Label 转换为 ID
-      if (labelMap && typeof newValue === 'string') {
-        const id = labelMap.get(newValue);
-        if (id !== undefined) {
-          // 更新单元格的实际值为 ID
-          hotInstance.setDataAtCell(row, hotInstance.propToCol(prop), id);
-        }
-      }
+    // 主数据列保留展示文案，提交时经 labelToIdMap 映射；勿在此写回 id
+    if (
+      prop === 'carrierId' ||
+      prop === 'polId' ||
+      prop === 'podId' ||
+      prop === 'poT1Id' ||
+      prop === 'poT2Id' ||
+      prop === 'currencyId' ||
+      prop === 'bookingAgentId'
+    ) {
+      return;
     }
   });
 };
@@ -183,6 +163,14 @@ watch(
     }
 
     .htCenter {
+      vertical-align: middle !important;
+      text-align: center !important;
+    }
+
+    /* 箱型列标题（含成本+指导合并表头）居中 */
+    thead th.htCtnHeader,
+    thead th.htCenter,
+    thead th[colspan]:not([colspan='1']) {
       vertical-align: middle !important;
       text-align: center !important;
     }
