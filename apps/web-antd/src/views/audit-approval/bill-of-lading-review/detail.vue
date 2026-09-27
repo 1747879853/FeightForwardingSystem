@@ -25,6 +25,11 @@ import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { canAudit } from '#/views/bill-of-lading/rules';
 
 import OriginMoneyTip from './origin-money-tip.vue';
+import {
+  compactReviewColumns,
+  sumUnreceivedByCurrency,
+  tableScrollWidth,
+} from './review-columns';
 import ReviewSheet from './review-sheet.vue';
 
 const emit = defineEmits<{ success: [] }>();
@@ -122,7 +127,7 @@ function fieldKey(dataIndex: unknown) {
 function tune(column: any) {
   const key = fieldKey(column.dataIndex);
   if (moneyFields.has(key) || countFields.has(key)) {
-    return { ...column, align: 'right' };
+    return { ...column, align: 'right', className: 'is-num' };
   }
   return column;
 }
@@ -162,9 +167,15 @@ const overdueProofColumn = {
   key: 'proof',
   width: 180,
 };
-const billColumns = [...baseColumns, overdueProofColumn].map(tune);
-const applyColumns = [
-  ...baseColumns.map((column) => ({
+const heldColumn = {
+  title: '压单',
+  key: 'held',
+  dataIndex: ['billOfLading', 'isHeldUp'],
+  width: 72,
+  align: 'center',
+};
+function nestBillColumn(column: (typeof baseColumns)[number]) {
+  return {
     ...column,
     dataIndex: [
       'billOfLading',
@@ -172,17 +183,16 @@ const applyColumns = [
         ? column.dataIndex
         : [column.dataIndex]),
     ],
-  })),
-  {
-    title: '是否压单',
-    key: 'held',
-    dataIndex: ['billOfLading', 'isHeldUp'],
-    width: 88,
-  },
+  };
+}
+const applyColumnDefs = [
+  heldColumn,
+  ...baseColumns.map(nestBillColumn),
   { title: '审核人', dataIndex: 'auditUserName', width: 100 },
   { title: '审核意见', dataIndex: 'remark', width: 160, ellipsis: true },
   overdueProofColumn,
 ].map(tune);
+const billColumnDefs = [...baseColumns, overdueProofColumn].map(tune);
 const overdueColumns = [
   {
     title: '主提单号',
@@ -367,6 +377,51 @@ const summaryCurrencyCode = computed(() => {
   return codes[0] ?? 'RMB';
 });
 
+const applyColumns = computed(() =>
+  compactReviewColumns(applyColumnDefs, applyRows.value, {
+    hideUniformSettlement: true,
+  }),
+);
+const heldColumns = computed(() =>
+  compactReviewColumns(billColumnDefs, heldRows.value, {
+    hideUniformSettlement: true,
+  }),
+);
+const followingColumns = computed(() =>
+  compactReviewColumns(billColumnDefs, followingRows.value, {
+    hideUniformSettlement: true,
+  }),
+);
+const overdueViewColumns = computed(() =>
+  compactReviewColumns(overdueColumns, overdueRows.value),
+);
+const clientUnpaidBuckets = computed(() =>
+  sumUnreceivedByCurrency(detail.value?.arrearsReports ?? []),
+);
+const clientOverdueBuckets = computed(() =>
+  sumUnreceivedByCurrency(detail.value?.arrearsReports ?? [], true),
+);
+const clientCurrencies = computed(() =>
+  detail.value?.arrearsReports
+    ? collectOriginLines(detail.value.arrearsReports)
+    : [],
+);
+const auditableKeys = computed(() =>
+  applyRows.value
+    .filter((item) => canAudit(item, true) || canAudit(item, false))
+    .map((item) => String(item.billOfLading.id)),
+);
+const passableKeys = computed(() =>
+  applyRows.value
+    .filter((item) => canAudit(item, true))
+    .map((item) => String(item.billOfLading.id)),
+);
+const allAuditableSelected = computed(
+  () =>
+    auditableKeys.value.length > 0 &&
+    auditableKeys.value.every((id) => selectedKeys.value.includes(id)),
+);
+
 let request = 0;
 
 function taskRowKey(row: BillTaskItem) {
@@ -406,6 +461,31 @@ function formatMoney(value?: null | number, code?: null | string) {
 function moneyText(value?: null | number) {
   if (value == null || Number.isNaN(Number(value))) return '未维护';
   return formatMoney(value);
+}
+
+function bucketsText(
+  buckets: { amount: number; code: string }[],
+  emptyCode?: null | string,
+) {
+  if (!buckets.length) return formatLocalMoney(0, emptyCode ?? 'RMB');
+  return buckets
+    .map((item) => formatLocalMoney(item.amount, item.code))
+    .join(' · ');
+}
+
+function toggleAuditable() {
+  selectedKeys.value = allAuditableSelected.value
+    ? []
+    : [...auditableKeys.value];
+}
+
+function passAll() {
+  if (!passableKeys.value.length) {
+    message.warning('当前没有可以通过的提单');
+    return;
+  }
+  selectedKeys.value = [...passableKeys.value];
+  confirm(true);
 }
 
 async function open(id: string) {
@@ -506,7 +586,7 @@ defineExpose({ open });
               </strong>
             </div>
             <div class="summary__item">
-              <span>未收金额</span>
+              <span>本批未收</span>
               <OriginMoneyTip
                 v-if="summaryCurrencies.length"
                 :lines="summaryCurrencies"
@@ -532,6 +612,42 @@ defineExpose({ open });
                 >{{ formatMoney(detail.totalUnReceivedAmount) }}</strong
               >
             </div>
+            <div class="summary__item">
+              <span class="summary__label">
+                <span class="summary__name">客户欠款</span>
+                <i
+                  v-if="clientOverdueBuckets.length"
+                  class="summary__risk"
+                  :title="`超期 ${bucketsText(clientOverdueBuckets)}`"
+                  >超期 {{ bucketsText(clientOverdueBuckets) }}</i
+                >
+              </span>
+              <strong v-if="detail.arrearsReports == null" class="is-empty"
+                >未能读取</strong
+              >
+              <OriginMoneyTip
+                v-else-if="clientCurrencies.length"
+                :lines="clientCurrencies"
+                focus="unReceived"
+                title="折算前原币"
+              >
+                <strong
+                  class="amount is-tip"
+                  :class="{ 'is-hot': clientUnpaidBuckets.length > 0 }"
+                  >{{
+                    bucketsText(clientUnpaidBuckets, summaryCurrencyCode)
+                  }}</strong
+                >
+              </OriginMoneyTip>
+              <strong
+                v-else
+                class="amount"
+                :class="{ 'is-hot': clientUnpaidBuckets.length > 0 }"
+                >{{
+                  bucketsText(clientUnpaidBuckets, summaryCurrencyCode)
+                }}</strong
+              >
+            </div>
           </section>
           <section class="panel">
             <Tabs class="review-tabs">
@@ -542,8 +658,47 @@ defineExpose({ open });
                     detail.billOfLadingTasks.length
                   }}</span>
                 </template>
-                <div class="toolbar">
+                <ReviewSheet
+                  :columns="applyColumns"
+                  :data-source="applyRows"
+                  :flow="detail.workFlowInstance"
+                  :row-key="taskRowKey"
+                  :row-selection="selection"
+                  :scroll-x="tableScrollWidth(applyColumns, true)"
+                />
+                <div class="toolbar toolbar--foot">
+                  <div class="toolbar__meta">
+                    <span
+                      class="toolbar__count"
+                      :class="{ 'is-on': selected.length > 0 }"
+                      >已选 <strong>{{ selected.length }}</strong> 张</span
+                    >
+                    <Button
+                      v-access:code="'Admin.BillOfLading.Audit'"
+                      type="link"
+                      size="small"
+                      title="勾选当前可审核的提单"
+                      :disabled="!auditableKeys.length || saving"
+                      @click="toggleAuditable"
+                      >{{ allAuditableSelected ? '取消全选' : '全选' }}</Button
+                    >
+                  </div>
                   <div class="toolbar__actions">
+                    <Button
+                      v-access:code="'Admin.BillOfLading.Audit'"
+                      title="勾选全部可通过的提单并确认"
+                      :disabled="!passableKeys.length || saving"
+                      @click="passAll"
+                      >全部通过</Button
+                    >
+                    <Button
+                      v-access:code="'Admin.BillOfLading.Audit'"
+                      danger
+                      ghost
+                      :disabled="!allowed(false) || saving"
+                      @click="confirm(false)"
+                      >驳回 / 通过后驳回</Button
+                    >
                     <Button
                       v-access:code="'Admin.BillOfLading.Audit'"
                       type="primary"
@@ -551,28 +706,8 @@ defineExpose({ open });
                       @click="confirm(true)"
                       >通过所选提单</Button
                     >
-                    <Button
-                      v-access:code="'Admin.BillOfLading.Audit'"
-                      danger
-                      :disabled="!allowed(false) || saving"
-                      @click="confirm(false)"
-                      >驳回 / 通过后驳回</Button
-                    >
                   </div>
-                  <span
-                    class="toolbar__count"
-                    :class="{ 'is-on': selected.length > 0 }"
-                    >已选 <strong>{{ selected.length }}</strong> 张</span
-                  >
                 </div>
-                <ReviewSheet
-                  :columns="applyColumns"
-                  :data-source="applyRows"
-                  :flow="detail.workFlowInstance"
-                  :row-key="taskRowKey"
-                  :row-selection="selection"
-                  :scroll-x="1972"
-                />
               </TabPane>
               <TabPane key="held">
                 <template #tab>
@@ -582,10 +717,10 @@ defineExpose({ open });
                   }}</span>
                 </template>
                 <ReviewSheet
-                  :columns="billColumns"
+                  :columns="heldColumns"
                   :data-source="heldRows"
                   row-key="id"
-                  :scroll-x="1560"
+                  :scroll-x="tableScrollWidth(heldColumns)"
                 />
               </TabPane>
               <TabPane key="following">
@@ -596,10 +731,10 @@ defineExpose({ open });
                   }}</span>
                 </template>
                 <ReviewSheet
-                  :columns="billColumns"
+                  :columns="followingColumns"
                   :data-source="followingRows"
                   row-key="id"
-                  :scroll-x="1560"
+                  :scroll-x="tableScrollWidth(followingColumns)"
                 />
               </TabPane>
               <TabPane key="client" tab="客户信息">
@@ -661,10 +796,10 @@ defineExpose({ open });
                   按本批结算对象汇总历史超期、当前超期、历史承诺超期及超承诺时间未结，金额为本位币。
                 </p>
                 <ReviewSheet
-                  :columns="overdueColumns"
+                  :columns="overdueViewColumns"
                   :data-source="overdueRows"
                   row-key="transportOrderId"
-                  :scroll-x="1650"
+                  :scroll-x="tableScrollWidth(overdueViewColumns)"
                 />
               </TabPane>
             </Tabs>
@@ -756,7 +891,7 @@ defineExpose({ open });
 .summary {
   display: grid;
   flex: none;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   overflow: hidden;
   background: #fff;
   border: 1px solid #e8eaed;
@@ -765,19 +900,38 @@ defineExpose({ open });
 
 .summary__item {
   min-width: 0;
-  padding: 14px 18px;
+  padding: 8px 14px;
 }
 
 .summary__item + .summary__item {
   border-left: 1px solid #f0f1f3;
 }
 
-.summary__item > span {
-  display: block;
-  margin-bottom: 4px;
+.summary__item > span,
+.summary__label {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 2px;
+  overflow: hidden;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   color: #8c95a3;
+  white-space: nowrap;
+}
+
+.summary__name {
+  flex: none;
+}
+
+.summary__risk {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: normal;
+  font-weight: 600;
+  color: #cf1322;
 }
 
 .summary__item strong {
@@ -786,7 +940,7 @@ defineExpose({ open });
   text-overflow: ellipsis;
   font-size: 15px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 20px;
   color: #1f2329;
   white-space: nowrap;
 }
@@ -876,11 +1030,21 @@ defineExpose({ open });
 }
 
 .tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
   margin-left: 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #8c95a3;
+  line-height: 18px;
+  vertical-align: 1px;
+  color: #5b6472;
+  background: #f2f3f5;
+  border-radius: 999px;
 }
 
 .toolbar {
@@ -889,13 +1053,18 @@ defineExpose({ open });
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  background: #f7f8fa;
+  padding: 8px 12px;
+  margin-top: 10px;
+  background: #fff;
   border: 1px solid #eef0f3;
   border-radius: 8px;
 }
 
+.toolbar--foot {
+  box-shadow: 0 -6px 16px rgb(31 35 41 / 4%);
+}
+
+.toolbar__meta,
 .toolbar__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1022,9 +1191,27 @@ defineExpose({ open });
   color: #3d4450;
 }
 
+@media (max-width: 1280px) {
+  .summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .summary__item:nth-child(3n + 1) {
+    border-left: 0;
+  }
+
+  .summary__item:nth-child(n + 4) {
+    border-top: 1px solid #f0f1f3;
+  }
+}
+
 @media (max-width: 960px) {
   .summary {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .summary__item:nth-child(3n + 1) {
+    border-left: 1px solid #f0f1f3;
   }
 
   .summary__item:nth-child(odd) {

@@ -266,6 +266,14 @@ function daysTone(value: unknown) {
   if (days === 0) return 'is-due';
   return 'is-overdue';
 }
+
+function heldRowClass(record: {
+  billOfLading?: { isHeldUp?: boolean | null };
+  taskItemId?: string;
+}) {
+  if (!record?.taskItemId || !record.billOfLading?.isHeldUp) return '';
+  return 'is-held-row';
+}
 </script>
 
 <template>
@@ -276,6 +284,7 @@ function daysTone(value: unknown) {
       :columns="columns"
       :data-source="dataSource ?? []"
       :pagination="false"
+      :row-class-name="heldRowClass"
       :row-key="rowKey"
       :row-selection="rowSelection"
       :scroll="{ x: scrollX }"
@@ -302,10 +311,8 @@ function daysTone(value: unknown) {
           >{{ billStatusLabel(text) }}</span
         >
         <template v-else-if="column.key === 'held'">
-          <span v-if="text == null" class="muted">—</span>
-          <span v-else class="pill" :class="text ? 'is-held' : 'is-idle'">{{
-            text ? '是' : '否'
-          }}</span>
+          <span v-if="text" class="pill is-alert">压单</span>
+          <span v-else class="muted">—</span>
         </template>
         <CopyBillNo
           v-else-if="isBillNumberColumn(column)"
@@ -487,6 +494,29 @@ function daysTone(value: unknown) {
   border-bottom-color: #f2f3f5;
 }
 
+.sheet :deep(.ant-table-tbody > tr.is-held-row > td) {
+  background: #fff7f0;
+}
+
+.sheet :deep(.ant-table-tbody > tr.is-held-row:hover > td) {
+  background: #ffefe3;
+}
+
+.sheet :deep(.ant-table-tbody > tr.is-held-row.ant-table-row-selected > td) {
+  background: #ffe8d6;
+}
+
+.sheet :deep(th.is-num),
+.sheet :deep(td.is-num) {
+  text-align: right;
+}
+
+.sheet :deep(td.is-num .origin-money-anchor) {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .sheet :deep(.ant-table-tbody > tr:last-child > td) {
   border-bottom: 0;
 }
@@ -525,6 +555,11 @@ function daysTone(value: unknown) {
 .pill.is-held {
   color: #c41d7f;
   background: #fff0f6;
+}
+
+.pill.is-alert {
+  color: #fff;
+  background: #f5222d;
 }
 
 .pill.is-auditing {

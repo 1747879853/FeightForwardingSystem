@@ -7,6 +7,7 @@ export default defineConfig({
     environment: 'node',
     include: [
       'src/views/bill-of-lading/*.test.ts',
+      'src/views/audit-approval/bill-of-lading-review/*.test.ts',
       'src/api/bill-of-lading.test.js',
     ],
   },
