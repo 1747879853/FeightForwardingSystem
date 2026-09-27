@@ -3,7 +3,6 @@ import type { Attachment } from '#/api/common/upload';
 import type { BillAction, BillOfLading } from '#/api/bill-of-lading';
 import { computed, ref } from 'vue';
 import {
-  Alert,
   DatePicker,
   Form,
   FormItem,
@@ -47,6 +46,21 @@ const requiresDate = computed(() =>
   ['SignIn', 'SignOut', 'Swap', 'Deduct'].includes(action.value),
 );
 const overdueRows = computed(() => rows.value.filter((row) => row.isOverdue));
+const settlementName = computed(() => rows.value[0]?.settlement?.name || '');
+const numberText = computed(() =>
+  rows.value
+    .map((row) =>
+      (row.isSeparate
+        ? row.seaExportSeparate?.blNum
+        : row.seaExport.transportOrder.mblNum
+      )?.trim(),
+    )
+    .filter(Boolean)
+    .join('、'),
+);
+const modalWidth = computed(() =>
+  action.value === 'Submit' && !overdueRows.value.length ? 420 : 640,
+);
 const fileInputs = (files: Attachment[]) =>
   files.map((file, displayOrder) => ({
     attachmentId: String(file.attachmentId),
@@ -203,25 +217,32 @@ async function submit() {
   <Modal
     v-model:open="visible"
     :title="actionLabels[action]"
-    :width="680"
+    :width="modalWidth"
     :confirm-loading="busy"
     :ok-button-props="{ disabled: uploading }"
     :mask-closable="false"
     :closable="!busy"
     :cancel-button-props="{ disabled: busy }"
+    class="bill-action-modal"
     @ok="submit"
   >
-    <p class="mb-4">
-      已选择 {{ rows.length }} 张提单：{{ rows.map(billNumber).join('、') }}
+    <div class="summary">
+      <p class="summary__title">
+        {{ rows.length }} 张提单
+        <template v-if="action === 'Submit' && settlementName">
+          · {{ settlementName }}
+        </template>
+      </p>
+      <p v-if="numberText" class="summary__sub">{{ numberText }}</p>
+    </div>
+    <p v-if="action === 'UnSubmit'" class="hint">
+      撤销这张提单所在的整批审核。已有审核结果时不能撤销。
     </p>
-    <Alert
-      v-if="action === 'UnSubmit'"
-      type="warning"
-      show-icon
-      message="将撤销这张提单所在的整批审核。已有审核结果的批次不能撤销。"
-      class="mb-4"
-    />
-    <Form layout="vertical">
+    <Form
+      v-if="action !== 'Submit' || overdueRows.length"
+      class="action-form"
+      layout="vertical"
+    >
       <FormItem v-if="requiresDate" label="操作日期" required
         ><DatePicker
           v-model:value="date"
@@ -251,27 +272,21 @@ async function submit() {
             :options="signOutOptions"
             :disabled="busy"
         /></FormItem>
-        <Alert
-          type="info"
-          message="签单方式会回填业务；分单签出同时回填所属主单。"
-          class="mb-4"
-        />
+        <p class="hint">签单方式回填到业务。分单签出同时回填所属主单。</p>
       </template>
       <template v-if="action === 'Submit'">
-        <p>结算对象：{{ rows[0]?.settlement?.name }}</p>
-        <section
-          v-for="row in overdueRows"
-          :key="row.id"
-          class="my-4 rounded border p-4"
-        >
-          <p class="mb-3 font-medium">
-            {{ billNumber(row) }} · 应结日期
-            {{
-              (
-                row.seaExport.transportOrder.settlementDate ??
-                row.settlementDate
-              )?.slice(0, 10)
-            }}
+        <section v-for="row in overdueRows" :key="row.id" class="overdue-card">
+          <p class="overdue-card__head">
+            <span>{{ billNumber(row) }}</span>
+            <span>
+              应结
+              {{
+                (
+                  row.seaExport.transportOrder.settlementDate ??
+                  row.settlementDate
+                )?.slice(0, 10) || '未维护'
+              }}
+            </span>
           </p>
           <FormItem label="承诺付款日期" required
             ><DatePicker
@@ -293,11 +308,6 @@ async function submit() {
               :disabled="busy"
           /></FormItem>
         </section>
-        <Alert
-          v-if="!overdueRows.length"
-          type="info"
-          message="所选提单无需填写超期证明，确认后提交签出审核。"
-        />
       </template>
       <FormItem v-else-if="action !== 'UnSubmit'" label="备注"
         ><Input.TextArea
@@ -309,3 +319,53 @@ async function submit() {
     </Form>
   </Modal>
 </template>
+<style scoped>
+.summary__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+  color: #1f2329;
+}
+
+.summary__sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #5b6472;
+  word-break: break-all;
+}
+
+.action-form {
+  margin-top: 16px;
+}
+
+.hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #8c95a3;
+}
+
+.overdue-card {
+  padding: 14px 14px 2px;
+  margin-top: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.overdue-card__head {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.overdue-card__head span:last-child {
+  font-weight: 400;
+  color: #8c95a3;
+}
+</style>

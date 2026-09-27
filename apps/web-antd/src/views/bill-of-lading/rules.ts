@@ -5,14 +5,14 @@ import type {
 } from '#/api/bill-of-lading';
 
 export const billStatusOptions = [
-  '待签入',
-  '已签入',
-  '已驳回',
-  '签出审核中',
-  '可签出',
-  '已签出',
-  '已扣单',
-].map((label, value) => ({ label, value }));
+  { label: '待签入', value: 0, color: 'orange' },
+  { label: '已签入', value: 1, color: 'blue' },
+  { label: '已驳回', value: 2, color: 'red' },
+  { label: '签出审核中', value: 3, color: 'gold' },
+  { label: '可签出', value: 4, color: 'cyan' },
+  { label: '已签出', value: 5, color: 'green' },
+  { label: '已扣单', value: 6, color: 'magenta' },
+];
 export const signOutOptions = ['快递', '自提', '外派', '邮件', '电子提单'].map(
   (label, value) => ({ label, value }),
 );
@@ -78,12 +78,15 @@ export function selectionError(
     return '此操作请只选择一张提单';
   if (rows.some((row) => !canAct(row, action)))
     return `所选提单的状态不允许${actionLabels[action]}，请刷新后重新选择`;
-  if (
-    action === 'Submit' &&
-    (rows.some((row) => !row.settlement?.id) ||
-      new Set(rows.map((row) => row.settlement?.id)).size !== 1)
-  )
-    return '同一批次必须选择相同结算对象的提单，请先补齐分单结算对象';
+  if (action === 'Submit') {
+    const settlementIds = rows.map((row) =>
+      String(row.settlement?.id ?? '')
+        .trim()
+        .toLowerCase(),
+    );
+    if (settlementIds.some((id) => !id) || new Set(settlementIds).size !== 1)
+      return '同一批次必须选择相同结算对象的提单，请先补齐分单结算对象';
+  }
 }
 export function canAudit(item: BillTaskItem, success: boolean): boolean {
   if (

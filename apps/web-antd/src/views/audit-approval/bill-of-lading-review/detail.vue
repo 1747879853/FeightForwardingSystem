@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { BillTaskDetail, BillTaskItem } from '#/api/bill-of-lading';
+import type {
+  BillAttachment,
+  BillOfLading,
+  BillTaskDetail,
+  BillTaskItem,
+} from '#/api/bill-of-lading';
 import { computed, ref } from 'vue';
 import {
   Alert,
@@ -77,6 +82,12 @@ const baseColumns = [
   { title: '承诺付款日期', dataIndex: 'promisePayDate', width: 120 },
   { title: '超期备注', dataIndex: 'overdueRemark', width: 180 },
 ];
+const overdueProofColumn = {
+  title: '超期证明',
+  key: 'proof',
+  width: 180,
+};
+const billColumns = [...baseColumns, overdueProofColumn];
 const applyColumns = [
   ...baseColumns.map((column) => ({
     ...column,
@@ -103,7 +114,7 @@ const applyColumns = [
   },
   { title: '审核人', dataIndex: 'auditUserName', width: 100 },
   { title: '审核意见', dataIndex: 'remark', width: 160 },
-  { title: '证明文件', key: 'proof', width: 150 },
+  overdueProofColumn,
 ];
 const overdueColumns = [
   {
@@ -181,6 +192,17 @@ async function submit() {
     saving.value = false;
   }
 }
+function proofFiles(record: {
+  billOfLading?: Pick<BillOfLading, 'overdueAttachments'> | null;
+  overdueAttachments?: BillAttachment[] | null;
+}) {
+  return (
+    record.billOfLading?.overdueAttachments ?? record.overdueAttachments ?? []
+  );
+}
+function proofName(file: BillAttachment) {
+  return file.friendlyFileName || file.fileName || '查看';
+}
 defineExpose({ open });
 </script>
 <template>
@@ -244,21 +266,16 @@ defineExpose({ open });
                 >
                   <template #bodyCell="{ column, record }"
                     ><template v-if="column.key === 'proof'"
-                      ><Button
-                        v-for="file in record.billOfLading.overdueAttachments"
-                        :key="String(file.attachmentId)"
-                        type="link"
-                        @click="openAttachmentViewer(file)"
-                        >{{
-                          file.friendlyFileName || file.fileName || '查看'
-                        }}</Button
-                      ><Button
-                        v-for="file in record.billOfLading.signIn?.attachments"
-                        :key="String(file.attachmentId)"
-                        type="link"
-                        @click="openAttachmentViewer(file)"
-                        >签入扫描件</Button
-                      ></template
+                      ><div class="flex flex-col items-start">
+                        <Button
+                          v-for="file in proofFiles(record)"
+                          :key="String(file.attachmentId)"
+                          type="link"
+                          class="h-auto px-0"
+                          @click="openAttachmentViewer(file)"
+                          >{{ proofName(file) }}</Button
+                        >
+                      </div></template
                     ></template
                   >
                 </Table>
@@ -268,21 +285,51 @@ defineExpose({ open });
                 :tab="`压单业务（${detail.heldUpBillOfLadings.length}）`"
                 ><Table
                   :data-source="detail.heldUpBillOfLadings"
-                  :columns="baseColumns"
+                  :columns="billColumns"
                   row-key="id"
                   size="small"
-                  :scroll="{ x: 1350 }"
-              /></TabPane>
+                  :scroll="{ x: 1530 }"
+                  ><template #bodyCell="{ column, record }"
+                    ><template v-if="column.key === 'proof'"
+                      ><div class="flex flex-col items-start">
+                        <Button
+                          v-for="file in proofFiles(record)"
+                          :key="String(file.attachmentId)"
+                          type="link"
+                          class="h-auto px-0"
+                          @click="openAttachmentViewer(file)"
+                          >{{ proofName(file) }}</Button
+                        >
+                      </div></template
+                    ></template
+                  ></Table
+                ></TabPane
+              >
               <TabPane
                 key="following"
                 :tab="`后续新单（${detail.followingBillOfLadings.length}）`"
                 ><Table
                   :data-source="detail.followingBillOfLadings"
-                  :columns="baseColumns"
+                  :columns="billColumns"
                   row-key="id"
                   size="small"
-                  :scroll="{ x: 1350 }"
-              /></TabPane>
+                  :scroll="{ x: 1530 }"
+                  ><template #bodyCell="{ column, record }"
+                    ><template v-if="column.key === 'proof'"
+                      ><div class="flex flex-col items-start">
+                        <Button
+                          v-for="file in proofFiles(record)"
+                          :key="String(file.attachmentId)"
+                          type="link"
+                          class="h-auto px-0"
+                          @click="openAttachmentViewer(file)"
+                          >{{ proofName(file) }}</Button
+                        >
+                      </div></template
+                    ></template
+                  ></Table
+                ></TabPane
+              >
               <TabPane key="client" tab="客户信息">
                 <Descriptions v-if="detail.clientDetail" bordered :column="2">
                   <DescriptionsItem label="简称">{{

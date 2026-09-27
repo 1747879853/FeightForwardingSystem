@@ -4,12 +4,23 @@ import type {
   BillHistory,
   BillOfLading,
 } from '#/api/bill-of-lading';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, ref } from 'vue';
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
-import { Button, Modal, Spin, Tag, message } from 'ant-design-vue';
+import {
+  Button,
+  Modal,
+  Spin,
+  TabPane,
+  Tabs,
+  Tag,
+  message,
+} from 'ant-design-vue';
 import { getBill, getBillHistory } from '#/api/bill-of-lading';
+import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { createAbpPermission } from '#/utils/abp-permission';
 import {
   actionLabels,
   actionPermission,
@@ -66,12 +77,25 @@ const shortcutOrder: BillAction[] = [
   'CancelSwap',
 ];
 
+const seaExportGet = createAbpPermission('Admin.SeaExport').get;
 const { hasAccessByCodes } = useAccess();
 const visible = ref(false);
 const loading = ref(false);
+const activeTab = ref('basic');
 const bill = ref<BillOfLading>();
 const history = ref<BillHistory[]>([]);
+const businessGroups = ref<SeaExportAdminApi.AttachmentGroupDto[]>([]);
 let request = 0;
+const canViewBusinessFiles = computed(() => hasAccessByCodes([seaExportGet]));
+const businessFileGroups = computed(() =>
+  businessGroups.value
+    .map((group, index) => ({
+      key: String(group.attachmentDtlTypeId ?? `ungrouped-${index}`),
+      name: group.attachmentDtlType?.name?.trim() || '未分类',
+      items: group.items ?? [],
+    }))
+    .filter((group) => group.items.length > 0),
+);
 
 const number = computed(() => (bill.value ? billNumber(bill.value) : ''));
 const canCopy = computed(() => !!number.value && number.value !== '未填提单号');
@@ -129,8 +153,10 @@ async function open(row: BillOfLading) {
   const token = ++request;
   visible.value = true;
   loading.value = true;
+  activeTab.value = 'basic';
   bill.value = undefined;
   history.value = [];
+  businessGroups.value = [];
   try {
     const [detail, items] = await Promise.all([
       getBill(row.id),
@@ -139,6 +165,14 @@ async function open(row: BillOfLading) {
     if (token !== request) return;
     bill.value = detail;
     history.value = items;
+    const seaExportId = detail.seaExport?.id;
+    if (canViewBusinessFiles.value && seaExportId) {
+      const groups =
+        (await getSeaExportAttachments(String(seaExportId)).catch(() => [])) ??
+        [];
+      if (token !== request) return;
+      businessGroups.value = groups;
+    }
   } finally {
     if (token === request) loading.value = false;
   }
@@ -182,8 +216,14 @@ function money(value?: number | null) {
 function fileName(file: {
   friendlyFileName?: null | string;
   fileName?: null | string;
+  url?: null | string;
 }) {
-  return file.friendlyFileName || file.fileName || '查看附件';
+  return (
+    file.friendlyFileName ||
+    file.fileName ||
+    file.url?.split('/').pop()?.split('?')[0] ||
+    '查看附件'
+  );
 }
 
 function actionName(type?: number) {
@@ -260,292 +300,324 @@ defineExpose({ open });
       </div>
     </template>
     <Spin :spinning="loading">
-      <div v-if="bill" class="layout">
-        <section class="main">
-          <div class="group">
-            <h4 class="group__title"><i class="group__bar" />航程 / 物流</h4>
-            <div class="fields">
-              <div class="field field--full">
-                <span class="field__label">港口流向</span>
-                <span class="field__value route">
-                  <span :class="{ 'is-empty': !polPort.name }">
-                    {{ text(polPort.name) }}
-                    <small v-if="polPort.code">{{ polPort.code }}</small>
+      <Tabs v-if="bill" v-model:activeKey="activeTab" class="detail-tabs">
+        <TabPane key="basic" tab="基础信息">
+          <section class="main">
+            <div class="group">
+              <h4 class="group__title"><i class="group__bar" />航程 / 物流</h4>
+              <div class="fields">
+                <div class="field field--full">
+                  <span class="field__label">港口流向</span>
+                  <span class="field__value route">
+                    <span :class="{ 'is-empty': !polPort.name }">
+                      {{ text(polPort.name) }}
+                      <small v-if="polPort.code">{{ polPort.code }}</small>
+                    </span>
+                    <span class="route__arrow">➔</span>
+                    <span :class="{ 'is-empty': !podPort.name }">
+                      {{ text(podPort.name) }}
+                      <small v-if="podPort.code">{{ podPort.code }}</small>
+                    </span>
                   </span>
-                  <span class="route__arrow">➔</span>
-                  <span :class="{ 'is-empty': !podPort.name }">
-                    {{ text(podPort.name) }}
-                    <small v-if="podPort.code">{{ podPort.code }}</small>
-                  </span>
+                </div>
+                <div class="field">
+                  <span class="field__label">船公司</span>
+                  <span
+                    class="field__value"
+                    :class="{
+                      'is-empty': empty(
+                        bill.seaExport.carrier?.cnShortName ||
+                          bill.seaExport.carrier?.cnName,
+                      ),
+                    }"
+                    >{{
+                      text(
+                        bill.seaExport.carrier?.cnShortName ||
+                          bill.seaExport.carrier?.cnName,
+                      )
+                    }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">船名 / 航次</span>
+                  <span class="field__value" :class="{ 'is-empty': !voyage }">{{
+                    voyage || '未排载'
+                  }}</span>
+                </div>
+                <div class="field">
+                  <span class="field__label">开船日期</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': !order?.etd }"
+                    >{{ day(order?.etd) }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">箱型箱量</span>
+                  <span
+                    class="field__value"
+                    :class="{
+                      'is-empty': empty(
+                        bill.isSeparate
+                          ? bill.seaExportSeparate?.totalCtn
+                          : order?.totalCtn,
+                      ),
+                    }"
+                    >{{
+                      text(
+                        bill.isSeparate
+                          ? bill.seaExportSeparate?.totalCtn
+                          : order?.totalCtn,
+                      )
+                    }}</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <h4 class="group__title"><i class="group__bar" />业务与负责人</h4>
+              <div class="fields">
+                <div class="field">
+                  <span class="field__label">委托编号</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': empty(order?.commissionNum) }"
+                    >{{ text(order?.commissionNum) }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">委托单位</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': empty(order?.client?.name) }"
+                    >{{ text(order?.client?.name) }}</span
+                  >
+                </div>
+                <div class="field field--full">
+                  <span class="field__label">销售 / 操作</span>
+                  <span class="field__value" :class="{ 'is-empty': !staff }">{{
+                    staff || '未维护'
+                  }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <h4 class="group__title"><i class="group__bar" />结算与风控</h4>
+              <div class="fields">
+                <div class="field">
+                  <span class="field__label">结算对象</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': empty(bill.settlement?.name) }"
+                    >{{ text(bill.settlement?.name) }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">未收金额</span>
+                  <span
+                    class="field__value amount"
+                    :class="{ 'is-empty': !money(bill.unReceivedAmount) }"
+                    >{{ money(bill.unReceivedAmount) || '未维护' }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">应结日期</span>
+                  <span
+                    class="field__value"
+                    :class="{
+                      'is-empty': empty(
+                        bill.settlementDate || order?.settlementDate,
+                      ),
+                    }"
+                    >{{
+                      day(bill.settlementDate || order?.settlementDate)
+                    }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">超期天数</span>
+                  <span
+                    class="field__value"
+                    :class="{
+                      'is-empty': !bill.overdueDays,
+                      overdue: (bill.overdueDays ?? 0) > 0,
+                    }"
+                    >{{
+                      bill.overdueDays ? `${bill.overdueDays} 天` : '未超期'
+                    }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">承诺付款</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': !bill.promisePayDate }"
+                    >{{ day(bill.promisePayDate) }}</span
+                  >
+                </div>
+              </div>
+              <div
+                v-if="bill.overdueRemark || bill.overdueAttachments?.length"
+                class="note"
+              >
+                <span class="field__label">超期证明</span>
+                <div>
+                  <p v-if="bill.overdueRemark" class="note__text">
+                    {{ bill.overdueRemark }}
+                  </p>
+                  <div v-if="bill.overdueAttachments?.length" class="file-row">
+                    <Button
+                      v-for="file in bill.overdueAttachments"
+                      :key="String(file.attachmentId)"
+                      type="link"
+                      class="file-link"
+                      @click="openAttachmentViewer(file)"
+                      >{{ fileName(file) }}</Button
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <h4 class="group__title"><i class="group__bar" />签单节点</h4>
+              <div class="fields">
+                <div class="field">
+                  <span class="field__label">签单方式</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': !issueType }"
+                    >{{ issueType || '未维护' }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">签入日期</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': !bill.signIn?.actionDate }"
+                    >{{ day(bill.signIn?.actionDate) }}</span
+                  >
+                </div>
+                <div class="field">
+                  <span class="field__label">签出日期</span>
+                  <span
+                    class="field__value"
+                    :class="{ 'is-empty': !bill.signOut?.actionDate }"
+                    >{{ day(bill.signOut?.actionDate) }}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </section>
+        </TabPane>
+        <TabPane key="history" tab="操作记录">
+          <aside class="aside">
+            <header class="aside__head">
+              操作历史
+              <span>{{ history.length }} 条</span>
+            </header>
+            <ol v-if="history.length" class="timeline">
+              <li v-for="item in history" :key="item.id" class="timeline-item">
+                <i
+                  class="timeline-item__dot"
+                  :style="{
+                    background: actionDot[item.actionType ?? -1] || '#8c95a3',
+                  }"
+                />
+                <div class="node">
+                  <div class="node__head">
+                    <strong>{{ actionName(item.actionType) }}</strong>
+                    <span>{{ item.creatorUserName || '系统' }}</span>
+                  </div>
+                  <time class="node__time">{{
+                    dateTime(item.creationTime)
+                  }}</time>
+                  <p class="node__flow">
+                    {{ statusName(item.beforeStatus) }}
+                    <span>→</span>
+                    {{ statusName(item.afterStatus) }}
+                  </p>
+                  <dl
+                    v-if="
+                      item.actionDate ||
+                      item.codeIssueType ||
+                      item.signOutType != null
+                    "
+                    class="node__facts"
+                  >
+                    <div v-if="item.actionDate">
+                      <dt>业务日期</dt>
+                      <dd>{{ day(item.actionDate) }}</dd>
+                    </div>
+                    <div v-if="item.codeIssueType">
+                      <dt>签单方式</dt>
+                      <dd>{{ item.codeIssueType.billType }}</dd>
+                    </div>
+                    <div v-if="item.signOutType != null">
+                      <dt>签出方式</dt>
+                      <dd>{{ signOutOptions[item.signOutType]?.label }}</dd>
+                    </div>
+                  </dl>
+                  <p v-if="item.remark" class="node__remark">
+                    {{ item.remark }}
+                  </p>
+                  <div v-if="item.attachments?.length" class="file-row">
+                    <Button
+                      v-for="file in item.attachments"
+                      :key="String(file.attachmentId)"
+                      type="link"
+                      class="file-link"
+                      @click="openAttachmentViewer(file)"
+                      >{{ fileName(file) }}</Button
+                    >
+                  </div>
+                </div>
+              </li>
+            </ol>
+            <div v-else class="timeline-empty">
+              <div class="timeline-empty__item">
+                <span class="timeline-empty__mark">
+                  <IconifyIcon icon="ant-design:history-outlined" />
                 </span>
+                <div class="timeline-empty__copy">
+                  <p>暂无流转记录</p>
+                  <span>签入、换签、扣单、签出会按时间出现在这里</span>
+                </div>
               </div>
-              <div class="field">
-                <span class="field__label">船公司</span>
-                <span
-                  class="field__value"
-                  :class="{
-                    'is-empty': empty(
-                      bill.seaExport.carrier?.cnShortName ||
-                        bill.seaExport.carrier?.cnName,
-                    ),
-                  }"
-                  >{{
-                    text(
-                      bill.seaExport.carrier?.cnShortName ||
-                        bill.seaExport.carrier?.cnName,
-                    )
-                  }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">船名 / 航次</span>
-                <span class="field__value" :class="{ 'is-empty': !voyage }">{{
-                  voyage || '未排载'
-                }}</span>
-              </div>
-              <div class="field">
-                <span class="field__label">开船日期</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': !order?.etd }"
-                  >{{ day(order?.etd) }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">箱型箱量</span>
-                <span
-                  class="field__value"
-                  :class="{
-                    'is-empty': empty(
-                      bill.isSeparate
-                        ? bill.seaExportSeparate?.totalCtn
-                        : order?.totalCtn,
-                    ),
-                  }"
-                  >{{
-                    text(
-                      bill.isSeparate
-                        ? bill.seaExportSeparate?.totalCtn
-                        : order?.totalCtn,
-                    )
-                  }}</span
-                >
+              <div class="timeline-empty__item">
+                <span class="timeline-empty__mark is-hollow" />
+                <div class="timeline-empty__copy">
+                  <p>待发生</p>
+                  <span>后续节点将按时间追加</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="group">
-            <h4 class="group__title"><i class="group__bar" />业务与负责人</h4>
-            <div class="fields">
-              <div class="field">
-                <span class="field__label">委托编号</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': empty(order?.commissionNum) }"
-                  >{{ text(order?.commissionNum) }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">委托单位</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': empty(order?.client?.name) }"
-                  >{{ text(order?.client?.name) }}</span
-                >
-              </div>
-              <div class="field field--full">
-                <span class="field__label">销售 / 操作</span>
-                <span class="field__value" :class="{ 'is-empty': !staff }">{{
-                  staff || '未维护'
-                }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="group">
-            <h4 class="group__title"><i class="group__bar" />结算与风控</h4>
-            <div class="fields">
-              <div class="field">
-                <span class="field__label">结算对象</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': empty(bill.settlement?.name) }"
-                  >{{ text(bill.settlement?.name) }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">未收金额</span>
-                <span
-                  class="field__value amount"
-                  :class="{ 'is-empty': !money(bill.unReceivedAmount) }"
-                  >{{ money(bill.unReceivedAmount) || '未维护' }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">应结日期</span>
-                <span
-                  class="field__value"
-                  :class="{
-                    'is-empty': empty(
-                      bill.settlementDate || order?.settlementDate,
-                    ),
-                  }"
-                  >{{ day(bill.settlementDate || order?.settlementDate) }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">超期天数</span>
-                <span
-                  class="field__value"
-                  :class="{
-                    'is-empty': !bill.overdueDays,
-                    overdue: (bill.overdueDays ?? 0) > 0,
-                  }"
-                  >{{
-                    bill.overdueDays ? `${bill.overdueDays} 天` : '未超期'
-                  }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">承诺付款</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': !bill.promisePayDate }"
-                  >{{ day(bill.promisePayDate) }}</span
-                >
-              </div>
-            </div>
+          </aside>
+        </TabPane>
+        <TabPane v-if="canViewBusinessFiles" key="files" tab="业务附件">
+          <div v-if="businessFileGroups.length" class="file-groups">
             <div
-              v-if="bill.overdueRemark || bill.overdueAttachments?.length"
-              class="note"
+              v-for="group in businessFileGroups"
+              :key="group.key"
+              class="group"
             >
-              <span class="field__label">超期证明</span>
-              <div>
-                <p v-if="bill.overdueRemark" class="note__text">
-                  {{ bill.overdueRemark }}
-                </p>
-                <div v-if="bill.overdueAttachments?.length" class="file-row">
-                  <Button
-                    v-for="file in bill.overdueAttachments"
-                    :key="String(file.attachmentId)"
-                    type="link"
-                    class="file-link"
-                    @click="openAttachmentViewer(file)"
-                    >{{ fileName(file) }}</Button
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="group">
-            <h4 class="group__title"><i class="group__bar" />签单节点</h4>
-            <div class="fields">
-              <div class="field">
-                <span class="field__label">签单方式</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': !issueType }"
-                  >{{ issueType || '未维护' }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">签入日期</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': !bill.signIn?.actionDate }"
-                  >{{ day(bill.signIn?.actionDate) }}</span
-                >
-              </div>
-              <div class="field">
-                <span class="field__label">签出日期</span>
-                <span
-                  class="field__value"
-                  :class="{ 'is-empty': !bill.signOut?.actionDate }"
-                  >{{ day(bill.signOut?.actionDate) }}</span
+              <h4 class="group__title">
+                <i class="group__bar" />{{ group.name }}
+              </h4>
+              <div class="file-row">
+                <Button
+                  v-for="file in group.items"
+                  :key="String(file.attachmentId ?? file.id ?? file.url)"
+                  type="link"
+                  class="file-link"
+                  @click="openAttachmentViewer(file)"
+                  >{{ fileName(file) }}</Button
                 >
               </div>
             </div>
           </div>
-        </section>
-        <aside class="aside">
-          <header class="aside__head">
-            操作历史
-            <span>{{ history.length }} 条</span>
-          </header>
-          <ol v-if="history.length" class="timeline">
-            <li v-for="item in history" :key="item.id" class="timeline-item">
-              <i
-                class="timeline-item__dot"
-                :style="{
-                  background: actionDot[item.actionType ?? -1] || '#8c95a3',
-                }"
-              />
-              <div class="node">
-                <div class="node__head">
-                  <strong>{{ actionName(item.actionType) }}</strong>
-                  <span>{{ item.creatorUserName || '系统' }}</span>
-                </div>
-                <time class="node__time">{{
-                  dateTime(item.creationTime)
-                }}</time>
-                <p class="node__flow">
-                  {{ statusName(item.beforeStatus) }}
-                  <span>→</span>
-                  {{ statusName(item.afterStatus) }}
-                </p>
-                <dl
-                  v-if="
-                    item.actionDate ||
-                    item.codeIssueType ||
-                    item.signOutType != null
-                  "
-                  class="node__facts"
-                >
-                  <div v-if="item.actionDate">
-                    <dt>业务日期</dt>
-                    <dd>{{ day(item.actionDate) }}</dd>
-                  </div>
-                  <div v-if="item.codeIssueType">
-                    <dt>签单方式</dt>
-                    <dd>{{ item.codeIssueType.billType }}</dd>
-                  </div>
-                  <div v-if="item.signOutType != null">
-                    <dt>签出方式</dt>
-                    <dd>{{ signOutOptions[item.signOutType]?.label }}</dd>
-                  </div>
-                </dl>
-                <p v-if="item.remark" class="node__remark">{{ item.remark }}</p>
-                <div v-if="item.attachments?.length" class="file-row">
-                  <Button
-                    v-for="file in item.attachments"
-                    :key="String(file.attachmentId)"
-                    type="link"
-                    class="file-link"
-                    @click="openAttachmentViewer(file)"
-                    >{{ fileName(file) }}</Button
-                  >
-                </div>
-              </div>
-            </li>
-          </ol>
-          <div v-else class="timeline-empty">
-            <div class="timeline-empty__item">
-              <span class="timeline-empty__mark">
-                <IconifyIcon icon="ant-design:history-outlined" />
-              </span>
-              <div class="timeline-empty__copy">
-                <p>暂无流转记录</p>
-                <span>签入、换签、扣单、签出会按时间出现在这里</span>
-              </div>
-            </div>
-            <div class="timeline-empty__item">
-              <span class="timeline-empty__mark is-hollow" />
-              <div class="timeline-empty__copy">
-                <p>待发生</p>
-                <span>后续节点将按时间追加</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
+          <div v-else class="empty-detail">暂无业务附件</div>
+        </TabPane>
+      </Tabs>
       <div v-else-if="!loading" class="empty-detail">未找到提单详情</div>
     </Spin>
     <template v-if="shortcuts.length" #footer>
@@ -671,22 +743,31 @@ defineExpose({ open });
   border-color: transparent;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  min-height: 420px;
+.detail-tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.main {
-  padding-right: 24px;
-  border-right: 1px solid hsl(var(--border));
+.detail-tabs :deep(.ant-tabs-nav) {
+  flex: none;
+  margin-bottom: 12px;
+}
+
+.detail-tabs :deep(.ant-tabs-content-holder) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .aside {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-left: 20px;
+}
+
+.file-groups .group + .group {
+  margin-top: 20px;
 }
 
 .group + .group {
@@ -817,7 +898,6 @@ defineExpose({ open });
   flex: 1;
   padding: 0 0 0 14px;
   margin: 0;
-  overflow: auto;
   list-style: none;
 }
 
@@ -1022,21 +1102,9 @@ defineExpose({ open });
 }
 
 @media (max-width: 767px) {
-  .layout {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
-
-  .main {
-    padding-right: 0;
-    padding-bottom: 16px;
-    margin-bottom: 16px;
-    border-right: 0;
-    border-bottom: 1px solid hsl(var(--border));
-  }
-
+  .main,
   .aside {
-    padding-left: 0;
+    min-height: 0;
   }
 
   .fields {
@@ -1050,9 +1118,17 @@ defineExpose({ open });
 </style>
 <style>
 .bill-detail-modal .ant-modal-body {
-  max-height: min(72vh, 720px);
-  padding-bottom: 20px;
-  overflow: auto;
+  height: min(64vh, 620px);
+  padding-bottom: 12px;
+  overflow: hidden;
+}
+
+.bill-detail-modal .ant-modal-body > .ant-spin-nested-loading,
+.bill-detail-modal
+  .ant-modal-body
+  > .ant-spin-nested-loading
+  > .ant-spin-container {
+  height: 100%;
 }
 
 .bill-detail-modal .ant-modal-footer {
