@@ -4,11 +4,10 @@ import { useTabs } from '@vben/hooks';
 import {
   addInvoiceIssue,
   InvoiceIssueApi,
-  editInvoiceIssue,
   addApplicationsToInvoiceIssue,
 } from '#/api/Invoice/InvoiceIssue';
 import dayjs from 'dayjs';
-import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
+import { handleExchangeRateCheck } from './use-exchange-rate-check';
 
 /**
  * 费用选择保存逻辑
@@ -30,6 +29,7 @@ export function useFeeSelection(
   editId: any,
   isEdit: any,
   invoiceIssueTime: any,
+  reloadDetail?: () => Promise<void>,
 ) {
   const route = useRoute();
   const { closeTabByKey } = useTabs();
@@ -182,22 +182,20 @@ export function useFeeSelection(
         })),
       };
 
-      // 调用创建接口
       const res = await addInvoiceIssue(submitData);
-      const newId = res.id; // 保存新创建的发票ID
-      message.success('发票创建成功');
+      const ok = await handleExchangeRateCheck(res);
 
-      // 跳转到编辑页面（replace 复用当前页签，再关闭残留的新建页签）
-      if (newId) {
+      if (ok && res.id) {
+        message.success('发票创建成功');
         const createTabKey = route.fullPath;
         await router.replace(
-          `/settlement-management/invoice-issue/${newId}/edit`,
+          `/settlement-management/invoice-issue/${res.id}/edit`,
         );
         await closeTabByKey(createTabKey);
       }
     } catch (error) {
+      // 业务错误由 requestClient 拦截器提示
       console.error('❌ 创建发票失败:', error);
-      message.error('创建发票失败');
       throw error;
     }
   }
@@ -207,36 +205,9 @@ export function useFeeSelection(
    */
   async function addApplicationsToExistingInvoice(selectedApplications: any[]) {
     try {
-      // ✅ 编辑状态下，只处理新增的申请商品明细，避免重复添加
-
-      // ✅ 使用合并逻辑处理新增申请的商品明细
+      // 先合并商品明细（接口需要完整商品明细入参）
       await mergeGoodsDetailsFromApplications(selectedApplications);
 
-      // ✅ 更新 invoiceIssueItems，确保合计中的申请金额正确显示
-      addSelectedApplicationsToForm(selectedApplications);
-
-      // ✅ 合并申请组数据（包括已有的和新增的）
-      if (selectedApplications.length > 0) {
-        const existingAppIds = new Set<string>();
-        applicationGroupsData.value.forEach((group: any) => {
-          if (group.id) {
-            existingAppIds.add(String(group.id));
-          }
-        });
-
-        const newGroups = selectedApplications.filter((group: any) => {
-          return group.id && !existingAppIds.has(String(group.id));
-        });
-
-        if (newGroups.length > 0) {
-          applicationGroupsData.value = [
-            ...applicationGroupsData.value,
-            ...newGroups,
-          ];
-        }
-      }
-
-      // 构建添加申请数据（包含合并后的商品明细）
       const addData: InvoiceIssueApi.InvoiceIssueAddApplicationsDto = {
         id: editId.value!,
         invoiceIssueItems: selectedApplications.map((app: any) => ({
@@ -257,12 +228,46 @@ export function useFeeSelection(
         })),
       };
 
-      // 调用添加申请接口
-      await addApplicationsToInvoiceIssue(addData);
+      const result = await addApplicationsToInvoiceIssue(addData);
+      const ok = await handleExchangeRateCheck(result);
+
+      if (!ok) {
+        // 未落库：回滚本地合并结果
+        if (reloadDetail) {
+          await reloadDetail();
+        }
+        return;
+      }
+
+      addSelectedApplicationsToForm(selectedApplications);
+
+      if (selectedApplications.length > 0) {
+        const existingAppIds = new Set<string>();
+        applicationGroupsData.value.forEach((group: any) => {
+          if (group.id) {
+            existingAppIds.add(String(group.id));
+          }
+        });
+
+        const newGroups = selectedApplications.filter((group: any) => {
+          return group.id && !existingAppIds.has(String(group.id));
+        });
+
+        if (newGroups.length > 0) {
+          applicationGroupsData.value = [
+            ...applicationGroupsData.value,
+            ...newGroups,
+          ];
+        }
+      }
+
       message.success('申请添加成功');
     } catch (error) {
+      // 业务错误（如币别不一致）由 requestClient 拦截器原样提示
       console.error('❌ 添加申请失败:', error);
-      message.error('添加申请失败');
+      if (reloadDetail) {
+        await reloadDetail();
+      }
       throw error;
     }
   }

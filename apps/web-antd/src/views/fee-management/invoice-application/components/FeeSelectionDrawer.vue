@@ -137,24 +137,6 @@ watch(
   { immediate: false },
 );
 
-/** 从选中的费用中更新币别 */
-async function updateCurrencyFromSelectedFees() {
-  const allSelected = flattenTreeData(feeGroupsData.value);
-  const selectedFees = allSelected.filter(
-    (item: any) => item.orderFee && selectedFeeRowKeys.value.includes(item.id),
-  );
-
-  if (selectedFees.length > 0) {
-    const firstFee = selectedFees[0];
-    const currencyId = firstFee.orderFee?.currencyId;
-
-    if (currencyId && currencyId !== selectedCurrencyId.value) {
-      selectedCurrencyId.value = currencyId;
-      await loadDefaultExchangeRate(currencyId);
-    }
-  }
-}
-
 /** 检查父级是否全部选中 */
 const isAllParentSelected = computed(() => {
   if (feeGroupsData.value.length === 0) return false;
@@ -188,7 +170,6 @@ async function toggleAllParentSelection(checked: boolean) {
     // 取消全选
     selectedFeeRowKeys.value = [];
   }
-  await updateCurrencyFromSelectedFees();
 }
 
 /** 检查单个父级是否选中 */
@@ -251,8 +232,6 @@ async function toggleParentSelection(record: any, checked: boolean) {
       );
     }
   }
-
-  await updateCurrencyFromSelectedFees();
 }
 
 /** 检查子级是否选中 */
@@ -271,7 +250,6 @@ async function toggleChildSelection(record: any, checked: boolean) {
       (key) => key !== record.id,
     );
   }
-  await updateCurrencyFromSelectedFees();
 }
 
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
@@ -480,10 +458,15 @@ async function handleSaveFeeSelection() {
     return;
   }
 
+  if (!selectedCurrencyId.value) {
+    message.warning('请选择开票申请币别（主币别）');
+    return;
+  }
+
   emit('save', {
     selectedFees,
     settlementId,
-    currencyId: selectedCurrencyId.value || 1,
+    currencyId: selectedCurrencyId.value,
     invoiceExchangeRate: invoiceExchangeRate.value,
     feeGroupsData: feeGroupsData.value, // ✅ 传递完整的费用分组数据
   });
@@ -504,9 +487,7 @@ async function loadFeeGroupData() {
     if (selectedSettlementId.value) {
       params.settlementId = selectedSettlementId.value;
     }
-    if (selectedCurrencyId.value !== undefined) {
-      params.currencyId = selectedCurrencyId.value;
-    }
+    // 申请币别仅作开票申请主币别，不再作为费用列表筛选条件（允许多币别费用）
 
     // 合并委托编号和主提单号到 commissionNum 参数
     if (keyWord.value) {
@@ -577,7 +558,16 @@ async function loadFeeGroupData() {
         .map((node: any) => node.id);
       selectedFeeRowKeys.value = matchedKeys;
       expandedRowKeys.value = treeData.map((node: any) => node.id);
-      await updateCurrencyFromSelectedFees();
+      // 预填时若尚未选定申请主币别，用首条费用币别作为默认主币别（不筛选费用）
+      if (!selectedCurrencyId.value && matchedKeys.length > 0) {
+        const first = flat.find(
+          (n: any) => n.id === matchedKeys[0] && n.orderFee?.currencyId,
+        );
+        if (first?.orderFee?.currencyId) {
+          selectedCurrencyId.value = first.orderFee.currencyId;
+          await loadDefaultExchangeRate(first.orderFee.currencyId);
+        }
+      }
     }
   } catch (error) {
     console.error('❌ 加载费用数据失败:', error);
@@ -861,6 +851,63 @@ defineExpose({
   >
     <Spin :spinning="feeDrawerLoading">
       <div class="fsd">
+        <!-- 开票要素：主币别置顶，不进折叠筛选 -->
+        <section class="fsd-section fsd-main-currency">
+          <div class="fsd-filters__head">
+            <span class="fsd-indicator" />
+            <span class="fsd-filters__title">开票要素</span>
+            <span class="fsd-filters__hint">
+              主币别创建后不可改；费用可多币别，非主币别需在表单补汇率
+            </span>
+          </div>
+          <div class="fsd-main-currency__body">
+            <div class="fsd-field">
+              <span class="fsd-field__label">
+                <span class="fsd-required">*</span>
+                结算单位
+              </span>
+              <ClientSelect
+                :model-value="selectedSettlementId"
+                placeholder="请选择结算单位"
+                class="fsd-field__control"
+                :disabled="!!settlementId"
+                :selected-items="
+                  toSelectedItems(
+                    selectedSettlementId,
+                    selectedSettlementName,
+                    'name',
+                  )
+                "
+                @update:model-value="
+                  (v) => (selectedSettlementId = v as string)
+                "
+              />
+            </div>
+            <div class="fsd-field fsd-main-currency__field">
+              <span class="fsd-field__label">
+                <span class="fsd-required">*</span>
+                申请主币别
+              </span>
+              <CurrencySelect
+                :model-value="selectedCurrencyId"
+                placeholder="请选择开票申请主币别"
+                class="fsd-field__control fsd-main-currency__select"
+                :disabled="!!currencyId && !!settlementId"
+                @update:model-value="
+                  async (v) => {
+                    selectedCurrencyId = v as number;
+                    if (v) await loadDefaultExchangeRate(v as number);
+                  }
+                "
+              />
+            </div>
+            <div v-if="selectedCurrencyCode" class="fsd-main-currency__badge">
+              当前主币别
+              <strong>{{ selectedCurrencyCode }}</strong>
+            </div>
+          </div>
+        </section>
+
         <section class="fsd-section">
           <div class="fsd-filters__head">
             <span class="fsd-indicator" />
@@ -889,23 +936,13 @@ defineExpose({
                 allow-clear
               />
             </div>
-            <div class="fsd-field">
-              <span class="fsd-field__label">结算单位</span>
-              <ClientSelect
-                :model-value="selectedSettlementId"
-                placeholder="请选择结算单位"
+            <div class="fsd-field fsd-field--more">
+              <span class="fsd-field__label">对账单号</span>
+              <Input
+                v-model:value="filterStatementNum"
+                placeholder="请输入客户对账单号"
                 class="fsd-field__control"
-                :disabled="!!settlementId"
-                :selected-items="
-                  toSelectedItems(
-                    selectedSettlementId,
-                    selectedSettlementName,
-                    'name',
-                  )
-                "
-                @update:model-value="
-                  (v) => (selectedSettlementId = v as string)
-                "
+                allow-clear
               />
             </div>
             <div class="fsd-filters__actions">
@@ -927,15 +964,6 @@ defineExpose({
               <Button type="primary" @click="loadFeeGroupData">查询</Button>
             </div>
 
-            <div class="fsd-field fsd-field--more">
-              <span class="fsd-field__label">对账单号</span>
-              <Input
-                v-model:value="filterStatementNum"
-                placeholder="请输入客户对账单号"
-                class="fsd-field__control"
-                allow-clear
-              />
-            </div>
             <div class="fsd-field fsd-field--more">
               <span class="fsd-field__label">业务类型</span>
               <Select
@@ -977,16 +1005,6 @@ defineExpose({
                   { label: '应付', value: 1 },
                 ]"
                 placeholder="请选择收付类型"
-              />
-            </div>
-            <div class="fsd-field fsd-field--more">
-              <span class="fsd-field__label">币别</span>
-              <CurrencySelect
-                :model-value="selectedCurrencyId"
-                placeholder="请选择币别"
-                class="fsd-field__control"
-                :disabled="!!currencyId && !!settlementId"
-                @update:model-value="(v) => (selectedCurrencyId = v as number)"
               />
             </div>
           </div>
@@ -1177,4 +1195,68 @@ defineExpose({
 
 <style scoped>
 @import '#/views/_shared/invoice-fee-selection/fee-selection-drawer.scss';
+
+.fsd-main-currency {
+  border-color: hsl(var(--primary) / 25%);
+  box-shadow: 0 1px 2px hsl(var(--primary) / 8%);
+}
+
+.fsd-main-currency .fsd-filters__head {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 70%,
+    #fff 100%
+  );
+}
+
+.fsd-main-currency__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr) auto;
+  gap: 14px 16px;
+  align-items: end;
+  padding: 14px 16px 16px;
+}
+
+.fsd-required {
+  margin-right: 2px;
+  color: #ff4d4f;
+}
+
+.fsd-main-currency__field .fsd-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.fsd-main-currency__select :deep(.ant-select-selector) {
+  min-height: 36px;
+  border-color: hsl(var(--primary) / 45%) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 8%);
+}
+
+.fsd-main-currency__badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  align-self: end;
+  padding: 8px 12px;
+  margin-bottom: 1px;
+  font-size: 13px;
+  color: hsl(var(--primary));
+  white-space: nowrap;
+  background: hsl(var(--primary) / 10%);
+  border-radius: 8px;
+}
+
+.fsd-main-currency__badge strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .fsd-main-currency__body {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

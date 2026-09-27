@@ -295,13 +295,32 @@ export namespace InvoiceApplicationAdminApi {
 
   /** 按币别分组的子表数据DTO */
   export interface InvoiceApplicationCurrencyGroupDto {
+    /** 开票申请主币别；费用可与之不同 */
     currencyId: number;
     invoiceType?: InvoiceType;
     invoiceApplicationItems: InvoiceApplicationItemAddDto[];
+    /** 非主币别费用的汇率（1 费用币别 = N 主币别） */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[];
     orgBankAccountId?: string;
     clientInvoiceBankId?: string;
     remark?: string;
+  }
+
+  /** 费用币别汇率入参 */
+  export interface InvoiceApplicationExchangeRateInputDto {
+    currencyId: number;
+    exchangeRate: number;
+  }
+
+  /** 开票申请汇率行出参 */
+  export interface InvoiceApplicationExchangeRateDto {
+    id?: string;
+    invoiceApplicationId?: string;
+    currencyId: number;
+    exchangeRate: number;
+    currency?: CurrencySimpleDto | null;
+    appliedAmount?: number;
   }
 
   /** 批量新增开票申请DTO */
@@ -325,6 +344,7 @@ export namespace InvoiceApplicationAdminApi {
     require?: string;
     remark?: string;
     invoiceApplicationItems: InvoiceApplicationItemAddDto[];
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlEditDto[];
   }
 
@@ -344,6 +364,7 @@ export namespace InvoiceApplicationAdminApi {
     invoiceType?: InvoiceType;
     require?: string;
     remark?: string;
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
   }
 
   /** 新增多条费用明细DTO */
@@ -351,6 +372,7 @@ export namespace InvoiceApplicationAdminApi {
     id: string;
     /** 本次新增的费用明细；可空 */
     invoiceApplicationItems?: InvoiceApplicationItemAddDto[];
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     /**
      * 商品明细处理逻辑：
      * - null = 不改商品
@@ -432,6 +454,9 @@ export namespace InvoiceApplicationAdminApi {
     feeGroups: InvoiceApplicationFeeGroupDetailDto[];
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlOutputDto[];
     invoiceExchangeRate?: number;
+    /** 申请总额折成主币别；缺汇率时为 null */
+    totalAppliedAmount?: null | number;
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateDto[];
     /**
      * ✅ 新增：发票附件列表
      * **这条开票申请所挂那张发票开出下的发票文件**
@@ -486,7 +511,10 @@ export namespace InvoiceApplicationAdminApi {
     currency?: CurrencySimpleDto | null;
     applyUserName?: string;
     rejectUserNickName?: string;
-    totalAppliedAmount: number;
+    /** 申请总额折成主币别；缺汇率时为 null */
+    totalAppliedAmount: null | number;
+    /** 人民币发票金额；totalAppliedAmount 为 null 时也为 null */
+    invoiceAmount?: null | number;
     itemCount: number;
     invoiceExchangeRate?: number;
     commissionNums?: string;

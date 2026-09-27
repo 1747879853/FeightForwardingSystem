@@ -618,7 +618,16 @@ function handleBatchWithdraw() {
         </Space>
       </template>
 
-      <!-- ✅ 新增：状态列插槽，支持点击查看发票 -->
+      <template #totalAppliedAmount="{ row }">
+        <span
+          v-if="row.totalAppliedAmount == null"
+          title="有币别缺汇率，请驳回后补填"
+        >
+          -
+        </span>
+        <span v-else>{{ Number(row.totalAppliedAmount).toFixed(2) }}</span>
+      </template>
+      <!-- 状态列插槽，支持点击查看发票 -->
       <template #status="{ row }">
         <span
           v-if="row.invoiceNo"

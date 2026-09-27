@@ -9,6 +9,7 @@ import {
   getMyDefaultOrgId,
   resolveMyOrgCompanyNode,
 } from '#/composables/use-my-org';
+import type { InvoiceApplicationExchangeRateRow } from '#/utils/invoice-application-amount';
 
 /**
  * 表单数据和基础状态管理
@@ -69,6 +70,11 @@ export function useFormData() {
 
   // 发票汇率
   const invoiceExchangeRate = ref<number>(1.0);
+
+  /** 费用币别 → 开票申请主币别 汇率行（非主币别必填） */
+  const invoiceApplicationExchangeRates = ref<
+    InvoiceApplicationExchangeRateRow[]
+  >([]);
 
   // 商品明细表格数据
   const goodsDetails = ref<any[]>([]);
@@ -209,6 +215,7 @@ export function useFormData() {
     selectedClientInvoiceInfo,
     codeInvoiceList,
     invoiceExchangeRate,
+    invoiceApplicationExchangeRates,
     goodsDetails,
     feeGroupsData,
     selectedFeeRowKeys,

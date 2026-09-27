@@ -566,7 +566,7 @@ export namespace InvoiceIssueApi {
      * 校验码
      * 0 = 正常，已执行成功
      * 1 = 汇率已变动，且金额对不上的开票申请都只有一条商品明细（可调修正接口）
-     * 2 = 存在金额对不上且商品明细不止一条的开票申请（只能驳回）
+     * 2 = 存在金额对不上且商品明细不止一条的开票申请，或申请缺汇率（只能驳回）
      */
     code: number;
     /** 金额对不上、且只有一条商品明细的开票申请ID列表 */
@@ -771,17 +771,32 @@ export namespace InvoiceIssueApi {
     invoiceApplicationItems: InvoiceApplicationItemDetailDto[];
     /** 开票申请商品明细列表 */
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlDto[];
-    /** 原币申请金额合计 */
-    totalAppliedAmount: number;
+    /**
+     * 申请总金额，折成开票申请主币别；有费用币别缺汇率时为 null
+     */
+    totalAppliedAmount: null | number;
+    /** 开票申请上的费用币别汇率行 */
+    invoiceApplicationExchangeRates?: Array<{
+      id?: string;
+      invoiceApplicationId?: string;
+      currencyId: number;
+      exchangeRate: number;
+      currency?: CurrencySimpleDto | null;
+      /** 该币别原币申请合计 */
+      appliedAmount?: number;
+    }>;
     /** 商品明细人民币金额合计 */
     totalGoodsAmount: number;
-    /** 折算后的人民币金额（根据当前发票汇率计算） */
-    appliedAmountRmb?: number;
+    /**
+     * 费用申请金额折人民币 = round(totalAppliedAmount × 发票汇率, 2)；
+     * totalAppliedAmount 为 null 时也为 null
+     */
+    appliedAmountRmb?: null | number;
     /**
      * 校验码
      * 0 = 金额匹配（totalGoodsAmount == appliedAmountRmb）
      * 1 = 金额不匹配且商品明细恰好1条（可调修正接口）
-     * 2 = 金额不匹配且商品明细条数≠1，或无有效发票汇率（只能驳回）
+     * 2 = 金额不匹配且商品明细条数≠1，或无有效发票汇率，或 totalAppliedAmount 为 null（只能驳回补汇率）
      */
     code: number;
     /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */

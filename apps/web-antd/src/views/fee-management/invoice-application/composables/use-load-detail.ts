@@ -10,8 +10,16 @@ import {
   isExchangeRateEffective,
   isRmbLocalCurrencyRate,
 } from '#/utils/exchange-rate-cache';
+import {
+  buildExchangeRateRows,
+  toApplicationCurrency,
+  toInvoiceRmbAmount,
+  type InvoiceApplicationExchangeRateRow,
+} from '#/utils/invoice-application-amount';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { nextTick } from 'vue';
+
+import { collectFeeAppliedItems } from './use-computed';
 
 /**
  * 加载详情数据相关逻辑
@@ -31,6 +39,8 @@ export function useLoadDetail(
   applicationDate: Ref<string>,
   loadClientInvoiceInfo: (settlementId: string) => Promise<void>,
   updateOrgBankByCurrency: () => void,
+  invoiceApplicationExchangeRates: Ref<InvoiceApplicationExchangeRateRow[]>,
+  flattenTreeData: (data: any[]) => any[],
   applyOrgCompanyInfo?: () => Promise<void>,
   loadDefaultRemarkTemplate?: () => Promise<void>,
 ) {
@@ -127,37 +137,26 @@ export function useLoadDetail(
         return;
       }
 
-      // 4. 计算所有费用的申请金额总和（转换为人民币）
-      let totalRmbAmount = 0;
+      // 4. 申请总额折主币别后再 × 发票汇率 → 商品人民币参考金额
+      const feeItems = collectFeeAppliedItems(
+        { invoiceApplicationItems },
+        feeGroupsData.value,
+        flattenTreeData,
+      );
+      const totalApp = toApplicationCurrency(
+        feeItems,
+        Number(currencyId),
+        invoiceApplicationExchangeRates.value,
+      );
+      const totalRmbAmount = toInvoiceRmbAmount(
+        totalApp,
+        invoiceExchangeRate.value || 1,
+      );
 
-      invoiceApplicationItems.forEach((item: any) => {
-        const appliedAmount = item.appliedAmount || 0;
-
-        // 从 feeGroupsData 中找到对应的费用，获取其币别ID
-        let feeCurrencyId = currencyId; // 默认使用发票币别
-
-        // 尝试从 feeGroupsData 中查找该费用的原始币别
-        for (const group of feeGroupsData.value) {
-          if (group.feeDetails) {
-            const fee = group.feeDetails.find(
-              (f: any) => f.orderFee?.id === item.orderFeeId,
-            );
-            if (fee && fee.orderFee?.currencyId) {
-              feeCurrencyId = fee.orderFee.currencyId;
-              break;
-            }
-          }
-        }
-
-        // 如果费用币别与人民币不同，需要进行汇率转换
-        if (feeCurrencyId !== 1) {
-          const convertedAmount =
-            appliedAmount * (invoiceExchangeRate.value || 1);
-          totalRmbAmount += convertedAmount;
-        } else {
-          totalRmbAmount += appliedAmount;
-        }
-      });
+      if (totalRmbAmount == null) {
+        message.warning('有币别缺汇率，无法自动生成商品明细金额');
+        return;
+      }
 
       // 5. 创建默认商品明细
       const taxRate = defaultCodeInvoice.taxRate || 0;
@@ -357,6 +356,44 @@ export function useLoadDetail(
 
         feeGroupsData.value = feeGroupsForDisplay;
       }
+
+      // 加载费用币别汇率行
+      const detailRates = (detail.invoiceApplicationExchangeRates || []).map(
+        (r: any) => ({
+          currencyId: Number(r.currencyId),
+          exchangeRate: r.exchangeRate,
+          currencyCode: r.currency?.code,
+          currencyName: r.currency?.cnName || r.currency?.enName,
+          appliedAmount: r.appliedAmount,
+        }),
+      ) as InvoiceApplicationExchangeRateRow[];
+
+      const feeItemsForRates = collectFeeAppliedItems(
+        formData.value,
+        feeGroupsData.value,
+        flattenTreeData,
+      );
+      const currencyMeta = new Map<
+        number,
+        { code?: string; cnName?: string; enName?: string }
+      >();
+      flattenTreeData(feeGroupsData.value).forEach((fee: any) => {
+        const currency = fee.orderFee?.currency;
+        const cid = fee.orderFee?.currencyId;
+        if (cid && currency) {
+          currencyMeta.set(Number(cid), {
+            code: currency.code,
+            cnName: currency.cnName,
+            enName: currency.enName,
+          });
+        }
+      });
+      invoiceApplicationExchangeRates.value = buildExchangeRateRows({
+        applicationCurrencyId: Number(detail.currencyId || 1),
+        items: feeItemsForRates,
+        existingRates: detailRates,
+        currencyMeta,
+      });
 
       // 加载商品明细数据
       if (

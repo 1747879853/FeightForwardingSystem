@@ -2,7 +2,42 @@ import type { Ref } from 'vue';
 
 import { computed } from 'vue';
 
+import {
+  toApplicationCurrency,
+  toInvoiceRmbAmount,
+  type InvoiceApplicationExchangeRateRow,
+} from '#/utils/invoice-application-amount';
+
 import { getInvoiceTypeOptions } from '../data';
+
+/**
+ * 从费用明细 + 费用组推导带 currencyId 的申请金额项
+ */
+export function collectFeeAppliedItems(
+  formData: { invoiceApplicationItems?: any[] },
+  feeGroupsData: any[],
+  flattenTreeData: (data: any[]) => any[],
+): Array<{ currencyId: number; appliedAmount: number }> {
+  const items = formData.invoiceApplicationItems || [];
+  const allFees = flattenTreeData(feeGroupsData);
+  const result: Array<{ currencyId: number; appliedAmount: number }> = [];
+
+  for (const item of items) {
+    const fee = allFees.find(
+      (f: any) =>
+        f.orderFee?.id === item.orderFeeId ||
+        String(f.orderFee?.id) === String(item.orderFeeId),
+    );
+    const currencyId =
+      fee?.orderFee?.currencyId ?? item.orderFee?.currencyId ?? item.currencyId;
+    if (!currencyId) continue;
+    result.push({
+      currencyId: Number(currencyId),
+      appliedAmount: Number(item.appliedAmount) || 0,
+    });
+  }
+  return result;
+}
 
 /**
  * 计算属性相关逻辑（税率/发票类型/金额汇总）
@@ -11,6 +46,9 @@ export function useComputed(
   goodsDetails: Ref<any[]>,
   formData: Ref<any>,
   invoiceExchangeRate: Ref<number>,
+  invoiceApplicationExchangeRates: Ref<InvoiceApplicationExchangeRateRow[]>,
+  feeGroupsData: Ref<any[]>,
+  flattenTreeData: (data: any[]) => any[],
 ) {
   const taxRateOptions = [
     { label: '免税', value: 0 },
@@ -54,30 +92,48 @@ export function useComputed(
     );
   });
 
+  const feeAppliedItems = computed(() =>
+    collectFeeAppliedItems(
+      formData.value,
+      feeGroupsData.value,
+      flattenTreeData,
+    ),
+  );
+
+  /** 申请总额（折主币别）；缺汇率时为 null */
   const totalAppliedAmountOriginal = computed(() => {
-    const items = formData.value.invoiceApplicationItems || [];
-    return items.reduce(
-      (sum: number, item: any) => sum + (item.appliedAmount || 0),
-      0,
+    const appCurrencyId = formData.value.currencyId;
+    if (!appCurrencyId) return null;
+    return toApplicationCurrency(
+      feeAppliedItems.value,
+      Number(appCurrencyId),
+      invoiceApplicationExchangeRates.value,
     );
   });
 
+  /** 折算人民币参考金额 = round(申请总额 × 发票汇率, 2)；缺汇率时为 null */
   const totalAppliedAmount = computed(() => {
-    if (formData.value.currencyId === 1) {
-      return totalAppliedAmountOriginal.value;
-    }
-    return totalAppliedAmountOriginal.value * (invoiceExchangeRate.value || 1);
+    return toInvoiceRmbAmount(
+      totalAppliedAmountOriginal.value,
+      invoiceExchangeRate.value || 1,
+    );
   });
 
   const hasAmountDifference = computed(() => {
+    if (totalAppliedAmount.value == null) return false;
     return Math.abs(totalInvoiceAmount.value - totalAppliedAmount.value) > 0.01;
   });
 
+  /** 有非主币别缺汇率 */
+  const hasMissingExchangeRates = computed(
+    () =>
+      totalAppliedAmountOriginal.value == null &&
+      feeAppliedItems.value.length > 0,
+  );
+
   const foreignCurrencyAmount = computed(() => {
-    if (formData.value.currencyId === 1) {
-      return null;
-    }
-    return totalAppliedAmountOriginal.value;
+    // 多币别下「原币合计」不再单一展示；改由汇率行展示各币别原币合计
+    return null as null | number;
   });
 
   return {
@@ -90,6 +146,8 @@ export function useComputed(
     totalAppliedAmountOriginal,
     totalAppliedAmount,
     hasAmountDifference,
+    hasMissingExchangeRates,
     foreignCurrencyAmount,
+    feeAppliedItems,
   };
 }

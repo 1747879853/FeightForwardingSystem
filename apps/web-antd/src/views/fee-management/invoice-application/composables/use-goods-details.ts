@@ -1,7 +1,12 @@
 import { message, Modal } from 'ant-design-vue';
 import type { Ref } from 'vue';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import {
+  toApplicationCurrency,
+  toInvoiceRmbAmount,
+  type InvoiceApplicationExchangeRateRow,
+} from '#/utils/invoice-application-amount';
+
 /**
  * 商品明细管理相关逻辑
  */
@@ -11,8 +16,45 @@ export function useGoodsDetails(
   formData: Ref<any>,
   invoiceExchangeRate: Ref<number>,
   flattenTreeData: (data: any[]) => any[],
-  feeGroupsData?: Ref<any[]>, // ✅ 新增：费用组数据
+  feeGroupsData?: Ref<any[]>,
+  invoiceApplicationExchangeRates?: Ref<InvoiceApplicationExchangeRateRow[]>,
 ) {
+  function calcTotalRmbFromFees(
+    feesOrItems: any[],
+    mode: 'selectedFees' | 'formItems',
+  ): null | number {
+    const appCurrencyId = formData.value.currencyId;
+    if (!appCurrencyId) return null;
+    const rates = invoiceApplicationExchangeRates?.value || [];
+    const allFees = feeGroupsData ? flattenTreeData(feeGroupsData.value) : [];
+
+    const feeItems =
+      mode === 'selectedFees'
+        ? feesOrItems.map((fee: any) => ({
+            currencyId: Number(fee.orderFee?.currencyId),
+            appliedAmount: Number(fee.appliedAmount) || 0,
+          }))
+        : feesOrItems
+            .map((item: any) => {
+              const fee = allFees.find(
+                (f: any) => f.orderFee?.id === item.orderFeeId,
+              );
+              const currencyId = fee?.orderFee?.currencyId;
+              if (!currencyId) return null;
+              return {
+                currencyId: Number(currencyId),
+                appliedAmount: Number(item.appliedAmount) || 0,
+              };
+            })
+            .filter(Boolean);
+
+    const totalApp = toApplicationCurrency(
+      feeItems as Array<{ currencyId: number; appliedAmount: number }>,
+      Number(appCurrencyId),
+      rates,
+    );
+    return toInvoiceRmbAmount(totalApp, invoiceExchangeRate.value || 1);
+  }
   /**
    * 项目名称变化
    */
@@ -170,21 +212,11 @@ export function useGoodsDetails(
       return;
     }
 
-    // 计算所有选中费用的总金额（转换为人民币）
-    let totalRmbAmount = 0;
-
-    selectedFees.forEach((fee: any) => {
-      const appliedAmount = fee.appliedAmount || 0;
-      const feeCurrencyId = fee.orderFee.currencyId;
-
-      if (feeCurrencyId !== 1) {
-        const convertedAmount =
-          appliedAmount * (invoiceExchangeRate.value || 1);
-        totalRmbAmount += convertedAmount;
-      } else {
-        totalRmbAmount += appliedAmount;
-      }
-    });
+    const totalRmbAmount = calcTotalRmbFromFees(selectedFees, 'selectedFees');
+    if (totalRmbAmount == null) {
+      message.warning('有币别缺汇率，无法自动填充商品明细金额');
+      return;
+    }
 
     const taxRate = defaultCodeInvoice.taxRate || 0;
 
@@ -250,26 +282,12 @@ export function useGoodsDetails(
       return;
     }
 
-    // ✅ 关键修改：从 formData.invoiceApplicationItems 中获取所有费用，而不是只计算新费用
     const items = formData.value.invoiceApplicationItems || [];
-    let totalRmbAmount = 0;
-    const allFees = flattenTreeData(feeGroupsData.value);
-
-    items.forEach((item: any) => {
-      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
-      if (fee) {
-        const appliedAmount = item.appliedAmount || 0;
-        const feeCurrencyId = fee.orderFee.currencyId;
-
-        if (feeCurrencyId !== 1) {
-          const convertedAmount =
-            appliedAmount * (invoiceExchangeRate.value || 1);
-          totalRmbAmount += convertedAmount;
-        } else {
-          totalRmbAmount += appliedAmount;
-        }
-      }
-    });
+    const totalRmbAmount = calcTotalRmbFromFees(items, 'formItems');
+    if (totalRmbAmount == null) {
+      message.warning('有币别缺汇率，无法自动合并商品明细金额');
+      return;
+    }
 
     const existingItem = goodsDetails.value[0];
 
@@ -280,7 +298,6 @@ export function useGoodsDetails(
 
     const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
 
-    // ✅ 关键修改：直接设置总金额，不是累加
     existingItem.amount = totalRmbAmount;
     existingItem.unitPrice = totalRmbAmount;
     existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);

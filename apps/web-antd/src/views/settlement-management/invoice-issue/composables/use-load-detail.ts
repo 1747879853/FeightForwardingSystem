@@ -99,9 +99,31 @@ export function useLoadDetail(
       // 根据币别更新销售方银行
       updateOrgBankByCurrency();
 
-      // 从 invoiceIssueItems 中构建 applicationGroupsData
-      if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
+      // 从详情的 invoiceIssueApplications 构建申请组（含多币别折算字段）
+      if (
+        detail.invoiceIssueApplications &&
+        detail.invoiceIssueApplications.length > 0
+      ) {
+        applicationGroupsData.value = detail.invoiceIssueApplications.map(
+          (app: any) => ({
+            ...app,
+            settlementName: app.settlement?.name,
+            currencyCode: app.currency?.code,
+            companyName: app.company?.name,
+            // 保留 null，勿用 || 0 掩盖缺汇率
+            totalAppliedAmount: app.totalAppliedAmount ?? null,
+            appliedAmountRmb: app.appliedAmountRmb ?? null,
+            invoiceApplicationExchangeRates:
+              app.invoiceApplicationExchangeRates || [],
+          }),
+        );
+      } else if (
+        detail.invoiceIssueItems &&
+        detail.invoiceIssueItems.length > 0
+      ) {
         await loadFullApplicationData(detail.invoiceIssueItems);
+      } else {
+        applicationGroupsData.value = [];
       }
 
       // 加载商品明细数据
@@ -201,8 +223,27 @@ export function useLoadDetail(
       // 根据币别更新销售方银行
       updateOrgBankByCurrency();
 
-      // 从 invoiceIssueItems 中构建 applicationGroupsData
-      if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
+      // 从详情的 invoiceIssueApplications 构建申请组（含多币别折算字段）
+      if (
+        detail.invoiceIssueApplications &&
+        detail.invoiceIssueApplications.length > 0
+      ) {
+        applicationGroupsData.value = detail.invoiceIssueApplications.map(
+          (app: any) => ({
+            ...app,
+            settlementName: app.settlement?.name,
+            currencyCode: app.currency?.code,
+            companyName: app.company?.name,
+            totalAppliedAmount: app.totalAppliedAmount ?? null,
+            appliedAmountRmb: app.appliedAmountRmb ?? null,
+            invoiceApplicationExchangeRates:
+              app.invoiceApplicationExchangeRates || [],
+          }),
+        );
+      } else if (
+        detail.invoiceIssueItems &&
+        detail.invoiceIssueItems.length > 0
+      ) {
         await loadFullApplicationData(detail.invoiceIssueItems);
       } else {
         // 如果没有申请明细，清空 applicationGroupsData
@@ -231,7 +272,6 @@ export function useLoadDetail(
 
           // 构建扁平化的费用明细列表
           const flatItems: any[] = [];
-          let totalAppliedAmount = 0;
 
           appDetail.feeGroups.forEach((group: any) => {
             group.items.forEach((item: any) => {
@@ -249,13 +289,26 @@ export function useLoadDetail(
                 currencyCode: appDetail.currency?.code,
                 totalAppliedAmount: item.appliedAmount,
               });
-
-              totalAppliedAmount += item.appliedAmount;
             });
           });
 
           // 构建申请组对象
           const firstItem = flatItems[0];
+
+          // 优先用详情返回的折算总额（缺汇率时为 null），勿用费用原币简单相加冒充
+          const totalAppliedAmount =
+            appDetail.totalAppliedAmount === undefined
+              ? null
+              : appDetail.totalAppliedAmount;
+
+          // 详情无 appliedAmountRmb；有折算总额与发票汇率时前端推算人民币参考
+          const invoiceRate = Number(appDetail.invoiceExchangeRate);
+          const appliedAmountRmb =
+            totalAppliedAmount == null || !invoiceRate
+              ? null
+              : Math.round(
+                  totalAppliedAmount * invoiceRate * 100 + Number.EPSILON,
+                ) / 100;
 
           const applicationGroup = {
             id: appDetail.id,
@@ -281,7 +334,10 @@ export function useLoadDetail(
             invoiceApplicationItems: flatItems,
             invoiceApplicationGoodsDtls:
               appDetail.invoiceApplicationGoodsDtls || [],
-            totalAppliedAmount: totalAppliedAmount,
+            invoiceApplicationExchangeRates:
+              appDetail.invoiceApplicationExchangeRates || [],
+            totalAppliedAmount,
+            appliedAmountRmb,
             totalGoodsAmount: 0,
             amountMatched: true,
             clientInvoiceInfo: null,
