@@ -8,6 +8,7 @@ import { getBillTasks } from '#/api/bill-of-lading';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { normalizeBillQuery } from '#/views/bill-of-lading/data';
 import Detail from './detail.vue';
+import TaskStatusCell from './task-status-cell.vue';
 defineOptions({ name: 'BillOfLadingReview' });
 const route = useRoute();
 const detail = ref<InstanceType<typeof Detail>>();
@@ -72,25 +73,8 @@ const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
       {
         field: 'taskStatus',
         title: '批次状态',
-        minWidth: 115,
-        cellRender: {
-          name: 'CellTag',
-          options: ['审核中', '全部驳回', '全部通过', '部分通过'].map(
-            (label, value) => ({ label, value }),
-          ),
-        },
-      },
-      {
-        field: 'myTaskStatus',
-        title: '我的审核状态',
-        minWidth: 125,
-        cellRender: {
-          name: 'CellTag',
-          options: ['待我审核', '我已驳回', '我已通过'].map((label, value) => ({
-            label,
-            value,
-          })),
-        },
+        minWidth: 120,
+        slots: { default: 'taskStatus' },
       },
       {
         field: 'mblNums',
@@ -160,7 +144,11 @@ watch(
 </script>
 <template>
   <Page auto-content-height>
-    <Grid table-title="提单签出审核" />
+    <Grid table-title="提单签出审核">
+      <template #taskStatus="{ row }">
+        <TaskStatusCell :row="row" />
+      </template>
+    </Grid>
     <Detail ref="detail" @success="gridApi.query()" />
   </Page>
 </template>
