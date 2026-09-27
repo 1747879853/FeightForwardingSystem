@@ -269,10 +269,7 @@ onActivated(() => {
       <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
         <Grid>
           <template #mblNum="{ row }">
-            <CopyBillNo
-              hide-icon
-              :text="row.seaExport?.transportOrder?.mblNum"
-            />
+            <CopyBillNo :text="row.seaExport?.transportOrder?.mblNum" />
           </template>
           <template #blNum="{ row }">
             <CopyBillNo :text="row.seaExportSeparate?.blNum" />

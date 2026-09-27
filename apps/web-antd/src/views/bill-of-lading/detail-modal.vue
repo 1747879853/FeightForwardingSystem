@@ -269,7 +269,7 @@ defineExpose({ open });
         <span>提单详情</span>
         <template v-if="number">
           <span class="modal-title__dot">·</span>
-          <CopyBillNo :text="number" mono large />
+          <CopyBillNo :text="number" mono />
         </template>
         <div v-if="bill" class="modal-title__tags">
           <Tag class="tag tag-kind">{{

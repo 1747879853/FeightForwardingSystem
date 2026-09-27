@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue';
 
-import { IconifyIcon } from '@vben/icons';
-
 import { message, Tooltip } from 'ant-design-vue';
 
 const props = defineProps<{
-  /** 只保留点击号码复制，不显示复制图标 */
-  hideIcon?: boolean;
-  /** 详情标题等需要稍大的复制按钮 */
-  large?: boolean;
   /** 等宽字体，用于详情标题 */
   mono?: boolean;
   /** 没有可展示号码时的占位，例如审核表里的 — */
@@ -84,11 +78,6 @@ function scheduleCopy(value: string) {
   }, COPY_DELAY);
 }
 
-function copyNow(value: string) {
-  clearTimer();
-  void write(value);
-}
-
 onBeforeUnmount(clearTimer);
 </script>
 
@@ -105,17 +94,6 @@ onBeforeUnmount(clearTimer);
           <span class="copy-bill-no__text" :class="{ 'is-mono': mono }">{{
             item
           }}</span>
-          <button
-            v-if="!hideIcon"
-            type="button"
-            class="copy-bill-no__btn"
-            :class="{ 'is-lg': large }"
-            aria-label="复制提单号"
-            @click.stop="copyNow(item)"
-            @dblclick.stop
-          >
-            <IconifyIcon icon="ant-design:copy-outlined" />
-          </button>
         </span>
       </Tooltip>
       <span v-else class="copy-bill-no__text" :class="{ 'is-mono': mono }">{{
@@ -150,41 +128,6 @@ onBeforeUnmount(clearTimer);
 
 .copy-bill-no__sep {
   white-space: normal;
-}
-
-.copy-bill-no__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  margin-left: 2px;
-  vertical-align: -2px;
-  color: #8c95a3;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-}
-
-.copy-bill-no__btn.is-lg {
-  width: 22px;
-  height: 22px;
-  vertical-align: -3px;
-}
-
-.copy-bill-no__btn:hover {
-  color: hsl(var(--primary));
-  background: hsl(var(--accent));
-}
-
-.copy-bill-no__btn :deep(svg) {
-  font-size: 13px;
-}
-
-.copy-bill-no__btn.is-lg :deep(svg) {
-  font-size: 14px;
 }
 
 .copy-bill-no__empty {
