@@ -25,6 +25,7 @@ import {
 import { billColumns, billSearchSchema, normalizeBillQuery } from './data';
 import ActionModal from './action-modal.vue';
 import DetailModal from './detail-modal.vue';
+import MoneyCell from './money-cell.vue';
 defineOptions({ name: 'BillOfLadingList' });
 const router = useRouter();
 const actionModal = ref<InstanceType<typeof ActionModal>>();
@@ -184,7 +185,7 @@ onActivated(() => {
 </script>
 <template>
   <Page auto-content-height content-class="flex min-h-0 flex-col">
-    <div class="mb-3 grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="mb-2 grid shrink-0 grid-cols-2 gap-2 lg:grid-cols-4">
       <button
         type="button"
         class="bill-stat bill-stat--all"
@@ -233,7 +234,7 @@ onActivated(() => {
           <span class="bill-stat__label">超期未收</span>
           <strong
             class="bill-stat__value"
-            :class="{ 'is-hot': (counts?.overdueUnReceivedCount ?? 0) > 0 }"
+            :class="{ 'is-danger': (counts?.overdueUnReceivedCount ?? 0) > 0 }"
             >{{ counts?.overdueUnReceivedCount ?? '—' }}</strong
           >
         </span>
@@ -242,6 +243,7 @@ onActivated(() => {
         v-access:code="'Admin.BillOfLading.Audit'"
         type="button"
         class="bill-stat bill-stat--audit"
+        aria-label="进入签出审核"
         @click="router.push('/audit-approval/bill-of-lading-review')"
       >
         <span class="bill-stat__icon">
@@ -251,16 +253,26 @@ onActivated(() => {
           <span class="bill-stat__label">待我审核</span>
           <strong
             class="bill-stat__value"
-            :class="{ 'is-hot': (counts?.pendingAuditCount ?? 0) > 0 }"
+            :class="{ 'is-warn': (counts?.pendingAuditCount ?? 0) > 0 }"
             >{{ counts?.pendingAuditCount ?? '—' }}</strong
           >
         </span>
-        <IconifyIcon class="bill-stat__go" icon="lucide:arrow-up-right" />
+        <span class="bill-stat__enter">
+          进入
+          <IconifyIcon icon="lucide:arrow-up-right" />
+        </span>
       </button>
     </div>
     <div class="flex min-h-0 flex-1 gap-3 overflow-hidden">
       <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
         <Grid>
+          <template #unReceivedAmount="{ row }">
+            <MoneyCell
+              :value="row.unReceivedAmount"
+              :code="row.localCurrencyCode"
+              :lines="row.currencies"
+            />
+          </template>
           <template #toolbar-actions>
             <GroupingTabs
               v-if="grouping.isGrouping.value"
@@ -309,59 +321,49 @@ onActivated(() => {
 
 <style scoped>
 .bill-stat {
-  --stat-color: hsl(var(--primary));
-  --stat-soft: hsl(var(--primary) / 10%);
-  --stat-icon-bg: hsl(var(--primary) / 12%);
-
   display: flex;
   gap: 12px;
   align-items: center;
   width: 100%;
   min-width: 0;
-  padding: 12px 14px;
+  height: 72px;
+  padding: 12px 16px;
   text-align: left;
   cursor: pointer;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
   transition:
     border-color 0.16s ease,
-    background-color 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.bill-stat--pending {
-  --stat-color: #13c2c2;
-  --stat-soft: rgb(19 194 194 / 10%);
-  --stat-icon-bg: rgb(19 194 194 / 14%);
-}
-
-.bill-stat--overdue {
-  --stat-color: #ff4d4f;
-  --stat-soft: rgb(255 77 79 / 10%);
-  --stat-icon-bg: rgb(255 77 79 / 12%);
-}
-
-.bill-stat--audit {
-  --stat-color: #d48806;
-  --stat-soft: rgb(250 173 20 / 14%);
-  --stat-icon-bg: rgb(250 173 20 / 18%);
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .bill-stat:hover {
-  border-color: color-mix(in srgb, var(--stat-color) 42%, hsl(var(--border)));
-  box-shadow: 0 6px 16px rgb(15 23 42 / 7%);
+  border-color: #d1d5db;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 8%);
+  transform: translateY(-2px);
 }
 
-.bill-stat.is-active {
-  background: var(--stat-soft);
-  border-color: var(--stat-color);
-  box-shadow: inset 3px 0 0 var(--stat-color);
+.bill-stat.is-active,
+.bill-stat.is-active:hover {
+  background: #fff;
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 1px #2563eb,
+    0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.bill-stat.is-active:hover {
+  box-shadow:
+    0 0 0 1px #2563eb,
+    0 8px 18px rgb(15 23 42 / 8%);
+  transform: translateY(-2px);
 }
 
 .bill-stat:focus-visible {
-  outline: 2px solid var(--stat-color);
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 
@@ -372,9 +374,27 @@ onActivated(() => {
   width: 40px;
   height: 40px;
   font-size: 20px;
-  color: var(--stat-color);
-  background: var(--stat-icon-bg);
-  border-radius: 10px;
+  border-radius: 8px;
+}
+
+.bill-stat--all .bill-stat__icon {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.bill-stat--pending .bill-stat__icon {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.bill-stat--overdue .bill-stat__icon {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.bill-stat--audit .bill-stat__icon {
+  color: #d97706;
+  background: #fffbeb;
 }
 
 .bill-stat__main {
@@ -388,31 +408,82 @@ onActivated(() => {
 .bill-stat__label {
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 13px;
-  line-height: 1.2;
-  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 16px;
+  color: #6b7280;
   white-space: nowrap;
 }
 
 .bill-stat__value {
-  font-size: 22px;
+  font-family:
+    'Segoe UI', Roboto, 'DIN Alternate', ui-sans-serif, system-ui, sans-serif;
+  font-size: 26px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
-  color: hsl(var(--foreground));
+  line-height: 28px;
+  color: #111827;
 }
 
-.bill-stat__value.is-hot {
-  color: var(--stat-color);
+.bill-stat__value.is-danger {
+  color: #ef4444;
 }
 
-.bill-stat__go {
+.bill-stat__value.is-warn {
+  color: #d97706;
+}
+
+.bill-stat__enter {
+  display: inline-flex;
   flex: none;
-  font-size: 16px;
+  gap: 2px;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.bill-stat--audit:hover .bill-stat__enter {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.dark .bill-stat {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.dark .bill-stat.is-active,
+.dark .bill-stat.is-active:hover {
+  background: hsl(var(--card));
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.dark .bill-stat__label,
+.dark .bill-stat__enter {
   color: hsl(var(--muted-foreground));
 }
 
-.bill-stat--audit:hover .bill-stat__go {
-  color: var(--stat-color);
+.dark .bill-stat__value {
+  color: hsl(var(--foreground));
+}
+
+.dark .bill-stat__enter {
+  background: transparent;
+  border-color: hsl(var(--border));
+}
+
+.dark .bill-stat__value.is-danger {
+  color: #f87171;
+}
+
+.dark .bill-stat__value.is-warn {
+  color: #fbbf24;
 }
 </style>

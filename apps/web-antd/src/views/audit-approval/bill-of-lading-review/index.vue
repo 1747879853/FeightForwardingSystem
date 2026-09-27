@@ -7,6 +7,8 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getBillTasks } from '#/api/bill-of-lading';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { normalizeBillQuery } from '#/views/bill-of-lading/data';
+import MoneyCell from '#/views/bill-of-lading/money-cell.vue';
+
 import Detail from './detail.vue';
 import TaskStatusCell from './task-status-cell.vue';
 defineOptions({ name: 'BillOfLadingReview' });
@@ -115,8 +117,9 @@ const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
       },
       {
         field: 'totalUnReceivedAmount',
-        title: '未收金额（本位币）',
+        title: '未收金额',
         minWidth: 155,
+        slots: { default: 'totalUnReceivedAmount' },
       },
       { field: 'totalCtn', title: '箱型箱量', minWidth: 130 },
       { field: 'itemCount', title: '提单数量', width: 95 },
@@ -147,6 +150,13 @@ watch(
     <Grid table-title="提单签出审核">
       <template #taskStatus="{ row }">
         <TaskStatusCell :row="row" />
+      </template>
+      <template #totalUnReceivedAmount="{ row }">
+        <MoneyCell
+          :value="row.totalUnReceivedAmount"
+          :code="row.localCurrencyCode"
+          :lines="row.currencies"
+        />
       </template>
     </Grid>
     <Detail ref="detail" @success="gridApi.query()" />

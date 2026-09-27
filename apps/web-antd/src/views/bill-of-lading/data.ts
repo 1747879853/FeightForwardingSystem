@@ -94,9 +94,10 @@ export function billColumns(): VxeTableGridOptions['columns'] {
     },
     {
       field: 'unReceivedAmount',
-      title: '未收金额（本位币）',
+      title: '未收金额',
       minWidth: 150,
       sortable: false,
+      slots: { default: 'unReceivedAmount' },
     },
     { field: 'overdueDays', title: '超期天数', width: 95, sortable: false },
     {

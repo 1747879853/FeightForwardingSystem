@@ -3,7 +3,7 @@ import type { BillAttachment } from '#/api/bill-of-lading';
 
 import { computed } from 'vue';
 
-import { Button, Table } from 'ant-design-vue';
+import { Button, Popover, Table } from 'ant-design-vue';
 import {
   TableSummary,
   TableSummaryCell,
@@ -11,6 +11,7 @@ import {
 } from 'ant-design-vue/es/table';
 
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { billStatusOptions } from '#/views/bill-of-lading/rules';
 
 import OriginMoneyTip from './origin-money-tip.vue';
@@ -36,12 +37,12 @@ interface OriginLine {
 function originLines(currencies: unknown): OriginLine[] {
   if (!Array.isArray(currencies)) return [];
   return currencies.flatMap((item) => {
-    const code = item?.currency?.code;
+    const code = item?.currency?.code ?? item?.code;
     if (!code) return [];
     return [
       {
         code: String(code),
-        name: String(item.currency?.cnName ?? ''),
+        name: String(item.currency?.cnName ?? item?.name ?? ''),
         receivable: Number(item.receivable) || 0,
         received: Number(item.received) || 0,
         unReceived: Number(item.unReceived) || 0,
@@ -111,7 +112,7 @@ const statusTone = [
   'done',
   'held',
 ];
-const myStates = ['待审核', '已驳回', '已通过'];
+const myStates = ['待我审核', '我已驳回', '我已通过'];
 const dateFields = new Set([
   'etd',
   'settlementDate',
@@ -152,8 +153,24 @@ function isConvertedMoneyColumn(column: { dataIndex?: unknown }) {
 function originFocus(column: { dataIndex?: unknown }) {
   const key = fieldKey(column.dataIndex);
   if (key === 'totalReceived') return 'received';
-  if (key === 'totalUnReceived') return 'unReceived';
+  if (key === 'totalUnReceived' || key === 'unReceivedAmount')
+    return 'unReceived';
   return 'receivable';
+}
+
+function rowOriginLines(record: {
+  billOfLading?: { currencies?: unknown };
+  currencies?: unknown;
+}) {
+  return originLines(record?.billOfLading?.currencies ?? record?.currencies);
+}
+
+function tipLines(column: { dataIndex?: unknown }, record: any) {
+  if (isConvertedMoneyColumn(column)) return originLines(record?.currencies);
+  if (fieldKey(column.dataIndex) === 'unReceivedAmount') {
+    return rowOriginLines(record);
+  }
+  return [];
 }
 
 function isDateColumn(column: { dataIndex?: unknown }) {
@@ -164,24 +181,36 @@ function isClipColumn(column: { dataIndex?: unknown }) {
   return clipFields.has(fieldKey(column.dataIndex));
 }
 
-function formatMoney(value?: null | number) {
-  if (value === undefined || value === null || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  return `¥ ${Number(value).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+function moneyCode(record?: {
+  billOfLading?: { localCurrencyCode?: null | string };
+  localCurrencyCode?: null | string;
+}) {
+  return record?.billOfLading?.localCurrencyCode ?? record?.localCurrencyCode;
 }
 
-function displayCell(column: { dataIndex?: unknown }, text: unknown) {
+function formatMoney(value?: null | number, code?: null | string) {
+  return formatLocalMoney(value, code);
+}
+
+function displayCell(
+  column: { dataIndex?: unknown },
+  text: unknown,
+  record?: {
+    billOfLading?: { localCurrencyCode?: null | string };
+    localCurrencyCode?: null | string;
+  },
+) {
   if (isDateColumn(column)) {
     if (text == null || text === '') return '—';
     return String(text).replace('T', ' ').slice(0, 10);
   }
+  if (fieldKey(column.dataIndex) === 'localCurrencyCode') {
+    if (text == null || text === '') return '—';
+    return String(text);
+  }
   if (isMoneyColumn(column)) {
     if (text == null || text === '') return '—';
-    return formatMoney(Number(text));
+    return formatMoney(Number(text), moneyCode(record));
   }
   if (text == null || text === '') return '';
   return String(text);
@@ -201,14 +230,13 @@ function billStatusLabel(status: unknown) {
   return billStatusOptions[status]?.label ?? '—';
 }
 
-function myStatusClass(status: unknown) {
-  if (status == null) return 'is-idle';
-  return ['is-auditing', 'is-rejected', 'is-done'][Number(status)] ?? 'is-idle';
-}
-
 function myStatusLabel(status: unknown) {
   if (typeof status !== 'number') return '未到当前步骤';
   return myStates[status] ?? '—';
+}
+
+function isAuditItem(record: { taskItemId?: string }) {
+  return !!record?.taskItemId;
 }
 
 function proofFiles(record: {
@@ -247,8 +275,23 @@ function daysTone(value: unknown) {
       :locale="{ emptyText: '暂无数据' }"
     >
       <template #bodyCell="{ column, record, text }">
+        <Popover
+          v-if="column.key === 'status' && isAuditItem(record)"
+          trigger="hover"
+          placement="rightTop"
+          :mouse-enter-delay="0.2"
+        >
+          <template #content>
+            <div class="status-pop">
+              我的审核状态：{{ myStatusLabel(record.myTaskStatus) }}
+            </div>
+          </template>
+          <span class="pill" :class="billStatusClass(text)">{{
+            billStatusLabel(text)
+          }}</span>
+        </Popover>
         <span
-          v-if="column.key === 'status'"
+          v-else-if="column.key === 'status'"
           class="pill"
           :class="billStatusClass(text)"
           >{{ billStatusLabel(text) }}</span
@@ -259,12 +302,6 @@ function daysTone(value: unknown) {
             text ? '是' : '否'
           }}</span>
         </template>
-        <span
-          v-else-if="column.key === 'mine'"
-          class="pill"
-          :class="myStatusClass(text)"
-          >{{ myStatusLabel(text) }}</span
-        >
         <template v-else-if="column.key === 'blNums'">
           {{ Array.isArray(text) && text.length ? text.join('、') : '—' }}
         </template>
@@ -275,16 +312,13 @@ function daysTone(value: unknown) {
           >{{ text == null || text === '' ? '—' : text }}</span
         >
         <OriginMoneyTip
-          v-else-if="
-            isConvertedMoneyColumn(column) &&
-            originLines(record.currencies).length
-          "
-          :lines="originLines(record.currencies)"
+          v-else-if="tipLines(column, record).length"
+          :lines="tipLines(column, record)"
           :focus="originFocus(column)"
           title="折算前原币"
         >
           <span class="cell amount is-tip">{{
-            displayCell(column, text)
+            displayCell(column, text, record)
           }}</span>
         </OriginMoneyTip>
         <template v-else-if="column.key === 'proof'">
@@ -309,8 +343,10 @@ function daysTone(value: unknown) {
             clip: isClipColumn(column),
             muted: isPlaceholder(column, text),
           }"
-          :title="isClipColumn(column) ? displayCell(column, text) : undefined"
-          >{{ displayCell(column, text) }}</span
+          :title="
+            isClipColumn(column) ? displayCell(column, text, record) : undefined
+          "
+          >{{ displayCell(column, text, record) }}</span
         >
       </template>
       <template v-if="totals.length" #summary>
@@ -328,11 +364,11 @@ function daysTone(value: unknown) {
                 title="折算前原币合计"
               >
                 <span class="cell amount is-tip">{{
-                  formatMoney(line.receivable)
+                  formatMoney(line.receivable, line.code)
                 }}</span>
               </OriginMoneyTip>
               <span v-else class="cell amount">{{
-                formatMoney(line.receivable)
+                formatMoney(line.receivable, line.code)
               }}</span>
             </TableSummaryCell>
             <TableSummaryCell :index="5" align="right">
@@ -343,11 +379,11 @@ function daysTone(value: unknown) {
                 title="折算前原币合计"
               >
                 <span class="cell amount is-tip">{{
-                  formatMoney(line.received)
+                  formatMoney(line.received, line.code)
                 }}</span>
               </OriginMoneyTip>
               <span v-else class="cell amount">{{
-                formatMoney(line.received)
+                formatMoney(line.received, line.code)
               }}</span>
             </TableSummaryCell>
             <TableSummaryCell :index="6" align="right">
@@ -358,11 +394,11 @@ function daysTone(value: unknown) {
                 title="折算前原币合计"
               >
                 <span class="cell amount is-tip">{{
-                  formatMoney(line.unreceived)
+                  formatMoney(line.unreceived, line.code)
                 }}</span>
               </OriginMoneyTip>
               <span v-else class="cell amount">{{
-                formatMoney(line.unreceived)
+                formatMoney(line.unreceived, line.code)
               }}</span>
             </TableSummaryCell>
           </TableSummaryRow>
@@ -503,6 +539,13 @@ function daysTone(value: unknown) {
   background: #f4f5f7;
 }
 
+.status-pop {
+  font-size: 12px;
+  line-height: 20px;
+  color: #3d4450;
+  white-space: nowrap;
+}
+
 .days {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -537,6 +580,9 @@ function daysTone(value: unknown) {
 }
 
 .cell.amount.is-tip {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   cursor: help;
   border-bottom: 1px dotted #c0c4cc;
 }

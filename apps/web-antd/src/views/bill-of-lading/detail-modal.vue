@@ -18,6 +18,7 @@ import {
   message,
 } from 'ant-design-vue';
 import { getBill, getBillHistory } from '#/api/bill-of-lading';
+import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -205,12 +206,7 @@ function dateTime(value?: string | null) {
 }
 
 function money(value?: number | null) {
-  if (value === undefined || value === null || Number.isNaN(Number(value)))
-    return '';
-  return `¥ ${Number(value).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatLocalMoney(value, bill.value?.localCurrencyCode, '');
 }
 
 function fileName(file: {

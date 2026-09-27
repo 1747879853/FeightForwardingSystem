@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { BillTaskDetail, BillTaskItem } from '#/api/bill-of-lading';
+import type {
+  BillOfLading,
+  BillTaskDetail,
+  BillTaskItem,
+} from '#/api/bill-of-lading';
+import type { ReportApi } from '#/api/system/report';
 
 import { computed, ref } from 'vue';
 
@@ -16,8 +21,10 @@ import {
 } from 'ant-design-vue';
 
 import { auditBills, getBillTask } from '#/api/bill-of-lading';
+import { formatLocalMoney } from '#/views/bill-of-lading/money';
 import { canAudit } from '#/views/bill-of-lading/rules';
 
+import OriginMoneyTip from './origin-money-tip.vue';
 import ReviewSheet from './review-sheet.vue';
 
 const emit = defineEmits<{ success: [] }>();
@@ -172,12 +179,6 @@ const applyColumns = [
     dataIndex: ['billOfLading', 'isHeldUp'],
     width: 88,
   },
-  {
-    title: '我的审核状态',
-    key: 'mine',
-    dataIndex: 'myTaskStatus',
-    width: 128,
-  },
   { title: '审核人', dataIndex: 'auditUserName', width: 100 },
   { title: '审核意见', dataIndex: 'remark', width: 160, ellipsis: true },
   overdueProofColumn,
@@ -228,6 +229,144 @@ const arrearsColumns = [
   ].map(([dataIndex, title]) => ({ dataIndex, title, width: 120 })),
 ].map(tune);
 
+interface OriginLine {
+  code: string;
+  name: string;
+  receivable: number;
+  received: number;
+  unReceived: number;
+}
+
+function collectOriginLines(
+  rows: ReportApi.ArrearsReportDto[] | undefined,
+): OriginLine[] {
+  const grouped = new Map<string, OriginLine>();
+  for (const row of rows ?? []) {
+    for (const item of row.currencies ?? []) {
+      const code = item.currency?.code;
+      if (!code) continue;
+      const current = grouped.get(code) ?? {
+        code,
+        name: item.currency.cnName ?? '',
+        receivable: 0,
+        received: 0,
+        unReceived: 0,
+      };
+      current.receivable += Number(item.receivable) || 0;
+      current.received += Number(item.received) || 0;
+      current.unReceived += Number(item.unReceived) || 0;
+      if (!current.name && item.currency?.cnName) {
+        current.name = item.currency.cnName;
+      }
+      grouped.set(code, current);
+    }
+  }
+  return [...grouped.values()];
+}
+
+const arrearsByOrder = computed(() => {
+  const grouped = new Map<string, ReportApi.ArrearsReportDto[]>();
+  for (const row of detail.value?.arrearsReports ?? []) {
+    const orderId = String(row.transportOrderId ?? '');
+    if (!orderId) continue;
+    const bucket = grouped.get(orderId) ?? [];
+    bucket.push(row);
+    grouped.set(orderId, bucket);
+  }
+  return grouped;
+});
+
+function orderKey(bill?: BillOfLading | null) {
+  return String(
+    bill?.seaExport?.id || bill?.seaExport?.transportOrder?.id || '',
+  );
+}
+
+function arrearsFor(orderId: string, settlementId?: string) {
+  let rows = arrearsByOrder.value.get(orderId) ?? [];
+  if (settlementId) {
+    rows = rows.filter(
+      (row) => String(row.settlement?.id ?? '') === settlementId,
+    );
+  }
+  return rows;
+}
+
+function localCodeFor(orderId: string, settlementId?: string) {
+  const codes = [
+    ...new Set(
+      arrearsFor(orderId, settlementId)
+        .map((row) => row.localCurrencyCode)
+        .filter(Boolean),
+    ),
+  ];
+  return codes[0] ?? 'RMB';
+}
+
+function currenciesFor(orderId: string, settlementId?: string) {
+  return collectOriginLines(arrearsFor(orderId, settlementId));
+}
+
+const applyRows = computed(() =>
+  (detail.value?.billOfLadingTasks ?? []).map((item) => ({
+    ...item,
+    billOfLading: {
+      ...item.billOfLading,
+      currencies: currenciesFor(orderKey(item.billOfLading)),
+      localCurrencyCode: localCodeFor(orderKey(item.billOfLading)),
+    },
+  })),
+);
+
+const heldRows = computed(() =>
+  (detail.value?.heldUpBillOfLadings ?? []).map((bill) => ({
+    ...bill,
+    currencies: currenciesFor(orderKey(bill)),
+    localCurrencyCode: localCodeFor(orderKey(bill)),
+  })),
+);
+
+const followingRows = computed(() =>
+  (detail.value?.followingBillOfLadings ?? []).map((bill) => ({
+    ...bill,
+    currencies: currenciesFor(orderKey(bill)),
+    localCurrencyCode: localCodeFor(orderKey(bill)),
+  })),
+);
+
+const overdueRows = computed(() => {
+  const settlementId = String(detail.value?.settlement?.id ?? '');
+  return (detail.value?.clientOverdues ?? []).map((row) => ({
+    ...row,
+    currencies: currenciesFor(String(row.transportOrderId), settlementId),
+    localCurrencyCode: localCodeFor(String(row.transportOrderId), settlementId),
+  }));
+});
+
+const summaryArrears = computed(() => {
+  const orderIds = new Set(
+    (detail.value?.billOfLadingTasks ?? [])
+      .map((item) => orderKey(item.billOfLading))
+      .filter(Boolean),
+  );
+  return (detail.value?.arrearsReports ?? []).filter((row) =>
+    orderIds.has(String(row.transportOrderId)),
+  );
+});
+
+const summaryCurrencies = computed(() =>
+  collectOriginLines(summaryArrears.value),
+);
+
+const summaryCurrencyCode = computed(() => {
+  const codes = [
+    ...new Set(
+      summaryArrears.value.map((row) => row.localCurrencyCode).filter(Boolean),
+    ),
+  ];
+  return codes[0] ?? 'RMB';
+});
+
 let request = 0;
 
 function taskRowKey(row: BillTaskItem) {
@@ -260,14 +399,8 @@ function day(value?: null | string, fallback = '—') {
   return String(value).replace('T', ' ').slice(0, 10);
 }
 
-function formatMoney(value?: null | number) {
-  if (value === undefined || value === null || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  return `¥ ${Number(value).toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+function formatMoney(value?: null | number, code?: null | string) {
+  return formatLocalMoney(value, code ?? summaryCurrencyCode.value);
 }
 
 function moneyText(value?: null | number) {
@@ -373,8 +506,24 @@ defineExpose({ open });
               </strong>
             </div>
             <div class="summary__item">
-              <span>未收金额（本位币）</span>
+              <span>未收金额</span>
+              <OriginMoneyTip
+                v-if="summaryCurrencies.length"
+                :lines="summaryCurrencies"
+                focus="unReceived"
+                title="折算前原币"
+              >
+                <strong
+                  class="amount is-tip"
+                  :class="{
+                    'is-hot': (detail.totalUnReceivedAmount ?? 0) > 0,
+                    'is-empty': detail.totalUnReceivedAmount == null,
+                  }"
+                  >{{ formatMoney(detail.totalUnReceivedAmount) }}</strong
+                >
+              </OriginMoneyTip>
               <strong
+                v-else
                 class="amount"
                 :class="{
                   'is-hot': (detail.totalUnReceivedAmount ?? 0) > 0,
@@ -418,10 +567,10 @@ defineExpose({ open });
                 </div>
                 <ReviewSheet
                   :columns="applyColumns"
-                  :data-source="detail.billOfLadingTasks"
+                  :data-source="applyRows"
                   :row-key="taskRowKey"
                   :row-selection="selection"
-                  :scroll-x="2100"
+                  :scroll-x="1972"
                 />
               </TabPane>
               <TabPane key="held">
@@ -433,7 +582,7 @@ defineExpose({ open });
                 </template>
                 <ReviewSheet
                   :columns="billColumns"
-                  :data-source="detail.heldUpBillOfLadings"
+                  :data-source="heldRows"
                   row-key="id"
                   :scroll-x="1560"
                 />
@@ -447,7 +596,7 @@ defineExpose({ open });
                 </template>
                 <ReviewSheet
                   :columns="billColumns"
-                  :data-source="detail.followingBillOfLadings"
+                  :data-source="followingRows"
                   row-key="id"
                   :scroll-x="1560"
                 />
@@ -512,7 +661,7 @@ defineExpose({ open });
                 </p>
                 <ReviewSheet
                   :columns="overdueColumns"
-                  :data-source="detail.clientOverdues"
+                  :data-source="overdueRows"
                   row-key="transportOrderId"
                   :scroll-x="1650"
                 />
@@ -658,6 +807,14 @@ defineExpose({ open });
 
 .summary__item .amount.is-hot {
   color: #cf1322;
+}
+
+.summary__item strong.amount.is-tip {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  cursor: help;
+  border-bottom: 1px dotted currentcolor;
 }
 
 .summary__item .is-empty {

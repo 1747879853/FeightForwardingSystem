@@ -4,6 +4,13 @@ import type { ReportApi } from '#/api/system/report';
 
 import { requestClient } from '#/api/request';
 
+export interface BillOriginMoney {
+  code: string;
+  name: string;
+  receivable: number;
+  received: number;
+  unReceived: number;
+}
 export interface BillParty {
   id: string;
   name?: string;
@@ -79,6 +86,10 @@ export interface BillOfLading {
   codeIssueType?: BillHistory['codeIssueType'];
   settlement?: BillParty | null;
   unReceivedAmount?: number;
+  /** 本票未收折算使用的本位币代码。列表不一定返回。 */
+  localCurrencyCode?: null | string;
+  /** 折算前原币。列表不一定返回，有值时未收金额可悬浮查看。 */
+  currencies?: BillOriginMoney[];
   overdueDays?: number;
   settlementDate?: string | null;
   promisePayDate?: string | null;
@@ -115,6 +126,10 @@ export interface BillTask {
   sales?: { id: number | string; nickName?: string }[];
   operators?: { id: number | string; nickName?: string }[];
   totalUnReceivedAmount?: number;
+  /** 本批未收折算使用的本位币代码。列表不一定返回。 */
+  localCurrencyCode?: null | string;
+  /** 折算前原币。列表不一定返回，有值时未收金额可悬浮查看。 */
+  currencies?: BillOriginMoney[];
   totalCtn?: string;
   itemCount: number;
   pendingItemCount: number;
