@@ -10,6 +10,7 @@ import { API_ORIGIN } from '@/api/request';
 import {
   chooseImages,
   persistLocalImage,
+  previewImages,
   uploadImage,
   type ImageSource,
 } from '@/api/upload';
@@ -71,7 +72,7 @@ function toggleStatus() {
 function previewGroup(groupIndex: number, photoIndex: number) {
   const urls = groups.value[groupIndex]?.items.map((item) => item.url) ?? [];
   if (urls.length === 0) return;
-  uni.previewImage({ current: photoIndex, urls });
+  void previewImages(urls, photoIndex);
 }
 
 function choosePhotoSource() {

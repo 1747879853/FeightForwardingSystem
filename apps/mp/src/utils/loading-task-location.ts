@@ -78,6 +78,8 @@ export function createLoadingTaskLocation(
   }
 
   async function getForUpload(): Promise<TaskPhotoLocation> {
+    // 已有地址且没有在刷新时直接返回，避免 await 让出后被相机触发的后台事件打断。
+    if (!pending && location.value) return location.value;
     const expectedGeneration = generation;
     await pending;
     if (generation !== expectedGeneration || !location.value) {

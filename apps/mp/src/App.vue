@@ -2,11 +2,11 @@
 import { onHide, onLaunch, onShow } from '@dcloudio/uni-app';
 
 import { restoreSession } from './stores/auth';
-import { appBackgroundEpoch } from './stores/app-visibility';
+import { noteAppHide } from './stores/app-visibility';
 import { checkUpdateOnAppShow, setupAutoUpdateCheck } from './utils/mp-update';
 
 onHide(() => {
-  appBackgroundEpoch.value += 1;
+  noteAppHide();
 });
 
 onLaunch(() => {

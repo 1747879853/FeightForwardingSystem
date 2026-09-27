@@ -1,3 +1,4 @@
+import { runDuringNativeOverlay } from '@/stores/app-visibility';
 import { parseJsonSafe } from '@/utils/safe-json';
 
 import { API_ORIGIN, ApiError, getAccessToken } from './request';
@@ -76,23 +77,44 @@ export function uploadImage(filePath: string) {
 
 export type ImageSource = 'album' | 'camera';
 
-/** 从指定来源选图，返回本地临时路径 */
+/** 从指定来源选图，返回本地临时路径。相机/相册会触发 App.onHide，期间不能清任务位置。 */
 export function chooseImages(sourceType: ImageSource[], count = 9) {
-  return new Promise<string[]>((resolve, reject) => {
-    uni.chooseImage({
-      count,
-      // 系统压缩在部分安卓上会直接交出黑图或红图，原图交给画布再缩小。
-      sizeType: ['original'],
-      sourceType,
-      success: (res) => resolve(res.tempFilePaths as string[]),
-      fail: (err) => {
-        // 用户主动取消不算失败
-        if (String(err?.errMsg || '').includes('cancel')) {
-          resolve([]);
+  return runDuringNativeOverlay(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        uni.chooseImage({
+          count,
+          // 系统压缩在部分安卓上会直接交出黑图或红图，原图交给画布再缩小。
+          sizeType: ['original'],
+          sourceType,
+          success: (res) => resolve(res.tempFilePaths as string[]),
+          fail: (err) => {
+            // 用户主动取消不算失败
+            if (String(err?.errMsg || '').includes('cancel')) {
+              resolve([]);
+              return;
+            }
+            reject(new ApiError(err?.errMsg || '选择图片失败'));
+          },
+        });
+      }),
+  );
+}
+
+/** 预览同样会把小程序打进后台，关闭前保持任务位置。 */
+export function previewImages(urls: string[], current = 0) {
+  return runDuringNativeOverlay(
+    () =>
+      new Promise<void>((resolve) => {
+        if (urls.length === 0) {
+          resolve();
           return;
         }
-        reject(new ApiError(err?.errMsg || '选择图片失败'));
-      },
-    });
-  });
+        uni.previewImage({
+          current,
+          urls,
+          complete: () => resolve(),
+        });
+      }),
+  );
 }

@@ -60,6 +60,16 @@ function deferred() {
   return { promise, resolve };
 }
 
+it('已有地址时立即返回，随后的失效不影响这次读取', async () => {
+  const fetch = vi.fn().mockResolvedValue(position);
+  const task = createLoadingTaskLocation(fetch);
+  task.onPageShow();
+  await task.getForUpload();
+  const reading = task.getForUpload();
+  task.invalidate();
+  expect(await reading).toEqual(position);
+});
+
 it('首次进入定位一次，同任务跨箱、多次上传及相册返回都复用地址', async () => {
   const fetch = vi.fn().mockResolvedValue(position);
   const task = createLoadingTaskLocation(fetch);
