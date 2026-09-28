@@ -40,10 +40,19 @@ export namespace ReceiveSettlementAdminApi {
     localCurrencyCode?: null | string;
   }
 
+  export interface ReceiveSettlementExchangeRateInputDto {
+    /** 原币币别。与银行流水同币别可不传，后端恒为 1 */
+    currencyId: number | string;
+    /** 1 单位原币折合多少银行流水币别 */
+    exchangeRate?: number;
+  }
+
   export interface ReceiveSettlementFeeDto {
     id: string;
     /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
     feeCode?: FeeCodeSimpleDto | null;
+    /** 费用币别 ID（原币） */
+    currencyId?: number | string;
     /** 币别对象（替代 currencyCode，编码读 code） */
     currency?: CurrencySimpleDto | null;
     paySide?: PaySide;
@@ -92,17 +101,26 @@ export namespace ReceiveSettlementAdminApi {
     orgId: number;
     bankStatementId: string;
     settlementTime: string;
+    /** 本次结算：实际到账金额（银行流水币别） */
+    actualSettled: number;
     remark?: string;
     receiveSettlementItems: ReceiveSettlementItemAddDto[];
+    /** 与银行流水币别不同的每个费用币别都要给汇率 */
+    receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateInputDto[];
   }
 
   export interface ReceiveSettlementAddItemsDto {
     id: string;
+    /** 追加之后整张收费结算的本次结算（银行流水币别），覆盖原值 */
+    actualSettled: number;
     receiveSettlementItems: ReceiveSettlementItemAddDto[];
+    receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateInputDto[];
   }
 
   export interface ReceiveSettlementDeleteItemsDto {
     id: string;
+    /** 删除后还剩明细时必填；明细全部删掉时不传，后端置 0 */
+    actualSettled?: number;
     receiveSettlementItemIds: string[];
   }
 
@@ -111,7 +129,11 @@ export namespace ReceiveSettlementAdminApi {
     /** 归属组织id */
     orgId: number;
     settlementTime: string;
+    /** 本次结算（银行流水币别）。不传不修改；没有明细时只能为 0 */
+    actualSettled?: number;
     remark?: string;
+    /** 仅按费用结算生效 */
+    receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateInputDto[];
   }
 
   export interface ReceiveSettlementDeleteDto {
@@ -180,11 +202,21 @@ export namespace ReceiveSettlementAdminApi {
     transportOrder?: TransportOrderSimpleDto;
   }
 
+  export interface ReceiveSettlementExchangeRateDto {
+    id?: string;
+    currencyId: number | string;
+    exchangeRate: number;
+    currency?: CurrencySimpleDto | null;
+  }
+
   export interface ReceiveSettlementItemDetailDto {
     id: string;
     receiveSettlementId: string;
     orderFeeId: string;
     settledAmount: number;
+    /** 原始结算金额（银行流水币别）；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    exchangeRate?: null | number;
     remark?: string;
     orderFee?: OrderFeeDto;
     transportOrder?: TransportOrderSimpleDto;
@@ -211,10 +243,15 @@ export namespace ReceiveSettlementAdminApi {
     creatorUserNickName?: string;
     lastModifierUserNickName?: string;
     bankStatementNo?: string;
-    /** 结算总额（净额 = Σ收明细 − Σ付明细，跨两种子表） */
-    totalSettledAmount: number;
+    /** 本次结算：实际到账金额（银行流水币别） */
+    actualSettled?: number;
+    /** 原始结算金额（银行流水币别）；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    /** 差值 = 本次结算 − 原始结算金额 */
+    diffAmount?: null | number;
+    receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateDto[];
     receiveSettlementItems: ReceiveSettlementItemDetailDto[];
-    receiveSettlementInvoiceItems: ReceiveSettlementInvoiceItemDetailDto[];
+    receiveSettlementInvoiceItems?: ReceiveSettlementInvoiceItemDetailDto[];
   }
 
   export interface ReceiveSettlementListDto {
@@ -236,7 +273,12 @@ export namespace ReceiveSettlementAdminApi {
     creatorUserNickName?: string;
     lastModifierUserNickName?: string;
     bankStatementNo?: string;
-    totalSettledAmount: number;
+    /** 本次结算：实际到账金额（银行流水币别） */
+    actualSettled?: number;
+    /** 原始结算金额（银行流水币别）；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    /** 差值 = 本次结算 − 原始结算金额 */
+    diffAmount?: null | number;
     itemCount: number;
     creationTime?: string;
   }

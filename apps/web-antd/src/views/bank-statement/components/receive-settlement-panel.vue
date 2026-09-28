@@ -65,7 +65,7 @@ const tablePagination = computed(() => {
   };
 });
 const tableScroll = computed(() => ({
-  x: 1150,
+  x: 1450,
   y: Math.max(tableBodyHeight.value, 120),
 }));
 
@@ -90,10 +90,24 @@ const columns = [
     width: 96,
   },
   {
-    key: 'totalSettledAmount',
-    dataIndex: 'totalSettledAmount',
-    title: '核销金额',
+    key: 'actualSettled',
+    dataIndex: 'actualSettled',
+    title: '本次结算',
     width: 150,
+    align: 'right' as const,
+  },
+  {
+    key: 'originalSettledAmount',
+    dataIndex: 'originalSettledAmount',
+    title: '原始结算金额',
+    width: 150,
+    align: 'right' as const,
+  },
+  {
+    key: 'diffAmount',
+    dataIndex: 'diffAmount',
+    title: '差值',
+    width: 130,
     align: 'right' as const,
   },
   {
@@ -131,6 +145,11 @@ function formatSettlementAmount(value: number | undefined | null) {
   return props.currencyCode
     ? `${amountText} ${props.currencyCode}`
     : amountText;
+}
+
+function formatOptionalSettlementAmount(value: number | undefined | null) {
+  if (value === undefined || value === null) return '-';
+  return formatSettlementAmount(value);
 }
 
 function updateTableBodyHeight() {
@@ -338,10 +357,16 @@ defineExpose({
               }}</span>
             </Tooltip>
           </template>
-          <template v-else-if="column.key === 'totalSettledAmount'">
+          <template v-else-if="column.key === 'actualSettled'">
             <span class="settlement-amount">
-              {{ formatSettlementAmount(record.totalSettledAmount) }}
+              {{ formatSettlementAmount(record.actualSettled) }}
             </span>
+          </template>
+          <template v-else-if="column.key === 'originalSettledAmount'">
+            {{ formatOptionalSettlementAmount(record.originalSettledAmount) }}
+          </template>
+          <template v-else-if="column.key === 'diffAmount'">
+            {{ formatOptionalSettlementAmount(record.diffAmount) }}
           </template>
           <template v-else-if="column.key === 'itemCount'">
             {{ record.itemCount ?? 0 }} 条

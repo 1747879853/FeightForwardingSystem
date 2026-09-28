@@ -349,10 +349,7 @@ async function loadBankStatementSummary(id: string) {
     // 与明细表的他单行同源，避免汇总数字和列表对不上
     otherSettledAmount.value = (detail.receiveSettlements ?? [])
       .filter((settlement) => settlement.id !== editId.value)
-      .reduce(
-        (sum, settlement) => sum + (settlement.totalSettledAmount || 0),
-        0,
-      );
+      .reduce((sum, settlement) => sum + (settlement.actualSettled || 0), 0);
   } finally {
     bankStatementSummaryLoading.value = false;
   }

@@ -158,7 +158,12 @@ export namespace BankStatementAdminApi {
     creatorUserName?: string;
     creatorUserNickName?: string;
     bankStatementNo?: string;
-    totalSettledAmount: number;
+    /** 本次结算：实际到账金额（银行流水币别） */
+    actualSettled?: number;
+    /** 原始结算金额（银行流水币别）；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    /** 差值 = 本次结算 − 原始结算金额 */
+    diffAmount?: null | number;
     userId?: number;
     /** 归属组织id */
     orgId?: null | number;
@@ -263,7 +268,12 @@ export namespace BankStatementAdminApi {
     remark?: string;
     creatorUserName?: string;
     bankStatementNo?: string;
-    totalSettledAmount: number;
+    /** 本次结算：实际到账金额（银行流水币别） */
+    actualSettled?: number;
+    /** 原始结算金额（银行流水币别）；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    /** 差值 = 本次结算 − 原始结算金额 */
+    diffAmount?: null | number;
     itemCount: number;
     creationTime: string;
   }

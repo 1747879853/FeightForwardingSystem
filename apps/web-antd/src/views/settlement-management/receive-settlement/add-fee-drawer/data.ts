@@ -24,6 +24,7 @@ export interface SelectedReceiveFee {
   feeCodeName?: string;
   /** 收付类别：0 应收，1 应付 */
   paySide?: number;
+  currencyId?: number | string;
   currencyCode?: string;
   amount: number;
   remainingAmount: number;
@@ -79,6 +80,12 @@ export function buildFeeGroupSearchQuery(values: Record<string, any>) {
     saleIds: toIdList(values.saleIds),
     operatorIds: toIdList(values.operatorIds),
     paySide: paySide === 0 || paySide === 1 ? paySide : undefined,
+    currencyId:
+      values.currencyId === undefined ||
+      values.currencyId === null ||
+      values.currencyId === ''
+        ? undefined
+        : values.currencyId,
   };
 }
 
@@ -107,8 +114,8 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       fieldName: 'currencyId',
       label: '币别',
       componentProps: {
-        disabled: true,
-        placeholder: '随银行流水自动带出',
+        allowClear: true,
+        placeholder: '全部币别',
         class: 'w-full',
       },
     },

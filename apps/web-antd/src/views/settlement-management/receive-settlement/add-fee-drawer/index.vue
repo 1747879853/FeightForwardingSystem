@@ -3,7 +3,7 @@ import { createDrawerSelectionQuery } from '#/utils/drawer-selection-query';
 
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 
 import {
   Button,
@@ -21,6 +21,11 @@ import { useAntTableColumnResize } from '#/utils/table-column-resize';
 
 import { formatAmount, getPaySideColor, getPaySideLabel } from '../form-data';
 import {
+  buildExchangeRateInputs,
+  collectForeignCurrencies,
+  findMissingExchangeRate,
+} from '../settlement-amount';
+import {
   type AddFeeDrawerProps,
   buildFeeGroupSearchQuery,
   buildOrderRow,
@@ -30,7 +35,10 @@ import {
 } from './data';
 
 const emit = defineEmits<{
-  confirm: [fees: SelectedReceiveFee[]];
+  confirm: [
+    fees: SelectedReceiveFee[],
+    exchangeRates: ReturnType<typeof buildExchangeRateInputs>,
+  ];
 }>();
 
 const open = ref(false);
@@ -53,6 +61,7 @@ useAntTableColumnResize({
 const selectedFeeIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
 const remarkMap = reactive(new Map<string, string>());
+const exchangeRates = reactive<Record<string, number | undefined>>({});
 const selectionQuery =
   createDrawerSelectionQuery<ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto>(
     (row) => row.transportOrder.id,
@@ -142,7 +151,7 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   if (props.settlementId) {
     searchFormApi.setValues({
       settlementName: props.settlementName || '',
-      currencyId: props.currencyId,
+      currencyId: undefined,
       paySide: 0,
     });
     await fetchData();
@@ -159,15 +168,14 @@ function resetState() {
   selectedFeeIds.value = [];
   settledAmountMap.clear();
   remarkMap.clear();
+  for (const key of Object.keys(exchangeRates)) {
+    delete exchangeRates[key];
+  }
 }
 
 async function handleSearch() {
   if (!drawerProps.value.settlementId) {
     message.warning('银行流水未关联结算对象');
-    return;
-  }
-  if (!drawerProps.value.currencyId) {
-    message.warning('银行流水未关联币别');
     return;
   }
   const values = (await searchFormApi.getValues()) ?? {};
@@ -177,15 +185,13 @@ async function handleSearch() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const settlementId = drawerProps.value.settlementId;
-  const currencyId = drawerProps.value.currencyId;
-  if (!settlementId || !currencyId) return;
+  if (!settlementId) return;
 
   const values = formValues ?? ((await searchFormApi.getValues()) || {});
 
   const params = {
     receiveSettlementId: drawerProps.value.receiveSettlementId,
     settlementId,
-    currencyId,
     ...buildFeeGroupSearchQuery(values),
     pageIndex: currentPage.value,
     pageSize: pageSize.value,
@@ -275,6 +281,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         clientName: group.transportOrder.client?.name,
         feeCodeName: fee.feeCode?.cnName,
         paySide: fee.paySide,
+        currencyId: fee.currencyId ?? fee.currency?.id,
         currencyCode: fee.currency?.code,
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
@@ -287,6 +294,22 @@ function buildSelectedFees(): SelectedReceiveFee[] {
 
   return result;
 }
+
+const foreignCurrencies = computed(() =>
+  collectForeignCurrencies(
+    buildSelectedFees(),
+    drawerProps.value.currencyId,
+    drawerProps.value.currencyCode,
+  ),
+);
+
+watch(foreignCurrencies, (rows) => {
+  for (const row of rows) {
+    if (!(row.currencyId in exchangeRates)) {
+      exchangeRates[row.currencyId] = undefined;
+    }
+  }
+});
 
 function handleConfirm() {
   if (loading.value) return;
@@ -316,7 +339,36 @@ function handleConfirm() {
     return;
   }
 
-  emit('confirm', fees);
+  const missingCurrency = fees.find(
+    (fee) =>
+      fee.currencyCode &&
+      drawerProps.value.currencyCode &&
+      fee.currencyCode !== drawerProps.value.currencyCode &&
+      (fee.currencyId == null || fee.currencyId === ''),
+  );
+  if (missingCurrency) {
+    message.warning(
+      `费用「${missingCurrency.feeCodeName || '-'}」缺少币别，无法填写汇率`,
+    );
+    return;
+  }
+
+  const missingRate = findMissingExchangeRate(
+    foreignCurrencies.value,
+    exchangeRates,
+  );
+  if (missingRate) {
+    message.warning(
+      `请填写 ${missingRate.currencyCode} 兑${drawerProps.value.currencyCode || '流水币别'}的汇率`,
+    );
+    return;
+  }
+
+  emit(
+    'confirm',
+    fees,
+    buildExchangeRateInputs(foreignCurrencies.value, exchangeRates),
+  );
   open.value = false;
 }
 
@@ -404,6 +456,25 @@ defineExpose({ open: openDrawer });
         </template>
       </Table>
 
+      <div v-if="foreignCurrencies.length" class="exchange-rate-bar">
+        <div
+          v-for="row in foreignCurrencies"
+          :key="row.currencyId"
+          class="exchange-rate-bar__row"
+        >
+          <span>1 {{ row.currencyCode }} =</span>
+          <InputNumber
+            v-model:value="exchangeRates[row.currencyId]"
+            :min="0"
+            :precision="6"
+            :step="0.000001"
+            placeholder="汇率"
+            style="width: 140px"
+          />
+          <span>{{ drawerProps.currencyCode || '流水币别' }}</span>
+        </div>
+      </div>
+
       <div class="mt-3 flex justify-end">
         <Pagination
           :current="currentPage"
@@ -417,3 +488,18 @@ defineExpose({ open: openDrawer });
     </div>
   </Drawer>
 </template>
+
+<style scoped>
+.exchange-rate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.exchange-rate-bar__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+</style>
