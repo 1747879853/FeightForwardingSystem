@@ -118,6 +118,18 @@ function extractUniqueCtnNames(data: SeFreiPriceOutDto[]): string[] {
 }
 
 /**
+ * 目的港免箱使天数（列表/导出共用）
+ * 与批量页列一致：DEM=poddem、DET=podFreeDays、免箱使期=poddet（单条编辑「目的港免箱期」）
+ */
+export function formatPodFreeDaysCombined(row: SeFreiPriceOutDto): string {
+  const parts: string[] = [];
+  if (row.poddem != null) parts.push(`DEM:${row.poddem}`);
+  if (row.podFreeDays != null) parts.push(`DET:${row.podFreeDays}`);
+  if (row.poddet != null) parts.push(`免箱使期:${row.poddet}`);
+  return parts.length > 0 ? parts.join(' / ') : '-';
+}
+
+/**
  * 格式化附加费显示
  * 格式示例：
  * - 简单模式（只有value）：文件费 rmb： 20gp:100   40gp:200  40hc:300
@@ -782,10 +794,10 @@ export function useColumns(
       title: '目的港免箱使天数',
       width: 280,
       align: 'left',
-      // slots: {
-      //   default: 'podFreeDaysCombined',
-      //   header: 'podFreeDaysCombinedHeader',
-      // },
+      // 虚拟列：聚合 poddem / podFreeDays / poddet，须用 rowTextColumn 每次读当前行
+      ...rowTextColumn<SeFreiPriceOutDto>(({ row }) =>
+        formatPodFreeDaysCombined(row),
+      ),
     },
     {
       field: 'remark',
