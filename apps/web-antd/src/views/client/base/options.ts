@@ -343,6 +343,11 @@ export const getSupplierIndustryCategoryOptions = () => [
     value: 'w',
     label: $t('seaExport.client.industryCategoryOptions.groundAgent'),
   },
+  {
+    key: 12,
+    value: 'l',
+    label: $t('seaExport.client.industryCategoryOptions.other'),
+  },
 ];
 
 /** 是否有效枚举选项 */

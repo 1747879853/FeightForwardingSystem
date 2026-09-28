@@ -68,6 +68,7 @@ import {
 } from '#/api/sea-export/client-admin';
 import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
 import {
+  CHINA_COUNTRY_ID,
   fetchDefaultChinaCountry,
   isTaxNoRequiredForChina,
   TAX_NO_DUPLICATE_MSG,
@@ -509,7 +510,7 @@ async function syncTaxNoRequiredFlag() {
     countryId,
     supplierType.value,
     meta,
-    chinaCountry.value?.id,
+    chinaCountry.value?.id ?? CHINA_COUNTRY_ID,
   );
   await baseFormApi.setFieldValue('taxNoRequired', required);
 }
@@ -1745,7 +1746,7 @@ const handleSubmit = async (closeAfterSave = false) => {
       baseValuesAfterValidation.country,
       supplierType.value,
       countryMeta,
-      chinaCountry.value?.id,
+      chinaCountry.value?.id ?? CHINA_COUNTRY_ID,
     );
     const taxNoTrimmed = String(baseValuesAfterValidation.taxNo ?? '').trim();
     if (taxNoRequired && !taxNoTrimmed) {
@@ -2735,7 +2736,7 @@ watch(
 
               <!-- 供应商：一级勾选 + 二级属性 -->
               <div
-                class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow"
+                class="type-row type-row--nowrap mb-2 rounded-lg bg-gray-50 py-2 shadow"
                 :class="{
                   'client-audit-section--changed':
                     changedAuditSections.type || changedAuditSections.industry,
@@ -2762,11 +2763,11 @@ watch(
                 </div>
                 <div
                   v-if="isSupplierType?.includes(2)"
-                  class="type-row__secondary"
+                  class="type-row__secondary type-row__secondary--nowrap"
                 >
                   <CheckboxGroup
                     name="supplierIndustry"
-                    class="type-row__attr-group"
+                    class="type-row__attr-group type-row__attr-group--nowrap"
                     v-model:value="supplierType"
                     :disabled="formLocked"
                     :options="
@@ -3372,6 +3373,12 @@ watch(
   padding: 6px 10px;
 }
 
+.type-row--nowrap {
+  flex-wrap: nowrap;
+  gap: 4px 6px;
+  padding: 6px 8px;
+}
+
 .type-row__primary {
   display: inline-flex;
   flex-shrink: 0;
@@ -3454,6 +3461,13 @@ watch(
   border-radius: 4px;
 }
 
+.type-row__secondary--nowrap {
+  flex-wrap: nowrap;
+  padding: 1px 4px;
+  margin-left: 0;
+  overflow-x: visible;
+}
+
 .type-row__attr-group {
   :deep(.ant-checkbox-wrapper) {
     margin-inline-end: 10px;
@@ -3461,11 +3475,35 @@ watch(
     font-weight: 400;
     line-height: 24px;
     color: #64748b;
+    white-space: nowrap;
   }
 
   :deep(.ant-checkbox-inner) {
     width: 13px;
     height: 13px;
+  }
+}
+
+.type-row__attr-group--nowrap {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+
+  :deep(.ant-checkbox-group) {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  :deep(.ant-checkbox-wrapper) {
+    margin-inline-end: 4px;
+  }
+
+  :deep(.ant-checkbox + span) {
+    padding-inline: 2px 4px;
   }
 }
 

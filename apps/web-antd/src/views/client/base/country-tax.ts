@@ -1,33 +1,33 @@
 import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
 
-import { getCountryCodePagedList } from '#/api/system/base-data/country-code-admin';
+import { getCountryCodeDetail } from '#/api/system/base-data/country-code-admin';
 
 /** 供应商行业类别「个人」对应的 IndustryCategory 字母值 */
 export const PERSONAL_SUPPLIER_INDUSTRY = 'v';
+
+/** 默认国家「中国」在主数据中的 id */
+export const CHINA_COUNTRY_ID = 47;
 
 export const TAX_NO_REQUIRED_FOR_CN_ENTERPRISE =
   '国家为中国，企业供应商需填写纳税人识别号';
 
 export const TAX_NO_DUPLICATE_MSG = '相同国家下纳税人识别号不能重复';
 
-/** 是否为中国（按代码 CN / 中文名 / 已缓存的中国 id） */
+/** 是否为中国（按固定 id=47 / 代码 CN / 中文名） */
 export function isChinaCountry(
   countryId: null | number | string | undefined,
   meta?: null | Pick<
     CountryCodeAdminApi.CountryCodeDto,
     'code' | 'countryName' | 'id'
   >,
-  chinaId?: null | number | string,
+  chinaId: null | number | string = CHINA_COUNTRY_ID,
 ): boolean {
   if (meta?.code === 'CN' || meta?.countryName === '中国') return true;
   if (
-    chinaId !== undefined &&
-    chinaId !== null &&
-    chinaId !== '' &&
     countryId !== undefined &&
     countryId !== null &&
     countryId !== '' &&
-    String(countryId) === String(chinaId)
+    String(countryId) === String(chinaId ?? CHINA_COUNTRY_ID)
   ) {
     return true;
   }
@@ -52,40 +52,23 @@ export function isTaxNoRequiredForChina(
     CountryCodeAdminApi.CountryCodeDto,
     'code' | 'countryName' | 'id'
   >,
-  chinaId?: null | number | string,
+  chinaId: null | number | string = CHINA_COUNTRY_ID,
 ): boolean {
   if (!isChinaCountry(countryId, meta, chinaId)) return false;
   return !isPersonalSupplierIndustry(supplierIndustries);
 }
 
-/** 拉取默认国家「中国」（优先 Code=CN） */
+/** 拉取默认国家「中国」（固定 id=47） */
 export async function fetchDefaultChinaCountry(): Promise<CountryCodeAdminApi.CountryCodeDto | null> {
   try {
-    const byCode = await getCountryCodePagedList({
-      Code: 'CN',
-      PageIndex: 1,
-      PageSize: 5,
-      Status: 0,
-    });
-    const codeHit = (byCode?.items ?? []).find(
-      (item) => item.code === 'CN' || item.countryName === '中国',
-    );
-    if (codeHit) return codeHit;
-
-    const byName = await getCountryCodePagedList({
-      CountryName: '中国',
-      PageIndex: 1,
-      PageSize: 5,
-      Status: 0,
-    });
-    return (
-      (byName?.items ?? []).find(
-        (item) => item.code === 'CN' || item.countryName === '中国',
-      ) ??
-      byName?.items?.[0] ??
-      null
-    );
+    const detail = await getCountryCodeDetail(CHINA_COUNTRY_ID);
+    if (detail?.id) return detail;
   } catch {
-    return null;
+    // 详情失败时仍用固定 id 回填，保证新建默认中国
   }
+  return {
+    id: CHINA_COUNTRY_ID,
+    code: 'CN',
+    countryName: '中国',
+  } as CountryCodeAdminApi.CountryCodeDto;
 }

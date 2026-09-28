@@ -8,7 +8,10 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 
-import { TAX_NO_REQUIRED_FOR_CN_ENTERPRISE } from './country-tax';
+import {
+  TAX_NO_REQUIRED_FOR_CN_ENTERPRISE,
+  CHINA_COUNTRY_ID,
+} from './country-tax';
 import { getClientStatusOptions } from './client-status';
 import {
   getAddressTypeOptions,
@@ -307,6 +310,7 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       component: 'CountrySelect',
       fieldName: 'country',
       label: $t('seaExport.client.country'),
+      defaultValue: CHINA_COUNTRY_ID,
       componentProps: {
         allowClear: true,
         class: 'w-full',
@@ -335,6 +339,7 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       // 隐藏：中国 + 非个人供应商 → 税号必填（由页面同步写入）
       component: 'Input',
       fieldName: 'taxNoRequired',
+      defaultValue: true,
       dependencies: {
         triggerFields: ['country'],
         show: () => false,
