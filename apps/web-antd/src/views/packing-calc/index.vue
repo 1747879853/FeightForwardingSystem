@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PackingAdminApi } from '#/api/packing/packing-admin';
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -48,6 +48,7 @@ import {
 } from './packing-payload';
 import PackingManualModal from './packing-manual-modal.vue';
 import PackingScene from './packing-scene.vue';
+import type { PackingViewMode } from './packing-scene.vue';
 import {
   clearPackingDraft,
   consumePackingPrefill,
@@ -127,7 +128,22 @@ const sceneRef = ref<{
   capturePng: () => null | string;
   setDoorView: () => void;
   fitCamera: () => void;
+  applyViewMode: () => void;
 } | null>(null);
+
+const viewMode = ref<PackingViewMode>('perspective');
+const showRulers = ref(true);
+const showDimLabels = ref(true);
+
+function setViewMode(mode: PackingViewMode) {
+  viewMode.value = mode;
+}
+
+async function onDoorView() {
+  setViewMode('perspective');
+  await nextTick();
+  sceneRef.value?.setDoorView();
+}
 
 let playTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -825,11 +841,37 @@ watch(dimUnit, () => {
           <Button size="small" :disabled="!result" @click="togglePlay">
             {{ playing ? '暂停' : '播放顺序' }}
           </Button>
-          <Button
-            size="small"
-            :disabled="!result"
-            @click="sceneRef?.setDoorView()"
-          >
+          <Button.Group size="small">
+            <Button
+              :type="viewMode === 'perspective' ? 'primary' : 'default'"
+              :disabled="!result"
+              @click="setViewMode('perspective')"
+            >
+              透视
+            </Button>
+            <Button
+              :type="viewMode === 'top' ? 'primary' : 'default'"
+              :disabled="!result"
+              @click="setViewMode('top')"
+            >
+              俯视
+            </Button>
+            <Button
+              :type="viewMode === 'side' ? 'primary' : 'default'"
+              :disabled="!result"
+              @click="setViewMode('side')"
+            >
+              侧视
+            </Button>
+            <Button
+              :type="viewMode === 'front' ? 'primary' : 'default'"
+              :disabled="!result"
+              @click="setViewMode('front')"
+            >
+              正视
+            </Button>
+          </Button.Group>
+          <Button size="small" :disabled="!result" @click="onDoorView">
             箱门视角
           </Button>
           <Button
@@ -837,7 +879,23 @@ watch(dimUnit, () => {
             :disabled="!result"
             @click="sceneRef?.fitCamera()"
           >
-            总览
+            复位
+          </Button>
+          <Button
+            size="small"
+            :type="showRulers ? 'primary' : 'default'"
+            :disabled="!result"
+            @click="showRulers = !showRulers"
+          >
+            标尺
+          </Button>
+          <Button
+            size="small"
+            :type="showDimLabels ? 'primary' : 'default'"
+            :disabled="!result"
+            @click="showDimLabels = !showDimLabels"
+          >
+            尺寸标注
           </Button>
           <Button size="small" :disabled="!result" @click="onScreenshot">
             截图
@@ -866,6 +924,9 @@ watch(dimUnit, () => {
             :gravity-offset-length="activeContainer.gravityOffsetLength"
             :gravity-offset-width="activeContainer.gravityOffsetWidth"
             :gravity-warning="gravityWarning"
+            :view-mode="viewMode"
+            :show-rulers="showRulers"
+            :show-dim-labels="showDimLabels"
           />
           <div v-else class="packing-empty">
             录入柜子和货物后，点底部「生成方案」
