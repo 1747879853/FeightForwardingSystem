@@ -223,6 +223,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
           if (to?.bizType === 0) return to.seaExport?.pol?.portName || '--';
           if (to?.bizType === 1) return to.seaImport?.pol?.portName || '--';
           if (to?.bizType === 2) return to.airExport?.pol?.cnName || '--';
+          if (to?.bizType === 3) return to.breakBulk?.pol?.portName || '--';
           return '--';
         },
       ),
@@ -237,6 +238,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
           if (to?.bizType === 0) return to.seaExport?.pod?.portName || '--';
           if (to?.bizType === 1) return to.seaImport?.pod?.portName || '--';
           if (to?.bizType === 2) return to.airExport?.pod?.cnName || '--';
+          if (to?.bizType === 3) return to.breakBulk?.pod?.portName || '--';
           return '--';
         },
       ),
@@ -248,9 +250,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       ...rowTextColumn(
         ({ row }: { row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto }) => {
           const to = row.transportOrder;
+          // 海出/海进列历史上展示船公司代码；件杂货无船公司，展示船名
           if (to?.bizType === 0) return to.seaExport?.carrier?.code || '--';
           if (to?.bizType === 1) return to.seaImport?.carrier?.code || '--';
           if (to?.bizType === 2) return to.airExport?.flightNo || '--';
+          if (to?.bizType === 3) return to.breakBulk?.vessel || '--';
           return '--';
         },
       ),

@@ -91,6 +91,8 @@ export namespace CommissionOrderAdminApi {
     SeaImport = 1,
     /** 空运出口 */
     AirExport = 2,
+    /** 件杂货 */
+    BreakBulk = 3,
   }
 
   /** 货物类型 */
@@ -464,6 +466,12 @@ export namespace CommissionOrderAdminApi {
     pod?: null | SeaAirPortSimpleDto;
   }
 
+  /** 件杂货专属：起运港/目的港（海运港，isSeaPort=true） */
+  export interface CommissionBreakBulkDto {
+    pol?: null | SeaAirPortSimpleDto;
+    pod?: null | SeaAirPortSimpleDto;
+  }
+
   /** 本票欠款按结算对象分组（仅销售提成第二部分有值） */
   export interface CommissionUnsettledSettlementDto {
     /** 结算对象，可能为 null（费用还在录入状态时结算对象可空，这些费用单独归一组） */
@@ -516,7 +524,7 @@ export namespace CommissionOrderAdminApi {
     overdueDays?: null | number;
     /** 账期类型/结算方式：0票结 1月结 2指定日结（与客户账期 SettlementType 同值） */
     settlementType?: null | number;
-    /** 箱型箱量，空运出口恒为空列表 */
+    /** 箱型箱量，空运出口与件杂货恒为空列表 */
     ctns?: null | CommissionCtnSimpleDto[];
     /** 起运港/目的港，仅海运出口有值 */
     seaExport?: null | CommissionSeaExportDto;
@@ -524,6 +532,8 @@ export namespace CommissionOrderAdminApi {
     seaImport?: null | CommissionSeaImportDto;
     /** 起运地/目的地，仅空运出口有值 */
     airExport?: null | CommissionAirExportDto;
+    /** 起运港/目的港，仅件杂货有值 */
+    breakBulk?: null | CommissionBreakBulkDto;
   }
 
   /** 操作提成命中条件项 */

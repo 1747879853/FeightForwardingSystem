@@ -595,15 +595,94 @@ export namespace InvoiceIssueApi {
     unchangedApplicationIds: string[];
   }
 
-  /** 运输订单简易信息 */
+  /** 港口简易（海运港） */
+  export interface PortCodeSimpleDto {
+    id: number;
+    portName?: string;
+    cnName?: string;
+    ediCode?: string;
+    [key: string]: any;
+  }
+
+  /** 空港简易 */
+  export interface AirPortSimpleDto {
+    id: number;
+    iataCode?: string;
+    enName?: string;
+    cnName?: string;
+    [key: string]: any;
+  }
+
+  /** 船公司简易 */
+  export interface CarrierSimpleDto {
+    id: number;
+    cnName?: string;
+    cnShortName?: string;
+    enName?: string;
+    code?: string;
+    ediCode?: string;
+    [key: string]: any;
+  }
+
+  /** 海运出口/进口简易（字段一致） */
+  export interface SeaExportSimpleDto {
+    id: string;
+    vessel?: string;
+    innerVoyno?: string;
+    pol?: null | PortCodeSimpleDto;
+    polRemark?: string;
+    pod?: null | PortCodeSimpleDto;
+    podRemark?: string;
+    carrier?: CarrierSimpleDto | null;
+    [key: string]: any;
+  }
+
+  /** 空运出口简易 */
+  export interface AirExportSimpleDto {
+    id: string;
+    flightNo?: string;
+    pol?: AirPortSimpleDto | null;
+    polRemark?: string;
+    pot?: AirPortSimpleDto | null;
+    potRemark?: string;
+    pod?: AirPortSimpleDto | null;
+    podRemark?: string;
+    [key: string]: any;
+  }
+
+  /** 件杂货简易（无船公司） */
+  export interface BreakBulkSimpleDto {
+    id: string;
+    vessel?: string;
+    innerVoyno?: string;
+    terminalVoyno?: string;
+    pol?: null | PortCodeSimpleDto;
+    polRemark?: string;
+    pod?: null | PortCodeSimpleDto;
+    podRemark?: string;
+    [key: string]: any;
+  }
+
+  /** 运输订单简易信息（业务类型简要四者互斥挂在本对象上） */
   export interface TransportOrderSimpleDto {
     id: string;
+    /** 业务类型：0 海出 / 1 海进 / 2 空出 / 3 件杂货 */
+    bizType?: number;
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
     etd?: string;
+
+    /** 海运出口（仅 bizType=0） */
+    seaExport?: null | SeaExportSimpleDto;
+    /** 海运进口（仅 bizType=1） */
+    seaImport?: null | SeaExportSimpleDto;
+    /** 空运出口（仅 bizType=2） */
+    airExport?: AirExportSimpleDto | null;
+    /** 件杂货（仅 bizType=3） */
+    breakBulk?: BreakBulkSimpleDto | null;
 
     // === 整票结算状态字段（客户对账接口使用） ===
     /** 应收整票结算状态（按该业务下全部应收费用汇总） */
@@ -616,39 +695,6 @@ export namespace InvoiceIssueApi {
     /** 本位币代码，如 RMB / USD */
     localCurrencyCode?: null | string;
 
-    [key: string]: any;
-  }
-
-  /** 海运出口简易信息 */
-  export interface SeaExportSimpleDto {
-    id: string;
-    vessel?: string;
-    innerVoyno?: string;
-    polId?: number;
-    /** 起运港（简易对象，无则为 null） */
-    pol?: {
-      id: number;
-      portName?: string;
-      cnName?: string;
-    } | null;
-    podId?: number;
-    /** 目的港（简易对象，无则为 null） */
-    pod?: {
-      id: number;
-      portName?: string;
-      cnName?: string;
-    } | null;
-    carrierId?: number;
-    /** 船公司（简易对象，无则为 null） */
-    carrier?: {
-      id: number;
-      cnName?: string;
-      cnShortName?: string;
-      enName?: string;
-      /** 英文简称 */
-      code?: string;
-      ediCode?: string;
-    } | null;
     [key: string]: any;
   }
 

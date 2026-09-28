@@ -185,13 +185,15 @@ export namespace ExpenseSubmissionAdminApi {
     /** 主键 ID */
     id: string;
 
-    // === 新增：按业务类型挂载的 SimpleDto 对象 ===
+    // === 新增：按业务类型挂载的 SimpleDto 对象（四者互斥） ===
     /** 海运出口简易对象（仅 bizType=0 时有值） */
     seaExport?: SeaExportSimpleDto | null;
     /** 海运进口简易对象（仅 bizType=1 时有值） */
     seaImport?: SeaImportSimpleDto | null;
     /** 空运出口简易对象（仅 bizType=2 时有值） */
     airExport?: AirExportSimpleDto | null;
+    /** 件杂货简易对象（仅 bizType=3 时有值） */
+    breakBulk?: BreakBulkSimpleDto | null;
 
     // === 整票结算状态字段（客户对账接口使用） ===
     /** 应收整票结算状态（按该业务下全部应收费用汇总） */
@@ -258,6 +260,18 @@ export namespace ExpenseSubmissionAdminApi {
     pot?: AirPortSimpleDto | null;
     potRemark?: string | null;
     pod?: AirPortSimpleDto | null;
+    podRemark?: string | null;
+  }
+
+  /** 件杂货简易对象（无船公司） */
+  export interface BreakBulkSimpleDto {
+    id: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    terminalVoyno?: string | null;
+    pol?: PortCodeSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortCodeSimpleDto | null;
     podRemark?: string | null;
   }
 

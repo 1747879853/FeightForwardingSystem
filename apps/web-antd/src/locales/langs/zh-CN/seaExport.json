@@ -872,7 +872,8 @@
       "destinationAgent": "国外代理",
       "personnelAgent": "个人",
       "wharf": "码头",
-      "factory": "工厂"
+      "factory": "工厂",
+      "groundAgent": "地面代理"
     },
     "contactPerson": {
       "title": "联系人",
@@ -913,7 +914,8 @@
       "BizTypeOptions": {
         "seaExport": "海运出口",
         "seaImport": "海运进口",
-        "airExport": "空运出口"
+        "airExport": "空运出口",
+        "breakBulk": "件杂货"
       },
       "SettlementTypeOptions": {
         "ticketSettlement": "票结",

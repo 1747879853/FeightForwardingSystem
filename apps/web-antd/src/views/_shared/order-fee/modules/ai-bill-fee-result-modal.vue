@@ -43,6 +43,7 @@ const BIZ_TYPE_TEXT: Record<number, string> = {
   0: '海运出口',
   1: '海运进口',
   2: '空运出口',
+  3: '件杂货',
 };
 
 const adapter = useOrderFeeAdapter();

@@ -243,6 +243,12 @@ export const getIndustryCategoryOptions = () => [
     value: 'v',
     label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
   },
+  {
+    // IndustryCategory：枚举值 n 对应字母 'a'+n-1；23 → w 地面代理（件杂货）
+    key: 23,
+    value: 'w',
+    label: $t('seaExport.client.industryCategoryOptions.groundAgent'),
+  },
 ];
 
 export const getCustomerIndustryCategoryOptions = () => [
@@ -331,6 +337,11 @@ export const getSupplierIndustryCategoryOptions = () => [
     key: 22,
     value: 'v',
     label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
+  },
+  {
+    key: 23,
+    value: 'w',
+    label: $t('seaExport.client.industryCategoryOptions.groundAgent'),
   },
 ];
 

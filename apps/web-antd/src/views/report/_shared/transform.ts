@@ -32,7 +32,7 @@ interface BizLineFields {
 
 /**
  * 从业务主单中提取业务线字段
- * 按海运出口 > 海运进口 > 空运出口的优先级取值
+ * 按海运出口 > 海运进口 > 空运出口 > 件杂货的优先级取值（子对象四者互斥）
  */
 function extractBizLineFields(
   transportOrder: ReportApi.ReportTransportOrderDto | null | undefined,
@@ -50,7 +50,7 @@ function extractBizLineFields(
 
   if (!transportOrder) return fields;
 
-  const { seaExport, seaImport, airExport } = transportOrder;
+  const { seaExport, seaImport, airExport, breakBulk } = transportOrder;
   if (seaExport) {
     fields.pol = seaExport.pol;
     fields.pod = seaExport.pod;
@@ -77,6 +77,15 @@ function extractBizLineFields(
     fields.podRemark = airExport.podRemark || '';
     fields.carrier = null;
     fields.blType = (airExport as any)?.blType;
+  } else if (breakBulk) {
+    fields.pol = breakBulk.pol;
+    fields.pod = breakBulk.pod;
+    fields.polRemark = breakBulk.polRemark || '';
+    fields.podRemark = breakBulk.podRemark || '';
+    fields.vessel = breakBulk.vessel || '';
+    fields.innerVoyno = breakBulk.innerVoyno || '';
+    fields.carrier = null;
+    fields.blType = null;
   }
 
   return fields;

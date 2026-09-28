@@ -4,7 +4,8 @@ import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 
 /**
- * 业务类型枚举选项
+ * 业务类型枚举选项：仅海运出口。
+ * 件杂货（bizType=3）无服务项目，后端拒绝配置，勿加入选项。
  */
 export const bizTypeOptions: Array<{ label: string; value: number }> = [
   { label: '海运出口', value: 0 },

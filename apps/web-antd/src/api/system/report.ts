@@ -126,7 +126,19 @@ export namespace ReportApi {
     podRemark: string;
   }
 
-  /** 业务主单信息（三种业务类型共有的字段） */
+  /** 件杂货业务信息（无船公司/场站/装运方式；多地面代理） */
+  export interface ReportBreakBulkDto {
+    bookingAgent: ClientSimpleDto;
+    groundAgent: ClientSimpleDto;
+    vessel: string;
+    innerVoyno: string;
+    pol: SeaAirPortSimpleDto;
+    pod: SeaAirPortSimpleDto;
+    polRemark: string;
+    podRemark: string;
+  }
+
+  /** 业务主单信息（四种业务类型共有的字段；子对象按 bizType 四者互斥） */
   export interface ReportTransportOrderDto {
     bizType: number;
     client: ClientSimpleDto;
@@ -147,10 +159,12 @@ export namespace ReportApi {
     pkgs?: number;
     kgs?: number;
     cbm?: number;
+    /** 箱型箱量；空运出口、件杂货恒为空数组 */
     ctns: ReportCtnSimpleDto[];
     seaExport?: ReportSeaExportDto | null;
     seaImport?: ReportSeaImportDto | null;
     airExport?: ReportAirExportDto | null;
+    breakBulk?: ReportBreakBulkDto | null;
   }
 
   // ==================== 利润报表相关类型 ====================

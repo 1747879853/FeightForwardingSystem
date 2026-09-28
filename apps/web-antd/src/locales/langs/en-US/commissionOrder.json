@@ -139,7 +139,8 @@
   "bizType": {
     "seaExport": "Sea Export",
     "seaImport": "Sea Import",
-    "airExport": "Air Export"
+    "airExport": "Air Export",
+    "breakBulk": "Break Bulk"
   },
   "calc": {
     "title": "Calculation",

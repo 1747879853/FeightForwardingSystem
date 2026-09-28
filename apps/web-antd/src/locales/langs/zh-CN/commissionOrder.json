@@ -139,7 +139,8 @@
   "bizType": {
     "seaExport": "海运出口",
     "seaImport": "海运进口",
-    "airExport": "空运出口"
+    "airExport": "空运出口",
+    "breakBulk": "件杂货"
   },
   "calc": {
     "title": "计算结果",
