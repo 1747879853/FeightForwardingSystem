@@ -1,6 +1,6 @@
 import { requestClient } from '#/api/request';
 
-/** 装箱试算：不读箱型主数据、不落库 */
+/** 装箱试算：柜子与货物由调用方传入，结果默认不落库 */
 const API_PREFIX = '/services/app/PackingAdmin';
 
 export namespace PackingAdminApi {
@@ -13,6 +13,16 @@ export namespace PackingAdminApi {
     weight: number;
     quantity: number;
     allowRotate: boolean;
+    /** 分组键：同组尽量同柜不拆散（后端扩展字段，旧版忽略） */
+    groupKey?: string;
+    /** 是否可承重；false 时不应被压（后端扩展） */
+    supportLoad?: boolean;
+    /** 破损/变形置顶（后端扩展） */
+    damaged?: boolean;
+    /** 膨胀厘米，参与碰撞的外扩（也可由前端计入尺寸后提交） */
+    expandLength?: number;
+    expandWidth?: number;
+    expandHeight?: number;
   }
 
   export interface PackingCalculateInput {
@@ -26,6 +36,10 @@ export namespace PackingAdminApi {
     gapLength: number;
     gapWidth: number;
     cargos: PackingCargoInput[];
+    /** 同种货自叠最大层数；0/不传=不限（后端扩展） */
+    maxSelfStackLayers?: number;
+    /** 顶部叉车预留高度厘米（也可由前端扣减柜高后提交） */
+    forkliftClearance?: number;
   }
 
   export interface PackingPlacement {

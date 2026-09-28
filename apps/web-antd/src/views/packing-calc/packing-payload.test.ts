@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildPackingCalculateInput,
+  isGravityOffsetWarning,
+  matchPresetByName,
   sumCargoDraft,
+  toCm,
   validatePackingDraft,
   type PackingCargoDraft,
   type PackingContainerDraft,
@@ -14,6 +17,7 @@ const container: PackingContainerDraft = {
   height: 269,
   limitWeight: 0,
   maxContainerCount: 5,
+  autoMinContainers: false,
   selfStack: true,
   flatLay: false,
   gapLength: 0,
@@ -30,6 +34,8 @@ const cargos: PackingCargoDraft[] = [
     weight: 12,
     quantity: 2,
     allowRotate: true,
+    supportLoad: true,
+    damaged: false,
   },
 ];
 
@@ -44,6 +50,25 @@ describe('packing payload', () => {
     expect(input.flatLay).toBe(false);
   });
 
+  it('auto min containers uses max 50', () => {
+    const input = buildPackingCalculateInput(
+      { ...container, autoMinContainers: true },
+      cargos,
+    );
+    expect(input.maxContainerCount).toBe(50);
+  });
+
+  it('applies forklift clearance and cargo expansion into dimensions', () => {
+    const input = buildPackingCalculateInput(
+      { ...container, forkliftClearance: 10 },
+      [{ ...cargos[0]!, expandLength: 2, expandWidth: 1, expandHeight: 3 }],
+    );
+    expect(input.height).toBe(259);
+    expect(input.cargos[0]?.length).toBe(77);
+    expect(input.cargos[0]?.width).toBe(66);
+    expect(input.cargos[0]?.height).toBe(47);
+  });
+
   it('rejects empty cargo list and oversized piece', () => {
     expect(validatePackingDraft(container, [])).toBe('货物清单不能为空');
     expect(
@@ -56,5 +81,17 @@ describe('packing payload', () => {
     expect(stats.quantity).toBe(2);
     expect(stats.weight).toBe(24);
     expect(stats.volumeM3).toBeCloseTo((75 * 65 * 44 * 2) / 1_000_000, 6);
+  });
+
+  it('converts units and matches preset names', () => {
+    expect(toCm(1, 'm')).toBe(100);
+    expect(toCm(10, 'mm')).toBe(1);
+    expect(matchPresetByName('40HQ')?.key).toBe('40HQ');
+    expect(matchPresetByName('20gp dry')?.key).toBe('20GP');
+  });
+
+  it('flags gravity offset beyond ratio', () => {
+    expect(isGravityOffsetWarning(150, 1200, 0.1)).toBe(true);
+    expect(isGravityOffsetWarning(50, 1200, 0.1)).toBe(false);
   });
 });

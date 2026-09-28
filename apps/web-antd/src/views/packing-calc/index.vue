@@ -1,32 +1,64 @@
 <script lang="ts" setup>
 import type { PackingAdminApi } from '#/api/packing/packing-admin';
 
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
   Input,
   InputNumber,
   message,
+  Select,
   Slider,
   Switch,
+  Tooltip,
+  Upload,
 } from 'ant-design-vue';
 
 import { calculatePacking } from '#/api/packing/packing-admin';
+import { getCtnCodePagedList } from '#/api/system/base-data/ctn-code-admin';
 
-import PackingScene from './packing-scene.vue';
+import {
+  comparePackingPresets,
+  type PackingCompareRow,
+} from './packing-compare';
+import {
+  downloadCargoTemplate,
+  exportLoadOrderExcel,
+  exportPackingGuideExcel,
+  parseCargoExcelFile,
+} from './packing-excel';
 import {
   buildPackingCalculateInput,
+  fromCm,
+  isGravityOffsetWarning,
+  matchPresetByName,
   PACKING_PRESETS,
   sumCargoDraft,
+  toCm,
   validatePackingDraft,
   type PackingCargoDraft,
   type PackingContainerDraft,
+  type PackingDimUnit,
+  type PackingPresetKey,
 } from './packing-payload';
+import PackingManualModal from './packing-manual-modal.vue';
+import PackingScene from './packing-scene.vue';
+import {
+  clearPackingDraft,
+  consumePackingPrefill,
+  loadPackingDraft,
+  savePackingDraft,
+} from './packing-session';
 
 defineOptions({ name: 'PackingCalcPage' });
+
+const router = useRouter();
+const manualModalRef = ref<{ open: () => void } | null>(null);
 
 const LINE_COLORS = [
   '#1677ff',
@@ -41,12 +73,20 @@ const LINE_COLORS = [
 
 let rowSeed = 1;
 
-function createCargoRow(): PackingCargoDraft {
+function createCargoRow(
+  partial?: Partial<PackingCargoDraft>,
+): PackingCargoDraft {
   rowSeed += 1;
   return {
     key: `cargo-${rowSeed}`,
     name: '',
     allowRotate: true,
+    supportLoad: true,
+    damaged: false,
+    expandLength: 0,
+    expandWidth: 0,
+    expandHeight: 0,
+    ...partial,
   };
 }
 
@@ -54,19 +94,42 @@ const container = ref<PackingContainerDraft>({
   length: 1203,
   width: 235,
   height: 269,
-  limitWeight: 0,
+  limitWeight: 26_000,
   maxContainerCount: 5,
+  autoMinContainers: true,
   selfStack: false,
   flatLay: false,
   gapLength: 0,
   gapWidth: 0,
+  maxSelfStackLayers: 0,
+  forkliftClearance: 0,
 });
 
 const cargos = ref<PackingCargoDraft[]>([createCargoRow()]);
+const dimUnit = ref<PackingDimUnit>('cm');
+const presetKey = ref<PackingPresetKey | 'custom'>('40HQ');
+const masterCtnOptions = ref<{ label: string; value: string }[]>([]);
 const calculating = ref(false);
+const comparing = ref(false);
 const result = ref<PackingAdminApi.PackingCalculateResult>();
+const compareRows = ref<PackingCompareRow[]>([]);
 const activeContainerIndex = ref(0);
 const visibleLoadOrder = ref(0);
+const maxLayerY = ref(0);
+const highlightLineNo = ref(0);
+const playing = ref(false);
+const prefillMeta = ref<{
+  seaExportId?: string;
+  commissionNum?: string;
+  suggestCtnName?: string;
+} | null>(null);
+const sceneRef = ref<{
+  capturePng: () => null | string;
+  setDoorView: () => void;
+  fitCamera: () => void;
+} | null>(null);
+
+let playTimer: ReturnType<typeof setInterval> | undefined;
 
 const cargoStats = computed(() => sumCargoDraft(cargos.value));
 
@@ -77,6 +140,22 @@ const activeContainer = computed(
 const loadOrderMax = computed(
   () => activeContainer.value?.placements?.length ?? 0,
 );
+
+const layerYMax = computed(() => {
+  const list = activeContainer.value?.placements ?? [];
+  if (list.length === 0) return 0;
+  return Math.max(...list.map((p) => p.y + p.height));
+});
+
+const gravityWarning = computed(() => {
+  const box = activeContainer.value;
+  const r = result.value;
+  if (!box || !r) return false;
+  return (
+    isGravityOffsetWarning(box.gravityOffsetLength, r.length) ||
+    isGravityOffsetWarning(box.gravityOffsetWidth, r.width)
+  );
+});
 
 const legendLines = computed(() => {
   const seen = new Map<number, string>();
@@ -92,10 +171,88 @@ const legendLines = computed(() => {
   }));
 });
 
-function applyPreset(preset: (typeof PACKING_PRESETS)[number]) {
+const suggestCtnText = computed(() => {
+  if (!result.value || result.value.containerCount <= 0) return '';
+  const name =
+    prefillMeta.value?.suggestCtnName ||
+    (presetKey.value === 'custom' ? 'CUSTOM' : presetKey.value);
+  return `${name}*${result.value.containerCount}`;
+});
+
+function displayDim(cm?: number) {
+  if (cm === undefined || cm === null || !Number.isFinite(cm)) return undefined;
+  return fromCm(cm, dimUnit.value);
+}
+
+function setDim(
+  target: 'container' | PackingCargoDraft,
+  field:
+    | 'length'
+    | 'width'
+    | 'height'
+    | 'gapLength'
+    | 'gapWidth'
+    | 'forkliftClearance'
+    | 'expandLength'
+    | 'expandWidth'
+    | 'expandHeight',
+  displayValue: null | number | undefined,
+) {
+  const cm =
+    displayValue === null || displayValue === undefined
+      ? undefined
+      : toCm(Number(displayValue), dimUnit.value);
+  if (target === 'container') {
+    (container.value as any)[field] = cm;
+  } else {
+    (target as any)[field] = cm;
+  }
+}
+
+function applyPreset(key: PackingPresetKey) {
+  const preset = PACKING_PRESETS.find((p) => p.key === key);
+  if (!preset) return;
+  presetKey.value = key;
   container.value.length = preset.length;
   container.value.width = preset.width;
   container.value.height = preset.height;
+  if (!container.value.limitWeight) {
+    container.value.limitWeight = preset.limitWeight;
+  }
+}
+
+async function loadMasterCtns() {
+  try {
+    const page = await getCtnCodePagedList({
+      PageIndex: 1,
+      PageSize: 100,
+      Status: 0,
+      Sorting: 'OrderNo ASC, Id DESC',
+    });
+    const items = page?.items ?? [];
+    masterCtnOptions.value = items
+      .filter((i) => i.ctnName)
+      .map((i) => ({
+        label: `${i.ctnName}${i.limitWeight ? ` · 限重${i.limitWeight}` : ''}`,
+        value: String(i.ctnName),
+      }));
+  } catch {
+    masterCtnOptions.value = [];
+  }
+}
+
+function onPickMasterCtn(name: string) {
+  const preset = matchPresetByName(name);
+  if (preset) {
+    applyPreset(preset.key);
+  } else {
+    presetKey.value = 'custom';
+    message.info('已选择箱型名称；内径请按实际填写（主数据无内径字段）');
+  }
+  // 限重：从选项 label 解析或保留
+  const opt = masterCtnOptions.value.find((o) => o.value === name);
+  const m = opt?.label.match(/限重\s*([\d.]+)/);
+  if (m?.[1]) container.value.limitWeight = Number(m[1]);
 }
 
 function addCargo() {
@@ -104,6 +261,7 @@ function addCargo() {
 
 function removeCargo(key: string) {
   cargos.value = cargos.value.filter((row) => row.key !== key);
+  if (cargos.value.length === 0) cargos.value = [createCargoRow()];
 }
 
 function formatOffset(value: number, positive: string, negative: string) {
@@ -112,12 +270,40 @@ function formatOffset(value: number, positive: string, negative: string) {
   return `${value}（${side}）`;
 }
 
+function stopPlay() {
+  playing.value = false;
+  if (playTimer) {
+    clearInterval(playTimer);
+    playTimer = undefined;
+  }
+}
+
+function togglePlay() {
+  if (playing.value) {
+    stopPlay();
+    return;
+  }
+  if (loadOrderMax.value <= 1) return;
+  playing.value = true;
+  if (visibleLoadOrder.value >= loadOrderMax.value) {
+    visibleLoadOrder.value = 1;
+  }
+  playTimer = setInterval(() => {
+    if (visibleLoadOrder.value >= loadOrderMax.value) {
+      stopPlay();
+      return;
+    }
+    visibleLoadOrder.value += 1;
+  }, 350);
+}
+
 async function generatePlan() {
   const error = validatePackingDraft(container.value, cargos.value);
   if (error) {
     message.warning(error);
     return;
   }
+  stopPlay();
   calculating.value = true;
   try {
     const data = await calculatePacking(
@@ -126,6 +312,23 @@ async function generatePlan() {
     result.value = data;
     activeContainerIndex.value = 0;
     visibleLoadOrder.value = data.containers?.[0]?.placements?.length ?? 0;
+    maxLayerY.value = 0;
+    highlightLineNo.value = 0;
+    savePackingDraft({
+      container: container.value,
+      cargos: cargos.value,
+      presetKey: presetKey.value === 'custom' ? undefined : presetKey.value,
+      dimUnit: dimUnit.value,
+    });
+    if (data.unplacedQuantity > 0) {
+      message.warning(`仍有 ${data.unplacedQuantity} 件未装入`);
+    } else {
+      message.success(
+        container.value.autoMinContainers
+          ? `试算完成，最少开柜 ${data.containerCount} 只`
+          : '试算完成',
+      );
+    }
   } catch {
     // 接口报错由请求拦截器按原文提示
   } finally {
@@ -133,11 +336,216 @@ async function generatePlan() {
   }
 }
 
+async function runCompare() {
+  const error = validatePackingDraft(
+    { ...container.value, autoMinContainers: true },
+    cargos.value,
+  );
+  if (error) {
+    message.warning(error);
+    return;
+  }
+  comparing.value = true;
+  try {
+    compareRows.value = await comparePackingPresets(
+      container.value,
+      cargos.value,
+    );
+    message.success('多柜型对比完成');
+  } catch {
+    // interceptor
+  } finally {
+    comparing.value = false;
+  }
+}
+
+function applyCompareRow(row: PackingCompareRow) {
+  applyPreset(row.key);
+  container.value.limitWeight = row.limitWeight;
+  result.value = row.result;
+  activeContainerIndex.value = 0;
+  visibleLoadOrder.value = row.result.containers?.[0]?.placements?.length ?? 0;
+  maxLayerY.value = 0;
+  message.success(`已采用 ${row.label} 方案`);
+}
+
 function selectContainer(index: number) {
+  stopPlay();
   activeContainerIndex.value = index;
   visibleLoadOrder.value =
     result.value?.containers?.[index]?.placements?.length ?? 0;
+  maxLayerY.value = 0;
 }
+
+async function onImportExcel(file: File) {
+  const { rows, errors } = await parseCargoExcelFile(
+    file,
+    dimUnit.value,
+    () => {
+      rowSeed += 1;
+      return `cargo-${rowSeed}`;
+    },
+  );
+  if (rows.length) {
+    cargos.value = rows.map((r) => createCargoRow(r));
+    message.success(`已导入 ${rows.length} 行货物`);
+  }
+  if (errors.length) {
+    message.warning(errors.slice(0, 3).join('；'));
+  }
+  return false;
+}
+
+async function onDownloadTemplate() {
+  await downloadCargoTemplate(dimUnit.value);
+}
+
+async function onExportOrder() {
+  if (!result.value) return;
+  await exportLoadOrderExcel(
+    result.value,
+    activeContainerIndex.value,
+    dimUnit.value,
+  );
+}
+
+async function onExportGuide() {
+  if (!result.value) return;
+  await exportPackingGuideExcel(
+    result.value,
+    presetKey.value === 'custom' ? '自定义' : presetKey.value,
+  );
+}
+
+function onScreenshot() {
+  const dataUrl = sceneRef.value?.capturePng();
+  if (!dataUrl) {
+    message.warning('暂无画面可截图');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `装箱3D_柜${activeContainer.value?.index ?? 1}.png`;
+  a.click();
+}
+
+function copySuggestCtn() {
+  if (!suggestCtnText.value) return;
+  void navigator.clipboard.writeText(suggestCtnText.value).then(
+    () => message.success(`已复制建议箱量 ${suggestCtnText.value}`),
+    () => message.info(suggestCtnText.value),
+  );
+}
+
+/** 现场/监装可读的装载说明（文本分享，无需公开页） */
+function copySiteLoadGuide() {
+  const r = result.value;
+  if (!r?.containers?.length) {
+    message.warning('请先生成方案');
+    return;
+  }
+  const lines: string[] = [
+    '【装箱试算 · 现场装载说明】',
+    `柜内径 ${r.length}×${r.width}×${r.height} cm，开柜 ${r.containerCount}`,
+    `建议箱量 ${suggestCtnText.value || '—'}`,
+    '',
+  ];
+  for (const box of r.containers) {
+    lines.push(
+      `— 柜 ${box.index}（容积率 ${box.volumeRate}% / 载重率 ${box.weightRate}%）—`,
+    );
+    const ordered = [...(box.placements ?? [])].sort(
+      (a, b) => a.loadOrder - b.loadOrder,
+    );
+    for (const p of ordered) {
+      lines.push(
+        `${p.loadOrder}. 行${p.lineNo} ${p.name || ''} #${p.pieceIndex} @(${p.x},${p.y},${p.z}) ${p.length}×${p.width}×${p.height}cm`,
+      );
+    }
+    lines.push('');
+  }
+  if (r.unplacedCargos?.length) {
+    lines.push('未装：');
+    for (const u of r.unplacedCargos) {
+      lines.push(`行${u.lineNo} ${u.name || ''} ×${u.quantity} ${u.reason}`);
+    }
+  }
+  const text = lines.join('\n');
+  void navigator.clipboard.writeText(text).then(
+    () => message.success('已复制现场装载说明，可发给监装/现场'),
+    () => message.info('复制失败，请改用导出指导书'),
+  );
+}
+
+function backToSeaExportWithSuggest() {
+  const id = prefillMeta.value?.seaExportId;
+  if (!id) return;
+  copySuggestCtn();
+  router.push({
+    path: `/sea-exports/${id}/edit`,
+    query: {
+      packingSuggest: suggestCtnText.value || undefined,
+    },
+  });
+}
+
+function restoreDraft() {
+  const draft = loadPackingDraft();
+  if (!draft) {
+    message.info('没有本地草稿');
+    return;
+  }
+  container.value = {
+    ...container.value,
+    ...draft.container,
+    autoMinContainers: draft.container.autoMinContainers ?? true,
+  };
+  cargos.value = (draft.cargos?.length ? draft.cargos : [createCargoRow()]).map(
+    (r) => createCargoRow(r),
+  );
+  if (draft.presetKey) presetKey.value = draft.presetKey;
+  if (draft.dimUnit) dimUnit.value = draft.dimUnit;
+  message.success('已恢复本地草稿');
+}
+
+function clearDraft() {
+  clearPackingDraft();
+  message.success('已清除本地草稿');
+}
+
+onMounted(() => {
+  void loadMasterCtns();
+  const prefill = consumePackingPrefill();
+  if (prefill) {
+    if (prefill.container) {
+      container.value = {
+        ...container.value,
+        ...prefill.container,
+        autoMinContainers: prefill.container.autoMinContainers ?? true,
+      };
+    }
+    if (prefill.cargos?.length) {
+      cargos.value = prefill.cargos.map((r) => createCargoRow(r));
+    }
+    if (prefill.presetKey) applyPreset(prefill.presetKey);
+    prefillMeta.value = {
+      seaExportId: prefill.seaExportId,
+      commissionNum: prefill.commissionNum,
+      suggestCtnName: prefill.suggestCtnName || prefill.presetKey,
+    };
+    message.success(
+      prefill.commissionNum
+        ? `已带入业务 ${prefill.commissionNum} 的件毛体估算`
+        : '已带入预填数据',
+    );
+  }
+});
+
+onUnmounted(() => stopPlay());
+
+watch(dimUnit, () => {
+  // 仅改变展示换算，内部始终存厘米
+});
 </script>
 
 <template>
@@ -153,18 +561,42 @@ function selectContainer(index: number) {
               {{ cargoStats.weight.toFixed(2) }} kg
             </span>
           </header>
+          <div class="packing-toolbar">
+            <Select
+              v-model:value="dimUnit"
+              size="small"
+              style="width: 88px"
+              :options="[
+                { label: 'cm', value: 'cm' },
+                { label: 'mm', value: 'mm' },
+                { label: 'm', value: 'm' },
+              ]"
+            />
+            <Button size="small" @click="onDownloadTemplate">下载模板</Button>
+            <Upload
+              :show-upload-list="false"
+              accept=".xlsx,.xls,.csv"
+              :before-upload="onImportExcel"
+            >
+              <Button size="small">Excel 导入</Button>
+            </Upload>
+          </div>
           <div class="packing-cargo-list">
             <article
               v-for="(row, index) in cargos"
               :key="row.key"
               class="packing-cargo"
+              :class="{
+                'packing-cargo--on': highlightLineNo === index + 1,
+              }"
+              @click="highlightLineNo = index + 1"
             >
               <div class="packing-cargo__title">
                 <span>第 {{ index + 1 }} 行</span>
                 <button
                   type="button"
                   class="packing-link"
-                  @click="removeCargo(row.key)"
+                  @click.stop="removeCargo(row.key)"
                 >
                   删除
                 </button>
@@ -177,33 +609,31 @@ function selectContainer(index: number) {
               />
               <div class="packing-cargo__grid">
                 <label>
-                  长
+                  长 ({{ dimUnit }})
                   <InputNumber
-                    v-model:value="row.length"
+                    :value="displayDim(row.length)"
                     :min="0"
-                    :max="5000"
                     size="small"
-                    placeholder="cm"
+                    placeholder="尺寸"
+                    @update:value="(v) => setDim(row, 'length', v as number)"
                   />
                 </label>
                 <label>
-                  宽
+                  宽 ({{ dimUnit }})
                   <InputNumber
-                    v-model:value="row.width"
+                    :value="displayDim(row.width)"
                     :min="0"
-                    :max="5000"
                     size="small"
-                    placeholder="cm"
+                    @update:value="(v) => setDim(row, 'width', v as number)"
                   />
                 </label>
                 <label>
-                  高
+                  高 ({{ dimUnit }})
                   <InputNumber
-                    v-model:value="row.height"
+                    :value="displayDim(row.height)"
                     :min="0"
-                    :max="5000"
                     size="small"
-                    placeholder="cm"
+                    @update:value="(v) => setDim(row, 'height', v as number)"
                   />
                 </label>
                 <label>
@@ -226,9 +656,61 @@ function selectContainer(index: number) {
                     size="small"
                   />
                 </label>
+                <label>
+                  分组
+                  <Input
+                    v-model:value="row.groupKey"
+                    size="small"
+                    :maxlength="50"
+                    placeholder="拼箱不拆柜"
+                  />
+                </label>
                 <label class="packing-cargo__rotate">
                   允许旋转
                   <Switch v-model:checked="row.allowRotate" size="small" />
+                </label>
+                <label class="packing-cargo__rotate">
+                  可承重
+                  <Switch v-model:checked="row.supportLoad" size="small" />
+                </label>
+                <label class="packing-cargo__rotate">
+                  破损置顶
+                  <Switch v-model:checked="row.damaged" size="small" />
+                </label>
+              </div>
+              <div class="packing-cargo__grid packing-cargo__grid--expand">
+                <label>
+                  膨胀长
+                  <InputNumber
+                    :value="displayDim(row.expandLength)"
+                    :min="0"
+                    size="small"
+                    @update:value="
+                      (v) => setDim(row, 'expandLength', v as number)
+                    "
+                  />
+                </label>
+                <label>
+                  膨胀宽
+                  <InputNumber
+                    :value="displayDim(row.expandWidth)"
+                    :min="0"
+                    size="small"
+                    @update:value="
+                      (v) => setDim(row, 'expandWidth', v as number)
+                    "
+                  />
+                </label>
+                <label>
+                  膨胀高
+                  <InputNumber
+                    :value="displayDim(row.expandHeight)"
+                    :min="0"
+                    size="small"
+                    @update:value="
+                      (v) => setDim(row, 'expandHeight', v as number)
+                    "
+                  />
                 </label>
               </div>
             </article>
@@ -238,25 +720,51 @@ function selectContainer(index: number) {
 
         <section class="packing-panel packing-panel--container-info">
           <header class="packing-panel__head">
-            <span>集装箱信息</span>
+            <span>装载规则</span>
           </header>
           <div class="packing-form packing-form--gaps">
             <label>
-              间隙长 (cm)
+              间隙长 ({{ dimUnit }})
               <InputNumber
-                v-model:value="container.gapLength"
+                :value="displayDim(container.gapLength)"
                 :min="0"
-                :max="5000"
                 class="w-full"
+                @update:value="
+                  (v) => setDim('container', 'gapLength', v as number)
+                "
               />
             </label>
             <label>
-              间隙宽 (cm)
+              间隙宽 ({{ dimUnit }})
               <InputNumber
-                v-model:value="container.gapWidth"
+                :value="displayDim(container.gapWidth)"
                 :min="0"
-                :max="5000"
                 class="w-full"
+                @update:value="
+                  (v) => setDim('container', 'gapWidth', v as number)
+                "
+              />
+            </label>
+            <label>
+              自叠层数
+              <InputNumber
+                v-model:value="container.maxSelfStackLayers"
+                :min="0"
+                :max="100"
+                :precision="0"
+                class="w-full"
+                placeholder="0=不限"
+              />
+            </label>
+            <label>
+              叉车顶隙 ({{ dimUnit }})
+              <InputNumber
+                :value="displayDim(container.forkliftClearance)"
+                :min="0"
+                class="w-full"
+                @update:value="
+                  (v) => setDim('container', 'forkliftClearance', v as number)
+                "
               />
             </label>
           </div>
@@ -271,7 +779,7 @@ function selectContainer(index: number) {
             </label>
           </div>
           <p class="packing-hint">
-            平铺打开时只铺一层，与自叠同时开启也只平铺。自叠只允许同一行号上下叠。
+            平铺优先于自叠。填写膨胀、叉车顶隙后，试算会按预留后的尺寸占位。
           </p>
         </section>
       </div>
@@ -313,21 +821,61 @@ function selectContainer(index: number) {
             柜 {{ item.index }}
           </button>
         </div>
+        <div class="packing-scene-tools">
+          <Button size="small" :disabled="!result" @click="togglePlay">
+            {{ playing ? '暂停' : '播放顺序' }}
+          </Button>
+          <Button
+            size="small"
+            :disabled="!result"
+            @click="sceneRef?.setDoorView()"
+          >
+            箱门视角
+          </Button>
+          <Button
+            size="small"
+            :disabled="!result"
+            @click="sceneRef?.fitCamera()"
+          >
+            总览
+          </Button>
+          <Button size="small" :disabled="!result" @click="onScreenshot">
+            截图
+          </Button>
+          <Button size="small" :disabled="!result" @click="onExportOrder">
+            导出顺序
+          </Button>
+          <Button size="small" :disabled="!result" @click="onExportGuide">
+            指导书
+          </Button>
+          <Button size="small" :disabled="!result" @click="copySiteLoadGuide">
+            分享现场说明
+          </Button>
+        </div>
         <div class="packing-scene-wrap">
           <PackingScene
             v-if="result && activeContainer"
+            ref="sceneRef"
             :length="result.length"
             :width="result.width"
             :height="result.height"
             :placements="activeContainer.placements"
             :visible-load-order="visibleLoadOrder"
+            :max-layer-y="maxLayerY"
+            :highlight-line-no="highlightLineNo"
+            :gravity-offset-length="activeContainer.gravityOffsetLength"
+            :gravity-offset-width="activeContainer.gravityOffsetWidth"
+            :gravity-warning="gravityWarning"
           />
           <div v-else class="packing-empty">
             录入柜子和货物后，点底部「生成方案」
           </div>
         </div>
         <div v-if="activeContainer" class="packing-scene-foot">
-          <div class="packing-metrics">
+          <div
+            class="packing-metrics"
+            :class="{ 'packing-metrics--warn': gravityWarning }"
+          >
             <span>容积率 {{ activeContainer.volumeRate }}%</span>
             <span>载重率 {{ activeContainer.weightRate }}%</span>
             <span>
@@ -352,6 +900,9 @@ function selectContainer(index: number) {
               }}
               cm
             </span>
+            <span v-if="gravityWarning" class="packing-warn-text">
+              偏载告警：偏移超过柜尺寸 10%
+            </span>
           </div>
           <div v-if="loadOrderMax > 1" class="packing-order">
             <span>装载顺序 {{ visibleLoadOrder }} / {{ loadOrderMax }}</span>
@@ -360,17 +911,35 @@ function selectContainer(index: number) {
               :min="1"
               :max="loadOrderMax"
               :tooltip-open="false"
+              @change="stopPlay"
+            />
+          </div>
+          <div v-if="layerYMax > 0" class="packing-order">
+            <span>
+              层剖切
+              {{ maxLayerY > 0 ? `${maxLayerY.toFixed(0)} cm` : '关闭' }}
+            </span>
+            <Slider
+              v-model:value="maxLayerY"
+              :min="0"
+              :max="Math.ceil(layerYMax)"
+              :tooltip-open="false"
             />
           </div>
           <div v-if="legendLines.length" class="packing-legend">
-            <span v-for="item in legendLines" :key="item.lineNo">
+            <button
+              v-for="item in legendLines"
+              :key="item.lineNo"
+              type="button"
+              class="packing-legend__btn"
+              @click="highlightLineNo = item.lineNo"
+            >
               <i :style="{ background: item.color }"></i>
               {{ item.lineNo }}. {{ item.name }}
-            </span>
+            </button>
           </div>
           <p class="packing-axis">
-            箱头在里端，箱尾为箱门（红面）。箱长沿 X，箱高沿 Y，箱宽沿
-            Z。左键旋转，Ctrl+左键平移，滚轮缩放。
+            箱头在里端，箱门为红面。橙点为重心投影；绿区为安全区。左键旋转，Ctrl+左键平移，滚轮缩放。
           </p>
         </div>
         <div v-if="result?.unplacedCargos?.length" class="packing-unplaced">
@@ -382,6 +951,41 @@ function selectContainer(index: number) {
             第 {{ item.lineNo }} 行 {{ item.name || '' }} ×
             {{ item.quantity }}：{{ item.reason }}
           </p>
+        </div>
+        <div v-if="compareRows.length" class="packing-compare">
+          <div class="packing-unplaced__title">多柜型对比</div>
+          <table>
+            <thead>
+              <tr>
+                <th>柜型</th>
+                <th>开柜</th>
+                <th>未装</th>
+                <th>容积率</th>
+                <th>载重率</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in compareRows" :key="row.key">
+                <td>{{ row.label }}</td>
+                <td>{{ row.containerCount }}</td>
+                <td :class="{ 'packing-warn-text': row.unplacedQuantity > 0 }">
+                  {{ row.unplacedQuantity }}
+                </td>
+                <td>{{ row.avgVolumeRate }}%</td>
+                <td>{{ row.avgWeightRate }}%</td>
+                <td>
+                  <button
+                    type="button"
+                    class="packing-link"
+                    @click="applyCompareRow(row)"
+                  >
+                    采用
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -395,38 +999,58 @@ function selectContainer(index: number) {
             :key="preset.key"
             type="button"
             class="packing-tab"
-            @click="applyPreset(preset)"
+            :class="{ 'packing-tab--on': presetKey === preset.key }"
+            @click="applyPreset(preset.key)"
           >
             {{ preset.label }}
           </button>
         </div>
-        <p class="packing-hint">快捷填充只写入内径，接口不使用柜型。</p>
+        <label class="packing-master">
+          箱型主数据
+          <Select
+            allow-clear
+            show-search
+            placeholder="选择箱型带出限重/匹配内径"
+            size="small"
+            :options="masterCtnOptions"
+            :filter-option="
+              (input, option) =>
+                String(option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+            "
+            @change="(v) => v && onPickMasterCtn(String(v))"
+          />
+        </label>
+        <p class="packing-hint">
+          快捷柜型写入内径与建议限重；主数据无内径时仅匹配常见名并带限重。
+        </p>
         <div class="packing-form">
           <label>
-            柜内长 (cm)
+            柜内长 ({{ dimUnit }})
             <InputNumber
-              v-model:value="container.length"
+              :value="displayDim(container.length)"
               :min="0"
-              :max="5000"
               class="w-full"
+              @update:value="(v) => setDim('container', 'length', v as number)"
             />
           </label>
           <label>
-            柜内宽 (cm)
+            柜内宽 ({{ dimUnit }})
             <InputNumber
-              v-model:value="container.width"
+              :value="displayDim(container.width)"
               :min="0"
-              :max="5000"
               class="w-full"
+              @update:value="(v) => setDim('container', 'width', v as number)"
             />
           </label>
           <label>
-            柜内高 (cm)
+            柜内高 ({{ dimUnit }})
             <InputNumber
-              v-model:value="container.height"
+              :value="displayDim(container.height)"
               :min="0"
-              :max="5000"
               class="w-full"
+              @update:value="(v) => setDim('container', 'height', v as number)"
             />
           </label>
           <label>
@@ -438,7 +1062,11 @@ function selectContainer(index: number) {
               class="w-full"
             />
           </label>
-          <label>
+          <label class="packing-switch">
+            <span>自动最少开柜</span>
+            <Switch v-model:checked="container.autoMinContainers" />
+          </label>
+          <label v-if="!container.autoMinContainers">
             最多开柜数
             <InputNumber
               v-model:value="container.maxContainerCount"
@@ -450,15 +1078,57 @@ function selectContainer(index: number) {
           </label>
         </div>
         <p class="packing-hint">限重填 0 表示不限重。</p>
+        <div v-if="prefillMeta?.seaExportId" class="packing-order-actions">
+          <p class="packing-hint">
+            来自海出
+            {{ prefillMeta.commissionNum || prefillMeta.seaExportId }}
+          </p>
+          <Button
+            size="small"
+            block
+            :disabled="!suggestCtnText"
+            @click="copySuggestCtn"
+          >
+            复制建议箱量 {{ suggestCtnText || '' }}
+          </Button>
+          <Button
+            size="small"
+            block
+            type="primary"
+            ghost
+            :disabled="!suggestCtnText"
+            @click="backToSeaExportWithSuggest"
+          >
+            返回海出（带回建议）
+          </Button>
+        </div>
+        <div class="packing-order-actions">
+          <Button size="small" block @click="restoreDraft">恢复草稿</Button>
+          <Button size="small" block @click="clearDraft">清除草稿</Button>
+        </div>
       </section>
 
       <footer class="packing-footer">
         <Button type="primary" :loading="calculating" @click="generatePlan">
           生成方案
         </Button>
-        <span class="packing-hint">结果不保存，刷新或离开页面即丢。</span>
+        <Button :loading="comparing" @click="runCompare">多柜型对比</Button>
+        <span class="packing-hint">
+          试算结果仅供本机参考；生成后会记住草稿，刷新可点「恢复草稿」。
+        </span>
       </footer>
     </div>
+    <Tooltip title="操作说明书" placement="left">
+      <button
+        type="button"
+        class="packing-manual-fab"
+        aria-label="操作说明书"
+        @click="manualModalRef?.open()"
+      >
+        <IconifyIcon icon="mdi:book-open-page-variant-outline" class="size-5" />
+      </button>
+    </Tooltip>
+    <PackingManualModal ref="manualModalRef" />
   </Page>
 </template>
 
@@ -466,7 +1136,7 @@ function selectContainer(index: number) {
 .packing-page {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  grid-template-columns: 300px minmax(0, 1fr) 260px;
+  grid-template-columns: 320px minmax(0, 1fr) 260px;
   gap: 12px;
   height: 100%;
   min-height: 0;
@@ -499,6 +1169,8 @@ function selectContainer(index: number) {
 
 .packing-panel--container-info {
   flex-shrink: 0;
+  max-height: 42%;
+  overflow: auto;
 }
 
 .packing-panel--scene {
@@ -506,9 +1178,10 @@ function selectContainer(index: number) {
   grid-column: 2;
 }
 
-.packing-page > .packing-panel:last-of-type {
+.packing-page > .packing-panel:nth-last-of-type(1) {
   grid-row: 1;
   grid-column: 3;
+  overflow: auto;
 }
 
 .packing-panel__head {
@@ -524,6 +1197,14 @@ function selectContainer(index: number) {
   font-size: 12px;
   font-weight: 400;
   color: hsl(var(--muted-foreground));
+}
+
+.packing-toolbar,
+.packing-scene-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 .packing-result-stats {
@@ -591,8 +1272,14 @@ function selectContainer(index: number) {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
+  cursor: pointer;
   border: 1px solid hsl(var(--border));
   border-radius: 6px;
+}
+
+.packing-cargo--on {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 35%);
 }
 
 .packing-cargo__title,
@@ -609,8 +1296,13 @@ function selectContainer(index: number) {
   gap: 6px;
 }
 
+.packing-cargo__grid--expand {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .packing-cargo__grid label,
-.packing-form label {
+.packing-form label,
+.packing-master {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -626,7 +1318,6 @@ function selectContainer(index: number) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: auto;
 }
 
 .packing-form--gaps {
@@ -673,7 +1364,19 @@ function selectContainer(index: number) {
   align-items: center;
 }
 
-.packing-tab {
+.packing-metrics--warn {
+  padding: 6px 8px;
+  background: #fff1f0;
+  border: 1px solid #ffa39e;
+  border-radius: 6px;
+}
+
+.packing-warn-text {
+  color: #cf1322;
+}
+
+.packing-tab,
+.packing-legend__btn {
   padding: 2px 8px;
   font-size: 12px;
   color: hsl(var(--foreground));
@@ -710,6 +1413,24 @@ function selectContainer(index: number) {
   color: hsl(var(--foreground));
 }
 
+.packing-compare {
+  margin-top: 8px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+.packing-compare table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.packing-compare th,
+.packing-compare td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
 .packing-link {
   padding: 0;
   font-size: 12px;
@@ -717,6 +1438,13 @@ function selectContainer(index: number) {
   cursor: pointer;
   background: none;
   border: 0;
+}
+
+.packing-order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .packing-footer {
@@ -728,6 +1456,32 @@ function selectContainer(index: number) {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
+}
+
+.packing-manual-fab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  cursor: pointer;
+  background: hsl(var(--primary));
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+}
+
+.packing-manual-fab:hover {
+  filter: brightness(1.06);
+}
+
+.packing-manual-fab:active {
+  transform: scale(0.96);
 }
 
 .packing-order {
@@ -747,7 +1501,7 @@ function selectContainer(index: number) {
 
   .packing-left,
   .packing-panel--scene,
-  .packing-page > .packing-panel:last-of-type,
+  .packing-page > .packing-panel:nth-last-of-type(1),
   .packing-footer {
     grid-row: auto;
     grid-column: 1;

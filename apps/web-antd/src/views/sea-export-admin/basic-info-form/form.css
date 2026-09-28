@@ -177,6 +177,18 @@
   width: 100%;
 }
 
+.cargo-ctn-section__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cargo-ctn-section__hint {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
 .cargo-ctn-section {
   padding-top: 0;
   margin-top: 12px;

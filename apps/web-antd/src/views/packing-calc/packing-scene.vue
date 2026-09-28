@@ -6,14 +6,31 @@ import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-const props = defineProps<{
-  height: number;
-  length: number;
-  placements: PackingAdminApi.PackingPlacement[];
-  /** 只显示装载顺序小于等于该值的件；0 表示全部 */
-  visibleLoadOrder: number;
-  width: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    height: number;
+    length: number;
+    placements: PackingAdminApi.PackingPlacement[];
+    /** 只显示装载顺序小于等于该值的件；0 表示全部 */
+    visibleLoadOrder: number;
+    width: number;
+    gravityOffsetLength?: number;
+    gravityOffsetWidth?: number;
+    /** 层剖切：只显示底面 y 小于等于该值的件；0=关闭 */
+    maxLayerY?: number;
+    /** 高亮行号；0=无 */
+    highlightLineNo?: number;
+    /** 偏载超限时重心标红 */
+    gravityWarning?: boolean;
+  }>(),
+  {
+    gravityOffsetLength: 0,
+    gravityOffsetWidth: 0,
+    maxLayerY: 0,
+    highlightLineNo: 0,
+    gravityWarning: false,
+  },
+);
 
 defineOptions({ name: 'PackingScene' });
 
@@ -59,7 +76,6 @@ function formatDim(value: number) {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
-/** 0 到最大值，大约 6 档，末尾一定落到真实尺寸 */
 function axisTicks(max: number) {
   if (!Number.isFinite(max) || max <= 0) return [0];
   const rough = max / 6;
@@ -160,6 +176,14 @@ function fitCamera() {
   controls.update();
 }
 
+function setDoorView() {
+  if (!camera || !controls) return;
+  const { length, width, height } = props;
+  controls.target.set(length * 0.55, height / 2, width / 2);
+  camera.position.set(length * 1.85, height * 0.9, width / 2);
+  controls.update();
+}
+
 function rebuildContainer() {
   if (!scene || !cargoGroup) return;
   const previous = scene.getObjectByName('packing-shell');
@@ -194,6 +218,21 @@ function rebuildContainer() {
   floor.position.set(length / 2, 0, width / 2);
   shell.add(floor);
 
+  // 偏载安全区（中心 80% 矩形）
+  const safe = new THREE.Mesh(
+    new THREE.PlaneGeometry(length * 0.8, width * 0.8),
+    new THREE.MeshBasicMaterial({
+      color: 0x52c41a,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  safe.rotation.x = -Math.PI / 2;
+  safe.position.set(length / 2, 0.15, width / 2);
+  shell.add(safe);
+
   const door = new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
     new THREE.MeshBasicMaterial({
@@ -209,7 +248,6 @@ function rebuildContainer() {
 
   const labelSize = Math.max(length, width, height) * 0.038;
   const gap = labelSize * 1.6;
-  // X=0 为里端（箱头），X=length 为箱门（箱尾）
   addDimensionAxis(
     shell,
     new THREE.Vector3(0, -gap, -gap),
@@ -244,9 +282,37 @@ function rebuildContainer() {
   const head = makeLabel('箱头', labelSize * 1.45, '#1677ff');
   head.position.set(0, height + labelSize * 1.8, width / 2);
   shell.add(head);
-  const tail = makeLabel('箱尾', labelSize * 1.45, '#cf1322');
+  const tail = makeLabel('箱门', labelSize * 1.45, '#cf1322');
   tail.position.set(length, height + labelSize * 1.8, width / 2);
   shell.add(tail);
+
+  // 重心投影：柜中心 + 偏移
+  const gx = length / 2 + Number(props.gravityOffsetLength || 0);
+  const gz = width / 2 + Number(props.gravityOffsetWidth || 0);
+  const cogColor = props.gravityWarning ? 0xff4d4f : 0xfa8c16;
+  const cog = new THREE.Mesh(
+    new THREE.CircleGeometry(Math.max(length, width) * 0.018, 24),
+    new THREE.MeshBasicMaterial({
+      color: cogColor,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    }),
+  );
+  cog.rotation.x = -Math.PI / 2;
+  cog.position.set(
+    Math.min(Math.max(gx, 0), length),
+    0.25,
+    Math.min(Math.max(gz, 0), width),
+  );
+  shell.add(cog);
+  const cogLabel = makeLabel(
+    props.gravityWarning ? '重心偏载' : '重心',
+    labelSize * 1.1,
+    props.gravityWarning ? '#cf1322' : '#d46b08',
+  );
+  cogLabel.position.set(cog.position.x, labelSize * 1.2, cog.position.z);
+  shell.add(cogLabel);
 
   scene.add(shell);
 }
@@ -265,8 +331,13 @@ function rebuildCargos() {
       piece.height,
       piece.width,
     );
+    const highlighted =
+      props.highlightLineNo > 0 && piece.lineNo === props.highlightLineNo;
     const material = new THREE.MeshLambertMaterial({
       color: colorOf(piece.lineNo),
+      transparent: highlighted ? false : props.highlightLineNo > 0,
+      opacity: highlighted || props.highlightLineNo <= 0 ? 1 : 0.22,
+      emissive: highlighted ? 0x222222 : 0x000000,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(
@@ -277,24 +348,31 @@ function rebuildCargos() {
     const edge = new THREE.LineSegments(
       new THREE.EdgesGeometry(geometry),
       new THREE.LineBasicMaterial({
-        color: 0x0f172a,
+        color: highlighted ? 0xff4d4f : 0x0f172a,
         transparent: true,
-        opacity: 0.35,
+        opacity: highlighted ? 0.9 : 0.35,
       }),
     );
     mesh.add(edge);
     mesh.userData.loadOrder = piece.loadOrder;
+    mesh.userData.lineNo = piece.lineNo;
+    mesh.userData.bottomY = piece.y;
+    mesh.userData.topY = piece.y + piece.height;
     cargoGroup.add(mesh);
   }
-  applyLoadOrder();
+  applyVisibility();
 }
 
-function applyLoadOrder() {
+function applyVisibility() {
   if (!cargoGroup) return;
-  const limit = props.visibleLoadOrder;
+  const orderLimit = props.visibleLoadOrder;
+  const layerLimit = props.maxLayerY;
   for (const child of cargoGroup.children) {
     const order = Number(child.userData.loadOrder ?? 0);
-    child.visible = limit <= 0 || order <= limit;
+    const topY = Number(child.userData.topY ?? 0);
+    const orderOk = orderLimit <= 0 || order <= orderLimit;
+    const layerOk = layerLimit <= 0 || topY <= layerLimit + 0.01;
+    child.visible = orderOk && layerOk;
   }
 }
 
@@ -315,6 +393,18 @@ function tick() {
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
 
+function capturePng(): string | null {
+  if (!renderer || !scene || !camera) return null;
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+defineExpose({
+  capturePng,
+  setDoorView,
+  fitCamera,
+});
+
 onMounted(() => {
   const host = hostRef.value;
   if (!host) return;
@@ -322,7 +412,10 @@ onMounted(() => {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf8fafc);
   camera = new THREE.PerspectiveCamera(40, 1, 1, 10000);
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   host.append(renderer.domElement);
 
@@ -334,8 +427,6 @@ onMounted(() => {
   cargoGroup = new THREE.Group();
   scene.add(cargoGroup);
 
-  // 绑在整块视图上，避免只点到画布像素才生效。
-  // 左键旋转；OrbitControls 在左键为旋转时，Ctrl/⌘+左键改为平移；滚轮缩放。
   controls = new OrbitControls(camera, host);
   controls.enableDamping = true;
   controls.enableRotate = true;
@@ -361,7 +452,15 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.length, props.width, props.height] as const,
+  () =>
+    [
+      props.length,
+      props.width,
+      props.height,
+      props.gravityOffsetLength,
+      props.gravityOffsetWidth,
+      props.gravityWarning,
+    ] as const,
   () => {
     rebuildContainer();
     fitCamera();
@@ -369,15 +468,15 @@ watch(
 );
 
 watch(
-  () => props.placements,
+  () => [props.placements, props.highlightLineNo] as const,
   () => {
     rebuildCargos();
   },
 );
 
 watch(
-  () => props.visibleLoadOrder,
-  () => applyLoadOrder(),
+  () => [props.visibleLoadOrder, props.maxLayerY] as const,
+  () => applyVisibility(),
 );
 
 onBeforeUnmount(() => {

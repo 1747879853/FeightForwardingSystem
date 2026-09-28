@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-28] [装箱试算深化](./changelogs/change-log-2026-09-28-packing-calc-deepen.md)
+
 - [2026-09-27] [监装拍照不把相机当后台](./changelogs/change-log-2026-09-27-监装拍照不把相机当后台.md)
 
 - [2026-09-27] [提单签出审核决策信息前置](./changelogs/change-log-2026-09-27-提单签出审核决策信息前置.md)
