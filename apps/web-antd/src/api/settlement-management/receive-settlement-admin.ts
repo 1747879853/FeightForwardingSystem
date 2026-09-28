@@ -186,20 +186,34 @@ export namespace ReceiveSettlementAdminApi {
     combinedFeeStatus?: number;
   }
 
-  /** 按开票申请结算明细（详情） */
-  export interface ReceiveSettlementInvoiceItemDetailDto {
-    id: string;
-    receiveSettlementId: string;
-    invoiceApplicationId: string;
-    invoiceApplicationItemId: string;
+  /** 一张发票开出下合并后的费用行（详情） */
+  export interface ReceiveSettlementInvoiceFeeDto {
     orderFeeId: string;
+    /** 本次结算金额（费用原币，收付都为正数） */
     settledAmount: number;
-    remark?: string;
-    applicationNo?: string;
-    invoiceNo?: string;
+    /** 该费用在这张发票开出下的开票金额之和 */
     appliedAmount: number;
+    /** 1 单位费用币别折合多少发票开出币别；缺汇率时为 null */
+    exchangeRate?: null | number;
+    /** 本行折成发票开出币别的金额，与 settledAmount 同号；缺汇率时为 null */
+    originalSettledAmount?: null | number;
+    remark?: string;
     orderFee?: OrderFeeDto;
     transportOrder?: TransportOrderSimpleDto;
+  }
+
+  /** 按发票结算详情里的一张发票开出 */
+  export interface ReceiveSettlementInvoiceIssueDto {
+    /** 发票开出 ID。null 表示已冲红解绑、不再挂在发票开出上 */
+    id?: null | string;
+    applicationNo?: string;
+    invoiceNo?: string;
+    invoiceIssueTime?: string;
+    currencyId?: null | number | string;
+    currency?: CurrencySimpleDto | null;
+    /** 本单在这张发票下的原始结算金额；有费用行算不出时为 null */
+    originalSettledAmount?: null | number;
+    items?: ReceiveSettlementInvoiceFeeDto[];
   }
 
   export interface ReceiveSettlementExchangeRateDto {
@@ -251,7 +265,8 @@ export namespace ReceiveSettlementAdminApi {
     diffAmount?: null | number;
     receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateDto[];
     receiveSettlementItems: ReceiveSettlementItemDetailDto[];
-    receiveSettlementInvoiceItems?: ReceiveSettlementInvoiceItemDetailDto[];
+    /** 按发票结算明细，发票开出 → 费用。type=0 时为 null */
+    invoiceIssues?: null | ReceiveSettlementInvoiceIssueDto[];
   }
 
   export interface ReceiveSettlementListDto {
@@ -355,9 +370,18 @@ export namespace ReceiveSettlementAdminApi {
     items: ReceiveSettlementByInvoiceItemDto[];
   }
 
+  /** 删除按发票结算明细时的一行：发票开出 + 费用 */
+  export interface ReceiveSettlementByInvoiceKeyDto {
+    /** 所在发票开出 ID。无发票开出的那一组传 null */
+    invoiceIssueId?: null | string;
+    orderFeeId: string;
+  }
+
   export interface ReceiveSettlementDeleteInvoiceItemsDto {
     id: string;
-    receiveSettlementInvoiceItemIds: string[];
+    /** 删除后还剩明细时必填；明细全部删掉时不传，后端置 0 */
+    actualSettled?: number;
+    items: ReceiveSettlementByInvoiceKeyDto[];
   }
 
   export interface ReceiveSettlementQueryDto {

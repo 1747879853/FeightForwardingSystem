@@ -168,7 +168,10 @@ export namespace BankStatementAdminApi {
     /** 归属组织id */
     orgId?: null | number;
     receiveSettlementItems?: ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto[];
-    receiveSettlementInvoiceItems?: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto[];
+    /** 按发票结算明细，结构与收费结算详情一致 */
+    invoiceIssues?:
+      | null
+      | ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto[];
   }
 
   /** 银行流水详情 DTO */

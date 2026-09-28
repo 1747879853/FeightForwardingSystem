@@ -245,10 +245,21 @@ const foreignItems = computed<SettlementItem[]>(() => {
       const settlementNoText = settlement.settlementNo || settlement.id;
       const creator =
         settlement.creatorUserNickName || settlement.creatorUserName || '';
-      return [
-        ...(settlement.receiveSettlementItems ?? []),
-        ...(settlement.receiveSettlementInvoiceItems ?? []),
-      ].map((item) => mapForeignItem(item, settlementNoText, creator));
+      const feeRows = (settlement.receiveSettlementItems ?? []).map((item) =>
+        mapForeignItem(item, settlementNoText, creator),
+      );
+      const invoiceRows = (settlement.invoiceIssues ?? []).flatMap((issue) =>
+        (issue.items ?? []).map((fee) =>
+          mapForeignInvoiceFee(
+            settlement.id,
+            issue,
+            fee,
+            settlementNoText,
+            creator,
+          ),
+        ),
+      );
+      return [...feeRows, ...invoiceRows];
     });
 });
 
@@ -434,11 +445,43 @@ function mapDetailItem(
   };
 }
 
+/** 其他核销单里按发票结算的费用行，合在发票开出下，没有结算明细 id */
+function mapForeignInvoiceFee(
+  settlementId: string,
+  issue: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto,
+  fee: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceFeeDto,
+  settlementNoText: string,
+  creatorName: string,
+): SettlementItem {
+  const orderFee = fee.orderFee;
+  const order = fee.transportOrder;
+  const issueKey =
+    issue.id == null || issue.id === '' ? 'unbound' : String(issue.id);
+  return {
+    _key: `foreign_inv_${settlementId}_${issueKey}_${fee.orderFeeId}`,
+    _isCurrent: false,
+    _settlementNo: settlementNoText,
+    _creatorUserName: creatorName,
+    orderFeeId: fee.orderFeeId,
+    transportOrderId: order?.id,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    bookingNum: order?.bookingNum,
+    clientName: order?.client?.name,
+    feeCodeName: orderFee?.feeCode?.cnName,
+    paySide: orderFee?.paySide,
+    currencyId: orderFee?.currency?.id,
+    currencyCode: orderFee?.currency?.code,
+    amount: orderFee?.amount ?? 0,
+    settlementName: orderFee?.settlement?.name,
+    settledAmount: fee.settledAmount,
+    remark: fee.remark || '',
+  };
+}
+
 /** 其他核销单的明细行：主键稳定复用后端 id，避免 computed 重算时表格整片重挂载 */
 function mapForeignItem(
-  item:
-    | ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto
-    | ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
+  item: ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
   settlementNoText: string,
   creatorName: string,
 ): SettlementItem {

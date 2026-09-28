@@ -2,7 +2,7 @@
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
@@ -14,6 +14,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import {
   Button,
   Card,
+  Checkbox,
   DatePicker,
   Descriptions,
   DescriptionsItem,
@@ -38,6 +39,7 @@ import {
   lockReceiveSettlement,
   unlockReceiveSettlement,
 } from '#/api/settlement-management/receive-settlement-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getMyDefaultOrgId, getMyOrgPath } from '#/composables/use-my-org';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -93,6 +95,43 @@ interface InvoiceSettlementItem {
   remark?: string;
 }
 
+const UNBOUND_INVOICE_ISSUE_LABEL = '无发票开出（已冲红解绑）';
+
+interface InvoiceFeeRow {
+  _key: string;
+  _isCurrent: boolean;
+  /** 按费用核销摊进来的行，没有开票金额 */
+  _fromFeeSettlement?: boolean;
+  invoiceIssueId: null | string;
+  orderFeeId: string;
+  commissionNum?: string;
+  mblNum?: string;
+  feeCodeName?: string;
+  paySide?: number;
+  currencyCode?: string;
+  amount?: number;
+  appliedAmount?: null | number;
+  settledAmount: number;
+  exchangeRate?: null | number;
+  originalSettledAmount?: null | number;
+  remark?: string;
+}
+
+interface InvoiceIssueGroupRow {
+  _key: string;
+  _isCurrent: boolean;
+  _settlementNo?: string;
+  _creatorUserName?: string;
+  _fromFeeSettlement?: boolean;
+  invoiceIssueId: null | string;
+  applicationNo?: string;
+  invoiceNo?: string;
+  invoiceIssueTime?: string;
+  currencyCode?: string;
+  originalSettledAmount?: null | number;
+  items: InvoiceFeeRow[];
+}
+
 const route = useRoute();
 const router = useRouter();
 const { closeTabByKey } = useTabs();
@@ -143,7 +182,19 @@ const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementTime = ref<Dayjs>(dayjs());
 const remark = ref('');
 const items = ref<InvoiceSettlementItem[]>([]);
+const issueGroups = ref<InvoiceIssueGroupRow[]>([]);
+const actualSettled = ref<number | null>(null);
+const originalSettledAmount = ref<number | null>(null);
+const diffAmount = ref<number | null>(null);
 const selectedItemRowKeys = ref<string[]>([]);
+const selectedFeeKeys = ref<string[]>([]);
+const expandedIssueKeys = ref<Array<number | string>>([]);
+const seenIssueKeys = new Set<string>();
+const deleteAmountOpen = ref(false);
+const deleteActualSettled = ref<number | null>(null);
+const pendingDeleteItems = ref<
+  ReceiveSettlementAdminApi.ReceiveSettlementByInvoiceKeyDto[]
+>([]);
 
 const orgDisplayName = computed(
   () => formatOrgPathLabel(getMyOrgPath(orgId.value)) || '-',
@@ -195,13 +246,14 @@ const bankStatementCurrencyCode = computed(
   () => bankStatementDetail.value?.currency?.code || '',
 );
 
-/** 本单本次结算净额（Σ应收 − Σ应付） */
-const currentSettlementTotal = computed(() =>
-  items.value.reduce(
+/** 编辑页认详情上的本次结算；新建页仍按未保存明细的原币净额估算 */
+const currentSettlementTotal = computed(() => {
+  if (isEdit.value) return actualSettled.value ?? 0;
+  return items.value.reduce(
     (sum, item) => sum + toNetAmount(item.paySide, item.settledAmount || 0),
     0,
-  ),
-);
+  );
+});
 
 const remainingSettleAmount = computed(
   () =>
@@ -216,8 +268,118 @@ function formatBankAmount(value: number | undefined | null) {
   return formatAmountWithCurrency(value, bankStatementCurrencyCode.value);
 }
 
-/** 同一银行流水下其他核销单的明细，只读展示便于核对流水已被谁核销 */
-const foreignItems = computed<InvoiceSettlementItem[]>(() => {
+function formatOptionalAmount(value: number | null | undefined) {
+  if (value === undefined || value === null) return '-';
+  return formatAmount(value);
+}
+
+function formatExchangeRate(value: number | null | undefined) {
+  if (value === undefined || value === null) return '-';
+  return value.toFixed(6);
+}
+
+function issueKeyPart(issueId: null | string | undefined) {
+  return issueId == null || issueId === '' ? 'unbound' : String(issueId);
+}
+
+function mapInvoiceFeeRow(
+  fee: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceFeeDto,
+  groupKey: string,
+  invoiceIssueId: null | string,
+  isCurrent: boolean,
+): InvoiceFeeRow {
+  const orderFee = fee.orderFee;
+  const order = fee.transportOrder;
+  return {
+    _key: `${groupKey}::${fee.orderFeeId}`,
+    _isCurrent: isCurrent,
+    invoiceIssueId,
+    orderFeeId: fee.orderFeeId,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    feeCodeName: orderFee?.feeCode?.cnName,
+    paySide: orderFee?.paySide,
+    currencyCode: orderFee?.currency?.code,
+    amount: orderFee?.amount,
+    appliedAmount: fee.appliedAmount,
+    settledAmount: fee.settledAmount,
+    exchangeRate: fee.exchangeRate,
+    originalSettledAmount: fee.originalSettledAmount,
+    remark: fee.remark || '',
+  };
+}
+
+function mapInvoiceIssueGroup(
+  issue: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto,
+  ownerId: string,
+  isCurrent: boolean,
+  settlementNoText?: string,
+  creatorName?: string,
+): InvoiceIssueGroupRow {
+  const invoiceIssueId =
+    issue.id == null || issue.id === '' ? null : String(issue.id);
+  const unbound = invoiceIssueId == null;
+  const groupKey = `${ownerId}::${issueKeyPart(invoiceIssueId)}`;
+  return {
+    _key: groupKey,
+    _isCurrent: isCurrent,
+    _settlementNo: settlementNoText,
+    _creatorUserName: creatorName,
+    invoiceIssueId,
+    applicationNo: unbound
+      ? UNBOUND_INVOICE_ISSUE_LABEL
+      : issue.applicationNo || '-',
+    invoiceNo: issue.invoiceNo,
+    invoiceIssueTime: issue.invoiceIssueTime,
+    currencyCode: issue.currency?.code,
+    originalSettledAmount: issue.originalSettledAmount,
+    items: (issue.items ?? []).map((fee) =>
+      mapInvoiceFeeRow(fee, groupKey, invoiceIssueId, isCurrent),
+    ),
+  };
+}
+
+/** 同一流水上的按费用核销，收成一组只读行，避免从发票结算页里消失 */
+function mapFeeSettlementGroup(
+  settlement: BankStatementAdminApi.BankStatementReceiveSettlementDto,
+): InvoiceIssueGroupRow {
+  const groupKey = `fee::${settlement.id}`;
+  return {
+    _key: groupKey,
+    _isCurrent: false,
+    _fromFeeSettlement: true,
+    _settlementNo: settlement.settlementNo || settlement.id,
+    _creatorUserName:
+      settlement.creatorUserNickName || settlement.creatorUserName || '',
+    invoiceIssueId: null,
+    applicationNo: '按费用核销',
+    originalSettledAmount: settlement.originalSettledAmount,
+    items: (settlement.receiveSettlementItems ?? []).map((item) => {
+      const orderFee = item.orderFee;
+      const order = item.transportOrder;
+      return {
+        _key: `${groupKey}::${item.id}`,
+        _isCurrent: false,
+        _fromFeeSettlement: true,
+        invoiceIssueId: null,
+        orderFeeId: item.orderFeeId,
+        commissionNum: order?.commissionNum,
+        mblNum: order?.mblNum,
+        feeCodeName: orderFee?.feeCode?.cnName,
+        paySide: orderFee?.paySide,
+        currencyCode: orderFee?.currency?.code,
+        amount: orderFee?.amount,
+        settledAmount: item.settledAmount,
+        exchangeRate: item.exchangeRate,
+        originalSettledAmount: item.originalSettledAmount,
+        remark: item.remark || '',
+      };
+    }),
+  };
+}
+
+/** 同一银行流水下其他核销单，按发票开出分组；按费用核销单独成组 */
+const foreignIssueGroups = computed<InvoiceIssueGroupRow[]>(() => {
   const settlements = bankStatementDetail.value?.receiveSettlements ?? [];
   return settlements
     .filter((settlement) => settlement.id !== editId.value)
@@ -225,12 +387,66 @@ const foreignItems = computed<InvoiceSettlementItem[]>(() => {
       const settlementNoText = settlement.settlementNo || settlement.id;
       const creator =
         settlement.creatorUserNickName || settlement.creatorUserName || '';
-      return [
-        ...(settlement.receiveSettlementItems ?? []),
-        ...(settlement.receiveSettlementInvoiceItems ?? []),
-      ].map((item) => mapForeignItem(item, settlementNoText, creator));
+      const invoiceGroups = (settlement.invoiceIssues ?? []).map((issue) =>
+        mapInvoiceIssueGroup(
+          issue,
+          settlement.id,
+          false,
+          settlementNoText,
+          creator,
+        ),
+      );
+      const feeGroup = mapFeeSettlementGroup(settlement);
+      return feeGroup.items.length > 0
+        ? [...invoiceGroups, feeGroup]
+        : invoiceGroups;
     });
 });
+
+const savedIssueGroups = computed<InvoiceIssueGroupRow[]>(() => [
+  ...issueGroups.value,
+  ...foreignIssueGroups.value,
+]);
+
+const currentFeeRows = computed(() =>
+  issueGroups.value.flatMap((group) => group.items),
+);
+
+const foreignFeeCount = computed(() =>
+  foreignIssueGroups.value.reduce((sum, group) => sum + group.items.length, 0),
+);
+
+function flattenGroupFee(
+  group: InvoiceIssueGroupRow,
+  fee: InvoiceFeeRow,
+): InvoiceSettlementItem {
+  return {
+    _key: fee._key,
+    _isCurrent: false,
+    _settlementNo: group._settlementNo,
+    _creatorUserName: group._creatorUserName,
+    invoiceApplicationItemId: '',
+    orderFeeId: fee.orderFeeId,
+    applicationNo: group.applicationNo,
+    invoiceNo: group.invoiceNo,
+    appliedAmount: fee.appliedAmount ?? undefined,
+    paySide: fee.paySide,
+    commissionNum: fee.commissionNum,
+    mblNum: fee.mblNum,
+    feeCodeName: fee.feeCodeName,
+    currencyCode: fee.currencyCode,
+    amount: fee.amount ?? 0,
+    settledAmount: fee.settledAmount,
+    remark: fee.remark || '',
+  };
+}
+
+/** 新建页仍是平表，他单明细从发票开出分组摊平进来 */
+const foreignItems = computed<InvoiceSettlementItem[]>(() =>
+  foreignIssueGroups.value.flatMap((group) =>
+    group.items.map((fee) => flattenGroupFee(group, fee)),
+  ),
+);
 
 const tableItems = computed<InvoiceSettlementItem[]>(() => [
   ...items.value,
@@ -336,6 +552,158 @@ const columns = [
   },
 ];
 
+const issueGroupColumns = [
+  {
+    key: 'ownerSettlementNo',
+    dataIndex: 'applicationNo',
+    title: '核销单号',
+    width: 140,
+  },
+  {
+    key: 'applicationNo',
+    dataIndex: 'applicationNo',
+    title: '开出单号',
+    width: 180,
+  },
+  { key: 'invoiceNo', dataIndex: 'invoiceNo', title: '发票号', width: 180 },
+  {
+    key: 'invoiceIssueTime',
+    dataIndex: 'invoiceIssueTime',
+    title: '开票时间',
+    width: 150,
+  },
+  { key: 'currencyCode', dataIndex: 'currencyCode', title: '币别', width: 80 },
+  {
+    key: 'originalSettledAmount',
+    dataIndex: 'originalSettledAmount',
+    title: '原始结算金额',
+    width: 140,
+    align: 'right' as const,
+  },
+  {
+    key: 'ownerCreator',
+    dataIndex: '_creatorUserName',
+    title: '创建人',
+    width: 110,
+  },
+];
+
+const issueFeeColumns = computed(() => {
+  const feeColumns: Array<{
+    align?: 'right';
+    dataIndex?: string;
+    key: string;
+    title: string;
+    width?: number;
+  }> = [];
+  if (canManageItems.value) {
+    feeColumns.push({ key: 'checkbox', title: '', width: 46 });
+  }
+  feeColumns.push(
+    {
+      key: 'commissionNum',
+      dataIndex: 'commissionNum',
+      title: '委托编号',
+      width: 140,
+    },
+    { key: 'mblNum', dataIndex: 'mblNum', title: '主提单号', width: 140 },
+    {
+      key: 'feeCodeName',
+      dataIndex: 'feeCodeName',
+      title: '费用名称',
+      width: 140,
+    },
+    { key: 'paySide', dataIndex: 'paySide', title: '收付', width: 80 },
+    {
+      key: 'currencyCode',
+      dataIndex: 'currencyCode',
+      title: '费用币别',
+      width: 90,
+    },
+    {
+      key: 'appliedAmount',
+      dataIndex: 'appliedAmount',
+      title: '开票金额',
+      width: 110,
+      align: 'right',
+    },
+    {
+      key: 'settledAmount',
+      dataIndex: 'settledAmount',
+      title: '结算金额',
+      width: 110,
+      align: 'right',
+    },
+    {
+      key: 'exchangeRate',
+      dataIndex: 'exchangeRate',
+      title: '汇率',
+      width: 120,
+      align: 'right',
+    },
+    {
+      key: 'originalSettledAmount',
+      dataIndex: 'originalSettledAmount',
+      title: '原始结算金额',
+      width: 130,
+      align: 'right',
+    },
+    { key: 'remark', dataIndex: 'remark', title: '备注', width: 160 },
+  );
+  return feeColumns;
+});
+
+watch(savedIssueGroups, (groups) => {
+  const alive = new Set(groups.map((group) => group._key));
+  const fresh = groups.filter((group) => !seenIssueKeys.has(group._key));
+  for (const group of fresh) seenIssueKeys.add(group._key);
+  expandedIssueKeys.value = [
+    ...expandedIssueKeys.value.filter((key) => alive.has(String(key))),
+    ...fresh.map((group) => group._key),
+  ];
+});
+
+function isFeeChecked(fee: InvoiceFeeRow) {
+  return selectedFeeKeys.value.includes(fee._key);
+}
+
+function selectableFees(group: InvoiceIssueGroupRow) {
+  return group.items.filter((fee) => fee._isCurrent);
+}
+
+function isGroupAllChecked(group: InvoiceIssueGroupRow) {
+  const fees = selectableFees(group);
+  return fees.length > 0 && fees.every((fee) => isFeeChecked(fee));
+}
+
+function isGroupIndeterminate(group: InvoiceIssueGroupRow) {
+  const fees = selectableFees(group);
+  const checked = fees.filter((fee) => isFeeChecked(fee)).length;
+  return checked > 0 && checked < fees.length;
+}
+
+function toggleFee(fee: InvoiceFeeRow, checked: boolean) {
+  if (!fee._isCurrent) return;
+  if (checked) {
+    if (!selectedFeeKeys.value.includes(fee._key)) {
+      selectedFeeKeys.value = [...selectedFeeKeys.value, fee._key];
+    }
+    return;
+  }
+  selectedFeeKeys.value = selectedFeeKeys.value.filter(
+    (key) => key !== fee._key,
+  );
+}
+
+function toggleGroup(group: InvoiceIssueGroupRow, checked: boolean) {
+  const keys = new Set(selectedFeeKeys.value);
+  for (const fee of selectableFees(group)) {
+    if (checked) keys.add(fee._key);
+    else keys.delete(fee._key);
+  }
+  selectedFeeKeys.value = [...keys];
+}
+
 async function loadBankStatementSummary(id: string) {
   bankStatementSummaryLoading.value = true;
   try {
@@ -373,10 +741,16 @@ async function loadEditData() {
       ? dayjs(detail.settlementTime)
       : dayjs();
     remark.value = detail.remark || '';
-    items.value = (detail.receiveSettlementInvoiceItems || []).map((item) =>
-      mapDetailItem(item),
-    );
+    actualSettled.value = detail.actualSettled ?? null;
+    originalSettledAmount.value = detail.originalSettledAmount ?? null;
+    diffAmount.value = detail.diffAmount ?? null;
+    const ownerId = detail.id;
+    issueGroups.value = (detail.invoiceIssues ?? [])
+      .map((issue) => mapInvoiceIssueGroup(issue, ownerId, true))
+      .filter((group) => group.items.length > 0);
+    items.value = [];
     selectedItemRowKeys.value = [];
+    selectedFeeKeys.value = [];
 
     if (detail.bankStatementId) {
       try {
@@ -388,77 +762,6 @@ async function loadEditData() {
   } finally {
     pageLoading.value = false;
   }
-}
-
-function mapDetailItem(
-  item: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto,
-): InvoiceSettlementItem {
-  const orderFee = item.orderFee;
-  const order = item.transportOrder;
-  return {
-    _key: makeRowKey(),
-    _isCurrent: true,
-    id: item.id,
-    invoiceApplicationId: item.invoiceApplicationId,
-    invoiceApplicationItemId: item.invoiceApplicationItemId,
-    orderFeeId: item.orderFeeId,
-    applicationNo: item.applicationNo,
-    invoiceNo: item.invoiceNo,
-    appliedAmount: item.appliedAmount,
-    paySide: orderFee?.paySide,
-    transportOrderId: order?.id,
-    commissionNum: order?.commissionNum,
-    mblNum: order?.mblNum,
-    bookingNum: order?.bookingNum,
-    clientName: order?.client?.name,
-    feeCodeName: orderFee?.feeCode?.cnName,
-    currencyCode: orderFee?.currency?.code,
-    amount: orderFee?.amount ?? 0,
-    settlementName: orderFee?.settlement?.name,
-    settledAmount: item.settledAmount,
-    remark: item.remark || '',
-  };
-}
-
-/**
- * 其他核销单的明细行：主键稳定复用后端 id，避免 computed 重算时表格整片重挂载。
- * 同一流水下也可能存在按费用核销的单据，这类行没有开票申请字段，留空展示。
- */
-function mapForeignItem(
-  item:
-    | ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto
-    | ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
-  settlementNoText: string,
-  creatorName: string,
-): InvoiceSettlementItem {
-  const invoiceItem = 'invoiceApplicationItemId' in item ? item : undefined;
-  const orderFee = item.orderFee;
-  const order = item.transportOrder;
-  return {
-    _key: `foreign_${item.id}`,
-    _isCurrent: false,
-    _settlementNo: settlementNoText,
-    _creatorUserName: creatorName,
-    id: item.id,
-    invoiceApplicationId: invoiceItem?.invoiceApplicationId,
-    invoiceApplicationItemId: invoiceItem?.invoiceApplicationItemId ?? '',
-    orderFeeId: item.orderFeeId,
-    applicationNo: invoiceItem?.applicationNo,
-    invoiceNo: invoiceItem?.invoiceNo,
-    appliedAmount: invoiceItem?.appliedAmount,
-    paySide: orderFee?.paySide,
-    transportOrderId: order?.id,
-    commissionNum: order?.commissionNum,
-    mblNum: order?.mblNum,
-    bookingNum: order?.bookingNum,
-    clientName: order?.client?.name,
-    feeCodeName: orderFee?.feeCode?.cnName,
-    currencyCode: orderFee?.currency?.code,
-    amount: orderFee?.amount ?? 0,
-    settlementName: orderFee?.settlement?.name,
-    settledAmount: item.settledAmount,
-    remark: item.remark || '',
-  };
 }
 
 function mapSelectedFee(fee: SelectedInvoiceFee): InvoiceSettlementItem {
@@ -578,6 +881,38 @@ function updateItemRemark(key: string, value: string | undefined) {
 
 function handleDeleteSelectedItems() {
   if (!canManageItems.value) return;
+
+  if (isEdit.value && editId.value) {
+    const selectedFees = currentFeeRows.value.filter((fee) =>
+      selectedFeeKeys.value.includes(fee._key),
+    );
+    if (selectedFees.length === 0) {
+      message.warning('请先选择要删除的明细');
+      return;
+    }
+    const payload = selectedFees.map((fee) => ({
+      invoiceIssueId: fee.invoiceIssueId,
+      orderFeeId: fee.orderFeeId,
+    }));
+    if (currentFeeRows.value.length - selectedFees.length > 0) {
+      pendingDeleteItems.value = payload;
+      deleteActualSettled.value = actualSettled.value;
+      deleteAmountOpen.value = true;
+      return;
+    }
+    const content =
+      selectedFees.length === 1
+        ? `确定要删除费用「${selectedFees[0]?.feeCodeName || '-'}」吗？删除后这张结算单的本次结算会变为 0。`
+        : `确定要删除选中的 ${selectedFees.length} 条明细吗？删除后这张结算单的本次结算会变为 0。`;
+    Modal.confirm({
+      title: '确认删除明细',
+      content,
+      okType: 'danger',
+      onOk: () => submitDeleteInvoiceItems(payload),
+    });
+    return;
+  }
+
   if (selectedItemRowKeys.value.length === 0) {
     message.warning('请先选择要删除的明细');
     return;
@@ -597,35 +932,7 @@ function handleDeleteSelectedItems() {
     title: '确认删除明细',
     content,
     okType: 'danger',
-    onOk: async () => {
-      if (isEdit.value && editId.value) {
-        const itemIds = selectedItems
-          .map((item) => item.id)
-          .filter((id): id is string => !!id);
-        if (itemIds.length !== selectedItems.length) {
-          message.warning('所选明细无法删除，请刷新后重试');
-          return;
-        }
-
-        submitting.value = true;
-        try {
-          await deleteReceiveSettlementInvoiceItems({
-            id: editId.value,
-            receiveSettlementInvoiceItemIds: itemIds,
-          });
-          message.success('删除明细成功');
-          selectedItemRowKeys.value = [];
-          await loadEditData();
-          markReceiveSettlementRelatedListsShouldRefresh();
-          emit('changed');
-        } catch (error: any) {
-          message.error(error.message || '删除明细失败');
-        } finally {
-          submitting.value = false;
-        }
-        return;
-      }
-
+    onOk: () => {
       const selectedKeySet = new Set(selectedItemRowKeys.value);
       items.value = items.value.filter(
         (item) => !selectedKeySet.has(item._key),
@@ -633,6 +940,45 @@ function handleDeleteSelectedItems() {
       selectedItemRowKeys.value = [];
     },
   });
+}
+
+async function submitDeleteInvoiceItems(
+  deleteItems: ReceiveSettlementAdminApi.ReceiveSettlementByInvoiceKeyDto[],
+  nextActualSettled?: number,
+) {
+  if (!editId.value || deleteItems.length === 0) return;
+  submitting.value = true;
+  try {
+    await deleteReceiveSettlementInvoiceItems({
+      id: editId.value,
+      actualSettled: nextActualSettled,
+      items: deleteItems,
+    });
+    message.success('删除明细成功');
+    deleteAmountOpen.value = false;
+    pendingDeleteItems.value = [];
+    selectedFeeKeys.value = [];
+    await loadEditData();
+    markReceiveSettlementRelatedListsShouldRefresh();
+    emit('changed');
+  } catch (error: any) {
+    message.error(error.message || '删除明细失败');
+    return Promise.reject(error);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function confirmDeleteWithAmount() {
+  if (pendingDeleteItems.value.length === 0) return;
+  if (deleteActualSettled.value == null) {
+    message.warning('请填写本次结算');
+    return Promise.reject(new Error('本次结算不能为空'));
+  }
+  await submitDeleteInvoiceItems(
+    pendingDeleteItems.value,
+    deleteActualSettled.value,
+  );
 }
 
 function validateForm(): boolean {
@@ -949,7 +1295,9 @@ onMounted(() => {
                 </span>
               </div>
               <div class="bank-summary-item">
-                <span class="bank-summary-label">本单本次净额</span>
+                <span class="bank-summary-label">{{
+                  isEdit ? '本次结算' : '本单本次净额'
+                }}</span>
                 <span class="bank-summary-value bank-summary-value--current">
                   {{ formatBankAmount(currentSettlementTotal) }}
                 </span>
@@ -1025,6 +1373,38 @@ onMounted(() => {
               </div>
             </div>
             <div v-if="isEdit" class="form-item">
+              <div class="form-label">本次结算</div>
+              <div class="form-control">
+                <span class="form-text">{{
+                  formatBankAmount(actualSettled)
+                }}</span>
+              </div>
+            </div>
+            <div v-if="isEdit" class="form-item">
+              <div class="form-label">原始金额</div>
+              <div class="form-control">
+                <span class="form-text">{{
+                  formatOptionalAmount(originalSettledAmount)
+                }}</span>
+                <span
+                  v-if="
+                    originalSettledAmount == null && currentFeeRows.length > 0
+                  "
+                  class="missing-rate"
+                >
+                  缺汇率
+                </span>
+              </div>
+            </div>
+            <div v-if="isEdit" class="form-item">
+              <div class="form-label">差值</div>
+              <div class="form-control">
+                <span class="form-text">{{
+                  formatOptionalAmount(diffAmount)
+                }}</span>
+              </div>
+            </div>
+            <div v-if="isEdit" class="form-item">
               <div class="form-label">结算状态</div>
               <div class="form-control">
                 <Tag :color="getReceiveSettlementStatusColor(status)">
@@ -1062,8 +1442,8 @@ onMounted(() => {
         <template #title>
           <Space size="small">
             <span>开票结算明细</span>
-            <span v-if="foreignItems.length > 0" class="settlement-items-hint">
-              含本流水下其他核销单明细 {{ foreignItems.length }} 条（只读）
+            <span v-if="foreignFeeCount > 0" class="settlement-items-hint">
+              含本流水下其他核销单明细 {{ foreignFeeCount }} 条（只读）
             </span>
           </Space>
         </template>
@@ -1076,7 +1456,11 @@ onMounted(() => {
             <Button
               size="small"
               danger
-              :disabled="selectedItemRowKeys.length === 0"
+              :disabled="
+                (isEdit
+                  ? selectedFeeKeys.length
+                  : selectedItemRowKeys.length) === 0
+              "
               @click="handleDeleteSelectedItems"
             >
               <IconifyIcon icon="mdi:delete-outline" class="toolbar-btn-icon" />
@@ -1085,7 +1469,118 @@ onMounted(() => {
           </Space>
         </template>
 
+        <NestedDataTable
+          v-if="isEdit"
+          :columns="issueGroupColumns"
+          :data-source="savedIssueGroups"
+          :inner-columns="issueFeeColumns"
+          inner-data-key="items"
+          :inner-row-key="(record) => record._key"
+          row-key="_key"
+          :max-height="560"
+          v-model:expanded-row-keys="expandedIssueKeys"
+        >
+          <template #outerBodyCell="{ column, record }">
+            <template v-if="column.key === 'ownerSettlementNo'">
+              <Tag v-if="record._isCurrent" color="blue">本单</Tag>
+              <span v-else>{{ record._settlementNo || '-' }}</span>
+            </template>
+            <template v-else-if="column.key === 'applicationNo'">
+              {{ record.applicationNo || '-' }}
+            </template>
+            <template v-else-if="column.key === 'invoiceNo'">
+              {{ record.invoiceNo || '-' }}
+            </template>
+            <template v-else-if="column.key === 'invoiceIssueTime'">
+              {{
+                record._fromFeeSettlement
+                  ? '-'
+                  : formatDateTime(record.invoiceIssueTime)
+              }}
+            </template>
+            <template v-else-if="column.key === 'currencyCode'">
+              <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'originalSettledAmount'">
+              {{ formatOptionalAmount(record.originalSettledAmount) }}
+              <span
+                v-if="record.originalSettledAmount == null"
+                class="missing-rate"
+              >
+                缺汇率
+              </span>
+            </template>
+            <template v-else-if="column.key === 'ownerCreator'">
+              {{
+                record._isCurrent
+                  ? creatorUserName || '-'
+                  : record._creatorUserName || '-'
+              }}
+            </template>
+          </template>
+
+          <template #innerHeaderCell="{ column, parentRecord }">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                v-if="parentRecord?._isCurrent"
+                :checked="isGroupAllChecked(parentRecord)"
+                :indeterminate="isGroupIndeterminate(parentRecord)"
+                @change="
+                  (event) => toggleGroup(parentRecord, event.target.checked)
+                "
+              />
+            </template>
+            <template v-else>{{ column.title }}</template>
+          </template>
+
+          <template #innerBodyCell="{ column, record: fee }">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                :checked="isFeeChecked(fee)"
+                :disabled="!fee._isCurrent"
+                @change="(event) => toggleFee(fee, event.target.checked)"
+              />
+            </template>
+            <template v-else-if="column.key === 'paySide'">
+              <Tag :color="getPaySideColor(fee.paySide)">
+                {{ getPaySideLabel(fee.paySide) }}
+              </Tag>
+            </template>
+            <template v-else-if="column.key === 'currencyCode'">
+              <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'appliedAmount'">
+              {{
+                fee._fromFeeSettlement
+                  ? '-'
+                  : formatOptionalAmount(fee.appliedAmount)
+              }}
+            </template>
+            <template v-else-if="column.key === 'settledAmount'">
+              {{ formatAmount(fee.settledAmount) }}
+            </template>
+            <template v-else-if="column.key === 'exchangeRate'">
+              {{ formatExchangeRate(fee.exchangeRate) }}
+              <span v-if="fee.exchangeRate == null" class="missing-rate">
+                缺汇率
+              </span>
+            </template>
+            <template v-else-if="column.key === 'originalSettledAmount'">
+              {{ formatOptionalAmount(fee.originalSettledAmount) }}
+            </template>
+            <template v-else-if="column.key === 'remark'">
+              {{ fee.remark || '-' }}
+            </template>
+            <template v-else>
+              {{ fee[column.dataIndex] || '-' }}
+            </template>
+          </template>
+        </NestedDataTable>
+
         <Table
+          v-else
           :columns="columns"
           :data-source="tableItems"
           :pagination="false"
@@ -1154,6 +1649,25 @@ onMounted(() => {
       ref="addInvoiceDrawerRef"
       @confirm="handleInvoiceConfirm"
     />
+    <Modal
+      v-model:open="deleteAmountOpen"
+      title="填写删除后的本次结算"
+      ok-text="确认删除"
+      :confirm-loading="submitting"
+      @ok="confirmDeleteWithAmount"
+    >
+      <p class="delete-amount-hint">
+        删除后这张收费结算还剩明细，请填写删除后的本次结算（{{
+          bankStatementCurrencyCode || '银行流水币别'
+        }}）。
+      </p>
+      <InputNumber
+        v-model:value="deleteActualSettled"
+        :precision="2"
+        style="width: 100%"
+        placeholder="本次结算"
+      />
+    </Modal>
   </Page>
 </template>
 
@@ -1252,6 +1766,16 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 400;
   color: #8c8c8c;
+}
+
+.missing-rate {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #d48806;
+}
+
+.delete-amount-hint {
+  margin-bottom: 12px;
 }
 
 :deep(.settlement-row--foreign) > td {
