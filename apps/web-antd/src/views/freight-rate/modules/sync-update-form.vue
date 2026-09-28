@@ -307,8 +307,8 @@ const [Form, formApi] = useVbenForm({
     },
     {
       component: 'InputNumber',
-      fieldName: 'podFreeDays',
-      label: '目的港免用箱',
+      fieldName: 'poddem',
+      label: 'DEM',
       componentProps: {
         placeholder: '留空不修改',
         min: 0,
@@ -317,8 +317,8 @@ const [Form, formApi] = useVbenForm({
     },
     {
       component: 'InputNumber',
-      fieldName: 'poddem',
-      label: '目的港免堆期',
+      fieldName: 'podFreeDays',
+      label: 'DET',
       componentProps: {
         placeholder: '留空不修改',
         min: 0,
@@ -328,7 +328,7 @@ const [Form, formApi] = useVbenForm({
     {
       component: 'InputNumber',
       fieldName: 'poddet',
-      label: '目的港免箱期',
+      label: '免箱使期',
       componentProps: {
         placeholder: '留空不修改',
         min: 0,

@@ -119,7 +119,7 @@ function extractUniqueCtnNames(data: SeFreiPriceOutDto[]): string[] {
 
 /**
  * 目的港免箱使天数（列表/导出共用）
- * 与批量页列一致：DEM=poddem、DET=podFreeDays、免箱使期=poddet（单条编辑「目的港免箱期」）
+ * 与批量页列一致：DEM=poddem、DET=podFreeDays、免箱使期=poddet
  */
 export function formatPodFreeDaysCombined(row: SeFreiPriceOutDto): string {
   const parts: string[] = [];

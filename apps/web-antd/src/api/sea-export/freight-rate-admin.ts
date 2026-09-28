@@ -9,9 +9,9 @@ export const FreightRateLabelOptions = [
   { label: '中转港1 ID', value: 'poT1Id' },
   { label: '中转港2 ID', value: 'poT2Id' },
   { label: '起运港免用箱天数', value: 'polFreeDays' },
-  { label: '目的港免用箱天数', value: 'podFreeDays' },
-  { label: '目的港免堆期天数', value: 'poddem' },
-  { label: '目的港免箱期天数', value: 'poddet' },
+  { label: 'DEM', value: 'poddem' },
+  { label: 'DET', value: 'podFreeDays' },
+  { label: '免箱使期', value: 'poddet' },
   { label: '航程', value: 'voyage' },
   { label: '约号', value: 'contractNo' },
   { label: '有效时间起始', value: 'validTimeStart' },
@@ -563,11 +563,11 @@ export interface SeFreiPriceOutDto {
   poT2Id?: number;
   /** 起运港免用箱天数 */
   polFreeDays?: number;
-  /** 目的港免用箱天数 */
+  /** DET 天数 */
   podFreeDays?: number;
-  /** 目的港免堆期天数 */
+  /** DEM 天数 */
   poddem?: number;
-  /** 目的港免箱期天数 */
+  /** 免箱使期天数 */
   poddet?: number;
   /** 航程 */
   voyage?: string;
@@ -667,11 +667,11 @@ export interface AddSeFreiPriceInput {
   poT2Id?: number;
   /** 起运港免用箱天数 */
   polFreeDays?: number;
-  /** 目的港免用箱天数 */
+  /** DET 天数 */
   podFreeDays?: number;
-  /** 目的港免堆期天数 */
+  /** DEM 天数 */
   poddem?: number;
-  /** 目的港免箱期天数 */
+  /** 免箱使期天数 */
   poddet?: number;
   /** 航程 */
   voyage?: string;
@@ -739,11 +739,11 @@ export interface BatchEditSeFreiPriceInput {
   poT2Id?: number | null;
   /** 起运港免用箱天数（为null不修改） */
   polFreeDays?: number | null;
-  /** 目的港免用箱天数（为null不修改） */
+  /** DET 天数（为null不修改） */
   podFreeDays?: number | null;
-  /** 目的港免堆期天数（为null不修改） */
+  /** DEM 天数（为null不修改） */
   poddem?: number | null;
-  /** 目的港免箱期天数（为null不修改） */
+  /** 免箱使期天数（为null不修改） */
   poddet?: number | null;
   /** 航程（为null不修改） */
   voyage?: string | null;
@@ -919,11 +919,11 @@ export interface SeFreiPriceSimpleAddDto {
   poT2Id?: string | number;
   /** 起运港免用箱天数 */
   polFreeDays?: number;
-  /** 目的港免用箱天数 */
+  /** DET 天数 */
   podFreeDays?: number;
-  /** 目的港免堆期天数 */
+  /** DEM 天数 */
   poddem?: number;
-  /** 目的港免箱期天数 */
+  /** 免箱使期天数 */
   poddet?: number;
   /** 航程 */
   voyage?: string;
@@ -971,11 +971,11 @@ export interface SeFreiPriceSimpleEditDto {
   poT2Id?: number;
   /** 起运港免用箱天数 */
   polFreeDays?: number;
-  /** 目的港免用箱天数 */
+  /** DET 天数 */
   podFreeDays?: number;
-  /** 目的港免堆期天数 */
+  /** DEM 天数 */
   poddem?: number;
-  /** 目的港免箱期天数 */
+  /** 免箱使期天数 */
   poddet?: number;
   /** 航程 */
   voyage?: string;

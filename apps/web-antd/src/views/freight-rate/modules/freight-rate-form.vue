@@ -444,31 +444,31 @@ const [Form, formApi] = useVbenForm({
     },
     {
       component: 'InputNumber',
-      fieldName: 'podFreeDays',
-      label: '目的港免用箱',
+      fieldName: 'poddem',
+      label: 'DEM',
       componentProps: {
-        placeholder: '请输入免用箱天数',
+        placeholder: '请输入 DEM 天数',
         min: 0,
         style: { width: '100%' },
       },
     },
     {
       component: 'InputNumber',
-      fieldName: 'poddem',
-      label: '目的港免堆期',
+      fieldName: 'podFreeDays',
+      label: 'DET',
       componentProps: {
-        placeholder: '请输入免堆期天数',
+        placeholder: '请输入 DET 天数',
         min: 0,
         style: { width: '100%' },
       },
     },
-    // 第四行：目的港免箱期
+    // 第四行：免箱使期
     {
       component: 'InputNumber',
       fieldName: 'poddet',
-      label: '目的港免箱期',
+      label: '免箱使期',
       componentProps: {
-        placeholder: '请输入免箱期天数',
+        placeholder: '请输入免箱使期天数',
         min: 0,
         style: { width: '100%' },
       },
@@ -594,7 +594,7 @@ const [Form, formApi] = useVbenForm({
     //     style: { width: '100%' },
     //   },
     // },
-    // 第四行：目的港免箱期、备注
+    // 第四行：备注
     {
       component: 'Textarea',
       fieldName: 'remark',
