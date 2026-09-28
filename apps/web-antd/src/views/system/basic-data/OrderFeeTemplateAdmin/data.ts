@@ -190,9 +190,10 @@ export function useColumns(
       ),
     },
     {
-      field: 'carrier.cnName',
+      field: 'carrierCode',
       title: '船公司',
       width: 120,
+      slots: { default: 'carrierWithLogo' },
     },
     {
       field: 'bookingAgent.name',

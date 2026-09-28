@@ -114,6 +114,10 @@ export namespace OrderFeeTemplateAdminApi {
     cnShortName?: string | null;
     ediCode?: string | null;
     enName?: string | null;
+    /** 船公司 Logo（列表有返回时用于展示，与海出列表一致） */
+    logo?: {
+      url?: string | null;
+    } | null;
   }
 
   /** 费用代码简单信息 */
@@ -385,6 +389,10 @@ export namespace OrderFeeTemplateAdminApi {
     codeSource?: CodeSourceSimpleDto | null;
     /** 船公司 SimpleDto */
     carrier?: CarrierSimpleDto | null;
+    /** 船公司 Logo（与海出列表字段对齐；无则回退 carrier.logo） */
+    carrierLogo?: {
+      url?: string | null;
+    } | null;
     /** 订舱代理 SimpleDto */
     bookingAgent?: ClientSimpleDto | null;
     /** 起运港 SimpleDto */
