@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-28] [客户基础信息增加国家与税号联动](./changelogs/change-log-2026-09-28-client-country-taxno.md)
+
 - [2026-09-28] [装箱试算深化](./changelogs/change-log-2026-09-28-packing-calc-deepen.md)
 
 - [2026-09-27] [监装拍照不把相机当后台](./changelogs/change-log-2026-09-27-监装拍照不把相机当后台.md)

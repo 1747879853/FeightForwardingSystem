@@ -98,14 +98,20 @@ export namespace ClientAdminApi {
     LoadingSupervision = 512,
   }
 
-  /** 客户名称校验参数 */
+  /** 客户名称/税号等重复校验参数（CheckDuplicateAsync） */
   export interface ClientNameCheckDto {
-    /** 当前id 如果是新建 输入空 */
+    /** 当前客户 id；新建不传。编辑时用来把自己排除掉 */
     id?: string;
     /** 客户全称 */
     fullName?: string;
-    /** 客户简称  */
+    /** 客户简称 */
     name?: string;
+    /** 英文全称 */
+    enFullName?: string;
+    /** 纳税人识别号；非空时按同一 countryId 判重 */
+    taxNo?: string;
+    /** 税号判重用的国家；不传只和同样没填国家的客户比 */
+    countryId?: null | number | string;
   }
 
   /** Guid类型的Id Dto */
@@ -1061,10 +1067,11 @@ export namespace ClientAdminApi {
 const API_PREFIX = '/services/app/ClientAdmin';
 
 /**
- * 客户全称校验
+ * 客户简称/全称/英文全称/纳税人识别号重复校验。
+ * 有重复返回 true，没有返回 false。
  */
 export const clientNameCheck = (data: ClientAdminApi.ClientNameCheckDto) => {
-  return requestClient.post<void>(`${API_PREFIX}/CheckDuplicateAsync`, data);
+  return requestClient.post<boolean>(`${API_PREFIX}/CheckDuplicateAsync`, data);
 };
 
 /**

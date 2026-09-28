@@ -2,11 +2,13 @@ import { rowTextColumn } from '#/utils/row-text-column';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
+import { z } from '#/adapter/form';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
 import { $t } from '#/locales';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 
+import { TAX_NO_REQUIRED_FOR_CN_ENTERPRISE } from './country-tax';
 import { getClientStatusOptions } from './client-status';
 import {
   getAddressTypeOptions,
@@ -302,10 +304,41 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true },
     },
     {
+      component: 'CountrySelect',
+      fieldName: 'country',
+      label: $t('seaExport.client.country'),
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
       component: 'Input',
       fieldName: 'taxNo',
       label: $t('seaExport.client.taxNo'),
-      componentProps: { allowClear: true },
+      componentProps: { allowClear: true, maxlength: 32 },
+      dependencies: {
+        triggerFields: ['taxNoRequired'],
+        required: (values) => values.taxNoRequired === true,
+        rules: (values) => {
+          if (values.taxNoRequired === true) {
+            return z
+              .string({ required_error: TAX_NO_REQUIRED_FOR_CN_ENTERPRISE })
+              .min(1, { message: TAX_NO_REQUIRED_FOR_CN_ENTERPRISE });
+          }
+          return z.string().optional().nullable();
+        },
+      },
+    },
+    {
+      // 隐藏：中国 + 非个人供应商 → 税号必填（由页面同步写入）
+      component: 'Input',
+      fieldName: 'taxNoRequired',
+      dependencies: {
+        triggerFields: ['country'],
+        show: () => false,
+      },
     },
     {
       component: 'InputNumber',
@@ -838,6 +871,14 @@ export function useColumns(options?: {
     //   title: $t('seaExport.client.country'),
     //   minWidth: 100,
     // },
+    {
+      field: 'country.countryName',
+      title: $t('seaExport.client.country'),
+      minWidth: 100,
+      ...rowTextColumn(
+        ({ row }) => row.country?.countryName || row.country?.code || '-',
+      ),
+    },
     {
       field: 'enable',
       title: $t('seaExport.client.enable'),
