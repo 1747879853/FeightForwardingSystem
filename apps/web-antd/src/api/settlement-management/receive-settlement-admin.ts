@@ -20,11 +20,40 @@ export namespace ReceiveSettlementAdminApi {
     ByInvoiceApplication = 1,
   }
 
+  export interface TransportOrderPortDto {
+    portName?: null | string;
+    cnName?: null | string;
+    /** 空运机场三字码 */
+    iataCode?: null | string;
+    enName?: null | string;
+  }
+
+  export interface TransportOrderCarrierDto {
+    code?: null | string;
+    cnShortName?: null | string;
+    cnName?: null | string;
+  }
+
+  /** 海运出口 / 海运进口 / 空运 / 件杂货上的船公司与港口，非当前类型为 null */
+  export interface TransportOrderBizSliceDto {
+    carrier?: null | TransportOrderCarrierDto;
+    pol?: null | TransportOrderPortDto;
+    pod?: null | TransportOrderPortDto;
+  }
+
   export interface TransportOrderSimpleDto {
     id: string;
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
+    /** 开船日期，没有时为 null */
+    etd?: null | string;
+    /** 箱型箱量合计，如 20GP*2 40HQ*1；空运、件杂货或未录箱子时为 null */
+    totalCtn?: null | string;
+    seaExport?: null | TransportOrderBizSliceDto;
+    seaImport?: null | TransportOrderBizSliceDto;
+    airExport?: null | TransportOrderBizSliceDto;
+    breakBulk?: null | TransportOrderBizSliceDto;
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
 

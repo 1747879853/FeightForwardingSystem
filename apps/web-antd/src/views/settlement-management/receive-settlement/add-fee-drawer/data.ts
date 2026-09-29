@@ -1,6 +1,8 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
+import dayjs from 'dayjs';
+
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 
 import { formatAmount } from '../form-data';
@@ -204,6 +206,47 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
   ];
 }
 
+type TransportOrder = ReceiveSettlementAdminApi.TransportOrderSimpleDto;
+type PortDto = ReceiveSettlementAdminApi.TransportOrderPortDto;
+type CarrierDto = ReceiveSettlementAdminApi.TransportOrderCarrierDto;
+
+function formatEtd(value?: null | string) {
+  if (!value) return '';
+  const date = dayjs(value);
+  return date.isValid() ? date.format('YYYY-MM-DD') : '';
+}
+
+function carrierText(carrier?: CarrierDto | null) {
+  return carrier?.code || carrier?.cnShortName || carrier?.cnName || '';
+}
+
+function portText(port?: null | PortDto) {
+  return port?.portName || port?.iataCode || port?.cnName || port?.enName || '';
+}
+
+/** 船公司只在海运出口、海运进口上；空运和件杂货留空 */
+export function orderCarrierText(order?: null | TransportOrder) {
+  return carrierText(order?.seaExport?.carrier || order?.seaImport?.carrier);
+}
+
+export function orderPolText(order?: null | TransportOrder) {
+  return portText(
+    order?.seaExport?.pol ||
+      order?.seaImport?.pol ||
+      order?.airExport?.pol ||
+      order?.breakBulk?.pol,
+  );
+}
+
+export function orderPodText(order?: null | TransportOrder) {
+  return portText(
+    order?.seaExport?.pod ||
+      order?.seaImport?.pod ||
+      order?.airExport?.pod ||
+      order?.breakBulk?.pod,
+  );
+}
+
 export function buildOrderRow(group: OrderGroup) {
   const order = group.transportOrder;
   return {
@@ -213,6 +256,11 @@ export function buildOrderRow(group: OrderGroup) {
     mblNum: order.mblNum,
     bookingNum: order.bookingNum,
     clientName: order.client?.name,
+    etd: formatEtd(order.etd),
+    carrierName: orderCarrierText(order),
+    polName: orderPolText(order),
+    podName: orderPodText(order),
+    totalCtn: order.totalCtn || '',
     feeCount: group.orderFees?.length ?? 0,
     totalRemainingAmount: (group.orderFees ?? []).reduce(
       (sum, fee) => sum + (fee.remainingAmount || 0),
@@ -248,6 +296,36 @@ export const orderColumns = [
     key: 'clientName',
     title: '客户',
     width: 160,
+  },
+  {
+    dataIndex: 'etd',
+    key: 'etd',
+    title: '开船日期',
+    width: 120,
+  },
+  {
+    dataIndex: 'carrierName',
+    key: 'carrierName',
+    title: '船公司',
+    width: 110,
+  },
+  {
+    dataIndex: 'polName',
+    key: 'polName',
+    title: '起运港',
+    width: 120,
+  },
+  {
+    dataIndex: 'podName',
+    key: 'podName',
+    title: '目的港',
+    width: 120,
+  },
+  {
+    dataIndex: 'totalCtn',
+    key: 'totalCtn',
+    title: '箱型箱量',
+    width: 150,
   },
   {
     dataIndex: 'feeCount',

@@ -7,6 +7,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 
 import {
   Button,
+  Checkbox,
   Drawer,
   InputNumber,
   message,
@@ -99,6 +100,40 @@ const tableRows = computed(() =>
 const disabledFeeIdSet = computed(
   () => new Set(drawerProps.value.selectedFeeIds ?? []),
 );
+
+const businessColumns = [
+  {
+    key: 'feeSelect',
+    title: '',
+    width: 48,
+    align: 'center' as const,
+  },
+  ...orderColumns,
+];
+
+type FeeRow = ReceiveSettlementAdminApi.ReceiveSettlementFeeDto;
+
+function selectableFees(fees: FeeRow[]) {
+  return fees.filter((fee) => !disabledFeeIdSet.value.has(fee.id));
+}
+
+const pageSelectableFees = computed(() =>
+  selectableFees(orderList.value.flatMap((group) => group.orderFees ?? [])),
+);
+
+function isFeesAllChecked(fees: FeeRow[]) {
+  return (
+    fees.length > 0 &&
+    fees.every((fee) => selectedFeeIds.value.includes(fee.id))
+  );
+}
+
+function isFeesIndeterminate(fees: FeeRow[]) {
+  const checkedCount = fees.filter((fee) =>
+    selectedFeeIds.value.includes(fee.id),
+  ).length;
+  return checkedCount > 0 && checkedCount < fees.length;
+}
 
 const feeColumns = [
   {
@@ -244,7 +279,7 @@ function handleSelectAllFees(
   selected: boolean,
   rows: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto[],
 ) {
-  for (const fee of rows) {
+  for (const fee of selectableFees(rows)) {
     handleSelectFee(fee, selected);
   }
 }
@@ -404,7 +439,7 @@ defineExpose({ open: openDrawer });
       </div>
 
       <Table
-        :columns="orderColumns"
+        :columns="businessColumns"
         :data-source="tableRows"
         :loading="loading"
         :pagination="false"
@@ -412,8 +447,47 @@ defineExpose({ open: openDrawer });
         v-model:expanded-row-keys="expandedRowKeys"
         size="small"
         bordered
-        :scroll="{ x: 900 }"
+        :scroll="{ x: 1680 }"
       >
+        <template #headerCell="{ column }">
+          <Checkbox
+            v-if="column.key === 'feeSelect'"
+            :checked="isFeesAllChecked(pageSelectableFees)"
+            :indeterminate="isFeesIndeterminate(pageSelectableFees)"
+            :disabled="pageSelectableFees.length === 0"
+            @change="
+              (event) =>
+                handleSelectAllFees(event.target.checked, pageSelectableFees)
+            "
+          />
+          <template v-else-if="typeof column.title === 'string'">
+            {{ column.title }}
+          </template>
+        </template>
+        <template #bodyCell="{ column, record }">
+          <Checkbox
+            v-if="column.key === 'feeSelect'"
+            :checked="isFeesAllChecked(selectableFees(record.orderFees ?? []))"
+            :indeterminate="
+              isFeesIndeterminate(selectableFees(record.orderFees ?? []))
+            "
+            :disabled="selectableFees(record.orderFees ?? []).length === 0"
+            @click.stop
+            @change="
+              (event) =>
+                handleSelectAllFees(
+                  event.target.checked,
+                  record.orderFees ?? [],
+                )
+            "
+          />
+          <template v-else-if="column.dataIndex === 'totalRemainingAmount'">
+            {{ formatAmount(record.totalRemainingAmount) }}
+          </template>
+          <template v-else>
+            {{ record[column.dataIndex] || '-' }}
+          </template>
+        </template>
         <template #expandedRowRender="{ record }">
           <Table
             :columns="feeColumns"
@@ -426,7 +500,8 @@ defineExpose({ open: openDrawer });
                 disabled: disabledFeeIdSet.has(fee.id),
               }),
               onSelect: handleSelectFee,
-              onSelectAll: handleSelectAllFees,
+              onSelectAll: (selected, _selectedRows, changeRows) =>
+                handleSelectAllFees(selected, changeRows),
             }"
             size="small"
             bordered
