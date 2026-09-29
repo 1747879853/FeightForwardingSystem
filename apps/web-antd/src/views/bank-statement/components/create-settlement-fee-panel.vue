@@ -39,8 +39,12 @@ import {
 } from '../../settlement-management/receive-settlement/form-data';
 import {
   buildExchangeRateInputs,
+  calcDiffAmount,
+  calcOriginalSettledAmount,
+  collectDisplayCurrencies,
   collectForeignCurrencies,
   findMissingExchangeRate,
+  missingExchangeRateMessage,
 } from '../../settlement-management/receive-settlement/settlement-amount';
 
 function useBankStatementFeeSearchSchema() {
@@ -329,8 +333,30 @@ const foreignCurrencies = computed(() =>
   ),
 );
 
-watch(foreignCurrencies, (rows) => {
+const displayCurrencies = computed(() =>
+  collectDisplayCurrencies(
+    buildSelectedFees(),
+    props.currencyId,
+    props.currencyCode,
+  ),
+);
+
+const previewOriginalSettledAmount = computed(() =>
+  calcOriginalSettledAmount(
+    buildSelectedFees(),
+    exchangeRates,
+    props.currencyId,
+    props.currencyCode,
+  ),
+);
+
+const previewDiffAmount = computed(() =>
+  calcDiffAmount(actualSettled.value, previewOriginalSettledAmount.value),
+);
+
+watch(displayCurrencies, (rows) => {
   for (const row of rows) {
+    if (row.locked) continue;
     if (!(row.currencyId in exchangeRates)) {
       exchangeRates[row.currencyId] = undefined;
     }
@@ -387,18 +413,7 @@ function validateSelection(fees: SelectedReceiveFee[]): boolean {
     exchangeRates,
   );
   if (missingRate) {
-    message.warning(
-      `请填写 ${missingRate.currencyCode} 兑${props.currencyCode || '流水币别'}的汇率`,
-    );
-    return false;
-  }
-
-  if (isRemainingOverLimit.value) {
-    const availableAmount =
-      props.bankStatementAmount - props.otherSettledAmount;
-    message.warning(
-      `本次结算 ${formatBankAmount(actualSettled.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
-    );
+    message.warning(missingExchangeRateMessage(missingRate.currencyCode));
     return false;
   }
 
@@ -604,14 +619,22 @@ defineExpose({ reload });
       />
     </div>
 
-    <div v-if="foreignCurrencies.length" class="exchange-rate-bar">
+    <div v-if="displayCurrencies.length" class="exchange-rate-bar">
       <div
-        v-for="row in foreignCurrencies"
+        v-for="row in displayCurrencies"
         :key="row.currencyId"
         class="exchange-rate-bar__row"
       >
         <span>1 {{ row.currencyCode }} =</span>
         <InputNumber
+          v-if="row.locked"
+          :value="1"
+          :disabled="true"
+          :precision="6"
+          style="width: 140px"
+        />
+        <InputNumber
+          v-else
           v-model:value="exchangeRates[row.currencyId]"
           :min="0"
           :precision="6"
@@ -635,6 +658,22 @@ defineExpose({ reload });
             style="width: 160px"
           />
           <strong>{{ currencyCode || '' }}</strong>
+        </span>
+        <span>
+          参考原始金额
+          <strong>{{
+            previewOriginalSettledAmount == null
+              ? '-'
+              : formatBankAmount(previewOriginalSettledAmount)
+          }}</strong>
+        </span>
+        <span>
+          差值
+          <strong>{{
+            previewDiffAmount == null
+              ? '-'
+              : formatBankAmount(previewDiffAmount)
+          }}</strong>
         </span>
         <span :class="{ 'text-red-600': isRemainingOverLimit }">
           核销后剩余

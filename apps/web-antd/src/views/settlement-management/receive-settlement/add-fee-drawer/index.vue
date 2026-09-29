@@ -22,8 +22,10 @@ import { useAntTableColumnResize } from '#/utils/table-column-resize';
 import { formatAmount, getPaySideColor, getPaySideLabel } from '../form-data';
 import {
   buildExchangeRateInputs,
+  collectDisplayCurrencies,
   collectForeignCurrencies,
   findMissingExchangeRate,
+  missingExchangeRateMessage,
 } from '../settlement-amount';
 import {
   type AddFeeDrawerProps,
@@ -303,8 +305,17 @@ const foreignCurrencies = computed(() =>
   ),
 );
 
-watch(foreignCurrencies, (rows) => {
+const displayCurrencies = computed(() =>
+  collectDisplayCurrencies(
+    buildSelectedFees(),
+    drawerProps.value.currencyId,
+    drawerProps.value.currencyCode,
+  ),
+);
+
+watch(displayCurrencies, (rows) => {
   for (const row of rows) {
+    if (row.locked) continue;
     if (!(row.currencyId in exchangeRates)) {
       exchangeRates[row.currencyId] = undefined;
     }
@@ -358,9 +369,7 @@ function handleConfirm() {
     exchangeRates,
   );
   if (missingRate) {
-    message.warning(
-      `请填写 ${missingRate.currencyCode} 兑${drawerProps.value.currencyCode || '流水币别'}的汇率`,
-    );
+    message.warning(missingExchangeRateMessage(missingRate.currencyCode));
     return;
   }
 
@@ -456,14 +465,22 @@ defineExpose({ open: openDrawer });
         </template>
       </Table>
 
-      <div v-if="foreignCurrencies.length" class="exchange-rate-bar">
+      <div v-if="displayCurrencies.length" class="exchange-rate-bar">
         <div
-          v-for="row in foreignCurrencies"
+          v-for="row in displayCurrencies"
           :key="row.currencyId"
           class="exchange-rate-bar__row"
         >
           <span>1 {{ row.currencyCode }} =</span>
           <InputNumber
+            v-if="row.locked"
+            :value="1"
+            :disabled="true"
+            :precision="6"
+            style="width: 140px"
+          />
+          <InputNumber
+            v-else
             v-model:value="exchangeRates[row.currencyId]"
             :min="0"
             :precision="6"
