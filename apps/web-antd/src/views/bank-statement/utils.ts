@@ -31,28 +31,6 @@ export function mapReceiveSettlementDetailItem(
   };
 }
 
-/** 按开票申请结算详情明细 → 只读表格行 */
-export function mapReceiveSettlementInvoiceDetailItem(
-  item: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto,
-) {
-  const orderFee = item.orderFee;
-  const order = item.transportOrder;
-  return {
-    id: item.id,
-    applicationNo: item.applicationNo,
-    invoiceNo: item.invoiceNo,
-    commissionNum: order?.commissionNum,
-    mblNum: order?.mblNum,
-    feeCodeName: orderFee?.feeCode?.cnName,
-    paySide: orderFee?.paySide,
-    currencyCode: orderFee?.currency?.code,
-    amount: orderFee?.amount ?? 0,
-    settledAmount: item.settledAmount,
-    settlementName: orderFee?.settlement?.name,
-    remark: item.remark || '',
-  };
-}
-
 const operatorNameCache = new Map<number, string>();
 
 /** 按 operationId 解析操作人昵称；接口异常时回退到流水接口返回的名称 */

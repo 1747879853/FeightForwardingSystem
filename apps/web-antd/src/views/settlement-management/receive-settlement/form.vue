@@ -2,7 +2,7 @@
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
@@ -51,6 +51,15 @@ function markReceiveSettlementRelatedListsShouldRefresh() {
 
 import AddFeeDrawer from './add-fee-drawer/index.vue';
 import type { SelectedReceiveFee } from './add-fee-drawer/data';
+import {
+  buildExchangeRateInputs,
+  calcDiffAmount,
+  calcOriginalSettledAmount,
+  collectDisplayCurrencies,
+  collectForeignCurrencies,
+  findMissingExchangeRate,
+  missingExchangeRateMessage,
+} from './settlement-amount';
 import BankStatementPicker from './bank-statement-picker/index.vue';
 import {
   formatAmount,
@@ -126,6 +135,14 @@ const creatorUserName = ref('');
 const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementTime = ref<Dayjs>(dayjs());
 const remark = ref('');
+const actualSettled = ref<number | null>(null);
+const exchangeRates = reactive<Record<string, number | undefined>>({});
+const deleteAmountOpen = ref(false);
+const deleteActualSettled = ref<number | null>(null);
+const pendingDeleteItemIds = ref<string[]>([]);
+const addAmountOpen = ref(false);
+const addActualSettled = ref<number | null>(null);
+const pendingAddFees = ref<SelectedReceiveFee[]>([]);
 const items = ref<SettlementItem[]>([]);
 const selectedItemRowKeys = ref<string[]>([]);
 
@@ -179,9 +196,68 @@ const bankStatementCurrencyCode = computed(
   () => bankStatementDetail.value?.currency?.code || '',
 );
 
-const currentSettlementTotal = computed(() =>
-  items.value.reduce((sum, item) => sum + (item.settledAmount || 0), 0),
+const currentSettlementTotal = computed(() => actualSettled.value ?? 0);
+
+const displayCurrencies = computed(() =>
+  collectDisplayCurrencies(
+    items.value,
+    bankStatementDetail.value?.currencyId,
+    bankStatementCurrencyCode.value,
+  ),
 );
+
+const foreignCurrencies = computed(() =>
+  collectForeignCurrencies(
+    items.value,
+    bankStatementDetail.value?.currencyId,
+    bankStatementCurrencyCode.value,
+  ),
+);
+
+const previewOriginalSettledAmount = computed(() =>
+  calcOriginalSettledAmount(
+    items.value,
+    exchangeRates,
+    bankStatementDetail.value?.currencyId,
+    bankStatementCurrencyCode.value,
+  ),
+);
+
+const previewDiffAmount = computed(() =>
+  calcDiffAmount(actualSettled.value, previewOriginalSettledAmount.value),
+);
+
+const pendingAddOriginalSettledAmount = computed(() =>
+  calcOriginalSettledAmount(
+    [...items.value, ...pendingAddFees.value],
+    exchangeRates,
+    bankStatementDetail.value?.currencyId,
+    bankStatementCurrencyCode.value,
+  ),
+);
+
+watch(displayCurrencies, (rows) => {
+  for (const row of rows) {
+    if (row.locked) continue;
+    if (!(row.currencyId in exchangeRates)) {
+      exchangeRates[row.currencyId] = undefined;
+    }
+  }
+});
+
+function rememberExchangeRates(
+  rates: Array<{ currencyId: number | string; exchangeRate?: number }>,
+) {
+  for (const rate of rates) {
+    exchangeRates[String(rate.currencyId)] = rate.exchangeRate;
+  }
+}
+
+function clearExchangeRates() {
+  for (const key of Object.keys(exchangeRates)) {
+    delete exchangeRates[key];
+  }
+}
 
 const remainingSettleAmount = computed(
   () =>
@@ -205,10 +281,21 @@ const foreignItems = computed<SettlementItem[]>(() => {
       const settlementNoText = settlement.settlementNo || settlement.id;
       const creator =
         settlement.creatorUserNickName || settlement.creatorUserName || '';
-      return [
-        ...(settlement.receiveSettlementItems ?? []),
-        ...(settlement.receiveSettlementInvoiceItems ?? []),
-      ].map((item) => mapForeignItem(item, settlementNoText, creator));
+      const feeRows = (settlement.receiveSettlementItems ?? []).map((item) =>
+        mapForeignItem(item, settlementNoText, creator),
+      );
+      const invoiceRows = (settlement.invoiceIssues ?? []).flatMap((issue) =>
+        (issue.items ?? []).map((fee) =>
+          mapForeignInvoiceFee(
+            settlement.id,
+            issue,
+            fee,
+            settlementNoText,
+            creator,
+          ),
+        ),
+      );
+      return [...feeRows, ...invoiceRows];
     });
 });
 
@@ -322,10 +409,7 @@ async function loadBankStatementSummary(id: string) {
     // 与明细表的他单行同源，避免汇总数字和列表对不上
     otherSettledAmount.value = (detail.receiveSettlements ?? [])
       .filter((settlement) => settlement.id !== editId.value)
-      .reduce(
-        (sum, settlement) => sum + (settlement.totalSettledAmount || 0),
-        0,
-      );
+      .reduce((sum, settlement) => sum + (settlement.actualSettled || 0), 0);
   } finally {
     bankStatementSummaryLoading.value = false;
   }
@@ -348,6 +432,9 @@ async function loadEditData() {
       ? dayjs(detail.settlementTime)
       : dayjs();
     remark.value = detail.remark || '';
+    actualSettled.value = detail.actualSettled ?? null;
+    clearExchangeRates();
+    rememberExchangeRates(detail.receiveSettlementExchangeRates ?? []);
     items.value = (detail.receiveSettlementItems || []).map((item) =>
       mapDetailItem(item),
     );
@@ -382,6 +469,7 @@ function mapDetailItem(
     clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
     paySide: orderFee?.paySide,
+    currencyId: orderFee?.currency?.id,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
     remainingAmount: orderFee?.remainingAmount ?? 0,
@@ -391,11 +479,43 @@ function mapDetailItem(
   };
 }
 
+/** 其他核销单里按发票结算的费用行，合在发票开出下，没有结算明细 id */
+function mapForeignInvoiceFee(
+  settlementId: string,
+  issue: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto,
+  fee: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceFeeDto,
+  settlementNoText: string,
+  creatorName: string,
+): SettlementItem {
+  const orderFee = fee.orderFee;
+  const order = fee.transportOrder;
+  const issueKey =
+    issue.id == null || issue.id === '' ? 'unbound' : String(issue.id);
+  return {
+    _key: `foreign_inv_${settlementId}_${issueKey}_${fee.orderFeeId}`,
+    _isCurrent: false,
+    _settlementNo: settlementNoText,
+    _creatorUserName: creatorName,
+    orderFeeId: fee.orderFeeId,
+    transportOrderId: order?.id,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    bookingNum: order?.bookingNum,
+    clientName: order?.client?.name,
+    feeCodeName: orderFee?.feeCode?.cnName,
+    paySide: orderFee?.paySide,
+    currencyId: orderFee?.currency?.id,
+    currencyCode: orderFee?.currency?.code,
+    amount: orderFee?.amount ?? 0,
+    settlementName: orderFee?.settlement?.name,
+    settledAmount: fee.settledAmount,
+    remark: fee.remark || '',
+  };
+}
+
 /** 其他核销单的明细行：主键稳定复用后端 id，避免 computed 重算时表格整片重挂载 */
 function mapForeignItem(
-  item:
-    | ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto
-    | ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
+  item: ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
   settlementNoText: string,
   creatorName: string,
 ): SettlementItem {
@@ -415,6 +535,7 @@ function mapForeignItem(
     clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
     paySide: orderFee?.paySide,
+    currencyId: orderFee?.currency?.id,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
     remainingAmount: orderFee?.remainingAmount,
@@ -436,6 +557,7 @@ function mapSelectedFee(fee: SelectedReceiveFee): SettlementItem {
     clientName: fee.clientName,
     feeCodeName: fee.feeCodeName,
     paySide: fee.paySide,
+    currencyId: fee.currencyId,
     currencyCode: fee.currencyCode,
     amount: fee.amount,
     remainingAmount: fee.remainingAmount,
@@ -493,7 +615,10 @@ function handleOpenAddFee() {
   });
 }
 
-async function handleFeeConfirm(fees: SelectedReceiveFee[]) {
+async function handleFeeConfirm(
+  fees: SelectedReceiveFee[],
+  incomingRates: ReturnType<typeof buildExchangeRateInputs> = [],
+) {
   const existingIds = new Set(items.value.map((item) => item.orderFeeId));
   const incoming = fees.filter((fee) => !existingIds.has(fee.orderFeeId));
   if (incoming.length === 0) {
@@ -501,31 +626,81 @@ async function handleFeeConfirm(fees: SelectedReceiveFee[]) {
     return;
   }
 
+  rememberExchangeRates(incomingRates);
+
   if (isEdit.value && editId.value) {
-    submitting.value = true;
-    try {
-      await addReceiveSettlementItems({
-        id: editId.value,
-        receiveSettlementItems: incoming.map((fee) => ({
-          orderFeeId: fee.orderFeeId,
-          settledAmount: fee.settledAmount,
-          remark: fee.remark || undefined,
-        })),
-      });
-      message.success('添加明细成功');
-      await loadEditData();
-      markReceiveSettlementRelatedListsShouldRefresh();
-      emit('changed');
-    } catch (error: any) {
-      message.error(error.message || '添加明细失败');
-    } finally {
-      submitting.value = false;
+    const currencies = collectForeignCurrencies(
+      [...items.value, ...incoming],
+      bankStatementDetail.value?.currencyId,
+      bankStatementCurrencyCode.value,
+    );
+    const missingRate = findMissingExchangeRate(currencies, exchangeRates);
+    if (missingRate) {
+      message.warning(missingExchangeRateMessage(missingRate.currencyCode));
+      return;
     }
+
+    pendingAddFees.value = incoming;
+    addActualSettled.value = actualSettled.value;
+    addAmountOpen.value = true;
     return;
   }
 
   items.value = [...items.value, ...incoming.map((fee) => mapSelectedFee(fee))];
   selectedItemRowKeys.value = [];
+}
+
+async function confirmAddWithAmount() {
+  if (!editId.value || pendingAddFees.value.length === 0) return;
+  if (addActualSettled.value == null) {
+    message.warning('请填写本次结算');
+    return Promise.reject(new Error('本次结算不能为空'));
+  }
+
+  const currencies = collectForeignCurrencies(
+    [...items.value, ...pendingAddFees.value],
+    bankStatementDetail.value?.currencyId,
+    bankStatementCurrencyCode.value,
+  );
+  const missingRate = findMissingExchangeRate(currencies, exchangeRates);
+  if (missingRate) {
+    message.warning(missingExchangeRateMessage(missingRate.currencyCode));
+    return Promise.reject(new Error('汇率不能为空'));
+  }
+
+  submitting.value = true;
+  try {
+    await addReceiveSettlementItems({
+      id: editId.value,
+      actualSettled: addActualSettled.value,
+      receiveSettlementExchangeRates: buildExchangeRateInputs(
+        currencies,
+        exchangeRates,
+      ),
+      receiveSettlementItems: pendingAddFees.value.map((fee) => ({
+        orderFeeId: fee.orderFeeId,
+        settledAmount: fee.settledAmount,
+        remark: fee.remark || undefined,
+      })),
+    });
+    message.success('添加明细成功');
+    actualSettled.value = addActualSettled.value;
+    addAmountOpen.value = false;
+    pendingAddFees.value = [];
+    await loadEditData();
+    markReceiveSettlementRelatedListsShouldRefresh();
+    emit('changed');
+  } catch (error: any) {
+    message.error(error.message || '添加明细失败');
+    return Promise.reject(error);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function cancelAddWithAmount() {
+  pendingAddFees.value = [];
+  addActualSettled.value = null;
 }
 
 function updateItemRemark(key: string, value: string | undefined) {
@@ -546,6 +721,22 @@ function handleDeleteSelectedItems() {
   );
   if (selectedItems.length === 0) return;
 
+  if (isEdit.value && editId.value) {
+    const itemIds = selectedItems
+      .map((item) => item.id)
+      .filter((id): id is string => !!id);
+    if (itemIds.length !== selectedItems.length) {
+      message.warning('所选明细无法删除，请刷新后重试');
+      return;
+    }
+    if (items.value.length - selectedItems.length > 0) {
+      pendingDeleteItemIds.value = itemIds;
+      deleteActualSettled.value = actualSettled.value;
+      deleteAmountOpen.value = true;
+      return;
+    }
+  }
+
   const content =
     selectedItems.length === 1
       ? `确定要删除费用「${selectedItems[0]?.feeCodeName || '-'}」吗？`
@@ -560,11 +751,6 @@ function handleDeleteSelectedItems() {
         const itemIds = selectedItems
           .map((item) => item.id)
           .filter((id): id is string => !!id);
-        if (itemIds.length !== selectedItems.length) {
-          message.warning('所选明细无法删除，请刷新后重试');
-          return;
-        }
-
         submitting.value = true;
         try {
           await deleteReceiveSettlementItems({
@@ -591,6 +777,45 @@ function handleDeleteSelectedItems() {
       selectedItemRowKeys.value = [];
     },
   });
+}
+
+async function confirmDeleteWithAmount() {
+  if (!editId.value || pendingDeleteItemIds.value.length === 0) return;
+  if (deleteActualSettled.value == null) {
+    message.warning('请填写本次结算');
+    return Promise.reject(new Error('本次结算不能为空'));
+  }
+
+  submitting.value = true;
+  try {
+    await deleteReceiveSettlementItems({
+      id: editId.value,
+      actualSettled: deleteActualSettled.value,
+      receiveSettlementItemIds: pendingDeleteItemIds.value,
+    });
+    message.success('删除明细成功');
+    deleteAmountOpen.value = false;
+    pendingDeleteItemIds.value = [];
+    selectedItemRowKeys.value = [];
+    await loadEditData();
+    markReceiveSettlementRelatedListsShouldRefresh();
+    emit('changed');
+  } catch (error: any) {
+    message.error(error.message || '删除明细失败');
+    return Promise.reject(error);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function validateExchangeRates(): boolean {
+  const missingRate = findMissingExchangeRate(
+    foreignCurrencies.value,
+    exchangeRates,
+  );
+  if (!missingRate) return true;
+  message.warning(missingExchangeRateMessage(missingRate.currencyCode));
+  return false;
 }
 
 function validateForm(): boolean {
@@ -636,14 +861,11 @@ function validateForm(): boolean {
     return false;
   }
 
-  if (bankStatementDetail.value && remainingSettleAmount.value < 0) {
-    const availableAmount =
-      bankStatementDetail.value.amount - otherSettledAmount.value;
-    message.warning(
-      `本单结算合计 ${formatBankAmount(currentSettlementTotal.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
-    );
+  if (items.value.length > 0 && actualSettled.value == null) {
+    message.warning('请填写本次结算');
     return false;
   }
+  if (!validateExchangeRates()) return false;
 
   return true;
 }
@@ -658,6 +880,11 @@ async function handleSave() {
         id: editId.value,
         orgId: orgId.value!,
         settlementTime: settlementTime.value.toISOString(),
+        actualSettled: items.value.length > 0 ? actualSettled.value! : 0,
+        receiveSettlementExchangeRates: buildExchangeRateInputs(
+          foreignCurrencies.value,
+          exchangeRates,
+        ),
         remark: remark.value || undefined,
       });
       message.success('保存成功');
@@ -671,6 +898,11 @@ async function handleSave() {
       orgId: orgId.value!,
       bankStatementId: bankStatementId.value,
       settlementTime: settlementTime.value.toISOString(),
+      actualSettled: actualSettled.value!,
+      receiveSettlementExchangeRates: buildExchangeRateInputs(
+        foreignCurrencies.value,
+        exchangeRates,
+      ),
       remark: remark.value || undefined,
       receiveSettlementItems: items.value.map((item) => ({
         orderFeeId: item.orderFeeId,
@@ -967,6 +1199,48 @@ onMounted(() => {
                 />
               </div>
             </div>
+            <div class="form-item">
+              <div class="form-label">
+                本次结算 <span v-if="!isReadonly" class="text-red-500">*</span>
+              </div>
+              <div class="form-control">
+                <InputNumber
+                  v-model:value="actualSettled"
+                  :disabled="isReadonly"
+                  :precision="2"
+                  style="width: 100%"
+                  :placeholder="
+                    bankStatementCurrencyCode
+                      ? `银行流水币别 ${bankStatementCurrencyCode}`
+                      : '银行流水币别金额'
+                  "
+                />
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">原始金额</div>
+              <div class="form-control">
+                <span class="form-text">
+                  {{
+                    previewOriginalSettledAmount == null
+                      ? '-'
+                      : formatBankAmount(previewOriginalSettledAmount)
+                  }}
+                </span>
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">差值</div>
+              <div class="form-control">
+                <span class="form-text">
+                  {{
+                    previewDiffAmount == null
+                      ? '-'
+                      : formatBankAmount(previewDiffAmount)
+                  }}
+                </span>
+              </div>
+            </div>
             <div v-if="isEdit" class="form-item">
               <div class="form-label">结算状态</div>
               <div class="form-control">
@@ -996,6 +1270,33 @@ onMounted(() => {
                   placeholder="请输入备注"
                 />
               </div>
+            </div>
+          </div>
+          <div v-if="displayCurrencies.length" class="exchange-rate-list">
+            <div
+              v-for="row in displayCurrencies"
+              :key="row.currencyId"
+              class="exchange-rate-list__row"
+            >
+              <span>1 {{ row.currencyCode }} =</span>
+              <InputNumber
+                v-if="row.locked"
+                :value="1"
+                :disabled="true"
+                :precision="6"
+                style="width: 140px"
+              />
+              <InputNumber
+                v-else
+                v-model:value="exchangeRates[row.currencyId]"
+                :disabled="isReadonly"
+                :min="0"
+                :precision="6"
+                :step="0.000001"
+                placeholder="汇率"
+                style="width: 140px"
+              />
+              <span>{{ bankStatementCurrencyCode || '流水币别' }}</span>
             </div>
           </div>
         </Card>
@@ -1094,6 +1395,51 @@ onMounted(() => {
       @select="handleSelectBankStatement"
     />
     <AddFeeDrawer ref="addFeeDrawerRef" @confirm="handleFeeConfirm" />
+    <Modal
+      v-model:open="deleteAmountOpen"
+      title="填写删除后的本次结算"
+      ok-text="确认删除"
+      :confirm-loading="submitting"
+      @ok="confirmDeleteWithAmount"
+    >
+      <p class="delete-amount-hint">
+        删除后这张收费结算还剩明细，请填写删除后的本次结算（{{
+          bankStatementCurrencyCode || '银行流水币别'
+        }}）。
+      </p>
+      <InputNumber
+        v-model:value="deleteActualSettled"
+        :precision="2"
+        style="width: 100%"
+        placeholder="本次结算"
+      />
+    </Modal>
+    <Modal
+      v-model:open="addAmountOpen"
+      title="填写追加后的本次结算"
+      ok-text="确认添加"
+      :confirm-loading="submitting"
+      @ok="confirmAddWithAmount"
+      @cancel="cancelAddWithAmount"
+    >
+      <p class="delete-amount-hint">
+        追加后这张收费结算共
+        {{ items.length + pendingAddFees.length }}
+        条明细，请填写整张单的本次结算（{{
+          bankStatementCurrencyCode || '银行流水币别'
+        }}）。参考原始金额：{{
+          pendingAddOriginalSettledAmount == null
+            ? '-'
+            : formatBankAmount(pendingAddOriginalSettledAmount)
+        }}。
+      </p>
+      <InputNumber
+        v-model:value="addActualSettled"
+        :precision="2"
+        style="width: 100%"
+        placeholder="本次结算"
+      />
+    </Modal>
   </Page>
 </template>
 
@@ -1156,6 +1502,23 @@ onMounted(() => {
 
 .form-grid--compact .form-item--wide {
   grid-column: span 2;
+}
+
+.exchange-rate-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.exchange-rate-list__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-amount-hint {
+  margin-bottom: 12px;
 }
 
 .form-label {

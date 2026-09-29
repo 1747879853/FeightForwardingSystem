@@ -15,6 +15,10 @@ import {
   getUserListByIds,
   getUserSimplePagedList,
 } from '#/api/system/user-admin';
+import {
+  formatUserDefaultCompanyDeptLabel,
+  loadAllUserOrganizations,
+} from '#/composables/use-all-user-org';
 
 import { userSimpleListCache } from './cache/user-simple-cache';
 import { useCachedSelect } from './use-cached-select';
@@ -49,6 +53,11 @@ interface Props {
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
+  /**
+   * 下拉第二行显示该用户默认公司 / 部门。
+   * 读取全部用户组织缓存；未加载时先显示英文名，缓存到达后刷新。
+   */
+  showDefaultOrg?: boolean;
   /** 已选中的用户对象数组（用于编辑时回显） */
   selectedItems?: SystemUserAdminApi.UserSimpleDto[];
   /** value 字段名，默认 'id' */
@@ -61,6 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
   useRichOptionLabel: false,
   pageSize: 20,
   placeholder: undefined,
+  showDefaultOrg: false,
   selectedItems: () => [],
   companyIds: undefined,
   permissions: undefined,
@@ -114,12 +124,20 @@ const mapUserToOption = (user: SystemUserAdminApi.UserSimpleDto) => {
     userName && nickName && userName !== nickName
       ? `${userName} / ${nickName}`
       : userName || nickName || selectedLabel;
+  const orgLine = props.showDefaultOrg
+    ? formatUserDefaultCompanyDeptLabel(
+        (user as Record<string, unknown>)[props.valueKey] as
+          | number
+          | string
+          | undefined,
+      )
+    : '';
 
   const option: OptionItem = {
     enName,
     label: selectedLabel,
     line1,
-    line2: enName,
+    line2: orgLine || enName,
     nickName,
     userName,
     value: (user as Record<string, unknown>)[props.valueKey] as number | string,
@@ -180,6 +198,21 @@ const {
   selectedItemsRef,
   selectedValuesRef: modelValue,
 });
+
+watch(
+  () => props.showDefaultOrg,
+  (enabled) => {
+    if (enabled) void loadAllUserOrganizations();
+  },
+  { immediate: true },
+);
+
+function handleCachedDropdownVisibleChangeWithOrg(visible: boolean) {
+  if (visible && props.showDefaultOrg) {
+    void loadAllUserOrganizations();
+  }
+  handleCachedDropdownVisibleChange(visible);
+}
 
 const pagedExtraParams = computed(() => ({
   permissionsKey: (permissionsRef.value ?? []).filter(Boolean).join('|'),
@@ -403,7 +436,7 @@ defineExpose({
     :search-value="cachedSearchValue"
     class="biz-select w-full"
     @update:value="handleCachedChange"
-    @dropdown-visible-change="handleCachedDropdownVisibleChange"
+    @dropdown-visible-change="handleCachedDropdownVisibleChangeWithOrg"
     @search="handleCachedSearch"
   >
     <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->

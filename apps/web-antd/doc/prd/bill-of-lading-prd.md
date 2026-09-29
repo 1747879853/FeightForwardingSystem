@@ -12,7 +12,7 @@ reference: apps/web-antd/doc/modules/bill-of-lading/index.md、apps/web-antd/doc
 
 > **模块名称：** 提单管理、提单签出审核  
 > **页面路径：** `/bill-of-lading`、`/audit-approval/bill-of-lading-review`  
-> **菜单入口：** 操作管理 → 提单管理；审核审批 → 提单签出审核  
+> **菜单入口：** 提单管理；审核审批 → 提单签出审核  
 > **权限标识：** 查看 `Admin.BillOfLading.Get`；审核 `Admin.BillOfLading.Audit`；流转见第 2 节  
 > **文档版本：** v1.0  
 > **更新日期：** 2026-09-27  

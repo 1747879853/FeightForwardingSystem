@@ -1,6 +1,6 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
-| bill-of-lading | `/bill-of-lading` | 操作管理 | 提单检索、分组、白底紧凑数量卡（超期只标红数字，待我审核以「进入」跳审核页）、签入/换签/扣单/签出、审核提交；已驳回悬浮和详情顶部直接显示列表、详情带回的驳回原因，不另要审核权限；双击详情为三个 Tab：基础信息按三列排布、操作记录、只读业务附件（无海出查看权限则隐藏），底部操作跨 Tab 常驻。 | [提单管理](./modules/bill-of-lading/index.md) | 2026-09-27 |
+| bill-of-lading | `/bill-of-lading` | 提单管理 | 提单检索、分组、白底紧凑数量卡（超期只标红数字，待我审核以「进入」跳审核页）、签入/换签/扣单/签出、审核提交；已驳回悬浮和详情顶部直接显示列表、详情带回的驳回原因，不另要审核权限；双击详情为三个 Tab：基础信息按三列排布、操作记录、只读业务附件（无海出查看权限则隐藏），底部操作跨 Tab 常驻。侧边栏为一级菜单。 | [提单管理](./modules/bill-of-lading/index.md) | 2026-09-28 |
 | audit-approval | `/audit-approval/bill-of-lading-review` | 审核审批 | 批次列表、六部分审核依据、部分审核和通过后驳回；批次状态与我的审核状态合成一列，悬浮查看本人状态和审批流程；申请放单的提单状态与我的审核状态同样合成一列，悬浮查看本人审核状态、驳回原因和本批审批流程；详情摘要含本批未收和客户欠款，压单行用淡橙底并在行首标红；申请放单的通过和驳回固定在表下，页签数量为浅底胶囊；各表占满剩余高度，滚动时表头和合计不动；应收欠费未到期天数绿色、表上为折算后本位币，悬浮金额以及申请放单、压单、后续新单、历史异常和摘要中的未收金额可查看折算前原币，并在表底按本位币合计；申请放单、压单、后续新单按提单行展示超期证明。 | [提单签出审核](./modules/audit-approval/bill-of-lading-review.md) | 2026-09-27 |
 | mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情及摄像头列表选择认领、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型分区支持多图，进入详情获取位置和中文地址、同任务上传复用且后台返回刷新，新图片通过隐藏的 lime-painter 画板写入上传人、时间及中文地址水印；详情监装堆场可一键导航（腾讯地理编码 + 微信 openLocation）；微信静默登录 + 手机号绑定，失效会话同步清理并回登录页；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通。默认 `pnpm build` 不带该包。列表默认按预计到货时间倒序。冷启动与从后台回到前台自动检查小程序更新，新版本由用户确认重启。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-27 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
@@ -45,11 +45,11 @@
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-09-20 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-09-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-09-19 |
-| fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；选费支持编号/客户对账/委托单位/开船日期/销售/操作/收付类型；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-09-20 |
+| fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；按费用选费币别可清空，须填本次结算和跨币别汇率（同币别固定为 1），超流水只提示不拦截，追加明细时重填整张单本次结算；发票结算选票为发票开出到费用，新建/追加传发票开出加费用并必填本次结算；编辑按发票开出分组，删除传发票开出和费用；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-09-28 |
 | settlement-management | `/settlement-management/payment-settlement` | 财务管理 | 付费结算列表与模块实现说明（筛选、锁定、权限、代码结构）。 | [付费结算](./modules/settlement-management/payment-settlement.md) | 2026-09-20 |
 | settlement-management | `/settlement-management/payment-settlement/edit/:id` | 财务管理 | 付费结算编辑：按「付费申请+原币」扁平行对接 `*ByCurrencyAsync`；汇率由后端从申请快照；结算对象与币别随第一张申请锁定；表单逻辑拆 composable。 | [付费结算编辑](./modules/settlement-management/payment-settlement-id-edit.md) | 2026-09-20 |
 | settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名；支持付款方/银行/核销状态分组，删除后同步刷新分组条数。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-09-08 |
-| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；锁定后基础信息纯文本只读；收费核销在抽屉完成；按费用选费支持编号、客户对账与收付类型等检索，业务行可全选当前页费用明细。编辑页固定打开时的流水，切页不重载。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-24 |
+| settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度；有收费结算时币别和付款方只读，流水金额在部分核销后仍可改；按费用核销可选其他币别并填写本次结算、汇率；按发票核销选票为发票开出到费用并必填本次结算；关联核销可展开发票开出到费用；抽屉中的发票结算按发票开出分组。编辑页固定打开时的流水，切页不重载。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-28 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-09-08 |
 | settlement-management | `/settlement-management/input-invoice` | 财务管理 | 进项发票台账：检索、分组、手动拉取、双击进详情；详情固定打开时的发票，切页不重拉；拉取成功后同步刷新分组条数。付费申请可从本台账勾选回填。 | [进项发票列表](./modules/settlement-management/input-invoice.md) | 2026-09-24 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底；首查稳定带上费用审核状态默认「未处理」；审核成功后同步刷新分组条数。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-09-20 |
@@ -81,7 +81,7 @@
 | basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板：列表 + 编辑页；明细表 flex 填高，小屏可滚全行；未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-20 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。编辑页缓存后仍固定打开时的用户。 | [用户管理](./modules/system/user.md) | 2026-09-24 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
-| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-09-20 |
+| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-09-29 |
 | system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-20 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken；新增银行账户时账户名称默认带出公司名称。 | [部门管理](./modules/system/dept.md) | 2026-09-14 |
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-09-21 |

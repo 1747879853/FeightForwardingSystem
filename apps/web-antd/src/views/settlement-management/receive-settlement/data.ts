@@ -40,11 +40,31 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       minWidth: 170,
     },
     {
-      field: 'totalSettledAmount',
-      title: '结算净额',
+      field: 'actualSettled',
+      title: '本次结算',
       width: 130,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),
+    },
+    {
+      field: 'originalSettledAmount',
+      title: '原始结算金额',
+      width: 140,
+      align: 'right',
+      formatter: ({ cellValue }) =>
+        cellValue === undefined || cellValue === null
+          ? '-'
+          : formatAmount(cellValue),
+    },
+    {
+      field: 'diffAmount',
+      title: '差值',
+      width: 120,
+      align: 'right',
+      formatter: ({ cellValue }) =>
+        cellValue === undefined || cellValue === null
+          ? '-'
+          : formatAmount(cellValue),
     },
     {
       field: 'itemCount',

@@ -13,27 +13,13 @@ const routes: RouteRecordRaw[] = [
   {
     meta: {
       icon: 'streamline-freehand-color:office-work-wireless',
-      order: 195,
+      order: 196,
       title: '操作管理',
-      authority: abpPageAuthority([
-        'Admin.SeaExport',
-        'Admin.BillOfLading.Get',
-      ]),
+      authority: abpPageAuthority('Admin.SeaExport'),
     },
     name: 'OperationManagement',
     path: '/operation-management',
     children: [
-      {
-        path: '/bill-of-lading',
-        name: 'BillOfLadingList',
-        meta: {
-          title: '提单管理',
-          icon: 'lucide:files',
-          keepAlive: true,
-          authority: abpPageAuthority('Admin.BillOfLading.Get'),
-        },
-        component: () => import('#/views/bill-of-lading/index.vue'),
-      },
       {
         meta: {
           icon: SeaExportShipIcon,

@@ -4,7 +4,7 @@ import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/rece
 import { formatAmount } from '../form-data';
 
 export interface AddInvoiceDrawerProps {
-  /** 收费核销ID（追加时传入，排除已关联的开票明细） */
+  /** 收费核销ID（追加时传入，排除本单已结过的发票开出 + 费用） */
   receiveSettlementId?: string;
   /** 结算对象ID（随银行流水带出） */
   settlementId?: string;
@@ -14,24 +14,28 @@ export interface AddInvoiceDrawerProps {
   currencyId?: number;
   /** 币别代码 */
   currencyCode?: string;
-  /** 已存在的开票明细ID列表（用于禁用勾选） */
+  /** 已存在的「发票开出 + 费用」键，格式 invoiceIssueId::orderFeeId */
   selectedItemIds?: string[];
 }
 
-/** 确认选择后返回给父组件的开票明细 */
+/** 确认选择后返回给父组件的费用行 */
 export interface SelectedInvoiceFee {
-  invoiceApplicationId: string;
-  invoiceApplicationItemId: string;
+  invoiceIssueId: string;
   orderFeeId: string;
   applicationNo?: string;
   invoiceNo?: string;
+  invoiceIssueTime?: string;
   appliedAmount?: number;
+  exchangeRate?: null | number;
   feeCodeName?: string;
   currencyCode?: string;
   paySide?: number;
   amount?: number;
   invoicedAmount?: number;
+  /** 用户录入的本次结算金额（费用原币） */
   settledAmount: number;
+  /** 该费用历史累计已结算金额 */
+  historySettledAmount?: number;
   invoiceSettleableAmount?: number;
   settlementName?: string;
   transportOrderId?: string;
@@ -42,9 +46,15 @@ export interface SelectedInvoiceFee {
   remark?: string;
 }
 
-export type InvoiceGroup = ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto;
+export type InvoiceGroup = ReceiveSettlementAdminApi.InvoiceIssueSettleGroupDto;
+export type InvoiceItem = ReceiveSettlementAdminApi.InvoiceIssueSettleItemDto;
 
-/** 搜索区标签加宽，避免「开票申请单号」换行 */
+/** 选票行主键：发票开出 + 费用 */
+export function invoiceIssueFeeKey(invoiceIssueId: string, orderFeeId: string) {
+  return `${invoiceIssueId}::${orderFeeId}`;
+}
+
+/** 搜索区标签加宽，避免「开出单号」换行 */
 const searchFieldCommon = {
   labelWidth: 96,
   labelClass: 'whitespace-nowrap',
@@ -78,9 +88,9 @@ export function useAddInvoiceSearchSchema(): VbenFormSchema[] {
       ...searchFieldCommon,
       component: 'Input',
       fieldName: 'applicationNo',
-      label: '开票申请单号',
+      label: '开出单号',
       componentProps: {
-        placeholder: '请输入开票申请单号',
+        placeholder: '请输入开出单号',
         allowClear: true,
       },
     },
@@ -97,8 +107,8 @@ export function useAddInvoiceSearchSchema(): VbenFormSchema[] {
     {
       ...searchFieldCommon,
       component: 'RangePicker',
-      fieldName: 'applyTimeRange',
-      label: '申请时间',
+      fieldName: 'invoiceIssueTimeRange',
+      label: '开票时间',
       componentProps: {
         placeholder: ['开始时间', '结束时间'],
         allowClear: true,
@@ -110,13 +120,14 @@ export function useAddInvoiceSearchSchema(): VbenFormSchema[] {
 
 export function buildInvoiceGroupRow(group: InvoiceGroup) {
   return {
-    key: group.invoiceApplicationId,
-    id: group.invoiceApplicationId,
+    key: group.invoiceIssueId,
+    id: group.invoiceIssueId,
+    invoiceIssueId: group.invoiceIssueId,
     applicationNo: group.applicationNo,
     invoiceNo: group.invoiceNo,
     settlementName: group.settlement?.name,
     currencyCode: group.currency?.code,
-    applyTime: group.applyTime,
+    invoiceIssueTime: group.invoiceIssueTime,
     itemCount: group.items?.length ?? 0,
     totalSettleableAmount: (group.items ?? []).reduce(
       (sum, item) => sum + (item.invoiceSettleableAmount || 0),
@@ -127,12 +138,12 @@ export function buildInvoiceGroupRow(group: InvoiceGroup) {
   };
 }
 
-/** NestedDataTable 外层列（开票申请） */
+/** NestedDataTable 外层列（发票开出） */
 export const invoiceGroupColumns = [
   {
     dataIndex: 'applicationNo',
     key: 'applicationNo',
-    title: '开票申请单号',
+    title: '开出单号',
     width: 170,
   },
   {
@@ -154,9 +165,9 @@ export const invoiceGroupColumns = [
     width: 80,
   },
   {
-    dataIndex: 'applyTime',
-    key: 'applyTime',
-    title: '申请时间',
+    dataIndex: 'invoiceIssueTime',
+    key: 'invoiceIssueTime',
+    title: '开票时间',
     width: 160,
   },
   {
@@ -175,7 +186,7 @@ export const invoiceGroupColumns = [
   },
 ];
 
-/** NestedDataTable 内层列（开票费用明细） */
+/** NestedDataTable 内层列（费用） */
 export const invoiceItemColumns = [
   {
     key: 'checkbox',
@@ -223,20 +234,34 @@ export const invoiceItemColumns = [
   {
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
-    title: '本单开票额',
+    title: '开票金额',
     width: 110,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    title: '汇率',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'historySettledAmount',
+    key: 'historySettledAmount',
+    title: '累计已结算',
+    width: 120,
     align: 'right' as const,
   },
   {
     dataIndex: 'invoiceSettleableAmount',
     key: 'invoiceSettleableAmount',
-    title: '发票可结算余额',
-    width: 130,
+    title: '剩余可结算',
+    width: 120,
     align: 'right' as const,
   },
   {
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
+    dataIndex: 'inputSettledAmount',
+    key: 'inputSettledAmount',
     title: '本次结算金额',
     width: 150,
   },

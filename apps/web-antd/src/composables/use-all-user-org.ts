@@ -205,13 +205,40 @@ export function getUserOrgOptions(userId?: null | number): UserOrgOption[] {
     .filter((x): x is UserOrgOption => x !== null);
 }
 
+/** 某用户的默认组织路径（default=true，否则取第一条） */
+function getUserDefaultOrgPath(userId?: null | number | string) {
+  const orgs = getUserOrganizations(userId);
+  const target = orgs.find((o) => o.default) ?? orgs[0];
+  return target?.oneOrganizationPath;
+}
+
 /** 某用户的默认组织 id（对应用户 DefaultOrgId），用于表单默认值 */
 export function getUserDefaultOrgId(
   userId?: null | number | string,
 ): number | undefined {
-  const orgs = getUserOrganizations(userId);
-  const target = orgs.find((o) => o.default) ?? orgs[0];
-  return pickDirectOrgNode(target?.oneOrganizationPath)?.id;
+  return pickDirectOrgNode(getUserDefaultOrgPath(userId))?.id;
+}
+
+/**
+ * 默认组织的「公司 / 部门」展示文案。
+ * 公司取路径上第一个 isCompany 节点，部门取路径末端。
+ * 末端就是公司时只显示公司；没有组织时返回空串。
+ */
+export function formatUserDefaultCompanyDeptLabel(
+  userId?: null | number | string,
+): string {
+  const path = getUserDefaultOrgPath(userId);
+  if (!path?.length) return '';
+  const company = pickCompanyNodeFromPath(path);
+  const department = path[path.length - 1];
+  const companyLabel = formatOrgNodeLabel(company);
+  const departmentLabel = formatOrgNodeLabel(department);
+  const sameNode = String(department?.id ?? '') === String(company?.id ?? '');
+  if (!departmentLabel || sameNode) {
+    return companyLabel || departmentLabel;
+  }
+  if (!companyLabel) return departmentLabel;
+  return `${companyLabel} / ${departmentLabel}`;
 }
 
 /** 取某用户某直属组织所在的完整组织路径（从顶到底） */

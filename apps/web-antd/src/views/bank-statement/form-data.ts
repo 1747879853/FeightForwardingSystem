@@ -273,12 +273,30 @@ export function useReceiveSettlementColumns() {
       customRender: ({ text }: { text: string }) => formatDateTime(text),
     },
     {
-      key: 'totalSettledAmount',
-      dataIndex: 'totalSettledAmount',
-      title: '结算净额',
-      width: 100,
+      key: 'actualSettled',
+      dataIndex: 'actualSettled',
+      title: '本次结算',
+      width: 110,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      key: 'originalSettledAmount',
+      dataIndex: 'originalSettledAmount',
+      title: '原始结算金额',
+      width: 120,
+      align: 'right' as const,
+      customRender: ({ text }: { text: null | number }) =>
+        text === undefined || text === null ? '-' : formatAmount(text),
+    },
+    {
+      key: 'diffAmount',
+      dataIndex: 'diffAmount',
+      title: '差值',
+      width: 100,
+      align: 'right' as const,
+      customRender: ({ text }: { text: null | number }) =>
+        text === undefined || text === null ? '-' : formatAmount(text),
     },
     {
       key: 'itemCount',

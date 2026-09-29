@@ -38,7 +38,6 @@ import {
   addBankStatement,
   editBankStatement,
   getBankStatementDetail,
-  getBankStatementReceiveSettlementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -102,6 +101,11 @@ const writeOffStatus = ref<
   BankStatementAdminApi.BankStatementWriteOffStatus | undefined
 >(undefined);
 const settledAmount = ref(0);
+const hasReceiveSettlements = ref(false);
+/** 详情内嵌收费结算（含按发票 invoiceIssues），供关联列表展开 */
+const detailReceiveSettlements = ref<
+  BankStatementAdminApi.BankStatementReceiveSettlementDto[]
+>([]);
 const creatorUserName = ref('');
 
 let rowKeyCounter = 0;
@@ -135,6 +139,15 @@ const isPendingWriteOff = computed(
 );
 const canEditStatement = computed(
   () => !isEdit.value || (canEdit.value && isPendingWriteOff.value),
+);
+/** 有收费结算时仍可改金额；币别和付款方单独锁 */
+const canEditAmount = computed(
+  () =>
+    !isEdit.value ||
+    (canEdit.value && (isPendingWriteOff.value || hasReceiveSettlements.value)),
+);
+const canEditCurrencyAndPayer = computed(
+  () => canEditStatement.value && !hasReceiveSettlements.value,
 );
 const canCreateSettlement = computed(
   () =>
@@ -185,7 +198,7 @@ const formFingerprint = computed(() =>
 
 const hasUnsavedChanges = computed(
   () =>
-    canEditStatement.value &&
+    canEditAmount.value &&
     Boolean(savedFormFingerprint.value) &&
     formFingerprint.value !== savedFormFingerprint.value,
 );
@@ -274,23 +287,6 @@ watch(clientInvoiceBankId, (value) => {
   if (value) counterpartyBankNotice.value = false;
 });
 
-async function loadOtherSettledAmount() {
-  if (!editId.value) {
-    settledAmount.value = 0;
-    return;
-  }
-
-  const res = await getBankStatementReceiveSettlementPagedList({
-    bankStatementId: editId.value,
-    pageIndex: 1,
-    pageSize: 500,
-  });
-  settledAmount.value = (res.items ?? []).reduce(
-    (sum, item) => sum + (item.totalSettledAmount || 0),
-    0,
-  );
-}
-
 async function loadEditData() {
   if (!editId.value) return;
   pageLoading.value = true;
@@ -321,6 +317,8 @@ async function loadEditData() {
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
     settledAmount.value = detail.settledAmount ?? 0;
+    detailReceiveSettlements.value = detail.receiveSettlements ?? [];
+    hasReceiveSettlements.value = detailReceiveSettlements.value.length > 0;
     creatorUserName.value = detail.creatorUserName || '';
     orgDisplayName.value = formatDetailOrgPathLabel(detail.orgs) || '-';
     orgBankAccountDisplay.value = formatBankLabel(detail.orgBankAccount);
@@ -332,7 +330,6 @@ async function loadEditData() {
       makeRowKey,
     );
 
-    await loadOtherSettledAmount();
     await settlementPanelRef.value?.refresh();
     await nextTick();
     savedFormFingerprint.value = formFingerprint.value;
@@ -393,7 +390,7 @@ function openEditSettlement(
 }
 
 async function handleSave(): Promise<boolean> {
-  if (!canEditStatement.value) {
+  if (!canEditAmount.value) {
     message.warning('仅待核销状态的银行流水可以编辑');
     return false;
   }
@@ -542,7 +539,7 @@ onUnmounted(() => {
       <Space>
         <Button @click="handleBack">返回</Button>
         <Button
-          v-if="canEditStatement"
+          v-if="canEditAmount"
           type="primary"
           :loading="submitting"
           :disabled="!hasUnsavedChanges"
@@ -563,7 +560,7 @@ onUnmounted(() => {
           <template #title>
             <div class="form-panel-card__title">
               <span>流水基础信息</span>
-              <span v-if="isEdit && !canEditStatement" class="locked-state">
+              <span v-if="isEdit && !canEditAmount" class="locked-state">
                 <IconifyIcon icon="mdi:lock-outline" class="size-4" />
                 已锁定
               </span>
@@ -593,10 +590,12 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   付款方
-                  <span v-if="canEditStatement" class="text-red-500">*</span>
+                  <span v-if="canEditCurrencyAndPayer" class="text-red-500"
+                    >*</span
+                  >
                 </div>
                 <ClientSelect
-                  v-if="canEditStatement"
+                  v-if="canEditCurrencyAndPayer"
                   v-model="settlementId"
                   :selected-items="settlementSelectedItems"
                   placeholder="请选择付款方"
@@ -606,6 +605,12 @@ onUnmounted(() => {
                 <span v-else class="form-text">{{
                   settlementDisplayName
                 }}</span>
+                <p
+                  v-if="isEdit && hasReceiveSettlements"
+                  class="field-lock-hint"
+                >
+                  已有收费结算，要改请先删除收费结算
+                </p>
               </div>
 
               <div class="form-field">
@@ -625,25 +630,33 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   币别
-                  <span v-if="canEditStatement" class="text-red-500">*</span>
+                  <span v-if="canEditCurrencyAndPayer" class="text-red-500"
+                    >*</span
+                  >
                 </div>
                 <CurrencySelect
-                  v-if="canEditStatement"
+                  v-if="canEditCurrencyAndPayer"
                   v-model="currencyId"
                   placeholder="请选择币别"
                   allow-clear
                   class="w-full"
                 />
                 <span v-else class="form-text">{{ currencyDisplayName }}</span>
+                <p
+                  v-if="isEdit && hasReceiveSettlements"
+                  class="field-lock-hint"
+                >
+                  已有收费结算，要改请先删除收费结算
+                </p>
               </div>
 
               <div class="form-field form-field--money">
                 <div class="form-label">
                   总金额
-                  <span v-if="canEditStatement" class="text-red-500">*</span>
+                  <span v-if="canEditAmount" class="text-red-500">*</span>
                 </div>
                 <InputNumber
-                  v-if="canEditStatement"
+                  v-if="canEditAmount"
                   v-model:value="amount"
                   :min="0"
                   :precision="2"
@@ -825,6 +838,7 @@ onUnmounted(() => {
           :bank-statement-id="editId || ''"
           :can-create-settlement="canCreateSettlement"
           :currency-code="savedCurrencyCode"
+          :detail-receive-settlements="detailReceiveSettlements"
           :remaining-amount="remainingAmount"
           @create="requestCreateSettlement"
           @edit="openEditSettlement"
@@ -1090,6 +1104,13 @@ onUnmounted(() => {
   line-height: 32px;
   color: #202936;
   overflow-wrap: anywhere;
+}
+
+.field-lock-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8c8c8c;
 }
 
 .form-text--money {

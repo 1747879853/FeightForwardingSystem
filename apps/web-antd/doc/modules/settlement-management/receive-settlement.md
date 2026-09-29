@@ -2,7 +2,7 @@
 title: 收费核销
 module: 费用管理
 author: Cursor Agent
-last_updated: 2026-09-20
+last_updated: 2026-09-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,10 +17,10 @@ last_updated: 2026-09-20
 - **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费核销。
 - **新建收费核销：** 可从收费核销列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费核销”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。新建须选择「归属组织」（本人直属组织，默认本人默认组织），提交 `AddAsync` / `AddByInvoiceApplicationAsync` 时必传 `orgId`。独立页新建成功后 `replace` 到对应编辑页并关闭新建页签；银行流水抽屉内嵌新建成功只关抽屉，不改顶栏页签。
 - **新建入口（悬浮下拉选类型）：** 收费核销列表与「银行流水」Tab 的「新建」均为鼠标悬浮下拉，可选「费用结算 / 发票结算」；主按钮点击默认费用结算。银行流水 Tab 选中一条流水后按类型分别跳 `/add` 或 `/add-by-invoice` 并带 `bankStatementId`。
-- **新建发票结算（按开票申请，type=1）：** 列表工具栏「新建」下拉选「发票结算」进入 `/add-by-invoice`。点击「添加明细」在抽屉内按开票申请分组（一组 = 一张已开票申请）展开勾选费用明细，展示收付方向、本单开票额、发票可结算余额，录入本次结算金额；「仅显示可结算」开关对应 `onlySettleable`。结算净额按收付方向计算（应付计负）。编辑走 `/edit-by-invoice/:id`，追加/删除明细分别调用 `AddItemsByInvoiceApplicationAsync` / `DeleteInvoiceItemsAsync`。列表按 `type` 双击进入对应表单，并新增「结算类型」列。添加开票结算明细抽屉改用 `NestedDataTable`，表格上方对齐付费申请选费弹窗展示「已选 N 笔」及按币别结算净额；查询按钮紧跟搜索区靠右，「确认添加」在抽屉右下角。
-- **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、**币别（只读，与流水一致）**、编号（委托编号/主提单号）、客户对账（对账单号模糊）、委托单位、开船日期、销售、操作、收付类型拉取可结算费用；收付类型默认「应收」，可改为应付或全部。业务行仍分列展示委托编号、主提单号；展开费用明细展示收付类别。确认后勾选费用并录入本次结算金额。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。抽屉表格同样支持拖拽调列宽。
-- **编辑收费核销：** 未锁定单据可修改结算时间和备注；主表保存 `EditAsync` 携带 `id` / `orgId` / `settlementTime` / `remark`（组织只读回传）；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
-- **明细表展示全流水核销情况：** 「结算明细」（发票结算页为「开票结算明细」）除本单明细外，还会追加同一银行流水下其他核销单的明细行（含他人创建的），来源是 `BankStatement/DetailAsync` 内嵌的 `receiveSettlements`。表头新增「核销单号」「创建人」两列，费用名称后展示「收付类别」；本单行打「本单」Tag，他单行灰底只读——不可勾选、不可改金额与备注，仅供核对这笔流水已被谁核销掉多少；卡片标题右侧提示他单明细条数。
+- **新建发票结算（按开票申请，type=1）：** 列表工具栏「新建」下拉选「发票结算」进入 `/add-by-invoice`。点击「添加明细」在抽屉内按**发票开出**分组（一组 = 一张发票开出）展开勾选费用；同一费用在一张发票开出下只显示一行，开票金额为合计。搜索为开出单号、发票号、开票时间；拉取 `GetInvoiceIssueGroupForSettlementAsync`，默认带银行流水结算对象与币别。费用行展示收付、开票金额、汇率、累计已结算、剩余可结算，录入本次结算金额（费用原币）。同一费用出现在多张发票开出下时按费用共享额度校验。结算信息「本次结算」必填（流水币别），未手改时按 `round(本次金额 × 汇率, 2)` 收正付负给出参考值。新建/追加提交每行 `invoiceIssueId + orderFeeId + settledAmount`，并带 `actualSettled`。编辑走 `/edit-by-invoice/:id`。已保存明细仍按「发票开出 → 费用」展示；删除传 `invoiceIssueId` + `orderFeeId`。追加调用 `AddItemsByInvoiceApplicationAsync` 时覆盖整张单本次结算。银行流水「按发票核销」建单面板同一套选票与本次结算。
+- **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、币别（可选，清空则不限）、编号（委托编号/主提单号）、客户对账（对账单号模糊）、委托单位、开船日期、销售、操作、收付类型拉取可结算费用；收付类型默认「应收」，可改为应付或全部。业务行仍分列展示委托编号、主提单号；展开费用明细展示收付类别。费用行上的金额是该费用原币。与流水币别不同时，确认前填写汇率；与流水同币别显示汇率 1 且不可改。结算信息里的「本次结算」是银行流水币别，新增、追加、保存都要带上。编辑态追加明细时弹窗确认整张单的本次结算。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。删到还剩明细时，弹窗填写删除后的本次结算；删光则不传。抽屉表格同样支持拖拽调列宽。
+- **编辑收费核销：** 未锁定单据可修改结算时间、备注和本次结算；与流水不同的费用币别可改汇率，同币别固定为 1。主表保存 `EditAsync` 携带 `id` / `orgId` / `settlementTime` / `actualSettled` / `receiveSettlementExchangeRates` / `remark`（组织只读回传）；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。列表「本次结算」读 `actualSettled`，并展示原始结算金额、差值。页面会现场按明细原币 × 汇率算出参考原始金额与差值，只提示不拦截。按费用结算时本次结算超过流水剩余可结算只标红提示，不拦截保存。
+- **明细表展示全流水核销情况：** 「结算明细」（发票结算页为「开票结算明细」）除本单明细外，还会追加同一银行流水下其他核销单的明细（含他人创建的），来源是 `BankStatement/DetailAsync` 内嵌的 `receiveSettlements`。按费用核销仍是平表，他单发票行从 `invoiceIssues` 摊平。发票结算编辑页改成两层：本单和他单的发票开出各成一组，同一流水上的按费用核销收成一组只读行。本单打「本单」Tag，他单不可勾选，卡片标题右侧提示他单明细条数。
 - **锁定与解锁：** 编辑页顶部提供锁定/解锁按钮；锁定后隐藏保存、删除、添加明细等编辑入口。
 - **银行流水联动：** 银行流水编辑页展示关联收费核销子表，可搜索结算单号、快捷新建收费核销，也可双击行进入收费核销页。
 
@@ -36,12 +36,14 @@ last_updated: 2026-09-20
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **银行流水** | 收款实际到账的流水记录，是收费核销主表必填归属。 | **银行流水**<br/>收费核销：`BankStatement/GetPagedListAsync`、`DetailAsync`（按当前用户操作人权限过滤，含列表筛选下拉 `BankStatementSelect`） | 列表查询区通过 `BankStatementSelect` 筛选；新建表单 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计），三个数字与明细表的他单行同源，均由 `DetailAsync` 一次返回。 | 新建必填；已有结算明细后不能更换。保存时本单合计不得超过流水剩余可结算金额。 |
+| **银行流水** | 收款实际到账的流水记录，是收费核销主表必填归属。 | **银行流水**<br/>收费核销：`BankStatement/GetPagedListAsync`、`DetailAsync`（按当前用户操作人权限过滤，含列表筛选下拉 `BankStatementSelect`） | 列表查询区通过 `BankStatementSelect` 筛选；新建表单 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计），三个数字与明细表的他单行同源，均由 `DetailAsync` 一次返回。 | 新建必填；已有结算明细后不能更换。按费用结算时本次结算超过流水剩余可结算只标红提示，不拦截保存。 |
 | **归属组织** | 收费核销单据所属组织，写入实体 `OrgId`。 | **收费核销**<br/>`ReceiveSettlementAdmin/AddAsync`、`AddByInvoiceApplicationAsync`、`EditAsync`；选项来自本人直属组织 `MyOrgSelect` / `getMyOrgOptions` | 新建默认 `getMyDefaultOrgId()`；编辑态只读回显 `DetailAsync.orgId` 对应组织路径；`EditAsync` 必传 `orgId`（页面不可改，原样回传）。 | **新建/编辑保存均必填**（`orgId` 空或 `<= 0` 后端报「所属组织不能为空。」）；必须是当前登录人直属组织（完全相等，不按父子），否则报「所选组织不在数据所属人(本人)所属组织范围内。」 |
 | **结算时间** | 本次收费核销发生时间。 | **收费核销**<br/>`ReceiveSettlementAdmin/AddAsync`、`EditAsync` | 新建默认当前时间，可手动调整；编辑保存与 `orgId`、备注一并提交。 | 必填；锁定后只读。 |
-| **结算明细** | 本次结算关联的订单费用集合。 | **收费核销**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细；结算对象与币别均随银行流水固定，抽屉内不可修改；查询传 `currencyId` 与流水一致。检索支持编号 `keyword`、委托单位、开船日期、销售、操作、收付类型（默认应收）。明细含 `paySide` 收付类别。 | 新建不能为空；费用不可重复；本次结算金额必须大于 0 且不超过剩余额度。 |
+| **结算明细** | 本次结算关联的订单费用集合。 | **收费核销**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细；结算对象随银行流水固定；币别筛选可清空，不传则返回全部币别。检索支持编号 `keyword`、委托单位、开船日期、销售、操作、收付类型（默认应收）。明细含 `paySide` 收付类别。编辑追加明细时弹窗填写追加后整张单的本次结算。 | 新建不能为空；费用不可重复；明细原币结算金额必须大于 0 且不超过剩余额度；跨币别汇率必填且大于 0。 |
 | **其他核销单明细（只读）** | 同一银行流水下由其他核销单（含他人创建）占用的结算明细，用于核对流水核销去向。 | **银行流水**<br/>`BankStatement/DetailAsync` 的 `receiveSettlements[].receiveSettlementItems` / `receiveSettlementInvoiceItems`（`GetReceiveSettlementPagedListAsync` 只有汇总没有明细，收费核销表单已不再调用） | 由 `foreignItems` computed 剔除当前 `editId` 后摊平生成，随「银行流水信息」一起刷新；新建态下流水已有的核销单明细也会展示。 | 纯只读：不参与本单合计与保存校验，不可勾选/删除；「剩余额度」接口不下发，显示 `-`。 |
-| **已结算（不含本单）** | 本流水已被其他核销单占用的金额，决定「剩余可结算」和保存超限拦截。 | **银行流水**<br/>`BankStatement/DetailAsync` 的 `receiveSettlements[].totalSettledAmount`（后端算好的净额，收正付负） | `loadBankStatementSummary` 剔除当前 `editId` 后求和，与明细表他单行同源同一次请求。 | 只读展示；`流水金额 − 本值 − 本单合计 < 0` 时标红并拦截保存。 |
+| **已结算（不含本单）** | 本流水已被其他核销单占用的金额，决定「剩余可结算」展示。 | **银行流水**<br/>`BankStatement/DetailAsync` 的 `receiveSettlements[].actualSettled` | `loadBankStatementSummary` 剔除当前 `editId` 后求和，与明细表他单行同源同一次请求。 | 只读展示；按费用结算时 `流水金额 − 本值 − 本单本次结算 < 0` 标红提示，不拦截保存。 |
+| **本次结算** | 实际到账金额，银行流水币别；流水按各收费结算本次结算之和核销。 | **收费核销**<br/>`AddAsync` / `AddItemsAsync` / `DeleteItemsAsync` / `EditAsync` 的 `actualSettled` | 新建、保存、追加、删除（还剩明细时）均手工录入；页面按明细原币 × 汇率现场算出参考原始金额与差值。 | 有明细时必填；与参考原始金额的差额只提示。 |
+| **汇率** | 1 单位费用原币折合多少银行流水币别。 | **收费核销**<br/>`receiveSettlementExchangeRates` | 明细出现的每个币别一行；与流水同币别固定显示 1 且不可改，不提交；外币必填。 | 外币汇率必须大于 0，六位小数。 |
 | **剩余额度** | 费用可继续被收费核销占用的金额。 | **收费核销**<br/>`GetOrderFeeGroupAsync` | 抽屉默认将本次结算金额填为剩余额度。 | 前端限制不超过 `remainingAmount`，后端继续校验。 |
 | **锁定状态** | 控制单据是否允许编辑和删除。 | **收费核销**<br/>`DetailAsync`、`LockAsync`、`UnLockAsync` | 已锁定进入只读页；解锁后恢复编辑。 | 锁定后不能保存、删除、增删明细。 |
 
@@ -53,20 +55,27 @@ last_updated: 2026-09-20
 
 > [!IMPORTANT] **[卡点 3：锁定不是不可查看]** 锁定单据仍可从列表或银行流水子表双击进入，只是页面进入只读模式。删除和编辑必须隐藏或拦截。
 
-> [!IMPORTANT] **[卡点 4：两种结算共用已结算池]** 按费用（type=0）与按开票申请（type=1）共用 `OrderFee.SettledAmount`，同一费用被其中一种结算占用后，另一种可用额度相应减少。发票口径可结算余额 = `max(0, 已开票 − 已结算)`；同一费用可能出现在多张已开票申请中，前端把同一 `orderFeeId` 视作共享池聚合校验，最终以后端悲观锁双口径校验为准。
+> [!IMPORTANT] **[卡点 4：两种结算共用已结算池]** 按费用（type=0）与按开票申请（type=1）共用 `OrderFee.SettledAmount`，同一费用被其中一种结算占用后，另一种可用额度相应减少。发票口径可结算余额按费用共享：同一费用可能出现在多张发票开出下，前端把同一 `orderFeeId` 视作共享池聚合校验，最终以后端悲观锁为准。
 
-> [!IMPORTANT] **[卡点 5：净额与毛额]** 列表/详情 `totalSettledAmount` 为净额（收正付负、跨两张子表，不落库现算）；落库仍为各自毛额。前端「结算净额」列与「本单本次净额」需按 `paySide` 换算。
+> [!IMPORTANT] **[卡点 5：本次结算不是明细原币相加]** 2026-09-26 起列表/详情不再返回 `totalSettledAmount`。流水核销认 `actualSettled`（银行流水币别，手工录入）。明细 `settledAmount` 仍是费用原币。`originalSettledAmount` 是明细按汇率折成流水币别后的参考值，`diffAmount = actualSettled − originalSettledAmount`，只展示，不参与额度和核销校验。按费用结算时前端也不再因本次结算超过流水剩余可结算而拦截保存，仅标红提示。
 
 > [!IMPORTANT] **[卡点 6：类型不可混]** type=0 与 type=1 各走各的追加/删除接口；列表双击必须依据 `row.type` 路由到 `/edit` 或 `/edit-by-invoice`，否则明细为空。
 
-> [!IMPORTANT] **[卡点 7：明细表里的行不都是本单的]** 明细表数据源 `tableItems = 本单 items + 其他核销单 foreignItems`，但保存、合计、超额校验、批量删除一律只遍历 `items`。改这块逻辑时不要把 `items` 换成 `tableItems`，否则会把别人的核销金额算进本单并提交。他单行以 `_isCurrent === false` 标识。
+> [!IMPORTANT] **[卡点 7：明细表里的行不都是本单的]** 按费用核销的平表数据源是 `本单 items + 其他核销单 foreignItems`。发票结算编辑页本单在 `issueGroups`，他单在 `foreignIssueGroups`，删除只收集 `_isCurrent` 的费用行。新建发票结算仍用 `items`。不要把他单行算进保存或删除。他单行以 `_isCurrent === false` 标识。
 
 > [!IMPORTANT] **[卡点 8：新建保存后必须关闭原 Tab]** `/add` 与 `/edit/:id`、`/add-by-invoice` 与 `/edit-by-invoice/:id` 都是不同 Tab key；仅 `replace` 仍会留下新建页签。独立页须先缓存 `route.fullPath`，`await replace` 后再 `closeTabByKey`。抽屉 `embedded` 新建成功只 `emit('close')`，不要关顶栏页签。
+
+> [!IMPORTANT] **[卡点 9：选票按发票开出不是开票申请]** 拉取已改为 `GetInvoiceIssueGroupForSettlementAsync`；新增/追加一行是 `invoiceIssueId + orderFeeId`，不要再传 `invoiceApplicationItemId`。接口里的 `settledAmount` 是历史累计已结算，本次录入默认用 `invoiceSettleableAmount`。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-28 | `Feature` | 发票结算选票改为「发票开出 → 费用」两层；新建/追加传发票开出加费用，并必填本次结算。 | TAPD #1000177。详见 [变更记录](../../changelogs/change-log-2026-09-28-发票结算选票改为发票开出.md)。 |
+| 2026-09-28 | `Feature` | 银行流水关联核销可展开发票开出到费用；按发票新建必填本次结算。 | TAPD #1000180。详见 [变更记录](../../changelogs/change-log-2026-09-28-银行流水关联核销按发票展开与本次结算.md)。 |
+| 2026-09-28 | `Feature` | 按费用结算：本次结算超流水只提示不拦截；同币别汇率固定显示 1；新建/编辑现场展示参考原始金额与差值；编辑追加明细时弹窗重填整张单本次结算。 | TAPD #1000176。详见 [变更记录](../../changelogs/change-log-2026-09-28-收费核销按费用本次结算与多币别补齐.md)。 |
+| 2026-09-28 | `Feature` | 发票结算编辑按发票开出分组；删除改为发票开出加费用，还剩明细时重填本次结算。 | 不再读 `receiveSettlementInvoiceItems`。详见 [变更记录](../../changelogs/change-log-2026-09-28-发票结算详情按发票开出分组.md)。 |
+| 2026-09-27 | `Feature` | 按费用选费币别可清空；结算单填写本次结算和跨币别汇率；删明细后若还剩费用要重填本次结算。 | 不再读 `totalSettledAmount`。详见 [变更记录](../../changelogs/change-log-2026-09-27-银行流水按费用核销跨币别.md)。 |
 | 2026-09-20 | `Feature` | 添加明细选费增加「客户对账」检索，与银行流水按费用核销共用。 | TAPD #0150；`statementNum`。详见[变更记录](../../changelogs/change-log-2026-09-20-银行流水按费用核销对账单检索.md)。 |
 | 2026-09-08 | `Fix` | 选费开船日期、选开票申请的申请时间改为自然日闭区间。 | 银行流水建单选开票申请同步。详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-19 | `Feature` | 按费用选费检索：委托编号/主提单号合并为「编号」条件；增加委托单位、开船日期、销售、操作、收付类型（默认应收）；抽屉费用明细与结算明细展示收付类别。业务行仍分列展示委托编号、主提单号。 | `add-fee-drawer/data` 抽出 `buildFeeGroupSearchQuery`；银行流水建单面板与添加明细抽屉共用；`paySide=0` 必须下发。详见 `changelogs/change-log-2026-08-19-receive-settlement-fee-drawer-filters.md`。 |

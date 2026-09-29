@@ -457,6 +457,7 @@ watch(currentFormType, (newType, oldType) => {
           v-if="showUserEntitySelect"
           v-model="entityIds"
           mode="multiple"
+          show-default-org
           class="w-full"
           :selected-items="selectedUsers"
           :placeholder="

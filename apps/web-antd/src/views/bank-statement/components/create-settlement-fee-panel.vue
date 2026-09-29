@@ -37,13 +37,19 @@ import {
   getPaySideColor,
   getPaySideLabel,
 } from '../../settlement-management/receive-settlement/form-data';
+import {
+  buildExchangeRateInputs,
+  calcDiffAmount,
+  calcOriginalSettledAmount,
+  collectDisplayCurrencies,
+  collectForeignCurrencies,
+  findMissingExchangeRate,
+  missingExchangeRateMessage,
+} from '../../settlement-management/receive-settlement/settlement-amount';
 
 function useBankStatementFeeSearchSchema() {
   return useAddFeeSearchSchema().map((item) => {
-    if (
-      item.fieldName === 'settlementName' ||
-      item.fieldName === 'currencyId'
-    ) {
+    if (item.fieldName === 'settlementName') {
       return { ...item, formItemClass: 'hidden' };
     }
     return item;
@@ -78,6 +84,8 @@ const expandedRowKeys = ref<string[]>([]);
 
 const selectedFeeIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
+const actualSettled = ref<number | null>(null);
+const exchangeRates = reactive<Record<string, number | undefined>>({});
 
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
@@ -118,21 +126,16 @@ const pageFees = computed(() =>
   orderList.value.flatMap((group) => group.orderFees ?? []),
 );
 
-const currentSelectionTotal = computed(() =>
-  selectedFeeIds.value.reduce(
-    (sum, feeId) => sum + (settledAmountMap.get(feeId) ?? 0),
-    0,
-  ),
-);
-
 const remainingSettleAmount = computed(
   () =>
     props.bankStatementAmount -
     props.otherSettledAmount -
-    currentSelectionTotal.value,
+    (actualSettled.value ?? 0),
 );
 
-const isRemainingOverLimit = computed(() => remainingSettleAmount.value < 0);
+const isRemainingOverLimit = computed(
+  () => actualSettled.value != null && remainingSettleAmount.value < 0,
+);
 
 function formatBankAmount(value: number | undefined | null) {
   if (value === undefined || value === null) return '-';
@@ -145,6 +148,10 @@ function formatBankAmount(value: number | undefined | null) {
 function resetSelection() {
   selectedFeeIds.value = [];
   settledAmountMap.clear();
+  actualSettled.value = null;
+  for (const key of Object.keys(exchangeRates)) {
+    delete exchangeRates[key];
+  }
 }
 
 function resetState() {
@@ -159,7 +166,7 @@ async function syncSearchFormFromProps() {
   await nextTick();
   await searchFormApi.setValues({
     settlementName: props.settlementName || '',
-    currencyId: props.currencyId,
+    currencyId: undefined,
     paySide: ADD_FEE_SEARCH_DEFAULTS.paySide,
   });
 }
@@ -168,7 +175,7 @@ async function resetSearchFilters() {
   await nextTick();
   await searchFormApi.setValues({
     settlementName: props.settlementName || '',
-    currencyId: props.currencyId,
+    currencyId: undefined,
     ...ADD_FEE_SEARCH_DEFAULTS,
   });
 }
@@ -181,8 +188,7 @@ async function initSearchForm() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const settlementId = props.settlementId;
-  const currencyId = props.currencyId;
-  if (!settlementId || !currencyId) return;
+  if (!settlementId) return;
 
   const values = formValues ?? ((await searchFormApi.getValues()) || {});
 
@@ -190,7 +196,6 @@ async function fetchData(formValues?: Record<string, any>) {
   try {
     const result = await getOrderFeeGroupForReceiveSettlement({
       settlementId,
-      currencyId,
       ...buildFeeGroupSearchQuery(values),
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
@@ -206,10 +211,6 @@ async function fetchData(formValues?: Record<string, any>) {
 async function handleSearch() {
   if (!props.settlementId) {
     message.warning('银行流水未关联结算对象');
-    return;
-  }
-  if (!props.currencyId) {
-    message.warning('银行流水未关联币别');
     return;
   }
   const values = (await searchFormApi.getValues()) ?? {};
@@ -311,6 +312,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         clientName: group.transportOrder.client?.name,
         feeCodeName: fee.feeCode?.cnName,
         paySide: fee.paySide,
+        currencyId: fee.currencyId ?? fee.currency?.id,
         currencyCode: fee.currency?.code,
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
@@ -322,6 +324,44 @@ function buildSelectedFees(): SelectedReceiveFee[] {
 
   return result;
 }
+
+const foreignCurrencies = computed(() =>
+  collectForeignCurrencies(
+    buildSelectedFees(),
+    props.currencyId,
+    props.currencyCode,
+  ),
+);
+
+const displayCurrencies = computed(() =>
+  collectDisplayCurrencies(
+    buildSelectedFees(),
+    props.currencyId,
+    props.currencyCode,
+  ),
+);
+
+const previewOriginalSettledAmount = computed(() =>
+  calcOriginalSettledAmount(
+    buildSelectedFees(),
+    exchangeRates,
+    props.currencyId,
+    props.currencyCode,
+  ),
+);
+
+const previewDiffAmount = computed(() =>
+  calcDiffAmount(actualSettled.value, previewOriginalSettledAmount.value),
+);
+
+watch(displayCurrencies, (rows) => {
+  for (const row of rows) {
+    if (row.locked) continue;
+    if (!(row.currencyId in exchangeRates)) {
+      exchangeRates[row.currencyId] = undefined;
+    }
+  }
+});
 
 function validateSelection(fees: SelectedReceiveFee[]): boolean {
   if (fees.length === 0) {
@@ -349,12 +389,31 @@ function validateSelection(fees: SelectedReceiveFee[]): boolean {
     return false;
   }
 
-  if (isRemainingOverLimit.value) {
-    const availableAmount =
-      props.bankStatementAmount - props.otherSettledAmount;
+  const missingCurrency = fees.find(
+    (fee) =>
+      fee.currencyCode &&
+      props.currencyCode &&
+      fee.currencyCode !== props.currencyCode &&
+      (fee.currencyId == null || fee.currencyId === ''),
+  );
+  if (missingCurrency) {
     message.warning(
-      `本单结算合计 ${formatBankAmount(currentSelectionTotal.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
+      `费用「${missingCurrency.feeCodeName || '-'}」缺少币别，无法填写汇率`,
     );
+    return false;
+  }
+
+  if (actualSettled.value == null) {
+    message.warning('请填写本次结算');
+    return false;
+  }
+
+  const missingRate = findMissingExchangeRate(
+    foreignCurrencies.value,
+    exchangeRates,
+  );
+  if (missingRate) {
+    message.warning(missingExchangeRateMessage(missingRate.currencyCode));
     return false;
   }
 
@@ -369,6 +428,10 @@ async function handleCreateSettlement() {
     message.warning('缺少归属组织，无法创建结算单');
     return;
   }
+  if (!props.currencyId) {
+    message.warning('银行流水未关联币别');
+    return;
+  }
 
   creating.value = true;
   try {
@@ -376,6 +439,11 @@ async function handleCreateSettlement() {
       orgId: props.orgId,
       bankStatementId: props.bankStatementId,
       settlementTime: dayjs().toISOString(),
+      actualSettled: actualSettled.value!,
+      receiveSettlementExchangeRates: buildExchangeRateInputs(
+        foreignCurrencies.value,
+        exchangeRates,
+      ),
       receiveSettlementItems: fees.map((fee) => ({
         orderFeeId: fee.orderFeeId,
         settledAmount: fee.settledAmount,
@@ -398,7 +466,7 @@ async function handleCreateSettlement() {
 async function reload() {
   resetState();
   await resetSearchFilters();
-  if (props.settlementId && props.currencyId) {
+  if (props.settlementId) {
     await fetchData();
   }
 }
@@ -412,7 +480,7 @@ watch(
 
 onMounted(async () => {
   await initSearchForm();
-  if (props.settlementId && props.currencyId) {
+  if (props.settlementId) {
     await fetchData();
   }
 });
@@ -551,12 +619,61 @@ defineExpose({ reload });
       />
     </div>
 
+    <div v-if="displayCurrencies.length" class="exchange-rate-bar">
+      <div
+        v-for="row in displayCurrencies"
+        :key="row.currencyId"
+        class="exchange-rate-bar__row"
+      >
+        <span>1 {{ row.currencyCode }} =</span>
+        <InputNumber
+          v-if="row.locked"
+          :value="1"
+          :disabled="true"
+          :precision="6"
+          style="width: 140px"
+        />
+        <InputNumber
+          v-else
+          v-model:value="exchangeRates[row.currencyId]"
+          :min="0"
+          :precision="6"
+          :step="0.000001"
+          placeholder="汇率"
+          style="width: 140px"
+        />
+        <span>{{ currencyCode || '流水币别' }}</span>
+      </div>
+    </div>
+
     <div class="settlement-submit-bar">
       <div class="settlement-submit-bar__summary">
         <span>已选择 {{ selectedFeeIds.length }} 条</span>
+        <span class="settlement-submit-bar__actual">
+          本次结算
+          <InputNumber
+            v-model:value="actualSettled"
+            :precision="2"
+            placeholder="流水币别金额"
+            style="width: 160px"
+          />
+          <strong>{{ currencyCode || '' }}</strong>
+        </span>
         <span>
-          本次核销
-          <strong>{{ formatBankAmount(currentSelectionTotal) }}</strong>
+          参考原始金额
+          <strong>{{
+            previewOriginalSettledAmount == null
+              ? '-'
+              : formatBankAmount(previewOriginalSettledAmount)
+          }}</strong>
+        </span>
+        <span>
+          差值
+          <strong>{{
+            previewDiffAmount == null
+              ? '-'
+              : formatBankAmount(previewDiffAmount)
+          }}</strong>
         </span>
         <span :class="{ 'text-red-600': isRemainingOverLimit }">
           核销后剩余
@@ -608,6 +725,25 @@ defineExpose({ reload });
 .fee-toolbar__actions {
   display: flex;
   flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.exchange-rate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.exchange-rate-bar__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settlement-submit-bar__actual {
+  display: inline-flex;
   gap: 8px;
   align-items: center;
 }

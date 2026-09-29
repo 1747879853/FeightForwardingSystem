@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
+import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -22,16 +23,23 @@ import { getBankStatementReceiveSettlementPagedList } from '#/api/settlement-man
 import {
   formatAmount,
   formatDateTime,
+  getReceiveSettlementPaySideColor,
+  getReceiveSettlementPaySideLabel,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
   getReceiveSettlementTypeColor,
   getReceiveSettlementTypeLabel,
+  isInvoiceReceiveSettlement,
 } from '../form-data';
+
+const UNBOUND_INVOICE_ISSUE_LABEL = '无发票开出（已冲红解绑）';
 
 const props = defineProps<{
   bankStatementId: string;
   canCreateSettlement?: boolean;
   currencyCode?: string;
+  /** 流水详情内嵌收费结算，按发票行展开用 */
+  detailReceiveSettlements?: BankStatementAdminApi.BankStatementReceiveSettlementDto[];
   remainingAmount: number;
 }>();
 
@@ -65,9 +73,62 @@ const tablePagination = computed(() => {
   };
 });
 const tableScroll = computed(() => ({
-  x: 1150,
+  x: 1450,
   y: Math.max(tableBodyHeight.value, 120),
 }));
+
+/** 详情收费结算按 id 索引，给列表展开取 invoiceIssues */
+const detailSettlementMap = computed(() => {
+  const map = new Map<
+    string,
+    BankStatementAdminApi.BankStatementReceiveSettlementDto
+  >();
+  for (const settlement of props.detailReceiveSettlements ?? []) {
+    if (settlement.id) map.set(String(settlement.id), settlement);
+  }
+  return map;
+});
+
+const invoiceIssueFeeColumns = [
+  {
+    key: 'feeCodeName',
+    dataIndex: 'feeCodeName',
+    title: '费用名称',
+    ellipsis: true,
+  },
+  {
+    key: 'paySide',
+    dataIndex: 'paySide',
+    title: '收付',
+    width: 72,
+  },
+  {
+    key: 'currencyCode',
+    dataIndex: 'currencyCode',
+    title: '币别',
+    width: 72,
+  },
+  {
+    key: 'settledAmount',
+    dataIndex: 'settledAmount',
+    title: '结算金额',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
+    key: 'originalSettledAmount',
+    dataIndex: 'originalSettledAmount',
+    title: '原始结算金额',
+    width: 120,
+    align: 'right' as const,
+  },
+];
+
+const expandable = {
+  rowExpandable: (record: BankStatementAdminApi.ReceiveSettlementListDto) =>
+    isInvoiceReceiveSettlement(record.type) &&
+    getInvoiceIssues(record).length > 0,
+};
 
 const columns = [
   {
@@ -90,10 +151,24 @@ const columns = [
     width: 96,
   },
   {
-    key: 'totalSettledAmount',
-    dataIndex: 'totalSettledAmount',
-    title: '核销金额',
+    key: 'actualSettled',
+    dataIndex: 'actualSettled',
+    title: '本次结算',
     width: 150,
+    align: 'right' as const,
+  },
+  {
+    key: 'originalSettledAmount',
+    dataIndex: 'originalSettledAmount',
+    title: '原始结算金额',
+    width: 150,
+    align: 'right' as const,
+  },
+  {
+    key: 'diffAmount',
+    dataIndex: 'diffAmount',
+    title: '差值',
+    width: 130,
     align: 'right' as const,
   },
   {
@@ -131,6 +206,42 @@ function formatSettlementAmount(value: number | undefined | null) {
   return props.currencyCode
     ? `${amountText} ${props.currencyCode}`
     : amountText;
+}
+
+function formatOptionalSettlementAmount(value: number | undefined | null) {
+  if (value === undefined || value === null) return '-';
+  return formatSettlementAmount(value);
+}
+
+function formatOptionalPlainAmount(value: number | undefined | null) {
+  if (value === undefined || value === null) return '-';
+  return formatAmount(value);
+}
+
+function getInvoiceIssues(
+  record: BankStatementAdminApi.ReceiveSettlementListDto,
+): ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto[] {
+  return detailSettlementMap.value.get(String(record.id))?.invoiceIssues ?? [];
+}
+
+function issueApplicationNo(
+  issue: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto,
+) {
+  if (issue.id == null || issue.id === '') return UNBOUND_INVOICE_ISSUE_LABEL;
+  return issue.applicationNo || '-';
+}
+
+function mapIssueFeeRows(
+  issue: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto,
+) {
+  return (issue.items ?? []).map((fee) => ({
+    key: `${issue.id ?? 'unbound'}::${fee.orderFeeId}`,
+    feeCodeName: fee.orderFee?.feeCode?.cnName || '-',
+    paySide: fee.orderFee?.paySide,
+    currencyCode: fee.orderFee?.currency?.code,
+    settledAmount: fee.settledAmount,
+    originalSettledAmount: fee.originalSettledAmount,
+  }));
 }
 
 function updateTableBodyHeight() {
@@ -307,6 +418,7 @@ defineExpose({
         :data-source="settlementList"
         :loading="loading"
         :pagination="tablePagination"
+        :expandable="expandable"
         :custom-row="
           (record) => ({
             onDblclick: () => openSettlement(record),
@@ -318,6 +430,62 @@ defineExpose({
         :scroll="tableScroll"
         class="settlement-table"
       >
+        <template #expandedRowRender="{ record }">
+          <div class="invoice-issue-expand">
+            <div
+              v-for="issue in getInvoiceIssues(record)"
+              :key="String(issue.id ?? 'unbound')"
+              class="invoice-issue-block"
+            >
+              <div class="invoice-issue-block__header">
+                <span class="invoice-issue-block__title">
+                  {{ issueApplicationNo(issue) }}
+                </span>
+                <span v-if="issue.invoiceNo" class="invoice-issue-block__meta">
+                  发票号 {{ issue.invoiceNo }}
+                </span>
+                <span class="invoice-issue-block__meta">
+                  本组原始结算
+                  {{
+                    formatOptionalSettlementAmount(issue.originalSettledAmount)
+                  }}
+                </span>
+              </div>
+              <Table
+                :columns="invoiceIssueFeeColumns"
+                :data-source="mapIssueFeeRows(issue)"
+                :pagination="false"
+                row-key="key"
+                size="small"
+                class="invoice-issue-fee-table"
+              >
+                <template #bodyCell="{ column, record: fee }">
+                  <template v-if="column.key === 'paySide'">
+                    <Tag :color="getReceiveSettlementPaySideColor(fee.paySide)">
+                      {{ getReceiveSettlementPaySideLabel(fee.paySide) }}
+                    </Tag>
+                  </template>
+                  <template v-else-if="column.key === 'currencyCode'">
+                    <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
+                    <span v-else>-</span>
+                  </template>
+                  <template v-else-if="column.key === 'settledAmount'">
+                    {{ formatOptionalPlainAmount(fee.settledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'originalSettledAmount'">
+                    {{ formatOptionalPlainAmount(fee.originalSettledAmount) }}
+                  </template>
+                </template>
+              </Table>
+            </div>
+            <div
+              v-if="getInvoiceIssues(record).length === 0"
+              class="invoice-issue-empty"
+            >
+              暂无发票开出明细
+            </div>
+          </div>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'type'">
             <Tag :color="getReceiveSettlementTypeColor(record.type)">
@@ -338,10 +506,16 @@ defineExpose({
               }}</span>
             </Tooltip>
           </template>
-          <template v-else-if="column.key === 'totalSettledAmount'">
+          <template v-else-if="column.key === 'actualSettled'">
             <span class="settlement-amount">
-              {{ formatSettlementAmount(record.totalSettledAmount) }}
+              {{ formatSettlementAmount(record.actualSettled) }}
             </span>
+          </template>
+          <template v-else-if="column.key === 'originalSettledAmount'">
+            {{ formatOptionalSettlementAmount(record.originalSettledAmount) }}
+          </template>
+          <template v-else-if="column.key === 'diffAmount'">
+            {{ formatOptionalSettlementAmount(record.diffAmount) }}
           </template>
           <template v-else-if="column.key === 'itemCount'">
             {{ record.itemCount ?? 0 }} 条
@@ -493,6 +667,59 @@ defineExpose({
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #283442;
+}
+
+.invoice-issue-expand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 8px 8px 36px;
+}
+
+.invoice-issue-block {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e8eef4;
+  border-radius: 8px;
+}
+
+.invoice-issue-block__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.invoice-issue-block__title {
+  font-weight: 600;
+  color: #303b49;
+}
+
+.invoice-issue-block__meta {
+  font-size: 12px;
+  color: #7a8797;
+}
+
+.invoice-issue-fee-table {
+  :deep(.ant-table-thead > tr > th) {
+    padding: 6px 8px;
+    background: #eef2f6;
+  }
+
+  :deep(.ant-table-tbody > tr > td) {
+    padding: 6px 8px;
+  }
+
+  :deep(.ant-table-tbody > tr) {
+    cursor: default;
+  }
+}
+
+.invoice-issue-empty {
+  padding: 8px 0;
+  font-size: 13px;
+  color: #7a8797;
 }
 
 .ellipsis-cell {
