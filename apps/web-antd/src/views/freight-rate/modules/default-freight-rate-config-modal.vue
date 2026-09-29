@@ -28,6 +28,8 @@ const loadedConfig = ref<DefaultFreightRateValue>({});
 const loadedSettingId = ref<number | undefined>(undefined);
 /** 本次选择订舱代理时 ClientSelect 带回的显示名 */
 const pendingBookingAgentLabel = ref<null | string>(null);
+/** 本次选择航线时 LaneSelect 带回的中文名（与当前 laneIds 下标对齐） */
+const pendingLaneLabels = ref<null | string[]>(null);
 
 const [Form, formApi] = useVbenForm({
   commonConfig: {
@@ -115,6 +117,15 @@ const [Form, formApi] = useVbenForm({
         allowClear: true,
         mode: 'multiple',
         class: 'w-full',
+        onChange: (_value: unknown, option: any) => {
+          const opts = Array.isArray(option) ? option : option ? [option] : [];
+          const labels = opts
+            .map((opt: any) =>
+              String(opt?.label ?? opt?.laneName ?? opt?.name ?? '').trim(),
+            )
+            .filter(Boolean);
+          pendingLaneLabels.value = labels.length > 0 ? labels : null;
+        },
       },
     },
     {
@@ -202,6 +213,7 @@ const hintText = computed(() =>
 
 async function fillForm(value: DefaultFreightRateValue) {
   pendingBookingAgentLabel.value = null;
+  pendingLaneLabels.value = null;
   await formApi.resetForm();
   await formApi.setValues({
     recommend: value.recommend ?? false,
@@ -249,7 +261,10 @@ async function fillForm(value: DefaultFreightRateValue) {
     schemaPatches.push({
       fieldName: 'laneIds',
       componentProps: {
-        selectedItems: value.laneIds.map((id) => ({ id })),
+        selectedItems: value.laneIds.map((id, index) => ({
+          id,
+          laneName: value.laneLabels?.[index] || undefined,
+        })),
       },
     });
   }
@@ -313,6 +328,16 @@ async function handleSave() {
     }
     if (pendingBookingAgentLabel.value) {
       draft.bookingAgentLabel = pendingBookingAgentLabel.value;
+    }
+
+    // 航线：未改选则复用已存中文名；本次有 onChange 带出则优先用
+    const sameLaneIds =
+      JSON.stringify(values.laneIds ?? []) ===
+      JSON.stringify(prev.laneIds ?? []);
+    if (pendingLaneLabels.value?.length) {
+      draft.laneLabels = pendingLaneLabels.value;
+    } else if (sameLaneIds && prev.laneLabels?.length) {
+      draft.laneLabels = prev.laneLabels;
     }
 
     const enriched = await enrichDefaultFreightRateLabels(draft);

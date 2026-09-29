@@ -33,8 +33,10 @@ export interface DefaultFreightRateValue {
   remark?: null | string;
   /**
    * 默认航线（多选）。仅存个人配置给后端用，不参与运价新增带出。
+   * laneLabels 与 laneIds 按下标一一对应，供回显中文名。
    */
   laneIds?: number[];
+  laneLabels?: string[];
 }
 
 function normalizeId(value: unknown): null | number {
@@ -115,7 +117,17 @@ export function sanitizeDefaultFreightRateValue(
   }
 
   const laneIds = normalizeIdList(raw.laneIds);
-  if (laneIds) next.laneIds = laneIds;
+  if (laneIds) {
+    next.laneIds = laneIds;
+    const rawLabels = Array.isArray(raw.laneLabels) ? raw.laneLabels : [];
+    const labels = laneIds.map((_, index) =>
+      String(rawLabels[index] ?? '').trim(),
+    );
+    // 有任一中文名才写入，避免只存空串数组
+    if (labels.some((text) => text)) {
+      next.laneLabels = labels;
+    }
+  }
 
   return next;
 }
@@ -352,6 +364,40 @@ export async function enrichDefaultFreightRateLabels(
         }
       })(),
     );
+  }
+
+  // 默认航线：按 id 补中文名，与 laneIds 下标对齐
+  if (next.laneIds?.length) {
+    const labels = [...(next.laneLabels ?? [])];
+    const missingIndexes = next.laneIds
+      .map((id, index) => ({ id, index }))
+      .filter(({ index }) => !String(labels[index] ?? '').trim());
+    if (missingIndexes.length > 0) {
+      tasks.push(
+        (async () => {
+          const { getLaneCodeDetail } =
+            await import('#/api/system/base-data/lane-code-admin');
+          await Promise.all(
+            missingIndexes.map(async ({ id, index }) => {
+              try {
+                const detail = await getLaneCodeDetail(id);
+                const label = String(
+                  detail?.laneName || detail?.laneEnName || detail?.code || '',
+                ).trim();
+                if (label) labels[index] = label;
+              } catch {
+                /* ignore */
+              }
+            }),
+          );
+          if (labels.some((text) => String(text ?? '').trim())) {
+            next.laneLabels = next.laneIds!.map((_, index) =>
+              String(labels[index] ?? '').trim(),
+            );
+          }
+        })(),
+      );
+    }
   }
 
   if (tasks.length > 0) {
