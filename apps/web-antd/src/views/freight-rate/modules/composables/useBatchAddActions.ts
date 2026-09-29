@@ -197,8 +197,6 @@ export function useBatchAddActions(
     try {
       const submitData = prepareSubmitData(labelToIdMap);
 
-      console.log('提交数据:', submitData);
-
       const createdIds = await batchAddSimpleSeFreiPrice(submitData);
       const createdCount = Array.isArray(createdIds) ? createdIds.length : 0;
       const submitCount = submitData.length;

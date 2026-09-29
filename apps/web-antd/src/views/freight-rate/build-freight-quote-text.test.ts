@@ -42,7 +42,7 @@ describe('buildFreightQuoteText', () => {
     expect(text).toContain('中转港2：-');
     expect(text).toContain('开船日期：2026-10-05');
     expect(text).toContain('航程：25');
-    expect(text).toContain('目的港免箱期：14');
+    expect(text).toContain('免箱使期：14');
     expect(text).toContain('币别：USD');
     expect(text).toContain('海运费：20GP 指导价：$0');
     expect(text).toContain('附加费：含 THC');

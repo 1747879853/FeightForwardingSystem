@@ -107,10 +107,6 @@ const dynamicCtnTypes = computed(() => {
   ) {
     return [];
   }
-  console.log(
-    '计算dynamicCtnTypes，formData.value.seFreiPriceCtns:',
-    formData.value.seFreiPriceCtns,
-  );
   return formData.value.seFreiPriceCtns.map((ctn) => ({
     ctnCodeId: String(ctn.ctnCodeId),
     name: ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`,
@@ -218,7 +214,6 @@ async function loadSelectData() {
     );
     if (usdCurrency) {
       defaultCurrencyId.value = usdCurrency.id;
-      console.log('USD 币别 ID:', defaultCurrencyId.value);
     }
 
     const { getFeeCodePagedList } =
@@ -281,7 +276,6 @@ async function loadDefaultCtns() {
     );
 
     if (defaultCtns && defaultCtns.length > 0) {
-      console.log('加载到默认箱型:', defaultCtns);
       return defaultCtns.map((item: any) => ({
         id: '',
         seFreiPriceId: '',
@@ -444,31 +438,31 @@ const [Form, formApi] = useVbenForm({
     },
     {
       component: 'InputNumber',
-      fieldName: 'podFreeDays',
-      label: '目的港免用箱',
+      fieldName: 'poddem',
+      label: 'DEM',
       componentProps: {
-        placeholder: '请输入免用箱天数',
+        placeholder: '请输入 DEM 天数',
         min: 0,
         style: { width: '100%' },
       },
     },
     {
       component: 'InputNumber',
-      fieldName: 'poddem',
-      label: '目的港免堆期',
+      fieldName: 'podFreeDays',
+      label: 'DET',
       componentProps: {
-        placeholder: '请输入免堆期天数',
+        placeholder: '请输入 DET 天数',
         min: 0,
         style: { width: '100%' },
       },
     },
-    // 第四行：目的港免箱期
+    // 第四行：免箱使期
     {
       component: 'InputNumber',
       fieldName: 'poddet',
-      label: '目的港免箱期',
+      label: '免箱使期',
       componentProps: {
-        placeholder: '请输入免箱期天数',
+        placeholder: '请输入免箱使期天数',
         min: 0,
         style: { width: '100%' },
       },
@@ -594,7 +588,7 @@ const [Form, formApi] = useVbenForm({
     //     style: { width: '100%' },
     //   },
     // },
-    // 第四行：目的港免箱期、备注
+    // 第四行：备注
     {
       component: 'Textarea',
       fieldName: 'remark',
@@ -1373,19 +1367,12 @@ async function handleSubmit() {
 
     const values = await formApi.getValues();
 
-    console.log('=== 提交前调试信息 ===');
-    console.log('formData.value:', formData.value);
-    console.log('formData.value?.currencyId:', formData.value?.currencyId);
-    console.log('values.currencyId:', values.currencyId);
-
     // 优先使用 formData 中的 currencyId，如果不存在则使用 values 中的
     const finalCurrencyId =
       formData.value?.currencyId !== undefined &&
       formData.value?.currencyId !== null
         ? formData.value.currencyId
         : values.currencyId;
-
-    console.log('最终使用的 currencyId:', finalCurrencyId);
 
     // 验证币别是否存在
     if (!finalCurrencyId) {
@@ -1439,7 +1426,6 @@ async function handleSubmit() {
             );
 
             if (!ctnInfo) {
-              console.warn(`未找到箱型ID为 ${ctnCodeIdStr} 的箱型信息`);
               return null;
             }
 

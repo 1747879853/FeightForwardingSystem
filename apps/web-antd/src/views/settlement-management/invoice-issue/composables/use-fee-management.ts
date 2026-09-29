@@ -41,8 +41,6 @@ export function useFeeManagement(
     }
 
     formData.value.invoiceIssueItems.push(...items);
-
-    message.success(`成功添加 ${items.length} 条新申请`);
   }
 
   /**
@@ -100,8 +98,8 @@ export function useFeeManagement(
           );
       }
     } catch (error) {
+      // 反开票结算引用等业务错误由 requestClient 拦截器原样提示
       console.error('❌ 删除发票失败:', error);
-      message.error('删除发票失败');
       throw error;
     }
   }

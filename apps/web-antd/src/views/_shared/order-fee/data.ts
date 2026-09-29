@@ -390,6 +390,12 @@ export const getIndustryCategoryOptions = () => [
     value: 'v',
     label: $t('seaExport.client.industryCategoryOptions.personnelAgent'),
   },
+  {
+    // IndustryCategory：枚举值 n → 字母 'a'+n-1；23 → w 地面代理（件杂货）
+    key: 23,
+    value: 'w',
+    label: $t('seaExport.client.industryCategoryOptions.groundAgent'),
+  },
 ];
 
 /**
@@ -474,6 +480,11 @@ export const resolveSettlementByIndustryCategory = (
       name = orderDetail.podAgent?.name;
       taxRate = orderDetail.podAgent?.taxRate;
       break;
+    case 'w': // 地面代理（件杂货）
+      id = orderDetail.groundAgentId;
+      name = orderDetail.groundAgent?.name;
+      taxRate = orderDetail.groundAgent?.taxRate;
+      break;
     default:
       return null;
   }
@@ -555,6 +566,7 @@ export const getBizTypeOptions = () => [
   { value: 0, label: '海运出口' },
   { value: 1, label: '海运进口' },
   { value: 2, label: '空运出口' },
+  { value: 3, label: '件杂货' },
 ];
 
 // --------------------------------------------------------

@@ -56,6 +56,7 @@ import {
 import {
   addClient,
   auditClient,
+  clientNameCheck,
   editClient,
   getClientAuditDetail,
   getClientDetail,
@@ -65,6 +66,14 @@ import {
   submitClientAudit,
   withdrawClientAudit,
 } from '#/api/sea-export/client-admin';
+import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
+import {
+  CHINA_COUNTRY_ID,
+  fetchDefaultChinaCountry,
+  isTaxNoRequiredForChina,
+  TAX_NO_DUPLICATE_MSG,
+  TAX_NO_REQUIRED_FOR_CN_ENTERPRISE,
+} from './country-tax';
 import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import {
   canApplyClientModify,
@@ -361,6 +370,10 @@ const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
 const isDishonest = ref<boolean>(false); // 客户失信状态
 
+/** 默认「中国」及当前选中国家，供 CountrySelect 回显与税号联动 */
+const chinaCountry = ref<CountryCodeAdminApi.CountryCodeDto | null>(null);
+const countrySelectedItems = ref<CountryCodeAdminApi.CountryCodeDto[]>([]);
+
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -469,6 +482,74 @@ const [BaseForm, baseFormApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-4',
 });
+
+function resolveCountryMeta(
+  countryId: null | number | string | undefined,
+): CountryCodeAdminApi.CountryCodeDto | null {
+  if (countryId === undefined || countryId === null || countryId === '') {
+    return null;
+  }
+  const hit = countrySelectedItems.value.find(
+    (item) => String(item.id) === String(countryId),
+  );
+  if (hit) return hit;
+  if (
+    chinaCountry.value &&
+    String(chinaCountry.value.id) === String(countryId)
+  ) {
+    return chinaCountry.value;
+  }
+  return null;
+}
+
+async function syncTaxNoRequiredFlag() {
+  const values = await baseFormApi.getValues();
+  const countryId = values.country;
+  const meta = resolveCountryMeta(countryId);
+  const required = isTaxNoRequiredForChina(
+    countryId,
+    supplierType.value,
+    meta,
+    chinaCountry.value?.id ?? CHINA_COUNTRY_ID,
+  );
+  await baseFormApi.setFieldValue('taxNoRequired', required);
+}
+
+function bindCountrySelectSchema() {
+  baseFormApi.updateSchema([
+    {
+      fieldName: 'country',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+        selectedItems: countrySelectedItems.value,
+        onChange: async (value: null | number | string | undefined) => {
+          if (value === undefined || value === null || value === '') {
+            countrySelectedItems.value = [];
+          } else if (
+            chinaCountry.value &&
+            String(chinaCountry.value.id) === String(value)
+          ) {
+            countrySelectedItems.value = [chinaCountry.value];
+          }
+          await nextTick();
+          await syncTaxNoRequiredFlag();
+        },
+      },
+    },
+  ]);
+}
+
+async function applyDefaultChinaCountry() {
+  const china = await fetchDefaultChinaCountry();
+  if (!china?.id) return;
+  chinaCountry.value = china;
+  countrySelectedItems.value = [china];
+  await baseFormApi.setFieldValue('country', china.id);
+  bindCountrySelectSchema();
+  await syncTaxNoRequiredFlag();
+}
 
 /** 共享类型：UI 挂在所属公司标题右侧，值写入基础表单 isShared */
 const isSharedValue = ref(ClientSharedType.None);
@@ -929,6 +1010,16 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   }));
   billingPeriods.value = (detail.billingPeriods ?? []) as any[];
 
+  if (detail.country) {
+    countrySelectedItems.value = [
+      detail.country as unknown as CountryCodeAdminApi.CountryCodeDto,
+    ];
+  } else if (detail.countryId) {
+    countrySelectedItems.value = [];
+  } else {
+    countrySelectedItems.value = [];
+  }
+
   return {
     // 基础信息表单
     name: detail.name,
@@ -947,6 +1038,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     isShared: normalizeClientSharedType(detail.isShared),
     remark: detail.remark,
     country: detail.countryId,
+    taxNoRequired: false,
     areaId: areaIdPath,
     address: detail.address,
     enAddress: detail.enAddress,
@@ -996,6 +1088,7 @@ function clearAuditHighlights() {
       'fullName',
       'code',
       'enName',
+      'country',
       'taxNo',
       'taxRate',
       'codeSourceId',
@@ -1064,6 +1157,7 @@ function applyAuditFieldHighlights(fields: Set<string>) {
       'fullName',
       'code',
       'enName',
+      'country',
       'taxNo',
       'taxRate',
       'codeSourceId',
@@ -1156,6 +1250,14 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
   }));
   billingPeriods.value = (to.billingPeriods ?? []) as any[];
 
+  if (to.country) {
+    countrySelectedItems.value = [
+      to.country as unknown as CountryCodeAdminApi.CountryCodeDto,
+    ];
+  } else {
+    countrySelectedItems.value = [];
+  }
+
   const formValues = {
     name: to.name,
     fullName: to.fullName,
@@ -1173,6 +1275,7 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
     isShared: normalizeClientSharedType(to.isShared),
     remark: to.remark,
     country: to.countryId,
+    taxNoRequired: false,
     areaId: areaIdPath,
     address: to.address,
     enAddress: to.enAddress,
@@ -1194,6 +1297,8 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
 
   await baseFormApi.setValues(formValues);
   isSharedValue.value = normalizeClientSharedType(formValues.isShared);
+  bindCountrySelectSchema();
+  await syncTaxNoRequiredFlag();
   await businessFormApi.setValues(formValues);
   await nextTick();
   if (isClient.value) {
@@ -1320,6 +1425,8 @@ const loadEditData = async () => {
     // 设置各个表单的值
     await baseFormApi.setValues(formValues);
     isSharedValue.value = normalizeClientSharedType(formValues.isShared);
+    bindCountrySelectSchema();
+    await syncTaxNoRequiredFlag();
     await businessFormApi.setValues(formValues);
 
     // 根据客户类型设置对应的表单
@@ -1364,7 +1471,16 @@ const handleIsSupplierChange = (e: any) => {
     // 取消供应商类型时，清空供应商的行业类别选择
     supplierType.value = [];
   }
+  void syncTaxNoRequiredFlag();
 };
+
+watch(
+  supplierType,
+  () => {
+    void syncTaxNoRequiredFlag();
+  },
+  { deep: true },
+);
 
 /**
  * 更新干系人列表
@@ -1624,6 +1740,47 @@ const handleSubmit = async (closeAfterSave = false) => {
       return;
     }
 
+    await syncTaxNoRequiredFlag();
+    const countryMeta = resolveCountryMeta(baseValuesAfterValidation.country);
+    const taxNoRequired = isTaxNoRequiredForChina(
+      baseValuesAfterValidation.country,
+      supplierType.value,
+      countryMeta,
+      chinaCountry.value?.id ?? CHINA_COUNTRY_ID,
+    );
+    const taxNoTrimmed = String(baseValuesAfterValidation.taxNo ?? '').trim();
+    if (taxNoRequired && !taxNoTrimmed) {
+      Modal.warning({
+        title: '提示',
+        content: TAX_NO_REQUIRED_FOR_CN_ENTERPRISE,
+        okText: '确定',
+      });
+      return;
+    }
+
+    // 纳税人识别号同国唯一（有填写才查；必填场景上面已拦住空值）
+    if (taxNoTrimmed) {
+      try {
+        const duplicated = await clientNameCheck({
+          id: editId.value || undefined,
+          taxNo: taxNoTrimmed,
+          countryId: baseValuesAfterValidation.country ?? null,
+        });
+        if (duplicated === true) {
+          Modal.warning({
+            title: '提示',
+            content: TAX_NO_DUPLICATE_MSG,
+            okText: '确定',
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn('纳税人识别号重复校验失败:', error);
+        message.error('纳税人识别号校验失败，请稍后重试');
+        return;
+      }
+    }
+
     if (!businessValid) {
       message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
       return;
@@ -1800,7 +1957,7 @@ const handleSubmit = async (closeAfterSave = false) => {
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
-        taxNo: baseValues.taxNo,
+        taxNo: String(baseValues.taxNo ?? '').trim() || undefined,
         taxRate:
           baseValues.taxRate === undefined || baseValues.taxRate === null
             ? null
@@ -1930,7 +2087,7 @@ const handleSubmit = async (closeAfterSave = false) => {
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
-        taxNo: baseValues.taxNo,
+        taxNo: String(baseValues.taxNo ?? '').trim() || undefined,
         taxRate:
           baseValues.taxRate === undefined || baseValues.taxRate === null
             ? null
@@ -2300,6 +2457,14 @@ defineExpose({ isFormDirty });
 onMounted(() => {
   loadEditData();
   bindOrgSharedLabel();
+  bindCountrySelectSchema();
+  if (!isEdit.value) {
+    void applyDefaultChinaCountry();
+  } else {
+    void fetchDefaultChinaCountry().then((china) => {
+      if (china) chinaCountry.value = china;
+    });
+  }
 
   // 在表单初始化后，为fullName字段添加onChange监听和查询按钮
   // 使用setTimeout确保表单完全渲染后再添加按钮
@@ -2571,7 +2736,7 @@ watch(
 
               <!-- 供应商：一级勾选 + 二级属性 -->
               <div
-                class="type-row mb-2 rounded-lg bg-gray-50 py-2 shadow"
+                class="type-row type-row--nowrap mb-2 rounded-lg bg-gray-50 py-2 shadow"
                 :class="{
                   'client-audit-section--changed':
                     changedAuditSections.type || changedAuditSections.industry,
@@ -2598,11 +2763,11 @@ watch(
                 </div>
                 <div
                   v-if="isSupplierType?.includes(2)"
-                  class="type-row__secondary"
+                  class="type-row__secondary type-row__secondary--nowrap"
                 >
                   <CheckboxGroup
                     name="supplierIndustry"
-                    class="type-row__attr-group"
+                    class="type-row__attr-group type-row__attr-group--nowrap"
                     v-model:value="supplierType"
                     :disabled="formLocked"
                     :options="
@@ -3208,6 +3373,12 @@ watch(
   padding: 6px 10px;
 }
 
+.type-row--nowrap {
+  flex-wrap: nowrap;
+  gap: 4px 6px;
+  padding: 6px 8px;
+}
+
 .type-row__primary {
   display: inline-flex;
   flex-shrink: 0;
@@ -3290,6 +3461,13 @@ watch(
   border-radius: 4px;
 }
 
+.type-row__secondary--nowrap {
+  flex-wrap: nowrap;
+  padding: 1px 4px;
+  margin-left: 0;
+  overflow-x: visible;
+}
+
 .type-row__attr-group {
   :deep(.ant-checkbox-wrapper) {
     margin-inline-end: 10px;
@@ -3297,11 +3475,35 @@ watch(
     font-weight: 400;
     line-height: 24px;
     color: #64748b;
+    white-space: nowrap;
   }
 
   :deep(.ant-checkbox-inner) {
     width: 13px;
     height: 13px;
+  }
+}
+
+.type-row__attr-group--nowrap {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+
+  :deep(.ant-checkbox-group) {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  :deep(.ant-checkbox-wrapper) {
+    margin-inline-end: 4px;
+  }
+
+  :deep(.ant-checkbox + span) {
+    padding-inline: 2px 4px;
   }
 }
 

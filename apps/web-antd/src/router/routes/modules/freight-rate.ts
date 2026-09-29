@@ -62,6 +62,22 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/schedule-query/sdk.vue'),
       },
       {
+        path: 'packing-calc',
+        name: 'PackingCalc',
+        meta: {
+          icon: 'mdi:package-variant-closed',
+          keepAlive: false,
+          title: '装箱试算',
+          // 接口无单独权限点；与航线管理同一批权限可见
+          authority: abpPageAuthority([
+            'Admin.SeFreiPrice',
+            'Admin.Schedule',
+            'Admin.ExternalApi',
+          ]),
+        },
+        component: () => import('#/views/packing-calc/index.vue'),
+      },
+      {
         path: '/port-congestion',
         name: 'PortCongestionAnalysis',
         meta: {

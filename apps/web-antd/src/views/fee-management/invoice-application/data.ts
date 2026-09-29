@@ -190,8 +190,9 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
     {
       field: 'totalAppliedAmount',
       title: '申请金额合计',
-      minWidth: 120,
+      minWidth: 140,
       align: 'right',
+      slots: { default: 'totalAppliedAmount' },
       formatter: ({ cellValue }) => {
         if (cellValue === null || cellValue === undefined) return '-';
         return Number(cellValue).toFixed(2);

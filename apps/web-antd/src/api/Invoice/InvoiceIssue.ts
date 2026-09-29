@@ -566,7 +566,7 @@ export namespace InvoiceIssueApi {
      * 校验码
      * 0 = 正常，已执行成功
      * 1 = 汇率已变动，且金额对不上的开票申请都只有一条商品明细（可调修正接口）
-     * 2 = 存在金额对不上且商品明细不止一条的开票申请（只能驳回）
+     * 2 = 存在金额对不上且商品明细不止一条的开票申请，或申请缺汇率（只能驳回）
      */
     code: number;
     /** 金额对不上、且只有一条商品明细的开票申请ID列表 */
@@ -595,15 +595,94 @@ export namespace InvoiceIssueApi {
     unchangedApplicationIds: string[];
   }
 
-  /** 运输订单简易信息 */
+  /** 港口简易（海运港） */
+  export interface PortCodeSimpleDto {
+    id: number;
+    portName?: string;
+    cnName?: string;
+    ediCode?: string;
+    [key: string]: any;
+  }
+
+  /** 空港简易 */
+  export interface AirPortSimpleDto {
+    id: number;
+    iataCode?: string;
+    enName?: string;
+    cnName?: string;
+    [key: string]: any;
+  }
+
+  /** 船公司简易 */
+  export interface CarrierSimpleDto {
+    id: number;
+    cnName?: string;
+    cnShortName?: string;
+    enName?: string;
+    code?: string;
+    ediCode?: string;
+    [key: string]: any;
+  }
+
+  /** 海运出口/进口简易（字段一致） */
+  export interface SeaExportSimpleDto {
+    id: string;
+    vessel?: string;
+    innerVoyno?: string;
+    pol?: null | PortCodeSimpleDto;
+    polRemark?: string;
+    pod?: null | PortCodeSimpleDto;
+    podRemark?: string;
+    carrier?: CarrierSimpleDto | null;
+    [key: string]: any;
+  }
+
+  /** 空运出口简易 */
+  export interface AirExportSimpleDto {
+    id: string;
+    flightNo?: string;
+    pol?: AirPortSimpleDto | null;
+    polRemark?: string;
+    pot?: AirPortSimpleDto | null;
+    potRemark?: string;
+    pod?: AirPortSimpleDto | null;
+    podRemark?: string;
+    [key: string]: any;
+  }
+
+  /** 件杂货简易（无船公司） */
+  export interface BreakBulkSimpleDto {
+    id: string;
+    vessel?: string;
+    innerVoyno?: string;
+    terminalVoyno?: string;
+    pol?: null | PortCodeSimpleDto;
+    polRemark?: string;
+    pod?: null | PortCodeSimpleDto;
+    podRemark?: string;
+    [key: string]: any;
+  }
+
+  /** 运输订单简易信息（业务类型简要四者互斥挂在本对象上） */
   export interface TransportOrderSimpleDto {
     id: string;
+    /** 业务类型：0 海出 / 1 海进 / 2 空出 / 3 件杂货 */
+    bizType?: number;
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
     /** 委托单位对象（替代 clientName） */
     client?: ClientSimpleDto | null;
     etd?: string;
+
+    /** 海运出口（仅 bizType=0） */
+    seaExport?: null | SeaExportSimpleDto;
+    /** 海运进口（仅 bizType=1） */
+    seaImport?: null | SeaExportSimpleDto;
+    /** 空运出口（仅 bizType=2） */
+    airExport?: AirExportSimpleDto | null;
+    /** 件杂货（仅 bizType=3） */
+    breakBulk?: BreakBulkSimpleDto | null;
 
     // === 整票结算状态字段（客户对账接口使用） ===
     /** 应收整票结算状态（按该业务下全部应收费用汇总） */
@@ -616,39 +695,6 @@ export namespace InvoiceIssueApi {
     /** 本位币代码，如 RMB / USD */
     localCurrencyCode?: null | string;
 
-    [key: string]: any;
-  }
-
-  /** 海运出口简易信息 */
-  export interface SeaExportSimpleDto {
-    id: string;
-    vessel?: string;
-    innerVoyno?: string;
-    polId?: number;
-    /** 起运港（简易对象，无则为 null） */
-    pol?: {
-      id: number;
-      portName?: string;
-      cnName?: string;
-    } | null;
-    podId?: number;
-    /** 目的港（简易对象，无则为 null） */
-    pod?: {
-      id: number;
-      portName?: string;
-      cnName?: string;
-    } | null;
-    carrierId?: number;
-    /** 船公司（简易对象，无则为 null） */
-    carrier?: {
-      id: number;
-      cnName?: string;
-      cnShortName?: string;
-      enName?: string;
-      /** 英文简称 */
-      code?: string;
-      ediCode?: string;
-    } | null;
     [key: string]: any;
   }
 
@@ -771,17 +817,32 @@ export namespace InvoiceIssueApi {
     invoiceApplicationItems: InvoiceApplicationItemDetailDto[];
     /** 开票申请商品明细列表 */
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlDto[];
-    /** 原币申请金额合计 */
-    totalAppliedAmount: number;
+    /**
+     * 申请总金额，折成开票申请主币别；有费用币别缺汇率时为 null
+     */
+    totalAppliedAmount: null | number;
+    /** 开票申请上的费用币别汇率行 */
+    invoiceApplicationExchangeRates?: Array<{
+      id?: string;
+      invoiceApplicationId?: string;
+      currencyId: number;
+      exchangeRate: number;
+      currency?: CurrencySimpleDto | null;
+      /** 该币别原币申请合计 */
+      appliedAmount?: number;
+    }>;
     /** 商品明细人民币金额合计 */
     totalGoodsAmount: number;
-    /** 折算后的人民币金额（根据当前发票汇率计算） */
-    appliedAmountRmb?: number;
+    /**
+     * 费用申请金额折人民币 = round(totalAppliedAmount × 发票汇率, 2)；
+     * totalAppliedAmount 为 null 时也为 null
+     */
+    appliedAmountRmb?: null | number;
     /**
      * 校验码
      * 0 = 金额匹配（totalGoodsAmount == appliedAmountRmb）
      * 1 = 金额不匹配且商品明细恰好1条（可调修正接口）
-     * 2 = 金额不匹配且商品明细条数≠1，或无有效发票汇率（只能驳回）
+     * 2 = 金额不匹配且商品明细条数≠1，或无有效发票汇率，或 totalAppliedAmount 为 null（只能驳回补汇率）
      */
     code: number;
     /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */

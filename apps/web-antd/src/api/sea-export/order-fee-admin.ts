@@ -433,19 +433,21 @@ export namespace OrderFeeAdminApi {
     SeaImport = 1,
     /** 空运出口 */
     AirExport = 2,
+    /** 件杂货 */
+    BreakBulk = 3,
   }
 
   /** 查询业务订单费用输入参数（原 SeaExportFeeQueryInputDto，现支持全业务类型） */
   export interface TransportOrderFeeQueryInputDto {
-    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口。一次只查一种业务类型 */
+    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口 / 3=件杂货。一次只查一种业务类型 */
     bizType: BizType;
     /** 委托单位id（TransportOrder.ClientId） */
     clientId?: string;
-    /** 订舱代理id（SeaExport.BookingAgentId / AirExport.BookingAgentId）。海运进口时传了不生效 */
+    /** 订舱代理id（海出/空出/件杂货）。海运进口时传了不生效 */
     bookingAgentId?: string;
-    /** 船公司id（SeaExport.CarrierId / SeaImport.CarrierId）。空运出口时传了不生效 */
+    /** 船公司id（海出/海进）。空运出口、件杂货时传了不生效 */
     carrierId?: number;
-    /** 起运港id。bizType=0/1 传海港id，bizType=2 传空港id */
+    /** 起运港id。bizType=0/1/3 传海港id，bizType=2 传空港id */
     polId?: number;
     /** 目的港id。同上 */
     podId?: number;
@@ -538,11 +540,29 @@ export namespace OrderFeeAdminApi {
     /** 空运出口没有 carrier / vessel / innerVoyno */
   }
 
+  /** 件杂货业务详情子对象（无船公司；多地面代理） */
+  export interface BreakBulkBizInfoDto {
+    /** 与业务id相同 */
+    id: string;
+    /** 船名 */
+    vessel?: string;
+    /** 航次 */
+    innerVoyno?: string;
+    /** 起运港（海港） */
+    pol?: PortCodeSimpleDto;
+    /** 目的港（海港） */
+    pod?: PortCodeSimpleDto;
+    /** 订舱代理 */
+    bookingAgent?: ClientSimpleDto;
+    /** 地面代理 */
+    groundAgent?: ClientSimpleDto;
+  }
+
   /** 业务订单基础信息子对象 */
   export interface TransportOrderBaseInfoDto {
     /** 业务id */
     id: string;
-    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口 */
+    /** 业务类型：0=海运出口 / 1=海运进口 / 2=空运出口 / 3=件杂货 */
     bizType: BizType;
     /** 委托编号 */
     commissionNum?: string;
@@ -550,7 +570,7 @@ export namespace OrderFeeAdminApi {
     mblNum?: string;
     /** 委托单位对象 */
     client?: ClientSimpleDto;
-    /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
+    /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接）；空运/件杂货为空字符串 */
     totalCtn?: string;
     /** 海运出口详情（仅 bizType=0 时有值） */
     seaExport?: SeaExportBizInfoDto | null;
@@ -558,6 +578,8 @@ export namespace OrderFeeAdminApi {
     seaImport?: SeaImportBizInfoDto | null;
     /** 空运出口详情（仅 bizType=2 时有值） */
     airExport?: AirExportBizInfoDto | null;
+    /** 件杂货详情（仅 bizType=3 时有值） */
+    breakBulk?: BreakBulkBizInfoDto | null;
   }
 
   /** 业务订单费用列表项（原 SeaExportFeeListDto，现支持全业务类型） */

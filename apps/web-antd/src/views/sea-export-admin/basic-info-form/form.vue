@@ -114,6 +114,11 @@ import {
 } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
+  estimatePieceFromTotals,
+  stashPackingPrefill,
+} from '#/views/packing-calc/packing-session';
+import { matchPresetByName } from '#/views/packing-calc/packing-payload';
+import {
   emptyPartyContact,
   fetchDefaultClientContact,
   toPartyContactDisplay,
@@ -2028,6 +2033,62 @@ watch(currentCargoId, async (nextCargoId, prevCargoId) => {
 /** 中间表单：货物信息 — 唛头 / 货描 */
 const orderCtns = ref<SeaExportAdminApi.OrderCtnAddDto[]>([]);
 
+/** 打开装箱试算：用件毛体粗估尺寸预填（订单无单件长宽高时的兜底） */
+async function openPackingCalcTrial() {
+  const metrics = await cargoMetricsFormApi.getValues();
+  const cargoMain = await cargoMainFormApi.getValues();
+  const cargo = estimatePieceFromTotals({
+    pkgs: metrics.pkgs,
+    kgs: metrics.kgs,
+    cbm: metrics.cbm,
+    goodsDes: cargoMain.goodsDes,
+  });
+  if (!cargo) {
+    message.warning('请先填写件数（pkgs），才能带入装箱试算');
+    return;
+  }
+  const firstCtnName = (() => {
+    for (const c of orderCtns.value) {
+      const anyRow = c as SeaExportAdminApi.OrderCtnAddDto & {
+        ctnCodeName?: string;
+        ctnCode?: { ctnName?: string } | null;
+      };
+      const name = anyRow.ctnCodeName || anyRow.ctnCode?.ctnName;
+      if (name) return String(name);
+    }
+    return undefined;
+  })();
+  const preset = matchPresetByName(firstCtnName);
+  stashPackingPrefill({
+    source: 'seaExport',
+    seaExportId: editId.value ? String(editId.value) : undefined,
+    commissionNum: entrustReadonlyInfo.value.commissionNum || undefined,
+    presetKey: preset?.key,
+    suggestCtnName: firstCtnName || preset?.key,
+    container: preset
+      ? {
+          length: preset.length,
+          width: preset.width,
+          height: preset.height,
+          limitWeight: preset.limitWeight,
+          autoMinContainers: true,
+        }
+      : { autoMinContainers: true },
+    cargos: [cargo],
+  });
+  await router.push({ name: 'PackingCalc' });
+}
+
+function tipPackingSuggestFromQuery() {
+  const raw = route.query.packingSuggest;
+  const text = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof text === 'string' && text.trim()) {
+    message.info(
+      `装箱试算建议箱量：${text.trim()}（请手工核对后写入箱型箱量）`,
+    );
+  }
+}
+
 const tabMblNum = ref('');
 const tabCommissionNum = computed(
   () => entrustReadonlyInfo.value.commissionNum || undefined,
@@ -3174,12 +3235,14 @@ onMounted(() => {
   void initialize();
   scheduleCargoMainLayoutHeightSync();
   window.addEventListener('resize', syncCargoMainLayoutHeight);
+  tipPackingSuggestFromQuery();
 });
 
 /** KeepAlive 首次挂载会连着走 onMounted + onActivated，详情已由 initialize 拉取 */
 const skipFirstActivateDetailReload = ref(true);
 
 onActivated(() => {
+  tipPackingSuggestFromQuery();
   if (!isEdit.value) return;
   void refreshUploadedAttachmentTypeIds();
   if (skipFirstActivateDetailReload.value) {
@@ -4131,6 +4194,14 @@ defineExpose({
                   v-if="!masked('orderCtns', rawDetail)"
                   class="cargo-ctn-section"
                 >
+                  <div class="cargo-ctn-section__actions">
+                    <Button size="small" @click="openPackingCalcTrial">
+                      装箱试算
+                    </Button>
+                    <span class="cargo-ctn-section__hint">
+                      按件毛体粗估尺寸打开试算（无单件长宽高时）
+                    </span>
+                  </div>
                   <OrderCtnTable
                     v-model="orderCtns"
                     :get-default-code-package="getDefaultCodePackage"

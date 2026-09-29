@@ -216,6 +216,7 @@ const {
   totalAppliedAmountOriginal,
   totalAppliedAmount,
   hasAmountDifference,
+  hasMissingApplicationRate,
   foreignCurrencyAmount,
 } = useComputed(
   goodsDetails,
@@ -224,6 +225,23 @@ const {
   invoiceExchangeRate,
   selectedClientInvoiceInfo,
   orgBankAccounts,
+);
+
+const { loadDetail, loadDetailWithoutGoods } = useLoadDetail(
+  editId,
+  formData,
+  goodsDetails,
+  applicationGroupsData,
+  invoiceExchangeRate,
+  applicantName,
+  invoiceIssueTime,
+  loadClientInvoiceInfo,
+  updateOrgBankByCurrency,
+  fixedHeaderId, // ✅ 新增：传入 fixedHeaderId
+  fixedCurrencyId, // ✅ 新增：传入 fixedCurrencyId
+  invoiceStatus, // ✅ 新增：传入 invoiceStatus，用于在加载详情时同步更新状态
+  attachments, // ✅ 新增：传入 attachments，用于在加载详情时同步更新附件列表
+  applyOrgCompanyInfo,
 );
 
 const { handleFeeSelectionSave } = useFeeSelection(
@@ -243,23 +261,7 @@ const { handleFeeSelectionSave } = useFeeSelection(
   editId,
   isEdit,
   invoiceIssueTime,
-);
-
-const { loadDetail, loadDetailWithoutGoods } = useLoadDetail(
-  editId,
-  formData,
-  goodsDetails,
-  applicationGroupsData,
-  invoiceExchangeRate,
-  applicantName,
-  invoiceIssueTime,
-  loadClientInvoiceInfo,
-  updateOrgBankByCurrency,
-  fixedHeaderId, // ✅ 新增：传入 fixedHeaderId
-  fixedCurrencyId, // ✅ 新增：传入 fixedCurrencyId
-  invoiceStatus, // ✅ 新增：传入 invoiceStatus，用于在加载详情时同步更新状态
-  attachments, // ✅ 新增：传入 attachments，用于在加载详情时同步更新附件列表
-  applyOrgCompanyInfo,
+  loadDetail,
 );
 
 // ==================== UI 状态 ====================
@@ -1359,7 +1361,11 @@ onMounted(() => {
                   >
                   <span style="font-size: 13px"
                     ><strong>申请金额:</strong>
-                    {{ totalAppliedAmount.toFixed(2) }}</span
+                    {{
+                      totalAppliedAmount == null
+                        ? '-'
+                        : totalAppliedAmount.toFixed(2)
+                    }}</span
                   >
                   <!-- <span
                     v-if="foreignCurrencyAmount !== null"
@@ -1370,7 +1376,18 @@ onMounted(() => {
                   </span> -->
                 </Space>
                 <div
-                  v-if="hasAmountDifference"
+                  v-if="hasMissingApplicationRate"
+                  style="
+                    margin-top: 8px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #ff4d4f;
+                  "
+                >
+                  申请缺汇率，请驳回后补填
+                </div>
+                <div
+                  v-else-if="hasAmountDifference"
                   style="
                     margin-top: 8px;
                     font-size: 13px;

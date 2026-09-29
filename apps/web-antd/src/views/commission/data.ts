@@ -86,6 +86,9 @@ const BIZ_TYPE_LABELS: Record<number, string> = {
   [CommissionOrderAdminApi.BizType.AirExport]: $t(
     'commissionOrder.bizType.airExport',
   ),
+  [CommissionOrderAdminApi.BizType.BreakBulk]: $t(
+    'commissionOrder.bizType.breakBulk',
+  ),
 };
 
 export const getBizTypeLabel = (value?: number | null): string => {
@@ -205,13 +208,14 @@ export const formatCurrencies = (
     .join('；');
 };
 
-/** 按业务类型取对应的起运港/目的港子对象（三个子对象只有对应的一个有值） */
+/** 按业务类型取对应的起运港/目的港子对象（四个子对象只有对应的一个有值） */
 const getPortPair = (
   transportOrder: CommissionOrderAdminApi.CommissionTransportOrderDto,
 ):
+  | CommissionOrderAdminApi.CommissionAirExportDto
+  | CommissionOrderAdminApi.CommissionBreakBulkDto
   | CommissionOrderAdminApi.CommissionSeaExportDto
   | CommissionOrderAdminApi.CommissionSeaImportDto
-  | CommissionOrderAdminApi.CommissionAirExportDto
   | null
   | undefined => {
   switch (transportOrder.bizType) {
@@ -223,6 +227,9 @@ const getPortPair = (
     }
     case CommissionOrderAdminApi.BizType.AirExport: {
       return transportOrder.airExport;
+    }
+    case CommissionOrderAdminApi.BizType.BreakBulk: {
+      return transportOrder.breakBulk;
     }
     default: {
       return undefined;
@@ -244,7 +251,7 @@ export const formatPolPod = (
   return `${formatPortName(pair.pol)} → ${formatPortName(pair.pod)}`;
 };
 
-/** 箱型箱量文案：`40HQ×2、20GP×1`，空运出口（无箱）显示 `-` */
+/** 箱型箱量文案：`40HQ×2、20GP×1`，空运出口/件杂货（无箱）显示 `-` */
 export const formatCtns = (
   ctns?: null | CommissionOrderAdminApi.CommissionCtnSimpleDto[],
 ): string => {

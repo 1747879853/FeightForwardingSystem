@@ -28,14 +28,11 @@ export function useBatchAddDropdownSources() {
    * 如果需要更新，应该调用 store 的对应方法
    */
   function updateLabelCache(
-    type: 'carriers' | 'ports' | 'currencies' | 'clients',
-    id: number | string,
-    label: string,
+    _type: 'carriers' | 'ports' | 'currencies' | 'clients',
+    _id: number | string,
+    _label: string,
   ) {
-    console.warn(
-      '⚠️ [updateLabelCache] 不应直接调用此方法，数据应从 store 中获取',
-    );
-    // 这里保留方法签名以保持接口兼容，但实际不再使用
+    // 数据应从 store 获取，保留签名以兼容旧调用
   }
 
   /**
@@ -82,26 +79,12 @@ export function useBatchAddDropdownSources() {
    * 注意：现在这个方法只是确保 store 中的数据已加载，如果未加载则触发加载
    */
   async function initDropdownSources(defaultCurrencyIdRef: any) {
-    console.log('🚀 [initDropdownSources] 检查下拉框数据源...');
-
     try {
       // 港口/船公司/订舱代理改为远程搜索，仅要求箱型与币别已预载
       const hasData =
         baseStore.ctnOptions.length > 0 && baseStore.currencies.size > 0;
 
-      if (hasData) {
-        console.log('✅ [initDropdownSources] 使用 store 中的缓存数据');
-        console.log('📊 [initDropdownSources] 缓存统计:');
-        console.log('  - 箱型:', baseStore.ctnOptions.length);
-        console.log('  - 船公司(远程搜索，不预载):', baseStore.carriers.size);
-        console.log('  - 港口(远程搜索，不预载):', baseStore.ports.size);
-        console.log('  - 币别:', baseStore.currencies.size);
-        console.log(
-          '  - 订舱代理(远程搜索，不预载):',
-          baseStore.bookingAgents.size,
-        );
-      } else {
-        console.log('⚠️ [initDropdownSources] store 中无数据，开始加载...');
+      if (!hasData) {
         await baseStore.fetchFreightRateDropdownData();
       }
 

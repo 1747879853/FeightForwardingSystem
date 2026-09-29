@@ -44,6 +44,7 @@ export function formatBizType(bizType: number) {
     0: '海运出口',
     1: '海运进口',
     2: '空运出口',
+    3: '件杂货',
   };
   return typeMap[bizType] || '-';
 }

@@ -50,6 +50,8 @@ export enum FrightModule {
   PreOrder = 8,
   /** 客户管理 */
   Client = 9,
+  /** 件杂货 */
+  BreakBulk = 10,
   /** 运价箱型（箱型成本等，独立于运价主表） */
   SeFreiPriceCtn = 11,
 }

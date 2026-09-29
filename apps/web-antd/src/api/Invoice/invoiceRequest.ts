@@ -325,7 +325,7 @@ export namespace InvoiceApplicationApi {
   export interface InvoiceApplicationItemAddDto {
     /** 费用ID */
     orderFeeId: string;
-    /** 本次申请金额（可为负数，用于冲红） */
+    /** 本次申请金额（该费用原币；可为负数，用于冲红） */
     appliedAmount: number;
     /** 备注 */
     remark?: string;
@@ -339,14 +339,42 @@ export namespace InvoiceApplicationApi {
     remainingInvoiceAmount: number;
   }
 
+  /**
+   * 费用币别汇率入参（2026-09-26）
+   * 1 单位费用币别折合多少开票申请主币别；与主币别相同的后端恒存 1
+   */
+  export interface InvoiceApplicationExchangeRateInputDto {
+    currencyId: number;
+    /** 必须大于 0，六位小数 */
+    exchangeRate: number;
+  }
+
+  /** 开票申请汇率行出参 */
+  export interface InvoiceApplicationExchangeRateDto {
+    id?: string;
+    invoiceApplicationId?: string;
+    currencyId: number;
+    exchangeRate: number;
+    currency?: CurrencySimpleDto | null;
+    /** 该币别费用明细的原币申请金额合计 */
+    appliedAmount?: number;
+  }
+
   /** 开票申请币别分组DTO */
   export interface InvoiceApplicationCurrencyGroupDto {
-    /** 币别ID */
+    /**
+     * 币别ID：这张开票申请的主币别（发票开出按它合并）。
+     * 2026-09-26 起费用不必与它同币别
+     */
     currencyId: number;
     /** 发票类型（p=普通发票(电票)(默认)，c=普通发票(纸票)，s=专用发票） */
     invoiceType?: InvoiceType;
-    /** 本币别下的费用明细列表 */
+    /** 本组的费用明细列表，费用币别可以与 currencyId 不同 */
     invoiceApplicationItems: InvoiceApplicationItemAddDto[];
+    /**
+     * 各费用币别的汇率。与主币别不同的每个费用币别都必须给；同币别可不传
+     */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     /** 本币别下的商品明细列表 */
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[];
     /** 我司银行ID，不传则取对应币别的默认银行 */
@@ -389,6 +417,11 @@ export namespace InvoiceApplicationApi {
     remark?: string;
     /** 费用明细列表（全量替换） */
     invoiceApplicationItems: InvoiceApplicationItemAddDto[];
+    /**
+     * 替换后费用明细里与开票申请币别不同的每个币别都要有汇率；
+     * 入参没给的沿用单上已有汇率
+     */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     /** 商品明细列表（全量替换） */
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlEditDto[];
   }
@@ -418,6 +451,11 @@ export namespace InvoiceApplicationApi {
     require?: string;
     /** 备注 */
     remark?: string;
+    /**
+     * 可空：不传不改汇率；传了只覆盖传入的币别，
+     * 结果仍须覆盖明细里全部非主币别
+     */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
   }
 
   /** 新增多条费用明细DTO */
@@ -426,6 +464,10 @@ export namespace InvoiceApplicationApi {
     id: string;
     /** 本次新增的费用明细；可空 */
     invoiceApplicationItems?: InvoiceApplicationItemAddDto[];
+    /**
+     * 新加进来的非主币别必填；已有币别不传就沿用、传了就覆盖
+     */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     /**
      * 商品明细处理逻辑：
      * - undefined/null = 不改商品
@@ -582,6 +624,12 @@ export namespace InvoiceApplicationApi {
     applyUserName: string;
     rejectUserNickName?: string;
     invoiceExchangeRate?: number;
+    /**
+     * 申请总额，折成开票申请主币别；有币别缺汇率时为 null
+     */
+    totalAppliedAmount?: null | number;
+    /** 单上的费用币别汇率行 */
+    invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateDto[];
     feeGroups: InvoiceApplicationFeeGroupDetailDto[];
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlDetailDto[];
   }
@@ -650,9 +698,11 @@ export namespace InvoiceApplicationApi {
     currency?: CurrencySimpleDto | null;
     applyUserName: string;
     rejectUserNickName?: string;
-    totalAppliedAmount: number;
+    /** 申请总额（折成主币别）；缺汇率时为 null */
+    totalAppliedAmount: null | number;
     itemCount: number;
-    invoiceAmount: number;
+    /** 人民币发票金额；totalAppliedAmount 为 null 时也为 null */
+    invoiceAmount: null | number;
     invoiceExchangeRate?: number;
     /** 结算状态：0未结算 1部分结算 2结算完毕（按关联费用聚合，无费用时为 0） */
     settlementStatus: SettlementStatus;

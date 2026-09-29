@@ -192,13 +192,19 @@ export function useGoodsDetails(
     let totalRmbAmount = 0;
 
     selectedApplications.forEach((app: any) => {
-      const appliedAmount = app.totalAppliedAmount || 0;
+      // 优先 API 折人民币；缺汇率（null）时跳过，勿当 0
+      if (app.appliedAmountRmb != null) {
+        totalRmbAmount += Number(app.appliedAmountRmb) || 0;
+        return;
+      }
+      if (app.totalAppliedAmount == null) {
+        return;
+      }
+      const appliedAmount = Number(app.totalAppliedAmount) || 0;
       const appCurrencyId = app.currencyId;
 
       if (appCurrencyId !== 1) {
-        const convertedAmount =
-          appliedAmount * (invoiceExchangeRate.value || 1);
-        totalRmbAmount += convertedAmount;
+        totalRmbAmount += appliedAmount * (invoiceExchangeRate.value || 1);
       } else {
         totalRmbAmount += appliedAmount;
       }
@@ -338,7 +344,14 @@ export function useGoodsDetails(
         (a: any) => a.id === item.invoiceApplicationId,
       );
       if (app) {
-        const appliedAmount = app.totalAppliedAmount || 0;
+        if (app.appliedAmountRmb != null) {
+          totalRmbAmount += Number(app.appliedAmountRmb) || 0;
+          return;
+        }
+        if (app.totalAppliedAmount == null) {
+          return;
+        }
+        const appliedAmount = Number(app.totalAppliedAmount) || 0;
         const appCurrencyId = app.currencyId;
 
         if (appCurrencyId !== 1) {

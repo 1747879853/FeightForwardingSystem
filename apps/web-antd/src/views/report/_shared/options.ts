@@ -21,6 +21,7 @@ export const BIZ_TYPE_OPTIONS = [
   { label: '海运出口', value: 0 },
   { label: '海运进口', value: 1 },
   { label: '空运出口', value: 2 },
+  { label: '件杂货', value: 3 },
 ];
 
 /** 货物类型选项 */

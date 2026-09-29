@@ -77,6 +77,7 @@ const {
   selectedClientInvoiceInfo,
   codeInvoiceList,
   invoiceExchangeRate,
+  invoiceApplicationExchangeRates,
   goodsDetails,
   feeGroupsData,
   selectedCurrencyCode,
@@ -124,13 +125,15 @@ const {
   formData,
   invoiceExchangeRate,
   flattenTreeData,
-  feeGroupsData, // ✅ 传递费用组数据
+  feeGroupsData,
+  invoiceApplicationExchangeRates,
 );
 
 const {
   addSelectedFeesToForm,
   handleDeleteFee: deleteFeeBase,
   recalculateGoodsDetails,
+  syncExchangeRateRows,
 } = useFeeManagement(
   formData,
   feeGroupsData,
@@ -138,6 +141,7 @@ const {
   invoiceExchangeRate,
   codeInvoiceList,
   flattenTreeData,
+  invoiceApplicationExchangeRates,
 );
 
 const {
@@ -176,12 +180,29 @@ const {
   totalInvoiceAmount,
   totalTaxAmount,
   totalAppliedAmount,
+  totalAppliedAmountOriginal,
   hasAmountDifference,
+  hasMissingExchangeRates,
   foreignCurrencyAmount,
-} = useComputed(goodsDetails, formData, invoiceExchangeRate);
+} = useComputed(
+  goodsDetails,
+  formData,
+  invoiceExchangeRate,
+  invoiceApplicationExchangeRates,
+  feeGroupsData,
+  flattenTreeData,
+);
 
 const { submitLoading, handleSubmit, handleDirectSubmit, handleCancel } =
-  useSubmit(formData, goodsDetails, isEdit, editId);
+  useSubmit(
+    formData,
+    goodsDetails,
+    isEdit,
+    editId,
+    invoiceApplicationExchangeRates,
+    feeGroupsData,
+    flattenTreeData,
+  );
 
 const { handleFeeSelectionSave } = useFeeSelectionSave(
   formData,
@@ -189,16 +210,18 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   goodsDetails,
   invoiceExchangeRate,
   selectedCurrencyCode,
-  codeInvoiceList, // ✅ 传递发票商品编码列表
-  loadCodeInvoiceList, // ✅ 传递加载发票商品编码列表函数
+  codeInvoiceList,
+  loadCodeInvoiceList,
   addSelectedFeesToForm,
   autoFillGoodsDetails,
   mergeAmountToExistingGoods,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
-  flattenTreeData, // ✅ 传递扁平化树形数据函数
-  loadDefaultRemarkTemplate, // ✅ 传递默认备注模板加载函数
-  orgBankAccounts, // ✅ 传递销售方银行账号列表，用于替换占位符
+  flattenTreeData,
+  invoiceApplicationExchangeRates,
+  syncExchangeRateRows,
+  loadDefaultRemarkTemplate,
+  orgBankAccounts,
   (ids: string[]) => {
     // ✅ 新增开票申请成功后的回调 - 打开所有开票申请的tab页
 
@@ -245,8 +268,39 @@ const { loadDetail } = useLoadDetail(
   applicationDate,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  invoiceApplicationExchangeRates,
+  flattenTreeData,
   applyOrgCompanyInfo,
+  loadDefaultRemarkTemplate,
 );
+
+/** 非主币别汇率行（主币别固定为 1，不展示录入） */
+const nonMainExchangeRateRows = computed(() =>
+  invoiceApplicationExchangeRates.value.filter(
+    (r) => r.currencyId !== formData.value.currencyId,
+  ),
+);
+
+function formatRateConverted(row: {
+  appliedAmount?: number;
+  exchangeRate?: null | number;
+}) {
+  const amount = Number(row.appliedAmount) || 0;
+  const rate = Number(row.exchangeRate);
+  if (!rate || rate <= 0) return '-';
+  return (Math.round(amount * rate * 100 + Number.EPSILON) / 100).toFixed(2);
+}
+
+/** 费用币别汇率变更：写回后按折算结果自动生成/更新商品明细 */
+async function handleFeeExchangeRateChange(
+  row: { currencyId: number; exchangeRate?: null | number },
+  value: null | number,
+) {
+  row.exchangeRate = value == null ? undefined : Number(value);
+  // 确保汇率行已带上新值后再折算，避免商品明细仍为空
+  await nextTick();
+  await recalculateGoodsDetails();
+}
 
 // ✅ 新增：处理费用明细刷新（删除后重新加载）
 async function handleFeeDetailRefresh() {
@@ -729,10 +783,10 @@ onMounted(async () => {
                       :selected-items="orgSelectEchoItems"
                     />
                   </Form.Item>
-                  <Form.Item label="发票币别" required>
+                  <Form.Item label="申请币别" required>
                     <CurrencySelect
                       v-model:value="formData.currencyId"
-                      placeholder="从费用中自动获取"
+                      placeholder="开票申请主币别（创建后不可改）"
                       style="width: 100%"
                       disabled
                     />
@@ -748,6 +802,55 @@ onMounted(async () => {
                       style="width: 100%"
                     />
                   </Form.Item>
+                  <div
+                    v-if="nonMainExchangeRateRows.length > 0"
+                    class="exchange-rate-rows"
+                  >
+                    <div
+                      class="basic-config__section-head"
+                      style="margin-top: 8px"
+                    >
+                      费用币别汇率
+                    </div>
+                    <div
+                      v-for="row in nonMainExchangeRateRows"
+                      :key="row.currencyId"
+                      class="exchange-rate-row"
+                    >
+                      <Form.Item
+                        :label="`${row.currencyCode || row.currencyName || row.currencyId}→${selectedCurrencyCode || '主币别'}`"
+                        required
+                      >
+                        <InputNumber
+                          v-model:value="row.exchangeRate"
+                          :min="0"
+                          :precision="6"
+                          :step="0.000001"
+                          placeholder="1 单位费用币别 = N 主币别"
+                          style="width: 100%"
+                          :disabled="isReadOnly"
+                          @change="
+                            (val) =>
+                              handleFeeExchangeRateChange(
+                                row,
+                                val as null | number,
+                              )
+                          "
+                        />
+                      </Form.Item>
+                      <div class="exchange-rate-row__hint">
+                        原币合计 {{ (row.appliedAmount ?? 0).toFixed(2) }} ×
+                        汇率
+                        {{
+                          row.exchangeRate != null &&
+                          Number(row.exchangeRate) > 0
+                            ? Number(row.exchangeRate).toFixed(6)
+                            : '-'
+                        }}
+                        = 折主币别 {{ formatRateConverted(row) }}
+                      </div>
+                    </div>
+                  </div>
                 </section>
 
                 <!-- 补充说明 -->
@@ -1252,19 +1355,44 @@ onMounted(async () => {
                     {{ totalTaxAmount.toFixed(2) }}</span
                   >
                   <span style="font-size: 13px"
-                    ><strong>申请金额:</strong>
-                    {{ totalAppliedAmount.toFixed(2) }}</span
+                    ><strong
+                      >申请总额({{ selectedCurrencyCode || '主币别' }}):</strong
+                    >
+                    {{
+                      totalAppliedAmountOriginal == null
+                        ? '-'
+                        : totalAppliedAmountOriginal.toFixed(2)
+                    }}</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>折人民币参考:</strong>
+                    {{
+                      totalAppliedAmount == null
+                        ? '-'
+                        : totalAppliedAmount.toFixed(2)
+                    }}</span
                   >
                   <span
                     v-if="foreignCurrencyAmount !== null"
-                    style="font-size: 13px; color: #1890ff"
+                    style="font-size: 13px; color: hsl(var(--primary))"
                   >
                     <strong>申请币别金额({{ selectedCurrencyCode }}):</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}
                   </span>
                 </Space>
                 <div
-                  v-if="hasAmountDifference"
+                  v-if="hasMissingExchangeRates"
+                  style="
+                    margin-top: 8px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #ff4d4f;
+                  "
+                >
+                  有币别缺汇率，请驳回后补填
+                </div>
+                <div
+                  v-else-if="hasAmountDifference"
                   style="
                     margin-top: 8px;
                     font-size: 13px;
@@ -1383,6 +1511,25 @@ onMounted(async () => {
 
 <style lang="scss">
 @import '#/views/_shared/invoice-basic-config/basic-config.scss';
+
+.exchange-rate-rows {
+  margin-top: 4px;
+}
+
+.exchange-rate-row {
+  margin-bottom: 4px;
+
+  .ant-form-item {
+    margin-bottom: 4px;
+  }
+
+  &__hint {
+    margin: -2px 0 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: hsl(var(--foreground) / 65%);
+  }
+}
 
 /*
  * 查看页：控件仍用 disabled 防误改，但 Ant 默认禁用色过浅。

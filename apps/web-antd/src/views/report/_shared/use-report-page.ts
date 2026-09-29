@@ -238,6 +238,7 @@ export function useReportPage(config: ReportPageConfig) {
       0: 'sea-exports',
       1: 'sea-imports',
       2: 'air-exports',
+      3: 'break-bulks',
     };
     const basePath = bizTypeMap[bizType];
     if (!basePath) {

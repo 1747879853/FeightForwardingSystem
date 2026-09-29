@@ -2,7 +2,16 @@
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
-import { Button, Input, message, Modal, Spin, Checkbox } from 'ant-design-vue';
+import {
+  Button,
+  Input,
+  message,
+  Modal,
+  Spin,
+  Checkbox,
+  Popover,
+  Tooltip,
+} from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
 import {
@@ -233,9 +242,18 @@ function transformToTreeData(applications: any[]): any[] {
       invoiceRemark: '-',
       invoiceType: app.invoiceType || '-',
       invoiceExchangeRate: app.invoiceExchangeRate || 1.0,
-      totalAppliedAmount: app.totalAppliedAmount || 0,
+      totalAppliedAmount:
+        app.totalAppliedAmount == null ? null : app.totalAppliedAmount,
+      appliedAmountRmb:
+        app.appliedAmountRmb == null ? null : app.appliedAmountRmb,
       invoiceAmount:
-        (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
+        app.appliedAmountRmb != null
+          ? app.appliedAmountRmb
+          : app.totalAppliedAmount == null
+            ? null
+            : (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
+      invoiceApplicationExchangeRates:
+        app.invoiceApplicationExchangeRates || [],
       checked: false,
       selectable: true,
       invoiceApplicationItems: childrenList,
@@ -248,7 +266,6 @@ function transformToTreeData(applications: any[]): any[] {
       clientInvoiceBankId: app.clientInvoiceBankId,
       orgBankAccountId: app.orgBankAccountId,
       totalGoodsAmount: app.totalGoodsAmount,
-      appliedAmountRmb: app.appliedAmountRmb,
       code: app.code,
       clientInvoiceInfo: app.clientInvoiceInfo,
     };
@@ -403,13 +420,19 @@ async function handleDeleteSelected() {
         // ✅ 通知父组件刷新
         emit('refresh');
       } catch (error) {
+        // 反开票结算引用等业务错误由 requestClient 拦截器原样提示
         console.error('❌ 删除申请失败:', error);
-        message.error('删除申请失败，请重试');
       } finally {
         loading.value = false;
       }
     },
   });
+}
+
+/** 金额展示：null → '-' */
+function formatAmountOrDash(value: null | number | undefined): string {
+  if (value == null) return '-';
+  return Number(value).toFixed(2);
 }
 
 /** 重置搜索 */
@@ -779,10 +802,75 @@ defineExpose({
                   {{ record.applyTime || '-' }}
                 </template>
                 <template v-else-if="column.key === 'totalAppliedAmount'">
-                  {{ (record.totalAppliedAmount || 0).toFixed(2) }}
+                  <Popover
+                    v-if="
+                      record.invoiceApplicationExchangeRates &&
+                      record.invoiceApplicationExchangeRates.length > 0
+                    "
+                    trigger="click"
+                    placement="bottomLeft"
+                  >
+                    <template #content>
+                      <div style="min-width: 220px; max-width: 360px">
+                        <div
+                          style="
+                            margin-bottom: 8px;
+                            font-weight: 600;
+                            color: #0f172a;
+                          "
+                        >
+                          申请汇率明细
+                        </div>
+                        <div
+                          v-for="(
+                            rate, idx
+                          ) in record.invoiceApplicationExchangeRates"
+                          :key="rate.currencyId ?? idx"
+                          style="
+                            margin-bottom: 4px;
+                            font-size: 12px;
+                            color: #475569;
+                          "
+                        >
+                          {{
+                            `${rate.currency?.code || rate.currencyId} 汇率 ${rate.exchangeRate ?? '-'}，原币合计 ${rate.appliedAmount == null ? '-' : Number(rate.appliedAmount).toFixed(2)}`
+                          }}
+                        </div>
+                      </div>
+                    </template>
+                    <Tooltip
+                      v-if="record.totalAppliedAmount == null"
+                      title="申请缺汇率，请驳回后补填"
+                    >
+                      <span style="color: #cf1322; cursor: pointer">-</span>
+                    </Tooltip>
+                    <span
+                      v-else
+                      style="text-decoration: underline dotted; cursor: pointer"
+                    >
+                      {{ formatAmountOrDash(record.totalAppliedAmount) }}
+                    </span>
+                  </Popover>
+                  <Tooltip
+                    v-else-if="record.totalAppliedAmount == null"
+                    title="申请缺汇率，请驳回后补填"
+                  >
+                    <span style="color: #cf1322">-</span>
+                  </Tooltip>
+                  <span v-else>{{
+                    formatAmountOrDash(record.totalAppliedAmount)
+                  }}</span>
                 </template>
                 <template v-else-if="column.key === 'invoiceAmount'">
-                  {{ (record.invoiceAmount || 0).toFixed(2) }}
+                  <Tooltip
+                    v-if="record.invoiceAmount == null"
+                    title="申请缺汇率，请驳回后补填"
+                  >
+                    <span style="color: #cf1322">-</span>
+                  </Tooltip>
+                  <span v-else>{{
+                    formatAmountOrDash(record.invoiceAmount)
+                  }}</span>
                 </template>
                 <template v-else-if="column.key === 'invoiceExchangeRate'">
                   {{ record.invoiceExchangeRate || 1.0 }}
@@ -848,9 +936,14 @@ defineExpose({
               class="idm-footer-summary__value idm-footer-summary__value--invoice"
             >
               {{
-                filteredData
-                  .reduce((sum, item) => sum + (item.invoiceAmount || 0), 0)
-                  .toFixed(2)
+                filteredData.some((item) => item.invoiceAmount == null)
+                  ? '-'
+                  : filteredData
+                      .reduce(
+                        (sum, item) => sum + (Number(item.invoiceAmount) || 0),
+                        0,
+                      )
+                      .toFixed(2)
               }}
             </span>
           </div>

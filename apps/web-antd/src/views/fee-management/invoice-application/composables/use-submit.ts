@@ -1,11 +1,17 @@
-import { message, Modal } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 import type { Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTabs } from '@vben/hooks';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-// ✅ 新增：导入刷新标记工具函数
+import { ref } from 'vue';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  getMissingExchangeRateCurrencyIds,
+  toExchangeRateInputs,
+  type InvoiceApplicationExchangeRateRow,
+} from '#/utils/invoice-application-amount';
+
+import { collectFeeAppliedItems } from './use-computed';
 
 /**
  * 提交和保存相关逻辑
@@ -15,6 +21,9 @@ export function useSubmit(
   goodsDetails: Ref<any[]>,
   isEdit: Ref<boolean>,
   editId: Ref<string | undefined>,
+  invoiceApplicationExchangeRates: Ref<InvoiceApplicationExchangeRateRow[]>,
+  feeGroupsData: Ref<any[]>,
+  flattenTreeData: (data: any[]) => any[],
 ) {
   const router = useRouter();
   const route = useRoute();
@@ -22,6 +31,46 @@ export function useSubmit(
   const { addAsync, editAsync, submitAsync } = InvoiceApplicationApi;
 
   const submitLoading = ref(false);
+
+  function buildMissingRateMessage(missingIds: number[]): string {
+    return missingIds
+      .map((id) => {
+        const row = invoiceApplicationExchangeRates.value.find(
+          (r) => r.currencyId === id,
+        );
+        const label = row?.currencyCode || row?.currencyName || String(id);
+        return `币别[${label}]与开票申请币别不同,汇率必填且必须大于0`;
+      })
+      .join('；');
+  }
+
+  /**
+   * 校验非主币别汇率
+   */
+  function validateExchangeRates(): boolean {
+    const appCurrencyId = formData.value.currencyId;
+    if (!appCurrencyId) {
+      message.warning('请选择开票申请币别');
+      return false;
+    }
+    const feeItems = collectFeeAppliedItems(
+      formData.value,
+      feeGroupsData.value,
+      flattenTreeData,
+    );
+    if (feeItems.length === 0) return true;
+
+    const missing = getMissingExchangeRateCurrencyIds(
+      Number(appCurrencyId),
+      feeItems,
+      invoiceApplicationExchangeRates.value,
+    );
+    if (missing.length > 0) {
+      message.warning(buildMissingRateMessage(missing));
+      return false;
+    }
+    return true;
+  }
 
   /**
    * 验证表单
@@ -35,6 +84,13 @@ export function useSubmit(
       message.warning('请选择归属组织');
       return false;
     }
+    if (!formData.value.currencyId) {
+      message.warning('请选择开票申请币别');
+      return false;
+    }
+    if (!validateExchangeRates()) {
+      return false;
+    }
     return true;
   }
 
@@ -42,7 +98,6 @@ export function useSubmit(
    * 同步商品明细数据到 formData
    */
   function syncGoodsDetailsToFormData() {
-    // ✅ 关键修复：在保存前，将最新的 goodsDetails 同步到 formData
     formData.value.invoiceApplicationGoodsDtls = goodsDetails.value.map(
       (item) => ({
         codeInvoiceId: item.codeInvoiceId,
@@ -59,12 +114,20 @@ export function useSubmit(
     );
   }
 
+  function getExchangeRatePayload() {
+    return toExchangeRateInputs(
+      Number(formData.value.currencyId),
+      invoiceApplicationExchangeRates.value,
+      { includeMain: true },
+    );
+  }
+
   /**
    * 构建批次数据
    */
   function buildBatchData() {
-    // ✅ 先同步最新的商品明细
     syncGoodsDetailsToFormData();
+    const rates = getExchangeRatePayload();
 
     return {
       settlementId: formData.value.settlementId!,
@@ -77,9 +140,10 @@ export function useSubmit(
           invoiceApplicationItems: formData.value.invoiceApplicationItems || [],
           invoiceApplicationGoodsDtls:
             formData.value.invoiceApplicationGoodsDtls || [],
+          invoiceApplicationExchangeRates: rates,
           orgBankAccountId: formData.value.orgBankAccountId,
           clientInvoiceBankId: formData.value.clientInvoiceBankId,
-          remark: formData.value.remark, // ✅ 备注下移到币别分组中
+          remark: formData.value.remark,
         },
       ],
     };
@@ -96,12 +160,13 @@ export function useSubmit(
     submitLoading.value = true;
     try {
       if (isEdit.value) {
-        // ✅ 编辑模式下，先同步最新的商品明细
         syncGoodsDetailsToFormData();
+        const rates = getExchangeRatePayload();
 
-        await editAsync(
-          formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto,
-        );
+        await editAsync({
+          ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
+          invoiceApplicationExchangeRates: rates,
+        });
         message.success('修改成功');
       } else {
         const batchData = buildBatchData();
@@ -133,7 +198,6 @@ export function useSubmit(
     await router.replace(
       `/fee-management/invoice-application/${applicationId}/view`,
     );
-    // 与新建保存进编辑同一套路：replace 后关掉旧 fullPath 残留页签
     if (currentTabKey !== route.fullPath) {
       await closeTabByKey(currentTabKey);
     }
@@ -165,12 +229,13 @@ export function useSubmit(
           applicationId = ids[0];
         }
       } else {
-        // ✅ 编辑模式下，先同步最新的商品明细
         syncGoodsDetailsToFormData();
+        const rates = getExchangeRatePayload();
 
-        await editAsync(
-          formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto,
-        );
+        await editAsync({
+          ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
+          invoiceApplicationExchangeRates: rates,
+        });
         applicationId = editId.value;
       }
 
@@ -180,7 +245,6 @@ export function useSubmit(
         await navigateToViewAfterSubmit(applicationId);
       }
     } catch (error) {
-      // 提交失败留在当前编辑/新建页，不跳转
       console.error('提交失败:', error);
     } finally {
       submitLoading.value = false;
@@ -214,7 +278,6 @@ export function useSubmit(
           await navigateToViewAfterSubmit(applicationId);
         }
       } else {
-        // ✅ 编辑模式下，先同步最新的商品明细
         syncGoodsDetailsToFormData();
 
         const applicationId = editId.value!;
@@ -223,7 +286,6 @@ export function useSubmit(
         await navigateToViewAfterSubmit(applicationId);
       }
     } catch (error) {
-      // 提交失败留在当前页
       console.error('提交失败:', error);
       message.error('提交失败');
     } finally {
@@ -244,5 +306,6 @@ export function useSubmit(
     handleDirectSubmit,
     handleSubmitForAudit,
     handleCancel,
+    validateExchangeRates,
   };
 }

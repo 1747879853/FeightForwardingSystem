@@ -66,6 +66,15 @@ describe('applyDefaultFreightRateValue', () => {
     expect(row.currencyId).toBe(1);
     expect(row.polId).toBe(20);
   });
+
+  it('does not apply laneIds into freight draft', () => {
+    const row = applyDefaultFreightRateValue(
+      { voyage: '' },
+      { ...defaults, laneIds: [1, 2, 3] },
+    );
+    expect(row.voyage).toBe('25');
+    expect((row as { laneIds?: number[] }).laneIds).toBeUndefined();
+  });
 });
 
 describe('isEmptyFreightDefaultField', () => {

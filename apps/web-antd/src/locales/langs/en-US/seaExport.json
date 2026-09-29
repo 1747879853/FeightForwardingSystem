@@ -44,7 +44,8 @@
       "warehouse": "Warehouse",
       "wharf": "Wharf",
       "factory": "Factory",
-      "personnelAgent": "Individual"
+      "personnelAgent": "Individual",
+      "groundAgent": "Ground Agent"
     },
     "keyword": "Keyword",
     "list": "Client List",
@@ -95,7 +96,8 @@
       "BizTypeOptions": {
         "seaExport": "Sea Export",
         "seaImport": "Sea Import",
-        "airExport": "Air Export"
+        "airExport": "Air Export",
+        "breakBulk": "Break Bulk"
       },
       "SettlementTypeOptions": {
         "ticketSettlement": "Ticket Settlement",

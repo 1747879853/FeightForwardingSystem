@@ -8,9 +8,10 @@ import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Plus, Trash2, ChevronLeft, ChevronRight } from '@vben/icons';
 
-import { Button, message, Modal, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { buildAttachmentUrl } from '#/utils/attachment-url';
 import {
   deleteOrderFeeTemplate,
   getOrderFeeTemplatePagedList,
@@ -835,6 +836,21 @@ onUnmounted(() => {
         <Tag :color="row.enable ? 'success' : 'default'">
           {{ row.enable ? '启用' : '停用' }}
         </Tag>
+      </template>
+      <template #carrierWithLogo="{ row }">
+        <span class="inline-flex items-center gap-1">
+          <img
+            v-if="row?.carrierLogo?.url || row?.carrier?.logo?.url"
+            :src="
+              buildAttachmentUrl(
+                row.carrierLogo?.url || row.carrier?.logo?.url || undefined,
+              )
+            "
+            :alt="row?.carrier?.code || 'carrier-logo'"
+            class="h-8 w-8 rounded object-contain"
+          />
+          <span>{{ row?.carrier?.code || '--' }}</span>
+        </span>
       </template>
     </Grid>
 

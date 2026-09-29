@@ -31,18 +31,20 @@ import {
 export const MASKED_TEXT = '***';
 
 /** 业务线子对象在 ReportTransportOrderDto 上的 JSON 键 */
-type BizLineKey = 'airExport' | 'seaExport' | 'seaImport';
+type BizLineKey = 'airExport' | 'breakBulk' | 'seaExport' | 'seaImport';
 
-/** 业务类型 → 业务线（0 海运出口 / 1 海运进口 / 2 空运出口） */
+/** 业务类型 → 业务线（0 海运出口 / 1 海运进口 / 2 空运出口 / 3 件杂货） */
 const BIZ_TYPE_LINE: Record<number, BizLineKey> = {
   0: 'seaExport',
   1: 'seaImport',
   2: 'airExport',
+  3: 'breakBulk',
 };
 
 /** 业务线 → 所属权限模块 */
 const BIZ_LINE_MODULE: Record<BizLineKey, FrightModule> = {
   airExport: FrightModule.AirExport,
+  breakBulk: FrightModule.BreakBulk,
   seaExport: FrightModule.SeaExport,
   seaImport: FrightModule.SeaImport,
 };
@@ -50,12 +52,18 @@ const BIZ_LINE_MODULE: Record<BizLineKey, FrightModule> = {
 /** 业务线子对象在 TransportOrder 模块下的容器属性名（可被整体屏蔽） */
 const BIZ_LINE_CONTAINER_PROP: Record<BizLineKey, string> = {
   airExport: 'AirExport',
+  breakBulk: 'BreakBulk',
   seaExport: 'SeaExport',
   seaImport: 'SeaImport',
 };
 
 /** 与 transform.ts 的 extractBizLineFields 保持同一取值优先级 */
-const BIZ_LINE_PRIORITY: BizLineKey[] = ['seaExport', 'seaImport', 'airExport'];
+const BIZ_LINE_PRIORITY: BizLineKey[] = [
+  'seaExport',
+  'seaImport',
+  'airExport',
+  'breakBulk',
+];
 
 /** 报表列的数据来源声明 */
 interface ReportFieldSource {
@@ -89,7 +97,11 @@ const FIELD_SOURCES: Record<string, ReportFieldSource> = {
     },
   },
   bookingAgent: {
-    bizLineProps: { airExport: 'BookingAgent', seaExport: 'BookingAgent' },
+    bizLineProps: {
+      airExport: 'BookingAgent',
+      breakBulk: 'BookingAgent',
+      seaExport: 'BookingAgent',
+    },
   },
   cargoId: { orderProp: 'CargoId' },
   carrier: {
@@ -100,7 +112,11 @@ const FIELD_SOURCES: Record<string, ReportFieldSource> = {
   commissionNum: { orderProp: 'CommissionNum' },
   ctns: CTNS_SOURCE,
   innerVoyno: {
-    bizLineProps: { seaExport: 'InnerVoyno', seaImport: 'InnerVoyno' },
+    bizLineProps: {
+      breakBulk: 'InnerVoyno',
+      seaExport: 'InnerVoyno',
+      seaImport: 'InnerVoyno',
+    },
   },
   kgs: { orderProp: 'Kgs' },
   mblNum: { orderProp: 'MblNum' },
@@ -108,21 +124,33 @@ const FIELD_SOURCES: Record<string, ReportFieldSource> = {
   org: { orderProp: 'Orgs' },
   pkgs: { orderProp: 'Pkgs' },
   pod: {
-    bizLineProps: { airExport: 'Pod', seaExport: 'Pod', seaImport: 'Pod' },
+    bizLineProps: {
+      airExport: 'Pod',
+      breakBulk: 'Pod',
+      seaExport: 'Pod',
+      seaImport: 'Pod',
+    },
   },
   podRemark: {
     bizLineProps: {
       airExport: 'PodRemark',
+      breakBulk: 'PodRemark',
       seaExport: 'PodRemark',
       seaImport: 'PodRemark',
     },
   },
   pol: {
-    bizLineProps: { airExport: 'Pol', seaExport: 'Pol', seaImport: 'Pol' },
+    bizLineProps: {
+      airExport: 'Pol',
+      breakBulk: 'Pol',
+      seaExport: 'Pol',
+      seaImport: 'Pol',
+    },
   },
   polRemark: {
     bizLineProps: {
       airExport: 'PolRemark',
+      breakBulk: 'PolRemark',
       seaExport: 'PolRemark',
       seaImport: 'PolRemark',
     },
@@ -131,7 +159,13 @@ const FIELD_SOURCES: Record<string, ReportFieldSource> = {
   settlementDate: { orderProp: 'SettlementDate' },
   settlementType: { orderProp: 'SettlementType' },
   teu: CTNS_SOURCE,
-  vessel: { bizLineProps: { seaExport: 'Vessel', seaImport: 'Vessel' } },
+  vessel: {
+    bizLineProps: {
+      breakBulk: 'Vessel',
+      seaExport: 'Vessel',
+      seaImport: 'Vessel',
+    },
+  },
   yard: { bizLineProps: { seaExport: 'Yard' } },
 };
 

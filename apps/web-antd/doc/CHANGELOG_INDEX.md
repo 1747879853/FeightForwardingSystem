@@ -25,6 +25,10 @@
 
 - [2026-09-28] [发票结算详情按发票开出分组](./changelogs/change-log-2026-09-28-发票结算详情按发票开出分组.md)
 
+- [2026-09-28] [客户基础信息增加国家与税号联动](./changelogs/change-log-2026-09-28-client-country-taxno.md)
+
+- [2026-09-28] [装箱试算深化](./changelogs/change-log-2026-09-28-packing-calc-deepen.md)
+
 - [2026-09-27] [银行流水按费用核销跨币别](./changelogs/change-log-2026-09-27-银行流水按费用核销跨币别.md)
 
 - [2026-09-27] [监装拍照不把相机当后台](./changelogs/change-log-2026-09-27-监装拍照不把相机当后台.md)

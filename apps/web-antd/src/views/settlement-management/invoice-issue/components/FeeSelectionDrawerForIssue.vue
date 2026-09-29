@@ -15,10 +15,12 @@ import {
   InputNumber,
   message,
   Modal,
+  Popover,
   Select,
   Spin,
   Checkbox,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
@@ -333,7 +335,10 @@ function handleResetFilter() {
   filterApplyTimeEnd.value = '';
   filterApplyTimeRange.value = undefined;
   filterHeader.value = '';
-  filterCurrencyId.value = undefined;
+  filterCurrencyId.value =
+    props.currencyId !== undefined && props.currencyId !== null
+      ? props.currencyId
+      : undefined;
   filterApplyUserId.value = undefined;
   selectedAppRowKeys.value = [];
   loadApplicationGroupData();
@@ -771,8 +776,11 @@ async function loadApplicationGroupData() {
       params.header = filterHeader.value;
     }
 
-    // ✅ 发票币别：只使用筛选条件的币别（filterCurrencyId），不使用固定的 selectedCurrencyId
-    if (filterCurrencyId.value !== undefined) {
+    // ✅ 发票币别：发票开出已有币别时强制按该币别过滤（加挂硬约束）
+    // filterCurrencyId 仍可用于首次开票时的用户筛选；与 props.currencyId 并存时以 issue 币别为准
+    if (props.currencyId !== undefined && props.currencyId !== null) {
+      params.currencyId = props.currencyId;
+    } else if (filterCurrencyId.value !== undefined) {
       params.currencyId = filterCurrencyId.value;
     }
 
@@ -908,9 +916,20 @@ function transformToTreeData(
       invoiceRemark: '-',
       invoiceType: app.invoiceType || '-',
       invoiceExchangeRate: app.invoiceExchangeRate || 1.0,
-      totalAppliedAmount: app.totalAppliedAmount || 0,
+      // 缺汇率时保持 null，勿用 || 0
+      totalAppliedAmount:
+        app.totalAppliedAmount == null ? null : app.totalAppliedAmount,
+      appliedAmountRmb:
+        app.appliedAmountRmb == null ? null : app.appliedAmountRmb,
+      // 人民币列优先用 API appliedAmountRmb
       invoiceAmount:
-        (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
+        app.appliedAmountRmb != null
+          ? app.appliedAmountRmb
+          : app.totalAppliedAmount == null
+            ? null
+            : (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
+      invoiceApplicationExchangeRates:
+        app.invoiceApplicationExchangeRates || [],
       checked: false,
       selectable: true,
       invoiceApplicationItems: childrenList,
@@ -922,7 +941,6 @@ function transformToTreeData(
       clientInvoiceBankId: app.clientInvoiceBankId,
       orgBankAccountId: app.orgBankAccountId,
       totalGoodsAmount: app.totalGoodsAmount,
-      appliedAmountRmb: app.appliedAmountRmb,
       code: app.code,
       clientInvoiceInfo: app.clientInvoiceInfo,
     };
@@ -1216,48 +1234,62 @@ function handleCancelReject() {
   rejectApplications.value = [];
 }
 
-/** 发票更新 - 根据当前汇率修正选中申请的商品明细金额 */
+/** 发票更新 - 根据当前汇率修正选中申请的商品明细金额（仅 code=1） */
 async function handleUpdateInvoice() {
-  const selectedIds = getSelectedApplicationsFromTable().map(
-    (app: any) => app.id,
-  );
+  const selectedApps = getSelectedApplicationsFromTable();
+  const syncableIds = selectedApps
+    .filter((app: any) => app.code === 1)
+    .map((app: any) => app.id);
 
-  if (selectedIds.length === 0) {
-    message.warning('请先选择要更新的发票');
+  if (syncableIds.length === 0) {
+    message.warning(
+      '所选申请中没有可按汇率修正的记录（code=1）。缺汇率或商品明细多条请驳回后处理。',
+    );
     return;
   }
 
   Modal.confirm({
     title: '确认更新',
-    content: `确定要根据当前汇率更新选中的 ${selectedIds.length} 条申请的商品明细金额吗？`,
+    content: `确定要根据当前汇率更新选中的 ${syncableIds.length} 条申请的商品明细金额吗？`,
     okText: '确定',
     cancelText: '取消',
     onOk: async () => {
       try {
         feeDrawerLoading.value = true;
 
-        // ✅ 调用 syncApplicationGoodsDtlByExchangeRate 接口
         const result = await syncApplicationGoodsDtlByExchangeRate({
-          invoiceApplicationIds: selectedIds,
+          invoiceApplicationIds: syncableIds,
         });
 
         message.success(
           `已成功更新 ${result.updatedApplicationIds?.length || 0} 个申请的商品明细金额`,
         );
 
-        // 清空选中状态
         selectedAppRowKeys.value = [];
-
-        // ✅ 重新加载数据（会自动更新 applicationGroupsData）
         await loadApplicationGroupData();
       } catch (error) {
+        // 缺汇率等业务错误由 requestClient 拦截器原样提示，勿覆盖
         console.error('❌ 发票更新失败:', error);
-        message.error('发票更新失败，请重试');
       } finally {
         feeDrawerLoading.value = false;
       }
     },
   });
+}
+
+/** 选中申请中是否存在可按汇率修正（code=1） */
+const hasSyncableSelectedApps = computed(() => {
+  return applicationGroupsData.value.some(
+    (app: any) =>
+      selectedAppRowKeys.value.includes(String(app.rowKey ?? app.id)) &&
+      app.code === 1,
+  );
+});
+
+/** 金额展示：null → '-' */
+function formatAmountOrDash(value: null | number | undefined): string {
+  if (value == null) return '-';
+  return Number(value).toFixed(2);
 }
 
 // 暴露方法给父组件
@@ -1432,13 +1464,22 @@ defineExpose({
                   </span>
                 </template>
                 <template v-else-if="column.key === 'code'">
+                  <Tooltip
+                    v-if="record.code === 2"
+                    :title="
+                      record.totalAppliedAmount == null
+                        ? '申请缺汇率，请驳回后补填'
+                        : '无法按汇率自动修正，请驳回后处理'
+                    "
+                  >
+                    <span class="fsd-status fsd-status--error">✗ 不可开</span>
+                  </Tooltip>
                   <span
+                    v-else
                     class="fsd-status"
                     :class="{
                       'fsd-status--ok': record.code === 0,
                       'fsd-status--warn': record.code === 1,
-                      'fsd-status--error':
-                        record.code !== 0 && record.code !== 1,
                     }"
                   >
                     {{
@@ -1449,6 +1490,78 @@ defineExpose({
                           : '✗ 不可开'
                     }}
                   </span>
+                </template>
+                <template v-else-if="column.key === 'totalAppliedAmount'">
+                  <Popover
+                    v-if="
+                      record.invoiceApplicationExchangeRates &&
+                      record.invoiceApplicationExchangeRates.length > 0
+                    "
+                    trigger="click"
+                    placement="bottomLeft"
+                  >
+                    <template #content>
+                      <div style="min-width: 220px; max-width: 360px">
+                        <div
+                          style="
+                            margin-bottom: 8px;
+                            font-weight: 600;
+                            color: #0f172a;
+                          "
+                        >
+                          申请汇率明细
+                        </div>
+                        <div
+                          v-for="(
+                            rate, idx
+                          ) in record.invoiceApplicationExchangeRates"
+                          :key="rate.currencyId ?? idx"
+                          style="
+                            margin-bottom: 4px;
+                            font-size: 12px;
+                            color: #475569;
+                            white-space: pre-wrap;
+                          "
+                        >
+                          {{
+                            `${rate.currency?.code || rate.currencyId} 汇率 ${rate.exchangeRate ?? '-'}，原币合计 ${rate.appliedAmount == null ? '-' : Number(rate.appliedAmount).toFixed(2)}`
+                          }}
+                        </div>
+                      </div>
+                    </template>
+                    <Tooltip
+                      v-if="record.totalAppliedAmount == null"
+                      title="申请缺汇率，请驳回后补填"
+                    >
+                      <span style="color: #cf1322; cursor: pointer">-</span>
+                    </Tooltip>
+                    <span
+                      v-else
+                      style="text-decoration: underline dotted; cursor: pointer"
+                    >
+                      {{ formatAmountOrDash(record.totalAppliedAmount) }}
+                    </span>
+                  </Popover>
+                  <Tooltip
+                    v-else-if="record.totalAppliedAmount == null"
+                    title="申请缺汇率，请驳回后补填"
+                  >
+                    <span style="color: #cf1322">-</span>
+                  </Tooltip>
+                  <span v-else>{{
+                    formatAmountOrDash(record.totalAppliedAmount)
+                  }}</span>
+                </template>
+                <template v-else-if="column.key === 'invoiceAmount'">
+                  <Tooltip
+                    v-if="record.invoiceAmount == null"
+                    title="申请缺汇率，请驳回后补填"
+                  >
+                    <span style="color: #cf1322">-</span>
+                  </Tooltip>
+                  <span v-else>{{
+                    formatAmountOrDash(record.invoiceAmount)
+                  }}</span>
                 </template>
                 <template v-else-if="column.key === 'invoiceType'">
                   <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
@@ -1515,6 +1628,7 @@ defineExpose({
         <div v-else />
         <div class="fsd-footer__actions">
           <Button
+            v-if="hasSyncableSelectedApps"
             type="primary"
             :disabled="selectedAppRowKeys.length === 0"
             @click="handleUpdateInvoice"

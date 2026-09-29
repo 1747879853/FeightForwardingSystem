@@ -2,7 +2,11 @@ import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
 
 import { getSeFreiPriceList } from '#/api/sea-export/freight-rate-admin';
 
-import { formatSurchargeFees, useColumns } from '../../data';
+import {
+  formatPodFreeDaysCombined,
+  formatSurchargeFees,
+  useColumns,
+} from '../../data';
 
 const EXPORT_PAGE_SIZE = 200;
 const EXPORT_MAX_PAGES = 100;
@@ -26,14 +30,6 @@ function formatCarrierLabel(row: SeFreiPriceOutDto) {
     return name ? `${carrier.code}(${name})` : carrier.code;
   }
   return name || '-';
-}
-
-function formatPodFreeDaysCombined(row: SeFreiPriceOutDto) {
-  const parts: string[] = [];
-  if (row.poddem != null) parts.push(`DEM:${row.poddem}`);
-  if (row.poddet != null) parts.push(`DET:${row.poddet}`);
-  if (row.podFreeDays != null) parts.push(`免用箱:${row.podFreeDays}`);
-  return parts.length > 0 ? parts.join(' / ') : '-';
 }
 
 function resolveExportCellValue(

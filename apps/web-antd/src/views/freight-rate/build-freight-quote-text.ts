@@ -129,7 +129,7 @@ export function buildFreightQuoteFields(
     { type: 'item', label: '中转港2', value: formatPort(row.poT2) },
     { type: 'item', label: '开船日期', value: formatEtd(row) },
     { type: 'item', label: '航程', value: row.voyage || EMPTY },
-    { type: 'item', label: '目的港免箱期', value: formatPodDet(row) },
+    { type: 'item', label: '免箱使期', value: formatPodDet(row) },
     { type: 'sep' },
     { type: 'item', label: '币别', value: formatCurrencyLabel(row) },
     { type: 'item', label: '海运费', value: formatOceanFreight(row) },

@@ -392,7 +392,11 @@ defineExpose({
             />
           </div>
 
-          <div v-if="currentBizType !== 2" class="form-item">
+          <!-- 空运出口、件杂货没有船公司 -->
+          <div
+            v-if="currentBizType !== 2 && currentBizType !== 3"
+            class="form-item"
+          >
             <span class="label">{{ t('carrierId') }}:</span>
             <CarrierSelect
               v-model="searchForm.carrierId"
@@ -503,7 +507,7 @@ defineExpose({
               {{ record.transportOrder?.client?.name }}
             </template>
             <template v-else-if="column.key === 'polPod'">
-              <!-- 根据 bizType 读取不同字段 -->
+              <!-- 根据 bizType 读取不同字段：0/1/3 海港，2 空港 -->
               <template v-if="record.transportOrder?.bizType === 0">
                 {{ record.transportOrder.seaExport?.pol?.portName }} -
                 {{ record.transportOrder.seaExport?.pod?.portName }}
@@ -515,6 +519,10 @@ defineExpose({
               <template v-else-if="record.transportOrder?.bizType === 2">
                 {{ record.transportOrder.airExport?.pol?.iataCode }} -
                 {{ record.transportOrder.airExport?.pod?.iataCode }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 3">
+                {{ record.transportOrder.breakBulk?.pol?.portName }} -
+                {{ record.transportOrder.breakBulk?.pod?.portName }}
               </template>
             </template>
             <template v-else-if="column.key === 'vesselVoyno'">
@@ -528,6 +536,10 @@ defineExpose({
               </template>
               <template v-else-if="record.transportOrder?.bizType === 2">
                 {{ record.transportOrder.airExport?.flightNo }}
+              </template>
+              <template v-else-if="record.transportOrder?.bizType === 3">
+                {{ record.transportOrder.breakBulk?.vessel }}
+                {{ record.transportOrder.breakBulk?.innerVoyno }}
               </template>
             </template>
           </template>

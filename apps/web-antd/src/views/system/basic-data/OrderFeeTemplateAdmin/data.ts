@@ -10,7 +10,8 @@ import { createClientSelectSchema } from '../../../client/base/data';
 /** 自动费用模板列表列配置持久化 key */
 export const ORDER_FEE_TEMPLATE_LIST_TABLE_ID = 'OrderFeeTemplateList';
 
-// 业务类型枚举选项（直接定义）
+// 业务类型枚举选项：仅海运出口。
+// 件杂货（bizType=3）无服务项目，后端拒绝「件杂货没有服务项目，不支持自动费用模板」，勿加入选项。
 const bizTypeOptions: Array<{ label: string; value: number }> = [
   { label: '海运出口', value: 0 },
 ];
@@ -189,9 +190,10 @@ export function useColumns(
       ),
     },
     {
-      field: 'carrier.cnName',
+      field: 'carrierCode',
       title: '船公司',
       width: 120,
+      slots: { default: 'carrierWithLogo' },
     },
     {
       field: 'bookingAgent.name',

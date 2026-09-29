@@ -31,6 +31,10 @@ export interface DefaultFreightRateValue {
   voyage?: null | string;
   contractNo?: null | string;
   remark?: null | string;
+  /**
+   * 默认航线（多选）。仅存个人配置给后端用，不参与运价新增带出。
+   */
+  laneIds?: number[];
 }
 
 function normalizeId(value: unknown): null | number {
@@ -49,6 +53,20 @@ function normalizeStringId(value: unknown): null | string {
 function normalizeLabel(value: unknown): null | string {
   const text = String(value ?? '').trim();
   return text || null;
+}
+
+/** 航线多选 id 列表；去重、去掉空值 */
+function normalizeIdList(value: unknown): number[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const ids: number[] = [];
+  const seen = new Set<number>();
+  for (const item of value) {
+    const id = normalizeId(item);
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids.length > 0 ? ids : undefined;
 }
 
 /** 清洗表单值，去掉空字段，便于存 JSON */
@@ -95,6 +113,9 @@ export function sanitizeDefaultFreightRateValue(
     const text = String(raw[key] ?? '').trim();
     if (text) next[key] = text;
   }
+
+  const laneIds = normalizeIdList(raw.laneIds);
+  if (laneIds) next.laneIds = laneIds;
 
   return next;
 }
@@ -200,6 +221,7 @@ export async function removeDefaultFreightRateConfig(
 
 /**
  * 把默认值合并进新增草稿（不覆盖调用方已显式传入的非空值）。
+ * 不含 laneIds：默认航线仅存配置给后端，不参与运价录入带出。
  */
 export function applyDefaultFreightRateValue<T extends Record<string, any>>(
   target: T,
