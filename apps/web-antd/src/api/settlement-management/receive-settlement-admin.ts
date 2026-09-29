@@ -298,60 +298,62 @@ export namespace ReceiveSettlementAdminApi {
     creationTime?: string;
   }
 
-  /** 按开票申请分组拉取可结算明细查询 */
-  export interface InvoiceAppSettleQueryDto {
+  /** 按发票开出分组拉取可结算明细查询 */
+  export interface InvoiceIssueSettleQueryDto {
     receiveSettlementId?: string;
+    /** 发票开出的开出单号（模糊） */
     applicationNo?: string;
     invoiceNo?: string;
     settlementId?: string;
     currencyId?: number;
     /** 归属组织id（含下属组织） */
     orgId?: number;
-    applyTimeStart?: string;
-    applyTimeEnd?: string;
+    invoiceIssueTimeStart?: string;
+    invoiceIssueTimeEnd?: string;
     onlySettleable?: boolean;
     pageIndex: number;
     pageSize: number;
     sorting?: string;
   }
 
-  /** 按开票申请分组下的可结算费用明细 */
-  export interface InvoiceAppSettleItemDto {
-    invoiceApplicationItemId: string;
+  /** 一张发票开出下合并后的可结算费用 */
+  export interface InvoiceIssueSettleItemDto {
     orderFeeId: string;
-    /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
     feeCode?: FeeCodeSimpleDto | null;
-    /** 币别对象（替代 currencyCode，编码读 code） */
     currency?: CurrencySimpleDto | null;
     paySide: PaySide;
     amount: number;
+    /** 这张发票开出对该费用的开票金额合计 */
     appliedAmount: number;
+    /** 1 单位费用币别折合多少发票开出币别；缺汇率时为 null */
+    exchangeRate?: null | number;
     invoicedAmount: number;
+    /** 该费用历史累计已结算金额，不是本次要结的金额 */
     settledAmount: number;
+    /** 剩余可结算额度，同一费用在多张发票开出下共用 */
     invoiceSettleableAmount: number;
-    /** 结算对象（替代 settlementName） */
     settlement?: ClientSimpleDto | null;
     transportOrder?: TransportOrderSimpleDto;
   }
 
-  /** 按开票申请分组（一组 = 一个已开票的开票申请） */
-  export interface InvoiceAppSettleGroupDto {
-    invoiceApplicationId: string;
+  /** 按发票开出分组（一组 = 一张发票开出） */
+  export interface InvoiceIssueSettleGroupDto {
+    invoiceIssueId: string;
     applicationNo?: string;
     invoiceNo?: string;
+    invoiceIssueTime?: string;
     settlementId: string;
-    /** 结算对象（替代 settlementName） */
     settlement?: ClientSimpleDto | null;
     currencyId: number;
-    /** 币别对象（替代 currencyCode，编码读 code） */
     currency?: CurrencySimpleDto | null;
-    applyTime: string;
-    items: InvoiceAppSettleItemDto[];
+    items: InvoiceIssueSettleItemDto[];
   }
 
-  /** 按开票申请结算的单条明细入参（逐条开票明细） */
+  /** 按发票结算的一行：发票开出 + 费用 */
   export interface ReceiveSettlementByInvoiceItemDto {
-    invoiceApplicationItemId: string;
+    invoiceIssueId: string;
+    orderFeeId: string;
+    /** 本次结算金额（费用原币，收付都为正数） */
     settledAmount: number;
     remark?: string;
   }
@@ -361,12 +363,16 @@ export namespace ReceiveSettlementAdminApi {
     orgId: number;
     bankStatementId: string;
     settlementTime: string;
+    /** 本次结算（银行流水币别） */
+    actualSettled: number;
     remark?: string;
     items: ReceiveSettlementByInvoiceItemDto[];
   }
 
   export interface ReceiveSettlementAddItemsByInvoiceDto {
     id: string;
+    /** 追加之后整张单的本次结算（银行流水币别） */
+    actualSettled: number;
     items: ReceiveSettlementByInvoiceItemDto[];
   }
 
@@ -469,13 +475,13 @@ export const unlockReceiveSettlement = (
   return requestClient.put<boolean>(`${API_ADMIN_PREFIX}/UnLockAsync`, data);
 };
 
-/** 按开票申请分组拉取可结算明细 */
-export const getInvoiceApplicationGroupForSettlement = (
-  params: ReceiveSettlementAdminApi.InvoiceAppSettleQueryDto,
+/** 按发票开出分组拉取可结算明细 */
+export const getInvoiceIssueGroupForSettlement = (
+  params: ReceiveSettlementAdminApi.InvoiceIssueSettleQueryDto,
 ) => {
   return requestClient.get<
-    ReceiveSettlementAdminApi.PagedList<ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto>
-  >(`${API_ADMIN_PREFIX}/GetInvoiceApplicationGroupForSettlementAsync`, {
+    ReceiveSettlementAdminApi.PagedList<ReceiveSettlementAdminApi.InvoiceIssueSettleGroupDto>
+  >(`${API_ADMIN_PREFIX}/GetInvoiceIssueGroupForSettlementAsync`, {
     params,
   });
 };

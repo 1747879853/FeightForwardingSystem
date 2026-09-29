@@ -46,7 +46,10 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import AddInvoiceApplicationDrawer from './add-invoice-application-drawer/index.vue';
-import type { SelectedInvoiceFee } from './add-invoice-application-drawer/data';
+import {
+  invoiceIssueFeeKey,
+  type SelectedInvoiceFee,
+} from './add-invoice-application-drawer/data';
 import BankStatementPicker from './bank-statement-picker/index.vue';
 import {
   formatAmount,
@@ -56,8 +59,11 @@ import {
   getPaySideLabel,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
-  toNetAmount,
 } from './form-data';
+import {
+  findFeeSettleableOverflow,
+  suggestInvoiceActualSettled,
+} from './settlement-amount';
 
 /** 收费核销变更后，收费核销列表与银行流水列表均需刷新 */
 function markReceiveSettlementRelatedListsShouldRefresh() {
@@ -74,12 +80,13 @@ interface InvoiceSettlementItem {
   /** 所属核销单创建人，仅其他核销单的明细有值 */
   _creatorUserName?: string;
   id?: string;
-  invoiceApplicationId?: string;
-  invoiceApplicationItemId: string;
+  invoiceIssueId: string;
   orderFeeId: string;
   applicationNo?: string;
   invoiceNo?: string;
+  invoiceIssueTime?: string;
   appliedAmount?: number;
+  exchangeRate?: null | number;
   paySide?: number;
   transportOrderId?: string;
   commissionNum?: string;
@@ -91,6 +98,7 @@ interface InvoiceSettlementItem {
   amount?: number;
   invoiceSettleableAmount?: number;
   settlementName?: string;
+  /** 用户录入的本次结算金额（费用原币） */
   settledAmount: number;
   remark?: string;
 }
@@ -184,6 +192,7 @@ const remark = ref('');
 const items = ref<InvoiceSettlementItem[]>([]);
 const issueGroups = ref<InvoiceIssueGroupRow[]>([]);
 const actualSettled = ref<number | null>(null);
+const actualSettledTouched = ref(false);
 const originalSettledAmount = ref<number | null>(null);
 const diffAmount = ref<number | null>(null);
 const selectedItemRowKeys = ref<string[]>([]);
@@ -239,21 +248,32 @@ function handleBack() {
 }
 
 const selectedInvoiceItemIds = computed(() =>
-  items.value.map((item) => item.invoiceApplicationItemId),
+  items.value.map((item) =>
+    invoiceIssueFeeKey(item.invoiceIssueId, item.orderFeeId),
+  ),
 );
 
 const bankStatementCurrencyCode = computed(
   () => bankStatementDetail.value?.currency?.code || '',
 );
 
-/** 编辑页认详情上的本次结算；新建页仍按未保存明细的原币净额估算 */
-const currentSettlementTotal = computed(() => {
-  if (isEdit.value) return actualSettled.value ?? 0;
-  return items.value.reduce(
-    (sum, item) => sum + toNetAmount(item.paySide, item.settledAmount || 0),
-    0,
-  );
+const suggestedActualSettled = computed(() =>
+  suggestInvoiceActualSettled(
+    items.value.map((item) => ({
+      settledAmount: item.settledAmount || 0,
+      exchangeRate: item.exchangeRate,
+      paySide: item.paySide,
+    })),
+  ),
+);
+
+watch(suggestedActualSettled, (value) => {
+  if (isEdit.value || actualSettledTouched.value) return;
+  actualSettled.value = value;
 });
+
+/** 本单本次结算认输入框；流水剩余可结算也按它扣 */
+const currentSettlementTotal = computed(() => actualSettled.value ?? 0);
 
 const remainingSettleAmount = computed(
   () =>
@@ -425,11 +445,13 @@ function flattenGroupFee(
     _isCurrent: false,
     _settlementNo: group._settlementNo,
     _creatorUserName: group._creatorUserName,
-    invoiceApplicationItemId: '',
+    invoiceIssueId: fee.invoiceIssueId ? String(fee.invoiceIssueId) : '',
     orderFeeId: fee.orderFeeId,
     applicationNo: group.applicationNo,
     invoiceNo: group.invoiceNo,
+    invoiceIssueTime: group.invoiceIssueTime,
     appliedAmount: fee.appliedAmount ?? undefined,
+    exchangeRate: fee.exchangeRate,
     paySide: fee.paySide,
     commissionNum: fee.commissionNum,
     mblNum: fee.mblNum,
@@ -479,7 +501,7 @@ const columns = [
   },
   {
     dataIndex: 'applicationNo',
-    title: '开票申请单号',
+    title: '开出单号',
     width: 160,
   },
   {
@@ -522,10 +544,16 @@ const columns = [
   },
   {
     dataIndex: 'appliedAmount',
-    title: '本单开票额',
+    title: '开票金额',
     width: 110,
     align: 'right' as const,
     customRender: ({ text }: { text: number }) => formatAmount(text),
+  },
+  {
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    title: '汇率',
+    width: 110,
   },
   {
     dataIndex: 'settledAmount',
@@ -742,6 +770,7 @@ async function loadEditData() {
       : dayjs();
     remark.value = detail.remark || '';
     actualSettled.value = detail.actualSettled ?? null;
+    actualSettledTouched.value = false;
     originalSettledAmount.value = detail.originalSettledAmount ?? null;
     diffAmount.value = detail.diffAmount ?? null;
     const ownerId = detail.id;
@@ -768,12 +797,13 @@ function mapSelectedFee(fee: SelectedInvoiceFee): InvoiceSettlementItem {
   return {
     _key: makeRowKey(),
     _isCurrent: true,
-    invoiceApplicationId: fee.invoiceApplicationId,
-    invoiceApplicationItemId: fee.invoiceApplicationItemId,
+    invoiceIssueId: fee.invoiceIssueId,
     orderFeeId: fee.orderFeeId,
     applicationNo: fee.applicationNo,
     invoiceNo: fee.invoiceNo,
+    invoiceIssueTime: fee.invoiceIssueTime,
     appliedAmount: fee.appliedAmount,
+    exchangeRate: fee.exchangeRate,
     paySide: fee.paySide,
     transportOrderId: fee.transportOrderId,
     commissionNum: fee.commissionNum,
@@ -836,23 +866,46 @@ function handleOpenAddInvoice() {
 
 async function handleInvoiceConfirm(fees: SelectedInvoiceFee[]) {
   const existingIds = new Set(
-    items.value.map((item) => item.invoiceApplicationItemId),
+    items.value.map((item) =>
+      invoiceIssueFeeKey(item.invoiceIssueId, item.orderFeeId),
+    ),
   );
   const incoming = fees.filter(
-    (fee) => !existingIds.has(fee.invoiceApplicationItemId),
+    (fee) =>
+      !existingIds.has(invoiceIssueFeeKey(fee.invoiceIssueId, fee.orderFeeId)),
   );
   if (incoming.length === 0) {
-    message.warning('选择的开票明细已在明细中');
+    message.warning('选择的费用已在明细中');
     return;
   }
 
   if (isEdit.value && editId.value) {
+    if (actualSettled.value == null) {
+      message.warning('请先在结算信息里填写本次结算，再重新添加费用');
+      return;
+    }
+
+    const appendSuggest = suggestInvoiceActualSettled(
+      incoming.map((fee) => ({
+        settledAmount: fee.settledAmount,
+        exchangeRate: fee.exchangeRate,
+        paySide: fee.paySide,
+      })),
+    );
+    let nextActualSettled = actualSettled.value;
+    if (!actualSettledTouched.value && appendSuggest != null) {
+      nextActualSettled = (originalSettledAmount.value ?? 0) + appendSuggest;
+      actualSettled.value = nextActualSettled;
+    }
+
     submitting.value = true;
     try {
       await addReceiveSettlementItemsByInvoiceApplication({
         id: editId.value,
+        actualSettled: nextActualSettled,
         items: incoming.map((fee) => ({
-          invoiceApplicationItemId: fee.invoiceApplicationItemId,
+          invoiceIssueId: fee.invoiceIssueId,
+          orderFeeId: fee.orderFeeId,
           settledAmount: fee.settledAmount,
           remark: fee.remark || undefined,
         })),
@@ -1011,33 +1064,36 @@ function validateForm(): boolean {
     return false;
   }
 
-  // 未保存明细按费用聚合校验发票口径可结算余额
-  const consumedByFee = new Map<string, number>();
-  const settleableByFee = new Map<string, number>();
-  for (const item of items.value) {
-    if (item.id) continue;
-    consumedByFee.set(
-      item.orderFeeId,
-      (consumedByFee.get(item.orderFeeId) ?? 0) + item.settledAmount,
+  const overflow = findFeeSettleableOverflow(
+    items.value
+      .filter((item) => !item.id)
+      .map((item) => ({
+        feeName: item.feeCodeName,
+        invoiceSettleableAmount: item.invoiceSettleableAmount,
+        orderFeeId: item.orderFeeId,
+        settledAmount: item.settledAmount,
+      })),
+  );
+  if (overflow) {
+    message.warning(
+      `费用「${overflow.feeName}」发票口径可结算余额不足，可用额度 ${formatAmount(overflow.settleable)}`,
     );
-    settleableByFee.set(item.orderFeeId, item.invoiceSettleableAmount ?? 0);
+    return false;
   }
-  for (const [orderFeeId, consumed] of consumedByFee) {
-    const settleable = settleableByFee.get(orderFeeId) ?? 0;
-    if (consumed > settleable + 1e-6) {
-      const item = items.value.find((i) => i.orderFeeId === orderFeeId);
-      message.warning(
-        `费用「${item?.feeCodeName || '-'}」发票口径可结算余额不足，可用额度 ${formatAmount(settleable)}`,
-      );
-      return false;
-    }
+
+  if (
+    (!isEdit.value || currentFeeRows.value.length > 0) &&
+    actualSettled.value == null
+  ) {
+    message.warning('请填写本次结算');
+    return false;
   }
 
   if (bankStatementDetail.value && remainingSettleAmount.value < 0) {
     const availableAmount =
       bankStatementDetail.value.amount - otherSettledAmount.value;
     message.warning(
-      `本单结算净额 ${formatBankAmount(currentSettlementTotal.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
+      `本单结算合计 ${formatBankAmount(currentSettlementTotal.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
     );
     return false;
   }
@@ -1055,6 +1111,8 @@ async function handleSave() {
         id: editId.value,
         orgId: orgId.value!,
         settlementTime: settlementTime.value.toISOString(),
+        actualSettled:
+          currentFeeRows.value.length > 0 ? actualSettled.value! : 0,
         remark: remark.value || undefined,
       });
       message.success('保存成功');
@@ -1068,9 +1126,11 @@ async function handleSave() {
       orgId: orgId.value!,
       bankStatementId: bankStatementId.value,
       settlementTime: settlementTime.value.toISOString(),
+      actualSettled: actualSettled.value!,
       remark: remark.value || undefined,
       items: items.value.map((item) => ({
-        invoiceApplicationItemId: item.invoiceApplicationItemId,
+        invoiceIssueId: item.invoiceIssueId,
+        orderFeeId: item.orderFeeId,
         settledAmount: item.settledAmount,
         remark: item.remark || undefined,
       })),
@@ -1291,13 +1351,11 @@ onMounted(() => {
                   {{ formatBankAmount(remainingSettleAmount) }}
                 </span>
                 <span v-if="isRemainingOverLimit" class="bank-summary-warning">
-                  本单结算净额已超过流水剩余可结算金额
+                  本单结算合计已超过流水剩余可结算金额
                 </span>
               </div>
               <div class="bank-summary-item">
-                <span class="bank-summary-label">{{
-                  isEdit ? '本次结算' : '本单本次净额'
-                }}</span>
+                <span class="bank-summary-label">本单本次合计</span>
                 <span class="bank-summary-value bank-summary-value--current">
                   {{ formatBankAmount(currentSettlementTotal) }}
                 </span>
@@ -1372,12 +1430,41 @@ onMounted(() => {
                 />
               </div>
             </div>
-            <div v-if="isEdit" class="form-item">
-              <div class="form-label">本次结算</div>
+            <div class="form-item">
+              <div class="form-label">
+                本次结算
+                <span v-if="!isReadonly" class="text-red-500">*</span>
+              </div>
               <div class="form-control">
-                <span class="form-text">{{
+                <InputNumber
+                  v-if="!isReadonly"
+                  v-model:value="actualSettled"
+                  :precision="2"
+                  style="width: 100%"
+                  :placeholder="
+                    bankStatementCurrencyCode
+                      ? `银行流水币别 ${bankStatementCurrencyCode}`
+                      : '银行流水币别金额'
+                  "
+                  @update:value="actualSettledTouched = true"
+                />
+                <span v-else class="form-text">{{
                   formatBankAmount(actualSettled)
                 }}</span>
+                <div
+                  v-if="!isEdit && !isReadonly && items.length > 0"
+                  class="actual-settled-hint"
+                >
+                  <template v-if="suggestedActualSettled != null">
+                    参考
+                    {{
+                      formatBankAmount(suggestedActualSettled)
+                    }}（保存后可能差约 1 分）
+                  </template>
+                  <template v-else>
+                    <span class="missing-rate">缺汇率，请手工填写本次结算</span>
+                  </template>
+                </div>
               </div>
             </div>
             <div v-if="isEdit" class="form-item">
@@ -1614,6 +1701,15 @@ onMounted(() => {
               <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
               <span v-else>-</span>
             </template>
+            <template v-else-if="column.key === 'exchangeRate'">
+              {{ formatExchangeRate(record.exchangeRate) }}
+              <span
+                v-if="record._isCurrent && record.exchangeRate == null"
+                class="missing-rate"
+              >
+                缺汇率
+              </span>
+            </template>
             <template v-else-if="column.key === 'settledAmount'">
               <InputNumber
                 v-if="record._isCurrent && !record.id && !isReadonly"
@@ -1772,6 +1868,13 @@ onMounted(() => {
   margin-left: 6px;
   font-size: 12px;
   color: #d48806;
+}
+
+.actual-settled-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8a97a8;
 }
 
 .delete-amount-hint {

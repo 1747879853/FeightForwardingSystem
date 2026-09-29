@@ -102,6 +102,10 @@ const writeOffStatus = ref<
 >(undefined);
 const settledAmount = ref(0);
 const hasReceiveSettlements = ref(false);
+/** 详情内嵌收费结算（含按发票 invoiceIssues），供关联列表展开 */
+const detailReceiveSettlements = ref<
+  BankStatementAdminApi.BankStatementReceiveSettlementDto[]
+>([]);
 const creatorUserName = ref('');
 
 let rowKeyCounter = 0;
@@ -313,7 +317,8 @@ async function loadEditData() {
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
     settledAmount.value = detail.settledAmount ?? 0;
-    hasReceiveSettlements.value = (detail.receiveSettlements?.length ?? 0) > 0;
+    detailReceiveSettlements.value = detail.receiveSettlements ?? [];
+    hasReceiveSettlements.value = detailReceiveSettlements.value.length > 0;
     creatorUserName.value = detail.creatorUserName || '';
     orgDisplayName.value = formatDetailOrgPathLabel(detail.orgs) || '-';
     orgBankAccountDisplay.value = formatBankLabel(detail.orgBankAccount);
@@ -833,6 +838,7 @@ onUnmounted(() => {
           :bank-statement-id="editId || ''"
           :can-create-settlement="canCreateSettlement"
           :currency-code="savedCurrencyCode"
+          :detail-receive-settlements="detailReceiveSettlements"
           :remaining-amount="remainingAmount"
           @create="requestCreateSettlement"
           @edit="openEditSettlement"
