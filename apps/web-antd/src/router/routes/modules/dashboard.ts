@@ -6,16 +6,6 @@ import { isHhyyBrand } from '#/utils/brand-assets';
 
 const routes: RouteRecordRaw[] = [
   {
-    name: 'Analytics',
-    path: '/analytics',
-    component: () => import('#/views/dashboard/analytics/index.vue'),
-    meta: {
-      icon: 'lucide:area-chart',
-      order: 0,
-      title: $t('page.dashboard.analytics'),
-    },
-  },
-  {
     name: 'Workspace',
     path: '/workspace',
     component: () => import('#/views/dashboard/workspace/index.vue'),

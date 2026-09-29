@@ -11,6 +11,7 @@ import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 
 import { generateAccess } from './access';
+import { resolveLandingPath } from './landing-path';
 
 async function ensureAccessInitialized(params: {
   authStore: ReturnType<typeof useAuthStore>;
@@ -118,7 +119,11 @@ function setupAccessGuard(router: Router) {
     if (coreRouteNames.includes(to.name as string)) {
       if (to.path === LOGIN_PATH && accessStore.accessToken) {
         // 登录后固定回首页，忽略历史地址（redirect）
-        return userStore.userInfo?.homePath || preferences.app.defaultHomePath;
+        const homePath =
+          userStore.userInfo?.homePath || preferences.app.defaultHomePath;
+        return accessStore.isAccessChecked
+          ? resolveLandingPath(router, homePath, accessStore.accessMenus)
+          : homePath;
       }
 
       // 刷新进入 /profile 等核心页时，也需要初始化用户信息和菜单权限
@@ -151,6 +156,11 @@ function setupAccessGuard(router: Router) {
     }
 
     if (accessStore.isAccessChecked) {
+      if (to.path === '/analytics') {
+        const homePath =
+          userStore.userInfo?.homePath || preferences.app.defaultHomePath;
+        return resolveLandingPath(router, homePath, accessStore.accessMenus);
+      }
       return true;
     }
 
@@ -162,11 +172,14 @@ function setupAccessGuard(router: Router) {
     });
     // 登录后固定回首页，忽略历史地址（redirect）；
     // 但刷新非首页时（to 即当前页）仍停留当前页，避免刷新被弹回首页。
-    const redirectPath = (
-      to.path === preferences.app.defaultHomePath
-        ? userInfo?.homePath || preferences.app.defaultHomePath
-        : to.fullPath
-    ) as string;
+    // 首页没有权限、或旧的拓客管理地址，改去第一个可见菜单。
+    const homePath = userInfo?.homePath || preferences.app.defaultHomePath;
+    const redirectPath =
+      to.path === preferences.app.defaultHomePath ||
+      to.path === homePath ||
+      to.path === '/analytics'
+        ? resolveLandingPath(router, homePath, accessStore.accessMenus)
+        : (to.fullPath as string);
 
     return {
       ...router.resolve(decodeURIComponent(redirectPath)),

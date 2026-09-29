@@ -33,6 +33,11 @@ export const isJhtBrand = appBrand === 'jht';
 /** 浩瀚远洋 */
 export const isHhyyBrand = appBrand === 'hhyy';
 
+/** 浩瀚远洋进 3D 地球看板，其他品牌进工作台。拓客管理页已下线。 */
+export const defaultHomePath = isHhyyBrand
+  ? '/dashboard/sea-freight-globe'
+  : '/workspace';
+
 /** 佳越软件 / 佳越测试 / 演示环境（VITE_APP_BRAND=jiayue，复用佳越 Logo） */
 export const isJiayueBrand = appBrand === 'jiayue';
 

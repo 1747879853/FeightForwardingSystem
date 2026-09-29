@@ -3,7 +3,7 @@ import { defineOverridesPreferences } from '@vben/preferences';
 import {
   brandLayoutLogoFull,
   brandLogo,
-  isHhyyBrand,
+  defaultHomePath,
 } from '#/utils/brand-assets';
 
 /**
@@ -18,10 +18,8 @@ export const overridesPreferences = defineOverridesPreferences({
     name: import.meta.env.VITE_APP_TITLE,
     layout: 'header-sidebar-nav',
     preferencesButtonPosition: 'auto',
-    // 仅 hhyy 将 3D 地球看板作为默认首页；其他品牌走分析页
-    defaultHomePath: isHhyyBrand
-      ? '/dashboard/sea-freight-globe'
-      : '/analytics',
+    // 浩瀚远洋进 3D 地球看板；其他品牌进工作台
+    defaultHomePath,
   },
   theme: {
     mode: 'light',

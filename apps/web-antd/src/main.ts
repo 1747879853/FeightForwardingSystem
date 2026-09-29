@@ -1,6 +1,11 @@
-import { initPreferences } from '@vben/preferences';
+import {
+  initPreferences,
+  preferences,
+  updatePreferences,
+} from '@vben/preferences';
 import { unmountGlobalLoading } from '@vben/utils';
 
+import { defaultHomePath } from '#/utils/brand-assets';
 import { getAppStorageNamespace } from '#/utils/brand-storage';
 import { registerOssCacheServiceWorker } from '#/utils/register-oss-cache-sw';
 
@@ -49,6 +54,13 @@ async function initApplication() {
     namespace,
     overrides: overridesPreferences,
   });
+
+  // 偏好缓存会盖住构建期首页。拓客管理下线后，旧缓存里的 /analytics 要改掉。
+  if (preferences.app.defaultHomePath !== defaultHomePath) {
+    updatePreferences({
+      app: { defaultHomePath },
+    });
+  }
 
   // 启动应用并挂载
   // vue应用主要逻辑及视图

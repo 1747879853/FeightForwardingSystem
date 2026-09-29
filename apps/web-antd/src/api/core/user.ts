@@ -3,7 +3,7 @@ import type { UserInfo } from '@vben/types';
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { requestClient } from '#/api/request';
-import { isHhyyBrand } from '#/utils/brand-assets';
+import { defaultHomePath } from '#/utils/brand-assets';
 
 /** 修改我的密码 */
 export interface MyPasswordInputDto {
@@ -107,8 +107,7 @@ function adaptUserInfo(
 
     // 扩展信息
     desc: '暂无描述', // 使用组织单位作为描述
-    // 仅 hhyy 默认进 3D 地球看板；其他品牌进分析页
-    homePath: isHhyyBrand ? '/dashboard/sea-freight-globe' : '/analytics',
+    homePath: defaultHomePath,
     token: '', // token 通常从登录接口获取，这里返回空字符串
 
     // GetMyAsync 全量字段同步至 userStore.userInfo
