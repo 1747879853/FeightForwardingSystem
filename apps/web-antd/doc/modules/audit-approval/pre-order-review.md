@@ -2,7 +2,7 @@
 title: 业务联系单审核
 module: 审核审批
 author: 前端团队
-last_updated: 2026-09-09
+last_updated: 2026-09-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,8 +11,8 @@ last_updated: 2026-09-09
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **任务列表：** 调 `PreOrderAdmin/PreOrderTaskListAsync`，行上同时展示任务信息（我的审核状态、任务状态、审核人、审核时间）与单据信息（业务编号、委托单位、起运港 / 目的港、ETD）。
-- **检索：** 关键字、我的审核状态（**默认「审核中」**）、单据状态、委托单位、起运港、审核时间区间。关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认状态写入「最近提交值」。
+- **任务列表：** 调 `PreOrderAdmin/PreOrderTaskListAsync`，行上同时展示任务信息（我的审核状态、任务状态、审核人、审核时间）与单据信息（业务编号、主提单号、委托单位、操作、销售、起运港 / 目的港、ETD）。操作、销售多人用顿号拼接。
+- **检索：** 关键字、我的审核状态（**默认「审核中」**）、单据状态、委托单位、销售（多选，只列销售属性）、起运港、审核时间区间。关闭 `autoLoad`，挂载后 `submitForm` 首查，保证默认状态写入「最近提交值」。销售未选时不传 `SaleIds`。
 - **进入单据：** 双击行，或勾选后点「打开单据」，跳转 `/pre-order/:id/edit`；审核动作在单据编辑页完成，不在本页直接审。
 - **审核流程：** 勾选行后点「审核流程」，复用 `workflow-timeline`（`taskType = TaskType.PreOrder`）查看各级审批人与意见。驳回意见单独红色换行展示「驳回原因：」+ 原文。
 
@@ -29,6 +29,9 @@ last_updated: 2026-09-09
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **业务编号** | 单据编号 | `preOrder.preOrderNum` | 双击定位单据 | 只读 |
+| **主提单号** | 单据主提单号 | `preOrder.mblNum` | —— | 只读，未填为空 |
+| **操作** | 单据操作 | `preOrder.operatorNames` | 多人顿号拼接 | 只读 |
+| **销售** | 单据销售 | `preOrder.saleNames`；筛选项 `SaleIds` | **触发/依赖：** 多选，命中任一销售 | 只读；未选销售不筛选 |
 | **单据状态** | 业务联系单状态 | `PreOrderStatus` 枚举 | —— | 只读 Tag |
 | **我的审核状态** | 当前用户这一步的处理结果 | `myStatus` / 筛选项 `MyStatus` | **默认：** 筛选项默认 `0`（审核中）；重置回该值 | 列表列只读 Tag；筛选项可清空后查全部 |
 | **任务状态** | 整个审核任务状态 | `taskStatus` | —— | 只读 Tag |
@@ -46,6 +49,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-29 | `Fix` | 检索增加销售；列表增加主提单号、操作、销售。 | 销售多选按重复参数传 `SaleIds`。详见 [变更记录](../../changelogs/change-log-2026-09-29-业务联系单审核增加销售检索和列.md)。 |
 | 2026-09-09 | `Fix` | 进入业务联系单审核首查与翻页稳定带上「我的审核状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `MyStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-09-08 | `Fix` | 审核时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
 | 2026-08-11 | `Fix` | 「我的审核状态」默认「审核中」，首屏只看待办 | `MyStatus` `defaultValue: 0`。详见 `changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md` |

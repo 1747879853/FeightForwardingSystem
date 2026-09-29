@@ -37,11 +37,13 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
   const range = Array.isArray(nextValues.AuditTimeRange)
     ? nextValues.AuditTimeRange
     : [];
+  const saleIds = nextValues.SaleIds;
   return {
     ...nextValues,
     AuditTimeStart: toIsoStartOfDay(range[0]),
     AuditTimeEnd: toIsoEndOfDay(range[1]),
     AuditTimeRange: undefined,
+    SaleIds: Array.isArray(saleIds) && saleIds.length > 0 ? saleIds : undefined,
   };
 };
 

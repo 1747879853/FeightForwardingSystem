@@ -1,7 +1,16 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
+import { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { getPreOrderStatusOptions } from '#/views/pre-order/data';
+
+/** 多人昵称用顿号拼接；列设置只保留 field，formatter 仍挂在列定义上 */
+export function joinPersonNames(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).join('、');
+  }
+  return value == null ? '' : String(value);
+}
 
 export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
   const taskStatusOptions = getTaskStatusOptions().map(({ label, value }) => ({
@@ -51,6 +60,18 @@ export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
+      component: 'UserSelect',
+      fieldName: 'SaleIds',
+      label: '销售',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        mode: 'multiple',
+        maxTagCount: 2,
+        userAttribute: PreOrderAdminApi.UserAttribute.Sale,
+      },
+    },
+    {
       component: 'PortSelect',
       fieldName: 'POLId',
       label: '起运港',
@@ -82,6 +103,12 @@ export function usePreOrderReviewColumns(): Array<Record<string, any>> {
       fixed: 'left',
     },
     {
+      field: 'preOrder.mblNum',
+      title: '主提单号',
+      minWidth: 140,
+      showOverflow: true,
+    },
+    {
       field: 'preOrder.status',
       title: '单据状态',
       minWidth: 100,
@@ -104,6 +131,22 @@ export function usePreOrderReviewColumns(): Array<Record<string, any>> {
       title: '委托单位',
       minWidth: 180,
       showOverflow: true,
+    },
+    {
+      field: 'preOrder.operatorNames',
+      title: '操作',
+      minWidth: 100,
+      showOverflow: true,
+      formatter: ({ cellValue }: { cellValue: unknown }) =>
+        joinPersonNames(cellValue),
+    },
+    {
+      field: 'preOrder.saleNames',
+      title: '销售',
+      minWidth: 100,
+      showOverflow: true,
+      formatter: ({ cellValue }: { cellValue: unknown }) =>
+        joinPersonNames(cellValue),
     },
     { field: 'preOrder.polName', title: '起运港', minWidth: 140 },
     { field: 'preOrder.podName', title: '目的港', minWidth: 140 },

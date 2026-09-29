@@ -526,6 +526,8 @@ export namespace PreOrderAdminApi {
     ETDEnd?: string;
     PreOrderCreatorUserId?: number;
     OrgId?: number;
+    /** 销售用户 id 集合（多选，命中任一即可） */
+    SaleIds?: Array<number | string>;
     TaskStatus?: number;
     MyStatus?: number;
     AuditUserId?: number;
@@ -674,7 +676,11 @@ export const getPreOrderTaskList = async (
   const response =
     await requestClient.get<PreOrderAdminApi.PagedListOfPreOrderTaskItemDto>(
       `${API_PREFIX}/PreOrderTaskListAsync`,
-      { params },
+      {
+        params,
+        // ASP.NET Core [FromQuery] List 需 repeat：SaleIds=1&SaleIds=2，勿用 brackets
+        paramsSerializer: 'repeat',
+      },
     );
   return {
     items: response.items || [],
