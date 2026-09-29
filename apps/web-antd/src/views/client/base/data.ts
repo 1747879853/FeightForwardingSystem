@@ -5,6 +5,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import { z } from '#/adapter/form';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
+import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 
@@ -410,7 +411,7 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'UserCompanySelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'orgId',
       label: '所属公司',
       // 标签行占满宽度，供 form.vue 把「共享类型」渲在标题右侧
@@ -418,10 +419,9 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       rules: 'required',
       componentProps: {
         allowClear: true,
+        module: DataPermissionModule.Client,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
-        // autoDefault: true, // 移除自动默认值，确保用户必须手动选择
-        // userId 会在 form.vue 中通过 updateSchema 动态设置
       },
     },
     {

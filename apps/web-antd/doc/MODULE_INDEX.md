@@ -81,7 +81,7 @@
 | basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板：列表 + 编辑页；明细表 flex 填高，小屏可滚全行；未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-20 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。编辑页缓存后仍固定打开时的用户。 | [用户管理](./modules/system/user.md) | 2026-09-24 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
-| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-09-29 |
+| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围。数据权限可按模块配置多条规则，并支持排除人员；不选模块为通用规则。 | [权限管理](./modules/system/permission.md) | 2026-09-29 |
 | system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-20 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken；新增银行账户时账户名称默认带出公司名称。 | [部门管理](./modules/system/dept.md) | 2026-09-14 |
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-09-21 |

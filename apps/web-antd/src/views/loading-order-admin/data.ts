@@ -11,6 +11,7 @@ import {
   LoadingOrderStatus,
 } from '#/api/sea-export/loading-order-admin';
 import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
+import { DataPermissionModule } from '#/api/system/permission';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
@@ -224,12 +225,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'orgId',
       label: $t('seaExport.export.organizationUnits'),
       componentProps: {
         allowClear: true,
-        isCompany: true,
+        module: DataPermissionModule.SeaExport,
         placeholder: $t('ui.placeholder.select'),
       },
     },

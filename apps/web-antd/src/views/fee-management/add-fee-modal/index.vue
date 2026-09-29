@@ -20,6 +20,7 @@ import {
 
 import { CurrencySelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
+import { DataPermissionModule } from '#/api/system/permission';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
@@ -122,7 +123,9 @@ const [SearchForm, searchFormApi] = useVbenForm({
     labelWidth: 72,
   },
   layout: 'horizontal',
-  schema: useAddFeeSearchSchema(),
+  schema: useAddFeeSearchSchema({
+    permissionModule: DataPermissionModule.PaymentApplication,
+  }),
   showDefaultActions: true,
   actionLayout: 'inline',
   actionWrapperClass: 'col-span-2 col-start-4 justify-end',

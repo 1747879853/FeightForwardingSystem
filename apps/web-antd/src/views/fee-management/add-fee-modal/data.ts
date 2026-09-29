@@ -1,7 +1,9 @@
 import type { VbenFormSchema } from '#/adapter/form';
-import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
 import dayjs from 'dayjs';
+
+import { DataPermissionModule } from '#/api/system/permission';
+import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
 import { $t } from '#/locales';
 import { createKeysSearchSchema } from '#/utils/keys-search';
@@ -214,6 +216,8 @@ export function formatOrderCtnsDisplay(
 export function useAddFeeSearchSchema(options?: {
   /** 是否必填结算对象（已有费用时需锁定并必填） */
   settlementIdRequired?: boolean;
+  /** 当前页面的数据权限模块；付费申请选费用传付费申请 */
+  permissionModule?: DataPermissionModule;
 }): VbenFormSchema[] {
   return [
     {
@@ -228,14 +232,13 @@ export function useAddFeeSearchSchema(options?: {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'OrgId',
       label: '所属公司',
       componentProps: {
-        isCompany: true,
-        required: false,
-        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        module: options?.permissionModule,
+        placeholder: $t('ui.placeholder.select'),
       },
     },
     {

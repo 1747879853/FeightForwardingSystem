@@ -3,6 +3,8 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemPermissionApi } from '#/api/system/permission';
 import {
+  DATA_PERMISSION_MODULE_FILTER_COMMON,
+  DataPermissionModule,
   DataPermissionType,
   FrightModule,
   FrightModuleOptions,
@@ -39,8 +41,112 @@ export function formatDataPermissionType(value: DataPermissionType) {
       'system.permission.dataPermissionTypeManyPart',
     ),
     [DataPermissionType.All]: $t('system.permission.dataPermissionTypeAll'),
+    [DataPermissionType.ExcludeUser]: $t(
+      'system.permission.dataPermissionTypeExcludeUser',
+    ),
   };
   return labels[value] ?? String(value);
+}
+
+export function getDataPermissionModuleOptions() {
+  return [
+    {
+      label: $t('system.permission.moduleSeaExport'),
+      value: DataPermissionModule.SeaExport,
+    },
+    {
+      label: $t('system.permission.modulePaymentApplication'),
+      value: DataPermissionModule.PaymentApplication,
+    },
+    {
+      label: $t('system.permission.moduleSeaImport'),
+      value: DataPermissionModule.SeaImport,
+    },
+    {
+      label: $t('system.permission.moduleAirExport'),
+      value: DataPermissionModule.AirExport,
+    },
+    {
+      label: $t('system.permission.modulePreOrder'),
+      value: DataPermissionModule.PreOrder,
+    },
+    {
+      label: $t('system.permission.moduleClient'),
+      value: DataPermissionModule.Client,
+    },
+    {
+      label: $t('system.permission.moduleBreakBulk'),
+      value: DataPermissionModule.BreakBulk,
+    },
+    {
+      label: $t('system.permission.moduleReceiveSettlement'),
+      value: DataPermissionModule.ReceiveSettlement,
+    },
+    {
+      label: $t('system.permission.modulePaymentSettlement'),
+      value: DataPermissionModule.PaymentSettlement,
+    },
+    {
+      label: $t('system.permission.moduleInvoiceIssue'),
+      value: DataPermissionModule.InvoiceIssue,
+    },
+    {
+      label: $t('system.permission.moduleInvoiceApplication'),
+      value: DataPermissionModule.InvoiceApplication,
+    },
+    {
+      label: $t('system.permission.moduleBankStatement'),
+      value: DataPermissionModule.BankStatement,
+    },
+    {
+      label: $t('system.permission.moduleCommissionOrder'),
+      value: DataPermissionModule.CommissionOrder,
+    },
+    {
+      label: $t('system.permission.moduleInputInvoice'),
+      value: DataPermissionModule.InputInvoice,
+    },
+    {
+      label: $t('system.permission.moduleClientContact'),
+      value: DataPermissionModule.ClientContact,
+    },
+  ];
+}
+
+export function formatDataPermissionModule(
+  value?: DataPermissionModule | null,
+) {
+  if (value === undefined || value === null) {
+    return $t('system.permission.dataPermissionModuleCommon');
+  }
+  const matched = getDataPermissionModuleOptions().find(
+    (item) => item.value === value,
+  );
+  return matched?.label ?? String(value);
+}
+
+/** 删除确认展示规则内容，不用规则 id */
+export function formatDataPermissionRuleLabel(
+  row: Pick<
+    SystemPermissionApi.UserDataPermissionDto,
+    'dataPermissionType' | 'manageType' | 'module'
+  >,
+) {
+  return [
+    formatDataPermissionModule(row.module),
+    formatManageType(row.manageType),
+    formatDataPermissionType(row.dataPermissionType),
+  ].join(' / ');
+}
+
+export function getDataPermissionModuleFilterOptions() {
+  return [
+    {
+      label: $t('system.permission.dataPermissionModuleCommon'),
+      value: DATA_PERMISSION_MODULE_FILTER_COMMON,
+    },
+    ...getDataPermissionModuleOptions(),
+  ];
 }
 
 /** 数据权限表单可选项（排除「自己」，系统默认无需配置） */
@@ -66,6 +172,10 @@ export function getDataPermissionFormTypeOptions() {
       label: $t('system.permission.dataPermissionTypeAll'),
       value: DataPermissionType.All,
     },
+    {
+      label: $t('system.permission.dataPermissionTypeExcludeUser'),
+      value: DataPermissionType.ExcludeUser,
+    },
   ];
 }
 
@@ -84,8 +194,26 @@ export function getManageTypeOptions() {
 
 export function needsDataPermissionItems(type?: DataPermissionType) {
   return (
-    type === DataPermissionType.ManyUser || type === DataPermissionType.ManyPart
+    type === DataPermissionType.ManyUser ||
+    type === DataPermissionType.ManyPart ||
+    type === DataPermissionType.ExcludeUser
   );
+}
+
+export function useDataPermissionGridFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        options: getDataPermissionModuleFilterOptions(),
+        placeholder: $t('system.permission.dataPermissionModuleFilter'),
+      },
+      fieldName: 'moduleFilter',
+      label: $t('system.permission.module'),
+    },
+  ];
 }
 
 export const FrightModuleLabels: Record<FrightModule, string> = {
@@ -133,6 +261,18 @@ export function useDataPermissionFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        options: getDataPermissionModuleOptions(),
+        placeholder: $t('system.permission.dataPermissionModulePlaceholder'),
+      },
+      fieldName: 'module',
+      help: $t('system.permission.dataPermissionModuleHelp'),
+      label: $t('system.permission.module'),
+    },
+    {
+      component: 'Select',
+      componentProps: {
         class: 'w-full',
         options: getDataPermissionFormTypeOptions(),
         placeholder: $t('system.permission.dataPermissionTypePlaceholder'),
@@ -172,6 +312,12 @@ export function useDataPermissionColumns<
       width: 80,
     },
     {
+      field: 'module',
+      title: $t('system.permission.module'),
+      width: 140,
+      formatter: ({ cellValue }) => formatDataPermissionModule(cellValue),
+    },
+    {
       field: 'manageType',
       title: $t('system.permission.manageType'),
       width: 120,
@@ -205,8 +351,11 @@ export function useDataPermissionColumns<
       align: 'center',
       cellRender: {
         attrs: {
-          nameField: 'id',
-          nameTitle: $t('system.permission.name'),
+          getRowName: (row: T) =>
+            formatDataPermissionRuleLabel(
+              row as SystemPermissionApi.UserDataPermissionDto,
+            ),
+          nameTitle: $t('system.permission.dataPermission'),
           onClick: onActionClick,
           actions: onViewItems
             ? [

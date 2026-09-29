@@ -15,6 +15,7 @@ import {
   getMyPermissionCompanies,
   getOrganizationUnit,
 } from '#/api/system/organization-unit';
+import { DataPermissionModule } from '#/api/system/permission';
 import { getUserListByIds } from '#/api/system/user-admin';
 import { formatIndustryCategories } from '#/views/client/base/data';
 import {
@@ -168,7 +169,9 @@ async function resolveOrgNames(dtos: Array<ClientEdit | null | undefined>) {
   if (!companiesLoaded && !companiesLoading) {
     companiesLoading = true;
     try {
-      const companies = await getMyPermissionCompanies();
+      const companies = await getMyPermissionCompanies(
+        DataPermissionModule.Client,
+      );
       for (const company of companies) {
         if (company.name)
           orgNameMap.value.set(String(company.id), company.name);

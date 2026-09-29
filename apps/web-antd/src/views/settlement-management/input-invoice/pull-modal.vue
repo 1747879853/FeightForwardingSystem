@@ -16,7 +16,8 @@ import {
   Select,
 } from 'ant-design-vue';
 
-import { MyCompanySelect } from '#/adapter/component';
+import { PermissionCompanySelect } from '#/adapter/component';
+import { DataPermissionModule } from '#/api/system/permission';
 import { InputInvoiceAdminApi as Api } from '#/api/settlement-management/input-invoice-admin';
 
 import {
@@ -88,7 +89,7 @@ const rules: Record<string, any> = {
   ],
 };
 
-// 每次打开重置筛选；公司由 MyCompanySelect 的 autoDefault 在挂载时回填默认公司
+// 每次打开重置筛选；公司由 PermissionCompanySelect 的 autoDefault 在挂载时回填默认公司
 watch(
   () => props.open,
   (open) => {
@@ -188,9 +189,11 @@ async function handleOk() {
         </div>
         <div class="grid grid-cols-3 gap-x-4">
           <FormItem label="所属公司" name="companyId">
-            <MyCompanySelect
+            <PermissionCompanySelect
               v-model="model.companyId"
+              auto-default
               placeholder="请选择所属公司"
+              :module="DataPermissionModule.InputInvoice"
             />
           </FormItem>
           <FormItem label="含税总金额" name="totalAmount">

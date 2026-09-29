@@ -5,6 +5,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import dayjs from 'dayjs';
 
 import { ClientAdminApi } from '#/api/sea-export/client-admin';
+import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
 import { getClientStatusOptions } from '#/views/client/base/client-status';
 
@@ -175,13 +176,14 @@ export function useClientReviewFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'UserCompanySelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'orgId',
       label: '归属公司',
       componentProps: {
         allowClear: true,
-        placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
+        module: DataPermissionModule.Client,
+        placeholder: $t('ui.placeholder.select'),
       },
     },
     {

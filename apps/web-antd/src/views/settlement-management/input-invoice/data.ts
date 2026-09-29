@@ -2,6 +2,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import dayjs from 'dayjs';
 
+import { DataPermissionModule } from '#/api/system/permission';
 import { formatCompanySimpleLabel } from '#/composables/use-my-org';
 
 import {
@@ -288,8 +289,12 @@ export const searchFormSchema = [
   {
     fieldName: 'orgId',
     label: '所属公司',
-    component: 'MyCompanySelect',
-    componentProps: { placeholder: '请选择所属公司', autoDefault: false },
+    component: 'PermissionCompanySelect',
+    componentProps: {
+      placeholder: '请选择所属公司',
+      autoDefault: false,
+      module: DataPermissionModule.InputInvoice,
+    },
   },
   {
     fieldName: 'creatorUserId',

@@ -26,7 +26,49 @@ export enum DataPermissionType {
   ManyPart = 4,
   /** 全部 */
   All = 5,
+  /** 排除人员：这些人的数据不可见，优先于全部 */
+  ExcludeUser = 6,
 }
+
+/**
+ * 数据权限模块。为空表示通用规则。
+ * 数值与后端 DataPermissionModule 一致，和 FrightModule 不是同一套（件杂货是 12，不是 10）。
+ */
+export enum DataPermissionModule {
+  /** 海运出口 */
+  SeaExport = 0,
+  /** 付费申请 */
+  PaymentApplication = 3,
+  /** 海运进口 */
+  SeaImport = 4,
+  /** 空运出口 */
+  AirExport = 5,
+  /** 业务联系单 */
+  PreOrder = 8,
+  /** 客户 */
+  Client = 9,
+  /** 件杂货 */
+  BreakBulk = 12,
+  /** 收费结算 */
+  ReceiveSettlement = 13,
+  /** 付款结算 */
+  PaymentSettlement = 14,
+  /** 发票开出 */
+  InvoiceIssue = 15,
+  /** 开票申请 */
+  InvoiceApplication = 16,
+  /** 银行流水 */
+  BankStatement = 17,
+  /** 提成单 */
+  CommissionOrder = 18,
+  /** 进项发票 */
+  InputInvoice = 19,
+  /** 客户联系人 */
+  ClientContact = 20,
+}
+
+/** 列表筛「只看通用规则」时的表单值，不会当作模块枚举提交 */
+export const DATA_PERMISSION_MODULE_FILTER_COMMON = 'common';
 
 /** 模块枚举 */
 export enum FrightModule {
@@ -120,6 +162,7 @@ export const DataPermissionTypeOptions = [
   { label: '多用户', value: DataPermissionType.ManyUser },
   { label: '多部门/多公司', value: DataPermissionType.ManyPart },
   { label: '全部', value: DataPermissionType.All },
+  { label: '排除人员', value: DataPermissionType.ExcludeUser },
 ];
 
 /** 模块选项 */
@@ -195,6 +238,8 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    /** 为空是通用规则 */
+    module?: DataPermissionModule | null;
     userNickName?: string;
     roleName?: string;
     items?: UserDataPermissionItemDto[];
@@ -210,6 +255,8 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    /** 不传或 null 表示通用规则 */
+    module?: DataPermissionModule | null;
     entityIds?: number[];
   }
 
@@ -220,6 +267,8 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    /** 不传或 null 表示通用规则 */
+    module?: DataPermissionModule | null;
     entityIds?: number[];
   }
 
@@ -406,6 +455,10 @@ export namespace SystemPermissionApi {
     maxResultCount?: number;
     pageIndex?: number;
     pageSize?: number;
+    /** 只查该模块；与 moduleEmpty 不能同时传 */
+    module?: number;
+    /** true 时只查通用规则 */
+    moduleEmpty?: boolean;
   }
 }
 
@@ -444,10 +497,25 @@ async function getUserPermissions(userId: number | string) {
 
 // ==================== 数据权限API ====================
 
-/**
- * 获取数据权限列表
- */
+function resolveDataPermissionModuleQuery(moduleFilter: unknown): {
+  module?: number;
+  moduleEmpty?: boolean;
+} {
+  if (moduleFilter === DATA_PERMISSION_MODULE_FILTER_COMMON) {
+    return { moduleEmpty: true };
+  }
+  if (
+    moduleFilter === undefined ||
+    moduleFilter === null ||
+    moduleFilter === ''
+  ) {
+    return {};
+  }
+  return { module: Number(moduleFilter) };
+}
+
 async function getDataPermissionList(params: Recordable<any>) {
+  const moduleQuery = resolveDataPermissionModuleQuery(params.moduleFilter);
   const queryParams: SystemPermissionApi.PagedQueryParams = {
     keyword: params.keyword,
     userId: params.userId,
@@ -455,6 +523,7 @@ async function getDataPermissionList(params: Recordable<any>) {
     pageIndex: params.pageIndex || params.page || 1,
     pageSize: params.pageSize || 10,
     sorting: params.sorting || 'CreationTime DESC',
+    ...moduleQuery,
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionDto>

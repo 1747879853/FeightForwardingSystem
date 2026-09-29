@@ -149,11 +149,10 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'OrgId',
       label: '所属公司',
       componentProps: {
-        isCompany: true,
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },

@@ -456,6 +456,7 @@ export type ComponentType =
   | 'OrganizationSelect'
   | 'MyOrgSelect'
   | 'MyCompanySelect'
+  | 'PermissionCompanySelect'
   | 'UserOrgSelect'
   | 'UserCompanySelect'
   | 'PortSelect'
@@ -654,6 +655,9 @@ async function initComponentAdapter() {
     MyCompanySelect: defineAsyncComponent(
       () => import('./biz-select/my-company-select.vue'),
     ),
+    PermissionCompanySelect: defineAsyncComponent(
+      () => import('./biz-select/permission-company-select.vue'),
+    ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
     ),
@@ -716,6 +720,7 @@ export {
   FeeCodeSelect,
   MyOrgSelect,
   MyCompanySelect,
+  PermissionCompanySelect,
   OrganizationSelect,
   OrgBankAccountSelect,
   OrgBankAccountLinkageSelect,

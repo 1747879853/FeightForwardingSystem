@@ -5,6 +5,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import { getItemsByName } from '#/api/system/enum-admin';
+import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { getEnumItems } from '#/utils/init-enum';
@@ -668,12 +669,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'OrgId',
       label: $t('seaImport.import.organizationUnits'),
       componentProps: {
         allowClear: true,
-        isCompany: true,
+        module: DataPermissionModule.SeaImport,
         placeholder: $t('ui.placeholder.select'),
       },
     },

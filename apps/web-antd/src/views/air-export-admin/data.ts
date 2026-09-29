@@ -4,6 +4,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
+import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
 import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
 
@@ -619,12 +620,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'OrgId',
       label: $t('airExport.export.organizationUnits'),
       componentProps: {
         allowClear: true,
-        isCompany: true,
+        module: DataPermissionModule.AirExport,
         placeholder: $t('ui.placeholder.select'),
       },
     },

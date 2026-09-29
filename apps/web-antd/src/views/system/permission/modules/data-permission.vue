@@ -34,6 +34,7 @@ import {
   needsDataPermissionItems,
   useDataPermissionColumns,
   useDataPermissionFormSchema,
+  useDataPermissionGridFormSchema,
   useDataPermissionItemColumns,
 } from '../data';
 
@@ -72,7 +73,13 @@ const currentTargetParams = computed(() => {
 });
 
 const showUserEntitySelect = computed(
-  () => currentFormType.value === DataPermissionType.ManyUser,
+  () =>
+    currentFormType.value === DataPermissionType.ManyUser ||
+    currentFormType.value === DataPermissionType.ExcludeUser,
+);
+
+const isExcludeUser = computed(
+  () => currentFormType.value === DataPermissionType.ExcludeUser,
 );
 
 const showOrgEntitySelect = computed(
@@ -80,6 +87,9 @@ const showOrgEntitySelect = computed(
 );
 
 const entitySelectLabel = computed(() => {
+  if (isExcludeUser.value) {
+    return $t('system.permission.dataPermissionSelectExcludeUsers');
+  }
   if (showUserEntitySelect.value) {
     return $t('system.permission.dataPermissionSelectUsers');
   }
@@ -122,6 +132,11 @@ const fetchDataPermissionList = (params: Record<string, any>) => {
 
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserDataPermissionDto>({
+    formOptions: {
+      schema: useDataPermissionGridFormSchema(),
+      showCollapseButton: false,
+      submitOnChange: true,
+    },
     gridOptions: {
       id: 'systemPermissionDataList',
       columns: useDataPermissionColumns(handleActionClick, (row) =>
@@ -169,7 +184,20 @@ const [FormModal, modalApi] = useVbenModal({
     const dataPermissionType = values.dataPermissionType as DataPermissionType;
     const needsItems = needsDataPermissionItems(dataPermissionType);
 
-    if (needsItems && entityIds.value.length === 0) {
+    if (dataPermissionType === DataPermissionType.ExcludeUser) {
+      if (entityIds.value.length === 0) {
+        message.warning($t('system.permission.dataPermissionExcludeRequired'));
+        return;
+      }
+      if (
+        props.targetType === 'user' &&
+        props.userId != null &&
+        entityIds.value.some((id) => String(id) === String(props.userId))
+      ) {
+        message.warning($t('system.permission.dataPermissionExcludeSelf'));
+        return;
+      }
+    } else if (needsItems && entityIds.value.length === 0) {
       message.warning($t('system.permission.dataPermissionItemsRequired'));
       return;
     }
@@ -191,10 +219,17 @@ const [FormModal, modalApi] = useVbenModal({
       if (!confirmed) return;
     }
 
+    const module =
+      values.module === undefined ||
+      values.module === null ||
+      values.module === ''
+        ? null
+        : values.module;
     const submitData: SystemPermissionApi.UserDataPermissionAddDto = {
       ...currentTargetParams.value,
       manageType: values.manageType,
       dataPermissionType,
+      module,
       entityIds: needsItems ? entityIds.value : [],
     };
 
@@ -232,6 +267,7 @@ const [FormModal, modalApi] = useVbenModal({
         await formApi.setValues({
           manageType: detail.manageType,
           dataPermissionType: detail.dataPermissionType,
+          module: detail.module ?? undefined,
         });
         await applyPermissionItems(detail);
       } else {
@@ -314,7 +350,10 @@ async function applyPermissionItems(
     const items = data.items || [];
     entityIds.value = items.map((item) => item.entityId);
 
-    if (data.dataPermissionType === DataPermissionType.ManyUser) {
+    if (
+      data.dataPermissionType === DataPermissionType.ManyUser ||
+      data.dataPermissionType === DataPermissionType.ExcludeUser
+    ) {
       selectedUsers.value = await loadUsersByIds(entityIds.value);
     } else if (data.dataPermissionType === DataPermissionType.ManyPart) {
       selectedOrgs.value = await loadOrgsByIds(entityIds.value);
@@ -358,7 +397,10 @@ async function loadItemRows(row: SystemPermissionApi.UserDataPermissionDto) {
     const detail = await resolvePermissionDetail(row);
     const items = detail.items || [];
 
-    if (detail.dataPermissionType === DataPermissionType.ManyUser) {
+    if (
+      detail.dataPermissionType === DataPermissionType.ManyUser ||
+      detail.dataPermissionType === DataPermissionType.ExcludeUser
+    ) {
       const users = await loadUsersByIds(items.map((item) => item.entityId));
       const userMap = new Map(users.map((user) => [user.id, user]));
       itemRows.value = items.map((item) => ({
@@ -410,16 +452,10 @@ function handleViewItems(row: SystemPermissionApi.UserDataPermissionDto) {
   itemsDrawerApi.setData(row).open();
 }
 
-function handleDelete(row: SystemPermissionApi.UserDataPermissionDto) {
-  Modal.confirm({
-    title: $t('common.confirm'),
-    content: $t('system.permission.confirmDelete'),
-    onOk: async () => {
-      await deleteDataPermission(row.id);
-      message.success($t('system.permission.deleteSuccess'));
-      gridApi.query();
-    },
-  });
+async function handleDelete(row: SystemPermissionApi.UserDataPermissionDto) {
+  await deleteDataPermission(row.id);
+  message.success($t('system.permission.deleteSuccess'));
+  gridApi.query();
 }
 
 // ==================== 监听Props变化 ====================
@@ -453,17 +489,28 @@ watch(currentFormType, (newType, oldType) => {
           {{ entitySelectLabel }}
           <span class="text-destructive">*</span>
         </div>
-        <UserSelect
-          v-if="showUserEntitySelect"
-          v-model="entityIds"
-          mode="multiple"
-          show-default-org
-          class="w-full"
-          :selected-items="selectedUsers"
-          :placeholder="
-            $t('system.permission.dataPermissionSelectUsersPlaceholder')
-          "
-        />
+        <template v-if="showUserEntitySelect">
+          <UserSelect
+            v-model="entityIds"
+            mode="multiple"
+            show-default-org
+            class="w-full"
+            :selected-items="selectedUsers"
+            :placeholder="
+              isExcludeUser
+                ? $t(
+                    'system.permission.dataPermissionSelectExcludeUsersPlaceholder',
+                  )
+                : $t('system.permission.dataPermissionSelectUsersPlaceholder')
+            "
+          />
+          <div
+            v-if="isExcludeUser && targetType === 'user'"
+            class="mt-1 text-xs text-gray-500"
+          >
+            {{ $t('system.permission.dataPermissionExcludeSelfHint') }}
+          </div>
+        </template>
         <OrganizationSelect
           v-else-if="showOrgEntitySelect"
           v-model="entityIds"

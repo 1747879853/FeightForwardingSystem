@@ -483,15 +483,17 @@ async function getOrganizationUnit(
 }
 
 /**
- * 获取当前登录人有数据权限的公司列表
- * 按当前登录人的数据权限返回其拥有权限的分公司（公司）列表
- * 结果只包含公司（isCompany=true），不含部门
+ * 获取当前登录人有数据权限的公司列表。
+ * module 传页面所属数据权限模块；不传只按通用规则。该模块没单独配置时后端会回退通用规则。
  */
-async function getMyPermissionCompanies(): Promise<
-  SystemOrganizationUnitApi.OrganizationUnitSimpleDto[]
-> {
+async function getMyPermissionCompanies(
+  module?: null | number,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitSimpleDto[]> {
   return requestClient.get(
     '/services/app/OrganizationUnit/GetMyPermissionCompaniesAsync',
+    {
+      params: module === undefined || module === null ? undefined : { module },
+    },
   );
 }
 

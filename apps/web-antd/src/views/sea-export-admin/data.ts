@@ -4,6 +4,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
+import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { createKeysSearchSchema } from '#/utils/keys-search';
@@ -593,12 +594,12 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'PermissionCompanySelect',
       fieldName: 'OrgId',
       label: $t('seaExport.export.organizationUnits'),
       componentProps: {
         allowClear: true,
-        isCompany: true,
+        module: DataPermissionModule.SeaExport,
         placeholder: $t('ui.placeholder.select'),
       },
     },
