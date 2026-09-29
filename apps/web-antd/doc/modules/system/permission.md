@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,7 @@ last_updated: 2026-09-20
 
 - **字段权限保存或删除后刷新当前用户共享规则，已接入页面响应更新；退出登录清空缓存，防止跨用户复用。** 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
-- **数据权限 Tab：** 为当前选中的角色/用户维护 `UserDataPermission` 主规则；数据范围为「多用户」或「多部门/多公司」时，在弹窗内通过 `UserSelect` / `OrganizationSelect` 多选维护子项，保存时通过 `entityIds` 随主规则一次性提交；列表/详情由后端返回 `items` 子表，支持「查看明细」抽屉回显名称；列表展示明细数。
+- **数据权限 Tab：** 为当前选中的角色/用户维护 `UserDataPermission` 主规则；数据范围为「多用户」或「多部门/多公司」时，在弹窗内通过 `UserSelect` / `OrganizationSelect` 多选维护子项，保存时通过 `entityIds` 随主规则一次性提交；列表/详情由后端返回 `items` 子表，支持「查看明细」抽屉回显名称；列表展示明细数。「指定用户」下拉第二行显示该用户默认公司 / 部门（简称优先），选中标签仍只显示昵称。
 - **表级权限 Tab：** 为当前选中的角色/用户维护 `UserTablePermission` 主规则及 `UserTablePermissionCondition` 条件子项；主规则仅配置业务模块，条件在抽屉内维护（字段下拉 + 操作符 + 值）；列表展示条件条数，支持「查看条件」只读抽屉；编辑已保存条件仅可改操作符与值。
 - **数据权限说明：** 「自己」为系统默认行为，表单中不展示；子表由 `UserDataPermissionAdmin` 统一维护（不再调用 `UserDataPermissionItemAdmin`）；删除主规则会级联删除子表。
 - **模块权限文案：** 「模块权限」Tab 优先用 `GetAllPermissions.displayName`；为空或 ABP 方括号占位时才查 `auth.json`。缺 i18n 键时不再把 `auth.Admin_Report` 这类键直接显示出来。
@@ -53,6 +53,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-29 | `Fix` | 数据权限「指定用户」下拉第二行显示默认公司 / 部门。 | 只开 `showDefaultOrg`。默认组织取 `default=true`，公司为路径上第一个 `isCompany`，部门为路径末端。详见[变更记录](../../changelogs/change-log-2026-09-29-数据权限指定用户显示默认公司部门.md)。 |
 | 2026-09-20 | `Fix` | 修复明细数、条件字段显示名与条件值显示文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-08-24 | `Fix` | 模块权限树优先显示接口中文名；报表、提成配置不再显示 `auth.Admin_Report` 这类码。 | TAPD `#1161580498001000856`。`buildPermissionTree` 先用 `displayName`。详见 `changelogs/change-log-2026-08-24-permission-tree-display-name.md`。 |
 | 2026-08-10 | `Fix` | 表级/字段权限模块下拉同步「客户管理」`FrightModule.Client=9`，与后端枚举对齐。 | 仅补枚举与选项/标签；Client 暂无 `TablePermissionFieldMetaMap` 字段元数据，条件字段待后端确认后再补。 |

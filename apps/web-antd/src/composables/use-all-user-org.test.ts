@@ -10,6 +10,7 @@ import {
   formatCompanyPathLabel,
   formatOrgNodeLabel,
   formatOrgPathLabel,
+  formatUserDefaultCompanyDeptLabel,
   loadAllUserOrganizations,
   resetAllUserOrganizations,
   useAllUserOrg,
@@ -97,4 +98,55 @@ it('组织展示名优先简称，缺省回退全称', () => {
       { displayName: '操作部' },
     ]),
   ).toBe('HH/操作部');
+});
+
+it('默认组织展示公司与部门，忽略非默认路径', async () => {
+  vi.mocked(getAllUserOrganizations).mockResolvedValueOnce([
+    {
+      userId: 1,
+      organizations: [
+        {
+          default: false,
+          oneOrganizationPath: [
+            { id: 1, isCompany: true, shortName: '非默认公司' },
+            { id: 2, isCompany: false, displayName: '非默认部门' },
+          ],
+        },
+        {
+          default: true,
+          oneOrganizationPath: [
+            { id: 10, isCompany: true, shortName: '佳越' },
+            { id: 11, isCompany: false, shortName: '操作部' },
+          ],
+        },
+      ],
+    },
+  ] as any);
+
+  await loadAllUserOrganizations();
+  expect(formatUserDefaultCompanyDeptLabel(1)).toBe('佳越 / 操作部');
+  expect(formatUserDefaultCompanyDeptLabel('1')).toBe('佳越 / 操作部');
+});
+
+it('默认组织直接挂在公司上时只显示公司', async () => {
+  vi.mocked(getAllUserOrganizations).mockResolvedValueOnce([
+    {
+      userId: 1,
+      organizations: [
+        {
+          default: true,
+          oneOrganizationPath: [
+            { id: 10, isCompany: true, displayName: '佳越测试' },
+          ],
+        },
+      ],
+    },
+  ] as any);
+
+  await loadAllUserOrganizations();
+  expect(formatUserDefaultCompanyDeptLabel(1)).toBe('佳越测试');
+});
+
+it('没有组织时公司部门文案为空', () => {
+  expect(formatUserDefaultCompanyDeptLabel(99)).toBe('');
 });
