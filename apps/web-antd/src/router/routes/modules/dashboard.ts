@@ -20,7 +20,6 @@ const routes: RouteRecordRaw[] = [
     path: '/workspace',
     component: () => import('#/views/dashboard/workspace/index.vue'),
     meta: {
-      affixTab: true,
       icon: 'vscode-icons:file-type-go-work',
       order: 1,
       title: $t('page.dashboard.workspace'),

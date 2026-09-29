@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-09-17
+last_updated: 2026-09-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,7 +16,7 @@ last_updated: 2026-09-17
 | 页面路由 | `/workspace` |
 | 路由名称 | `Workspace` |
 | 页面组件 | `src/views/dashboard/workspace/index.vue` |
-| 权限口径 | 未在路由中声明独立权限 |
+| 权限口径 | 路由权限 `Admin.Workbench`（或 `Admin.Workbench.Get`）。页签不固定。 |
 | 关键源码 | `src/router/routes/modules/dashboard.ts`<br/>`src/views/dashboard/workspace/index.vue`<br/>`src/api/sea-export/se-service-task-admin.ts`<br/>`src/api/audit-approval/expense-admin.ts`<br/>`src/api/audit-approval/payment-review-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -91,6 +91,7 @@ last_updated: 2026-09-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-29 | `Fix` | 工作台页签取消固定。没有工作台权限时不再自动打开；有权限从菜单进入，页签可以关闭。 | 固定页签会在登录后强制打开已注册路由。详见 [变更日志](../../changelogs/change-log-2026-09-29-工作台取消固定页签.md)。 |
 | 2026-09-17 | `Fix` | 海出业务列表当前服务项未配置动态列时，自动回退默认港口配置的展示字段。 | 默认配置按需加载并缓存，仅补 `seServiceShows`，不改变港口专属任务配置。详见 [变更日志](../../changelogs/change-log-2026-09-17-workbench-dynamic-columns-default-config.md)。 |
 | 2026-09-16 | `Fix` | 所有品牌工作台均隐藏「紧急处理任务」「异常业务」mock 面板。 | 不再按品牌开关；页面不再挂载对应组件。详见 [变更日志](../../changelogs/change-log-2026-09-16-workbench-hide-mock-side-panels.md)。 |
 | 2026-09-11 | `Feature` | 完成任务后若自动生成了费用，弹窗展示费用明细；批量完成会汇总各任务费用。 | `CompleteAsync` 改为对象出参；`generatedFeeCount > 0` 才展示。详见 [变更日志](../../changelogs/change-log-2026-09-11-se-service-complete-generated-fees.md)。 |
