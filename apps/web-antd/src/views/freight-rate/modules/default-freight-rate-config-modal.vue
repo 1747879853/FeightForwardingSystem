@@ -106,6 +106,18 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
+      component: 'LaneSelect',
+      fieldName: 'laneIds',
+      label: '默认航线',
+      formItemClass: 'col-span-2',
+      componentProps: {
+        placeholder: '请选择默认航线（可多选）',
+        allowClear: true,
+        mode: 'multiple',
+        class: 'w-full',
+      },
+    },
+    {
       component: 'InputNumber',
       fieldName: 'polFreeDays',
       label: '起运港免用箱',
@@ -184,8 +196,8 @@ const [Form, formApi] = useVbenForm({
 
 const hintText = computed(() =>
   configExists.value
-    ? '已读取个人配置 DefaultFreightRate。保存将更新；清空会删除该个人配置。'
-    : '尚未配置 DefaultFreightRate。保存后写入个人配置，新增运价时自动带出。',
+    ? '已读取个人配置 DefaultFreightRate。保存将更新；清空会删除该个人配置。默认航线仅存配置供后端使用，不参与运价新增带出。'
+    : '尚未配置 DefaultFreightRate。保存后写入个人配置；主表字段会在新增运价时自动带出，默认航线仅供后端使用。',
 );
 
 async function fillForm(value: DefaultFreightRateValue) {
@@ -198,6 +210,7 @@ async function fillForm(value: DefaultFreightRateValue) {
     carrierId: value.carrierId ?? undefined,
     polId: value.polId ?? undefined,
     bookingAgentId: value.bookingAgentId ?? undefined,
+    laneIds: value.laneIds?.length ? value.laneIds : undefined,
     polFreeDays: value.polFreeDays ?? undefined,
     podFreeDays: value.podFreeDays ?? undefined,
     poddem: value.poddem ?? undefined,
@@ -229,6 +242,14 @@ async function fillForm(value: DefaultFreightRateValue) {
       fieldName: 'bookingAgentId',
       componentProps: {
         selectedItems: [{ id: value.bookingAgentId }],
+      },
+    });
+  }
+  if (value.laneIds?.length) {
+    schemaPatches.push({
+      fieldName: 'laneIds',
+      componentProps: {
+        selectedItems: value.laneIds.map((id) => ({ id })),
       },
     });
   }
