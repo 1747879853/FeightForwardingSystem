@@ -119,12 +119,13 @@ export async function enrichFreightListPriceChanges(
 
   const comboKeys = new Map<
     string,
-    { carrierId: number; polId: number; podId: number }
+    { carrierId: string; polId: string; podId: string }
   >();
   for (const row of items) {
-    const carrierId = Number(row.carrierId);
-    const polId = Number(row.polId);
-    const podId = Number(row.podId);
+    // 雪花 id 保持字符串，禁止 Number()，否则精度丢失导致跨页查不到上一条运价
+    const carrierId = String(row.carrierId ?? '').trim();
+    const polId = String(row.polId ?? '').trim();
+    const podId = String(row.podId ?? '').trim();
     if (!carrierId || !polId || !podId) continue;
     const key = `${carrierId}|${polId}|${podId}`;
     if (!comboKeys.has(key)) {
@@ -141,9 +142,10 @@ export async function enrichFreightListPriceChanges(
       chunk.map(async (combo) => {
         try {
           const page = await getSeFreiPriceList({
-            carrierId: combo.carrierId,
-            polId: combo.polId,
-            podId: combo.podId,
+            // 后端契约标 number，实际按字符串透传雪花 id
+            carrierId: combo.carrierId as unknown as number,
+            polId: combo.polId as unknown as number,
+            podId: combo.podId as unknown as number,
             pageIndex: 1,
             pageSize: 100,
             sorting: 'ValidTimeEnd DESC',

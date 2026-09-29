@@ -649,20 +649,7 @@ const [Modal, modalApi] = useVbenModal({
     // 构建费用列表（seFreiPriceFees）
     const seFreiPriceFees: SeFreiPriceFeeAddDto[] = [];
 
-    console.log('=== 附加费数据调试 (提交前) ===');
-    console.log(
-      'surchargeFees.value:',
-      JSON.parse(JSON.stringify(surchargeFees.value)),
-    );
-
-    surchargeFees.value.forEach((surcharge, index) => {
-      console.log(`--- 处理附加费索引 [${index}] ---`);
-      console.log(`  费用代码ID (feeCodeId): ${surcharge.feeCodeId}`);
-      console.log(
-        `  当前币别ID (currencyId): ${surcharge.currencyId} (类型: ${typeof surcharge.currencyId})`,
-      );
-      console.log(`  计费方式 (priceFeeType): ${surcharge.priceFeeType}`);
-
+    surchargeFees.value.forEach((surcharge) => {
       // 批量编辑：只要费用代码有值就提交，其他字段留空传null
       if (surcharge.feeCodeId) {
         const isOrderFee = surcharge.priceFeeType === PriceFeeType.Order;
@@ -708,7 +695,6 @@ const [Modal, modalApi] = useVbenModal({
           : undefined;
 
         const finalCurrencyId = surcharge.currencyId ?? null;
-        console.log(`  最终提交币别ID (finalCurrencyId): ${finalCurrencyId}`);
 
         const fee: SeFreiPriceFeeAddDto = {
           feeCodeId: surcharge.feeCodeId,
@@ -719,13 +705,9 @@ const [Modal, modalApi] = useVbenModal({
             ctnFees && ctnFees.length > 0 ? ctnFees : undefined,
         };
 
-        console.log(`  生成的费用对象:`, fee);
         seFreiPriceFees.push(fee);
       }
     });
-
-    console.log('=== 所有附加费处理完毕 ===');
-    console.log('seFreiPriceFees:', seFreiPriceFees);
 
     // 构建关联日列表（seFreiPriceDays）
     const seFreiPriceDays: SeFreiPriceDayAddDto[] = [];
@@ -792,8 +774,6 @@ const [Modal, modalApi] = useVbenModal({
         seFreiPriceWeekDays.length > 0 ? seFreiPriceWeekDays : undefined,
     };
 
-    console.log('c-submitData', submitData);
-
     modalApi.lock();
     batchEditSeFreiPrice(submitData)
       .then(() => {
@@ -813,7 +793,6 @@ const [Modal, modalApi] = useVbenModal({
     }
 
     const data = modalApi.getData<any>();
-    console.log('c-data:', data);
 
     formApi.resetForm();
     surchargeFees.value = [];
@@ -832,7 +811,6 @@ const [Modal, modalApi] = useVbenModal({
       try {
         const ctnResponse = await GetCtnCodesByPriceIdsAsync(data.ids);
         ctnCodes.value = ctnResponse || [];
-        console.log('获取到的箱型列表:', ctnCodes.value);
       } catch (error) {
         console.error('获取箱型列表失败:', error);
         ctnCodes.value = [];
@@ -866,7 +844,6 @@ async function loadSelectData() {
       code: item.code,
       currencyId: item.currencyId, // 保留币别ID用于自动填充
     }));
-    console.log('feeCodeList:', feeCodeList.value);
   } catch (error) {
     console.error('加载下拉数据失败:', error);
   }

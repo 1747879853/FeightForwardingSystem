@@ -107,10 +107,6 @@ const dynamicCtnTypes = computed(() => {
   ) {
     return [];
   }
-  console.log(
-    '计算dynamicCtnTypes，formData.value.seFreiPriceCtns:',
-    formData.value.seFreiPriceCtns,
-  );
   return formData.value.seFreiPriceCtns.map((ctn) => ({
     ctnCodeId: String(ctn.ctnCodeId),
     name: ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`,
@@ -218,7 +214,6 @@ async function loadSelectData() {
     );
     if (usdCurrency) {
       defaultCurrencyId.value = usdCurrency.id;
-      console.log('USD 币别 ID:', defaultCurrencyId.value);
     }
 
     const { getFeeCodePagedList } =
@@ -281,7 +276,6 @@ async function loadDefaultCtns() {
     );
 
     if (defaultCtns && defaultCtns.length > 0) {
-      console.log('加载到默认箱型:', defaultCtns);
       return defaultCtns.map((item: any) => ({
         id: '',
         seFreiPriceId: '',
@@ -1373,19 +1367,12 @@ async function handleSubmit() {
 
     const values = await formApi.getValues();
 
-    console.log('=== 提交前调试信息 ===');
-    console.log('formData.value:', formData.value);
-    console.log('formData.value?.currencyId:', formData.value?.currencyId);
-    console.log('values.currencyId:', values.currencyId);
-
     // 优先使用 formData 中的 currencyId，如果不存在则使用 values 中的
     const finalCurrencyId =
       formData.value?.currencyId !== undefined &&
       formData.value?.currencyId !== null
         ? formData.value.currencyId
         : values.currencyId;
-
-    console.log('最终使用的 currencyId:', finalCurrencyId);
 
     // 验证币别是否存在
     if (!finalCurrencyId) {
@@ -1439,7 +1426,6 @@ async function handleSubmit() {
             );
 
             if (!ctnInfo) {
-              console.warn(`未找到箱型ID为 ${ctnCodeIdStr} 的箱型信息`);
               return null;
             }
 

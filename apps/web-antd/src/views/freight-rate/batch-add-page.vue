@@ -142,8 +142,6 @@ function generateRowKey(): string {
  * 处理 AI 识别的数据
  */
 async function handleAIData(aiDataList: any[]) {
-  console.log('🤖 开始处理 AI 数据:', aiDataList);
-
   // 确保下拉选项已加载
   if (allCtnOptions.value.length === 0) {
     await initDropdownSources(defaultCurrencyId);
@@ -151,8 +149,7 @@ async function handleAIData(aiDataList: any[]) {
 
   // 收集 AI 数据中的所有箱型
   const aiCtnTypes = new Set<string>();
-  aiDataList.forEach((row: any, index: number) => {
-    console.log(`🔍 检查第${index + 1}条数据的箱型:`, row.seFreiPriceCtns);
+  aiDataList.forEach((row: any) => {
     if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
       row.seFreiPriceCtns.forEach((ctn: any) => {
         if (ctn.ctnCodeId) {
@@ -161,8 +158,6 @@ async function handleAIData(aiDataList: any[]) {
       });
     }
   });
-
-  console.log('📊 AI 数据中发现的箱型 IDs:', Array.from(aiCtnTypes));
 
   // 将 AI 数据中的箱型添加到 addedCtnTypes
   const newAddedCtnTypes: Array<{ ctnCodeId: string; ctnName: string }> = [];
@@ -182,8 +177,6 @@ async function handleAIData(aiDataList: any[]) {
           ctnCodeId: String(ctnOption.ctnCodeId), // ✅ 转换为字符串类型
           ctnName: ctnOption.ctnName,
         });
-      } else {
-        console.warn(`⚠️ 未找到箱型ID ${ctnCodeId} 对应的名称`);
       }
     }
   });
@@ -191,7 +184,6 @@ async function handleAIData(aiDataList: any[]) {
   // 如果有新的箱型需要添加
   if (newAddedCtnTypes.length > 0) {
     addedCtnTypes.value.push(...newAddedCtnTypes);
-    console.log('✅ 添加了', newAddedCtnTypes.length, '个新箱型到列配置');
   }
 
   // 等待列配置更新
@@ -236,13 +228,8 @@ async function handleAIData(aiDataList: any[]) {
   };
 
   // 转换 AI 数据格式以适应表格结构
-  const transformedAiData = aiDataList.map((row, index) => {
-    console.log(`🔍 转换第 ${index + 1} 条数据:`, {
-      id: row.id,
-      carrierId: row.carrierId,
-    });
-
-    // ⚠️ 关键修复：将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
+  const transformedAiData = aiDataList.map((row) => {
+    // 将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
     const carrierName =
       resolveCarrierLabelFromRow(row) ||
       convertIdToLabel(row.carrierId, 'carriers');
@@ -334,14 +321,8 @@ async function handleAIData(aiDataList: any[]) {
     const filledRow = applyTenantDefaultsToHotRow(transformedRow);
     markDefaultsFilledOrigins(beforeDefaults, filledRow);
 
-    console.log(
-      `✅ 转换后的第 ${index + 1} 条数据 _originalId:`,
-      filledRow._originalId,
-    );
     return filledRow;
   });
-
-  console.log('🔄 转换后的 AI 数据:', transformedAiData);
 
   // 替换 dataSource
   dataSource.value = transformedAiData;
@@ -349,12 +330,6 @@ async function handleAIData(aiDataList: any[]) {
   // 等待数据更新后，按用户列配置同步（含箱型表头合并）
   await nextTick();
   syncHotTable({ data: transformedAiData });
-
-  console.log(
-    '✅ AI 数据已加载到 Handsontable，共',
-    transformedAiData.length,
-    '条记录',
-  );
 
   showFieldOriginLegend.value = transformedAiData.some((row) =>
     rowHasFieldOrigin(row),
@@ -1175,8 +1150,6 @@ onMounted(() => {
  * 处理编辑提交
  */
 async function handleEditSubmit(labelToIdMapValue: any) {
-  console.log('📝 开始编辑提交');
-
   // 验证表单（含 label→id）
   if (!validateForm(labelToIdMapValue)) {
     return;
@@ -1192,7 +1165,6 @@ async function handleEditSubmit(labelToIdMapValue: any) {
     dataSource.value.forEach((row: any) => {
       // 检查是否有原始 ID（编辑模式必须有 ID）
       if (!row._originalId) {
-        console.warn('⚠️ 跳过没有 ID 的行:', row);
         return;
       }
 
@@ -1324,8 +1296,6 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       actions.loading.value = false;
       return;
     }
-
-    console.log('📤 提交编辑数据:', submitDataList);
 
     // 调用批量编辑接口
     await batchEditSimpleSeFreiPrice(submitDataList);

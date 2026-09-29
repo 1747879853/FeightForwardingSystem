@@ -118,7 +118,7 @@ function extractUniqueCtnNames(data: SeFreiPriceOutDto[]): string[] {
 }
 
 /**
- * 目的港免箱使天数（列表/导出共用）
+ * DEM / DET / 免箱使期（列表/导出共用）
  * 与批量页列一致：DEM=poddem、DET=podFreeDays、免箱使期=poddet
  */
 export function formatPodFreeDaysCombined(row: SeFreiPriceOutDto): string {
@@ -791,7 +791,7 @@ export function useColumns(
     },
     {
       field: 'podFreeDaysCombined',
-      title: '目的港免箱使天数',
+      title: 'DEM / DET / 免箱使期',
       width: 280,
       align: 'left',
       // 虚拟列：聚合 poddem / podFreeDays / poddet，须用 rowTextColumn 每次读当前行

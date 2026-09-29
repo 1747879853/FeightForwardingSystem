@@ -25,7 +25,6 @@ const hotTableRef = ref<any>(null);
 onMounted(() => {
   const hotInstance = hotTableRef.value?.hotInstance;
   if (hotInstance && props.dataSource.length > 0) {
-    console.log('📊 [onMounted] 加载初始数据，行数:', props.dataSource.length);
     hotInstance.loadData(props.dataSource);
   }
 });
