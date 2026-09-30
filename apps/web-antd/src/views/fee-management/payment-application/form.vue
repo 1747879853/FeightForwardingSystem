@@ -1536,7 +1536,10 @@ void handleSubmitAndNew;
                       </span>
                       <span class="invoice-process-title">
                         发票方式
-                        <span class="invoice-process-title__required">*</span>
+                        <span
+                          class="invoice-process-title__required form-required-mark"
+                          >*</span
+                        >
                       </span>
                     </div>
                     <div class="invoice-process-actions">

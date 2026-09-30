@@ -597,7 +597,9 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   交易时间
-                  <span v-if="canEditStatement" class="text-red-500">*</span>
+                  <span v-if="canEditStatement" class="form-required-mark"
+                    >*</span
+                  >
                 </div>
                 <DatePicker
                   v-if="canEditStatement"
@@ -612,7 +614,9 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   付款方
-                  <span v-if="canEditCurrencyAndPayer" class="text-red-500"
+                  <span
+                    v-if="canEditCurrencyAndPayer"
+                    class="form-required-mark"
                     >*</span
                   >
                 </div>
@@ -645,7 +649,9 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   归属组织
-                  <span v-if="canEditStatement" class="text-red-500">*</span>
+                  <span v-if="canEditStatement" class="form-required-mark"
+                    >*</span
+                  >
                 </div>
                 <MyOrgSelect
                   v-if="canEditStatement"
@@ -659,7 +665,9 @@ onUnmounted(() => {
               <div class="form-field">
                 <div class="form-label">
                   币别
-                  <span v-if="canEditCurrencyAndPayer" class="text-red-500"
+                  <span
+                    v-if="canEditCurrencyAndPayer"
+                    class="form-required-mark"
                     >*</span
                   >
                 </div>
@@ -689,7 +697,7 @@ onUnmounted(() => {
               <div class="form-field form-field--money">
                 <div class="form-label">
                   总金额
-                  <span v-if="canEditAmount" class="text-red-500">*</span>
+                  <span v-if="canEditAmount" class="form-required-mark">*</span>
                 </div>
                 <InputNumber
                   v-if="canEditAmount"

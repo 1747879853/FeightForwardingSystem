@@ -1,0 +1,120 @@
+/*
+ * 全局：必填项更醒目。
+ * 星号加大加粗；可编辑的必填输入、下拉、日期加浅红底。
+ * 边框仍用组件默认色，避免看起来像校验失败。
+ * 禁用控件继续走 form-control-disabled.css 的浅灰底。
+ * 背景使用 !important：Ant Design Vue 运行时样式会盖掉普通 background。
+ */
+
+.form-required-mark,
+.order-user-panel__role-required {
+  display: inline-block;
+  margin-right: 4px;
+  font-family: SimSun, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ff4d4f;
+}
+
+.ant-form-item-label > label.ant-form-item-required::before {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+:is(
+    .form-is-required,
+    .ant-form-item:has(label.ant-form-item-required),
+    .order-user-panel__body:has(.order-user-panel__role-required),
+    .basic-info-header__item:has(.order-user-panel__role-required),
+    .form-item:has(.form-required-mark),
+    .form-field:has(.form-required-mark),
+    .field-item:has(.form-required-mark),
+    .fsd-field:has(.form-required-mark),
+    .fee-modify-reason:has(.form-required-mark),
+    .section-actions:has(.form-required-mark)
+  )
+  :is(
+    .ant-input:not(.ant-input-disabled):not([disabled]),
+    textarea.ant-input:not([disabled]),
+    .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled),
+    .ant-input-number:not(.ant-input-number-disabled),
+    .ant-select:not(.ant-select-disabled) .ant-select-selector,
+    .ant-picker:not(.ant-picker-disabled),
+    .ant-mentions:not(.ant-mentions-disabled)
+  ) {
+  background-color: #fff1f0 !important;
+}
+
+div:has(> span > .form-required-mark)
+  > .ant-select:not(.ant-select-disabled)
+  .ant-select-selector,
+div:has(> div > .form-required-mark)
+  > .ant-select:not(.ant-select-disabled)
+  .ant-select-selector,
+div:has(> div > .form-required-mark)
+  > .w-full
+  .ant-select:not(.ant-select-disabled)
+  .ant-select-selector {
+  background-color: #fff1f0 !important;
+}
+
+:is(
+    .form-is-required,
+    .ant-form-item:has(label.ant-form-item-required),
+    .order-user-panel__body:has(.order-user-panel__role-required),
+    .basic-info-header__item:has(.order-user-panel__role-required),
+    .form-item:has(.form-required-mark),
+    .form-field:has(.form-required-mark),
+    .field-item:has(.form-required-mark),
+    .fsd-field:has(.form-required-mark),
+    .fee-modify-reason:has(.form-required-mark),
+    .section-actions:has(.form-required-mark)
+  )
+  :is(
+    .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled)
+      > input.ant-input,
+    .ant-input-number:not(.ant-input-number-disabled) .ant-input-number-input,
+    .ant-picker:not(.ant-picker-disabled) input
+  ) {
+  background-color: transparent !important;
+}
+
+.dark
+  :is(
+    .form-is-required,
+    .ant-form-item:has(label.ant-form-item-required),
+    .order-user-panel__body:has(.order-user-panel__role-required),
+    .basic-info-header__item:has(.order-user-panel__role-required),
+    .form-item:has(.form-required-mark),
+    .form-field:has(.form-required-mark),
+    .field-item:has(.form-required-mark),
+    .fsd-field:has(.form-required-mark),
+    .fee-modify-reason:has(.form-required-mark),
+    .section-actions:has(.form-required-mark)
+  )
+  :is(
+    .ant-input:not(.ant-input-disabled):not([disabled]),
+    textarea.ant-input:not([disabled]),
+    .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled),
+    .ant-input-number:not(.ant-input-number-disabled),
+    .ant-select:not(.ant-select-disabled) .ant-select-selector,
+    .ant-picker:not(.ant-picker-disabled),
+    .ant-mentions:not(.ant-mentions-disabled)
+  ),
+.dark
+  div:has(> span > .form-required-mark)
+  > .ant-select:not(.ant-select-disabled)
+  .ant-select-selector,
+.dark
+  div:has(> div > .form-required-mark)
+  > .ant-select:not(.ant-select-disabled)
+  .ant-select-selector,
+.dark
+  div:has(> div > .form-required-mark)
+  > .w-full
+  .ant-select:not(.ant-select-disabled)
+  .ant-select-selector {
+  background-color: hsl(var(--destructive) / 18%) !important;
+}

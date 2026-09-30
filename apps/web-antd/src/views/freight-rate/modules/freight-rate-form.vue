@@ -1570,7 +1570,8 @@ onMounted(() => {
         <div class="banner-fields">
           <div class="field-item">
             <label class="field-label"
-              >有效起始 <span class="required">*</span></label
+              >有效起始
+              <span class="required form-required-mark">*</span></label
             >
             <DatePicker
               v-if="formData && !masked('validTimeStart', rawDetail)"
@@ -1584,7 +1585,8 @@ onMounted(() => {
           <div class="field-divider">至</div>
           <div class="field-item">
             <label class="field-label"
-              >有效截止 <span class="required">*</span></label
+              >有效截止
+              <span class="required form-required-mark">*</span></label
             >
             <DatePicker
               v-if="formData && !masked('validTimeEnd', rawDetail)"
@@ -1920,7 +1922,8 @@ onMounted(() => {
           </div>
           <div v-if="formData" class="section-actions">
             <span class="required-label"
-              >币别 <span class="required-star">*</span></span
+              >币别
+              <span class="required-star form-required-mark">*</span></span
             >
             <Select
               class="currency-select"
@@ -3031,7 +3034,7 @@ input[type='text']:focus {
 }
 
 .required-star {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   color: #ff4d4f;

@@ -647,7 +647,7 @@ watch(
         <div>
           <div class="mb-1 text-sm font-medium">
             {{ $t('system.permission.conditionPropName') }}
-            <span class="text-destructive">*</span>
+            <span class="form-required-mark">*</span>
           </div>
           <Select
             :value="conditionFormPropName"
@@ -664,7 +664,7 @@ watch(
         <div>
           <div class="mb-1 text-sm font-medium">
             {{ $t('system.permission.conditionOperator') }}
-            <span class="text-destructive">*</span>
+            <span class="form-required-mark">*</span>
           </div>
           <Select
             :value="conditionFormOperator"
@@ -678,7 +678,7 @@ watch(
         <div>
           <div class="mb-1 text-sm font-medium">
             {{ $t('system.permission.conditionValue') }}
-            <span class="text-destructive">*</span>
+            <span class="form-required-mark">*</span>
           </div>
           <Select
             v-if="valueInputType === 'enum'"

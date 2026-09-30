@@ -1609,7 +1609,10 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
           </div>
           <div class="fee-modify-reason">
             <div class="fee-modify-reason__label">
-              修改原因 <span class="fee-modify-reason__required">*</span>
+              修改原因
+              <span class="fee-modify-reason__required form-required-mark"
+                >*</span
+              >
             </div>
             <Textarea
               v-model:value="modifyRemarkInput"

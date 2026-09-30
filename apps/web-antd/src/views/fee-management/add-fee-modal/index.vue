@@ -916,7 +916,7 @@ defineExpose({ open: openDrawer });
         <template v-if="drawerProps.enableInvoiceProcess">
           <span class="text-sm text-gray-600">
             发票方式
-            <span class="text-red-500">*</span>
+            <span class="form-required-mark">*</span>
           </span>
           <Select
             :value="drawerProps.invoiceProcess"

@@ -863,7 +863,7 @@ defineExpose({
           <div class="fsd-main-currency__body">
             <div class="fsd-field">
               <span class="fsd-field__label">
-                <span class="fsd-required">*</span>
+                <span class="fsd-required form-required-mark">*</span>
                 结算单位
               </span>
               <ClientSelect
@@ -885,7 +885,7 @@ defineExpose({
             </div>
             <div class="fsd-field fsd-main-currency__field">
               <span class="fsd-field__label">
-                <span class="fsd-required">*</span>
+                <span class="fsd-required form-required-mark">*</span>
                 申请主币别
               </span>
               <CurrencySelect

@@ -215,7 +215,9 @@ watch(
       >
         <template #headerCell="{ column }">
           <template v-if="column.dataIndex === 'count'">
-            <span class="pre-order-ctn-table__required">*</span>
+            <span class="pre-order-ctn-table__required form-required-mark"
+              >*</span
+            >
             箱量
           </template>
           <template v-else>{{ column.title }}</template>

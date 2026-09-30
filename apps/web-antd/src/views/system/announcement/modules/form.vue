@@ -187,7 +187,7 @@ const [Modal, modalApi] = useVbenModal({
       <div class="col-span-2 flex flex-col gap-2">
         <div class="text-sm font-medium">
           {{ $t('system.announcement.text') }}
-          <span class="text-destructive">*</span>
+          <span class="form-required-mark">*</span>
         </div>
         <div
           v-if="detailLoading"

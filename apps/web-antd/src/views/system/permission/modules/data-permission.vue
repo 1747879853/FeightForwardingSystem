@@ -487,7 +487,7 @@ watch(currentFormType, (newType, oldType) => {
       <div v-if="showUserEntitySelect || showOrgEntitySelect" class="mx-4 mt-2">
         <div class="mb-2 text-sm font-medium">
           {{ entitySelectLabel }}
-          <span class="text-destructive">*</span>
+          <span class="form-required-mark">*</span>
         </div>
         <template v-if="showUserEntitySelect">
           <UserSelect

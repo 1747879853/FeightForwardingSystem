@@ -1389,7 +1389,8 @@ onMounted(() => {
             </div>
             <div class="form-item">
               <div class="form-label">
-                归属组织 <span v-if="!isEdit" class="text-red-500">*</span>
+                归属组织
+                <span v-if="!isEdit" class="form-required-mark">*</span>
               </div>
               <div class="form-control">
                 <MyOrgSelect
@@ -1433,7 +1434,7 @@ onMounted(() => {
             <div class="form-item">
               <div class="form-label">
                 本次结算
-                <span v-if="!isReadonly" class="text-red-500">*</span>
+                <span v-if="!isReadonly" class="form-required-mark">*</span>
               </div>
               <div class="form-control">
                 <InputNumber
