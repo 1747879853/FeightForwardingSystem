@@ -11,6 +11,16 @@ export namespace RongETongApi {
     polId: number | string;
     /** 目的港 Id，港口须维护 EDI 代码（雪花 ID 字符串透传） */
     podId: number | string;
+    /**
+     * 起运港运输类型：`CY` 堆场，`SD` 门点。
+     * 必填；未选或非法值时勿调接口。
+     */
+    polServiceType: 'CY' | 'SD';
+    /**
+     * 目的港运输类型：`CY` 堆场，`SD` 门点。
+     * 必填；未选或非法值时勿调接口。
+     */
+    podServiceType: 'CY' | 'SD';
     /** 箱型 Id，至少 1 个；重复只查一次（雪花 ID 字符串透传） */
     ctnCodeIds: Array<number | string>;
   }
