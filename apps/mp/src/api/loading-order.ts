@@ -144,6 +144,8 @@ export interface LoadingOrderDetailDto extends LoadingOrderListItemDto {
   orderCtns?: LoadingOrderCtnDto[] | null;
   rejectReason?: null | string;
   rejectTime?: null | string;
+  /** 整单照片是否带水印。缺省按含水印 */
+  hasWatermark?: boolean;
 }
 
 export interface PagedResult<T> {

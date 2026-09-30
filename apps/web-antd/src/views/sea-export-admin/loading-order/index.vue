@@ -273,9 +273,11 @@ function handlePhotoUpload(file: File, groupIndex: number) {
   photoUploadQueue = photoUploadQueue.then(async () => {
     try {
       if (!allowsMultiple(group.typeName) && group.items.length > 0) return;
-      const watermarked = await watermarkLoadingPhoto(file, uploader);
+      const fileToUpload = form.value.hasWatermark
+        ? await watermarkLoadingPhoto(file, uploader)
+        : file;
       const formData = new FormData();
-      formData.append('file', watermarked);
+      formData.append('file', fileToUpload);
       const results = await uploadFile(formData);
       const uploaded = results[0];
       if (!uploaded) throw new Error('上传返回为空');
@@ -348,6 +350,7 @@ const form = ref<{
   carrierYardId: string | undefined;
   codePackageItemId: string | undefined;
   estimatedArrivalTime: string | undefined;
+  hasWatermark: boolean;
   pkgs: number | undefined;
   remark: string;
   requirementItemIds: string[];
@@ -356,6 +359,7 @@ const form = ref<{
   carrierYardId: undefined,
   codePackageItemId: undefined,
   estimatedArrivalTime: undefined,
+  hasWatermark: true,
   pkgs: undefined,
   remark: '',
   requirementItemIds: [],
@@ -716,6 +720,7 @@ const resetFormFromDetail = () => {
       ? String(current.codePackageItemId)
       : undefined,
     estimatedArrivalTime: current?.estimatedArrivalTime ?? undefined,
+    hasWatermark: current?.hasWatermark !== false,
     pkgs: current?.pkgs ?? undefined,
     remark: current?.remark ?? '',
     requirementItemIds: (current?.loadingRequirementItemIds ?? []).map(String),
@@ -808,6 +813,7 @@ const buildPayload = () => ({
   carrierYardId: form.value.carrierYardId ?? null,
   codePackageItemId: form.value.codePackageItemId ?? null,
   estimatedArrivalTime: form.value.estimatedArrivalTime ?? null,
+  hasWatermark: form.value.hasWatermark,
   pkgs: form.value.pkgs ?? null,
   remark: form.value.remark.trim() || null,
   // 全量提交：漏传等于清空
@@ -1398,6 +1404,18 @@ const displayValue = (value: null | number | string | undefined) => {
               />
             </div>
           </template>
+
+          <div class="loading-order__watermark">
+            <Checkbox
+              v-model:checked="form.hasWatermark"
+              :disabled="!isFormEditable"
+            >
+              {{ $t('seaExport.loadingOrder.hasWatermark') }}
+            </Checkbox>
+            <span class="loading-order__watermark-hint">
+              {{ $t('seaExport.loadingOrder.hasWatermarkHint') }}
+            </span>
+          </div>
         </section>
 
         <section class="loading-order__card loading-order__card--table">
@@ -1559,8 +1577,11 @@ const displayValue = (value: null | number | string | undefined) => {
           {{ $t('seaExport.loadingOrder.photoTypesEmpty') }}
         </div>
         <p v-if="canEdit" class="photo-edit-hint">
-          空箱箱内可添加多张，其他类型限一张；可一次多选或 Ctrl+V
-          粘贴，新图片自动添加上传人和上传时间水印。
+          空箱箱内可添加多张，其他类型限一张；可一次多选或 Ctrl+V 粘贴。{{
+            form.hasWatermark
+              ? '新图片自动添加上传人和上传时间水印。'
+              : '本工单已关闭照片水印，新图片按原图上传。'
+          }}
         </p>
         <div class="photo-edit-grid">
           <div
@@ -2134,6 +2155,26 @@ const displayValue = (value: null | number | string | undefined) => {
   font-size: 12px;
   line-height: 12px;
   color: #252a31;
+}
+
+.loading-order__watermark {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.loading-order__watermark :deep(.ant-checkbox-wrapper) {
+  font-size: 13px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.loading-order__watermark-hint {
+  font-size: 12px;
+  line-height: 18px;
+  color: rgb(0 0 0 / 45%);
 }
 
 .loading-order__remark,

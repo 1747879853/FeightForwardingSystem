@@ -1100,6 +1100,8 @@
     "requirementEmpty": "暂无监装要求，请先到基础数据维护",
     "selectedCountPrefix": "已选择",
     "selectedCountSuffix": "项",
+    "hasWatermark": "照片包含水印",
+    "hasWatermarkHint": "整单生效，默认勾选。取消后，新上传的照片不再添加水印；已上传的照片不变。",
     "requirementRemark": "详细说明",
     "requirementRemarkEmpty": "请输入详细说明",
     "orderCtns": "集装箱信息",

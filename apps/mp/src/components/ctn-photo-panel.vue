@@ -20,17 +20,22 @@ import { useLoadingPhotoWatermark } from '@/utils/loading-photo-watermark';
 import { pickCtnNoFromUpload } from '@/utils/recognized-ctn-no';
 import { resolveUploadDisplayUrl } from '@/utils/upload-display-url';
 
-const props = defineProps<{
-  getUploadLocation: () => Promise<TaskPhotoLocation>;
-  locationPending: boolean;
-  locationError: string;
-  locationAddress: string;
-  ctn: EditableCtn | null;
-  editable: boolean;
-  saving?: boolean;
-  typesEmpty?: boolean;
-  visible: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    getUploadLocation: () => Promise<TaskPhotoLocation>;
+    locationPending: boolean;
+    locationError: string;
+    locationAddress: string;
+    ctn: EditableCtn | null;
+    editable: boolean;
+    /** 整单是否给新照片打水印。缺省按打水印 */
+    hasWatermark?: boolean;
+    saving?: boolean;
+    typesEmpty?: boolean;
+    visible: boolean;
+  }>(),
+  { hasWatermark: true },
+);
 
 const emit = defineEmits<{
   (event: 'close'): void;
@@ -161,7 +166,7 @@ async function addPhotos(groupIndex: number) {
   const group = groups.value[groupIndex];
   if (!group || !props.editable || busy.value || props.saving) return;
   if (!allowsMultiple(group.typeName) && group.items.length > 0) return;
-  if (props.locationPending || !props.locationAddress) {
+  if (props.hasWatermark && (props.locationPending || !props.locationAddress)) {
     uni.showToast({
       icon: 'none',
       title: props.locationPending
@@ -192,22 +197,24 @@ async function addPhotos(groupIndex: number) {
   if (paths.length === 0) return;
   const uploader =
     authState.profile?.nickName || authState.profile?.userName || '';
-  if (!uploader.trim()) {
+  if (props.hasWatermark && !uploader.trim()) {
     uni.showToast({ icon: 'none', title: '无法获取上传人，请重新登录' });
     return;
   }
   uploading.value = true;
   uni.showLoading({ mask: true, title: '准备上传' });
-  let location: TaskPhotoLocation;
-  try {
-    location = await props.getUploadLocation();
-  } catch (error) {
-    uploading.value = false;
-    alertAfterLoading(
-      '位置获取失败，未上传图片',
-      error instanceof Error ? error.message : '请开启定位权限后重试',
-    );
-    return;
+  let location: TaskPhotoLocation | null = null;
+  if (props.hasWatermark) {
+    try {
+      location = await props.getUploadLocation();
+    } catch (error) {
+      uploading.value = false;
+      alertAfterLoading(
+        '位置获取失败，未上传图片',
+        error instanceof Error ? error.message : '请开启定位权限后重试',
+      );
+      return;
+    }
   }
   let failed = 0;
   let failureReason = '';
@@ -220,14 +227,19 @@ async function addPhotos(groupIndex: number) {
       });
       let photo: EditablePhoto | undefined;
       try {
-        const watermarkedPath = await watermark(path, uploader, location);
-        const localPath = await persistLocalImage(watermarkedPath);
+        const sourcePath = props.hasWatermark
+          ? await watermark(path, uploader, location!)
+          : path;
+        if (
+          props.hasWatermark &&
+          (await props.getUploadLocation()) !== location
+        ) {
+          throw new Error('任务位置已更新，请重新添加图片');
+        }
+        const localPath = await persistLocalImage(sourcePath);
         photo = { attachmentId: '', localPath, url: localPath };
         group.items.push(photo);
         await nextTick();
-        if ((await props.getUploadLocation()) !== location) {
-          throw new Error('任务位置已更新，请重新添加图片');
-        }
         const result = await uploadImage(localPath);
         photo.attachmentId = result.attachmentId;
         photo.url = resolveUploadDisplayUrl(
@@ -379,7 +391,7 @@ function lockMaskScroll() {}
           未配置监装附件类型
         </text>
 
-        <view v-if="editable" class="group__empty location-row">
+        <view v-if="editable && hasWatermark" class="group__empty location-row">
           <text>{{
             locationPending
               ? '定位中…'

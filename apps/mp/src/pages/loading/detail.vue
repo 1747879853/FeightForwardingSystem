@@ -548,6 +548,7 @@ onShow(() => {
       :location-pending="locationLoading"
       :location-error="locationError"
       :location-address="photoLocation?.address || ''"
+      :has-watermark="detail?.hasWatermark !== false"
       @retry-location="taskLocation.refresh"
       @open-location-settings="taskLocation.openLocationSettings"
       :ctn="activeCtn"

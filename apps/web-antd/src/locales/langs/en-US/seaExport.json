@@ -874,6 +874,8 @@
     "requirementEmpty": "No loading requirement configured yet",
     "selectedCountPrefix": "Selected",
     "selectedCountSuffix": "items",
+    "hasWatermark": "Watermark photos",
+    "hasWatermarkHint": "Applies to the whole job and is on by default. New photos uploaded after turning it off stay original; existing photos are unchanged.",
     "requirementRemark": "Details",
     "requirementRemarkEmpty": "Enter details",
     "orderCtns": "Containers",

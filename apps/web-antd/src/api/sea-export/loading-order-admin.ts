@@ -157,6 +157,8 @@ export namespace LoadingOrderAdminApi {
     lastModificationTime?: null | string;
     /** 管理端新建/编辑填写，不是拒接原因 */
     remark?: null | string;
+    /** 整单照片是否带水印。缺省按含水印 */
+    hasWatermark?: boolean;
     loadingOrderUsers?: LoadingOrderUserDto[] | null;
     /** 已勾选的监装要求明细 id，编辑时可原样回传 */
     loadingRequirementItemIds?: string[] | null;
@@ -178,6 +180,8 @@ export namespace LoadingOrderAdminApi {
     loadingRequirementItemIds?: string[];
     /** 最长 1024；与拒接原因是两个独立字段 */
     remark?: null | string;
+    /** 整单照片是否带水印。不传后端按 true */
+    hasWatermark?: boolean;
   }
 
   /** 编辑监装工单参数；海运出口不允许改 */
