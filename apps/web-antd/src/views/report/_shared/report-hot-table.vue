@@ -14,6 +14,7 @@ import {
   fillAggregatedColumns,
   parseNumeric,
 } from './aggregate';
+import { arrangeReportColumns, mergeVisualColumnOrder } from './column-layout';
 import {
   applySortToRows,
   nextSortState,
@@ -280,7 +281,7 @@ function syncHiddenColumnIndexesFromDataRefs() {
 }
 
 /**
- * 按列 data 字段解除隐藏（支持单个或多个）；同步插件索引。
+ * 按列 data 字段解除隐藏（支持单个或多个）；同步插件索引并持久化。
  */
 function unhideColumnsByData(keys: string[]) {
   const keySet = new Set(
@@ -309,6 +310,51 @@ function unhideColumnsByData(keys: string[]) {
   }
 }
 
+/** 拖拽列头后把视觉顺序写回列配置并持久化，并清掉插件内部位移避免叠两次 */
+let persistingColumnMove = false;
+function persistColumnMove() {
+  if (persistingColumnMove) return;
+  const hot = hotTableRef.value?.hotInstance;
+  if (!hot) return;
+  const settingsCols = hot.getSettings()?.columns || [];
+  const visualKeys: string[] = [];
+  const count = hot.countCols?.() ?? settingsCols.length;
+  for (let visual = 0; visual < count; visual += 1) {
+    let physical = visual;
+    if (typeof hot.toPhysicalColumn === 'function') {
+      try {
+        const mapped = hot.toPhysicalColumn(visual);
+        if (typeof mapped === 'number' && mapped >= 0) physical = mapped;
+      } catch {
+        // 保持视觉下标
+      }
+    }
+    const data = settingsCols[physical]?.data;
+    if (data && data !== '_groupDisplay') visualKeys.push(data);
+  }
+  if (visualKeys.length === 0) return;
+
+  const currentVisual = [...props.columnConfigs]
+    .filter((col) => col?.data && visualKeys.includes(col.data))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((col) => col.data);
+  if (currentVisual.join('|') === visualKeys.join('|')) return;
+
+  persistingColumnMove = true;
+  try {
+    const physicalCount = settingsCols.length;
+    hot.columnIndexMapper?.setIndexesSequence?.(
+      Array.from({ length: physicalCount }, (_, index) => index),
+    );
+    emit(
+      'update:columnConfigs',
+      mergeVisualColumnOrder(props.columnConfigs, visualKeys),
+    );
+  } finally {
+    persistingColumnMove = false;
+  }
+}
+
 componentInstance.unhideColumnsByData = unhideColumnsByData;
 
 function updateHiddenColumnData(destinationHideConfig: number[]) {
@@ -319,10 +365,17 @@ function updateHiddenColumnData(destinationHideConfig: number[]) {
   const hiddenData = new Set<string>();
   destinationHideConfig.forEach((colIndex) => {
     const colConfig = columns[colIndex];
-    if (colConfig && colConfig.data) {
+    if (colConfig?.data && colConfig.data !== '_groupDisplay') {
       hiddenData.add(colConfig.data);
     }
   });
+  const prev = hiddenColumnDataRefs.value;
+  if (
+    hiddenData.size === prev.size &&
+    [...hiddenData].every((key) => prev.has(key))
+  ) {
+    return;
+  }
   hiddenColumnDataRefs.value = hiddenData;
   emit('update:hiddenColumnKeys', [...hiddenData]);
 }
@@ -337,20 +390,54 @@ const hotSettings = computed(() => {
   // 显式依赖 sortState，确保升序/降序/取消后列头箭头会刷新
   const activeSort = sortState.value;
 
-  const visibleColumns = grouped
-    ? [...currentColumnsRef.value]
-    : [...props.columnConfigs]
-        .filter((col) => col.visible)
-        .sort((a, b) => a.order - b.order);
+  // 依赖隐藏列集合，刷新后插件索引与 UserSetting 对齐
+  const hiddenKeys = hiddenColumnDataRefs.value;
 
-  const columnsForSettings = visibleColumns.map((col) => {
-    const isNumeric = numericColumns.value.has(col.data);
-    return {
-      ...col,
-      className: isNumeric ? 'htRight' : col.className || 'htLeft',
-      width: col.width || 150,
-    };
-  });
+  const toHotColumns = (cols: any[]) =>
+    cols.map((col) => {
+      const isNumeric = numericColumns.value.has(col.data);
+      return {
+        ...col,
+        className: isNumeric ? 'htRight' : col.className || 'htLeft',
+        width: col.width || 150,
+      };
+    });
+
+  /**
+   * 列全部进入 Handsontable，显隐交给 HiddenColumns。
+   * 右键隐藏走原生插件；显示隐藏列走自定义子菜单。
+   */
+  let columnsForSettings: any[];
+  if (grouped) {
+    const groupCol = currentColumnsRef.value.find(
+      (col) => col?.data === '_groupDisplay',
+    );
+    const rest = arrangeReportColumns(
+      props.columnConfigs.filter(
+        (col) =>
+          col?.data &&
+          col.data !== '_groupDisplay' &&
+          !localGroupColumns.value.includes(col.data),
+      ),
+      { includeHidden: true },
+    ).columns;
+    columnsForSettings = toHotColumns(groupCol ? [groupCol, ...rest] : rest);
+  } else {
+    columnsForSettings = toHotColumns(
+      arrangeReportColumns(props.columnConfigs, { includeHidden: true })
+        .columns,
+    );
+  }
+
+  const hiddenIndexes = columnsForSettings
+    .map((col, index) =>
+      col?.data &&
+      col.data !== '_groupDisplay' &&
+      (hiddenKeys.has(col.data) || col.visible === false)
+        ? index
+        : -1,
+    )
+    .filter((index) => index >= 0);
 
   return {
     columns: columnsForSettings,
@@ -404,7 +491,7 @@ const hotSettings = computed(() => {
                   ]);
                 },
               },
-              ...[...hiddenColumnDataRefs.value].map((dataKey) => {
+              ...[...hiddenKeys].map((dataKey) => {
                 const safeKey = encodeURIComponent(dataKey);
                 const title =
                   componentInstance.columnTitleMap.value[dataKey] ||
@@ -513,7 +600,7 @@ const hotSettings = computed(() => {
       },
     },
     hiddenColumns: {
-      columns: hiddenColumnsRef.value,
+      columns: hiddenIndexes,
       indicators: true,
       copyPasteEnabled: false,
     },
@@ -612,6 +699,15 @@ const hotSettings = computed(() => {
       destinationHideConfig: number[],
     ) => {
       updateHiddenColumnData(destinationHideConfig);
+    },
+    afterColumnMove: (
+      _movedColumns: number[],
+      _finalIndex: number,
+      _dropIndex: number,
+      movePossible: boolean,
+    ) => {
+      if (movePossible === false) return;
+      persistColumnMove();
     },
   };
 });
@@ -742,9 +838,17 @@ function applyGrouping(data: any[]) {
   const expandedGroupsKey = Array.from(localExpandedGroups.value)
     .sort()
     .join('|');
-  const visibleColumnConfigs = props.columnConfigs.filter((col) => col.visible);
-  // 缓存键必须含排序态：同 length 的升序/降序/原始不能共用一份树结果
-  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}_${visibleColumnConfigs.length}_${sortCacheKey(sortState.value)}`;
+  // 与 hotSettings 一致：全部列进表，隐藏交给 HiddenColumns
+  const allColumnConfigs = [...props.columnConfigs].sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0),
+  );
+  const visibleColumnConfigs = allColumnConfigs.filter(
+    (col) =>
+      col.visible !== false && !hiddenColumnDataRefs.value.has(col?.data),
+  );
+  // 缓存键必须含排序态与隐藏列：同 length 的升序/降序/原始不能共用一份树结果
+  const hiddenKeySig = [...hiddenColumnDataRefs.value].sort().join(',');
+  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}_${visibleColumnConfigs.length}_${hiddenKeySig}_${sortCacheKey(sortState.value)}`;
 
   if (groupingCache.has(cacheKey)) {
     const cachedResult = groupingCache.get(cacheKey);
@@ -758,28 +862,17 @@ function applyGrouping(data: any[]) {
 
   if (localGroupColumns.value.length > 0) {
     const groupedColumnSet = new Set(localGroupColumns.value);
-    const filteredColumns = visibleColumnConfigs
-      .filter((col) => !groupedColumnSet.has(col.data))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((col) => {
-        const isNumeric = numericColumns.value.has(col.data);
-        return {
-          ...col,
-          className: isNumeric ? 'htRight' : col.className || 'htLeft',
-        };
-      });
-
-    columnsConfig = [createGroupColumn(), ...filteredColumns];
+    const filteredColumns = allColumnConfigs.filter(
+      (col) => col?.data && !groupedColumnSet.has(col.data),
+    );
+    const arranged = arrangeReportColumns(filteredColumns, {
+      includeHidden: true,
+    });
+    columnsConfig = [createGroupColumn(), ...arranged.columns];
   } else {
-    columnsConfig = [...visibleColumnConfigs]
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((col) => {
-        const isNumeric = numericColumns.value.has(col.data);
-        return {
-          ...col,
-          className: isNumeric ? 'htRight' : col.className || 'htLeft',
-        };
-      });
+    columnsConfig = arrangeReportColumns(allColumnConfigs, {
+      includeHidden: true,
+    }).columns;
   }
 
   const nextSignature = columnsConfig.map((col) => col.data).join('|');
@@ -1425,6 +1518,7 @@ componentInstance.applyGrouping = applyGrouping;
 
 <style scoped lang="scss">
 .group-area {
+  position: relative;
   flex-shrink: 0;
   width: 100%;
   min-width: 200px;
