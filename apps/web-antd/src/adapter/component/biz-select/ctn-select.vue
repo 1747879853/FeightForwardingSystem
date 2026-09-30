@@ -148,9 +148,20 @@ const handleChange = (value: any) => {
   pinSelectedFromOptions(value, options);
   markLoaded(value);
 
-  const matched = resolveOption(value);
-  if (matched?.raw) {
-    mergeSelectedItems([matched.raw]);
+  const values =
+    value === undefined || value === null || value === ''
+      ? []
+      : Array.isArray(value)
+        ? value
+        : [value];
+  const matchedList = values
+    .map((item) => resolveOption(item))
+    .filter((opt): opt is NonNullable<typeof opt> => Boolean(opt));
+  const raws = matchedList
+    .map((opt) => opt.raw)
+    .filter((raw): raw is CtnCodeAdminApi.CtnCodeDto => Boolean(raw));
+  if (raws.length > 0) {
+    mergeSelectedItems(raws);
   }
 
   modelValue.value = value;
@@ -160,7 +171,8 @@ const handleChange = (value: any) => {
     emit('change', value, undefined);
     return;
   }
-  emit('change', value, matched);
+  // 多选时回传 option 数组，单选仍回传单个 option
+  emit('change', value, Array.isArray(value) ? matchedList : matchedList[0]);
 };
 
 /**
