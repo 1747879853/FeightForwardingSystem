@@ -21,6 +21,7 @@ import {
   Progress,
   Space,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import {
@@ -149,6 +150,15 @@ const canEditAmount = computed(
 const canEditCurrencyAndPayer = computed(
   () => canEditStatement.value && !hasReceiveSettlements.value,
 );
+/** 有编辑权限、但已有收费结算时，付款方和币别单独锁定 */
+const settlementFieldLocked = computed(
+  () =>
+    isEdit.value &&
+    hasReceiveSettlements.value &&
+    canEdit.value &&
+    !canEditCurrencyAndPayer.value,
+);
+const settlementFieldLockTip = '已有收费结算，要改请先删除收费结算';
 const canCreateSettlement = computed(
   () =>
     isEdit.value && canAddReceiveSettlement.value && remainingAmount.value > 0,
@@ -170,6 +180,18 @@ const progressStrokeColor = computed(() => {
   if (remainingAmount.value === 0 && savedAmount.value > 0) return '#389e0d';
   return '#1677ff';
 });
+const remainingMetricClass = computed(() => {
+  if (remainingAmount.value < 0) return 'statement-metric--danger';
+  if (remainingAmount.value === 0 && savedAmount.value > 0) {
+    return 'statement-metric--done';
+  }
+  if (remainingAmount.value > 0) return 'statement-metric--open';
+  return '';
+});
+
+function formatProgressText() {
+  return progressLabel.value;
+}
 const statementDateText = computed(() =>
   statementTime.value ? statementTime.value.format('YYYY-MM-DD') : '-',
 );
@@ -602,15 +624,22 @@ onUnmounted(() => {
                   allow-clear
                   class="w-full"
                 />
+                <Tooltip
+                  v-else-if="settlementFieldLocked"
+                  :title="settlementFieldLockTip"
+                  :trigger="['hover', 'focus', 'click']"
+                >
+                  <span class="form-text form-text--locked" tabindex="0">
+                    <IconifyIcon
+                      icon="mdi:lock-outline"
+                      class="form-text__lock"
+                    />
+                    {{ settlementDisplayName }}
+                  </span>
+                </Tooltip>
                 <span v-else class="form-text">{{
                   settlementDisplayName
                 }}</span>
-                <p
-                  v-if="isEdit && hasReceiveSettlements"
-                  class="field-lock-hint"
-                >
-                  已有收费结算，要改请先删除收费结算
-                </p>
               </div>
 
               <div class="form-field">
@@ -641,13 +670,20 @@ onUnmounted(() => {
                   allow-clear
                   class="w-full"
                 />
-                <span v-else class="form-text">{{ currencyDisplayName }}</span>
-                <p
-                  v-if="isEdit && hasReceiveSettlements"
-                  class="field-lock-hint"
+                <Tooltip
+                  v-else-if="settlementFieldLocked"
+                  :title="settlementFieldLockTip"
+                  :trigger="['hover', 'focus', 'click']"
                 >
-                  已有收费结算，要改请先删除收费结算
-                </p>
+                  <span class="form-text form-text--locked" tabindex="0">
+                    <IconifyIcon
+                      icon="mdi:lock-outline"
+                      class="form-text__lock"
+                    />
+                    {{ currencyDisplayName }}
+                  </span>
+                </Tooltip>
+                <span v-else class="form-text">{{ currencyDisplayName }}</span>
               </div>
 
               <div class="form-field form-field--money">
@@ -765,9 +801,6 @@ onUnmounted(() => {
           <template #title>
             <div class="form-panel-card__title">
               <span>核销进度</span>
-              <strong class="write-off-progress__percent">{{
-                progressLabel
-              }}</strong>
             </div>
           </template>
 
@@ -783,31 +816,34 @@ onUnmounted(() => {
               />
             </div>
 
-            <div class="statement-overview__metrics">
-              <div class="statement-metric">
-                <span>流水金额</span>
-                <strong>{{ formatMoney(savedAmount) }}</strong>
+            <div class="statement-overview__summary">
+              <div class="statement-overview__metrics">
+                <div class="statement-metric">
+                  <span>流水金额</span>
+                  <strong>{{ formatMoney(savedAmount) }}</strong>
+                </div>
+                <div class="statement-metric statement-metric--settled">
+                  <span>已核销</span>
+                  <strong>{{ formatMoney(otherSettledAmount) }}</strong>
+                </div>
+                <div class="statement-metric" :class="remainingMetricClass">
+                  <span>剩余可核销</span>
+                  <strong>{{ formatMoney(remainingAmount) }}</strong>
+                </div>
               </div>
-              <div class="statement-metric statement-metric--settled">
-                <span>已核销</span>
-                <strong>{{ formatMoney(otherSettledAmount) }}</strong>
-              </div>
-              <div
-                class="statement-metric"
-                :class="{ 'statement-metric--danger': remainingAmount < 0 }"
-              >
-                <span>剩余可核销</span>
-                <strong>{{ formatMoney(remainingAmount) }}</strong>
-              </div>
-            </div>
 
-            <div class="write-off-progress">
-              <Progress
-                :percent="progressPercent"
-                :show-info="false"
-                :stroke-color="progressStrokeColor"
-                size="small"
-              />
+              <div
+                class="write-off-progress"
+                :style="{ '--progress-text': progressStrokeColor }"
+              >
+                <Progress
+                  :percent="progressPercent"
+                  :format="formatProgressText"
+                  :stroke-color="progressStrokeColor"
+                  status="normal"
+                  size="small"
+                />
+              </div>
             </div>
 
             <div v-if="isOverSettled" class="statement-risk-notice">
@@ -982,32 +1018,50 @@ onUnmounted(() => {
   color: #0878c9;
 }
 
-.statement-metric:last-child {
-  background: #fff7e8;
-
-  strong {
-    color: #b75b06;
-  }
+.statement-metric--open strong {
+  color: #d48806;
 }
 
-.statement-metric--danger:last-child {
-  background: #fff1f0;
+.statement-metric--done strong {
+  color: #389e0d;
+}
 
-  strong {
-    color: #cf1322;
-  }
+.statement-metric--danger strong {
+  color: #cf1322;
+}
+
+.statement-overview__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .write-off-progress {
-  padding-top: 2px;
-  margin-top: auto;
-}
+  :deep(.ant-progress.ant-progress-line) {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    line-height: 1;
+  }
 
-.write-off-progress__percent {
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #344153;
+  :deep(.ant-progress-outer) {
+    flex: 1 1 auto;
+    width: auto !important;
+    padding-inline-end: 0 !important;
+    margin-inline-end: 0 !important;
+  }
+
+  :deep(.ant-progress-text) {
+    flex: none;
+    width: auto;
+    margin-inline-start: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--progress-text, #344153);
+    white-space: nowrap;
+  }
 }
 
 .statement-risk-notice {
@@ -1107,10 +1161,18 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
-.field-lock-hint {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
+.form-text--locked {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  cursor: help;
+}
+
+.form-text__lock {
+  flex: none;
+  width: 14px;
+  height: 14px;
   color: #8c8c8c;
 }
 

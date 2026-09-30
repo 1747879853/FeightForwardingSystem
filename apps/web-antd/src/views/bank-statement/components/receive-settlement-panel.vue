@@ -266,6 +266,12 @@ function formatOptionalPlainAmount(value: number | undefined | null) {
   return formatAmount(value);
 }
 
+/** 差值为 0 时弱化；非 0 用警示色，便于扫到汇率或金额不一致的核销单 */
+function diffAmountTone(value: number | null | undefined) {
+  if (value === undefined || value === null || Number.isNaN(value)) return '';
+  return Math.abs(value) < 0.005 ? 'amount-cell--muted' : 'amount-cell--warn';
+}
+
 function getDetailSettlement(
   record: BankStatementAdminApi.ReceiveSettlementListDto,
 ) {
@@ -649,15 +655,22 @@ defineExpose({
             </Tooltip>
           </template>
           <template v-else-if="column.key === 'actualSettled'">
-            <span class="settlement-amount">
+            <span class="amount-cell amount-cell--emphasis">
               {{ formatSettlementAmount(record.actualSettled) }}
             </span>
           </template>
           <template v-else-if="column.key === 'originalSettledAmount'">
-            {{ formatOptionalSettlementAmount(record.originalSettledAmount) }}
+            <span class="amount-cell">
+              {{ formatOptionalSettlementAmount(record.originalSettledAmount) }}
+            </span>
           </template>
           <template v-else-if="column.key === 'diffAmount'">
-            {{ formatOptionalSettlementAmount(record.diffAmount) }}
+            <span
+              class="amount-cell"
+              :class="diffAmountTone(record.diffAmount)"
+            >
+              {{ formatOptionalSettlementAmount(record.diffAmount) }}
+            </span>
           </template>
           <template v-else-if="column.key === 'itemCount'">
             {{ record.itemCount ?? 0 }} 条
@@ -805,10 +818,24 @@ defineExpose({
   color: #1677ff;
 }
 
-.settlement-amount {
-  font-weight: 600;
+.amount-cell {
+  display: block;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.amount-cell--emphasis {
+  font-weight: 600;
   color: #283442;
+}
+
+.amount-cell--muted {
+  color: #98a2b3;
+}
+
+.amount-cell--warn {
+  font-weight: 600;
+  color: #d46b08;
 }
 
 .invoice-issue-expand {
