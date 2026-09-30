@@ -4,7 +4,7 @@ import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
-import { Button, Tooltip } from 'ant-design-vue';
+import { Button, Tag, Tooltip } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getBillCount, getBillGroups, getBillList } from '#/api/bill-of-lading';
 import {
@@ -22,7 +22,15 @@ import {
   canAct,
   selectionError,
 } from './rules';
-import { billColumns, billSearchSchema, normalizeBillQuery } from './data';
+import {
+  billColumns,
+  billSearchSchema,
+  issueTypeColor,
+  normalizeBillQuery,
+  overdueDaysClass,
+  overdueDaysText,
+  signInDateText,
+} from './data';
 import ActionModal from './action-modal.vue';
 import CopyBillNo from './copy-bill-no.vue';
 import DetailModal from './detail-modal.vue';
@@ -287,6 +295,24 @@ onActivated(() => {
               :lines="row.currencies"
             />
           </template>
+          <template #issueType="{ row }">
+            <Tag
+              v-if="row.codeIssueType?.billType"
+              :color="issueTypeColor(row.codeIssueType.billType)"
+              class="!mr-0"
+            >
+              {{ row.codeIssueType.billType }}
+            </Tag>
+            <span v-else>-</span>
+          </template>
+          <template #overdueDays="{ row }">
+            <span :class="overdueDaysClass(row)">{{
+              overdueDaysText(row)
+            }}</span>
+          </template>
+          <template #signInDate="{ row }">
+            {{ signInDateText(row) }}
+          </template>
           <template #toolbar-actions>
             <GroupingTabs
               v-if="grouping.isGrouping.value"
@@ -444,6 +470,16 @@ onActivated(() => {
 
 .bill-stat__value.is-warn {
   color: #d97706;
+}
+
+.bill-days--over {
+  font-weight: 600;
+  color: #cf1322;
+}
+
+.bill-days--early {
+  font-weight: 600;
+  color: #389e0d;
 }
 
 .bill-stat__enter {

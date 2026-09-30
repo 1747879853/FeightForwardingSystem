@@ -16,6 +16,7 @@ import {
   rejectReasonText,
 } from '#/views/bill-of-lading/reject-reason';
 import { formatLocalMoney } from '#/views/bill-of-lading/money';
+import { signedOverdueDays, isAutoSignedIn } from '#/views/bill-of-lading/data';
 import { getSeaExportAttachments } from '#/api/sea-export/sea-export-admin';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -82,6 +83,9 @@ const visible = ref(false);
 const loading = ref(false);
 const activeTab = ref('basic');
 const bill = ref<BillOfLading>();
+const overdueDayCount = computed(() =>
+  bill.value ? signedOverdueDays(bill.value) : null,
+);
 const history = ref<BillHistory[]>([]);
 const businessGroups = ref<SeaExportAdminApi.AttachmentGroupDto[]>([]);
 let request = 0;
@@ -97,9 +101,10 @@ const businessFileGroups = computed(() =>
 );
 
 const number = computed(() => (bill.value ? billNumber(bill.value) : ''));
-const status = computed(() =>
-  bill.value ? billStatusOptions[bill.value.status] : undefined,
-);
+const status = computed(() => {
+  if (!bill.value || isAutoSignedIn(bill.value)) return undefined;
+  return billStatusOptions[bill.value.status];
+});
 const issueType = computed(
   () =>
     bill.value?.codeIssueType?.billType ||
@@ -269,10 +274,12 @@ defineExpose({ open });
           }}</Tag>
           <Tag class="tag tag-issue">{{ issueType || '签单方式未维护' }}</Tag>
           <Tag
+            v-if="status"
             class="tag tag-status"
             :class="`is-${statusTone[bill.status] || 'pending'}`"
-            >{{ status?.label }}</Tag
+            >{{ status.label }}</Tag
           >
+          <span v-else class="status-dash">-</span>
           <Tag v-if="bill.isOverdue" class="tag tag-alert">提交超期</Tag>
         </div>
       </div>
@@ -428,11 +435,12 @@ defineExpose({ open });
                   <span
                     class="field__value"
                     :class="{
-                      'is-empty': !bill.overdueDays,
-                      overdue: (bill.overdueDays ?? 0) > 0,
+                      'is-empty': !overdueDayCount,
+                      overdue: (overdueDayCount ?? 0) > 0,
+                      early: (overdueDayCount ?? 0) < 0,
                     }"
                     >{{
-                      bill.overdueDays ? `${bill.overdueDays} 天` : '未超期'
+                      overdueDayCount ? `${overdueDayCount} 天` : '未超期'
                     }}</span
                   >
                 </div>
@@ -482,8 +490,12 @@ defineExpose({ open });
                   <span class="field__label">签入日期</span>
                   <span
                     class="field__value"
-                    :class="{ 'is-empty': !bill.signIn?.actionDate }"
-                    >{{ day(bill.signIn?.actionDate) }}</span
+                    :class="{
+                      'is-empty': bill.isOriginal && !bill.signIn?.actionDate,
+                    }"
+                    >{{
+                      bill.isOriginal ? day(bill.signIn?.actionDate, '-') : '-'
+                    }}</span
                   >
                 </div>
                 <div class="field">
@@ -675,6 +687,12 @@ defineExpose({ open });
   border-color: transparent;
 }
 
+.status-dash {
+  font-size: 13px;
+  line-height: 22px;
+  color: #1f2329;
+}
+
 .tag.tag-status.is-pending {
   background: #fa8c16;
 }
@@ -802,6 +820,11 @@ defineExpose({ open });
 .field__value.overdue {
   font-weight: 600;
   color: #d4380d;
+}
+
+.field__value.early {
+  font-weight: 600;
+  color: #389e0d;
 }
 
 .amount:not(.is-empty) {

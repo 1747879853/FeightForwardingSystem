@@ -6,11 +6,14 @@ import { computed } from 'vue';
 import { Popover, Tag } from 'ant-design-vue';
 
 import { billStatusOptions } from './rules';
+import { isAutoSignedIn } from './data';
 import { rejectMeta, rejectReasonOf, rejectReasonText } from './reject-reason';
 
 const props = defineProps<{ row: BillOfLading }>();
 
-const option = computed(() => billStatusOptions[props.row.status]);
+const option = computed(() =>
+  isAutoSignedIn(props.row) ? undefined : billStatusOptions[props.row.status],
+);
 const reason = computed(() => rejectReasonOf(props.row));
 const meta = computed(() => rejectMeta(reason.value));
 
@@ -20,8 +23,9 @@ function popupContainer() {
 </script>
 
 <template>
+  <span v-if="!option">-</span>
   <Popover
-    v-if="reason"
+    v-else-if="reason"
     trigger="hover"
     placement="rightTop"
     :mouse-enter-delay="0.2"

@@ -65,7 +65,10 @@ function ensure() {
   >
     <span
       class="local-money"
-      :class="{ 'is-tip': resolvedLines.length || !!load }"
+      :class="{
+        'is-tip': resolvedLines.length || !!load,
+        'is-unreceived': Number(value) > 0,
+      }"
       @mouseenter="ensure"
       >{{ formatLocalMoney(value, resolvedCode) }}</span
     >
@@ -82,5 +85,10 @@ function ensure() {
   width: fit-content;
   max-width: 100%;
   border-bottom: 1px dotted currentcolor;
+}
+
+.local-money.is-unreceived {
+  font-weight: 600;
+  color: #cf1322;
 }
 </style>

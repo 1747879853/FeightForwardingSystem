@@ -1,8 +1,54 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { BillOfLading } from '#/api/bill-of-lading';
+
+import dayjs from 'dayjs';
+
+import { formatDate } from '@vben/utils';
 
 import { toIsoEndOfDay, toIsoStartOfDay } from '#/utils/date-range-iso';
 import { billStatusOptions } from './rules';
+
+export function signInDateText(row: BillOfLading) {
+  if (!row.isOriginal) return '-';
+  return row.signIn?.actionDate ? formatDate(row.signIn.actionDate) : '-';
+}
+
+/** 非正本由后端直接建成已签入，没有签入动作，状态与签入日期都显示横杠。 */
+export function isAutoSignedIn(row: { isOriginal?: boolean; status: number }) {
+  return !row.isOriginal && row.status === 1;
+}
+
+/** 已过应结日期为正数，未到为负数。接口未超期时返回 0，这里按应结日期补出负数。 */
+export function signedOverdueDays(row: BillOfLading) {
+  if (row.settlementDate) {
+    const due = dayjs(row.settlementDate);
+    if (due.isValid()) {
+      return dayjs().startOf('day').diff(due.startOf('day'), 'day');
+    }
+  }
+  const days = Number(row.overdueDays);
+  return Number.isFinite(days) ? days : null;
+}
+
+export function overdueDaysText(row: BillOfLading) {
+  const days = signedOverdueDays(row);
+  return days == null ? '-' : String(days);
+}
+
+export function overdueDaysClass(row: BillOfLading) {
+  const days = signedOverdueDays(row);
+  if (days == null || days === 0) return '';
+  return days > 0 ? 'bill-days--over' : 'bill-days--early';
+}
+
+export function issueTypeColor(name?: null | string) {
+  const text = name?.trim();
+  if (!text) return '';
+  if (text === '正本') return 'blue';
+  if (text === '电放') return 'orange';
+  return 'cyan';
+}
 
 export function billColumns(): VxeTableGridOptions['columns'] {
   return [
@@ -12,12 +58,16 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       title: '主提单号',
       minWidth: 180,
       fixed: 'left',
+      sortable: true,
+      sortField: 'TransportOrder.MblNum',
       slots: { default: 'mblNum' },
     },
     {
       field: 'seaExportSeparate.blNum',
       title: '分提单号',
       minWidth: 180,
+      sortable: true,
+      sortField: 'SeaExportSeparate.BlNum',
       slots: { default: 'blNum' },
     },
     {
@@ -28,8 +78,8 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       cellRender: {
         name: 'CellTag',
         options: [
-          { value: true, label: '分单' },
-          { value: false, label: '主单' },
+          { value: false, label: '主单', color: 'blue' },
+          { value: true, label: '分单', color: 'purple' },
         ],
       },
     },
@@ -37,6 +87,8 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       field: 'status',
       title: '提单状态',
       minWidth: 115,
+      sortable: true,
+      sortField: 'Status',
       slots: { default: 'status' },
     },
     {
@@ -44,19 +96,7 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       title: '签单方式',
       minWidth: 110,
       sortable: false,
-    },
-    {
-      field: 'isOriginal',
-      title: '正本',
-      width: 80,
-      sortable: false,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { value: true, label: '是' },
-          { value: false, label: '否' },
-        ],
-      },
+      slots: { default: 'issueType' },
     },
     {
       field: 'settlement.name',
@@ -68,24 +108,59 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       field: 'seaExport.transportOrder.client.name',
       title: '委托单位',
       minWidth: 150,
+      sortable: true,
+      sortField: 'TransportOrder.Client.Name',
     },
     {
       field: 'seaExport.transportOrder.commissionNum',
       title: '委托编号',
       minWidth: 150,
+      sortable: true,
+      sortField: 'TransportOrder.CommissionNum',
     },
-    { field: 'seaExport.vessel', title: '船名', minWidth: 130 },
-    { field: 'seaExport.innerVoyno', title: '船公司航次', minWidth: 110 },
-    { field: 'seaExport.terminalVoyno', title: '码头航次', minWidth: 110 },
+    {
+      field: 'seaExport.vessel',
+      title: '船名',
+      minWidth: 130,
+      sortable: true,
+      sortField: 'TransportOrder.SeaExport.Vessel',
+    },
+    {
+      field: 'seaExport.innerVoyno',
+      title: '航次',
+      minWidth: 110,
+      sortable: true,
+      sortField: 'TransportOrder.SeaExport.InnerVoyno',
+    },
     {
       field: 'seaExport.transportOrder.etd',
       title: '开船日期',
       minWidth: 115,
       formatter: 'formatDate',
+      sortable: true,
+      sortField: 'TransportOrder.ETD',
     },
-    { field: 'seaExport.carrier.cnShortName', title: '船公司', minWidth: 120 },
-    { field: 'seaExport.pol.portName', title: '起运港', minWidth: 130 },
-    { field: 'seaExport.pod.portName', title: '目的港', minWidth: 130 },
+    {
+      field: 'seaExport.carrier.cnShortName',
+      title: '船公司',
+      minWidth: 120,
+      sortable: true,
+      sortField: 'TransportOrder.SeaExport.Carrier.CnShortName',
+    },
+    {
+      field: 'seaExport.pol.portName',
+      title: '起运港',
+      minWidth: 130,
+      sortable: true,
+      sortField: 'TransportOrder.SeaExport.POL.PortName',
+    },
+    {
+      field: 'seaExport.pod.portName',
+      title: '目的港',
+      minWidth: 130,
+      sortable: true,
+      sortField: 'TransportOrder.SeaExport.POD.PortName',
+    },
     {
       field: 'seaExport.transportOrder.totalCtn',
       title: '主单箱型箱量',
@@ -105,26 +180,35 @@ export function billColumns(): VxeTableGridOptions['columns'] {
       sortable: false,
       slots: { default: 'unReceivedAmount' },
     },
-    { field: 'overdueDays', title: '超期天数', width: 95, sortable: false },
+    {
+      field: 'overdueDays',
+      title: '超期天数',
+      width: 95,
+      sortable: false,
+      slots: { default: 'overdueDays' },
+    },
     {
       field: 'settlementDate',
       title: '应结日期',
       minWidth: 115,
       formatter: 'formatDate',
-      sortable: false,
+      sortable: true,
+      sortField: 'TransportOrder.SettlementDate',
     },
     {
       field: 'promisePayDate',
       title: '承诺付款日期',
       minWidth: 120,
       formatter: 'formatDate',
+      sortable: true,
+      sortField: 'PromisePayDate',
     },
     {
       field: 'signIn.actionDate',
       title: '签入日期',
       minWidth: 115,
-      formatter: 'formatDate',
       sortable: false,
+      slots: { default: 'signInDate' },
     },
     {
       field: 'signOut.actionDate',
