@@ -5,7 +5,15 @@ import { computed, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { Alert, Button, Empty, message, Spin, Tag } from 'ant-design-vue';
+import {
+  Alert,
+  Button,
+  Empty,
+  message,
+  Select,
+  Spin,
+  Tag,
+} from 'ant-design-vue';
 
 import { CtnSelect, PortSelect } from '#/adapter/component/biz-select';
 import { spotQueryAsync } from '#/api/rong-e-tong/rong-e-tong-admin';
@@ -16,9 +24,12 @@ import {
   formatSpotDate,
   pickBestCardKey,
   sortSpotCards,
+  SPOT_SERVICE_TYPE_OPTIONS,
   SPOT_SORT_OPTIONS,
+  type SpotServiceType,
 } from './data';
 import FeeDetailDrawer from './modules/fee-detail-drawer.vue';
+import { isSupportedSpotEdiCode } from './supported-edi-codes';
 
 defineOptions({ name: 'SpotFreightQuery' });
 
@@ -30,6 +41,10 @@ const podId = ref<null | string>(null);
 const ctnCodeIds = ref<string[]>([]);
 const polLabel = ref('');
 const podLabel = ref('');
+const polEdiCode = ref('');
+const podEdiCode = ref('');
+const polServiceType = ref<null | SpotServiceType>(null);
+const podServiceType = ref<null | SpotServiceType>(null);
 const sortMode = ref<SpotSortMode>('lowestPrice');
 
 const rawResults = ref<ReturnType<typeof buildSpotViewModel> | null>(null);
@@ -47,8 +62,18 @@ const bestCardKey = computed(() =>
 const hasCards = computed(() => cards.value.length > 0);
 const canQuery = computed(
   () =>
-    Boolean(polId.value) && Boolean(podId.value) && ctnCodeIds.value.length > 0,
+    Boolean(polId.value) &&
+    Boolean(podId.value) &&
+    Boolean(polServiceType.value) &&
+    Boolean(podServiceType.value) &&
+    ctnCodeIds.value.length > 0,
 );
+
+const serviceTermText = computed(() => {
+  const pol = polServiceType.value ?? '-';
+  const pod = podServiceType.value ?? '-';
+  return `${pol}-${pod}`;
+});
 
 const bestBadgeText = computed(() => {
   if (sortMode.value === 'lowestPrice') return '运价最低';
@@ -57,7 +82,9 @@ const bestBadgeText = computed(() => {
 });
 
 const emptyDescription = computed(() => {
-  if (!searched.value) return '请选择起运港、目的港和箱型后查询';
+  if (!searched.value) {
+    return '请选择起运港、目的港、运输类型和箱型后查询';
+  }
   if (fails.value.length > 0 && !hasCards.value) return '所选箱型均未查到运价';
   return '暂无匹配运价';
 });
@@ -103,32 +130,57 @@ function resolvePortLabel(option: any): string {
   return portName || edi || String(option?.label ?? '').trim();
 }
 
+function resolvePortEdi(option: any): string {
+  const raw = option?.raw ?? option;
+  return String(raw?.ediCode ?? '').trim();
+}
+
 function handlePolChange(value: unknown, option: any) {
   polId.value = normalizeId(value);
   polLabel.value = polId.value ? resolvePortLabel(option) : '';
+  polEdiCode.value = polId.value ? resolvePortEdi(option) : '';
 }
 
 function handlePodChange(value: unknown, option: any) {
   podId.value = normalizeId(value);
   podLabel.value = podId.value ? resolvePortLabel(option) : '';
+  podEdiCode.value = podId.value ? resolvePortEdi(option) : '';
 }
 
 function handleCtnChange(value: unknown) {
   ctnCodeIds.value = normalizeIdList(value);
 }
 
+function assertReadyToQuery(): boolean {
+  if (!polId.value || !podId.value || ctnCodeIds.value.length === 0) {
+    message.warning('请选择起运港、目的港和至少一个箱型');
+    return false;
+  }
+  if (!polServiceType.value || !podServiceType.value) {
+    message.warning('请选择起运港与目的港运输类型');
+    return false;
+  }
+  if (
+    !isSupportedSpotEdiCode(polEdiCode.value) ||
+    !isSupportedSpotEdiCode(podEdiCode.value)
+  ) {
+    message.warning('港口不支持');
+    return false;
+  }
+  return true;
+}
+
 async function handleQuery() {
   if (loading.value) return;
-  if (!canQuery.value) {
-    message.warning('请选择起运港、目的港和至少一个箱型');
-    return;
-  }
+  if (!assertReadyToQuery()) return;
 
   loading.value = true;
   try {
     const data = await spotQueryAsync({
       polId: polId.value!,
       podId: podId.value!,
+      polServiceType: polServiceType.value!,
+      podServiceType: podServiceType.value!,
       ctnCodeIds: [...ctnCodeIds.value],
     });
     rawResults.value = buildSpotViewModel(Array.isArray(data) ? data : []);
@@ -167,7 +219,7 @@ function voyageText(card: SpotCard): string {
         <div class="spot-panel__head">
           <h1 class="spot-panel__title">即时运价</h1>
           <p class="spot-panel__desc">
-            按起运港、目的港与箱型查询各船司即时运价
+            按起运港、目的港、运输类型与箱型查询各船司即时运价
           </p>
         </div>
 
@@ -194,6 +246,30 @@ function voyageText(card: SpotCard): string {
                 label-key="portNameEdi"
                 placeholder="请选择目的港"
                 @change="handlePodChange"
+              />
+            </div>
+          </div>
+
+          <div class="spot-port-pair">
+            <div class="spot-field">
+              <span class="spot-field__label">起运港运输类型</span>
+              <Select
+                v-model:value="polServiceType"
+                allow-clear
+                class="w-full"
+                :options="SPOT_SERVICE_TYPE_OPTIONS"
+                placeholder="请选择"
+              />
+            </div>
+            <span class="spot-port-pair__arrow" aria-hidden="true">→</span>
+            <div class="spot-field">
+              <span class="spot-field__label">目的港运输类型</span>
+              <Select
+                v-model:value="podServiceType"
+                allow-clear
+                class="w-full"
+                :options="SPOT_SERVICE_TYPE_OPTIONS"
+                placeholder="请选择"
               />
             </div>
           </div>
@@ -341,7 +417,7 @@ function voyageText(card: SpotCard): string {
                 <span class="spot-card__dot" aria-hidden="true" />
                 <span>航次 {{ card.innerVoyno }}</span>
                 <span class="spot-card__dot" aria-hidden="true" />
-                <span>运输条款 CY-CY</span>
+                <span>运输条款 {{ serviceTermText }}</span>
               </div>
             </article>
           </div>

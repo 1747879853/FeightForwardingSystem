@@ -8,12 +8,23 @@ export type SpotQueryResultDto = RongETongApi.SpotQueryResultDto;
 /** 排序方式 */
 export type SpotSortMode = 'earliestEtd' | 'lowestPrice' | 'shortestVoyage';
 
+/** 起运/目的港运输类型：CY 堆场，SD 门点 */
+export type SpotServiceType = 'CY' | 'SD';
+
 export const SPOT_SORT_OPTIONS: Array<{ label: string; value: SpotSortMode }> =
   [
     { label: '运价最低', value: 'lowestPrice' },
     { label: '最早开船', value: 'earliestEtd' },
     { label: '航程最短', value: 'shortestVoyage' },
   ];
+
+export const SPOT_SERVICE_TYPE_OPTIONS: Array<{
+  label: string;
+  value: SpotServiceType;
+}> = [
+  { label: '堆场 (CY)', value: 'CY' },
+  { label: '门点 (SD)', value: 'SD' },
+];
 
 /** 单箱型在某一船名航次下的报价 */
 export interface SpotCardPrice {
