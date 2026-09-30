@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-24
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,6 +25,7 @@ last_updated: 2026-09-24
 
 - **字段权限展示：无条件受限列与筛选隐藏；条件受限单元格显示 `\***`；编辑表单按原始 DTO 缺 key 隐藏项目，费用受限格禁止编辑。\*\* 参见[通用适配说明](../../changelogs/change-log-2026-09-15-业务字段权限通用展示适配.md)。
 
+- **大分页绘制：** 横向、纵向虚拟滚动始终开启，行高固定 40，分页到 100/200 时只绘制视口内的行和列。列表无单元格编辑，不再保留 `keepSource` 原始副本。
 - **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。每次列表查询会记住筛选和排序（去掉分页），编辑页「上一票 / 下一票」按这份条件定位。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
@@ -118,6 +119,7 @@ last_updated: 2026-09-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 分页改大后只绘制可见行列，列表不再深拷贝整页数据。勾选、排序、筛选不变。 | 开启 `virtualXConfig` / `virtualYConfig`（`gt: 0`），行高固定 40，去掉无编辑用途的 `keepSource`。详见[变更记录](../../changelogs/change-log-2026-09-30-业务列表虚拟滚动.md)。 |
 | 2026-09-24 | `Style` | 未生成任务的节点只保留名称和主流程；标题下展示委托编号。待处理高亮改为淡暖米色。完成、取消和自动费用提示不再被浮层挡住。 | 浮层层级 1990，低于确认框 2000 和消息 2010。详见[变更记录](../../changelogs/change-log-2026-09-24-海运出口业务流程未生成任务精简.md)。 |
 | 2026-09-24 | `Style` | 业务状态悬浮改为时间轴卡片：当前节点高亮，状态色对齐详情服务项目，并行节点成组。 | 完成、取消完成与刷新逻辑不变。详见[变更记录](../../changelogs/change-log-2026-09-24-海运出口业务状态悬浮样式.md)。 |
 | 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |

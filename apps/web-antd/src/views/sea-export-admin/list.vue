@@ -344,7 +344,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     align: 'left',
     columns: useColumns(),
     height: 'auto',
-    keepSource: true,
+    // 分页 100/200 时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
     checkboxConfig: {
       highlight: true,
       reserve: true,
@@ -352,6 +354,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     },
     rowConfig: {
       keyField: 'id',
+      // 虚拟滚动按这个高度算总高；不写会用约 21px，滚不到后面的行
+      height: 40,
     },
     pagerConfig: {
       enabled: true,

@@ -192,9 +192,15 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({
   gridOptions: {
     columns: applyDefaultSortable(buildColumns()),
     height: 'auto',
-    keepSource: true,
+    // 分页 100/200 时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
     checkboxConfig: { highlight: true },
-    rowConfig: { keyField: 'id' },
+    rowConfig: {
+      keyField: 'id',
+      // 虚拟滚动按这个高度算总高；不写会用约 21px，滚不到后面的行
+      height: 40,
+    },
     pagerConfig: { enabled: true },
     proxyConfig: {
       // 关闭自动加载：先恢复持久化分组字段，再手动首查，避免与分组恢复竞态
