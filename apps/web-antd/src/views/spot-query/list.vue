@@ -46,8 +46,8 @@ const polLabel = ref('');
 const podLabel = ref('');
 const polEdiCode = ref('');
 const podEdiCode = ref('');
-const polServiceType = ref<null | SpotServiceType>(null);
-const podServiceType = ref<null | SpotServiceType>(null);
+const polServiceType = ref<null | SpotServiceType>('CY');
+const podServiceType = ref<null | SpotServiceType>('CY');
 const sortMode = ref<SpotSortMode>('lowestPrice');
 
 const rawResults = ref<ReturnType<typeof buildSpotViewModel> | null>(null);
