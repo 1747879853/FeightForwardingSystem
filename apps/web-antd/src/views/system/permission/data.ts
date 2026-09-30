@@ -212,6 +212,7 @@ export function useDataPermissionGridFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'moduleFilter',
       label: $t('system.permission.module'),
+      labelClass: 'justify-start',
     },
   ];
 }
