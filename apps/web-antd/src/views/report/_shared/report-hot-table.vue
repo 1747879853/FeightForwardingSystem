@@ -14,6 +14,12 @@ import {
   fillAggregatedColumns,
   parseNumeric,
 } from './aggregate';
+import {
+  applySortToRows,
+  nextSortState,
+  sortCacheKey,
+  type ReportSortState,
+} from './sort';
 import { useReportTableLayout } from './use-report-table-layout';
 
 defineOptions({
@@ -39,6 +45,8 @@ const props = defineProps<{
   groupColumns: string[];
   expandedGroups: Set<string>;
   columnConfigs: any[];
+  /** 右键隐藏列的 data 键（可跨查询/刷新持久化） */
+  hiddenColumnKeys?: string[];
   loading: boolean;
   /** 完整列配置（基础列 + 币别动态列 + 合计列），由报表配置驱动 */
   hotColumns: Record<string, any>[];
@@ -52,6 +60,7 @@ const emit = defineEmits<{
   (e: 'update:groupColumns', value: string[]): void;
   (e: 'update:expandedGroups', value: Set<string>): void;
   (e: 'update:columnConfigs', value: any[]): void;
+  (e: 'update:hiddenColumnKeys', value: string[]): void;
   (e: 'viewDetail', record: Record<string, any>): void;
 }>();
 
@@ -59,7 +68,9 @@ const hotTableRef = shallowRef<any>(null);
 const containerRef = shallowRef<HTMLElement | null>(null);
 const currentColumnsRef = shallowRef<any[]>([]);
 const hiddenColumnsRef = shallowRef<number[]>([]);
-const hiddenColumnDataRefs = shallowRef<Set<string>>(new Set());
+const hiddenColumnDataRefs = shallowRef<Set<string>>(
+  new Set(props.hiddenColumnKeys ?? []),
+);
 /** 展示行（含分组/合计）。只整体替换，不做深层代理 */
 const tableData = shallowRef<any[]>([]);
 const exporting = shallowRef(false);
@@ -70,9 +81,7 @@ const localExpandedGroups = shallowRef<Set<string>>(
 );
 
 /** 排序状态：作用于原始数据源，合计行不参与排序、始终保持在最后一行 */
-const sortState = shallowRef<{ column: string; order: 'asc' | 'desc' } | null>(
-  null,
-);
+const sortState = shallowRef<ReportSortState>(null);
 /** 表格数据源：保存排序后的原始数据，分组/展开/合计行均基于它重建 */
 const dataSource = shallowRef<any[]>([...props.originalData]);
 
@@ -158,59 +167,44 @@ function collapseAllGroups() {
   }
 }
 
-function compareCellValues(a: any, b: any): number {
-  const aEmpty = a == null || a === '' || a === '-';
-  const bEmpty = b == null || b === '' || b === '-';
-  if (aEmpty && bEmpty) return 0;
-  if (aEmpty) return 1;
-  if (bEmpty) return -1;
-
-  const aNum = Number.parseFloat(String(a).replaceAll(',', ''));
-  const bNum = Number.parseFloat(String(b).replaceAll(',', ''));
-  if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
-    return aNum - bNum;
+/** 视觉列下标 → 物理列（HiddenColumns 后 coords.col 是视觉下标） */
+function resolvePhysicalColumnIndex(visualCol: number): number {
+  const hot = hotTableRef.value?.hotInstance;
+  if (!hot || typeof hot.toPhysicalColumn !== 'function') {
+    return visualCol;
   }
-  return String(a).localeCompare(String(b), 'zh-CN', { numeric: true });
+  try {
+    const physical = hot.toPhysicalColumn(visualCol);
+    return typeof physical === 'number' && physical >= 0 ? physical : visualCol;
+  } catch {
+    return visualCol;
+  }
 }
 
-function sortRows(data: any[], column: string, order: 'asc' | 'desc'): any[] {
-  return [...data].sort((rowA, rowB) => {
-    const result = compareCellValues(rowA[column], rowB[column]);
-    return order === 'asc' ? result : -result;
-  });
-}
-
-/** 列头单击排序：升序 → 降序 → 取消，合计行始终在最后 */
-function handleColumnHeaderClick(colIndex: number) {
-  const colConfig = currentColumnsRef.value[colIndex];
+/**
+ * 列头单击排序：升序 → 降序 → 取消。
+ * 始终从 props.originalData 重排，避免在已排序结果上再排导致第三击取消后顺序错乱。
+ * 列下标按 HOT 当前 settings（视觉→物理）解析，与表头展示一致。
+ */
+function handleColumnHeaderClick(visualColIndex: number) {
+  const colIndex = resolvePhysicalColumnIndex(visualColIndex);
+  const hotColumns =
+    hotTableRef.value?.hotInstance?.getSettings()?.columns ||
+    currentColumnsRef.value;
+  const colConfig = hotColumns[colIndex];
   const columnData = colConfig?.data;
   if (!columnData || columnData === '_groupDisplay') {
     return;
   }
 
-  const currentSort = sortState.value;
   clearCaches();
-
-  if (
-    currentSort &&
-    currentSort.column === columnData &&
-    currentSort.order === 'desc'
-  ) {
-    sortState.value = null;
-    dataSource.value = [...props.originalData];
-  } else {
-    const order: 'asc' | 'desc' =
-      currentSort &&
-      currentSort.column === columnData &&
-      currentSort.order === 'asc'
-        ? 'desc'
-        : 'asc';
-    sortState.value = { column: columnData, order };
-    dataSource.value = sortRows(dataSource.value, columnData, order);
-  }
+  sortState.value = nextSortState(sortState.value, columnData);
+  dataSource.value = applySortToRows(props.originalData, sortState.value);
 
   if (dataSource.value.length > 0) {
     applyGrouping(dataSource.value);
+  } else {
+    syncHotData([]);
   }
 }
 
@@ -228,26 +222,34 @@ watch(
   },
 );
 
+watch(
+  () => props.hiddenColumnKeys,
+  (keys) => {
+    const next = new Set(keys ?? []);
+    const prev = hiddenColumnDataRefs.value;
+    if (next.size === prev.size && [...next].every((key) => prev.has(key))) {
+      return;
+    }
+    hiddenColumnDataRefs.value = next;
+    clearCaches();
+    if (dataSource.value.length > 0) {
+      applyGrouping(dataSource.value);
+    }
+  },
+);
+
 /**
  * 查询结果与列配置在同一次查询里会一起变，合并成一个 watch 避免 applyGrouping 跑两遍。
+ * 空结果时不清隐藏列偏好（否则一查无数据就把用户自定义列冲掉）。
  */
 watch(
   () => [props.originalData, props.columnConfigs] as const,
   ([newVal]) => {
     clearCaches();
-    dataSource.value = [...newVal];
+    dataSource.value = applySortToRows(newVal, sortState.value);
     if (newVal.length > 0) {
-      if (sortState.value) {
-        dataSource.value = sortRows(
-          dataSource.value,
-          sortState.value.column,
-          sortState.value.order,
-        );
-      }
       applyGrouping(dataSource.value);
     } else {
-      hiddenColumnsRef.value = [];
-      hiddenColumnDataRefs.value = new Set();
       syncHotData([]);
     }
   },
@@ -290,6 +292,7 @@ function unhideColumnsByData(keys: string[]) {
     [...hiddenColumnDataRefs.value].filter((key) => !keySet.has(key)),
   );
   hiddenColumnDataRefs.value = next;
+  emit('update:hiddenColumnKeys', [...next]);
 
   const hotInstance = hotTableRef.value?.hotInstance;
   const columns = currentColumnsRef.value;
@@ -321,6 +324,7 @@ function updateHiddenColumnData(destinationHideConfig: number[]) {
     }
   });
   hiddenColumnDataRefs.value = hiddenData;
+  emit('update:hiddenColumnKeys', [...hiddenData]);
 }
 
 /**
@@ -330,6 +334,8 @@ function updateHiddenColumnData(destinationHideConfig: number[]) {
  */
 const hotSettings = computed(() => {
   const grouped = localGroupColumns.value.length > 0;
+  // 显式依赖 sortState，确保升序/降序/取消后列头箭头会刷新
+  const activeSort = sortState.value;
 
   const visibleColumns = grouped
     ? [...currentColumnsRef.value]
@@ -349,14 +355,14 @@ const hotSettings = computed(() => {
   return {
     columns: columnsForSettings,
     rowHeaders: true,
-    // 排序箭头读 sortState.value：必须在回调内取最新值。
+    // 排序箭头读 activeSort：必须在回调内取最新值。
     // Handsontable Vue 包装器用函数 toString 判断是否更新，闭包捕获会让箭头停在旧排序。
     colHeaders: (col: number) => {
       const colConfig = columnsForSettings[col];
       if (!colConfig) return '';
       const title = colConfig.title || '';
       const data = colConfig.data;
-      const sort = sortState.value;
+      const sort = activeSort ?? sortState.value;
       if (data && data !== '_groupDisplay' && sort && sort.column === data) {
         return `${title} ${sort.order === 'asc' ? '▲' : '▼'}`;
       }
@@ -429,7 +435,19 @@ const hotSettings = computed(() => {
             _clickEvent: any,
           ) {
             const instance = componentInstance;
-            const col = selection[0].start.col;
+            const visualCol = selection[0].start.col;
+            const hot = hotTableRef.value?.hotInstance;
+            let col = visualCol;
+            if (hot && typeof hot.toPhysicalColumn === 'function') {
+              try {
+                const physical = hot.toPhysicalColumn(visualCol);
+                if (typeof physical === 'number' && physical >= 0) {
+                  col = physical;
+                }
+              } catch {
+                // keep visual
+              }
+            }
 
             const currentColumns = instance.currentColumnsRef.value;
             if (col < 0 || col >= currentColumns.length) {
@@ -575,12 +593,12 @@ const hotSettings = computed(() => {
     },
     afterOnCellContextMenu: (_event: MouseEvent, coords: any) => {
       if (coords && coords.col !== undefined) {
-        rightClickColumnIndex.value = coords.col;
+        rightClickColumnIndex.value = resolvePhysicalColumnIndex(coords.col);
       }
     },
     afterOnColumnHeaderContextMenu: (_event: MouseEvent, col: number) => {
       if (col !== undefined) {
-        rightClickColumnIndex.value = col;
+        rightClickColumnIndex.value = resolvePhysicalColumnIndex(col);
       }
     },
     afterHideColumns: (
@@ -725,7 +743,8 @@ function applyGrouping(data: any[]) {
     .sort()
     .join('|');
   const visibleColumnConfigs = props.columnConfigs.filter((col) => col.visible);
-  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}_${visibleColumnConfigs.length}`;
+  // 缓存键必须含排序态：同 length 的升序/降序/原始不能共用一份树结果
+  const cacheKey = `${localGroupColumns.value.join('|')}_${expandedGroupsKey}_${data.length}_${visibleColumnConfigs.length}_${sortCacheKey(sortState.value)}`;
 
   if (groupingCache.has(cacheKey)) {
     const cachedResult = groupingCache.get(cacheKey);
@@ -741,6 +760,7 @@ function applyGrouping(data: any[]) {
     const groupedColumnSet = new Set(localGroupColumns.value);
     const filteredColumns = visibleColumnConfigs
       .filter((col) => !groupedColumnSet.has(col.data))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((col) => {
         const isNumeric = numericColumns.value.has(col.data);
         return {
@@ -751,13 +771,15 @@ function applyGrouping(data: any[]) {
 
     columnsConfig = [createGroupColumn(), ...filteredColumns];
   } else {
-    columnsConfig = visibleColumnConfigs.map((col) => {
-      const isNumeric = numericColumns.value.has(col.data);
-      return {
-        ...col,
-        className: isNumeric ? 'htRight' : col.className || 'htLeft',
-      };
-    });
+    columnsConfig = [...visibleColumnConfigs]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((col) => {
+        const isNumeric = numericColumns.value.has(col.data);
+        return {
+          ...col,
+          className: isNumeric ? 'htRight' : col.className || 'htLeft',
+        };
+      });
   }
 
   const nextSignature = columnsConfig.map((col) => col.data).join('|');

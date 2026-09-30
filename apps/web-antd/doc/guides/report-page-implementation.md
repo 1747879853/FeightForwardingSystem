@@ -269,7 +269,7 @@ onDeactivated / onUnmounted → stopLayoutWatchers()
 |  | 业务列表（VXE） | 报表（Handsontable） |
 | :-- | :-- | :-- |
 | 分页 | `createPagedListQuery` | 当前全量 |
-| 列配置 | `useTableConfigStore` 持久化 | 当次会话列显隐（右键隐藏；可按列或全部解除） |
+| 列配置 | `useTableConfigStore` 持久化 | 同 store：`table_config_ProfitReport` / `ArrearsReport`（右键隐藏列 + 可选显隐/顺序）；查询重置不会冲掉用户偏好，「重置」才清除 |
 | 分组 | `list-grouping` Tabs | 表格内多级树 |
 | 表单 | `useVbenVxeGrid` 内置 form | 独立 `useVbenForm` |
 | 刷新 | `useRefreshListOnFormReturn` 等 | 打开页 / 点查询 / 重置再查 |

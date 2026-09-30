@@ -14,6 +14,10 @@ import { filterMaskedColumns, getMaskedFormFields } from './field-permission';
 import { setPortTypeByBizType } from './formatters';
 import { buildCurrencyColumns, buildCurrencyNumericKeys } from './hot-columns';
 import { transformReportData } from './transform';
+import {
+  type ReportColumnPersistSetting,
+  useReportColumnPersist,
+} from './use-report-column-persist';
 
 /**
  * 报表页面通用逻辑
@@ -44,6 +48,16 @@ export function useReportPage(config: ReportPageConfig) {
   const allCurrencyCodes = shallowRef<Set<string>>(new Set());
   /** 列显隐与排序配置 */
   const columnConfigs = shallowRef<any[]>([]);
+  /** 右键隐藏的列 data 键（与 Handsontable HiddenColumns 同步，可持久化） */
+  const hiddenColumnKeys = shallowRef<string[]>([]);
+
+  const { loadColumnPersist, saveColumnPersist, clearColumnPersist } =
+    useReportColumnPersist(() => config.tableId);
+
+  /** 已加载的用户列偏好（币别动态列变化时反复合并，避免冲掉用户隐藏/顺序） */
+  let persistedSetting: ReportColumnPersistSetting | null = null;
+  let persistReady = false;
+  let persistSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ==================== 动态列 ====================
 
@@ -76,20 +90,114 @@ export function useReportPage(config: ReportPageConfig) {
   ]);
 
   /**
-   * 根据当前列初始化默认列配置（全部可见，按原始顺序）。
-   * 保留完整列定义（renderer/className/width 等），表格渲染时需要这些属性，
-   * 只抽取 data/title 会丢失自定义渲染器（如利润率乘 100、超期天数着色）
+   * 按当前动态列重建 columnConfigs，并合并用户持久化偏好。
+   * 新出现的币别列（不在历史配置里）默认可见，追加在末尾。
    */
   function initDefaultColumnConfigs() {
-    columnConfigs.value = dynamicHotColumns.value.map((col, index) => ({
-      ...col,
-      visible: true,
-      order: index,
-    }));
+    const visibility = persistedSetting?.columnVisibility;
+    const fixedMap = persistedSetting?.columnFixed;
+    const orderList = persistedSetting?.columnOrder;
+    const orderIndex = new Map<string, number>();
+    orderList?.forEach((key, index) => {
+      orderIndex.set(key, index);
+    });
+
+    const built = dynamicHotColumns.value.map((col, index) => {
+      const key = String(col.data ?? '');
+      const savedOrder = orderIndex.get(key);
+      return {
+        ...col,
+        visible: visibility?.[key] !== false,
+        fixed: fixedMap?.[key] ?? col.fixed ?? false,
+        // 无历史顺序时保持默认 index；有则用保存的顺序，未知列靠后
+        order: savedOrder ?? index + (orderList?.length ?? 0),
+      };
+    });
+
+    if (orderList && orderList.length > 0) {
+      built.sort((a, b) => a.order - b.order);
+      built.forEach((col, index) => {
+        col.order = index;
+      });
+    }
+
+    columnConfigs.value = built;
+
+    // 隐藏列与持久化同步：只保留当前仍存在的列键，避免历史脏键一直占着
+    if (persistedSetting) {
+      const known = new Set(built.map((col) => String(col.data ?? '')));
+      hiddenColumnKeys.value = (persistedSetting.hiddenColumnKeys ?? []).filter(
+        (key) => known.has(key),
+      );
+    }
   }
 
-  // 币别变化会导致列变化，需要同步重建列配置
+  // 币别变化会导致列变化，需要同步重建列配置（合并用户偏好，不整表冲掉）
   watch(dynamicHotColumns, initDefaultColumnConfigs, { immediate: true });
+
+  function schedulePersistSave(patch: Partial<ReportColumnPersistSetting>) {
+    if (!persistReady) return;
+    if (persistSaveTimer) {
+      clearTimeout(persistSaveTimer);
+    }
+    persistSaveTimer = setTimeout(() => {
+      persistSaveTimer = null;
+      void saveColumnPersist(patch).catch((error) => {
+        console.error('保存报表列配置失败:', error);
+      });
+    }, 300);
+  }
+
+  function buildPersistPatchFromColumnConfigs(
+    columns: any[],
+  ): Partial<ReportColumnPersistSetting> {
+    const sorted = [...columns].sort(
+      (a, b) => (a.order ?? 999) - (b.order ?? 999),
+    );
+    const columnOrder: string[] = [];
+    const columnVisibility: Record<string, boolean> = {};
+    const columnFixed: Record<string, 'left' | 'right' | false> = {};
+
+    sorted.forEach((col) => {
+      const key = String(col.data ?? '').trim();
+      if (!key) return;
+      columnOrder.push(key);
+      columnVisibility[key] = col.visible !== false;
+      columnFixed[key] =
+        col.fixed === 'left' || col.fixed === 'right' ? col.fixed : false;
+    });
+
+    return {
+      columnOrder,
+      columnVisibility,
+      columnFixed,
+      hiddenColumnKeys: [...hiddenColumnKeys.value],
+    };
+  }
+
+  function handleColumnConfigsUpdate(next: any[]) {
+    columnConfigs.value = next;
+    const patch = buildPersistPatchFromColumnConfigs(next);
+    persistedSetting = {
+      ...(persistedSetting ?? { hiddenColumnKeys: [] }),
+      ...patch,
+      hiddenColumnKeys: patch.hiddenColumnKeys ?? [],
+    };
+    schedulePersistSave(patch);
+  }
+
+  function handleHiddenColumnKeysUpdate(keys: string[]) {
+    hiddenColumnKeys.value = keys;
+    if (persistedSetting) {
+      persistedSetting = {
+        ...persistedSetting,
+        hiddenColumnKeys: [...keys],
+      };
+    } else {
+      persistedSetting = { hiddenColumnKeys: [...keys] };
+    }
+    schedulePersistSave({ hiddenColumnKeys: [...keys] });
+  }
 
   // ==================== 查询表单 ====================
 
@@ -199,7 +307,7 @@ export function useReportPage(config: ReportPageConfig) {
   /**
    * 重置：恢复页面打开时的初始状态
    * 1. 表单恢复默认值；2. 清空分组/展开/币别等表格状态；
-   * 3. 重新执行一次默认查询（与页面首次打开时的行为一致）
+   * 3. 清除并持久化默认列配置；4. 重新执行一次默认查询
    */
   async function handleReset() {
     await formApi.resetForm();
@@ -207,19 +315,33 @@ export function useReportPage(config: ReportPageConfig) {
     originalData.value = [];
     groupColumns.value = [];
     expandedGroups.value = new Set();
-    // 清空币别会触发动态列重建，列配置（显隐/顺序）随之恢复默认；
-    // 此处再显式初始化一次，兼容重置后无币别数据时列配置不回退的情况
+    // 清空币别会触发动态列重建；先清用户偏好再 init，回到产品默认列
     allCurrencyCodes.value = new Set();
+    persistedSetting = null;
+    hiddenColumnKeys.value = [];
     initDefaultColumnConfigs();
+    void clearColumnPersist().catch((error) => {
+      console.error('清除报表列配置失败:', error);
+    });
     // 按重置后的默认表单值重新查询，回到页面打开时的状态
     await handleQuery();
   }
 
-  // 表单在 setup 阶段已创建，defaultValue（含默认业务日期）可直接取到
+  // 先拉列配置再首查，避免首屏用默认列闪一下再被用户配置覆盖
   onMounted(() => {
-    void nextTick(() => {
-      void handleQuery();
-    });
+    void (async () => {
+      try {
+        const loaded = await loadColumnPersist();
+        persistedSetting = loaded;
+        initDefaultColumnConfigs();
+      } catch (error) {
+        console.error('加载报表列配置失败:', error);
+      } finally {
+        persistReady = true;
+        await nextTick();
+        await handleQuery();
+      }
+    })();
   });
 
   // ==================== 详情跳转 ====================
@@ -262,6 +384,7 @@ export function useReportPage(config: ReportPageConfig) {
     expandedGroups,
     allCurrencyCodes,
     columnConfigs,
+    hiddenColumnKeys,
     /** 完整动态列（供表格渲染） */
     dynamicHotColumns,
     /** 数值列键集合（供表格合计/聚合） */
@@ -269,5 +392,7 @@ export function useReportPage(config: ReportPageConfig) {
     handleQuery,
     handleReset,
     handleViewDetail,
+    handleColumnConfigsUpdate,
+    handleHiddenColumnKeysUpdate,
   };
 }

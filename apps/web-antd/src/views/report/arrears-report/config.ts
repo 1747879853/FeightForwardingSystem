@@ -161,6 +161,7 @@ function getArrearsExtraFields(): VbenFormSchema[] {
 export const arrearsReportConfig: ReportPageConfig<ReportApi.ArrearsReportDto> =
   {
     name: '欠费报表',
+    tableId: 'ArrearsReport',
     fetchApi: getArrearsReportList,
 
     // 查询表单：首行放收付类型、结算对象与业务日期（折叠时也看得见）；
