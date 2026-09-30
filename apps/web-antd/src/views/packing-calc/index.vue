@@ -133,7 +133,6 @@ const sceneRef = ref<{
 
 const viewMode = ref<PackingViewMode>('perspective');
 const showRulers = ref(true);
-const showDimLabels = ref(true);
 
 function setViewMode(mode: PackingViewMode) {
   viewMode.value = mode;
@@ -186,6 +185,59 @@ const legendLines = computed(() => {
     color: LINE_COLORS[(lineNo - 1) % LINE_COLORS.length],
   }));
 });
+
+/** 货物信息卡列表：当前柜已装各货行（按序号），竖向全部展示 */
+const cargoInfoCards = computed(() => {
+  const placements = activeContainer.value?.placements ?? [];
+  const lineNos =
+    placements.length > 0
+      ? [...new Set(placements.map((piece) => piece.lineNo))].sort(
+          (a, b) => a - b,
+        )
+      : cargos.value.map((row, index) => row.lineNo ?? index + 1);
+
+  return lineNos.map((lineNo) => {
+    const draft = cargos.value.find(
+      (row, index) => (row.lineNo ?? index + 1) === lineNo,
+    );
+    const placement = placements.find((piece) => piece.lineNo === lineNo);
+    const length = draft?.length ?? placement?.length;
+    const width = draft?.width ?? placement?.width;
+    const height = draft?.height ?? placement?.height;
+    const weight = draft?.weight ?? placement?.weight;
+    const allowRotate = draft?.allowRotate ?? true;
+    const supportLoad = draft?.supportLoad !== false;
+    const dimText = [length, width, height].every(
+      (v) => v !== undefined && v !== null && Number.isFinite(Number(v)),
+    )
+      ? `${formatDimCm(Number(length))}X${formatDimCm(Number(width))}X${formatDimCm(Number(height))}`
+      : '—';
+
+    return {
+      lineNo,
+      name: draft?.name || placement?.name || '—',
+      dimText,
+      weightText:
+        weight !== undefined &&
+        weight !== null &&
+        Number.isFinite(Number(weight))
+          ? String(weight)
+          : '—',
+      stackRule: allowRotate ? '可旋转' : '正放',
+      customerCode: draft?.groupKey?.trim() || '—',
+      supportLoadText: supportLoad ? '是' : '否',
+    };
+  });
+});
+
+function formatDimCm(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
+
+function onSelectCargoLine(lineNo: number) {
+  highlightLineNo.value = lineNo > 0 ? lineNo : 0;
+}
 
 const suggestCtnText = computed(() => {
   if (!result.value || result.value.containerCount <= 0) return '';
@@ -889,14 +941,6 @@ watch(dimUnit, () => {
           >
             标尺
           </Button>
-          <Button
-            size="small"
-            :type="showDimLabels ? 'primary' : 'default'"
-            :disabled="!result"
-            @click="showDimLabels = !showDimLabels"
-          >
-            尺寸标注
-          </Button>
           <Button size="small" :disabled="!result" @click="onScreenshot">
             截图
           </Button>
@@ -926,9 +970,54 @@ watch(dimUnit, () => {
             :gravity-warning="gravityWarning"
             :view-mode="viewMode"
             :show-rulers="showRulers"
-            :show-dim-labels="showDimLabels"
+            @select-line="onSelectCargoLine"
           />
-          <div v-else class="packing-empty">
+          <div
+            v-if="result && activeContainer && cargoInfoCards.length > 0"
+            class="packing-cargo-info-stack"
+          >
+            <aside
+              v-for="info in cargoInfoCards"
+              :key="info.lineNo"
+              class="packing-cargo-info"
+              :class="{
+                'packing-cargo-info--on': highlightLineNo === info.lineNo,
+              }"
+            >
+              <header class="packing-cargo-info__head">货物信息</header>
+              <dl class="packing-cargo-info__list">
+                <div>
+                  <dt>序号</dt>
+                  <dd>{{ info.lineNo }}</dd>
+                </div>
+                <div>
+                  <dt>品名</dt>
+                  <dd>{{ info.name }}</dd>
+                </div>
+                <div>
+                  <dt>单件尺寸(cm)</dt>
+                  <dd>{{ info.dimText }}</dd>
+                </div>
+                <div>
+                  <dt>单件毛重(kg)</dt>
+                  <dd>{{ info.weightText }}</dd>
+                </div>
+                <div>
+                  <dt>码放要求</dt>
+                  <dd>{{ info.stackRule }}</dd>
+                </div>
+                <div>
+                  <dt>客户代码</dt>
+                  <dd>{{ info.customerCode }}</dd>
+                </div>
+                <div>
+                  <dt>是否承重</dt>
+                  <dd>{{ info.supportLoadText }}</dd>
+                </div>
+              </dl>
+            </aside>
+          </div>
+          <div v-if="!result" class="packing-empty">
             录入柜子和货物后，点底部「生成方案」
           </div>
         </div>
@@ -1400,8 +1489,79 @@ watch(dimUnit, () => {
 }
 
 .packing-scene-wrap {
+  position: relative;
   flex: 1;
   min-height: 280px;
+}
+
+.packing-cargo-info-stack {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(240px, calc(100% - 24px));
+  overflow: auto;
+  pointer-events: auto;
+  scrollbar-width: thin;
+}
+
+.packing-cargo-info {
+  flex-shrink: 0;
+  pointer-events: none;
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 8%);
+}
+
+.packing-cargo-info--on {
+  border-color: hsl(var(--primary) / 45%);
+  box-shadow: 0 4px 16px hsl(var(--primary) / 14%);
+}
+
+.packing-cargo-info__head {
+  padding: 10px 12px 8px;
+  font-size: 14px;
+  font-weight: 650;
+  color: #0f172a;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.packing-cargo-info__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  margin: 0;
+
+  div {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #64748b;
+  }
+
+  dd {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    color: #0f172a;
+    word-break: break-all;
+  }
 }
 
 .packing-empty {
