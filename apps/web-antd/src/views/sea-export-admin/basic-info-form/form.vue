@@ -134,6 +134,7 @@ import {
 } from './sea-export-detail-mapper';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import BriefingModal from '../modules/briefing-modal.vue';
+import ServiceChevronScroller from '../modules/service-chevron-scroller.vue';
 import {
   CARGO_TYPE,
   createEmptyDgValues,
@@ -3315,7 +3316,7 @@ defineExpose({
                     </Tooltip>
                     <Spin
                       :spinning="serviceTypeSyncLoading"
-                      class="service-pipeline-spin service-pipeline-spin--inline"
+                      wrapper-class-name="service-pipeline-spin service-pipeline-spin--inline"
                     >
                       <div
                         class="service-pipeline-body"
@@ -3326,269 +3327,302 @@ defineExpose({
                       >
                         <div class="service-pipeline service-pipeline--inline">
                           <template v-if="showServiceItemContent">
-                            <div
+                            <ServiceChevronScroller
                               v-if="checkedServiceTypeNodes.length > 0"
-                              class="service-chevron-flow"
                             >
                               <div
-                                v-for="(
-                                  group, groupIndex
-                                ) in checkedServiceTypeNodeGroups"
-                                :key="group.sortId"
-                                class="service-chevron-flow__group"
+                                class="service-chevron-flow service-chevron-flow--in-scroller"
                               >
-                                <span
-                                  v-for="(node, nodeIndex) in group.nodes"
-                                  :key="node.serviceType"
-                                  class="service-chevron-flow__item"
+                                <div
+                                  v-for="(
+                                    group, groupIndex
+                                  ) in checkedServiceTypeNodeGroups"
+                                  :key="group.sortId"
+                                  class="service-chevron-flow__group"
                                 >
-                                  <Tooltip
-                                    v-if="shouldShowServiceNodeTooltip(node)"
-                                    placement="top"
-                                    :overlay-class-name="'chevron-step-tooltip'"
-                                    v-bind="
-                                      suppressServiceTooltips
-                                        ? { open: false }
-                                        : {}
-                                    "
+                                  <span
+                                    v-for="(node, nodeIndex) in group.nodes"
+                                    :key="node.serviceType"
+                                    class="service-chevron-flow__item"
                                   >
-                                    <template #title>
-                                      <div
-                                        class="chevron-step-tooltip__content"
-                                      >
+                                    <Tooltip
+                                      v-if="shouldShowServiceNodeTooltip(node)"
+                                      placement="top"
+                                      :overlay-class-name="'chevron-step-tooltip'"
+                                      v-bind="
+                                        suppressServiceTooltips
+                                          ? { open: false }
+                                          : {}
+                                      "
+                                    >
+                                      <template #title>
                                         <div
-                                          class="chevron-step-tooltip__header"
+                                          class="chevron-step-tooltip__content"
                                         >
-                                          <span
-                                            class="chevron-step-tooltip__node-name"
+                                          <div
+                                            class="chevron-step-tooltip__header"
                                           >
-                                            {{ node.label }}
-                                          </span>
-                                          <Tag
-                                            :color="
-                                              getServiceNodeTooltipStatusMeta(
-                                                node,
-                                              ).color
-                                            "
-                                            class="chevron-step-tooltip__status-tag"
-                                          >
-                                            {{
-                                              getServiceNodeTooltipStatusMeta(
-                                                node,
-                                              ).label
-                                            }}
-                                          </Tag>
-                                        </div>
-                                        <div
-                                          v-if="
-                                            node.taskStatus ===
-                                              SERVICE_TASK_STATUS_PROCESSED ||
-                                            (isServiceTypeNodeInProgress(
-                                              node,
-                                            ) &&
-                                              node.taskStatus ===
-                                                SERVICE_TASK_STATUS_PENDING)
-                                          "
-                                          class="chevron-step-tooltip__info"
-                                        >
-                                          <template
+                                            <span
+                                              class="chevron-step-tooltip__node-name"
+                                            >
+                                              {{ node.label }}
+                                            </span>
+                                            <Tag
+                                              :color="
+                                                getServiceNodeTooltipStatusMeta(
+                                                  node,
+                                                ).color
+                                              "
+                                              class="chevron-step-tooltip__status-tag"
+                                            >
+                                              {{
+                                                getServiceNodeTooltipStatusMeta(
+                                                  node,
+                                                ).label
+                                              }}
+                                            </Tag>
+                                          </div>
+                                          <div
                                             v-if="
                                               node.taskStatus ===
-                                              SERVICE_TASK_STATUS_PROCESSED
+                                                SERVICE_TASK_STATUS_PROCESSED ||
+                                              (isServiceTypeNodeInProgress(
+                                                node,
+                                              ) &&
+                                                node.taskStatus ===
+                                                  SERVICE_TASK_STATUS_PENDING)
                                             "
+                                            class="chevron-step-tooltip__info"
                                           >
+                                            <template
+                                              v-if="
+                                                node.taskStatus ===
+                                                SERVICE_TASK_STATUS_PROCESSED
+                                              "
+                                            >
+                                              <div
+                                                class="chevron-step-tooltip__info-row"
+                                              >
+                                                <span
+                                                  class="chevron-step-tooltip__info-label"
+                                                >
+                                                  完成时间
+                                                </span>
+                                                <span
+                                                  class="chevron-step-tooltip__info-value"
+                                                >
+                                                  {{
+                                                    formatServiceTaskCompletionTime(
+                                                      node.completionTime,
+                                                    )
+                                                  }}
+                                                </span>
+                                              </div>
+                                              <div
+                                                class="chevron-step-tooltip__info-row"
+                                              >
+                                                <span
+                                                  class="chevron-step-tooltip__info-label"
+                                                >
+                                                  完成人
+                                                </span>
+                                                <span
+                                                  class="chevron-step-tooltip__info-value"
+                                                >
+                                                  {{
+                                                    node.completionUserNickName ||
+                                                    '-'
+                                                  }}
+                                                </span>
+                                              </div>
+                                            </template>
                                             <div
+                                              v-else
                                               class="chevron-step-tooltip__info-row"
                                             >
                                               <span
                                                 class="chevron-step-tooltip__info-label"
                                               >
-                                                完成时间
+                                                处理人
                                               </span>
                                               <span
                                                 class="chevron-step-tooltip__info-value"
                                               >
                                                 {{
-                                                  formatServiceTaskCompletionTime(
-                                                    node.completionTime,
+                                                  formatServiceTaskUsersText(
+                                                    node,
                                                   )
                                                 }}
                                               </span>
                                             </div>
-                                            <div
-                                              class="chevron-step-tooltip__info-row"
-                                            >
-                                              <span
-                                                class="chevron-step-tooltip__info-label"
-                                              >
-                                                完成人
-                                              </span>
-                                              <span
-                                                class="chevron-step-tooltip__info-value"
-                                              >
-                                                {{
-                                                  node.completionUserNickName ||
-                                                  '-'
-                                                }}
-                                              </span>
-                                            </div>
-                                          </template>
+                                          </div>
                                           <div
-                                            v-else
+                                            v-if="
+                                              showServiceCompletePermissionHint(
+                                                node,
+                                              ) ||
+                                              showServiceCancelPermissionHint(
+                                                node,
+                                              )
+                                            "
+                                            class="chevron-step-tooltip__permission-hint"
+                                          >
+                                            <IconifyIcon
+                                              icon="mdi:lock-outline"
+                                              class="chevron-step-tooltip__permission-hint-icon"
+                                            />
+                                            <span>
+                                              {{
+                                                showServiceCancelPermissionHint(
+                                                  node,
+                                                )
+                                                  ? '您不是完成人，暂无操作权限'
+                                                  : '您不是当前处理人，暂无操作权限'
+                                              }}
+                                            </span>
+                                          </div>
+                                          <div
+                                            v-if="
+                                              canCompleteServiceTypeNode(
+                                                node,
+                                              ) &&
+                                              getRequiredAttachmentHint(
+                                                node.serviceType,
+                                              )
+                                            "
                                             class="chevron-step-tooltip__info-row"
                                           >
                                             <span
                                               class="chevron-step-tooltip__info-label"
                                             >
-                                              处理人
+                                              完成前需上传
                                             </span>
                                             <span
                                               class="chevron-step-tooltip__info-value"
                                             >
                                               {{
-                                                formatServiceTaskUsersText(node)
+                                                getRequiredAttachmentHint(
+                                                  node.serviceType,
+                                                )
                                               }}
+                                              <button
+                                                type="button"
+                                                class="chevron-step-tooltip__go-upload"
+                                                @click.stop="goToAttachmentsTab"
+                                              >
+                                                去上传
+                                              </button>
                                             </span>
                                           </div>
-                                        </div>
-                                        <div
-                                          v-if="
-                                            showServiceCompletePermissionHint(
-                                              node,
-                                            ) ||
-                                            showServiceCancelPermissionHint(
-                                              node,
-                                            )
-                                          "
-                                          class="chevron-step-tooltip__permission-hint"
-                                        >
-                                          <IconifyIcon
-                                            icon="mdi:lock-outline"
-                                            class="chevron-step-tooltip__permission-hint-icon"
-                                          />
-                                          <span>
-                                            {{
-                                              showServiceCancelPermissionHint(
-                                                node,
-                                              )
-                                                ? '您不是完成人，暂无操作权限'
-                                                : '您不是当前处理人，暂无操作权限'
-                                            }}
-                                          </span>
-                                        </div>
-                                        <div
-                                          v-if="
-                                            canCompleteServiceTypeNode(node) &&
-                                            getRequiredAttachmentHint(
-                                              node.serviceType,
-                                            )
-                                          "
-                                          class="chevron-step-tooltip__info-row"
-                                        >
-                                          <span
-                                            class="chevron-step-tooltip__info-label"
-                                          >
-                                            完成前需上传
-                                          </span>
-                                          <span
-                                            class="chevron-step-tooltip__info-value"
-                                          >
-                                            {{
-                                              getRequiredAttachmentHint(
-                                                node.serviceType,
-                                              )
-                                            }}
-                                            <button
-                                              type="button"
-                                              class="chevron-step-tooltip__go-upload"
-                                              @click.stop="goToAttachmentsTab"
-                                            >
-                                              去上传
-                                            </button>
-                                          </span>
-                                        </div>
-                                        <div
-                                          v-if="
-                                            canCancelCompleteServiceTypeNode(
-                                              node,
-                                            ) ||
-                                            canCompleteServiceTypeNode(node)
-                                          "
-                                          class="chevron-step-tooltip__actions"
-                                        >
-                                          <Button
-                                            v-if="
-                                              canCompleteServiceTypeNode(node)
-                                            "
-                                            type="primary"
-                                            size="small"
-                                            block
-                                            class="chevron-step-tooltip__action-btn"
-                                            :loading="
-                                              completingServiceType ===
-                                              node.serviceType
-                                            "
-                                            @click.stop="
-                                              handleCompleteServiceType(node)
-                                            "
-                                          >
-                                            完成
-                                          </Button>
-                                          <Button
+                                          <div
                                             v-if="
                                               canCancelCompleteServiceTypeNode(
                                                 node,
-                                              )
+                                              ) ||
+                                              canCompleteServiceTypeNode(node)
                                             "
-                                            danger
-                                            size="small"
-                                            block
-                                            class="chevron-step-tooltip__action-btn"
-                                            :loading="
-                                              cancellingServiceType ===
-                                              node.serviceType
-                                            "
-                                            @click.stop="
-                                              handleCancelCompleteServiceType(
-                                                node,
-                                              )
-                                            "
+                                            class="chevron-step-tooltip__actions"
                                           >
-                                            取消完成
-                                          </Button>
+                                            <Button
+                                              v-if="
+                                                canCompleteServiceTypeNode(node)
+                                              "
+                                              type="primary"
+                                              size="small"
+                                              block
+                                              class="chevron-step-tooltip__action-btn"
+                                              :loading="
+                                                completingServiceType ===
+                                                node.serviceType
+                                              "
+                                              @click.stop="
+                                                handleCompleteServiceType(node)
+                                              "
+                                            >
+                                              完成
+                                            </Button>
+                                            <Button
+                                              v-if="
+                                                canCancelCompleteServiceTypeNode(
+                                                  node,
+                                                )
+                                              "
+                                              danger
+                                              size="small"
+                                              block
+                                              class="chevron-step-tooltip__action-btn"
+                                              :loading="
+                                                cancellingServiceType ===
+                                                node.serviceType
+                                              "
+                                              @click.stop="
+                                                handleCancelCompleteServiceType(
+                                                  node,
+                                                )
+                                              "
+                                            >
+                                              取消完成
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </template>
+                                      <div
+                                        class="chevron-step"
+                                        :class="[
+                                          `chevron-step--${getServicePipelineState(node)}`,
+                                          {
+                                            'chevron-step--first':
+                                              isServiceChevronFlowFirst(
+                                                groupIndex,
+                                                nodeIndex,
+                                              ),
+                                            'chevron-step--last':
+                                              isServiceChevronFlowLast(
+                                                groupIndex,
+                                                nodeIndex,
+                                              ),
+                                          },
+                                        ]"
+                                      >
+                                        <div class="chevron-step__inner">
+                                          <span
+                                            v-if="
+                                              getServicePipelineState(node) ===
+                                              'active'
+                                            "
+                                            class="chevron-step__pending"
+                                          >
+                                            待
+                                          </span>
+                                          <IconifyIcon
+                                            v-else
+                                            :icon="getServiceTypeNodeIcon(node)"
+                                            class="chevron-step__icon"
+                                          />
+                                          <span class="chevron-step__label">
+                                            {{ node.label }}
+                                          </span>
                                         </div>
                                       </div>
-                                    </template>
+                                    </Tooltip>
                                     <div
-                                      class="chevron-step"
-                                      :class="[
-                                        `chevron-step--${getServicePipelineState(node)}`,
-                                        {
-                                          'chevron-step--first':
-                                            isServiceChevronFlowFirst(
-                                              groupIndex,
-                                              nodeIndex,
-                                            ),
-                                          'chevron-step--last':
-                                            isServiceChevronFlowLast(
-                                              groupIndex,
-                                              nodeIndex,
-                                            ),
-                                        },
-                                      ]"
+                                      v-else
+                                      class="chevron-step chevron-step--upcoming"
+                                      :class="{
+                                        'chevron-step--first':
+                                          isServiceChevronFlowFirst(
+                                            groupIndex,
+                                            nodeIndex,
+                                          ),
+                                        'chevron-step--last':
+                                          isServiceChevronFlowLast(
+                                            groupIndex,
+                                            nodeIndex,
+                                          ),
+                                      }"
                                     >
                                       <div class="chevron-step__inner">
-                                        <span
-                                          v-if="
-                                            getServicePipelineState(node) ===
-                                            'active'
-                                          "
-                                          class="chevron-step__pending"
-                                        >
-                                          待
-                                        </span>
                                         <IconifyIcon
-                                          v-else
                                           :icon="getServiceTypeNodeIcon(node)"
                                           class="chevron-step__icon"
                                         />
@@ -3597,36 +3631,10 @@ defineExpose({
                                         </span>
                                       </div>
                                     </div>
-                                  </Tooltip>
-                                  <div
-                                    v-else
-                                    class="chevron-step chevron-step--upcoming"
-                                    :class="{
-                                      'chevron-step--first':
-                                        isServiceChevronFlowFirst(
-                                          groupIndex,
-                                          nodeIndex,
-                                        ),
-                                      'chevron-step--last':
-                                        isServiceChevronFlowLast(
-                                          groupIndex,
-                                          nodeIndex,
-                                        ),
-                                    }"
-                                  >
-                                    <div class="chevron-step__inner">
-                                      <IconifyIcon
-                                        :icon="getServiceTypeNodeIcon(node)"
-                                        class="chevron-step__icon"
-                                      />
-                                      <span class="chevron-step__label">
-                                        {{ node.label }}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </span>
+                                  </span>
+                                </div>
                               </div>
-                            </div>
+                            </ServiceChevronScroller>
                             <div v-else class="service-pipeline__empty-checked">
                               <span
                                 class="service-pipeline__empty-checked-text"

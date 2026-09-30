@@ -770,6 +770,7 @@
   gap: 4px;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
 }
 
 .content-section__actions-right {
@@ -825,24 +826,16 @@
 }
 
 .service-pipeline-spin--inline {
-  display: flex;
   flex: 1;
   min-width: 0;
-}
-
-.service-pipeline-spin--inline :deep(.ant-spin-nested-loading) {
-  position: relative;
-  display: flex;
-  flex: 1;
-  width: 100%;
-  min-width: 0;
+  overflow: hidden;
 }
 
 .service-pipeline-spin--inline :deep(.ant-spin-container) {
   display: flex;
-  flex: 1;
   width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .service-pipeline-spin :deep(.ant-spin-nested-loading) {
@@ -1081,6 +1074,14 @@
   min-width: 0;
   overflow: auto hidden;
   border-radius: 8px;
+}
+
+.service-pipeline--inline
+  .service-chevron-flow.service-chevron-flow--in-scroller {
+  flex: none;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
 }
 
 .service-chevron-flow__group {

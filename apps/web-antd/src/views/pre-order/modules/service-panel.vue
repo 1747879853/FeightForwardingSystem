@@ -22,6 +22,7 @@ import {
   buildServiceTypeProcessMap,
   loadSeServiceTypeOptions,
 } from '#/views/sea-export-admin/service-type';
+import ServiceChevronScroller from '../../sea-export-admin/modules/service-chevron-scroller.vue';
 
 export interface PreOrderServiceRow {
   serviceType: number;
@@ -332,30 +333,68 @@ watch(
     </Tooltip>
     <Spin
       :spinning="loading"
-      class="service-pipeline-spin service-pipeline-spin--inline"
+      wrapper-class-name="service-pipeline-spin service-pipeline-spin--inline"
     >
       <div class="service-pipeline-body">
         <div class="service-pipeline service-pipeline--inline">
           <template v-if="props.polId">
-            <div v-if="checkedNodes.length > 0" class="service-chevron-flow">
+            <ServiceChevronScroller v-if="checkedNodes.length > 0">
               <div
-                v-for="(group, groupIndex) in checkedGroups"
-                :key="group.sortId"
-                class="service-chevron-flow__group"
+                class="service-chevron-flow service-chevron-flow--in-scroller"
               >
-                <span
-                  v-for="(node, nodeIndex) in group.nodes"
-                  :key="node.serviceType"
-                  class="service-chevron-flow__item"
+                <div
+                  v-for="(group, groupIndex) in checkedGroups"
+                  :key="group.sortId"
+                  class="service-chevron-flow__group"
                 >
-                  <Tooltip
-                    v-if="compareTagOf(node.serviceType)"
-                    placement="top"
+                  <span
+                    v-for="(node, nodeIndex) in group.nodes"
+                    :key="node.serviceType"
+                    class="service-chevron-flow__item"
                   >
-                    <template #title>
-                      {{ compareTagOf(node.serviceType)!.text }}
-                    </template>
+                    <Tooltip
+                      v-if="compareTagOf(node.serviceType)"
+                      placement="top"
+                    >
+                      <template #title>
+                        {{ compareTagOf(node.serviceType)!.text }}
+                      </template>
+                      <div
+                        class="chevron-step"
+                        :class="[
+                          `chevron-step--${nodeState(node.serviceType)}`,
+                          {
+                            'chevron-step--first': isFlowFirst(
+                              groupIndex,
+                              nodeIndex,
+                            ),
+                            'chevron-step--last': isFlowLast(
+                              groupIndex,
+                              nodeIndex,
+                            ),
+                          },
+                        ]"
+                      >
+                        <div class="chevron-step__inner">
+                          <IconifyIcon
+                            :icon="nodeIcon(node.serviceType)"
+                            class="chevron-step__icon"
+                          />
+                          <span class="chevron-step__label">
+                            {{ node.label }}
+                          </span>
+                          <Tag
+                            v-if="compareTagOf(node.serviceType)"
+                            :color="compareTagOf(node.serviceType)!.color"
+                            class="pre-order-service-compare-tag"
+                          >
+                            {{ compareTagOf(node.serviceType)!.text }}
+                          </Tag>
+                        </div>
+                      </div>
+                    </Tooltip>
                     <div
+                      v-else
                       class="chevron-step"
                       :class="[
                         `chevron-step--${nodeState(node.serviceType)}`,
@@ -376,44 +415,15 @@ watch(
                           :icon="nodeIcon(node.serviceType)"
                           class="chevron-step__icon"
                         />
-                        <span class="chevron-step__label">
-                          {{ node.label }}
-                        </span>
-                        <Tag
-                          v-if="compareTagOf(node.serviceType)"
-                          :color="compareTagOf(node.serviceType)!.color"
-                          class="pre-order-service-compare-tag"
-                        >
-                          {{ compareTagOf(node.serviceType)!.text }}
-                        </Tag>
+                        <span class="chevron-step__label">{{
+                          node.label
+                        }}</span>
                       </div>
                     </div>
-                  </Tooltip>
-                  <div
-                    v-else
-                    class="chevron-step"
-                    :class="[
-                      `chevron-step--${nodeState(node.serviceType)}`,
-                      {
-                        'chevron-step--first': isFlowFirst(
-                          groupIndex,
-                          nodeIndex,
-                        ),
-                        'chevron-step--last': isFlowLast(groupIndex, nodeIndex),
-                      },
-                    ]"
-                  >
-                    <div class="chevron-step__inner">
-                      <IconifyIcon
-                        :icon="nodeIcon(node.serviceType)"
-                        class="chevron-step__icon"
-                      />
-                      <span class="chevron-step__label">{{ node.label }}</span>
-                    </div>
-                  </div>
-                </span>
+                  </span>
+                </div>
               </div>
-            </div>
+            </ServiceChevronScroller>
             <div v-else class="service-pipeline__empty-checked">
               <span class="service-pipeline__empty-checked-text">
                 {{
