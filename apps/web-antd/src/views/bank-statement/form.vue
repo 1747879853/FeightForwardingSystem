@@ -849,6 +849,7 @@ onUnmounted(() => {
         v-if="isEdit && editId"
         ref="settlementDrawerRef"
         :bank-statement-id="editId"
+        :bank-statement-no="bankStatementNo"
         :bank-statement-amount="savedAmount"
         :org-id="savedOrgId"
         :other-settled-amount="otherSettledAmount"

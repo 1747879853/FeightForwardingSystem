@@ -13,6 +13,7 @@ import CreateSettlementInvoicePanel from './create-settlement-invoice-panel.vue'
 const props = defineProps<{
   bankStatementAmount: number;
   bankStatementId: string;
+  bankStatementNo?: string;
   currencyCode?: string;
   currencyId?: number;
   orgId?: number;
@@ -51,12 +52,11 @@ const switchModeText = computed(() =>
   createMode.value === 'fee' ? '切换为按发票' : '切换为按费用',
 );
 
-function formatMoney(value: number) {
-  const text = value.toLocaleString('zh-CN', {
+function formatPlain(value: number) {
+  return value.toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return props.currencyCode ? `${text} ${props.currencyCode}` : text;
 }
 
 function openCreate(mode: 'fee' | 'invoice' = 'fee') {
@@ -92,7 +92,7 @@ defineExpose({ openCreate, openEdit });
   <Drawer
     v-model:open="open"
     :title="drawerTitle"
-    :width="'min(1280px, 94vw)'"
+    :width="'min(1440px, 96vw)'"
     destroy-on-close
     placement="right"
     class="settlement-workbench-drawer"
@@ -103,27 +103,23 @@ defineExpose({ openCreate, openEdit });
       </Button>
     </template>
 
-    <div class="settlement-context">
-      <div class="settlement-context__payer">
-        <span>付款方</span>
-        <strong>{{ settlementName || '-' }}</strong>
-      </div>
-      <div class="settlement-context__metrics">
-        <div>
-          <span>流水金额</span>
-          <strong>{{ formatMoney(bankStatementAmount) }}</strong>
-        </div>
-        <div>
-          <span>已核销</span>
-          <strong>{{ formatMoney(otherSettledAmount) }}</strong>
-        </div>
-        <div>
-          <span>本次最多可核销</span>
-          <strong :class="{ 'text-red-600': remainingAmount < 0 }">
-            {{ formatMoney(remainingAmount) }}
-          </strong>
-        </div>
-      </div>
+    <div class="statement-strip">
+      <span class="statement-strip__badge">流水</span>
+      <strong>{{ bankStatementNo || '-' }}</strong>
+      <span class="statement-strip__sep">｜</span>
+      <span>付款方: {{ settlementName || '-' }}</span>
+      <span class="statement-strip__sep">｜</span>
+      <span>总额: {{ formatPlain(bankStatementAmount) }}</span>
+      <span class="statement-strip__sep">｜</span>
+      <span>已核: {{ formatPlain(otherSettledAmount) }}</span>
+      <span class="statement-strip__sep">｜</span>
+      <span
+        class="statement-remain"
+        :class="{ 'is-over': remainingAmount < 0 }"
+      >
+        剩余可用: {{ formatPlain(remainingAmount) }}
+        {{ currencyCode || '' }}
+      </span>
     </div>
 
     <CreateSettlementFeePanel
@@ -182,55 +178,51 @@ defineExpose({ openCreate, openEdit });
   }
 }
 
-.settlement-context {
+.statement-strip {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 6px 0;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  margin-bottom: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #344054;
   background: #fbfcfe;
   border: 1px solid #e3e8ef;
   border-radius: 8px;
 }
 
-.settlement-context__payer,
-.settlement-context__metrics > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  span {
-    font-size: 12px;
-    color: #7a8797;
-  }
-
-  strong {
-    font-size: 14px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: #283442;
-  }
+.statement-strip__badge {
+  padding: 0 6px;
+  margin-right: 6px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-radius: 4px;
 }
 
-.settlement-context__payer {
-  min-width: 260px;
+.statement-strip strong {
+  font-variant-numeric: tabular-nums;
+  color: #1d2939;
 }
 
-.settlement-context__metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(130px, 1fr));
-  gap: 24px;
+.statement-strip__sep {
+  margin: 0 8px;
+  color: #d0d5dd;
 }
 
-@media (max-width: 900px) {
-  .settlement-context {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+.statement-remain {
+  padding: 1px 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #b45309;
+  background: #fff7e6;
+  border-radius: 999px;
+}
 
-  .settlement-context__metrics {
-    width: 100%;
-  }
+.statement-remain.is-over {
+  color: #cf1322;
+  background: #fff1f0;
 }
 </style>
