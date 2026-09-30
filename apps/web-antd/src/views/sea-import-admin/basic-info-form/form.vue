@@ -86,6 +86,7 @@ import {
 } from '#/composables/use-my-org';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { isSameValuePortReselect } from '#/adapter/component/biz-select/port-select-option';
 
 import {
   CARGO_TYPE,
@@ -377,8 +378,13 @@ const handleHeaderFreeDaysChange = async (value: null | number | undefined) => {
 /** 港口选择后回填对应备注：`portName, countryEnName` */
 const syncPortRemark = async (fieldName: string, option: unknown) => {
   const remarkField = fieldName === 'polId' ? 'polRemark' : 'podRemark';
+  const sameValue = isSameValuePortReselect(option);
   const raw = pickPortSelectOption(option)?.raw;
   const remark = formatSeaImportPortRemark(raw);
+  if (sameValue) {
+    const current = await portFormApi.getValues();
+    if (String(current?.[remarkField] ?? '').trim()) return;
+  }
   await portFormApi.setValues({ [remarkField]: remark ?? '' });
   if (fieldName === 'polId') {
     // 航线与国家没有独立字段，仅挂在起运港下

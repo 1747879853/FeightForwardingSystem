@@ -66,6 +66,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Fix` | 起运港/目的港已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | 与编辑页共用表单。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-15 | `Fix` | 报关发票号改为提交/回显 `transportOrder.invoiceNum`，文案由「发票号」改名。 | 不再走票根。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 进口自有 `order-ctn-table.vue`；确认时预填箱型并带出货物区总包装。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |
 | 2026-09-11 | `Fix` | 基础信息不再展示「码头航次」，保存仍提交 `terminalVoyno`。 | 隐藏项保留在 schema。详见 [变更日志](../../changelogs/change-log-2026-09-11-hide-terminal-voyno.md)。 |

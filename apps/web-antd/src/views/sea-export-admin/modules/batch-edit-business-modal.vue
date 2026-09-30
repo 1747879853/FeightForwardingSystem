@@ -14,6 +14,7 @@ import { IconifyIcon } from '@vben/icons';
 
 import { Modal, message } from 'ant-design-vue';
 
+import { isSameValuePortReselect } from '#/adapter/component/biz-select/port-select-option';
 import { batchEditSeaExport } from '#/api/sea-export/sea-export-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
@@ -200,7 +201,7 @@ const handlePodChange = (_value: unknown, option: unknown) => {
 /** 港口表单在 handlePortChange 之后才创建，用间接引用回填备注 */
 const portFormApiRef = { current: null as any };
 
-const handlePortChange = (
+const handlePortChange = async (
   fieldName: string,
   value: unknown,
   option: unknown,
@@ -212,7 +213,14 @@ const handlePortChange = (
   if (!remarkField) return;
   const remark =
     formatSeaExportPortRemark(pickPortSelectOption(option)?.raw) ?? '';
-  void portFormApiRef.current?.setFieldValue(remarkField, remark);
+  const api = portFormApiRef.current;
+  if (!api) return;
+  if (isSameValuePortReselect(option)) {
+    if (!remark) return;
+    const current = await api.getValues();
+    if (String(current?.[remarkField] ?? '').trim()) return;
+  }
+  void api.setFieldValue(remarkField, remark);
 };
 
 const formCommonConfig = {

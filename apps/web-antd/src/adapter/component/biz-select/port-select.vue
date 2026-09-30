@@ -217,13 +217,43 @@ const handleChange = (value: any) => {
   emit('update:modelValue', value);
 };
 
+const apiComponentRef = ref();
+
+/**
+ * 值没变时 Ant Design Select 不触发 change。
+ * 交货地等备注为空时，再搜一次点同一个港口要靠 select 把备注补上。
+ */
+let changeEmittedForSelect = false;
+
+const findLoadedOption = (value: unknown) => {
+  const options = (apiComponentRef.value?.getOptions?.() ?? []) as Array<{
+    raw?: unknown;
+    value?: unknown;
+  }>;
+  return options.find((item) => String(item?.value) === String(value));
+};
+
 // 处理 change 事件（转发 value 与含 raw 的 option）
 const handleSelectChange = (value: any, option: any | any[]) => {
+  changeEmittedForSelect = true;
+  queueMicrotask(() => {
+    changeEmittedForSelect = false;
+  });
   emit('change', value, option);
   handleChange(value);
 };
 
-const apiComponentRef = ref();
+/** 再次点选当前值：补发 change，备注已有内容的页面自行跳过 */
+const handleOptionSelect = (value: unknown, option: any) => {
+  if (changeEmittedForSelect) return;
+  if (value === undefined || value === null || value === '') return;
+  if (String(value) !== String(modelValue.value ?? '')) return;
+  const loaded = option?.raw ? option : findLoadedOption(value);
+  emit('change', value, {
+    raw: loaded?.raw,
+    sameValueReselect: true,
+  });
+};
 
 /** 解析为字符串 ID，避免大数精度丢失（JS Number 安全整数上限为 2^53-1） */
 const parseIdToSafeString = (value: unknown): string | null => {
@@ -324,6 +354,7 @@ defineExpose({
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
+    @select="handleOptionSelect"
     class="biz-select w-full"
   >
     <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->

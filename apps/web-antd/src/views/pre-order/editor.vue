@@ -30,6 +30,7 @@ import {
 } from 'ant-design-vue';
 
 import { UserOrgSelect } from '#/adapter/component';
+import { isSameValuePortReselect } from '#/adapter/component/biz-select/port-select-option';
 import { useVbenForm } from '#/adapter/form';
 import { TaskType } from '#/api/audit-approval/payment-review-admin';
 import {
@@ -457,18 +458,23 @@ function bindEtdRateLinkage() {
 }
 
 /** PortSelect @change：起运港联动服务项；港口备注回填 */
-function handlePortSelectChange(
+async function handlePortSelectChange(
   fieldName: string,
   value: unknown,
   option: unknown,
 ) {
-  if (fieldName === 'polId') {
+  const sameValue = isSameValuePortReselect(option);
+  if (fieldName === 'polId' && !sameValue) {
     currentPolId.value = toOptionalId(value);
   }
   const remarkField = PRE_ORDER_PORT_REMARK_FIELDS[fieldName];
   if (!remarkField) return;
   const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);
   if (!remark) return;
+  if (sameValue) {
+    const current = await portFormApi.getValues();
+    if (String(current?.[remarkField] ?? '').trim()) return;
+  }
   void portFormApi.setFieldValue(remarkField, remark);
 }
 

@@ -76,6 +76,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Fix` | 起运港/目的港已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | 与海出共用 `PortSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 与海出/空出共用 `useOrderAdjacentNav`。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开加过渡，横向时间轴收成细线小圆点（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |
 | 2026-09-17 | `Style` | 运踪登机牌航线收回左右港口中间（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-17-sea-export-tracking-voyage-center.md)。 |

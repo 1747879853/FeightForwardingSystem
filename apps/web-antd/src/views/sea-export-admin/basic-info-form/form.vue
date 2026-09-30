@@ -73,6 +73,7 @@ import {
   UserSelect,
 } from '#/adapter/component';
 import { type VbenFormSchema } from '#/adapter/form';
+import { isSameValuePortReselect } from '#/adapter/component/biz-select/port-select-option';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
@@ -1694,12 +1695,13 @@ const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
 const portFormApiRef = { current: null as any };
 
 /** PortSelect @change：联动备注；起运港变更时同步服务项目 */
-const handlePortSelectChange = (
+const handlePortSelectChange = async (
   fieldName: string,
   value: unknown,
   option: unknown,
 ) => {
-  if (fieldName === 'polId') {
+  const sameValue = isSameValuePortReselect(option);
+  if (fieldName === 'polId' && !sameValue) {
     queueSyncServiceTypesByPol({ polId: value });
   }
   const remarkField = PORT_ID_FIELD_TO_REMARK_FIELD[fieldName];
@@ -1708,6 +1710,11 @@ const handlePortSelectChange = (
   if (!remark) return;
   const api = portFormApiRef.current;
   if (!api) return;
+  // 再次点选同一港口时，只补空备注，已手改的内容保留
+  if (sameValue) {
+    const current = await api.getValues();
+    if (String(current?.[remarkField] ?? '').trim()) return;
+  }
   void api.setFieldValue(remarkField, remark);
 };
 

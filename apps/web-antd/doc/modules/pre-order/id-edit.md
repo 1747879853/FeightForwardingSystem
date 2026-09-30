@@ -60,7 +60,7 @@ last_updated: 2026-09-15
 | **起运地** | POL（表单标签为「起运地」，列表筛选仍称起运港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行首位（`pre-order-basic-field--7`）；选中态为 `港口英文名-中文名`（如 QINGDAO-青岛），与海出 EDI 不同；**触发：** `handleBasicPortChange` 同步写入隐藏 `PortForm`、更新 `currentPolId` 重算服务项，并自动带出 `polRemark`；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
 | **目的地** | POD（表单标签为「目的地」，列表筛选仍称目的港） | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行（`pre-order-basic-field--8`）；选中态同样为 `英文名-中文名`；**触发：** 同上同步 `PortForm` 并自动带出 `podRemark`；完整港口流转（收货地/中转/交货地）分区 `hidden` 暂隐但仍由 `PortForm` 回填提交 | 非必填 |
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交<br/>**字段名：** 与海出一致为 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`（勿写成 `pot1Id`）；关联对象仍为 `pot1`/`pot2`<br/>**回显：** 详情对象经 `toPortObjectSelectedItems` 注入 `selectedItems` | 非必填 |
-| **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖；字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
+| **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；换成另一个港口会覆盖备注；同一港口再次点选只在备注为空时回填。字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
 | **装运方式** | 整箱 / 拼箱等 | `getBlTypeOptions`（标题 meta 区选择器） | —— | **必填**；新建默认整柜(`0`)，保存前须有值；编辑回显以详情为准 |
 | **货物类型** | 普货 / 冻柜 / 危品等 | `getCargoTypeOptions`（复用海运出口） | **展示：** 「货物与箱型」卡片标题栏内联，与海出一致 | **必填**，默认 0（普通货） |
@@ -124,6 +124,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Fix` | 港口已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | 与海出共用 `PortSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-15 | `Fix` | TAPD `#1000965`：船名/航次仍在船公司后；付款方式挪到贸易条款前；订舱代理后为车队；备注放到车队后换行通栏，默认 3 行，不做高亮。 | 次行 6 项；备注 `col-span-6`、`rows: 3`。详见 [变更日志](../../changelogs/change-log-2026-09-15-pre-order-pay-method-remark.md)。 |
 | 2026-09-14 | `Fix` | 附件分组按类型原始 `sortId` 降序，历史组不再垫底。 | 额外拉 `GetListAsync` 补历史类型 sortId。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-14 | `Feature` | 主表新增船名/航次合并输入与车队下拉；已有单据回显，清空保存可解除。 | 海进 maxlength 32、其余 64；`VesselVoyageInput` 的 `componentProps` 必须是函数。详见 [变更日志](../../changelogs/change-log-2026-09-14-pre-order-vessel-voyage-team.md)。 |

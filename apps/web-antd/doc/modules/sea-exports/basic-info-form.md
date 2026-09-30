@@ -67,4 +67,5 @@ ai-extract-upload-modal.vue → ai-extract-utils.ts（accept / 文件类型）
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Fix` | 港口已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | `handlePortSelectChange` 只在 `sameValueReselect` 且备注为空时写入。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-25 | `Fix` | 折叠的中转港、收发通不再压住当前项标题。 | 表单项自带 flex，隐藏类需 `display: none !important`。详见 [变更记录](../../changelogs/change-log-2026-09-25-海运出口隐藏港口收发通不再压标题.md)。 |
