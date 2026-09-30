@@ -477,6 +477,7 @@ const addCtnRow = () => {
     ...ctnList.value,
     { _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}` },
   ];
+  syncCargoTotalsFromCtn();
 };
 
 const removeCtnRows = () => {
@@ -484,7 +485,7 @@ const removeCtnRows = () => {
   const keysSet = new Set(selectedCtnKeys.value);
   ctnList.value = ctnList.value.filter((row) => !keysSet.has(row._rowKey));
   selectedCtnKeys.value = [];
-  syncCargoPkgsFromCtn();
+  syncCargoTotalsFromCtn();
 };
 
 const sumCtn = (key: 'grossWeight' | 'pkgs' | 'volume') =>
@@ -501,14 +502,14 @@ const applyCtnPackageToCargo = () => {
   }
 };
 
-const syncCargoPkgsFromCtn = () => {
+const syncCargoTotalsFromCtn = () => {
   formData.value.pkgs = sumCtn('pkgs') || undefined;
+  formData.value.kgs = sumCtn('grossWeight') || undefined;
+  formData.value.cbm = sumCtn('volume') || undefined;
 };
 
 const updateCargoTotalsFromCtn = () => {
-  syncCargoPkgsFromCtn();
-  formData.value.kgs = sumCtn('grossWeight') || undefined;
-  formData.value.cbm = sumCtn('volume') || undefined;
+  syncCargoTotalsFromCtn();
   applyCtnPackageToCargo();
   message.success($t('seaExport.export.separate.updateTotalSuccess'));
 };
@@ -527,7 +528,9 @@ const updateCtnRow = (
   }
   list[index] = { ...list[index], [field]: value, ...extra };
   ctnList.value = list;
-  if (field === 'pkgs') syncCargoPkgsFromCtn();
+  if (field === 'pkgs' || field === 'grossWeight' || field === 'volume') {
+    syncCargoTotalsFromCtn();
+  }
   if (field === 'codePackageId') applyCtnPackageToCargo();
 };
 
