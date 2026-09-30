@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 /**
  * 运价列表箱型价格：成本 | 指导价 分区展示。
- * 每个价格右上角跟涨跌额（涨红跌绿）。
+ * 每个价格右上角跟涨跌额（涨红跌绿），读列表接口箱型上的 costDelta / sugDelta。
  */
-import type { CtnPriceChange } from '../freight-price-change';
-
 import { computed } from 'vue';
 
 import { FrightModule } from '#/api/system/permission';
 import { hasMaskRule, isAlwaysMasked } from '#/composables/use-masked-fields';
+
+import { normalizePriceDelta } from '../freight-price-change';
 
 interface Props {
   row: any;
@@ -26,12 +26,6 @@ const ctnItem = computed(() => {
   return props.row.seFreiPriceCtns.find(
     (item: any) => item.ctnCode?.ctnName === name,
   );
-});
-
-const priceChange = computed<CtnPriceChange | undefined>(() => {
-  const name = ctnName.value;
-  if (!name) return undefined;
-  return props.row?._priceChange?.[name] as CtnPriceChange | undefined;
 });
 
 function hasKey(obj: Record<string, any> | undefined, key: string) {
@@ -85,7 +79,6 @@ const display = computed(() => {
     };
   }
 
-  const change = priceChange.value;
   return {
     fullyMasked: false,
     empty: false,
@@ -94,8 +87,8 @@ const display = computed(() => {
     showDivider: showCost && showSug,
     costText: showCost ? formatPrice(item.cost) : '',
     sugText: showSug ? formatPrice(item.sugPrice) : '',
-    costDelta: showCost ? change?.costDelta : undefined,
-    sugDelta: showSug ? change?.sugDelta : undefined,
+    costDelta: showCost ? normalizePriceDelta(item.costDelta) : undefined,
+    sugDelta: showSug ? normalizePriceDelta(item.sugDelta) : undefined,
   };
 });
 </script>

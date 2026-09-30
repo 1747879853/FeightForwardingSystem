@@ -296,8 +296,6 @@ async function handleAIData(aiDataList: any[]) {
       currencyId: currencyName, // ✅ 使用名称
       bookingAgentId: bookingAgentName, // ✅ 使用名称
       seFreiPriceCtns: row.seFreiPriceCtns || [],
-      // 列表涨跌徽标带到批量更新页继续展示
-      _priceChange: row._priceChange,
     };
 
     // ⚠️ 关键修复：为每个箱型设置动态字段值（Handsontable 使用这些字段）

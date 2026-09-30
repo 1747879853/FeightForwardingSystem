@@ -51,9 +51,15 @@ function createCtnPriceRenderer(role: 'cost' | 'sug') {
       string,
       any
     > | null;
-    const change = rowData?._priceChange?.[ctnName];
-    const delta = role === 'cost' ? change?.costDelta : change?.sugDelta;
-    if (delta === undefined || delta === 0) return;
+    const ctn = (rowData?.seFreiPriceCtns as any[] | undefined)?.find(
+      (item) => item?.ctnCode?.ctnName === ctnName || item?.ctnName === ctnName,
+    );
+    const rawDelta = role === 'cost' ? ctn?.costDelta : ctn?.sugDelta;
+    const delta =
+      rawDelta === null || rawDelta === undefined
+        ? undefined
+        : Number(rawDelta);
+    if (delta === undefined || Number.isNaN(delta) || delta === 0) return;
 
     const badge = document.createElement('span');
     badge.className = `ht-price-delta ${
