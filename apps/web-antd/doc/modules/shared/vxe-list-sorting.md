@@ -2,7 +2,7 @@
 title: vxe 分页列表列头排序
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-10-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,6 +18,7 @@ last_updated: 2026-09-20
 - **搜索后恢复：** 搜索表单调用 `reload` 后，按当前 `sortConfig.defaultSort` 恢复列头箭头，避免请求仍带默认排序但表头没有高亮。
 - **排除列：** 无 `field`、序号/勾选列、`operation`/`actions` 不可排；特殊列可 `sortable: false`。
 - **字段权限刷新：** 海运进出口、空运出口及运价分页列表刷新权限或动态替换列时，继续补充默认排序属性；明确禁排的列保持禁排。运价动态箱型列属于集合展开列，不提供远程排序。
+- **分页结果浅响应式：** `createPagedListQuery` 把每一行收成浅响应式。vxe 灌数时再 `reactive(items)` 会沿用这个代理，不再把委托单、服务项、港口这些嵌套对象整棵包进去。替换行上的字段仍会刷新格子；改嵌套对象内部不会自动刷新。
 
 # 3. 开发接入
 
@@ -61,6 +62,7 @@ proxyConfig: {
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-10-01 | `Perf` | 分页列表行改为浅响应式，嵌套对象不再整棵进入响应式。列表展示不变。 | `createPagedListQuery` 在 `afterFetch` 之后对 `items` 做 `shallowReactive`。vxe `reactive(items)` 会沿用该代理。详见[变更记录](../../changelogs/change-log-2026-10-01-分页列表浅响应式.md)。 |
 | 2026-09-20 | Fix | 点默认排序列（如起飞日期）后列头继续高亮；字段权限换列后补回箭头。 | `syncGridSortFromSession` 改为 `setSort(..., false)`，禁止 `clearSort`；权限 `watch` 换列后按 `defaultSort` 补箭头。见 `changelogs/change-log-2026-09-20-空运出口起飞日期排序高亮.md`。 |
 | 2026-09-16 | Fix | 恢复字段权限包装列表的列头排序入口。 | 权限监听用原始列覆盖适配器增强列；生成列时复用默认排序规则，并排除运价动态箱型列。回归测试共 19 项通过。 |
 | 2026-09-03 | Fix | 搜索或重置筛选条件后，默认排序列头继续保持高亮。 | `reload` 完成后等待视图更新，再调用 `restoreDefaultSortIndicators`；请求排序与表头状态重新一致。 |

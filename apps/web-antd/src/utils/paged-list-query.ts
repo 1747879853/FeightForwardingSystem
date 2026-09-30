@@ -1,5 +1,7 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
+import { isReactive, shallowReactive } from 'vue';
+
 import { message } from 'ant-design-vue';
 
 import { getSortSessionList, setSortSessionList } from '#/store/sort-session';
@@ -589,7 +591,10 @@ export function createPagedListQuery<
 
     try {
       const result = await apiFn(requestParams);
-      return options.afterFetch ? await options.afterFetch(result) : result;
+      const next = options.afterFetch
+        ? await options.afterFetch(result)
+        : result;
+      return shallowListRows(next);
     } catch (error) {
       if (
         sorting &&
@@ -605,7 +610,10 @@ export function createPagedListQuery<
           sorting: defaultSort,
         } as TParams;
         const result = await apiFn(fallbackParams);
-        return options.afterFetch ? await options.afterFetch(result) : result;
+        const next = options.afterFetch
+          ? await options.afterFetch(result)
+          : result;
+        return shallowListRows(next);
       }
       throw error;
     }
@@ -614,4 +622,23 @@ export function createPagedListQuery<
   queryFn.__isPagedListQuery = true;
   queryFn.__pagedSortOptions = options;
   return queryFn;
+}
+
+/**
+ * 行本身保持响应式，嵌套对象不再整棵包进 Vue 响应式。
+ * vxe `loadTableData` 会 `reactive(items)`；行已是浅响应式时会沿用该代理，不再向下遍历。
+ * 替换行上的字段（如 `row.seaExportServices = next`）仍会刷新；改嵌套字段内部不会。
+ */
+function shallowListRows<T>(result: T): T {
+  if (!result || typeof result !== 'object') return result;
+  const record = result as { items?: unknown };
+  if (!Array.isArray(record.items)) return result;
+  return {
+    ...record,
+    items: record.items.map((row) =>
+      row && typeof row === 'object' && !isReactive(row)
+        ? shallowReactive(row)
+        : row,
+    ),
+  } as T;
 }

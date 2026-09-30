@@ -1,7 +1,9 @@
+import { isReactive, isShallow, reactive } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   applySortIndicators,
+  createPagedListQuery,
   parseAbpSorting,
   parseVxeDefaultSort,
   syncGridSortFromSession,
@@ -58,5 +60,23 @@ describe('paged-list-query sort indicators', () => {
     ).toEqual([{ field: 'transportOrder.etd', order: 'desc' }]);
     expect(parseVxeDefaultSort({ field: 'etd', order: 'none' })).toEqual([]);
     expect(parseVxeDefaultSort(undefined)).toEqual([]);
+  });
+});
+
+describe('paged-list-query 浅响应式', () => {
+  it('行本身响应式，嵌套对象不再包进去', async () => {
+    const query = createPagedListQuery(async () => ({
+      items: [{ id: '1', transportOrder: { mblNum: 'A' } }],
+      totalCount: 1,
+    }));
+    const result = await query({ page: { currentPage: 1, pageSize: 200 } }, {});
+    const row = result.items[0];
+    expect(isReactive(row)).toBe(true);
+    expect(isShallow(row)).toBe(true);
+    expect(isReactive(row.transportOrder)).toBe(false);
+    const loaded = reactive(result.items);
+    expect(isShallow(loaded[0])).toBe(true);
+    expect(isReactive(loaded[0].transportOrder)).toBe(false);
+    expect(row.transportOrder.mblNum).toBe('A');
   });
 });
