@@ -69,7 +69,6 @@ import {
   fetchAllSeFreiPriceForExport,
   writeFreightRateExcelFile,
 } from './modules/composables/export-freight-rate-excel';
-import { enrichFreightListPriceChanges } from './freight-price-change';
 
 // ==================== 权限 ====================
 
@@ -224,9 +223,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           },
           afterFetch: async (result: any) => {
             const items = result.items || [];
-            const enriched = await enrichFreightListPriceChanges(items);
-            tableData.value = enriched;
-            return { ...result, items: enriched };
+            tableData.value = items;
+            return result;
           },
         }),
       },
@@ -459,14 +457,16 @@ function onBatchUpdate() {
       seFreiPriceCtns: (row.seFreiPriceCtns || []).map((ctn) => ({
         ...(ctn.id ? { id: ctn.id } : {}),
         ctnCodeId: ctn.ctnCodeId,
+        ctnCode: ctn.ctnCode,
         ...(Object.prototype.hasOwnProperty.call(ctn, 'cost')
           ? { cost: ctn.cost }
           : {}),
         ...(Object.prototype.hasOwnProperty.call(ctn, 'sugPrice')
           ? { sugPrice: ctn.sugPrice }
           : {}),
+        ...(ctn.costDelta != null ? { costDelta: ctn.costDelta } : {}),
+        ...(ctn.sugDelta != null ? { sugDelta: ctn.sugDelta } : {}),
       })),
-      _priceChange: (row as any)._priceChange,
     };
   });
 

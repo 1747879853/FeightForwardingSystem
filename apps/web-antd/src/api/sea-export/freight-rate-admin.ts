@@ -399,6 +399,16 @@ export interface SeFreiPriceCtnOutDto {
   cost?: number | null;
   /** 指导价 */
   sugPrice?: number | null;
+  /**
+   * 列表接口计算：成本相对上一条的差额（涨为正、跌为负）。
+   * null = 无上一条 / 对不上 / 差额为 0；详情接口不计算，恒为 null。
+   */
+  costDelta?: number | null;
+  /**
+   * 列表接口计算：指导价相对上一条的差额（涨为正、跌为负）。
+   * null = 无上一条 / 对不上 / 差额为 0 / 任一侧未填；详情接口不计算，恒为 null。
+   */
+  sugDelta?: number | null;
   /** 备注 */
   remark?: string;
   /** 箱型信息（关联对象） */
