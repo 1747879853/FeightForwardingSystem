@@ -85,7 +85,10 @@ const [Grid, gridApi] = useVbenVxeGrid<BillTask>({
   },
   gridOptions: {
     height: 'auto',
-    rowConfig: { keyField: 'id', isHover: true },
+    // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
+    rowConfig: { keyField: 'id', isHover: true, height: 40 },
     pagerConfig: { enabled: true },
     columns: [
       {

@@ -2,7 +2,7 @@
 title: 银行流水列表
 module: 财务管理
 author: Cursor Agent
-last_updated: 2026-09-08
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -43,6 +43,7 @@ last_updated: 2026-09-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-08 | `Fix` | 刷新/删除后同步刷新分组 Tab 条数。 | `handleRefresh` 追加 `grouping.refreshGroupData()`；删除成功改为调用 `handleRefresh()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |
 | 2026-08-10 | `Refactor` | 列表币别/我司银行改读 `currency` / `orgBankAccount` 对象。 | 列 field 改为 `currency.code`、`orgBankAccount.bankName`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-07-25 | `Refactor` | 「付款方」列改读结算对象对象化后的 `settlement.name`，接口不再返回 `settlementName`。 | 列 `field` 保留 `settlementName` 以维持排序字段映射与列配置持久化，取值改由 `formatter` 读 `row.settlement?.name`。 |

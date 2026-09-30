@@ -2,7 +2,7 @@
 title: 提成审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,5 +54,6 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-09 | `Feature` | 列表底部增加当页「提成金额 / 底薪 / 最终应发」合计。 | `fetchList` 写入 `currentPageData`；`Page` `#footer` 样式对齐进项发票。详见 `changelogs/change-log-2026-09-09-commission-review-page-footer-summary.md`。 |
 | 2026-09-08 | `Fix` | 审核后重载列表时同步刷新分组 Tab 条数。 | `reloadGrid` 在 `await gridApi.reload()` 后调用 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

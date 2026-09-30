@@ -2,7 +2,7 @@
 title: 租户配置
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-22
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -58,4 +58,5 @@ last_updated: 2026-09-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-22 | `Feature` | 系统管理新增租户配置列表页：分页、关键字、新增/编辑弹窗、单条与批量物理删除。菜单与增删改查暂借权限配置权限点。 | 对接 `TenantConfig` 五个接口，定位键是 `name`。路由 `authority` 与按钮暂用 `Admin.UserDataPermission` / `UserPropPermission` / `UserTablePermission`。 |

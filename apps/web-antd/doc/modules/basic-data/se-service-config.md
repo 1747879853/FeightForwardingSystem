@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-19
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -86,6 +86,7 @@ last_updated: 2026-08-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-19 | `Feature` | 完成时必填项支持「附件类型」（`10001`），可勾选具体附件类型并写入 `requireValues`；下拉仅展示模块为海运出口的类型。 | 展示/锁定不下发扩展枚举；附件下拉用 `GetListByModuleTypesAsync` + `moduleSeaExport`。详见 `changelogs/change-log-2026-08-19-se-service-require-attachment-types.md`。 |
 | 2026-08-11 | `Refactor` | 弹窗隐藏「自动完成」开关；新增/编辑提交与回显均强制 `autoComplete=false`。 | DTO 字段保留；`toPayloadItemsForAdd/Edit` 写死 false，待业务实现后再恢复 UI 与双向绑定。 |
 | 2026-07-12 | `Refactor` | 港口服务项配置弹窗移除「是否主流程（全局）」开关；保存时不再同步更新 `ServiceType.extra1`。 | 主流程标记仅在枚举管理维护；海运出口配置服务项目弹窗仍读取 `extra1` 分组。 |

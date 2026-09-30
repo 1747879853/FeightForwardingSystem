@@ -2,7 +2,7 @@
 title: 附件类型
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-14
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -50,6 +50,7 @@ last_updated: 2026-09-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-14 | `Fix` | 无 | 各业务附件分组按类型原始 `sortId` 降序，手动添加类型不再垫底。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |
 | 2026-09-05 | `Fix` | 去掉 `ModuleType` 代码兜底；监装/业务联系单须在枚举管理补 `160100`/`160050`。 | 删除 `KNOWN_MODULE_TYPE_FALLBACKS`；漏配显示数字、下拉无对应项。 |
 | 2026-08-04 | `Fix` | 默认展示模块 `160050` 回显为「业务联系单」，下拉可选。 | 当时用 `KNOWN_MODULE_TYPE_FALLBACKS`；2026-09-05 已改为枚举维护。 |

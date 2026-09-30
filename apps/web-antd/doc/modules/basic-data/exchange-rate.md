@@ -2,7 +2,7 @@
 title: 汇率资料
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-08-20
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,6 +48,7 @@ last_updated: 2026-08-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-20 | `Fix` | 无 | 生效判断改为按本地日历日（结束日当天全天有效），避免 `YYYY-MM-DD` 被当成 UTC 0 点后结束日上午过期。付费申请弹窗预填应付 `crValue`。详见 `changelogs/change-log-2026-08-20-payment-application-exchange-rate-modal.md` |
 | 2026-08-11 | `Fix` | 列表「币别」列恢复显示编码 | 列 formatter 读 `currency?.code`。详见 `changelogs/change-log-2026-08-11-exchange-rate-currency-simple-dto.md` |
 | 2026-07-12 | `Fix` | 修复汇率编辑时切换币别的大数 ID 校验与精度问题。 | `currencyId` 校验改为 string 透传；`ExchangeRateEditDto.id` 等类型放宽为 `number \| string`。 |

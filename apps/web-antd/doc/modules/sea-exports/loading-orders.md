@@ -2,7 +2,7 @@
 title: 监装列表
 module: 操作管理 / 监装
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -63,6 +63,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-20 | `Feature` | 监装状态检索改为多选，请求字段从 `status` 换成 `statuses`。 | 对接后端 `cbcd036d`；`paramsSerializer: 'repeat'`。详见[变更记录](../../changelogs/change-log-2026-09-20-监装列表状态多选.md)。 |
 | 2026-09-20 | `Fix` | 监装列表默认改为预计到货时间倒序，与小程序同一口径。 | `defaultSort` / `GetMyPagedListAsync` 显式传 `EstimatedArrivalTime DESC`；不传时后端基类仍是 `CreationTime DESC`。详见[变更记录](../../changelogs/change-log-2026-09-20-监装列表默认预计到货倒序.md)。 |
 | 2026-09-20 | `Fix` | 监装列表列头排序按后端 `ApplySorting` 收口：能 JOIN/customPaths 的列可排，品名与派单人关掉。 | `LOADING_ORDER_SORT_FIELD_MAP` 与列 `sortField` 对齐实体导航；详见[变更记录](../../changelogs/change-log-2026-09-20-监装列表排序对齐后端.md)。 |

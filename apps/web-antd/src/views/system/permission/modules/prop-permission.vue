@@ -162,7 +162,9 @@ const [Grid, gridApi] =
       id: 'systemPermissionPropList',
       columns: usePropPermissionColumns(handleActionClick),
       height: 'auto',
-      keepSource: true,
+      // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+      virtualXConfig: { enabled: true, gt: 0 },
+      virtualYConfig: { enabled: true, gt: 0 },
       proxyConfig: {
         ajax: {
           query: createPagedListQuery(fetchPropPermissionList),
@@ -170,6 +172,8 @@ const [Grid, gridApi] =
       },
       rowConfig: {
         keyField: 'id',
+        // 虚拟滚动按这个高度算总高；不写会用约 21px，滚不到后面的行
+        height: 40,
       },
       toolbarConfig: {
         custom: true,

@@ -2,7 +2,7 @@
 title: 进项发票列表
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-24
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-09-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-24 | `Fix` | 发票详情切到其他单据时，不再按对方 ID 重拉本页。 | 详情 ID 在实例创建时记下，去掉对全局 `params.id` 的监听。详见 [变更日志](../../changelogs/change-log-2026-09-24-编辑页固定本页业务ID.md)。 |
 | 2026-09-09 | `Fix` | 详情版式文件附件改为全站查看器预览，不再新开直链。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-09-08 | `Fix` | 手动拉取成功后同步刷新分组 Tab 条数。 | `handlePullSuccess` 在 `gridApi.query()` 后调用 `grouping.refreshGroupData()`。详见 `changelogs/change-log-2026-09-08-list-grouping-refresh-after-mutation.md`。 |

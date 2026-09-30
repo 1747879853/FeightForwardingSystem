@@ -2,7 +2,7 @@
 title: 船公司资料
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-06
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-09-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-06 | `Feature` | 约定堆场地址填完整中文，供监装小程序导航编码；不存经纬度。 | 小程序侧详见 `changelogs/change-log-2026-09-06-mp-loading-yard-nav.md`。 |
 | 2026-08-22 | `Feature` | Logo 改为单图缩略图卡片：上传后直接看图，不再显示文件名。 | 对齐组织 Logo：`listType: 'picture-card'` + `maxCount: 1`。`FileUploadInput` 在 picture-card 下隐藏文件名列表；回显无扩展名时仍弹窗预览。详见 `changelogs/change-log-2026-08-22-carrier-logo-picture-card.md`。 |
 | 2026-08-22 | `Feature` | 新增「堆场」子表（名称/地址/备注）；表单由 Modal 改 Drawer；列表不做展开行。 | TAPD #1000122 监装前置改造。子表 `sortId` 后端按数组下标生成；编辑须同时带 `logo` 与全量堆场。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |

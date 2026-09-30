@@ -418,7 +418,9 @@ const [Grid, gridApi] =
     gridOptions: {
       columns: useColumns(),
       height: '100%',
-      keepSource: true,
+      // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+      virtualXConfig: { enabled: true, gt: 0 },
+      virtualYConfig: { enabled: true, gt: 0 },
       // 使用 checkboxConfig（多选），支持点击行选中
       checkboxConfig: {
         highlight: true,
@@ -428,6 +430,8 @@ const [Grid, gridApi] =
       rowConfig: {
         keyField: 'id',
         isHover: true,
+        // 虚拟滚动按这个高度算总高；不写会用约 21px，滚不到后面的行
+        height: 40,
       },
       pagerConfig: {
         enabled: true,

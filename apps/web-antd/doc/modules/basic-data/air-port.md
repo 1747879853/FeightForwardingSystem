@@ -2,7 +2,7 @@
 title: 空运港口
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-05
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -72,4 +72,5 @@ last_updated: 2026-08-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-05 | `Feature` | 新增空运港口基础资料页面（列表 + 新增/编辑/删除），并提供 `AirPortSelect` 业务下拉供空运单据选机场。 | API 层单文件双命名空间：`AirPortApi` 承载业务端精简 DTO 与共享分页入参，`AirPortAdminApi` 承载管理端 DTO；下拉走 `AirPort/GetPagedListAsync`，回显兜底走 `AirPortAdmin/DetailAsync`。`countryId` 按大数 ID 规范以 `number \| string` 透传。 |

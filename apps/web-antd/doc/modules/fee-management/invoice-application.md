@@ -2,7 +2,7 @@
 title: 开票申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-19
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -45,6 +45,7 @@ last_updated: 2026-09-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-18 | `Feature` | 列表「状态」后增加结算状态列：未结算 / 部分结算 / 结算完毕。 | 列表 DTO 聚合字段；详情不返回。文案颜色对齐客户对账。详见 `changelogs/change-log-2026-09-18-invoice-application-settlement-status.md`。 |
 | 2026-09-10 | `Fix` | 不同部门的人打开编辑/查看页时，归属组织回显所属公司名（值仍是部门 id），销售方按该公司拉取税号/地址/银行。 | `MyOrgSelect` 对不在本人选项中的部门 id 用公司名兜底；`resolveMyOrgCompanyNode` 先部门换公司再取开票资料。详见 `changelogs/change-log-2026-09-10-invoice-application-org-company-echo.md`。 |
 | 2026-09-10 | `Fix` | 查看页禁用控件文字对比度提高，避免灰字难读。 | 只读根类 `invoice-application-form--readonly` 覆盖 Ant disabled 字色。详见 `changelogs/change-log-2026-09-10-invoice-application-readonly-contrast.md`。 |

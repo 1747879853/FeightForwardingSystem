@@ -70,9 +70,11 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderTaskItemDto>({
   gridOptions: {
     columns: usePreOrderReviewColumns(),
     height: 'auto',
-    keepSource: true,
+    // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
     checkboxConfig: { highlight: true },
-    rowConfig: { keyField: 'id', isCurrent: true, isHover: true },
+    rowConfig: { keyField: 'id', isCurrent: true, isHover: true, height: 40 },
     pagerConfig: { enabled: true },
     proxyConfig: {
       // 关闭自动加载：挂载后 submitForm 首查，保证 MyStatus 默认值写入最近提交值

@@ -196,8 +196,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     id: FREIGHT_RATE_LIST_TABLE_ID,
     columns: useColumns([]),
     height: 'auto',
-    keepSource: true,
-    showOverflow: false,
+    // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
+    showOverflow: true,
     sortConfig: {
       remote: true,
       defaultSort: { field: 'creationTime', order: 'desc' },
@@ -232,6 +234,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     rowConfig: {
       keyField: 'id',
       isHover: true,
+      // 虚拟滚动按这个高度算总高；不写会用约 21px，滚不到后面的行
+      height: 40,
     },
     rowClassName: ({ row }: { row: SeFreiPriceOutDto }) =>
       isFreightRateExpired(row) ? 'freight-rate-expired-row' : '',

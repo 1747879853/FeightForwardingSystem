@@ -2,7 +2,7 @@
 title: 港口代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -58,6 +58,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-20 | `Fix` | 修复大洲字段的国家资料回退值刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-03 | `Feature/Fix` | 港口新增排序号维护与列表列；管理列表及分页港口选择器按排序号降序，搜索后保持排序箭头高亮；全量港口列表沿用后端顺序。 | 管理 DTO 使用 `sortId`，精简全量 DTO 使用 `s`；分页 `PortSelect` 传 `Sorting`，全量接口不传；搜索 `reload` 后恢复默认排序指示器。详见 `changelogs/change-log-2026-09-03-port-code-sort-id.md`。 |
 | 2026-08-12 | `Feature` | 列表列头排序对齐港口本表及 Country/Lane 导航可排字段；默认按国家中文名升序；创建人列关闭排序。 | `defaultSort: Country.CountryName ASC`；国家列 field 用 `country.countryName`；大洲/航线 `sortField` 映射；详见 `changelogs/change-log-2026-08-12-port-code-list-sortable-fields.md`。 |

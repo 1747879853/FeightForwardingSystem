@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -79,6 +79,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-20 | `Fix` | 修复主提单号和委托编号刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-09 | `Feature` | 列表分页行嵌入当页按币别的申请合计（付 − 收）。 | TAPD 1000938。`collectPageAppliedTotals` 复用列口径；`pagerConfig.slots.left` 插在条数和翻页按钮之间。详见 `changelogs/change-log-2026-09-09-payment-application-page-total.md`。 |
 | 2026-09-09 | `Fix` | 批量下载发票 zip 改为 blob 保存，跨域也能用后端返回的包名。 | `downloadAttachmentWithFriendlyName`。详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |

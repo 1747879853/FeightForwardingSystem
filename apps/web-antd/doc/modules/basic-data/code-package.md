@@ -2,7 +2,7 @@
 title: 包装代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-22
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-08-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-22 | `Feature` | 新增「明细包装」子表；表单由 Modal 改 Drawer；列表不做展开行。 | TAPD #1000122 监装前置改造。子表 `sortId` 由后端按数组下标生成，UI 无排序列；编辑全量覆盖。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |
 | 2026-08-19 | `Fix` | 包装下拉改为全量缓存；本页删除/保存后业务单据下拉立刻搜不到已删包装。 | `codePackageListCache` + `useCachedSelect`，与 UserSelect 同构；维护页 `ensure({ force: true })`。详见 `changelogs/change-log-2026-08-19-code-package-select-full-cache.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/code-package` 对应组件 `src/views/system/basic-data/CodePackageAdmin/list.vue`，权限口径为 Admin.CodePackage / Admin.CodePackage.Get。 |

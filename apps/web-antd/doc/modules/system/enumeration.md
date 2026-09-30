@@ -2,7 +2,7 @@
 title: 枚举管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-05
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -62,6 +62,7 @@ last_updated: 2026-09-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-05 | `Fix` | `ModuleType` 需维护 `160050` 业务联系单、`160100` 监装箱型附件；附件类型下拉不再代码兜底。 | 前端删除 `KNOWN_MODULE_TYPE_FALLBACKS`。枚举编辑是全量子表替换，补项时必须带回原有子项。 |
 | 2026-08-25 | `Fix` | 海运进口贸易方式改走本页枚举 `TradeMode`，业务页不再写死选项。 | TAPD `#1161580498001000779`。建议子项 0~7：一般贸易、保税区、物流园、来料加工、进料加工、转关、一日游、其他。 |
 | 2026-08-02 | `Fix` | 编辑/详情弹窗子项按枚举值升序展示与保存（如 ServiceType）。 | `sortEnumerationItemsByValue` + 模板 computed；`:key` 用 `id`。详见 `changelogs/change-log-2026-08-02-enumeration-sort-by-value.md`。 |

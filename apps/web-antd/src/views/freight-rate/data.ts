@@ -539,7 +539,7 @@ export function useColumns(
       width: 180,
       align: 'left',
       headerAlign: 'center',
-      showOverflow: false,
+      showOverflow: true,
       slots: { default: 'ctnEditableCell' },
       params: {
         ctnName,

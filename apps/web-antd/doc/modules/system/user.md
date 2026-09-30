@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-09-24
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -70,6 +70,7 @@ last_updated: 2026-09-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-24 | `Fix` | 用户编辑页切走后再回来，仍是打开时的那个用户。 | 缓存实例不再用计算属性跟全局 `params.id`。详见 [变更日志](../../changelogs/change-log-2026-09-24-编辑页固定本页业务ID.md)。 |
 | 2026-09-10 | `Fix` | 用户编辑页「已选组织」改为单行芯片，关闭按钮用矢量图标，默认组织用蓝色徽标。 | Ant `Tag closable` 内套块级 flex 会把关闭符挤到下一行；默认态单独着色会压过 `:hover`。详见 [变更日志](../../changelogs/change-log-2026-09-10-user-form-org-chip.md)。 |
 | 2026-09-05 | `Fix` | 新建用户成功后 `replace` 进编辑页并关闭新建页签，顶栏不再同时留下两个 Tab。 | 原先 `push` 再关页签仍会短暂/残留双页签。详见 `changelogs/change-log-2026-09-05-create-tab-replace-close.md`。 |

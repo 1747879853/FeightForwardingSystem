@@ -2,7 +2,7 @@
 title: 监装要求
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-22
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -61,4 +61,5 @@ last_updated: 2026-08-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-22 | `Feature` | 新增「监装要求」基础资料模块：列表 + Drawer 主子表维护，权限 `Admin.LoadingRequirement.*`。 | TAPD #1000122 监装前置改造。主表 `sortId` 前端填、子表后端按数组下标生成；列表默认 `SortId ASC`。详见 `changelogs/change-log-2026-08-22-loading-supervision-frontend.md`。 |

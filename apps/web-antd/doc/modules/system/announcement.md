@@ -2,7 +2,7 @@
 title: 公告管理
 module: 公告管理
 author: auto-doc-sync
-last_updated: 2026-09-09
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,6 +54,7 @@ last_updated: 2026-09-09
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-09 | 修复 | 登录弹窗附件预览传入 `friendlyFileName`，走全站查看器下载。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |
 | 2026-07-14 | 修复 | 新增与批量删除按钮按角色动作权限显示，无权限时隐藏 | 复用 `createAbpPermission('Admin.Announcement')`，与系统管理其他列表保持一致 |
 | 2026-07-12 | Style | 一级菜单图标改为 `streamline-plump-color:announcement-megaphone-flat` | 与其它一级业务菜单同步更换语义化 Iconify 图标 |

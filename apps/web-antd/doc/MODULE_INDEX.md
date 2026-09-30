@@ -1,14 +1,14 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
-| bill-of-lading | `/bill-of-lading` | 提单管理 | 提单检索、分组、白底紧凑数量卡（超期只标红数字，待我审核以「进入」跳审核页）、签入/换签/扣单/签出、审核提交；已驳回悬浮和详情顶部直接显示列表、详情带回的驳回原因，不另要审核权限；双击详情为三个 Tab：基础信息按三列排布、操作记录、只读业务附件（无海出查看权限则隐藏），底部操作跨 Tab 常驻。侧边栏为一级菜单。 | [提单管理](./modules/bill-of-lading/index.md) | 2026-09-28 |
-| audit-approval | `/audit-approval/bill-of-lading-review` | 审核审批 | 批次列表、六部分审核依据、部分审核和通过后驳回；批次状态与我的审核状态合成一列，悬浮查看本人状态和审批流程；申请放单的提单状态与我的审核状态同样合成一列，悬浮查看本人审核状态、驳回原因和本批审批流程；详情摘要含本批未收和客户欠款，压单行用淡橙底并在行首标红；申请放单的通过和驳回固定在表下，页签数量为浅底胶囊；各表占满剩余高度，滚动时表头和合计不动；应收欠费未到期天数绿色、表上为折算后本位币，悬浮金额以及申请放单、压单、后续新单、历史异常和摘要中的未收金额可查看折算前原币，并在表底按本位币合计；申请放单、压单、后续新单按提单行展示超期证明。 | [提单签出审核](./modules/audit-approval/bill-of-lading-review.md) | 2026-09-27 |
+| bill-of-lading | `/bill-of-lading` | 提单管理 | 提单检索、分组、白底紧凑数量卡（超期只标红数字，待我审核以「进入」跳审核页）、签入/换签/扣单/签出、审核提交；已驳回悬浮和详情顶部直接显示列表、详情带回的驳回原因，不另要审核权限；双击详情为三个 Tab：基础信息按三列排布、操作记录、只读业务附件（无海出查看权限则隐藏），底部操作跨 Tab 常驻。侧边栏为一级菜单。 | [提单管理](./modules/bill-of-lading/index.md) | 2026-09-30 |
+| audit-approval | `/audit-approval/bill-of-lading-review` | 审核审批 | 批次列表、六部分审核依据、部分审核和通过后驳回；批次状态与我的审核状态合成一列，悬浮查看本人状态和审批流程；申请放单的提单状态与我的审核状态同样合成一列，悬浮查看本人审核状态、驳回原因和本批审批流程；详情摘要含本批未收和客户欠款，压单行用淡橙底并在行首标红；申请放单的通过和驳回固定在表下，页签数量为浅底胶囊；各表占满剩余高度，滚动时表头和合计不动；应收欠费未到期天数绿色、表上为折算后本位币，悬浮金额以及申请放单、压单、后续新单、历史异常和摘要中的未收金额可查看折算前原币，并在表底按本位币合计；申请放单、压单、后续新单按提单行展示超期证明。 | [提单签出审核](./modules/audit-approval/bill-of-lading-review.md) | 2026-09-30 |
 | mp（小程序） | `apps/mp` `pages/loading/list`、`pages/loading/detail` | 小程序 / 监装师傅端 | 独立 uni-app 小程序工程（`@vben/mp`）。第一期做监装师傅端：新派/进行中/已完成三分段列表、详情及摄像头列表选择认领、认领/拒接/取消完成、监装处理面板内保存箱号封号照片与完成状态、按维护的附件类型分区支持多图，进入详情获取位置和中文地址、同任务上传复用且后台返回刷新，新图片通过隐藏的 lime-painter 画板写入上传人、时间及中文地址水印；详情监装堆场可一键导航（腾讯地理编码 + 微信 openLocation）；微信静默登录 + 手机号绑定，失效会话同步清理并回登录页；入口按用户属性含监装判定。底栏 Tab 文案为「监装」。列表分段为 Canvas 斜切滑块 Tab；检索抽屉用本地 `search-drawer`。详情视觉对齐 Figma 检索条件稿。开发态接口指向津海通。默认 `pnpm build` 不带该包。列表默认按预计到货时间倒序。冷启动与从后台回到前台自动检查小程序更新，新版本由用户确认重启。 | [小程序 - 监装师傅端](./modules/mp/loading-order.md) | 2026-09-27 |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | \_core | `/auth/login` | 账户与认证 | 登录入口：账号密码 + 滑动验证（DEV 可跳过）；品牌背景/Logo；站点 favicon 与默认 `/logo.png` 取自 `public/`；本地 `dev` 标题仍为「佳越测试」，接口走浩瀚远洋；青港标题为「青港国际」，青岛海鼎/山东金冠按各自 mode 切换标题与 Logo。 | [登录页](./modules/_core/login.md) | 2026-09-22 |
 | dashboard | `/analytics` | 驾驶舱 | 拓客管理已从菜单下线。页面不再注册；打开旧地址会离开该页。 | [分析看板](./modules/dashboard/analytics.md) | 2026-09-29 |
 | dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；海出动态列缺少港口专属配置时回退默认港口配置；待处理服务项显示「待」；完成任务若自动生成费用则弹窗展示；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情；全品牌隐藏紧急处理/异常业务 mock。页签不再固定，无工作台权限不出现入口。非浩瀚远洋有权限时作为登录首页。 | [工作台](./modules/dashboard/workspace.md) | 2026-09-29 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为工作台。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-09-29 |
-| clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-20 |
+| clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-30 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料；「是否共享」在所属公司标题右侧；未保存切走可缓存。保存成功后 replace 进编辑并关闭原新建页签。 | [客户新建](./modules/clients/create.md) | 2026-09-11 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护客户完整资料；基础信息「是否共享」在所属公司标题旁；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-09-14 |
 | sea-exports | `/sea-exports/create`、编辑 Tab「基础信息」 | 操作管理 / 海运出口 | 基础信息表单目录职责、依赖关系与私有拆分文件说明。 | [基础信息表单](./modules/sea-exports/basic-info-form.md) | 2026-09-25 |
@@ -17,7 +17,7 @@
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；顶栏可按当前列表筛选和排序翻「上一票 / 下一票」；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab；基础信息 6 列顺序对齐业务稿；场站联系人在标签旁展示，保存时透传防空覆盖；委托单位/订舱代理联系人同样挂在标签旁，保存带回联系人 Id；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定），下拉按当前用户各公司或所选销售组织所属公司过滤；页头委托编号支持一键重新生成；港口详情已对象化，回显整对象注入 selectedItems；基础信息保存成功后下发最新详情并清理费用联动缓存；集装箱合计含体积；船名/航次右侧可查询码头船舶，确定引入后回填实际开船/码头航次/截港等并保存（码头航次界面不展示，弹窗也不出该列）；无行级编辑权限时仅禁用保存，表单仍可改；分单 Tab 支持分单头备注（代理地址旁）、复制分单（不带分提单号与装箱）与独立打印（数据源 500），签单方式必填且新建不设默认值，标签宽度整体增加 8px；货物区底部前端拼件数大写 SAY 行；船期卡标签为 ETD。分单收发通、代理、唛头、货描输入时英文小写转大写。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-30 |
 | shared | 海出/海进/空出编辑 Tab「应收应付」 | 共享能力 / 订单费用 | 应收应付费用录入全量说明：布局与拖拽分割、顶栏结算申请/整票提交、表头新增保存删除与更多菜单、Handsontable 列与状态着色、字段联动、审核流、批量引入/互转/AI/排序/打印、汇总口径、权限遮罩、脏检查与更改单差异。 | [应收应付费用录入](./modules/shared/order-fee-entry.md) | 2026-09-20 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
-| sea-exports | `/loading-orders` | 操作管理 / 监装 | 监装工单分页列表：检索后双击进海出编辑页监装 Tab；派单人只展示姓名，PC 不提供拨打；默认按预计到货时间倒序；列头排序只开放后端 `ApplySorting` 能走的路径，品名与派单人不可排；监装状态检索多选 `statuses`。 | [监装列表](./modules/sea-exports/loading-orders.md) | 2026-09-20 |
+| sea-exports | `/loading-orders` | 操作管理 / 监装 | 监装工单分页列表：检索后双击进海出编辑页监装 Tab；派单人只展示姓名，PC 不提供拨打；默认按预计到货时间倒序；列头排序只开放后端 `ApplySorting` 能走的路径，品名与派单人不可排；监装状态检索多选 `statuses`。 | [监装列表](./modules/sea-exports/loading-orders.md) | 2026-09-30 |
 | sea-exports | `/sea-exports/:id/edit` Tab「监装工单」 | 操作管理 / 海运出口 | 监装工单（管理端）：按海出查工单、开单派师傅、勾监装要求、填写 remark、点推荐回填堆场与师傅、提交/撤回；顶栏「分享」先预览客户页并可切中英文再复制免登录链接；箱型/箱号/封号/是否完成只读；监装照片有 `.Edit` 时可按箱单独改（任意状态），类型横排且每类型一张，保存 `EditOrderCtnAttachmentGroupsAsync`；明细包装空态区分未填包装与包装无明细。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-09-23 |
 | sea-exports | `/loading-order-share` | 操作管理 / 海运出口 | 监装客户公开详情：免登录，query 传主提单号+监装工单号，可选 `lang=en`；页头 Logo 滚动吸顶；主提单号与视频入口置顶，下方按运输、货物、监装分组并展示箱状态与照片；不展示监装要求与备注。 | [监装工单客户公开详情](./modules/sea-exports/loading-order-share.md) | 2026-09-21 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表复用 Handsontable，页签一次只显示应收或应付，保存只提交当前侧。 | [更改单](./modules/sea-exports/change-order.md) | 2026-09-15 |
@@ -31,67 +31,67 @@
 | air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：移除会计期间检索，默认按起飞日期倒序并高亮列头；点起飞日期排序后列头保持高亮；无个人配置时按海运出口同类业务结构展示默认列；支持关键字、9 维分组、复制删除与运踪批量订阅。 | [空运出口列表](./modules/air-exports/index.md) | 2026-09-30 |
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地），航班与订舱代理在航段标题右侧；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值；支持 TextIn AI 识别预填；顶栏打印需先保存；页签随主运单号/委托编号动态显示；未保存切走可 KeepAlive。 | [空运出口新建](./modules/air-exports/create.md) | 2026-09-15 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；顶栏可按当前列表筛选和排序翻「上一票 / 下一票」；收发通可折叠且默认展开；货物区件数包装同行、右侧为内外部备注 Tab（多行 textarea）；航班与订舱代理在航段标题右侧；支持重新生成委托编号、复制、运踪订阅与单据打印（`PrintJsonType=5000`）；运踪 Tab 已切新服务商（摘要、全量异常预警、轨迹地图、重新订阅）；基础信息保存后联动刷新只读费用与收付徽标；基础信息顶栏支持 AI 识别预填；浏览器页签显示主运单号或委托编号。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-09-20 |
-| commission | `/commission/sales`、`/commission/operation` | 提成管理 | 销售提成与操作提成共用列表组件，靠路由 `commissionType` 区分；支持提成人/提成月分组；提交、撤销、删除后同步刷新分组条数；新建弹窗按设计稿浅灰底、内嵌筛选标签、分卡展示未结清/参与计算票。 | [提成单列表](./modules/commission/order-list.md) | 2026-09-10 |
-| freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价；单条生成报价；箱型成本/指导价红涨绿跌；批量新增可带出历史 DEM/DET；船名航次已对接后端落库并列表回显。 | [运价查询](./modules/freight-rate/index.md) | 2026-09-26 |
+| commission | `/commission/sales`、`/commission/operation` | 提成管理 | 销售提成与操作提成共用列表组件，靠路由 `commissionType` 区分；支持提成人/提成月分组；提交、撤销、删除后同步刷新分组条数；新建弹窗按设计稿浅灰底、内嵌筛选标签、分卡展示未结清/参与计算票。 | [提成单列表](./modules/commission/order-list.md) | 2026-09-30 |
+| freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价；单条生成报价；箱型成本/指导价红涨绿跌；批量新增可带出历史 DEM/DET；船名航次已对接后端落库并列表回显。 | [运价查询](./modules/freight-rate/index.md) | 2026-09-30 |
 | packing-calc | `/freight-rate/packing-calc` | 航线管理 / 装箱试算 | 柜内径与货物清单试算 + 3D；支持 Excel 导入、自动开柜、多柜型对比、草稿与海出预填；结果默认不落库。 | [装箱试算](./装箱计算/装箱计算模块总逻辑文档.md) | 2026-09-28 |
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 当前入口使用 Web SDK（仅船期、隐藏导航、默认中文）；收费弹窗替换为中立不可用提示及重新加载；原工作台保留待恢复。原实现：固定 8 周全量拉取后按共舱归组。查询条吸顶。方案数与最近查询同一行。最近查询胶囊可点再查、进页不回填港口。按周班只显示一个星期，同日按最近离港。全宽方案卡 + 原生班次表（船名/航次分列，截关一行）；船名旁悬浮 MMSI/IMO/呼号；点击共舱名复制（Clipboard 失败回退 execCommand）；详情弹窗展示完整字段（船舶定位暂下线）。 | [船期查询](./modules/schedule-query/index.md) | 2026-09-16 |
 | schedule-query | （UI 设计说明） | 航线管理 / 船期查询 | 给专业 UI 重做船期查询的设计说明：用户任务、信息层级、必留字段、现稿问题和交付物。 | [UI 设计说明](./modules/schedule-query/ui-design-brief.md) | 2026-09-02 |
 | schedule-query | （方案分组规则） | 航线管理 / 船期查询 | 方案卡如何归组：分组键、groupName 共舱串、清洗去重、卡片星期/航程/码头；飞驼列表走方案接口且用共舱 displayName，与本地差 1 组的口径。 | [方案分组规则](./modules/schedule-query/grouping.md) | 2026-09-02 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
 | spot-query | `/spot-query` | 航线管理 / 即时运价 | 选起运港、目的港、两端运输类型（CY/SD）与多箱型查询三方即时运价；港口 EDI 五字码前端白名单校验，不在名单则提示「港口不支持」且不调接口；超时 180s；按船司船名航次合并卡片，支持排序与费用明细；1 小时内复用结果展示多久前的运价。权限 `Admin.ExternalApi.Use`。页面不出现供应商名称。 | [即时运价](./modules/spot-query/index.md) | 2026-09-30 |
-| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；发票号/开票日期/销售方抬头从发票子表拼接，发票总额前端求和；支持批量下载发票附件；申请合计按原币/固定币别分口径展示，分页行嵌入当页按币别合计；先票后付提交前须有发票，列表可点发票流程补录（含从进项发票选择）。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-09-20 |
+| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；发票号/开票日期/销售方抬头从发票子表拼接，发票总额前端求和；支持批量下载发票附件；申请合计按原币/固定币别分口径展示，分页行嵌入当页按币别合计；先票后付提交前须有发票，列表可点发票流程补录（含从进项发票选择）。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-09-30 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；发票子表含销售方抬头与金额，总额前端求和；「从进项发票选择」在发票方式「不开票」右侧（已填票号排除，已选银行带开票信息 id）；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付可先空着保存、提交时才必填；可从海出/海进/空出应收应付带 orderFeeIds 预填（同一套发票校验）；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索，可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-09-19 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；发票子表含销售方抬头与金额，总额前端求和，保存全量覆盖；「从进项发票选择」在发票方式「不开票」右侧；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付提交时才要求至少一条发票；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索并筛业务类型，按业务简要读港口备注；驳回后可再次提交。编辑页固定打开时的申请单，审核时间轴不跟全局路由。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-09-24 |
-| fee-management | `/fee-management/invoice-application` | 费用管理 | 开票申请列表：检索、新建、双击编辑或查看、提交与撤销；申请时间筛选按自然日闭区间；列表展示关联费用聚合的结算状态；编辑提交进查看、查看撤回进编辑；跨部门查看时归属组织回显公司名、销售方按所属公司拉取。 | [开票申请列表](./modules/fee-management/invoice-application.md) | 2026-09-19 |
-| fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-09-20 |
+| fee-management | `/fee-management/invoice-application` | 费用管理 | 开票申请列表：检索、新建、双击编辑或查看、提交与撤销；申请时间筛选按自然日闭区间；列表展示关联费用聚合的结算状态；编辑提交进查看、查看撤回进编辑；跨部门查看时归属组织回显公司名、销售方按所属公司拉取。 | [开票申请列表](./modules/fee-management/invoice-application.md) | 2026-09-30 |
+| fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-09-30 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-09-19 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-09-19 |
 | fee-management | `/settlement-management/receive-settlement` | 费用管理 / 收费核销 | 收费核销列表与编辑入口，支持「按费用（type=0）」与「按开票申请（发票结算 type=1）」两种结算、新建必选归属组织、明细表只读展示同一流水下他人核销明细、按类型双击进入对应表单、锁定只读与银行流水页联动；按费用选费币别可清空，须填本次结算和跨币别汇率（同币别固定为 1），超流水只提示不拦截，追加明细时重填整张单本次结算；添加明细业务行可整票勾选，并展示开船日期、船公司、起运港、目的港、箱型箱量；发票结算选票为发票开出到费用，新建/追加传发票开出加费用并必填本次结算；编辑按发票开出分组，删除传发票开出和费用；菜单在「费用管理」下，URL 不变。 | [收费核销](./modules/settlement-management/receive-settlement.md) | 2026-09-30 |
-| settlement-management | `/settlement-management/payment-settlement` | 财务管理 | 付费结算列表与模块实现说明（筛选、锁定、权限、代码结构）。 | [付费结算](./modules/settlement-management/payment-settlement.md) | 2026-09-20 |
+| settlement-management | `/settlement-management/payment-settlement` | 财务管理 | 付费结算列表与模块实现说明（筛选、锁定、权限、代码结构）。 | [付费结算](./modules/settlement-management/payment-settlement.md) | 2026-09-30 |
 | settlement-management | `/settlement-management/payment-settlement/edit/:id` | 财务管理 | 付费结算编辑：按「付费申请+原币」扁平行对接 `*ByCurrencyAsync`；汇率由后端从申请快照；结算对象与币别随第一张申请锁定；表单逻辑拆 composable。 | [付费结算编辑](./modules/settlement-management/payment-settlement-id-edit.md) | 2026-09-20 |
-| settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名；支持付款方/银行/核销状态分组，删除后同步刷新分组条数。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-09-08 |
+| settlement-management | `/bank-statement` | 财务管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名；支持付款方/银行/核销状态分组，删除后同步刷新分组条数。侧边栏位于「财务管理」分组。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-09-30 |
 | settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：顶部左流水基础信息、右核销进度（百分比与进度条同一行）；有收费结算时币别和付款方只读，悬停或点击才提示先删除收费结算，流水金额在部分核销后仍可改；按费用核销在费用行内填汇率和流水币金额，底栏只读汇总并拦截超出流水；按发票核销选票为发票开出到费用并必填本次结算；关联核销金额列右对齐，差值非 0 橙色高亮，并可展开发票开出到费用。编辑页固定打开时的流水，切页不重载。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-09-30 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-09-08 |
-| settlement-management | `/settlement-management/input-invoice` | 财务管理 | 进项发票台账：检索、分组、手动拉取、双击进详情；详情固定打开时的发票，切页不重拉；拉取成功后同步刷新分组条数。付费申请可从本台账勾选回填。 | [进项发票列表](./modules/settlement-management/input-invoice.md) | 2026-09-24 |
-| audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底；首查稳定带上费用审核状态默认「未处理」；审核成功后同步刷新分组条数。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-09-20 |
-| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」，首查经 `submitForm` 写入最近提交值；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表（含抬头、金额、总额）及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-20 |
-| audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；「我的审核状态」默认审核中，首查经 `submitForm` 写入最近提交值；可按销售多选筛选；列表含主提单号、操作、销售；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-09-29 |
-| audit-approval | `/audit-approval/commission-review` | 审核审批 | 提成审核任务列表；支持按提成类型/提成人/提成月分组；底部当页合计提成金额/底薪/最终应发；批量通过或驳回后同步刷新分组条数。 | [提成审核](./modules/audit-approval/commission-review.md) | 2026-09-09 |
+| settlement-management | `/settlement-management/input-invoice` | 财务管理 | 进项发票台账：检索、分组、手动拉取、双击进详情；详情固定打开时的发票，切页不重拉；拉取成功后同步刷新分组条数。付费申请可从本台账勾选回填。 | [进项发票列表](./modules/settlement-management/input-invoice.md) | 2026-09-30 |
+| audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底；首查稳定带上费用审核状态默认「未处理」；审核成功后同步刷新分组条数。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-09-30 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；列表默认筛任务状态「审核中」，首查经 `submitForm` 写入最近提交值；展示主提单号与委托编号（多票逗号拼接、过长省略）与申请合计；费用合计卡片展示结算对象应收未结算；附件区展示发票子表（含抬头、金额、总额）及申请/结算附件；费用明细业务组默认收起；三栏间隙可拖动改大小；通过/驳回走 AuditAsync，整单仍在审且本人节点已过时同一【驳回】按钮内走 RejectAsync。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-09-30 |
+| audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；「我的审核状态」默认审核中，首查经 `submitForm` 写入最近提交值；可按销售多选筛选；列表含主提单号、操作、销售；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-09-30 |
+| audit-approval | `/audit-approval/commission-review` | 审核审批 | 提成审核任务列表；支持按提成类型/提成人/提成月分组；底部当页合计提成金额/底薪/最终应发；批量通过或驳回后同步刷新分组条数。 | [提成审核](./modules/audit-approval/commission-review.md) | 2026-09-30 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
-| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场；堆场地址填完整中文供小程序导航编码。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-09-06 |
-| basic-data | `/basic-data/loading-requirement` | 基础资料 | 监装要求模板（主表要求名 + 明细子表），供监装工单勾选；列表默认按主表 `SortId` 升序。 | [监装要求](./modules/basic-data/loading-requirement.md) | 2026-08-22 |
-| basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
-| basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
-| basic-data | `/basic-data/code-goods` | 基础资料 | 维护商品品名及规格/型号子表，支撑委托与海运进口箱表规格型号下拉。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-08-16 |
-| basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段；业务下拉全量缓存，本页增删改后即时刷新；抽屉表单可维护明细包装子表，供监装工单选明细包装。 | [包装代码](./modules/basic-data/code-package.md) | 2026-08-22 |
-| basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-05-16 |
-| basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-09-14 |
-| basic-data | `/basic-data/code-source` | 基础资料 | 维护业务来源代码，支撑客户或委托来源识别。 | [来源代码](./modules/basic-data/code-source.md) | 2026-05-16 |
-| basic-data | `/basic-data/code-frt` | 基础资料 | 维护运费相关代码，支撑费用录入和运价映射。 | [运费代码](./modules/basic-data/code-frt.md) | 2026-05-16 |
-| basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-05-16 |
-| basic-data | `/basic-data/fee-name` | 基础资料 | 维护费用名称字典，是费用录入和费用代码的基础。 | [费用名称](./modules/basic-data/fee-name.md) | 2026-05-16 |
-| basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细；默认币别大数 ID 字符串透传。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-07-12 |
-| settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础；币别大数 ID 字符串透传；生效按日历日含结束日当天。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-08-20 |
-| basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-30 |
-| basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段；国家/航线大数 ID 字符串透传；可维护排序号，管理列表及分页 `PortSelect` 默认按排序号降序；全量港口列表由后端排序。 | [港口代码](./modules/basic-data/port-code.md) | 2026-09-20 |
-| basic-data | `/basic-data/air-port` | 基础资料 | 维护空运机场资料（IATA 三字码、ICAO 码、城市、时区），支撑空运起运/目的机场字段；提供 `AirPortSelect` 业务下拉，国家大数 ID 字符串透传。 | [空运港口](./modules/basic-data/air-port.md) | 2026-08-05 |
-| basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码及普柜/特种柜分类，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-08-14 |
-| basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
-| basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-09-13 |
-| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-08-19 |
-| basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板：列表 + 编辑页；明细表 flex 填高，小屏可滚全行；未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-20 |
-| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。编辑页缓存后仍固定打开时的用户。 | [用户管理](./modules/system/user.md) | 2026-09-24 |
-| system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
-| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围。数据权限可按模块配置多条规则，并支持排除人员；不选模块为通用规则。 | [权限管理](./modules/system/permission.md) | 2026-09-29 |
-| system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-20 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体；抽屉表单可维护堆场子表，供监装工单选堆场；堆场地址填完整中文供小程序导航编码。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-09-30 |
+| basic-data | `/basic-data/loading-requirement` | 基础资料 | 监装要求模板（主表要求名 + 明细子表），供监装工单勾选；列表默认按主表 `SortId` 升序。 | [监装要求](./modules/basic-data/loading-requirement.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-goods` | 基础资料 | 维护商品品名及规格/型号子表，支撑委托与海运进口箱表规格型号下拉。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段；业务下拉全量缓存，本页增删改后即时刷新；抽屉表单可维护明细包装子表，供监装工单选明细包装。 | [包装代码](./modules/basic-data/code-package.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-09-30 |
+| basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-source` | 基础资料 | 维护业务来源代码，支撑客户或委托来源识别。 | [来源代码](./modules/basic-data/code-source.md) | 2026-09-30 |
+| basic-data | `/basic-data/code-frt` | 基础资料 | 维护运费相关代码，支撑费用录入和运价映射。 | [运费代码](./modules/basic-data/code-frt.md) | 2026-09-30 |
+| basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-09-30 |
+| basic-data | `/basic-data/fee-name` | 基础资料 | 维护费用名称字典，是费用录入和费用代码的基础。 | [费用名称](./modules/basic-data/fee-name.md) | 2026-09-30 |
+| basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细；默认币别大数 ID 字符串透传。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-09-30 |
+| settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础；币别大数 ID 字符串透传；生效按日历日含结束日当天。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-09-30 |
+| basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-09-30 |
+| basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段；国家/航线大数 ID 字符串透传；可维护排序号，管理列表及分页 `PortSelect` 默认按排序号降序；全量港口列表由后端排序。 | [港口代码](./modules/basic-data/port-code.md) | 2026-09-30 |
+| basic-data | `/basic-data/air-port` | 基础资料 | 维护空运机场资料（IATA 三字码、ICAO 码、城市、时区），支撑空运起运/目的机场字段；提供 `AirPortSelect` 业务下拉，国家大数 ID 字符串透传。 | [空运港口](./modules/basic-data/air-port.md) | 2026-09-30 |
+| basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码及普柜/特种柜分类，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-09-30 |
+| basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-09-30 |
+| basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略；含海出/海进/空出委托编号及业务日期(ETD)年月规则。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-09-30 |
+| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-09-30 |
+| basic-data | `/basic-data/order-fee-template` | 基础资料 | 自动费用模板：列表 + 编辑页；明细表 flex 填高，小屏可滚全行；未保存切走可缓存。 | [自动费用模板](./modules/basic-data/order-fee-template.md) | 2026-09-30 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径与开票分机号；可查看用户最终生效权限；用户属性含「监装」（512）。编辑页缓存后仍固定打开时的用户。 | [用户管理](./modules/system/user.md) | 2026-09-30 |
+| system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-09-30 |
+| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围。数据权限可按模块配置多条规则，并支持排除人员；不选模块为通用规则。 | [权限管理](./modules/system/permission.md) | 2026-09-30 |
+| system | `/system/commission-config` | 系统管理 | 提成规则列表；生效期间按起止日期实时组合展示。 | [提成配置列表](./modules/system/commission-config.md) | 2026-09-30 |
 | system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础；公司级可上传 Logo（打印等），并可维护接口开票 AppKey/AppSecret/AccessToken；新增银行账户时账户名称默认带出公司名称。 | [部门管理](./modules/system/dept.md) | 2026-09-14 |
-| system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-09-21 |
+| system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-09-30 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型（含业务联系单 PreOrder=8）、条件和审批节点；分支条件分「且组 / 或组」，可只配或条件。 | [工作流新建](./modules/system/workflow-create.md) | 2026-09-21 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型（含业务联系单）；分支条件分「且组 / 或组」，可只配或条件。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-09-21 |
-| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。附件类型默认展示模块消费 `ModuleType`（含 160050 业务联系单、160100 监装箱型附件）。 | [枚举管理](./modules/system/enumeration.md) | 2026-09-05 |
-| announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-09-09 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；支持 JSON 导入/导出跨公司迁移；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选；`SeaImportUserAttribute` 暂未启用）。海运进口贸易方式消费 `TradeMode`。附件类型默认展示模块消费 `ModuleType`（含 160050 业务联系单、160100 监装箱型附件）。 | [枚举管理](./modules/system/enumeration.md) | 2026-09-30 |
+| announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-09-30 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
-| system | `/system/tenant-config` | 系统管理 | 当前租户自定义键值对（`Sys_Settings` 租户层）；菜单与增删改查暂借权限配置权限点；配置名建议 `Web.` 前缀，创建后不可改。 | [租户配置](./modules/system/tenant-config.md) | 2026-09-22 |
+| system | `/system/tenant-config` | 系统管理 | 当前租户自定义键值对（`Sys_Settings` 租户层）；菜单与增删改查暂借权限配置权限点；配置名建议 `Web.` 前缀，创建后不可改。 | [租户配置](./modules/system/tenant-config.md) | 2026-09-30 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
 | shared | （全站附件查看器） | 共享能力 | 附件查看器单例弹窗：`openAttachmentViewer(item)` 打开；图片/PDF 内嵌预览，OFD 用 vue-liteofd 本地渲染，Office 用 vue-office 本地渲染（不走微软）。下载走 blob + `friendlyFileName`。开发预览走 Vite `/Uploads` 代理，生产直连后端附件地址。付费申请/审批、海出附件 Tab、开票、公告等已接入。打印除外。 | [全局附件查看器](./modules/shared/attachment-viewer.md) | 2026-09-09 |
 | shared | （全局偏好） | 共享能力 | 项目级 `preferences.ts` 覆盖：布局/主题/侧边栏/页签/Logo；默认主题圆角 `0.5`；`app.name` 与 Logo 启动时强制跟构建期 overrides；hhyy 顶栏用整图 `logo-text`。 | [全局偏好覆盖](./modules/shared/preferences.md) | 2026-09-11 |
@@ -110,4 +110,4 @@
 | report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总；右键隐藏列按用户持久化。 | [利润报表](./modules/report/profit-report.md) | 2026-09-30 |
 | report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总；列隐藏持久化与利润报表隔离。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-30 |
 
-| settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-09-19 |
+| settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-09-30 |

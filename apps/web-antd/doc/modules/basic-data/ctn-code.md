@@ -2,7 +2,7 @@
 title: 箱型代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-14
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-08-14 | `Feature` | 箱型新增必填柜型下拉、列表列与查询筛选，并对齐完整/简易对象接口类型。 | `cabinetType` 请求体与响应使用 camelCase，分页查询封装使用 `CabinetType`；取值 0 普柜、1 特种柜。 |
 | 2026-06-20 | `Fix` | `CtnSelect` 下拉分页请求显式携带 `Sorting=OrderNo ASC, Id DESC`，与列表页排序一致。 | 排序参数在 API 默认与 `ctn-select.vue` 调用处双重保障。 |
 | 2026-06-20 | `Fix` | 箱型代码分页列表默认携带 `Sorting=OrderNo ASC, Id DESC`，列表与下拉顺序与排序号一致。 | 默认排序下沉至 `getCtnCodePagedList`，多字段排序使用逗号分隔。 |

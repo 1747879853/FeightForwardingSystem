@@ -2,7 +2,7 @@
 title: 费用代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,5 +48,6 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-07-12 | `Fix` | 修复费用代码编辑时切换默认币别的大数 ID 校验与精度问题。 | `currencyId` 由 `z.number()` 改为 preprocess→string；DTO/delete 参数支持 `number \| string`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/fee-code` 对应组件 `src/views/system/basic-data/FeeCodeAdmin/list.vue`，权限口径为 Admin.FeeCode / Admin.FeeCode.Get。 |

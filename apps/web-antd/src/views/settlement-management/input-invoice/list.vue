@@ -211,8 +211,10 @@ const [Grid, gridApi] = useVbenVxeGrid<Api.InputInvoiceListDto>({
     align: 'left',
     columns,
     height: '100%',
-    keepSource: true,
-    rowConfig: { keyField: 'id', isHover: true },
+    // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
+    virtualXConfig: { enabled: true, gt: 0 },
+    virtualYConfig: { enabled: true, gt: 0 },
+    rowConfig: { keyField: 'id', isHover: true, height: 40 },
     pagerConfig: { enabled: true },
     proxyConfig: {
       // 关闭自动加载：由 onMounted 先恢复分组字段再 submitForm 首查，避免竞态

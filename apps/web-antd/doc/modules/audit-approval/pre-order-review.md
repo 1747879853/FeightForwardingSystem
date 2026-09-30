@@ -2,7 +2,7 @@
 title: 业务联系单审核
 module: 审核审批
 author: 前端团队
-last_updated: 2026-09-29
+last_updated: 2026-09-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-09-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 列表分页改大后只绘制可见行列，不再深拷贝整页数据。 | 开启 virtualX/Y（gt: 0），行高 40，去掉无编辑用途的 keepSource。详见[变更记录](../../changelogs/change-log-2026-09-30-其余业务列表虚拟滚动.md)。 |
 | 2026-09-29 | `Fix` | 检索增加销售；列表增加主提单号、操作、销售。 | 销售多选按重复参数传 `SaleIds`。详见 [变更记录](../../changelogs/change-log-2026-09-29-业务联系单审核增加销售检索和列.md)。 |
 | 2026-09-09 | `Fix` | 进入业务联系单审核首查与翻页稳定带上「我的审核状态=审核中」。 | `autoLoad: false` + `submitForm`；`mapParams` 对 `MyStatus === undefined` 兜底。详见 `changelogs/change-log-2026-09-09-list-search-default-submit-form.md`。 |
 | 2026-09-08 | `Fix` | 审核时间筛选改为自然日闭区间。 | 详见 `changelogs/change-log-2026-09-08-date-range-start-end-of-day.md`。 |
