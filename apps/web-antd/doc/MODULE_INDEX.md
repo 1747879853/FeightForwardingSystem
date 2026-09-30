@@ -106,7 +106,7 @@
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
 | shared | （全站页面级表单） | 共享能力 | 未保存离开拦截：切走可缓存、点 X 才销毁；单个关标签先确认；当前页脏时 `beforeunload`。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-08-23 |
 | report | （模块索引） | 报表 | 配置驱动基座 + 利润/欠费两页；文档均在 `doc/modules/report/`，勿在 `views/report` 下写 README。 | [报表模块索引](./modules/report/README.md) | 2026-09-12 |
-| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总。 | [利润报表](./modules/report/profit-report.md) | 2026-09-12 |
-| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-12 |
+| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总；右键隐藏列按用户持久化。 | [利润报表](./modules/report/profit-report.md) | 2026-09-30 |
+| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总；列隐藏持久化与利润报表隔离。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-30 |
 
 | settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-09-19 |

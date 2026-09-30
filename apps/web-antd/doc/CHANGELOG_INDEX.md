@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-30] [报表自定义列持久化与列头三击排序](./changelogs/change-log-2026-09-30-report-column-persist-sort.md)
+
 - [2026-09-29] [数据权限按模块配置](./changelogs/change-log-2026-09-29-数据权限按模块配置.md)
 
 - [2026-09-29] [业务联系单审核增加销售检索和列](./changelogs/change-log-2026-09-29-业务联系单审核增加销售检索和列.md)
