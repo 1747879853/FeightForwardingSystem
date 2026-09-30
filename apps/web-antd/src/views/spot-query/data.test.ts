@@ -105,9 +105,9 @@ describe('buildSpotViewModel', () => {
 
 describe('feeCategoryLabel', () => {
   it('maps English fee group titles to Chinese', () => {
-    expect(feeCategoryLabel('Origin charges')).toBe('起运港费用');
-    expect(feeCategoryLabel('Freight charges')).toBe('海运费');
-    expect(feeCategoryLabel('Destination charges')).toBe('目的港费用');
+    expect(feeCategoryLabel('Origin charges')).toBe('起运港附加费');
+    expect(feeCategoryLabel('Freight charges')).toBe('基本海运费');
+    expect(feeCategoryLabel('Destination charges')).toBe('目的港附加费');
     expect(feeCategoryLabel('  other charges ')).toBe('其他费用');
   });
 
