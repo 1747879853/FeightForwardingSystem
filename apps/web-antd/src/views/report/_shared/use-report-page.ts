@@ -102,12 +102,14 @@ export function useReportPage(config: ReportPageConfig) {
       orderIndex.set(key, index);
     });
 
+    const hiddenSet = new Set(persistedSetting?.hiddenColumnKeys ?? []);
     const built = dynamicHotColumns.value.map((col, index) => {
       const key = String(col.data ?? '');
       const savedOrder = orderIndex.get(key);
       return {
         ...col,
-        visible: visibility?.[key] !== false,
+        // 列留在表格里，显隐交给 Handsontable hiddenColumns，右键才能再显示
+        visible: true,
         fixed: fixedMap?.[key] ?? col.fixed ?? false,
         // 无历史顺序时保持默认 index；有则用保存的顺序，未知列靠后
         order: savedOrder ?? index + (orderList?.length ?? 0),
@@ -123,12 +125,18 @@ export function useReportPage(config: ReportPageConfig) {
 
     columnConfigs.value = built;
 
-    // 隐藏列与持久化同步：只保留当前仍存在的列键，避免历史脏键一直占着
+    // 隐藏列与持久化同步：列配置里 visible:false 与 hiddenColumnKeys 合并
     if (persistedSetting) {
       const known = new Set(built.map((col) => String(col.data ?? '')));
-      hiddenColumnKeys.value = (persistedSetting.hiddenColumnKeys ?? []).filter(
-        (key) => known.has(key),
-      );
+      const fromVisibility = Object.entries(visibility ?? {})
+        .filter(([, value]) => value === false)
+        .map(([key]) => key);
+      hiddenColumnKeys.value = [
+        ...new Set([
+          ...(persistedSetting.hiddenColumnKeys ?? []),
+          ...fromVisibility,
+        ]),
+      ].filter((key) => known.has(key));
     }
   }
 
@@ -177,26 +185,50 @@ export function useReportPage(config: ReportPageConfig) {
 
   function handleColumnConfigsUpdate(next: any[]) {
     columnConfigs.value = next;
+    const hidden = next
+      .filter((col) => col?.visible === false && col?.data)
+      .map((col) => String(col.data));
+    hiddenColumnKeys.value = hidden;
     const patch = buildPersistPatchFromColumnConfigs(next);
+    patch.hiddenColumnKeys = hidden;
     persistedSetting = {
       ...(persistedSetting ?? { hiddenColumnKeys: [] }),
       ...patch,
-      hiddenColumnKeys: patch.hiddenColumnKeys ?? [],
+      hiddenColumnKeys: hidden,
     };
     schedulePersistSave(patch);
   }
 
   function handleHiddenColumnKeysUpdate(keys: string[]) {
     hiddenColumnKeys.value = keys;
+    const hiddenSet = new Set(keys);
+    // 与 Handsontable HiddenColumns 同步：隐藏键同时反映到 visible，供导出/分组过滤
+    columnConfigs.value = columnConfigs.value.map((col) => ({
+      ...col,
+      visible: col?.data ? !hiddenSet.has(String(col.data)) : col.visible,
+    }));
     if (persistedSetting) {
       persistedSetting = {
         ...persistedSetting,
         hiddenColumnKeys: [...keys],
+        columnVisibility: Object.fromEntries(
+          columnConfigs.value
+            .filter((col) => col?.data)
+            .map((col) => [String(col.data), col.visible !== false]),
+        ),
+        columnOrder: [...columnConfigs.value]
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((col) => String(col.data))
+          .filter(Boolean),
       };
     } else {
       persistedSetting = { hiddenColumnKeys: [...keys] };
     }
-    schedulePersistSave({ hiddenColumnKeys: [...keys] });
+    schedulePersistSave({
+      hiddenColumnKeys: [...keys],
+      columnVisibility: persistedSetting.columnVisibility,
+      columnOrder: persistedSetting.columnOrder,
+    });
   }
 
   // ==================== 查询表单 ====================

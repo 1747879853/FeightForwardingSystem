@@ -10,7 +10,7 @@
 ## 改动
 
 - 新增 `use-report-column-persist.ts`：复用 `useTableConfigStore`，UserSetting key 为 `table_config_ProfitReport` / `table_config_ArrearsReport`。
-- `use-report-page`：加载并合并用户隐藏列/显隐/顺序；隐藏列变更防抖保存；「重置」清除用户列配置。
+- 工具栏「列设置」已去掉。列显隐、顺序分别走 Handsontable 右键「隐藏列 / 显示隐藏的列」与拖拽列头，写入同一份 UserSetting。重新查询和刷新后仍生效；点「重置」恢复默认列。
 - `report-hot-table`：
   - 排序始终从 `originalData` 重排（`sort.ts`）；
   - `groupingCache` 键加入排序签名；
