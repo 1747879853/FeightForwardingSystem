@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildSpotViewModel,
+  feeCategoryLabel,
   sortSpotCards,
   type SpotQueryResultDto,
 } from './data';
@@ -99,5 +100,20 @@ describe('buildSpotViewModel', () => {
     ]);
     const sorted = sortSpotCards(cards, 'lowestPrice');
     expect(sorted[0]?.carrierCode).toBe('B');
+  });
+});
+
+describe('feeCategoryLabel', () => {
+  it('maps English fee group titles to Chinese', () => {
+    expect(feeCategoryLabel('Origin charges')).toBe('起运港费用');
+    expect(feeCategoryLabel('Freight charges')).toBe('海运费');
+    expect(feeCategoryLabel('Destination charges')).toBe('目的港费用');
+    expect(feeCategoryLabel('  other charges ')).toBe('其他费用');
+  });
+
+  it('keeps unknown names and fills empty', () => {
+    expect(feeCategoryLabel('THC')).toBe('THC');
+    expect(feeCategoryLabel('')).toBe('未分类');
+    expect(feeCategoryLabel(null)).toBe('未分类');
   });
 });

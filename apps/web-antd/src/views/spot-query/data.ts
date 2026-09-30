@@ -125,6 +125,33 @@ export function priceFeeTypeLabel(type?: null | number): string {
   return '-';
 }
 
+/** 三方费用分组标题，接口为英文，抽屉展示中文。未收录的名称原样返回。 */
+const FEE_CATEGORY_LABELS: Record<string, string> = {
+  'origin charges': '起运港费用',
+  'origin charge': '起运港费用',
+  origin: '起运港费用',
+  'freight charges': '海运费',
+  'freight charge': '海运费',
+  freight: '海运费',
+  'ocean freight': '海运费',
+  'destination charges': '目的港费用',
+  'destination charge': '目的港费用',
+  destination: '目的港费用',
+  'other charges': '其他费用',
+  'others charges': '其他费用',
+  others: '其他费用',
+  other: '其他费用',
+  'additional charges': '附加费',
+  'inland charges': '内陆费用',
+};
+
+export function feeCategoryLabel(name?: null | string): string {
+  const raw = String(name ?? '').trim();
+  if (!raw) return '未分类';
+  const key = raw.toLowerCase().replaceAll(/\s+/g, ' ');
+  return FEE_CATEGORY_LABELS[key] ?? raw;
+}
+
 export function dndTypeLabel(type?: null | number): string {
   switch (type) {
     case 1: {
