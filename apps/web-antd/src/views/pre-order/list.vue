@@ -42,6 +42,7 @@ import {
   createPagedListQuery,
 } from '#/utils/paged-list-query';
 import { isLegacyOceanExportTracking } from '#/utils/tracking-brand';
+import BusinessStatusLabel from '#/views/sea-export-admin/modules/business-status-label.vue';
 import { SEA_EXPORT_BUSINESS_STATUS_COLORS } from '#/views/sea-export-admin/data';
 import {
   buildServiceTypeLabelMap,
@@ -400,34 +401,16 @@ const handleOpenTracking = (row: PreOrderAdminApi.PreOrderDto) => {
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
             :alt="row?.carrier?.code || 'carrier-logo'"
+            width="32"
+            height="32"
+            loading="lazy"
             class="h-8 w-8 rounded object-contain"
           />
           <span>{{ row?.carrier?.code || '--' }}</span>
         </span>
       </template>
       <template #businessStatus="{ row }">
-        <span
-          v-if="resolveBusinessStatus(row).text === '-'"
-          class="text-gray-400"
-        >
-          -
-        </span>
-        <span
-          v-else
-          class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
-          :style="{
-            color: resolveBusinessStatus(row).colors.color,
-            backgroundColor: resolveBusinessStatus(row).colors.background,
-          }"
-        >
-          <span
-            v-if="resolveBusinessStatus(row).state === 'active'"
-            class="business-status__pending"
-          >
-            待
-          </span>
-          {{ resolveBusinessStatus(row).text }}
-        </span>
+        <BusinessStatusLabel v-bind="resolveBusinessStatus(row)" />
       </template>
       <template #yundangTrackStatus="{ row }">
         <span
@@ -482,22 +465,3 @@ const handleOpenTracking = (row: PreOrderAdminApi.PreOrderDto) => {
     <AirTrackingModal />
   </Page>
 </template>
-
-<style scoped>
-.business-status__pending {
-  box-sizing: border-box;
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-  background: #d97706;
-  border-radius: 3px;
-}
-</style>

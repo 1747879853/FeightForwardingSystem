@@ -28,7 +28,7 @@ last_updated: 2026-09-30
 - **大分页绘制：** 横向、纵向虚拟滚动始终开启，行高固定 40，分页到 100/200 时只绘制视口内的行和列。列表无单元格编辑，不再保留 `keepSource` 原始副本。
 - **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。每次列表查询会记住筛选和排序（去掉分页），编辑页「上一票 / 下一票」按这份条件定位。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
-- **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。进行中（`active`）在文案前加橙色「待」徽标。
+- **业务状态列：** 文案仍按服务项进度计算，每格只算一次；展示按 `upcoming/active/done` 三态着色。进行中（`active`）在文案前加橙色「待」徽标。默认只渲染这段文字，鼠标移入或聚焦后才挂载业务流程悬浮层。
 - **业务状态悬浮任务：** 悬停或键盘聚焦业务状态时查询 `GetServicesAsync`，按时间轴展示本票已选服务项、处理人、状态、完成时间及主流程标识。标题下展示当前行委托编号，便于对照是哪一票。尚未生成任务的节点只保留名称和主流程标识，不显示「未生成任务」「处理人」「未分配」。当前节点高亮，状态色与详情页服务项目一致，同优先级标为并行。当前处理人且具备操作权限时可点完成；复用详情完成接口校验字段、附件和费用。完成人可经确认取消完成。操作后重查任务、刷新本行状态并标记已打开的详情下次进入时重拉；加载失败可重试，未生成任务或无权限时不展示操作按钮。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO。列 `field` 已改绑真实嵌套路径（如 `yard.name`、`transportOrder.client.name`、`bookingAgent.name`、`pod.lane.laneName`）；`list.vue` `fieldMap` 以新 field 为主并暂留旧键映射。六段港口列直接绑定 `*Remark` 真实字段，排序通过 `fieldMap` 仍走 `*.PortName`；个人列设置加载时迁移旧港口键，保留顺序、显隐、固定和宽度。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`orgs`）、后填充列（`creatorUserNickName`）显式 `sortable: false`。
@@ -42,7 +42,7 @@ last_updated: 2026-09-30
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **删除委托：** 选中一条后点击顶部「删除」（需 `Admin.SeaExport.Delete` 权限 **且** `row.isEditable === true`），二次确认后调用 `SeaExportAdmin/DeleteAsync`；删除成功会清理勾选状态并刷新当前列表。`isEditable` 为假时按钮禁用（tooltip：当前记录没有编辑权限，不能删除）。复制、双击进详情不看 `isEditable`。接口 ID 按 `number | string` 原样透传，兼容 GUID。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
-- **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
+- **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示。Logo 固定 32×32，并使用 `loading="lazy"`，避免大分页时一次解码全部图片。
 - **分组 Tab 船公司 Logo：** 当分组维度为「船公司」时，分组 Tab 在名称前展示对应船司 Logo（与列表船公司列「Logo + 名称」一致）。Logo 来源于 `GetGroupedListAsync` 船公司分组返回的 `logo` 附件；`list.vue` 的 `fetchGroups` 用 `buildAttachmentUrl` 将相对路径解析为完整地址注入通用 `GroupItem.logoUrl`，通用组件 `grouping-tabs.vue` 仅在 `logoUrl` 有值时渲染图片。其他分组维度或「未填写」项无 Logo。
 - **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。**工具栏左侧 `#toolbar-actions` 插槽始终挂载**（未分组显示列表标题，分组显示 Tab），避免与 `table-title` prop 联动切换导致 vxe 列配置被重置。
 - **分组数据不缓存（每次进入都拉取）：** 列表 `keepAlive`，但分组统计不做缓存——`onActivated` 每次重新进入列表都会调用 `grouping.refreshGroupData()`（复用最近一次列表查询参数）重新拉取分组条数，仅刷新分组、不改选中项、不重查列表；首次激活（与 `onMounted` 首查重合）刻意跳过以免重复请求。删除、工具栏刷新、从表单返回等走 `handleRefresh` 的路径也会在 `gridApi.query()` 后同步 `refreshGroupData()`，避免分组 Tab 条数过期。首屏若持久化过默认分组字段，`onMounted` 会先 `restorePersistedField()` 恢复分组字段状态（不查询），再由 `submitForm` 首查在同一次查询中拉取分组数据，避免「恢复 vs 首查」竞态导致分组只剩「全部」。
@@ -119,6 +119,7 @@ last_updated: 2026-09-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 业务状态默认只显示彩色文字，移入后再打开业务流程。船公司 Logo 懒加载并固定 32×32。 | 悬浮层不再按行预挂载；状态文案每格只计算一次。海运进口、业务联系单的船公司图同样处理，业务联系单状态也只算一次。详见[变更记录](../../changelogs/change-log-2026-09-30-列表业务状态与船公司图.md)。 |
 | 2026-09-30 | `Perf` | 分页改大后只绘制可见行列，列表不再深拷贝整页数据。勾选、排序、筛选不变。 | 开启 `virtualXConfig` / `virtualYConfig`（`gt: 0`），行高固定 40，去掉无编辑用途的 `keepSource`。详见[变更记录](../../changelogs/change-log-2026-09-30-业务列表虚拟滚动.md)。 |
 | 2026-09-24 | `Style` | 未生成任务的节点只保留名称和主流程；标题下展示委托编号。待处理高亮改为淡暖米色。完成、取消和自动费用提示不再被浮层挡住。 | 浮层层级 1990，低于确认框 2000 和消息 2010。详见[变更记录](../../changelogs/change-log-2026-09-24-海运出口业务流程未生成任务精简.md)。 |
 | 2026-09-24 | `Style` | 业务状态悬浮改为时间轴卡片：当前节点高亮，状态色对齐详情服务项目，并行节点成组。 | 完成、取消完成与刷新逻辑不变。详见[变更记录](../../changelogs/change-log-2026-09-24-海运出口业务状态悬浮样式.md)。 |

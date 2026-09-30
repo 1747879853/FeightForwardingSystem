@@ -65,6 +65,7 @@ last_updated: 2026-09-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Perf` | 业务状态每格只计算一次。船公司 Logo 懒加载并固定 32×32。 | 与海出共用 `BusinessStatusLabel`。详见[变更记录](../../changelogs/change-log-2026-09-30-列表业务状态与船公司图.md)。 |
 | 2026-09-30 | `Perf` | 分页改大后只绘制可见行列，列表不再深拷贝整页数据。勾选、排序、筛选不变。 | 开启 `virtualXConfig` / `virtualYConfig`（`gt: 0`），行高固定 40，去掉无编辑用途的 `keepSource`。详见[变更记录](../../changelogs/change-log-2026-09-30-业务列表虚拟滚动.md)。 |
 | 2026-09-20 | `Fix` | 修复起运港、目的港备注刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-17 | `Fix` | 进行中的业务状态在当前服务任务名前显示橙色“待”标记，与海运出口列表一致。 | 仅 `active` 状态展示标记；进度计算仍复用 `getSeaExportBusinessStatusMeta`。详见 [变更日志](../../changelogs/change-log-2026-09-17-pre-order-business-status-pending.md)。 |

@@ -580,6 +580,9 @@ useRefreshListOnFormReturn('SeaImportList', handleRefresh);
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
             :alt="row?.carrier?.code || 'carrier-logo'"
+            width="32"
+            height="32"
+            loading="lazy"
             class="h-8 w-8 rounded object-contain"
           />
           <span>{{ row?.carrier?.code || '--' }}</span>

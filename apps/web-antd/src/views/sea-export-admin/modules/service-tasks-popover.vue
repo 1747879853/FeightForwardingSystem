@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useAccess } from '@vben/access';
 import { useUserStore } from '@vben/stores';
 import { Button, Empty, message, Modal, Popover, Spin } from 'ant-design-vue';
@@ -24,6 +24,8 @@ const props = defineProps<{
   labels: Map<number, string>;
   processes: Map<number, boolean>;
   commissionNum?: null | string;
+  /** 列表格悬停后才挂载本组件，挂上时直接打开并查询 */
+  openOnMount?: boolean;
 }>();
 const emit = defineEmits<{ refreshed: [services: Service[]] }>();
 const { hasAccessByCodes } = useAccess();
@@ -110,6 +112,10 @@ function onOpenChange(value: boolean) {
   open.value = value;
   if (value) void load();
 }
+
+onMounted(() => {
+  if (props.openOnMount) onOpenChange(true);
+});
 
 async function complete(item: Service) {
   const taskId = item.seServiceTask?.id;

@@ -67,12 +67,7 @@ import {
   isVendorOceanExportTracking,
 } from '#/utils/tracking-brand';
 
-import {
-  getSeaExportBusinessStatusMeta,
-  SEA_EXPORT_BUSINESS_STATUS_COLORS,
-  useColumns,
-  useGridFormSchema,
-} from './data';
+import { useColumns, useGridFormSchema } from './data';
 import {
   migrateSeaExportPortColumnSetting,
   stringifySeaExportListDefaultColumnSetting,
@@ -98,7 +93,7 @@ import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-
 import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
 import BatchEditBusinessModal from './modules/batch-edit-business-modal.vue';
-import ServiceTasksPopover from './modules/service-tasks-popover.vue';
+import BusinessStatusCell from './modules/business-status-cell.vue';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const [BatchEditModal, batchEditModalApi] = useVbenModal({
@@ -596,12 +591,6 @@ const handleOpenVendorTracking = (row: SeaExportAdminApi.SeaExportDto) => {
   );
 };
 
-/** 「业务状态」列：计算最新服务进度文案 + 对应状态色（与详情页服务项目一致） */
-const resolveBusinessStatus = (row: SeaExportAdminApi.SeaExportDto) => {
-  const meta = getSeaExportBusinessStatusMeta(row, serviceTypeLabelMap.value);
-  return { ...meta, colors: SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state] };
-};
-
 const onGroupFieldChange = (value: number | undefined) => {
   if (value === undefined) {
     grouping.disable();
@@ -729,37 +718,12 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
       <template #businessStatus="{ row }">
-        <ServiceTasksPopover
-          :key="row.id"
-          :sea-export-id="String(row.id)"
-          :commission-num="row.transportOrder?.commissionNum"
+        <BusinessStatusCell
+          :row="row"
           :labels="serviceTypeLabelMap"
           :processes="serviceTypeProcessMap"
           @refreshed="row.seaExportServices = $event"
-        >
-          <span
-            v-if="resolveBusinessStatus(row).text === '-'"
-            class="text-gray-400"
-          >
-            -
-          </span>
-          <span
-            v-else
-            class="business-status inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
-            :style="{
-              color: resolveBusinessStatus(row).colors.color,
-              backgroundColor: resolveBusinessStatus(row).colors.background,
-            }"
-          >
-            <span
-              v-if="resolveBusinessStatus(row).state === 'active'"
-              class="business-status__pending"
-            >
-              待
-            </span>
-            {{ resolveBusinessStatus(row).text }}
-          </span>
-        </ServiceTasksPopover>
+        />
       </template>
       <template #mblNum="{ row }">
         <span class="inline-flex min-w-0 items-center">
@@ -803,6 +767,9 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
             :alt="row?.carrier?.code || 'carrier-logo'"
+            width="32"
+            height="32"
+            loading="lazy"
             class="h-8 w-8 rounded object-contain"
           />
           <span>{{ row?.carrier?.code || '--' }}</span>
@@ -829,33 +796,5 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 <style scoped>
 :deep(.sea-export-keyword-input input::placeholder) {
   font-size: 12px;
-}
-
-.business-status {
-  transition:
-    filter 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.business-status:hover {
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
-  filter: brightness(0.98);
-}
-
-.business-status__pending {
-  box-sizing: border-box;
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-  background: #d97706;
-  border-radius: 3px;
 }
 </style>
