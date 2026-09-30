@@ -64,31 +64,50 @@ export function useFieldPermission(profile: FieldPermissionProfile) {
     const namedSlots = new Set<string>();
     const slotColumnsVersion = shallowRef(0);
 
-    const renderColumns = (items: any[] = columns): any[] => {
+    const renderColumns = (items: any[] = columns, reset = true): any[] => {
+      const previousSlotColumns = reset ? new Map(slotColumns) : slotColumns;
+      if (reset) {
+        slotColumns.clear();
+        namedSlots.clear();
+      }
       const next = items
         .filter((column) => !column.field || !permission.always(column.field))
         .map((column) => {
           if (column.children)
-            return { ...column, children: renderColumns(column.children) };
+            return {
+              ...column,
+              children: renderColumns(column.children, false),
+            };
           if (!column.field) return column;
 
           const originalDefault = column.slots?.default;
-          // 已有具名插槽：保留原名，仅登记以便 Grid 包装
+          const needsMask = permission.cellMask(column.field);
+          // 已有具名插槽：保留原名。仅可能按行打码时才登记包装。
           if (
             typeof originalDefault === 'string' &&
             !originalDefault.startsWith('permission_')
           ) {
-            namedSlots.add(originalDefault);
+            if (needsMask) namedSlots.add(originalDefault);
+            return column;
+          }
+
+          if (!needsMask) {
+            if (
+              typeof originalDefault === 'string' &&
+              originalDefault.startsWith('permission_')
+            ) {
+              return previousSlotColumns.get(originalDefault) ?? column;
+            }
             return column;
           }
 
           const slot = `permission_${column.field}`;
           const original =
-            originalDefault === slot ? slotColumns.get(slot) : column;
+            originalDefault === slot ? previousSlotColumns.get(slot) : column;
           slotColumns.set(slot, original ?? column);
           return { ...column, slots: { ...column.slots, default: slot } };
         });
-      slotColumnsVersion.value += 1;
+      if (reset) slotColumnsVersion.value += 1;
       return autoSortable ? (applyDefaultSortable(next) ?? next) : next;
     };
 

@@ -277,12 +277,13 @@ it('条件屏蔽保留列，受限格子优先于业务插槽', async () => {
   );
 });
 
-it('列配置函数插槽会被转发（审核费用状态 Tag）', async () => {
+it('没有脱敏规则的列保持原插槽，有条件规则才走 permission_ 并转发函数插槽', async () => {
   const permission = setup();
   const feeSlot = vi.fn(({ row }: any) => `状态:${row.combinedFeeStatus}`);
   const [Grid] = permission.usePermissionGrid({
     gridOptions: {
       columns: [
+        { field: 'remark' },
         {
           field: 'combinedFeeStatus',
           slots: { default: feeSlot },
@@ -291,10 +292,22 @@ it('列配置函数插槽会被转发（审核费用状态 Tag）', async () => 
     },
   });
   const render = (Grid as any).setup({}, { attrs: {}, slots: {} });
+  expect(render().children.permission_combinedFeeStatus).toBeUndefined();
+  expect(render().children.permission_remark).toBeUndefined();
+  await loadMaskedFields();
+  vi.mocked(getCurrentUserMaskedFields).mockResolvedValue([
+    {
+      frightModule: 0,
+      fields: [{ propName: 'CombinedFeeStatus', alwaysMasked: false }],
+    },
+  ] as any);
+  await loadMaskedFields(true);
+  await nextTick();
   const slot = render().children.permission_combinedFeeStatus;
   expect(slot).toBeTypeOf('function');
   expect(slot({ row: { combinedFeeStatus: 2 } })).toBe('状态:2');
   expect(feeSlot).toHaveBeenCalled();
+  expect(render().children.permission_remark).toBeUndefined();
 });
 
 it('派生文本列保留列键和排序，刷新读新值且受限行仍显示掩码', async () => {

@@ -128,6 +128,23 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
     });
   }
 
+  function pathHasRule(path: string): boolean {
+    return checks(path).some(({ module, key }) => hasMaskRule(module, key));
+  }
+
+  /**
+   * 列仍会显示，但某些行要打成 ***。
+   * 无规则或整列无条件脱敏时不需要逐格插槽。
+   */
+  function cellMask(field: string): boolean {
+    if (!hasAnyMaskRules() || always(field)) return false;
+    const pathList = paths(field);
+    if (pathList.length === 0) return false;
+    return pathMatchMode(field) === 'all'
+      ? pathList.every(pathHasRule)
+      : pathList.some(pathHasRule);
+  }
+
   function always(field: string): boolean {
     const pathList = paths(field);
     if (pathList.length === 0) return false;
@@ -166,5 +183,5 @@ export function createFieldPermission(profile: FieldPermissionProfile) {
       )
     );
   }
-  return { always, masked, formMasked, searchAlways };
+  return { always, masked, cellMask, formMasked, searchAlways };
 }
