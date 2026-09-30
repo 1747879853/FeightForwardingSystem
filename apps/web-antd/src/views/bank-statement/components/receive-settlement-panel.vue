@@ -124,11 +124,59 @@ const invoiceIssueFeeColumns = [
   },
 ];
 
-const expandable = {
+const feeItemColumns = [
+  {
+    key: 'feeCodeName',
+    dataIndex: 'feeCodeName',
+    title: '费用名称',
+    ellipsis: true,
+  },
+  {
+    key: 'paySide',
+    dataIndex: 'paySide',
+    title: '收付',
+    width: 72,
+  },
+  {
+    key: 'currencyCode',
+    dataIndex: 'currencyCode',
+    title: '原币',
+    width: 72,
+  },
+  {
+    key: 'settledAmount',
+    dataIndex: 'settledAmount',
+    title: '原币结算额',
+    width: 130,
+    align: 'right' as const,
+  },
+  {
+    key: 'exchangeRate',
+    dataIndex: 'exchangeRate',
+    title: '汇率',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    key: 'originalSettledAmount',
+    dataIndex: 'originalSettledAmount',
+    title: '折合流水币',
+    width: 130,
+    align: 'right' as const,
+  },
+];
+
+function canExpandRow(record: BankStatementAdminApi.ReceiveSettlementListDto) {
+  if (isInvoiceReceiveSettlement(record.type)) {
+    return getInvoiceIssues(record).length > 0;
+  }
+  return getFeeItems(record).length > 0;
+}
+
+const expandable = computed(() => ({
   rowExpandable: (record: BankStatementAdminApi.ReceiveSettlementListDto) =>
-    isInvoiceReceiveSettlement(record.type) &&
-    getInvoiceIssues(record).length > 0,
-};
+    canExpandRow(record),
+}));
 
 const columns = [
   {
@@ -218,10 +266,47 @@ function formatOptionalPlainAmount(value: number | undefined | null) {
   return formatAmount(value);
 }
 
+function getDetailSettlement(
+  record: BankStatementAdminApi.ReceiveSettlementListDto,
+) {
+  return detailSettlementMap.value.get(String(record.id));
+}
+
 function getInvoiceIssues(
   record: BankStatementAdminApi.ReceiveSettlementListDto,
 ): ReceiveSettlementAdminApi.ReceiveSettlementInvoiceIssueDto[] {
-  return detailSettlementMap.value.get(String(record.id))?.invoiceIssues ?? [];
+  return getDetailSettlement(record)?.invoiceIssues ?? [];
+}
+
+function getFeeItems(
+  record: BankStatementAdminApi.ReceiveSettlementListDto,
+): ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto[] {
+  return getDetailSettlement(record)?.receiveSettlementItems ?? [];
+}
+
+function mapFeeItemRows(
+  record: BankStatementAdminApi.ReceiveSettlementListDto,
+) {
+  return getFeeItems(record).map((fee) => ({
+    key: fee.id,
+    feeCodeName: fee.orderFee?.feeCode?.cnName || '-',
+    paySide: fee.orderFee?.paySide,
+    currencyCode: fee.orderFee?.currency?.code,
+    settledAmount: fee.settledAmount,
+    exchangeRate: fee.exchangeRate,
+    originalSettledAmount: fee.originalSettledAmount,
+  }));
+}
+
+function formatExchangeRate(value: null | number | undefined) {
+  if (
+    value === undefined ||
+    value === null ||
+    !Number.isFinite(Number(value))
+  ) {
+    return '-';
+  }
+  return Number(value).toFixed(4);
 }
 
 function issueApplicationNo(
@@ -430,8 +515,65 @@ defineExpose({
         :scroll="tableScroll"
         class="settlement-table"
       >
+        <template #expandIcon="{ expanded, record, onExpand }">
+          <button
+            v-if="canExpandRow(record)"
+            type="button"
+            class="ant-table-row-expand-icon"
+            :class="
+              expanded
+                ? 'ant-table-row-expand-icon-expanded'
+                : 'ant-table-row-expand-icon-collapsed'
+            "
+            @click="
+              (event) => {
+                event.stopPropagation();
+                onExpand(record, event);
+              }
+            "
+          />
+        </template>
         <template #expandedRowRender="{ record }">
-          <div class="invoice-issue-expand">
+          <div
+            v-if="!isInvoiceReceiveSettlement(record.type)"
+            class="invoice-issue-expand"
+          >
+            <Table
+              v-if="getFeeItems(record).length > 0"
+              :columns="feeItemColumns"
+              :data-source="mapFeeItemRows(record)"
+              :pagination="false"
+              row-key="key"
+              size="small"
+              class="invoice-issue-fee-table"
+            >
+              <template #bodyCell="{ column, record: fee }">
+                <template v-if="column.key === 'paySide'">
+                  <Tag :color="getReceiveSettlementPaySideColor(fee.paySide)">
+                    {{ getReceiveSettlementPaySideLabel(fee.paySide) }}
+                  </Tag>
+                </template>
+                <template v-else-if="column.key === 'currencyCode'">
+                  <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
+                  <span v-else>-</span>
+                </template>
+                <template v-else-if="column.key === 'settledAmount'">
+                  {{ formatOptionalPlainAmount(fee.settledAmount) }}
+                  <span v-if="fee.currencyCode"> {{ fee.currencyCode }}</span>
+                </template>
+                <template v-else-if="column.key === 'exchangeRate'">
+                  {{ formatExchangeRate(fee.exchangeRate) }}
+                </template>
+                <template v-else-if="column.key === 'originalSettledAmount'">
+                  {{
+                    formatOptionalSettlementAmount(fee.originalSettledAmount)
+                  }}
+                </template>
+              </template>
+            </Table>
+            <div v-else class="invoice-issue-empty">暂无费用明细</div>
+          </div>
+          <div v-else class="invoice-issue-expand">
             <div
               v-for="issue in getInvoiceIssues(record)"
               :key="String(issue.id ?? 'unbound')"

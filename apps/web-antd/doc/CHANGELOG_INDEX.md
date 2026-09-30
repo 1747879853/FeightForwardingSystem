@@ -13,6 +13,8 @@
 
 ## 2026-09
 
+- [2026-09-30] [费用结算展开费用明细](./changelogs/change-log-2026-09-30-费用结算展开费用明细.md)
+
 - [2026-09-30] [银行流水按费用核销行内汇率](./changelogs/change-log-2026-09-30-银行流水按费用核销行内汇率.md)
 
 - [2026-09-30] [即时运价五字码白名单与运输类型必填](./changelogs/change-log-2026-09-30-spot-query-edi-service-type.md)
