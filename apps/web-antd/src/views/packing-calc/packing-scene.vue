@@ -28,8 +28,6 @@ const props = withDefaults(
     viewMode?: PackingViewMode;
     /** 显示标尺网格与轴刻度 */
     showRulers?: boolean;
-    /** 显示货物实时尺寸标注 */
-    showDimLabels?: boolean;
   }>(),
   {
     gravityOffsetLength: 0,
@@ -39,9 +37,12 @@ const props = withDefaults(
     gravityWarning: false,
     viewMode: 'perspective',
     showRulers: true,
-    showDimLabels: true,
   },
 );
+
+const emit = defineEmits<{
+  'select-line': [lineNo: number];
+}>();
 
 defineOptions({ name: 'PackingScene' });
 
@@ -58,9 +59,11 @@ let orthoCamera: THREE.OrthographicCamera | undefined;
 let activeCamera: THREE.Camera | undefined;
 let controls: OrbitControls | undefined;
 let cargoGroup: THREE.Group | undefined;
-let labelGroup: THREE.Group | undefined;
 let frameId = 0;
 let resizeObserver: ResizeObserver | undefined;
+const raycaster = new THREE.Raycaster();
+const pointerNdc = new THREE.Vector2();
+let pointerDown: null | { x: number; y: number } = null;
 
 function colorOf(lineNo: number) {
   const index = Math.max(0, lineNo - 1) % LINE_COLORS.length;
@@ -316,19 +319,6 @@ function addRulerGrid(
       0.4,
     );
   }
-}
-
-function pieceDimText(
-  piece: PackingAdminApi.PackingPlacement,
-  mode: PackingViewMode,
-) {
-  const L = formatDim(piece.length);
-  const W = formatDim(piece.width);
-  const H = formatDim(piece.height);
-  if (mode === 'top') return `${L}×${W}`;
-  if (mode === 'side') return `${L}×${H}`;
-  if (mode === 'front') return `${W}×${H}`;
-  return `${L}×${W}×${H}`;
 }
 
 function getActiveCamera() {
@@ -588,20 +578,12 @@ function rebuildContainer() {
 }
 
 function rebuildCargos() {
-  if (!cargoGroup || !labelGroup) return;
+  if (!cargoGroup) return;
   while (cargoGroup.children.length > 0) {
     const child = cargoGroup.children[0]!;
     cargoGroup.remove(child);
     disposeObject(child);
   }
-  while (labelGroup.children.length > 0) {
-    const child = labelGroup.children[0]!;
-    labelGroup.remove(child);
-    disposeObject(child);
-  }
-
-  const labelSize = Math.max(props.length, props.width, props.height) * 0.032;
-  const mode = props.viewMode;
 
   for (const piece of props.placements) {
     const geometry = new THREE.BoxGeometry(
@@ -636,31 +618,6 @@ function rebuildCargos() {
     mesh.userData.bottomY = piece.y;
     mesh.userData.topY = piece.y + piece.height;
     cargoGroup.add(mesh);
-
-    if (props.showDimLabels) {
-      const showDetail =
-        props.highlightLineNo <= 0 || piece.lineNo === props.highlightLineNo;
-      if (showDetail) {
-        const text = pieceDimText(piece, mode);
-        const label = makeLabel(text, labelSize, '#0f172a', {
-          bg: 'rgba(255,255,255,0.92)',
-          padding: 16,
-        });
-        // 标注贴着件的可见外侧，避免埋进箱体
-        if (mode === 'top') {
-          label.position.set(cx, piece.y + piece.height + labelSize * 0.9, cz);
-        } else if (mode === 'side') {
-          label.position.set(cx, cy, piece.z + piece.width + labelSize * 0.6);
-        } else if (mode === 'front') {
-          label.position.set(piece.x + piece.length + labelSize * 0.6, cy, cz);
-        } else {
-          label.position.set(cx, piece.y + piece.height + labelSize * 0.8, cz);
-        }
-        label.userData.loadOrder = piece.loadOrder;
-        label.userData.topY = piece.y + piece.height;
-        labelGroup.add(label);
-      }
-    }
   }
   applyVisibility();
 }
@@ -669,17 +626,49 @@ function applyVisibility() {
   if (!cargoGroup) return;
   const orderLimit = props.visibleLoadOrder;
   const layerLimit = props.maxLayerY;
-  const apply = (child: THREE.Object3D) => {
+  for (const child of cargoGroup.children) {
     const order = Number(child.userData.loadOrder ?? 0);
     const topY = Number(child.userData.topY ?? 0);
     const orderOk = orderLimit <= 0 || order <= orderLimit;
     const layerOk = layerLimit <= 0 || topY <= layerLimit + 0.01;
     child.visible = orderOk && layerOk;
-  };
-  for (const child of cargoGroup.children) apply(child);
-  if (labelGroup) {
-    for (const child of labelGroup.children) apply(child);
   }
+}
+
+function pickCargoAt(clientX: number, clientY: number) {
+  const host = hostRef.value;
+  const cam = getActiveCamera();
+  if (!host || !cam || !cargoGroup) return;
+  const rect = host.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointerNdc, cam);
+  const hits = raycaster.intersectObjects(cargoGroup.children, false);
+  const hit = hits.find((item) => item.object.visible);
+  if (!hit) {
+    emit('select-line', 0);
+    return;
+  }
+  const lineNo = Number(hit.object.userData.lineNo ?? 0);
+  emit('select-line', Number.isFinite(lineNo) ? lineNo : 0);
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return;
+  pointerDown = { x: event.clientX, y: event.clientY };
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (event.button !== 0 || !pointerDown) {
+    pointerDown = null;
+    return;
+  }
+  const dx = event.clientX - pointerDown.x;
+  const dy = event.clientY - pointerDown.y;
+  pointerDown = null;
+  if (dx * dx + dy * dy > 36) return;
+  pickCargoAt(event.clientX, event.clientY);
 }
 
 function resize() {
@@ -740,9 +729,7 @@ onMounted(() => {
   scene.add(key);
 
   cargoGroup = new THREE.Group();
-  labelGroup = new THREE.Group();
   scene.add(cargoGroup);
-  scene.add(labelGroup);
 
   controls = new OrbitControls(perspectiveCamera, host);
   controls.enableDamping = true;
@@ -756,6 +743,9 @@ onMounted(() => {
     MIDDLE: THREE.MOUSE.DOLLY,
     RIGHT: THREE.MOUSE.PAN,
   };
+
+  host.addEventListener('pointerdown', onPointerDown);
+  host.addEventListener('pointerup', onPointerUp);
 
   rebuildContainer();
   rebuildCargos();
@@ -788,7 +778,7 @@ watch(
 );
 
 watch(
-  () => [props.placements, props.highlightLineNo, props.showDimLabels] as const,
+  () => [props.placements, props.highlightLineNo] as const,
   () => {
     rebuildCargos();
   },
@@ -802,6 +792,8 @@ watch(
 onBeforeUnmount(() => {
   cancelAnimationFrame(frameId);
   resizeObserver?.disconnect();
+  hostRef.value?.removeEventListener('pointerdown', onPointerDown);
+  hostRef.value?.removeEventListener('pointerup', onPointerUp);
   controls?.dispose();
   if (scene) disposeObject(scene);
   renderer?.dispose();
@@ -813,7 +805,6 @@ onBeforeUnmount(() => {
   activeCamera = undefined;
   controls = undefined;
   cargoGroup = undefined;
-  labelGroup = undefined;
 });
 </script>
 

@@ -68,13 +68,13 @@ export interface SpotReuseHint {
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 
-/** 开船/预抵：10/24 (周六) */
+/** 开船/预抵：10/18(周日) —— 与即时运价卡片样式一致 */
 export function formatSpotDate(value?: null | string): string {
   if (!value) return '-';
   const date = dayjs(value);
   if (!date.isValid()) return '-';
   const weekday = WEEKDAY_LABELS[date.day()] ?? '';
-  return `${date.format('M/D')} (周${weekday})`;
+  return `${date.format('M/D')}(周${weekday})`;
 }
 
 /** 仅日期 yyyy-MM-dd */
@@ -102,6 +102,161 @@ export function formatMoney(
   return code ? `${code} ${text}` : text;
 }
 
+/** 卡片价：$1,150 / ¥136.00；空显示 — */
+export function formatSpotPrice(
+  amount?: null | number,
+  currency?: null | string,
+): string {
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
+    return '—';
+  }
+  const code = String(currency ?? '')
+    .trim()
+    .toUpperCase();
+  const num = Number(amount);
+  const text = num.toLocaleString('en-US', {
+    minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  if (code === 'USD' || code === 'US$' || code === '$') return `$${text}`;
+  if (code === 'CNY' || code === 'RMB' || code === '¥') return `¥${text}`;
+  return code ? `${code} ${text}` : text;
+}
+
+/** 港口展示名：取 label 括号前并大写 */
+export function formatSpotPortLabel(label?: null | string): string {
+  const raw = String(label ?? '')
+    .trim()
+    .replace(/\s*\(.*\)\s*$/, '')
+    .trim();
+  return raw ? raw.toUpperCase() : '-';
+}
+
+export function priceUnitLabel(type?: null | number): string {
+  if (type === 0) return '箱';
+  if (type === 1) return '票';
+  return '—';
+}
+
+/** 费用明细矩阵：同一费用名跨箱型横向展开 */
+export interface SpotFeeMatrixRow {
+  key: string;
+  feeName: string;
+  paymentMethod: string;
+  unit: string;
+  /** ctnName → 金额文案 */
+  amounts: Record<string, string>;
+}
+
+export interface SpotFeeMatrixSection {
+  name: string;
+  rows: SpotFeeMatrixRow[];
+}
+
+/**
+ * 将卡片上各箱型费用明细透视成「费用名 × 箱型」表格。
+ * 分组名经 feeCategoryLabel 中文化；同名费用按「名称+预到付」合并。
+ */
+export function buildSpotFeeMatrix(card: SpotCard): SpotFeeMatrixSection[] {
+  const ctnNames = card.prices.map((p) => p.ctnName);
+  type AccRow = {
+    feeName: string;
+    paymentMethod: string;
+    unit: string;
+    amounts: Record<string, string>;
+  };
+  const sectionMap = new Map<string, Map<string, AccRow>>();
+
+  for (const price of card.prices) {
+    const groups = price.spot.feeGroupInfoList ?? [];
+    for (const group of groups) {
+      const sectionName = feeCategoryLabel(group.feeCategoryName);
+      let rowMap = sectionMap.get(sectionName);
+      if (!rowMap) {
+        rowMap = new Map();
+        sectionMap.set(sectionName, rowMap);
+      }
+      for (const item of group.feeDetailList ?? []) {
+        const feeName = String(item.categoryName ?? '').trim() || '-';
+        const paymentMethod = paymentMethodLabel(item.paymentMethod);
+        const rowKey = `${feeName}||${paymentMethod}`;
+        let row = rowMap.get(rowKey);
+        if (!row) {
+          row = {
+            feeName,
+            paymentMethod,
+            unit: priceUnitLabel(item.priceFeeType),
+            amounts: Object.fromEntries(ctnNames.map((n) => [n, '—'])),
+          };
+          rowMap.set(rowKey, row);
+        } else if (row.unit === '—' && item.priceFeeType != null) {
+          row.unit = priceUnitLabel(item.priceFeeType);
+        }
+        row.amounts[price.ctnName] = formatSpotPrice(item.price, item.currency);
+      }
+    }
+
+    // 海运费：分组未覆盖该箱型时，用 freightAmount 补「基本海运费」
+    const oceanKey = '基本海运费';
+    let oceanMap = sectionMap.get(oceanKey);
+    if (!oceanMap) {
+      oceanMap = new Map();
+      sectionMap.set(oceanKey, oceanMap);
+    }
+    const ctnHasOcean = [...oceanMap.values()].some(
+      (row) => row.amounts[price.ctnName] && row.amounts[price.ctnName] !== '—',
+    );
+    if (
+      !ctnHasOcean &&
+      price.freightAmount !== null &&
+      price.freightAmount !== undefined &&
+      !Number.isNaN(Number(price.freightAmount))
+    ) {
+      const oceanRowKey = '基本海运费||—';
+      let oceanRow = oceanMap.get(oceanRowKey);
+      if (!oceanRow) {
+        oceanRow = {
+          feeName: '基本海运费',
+          paymentMethod: '—',
+          unit: '箱',
+          amounts: Object.fromEntries(ctnNames.map((n) => [n, '—'])),
+        };
+        oceanMap.set(oceanRowKey, oceanRow);
+      }
+      oceanRow.amounts[price.ctnName] = formatSpotPrice(
+        price.freightAmount,
+        price.freightCurrency,
+      );
+    }
+  }
+
+  // 基本海运费放到最前；去掉全空分组
+  const orderedNames = [...sectionMap.keys()].sort((a, b) => {
+    if (a === '基本海运费') return -1;
+    if (b === '基本海运费') return 1;
+    return a.localeCompare(b, 'zh-CN');
+  });
+
+  return orderedNames
+    .map((name) => {
+      const rows = [...(sectionMap.get(name)?.values() ?? [])].map(
+        (row, index) => ({
+          key: `${name}-${index}-${row.feeName}`,
+          feeName: row.feeName,
+          paymentMethod: row.paymentMethod,
+          unit: row.unit,
+          amounts: row.amounts,
+        }),
+      );
+      return { name, rows };
+    })
+    .filter((section) =>
+      section.rows.some((row) =>
+        Object.values(row.amounts).some((v) => v && v !== '—'),
+      ),
+    );
+}
+
 export function formatMinutesAgo(creationTime?: null | string): null | number {
   if (!creationTime) return null;
   const created = dayjs(creationTime);
@@ -127,16 +282,17 @@ export function priceFeeTypeLabel(type?: null | number): string {
 
 /** 三方费用分组标题，接口为英文，抽屉展示中文。未收录的名称原样返回。 */
 const FEE_CATEGORY_LABELS: Record<string, string> = {
-  'origin charges': '起运港费用',
-  'origin charge': '起运港费用',
-  origin: '起运港费用',
-  'freight charges': '海运费',
-  'freight charge': '海运费',
-  freight: '海运费',
-  'ocean freight': '海运费',
-  'destination charges': '目的港费用',
-  'destination charge': '目的港费用',
-  destination: '目的港费用',
+  'origin charges': '起运港附加费',
+  'origin charge': '起运港附加费',
+  origin: '起运港附加费',
+  'freight charges': '基本海运费',
+  'freight charge': '基本海运费',
+  freight: '基本海运费',
+  'ocean freight': '基本海运费',
+  'basic ocean freight': '基本海运费',
+  'destination charges': '目的港附加费',
+  'destination charge': '目的港附加费',
+  destination: '目的港附加费',
   'other charges': '其他费用',
   'others charges': '其他费用',
   others: '其他费用',

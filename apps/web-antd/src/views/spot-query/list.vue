@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import type { SpotCard, SpotCardPrice, SpotSortMode } from './data';
+import type { SpotCard, SpotSortMode } from './data';
 
 import { computed, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Alert,
@@ -13,6 +14,7 @@ import {
   Select,
   Spin,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { CtnSelect, PortSelect } from '#/adapter/component/biz-select';
@@ -20,8 +22,9 @@ import { spotQueryAsync } from '#/api/rong-e-tong/rong-e-tong-admin';
 
 import {
   buildSpotViewModel,
-  formatMoney,
   formatSpotDate,
+  formatSpotPortLabel,
+  formatSpotPrice,
   pickBestCardKey,
   sortSpotCards,
   SPOT_SERVICE_TYPE_OPTIONS,
@@ -49,7 +52,7 @@ const sortMode = ref<SpotSortMode>('lowestPrice');
 
 const rawResults = ref<ReturnType<typeof buildSpotViewModel> | null>(null);
 const feeDrawerRef = ref<InstanceType<typeof FeeDetailDrawer>>();
-const activeFeePrice = ref<null | SpotCardPrice>(null);
+const activeFeeCard = ref<null | SpotCard>(null);
 
 const cards = computed(() =>
   sortSpotCards(rawResults.value?.cards ?? [], sortMode.value),
@@ -151,6 +154,27 @@ function handleCtnChange(value: unknown) {
   ctnCodeIds.value = normalizeIdList(value);
 }
 
+/** 起运 / 目的港及运输类型互换 */
+function swapRouteEnds() {
+  const nextPolId = podId.value;
+  const nextPodId = polId.value;
+  const nextPolLabel = podLabel.value;
+  const nextPodLabel = polLabel.value;
+  const nextPolEdi = podEdiCode.value;
+  const nextPodEdi = polEdiCode.value;
+  const nextPolService = podServiceType.value;
+  const nextPodService = polServiceType.value;
+
+  polId.value = nextPolId;
+  podId.value = nextPodId;
+  polLabel.value = nextPolLabel;
+  podLabel.value = nextPodLabel;
+  polEdiCode.value = nextPolEdi;
+  podEdiCode.value = nextPodEdi;
+  polServiceType.value = nextPolService;
+  podServiceType.value = nextPodService;
+}
+
 function assertReadyToQuery(): boolean {
   if (!polId.value || !podId.value || ctnCodeIds.value.length === 0) {
     message.warning('请选择起运港、目的港和至少一个箱型');
@@ -198,17 +222,18 @@ async function handleQuery() {
   }
 }
 
-function openFeeDetail(price: SpotCardPrice) {
-  activeFeePrice.value = price;
-  feeDrawerRef.value?.open();
+function openFeeDetail(
+  card: SpotCard,
+  tab: 'basic' | 'fees' | 'schedule' = 'fees',
+) {
+  activeFeeCard.value = card;
+  feeDrawerRef.value?.open(tab);
 }
 
-function voyageText(card: SpotCard): string {
-  const days =
-    typeof card.voyage === 'number' && Number.isFinite(card.voyage)
-      ? `${card.voyage}天`
-      : '-';
-  return `${days} · ${card.isDirect ? '直达' : '中转'}`;
+function voyageDaysText(card: SpotCard): string {
+  return typeof card.voyage === 'number' && Number.isFinite(card.voyage)
+    ? `${card.voyage}天`
+    : '-';
 }
 </script>
 
@@ -217,84 +242,108 @@ function voyageText(card: SpotCard): string {
     <div class="spot-shell">
       <section class="spot-panel spot-panel--query">
         <div class="spot-panel__head">
-          <h1 class="spot-panel__title">即时运价</h1>
-          <p class="spot-panel__desc">
-            按起运港、目的港、运输类型与箱型查询各船司即时运价
-          </p>
+          <div class="spot-panel__head-text">
+            <h1 class="spot-panel__title">即时运价</h1>
+            <p class="spot-panel__desc">
+              选择起运/目的港、运输类型与箱型，查询船司即时运价
+            </p>
+          </div>
         </div>
 
-        <div class="spot-toolbar">
-          <div class="spot-port-pair">
-            <div class="spot-field">
-              <span class="spot-field__label">起运港</span>
-              <PortSelect
-                v-model="polId"
-                allow-clear
-                class="w-full"
-                label-key="portNameEdi"
-                placeholder="请选择起运港"
-                @change="handlePolChange"
-              />
+        <div class="spot-search">
+          <div class="spot-search__route" role="group" aria-label="航线条件">
+            <div class="spot-leg">
+              <div class="spot-leg__badge spot-leg__badge--pol">起运</div>
+              <div class="spot-leg__fields">
+                <div class="spot-field spot-field--port">
+                  <span class="spot-field__label">港口</span>
+                  <PortSelect
+                    v-model="polId"
+                    allow-clear
+                    class="spot-control w-full"
+                    label-key="portNameEdi"
+                    placeholder="起运港"
+                    @change="handlePolChange"
+                  />
+                </div>
+                <div class="spot-field spot-field--service">
+                  <span class="spot-field__label">类型</span>
+                  <Select
+                    v-model:value="polServiceType"
+                    allow-clear
+                    class="spot-control w-full"
+                    :options="SPOT_SERVICE_TYPE_OPTIONS"
+                    placeholder="类型"
+                  />
+                </div>
+              </div>
             </div>
-            <span class="spot-port-pair__arrow" aria-hidden="true">→</span>
-            <div class="spot-field">
-              <span class="spot-field__label">目的港</span>
-              <PortSelect
-                v-model="podId"
-                allow-clear
-                class="w-full"
-                label-key="portNameEdi"
-                placeholder="请选择目的港"
-                @change="handlePodChange"
-              />
+
+            <div class="spot-search__connector">
+              <span class="spot-search__rail" aria-hidden="true" />
+              <button
+                type="button"
+                class="spot-search__swap"
+                title="互换起运与目的"
+                aria-label="互换起运港与目的港及运输类型"
+                @click="swapRouteEnds"
+              >
+                <IconifyIcon icon="mdi:swap-horizontal" />
+              </button>
+              <span class="spot-search__rail" aria-hidden="true" />
+            </div>
+
+            <div class="spot-leg">
+              <div class="spot-leg__badge spot-leg__badge--pod">目的</div>
+              <div class="spot-leg__fields">
+                <div class="spot-field spot-field--port">
+                  <span class="spot-field__label">港口</span>
+                  <PortSelect
+                    v-model="podId"
+                    allow-clear
+                    class="spot-control w-full"
+                    label-key="portNameEdi"
+                    placeholder="目的港"
+                    @change="handlePodChange"
+                  />
+                </div>
+                <div class="spot-field spot-field--service">
+                  <span class="spot-field__label">类型</span>
+                  <Select
+                    v-model:value="podServiceType"
+                    allow-clear
+                    class="spot-control w-full"
+                    :options="SPOT_SERVICE_TYPE_OPTIONS"
+                    placeholder="类型"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="spot-port-pair">
-            <div class="spot-field">
-              <span class="spot-field__label">起运港运输类型</span>
-              <Select
-                v-model:value="polServiceType"
+          <div class="spot-search__aside">
+            <div class="spot-field spot-field--ctn">
+              <span class="spot-field__label">箱型</span>
+              <CtnSelect
+                v-model="ctnCodeIds"
                 allow-clear
-                class="w-full"
-                :options="SPOT_SERVICE_TYPE_OPTIONS"
-                placeholder="请选择"
+                class="spot-control w-full"
+                mode="multiple"
+                placeholder="可多选箱型"
+                @change="handleCtnChange"
               />
             </div>
-            <span class="spot-port-pair__arrow" aria-hidden="true">→</span>
-            <div class="spot-field">
-              <span class="spot-field__label">目的港运输类型</span>
-              <Select
-                v-model:value="podServiceType"
-                allow-clear
-                class="w-full"
-                :options="SPOT_SERVICE_TYPE_OPTIONS"
-                placeholder="请选择"
-              />
-            </div>
+            <Button
+              class="spot-query-btn"
+              type="primary"
+              :loading="loading"
+              :disabled="loading || !canQuery"
+              @click="handleQuery"
+            >
+              <IconifyIcon icon="mdi:magnify" class="spot-query-btn__icon" />
+              查询运价
+            </Button>
           </div>
-
-          <div class="spot-field spot-field--ctn">
-            <span class="spot-field__label">箱型</span>
-            <CtnSelect
-              v-model="ctnCodeIds"
-              allow-clear
-              class="w-full"
-              mode="multiple"
-              placeholder="请选择箱型（可多选）"
-              @change="handleCtnChange"
-            />
-          </div>
-
-          <Button
-            class="spot-query-btn"
-            type="primary"
-            :loading="loading"
-            :disabled="loading || !canQuery"
-            @click="handleQuery"
-          >
-            查询运价
-          </Button>
         </div>
       </section>
 
@@ -347,78 +396,131 @@ function voyageText(card: SpotCard): string {
               class="spot-card"
               :class="{ 'is-best': bestCardKey === card.key }"
             >
-              <div class="spot-card__main">
+              <div class="spot-card__body">
                 <div class="spot-card__carrier">
-                  <div class="spot-card__carrier-code">
+                  <div class="spot-card__logo" :title="card.carrierCode">
                     {{ card.carrierCode }}
                   </div>
-                  <div class="spot-card__tags">
-                    <Tag v-if="card.isSoldOut" class="spot-tag spot-tag--muted">
-                      售罄
-                    </Tag>
-                    <span v-if="bestCardKey === card.key" class="spot-badge">
-                      {{ bestBadgeText }}
+                </div>
+
+                <div class="spot-card__route">
+                  <div class="spot-card__endpoint">
+                    <span class="spot-card__when">
+                      {{ formatSpotDate(card.etd) }}
+                    </span>
+                    <span class="spot-card__port">
+                      {{ formatSpotPortLabel(polLabel) }}
+                    </span>
+                  </div>
+                  <div class="spot-card__transit">
+                    <div class="spot-card__transit-days">
+                      {{ voyageDaysText(card) }}
+                    </div>
+                    <div class="spot-card__transit-line">
+                      <span class="spot-card__transit-dot" />
+                      <span class="spot-card__transit-rail" />
+                      <span class="spot-card__transit-badge">
+                        {{ card.isDirect ? '直达' : '中转' }}
+                      </span>
+                      <span class="spot-card__transit-rail" />
+                      <span class="spot-card__transit-dot" />
+                    </div>
+                  </div>
+                  <div class="spot-card__endpoint spot-card__endpoint--end">
+                    <span class="spot-card__when">
+                      {{ formatSpotDate(card.eta) }}
+                    </span>
+                    <span class="spot-card__port">
+                      {{ formatSpotPortLabel(podLabel) }}
                     </span>
                   </div>
                 </div>
 
-                <div class="spot-card__schedule">
-                  <div class="spot-card__port-time">
-                    <div class="spot-card__date">
-                      {{ formatSpotDate(card.etd) }}
-                    </div>
-                    <div class="spot-card__port">
-                      {{ polLabel || '起运港' }}
-                    </div>
-                  </div>
-                  <div class="spot-card__voyage">
-                    <div class="spot-card__voyage-line" />
-                    <div class="spot-card__voyage-text">
-                      {{ voyageText(card) }}
-                    </div>
-                  </div>
-                  <div class="spot-card__port-time spot-card__port-time--end">
-                    <div class="spot-card__date">
-                      {{ formatSpotDate(card.eta) }}
-                    </div>
-                    <div class="spot-card__port">
-                      {{ podLabel || '目的港' }}
-                    </div>
-                  </div>
-                </div>
-
                 <div class="spot-card__prices">
-                  <button
+                  <div
                     v-for="price in card.prices"
                     :key="`${price.ctnCodeId}-${price.ctnName}`"
-                    type="button"
-                    class="spot-card__price"
-                    @click="openFeeDetail(price)"
+                    class="spot-card__price-col"
                   >
                     <div class="spot-card__ctn">{{ price.ctnName }}</div>
-                    <div class="spot-card__amount">
-                      {{
-                        formatMoney(price.freightAmount, price.freightCurrency)
-                      }}
+                    <div class="spot-card__price-row">
+                      <span class="spot-card__price-label">Base</span>
+                      <span class="spot-card__price-base">
+                        {{
+                          formatSpotPrice(
+                            price.freightAmount,
+                            price.freightCurrency,
+                          )
+                        }}
+                      </span>
                     </div>
-                    <div class="spot-card__total">
-                      Total
-                      {{ formatMoney(price.totalAmount, price.totalCurrency) }}
+                    <div class="spot-card__price-row">
+                      <span class="spot-card__price-label">Total</span>
+                      <span class="spot-card__price-total">
+                        {{
+                          formatSpotPrice(
+                            price.totalAmount,
+                            price.totalCurrency,
+                          )
+                        }}
+                      </span>
                     </div>
-                    <span class="spot-card__fee-link">费用明细</span>
-                  </button>
+                  </div>
+                </div>
+
+                <div class="spot-card__aside">
+                  <div class="spot-card__source">
+                    <span class="spot-card__source-label">
+                      运价来源
+                      <Tooltip title="第三方即时运价，以船司实时报价为准">
+                        <IconifyIcon
+                          icon="mdi:information-outline"
+                          class="spot-card__source-icon"
+                        />
+                      </Tooltip>
+                    </span>
+                    <Tag class="spot-card__source-tag" color="processing">
+                      船司直营
+                    </Tag>
+                  </div>
+                  <Button
+                    class="spot-card__fee-btn"
+                    size="middle"
+                    @click="openFeeDetail(card)"
+                  >
+                    费用明细
+                  </Button>
+                  <Tag v-if="card.isSoldOut" class="spot-tag spot-tag--muted">
+                    售罄
+                  </Tag>
                 </div>
               </div>
 
-              <div class="spot-card__meta">
-                <span>航线代码 {{ card.routeCode }}</span>
-                <span class="spot-card__dot" aria-hidden="true" />
-                <span>船名 {{ card.vessel }}</span>
-                <span class="spot-card__dot" aria-hidden="true" />
-                <span>航次 {{ card.innerVoyno }}</span>
-                <span class="spot-card__dot" aria-hidden="true" />
-                <span>运输条款 {{ serviceTermText }}</span>
-              </div>
+              <footer class="spot-card__foot">
+                <div class="spot-card__meta">
+                  <span>航线代码: {{ card.routeCode }}</span>
+                  <span class="spot-card__sep" aria-hidden="true">|</span>
+                  <span>船名: {{ card.vessel }}</span>
+                  <span class="spot-card__sep" aria-hidden="true">|</span>
+                  <span>航次: {{ card.innerVoyno }}</span>
+                  <span class="spot-card__sep" aria-hidden="true">|</span>
+                  <span>运输条款: {{ serviceTermText }}</span>
+                  <span class="spot-card__sep" aria-hidden="true">|</span>
+                  <button
+                    type="button"
+                    class="spot-card__link"
+                    @click="openFeeDetail(card, 'schedule')"
+                  >
+                    船期信息
+                  </button>
+                </div>
+                <span
+                  v-if="bestCardKey === card.key"
+                  class="spot-card__best-tag"
+                >
+                  {{ bestBadgeText }}
+                </span>
+              </footer>
             </article>
           </div>
 
@@ -431,9 +533,13 @@ function voyageText(card: SpotCard): string {
 
     <FeeDetailDrawer
       ref="feeDrawerRef"
-      :price="activeFeePrice"
+      :card="activeFeeCard"
       :pol-label="polLabel"
       :pod-label="podLabel"
+      :service-term="serviceTermText"
+      :best-badge="
+        activeFeeCard && bestCardKey === activeFeeCard.key ? bestBadgeText : ''
+      "
     />
   </Page>
 </template>
@@ -464,7 +570,7 @@ function voyageText(card: SpotCard): string {
 }
 
 .spot-panel {
-  padding: 18px 20px;
+  padding: 20px 22px;
   background: var(--spot-surface);
   border: 1px solid var(--spot-line);
   border-radius: 12px;
@@ -472,63 +578,167 @@ function voyageText(card: SpotCard): string {
 }
 
 .spot-panel--query {
-  background: linear-gradient(
-    180deg,
-    hsl(var(--primary) / 4%) 0%,
-    var(--spot-surface) 48%
-  );
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border-color: #e6ebf2;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    content: '';
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 35%) 100%
+    );
+  }
 }
 
 .spot-panel__head {
-  margin-bottom: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
 .spot-panel__title {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--spot-ink);
+  font-weight: 650;
+  line-height: 1.3;
+  color: #0f172a;
   letter-spacing: 0.01em;
 }
 
 .spot-panel__desc {
   margin: 4px 0 0;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--spot-muted);
+  line-height: 1.45;
+  color: #64748b;
 }
 
-.spot-toolbar {
+.spot-search {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  align-items: flex-end;
+  align-items: stretch;
 }
 
-.spot-port-pair {
+.spot-search__route {
+  display: grid;
+  flex: 1 1 560px;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  min-width: 0;
+  background: #f7f9fc;
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+}
+
+.spot-leg {
   display: flex;
-  flex: 1 1 420px;
+  flex-direction: column;
   gap: 10px;
-  align-items: flex-end;
-  min-width: 280px;
-  max-width: 640px;
-  padding: 10px 12px;
-  background: var(--spot-fill);
-  border: 1px solid var(--spot-line);
-  border-radius: var(--spot-radius);
+  min-width: 0;
+  padding: 12px 14px;
 }
 
-.spot-port-pair__arrow {
+.spot-leg__badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 999px;
+}
+
+.spot-leg__badge--pol {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+}
+
+.spot-leg__badge--pod {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.spot-leg__fields {
   display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.spot-search__connector {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 0 8px;
+}
+
+.spot-search__rail {
+  flex: 1;
+  width: 0;
+  min-height: 8px;
+  border-left: 1px dashed #cbd5e1;
+}
+
+.spot-search__swap {
+  display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 32px;
-  margin-bottom: 1px;
-  font-size: 14px;
-  color: var(--spot-muted);
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  color: #64748b;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 4%);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover {
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 8%);
+    border-color: hsl(var(--primary) / 35%);
+    box-shadow: 0 2px 8px hsl(var(--primary) / 16%);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.spot-search__aside {
+  display: flex;
+  flex: 1 1 280px;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  min-width: 240px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
 }
 
 .spot-field {
@@ -539,37 +749,60 @@ function voyageText(card: SpotCard): string {
   min-width: 0;
 }
 
+.spot-field--port {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.spot-field--service {
+  flex: 0 0 108px;
+  width: 108px;
+}
+
 .spot-field--ctn {
-  flex: 1 1 240px;
-  min-width: 200px;
-  max-width: 420px;
+  flex: 1 1 180px;
+  min-width: 160px;
 }
 
 .spot-field__label {
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: var(--spot-muted);
+  color: #94a3b8;
 }
 
 .spot-query-btn {
-  min-width: 104px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
   height: 36px;
-  margin-bottom: 1px;
-  border-radius: var(--spot-radius-sm);
+  padding-inline: 16px;
+  font-weight: 600;
+  border-radius: 8px;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
     opacity 0.15s ease;
 
   &:not(:disabled):hover {
-    box-shadow: 0 4px 12px hsl(var(--primary) / 22%);
+    box-shadow: 0 6px 16px hsl(var(--primary) / 28%);
     transform: translateY(-1px);
   }
 
   &:not(:disabled):active {
     transform: translateY(0);
   }
+}
+
+.spot-query-btn__icon {
+  font-size: 16px;
+}
+
+:deep(.spot-control.ant-select),
+:deep(.spot-control .ant-select-selector) {
+  border-radius: 8px !important;
 }
 
 .spot-status {
@@ -662,68 +895,286 @@ function voyageText(card: SpotCard): string {
 }
 
 .spot-card {
-  padding: 16px 18px 12px;
-  background: var(--spot-surface);
-  border: 1px solid var(--spot-line);
-  border-radius: var(--spot-radius);
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 10px;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    box-shadow 0.2s ease;
 
-  &:hover {
-    border-color: hsl(var(--primary) / 28%);
-    box-shadow: var(--spot-shadow-hover);
-    transform: translateY(-1px);
-  }
-
+  &:hover,
   &.is-best {
-    background: linear-gradient(
-      180deg,
-      var(--spot-accent-soft) 0%,
-      var(--spot-surface) 42%
-    );
-    border-color: hsl(var(--primary) / 35%);
+    border-color: hsl(var(--primary) / 45%);
+    box-shadow: 0 2px 12px hsl(var(--primary) / 10%);
   }
 }
 
-.spot-card__main {
+.spot-card__body {
   display: grid;
-  grid-template-columns: 112px minmax(220px, 1.25fr) minmax(220px, 1fr);
-  gap: 16px 18px;
+  grid-template-columns: 72px minmax(260px, 1.35fr) minmax(220px, 1fr) minmax(
+      140px,
+      180px
+    );
+  gap: 12px 16px;
   align-items: center;
+  padding: 16px 18px 12px;
 }
 
 .spot-card__carrier {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
 }
 
-.spot-card__carrier-code {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--spot-ink);
-  letter-spacing: 0.03em;
+.spot-card__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #0f172a;
+  text-align: center;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  background: linear-gradient(145deg, #f8fafc, #eef2f7);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
 }
 
-.spot-card__tags {
+.spot-card__route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.spot-card__endpoint {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.spot-card__endpoint--end {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.spot-card__when {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.spot-card__port {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.spot-card__transit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   align-items: center;
+  min-width: 88px;
+  padding: 0 4px;
+}
+
+.spot-card__transit-days {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #64748b;
+}
+
+.spot-card__transit-line {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  width: 100%;
+  min-width: 96px;
+}
+
+.spot-card__transit-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  background: #94a3b8;
+  border-radius: 50%;
+}
+
+.spot-card__transit-rail {
+  flex: 1;
+  height: 0;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.spot-card__transit-badge {
+  flex-shrink: 0;
+  padding: 0 8px;
+  margin: 0 2px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #475569;
+  white-space: nowrap;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+}
+
+.spot-card__prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  justify-content: flex-end;
+}
+
+.spot-card__price-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 88px;
+}
+
+.spot-card__ctn {
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-align: right;
+}
+
+.spot-card__price-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+
+.spot-card__price-label {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.spot-card__price-base {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #e11d48;
+}
+
+.spot-card__price-total {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: #e11d48;
+}
+
+.spot-card__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.spot-card__source {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.spot-card__source-label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.spot-card__source-icon {
+  font-size: 14px;
+  color: #94a3b8;
+  cursor: help;
+}
+
+.spot-card__source-tag {
+  margin: 0;
+  font-size: 12px;
+  line-height: 22px;
+  border-radius: 4px;
+}
+
+.spot-card__fee-btn {
+  min-width: 96px;
+  border-radius: 6px;
 }
 
 .spot-tag--muted {
   margin: 0;
-  color: var(--spot-muted) !important;
-  background: var(--spot-fill) !important;
-  border: 1px solid var(--spot-line) !important;
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
-.spot-badge {
+.spot-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px 12px;
+  background: #fafbfc;
+  border-top: 1px solid #eef1f5;
+}
+
+.spot-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.spot-card__sep {
+  margin: 0 8px;
+  color: #cbd5e1;
+}
+
+.spot-card__link {
+  padding: 0;
+  font-size: 12px;
+  color: hsl(var(--primary));
+  cursor: pointer;
+  background: none;
+  border: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.spot-card__best-tag {
   display: inline-flex;
   align-items: center;
   height: 22px;
@@ -731,153 +1182,10 @@ function voyageText(card: SpotCard): string {
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: var(--spot-accent);
-  background: var(--spot-accent-soft);
-  border: 1px solid hsl(var(--primary) / 18%);
-  border-radius: 999px;
-}
-
-.spot-card__schedule {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
-  align-items: center;
-}
-
-.spot-card__port-time--end {
-  text-align: right;
-}
-
-.spot-card__date {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--spot-ink);
-}
-
-.spot-card__port {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--spot-muted);
-  overflow-wrap: anywhere;
-}
-
-.spot-card__voyage {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-  min-width: 92px;
-}
-
-.spot-card__voyage-line {
-  width: 56px;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--primary) / 45%),
-    transparent
-  );
-  border-radius: 999px;
-}
-
-.spot-card__voyage-text {
-  font-size: 12px;
-  line-height: 1;
-  color: var(--spot-muted);
-  white-space: nowrap;
-}
-
-.spot-card__prices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.spot-card__price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 112px;
-  padding: 8px 10px;
-  text-align: right;
-  cursor: pointer;
-  background: var(--spot-fill);
-  border: 1px solid transparent;
-  border-radius: var(--spot-radius-sm);
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-
-  &:hover {
-    background: hsl(var(--primary) / 6%);
-    border-color: hsl(var(--primary) / 22%);
-    box-shadow: 0 2px 8px hsl(var(--foreground) / 4%);
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-.spot-card__ctn {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--spot-muted);
-}
-
-.spot-card__amount {
-  margin-top: 4px;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--spot-ink);
-  letter-spacing: 0.01em;
-}
-
-.spot-card__total {
-  margin-top: 3px;
-  font-size: 12px;
-  color: var(--spot-muted);
-}
-
-.spot-card__fee-link {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--spot-accent);
-  opacity: 0.85;
-  transition: opacity 0.15s ease;
-
-  .spot-card__price:hover & {
-    opacity: 1;
-  }
-}
-
-.spot-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 4px;
-  align-items: center;
-  padding-top: 12px;
-  margin-top: 14px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--spot-muted);
-  border-top: 1px solid hsl(var(--border) / 80%);
-}
-
-.spot-card__dot {
-  width: 3px;
-  height: 3px;
-  margin: 0 6px;
-  background: hsl(var(--muted-foreground) / 45%);
-  border-radius: 50%;
+  color: #e11d48;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 4px;
 }
 
 .spot-empty {
@@ -888,13 +1196,52 @@ function voyageText(card: SpotCard): string {
   padding: 24px 12px;
 }
 
+@media (max-width: 1100px) {
+  .spot-card__body {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .spot-card__prices,
+  .spot-card__aside {
+    grid-column: 1 / -1;
+  }
+
+  .spot-card__prices {
+    justify-content: flex-start;
+  }
+
+  .spot-card__aside {
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 960px) {
-  .spot-port-pair,
-  .spot-field--ctn,
-  .spot-query-btn {
+  .spot-search__route {
     flex: 1 1 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .spot-search__connector {
+    flex-direction: row;
+    padding: 0 14px;
+  }
+
+  .spot-search__rail {
+    flex: 1;
+    width: auto;
+    height: 0;
+    border-top: 1px dashed #cbd5e1;
+    border-left-style: none;
+  }
+
+  .spot-search__aside {
+    flex: 1 1 100%;
+  }
+
+  .spot-query-btn {
     width: 100%;
-    max-width: none;
   }
 
   .spot-result-bar {
@@ -903,23 +1250,24 @@ function voyageText(card: SpotCard): string {
     align-items: flex-start;
   }
 
-  .spot-card__main {
+  .spot-card__route {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
-  .spot-card__prices {
+  .spot-card__endpoint--end {
     justify-content: flex-start;
+    text-align: left;
   }
 
-  .spot-card__price {
+  .spot-card__transit {
     align-items: flex-start;
-    text-align: left;
   }
 }
 </style>
 
 <style lang="scss">
 .spot-page {
-  background: hsl(var(--muted) / 28%);
+  background: #f3f5f8;
 }
 </style>
