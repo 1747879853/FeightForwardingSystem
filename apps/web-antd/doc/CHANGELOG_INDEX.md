@@ -15,6 +15,10 @@
 
 - [2026-09-30] [银行流水按费用核销行内汇率](./changelogs/change-log-2026-09-30-银行流水按费用核销行内汇率.md)
 
+- [2026-09-30] [即时运价五字码白名单与运输类型必填](./changelogs/change-log-2026-09-30-spot-query-edi-service-type.md)
+
+- [2026-09-30] [报表自定义列持久化与列头三击排序](./changelogs/change-log-2026-09-30-report-column-persist-sort.md)
+
 - [2026-09-30] [分单收发通唛头货描自动大写](./changelogs/change-log-2026-09-30-分单收发通唛头货描自动大写.md)
 
 - [2026-09-29] [数据权限模块搜索标签左对齐](./changelogs/change-log-2026-09-29-数据权限模块搜索标签左对齐.md)

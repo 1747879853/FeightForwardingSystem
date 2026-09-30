@@ -31,6 +31,11 @@ export interface ReportQueryContext {
 export interface ReportPageConfig<TRaw = any> {
   /** 报表名称（用于导出文件名与工作表名） */
   name: string;
+  /**
+   * 列配置持久化 tableId（UserSetting `table_config_${tableId}`）。
+   * 利润/欠费等报表互不覆盖；与路由 name 对齐便于排查。
+   */
+  tableId: string;
   /** 列表查询接口（当前后端为不分页全量查询） */
   fetchApi: (params: any) => Promise<TRaw[]>;
   /** 查询表单配置 */

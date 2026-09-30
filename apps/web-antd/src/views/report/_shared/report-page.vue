@@ -34,9 +34,12 @@ const {
   groupColumns,
   expandedGroups,
   columnConfigs,
+  hiddenColumnKeys,
   dynamicHotColumns,
   numericColumnKeys,
   handleViewDetail,
+  handleColumnConfigsUpdate,
+  handleHiddenColumnKeysUpdate,
 } = useReportPage(props.config);
 </script>
 
@@ -58,13 +61,15 @@ const {
       :group-columns="groupColumns"
       :expanded-groups="expandedGroups"
       :column-configs="columnConfigs"
+      :hidden-column-keys="hiddenColumnKeys"
       :loading="loading"
       :hot-columns="dynamicHotColumns"
       :numeric-column-keys="numericColumnKeys"
       :report-title="config.name"
       @update:group-columns="groupColumns = $event"
       @update:expanded-groups="expandedGroups = $event"
-      @update:column-configs="columnConfigs = $event"
+      @update:column-configs="handleColumnConfigsUpdate"
+      @update:hidden-column-keys="handleHiddenColumnKeysUpdate"
       @view-detail="handleViewDetail"
     />
 

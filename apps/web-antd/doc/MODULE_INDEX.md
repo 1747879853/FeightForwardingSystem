@@ -38,6 +38,7 @@
 | schedule-query | （UI 设计说明） | 航线管理 / 船期查询 | 给专业 UI 重做船期查询的设计说明：用户任务、信息层级、必留字段、现稿问题和交付物。 | [UI 设计说明](./modules/schedule-query/ui-design-brief.md) | 2026-09-02 |
 | schedule-query | （方案分组规则） | 航线管理 / 船期查询 | 方案卡如何归组：分组键、groupName 共舱串、清洗去重、卡片星期/航程/码头；飞驼列表走方案接口且用共舱 displayName，与本地差 1 组的口径。 | [方案分组规则](./modules/schedule-query/grouping.md) | 2026-09-02 |
 | port-congestion | `/port-congestion` | 航线管理 / 港口拥堵分析 | 港口拥堵实时查询；标题栏选港口（EDI 五字码）即查最近 15 天在港/靠泊/离港船数与平均候泊/作业/在港时长，含拥堵与天气两套等级、双轴趋势图、每日明细展开行（含船舶 MMSI）；权限走第三方接口查看。 | [港口拥堵分析](./modules/port-congestion/index.md) | 2026-08-16 |
+| spot-query | `/spot-query` | 航线管理 / 即时运价 | 选起运港、目的港、两端运输类型（CY/SD）与多箱型查询三方即时运价；港口 EDI 五字码前端白名单校验，不在名单则提示「港口不支持」且不调接口；超时 180s；按船司船名航次合并卡片，支持排序与费用明细；1 小时内复用结果展示多久前的运价。权限 `Admin.ExternalApi.Use`。页面不出现供应商名称。 | [即时运价](./modules/spot-query/index.md) | 2026-09-30 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建、勾选后提交/撤销，并进入付款申请单编辑；列表展示主提单号与委托编号（多票逗号拼接、过长省略）；发票号/开票日期/销售方抬头从发票子表拼接，发票总额前端求和；支持批量下载发票附件；申请合计按原币/固定币别分口径展示，分页行嵌入当页按币别合计；先票后付提交前须有发票，列表可点发票流程补录（含从进项发票选择）。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-09-20 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；发票子表含销售方抬头与金额，总额前端求和；「从进项发票选择」在发票方式「不开票」右侧（已填票号排除，已选银行带开票信息 id）；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付可先空着保存、提交时才必填；可从海出/海进/空出应收应付带 orderFeeIds 预填（同一套发票校验）；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索，可筛业务类型，按业务简要读港口备注，按币别展示已选合计并保留跨页勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-09-19 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；发票子表含销售方抬头与金额，总额前端求和，保存全量覆盖；「从进项发票选择」在发票方式「不开票」右侧；发票行上传即自动识别回填，申请附件分组上传不识别；先票后付提交时才要求至少一条发票；指定结算币别折算预填只取汇率表原币兑结算币；添加费用抽屉可按对账单号模糊检索并筛业务类型，按业务简要读港口备注；驳回后可再次提交。编辑页固定打开时的申请单，审核时间轴不跟全局路由。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-09-24 |
@@ -106,7 +107,7 @@
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。UserSetting 列表固定当前人、编辑按 name 匹配。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-18 |
 | shared | （全站页面级表单） | 共享能力 | 未保存离开拦截：切走可缓存、点 X 才销毁；单个关标签先确认；当前页脏时 `beforeunload`。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-08-23 |
 | report | （模块索引） | 报表 | 配置驱动基座 + 利润/欠费两页；文档均在 `doc/modules/report/`，勿在 `views/report` 下写 README。 | [报表模块索引](./modules/report/README.md) | 2026-09-12 |
-| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总。 | [利润报表](./modules/report/profit-report.md) | 2026-09-12 |
-| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-12 |
+| report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总；右键隐藏列按用户持久化。 | [利润报表](./modules/report/profit-report.md) | 2026-09-30 |
+| report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总；列隐藏持久化与利润报表隔离。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-30 |
 
 | settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-09-19 |

@@ -16,8 +16,10 @@
 src/views/report/
 ├─ _shared/                        # 报表通用基座
 │  ├─ types.ts                     # ReportPageConfig / CurrencyFieldDef
-│  ├─ use-report-page.ts           # 表单、查询、重置、动态列
+│  ├─ use-report-page.ts           # 表单、查询、重置、动态列、列配置持久化
+│  ├─ use-report-column-persist.ts # UserSetting 列隐藏/显隐/顺序
 │  ├─ use-report-table-layout.ts   # 表格高度（keepAlive 启停）
+│  ├─ sort.ts                      # 列头排序纯函数
 │  ├─ aggregate.ts                 # 分组/合计/导出聚合纯函数
 │  ├─ report-page.vue              # 模板组件
 │  ├─ report-hot-table.vue         # Handsontable

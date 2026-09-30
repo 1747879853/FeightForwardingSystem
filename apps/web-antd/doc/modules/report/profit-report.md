@@ -2,7 +2,7 @@
 title: 利润报表
 module: 报表
 author: auto-doc-sync
-last_updated: 2026-09-12
+last_updated: 2026-09-30
 ---
 
 > [!TIP] 模块文档索引：[报表模块](./README.md)。前端实现与培训说明：[报表页面实现与经验培训](../../guides/report-page-implementation.md)。
@@ -20,6 +20,7 @@ last_updated: 2026-09-12
 - **合计行：** 固定在表格底部，对所有数值列累加。
 - **导出：** 导出当前列（含未展开分组的完整数据）为 Excel。
 - **双击行：** 按 `bizType` 跳转对应业务编辑页；单击列头切换升序 / 降序 / 取消排序。
+- **列自定义：** 右键「隐藏列 / 显示隐藏的列」与拖拽列头调整顺序，写入用户设置（`table_config_ProfitReport`）。刷新与再次查询后仍生效；点「重置」恢复默认列并清除该偏好。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -46,5 +47,6 @@ last_updated: 2026-09-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-09-30 | `Fix` | TAPD #1001023：自定义隐藏列可永久保存；列头第三次点击取消排序恢复正确顺序。 | `useReportColumnPersist` → UserSetting `table_config_ProfitReport`；排序始终从 `originalData` 重排，`groupingCache` 键含排序态，表头点击走 `toPhysicalColumn`。详见 [变更记录](../../changelogs/change-log-2026-09-30-report-column-persist-sort.md)。 |
 | 2026-09-12 | `Improve` | 业务日期默认当月，打开即查不再拉全量；工具栏展示条数，查询成功不再弹 toast。 | 与欠费报表共用 `_shared`：xlsx 改为导出时动态导入；大数组改 `shallowRef`；分组展开不再重建 Handsontable settings；去掉 query-card 全子树 MutationObserver；合计行 `fixedRowsBottom`；列头排序支持第三次单击取消。 |
 | 2026-08-30 | `Feature` | 合计列新增前置「本位币」列，列标题去掉写死的 `(CNY)`；分组行/合计行遇到多种本位币时显示「多币别」并停止加总。 | 后端报表返回体虽不继承 `DataPermissionFullAuditedEntityDto`，但行级同样下发了 `localCurrencyId` / `localCurrencyCode`（口径：主单 `orgId` → 所属公司 → 本位币）。列与聚合逻辑收在 `_shared/hot-columns.ts`（`localCurrencyColumn` / `blankMixedCurrencyTotals`）与 `aggregate.ts` 的 `applyLocalCurrencyToAggregate`，两张报表共用，新增报表照抄即可。详见 `changelogs/change-log-2026-08-30-data-permission-local-currency.md`。 |
