@@ -2,6 +2,8 @@ import type { FormRenderProps } from '../types';
 
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 
+import { triggerWindowResize } from '@vben-core/shared/utils';
+
 import {
   breakpointsTailwind,
   useBreakpoints,
@@ -103,6 +105,14 @@ export function useExpandable(props: FormRenderProps) {
     });
     rowMapping.value = mapping;
     isCalculated.value = rowStarts.length > 0;
+    // 首屏 collapsed 一开始就是 true，不会触发折叠按钮上的 watch。
+    // 字段此时才加上 hidden，表格仍按展开高度占位，分页下方会空出被收起的那几行。
+    if (isCalculated.value && props.collapsed) {
+      await nextTick();
+      requestAnimationFrame(() => {
+        triggerWindowResize();
+      });
+    }
   }
 
   onMounted(() => {
