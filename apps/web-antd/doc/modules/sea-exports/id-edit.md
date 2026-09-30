@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-23
+last_updated: 2026-09-30
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -186,6 +186,7 @@ last_updated: 2026-09-23
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-09-30 | `Fix` | 分单收发通、代理、唛头、货描输入时英文小写自动转大写，已保存内容打开时不整段改写。 | 与主单同一套英文大写规则。分单头备注不转。详见 [变更日志](../../changelogs/change-log-2026-09-30-分单收发通唛头货描自动大写.md)。 |
 | 2026-09-23 | `Fix` | 截关绑定 closingTime，恢复截VGM，截舱单独立展示；同步批量修改、校验、简报与码头回填。 | 历史数据不自动迁移；详见字段恢复变更日志。 |
 | 2026-09-22 | `Fix` | 账号新绑公司后，选销售或打开归属组织即可看到新抬头，不必整页刷新。 | 与新建页共用 `UserOrgSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-22-归属组织下拉静默刷新.md)。 |
 | 2026-09-21 | `Feature` | 海出主单签单方式必填；分单增加必填结算对象和只读应结日期，更改结算对象后保存重拉后端重算日期。提单审核中、已签出、已扣单的删除限制由后端提示。 | 依据提单后端契约对齐，见提单管理与签出审核变更日志。 |

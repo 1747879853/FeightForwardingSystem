@@ -17,6 +17,7 @@ import {
 } from 'ant-design-vue';
 
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import CodeFrtSelect from '#/adapter/component/biz-select/code-frt-select.vue';
 import CodeIssueTypeSelect from '#/adapter/component/biz-select/code-issue-type-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
@@ -896,7 +897,9 @@ watch(seaExportId, () => {
                 :rows="5"
                 class="party-textarea"
                 allow-clear
-                @update:value="(v) => (formData.shipperContent = v)"
+                @update:value="
+                  (v) => (formData.shipperContent = toEnglishUpperCase(v))
+                "
               />
             </div>
 
@@ -929,7 +932,9 @@ watch(seaExportId, () => {
                 :rows="5"
                 class="party-textarea"
                 allow-clear
-                @update:value="(v) => (formData.consigneeContent = v)"
+                @update:value="
+                  (v) => (formData.consigneeContent = toEnglishUpperCase(v))
+                "
               />
             </div>
 
@@ -997,7 +1002,9 @@ watch(seaExportId, () => {
                 :rows="5"
                 class="party-textarea"
                 allow-clear
-                @update:value="(v) => (formData.notifierContent = v)"
+                @update:value="
+                  (v) => (formData.notifierContent = toEnglishUpperCase(v))
+                "
               />
               <Input.TextArea
                 v-show="notifierPartyTab === 'secondNotifier'"
@@ -1006,7 +1013,10 @@ watch(seaExportId, () => {
                 :rows="5"
                 class="party-textarea"
                 allow-clear
-                @update:value="(v) => (formData.secondNotifierContent = v)"
+                @update:value="
+                  (v) =>
+                    (formData.secondNotifierContent = toEnglishUpperCase(v))
+                "
               />
             </div>
           </div>
@@ -1157,7 +1167,9 @@ watch(seaExportId, () => {
                   :rows="3"
                   class="agent-textarea"
                   allow-clear
-                  @update:value="(v) => (formData.podAgentContent = v)"
+                  @update:value="
+                    (v) => (formData.podAgentContent = toEnglishUpperCase(v))
+                  "
                 />
               </div>
               <div class="agent-remark-field">
@@ -1501,7 +1513,7 @@ watch(seaExportId, () => {
               :value="formData.marks"
               class="cargo-textarea"
               allow-clear
-              @update:value="(v) => (formData.marks = v)"
+              @update:value="(v) => (formData.marks = toEnglishUpperCase(v))"
             />
           </div>
           <div class="cargo-field">
@@ -1512,7 +1524,7 @@ watch(seaExportId, () => {
               :value="formData.goodsDes"
               class="cargo-textarea"
               allow-clear
-              @update:value="(v) => (formData.goodsDes = v)"
+              @update:value="(v) => (formData.goodsDes = toEnglishUpperCase(v))"
             />
           </div>
           <div class="cargo-metrics">
