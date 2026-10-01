@@ -14,11 +14,24 @@ import { getIndustryCategoryOptions as getIndustryCategoryOptionsFromData } from
 import * as clientConstants from '#/views/client/base/data';
 
 type ClientOption = { label: string; value: any; [key: string]: any };
+type DropdownOption = { label: string; value: any; [key: string]: any };
 
 /** 应收/应付表共享客户缓存，按行业懒加载，避免挂载全量阻塞 */
 const sharedAllClientsByIndustry = ref<Record<string, ClientOption[]>>({});
 let loadAllClientsPromise: null | Promise<void> = null;
 const industryLoadPromises = new Map<string, Promise<void>>();
+
+/** 费用代码 / 币别 / 行业 / 单位：模块级单例，双表只拉一次 */
+const sharedDropdownSources = ref({
+  feeCodeList: [] as DropdownOption[],
+  industryCategoryList: [] as DropdownOption[],
+  currencyList: [] as DropdownOption[],
+  unitList: [] as DropdownOption[],
+});
+const sharedFeeCodeDetailCache = ref<Map<string, any>>(new Map());
+const sharedExchangeRateCache = ref<Map<string, any>>(new Map());
+let dropdownSourcesReady = false;
+let initDropdownSourcesPromise: null | Promise<void> = null;
 
 function mapClientOptions(list: any[]): ClientOption[] {
   return (list || []).map((client: any) => ({
@@ -29,54 +42,50 @@ function mapClientOptions(list: any[]): ClientOption[] {
 }
 
 /**
- * 下拉框数据源管理 Composable
+ * 下拉框数据源管理 Composable（主数据模块级共享，结算对象当前编辑缓存仍按实例）
  */
 export function useDropdownSources(orderCtnList: any) {
-  const dropdownSources = ref({
-    feeCodeList: [] as Array<{ label: string; value: any }>,
-    industryCategoryList: [] as Array<{ label: string; value: any }>,
-    currencyList: [] as Array<{ label: string; value: any }>,
-    unitList: [] as Array<{ label: string; value: any }>,
-  });
-
-  // ✅ 当前选项缓存（用于结算对象等动态加载的字段）
-  const currentOptionsCache = ref<Array<{ label: string; value: any }>>([]);
-
-  // 模块级共享：多表实例读写同一缓存
+  const dropdownSources = sharedDropdownSources;
+  const currentOptionsCache = ref<DropdownOption[]>([]);
   const allClientsByIndustry = sharedAllClientsByIndustry;
-
-  // ✅ 新增：费用代码详情缓存（用于快速填充其他字段）
-  // Key: feeCodeId (string), Value: FeeCodeSimpleDto
-  const feeCodeDetailCache = ref<Map<string, any>>(new Map());
-
-  // ✅ 新增：汇率缓存（用于币别选择后自动填充汇率）
-  // Key: currencyId (string), Value: ExchangeRateDto（当前有效的汇率记录）
-  const exchangeRateCache = ref<Map<string, any>>(new Map());
+  const feeCodeDetailCache = sharedFeeCodeDetailCache;
+  const exchangeRateCache = sharedExchangeRateCache;
 
   /**
-   * 初始化下拉框数据源
+   * 初始化下拉框数据源（幂等：并发/双表挂载只请求一次）
    */
   const initDropdownSources = async () => {
-    try {
-      // 行业类别（同步，无请求）
-      const industryOptions = getIndustryCategoryOptionsFromData();
-      dropdownSources.value.industryCategoryList = industryOptions.map(
-        (opt) => ({
-          label: opt.label,
-          value: opt.key,
-          categoryCode: opt.value,
-        }),
-      );
-
-      // 费用代码 / 币别 / 汇率并行，缩短首屏等待
-      await Promise.all([
-        getFeeCodeList(),
-        loadCurrencyList(),
-        loadExchangeRateCache(),
-      ]);
-    } catch (error) {
-      console.error('❌ [initDropdownSources] 初始化失败:', error);
+    if (dropdownSourcesReady) return;
+    if (initDropdownSourcesPromise) {
+      await initDropdownSourcesPromise;
+      return;
     }
+
+    initDropdownSourcesPromise = (async () => {
+      try {
+        const industryOptions = getIndustryCategoryOptionsFromData();
+        dropdownSources.value.industryCategoryList = industryOptions.map(
+          (opt) => ({
+            label: opt.label,
+            value: opt.key,
+            categoryCode: opt.value,
+          }),
+        );
+
+        await Promise.all([
+          getFeeCodeList(),
+          loadCurrencyList(),
+          loadExchangeRateCache(),
+        ]);
+        dropdownSourcesReady = true;
+      } catch (error) {
+        console.error('❌ [initDropdownSources] 初始化失败:', error);
+      }
+    })().finally(() => {
+      initDropdownSourcesPromise = null;
+    });
+
+    await initDropdownSourcesPromise;
   };
 
   /**

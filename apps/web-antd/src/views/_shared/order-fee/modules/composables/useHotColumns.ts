@@ -89,13 +89,8 @@ export function useHotColumns(
   void loadMaskedFields();
   const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const hotColumns = computed(() => {
-    // 解构 Ref 获取实际值
-    const actualDataSource = Array.isArray(dataSource)
-      ? dataSource
-      : dataSource.value;
-    const actualSelectedRowKeys = Array.isArray(selectedRowKeys)
-      ? selectedRowKeys
-      : selectedRowKeys.value;
+    // 勿在此读取 dataSource / selectedRowKeys：会在勾选、单元格编辑时整列重建并 updateSettings。
+    // 勾选态与行数据仅在 renderer 内按需读取。
 
     // ✅ 新增:在第一列添加复选框列
     const checkboxColumn: any = {

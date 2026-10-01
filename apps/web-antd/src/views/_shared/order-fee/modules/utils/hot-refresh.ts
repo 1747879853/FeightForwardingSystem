@@ -6,15 +6,23 @@ import { applyHotCellChrome } from './hot-cell-render';
 
 /**
  * 预警高亮：用 class 切换（与 afterRenderer 一致），不再写内联 !important。
+ * @param touchFeeIds 若传入，只刷新这些费用 id 对应行（悬停切换时用 prev∪next，避免全表扫格）
  */
 export function applyHotWarningHighlightClasses(
   hot: any,
   dataSource: any[],
   highlightIds: Iterable<string>,
+  touchFeeIds?: Iterable<string>,
 ) {
   if (!hot || hot.isDestroyed) return;
   const idSet =
     highlightIds instanceof Set ? highlightIds : new Set(highlightIds);
+  const touchSet =
+    touchFeeIds == null
+      ? null
+      : touchFeeIds instanceof Set
+        ? touchFeeIds
+        : new Set(touchFeeIds);
   const rowCount = hot.countRows();
   const colCount = hot.countCols();
 
@@ -22,7 +30,9 @@ export function applyHotWarningHighlightClasses(
     const physical = hot.toPhysicalRow(visual);
     if (typeof physical !== 'number' || physical < 0) continue;
     const row = dataSource[physical];
-    const on = !!(row?.id && idSet.has(String(row.id)));
+    const rowId = row?.id != null ? String(row.id) : '';
+    if (touchSet && (!rowId || !touchSet.has(rowId))) continue;
+    const on = !!(rowId && idSet.has(rowId));
     const statusValue = row?.combinedFeeStatus ?? row?.feeStatus;
 
     for (let col = 0; col < colCount; col++) {

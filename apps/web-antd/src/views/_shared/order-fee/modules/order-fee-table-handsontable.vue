@@ -1064,9 +1064,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown);
-  // 客户缓存为模块级共享，卸载单表时不清空
-  feeCodeDetailCache.value.clear();
-  exchangeRateCache.value.clear();
+  // 费用代码/汇率/客户缓存为模块级共享，卸载单表时不清空（避免对立表被迫重拉）
 });
 
 // KeepAlive 复用（从列表页识别跳转回已缓存的费用页）时消费跨页暂存
@@ -1117,18 +1115,13 @@ watch(
 watch(
   () => hotColumns.value,
   (newColumns) => {
-    // 直接修改 hotSettings.columns 属性而不触发Vue深度响应
     hotSettings.value.columns = newColumns;
     nextTick(() => {
-      if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        // 使用 updateSettings 更新列配置而不是重新渲染整个设置
-        coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-          columns: newColumns,
-        });
-      }
+      const hot = getHotInstance();
+      if (!hot || hot.isDestroyed) return;
+      hot.updateSettings({ columns: newColumns });
     });
   },
-  { deep: true },
 );
 
 const prevSelectedRowKeys = ref<(string | number)[]>([]);
@@ -1161,16 +1154,22 @@ watch(
   { deep: true },
 );
 
+const prevHighlightFeeIds = ref<string[]>([]);
+
 watch(
   () => props.highlightFeeIds,
   (ids) => {
     nextTick(() => {
       const hot = getHotInstance();
       if (!hot) return;
+      const next = (ids ?? []).map(String);
+      const touch = new Set([...prevHighlightFeeIds.value, ...next]);
+      prevHighlightFeeIds.value = next;
       applyHotWarningHighlightClasses(
         hot,
         dataSource.value ?? [],
-        (ids ?? []).map(String),
+        next,
+        touch.size > 0 ? touch : undefined,
       );
     });
   },

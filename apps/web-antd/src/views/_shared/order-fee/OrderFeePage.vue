@@ -298,9 +298,10 @@ const formatNormalDate = (
 const formValues = ref<Record<string, any>>();
 const to = ref<Record<string, any>>();
 
-// ✅ 新增：使用下拉框数据源管理（用于加载客户数据）
-const orderCtnList = ref<any[]>([]); // 临时空数组，仅用于初始化
-const { allClientsByIndustry } = useDropdownSources(orderCtnList);
+// 下拉主数据模块级单例：页面先发起，应收/应付表复用同一 Promise，避免双倍请求
+const orderCtnList = ref<any[]>([]);
+const { allClientsByIndustry, initDropdownSources } =
+  useDropdownSources(orderCtnList);
 
 // 使用共享的显示字段配置管理
 const { displayFieldConfig, handleConfigConfirm } = useDisplayFieldConfig(
@@ -1042,10 +1043,10 @@ const handleMenuClick = (info: any) => {
 
 onMounted(() => {
   loadOrderDetail();
-
   // 费用数量统计（角标）；金额汇总由子表加载后经 update-amount 上报
-  // 客户按行业在结算下拉打开时懒加载，不阻塞首屏
   getOrderFeeCountStats();
+  // 预热费用代码/币别/汇率（与子表 init 去重）
+  void initDropdownSources();
 });
 </script>
 <template>
