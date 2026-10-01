@@ -109,9 +109,23 @@ const invoiceIssueFeeColumns = [
     width: 72,
   },
   {
+    key: 'appliedAmount',
+    dataIndex: 'appliedAmount',
+    title: '开票金额',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
     key: 'settledAmount',
     dataIndex: 'settledAmount',
     title: '结算金额',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
+    key: 'exchangeRate',
+    dataIndex: 'exchangeRate',
+    title: '汇率',
     width: 110,
     align: 'right' as const,
   },
@@ -304,6 +318,17 @@ function mapFeeItemRows(
   }));
 }
 
+function formatInvoiceExchangeRate(value: null | number | undefined) {
+  if (
+    value === undefined ||
+    value === null ||
+    !Number.isFinite(Number(value))
+  ) {
+    return '-';
+  }
+  return Number(value).toFixed(6);
+}
+
 function formatExchangeRate(value: null | number | undefined) {
   if (
     value === undefined ||
@@ -330,7 +355,9 @@ function mapIssueFeeRows(
     feeCodeName: fee.orderFee?.feeCode?.cnName || '-',
     paySide: fee.orderFee?.paySide,
     currencyCode: fee.orderFee?.currency?.code,
+    appliedAmount: fee.appliedAmount,
     settledAmount: fee.settledAmount,
+    exchangeRate: fee.exchangeRate,
     originalSettledAmount: fee.originalSettledAmount,
   }));
 }
@@ -593,6 +620,12 @@ defineExpose({
                   发票号 {{ issue.invoiceNo }}
                 </span>
                 <span class="invoice-issue-block__meta">
+                  {{ formatDateTime(issue.invoiceIssueTime) }}
+                </span>
+                <span class="invoice-issue-block__meta">
+                  {{ issue.currency?.code || '-' }}
+                </span>
+                <span class="invoice-issue-block__meta">
                   本组原始结算
                   {{
                     formatOptionalSettlementAmount(issue.originalSettledAmount)
@@ -617,11 +650,26 @@ defineExpose({
                     <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
                     <span v-else>-</span>
                   </template>
+                  <template v-else-if="column.key === 'appliedAmount'">
+                    {{ formatOptionalPlainAmount(fee.appliedAmount) }}
+                  </template>
                   <template v-else-if="column.key === 'settledAmount'">
                     {{ formatOptionalPlainAmount(fee.settledAmount) }}
                   </template>
+                  <template v-else-if="column.key === 'exchangeRate'">
+                    {{ formatInvoiceExchangeRate(fee.exchangeRate) }}
+                    <span v-if="fee.exchangeRate == null" class="missing-rate">
+                      缺汇率
+                    </span>
+                  </template>
                   <template v-else-if="column.key === 'originalSettledAmount'">
                     {{ formatOptionalPlainAmount(fee.originalSettledAmount) }}
+                    <span
+                      v-if="fee.originalSettledAmount == null"
+                      class="missing-rate"
+                    >
+                      缺汇率
+                    </span>
                   </template>
                 </template>
               </Table>
@@ -863,6 +911,11 @@ defineExpose({
 .invoice-issue-block__title {
   font-weight: 600;
   color: #303b49;
+}
+
+.missing-rate {
+  margin-left: 4px;
+  color: #d46b08;
 }
 
 .invoice-issue-block__meta {
