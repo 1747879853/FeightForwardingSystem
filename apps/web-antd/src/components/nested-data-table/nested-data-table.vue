@@ -399,9 +399,15 @@ watch(
 }
 
 .nested-data-table {
-  --table-border: #d4e4f4;
-  --table-head: #f9fafb;
-  --table-inner-head: #f9fafb;
+  --table-border: #e2e8f0;
+  --table-head: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  );
+  --table-head-color: #334155;
+  --table-inner-head: hsl(var(--primary) / 4%);
+  --table-inner-head-color: #475569;
 
   width: 100%;
   overflow: hidden;
@@ -451,11 +457,13 @@ watch(
 
 .nested-data-table th {
   position: relative;
-  height: 35px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6b7280;
+  height: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--table-head-color);
+  letter-spacing: 0.02em;
   background: var(--table-head);
+  box-shadow: inset 0 -1px 0 var(--table-border);
 }
 
 /* 外层表头吸顶：滚动容器是 __scroll，th sticky 才能在纵滚时留住列名 */
@@ -534,7 +542,9 @@ watch(
 
 .nested-data-table__inner th {
   height: 32px;
-  color: #657286;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--table-inner-head-color);
   background: var(--table-inner-head);
 }
 
