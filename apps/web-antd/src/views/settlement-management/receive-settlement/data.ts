@@ -61,10 +61,14 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       title: '差值',
       width: 120,
       align: 'right',
-      formatter: ({ cellValue }) =>
-        cellValue === undefined || cellValue === null
-          ? '-'
-          : formatAmount(cellValue),
+      slots: { default: 'diffAmount' },
+    },
+    {
+      field: 'invoiceIssues',
+      title: '发票开出',
+      minWidth: 200,
+      showOverflow: true,
+      slots: { default: 'invoiceIssues' },
     },
     {
       field: 'itemCount',

@@ -39,12 +39,20 @@ function isSameBankCurrency(
   bankCurrencyCode?: null | string,
 ) {
   if (isSameCurrencyId(row.currencyId, bankCurrencyId)) return true;
+  const rowHasId = row.currencyId != null && row.currencyId !== '';
+  const bankHasId = bankCurrencyId != null && bankCurrencyId !== '';
+  if (rowHasId && bankHasId) return false;
   return (
-    !bankCurrencyId &&
     !!row.currencyCode &&
     !!bankCurrencyCode &&
     row.currencyCode === bankCurrencyCode
   );
+}
+
+function currencyKey(row: SettlementCurrencyRow) {
+  if (row.currencyId != null && row.currencyId !== '')
+    return String(row.currencyId);
+  return row.currencyCode || '';
 }
 
 /** 明细里出现的币别。与银行流水相同的排在前面，并标记为不可改 */
@@ -55,9 +63,8 @@ export function collectDisplayCurrencies(
 ): DisplayCurrencyRate[] {
   const map = new Map<string, DisplayCurrencyRate>();
   for (const row of rows) {
-    const currencyId = row.currencyId;
-    if (currencyId == null || currencyId === '') continue;
-    const id = String(currencyId);
+    const id = currencyKey(row);
+    if (!id) continue;
     if (map.has(id)) continue;
     map.set(id, {
       currencyId: id,
@@ -139,6 +146,61 @@ export function calcOriginalSettledAmount(
     sum += row.paySide === 1 ? -line : line;
   }
   return roundMoney(sum);
+}
+
+/** 明细行汇率。与流水同币别为 1，外币未填或无效时为空 */
+export function lineExchangeRate(
+  row: OriginalSettledRow,
+  rates: Record<string, null | number | undefined>,
+  bankCurrencyId?: null | number | string,
+  bankCurrencyCode?: null | string,
+): null | number {
+  if (isSameBankCurrency(row, bankCurrencyId, bankCurrencyCode)) return 1;
+  if (row.currencyId == null || row.currencyId === '') return null;
+  const rate = rates[String(row.currencyId)];
+  if (rate == null || !(rate > 0)) return null;
+  return rate;
+}
+
+/** 明细行原始结算金额，与本次结算金额同号；缺汇率时为空 */
+export function lineOriginalSettledAmount(
+  row: OriginalSettledRow,
+  rates: Record<string, null | number | undefined>,
+  bankCurrencyId?: null | number | string,
+  bankCurrencyCode?: null | string,
+): null | number {
+  const amount = row.settledAmount;
+  if (amount == null || !Number.isFinite(Number(amount))) return null;
+  const rate = lineExchangeRate(row, rates, bankCurrencyId, bankCurrencyCode);
+  if (rate == null) return null;
+  return roundMoney(Number(amount) * rate);
+}
+
+/** 某一币别在本单的原币净额：应收为正、应付为负 */
+export function currencyNetSettledAmount(
+  rows: OriginalSettledRow[],
+  currencyId: number | string,
+  currencyCode?: null | string,
+): number {
+  const id = String(currencyId);
+  let sum = 0;
+  for (const row of rows) {
+    const sameId =
+      row.currencyId != null &&
+      row.currencyId !== '' &&
+      String(row.currencyId) === id;
+    const sameCode =
+      !!currencyCode && !!row.currencyCode && row.currencyCode === currencyCode;
+    if (!sameId && !sameCode) continue;
+    sum += toNetAmount(row.paySide, row.settledAmount);
+  }
+  return roundMoney(sum);
+}
+
+/** 差值不为 0 时高亮。空值和约等于 0 都不标 */
+export function isNotableDiff(value: null | number | undefined) {
+  if (value == null || Number.isNaN(Number(value))) return false;
+  return Math.abs(Number(value)) >= 0.005;
 }
 
 /** 差值 = 本次结算 − 原始结算金额。任一为空时不计算 */

@@ -62,6 +62,7 @@ import {
 } from './form-data';
 import {
   findFeeSettleableOverflow,
+  isNotableDiff,
   suggestInvoiceActualSettled,
 } from './settlement-amount';
 
@@ -1487,9 +1488,12 @@ onMounted(() => {
             <div v-if="isEdit" class="form-item">
               <div class="form-label">差值</div>
               <div class="form-control">
-                <span class="form-text">{{
-                  formatOptionalAmount(diffAmount)
-                }}</span>
+                <span
+                  class="form-text"
+                  :class="{ 'diff-amount--warn': isNotableDiff(diffAmount) }"
+                >
+                  {{ formatOptionalAmount(diffAmount) }}
+                </span>
               </div>
             </div>
             <div v-if="isEdit" class="form-item">
@@ -1851,6 +1855,11 @@ onMounted(() => {
   font-size: 14px;
   line-height: 32px;
   color: #333;
+}
+
+.form-text.diff-amount--warn {
+  font-weight: 600;
+  color: #d46b08;
 }
 
 .toolbar-btn-icon {

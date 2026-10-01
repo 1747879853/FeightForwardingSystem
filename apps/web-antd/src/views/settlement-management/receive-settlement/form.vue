@@ -57,7 +57,11 @@ import {
   calcOriginalSettledAmount,
   collectDisplayCurrencies,
   collectForeignCurrencies,
+  currencyNetSettledAmount,
   findMissingExchangeRate,
+  isNotableDiff,
+  lineExchangeRate,
+  lineOriginalSettledAmount,
   missingExchangeRateMessage,
 } from './settlement-amount';
 import BankStatementPicker from './bank-statement-picker/index.vue';
@@ -85,6 +89,10 @@ interface SettlementItem extends Omit<
   _creatorUserName?: string;
   /** 剩余额度仅本单明细的接口返回，其他核销单明细为空 */
   remainingAmount?: number;
+  /** 其他核销单明细上已算好的汇率；本单行按当前汇率现场算 */
+  exchangeRate?: null | number;
+  /** 其他核销单明细上已算好的原始结算金额 */
+  originalSettledAmount?: null | number;
 }
 
 const route = useRoute();
@@ -225,6 +233,14 @@ const previewOriginalSettledAmount = computed(() =>
 
 const previewDiffAmount = computed(() =>
   calcDiffAmount(actualSettled.value, previewOriginalSettledAmount.value),
+);
+const savedOriginalSettledAmount = ref<null | number>(null);
+const savedDiffAmount = ref<null | number>(null);
+const shownOriginalSettledAmount = computed(
+  () => previewOriginalSettledAmount.value ?? savedOriginalSettledAmount.value,
+);
+const shownDiffAmount = computed(
+  () => previewDiffAmount.value ?? savedDiffAmount.value,
 );
 
 const pendingAddOriginalSettledAmount = computed(() =>
@@ -378,6 +394,20 @@ const columns = [
     width: 160,
   },
   {
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    title: '汇率',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'originalSettledAmount',
+    key: 'originalSettledAmount',
+    title: '原始结算金额',
+    width: 140,
+    align: 'right' as const,
+  },
+  {
     dataIndex: 'settlementName',
     title: '结算对象',
     minWidth: 140,
@@ -433,6 +463,8 @@ async function loadEditData() {
       : dayjs();
     remark.value = detail.remark || '';
     actualSettled.value = detail.actualSettled ?? null;
+    savedOriginalSettledAmount.value = detail.originalSettledAmount ?? null;
+    savedDiffAmount.value = detail.diffAmount ?? null;
     clearExchangeRates();
     rememberExchangeRates(detail.receiveSettlementExchangeRates ?? []);
     items.value = (detail.receiveSettlementItems || []).map((item) =>
@@ -450,6 +482,39 @@ async function loadEditData() {
   } finally {
     pageLoading.value = false;
   }
+}
+
+function formatExchangeRate(value: null | number | undefined) {
+  if (value == null) return '-';
+  return value.toFixed(6);
+}
+
+function displayLineRate(record: SettlementItem) {
+  if (!record._isCurrent) return record.exchangeRate;
+  return (
+    lineExchangeRate(
+      record,
+      exchangeRates,
+      bankStatementDetail.value?.currencyId,
+      bankStatementCurrencyCode.value,
+    ) ??
+    record.exchangeRate ??
+    null
+  );
+}
+
+function displayLineOriginal(record: SettlementItem) {
+  if (!record._isCurrent) return record.originalSettledAmount;
+  return (
+    lineOriginalSettledAmount(
+      record,
+      exchangeRates,
+      bankStatementDetail.value?.currencyId,
+      bankStatementCurrencyCode.value,
+    ) ??
+    record.originalSettledAmount ??
+    null
+  );
 }
 
 function mapDetailItem(
@@ -475,6 +540,8 @@ function mapDetailItem(
     remainingAmount: orderFee?.remainingAmount ?? 0,
     settlementName: orderFee?.settlement?.name,
     settledAmount: item.settledAmount,
+    exchangeRate: item.exchangeRate,
+    originalSettledAmount: item.originalSettledAmount,
     remark: item.remark || '',
   };
 }
@@ -509,6 +576,8 @@ function mapForeignInvoiceFee(
     amount: orderFee?.amount ?? 0,
     settlementName: orderFee?.settlement?.name,
     settledAmount: fee.settledAmount,
+    exchangeRate: fee.exchangeRate,
+    originalSettledAmount: fee.originalSettledAmount,
     remark: fee.remark || '',
   };
 }
@@ -541,6 +610,8 @@ function mapForeignItem(
     remainingAmount: orderFee?.remainingAmount,
     settlementName: orderFee?.settlement?.name,
     settledAmount: item.settledAmount,
+    exchangeRate: item.exchangeRate,
+    originalSettledAmount: item.originalSettledAmount,
     remark: item.remark || '',
   };
 }
@@ -1224,9 +1295,9 @@ onMounted(() => {
               <div class="form-control">
                 <span class="form-text">
                   {{
-                    previewOriginalSettledAmount == null
+                    shownOriginalSettledAmount == null
                       ? '-'
-                      : formatBankAmount(previewOriginalSettledAmount)
+                      : formatBankAmount(shownOriginalSettledAmount)
                   }}
                 </span>
               </div>
@@ -1234,11 +1305,16 @@ onMounted(() => {
             <div class="form-item">
               <div class="form-label">差值</div>
               <div class="form-control">
-                <span class="form-text">
+                <span
+                  class="form-text"
+                  :class="{
+                    'diff-amount--warn': isNotableDiff(shownDiffAmount),
+                  }"
+                >
                   {{
-                    previewDiffAmount == null
+                    shownDiffAmount == null
                       ? '-'
-                      : formatBankAmount(previewDiffAmount)
+                      : formatBankAmount(shownDiffAmount)
                   }}
                 </span>
               </div>
@@ -1299,6 +1375,18 @@ onMounted(() => {
                 style="width: 140px"
               />
               <span>{{ bankStatementCurrencyCode || '流水币别' }}</span>
+              <span class="exchange-rate-list__net">
+                原币净额
+                {{
+                  formatAmount(
+                    currencyNetSettledAmount(
+                      items,
+                      row.currencyId,
+                      row.currencyCode,
+                    ),
+                  )
+                }}
+              </span>
             </div>
           </div>
         </Card>
@@ -1340,7 +1428,7 @@ onMounted(() => {
           :row-class-name="itemRowClassName"
           size="small"
           bordered
-          :scroll="{ x: 1550 }"
+          :scroll="{ x: 1810 }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'ownerSettlementNo'">
@@ -1364,6 +1452,12 @@ onMounted(() => {
             <template v-if="column.dataIndex === 'currencyCode'">
               <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
               <span v-else>-</span>
+            </template>
+            <template v-if="column.key === 'exchangeRate'">
+              {{ formatExchangeRate(displayLineRate(record)) }}
+            </template>
+            <template v-if="column.key === 'originalSettledAmount'">
+              {{ formatAmount(displayLineOriginal(record)) }}
             </template>
             <template v-if="column.key === 'settledAmount'">
               <InputNumber
@@ -1519,6 +1613,15 @@ onMounted(() => {
   align-items: center;
 }
 
+.exchange-rate-list__net {
+  color: #667487;
+}
+
+.diff-amount--warn {
+  font-weight: 600;
+  color: #d46b08;
+}
+
 .delete-amount-hint {
   margin-bottom: 12px;
 }
@@ -1545,6 +1648,11 @@ onMounted(() => {
   font-size: 14px;
   line-height: 32px;
   color: #333;
+}
+
+.form-text.diff-amount--warn {
+  font-weight: 600;
+  color: #d46b08;
 }
 
 .toolbar-btn-icon {

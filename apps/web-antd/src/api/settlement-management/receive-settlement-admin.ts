@@ -250,6 +250,15 @@ export namespace ReceiveSettlementAdminApi {
     currencyId: number | string;
     exchangeRate: number;
     currency?: CurrencySimpleDto | null;
+    /** 本单该币别明细的原币净额（收−付） */
+    netSettledAmount?: number;
+  }
+
+  /** 列表上按发票结算的发票开出简要 */
+  export interface ReceiveSettlementInvoiceIssueSimpleDto {
+    id?: string;
+    applicationNo?: string;
+    invoiceNo?: string;
   }
 
   export interface ReceiveSettlementItemDetailDto {
@@ -323,6 +332,8 @@ export namespace ReceiveSettlementAdminApi {
     originalSettledAmount?: null | number;
     /** 差值 = 本次结算 − 原始结算金额 */
     diffAmount?: null | number;
+    /** 按发票结算时本单的发票开出；按费用结算为空 */
+    invoiceIssues?: null | ReceiveSettlementInvoiceIssueSimpleDto[];
     itemCount: number;
     creationTime?: string;
   }

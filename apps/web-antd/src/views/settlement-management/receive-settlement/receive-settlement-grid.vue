@@ -26,6 +26,8 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
+import { formatAmount } from './form-data';
+import { isNotableDiff } from './settlement-amount';
 import ListTitleTabs, { type ListTabKey } from './list-title-tabs.vue';
 
 const activeTab = defineModel<ListTabKey>('activeTab', { required: true });
@@ -191,6 +193,22 @@ function handleRefresh() {
   gridApi.query();
 }
 
+function formatInvoiceIssues(
+  row: ReceiveSettlementAdminApi.ReceiveSettlementListDto,
+) {
+  if (row.type !== 1) return '-';
+  const issues = row.invoiceIssues ?? [];
+  if (issues.length === 0) return '-';
+  return issues
+    .map((issue) => {
+      const applicationNo = issue.applicationNo || '-';
+      return issue.invoiceNo
+        ? `${applicationNo} / ${issue.invoiceNo}`
+        : applicationNo;
+    })
+    .join('、');
+}
+
 async function initQueryBankStatement() {
   const rawId = route.query.bankStatementId;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -246,5 +264,20 @@ defineExpose({
         {{ row.locked ? '已锁定' : '未锁定' }}
       </Tag>
     </template>
+    <template #diffAmount="{ row }">
+      <span :class="{ 'diff-amount--warn': isNotableDiff(row.diffAmount) }">
+        {{ formatAmount(row.diffAmount) }}
+      </span>
+    </template>
+    <template #invoiceIssues="{ row }">
+      <span>{{ formatInvoiceIssues(row) }}</span>
+    </template>
   </Grid>
 </template>
+
+<style scoped>
+.diff-amount--warn {
+  font-weight: 600;
+  color: #d46b08;
+}
+</style>
