@@ -741,7 +741,8 @@ export function useHotSettings(
         processedChanges = convertedChanges;
       }
 
-      linkage.handleAfterChange(processedChanges, source, null);
+      // Handsontable 将 this 绑为实例；传入后联动可走 refreshHotSourceRows 脏行刷新
+      linkage.handleAfterChange(processedChanges, source, this);
     },
 
     afterGetRowHeader(_row: number, TH: HTMLTableCellElement) {

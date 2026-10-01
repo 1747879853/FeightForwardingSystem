@@ -21,6 +21,7 @@ import {
 } from '#/api/audit-approval/expense-admin';
 import { promptSubmitRemarkIfNegativeProfit } from '../utils/prompt-submit-remark';
 import {
+  isOrderFeeEligibleForApplyChange,
   isSavableOrderFeeRow,
   normalizeOrderFeeChangeOrderKey,
 } from '../utils/helpers';
@@ -155,23 +156,9 @@ export function useOrderFeeActions(
       keysSet.has((row as any)._rowKey),
     );
 
-    // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请删除
-    const invalidRows = list.filter((row) => {
-      const isApproved =
-        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Approved;
-      const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
-      const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
-      const hasSettledAmount = (row.settledAmount || 0) !== 0;
-      const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
-
-      return (
-        !isApproved ||
-        hasInvoicedAmount ||
-        hasOrderInvoiceAmount ||
-        hasSettledAmount ||
-        hasRqstPaymentAmount
-      );
-    });
+    const invalidRows = list.filter(
+      (row) => !isOrderFeeEligibleForApplyChange(row),
+    );
 
     if (invalidRows.length > 0) {
       message.error({
@@ -265,17 +252,11 @@ export function useOrderFeeActions(
     const keysSet = new Set(dataContext.selectedRowKeys.value);
     const list = (dataContext.dataSource.value ?? [])
       .filter((row) => keysSet.has((row as any)._rowKey))
-      .filter(
-        (row) =>
-          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
-          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected,
-      );
+      .filter((row) => isSavableOrderFeeRow(row));
 
-    // ✅ 如果没有符合条件的费用（录入状态、驳回状态、申请修改状态），给出提示
     if (list.length === 0) {
       message.warning({
-        content:
-          '只能选择"录入状态"、"驳回状态"或"申请修改状态"的费用进行提交审核',
+        content: '只能选择「录入状态」或「驳回状态」且未对账的费用进行提交审核',
         key: 'action_process_msg',
       });
       return;
@@ -358,23 +339,9 @@ export function useOrderFeeActions(
       keysSet.has((row as any)._rowKey),
     );
 
-    // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请修改
-    const invalidRows = list.filter((row) => {
-      const isApproved =
-        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Approved;
-      const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
-      const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
-      const hasSettledAmount = (row.settledAmount || 0) !== 0;
-      const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
-
-      return (
-        !isApproved ||
-        hasInvoicedAmount ||
-        hasOrderInvoiceAmount ||
-        hasSettledAmount ||
-        hasRqstPaymentAmount
-      );
-    });
+    const invalidRows = list.filter(
+      (row) => !isOrderFeeEligibleForApplyChange(row),
+    );
 
     if (invalidRows.length > 0) {
       message.error({

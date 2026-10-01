@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   calcOrderFeeProfitRmb,
   collectFeesForPostSubmitProfit,
+  isOrderFeeEligibleForApplyChange,
   isOrderFeeEnteringOrRejectedStatus,
   isOrderFeeRejectedStatus,
+  isPersistedOrderFeeRow,
   isPostSubmitProfitNegative,
   isSavableOrderFeeRow,
   normalizeOrderFeeChangeOrderKey,
@@ -42,6 +44,35 @@ describe('order-fee savable / display status', () => {
       isSavableOrderFeeRow({ feeStatus: 0, statements: [{ id: '1' }] }),
     ).toBe(false);
     expect(isSavableOrderFeeRow(null)).toBe(false);
+  });
+
+  it('已落库判定', () => {
+    expect(isPersistedOrderFeeRow({ id: '1' })).toBe(true);
+    expect(isPersistedOrderFeeRow({ id: '' })).toBe(false);
+    expect(isPersistedOrderFeeRow({ id: null })).toBe(false);
+  });
+
+  it('申请改删：审核通过且金额全 0', () => {
+    expect(
+      isOrderFeeEligibleForApplyChange({
+        combinedFeeStatus: 2,
+        invoicedAmount: 0,
+        orderInvoiceAmount: 0,
+        settledAmount: 0,
+        rqstPaymentAmount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isOrderFeeEligibleForApplyChange({
+        feeStatus: 2,
+        settledAmount: 10,
+      }),
+    ).toBe(false);
+    expect(
+      isOrderFeeEligibleForApplyChange({
+        combinedFeeStatus: 3,
+      }),
+    ).toBe(false);
   });
 });
 

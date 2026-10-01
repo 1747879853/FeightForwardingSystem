@@ -766,91 +766,52 @@ const getSelectedFeeIds = (): string[] => {
 /**
  * 获取选中费用的完整信息（将label转换回ID）
  */
+/** 将 HOT 展示用 label 还原为业务 ID（不改原行） */
+const restoreFeeRowIds = (row: any): OrderFeeAdminApi.OrderFeeDto => {
+  const restoredRow = { ...row };
+  if (restoredRow.feeCodeId_value) {
+    restoredRow.feeCodeId = restoredRow.feeCodeId_value;
+  }
+  if (restoredRow.industryCategory_value !== undefined) {
+    restoredRow.industryCategory = restoredRow.industryCategory_value;
+  }
+  if (restoredRow.currencyId_value) {
+    restoredRow.currencyId = restoredRow.currencyId_value;
+  }
+  if (restoredRow.unit_value) {
+    restoredRow.unit = restoredRow.unit_value;
+  }
+  if (restoredRow.settlementId_value) {
+    restoredRow.settlementId = restoredRow.settlementId_value;
+  }
+  return restoredRow as OrderFeeAdminApi.OrderFeeDto;
+};
+
 const getSelectedFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
   const selectedKeys = new Set(selectedRowKeys.value);
-  const selectedRows = dataSource.value
+  return dataSource.value
     .filter((row) => selectedKeys.has((row as any)._rowKey))
-    .filter((row) => row.id && String(row.id).trim());
-
-  // 需要将label转换回ID
-  return selectedRows.map((row: any) => {
-    const restoredRow = { ...row };
-
-    // 恢复费用代码ID
-    if (restoredRow.feeCodeId_value) {
-      restoredRow.feeCodeId = restoredRow.feeCodeId_value;
-    }
-
-    // 恢复行业类别
-    if (restoredRow.industryCategory_value !== undefined) {
-      restoredRow.industryCategory = restoredRow.industryCategory_value;
-    }
-
-    // 恢复币别ID
-    if (restoredRow.currencyId_value) {
-      restoredRow.currencyId = restoredRow.currencyId_value;
-    }
-
-    // 恢复单位
-    if (restoredRow.unit_value) {
-      restoredRow.unit = restoredRow.unit_value;
-    }
-
-    // 恢复结算对象ID
-    if (restoredRow.settlementId_value) {
-      restoredRow.settlementId = restoredRow.settlementId_value;
-    }
-
-    return restoredRow;
-  });
+    .map((row) => restoreFeeRowIds(row));
 };
 
 /**
- * 获取所有费用数据（用于整票提交时获取未提交的费用）
+ * 获取全部费用（含未落库新行，ID 已还原；供利润估算 / 提交前筛选）
  */
 const getAllFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
-  return dataSource.value
-    .filter((row) => row.id && String(row.id).trim())
-    .map((row: any) => {
-      const restoredRow = { ...row };
-
-      // 恢复费用代码ID
-      if (restoredRow.feeCodeId_value) {
-        restoredRow.feeCodeId = restoredRow.feeCodeId_value;
-      }
-
-      // 恢复行业类别
-      if (restoredRow.industryCategory_value !== undefined) {
-        restoredRow.industryCategory = restoredRow.industryCategory_value;
-      }
-
-      // 恢复币别ID
-      if (restoredRow.currencyId_value) {
-        restoredRow.currencyId = restoredRow.currencyId_value;
-      }
-
-      // 恢复单位
-      if (restoredRow.unit_value) {
-        restoredRow.unit = restoredRow.unit_value;
-      }
-      // 恢复结算对象ID
-      if (restoredRow.settlementId_value) {
-        restoredRow.settlementId = restoredRow.settlementId_value;
-      }
-
-      return restoredRow as OrderFeeAdminApi.OrderFeeDto;
-    });
+  return (dataSource.value ?? []).map((row) => restoreFeeRowIds(row));
 };
 
-/** 更改单整包保存：含未落库新行，并还原下拉 ID */
-const getSanitizedFees = (): OrderFeeAdminApi.OrderFeeEditDto[] =>
-  sanitizeOrderFee(dataSource.value);
+/** 更改单整包保存 / 提交：sanitize 指定行或整表 */
+const getSanitizedFees = (
+  rows?: OrderFeeAdminApi.OrderFeeDto[],
+): OrderFeeAdminApi.OrderFeeEditDto[] =>
+  sanitizeOrderFee(rows ?? dataSource.value);
 
 defineExpose({
   getTableDate,
   getSelectedFeeIds,
   getSelectedFees,
-  getAllFees, // 新增：获取所有费用
+  getAllFees,
   getSanitizedFees,
   isFeeDirty,
   openModifyModal,
@@ -962,11 +923,11 @@ const convertIdsToLabels = () => {
       }
     }
 
-    // 结算对象ID -> label
+    // 结算对象ID -> label（必须保留 settlementId_value，提交/保存靠它还原）
     if (row.settlementId && !row.settlementId_label_converted) {
       const label = row.settlement?.name ?? row.__settlementName;
       if (label) {
-        //row.settlementId_value = row.settlementId;
+        row.settlementId_value = row.settlementId;
         row.settlementId = label;
         row.settlementId_label_converted = true;
         convertedCount++;
@@ -1125,12 +1086,10 @@ watch(
 watch(
   () => dataSource.value,
   (newData) => {
-    // ✅ 修复：防止循环触发
     if (isConvertingIds.value) {
       return;
     }
 
-    // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
     isConvertingIds.value = true;
     try {
       convertIdsToLabels();
@@ -1138,14 +1097,16 @@ watch(
       isConvertingIds.value = false;
     }
 
-    // 直接修改 hotSettings.data 属性而不触发Vue深度响应
     hotSettings.value.data = newData;
 
     nextTick(() => {
-      if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        // ✅ 优化：只调用 loadData，它会自动触发渲染，无需单独调用 render()
-        coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
+      const hot = getHotInstance();
+      if (!hot || hot.isDestroyed) return;
+      // 同源数组就地编辑时 HOT 已持有数据，避免每次单元格变更整表 loadData
+      if (hot.getSourceData?.() === newData) {
+        return;
       }
+      hot.loadData(newData ?? []);
     });
 
     emit('change');

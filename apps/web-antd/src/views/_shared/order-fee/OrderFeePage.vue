@@ -79,7 +79,11 @@ import {
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
 import { promptSubmitRemarkIfNegativeProfit } from './modules/utils/prompt-submit-remark';
-import { isSavableOrderFeeRow } from './modules/utils/helpers';
+import {
+  isOrderFeeEligibleForApplyChange,
+  isPersistedOrderFeeRow,
+  isSavableOrderFeeRow,
+} from './modules/utils/helpers';
 import BatchModifySettlementModal from './modules/batch-modify-settlement-modal.vue';
 
 const emit = defineEmits<{
@@ -672,10 +676,25 @@ function handleCreateInvoiceApplication() {
   });
 }
 
-// 提取提交费用的公共逻辑
+/** 提交前：有未保存修改 / 未落库可提交行时拦截 */
+function assertReadyToSubmitFees(candidateFees: any[]): boolean {
+  if (isFeeDirty()) {
+    message.warning('存在未保存的费用修改，请先保存后再提交');
+    return false;
+  }
+  const unsaved = candidateFees.filter(
+    (fee) => isSavableOrderFeeRow(fee) && !isPersistedOrderFeeRow(fee),
+  );
+  if (unsaved.length > 0) {
+    message.warning('存在未保存的新费用行，请先保存后再提交');
+    return false;
+  }
+  return true;
+}
+
+// 提取提交费用的公共逻辑（统一走表内 sanitize，还原 *_value）
 const submitFees = async (recFees: any[], payFees: any[]) => {
   try {
-    // 合并所有费用
     const allFees = [...recFees, ...payFees];
 
     if (allFees.length === 0) {
@@ -683,7 +702,10 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
       return;
     }
 
-    // 提交后利润：本批提交 ∪ 同归属下非录入/非驳回费用；主单与更改单分算
+    if (!assertReadyToSubmitFees(allFees)) {
+      return;
+    }
+
     const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
     const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
     const remark = await promptSubmitRemarkIfNegativeProfit(
@@ -694,40 +716,16 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
       return;
     }
 
-    // 转换为OrderFeeEditDto格式，确保所有必需字段都有值
-    const editFees = allFees.map((fee) => ({
-      id: fee.id,
-      transportOrderId: fee.transportOrderId || editId.value || '',
-      paySide: fee.paySide ?? 0,
-      feeStatus: fee.feeStatus ?? 0,
-      invoiceStatus: fee.invoiceStatus ?? 0,
-      feeCodeId: fee.feeCodeId ?? 0,
-      settlementId: fee.settlementId || '',
-      currencyId: fee.currencyId ?? 0,
-      exchangeRate: fee.exchangeRate ?? 1,
-      unitPrice: fee.unitPrice ?? 0,
-      amount: fee.amount ?? 0,
-      unit: fee.unit || '',
-      quantity: fee.quantity ?? 0,
-      taxRate: fee.taxRate ?? 0,
-      noTaxUnitPrice: fee.noTaxUnitPrice ?? 0,
-      noTaxAmount: fee.noTaxAmount ?? 0,
-      rqstPaymentAmount: fee.rqstPaymentAmount ?? 0,
-      invoicedAmount: fee.invoicedAmount ?? 0,
-      orderInvoiceAmount: fee.orderInvoiceAmount ?? 0,
-      settledAmount: fee.settledAmount ?? 0,
-      invoiceBlocked: fee.invoiceBlocked ?? false,
-      isConfidential: fee.isConfidential ?? false,
-      dataEntryMethod: fee.dataEntryMethod ?? 0,
-      remark: fee.remark,
-      changeOrderId: fee.changeOrderId,
-      taskStatus: fee.taskStatus,
-      industryCategory: fee.industryCategory,
-      industryCategories: fee.industryCategories,
-    }));
+    const editFees = [
+      ...(recOrderFeeTableRef.value?.getSanitizedFees?.(recFees) ?? []),
+      ...(payOrderFeeTableRef.value?.getSanitizedFees?.(payFees) ?? []),
+    ];
 
-    // 构建提交参数 - 需要根据实际API要求构建
-    // 注意：submitOrderFee接口需要orderFees数组，包含完整的费用信息
+    if (editFees.length === 0) {
+      message.warning('没有可提交的费用');
+      return;
+    }
+
     await submitOrderFee({
       transportOrderId: editId.value,
       remark: remark || undefined,
@@ -735,10 +733,8 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
     });
 
     message.success('提交审核成功');
-    // 刷新两个表格
     recOrderFeeTableRef.value?.getTableDate();
     payOrderFeeTableRef.value?.getTableDate();
-    // 清空选中状态
     selectedFeeIds.value = [];
   } catch (error) {
     console.error('提交审核失败:', error);
@@ -748,19 +744,16 @@ const submitFees = async (recFees: any[], payFees: any[]) => {
 
 // 整票提交
 const handleSubmitAllFees = async () => {
-  // 先收集选中的费用ID
-  const selectedFeeIds = collectSelectedFeeIds();
+  collectSelectedFeeIds();
+  const hasSelection = selectedFeeIds.value.length > 0;
 
   let recFees: any[] = [];
   let payFees: any[] = [];
 
-  if (selectedFeeIds.length === 0) {
-    // 如果没有勾选费用，则获取所有未提交的费用（录入状态0和驳回状态5）
-
+  if (!hasSelection) {
     const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
     const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
 
-    // 过滤出可提交费用：录入/驳回且未对账（与保存口径一致）
     recFees = allRecFees.filter((fee) => isSavableOrderFeeRow(fee));
     payFees = allPayFees.filter((fee) => isSavableOrderFeeRow(fee));
 
@@ -769,25 +762,34 @@ const handleSubmitAllFees = async () => {
       return;
     }
 
-    // 提示用户将提交哪些费用
-    const totalUnsubmitted = recFees.length + payFees.length;
+    if (!assertReadyToSubmitFees([...recFees, ...payFees])) {
+      return;
+    }
+
+    const persistedRec = recFees.filter((fee) => isPersistedOrderFeeRow(fee));
+    const persistedPay = payFees.filter((fee) => isPersistedOrderFeeRow(fee));
+    const totalUnsubmitted = persistedRec.length + persistedPay.length;
     Modal.confirm({
       title: '整票提交确认',
-      content: `即将提交 ${totalUnsubmitted} 条未提交的费用（应收${recFees.length}条，应付${payFees.length}条），是否继续？`,
+      content: `即将提交 ${totalUnsubmitted} 条未提交的费用（应收${persistedRec.length}条，应付${persistedPay.length}条），是否继续？`,
       okText: '确认提交',
       cancelText: '取消',
       onOk: async () => {
-        await submitFees(recFees, payFees);
+        await submitFees(persistedRec, persistedPay);
       },
     });
   } else {
-    // 如果勾选了费用，则只提交勾选的费用
-
-    recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
-    payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+    recFees = (recOrderFeeTableRef.value?.getSelectedFees() || []).filter(
+      (fee) => isSavableOrderFeeRow(fee),
+    );
+    payFees = (payOrderFeeTableRef.value?.getSelectedFees() || []).filter(
+      (fee) => isSavableOrderFeeRow(fee),
+    );
 
     if (recFees.length === 0 && payFees.length === 0) {
-      message.warning('没有可提交的费用');
+      message.warning(
+        '勾选的费用中没有可提交项（仅「录入/驳回」且未对账可提交）',
+      );
       return;
     }
 
@@ -811,23 +813,19 @@ const handleApplyModify = async () => {
     return;
   }
 
-  // 获取选中的费用
   const selectedFee = allFees[0];
-
-  // 验证费用状态：只有审核通过的费用才能申请修改
-  if (selectedFee?.feeStatus !== 2) {
-    // 假设 2 是审核通过的状态
-    message.warning('只能修改审核通过的费用');
+  if (!isOrderFeeEligibleForApplyChange(selectedFee)) {
+    message.warning('只能申请修改「审核通过」且开票/结算相关金额均为 0 的费用');
     return;
   }
 
-  // 确定是哪个表格（应收还是应付）
-  const isRecFee = recFees.some((fee) => fee.id === selectedFee.id);
+  const isRecFee = recFees.some(
+    (fee) => String(fee.id) === String(selectedFee.id),
+  );
   const tableRef = isRecFee
     ? recOrderFeeTableRef.value
     : payOrderFeeTableRef.value;
 
-  // 打开编辑模态框
   if (tableRef?.openModifyModal && selectedFee) {
     tableRef.openModifyModal(selectedFee, formValues.value);
   } else {
@@ -837,17 +835,33 @@ const handleApplyModify = async () => {
 
 // 申请删除
 const handleApplyDelete = async () => {
-  const feeIds = collectSelectedFeeIds();
-  if (feeIds.length === 0) {
+  const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+  const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+  const allFees = [...recFees, ...payFees];
+
+  if (allFees.length === 0) {
     message.warning('请至少选择一条费用');
     return;
   }
 
-  // 创建一个临时的变量来获取用户输入
+  if (allFees.some((fee) => !isOrderFeeEligibleForApplyChange(fee))) {
+    message.warning('只能申请删除「审核通过」且开票/结算相关金额均为 0 的费用');
+    return;
+  }
+
+  const feeIds = allFees
+    .map((fee) => fee.id)
+    .filter((id): id is string => Boolean(id && String(id).trim()))
+    .map(String);
+
+  if (feeIds.length === 0) {
+    message.warning('请至少选择一条已保存的费用');
+    return;
+  }
+
   let inputValue = '';
 
-  // 弹出对话框让用户填写删除原因
-  const modal = Modal.confirm({
+  Modal.confirm({
     title: '申请删除',
     content: h(
       'div',
@@ -886,10 +900,8 @@ const handleApplyDelete = async () => {
         });
 
         message.success('申请删除成功');
-        // 刷新两个表格
         recOrderFeeTableRef.value?.getTableDate();
         payOrderFeeTableRef.value?.getTableDate();
-        // 清空选中状态
         selectedFeeIds.value = [];
       } catch (error) {
         console.error('申请删除失败:', error);
@@ -1206,15 +1218,19 @@ onMounted(() => {
                 整票提交
                 <template #overlay>
                   <Menu @click="handleMenuClick">
-                    <MenuItem key="modify">{{
+                    <MenuItem key="modify" v-access:code="orderFeePerm.edit">{{
                       $t('auditApproval.ApplyModification')
                     }}</MenuItem>
-                    <MenuItem key="delete">{{
-                      $t('auditApproval.ApplyDeletion')
-                    }}</MenuItem>
-                    <MenuItem key="withdraw">{{
-                      $t('auditApproval.withdraw')
-                    }}</MenuItem>
+                    <MenuItem
+                      key="delete"
+                      v-access:code="orderFeePerm.delete"
+                      >{{ $t('auditApproval.ApplyDeletion') }}</MenuItem
+                    >
+                    <MenuItem
+                      key="withdraw"
+                      v-access:code="orderFeePerm.edit"
+                      >{{ $t('auditApproval.withdraw') }}</MenuItem
+                    >
                   </Menu>
                 </template>
               </DropdownButton>

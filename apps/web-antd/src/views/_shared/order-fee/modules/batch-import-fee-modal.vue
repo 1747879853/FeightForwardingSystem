@@ -375,7 +375,6 @@ defineExpose({
     :title="orderFeeDataT('batchImportFee')"
     class="h-[1150px] w-[1600px]"
     :bodyStyle="{ padding: '24px' }"
-    @confirm="handleImport"
   >
     <div class="batch-import-container">
       <!-- 搜索区域 -->

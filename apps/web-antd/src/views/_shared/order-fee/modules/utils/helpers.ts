@@ -4,6 +4,7 @@ import {
   getInvoiceStatusOptions,
   getFeeStatusOptions as getFeeStatusOptionsFromData,
   getDataEntryMethodOptions,
+  getFeeStatusValue,
 } from '../../data';
 
 /**
@@ -133,6 +134,35 @@ export function isSavableOrderFeeRow(row: any): boolean {
   if (row.isStatemented === true) return false;
   if (Array.isArray(row.statements) && row.statements.length > 0) return false;
   return isOrderFeeEnteringOrRejectedStatus(resolveOrderFeeDisplayStatus(row));
+}
+
+/** 是否已落库（有非空 id） */
+export function isPersistedOrderFeeRow(row: any): boolean {
+  return Boolean(row?.id != null && String(row.id).trim());
+}
+
+/** 开票/结算相关金额是否均为 0（申请改删前置） */
+export function hasOrderFeeZeroSettlementAmounts(row: any): boolean {
+  if (!row) return false;
+  return (
+    Number(row.invoicedAmount || 0) === 0 &&
+    Number(row.orderInvoiceAmount || 0) === 0 &&
+    Number(row.settledAmount || 0) === 0 &&
+    Number(row.rqstPaymentAmount || 0) === 0
+  );
+}
+
+/**
+ * 是否允许申请修改/申请删除：审核通过，且开票申请/已开票/已结算/申请付款金额均为 0。
+ */
+export function isOrderFeeEligibleForApplyChange(row: any): boolean {
+  if (!row) return false;
+  if (
+    Number(resolveOrderFeeDisplayStatus(row)) !== getFeeStatusValue.Approved
+  ) {
+    return false;
+  }
+  return hasOrderFeeZeroSettlementAmounts(row);
 }
 
 /** 主单 / 更改单归属键：空串表示主单 */

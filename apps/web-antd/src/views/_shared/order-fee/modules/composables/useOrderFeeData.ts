@@ -341,18 +341,18 @@ export function useOrderFeeData(
         item.taskStatus = '';
       }
 
-      // 根据结算状态重新计算费用状态
+      // 根据结算状态派生展示态：同步 feeStatus 与 combinedFeeStatus，避免 UI 口径分叉
       if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
         const amount = item.amount || 0;
         const settledAmount = item.settledAmount || 0;
-
-        if (settledAmount <= 0) {
-          item.feeStatus = feeConstants.getFeeStatusValue.Approved;
-        } else if (settledAmount >= amount) {
-          item.feeStatus = feeConstants.getFeeStatusValue.Settled;
+        let derived = feeConstants.getFeeStatusValue.Approved;
+        if (settledAmount >= amount && amount > 0) {
+          derived = feeConstants.getFeeStatusValue.Settled;
         } else if (settledAmount > 0 && settledAmount < amount) {
-          item.feeStatus = feeConstants.getFeeStatusValue.PartialSettlement;
+          derived = feeConstants.getFeeStatusValue.PartialSettlement;
         }
+        item.feeStatus = derived;
+        item.combinedFeeStatus = derived;
       }
     });
 
