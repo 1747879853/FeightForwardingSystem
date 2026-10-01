@@ -1157,6 +1157,7 @@ function formatMonth(val: string | undefined | null): string {
               <Button
                 v-if="canGenerateInvoiceApplication"
                 type="primary"
+                class="stmt-primary-btn"
                 @click="handleGenerateInvoiceApplication"
               >
                 生成开票申请
@@ -1166,6 +1167,7 @@ function formatMonth(val: string | undefined | null): string {
               <Button
                 v-if="canGeneratePaymentApplication"
                 type="primary"
+                class="stmt-primary-btn"
                 @click="handleGeneratePaymentApplication"
               >
                 生成付费申请
@@ -1198,15 +1200,13 @@ function formatMonth(val: string | undefined | null): string {
         <div class="main-layout">
           <!-- 左侧：基础信息 -->
           <div class="left-column">
-            <Card size="small" class="basic-info-card h-full">
+            <Card size="small" class="basic-info-card info-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="text-lg font-semibold">基础信息</span>
+                  <span class="card-title-text">基础信息</span>
                 </div>
               </template>
-
-              <div class="divider-line"></div>
 
               <div class="info-section">
                 <!-- 第一行：客户名称、对账人、创建时间 -->
@@ -1309,17 +1309,13 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 中部：费用合计 -->
           <div class="center-column">
-            <Card size="small" class="fee-summary-card h-full">
+            <Card size="small" class="fee-summary-card info-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="text-lg font-semibold">{{
-                    t('feeSummary')
-                  }}</span>
+                  <span class="card-title-text">{{ t('feeSummary') }}</span>
                 </div>
               </template>
-
-              <div class="divider-line"></div>
 
               <!-- 使用新的费用合计组件 -->
               <FeeSummaryCard :fee-details="filteredFeeDetailRows" />
@@ -1332,13 +1328,12 @@ function formatMonth(val: string | undefined | null): string {
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="text-lg font-semibold">
+                  <span class="card-title-text">
                     {{ t('attachment') }}
                   </span>
                 </div>
               </template>
 
-              <div class="divider-line"></div>
               <div class="py-2">
                 <FileUploadInput
                   v-model="attachments"
@@ -1352,17 +1347,21 @@ function formatMonth(val: string | undefined | null): string {
         </div>
 
         <!-- 费用明细表格 -->
-        <Card size="small" class="fee-detail-card mt-3">
+        <Card size="small" class="fee-detail-card info-card mt-3">
           <template #title>
             <div class="card-title-wrapper">
               <span class="title-indicator"></span>
-              <span class="text-lg font-semibold">{{ t('feeDetail') }}</span>
+              <span class="card-title-text">{{ t('feeDetail') }}</span>
             </div>
           </template>
 
           <template #extra>
             <Space class="m-2">
-              <Button type="primary" @click="handleOpenAddFee">
+              <Button
+                type="primary"
+                class="stmt-primary-btn"
+                @click="handleOpenAddFee"
+              >
                 {{ t('addFee') }}
               </Button>
               <Button
@@ -1375,12 +1374,8 @@ function formatMonth(val: string | undefined | null): string {
             </Space>
           </template>
 
-          <div class="divider-line"></div>
-
           <!-- 过滤条件 -->
-          <div
-            class="filter-bar mb-3 flex flex-wrap items-center gap-3 rounded bg-gray-50 p-3"
-          >
+          <div class="filter-bar mb-3 flex flex-wrap items-center gap-3 p-3">
             <Space wrap>
               <span class="text-sm text-gray-600"
                 >{{ t('accountDate') }}：</span
@@ -1605,7 +1600,7 @@ function formatMonth(val: string | undefined | null): string {
               </NestedDataTable>
             </div>
 
-            <div class="total-amount flex rounded-md px-1 py-1 shadow">
+            <div class="total-amount flex rounded-md px-1 py-1">
               <div
                 v-for="(item, index) in totalAmount"
                 class="mr-2 flex"
@@ -1647,66 +1642,97 @@ function formatMonth(val: string | undefined | null): string {
   }
 }
 
-/* 信息卡片样式 - 从付费结算页面复制 */
+/* 分区卡片：圆角 + 轻阴影，悬停加深 */
 .info-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-  transition: all 0.3s ease;
+  overflow: hidden;
+  border: 1px solid #e8ecf3;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 6%);
+  transition: box-shadow 0.3s ease;
 }
 
 .info-card:hover {
-  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+  box-shadow: 0 6px 20px rgb(16 42 83 / 10%);
 }
 
-/* 标题样式优化 */
-:deep(.info-card .ant-card-head-title) {
-  font-size: 16px;
+/* 卡片头：主题色横向渐变 */
+:deep(.info-card.ant-card-small > .ant-card-head) {
+  min-height: 48px;
+  padding: 0 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 55%,
+    hsl(var(--background)) 100%
+  );
+  border-bottom: 1px solid #e4e8ef;
+}
+
+:deep(.info-card.ant-card-small > .ant-card-body) {
+  padding: 14px 16px;
+}
+
+.card-title-text {
+  font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #252a31;
 }
 
-/* 输入框和选择器统一样式 */
+/* 输入聚焦：品牌色反馈 */
 :deep(.info-card .ant-input),
 :deep(.info-card .ant-select-selector),
 :deep(.info-card .ant-picker) {
-  border-color: #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.3s ease;
+  border-color: #e4e8ef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 :deep(.info-card .ant-input:focus),
+:deep(.info-card .ant-input-focused),
 :deep(.info-card .ant-select-focused .ant-select-selector),
 :deep(.info-card .ant-picker-focused) {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgb(24 144 255 / 10%);
+  border-color: hsl(var(--primary) / 75%);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
 }
 
-/* 禁用状态样式 */
 :deep(.info-card .ant-input-disabled),
 :deep(.info-card .ant-select-disabled .ant-select-selector) {
-  color: #666;
-  background: #f5f7fa;
+  color: #b9c0c9;
+  background: #f6f7f9;
 }
 
-/* 标签文字样式 */
 :deep(.info-card label),
 :deep(.info-card div[style*='font-size: 13px']) {
   font-weight: 500;
 }
 
-/* 附件上传区域样式 */
 :deep(.info-card .file-upload-container) {
   border-radius: 8px;
 }
 
 .total-amount {
   display: flex;
-  flex-shrink: 0; // 合计行固定在费用明细底部，不随表格高度变化被压缩
+  flex-shrink: 0;
   flex-wrap: wrap;
-  background: #fff;
+  gap: 0 4px;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 16px !important;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #52607a;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--background)) 50%,
+    hsl(var(--primary) / 6%) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 6%);
 
   .split {
-    color: #33333345;
+    color: #d9dee8;
   }
 }
 
@@ -1719,7 +1745,7 @@ function formatMonth(val: string | undefined | null): string {
 }
 
 .blue {
-  color: #007bff;
+  color: hsl(var(--primary));
 }
 
 :deep(.green-btn) {
@@ -1728,7 +1754,6 @@ function formatMonth(val: string | undefined | null): string {
   border-color: #00b96b !important;
 }
 
-/* 如果需要处理悬停状态 */
 :deep(.green-btn:hover),
 :deep(.green-btn:focus) {
   color: #fff;
@@ -1742,7 +1767,6 @@ function formatMonth(val: string | undefined | null): string {
   border-color: #ffc107 !important;
 }
 
-/* 如果需要处理悬停状态 */
 :deep(.yellow-btn:hover),
 :deep(.yellow-btn:focus) {
   color: #fff;
@@ -1750,7 +1774,6 @@ function formatMonth(val: string | undefined | null): string {
   border-color: #ffc107 !important;
 }
 
-/* 悬停状态 */
 .green-dropdown-btn.ant-btn:hover,
 .green-dropdown-btn.ant-btn:focus {
   color: #fff;
@@ -1758,17 +1781,13 @@ function formatMonth(val: string | undefined | null): string {
   border-color: #73d13d;
 }
 
-/* 激活/按下状态 */
 .green-dropdown-btn.ant-btn:active {
   color: #fff;
   background-color: #389e0d;
   border-color: #389e0d;
 }
 
-/* Page 内容区高度经 Spin 透传到 .payment-app-form：
-   AntD Spin 的 wrapper(.ant-spin-nested-loading) 与 .ant-spin-container 默认 auto 高，
-   会截断 .payment-app-form 的 height:100% 链，导致内部 flex 高度失效、
-   费用明细表格按内容撑开、整页溢出出现竖向滚动条。用 wrapper-class-name 精确限定本页 Spin。 */
+/* Page 内容区高度经 Spin 透传到 .payment-app-form */
 :deep(.statement-editor-spin) {
   height: 100%;
 }
@@ -1780,39 +1799,63 @@ function formatMonth(val: string | undefined | null): string {
 .payment-app-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  height: 100%; // 确保容器占满父元素高度
-  min-height: 0; // 关键：允许flex子元素正确计算高度
-  overflow: hidden; // 防止整体页面滚动
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 4px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 4%) 0%,
+    hsl(var(--background)) 120px,
+    hsl(var(--background)) 100%
+  );
 }
 
 .action-bar {
   display: flex;
-  flex-shrink: 0; // 防止被压缩
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  padding: 10px 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 3%) 45%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .action-bar__title {
   font-size: 16px;
   font-weight: 600;
+  color: #252a31;
 }
 
 .action-bar__statement-num {
   margin-left: 24px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: normal;
-  color: #8c8c8c;
+  color: #8c95a3;
+}
+
+.stmt-primary-btn {
+  border-radius: 6px;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 28%);
+  transition: box-shadow 0.2s ease;
+}
+
+.stmt-primary-btn:hover {
+  box-shadow: 0 4px 12px hsl(var(--primary) / 40%);
 }
 
 .main-layout {
   display: flex;
-  flex-shrink: 0; // 防止被压缩
-  gap: 8px;
+  flex-shrink: 0;
+  gap: 12px;
 }
 
 .left-column {
@@ -1830,42 +1873,34 @@ function formatMonth(val: string | undefined | null): string {
   width: 240px;
 }
 
-// 费用明细卡片样式 - 使其能够占满剩余空间
 .fee-detail-card {
   display: flex;
-  flex: 1; // 占据剩余空间
+  flex: 1;
   flex-direction: column;
-  min-height: 0; // 允许flex子元素正确计算高度
-  overflow: hidden; // 关键：防止内容溢出导致页面滚动
+  min-height: 0;
+  overflow: hidden;
 
   :deep(.ant-card-body) {
     display: flex;
     flex: 1;
     flex-direction: column;
-    min-height: 0; // 关键：允许 body 在 flex 链中收缩，配合内部表格 fill-height 精确填充
-    padding: 12px; // 保持内边距
-    overflow: hidden; // 防止内容溢出
+    min-height: 0;
+    padding: 12px 16px;
+    overflow: hidden;
   }
 }
 
-.basic-info-card :deep(.ant-card-head) {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
 .basic-info-card :deep(.ant-card-body) {
-  padding-top: 0;
+  padding-top: 12px;
 }
 
 .fee-detail-card :deep(.ant-card-head),
 .attachment-card :deep(.ant-card-head),
 .fee-summary-card :deep(.ant-card-head) {
   display: flex;
-  flex-shrink: 0; // 防止卡片头部被压缩
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 0;
-  border-bottom: none;
 }
 
 .fee-detail-card :deep(.ant-card-head-title) {
@@ -1874,20 +1909,6 @@ function formatMonth(val: string | undefined | null): string {
 
 .fee-detail-card :deep(.ant-card-extra) {
   flex-shrink: 0;
-}
-
-.fee-detail-card :deep(.ant-card-body),
-.attachment-card :deep(.ant-card-body),
-.fee-summary-card :deep(.ant-card-body) {
-  padding-top: 0;
-}
-
-.divider-line {
-  width: calc(100% - 10px);
-  height: 1px;
-  margin-right: 5px;
-  margin-left: 5px;
-  background-color: #e8e8e8;
 }
 
 .card-title-wrapper {
@@ -1899,12 +1920,17 @@ function formatMonth(val: string | undefined | null): string {
 .title-indicator {
   width: 4px;
   height: 16px;
-  background: linear-gradient(180deg, #91caff 0%, #1890ff 100%);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 55%) 0%,
+    hsl(var(--primary)) 100%
+  );
   border-radius: 2px;
+  box-shadow: 0 0 8px hsl(var(--primary) / 35%);
 }
 
 .info-section {
-  padding-top: 10px;
+  padding-top: 4px;
 }
 
 .info-row {
@@ -1920,16 +1946,14 @@ function formatMonth(val: string | undefined | null): string {
   gap: 4px;
 }
 
-// 为输入框组件添加基于rem的宽度适配
 .info-field :deep(.ant-input),
 .info-field :deep(.ant-picker),
 .info-field :deep(.ant-select),
 .info-field :deep(.ant-input-textarea) {
   width: 100%;
-  max-width: 15rem; // 使用rem单位，适配不同分辨率
+  max-width: 15rem;
 }
 
-// 对于TextArea，设置合适的宽度
 .info-field :deep(.ant-input-textarea) {
   max-width: 20rem;
 }
@@ -1937,7 +1961,7 @@ function formatMonth(val: string | undefined | null): string {
 .field-label {
   font-size: 13px;
   font-weight: normal;
-  color: #8c8c8c;
+  color: #8c95a3;
 }
 
 .field-value-text {
@@ -1950,9 +1974,13 @@ function formatMonth(val: string | undefined | null): string {
 .currency-card {
   min-width: 140px;
   padding: 10px 16px;
-  background: #f6f9ff;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 8px;
 }
 
 .currency-card__header {
@@ -1965,7 +1993,7 @@ function formatMonth(val: string | undefined | null): string {
   font-family: Monaco, Consolas, 'Courier New';
   font-size: 18px;
   font-weight: 600;
-  color: #1890ff;
+  color: hsl(var(--primary));
   letter-spacing: 0.02em;
 }
 
@@ -1987,9 +2015,13 @@ function formatMonth(val: string | undefined | null): string {
   flex: 1;
   min-width: 140px;
   padding: 10px 14px;
-  background: #f6f9ff;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 8px;
 }
 
 .conversion-card__head {
@@ -2020,7 +2052,7 @@ function formatMonth(val: string | undefined | null): string {
 .conversion-card__converted {
   font-size: 13px;
   font-weight: 600;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .conversion-total-bar {
@@ -2029,7 +2061,7 @@ function formatMonth(val: string | undefined | null): string {
   justify-content: space-between;
   padding-top: 10px;
   margin-top: 10px;
-  border-top: 1px solid #e8eef6;
+  border-top: 1px solid hsl(var(--primary) / 12%);
 }
 
 .conversion-total-bar__label {
@@ -2040,7 +2072,7 @@ function formatMonth(val: string | undefined | null): string {
 .conversion-total-bar__amount {
   font-size: 22px;
   font-weight: 700;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .attachment-area {
@@ -2057,20 +2089,19 @@ function formatMonth(val: string | undefined | null): string {
 
 .fee-group-table {
   display: flex;
-  flex: 1; // 占据父容器的剩余空间
+  flex: 1;
   flex-direction: column;
-  min-height: 0; // 允许flex子元素正确计算高度
-  overflow: hidden; // 关键：防止表格内容溢出
+  min-height: 0;
+  overflow: hidden;
 
   :deep(.ant-table-expanded-row > td) {
     padding: 4px 8px;
   }
 
-  // 表格滚动容器 - 使用flex布局自动填充剩余空间
   .table-container {
     flex: 1;
-    min-height: 0; // 允许flex子元素正确计算高度
-    overflow: auto; // 只在表格内部滚动
+    min-height: 0;
+    overflow: auto;
   }
 }
 
@@ -2092,57 +2123,61 @@ function formatMonth(val: string | undefined | null): string {
   width: 14px;
   min-width: 14px;
   line-height: 1;
+  color: hsl(var(--primary) / 80%);
   transform-origin: center;
-  transition: transform 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.expand-toggle:hover {
+  color: hsl(var(--primary));
 }
 
 .expand-toggle--expanded {
   transform: rotate(90deg);
 }
 
-/* 对账信息列醒目样式 */
 .reconciliation-amount {
   display: inline-block;
   padding: 2px 6px;
   font-size: 14px;
   font-weight: 600;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
-/* 应收金额 - 绿色 */
 .receive-amount {
   color: #52c41a;
-  background-color: #f6ffed;
+  background: linear-gradient(135deg, #f6ffed 0%, rgb(82 196 26 / 12%) 100%);
 }
 
-/* 应付金额 - 蓝色 */
 .pay-amount {
-  color: #1890ff;
-  background-color: #e6f7ff;
+  color: hsl(var(--primary));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 14%) 100%
+  );
 }
 
-/* 未收金额 - 橙色 */
 .un-receive-amount {
   color: #fa8c16;
-  background-color: #fff7e6;
+  background: linear-gradient(135deg, #fff7e6 0%, rgb(250 140 22 / 12%) 100%);
 }
 
-/* 未付金额 - 红色 */
 .un-pay-amount {
   color: #ff4d4f;
-  background-color: #fff1f0;
+  background: linear-gradient(135deg, #fff1f0 0%, rgb(255 77 79 / 10%) 100%);
 }
 
-/* 已申请收 - 紫色 */
 .rqst-receive-amount {
   color: #722ed1;
-  background-color: #f9f0ff;
+  background: linear-gradient(135deg, #f9f0ff 0%, rgb(114 46 209 / 10%) 100%);
 }
 
-/* 已申请付 - 品红 */
 .rqst-pay-amount {
   color: #eb2f96;
-  background-color: #fff0f6;
+  background: linear-gradient(135deg, #fff0f6 0%, rgb(235 47 150 / 10%) 100%);
 }
 
 .fee-footer {
@@ -2156,8 +2191,14 @@ function formatMonth(val: string | undefined | null): string {
   border-top: 1px solid #f0f0f0;
 }
 
-// 过滤栏样式 - 防止占用过多空间
 .filter-bar {
-  flex-shrink: 0; // 防止被压缩
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 5%) 0%,
+    hsl(var(--background)) 70%
+  );
+  border: 1px solid hsl(var(--primary) / 10%);
+  border-radius: 10px;
 }
 </style>

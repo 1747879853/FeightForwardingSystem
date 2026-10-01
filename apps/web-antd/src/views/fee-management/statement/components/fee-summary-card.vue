@@ -118,7 +118,7 @@ function getCurrencyLabel(currencyId: number): string {
 
 <template>
   <div v-if="currencySummaries.length === 0" class="empty-state">
-    <span class="text-gray-400">暂无费用数据</span>
+    <span>暂无费用数据</span>
   </div>
 
   <div v-else class="fee-summary-container">
@@ -218,7 +218,6 @@ function getCurrencyLabel(currencyId: number): string {
 </template>
 
 <style scoped lang="scss">
-/* 响应式设计 */
 @media (max-width: 768px) {
   .fee-summary-container {
     flex-direction: column;
@@ -234,57 +233,72 @@ function getCurrencyLabel(currencyId: number): string {
   }
 }
 
-.total-card {
-  //background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  //border: 2px solid #007bff;
-  //box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
-}
-
-.total-header {
-  font-weight: bold;
-  //background-color: #007bff;
-  color: white;
-}
-
-/* 费用汇总容器 - 横向单行排列：不换行；币别多时横向滚动 */
 .fee-summary-container {
   display: flex;
-  flex-wrap: nowrap; /* 不换行 */
+  flex-wrap: nowrap;
   gap: 12px;
   align-items: flex-start;
   padding: 10px 5px;
-  overflow: auto hidden; /* 币别 >2 时横向滚动 */ /* 防止 overflow-x:auto 连带出现纵向滚动条 */
+  overflow: auto hidden;
 }
 
 .currency-card {
   display: flex;
-  flex: 0 0 auto; /* 固定宽度、不伸缩（不做自适应压缩） */
+  flex: 0 0 auto;
   flex-direction: column;
-  min-width: 200px; /* 由 280px 收窄，保证「原币折算合计 + 2 个币别」一行放得下、无需滚动 */
-  padding: 10px;
-  margin: 0; /* 移除margin，使用gap控制间距 */
+  min-width: 200px;
+  padding: 12px;
+  margin: 0;
   background: linear-gradient(
-    180deg,
-    rgb(220 238 255 / 80%) 0%,
-    rgb(220 238 255 / 40%) 52.1%
+    165deg,
+    hsl(var(--primary) / 12%) 0%,
+    hsl(var(--primary) / 5%) 48%,
+    hsl(var(--background)) 100%
   );
+  border: 1px solid hsl(var(--primary) / 14%);
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  box-shadow: 0 2px 10px hsl(var(--primary) / 8%);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
+.currency-card:hover {
+  box-shadow: 0 6px 18px hsl(var(--primary) / 14%);
+  transform: translateY(-1px);
+}
+
+.total-card {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--primary) / 20%) 0%,
+    hsl(var(--primary) / 8%) 45%,
+    hsl(var(--primary) / 3%) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 22%);
+  box-shadow: 0 4px 16px hsl(var(--primary) / 14%);
+}
+
+.total-header .currency-code {
+  color: transparent;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary) / 70%) 100%
+  );
+  background-clip: text;
+}
+
 .currency-header {
-  padding-bottom: 1px;
+  padding-bottom: 6px;
   margin-bottom: 12px;
-  border-bottom: 2px solid rgb(24 144 255 / 10%);
+  border-bottom: 2px solid hsl(var(--primary) / 12%);
 }
 
 .currency-code {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #262626;
+  color: #252a31;
   letter-spacing: 0.5px;
 }
 
@@ -292,10 +306,11 @@ function getCurrencyLabel(currencyId: number): string {
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  padding: 12px 5px;
-  margin-bottom: 1rem;
-  background: rgb(255 255 255 / 80%);
-  border-radius: 8px;
+  padding: 12px 8px;
+  margin-bottom: 0.75rem;
+  background: rgb(255 255 255 / 88%);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 4%);
 
   &:last-child {
     margin-bottom: 0;
@@ -303,10 +318,20 @@ function getCurrencyLabel(currencyId: number): string {
 }
 
 .blue-row {
-  border-left: 3px solid #1890ff;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    rgb(255 255 255 / 90%) 55%
+  );
+  border-left: 3px solid hsl(var(--primary));
 }
 
 .orange-row {
+  background: linear-gradient(
+    90deg,
+    rgb(250 140 22 / 8%) 0%,
+    rgb(255 255 255 / 90%) 55%
+  );
   border-left: 3px solid #fa8c16;
 }
 
@@ -319,15 +344,8 @@ function getCurrencyLabel(currencyId: number): string {
   text-align: center;
 }
 
-.icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  opacity: 0.8;
-}
-
 .amount-value {
-  font-family: 'MiSans Latin';
+  font-family: 'MiSans Latin', 'DIN Alternate', Roboto, sans-serif;
   font-size: 16px;
   font-weight: 600;
   line-height: 16px;
@@ -337,18 +355,32 @@ function getCurrencyLabel(currencyId: number): string {
 }
 
 .amount-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.3px;
 }
 
 .blue-row .amount-label {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .orange-row .amount-label {
   color: #fa8c16;
 }
 
-/* 原币折算合计卡片样式 */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 16px;
+  color: #94a3b8;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 4%) 0%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px dashed hsl(var(--primary) / 18%);
+  border-radius: 12px;
+}
 </style>
