@@ -35,8 +35,7 @@ const selectedRowKeys = ref<string[]>([]);
 // 监听 items 变化，清空展开状态和选中状态
 watch(
   () => props.items,
-  (newItems) => {
-    console.log('[application-items-table] items 变化:', newItems.length);
+  () => {
     expandedRowKeys.value = [];
     selectedRowKeys.value = [];
   },
@@ -82,8 +81,8 @@ const outerColumns = computed(() => [
     width: 100,
   },
   {
-    title: '申请金额',
-    key: 'payAppPrice',
+    title: '原币结算量',
+    key: 'settledAmount',
     width: 130,
     align: 'right' as const,
   },
@@ -135,7 +134,7 @@ const innerColumns = [
     width: 150,
   },
   {
-    title: '申请金额',
+    title: '已结算金额',
     key: 'settledPrice',
     width: 120,
     align: 'right' as const,
@@ -239,13 +238,7 @@ const isIndeterminate = computed(() => {
 function getOrderFees(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): PaymentSettlementAdminApi.OrderFeeDto[] {
-  if (!record.orderFees || record.orderFees.length === 0) {
-    console.log('[getOrderFees] orderFees 为空:', record);
-    return [];
-  }
-
-  console.log('[getOrderFees] 费用数量:', record.orderFees.length);
-  return record.orderFees;
+  return record.orderFees || [];
 }
 </script>
 
@@ -309,10 +302,10 @@ function getOrderFees(
         {{ getCreatorUserName(record) }}
       </template>
 
-      <!-- 申请金额 -->
-      <template v-else-if="column.key === 'payAppPrice'">
+      <!-- 原币结算量 -->
+      <template v-else-if="column.key === 'settledAmount'">
         <span style="font-weight: bold; color: hsl(var(--primary))">
-          {{ formatAmount(record.payAppPrice || 0) }}
+          {{ formatAmount(record.settledAmount || 0) }}
         </span>
       </template>
 
@@ -369,7 +362,7 @@ function getOrderFees(
         {{ feeRecord.feeCode?.cnName || '-' }}
       </template>
 
-      <!-- 申请金额 -->
+      <!-- 已结算金额 -->
       <template v-else-if="column.key === 'settledPrice'">
         {{ formatAmount(feeRecord.settledPrice || 0) }}
       </template>
