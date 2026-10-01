@@ -755,7 +755,7 @@ const innerColumns = [
       "
     >
       <div style="display: flex; gap: 12px; align-items: center">
-        <span style="font-weight: 500; color: #1890ff; white-space: nowrap">
+        <span style="font-weight: 500; color: hsl(var(--primary)); white-space: nowrap">
           结算币别：
         </span>
         <CurrencySelect
@@ -1006,10 +1006,14 @@ const innerColumns = [
   border-radius: 3px;
 }
 
-/* 应付金额 - 蓝色 */
+/* 应付金额 - 主题色 */
 .pay-amount {
-  color: #1890ff;
-  background-color: #e6f7ff;
+  color: hsl(var(--primary));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 14%) 100%
+  );
 }
 
 /* 应收金额 - 绿色 */

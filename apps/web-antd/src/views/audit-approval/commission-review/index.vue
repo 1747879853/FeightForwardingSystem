@@ -650,7 +650,7 @@ const handleViewWorkflow = () => {
 }
 
 .commission-review-footer-summary__value--final {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .commission-review-footer-summary__split {

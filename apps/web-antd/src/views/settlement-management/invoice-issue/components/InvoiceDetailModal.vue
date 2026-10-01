@@ -1093,7 +1093,7 @@ defineExpose({
 }
 
 .idm-footer-summary__value--total {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .idm-footer-summary__value--invoice {

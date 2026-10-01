@@ -283,9 +283,7 @@ function getOrderFees(
           <Checkbox
             v-if="editable"
             :checked="selectedRowKeys.includes(record.rowKey)"
-            @change="
-              (e) => toggleRowSelection(record.rowKey, e.target.checked)
-            "
+            @change="(e) => toggleRowSelection(record.rowKey, e.target.checked)"
           />
           {{ index + 1 }}
         </span>
@@ -313,7 +311,7 @@ function getOrderFees(
 
       <!-- 申请金额 -->
       <template v-else-if="column.key === 'payAppPrice'">
-        <span style="font-weight: bold; color: #1890ff">
+        <span style="font-weight: bold; color: hsl(var(--primary))">
           {{ formatAmount(record.payAppPrice || 0) }}
         </span>
       </template>
@@ -358,16 +356,12 @@ function getOrderFees(
 
       <!-- 操作 -->
       <template v-else-if="column.key === 'operatorNames'">
-        {{
-          feeRecord.transportOrder?.operatorNames?.join('、') || '-'
-        }}
+        {{ feeRecord.transportOrder?.operatorNames?.join('、') || '-' }}
       </template>
 
       <!-- 销售 -->
       <template v-else-if="column.key === 'salesNames'">
-        {{
-          feeRecord.transportOrder?.saleNames?.join('、') || '-'
-        }}
+        {{ feeRecord.transportOrder?.saleNames?.join('、') || '-' }}
       </template>
 
       <!-- 费用名称 -->

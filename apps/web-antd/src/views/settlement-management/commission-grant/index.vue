@@ -523,7 +523,7 @@ onMounted(async () => {
 }
 
 .commission-grant-footer-summary__value--final {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .commission-grant-footer-summary__value--grant {

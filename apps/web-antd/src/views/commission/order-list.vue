@@ -629,7 +629,7 @@ onActivated(() => {
 }
 
 .commission-order-footer-summary__value--final {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .commission-order-footer-summary__value--grant {

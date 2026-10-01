@@ -416,7 +416,7 @@ const onGroupFieldChange = (value: number | undefined) => {
 }
 
 .input-invoice-footer-summary__value--tax {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .input-invoice-footer-summary__split {
