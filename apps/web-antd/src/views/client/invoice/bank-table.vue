@@ -15,11 +15,14 @@ interface Props {
   clientInvoiceInfoId?: string;
   /** 发票抬头，用于默认填充账户名称 */
   invoiceHeader?: string;
+  /** 只读（审核锁定） */
+  readonly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   clientInvoiceInfoId: '',
   invoiceHeader: '',
+  readonly: false,
 });
 
 const modelValue = defineModel<
@@ -37,15 +40,19 @@ const dataSource = computed({
   },
 });
 
-const rowSelection = computed(() => ({
-  selectedRowKeys: selectedRowKeys.value,
-  onChange: (keys: (string | number)[]) => {
-    selectedRowKeys.value = keys;
-  },
-}));
+const rowSelection = computed(() => {
+  if (props.readonly) return undefined;
+  return {
+    selectedRowKeys: selectedRowKeys.value,
+    onChange: (keys: (string | number)[]) => {
+      selectedRowKeys.value = keys;
+    },
+  };
+});
 
 let rowKeyCounter = 0;
 const addRow = () => {
+  if (props.readonly) return;
   const list = [...(modelValue.value ?? [])];
   list.push({
     _rowKey: `bank_${++rowKeyCounter}_${Date.now()}`,
@@ -60,6 +67,7 @@ const addRow = () => {
 };
 
 const removeSelectedRows = () => {
+  if (props.readonly) return;
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
   const list = (modelValue.value ?? []).filter(
@@ -74,6 +82,7 @@ const updateRow = (
   field: keyof ClientInvoiceInfoAdminApi.ClientInvoiceBankAddOrEditDto,
   value: any,
 ) => {
+  if (props.readonly) return;
   const list = [...(modelValue.value ?? [])];
   if (!list[index]) {
     list[index] = {
@@ -155,7 +164,7 @@ watch(
         <IconifyIcon icon="mdi:bank-outline" class="bank-table__title-icon" />
         {{ $t('client.invoice.bankInfo') }}
       </span>
-      <Tooltip :title="$t('client.invoice.addBank')">
+      <Tooltip v-if="!readonly" :title="$t('client.invoice.addBank')">
         <Button
           type="text"
           size="small"
@@ -165,7 +174,7 @@ watch(
           <IconifyIcon icon="mdi:add-box" class="text-[18px] text-[#1677ff]" />
         </Button>
       </Tooltip>
-      <Tooltip :title="$t('common.delete')">
+      <Tooltip v-if="!readonly" :title="$t('common.delete')">
         <Button
           type="text"
           size="small"
@@ -210,6 +219,7 @@ watch(
               :model-value="record.currencyId"
               class="currency-unmatched w-full min-w-[100px]"
               :placeholder="$t('ui.placeholder.select')"
+              :disabled="readonly"
               @update:model-value="
                 (v) => {
                   updateRow(index, 'currencyId', v);
@@ -223,6 +233,7 @@ watch(
             :model-value="record.currencyId"
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
+            :disabled="readonly"
             @update:model-value="(v) => updateRow(index, 'currencyId', v)"
           />
         </template>
@@ -231,6 +242,7 @@ watch(
             :value="record.bankName"
             :placeholder="$t('client.invoice.bankName')"
             allow-clear
+            :disabled="readonly"
             @update:value="(v) => updateRow(index, 'bankName', v)"
           />
         </template>
@@ -239,6 +251,7 @@ watch(
             :value="record.bankAccount"
             :placeholder="$t('client.invoice.bankAccount')"
             allow-clear
+            :disabled="readonly"
             @update:value="(v) => updateRow(index, 'bankAccount', v)"
           />
         </template>
@@ -247,6 +260,7 @@ watch(
             :value="record.accountName"
             :placeholder="$t('client.invoice.accountName')"
             allow-clear
+            :disabled="readonly"
             @update:value="(v) => updateRow(index, 'accountName', v)"
           />
         </template>
@@ -255,12 +269,14 @@ watch(
             :value="record.swiftCode"
             :placeholder="$t('client.invoice.swiftCode')"
             allow-clear
+            :disabled="readonly"
             @update:value="(v) => updateRow(index, 'swiftCode', v)"
           />
         </template>
         <template v-else-if="column.key === 'isDefault'">
           <Switch
             :checked="record.isDefault"
+            :disabled="readonly"
             @update:checked="(v) => updateRow(index, 'isDefault', v)"
           />
         </template>

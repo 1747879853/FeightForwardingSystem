@@ -1,10 +1,16 @@
 <script lang="ts" setup>
-import { useVbenModal } from '@vben/common-ui';
-import { $t } from '#/locales';
-import { useVbenForm } from '#/adapter/form';
-import { useAddressFormSchema } from './data';
 import { ref } from 'vue';
+
+import { useVbenModal } from '@vben/common-ui';
+
 import { message } from 'ant-design-vue';
+
+import { useVbenForm } from '#/adapter/form';
+import { $t } from '#/locales';
+
+import { createAddressLocalKey } from './client-editor-context';
+import { useAddressFormSchema } from './data';
+
 const [AddressForm, addressFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useAddressFormSchema(),
@@ -14,14 +20,11 @@ const [AddressForm, addressFormApi] = useVbenForm({
 
 const emits = defineEmits(['add', 'edit']);
 
-const editId = ref('');
+const editLocalKey = ref('');
 const isEdit = ref(false);
 
 const [Modal, modalApi] = useVbenModal({
   onConfirm: async () => {
-    console.info('onConfirm');
-
-    // 先进行表单验证
     const { valid, errors } = await addressFormApi.validate();
     if (!valid) {
       console.error('表单验证失败:', errors);
@@ -30,27 +33,31 @@ const [Modal, modalApi] = useVbenModal({
     }
 
     const addressValues = await addressFormApi.getValues();
-    console.info('addressValues', addressValues);
+    const payload = {
+      ...addressValues,
+      id: addressValues.id,
+      _localKey: editLocalKey.value || createAddressLocalKey(),
+    };
 
     if (!isEdit.value) {
-      emits('add', addressValues);
+      emits('add', payload);
     } else {
-      addressValues.id = editId.value;
-      emits('edit', addressValues);
+      emits('edit', payload);
     }
 
     modalApi.close();
   },
   onOpenChange(isOpen: boolean) {
     if (isOpen) {
-      let data = modalApi.getData<Record<string, any>>();
-      console.info('data', data);
-      if (data.name) {
-        editId.value = data.id;
+      const data = modalApi.getData<Record<string, any>>();
+      if (data && (data._localKey || data.id || data.name)) {
+        editLocalKey.value = data._localKey || createAddressLocalKey();
         isEdit.value = true;
         addressFormApi.setValues(data);
       } else {
         isEdit.value = false;
+        editLocalKey.value = createAddressLocalKey();
+        addressFormApi.resetForm?.();
       }
     }
   },

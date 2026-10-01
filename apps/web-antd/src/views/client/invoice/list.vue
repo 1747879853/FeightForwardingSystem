@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, inject, nextTick, onMounted, ref } from 'vue';
 import {
   Button,
   Collapse,
@@ -26,16 +26,26 @@ import {
   extractClientInvoiceInfo,
   isClientInvoiceInfoUploadFile,
 } from '#/api/sea-export/gemini-admin';
+import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
 
 defineOptions({ name: 'ClientInvoiceList' });
 
-const props = defineProps<{ clientId: string }>();
+const props = withDefaults(
+  defineProps<{ clientId: string; readonly?: boolean }>(),
+  { readonly: false },
+);
 const clientId = computed(() => props.clientId);
+const formLocked = inject(
+  CLIENT_FORM_LOCKED_KEY,
+  computed(() => false),
+);
+const isReadonly = computed(() => props.readonly || formLocked.value);
 
 // 开票信息列表
 const invoiceList = ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto[]>([]);
 const loading = ref(false);
-const submitting = ref(false);
+/** 按卡片 id 记录保存中状态，避免多卡片共用一把锁 */
+const submittingIds = ref<Record<string, boolean>>({});
 
 // 当前展开的面板
 const activeKey = ref<string[]>([]);
@@ -65,11 +75,11 @@ const loadInvoiceList = async () => {
     const list = await getClientInvoiceInfoList({ ClientId: clientId.value });
     invoiceList.value = list ?? [];
 
-    // 默认展开第一个
+    // 默认展开第一个；空列表不自动塞草稿，避免误脏与无法丢弃
     if (invoiceList.value.length > 0 && invoiceList.value[0]) {
       activeKey.value = [invoiceList.value[0].id];
     } else {
-      handleAddInvoice();
+      activeKey.value = [];
     }
   } catch (error) {
     console.error('加载开票信息列表失败:', error);
@@ -83,6 +93,10 @@ const loadInvoiceList = async () => {
  * 新增开票信息
  */
 const handleAddInvoice = () => {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可编辑开票信息，请先申请修改');
+    return;
+  }
   // 清空当前编辑状态
   editingInvoiceId.value = '';
   // 添加一个新的空面板
@@ -137,6 +151,7 @@ const patchInvoiceListItem = (
       key === invoiceId ? nextId : key,
     );
     delete formRefs.value[invoiceId];
+    delete submittingIds.value[invoiceId];
   }
 };
 
@@ -144,6 +159,10 @@ const patchInvoiceListItem = (
  * 保存开票信息
  */
 const handleSaveInvoice = async (invoiceId: string) => {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可编辑开票信息，请先申请修改');
+    return;
+  }
   const formRef = formRefs.value[invoiceId];
   if (!formRef) {
     message.error('表单未初始化');
@@ -151,7 +170,7 @@ const handleSaveInvoice = async (invoiceId: string) => {
   }
 
   try {
-    submitting.value = true;
+    submittingIds.value[invoiceId] = true;
     const formData = await formRef.getFormData();
 
     if (!formData) {
@@ -196,14 +215,43 @@ const handleSaveInvoice = async (invoiceId: string) => {
     console.error('保存失败:', error);
     message.error($t('common.optionsFailed'));
   } finally {
-    submitting.value = false;
+    submittingIds.value[invoiceId] = false;
   }
 };
 
 /**
- * 删除开票信息
+ * 删除开票信息（含未保存的 new_* 本地草稿）
  */
 const handleDeleteInvoice = (invoiceId: string) => {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可删除开票信息，请先申请修改');
+    return;
+  }
+
+  const removeLocalDraft = () => {
+    invoiceList.value = invoiceList.value.filter(
+      (item) => item.id !== invoiceId,
+    );
+    delete formRefs.value[invoiceId];
+    delete submittingIds.value[invoiceId];
+    activeKey.value = activeKey.value.filter((key) => key !== invoiceId);
+    message.success($t('common.deleteSuccess'));
+  };
+
+  if (invoiceId.startsWith('new_')) {
+    Modal.confirm({
+      title: $t('common.delete'),
+      content: '确定丢弃未保存的开票草稿吗？',
+      okText: $t('common.confirm'),
+      cancelText: $t('common.cancel'),
+      okType: 'danger',
+      onOk: () => {
+        removeLocalDraft();
+      },
+    });
+    return;
+  }
+
   Modal.confirm({
     title: $t('common.delete'),
     content: $t('common.confirmDelete', [$t('client.invoice.title')]),
@@ -235,6 +283,10 @@ const setFormRef = (el: any, invoiceId: string) => {
 };
 
 function openAiRecognize() {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可编辑开票信息，请先申请修改');
+    return;
+  }
   if (aiRecognizing.value) return;
   aiModalOpen.value = true;
 }
@@ -329,6 +381,9 @@ async function handleAiText(text: string) {
 }
 
 async function isInvoiceDirty() {
+  if (invoiceList.value.some((item) => String(item.id).startsWith('new_'))) {
+    return true;
+  }
   for (const form of Object.values(formRefs.value)) {
     const dirty = await form?.isInvoiceFormDirty?.();
     if (dirty) return true;
@@ -362,7 +417,7 @@ onMounted(() => {
             </span>
             <span class="invoice-toolbar__count">{{ invoiceList.length }}</span>
           </div>
-          <div class="invoice-toolbar__actions">
+          <div v-if="!isReadonly" class="invoice-toolbar__actions">
             <Button
               class="invoice-toolbar__ai"
               :loading="aiRecognizing"
@@ -418,18 +473,21 @@ onMounted(() => {
                     </span>
                   </div>
                 </div>
-                <div class="invoice-card__actions" @click.stop>
+                <div
+                  v-if="!isReadonly"
+                  class="invoice-card__actions"
+                  @click.stop
+                >
                   <Button
                     type="primary"
                     size="small"
-                    :loading="submitting && activeKey.includes(invoice.id)"
+                    :loading="!!submittingIds[invoice.id]"
                     @click.stop="handleSaveInvoice(invoice.id)"
                   >
                     <IconifyIcon icon="mdi:content-save-outline" />
                     {{ $t('common.save') }}
                   </Button>
                   <Button
-                    v-if="!invoice.id.startsWith('new_')"
                     danger
                     size="small"
                     @click.stop="handleDeleteInvoice(invoice.id)"
@@ -446,6 +504,7 @@ onMounted(() => {
                 :ref="(el) => setFormRef(el, invoice.id)"
                 :invoice-id="invoice.id.startsWith('new_') ? '' : invoice.id"
                 :client-id="clientId"
+                :readonly="isReadonly"
               />
             </div>
           </CollapsePanel>
@@ -457,6 +516,15 @@ onMounted(() => {
             :image="Empty.PRESENTED_IMAGE_SIMPLE"
             :description="$t('common.noData')"
           />
+          <Button
+            v-if="!isReadonly"
+            type="primary"
+            class="mt-3"
+            @click="handleAddInvoice"
+          >
+            <Plus class="size-4" />
+            {{ $t('common.create') }}
+          </Button>
         </div>
       </div>
     </Spin>
@@ -709,6 +777,7 @@ onMounted(() => {
 /* 空状态 */
 .invoice-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 32px 16px;

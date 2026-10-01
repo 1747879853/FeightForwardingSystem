@@ -1,6 +1,7 @@
 ﻿<script lang="ts" setup>
 import {
   computed,
+  inject,
   nextTick,
   onMounted,
   ref,
@@ -75,6 +76,11 @@ import {
   TAX_NO_REQUIRED_FOR_CN_ENTERPRISE,
 } from './country-tax';
 import { useClientAuditConfig } from '#/composables/use-client-audit-config';
+import {
+  CLIENT_EDITOR_IS_DIRTY_KEY,
+  CLIENT_FORM_LOCKED_REF_KEY,
+  createAddressLocalKey,
+} from './client-editor-context';
 import {
   canApplyClientModify,
   canEditClient,
@@ -254,6 +260,16 @@ const formLocked = computed(() => {
   if (clientStatus.value === undefined) return false;
   return !canDirectEdit.value;
 });
+/** 同步到编辑页，供联系人/开票等兄弟 Tab 锁定 */
+const sharedFormLockedRef = inject(CLIENT_FORM_LOCKED_REF_KEY, null);
+watch(
+  formLocked,
+  (locked) => {
+    if (sharedFormLockedRef) sharedFormLockedRef.value = locked;
+  },
+  { immediate: true },
+);
+const checkEditorDirty = inject(CLIENT_EDITOR_IS_DIRTY_KEY, null);
 const canSaveClient = computed(() => {
   if (!isEdit.value) return true;
   // 详情还没回来时不提前拦，避免一进页面就闪一条状态提示；后端另有兜底校验
@@ -277,8 +293,11 @@ const enterModifyMode = () => {
 const handleSubmitAudit = async () => {
   const id = editId.value;
   if (!id || !canSubmitAudit.value) return;
-  if (await isFormDirty()) {
-    message.warning('请先保存客户信息，再提交审核');
+  const dirty = checkEditorDirty
+    ? await checkEditorDirty()
+    : await isFormDirty();
+  if (dirty) {
+    message.warning('请先保存客户信息（含联系人/开票等），再提交审核');
     return;
   }
   Modal.confirm({
@@ -838,7 +857,7 @@ const handleRiskbirdImport = async (
       const shouldSetDefault = addressList.value.length === 0;
 
       // 构建地址对象
-      const newAddress: ClientAdminApi.ClientAddressAddDto = {
+      const newAddress: ClientAddressRow = {
         name: detail.regionName || detail.name || '默认地址',
         address: detail.address || '',
         contactPerson: '', // 风鸟数据中没有联系人字段
@@ -846,6 +865,7 @@ const handleRiskbirdImport = async (
         tel: '', // 风鸟数据中只有一个电话字段，用作mobile
         isDefault: shouldSetDefault, // 如果地址列表为空，设置为默认地址
         remark: '',
+        _localKey: createAddressLocalKey(),
       };
 
       // 如果设置为默认地址，先取消其他地址的默认状态
@@ -996,7 +1016,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   reconcilerUserIds.value = detail.reconcilers?.map((r) => r.userId) || [];
   reconcilerList.value = detail.reconcilers || [];
 
-  // 初始化地址列表
+  // 初始化地址列表（_localKey 保证未落库地址也能精确编辑）
   addressList.value = (detail.addresses || []).map((addr) => ({
     id: addr.id,
     name: addr.name || '',
@@ -1007,6 +1027,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     mobile: addr.mobile || '',
     tel: addr.tel || '',
     remark: addr.remark || '',
+    _localKey: createAddressLocalKey(),
   }));
   billingPeriods.value = (detail.billingPeriods ?? []) as any[];
 
@@ -1237,8 +1258,8 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
       userNickName: '',
     };
   });
-  addressList.value = (to.addresses || []).map((addr, index) => ({
-    id: (addr as { id?: number }).id ?? index,
+  addressList.value = (to.addresses || []).map((addr) => ({
+    id: (addr as { id?: number }).id,
     name: addr.name || '',
     isDefault: !!addr.isDefault,
     addressType: addr.addressType,
@@ -1247,6 +1268,7 @@ async function applyModifySnapshotToForm(to: ClientAdminApi.ClientEditDto) {
     mobile: addr.mobile || '',
     tel: addr.tel || '',
     remark: addr.remark || '',
+    _localKey: createAddressLocalKey(),
   }));
   billingPeriods.value = (to.billingPeriods ?? []) as any[];
 
@@ -1781,6 +1803,36 @@ const handleSubmit = async (closeAfterSave = false) => {
       }
     }
 
+    const nameTrimmed = String(baseValuesAfterValidation.name ?? '').trim();
+    const fullNameTrimmed = String(
+      baseValuesAfterValidation.fullName ?? '',
+    ).trim();
+    const enFullNameTrimmed = String(
+      baseValuesAfterValidation.enFullName ?? '',
+    ).trim();
+    if (nameTrimmed || fullNameTrimmed || enFullNameTrimmed) {
+      try {
+        const duplicated = await clientNameCheck({
+          id: editId.value || undefined,
+          name: nameTrimmed || undefined,
+          fullName: fullNameTrimmed || undefined,
+          enFullName: enFullNameTrimmed || undefined,
+        });
+        if (duplicated === true) {
+          Modal.warning({
+            title: '提示',
+            content: '客户简称、全称或英文全称已存在，请修改后再保存',
+            okText: '确定',
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn('客户名称重复校验失败:', error);
+        message.error('客户名称校验失败，请稍后重试');
+        return;
+      }
+    }
+
     if (!businessValid) {
       message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
       return;
@@ -1956,7 +2008,7 @@ const handleSubmit = async (closeAfterSave = false) => {
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
-        enFullName: baseValues.enFullName,
+        enFullName: String(baseValues.enFullName ?? '').trim() || undefined,
         taxNo: String(baseValues.taxNo ?? '').trim() || undefined,
         taxRate:
           baseValues.taxRate === undefined || baseValues.taxRate === null
@@ -2067,11 +2119,11 @@ const handleSubmit = async (closeAfterSave = false) => {
       // 新增模式提交数据
       const addData: ClientAdminApi.ClientAddDto = {
         // 基本信息
-        name: baseValues.name,
+        name: String(baseValues.name ?? '').trim(),
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName,
+        fullName: String(baseValues.fullName ?? '').trim(),
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
@@ -2086,7 +2138,7 @@ const handleSubmit = async (closeAfterSave = false) => {
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
-        enFullName: baseValues.enFullName,
+        enFullName: String(baseValues.enFullName ?? '').trim() || undefined,
         taxNo: String(baseValues.taxNo ?? '').trim() || undefined,
         taxRate:
           baseValues.taxRate === undefined || baseValues.taxRate === null
@@ -2319,11 +2371,16 @@ const addAddress = () => {
 /**
  * 编辑地址
  */
-const editAddress = (data: ClientAdminApi.ClientAddressEditDto) => {
+const editAddress = (data: ClientAddressRow) => {
   if (formLocked.value) return;
   modalApi.setData(data).open();
 };
-const addressList = ref<ClientAdminApi.ClientAddressEditDto[]>([]);
+
+type ClientAddressRow = ClientAdminApi.ClientAddressEditDto & {
+  _localKey: string;
+};
+
+const addressList = ref<ClientAddressRow[]>([]);
 const billingPeriods = ref<any[]>([]);
 
 function toBillingPeriodInputs(
@@ -2368,31 +2425,35 @@ function toBillingPeriodInputs(
 /**
  * 添加地址数据
  */
-const addAddressData = (data: ClientAdminApi.ClientAddressAddDto) => {
+const addAddressData = (data: ClientAddressRow) => {
+  const row: ClientAddressRow = {
+    ...data,
+    _localKey: data._localKey || createAddressLocalKey(),
+  };
   // 如果是第一个地址，自动设置为默认地址
   if (addressList.value.length === 0) {
-    data.isDefault = true;
+    row.isDefault = true;
   }
 
-  if (data.isDefault) {
+  if (row.isDefault) {
     addressList.value.forEach((item) => {
       item.isDefault = false;
     });
   }
-  addressList.value.push(data);
+  addressList.value.push(row);
 };
 /**
- * 编辑地址数据
+ * 编辑地址数据（按 _localKey 匹配，避免无 id 新建地址互相覆盖）
  */
-const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
+const editAddressData = (data: ClientAddressRow) => {
   if (data.isDefault) {
     addressList.value.forEach((item) => {
       item.isDefault = false;
     });
   }
   addressList.value = addressList.value.map((item) => {
-    if (item.id === data.id) {
-      return data;
+    if (item._localKey === data._localKey) {
+      return { ...data, _localKey: item._localKey };
     }
     return item;
   });
@@ -2401,9 +2462,11 @@ const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
 /**
  * 删除地址
  */
-const delAddress = (index: number) => {
+const delAddress = (localKey: string) => {
   if (formLocked.value) return;
-  addressList.value = addressList.value.filter((_, i) => i !== index);
+  addressList.value = addressList.value.filter(
+    (item) => item._localKey !== localKey,
+  );
 };
 
 const formSnapshot = ref<null | string>(null);
@@ -2866,8 +2929,8 @@ watch(
             </div>
             <div class="content-section__body address-list">
               <div
-                v-for="(item, index) in addressList"
-                :key="item.id ?? `${item.name}-${index}`"
+                v-for="item in addressList"
+                :key="item._localKey"
                 class="address-card cursor-pointer rounded-md border-gray-200 shadow-md transition-all"
                 :class="{ 'address-card-default': item.isDefault }"
               >
@@ -2908,7 +2971,7 @@ watch(
                     <Button
                       type="text"
                       :disabled="formLocked"
-                      @click="delAddress(index)"
+                      @click="delAddress(item._localKey)"
                       size="small"
                     >
                       <span class="align-middle">{{

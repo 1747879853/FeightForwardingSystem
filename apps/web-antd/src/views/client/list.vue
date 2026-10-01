@@ -85,12 +85,6 @@ const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
 const canDelete = computed(() => selectedRows.value.length > 0);
-const canAddDishonest = computed(
-  () => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest,
-);
-const canCancelDishonest = computed(
-  () => selectedRows.value.length === 1 && selectedRows.value[0]?.isDishonest,
-);
 
 // 添加新建权限检查
 const canCreate = computed(() => {
@@ -107,15 +101,31 @@ const hasDeletePermission = computed(() => {
   return accessStore.accessCodes.includes('Admin.Client.Delete');
 });
 
+const canAddDishonest = computed(
+  () =>
+    hasEditPermission.value &&
+    selectedRows.value.length === 1 &&
+    !selectedRows.value[0]?.isDishonest,
+);
+const canCancelDishonest = computed(
+  () =>
+    hasEditPermission.value &&
+    selectedRows.value.length === 1 &&
+    !!selectedRows.value[0]?.isDishonest,
+);
+
 // 启用审核后只有未提交(0)/已驳回(3)能直接编辑，其余状态后端也会拦
 const canEditWithPermission = computed(() => {
   if (!canEdit.value || !hasEditPermission.value) return false;
   if (!auditEnabled.value) return true;
   return canEditClient(selectedRows.value[0]?.clientStatus);
 });
-const canDeleteWithPermission = computed(
-  () => canDelete.value && hasDeletePermission.value,
-);
+/** 启用审核后：仅未提交/已驳回可删，与可直接编辑状态对齐 */
+const canDeleteWithPermission = computed(() => {
+  if (!canDelete.value || !hasDeletePermission.value) return false;
+  if (!auditEnabled.value) return true;
+  return selectedRows.value.every((row) => canEditClient(row.clientStatus));
+});
 
 /** 提交审核：批量，选中客户须全部是未提交/已驳回 */
 const canSubmitAudit = computed(
@@ -226,8 +236,12 @@ const handleApplyModifySelected = () => {
 };
 
 const handleDeleteSelected = () => {
-  if (!canDelete.value) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
+  if (!canDeleteWithPermission.value) {
+    message.warning(
+      auditEnabled.value
+        ? '仅未提交或已驳回的客户可删除，请重新选择'
+        : $t('seaExport.export.pleaseSelectOne'),
+    );
     return;
   }
 
