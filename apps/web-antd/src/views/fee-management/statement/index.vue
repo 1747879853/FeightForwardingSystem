@@ -347,7 +347,7 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
 }
 
 .statement-footer-summary__value--occupied {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .statement-footer-summary__split {

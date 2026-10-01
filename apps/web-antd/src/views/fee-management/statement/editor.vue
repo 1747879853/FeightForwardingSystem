@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -145,6 +145,122 @@ const pageTitle = computed(() =>
 
 const submitting = ref(false);
 const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer> | null>(null);
+
+/** 上下分栏：拖拽条移动的是顶栏（基础信息等）高度，底栏费用明细吃剩余空间 */
+const TOP_PANE_HEIGHT_KEY = 'statement-editor-top-pane-height';
+const TOP_PANE_MIN = 160;
+const BOTTOM_PANE_MIN = 280;
+const HANDLE_SIZE = 14;
+
+const splitBodyRef = ref<HTMLElement | null>(null);
+const topPaneHeight = ref(0);
+const isResizingSplit = ref(false);
+
+let splitResizeCleanup: (() => void) | null = null;
+
+function clampTopPaneHeight(height: number, containerHeight: number): number {
+  const maxTop = Math.max(
+    TOP_PANE_MIN,
+    containerHeight - HANDLE_SIZE - BOTTOM_PANE_MIN,
+  );
+  return Math.max(TOP_PANE_MIN, Math.min(maxTop, height));
+}
+
+function readStoredTopPaneHeight(): number | null {
+  try {
+    const raw = Number(localStorage.getItem(TOP_PANE_HEIGHT_KEY));
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function persistTopPaneHeight(height: number) {
+  try {
+    localStorage.setItem(TOP_PANE_HEIGHT_KEY, String(Math.round(height)));
+  } catch {
+    // ignore
+  }
+}
+
+function initTopPaneHeight() {
+  const container = splitBodyRef.value;
+  if (!container) return;
+  const containerHeight = container.clientHeight;
+  if (containerHeight <= 0) return;
+
+  const stored = readStoredTopPaneHeight();
+  if (stored != null) {
+    topPaneHeight.value = clampTopPaneHeight(stored, containerHeight);
+    return;
+  }
+
+  // 默认：顶栏约占 38%，给费用明细更大可视区（TAPD #1001030）
+  topPaneHeight.value = clampTopPaneHeight(
+    Math.round(containerHeight * 0.38),
+    containerHeight,
+  );
+}
+
+function startSplitResize(e: MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const container = splitBodyRef.value;
+  if (!container) return;
+
+  splitResizeCleanup?.();
+
+  isResizingSplit.value = true;
+  const startY = e.clientY;
+  const startTop = topPaneHeight.value || container.clientHeight * 0.38;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    // 手柄上移 → 顶栏变矮；下移 → 顶栏变高
+    const next = startTop + (moveEvent.clientY - startY);
+    topPaneHeight.value = clampTopPaneHeight(next, container.clientHeight);
+  };
+
+  const onMouseUp = () => {
+    isResizingSplit.value = false;
+    persistTopPaneHeight(topPaneHeight.value);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    splitResizeCleanup = null;
+  };
+
+  splitResizeCleanup = () => {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    isResizingSplit.value = false;
+    splitResizeCleanup = null;
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function onWindowResize() {
+  const container = splitBodyRef.value;
+  if (!container || topPaneHeight.value <= 0) return;
+  topPaneHeight.value = clampTopPaneHeight(
+    topPaneHeight.value,
+    container.clientHeight,
+  );
+}
+
+onUnmounted(() => {
+  splitResizeCleanup?.();
+  window.removeEventListener('resize', onWindowResize);
+});
 
 // 存储对账单详情，用于获取paySide
 const statementDetail = ref<StatementAdminApi.StatementDto | null>(null);
@@ -725,6 +841,11 @@ onMounted(() => {
       handleOpenAddFee();
     });
   }
+
+  window.addEventListener('resize', onWindowResize);
+  nextTick(() => {
+    requestAnimationFrame(() => initTopPaneHeight());
+  });
 });
 
 // --- Submit ---
@@ -1009,17 +1130,6 @@ function clearFilters() {
   filterPaySide.value = undefined;
 }
 
-onMounted(() => {
-  if (isEdit.value) {
-    loadEditData();
-  } else {
-    // 新建时自动打开抽屉，让用户选择客户和费用
-    nextTick(() => {
-      handleOpenAddFee();
-    });
-  }
-});
-
 function handleExportMenuClick({ key }: { key: string | number }) {
   message.info(`导出: ${key}`);
 }
@@ -1134,7 +1244,11 @@ function formatMonth(val: string | undefined | null): string {
 </script>
 
 <template>
-  <Page auto-content-height>
+  <Page
+    auto-content-height
+    class="statement-editor-page"
+    content-class="statement-editor-page__content"
+  >
     <Spin :spinning="pageLoading" wrapper-class-name="statement-editor-spin">
       <div class="payment-app-form">
         <!-- 顶部操作栏 -->
@@ -1147,13 +1261,9 @@ function formatMonth(val: string | undefined | null): string {
           </div>
           <div class="action-bar__right">
             <Space>
-              <!-- 新建模式：仅保存 -->
-
               <Button :loading="submitting" @click="handleSave">
                 {{ t('save') }}
               </Button>
-
-              <!-- 生成开票申请按钮：仅在编辑模式且全部为收时显示 -->
               <Button
                 v-if="canGenerateInvoiceApplication"
                 type="primary"
@@ -1162,8 +1272,6 @@ function formatMonth(val: string | undefined | null): string {
               >
                 生成开票申请
               </Button>
-
-              <!-- 生成付费申请按钮：仅在编辑模式且全部为付时显示 -->
               <Button
                 v-if="canGeneratePaymentApplication"
                 type="primary"
@@ -1172,7 +1280,6 @@ function formatMonth(val: string | undefined | null): string {
               >
                 生成付费申请
               </Button>
-
               <Dropdown>
                 <Button>
                   {{ t('export') }}
@@ -1183,9 +1290,6 @@ function formatMonth(val: string | undefined | null): string {
                     <MenuItem key="feeDetail">
                       {{ t('title') }}
                     </MenuItem>
-                    <!-- <MenuItem key="summary">
-                      {{ t('exportBySummary') }}
-                    </MenuItem> -->
                   </Menu>
                 </template>
               </Dropdown>
@@ -1196,435 +1300,460 @@ function formatMonth(val: string | undefined | null): string {
           </div>
         </div>
 
-        <!-- 中间三栏布局 -->
-        <div class="main-layout">
-          <!-- 左侧：基础信息 -->
-          <div class="left-column">
-            <Card size="small" class="basic-info-card info-card h-full">
-              <template #title>
-                <div class="card-title-wrapper">
-                  <span class="title-indicator"></span>
-                  <span class="card-title-text">基础信息</span>
-                </div>
-              </template>
+        <!-- 上下分栏：顶栏高度可拖，底栏费用明细占剩余 -->
+        <div ref="splitBodyRef" class="split-body">
+          <div
+            class="top-pane"
+            :style="
+              topPaneHeight > 0 ? { height: `${topPaneHeight}px` } : undefined
+            "
+          >
+            <div class="main-layout">
+              <!-- 左侧：基础信息 -->
+              <div class="left-column">
+                <Card size="small" class="basic-info-card info-card h-full">
+                  <template #title>
+                    <div class="card-title-wrapper">
+                      <span class="title-indicator"></span>
+                      <span class="card-title-text">基础信息</span>
+                    </div>
+                  </template>
 
-              <div class="info-section">
-                <!-- 第一行：客户名称、对账人、创建时间 -->
-                <div class="info-row">
-                  <div class="info-field">
-                    <label class="field-label">{{ t('clientName') }}</label>
-                    <ClientSelect
-                      :model-value="clientId"
-                      :placeholder="$t('ui.placeholder.select')"
-                      :disabled="isClientLocked"
-                      :selected-items="clientSelectedItems"
-                      size="middle"
-                      @update:model-value="onClientChange"
-                    />
-                  </div>
-                  <div class="info-field">
-                    <label class="field-label">{{ t('applicant') }}</label>
-                    <div class="field-value-text">{{ applicantName }}</div>
-                  </div>
-                  <div class="info-field">
-                    <label class="field-label">{{ t('creationTime') }}</label>
-                    <div class="field-value-text">{{ creationTime }}</div>
-                  </div>
-                </div>
+                  <div class="info-section">
+                    <div class="info-row">
+                      <div class="info-field">
+                        <label class="field-label">{{ t('clientName') }}</label>
+                        <ClientSelect
+                          :model-value="clientId"
+                          :placeholder="$t('ui.placeholder.select')"
+                          :disabled="isClientLocked"
+                          :selected-items="clientSelectedItems"
+                          size="middle"
+                          @update:model-value="onClientChange"
+                        />
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">{{ t('applicant') }}</label>
+                        <div class="field-value-text">{{ applicantName }}</div>
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">{{
+                          t('creationTime')
+                        }}</label>
+                        <div class="field-value-text">{{ creationTime }}</div>
+                      </div>
+                    </div>
 
-                <!-- 第二行：对账开始时间、对账结束时间、对账说明 -->
-                <div class="info-row">
-                  <div class="info-field">
-                    <label class="field-label">{{ t('startTime') }}</label>
-                    <DatePicker
-                      :value="startTime ? dayjs(startTime) : undefined"
-                      class="w-full"
-                      size="middle"
-                      format="YYYY-MM-DD"
-                      value-format="YYYY-MM-DD"
-                      @change="onStartTimeChange"
-                    />
-                  </div>
-                  <div class="info-field">
-                    <label class="field-label">{{ t('endTime') }}</label>
-                    <DatePicker
-                      :value="endTime ? dayjs(endTime) : undefined"
-                      class="w-full"
-                      size="middle"
-                      format="YYYY-MM-DD"
-                      value-format="YYYY-MM-DD"
-                      @change="onEndTimeChange"
-                    />
-                  </div>
-                  <div class="info-field">
-                    <label class="field-label">{{ t('notes') }}</label>
-                    <Input
-                      :value="statementDescription"
-                      :placeholder="$t('ui.placeholder.input')"
-                      size="middle"
-                      @update:value="(val) => (statementDescription = val)"
-                    />
-                  </div>
-                </div>
+                    <div class="info-row">
+                      <div class="info-field">
+                        <label class="field-label">{{ t('startTime') }}</label>
+                        <DatePicker
+                          :value="startTime ? dayjs(startTime) : undefined"
+                          class="w-full"
+                          size="middle"
+                          format="YYYY-MM-DD"
+                          value-format="YYYY-MM-DD"
+                          @change="onStartTimeChange"
+                        />
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">{{ t('endTime') }}</label>
+                        <DatePicker
+                          :value="endTime ? dayjs(endTime) : undefined"
+                          class="w-full"
+                          size="middle"
+                          format="YYYY-MM-DD"
+                          value-format="YYYY-MM-DD"
+                          @change="onEndTimeChange"
+                        />
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">{{ t('notes') }}</label>
+                        <Input
+                          :value="statementDescription"
+                          :placeholder="$t('ui.placeholder.input')"
+                          size="middle"
+                          @update:value="(val) => (statementDescription = val)"
+                        />
+                      </div>
+                    </div>
 
-                <!-- 第三行：备注、所属组织、我司银行 -->
-                <div class="info-row">
-                  <div class="info-field">
-                    <label class="field-label">{{ t('remark') }}</label>
-                    <Input.TextArea
-                      :value="remark"
-                      :rows="1"
-                      :placeholder="$t('ui.placeholder.input')"
-                      size="middle"
-                      @update:value="(val) => (remark = val)"
-                    />
+                    <div class="info-row">
+                      <div class="info-field">
+                        <label class="field-label">{{ t('remark') }}</label>
+                        <Input.TextArea
+                          :value="remark"
+                          :rows="1"
+                          :placeholder="$t('ui.placeholder.input')"
+                          size="middle"
+                          @update:value="(val) => (remark = val)"
+                        />
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">所属组织</label>
+                        <myOrgSelect
+                          v-model:model-value="orgId"
+                          :auto-default="!isEdit"
+                          :selected-items="orgSelectedItems"
+                          placeholder="请选择所属公司"
+                          allow-clear
+                          size="middle"
+                        />
+                      </div>
+                      <div class="info-field">
+                        <label class="field-label">我司银行</label>
+                        <OrgBankAccountLinkageSelect
+                          v-model:value="orgBankAccountId"
+                          :org-id="orgId"
+                          placeholder="请选择我司银行"
+                          allow-clear
+                          size="middle"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <!-- 所属组织：编辑禁用自动默认当前用户，并用详情 orgs 回显 -->
-                  <div class="info-field">
-                    <label class="field-label">所属组织</label>
-                    <myOrgSelect
-                      v-model:model-value="orgId"
-                      :auto-default="!isEdit"
-                      :selected-items="orgSelectedItems"
-                      placeholder="请选择所属公司"
-                      allow-clear
-                      size="middle"
-                    />
-                  </div>
-                  <!-- 新增：我司银行 -->
-                  <div class="info-field">
-                    <label class="field-label">我司银行</label>
-                    <OrgBankAccountLinkageSelect
-                      v-model:value="orgBankAccountId"
-                      :org-id="orgId"
-                      placeholder="请选择我司银行"
-                      allow-clear
-                      size="middle"
-                    />
-                  </div>
-                </div>
+                </Card>
               </div>
-            </Card>
+
+              <!-- 中部：费用合计 -->
+              <div class="center-column">
+                <Card size="small" class="fee-summary-card info-card h-full">
+                  <template #title>
+                    <div class="card-title-wrapper">
+                      <span class="title-indicator"></span>
+                      <span class="card-title-text">{{ t('feeSummary') }}</span>
+                    </div>
+                  </template>
+                  <FeeSummaryCard :fee-details="filteredFeeDetailRows" />
+                </Card>
+              </div>
+
+              <!-- 右侧：附件（与左/中三卡齐高，拖拽区紧凑、列表区内滚） -->
+              <div class="right-column">
+                <Card size="small" class="attachment-card info-card h-full">
+                  <template #title>
+                    <div class="card-title-wrapper">
+                      <span class="title-indicator"></span>
+                      <span class="card-title-text">
+                        {{ t('attachment') }}
+                      </span>
+                    </div>
+                  </template>
+                  <div class="attachment-body">
+                    <FileUploadInput
+                      v-model="attachments"
+                      module-type-id="160011"
+                      :max-count="20"
+                      drag
+                    />
+                  </div>
+                </Card>
+              </div>
+            </div>
           </div>
 
-          <!-- 中部：费用合计 -->
-          <div class="center-column">
-            <Card size="small" class="fee-summary-card info-card h-full">
+          <!-- 拖拽条：上移缩短顶栏，下移加高顶栏 -->
+          <div
+            class="fee-detail-resize-handle"
+            :class="{ 'is-dragging': isResizingSplit }"
+            title="拖动调整上下区域高度"
+            @mousedown="startSplitResize"
+          >
+            <div class="fee-detail-resize-handle__line"></div>
+          </div>
+
+          <!-- 费用明细：占剩余高度 -->
+          <div class="bottom-pane">
+            <Card size="small" class="fee-detail-card info-card">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="card-title-text">{{ t('feeSummary') }}</span>
+                  <span class="card-title-text">{{ t('feeDetail') }}</span>
                 </div>
               </template>
 
-              <!-- 使用新的费用合计组件 -->
-              <FeeSummaryCard :fee-details="filteredFeeDetailRows" />
-            </Card>
-          </div>
-
-          <!-- 右侧：附件上传 -->
-          <div class="right-column">
-            <Card size="small" class="attachment-card info-card h-full">
-              <template #title>
-                <div class="card-title-wrapper">
-                  <span class="title-indicator"></span>
-                  <span class="card-title-text">
-                    {{ t('attachment') }}
-                  </span>
-                </div>
+              <template #extra>
+                <Space class="m-2">
+                  <Button
+                    type="primary"
+                    class="stmt-primary-btn"
+                    @click="handleOpenAddFee"
+                  >
+                    {{ t('addFee') }}
+                  </Button>
+                  <Button
+                    danger
+                    :disabled="selectedRowKeys.length === 0"
+                    @click="handleDeleteSelected"
+                  >
+                    {{ t('deleteFee') }}
+                  </Button>
+                </Space>
               </template>
 
-              <div class="py-2">
-                <FileUploadInput
-                  v-model="attachments"
-                  module-type-id="160011"
-                  :max-count="20"
-                  drag
-                />
+              <div
+                class="filter-bar mb-3 flex flex-wrap items-center gap-3 p-3"
+              >
+                <Space wrap>
+                  <span class="text-sm text-gray-600"
+                    >{{ t('accountDate') }}：</span
+                  >
+                  <Input
+                    v-model:value="filterAccountDate"
+                    :placeholder="$t('ui.placeholder.input')"
+                    size="small"
+                    style="width: 150px"
+                    allow-clear
+                  />
+                  <span class="text-sm text-gray-600"
+                    >{{ t('feeCodeName') }}：</span
+                  >
+                  <Input
+                    v-model:value="filterFeeName"
+                    :placeholder="$t('ui.placeholder.input')"
+                    size="small"
+                    style="width: 200px"
+                    allow-clear
+                  />
+                  <span class="text-sm text-gray-600">编号：</span>
+                  <Input
+                    v-model:value="filterReferenceNum"
+                    :placeholder="$t('ui.placeholder.input')"
+                    size="small"
+                    style="width: 180px"
+                    allow-clear
+                  />
+                  <span class="text-sm text-gray-600">{{ t('etd') }}：</span>
+                  <DatePicker
+                    v-model:value="filterEtdStart"
+                    :placeholder="$t('ui.placeholder.select')"
+                    size="small"
+                    style="width: 150px"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    allow-clear
+                  />
+                  <span class="text-sm text-gray-600">-</span>
+                  <DatePicker
+                    v-model:value="filterEtdEnd"
+                    :placeholder="$t('ui.placeholder.select')"
+                    size="small"
+                    style="width: 150px"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    allow-clear
+                  />
+                  <span class="text-sm text-gray-600"
+                    >{{ t('paySide') }}：</span
+                  >
+                  <Select
+                    v-model:value="filterPaySide"
+                    :placeholder="$t('ui.placeholder.select')"
+                    size="small"
+                    style="width: 120px"
+                    allow-clear
+                  >
+                    <SelectOption :value="0">{{
+                      $t('seaExport.export.statement.receivableAmount') || '收'
+                    }}</SelectOption>
+                    <SelectOption :value="1">{{
+                      $t('seaExport.export.statement.payAmount') || '付'
+                    }}</SelectOption>
+                  </Select>
+                  <Button size="small" @click="clearFilters">
+                    {{ $t('common.reset') || '重置' }}
+                  </Button>
+                </Space>
+              </div>
+
+              <div class="fee-group-table">
+                <div class="table-container">
+                  <NestedDataTable
+                    :columns="allColumns"
+                    :data-source="orderGroups"
+                    fill-height
+                    :inner-columns="feeInnerColumns"
+                    inner-data-key="children"
+                    inner-row-key="feeId"
+                    row-key="key"
+                    v-model:expanded-row-keys="expandedGroupKeys"
+                  >
+                    <template #outerHeaderCell="{ column }">
+                      <span
+                        v-if="column.key === 'seq'"
+                        class="table-sequence-cell"
+                      >
+                        <Checkbox
+                          :checked="isAllSelected"
+                          :indeterminate="isIndeterminate"
+                          @change="(e) => toggleAllSelection(e.target.checked)"
+                        />
+                        {{ column.title }}
+                      </span>
+                      <template v-else>{{ column.title }}</template>
+                    </template>
+
+                    <template #outerBodyCell="{ column, record, index }">
+                      <template v-if="column.key === 'seq'">
+                        <span class="table-sequence-cell">
+                          <Checkbox
+                            :checked="isGroupAllSelected(record.key)"
+                            :indeterminate="isGroupIndeterminate(record.key)"
+                            @change="
+                              (e) =>
+                                toggleGroupSelection(record, e.target.checked)
+                            "
+                          />
+                          {{ index + 1 }}
+                        </span>
+                      </template>
+                      <template v-else-if="column.key === 'etd'">
+                        {{ formatDate(record.etd) }}
+                      </template>
+                      <template v-else-if="column.key === 'accountDate'">
+                        {{ formatMonth(record.accountDate) }}
+                      </template>
+                      <template
+                        v-else-if="column.key === 'recSettlementStatus'"
+                      >
+                        <Tag
+                          :color="
+                            getRecSettlementStatusColor(
+                              record.transportOrder?.recSettlementStatus,
+                            )
+                          "
+                        >
+                          {{
+                            getRecSettlementStatusLabel(
+                              record.transportOrder?.recSettlementStatus,
+                            )
+                          }}
+                        </Tag>
+                      </template>
+                      <!-- 币别动态列（应收/应付/未收/未付/已申请收/已申请付）：
+                       统一由 getCurrencyAmountClass 按后缀精确取样式 -->
+                      <template v-else-if="getCurrencyAmountClass(column.key)">
+                        <span
+                          class="reconciliation-amount"
+                          :class="getCurrencyAmountClass(column.key)"
+                        >
+                          {{
+                            formatAmount(
+                              column.dataIndex ? record[column.dataIndex] : 0,
+                            )
+                          }}
+                        </span>
+                      </template>
+                      <template v-else>
+                        {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                      </template>
+                    </template>
+
+                    <template #expandColumnTitle></template>
+                    <template #expandIcon="{ expanded, record, onExpand }">
+                      <span
+                        class="expand-toggle cursor-pointer"
+                        :class="{ 'expand-toggle--expanded': expanded }"
+                        @click="
+                          (e) => {
+                            e.stopPropagation();
+                            onExpand(record, e);
+                          }
+                        "
+                      >
+                        &#9654;
+                      </span>
+                    </template>
+
+                    <template #innerBodyCell="{ column, record, index }">
+                      <template v-if="column.key === 'checkbox'">
+                        <Checkbox
+                          :checked="isRowSelected(record.feeId)"
+                          @change="
+                            (e) =>
+                              toggleRowSelection(record.feeId, e.target.checked)
+                          "
+                        />
+                      </template>
+                      <template v-else-if="column.key === 'seq'">
+                        {{ index + 1 }}
+                      </template>
+                      <template v-else-if="column.key === 'paySide'">
+                        <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
+                          {{ getPaySideLabel(record.paySide) }}
+                        </Tag>
+                      </template>
+                      <template v-else-if="column.key === 'amount'">
+                        {{ formatAmount(record.amount) }}
+                      </template>
+                      <template v-else-if="column.key === 'rqstPaymentAmount'">
+                        {{ formatAmount(record.rqstPaymentAmount) }}
+                      </template>
+                      <template v-else-if="column.key === 'exchangeRate'">
+                        {{ record.exchangeRate }}
+                      </template>
+                      <template v-else-if="column.key === 'settledAmount'">
+                        {{ formatAmount(record.settledAmount) }}
+                      </template>
+                      <template v-else-if="column.key === 'unSettledAmount'">
+                        <!-- 直接用接口 unSettledAmount（已在 mapDetailToFeeRows 兜底），不再前端重算 -->
+                        {{ formatAmount(record.unSettledAmount) }}
+                      </template>
+                      <template v-else-if="column.key === 'invoiceStatus'">
+                        <Tag
+                          :color="getInvoiceStatusColor(record.invoiceStatus)"
+                        >
+                          {{ getInvoiceStatusLabel(record.invoiceStatus) }}
+                        </Tag>
+                      </template>
+                      <template v-else-if="column.key === 'combinedFeeStatus'">
+                        <Tag
+                          :color="
+                            getFeeStatusOptions().find(
+                              (item) => item.value === record.combinedFeeStatus,
+                            )?.color
+                          "
+                        >
+                          {{
+                            getFeeStatusOptions().find(
+                              (item) => item.value === record.combinedFeeStatus,
+                            )?.label
+                          }}
+                        </Tag>
+                      </template>
+                      <template v-else>
+                        {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                      </template>
+                    </template>
+                  </NestedDataTable>
+                </div>
+
+                <div class="total-amount flex rounded-md px-1 py-1">
+                  <div
+                    v-for="(item, index) in totalAmount"
+                    class="mr-2 flex"
+                    :key="item.name"
+                  >
+                    <span class="flex">{{ item.name }}</span>
+                    <span class="ml-2 flex font-medium" :class="item.color">{{
+                      item.value
+                    }}</span>
+                    <span class="split mx-3 flex" v-show="(index + 1) % 5 === 0"
+                      >|
+                    </span>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
         </div>
 
-        <!-- 费用明细表格 -->
-        <Card size="small" class="fee-detail-card info-card mt-3">
-          <template #title>
-            <div class="card-title-wrapper">
-              <span class="title-indicator"></span>
-              <span class="card-title-text">{{ t('feeDetail') }}</span>
-            </div>
-          </template>
-
-          <template #extra>
-            <Space class="m-2">
-              <Button
-                type="primary"
-                class="stmt-primary-btn"
-                @click="handleOpenAddFee"
-              >
-                {{ t('addFee') }}
-              </Button>
-              <Button
-                danger
-                :disabled="selectedRowKeys.length === 0"
-                @click="handleDeleteSelected"
-              >
-                {{ t('deleteFee') }}
-              </Button>
-            </Space>
-          </template>
-
-          <!-- 过滤条件 -->
-          <div class="filter-bar mb-3 flex flex-wrap items-center gap-3 p-3">
-            <Space wrap>
-              <span class="text-sm text-gray-600"
-                >{{ t('accountDate') }}：</span
-              >
-              <Input
-                v-model:value="filterAccountDate"
-                :placeholder="$t('ui.placeholder.input')"
-                size="small"
-                style="width: 150px"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600"
-                >{{ t('feeCodeName') }}：</span
-              >
-              <Input
-                v-model:value="filterFeeName"
-                :placeholder="$t('ui.placeholder.input')"
-                size="small"
-                style="width: 200px"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">编号：</span>
-              <Input
-                v-model:value="filterReferenceNum"
-                :placeholder="$t('ui.placeholder.input')"
-                size="small"
-                style="width: 180px"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('etd') }}：</span>
-              <DatePicker
-                v-model:value="filterEtdStart"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">-</span>
-              <DatePicker
-                v-model:value="filterEtdEnd"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('paySide') }}：</span>
-              <Select
-                v-model:value="filterPaySide"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 120px"
-                allow-clear
-              >
-                <SelectOption :value="0">{{
-                  $t('seaExport.export.statement.receivableAmount') || '收'
-                }}</SelectOption>
-                <SelectOption :value="1">{{
-                  $t('seaExport.export.statement.payAmount') || '付'
-                }}</SelectOption>
-              </Select>
-              <Button size="small" @click="clearFilters">
-                {{ $t('common.reset') || '重置' }}
-              </Button>
-            </Space>
-          </div>
-
-          <div class="fee-group-table">
-            <div class="table-container">
-              <NestedDataTable
-                :columns="allColumns"
-                :data-source="orderGroups"
-                fill-height
-                :inner-columns="feeInnerColumns"
-                inner-data-key="children"
-                inner-row-key="feeId"
-                row-key="key"
-                v-model:expanded-row-keys="expandedGroupKeys"
-              >
-                <template #outerHeaderCell="{ column }">
-                  <span v-if="column.key === 'seq'" class="table-sequence-cell">
-                    <Checkbox
-                      :checked="isAllSelected"
-                      :indeterminate="isIndeterminate"
-                      @change="(e) => toggleAllSelection(e.target.checked)"
-                    />
-                    {{ column.title }}
-                  </span>
-                  <template v-else>{{ column.title }}</template>
-                </template>
-
-                <template #outerBodyCell="{ column, record, index }">
-                  <template v-if="column.key === 'seq'">
-                    <span class="table-sequence-cell">
-                      <Checkbox
-                        :checked="isGroupAllSelected(record.key)"
-                        :indeterminate="isGroupIndeterminate(record.key)"
-                        @change="
-                          (e) => toggleGroupSelection(record, e.target.checked)
-                        "
-                      />
-                      {{ index + 1 }}
-                    </span>
-                  </template>
-                  <template v-else-if="column.key === 'etd'">
-                    {{ formatDate(record.etd) }}
-                  </template>
-                  <template v-else-if="column.key === 'accountDate'">
-                    {{ formatMonth(record.accountDate) }}
-                  </template>
-                  <template v-else-if="column.key === 'recSettlementStatus'">
-                    <Tag
-                      :color="
-                        getRecSettlementStatusColor(
-                          record.transportOrder?.recSettlementStatus,
-                        )
-                      "
-                    >
-                      {{
-                        getRecSettlementStatusLabel(
-                          record.transportOrder?.recSettlementStatus,
-                        )
-                      }}
-                    </Tag>
-                  </template>
-                  <!-- 币别动态列（应收/应付/未收/未付/已申请收/已申请付）：
-                       统一由 getCurrencyAmountClass 按后缀精确取样式 -->
-                  <template v-else-if="getCurrencyAmountClass(column.key)">
-                    <span
-                      class="reconciliation-amount"
-                      :class="getCurrencyAmountClass(column.key)"
-                    >
-                      {{
-                        formatAmount(
-                          column.dataIndex ? record[column.dataIndex] : 0,
-                        )
-                      }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                  </template>
-                </template>
-
-                <template #expandColumnTitle></template>
-                <template #expandIcon="{ expanded, record, onExpand }">
-                  <span
-                    class="expand-toggle cursor-pointer"
-                    :class="{ 'expand-toggle--expanded': expanded }"
-                    @click="
-                      (e) => {
-                        e.stopPropagation();
-                        onExpand(record, e);
-                      }
-                    "
-                  >
-                    &#9654;
-                  </span>
-                </template>
-
-                <template #innerBodyCell="{ column, record, index }">
-                  <template v-if="column.key === 'checkbox'">
-                    <Checkbox
-                      :checked="isRowSelected(record.feeId)"
-                      @change="
-                        (e) =>
-                          toggleRowSelection(record.feeId, e.target.checked)
-                      "
-                    />
-                  </template>
-                  <template v-else-if="column.key === 'seq'">
-                    {{ index + 1 }}
-                  </template>
-                  <template v-else-if="column.key === 'paySide'">
-                    <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
-                      {{ getPaySideLabel(record.paySide) }}
-                    </Tag>
-                  </template>
-                  <template v-else-if="column.key === 'amount'">
-                    {{ formatAmount(record.amount) }}
-                  </template>
-                  <template v-else-if="column.key === 'rqstPaymentAmount'">
-                    {{ formatAmount(record.rqstPaymentAmount) }}
-                  </template>
-                  <template v-else-if="column.key === 'exchangeRate'">
-                    {{ record.exchangeRate }}
-                  </template>
-                  <template v-else-if="column.key === 'settledAmount'">
-                    {{ formatAmount(record.settledAmount) }}
-                  </template>
-                  <template v-else-if="column.key === 'unSettledAmount'">
-                    <!-- 直接用接口 unSettledAmount（已在 mapDetailToFeeRows 兜底），不再前端重算 -->
-                    {{ formatAmount(record.unSettledAmount) }}
-                  </template>
-                  <template v-else-if="column.key === 'invoiceStatus'">
-                    <Tag :color="getInvoiceStatusColor(record.invoiceStatus)">
-                      {{ getInvoiceStatusLabel(record.invoiceStatus) }}
-                    </Tag>
-                  </template>
-                  <template v-else-if="column.key === 'combinedFeeStatus'">
-                    <Tag
-                      :color="
-                        getFeeStatusOptions().find(
-                          (item) => item.value === record.combinedFeeStatus,
-                        )?.color
-                      "
-                    >
-                      {{
-                        getFeeStatusOptions().find(
-                          (item) => item.value === record.combinedFeeStatus,
-                        )?.label
-                      }}
-                    </Tag>
-                  </template>
-                  <template v-else>
-                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                  </template>
-                </template>
-              </NestedDataTable>
-            </div>
-
-            <div class="total-amount flex rounded-md px-1 py-1">
-              <div
-                v-for="(item, index) in totalAmount"
-                class="mr-2 flex"
-                :key="item.name"
-              >
-                <span class="flex">{{ item.name }}</span>
-                <span class="ml-2 flex font-medium" :class="item.color">{{
-                  item.value
-                }}</span>
-                <span class="split mx-3 flex" v-show="(index + 1) % 5 === 0"
-                  >|
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
+        <AddFeeDrawer
+          ref="addFeeDrawerRef"
+          @confirm="handleFeeConfirm"
+          @update:settlement-id="onClientIdSync"
+        />
       </div>
-
-      <!-- 添加费用抽屉 -->
-      <AddFeeDrawer
-        ref="addFeeDrawerRef"
-        @confirm="handleFeeConfirm"
-        @update:settlement-id="onClientIdSync"
-      />
     </Spin>
   </Page>
 </template>
@@ -1787,22 +1916,41 @@ function formatMonth(val: string | undefined | null): string {
   border-color: #389e0d;
 }
 
-/* Page 内容区高度经 Spin 透传到 .payment-app-form */
-:deep(.statement-editor-spin) {
+/* 视口内上下分栏：拖拽条真正分配顶栏/费用明细高度 */
+:deep(.statement-editor-page__content) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+:deep(.statement-editor-spin) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 :deep(.statement-editor-spin > .ant-spin-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .payment-app-form {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
-  padding: 4px;
+  padding: 10px;
   overflow: hidden;
   background: linear-gradient(
     180deg,
@@ -1817,7 +1965,8 @@ function formatMonth(val: string | undefined | null): string {
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  min-height: 48px;
+  padding: 8px 14px;
   background: linear-gradient(
     90deg,
     hsl(var(--primary) / 10%) 0%,
@@ -1829,6 +1978,14 @@ function formatMonth(val: string | undefined | null): string {
   box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
+.action-bar__left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
 .action-bar__title {
   font-size: 16px;
   font-weight: 600;
@@ -1836,14 +1993,27 @@ function formatMonth(val: string | undefined | null): string {
 }
 
 .action-bar__statement-num {
-  margin-left: 24px;
   font-size: 13px;
   font-weight: normal;
   color: #8c95a3;
 }
 
-.stmt-primary-btn {
+.action-bar__right {
+  flex-shrink: 0;
+}
+
+.action-bar :deep(.ant-btn) {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 13px;
+  font-size: 12px;
   border-radius: 6px;
+}
+
+.stmt-primary-btn {
   box-shadow: 0 2px 8px hsl(var(--primary) / 28%);
   transition: box-shadow 0.2s ease;
 }
@@ -1852,10 +2022,41 @@ function formatMonth(val: string | undefined | null): string {
   box-shadow: 0 4px 12px hsl(var(--primary) / 40%);
 }
 
+.split-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.top-pane {
+  flex-shrink: 0;
+  min-height: 160px;
+  overflow: auto;
+}
+
+.bottom-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 280px;
+  overflow: hidden;
+}
+
 .main-layout {
   display: flex;
-  flex-shrink: 0;
   gap: 12px;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
+.left-column,
+.center-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .left-column {
@@ -1873,10 +2074,120 @@ function formatMonth(val: string | undefined | null): string {
   width: 240px;
 }
 
+/* 三卡齐高：卡片撑满列高；附件内容区内部滚动，拖拽区保持紧凑 */
+.basic-info-card,
+.fee-summary-card,
+.attachment-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.basic-info-card :deep(.ant-card-body),
+.fee-summary-card :deep(.ant-card-body),
+.attachment-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 12px;
+}
+
+.attachment-card :deep(.ant-card-body) {
+  padding: 8px 12px 12px;
+}
+
+.attachment-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.attachment-body :deep(.file-upload-input) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.attachment-body :deep(.upload-dragger) {
+  flex-shrink: 0;
+  padding: 8px 6px;
+}
+
+.attachment-body :deep(.upload-dragger-icon) {
+  margin-bottom: 4px;
+}
+
+.attachment-body :deep(.upload-dragger-icon .text-4xl) {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.attachment-body :deep(.upload-dragger-text) {
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+.attachment-body :deep(.upload-dragger-hint) {
+  font-size: 11px;
+}
+
+.attachment-body :deep(.file-upload-input > .mt-4) {
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+  overflow: auto;
+}
+
+.attachment-body :deep(.file-upload-input > .mt-4 > .mb-2) {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.attachment-body :deep(.file-upload-input > .mt-4 > .max-h-20) {
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+}
+
+/* 费用明细：占底栏剩余高度；表内 fill-height 局部滚动 */
+.fee-detail-resize-handle {
+  z-index: 2;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  margin: 0;
+  cursor: row-resize;
+  user-select: none;
+}
+
+.fee-detail-resize-handle__line {
+  width: 56px;
+  height: 4px;
+  background-color: #e4e8ef;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.fee-detail-resize-handle:hover .fee-detail-resize-handle__line,
+.fee-detail-resize-handle.is-dragging .fee-detail-resize-handle__line {
+  width: 72px;
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 30%);
+}
+
 .fee-detail-card {
   display: flex;
   flex: 1;
   flex-direction: column;
+  min-width: 0;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 
@@ -1884,14 +2195,11 @@ function formatMonth(val: string | undefined | null): string {
     display: flex;
     flex: 1;
     flex-direction: column;
+    height: auto;
     min-height: 0;
     padding: 12px 16px;
     overflow: hidden;
   }
-}
-
-.basic-info-card :deep(.ant-card-body) {
-  padding-top: 12px;
 }
 
 .fee-detail-card :deep(.ant-card-head),
@@ -2073,18 +2381,6 @@ function formatMonth(val: string | undefined | null): string {
   font-size: 22px;
   font-weight: 700;
   color: hsl(var(--primary));
-}
-
-.attachment-area {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  min-height: 100px;
-  padding: 4px 0;
-}
-
-.attachment-area :deep(.file-upload-input) {
-  width: 100%;
 }
 
 .fee-group-table {

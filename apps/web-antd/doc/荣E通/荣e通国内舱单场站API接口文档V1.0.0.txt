@@ -1,0 +1,210 @@
+荣e通国内舱单获取场站数据API接口规范
+
+荣e通项目组
+2026年9月
+
+ 
+修订历史记录
+版本号	更改日期	更改方法/内容/原因	操作人
+V1.0	2026-09-20	获取场站数据API初版	Zl
+
+1.概述
+1.1.1.接口概述
+荣e通平台基于与国内外港口系统对接，将舱单申报的场站数据获取功能，通过接口等形式开放给第三方合作伙伴，使其ERP系统具备舱单信息在线申报的能力。
+1.1.2.适用范围
+本接口规范仅适用于第三方合作伙伴（简称：调用方）通过接口完成舱单申报功能。
+2.接口调用方式
+调用方采用https协议通信，无特殊说明情况下，接口输入输出数据都是结构化的JSON数据格式。
+调用地址	
+数据传输方式	post同步传输
+提交数据	请求报文
+返回数据	响应报文
+
+3.请求报文通用字段解释
+1.	nonce 随机数
+唯一的标识符，服务器能够防止请求被多次使用（记录所有用过的nonce以阻止它们被二次使用）
+2.	timestamp 时间戳
+采用unix时间戳，保留到毫秒。
+用于判断调用方提交请求时间是否在有效时间内，如果超出15分钟则拒绝请求
+3.	accessKey 请求唯一标识
+请求唯一标识由荣e通平台生成，并发放给调用方使用，每个调用方只分配一个请求唯一标识，且不会重复。
+4.	secretKey调用方秘钥
+调用方秘钥由荣e通平台生成，并发放给调用方使用，每个秘钥都与请求唯一标识对应，且不会重复。
+4.接口签名方式
+第一步：将请求参数（除sign之外）模型转换为json字符串（假设存在三个业务参数aparam、bparam、cparam）
+strStep1={"aparam":"test1","bparam":"test2","cparam":"{\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"}","accessKey":"xxxxxx","nonce":1000,"timestamp":10000100}
+
+第二步：将参数以key=value的格式拼接，并按照参数名ASCII字典序排序如下： 
+strStep2="accessKey=xxxxxx&aparam=test1&bparam=test2&cparam={\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"} &nonce=1000&timestamp=10000100”;
+
+第三步：拼接API密钥：（secretKey为平台生成的访问密钥）
+strStep3 = strStep2 + "&secretKey=192006250b4c09247ec02edce69f6"
+
+第四步：使用MD5算法加密第二步拼接好的明文，将加密结果转为英文大写：
+sign = MD5(strStep3).toUpperCase()
+
+以下为java签名的示例代码：
+        public String getSign(Map<String, String> reqParam) {
+                // 1. 将请求参数Map按照参数名ASCII字典序排序
+                Map<String, String> sortReqParam = new TreeMap<>(reqParam);
+                // 2. 如果有sign，则删除sign
+                sortReqParam.remove("sign");
+                // 3. 将排好序的Map转为key=value格式的字符串
+                StringBuilder sb = new StringBuilder();
+                for (Map.Entry<String, String> entry : sortReqParam.entrySet()) {
+                        sb.append(entry.getKey()).append("=").append(String.valueOf(entry.getValue())).append("&");
+                }
+                // 4. 在最后拼接上secretKey的key和value
+                sb.append("secretKey").append("=").append(secretKey);
+                // 5. 将拼接完成的参数字符串md5加密并转大写
+                return DigestUtils.md5DigestAsHex(sb.toString().getBytes()).toUpperCase();
+        }
+
+
+
+
+
+测试环境地址
+测试环境ip+端口  221.238.46.76:9097
+调用接口的时候 不带/api 
+例如 查询场展示数据
+http://221.238.46.76:9097/manifest/openapi/conmon/getStationData
+5.查询场站数据
+5.1.查询场站数据接口
+5.1.1.接口说明
+调用此接口可以根据提单号及场站名称获取到对应场站中的数据。
+5.1.2.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/commom/getStationData
+5.1.3.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail": {
+          "billNo":  "QGD2474431",
+          "stationName": "港捷丰场站" 
+}
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1		accessKey	请求唯一标识	varchar(36)	是	
+2		nonce	随机号	varchar(36)	是	
+3		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4		sign	签名	varchar(32)	是	
+5		detail	舱单信息	object	是	
+6		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+7		┣stationName	场站名称	varchar(20)	是	来源于基础数据
+
+5.1.4.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": [
+        {
+            "bno": "QGD2474431A",
+            "cntrno": "SZLU5075427",
+            "sealno": "M3182746",
+            "ctnall": "40RH",
+            "pkgs": 1101,
+            "kgs": 12111.0,
+            "cbm": 22.0,
+            "vessel": "CMA CGM A. LINCOLN",
+            "voyno": "0MDZGW",
+            "bkgs": 4350.0,
+            "vgmWeight": 31561.0,
+            "isOrNotFreeze": false,
+            "isOrNotDangerous": false,
+            "vgmYgtReport": "VGM已申报",
+            "portDischargeCode": "SHARJAH",
+            "planJiGangStartTime": "2026-01-02 12:30:00",
+            "planJiGangEndTime": "2026-01-03 12:00:00",
+            "temperature": null,
+            "humidity": null,
+            "ventilation": null
+        },
+        {
+            "bno": "QGD2474431B",
+            "cntrno": "SZLU5075427",
+            "sealno": "M3182746",
+            "ctnall": "40RH",
+            "pkgs": 240,
+            "kgs": 2500.0,
+            "cbm": 6.9,
+            "vessel": "CMA CGM A. LINCOLN",
+            "voyno": "0MDZGW",
+            "bkgs": 4350.0,
+            "vgmWeight": 31561.0,
+            "isOrNotFreeze": false,
+            "isOrNotDangerous": false,
+            "vgmYgtReport": "VGM已申报",
+            "portDischargeCode": "SHARJAH",
+            "planJiGangStartTime": "2026-01-02 12:30:00",
+            "planJiGangEndTime": "2026-01-03 12:00:00",
+            "temperature": null,
+            "humidity": null,
+            "ventilation": null
+        },
+        {
+            "bno": "QGD2474431C",
+            "cntrno": "SZLU5075427",
+            "sealno": "M3182746",
+            "ctnall": "40RH",
+            "pkgs": 1150,
+            "kgs": 12600.0,
+            "cbm": 20.0,
+            "vessel": "CMA CGM A. LINCOLN",
+            "voyno": "0MDZGW",
+            "bkgs": 4350.0,
+            "vgmWeight": 31561.0,
+            "isOrNotFreeze": false,
+            "isOrNotDangerous": false,
+            "vgmYgtReport": "VGM已申报",
+            "portDischargeCode": "SHARJAH",
+            "planJiGangStartTime": "2026-01-02 12:30:00",
+            "planJiGangEndTime": "2026-01-03 12:00:00",
+            "temperature": null,
+            "humidity": null,
+            "ventilation": null
+        }
+    ]
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	varchar(10)	是	
+2	message	返回消息	varchar(200)	是	
+3	data	返回数据	List<Object>	是	
+4	┣bno	提单号			
+5	┣cntrno	箱号			
+6	┣sealno	铅封号			
+7	┣ctnall	箱型尺寸			
+8	┣pkgs	件数			
+9	┣kgs	毛重			
+10	┣cbm	体积			
+11	┣vessel	英文船名			
+12	┣voyno	英文航次			
+13	┣bkgs	箱皮重			
+14	┣vgmWeight	Vgm重量			
+15	┣isOrNotFreeze	是否冷冻品			
+16	┣isOrNotDangerous	是否危险品			
+17	┣vgmYgtReport	Vgm申报状态			
+18	┣portDischargeCode	英文目的港			
+19	┣planJiGangStartTime	计划集港开始时间			
+20	┣planJiGangEndTime	计划集港结束时间			
+21	┣temperature	温度			
+22	┣humidity	湿度			
+23	┣ventilation	通风量			
+
+5.1.5.返回状态码
+索引	ID	名称
+1	000000	请求成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	999999	系统错误，请联系技术人员
+
+

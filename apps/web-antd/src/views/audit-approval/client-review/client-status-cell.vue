@@ -35,14 +35,21 @@ const canViewWorkflow = computed(
 );
 
 const workFlowInstance = computed(() => props.row.workFlowInstance);
+
+function popupContainer() {
+  return document.body;
+}
 </script>
 
 <template>
   <Popover
     v-if="canViewWorkflow"
     v-model:open="open"
-    trigger="click"
+    trigger="hover"
     placement="rightTop"
+    :mouse-enter-delay="0.2"
+    :get-popup-container="popupContainer"
+    :overlay-style="{ zIndex: 2100 }"
     title="审核流程"
   >
     <template #content>
@@ -56,20 +63,17 @@ const workFlowInstance = computed(() => props.row.workFlowInstance);
         />
       </div>
     </template>
-    <button
-      type="button"
-      class="cursor-pointer"
+    <span
+      class="client-status-trigger"
       :aria-label="`${status?.label ?? '-'}，查看审核流程`"
-      :aria-expanded="open"
       :title="myStatusTitle"
       @click.stop
       @dblclick.stop
-      @keydown.stop
     >
       <Tag :color="status?.color" class="!mr-0">
         {{ status?.label ?? '-' }}
       </Tag>
-    </button>
+    </span>
   </Popover>
   <Tooltip v-else :title="myStatusTitle">
     <Tag :color="status?.color" class="!mr-0">
@@ -77,3 +81,10 @@ const workFlowInstance = computed(() => props.row.workFlowInstance);
     </Tag>
   </Tooltip>
 </template>
+
+<style scoped>
+.client-status-trigger {
+  display: inline-flex;
+  cursor: pointer;
+}
+</style>

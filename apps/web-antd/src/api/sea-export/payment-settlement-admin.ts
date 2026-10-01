@@ -35,8 +35,8 @@ export namespace PaymentSettlementAdminApi {
 
   /** 附件项输入DTO */
   export interface AttachmentItemForItemInputDto {
-    /** 附件ID */
-    attachmentId: number;
+    /** 附件ID（雪花 ID，勿 Number 转换） */
+    attachmentId: number | string;
     /** 排序 */
     displayOrder: number;
   }

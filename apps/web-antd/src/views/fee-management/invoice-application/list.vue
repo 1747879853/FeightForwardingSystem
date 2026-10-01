@@ -933,7 +933,7 @@ function handleBatchWithdraw() {
 }
 
 .invoice-footer-summary__value--total {
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .invoice-footer-summary__split {

@@ -1,0 +1,728 @@
+荣e通运价API接口规范
+荣e通项目组
+2025年7月
+ 
+修订历史记录
+版本号	更改日期	更改方法/内容/原因	操作人
+V1.0	2025-07-23	运价API初版	李智康
+1.概述
+1.1.1.接口概述
+即时运价第一步调用创建运价查询任务接口生成一个查询运价的任务号，第二步调用查询任务状态接口，通过任务号查询指定任务的状态，任务状态完成（子任务完成）第三步调用获取运价查询结果接口，通过任务号、船司获取运价详细信息。
+订阅运价调用添加订阅接口发起订阅（荣e通平台配置订阅触发频次、查询时间区间，通知回调地址）。
+1.1.2.适用范围
+本接口规范仅适用于第三方合作伙伴（简称：调用方）。
+2.接口调用方式
+调用方采用https协议通信，无特殊说明情况下，接口输入输出数据都是结构化的JSON数据格式。
+调用地址	
+数据传输方式	post同步传输
+提交数据	请求报文
+返回数据	响应报文
+
+3.请求报文通用字段解释
+1.	nonce 随机数
+唯一的标识符，服务器能够防止请求被多次使用（记录所有用过的nonce以阻止它们被二次使用）
+2.	timestamp 时间戳
+采用unix时间戳，保留到毫秒。
+用于判断调用方提交请求时间是否在有效时间内，如果超出15分钟则拒绝请求
+3.	accessKey 请求唯一标识
+请求唯一标识由荣e通平台生成，并发放给调用方使用，每个调用方只分配一个请求唯一标识，且不会重复。
+4.	secretKey调用方秘钥
+调用方秘钥由荣e通平台生成，并发放给调用方使用，每个秘钥都与请求唯一标识对应，且不会重复。
+
+4.接口签名方式
+第一步：将请求参数（除sign之外）模型转换为json字符串（假设存在三个业务参数aparam、bparam、cparam）
+strStep1={"aparam":"test1","bparam":"test2","cparam":"{\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"}","accessKey":"xxxxxx","nonce":1000,"timestamp":10000100}
+
+第二步：将参数以key=value的格式拼接，并按照参数名ASCII字典序排序如下： 
+strStep2="accessKey=xxxxxx&aparam=test1&bparam=test2&cparam={\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"} &nonce=1000&timestamp=10000100”;
+
+第三步：拼接API密钥：（secretKey为平台生成的访问密钥）
+strStep3 = strStep2 + "&secretKey=192006250b4c09247ec02edce69f6"
+
+第四步：使用MD5算法加密第二步拼接好的明文，将加密结果转为英文大写：
+sign = MD5(strStep3).toUpperCase()
+
+以下为java签名的示例代码：
+        public String getSign(Map<String, String> reqParam) {
+                // 1. 将请求参数Map按照参数名ASCII字典序排序
+                Map<String, String> sortReqParam = new TreeMap<>(reqParam);
+                // 2. 如果有sign，则删除sign
+                sortReqParam.remove("sign");
+                // 3. 将排好序的Map转为key=value格式的字符串
+                StringBuilder sb = new StringBuilder();
+                for (Map.Entry<String, String> entry : sortReqParam.entrySet()) {
+                        sb.append(entry.getKey()).append("=").append(String.valueOf(entry.getValue())).append("&");
+                }
+                // 4. 在最后拼接上secretKey的key和value
+                sb.append("secretKey").append("=").append(secretKey);
+                // 5. 将拼接完成的参数字符串md5加密并转大写
+                return DigestUtils.md5DigestAsHex(sb.toString().getBytes()).toUpperCase();
+        }
+
+
+
+
+5.即时运价
+5.1.创建运价查询任务
+5.1.1.接口说明
+调用创建运价查询任务接口生成一个查询运价的任务号，用于后续获取运价信息。
+5.1.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/createTask
+5.1.3.请求数据
+{
+    "timestamp": "1753341720928",
+    "nonce": "c51690ca7e5a4c45ba295c07681258e5",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "8852F71FC8D0187419B5C8C8188121AB",
+    "param": {
+        "polCode": "CNTAO",
+        "polServiceType": "CY",
+        "podCode": "DEHAM",
+        "podServiceType": "CY",
+        "sizeTypes": [
+            "20GP",
+            "40HC"
+        ]
+    }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1		accessKey	请求唯一标识	String(36)	是	
+2		nonce	随机号	String(36)	是	
+3		timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4		sign	签名	String(32)	是	
+5		param	业务参数	Object	是	
+6		┣polCode	起运港五字码	String	是	
+7		┣polServiceType	起运港运输类型	String	是	CY/SD
+8		┣podCode	目的港五字码	String	是	
+9		┣podServiceType	目的港运输类型	String	是	CY/SD
+10		┣sizeTypes	箱型	Array	是	最多支持3个箱型
+
+5.1.4.返回数据
+
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": {
+		"taskList": [
+			{
+				"sizeType": "20GP",
+				"taskCode": "T25072216564322272"
+			},
+			{
+				"sizeType": "40HC",
+				"taskCode": "T25072216564324811"
+			}
+		]
+	}
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Object	是	
+4	┣taskList	任务集合	Array	是	
+5	┣sizeType	箱型	String	是	
+6	  ┣taskCode	任务号	String	是	
+
+5.1.5.返回状态码
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+9	230000	箱型数据格式错误
+10	230001	港口数据格式错误
+11	230002	企业没有申请开通
+12	230003	该企业无有效的即时运价权益，请先购买再重试
+13	230005	剩余免费查询次数不足，且企业无有效的即时运价权益，请先购买再重试
+
+
+
+5.2.获取运价查询任务状态
+5.2.1.接口说明
+调用查询任务状态接口，通过任务号查询指定任务的状态，支持单次调用查询多个。
+5.2.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/taskState
+5.2.3.请求数据
+{
+    "timestamp": "1753175533496",
+    "nonce": "a6fc36c340634bceba9ae0195f3a2805",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "EEF82C0EFD584F183F8D99B7A396FC91",
+    "param": {
+        "taskCodeList": [
+            "T25072216564322272",
+            "T25072216564324811"
+        ]
+    }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	accessKey	请求唯一标识	String(36)	是	
+2	nonce	随机号	String(36)	是	
+3	timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	String(32)	是	
+5	param	业务参数	Object	是	
+6	┣taskCodeList	任务号集合	Array	是	最多支持十个任务号
+
+5.2.4.返回数据
+
+{
+    "code": "000000",
+    "message": "提交成功",
+    "data": {
+        "taskList": [
+            {
+                "taskCode": "T25072216564322272",
+                "polCode": "CNTAO",
+                "podCode": "DEHAM",
+                "polServiceType": "CY",
+                "podServiceType": "CY",
+                "sizeType": "20GP",
+                "completeState": 1,
+                "completeTime": "2025-07-22T08:47:21.000+00:00",
+                "createTime": "2025-07-22T08:56:43.000+00:00",
+                "subTaskList": [
+                    {
+                        "carrierCode": "MSK",
+                        "queryState": 2,
+					 "errorMessage": "未找到有效账号"
+                    },
+                    {
+                        "carrierCode": "CMA",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "COSCO",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "OOCL",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "EMC",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "ZIM",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "MSC",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "ONE",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "HPL",
+                        "queryState": 2,
+					 "errorMessage": null
+                    },
+                    {
+                        "carrierCode": "HMM",
+                        "queryState": 2,
+					 "errorMessage": null
+                    }
+                ],
+                "errMsg": null
+            },
+            {
+                "taskCode": "T25072216564324811",
+                "errMsg": "任务不存在"
+            }
+        ]
+    }
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Object	是	
+4	┣taskList	任务集合	Array	是	
+5	┣taskCode	任务号	String	是	
+6	┣polCode	起运港五字码	String	否	
+7	┣podCode	目的港五字码	String	否	
+8	┣polServiceType	Pol运输类型	String	否	
+9	┣podServiceType	Pod运输类型	String	否	
+10	┣sizeType	箱型	String	否	
+11	┣completeState	任务状态（0：执行中，1：已完成）	Integer	否	
+12	┣completeTime	完成时间	String	否	
+13	┣createTime	任务创建时间	String	否	
+14	┣subTaskList	子任务集合	Array	否	
+15	┣carrierCode	船司	String	是	
+16	┣queryState	查询状态（0：未查询，1：查询中，2：查询完成）	Integer	是	
+17	┣errorMessage	查询完成后，该字段有值即为查询异常，内容为异常原因			
+18	┣errMsg	Err信息		否	
+
+5.2.5.返回状态码
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+
+5.3.获取运价查询结果
+5.3.1.接口说明
+调用获取运价查询结果接口，通过任务号、船司（选填）获取运价详细信息。
+5.3.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/queryResult
+5.3.3.请求数据
+{
+    "timestamp": "1753175910478",
+    "nonce": "79f8bb7873e642a3873e41b2260c2760",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "196524DEA1C6B6F60FBD146EA5E06944",
+    "param": {
+        "taskCode": "T25072216564322272",
+        "carrierCodeList": [
+            "EMC"
+        ]
+    }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1		accessKey	请求唯一标识	String(36)	是	
+2		nonce	随机号	String(36)	是	
+3		timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4		sign	签名	String(32)	是	
+5		param	业务参数	Object	是	
+6		┣taskCode	任务号	String	是	
+7		┣carrierCodeList	船司集合	Array	否	
+
+5.3.4.返回数据
+
+{
+    "code": "000000",
+    "message": "提交成功",
+    "data": {
+        "taskCode": "T25072216564322272",
+        "taskType": 1,
+        "polCode": "CNTAO",
+        "podCode": "DEHAM",
+        "polServiceType": "CY",
+        "podServiceType": "CY",
+        "sizeType": "20GP",
+        "completeState": 1,
+        "completeTime": "2025-07-22T08:47:21.000+00:00",
+        "createTime": "2025-07-22T08:56:43.000+00:00",
+        "spotList": [
+            {
+                "quotationUnique": "9129177a7f5a5732cbce756411ed0869",
+                "carrierCode": "EMC",
+                "polEtd": "2025-07-26T00:00:00.000+00:00",
+                "podEta": "2025-09-11T00:00:00.000+00:00",
+                "sailingTime": 47,
+                "isDirect": 1,
+                "vesselName": "EVER ART",
+                "voyage": "1359-012W",
+                "routeCode": "CEM",
+                "freightCurrency": "USD",
+                "freightAmount": 2332,
+                "totalCurrency": "USD",
+                "totalAmount": 2435,
+                "isSoldOut": 0,
+                "quotationPeriodEnd": null,
+                "quotationUpdateTime": "2025-07-22T08:56:57.230+00:00",
+                "routeInfoList": [
+                    {
+                        "portCode": "CNTAO",
+                        "portName": "Qingdao",
+                        "portCountry": "CN",
+                        "portTerm": "",
+                        "vesselName": "EVER ART",
+                        "voyage": "1359-012W",
+                        "routeCode": "CEM",
+                        "etd": "2025-07-26T00:00:00.000+00:00",
+                        "eta": null
+                    },
+                    {
+                        "portCode": "DEHAM",
+                        "portName": "Hamburg",
+                        "portCountry": "DE",
+                        "portTerm": "",
+                        "vesselName": null,
+                        "voyage": null,
+                        "routeCode": null,
+                        "etd": null,
+                        "eta": "2025-09-11T00:00:00.000+00:00"
+                    }
+                ],
+                "feeGroupInfoList": [
+                    {
+                        "feeCategoryName": "Origin charges",
+                        "feeDetailList": [
+                            {
+                                "feeCategoryName": "Origin charges",
+                                "categoryName": "IMO SOX Compliance Charge (ISOCC)",
+                                "paymentMethod": "P",
+                                "unit": "CNTR",
+                                "currency": "USD",
+                                "price": 53
+                            },
+                            {
+                                "feeCategoryName": "Origin charges",
+                                "categoryName": "Low Sulphur Surcharge (LSS)",
+                                "paymentMethod": "P",
+                                "unit": "CNTR",
+                                "currency": "USD",
+                                "price": 20
+                            },
+                            {
+                                "feeCategoryName": "Origin charges",
+                                "categoryName": "Terminal Handling Charge at Port of Loading (THC/L)",
+                                "paymentMethod": "P",
+                                "unit": "CNTR",
+                                "currency": "CNY",
+                                "price": 620
+                            },
+                            {
+                                "feeCategoryName": "Origin charges",
+                                "categoryName": "EU Entry Summary Declaration Charge (ENS)",
+                                "paymentMethod": "P",
+                                "unit": "BL",
+                                "currency": "USD",
+                                "price": 30
+                            }
+                        ]
+                    },
+                    {
+                        "feeCategoryName": "Destination charges",
+                        "feeDetailList": [
+                            {
+                                "feeCategoryName": "Destination charges",
+                                "categoryName": "Terminal Handling Charge at Port of Discharging (THC/D)",
+                                "paymentMethod": "C",
+                                "unit": "CNTR",
+                                "currency": "EUR",
+                                "price": 275
+                            },
+                            {
+                                "feeCategoryName": "Destination charges",
+                                "categoryName": "Int'l Ship/Port Facility Security Surcharge at Discharge (ISPS/D)",
+                                "paymentMethod": "C",
+                                "unit": "CNTR",
+                                "currency": "EUR",
+                                "price": 18.5
+                            }
+                        ]
+                    },
+                    {
+                        "feeCategoryName": "Basic Ocean Freight",
+                        "feeDetailList": [
+                            {
+                                "feeCategoryName": "Basic Ocean Freight",
+                                "categoryName": "Basic Ocean Freight",
+                                "paymentMethod": "P",
+                                "unit": "CNTR",
+                                "currency": "USD",
+                                "price": 2332
+                            }
+                        ]
+                    }
+                ],
+                "spotFeeInfoList": [],
+                "dndGroupInfoList": [
+                    {
+                        "type": 1,
+                        "dndDetailInfoList": [
+                            {
+                                "type": 1,
+                                "destination": "Hamburg",
+                                "validityPeriod": "1-10",
+                                "currency": "USD",
+                                "cost": "0"
+                            }
+                        ]
+                    },
+                    {
+                        "type": 2,
+                        "dndDetailInfoList": [
+                            {
+                                "type": 2,
+                                "destination": "Hamburg",
+                                "validityPeriod": "1-3",
+                                "currency": "USD",
+                                "cost": "0"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "errMsg": null
+    }
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Object	是	
+4	┣taskCode	任务号	String	是	
+5	┣taskType	任务类型	Integer	否	1：即时运价，2：订阅运价
+6	┣subscribeCode	订阅号	String	否	任务类型为2时订阅号有值
+7	┣polCode	起运港五字码	String	否	
+8	┣podCode	目的港五字码	String	否	
+9	┣polServiceType	Pol运输类型	String	否	
+10	┣podServiceType	Pod运输类型	String	否	
+11	┣sizeType	箱型	String	否	
+12	┣completeState	任务状态	Integer	否	0：执行中 ，1：已完成
+13	┣completeTime	完成时间	String	否	
+14	┣createTime	创建时间	String	否	
+15	┣errMsg	Err信息	String	否	
+16	┣spotList	运价集合	Array	否	
+17	┣quotationUnique	船公司运价唯一标识	String	是	
+18	┣carrierCode	船司	String	是	
+19	┣polEtd	离港时间	String	是	
+20	┣podEta	到港时间	String	是	
+21	┣sailingTime	航行时间	Integer	是	
+22	┣isDirect	是否直达	Integer	是	0：中转，1：直达
+23	┣vesselName	船名	String	是	
+24	┣voyage	航次	String	是	
+25	┣routeCode	航线代码	String	是	
+26	┣freightCurrency	海运费币别	String	是	
+27	┣freightAmount	海运费金额	Float	是	
+28	┣totalCurrency	总费用币别	String	是	
+29	┣totalAmount	总费用金额	Float	是	
+30	┣isSoldOut	是否售馨	Integer	是	0：未售罄，1：售罄
+31	┣quotationPeriodEnd	报价有效期截至	String	否	
+32	┣quotationUpdateTime	报价更新时间	String	是	
+33	┣routeInfoList	航线列表	Array	是	
+34	┣portCode	港口五字码	String	否	
+35	┣portName	港口名称	String	是	
+36	┣portCountry	港口国家编码	String	否	
+37	┣portTerm	港口码头	String	否	
+38	┣vesselName	船名	String	否	
+39	┣voyage	航次	String	否	
+40	┣routeCode	航线代码	String	否	
+41	┣etd	预计离港日期	String	否	
+42	┣eta	预计到达日期	String	否	
+43	┣feeGroupInfoList	费用列表	Array	是	
+44	┣feeCategoryName	费用分类名称	String	是	
+45	┣feeDetailList	费用明细	Array	是	
+46	┣feeCategoryName	分类名称	String	是	
+47	┣categoryName	费用名称	String	是	
+48	┣paymentMethod	付款方式	String	否	P：预付，C：到付
+49	┣unit	单位	String	否	BL：按单，CNTR：按箱
+50	┣currency	币别	String	是	
+51	┣price	金额	Float	是	
+52	┣spotFeeInfoList	Spot费用列表	Array	否	
+53	┣spotFeeName	费用名称	String	是	
+54	┣currency	币别	String	是	
+55	┣price	单价	String	是	
+56	┣dndGroupInfoList	Dnd费用列表	Array	否	
+57	┣type	类型	Integer	是	1：Import Detention starts at gate-out full2：Import Demurrage starts at discharge 3：Storage 4：Merged
+
+58	┣dndDetailInfoList	费用明细	Array	是	
+59	┣type	类型	Integer	是	
+60	┣destination	描述	String	是	
+61	┣validityPeriod	区间/天	String	是	
+62	┣currency	币别	String	是	
+63	┣cost	费用	String	是	
+
+5.3.5.返回状态码
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+
+6.订阅运价
+6.1.添加订阅
+6.1.1.接口说明
+调用添加订阅接口发起订阅，荣e通平台按照频次查询运价回调通知。
+6.1.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/addSubscribe
+
+6.1.3.请求数据
+{
+    "timestamp": "1753239150495",
+    "nonce": "9069ae79709949f795c872d059682496",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "015667736C41B88A3878349B063E6E51",
+    "param": {
+        "isActive": 0,
+        "polCode": "CNTAO",
+        "polServiceType": "CY",
+        "podCode": "DEHAM",
+        "podServiceType": "CY",
+        "sizeType": "20GP",
+        "carrierCode": "EMC"
+    }
+}
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+1.		accessKey	请求唯一标识	String(36)	是	
+2.		nonce	随机号	String(36)	是	
+3.		timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4.		sign	签名	String(32)	是	
+5.		param	业务参数	Object	是	
+6.		┣polCode	起运港五字码	String	是	
+7.		┣polServiceType	起运港运输类型	String	是	CY/SD
+8.		┣podCode	目的港五字码	String	是	
+9.		┣podServiceType	目的港运输类型	String	是	CY/SD
+10.		┣sizeType	箱型	String	是	
+11.		┣isActive	订阅状态
+	Integer	是	0：关闭，1：启用
+12.		┣carrierCode	船司	String	是	
+6.1.4.返回数据
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	code	返回消息编码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Object	是	
+4	┣subscribeCode	订阅号	String	是	
+
+
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": {
+		"subscribeCode": "S25072217430993096"
+	}
+}
+
+
+6.1.5.返回状态码
+索引	状态码	描述
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+9	200009	您未绑定该船公司的有效账号，请先绑定再订阅
+10	200010	已存在相同且已生效的订阅记录
+
+6.2.变更订阅状态
+6.2.1.接口说明
+调用变更订阅状态接口，开启/关闭订阅。
+6.2.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/setSubscribe
+
+6.2.3.请求数据
+{
+    "timestamp": "1753240011804",
+    "nonce": "dcd318b2b0ee48f5b7b1d21880ad75ca",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "6778B01D7F4740B9E213A58A7CC834B1",
+    "param": {
+        "isActive": 1,
+        "subscribeCode": "S25072310520168934"
+    }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	accessKey	请求唯一标识	String(36)	是	
+2	nonce	随机号	String(36)	是	
+3	timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	String(32)	是	
+5	param	业务参数
+	Object	是	
+6	┣isActive	订阅状态
+	Integer	是	0：关闭，1：启用
+7	┣subscribeCode	订阅号	String	是	
+6.2.4.返回数据        
+{
+    "code": "000000",
+    "message": "提交成功",
+    "data": true
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	code	返回消息编码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Boolean	是	
+
+
+
+6.2.5.返回状态码
+索引	状态码	描述
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+9	200001	未查询到运价订阅记录
+10	200009	您未绑定该船公司的有效账号，请先绑定再订阅
+11	200010	已存在相同且已生效的订阅记录
+6.3.删除订阅
+6.3.1.接口说明
+调用删除订阅接口删除订阅。
+6.3.2.正式环境地址
+https://api.cargonpay.com/api/rpasearch/openapi/spot/delSubscribe
+6.3.3.请求数据
+{
+    "timestamp": "1753343580979",
+    "nonce": "7b29669148174964b9891fbbc1bdc3f0",
+    "accessKey": "66BEE7D564904534A59D08E13E20524D",
+    "sign": "106D497D3B3528EA06042ED274FE017B",
+    "param": {
+        "subscribeCode": "S250723105201689s4"
+    }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	accessKey	请求唯一标识	String(36)	是	
+2	nonce	随机号	String(36)	是	
+3	timestamp	时间戳	String(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	String(32)	是	
+5	param	业务参数	Object	是	
+6	┣subscribeCode	订阅号	String	是	
+
+6.3.4.返回数据
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": true
+}
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回消息编码	String	是	
+2	message	返回消息	String	是	
+3	data	返回数据	Boolean	是	
+6.3.5.返回状态码
+
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	999999	系统错误，请联系技术人员
+9	200001	未查询到运价订阅记录
+10	200002	运价订阅启用时，无法删除订阅
+

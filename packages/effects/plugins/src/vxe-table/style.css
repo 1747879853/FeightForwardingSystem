@@ -30,7 +30,7 @@
   --vxe-ui-loading-background-color: hsl(var(--overlay-content));
 
   /* table */
-  --vxe-ui-table-header-background-color: hsl(var(--accent));
+  --vxe-ui-table-header-background-color: hsl(var(--primary) / 6%);
   --vxe-ui-table-border-color: hsl(var(--border));
   --vxe-ui-table-row-hover-background-color: hsl(var(--primary) / 15%);
   --vxe-ui-table-row-striped-background-color: hsl(var(--accent) / 60%);
@@ -54,6 +54,37 @@
   height: auto !important;
 
   /* --vxe-ui-table-fixed-scrolling-box-shadow-color: rgb(0 0 0 / 80%); */
+}
+
+/* VXE 列表表头标题：跟品牌主色浅底，字号/字重更清晰 */
+.vxe-table .vxe-header--column {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 88%);
+  letter-spacing: 0.02em;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 7%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  ) !important;
+}
+
+.vxe-table .vxe-header--column .vxe-cell {
+  font-weight: 600;
+}
+
+.vxe-table .vxe-header--column .vxe-cell--title {
+  color: hsl(var(--foreground) / 88%);
+}
+
+/* 固定列表头与滚动表头同色，避免错层 */
+.vxe-table .vxe-table--fixed-left-wrapper .vxe-header--column,
+.vxe-table .vxe-table--fixed-right-wrapper .vxe-header--column {
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 7%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  ) !important;
 }
 
 .vxe-pager {
@@ -116,6 +147,36 @@
 
 .vxe-grid--layout-body-content-wrapper {
   overflow: hidden;
+}
+
+/* VXE 列表工具栏标题（如「付费结算列表」） */
+.vxe-table-title {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 4px 2px 0;
+  margin-right: 8px;
+  line-height: 1.2;
+}
+
+.vxe-table-title__mark {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 85%),
+    hsl(var(--primary))
+  );
+  border-radius: 2px;
+}
+
+.vxe-table-title__text {
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  letter-spacing: 0.02em;
 }
 
 /* 统一去掉表体行底部分隔线，保留表头底部分隔 */

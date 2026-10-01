@@ -18,6 +18,16 @@ import {
 } from '../form-data';
 import type { PaymentSettlementFormState } from './use-form-state';
 
+function mapAttachmentsForSubmit(
+  attachments: PaymentSettlementFormState['attachments']['value'],
+) {
+  return attachments.map((a, idx) => ({
+    // 雪花 ID 字符串透传，禁止 Number()
+    attachmentId: a.attachmentId,
+    displayOrder: idx,
+  }));
+}
+
 /**
  * 保存 / 新建 / 加明细 / 批量删除
  * 接口失败由 request 拦截器统一提示，此处 catch 只做收尾，不再 message.error。
@@ -33,11 +43,13 @@ export function useSubmit(
     route,
     editId,
     isEdit,
+    isReadonly,
     submitting,
     settlementId,
     currencyId,
     settlementTime,
     payType,
+    orgId,
     orgBankAccountId,
     clientInvoiceBankId,
     transactionFee,
@@ -49,6 +61,10 @@ export function useSubmit(
   } = state;
 
   function validateForm(): boolean {
+    if (isReadonly.value) {
+      message.warning('结算单已锁定，无法保存');
+      return false;
+    }
     if (!settlementId.value) {
       message.warning('请选择结算对象');
       return false;
@@ -68,6 +84,10 @@ export function useSubmit(
     applications: SelectedApplicationForSettlement[],
     selectedCurrencyId?: number,
   ) {
+    if (isReadonly.value) {
+      message.warning('结算单已锁定，无法添加明细');
+      return;
+    }
     if (!selectedCurrencyId) {
       message.warning('请选择结算币别');
       return;
@@ -140,22 +160,23 @@ export function useSubmit(
 
     submitting.value = true;
     try {
+      // 新建时带上页内已填主表字段，避免建单后再改一次才落库
       const newId = await addPaymentSettlementByCurrency({
         orgId: derivedOrgId,
-        settlementTime: dayjs().toISOString(),
-        payType: undefined,
+        settlementTime: settlementTime.value?.toISOString?.()
+          ? settlementTime.value.toISOString()
+          : dayjs().toISOString(),
+        payType: payType.value,
         settlementId: firstApp.settlementId,
         currencyId: selectedCurrencyId,
-        orgBankAccountId: undefined,
-        clientInvoiceBankId: undefined,
-        transactionFee: 0,
-        transactionFeeCurrencyId: selectedCurrencyId,
-        remark: '',
+        orgBankAccountId: orgBankAccountId.value,
+        clientInvoiceBankId: clientInvoiceBankId.value,
+        transactionFee: transactionFee.value ?? 0,
+        transactionFeeCurrencyId:
+          transactionFeeCurrencyId.value ?? selectedCurrencyId,
+        remark: remark.value || '',
         paymentApplicationCurrencyItems,
-        attachments: attachments.value.map((a, idx) => ({
-          attachmentId: Number(a.attachmentId),
-          displayOrder: idx,
-        })),
+        attachments: mapAttachmentsForSubmit(attachments.value),
       });
 
       message.success(
@@ -181,6 +202,9 @@ export function useSubmit(
     applications: SelectedApplicationForSettlement[],
     selectedCurrencyId?: number,
   ) {
+    // 父级写接口进行中禁止再次确认，避免抽屉关后立刻再开导致连建
+    if (submitting.value || isReadonly.value) return;
+
     if (!selectedCurrencyId) {
       message.warning('请选择结算币别');
       return;
@@ -194,6 +218,10 @@ export function useSubmit(
   }
 
   async function handleBatchDeleteApplications() {
+    if (isReadonly.value) {
+      message.warning('结算单已锁定，无法删除明细');
+      return;
+    }
     if (selectedRowKeys.value.length === 0) {
       message.warning('请至少选择一个申请');
       return;
@@ -250,14 +278,15 @@ export function useSubmit(
   async function handleSave() {
     if (!validateForm()) return;
 
-    const derivedOrgId = getMyDefaultOrgId();
-    if (!derivedOrgId) {
-      message.warning('缺少归属组织，无法保存');
+    if (!isEdit.value || !editId.value) {
+      message.warning('新建模式请使用"添加申请"按钮自动创建结算单');
       return;
     }
 
-    if (!isEdit.value || !editId.value) {
-      message.warning('新建模式请使用"添加申请"按钮自动创建结算单');
+    // 后端仍校验所属组织；优先回传详情 orgId，避免用当前用户默认组织覆盖单据
+    const saveOrgId = orgId.value ?? getMyDefaultOrgId();
+    if (!saveOrgId) {
+      message.warning('缺少归属组织，无法保存');
       return;
     }
 
@@ -265,7 +294,7 @@ export function useSubmit(
     try {
       await editPaymentSettlement({
         id: editId.value,
-        orgId: derivedOrgId,
+        orgId: saveOrgId,
         settlementTime: settlementTime.value.toISOString(),
         payType: payType.value,
         orgBankAccountId: orgBankAccountId.value,
@@ -273,10 +302,7 @@ export function useSubmit(
         transactionFee: transactionFee.value,
         transactionFeeCurrencyId: transactionFeeCurrencyId.value,
         remark: remark.value,
-        attachments: attachments.value.map((a, idx) => ({
-          attachmentId: Number(a.attachmentId),
-          displayOrder: idx,
-        })),
+        attachments: mapAttachmentsForSubmit(attachments.value),
       });
 
       message.success('保存成功');

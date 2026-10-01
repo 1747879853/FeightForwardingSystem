@@ -1369,7 +1369,7 @@ onMounted(() => {
                   >
                   <!-- <span
                     v-if="foreignCurrencyAmount !== null"
-                    style="font-size: 13px; color: #1890ff"
+                    style="font-size: 13px; color: hsl(var(--primary))"
                   >
                     <strong>申请币别金额:</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}

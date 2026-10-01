@@ -1,9 +1,10 @@
 ﻿<script lang="ts" setup>
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
 
 import {
@@ -20,6 +21,7 @@ import {
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import { openAttachmentViewer } from '#/components/attachment-viewer';
+import { createAbpPermission } from '#/utils/abp-permission';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
@@ -31,6 +33,9 @@ import { useLoadDetail } from './composables/use-load-detail';
 import { useSubmit } from './composables/use-submit';
 import { formatAmount, payTypeOptions } from './form-data';
 
+const perm = createAbpPermission('Admin.PaymentSettlement');
+const { hasAccessByCodes } = useAccess();
+
 const state = useFormState();
 const {
   editId,
@@ -38,6 +43,7 @@ const {
   pageLoading,
   submitting,
   settlementNo,
+  isReadonly,
   settlementTime,
   payType,
   settlementId,
@@ -62,6 +68,22 @@ const {
   displaySettlerName,
 } = state;
 
+const canSave = computed(() => {
+  if (isReadonly.value) return false;
+  return isEdit.value
+    ? hasAccessByCodes([perm.edit])
+    : hasAccessByCodes([perm.add]);
+});
+const canManageItems = computed(
+  () =>
+    !isReadonly.value &&
+    hasAccessByCodes([isEdit.value ? perm.edit : perm.add]),
+);
+const pageTitle = computed(() => {
+  if (!isEdit.value) return '新建结算单';
+  return isReadonly.value ? '查看结算单' : '编辑结算单';
+});
+
 const { loadOrgBankOptions, loadClientBankOptions } = useBankOptions(state);
 const { loadEditData } = useLoadDetail(
   state,
@@ -78,6 +100,14 @@ const addApplicationDrawerRef = ref<InstanceType<
 > | null>(null);
 
 function handleAddApplication() {
+  if (isReadonly.value) {
+    message.warning('结算单已锁定，无法添加申请');
+    return;
+  }
+  if (submitting.value) {
+    message.warning('正在保存，请稍后再添加申请');
+    return;
+  }
   nextTick(() => {
     addApplicationDrawerRef.value?.openDrawer();
   });
@@ -116,33 +146,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- auto-content-height 让 Page 自动测量并扣除标题头高度，内容区得到确定高度；
-       content-class 建立 flex 纵向容器，配合下方 .ps-page flex-1 精确填满，整页不再溢出滚动。
-       保留默认 p-4 外边距，与 .ps-page 自身 16px padding 一起维持原有留白。 -->
-  <Page
-    :title="isEdit ? '编辑结算单' : '新建结算单'"
-    auto-content-height
-    content-class="flex flex-col overflow-hidden"
-  >
-    <template #extra>
-      <Space>
-        <!-- 结算单号（设计稿展示于页面标题栏） -->
-        <span v-if="isEdit" class="ps-settlement-no">
-          结算单号：{{ settlementNo }}
-        </span>
-
-        <Button
-          class="ps-action-btn ps-action-btn-primary"
-          type="primary"
-          @click="handleSave"
-          :loading="submitting"
-        >
-          保存
-        </Button>
-      </Space>
-    </template>
-
+  <!-- auto-content-height 让 Page 自动测量内容区高度；头部改用内容区内 action-bar（对齐对账单编辑页） -->
+  <Page auto-content-height content-class="flex flex-col overflow-hidden !p-0">
     <div v-loading="pageLoading" class="ps-page">
+      <!-- 顶部操作栏（参考对账单编辑页） -->
+      <div class="action-bar">
+        <div class="action-bar__left">
+          <span class="action-bar__title">{{ pageTitle }}</span>
+          <span v-if="isEdit" class="action-bar__settlement-no">
+            结算单号: {{ settlementNo || '-' }}
+          </span>
+        </div>
+        <div class="action-bar__right">
+          <Space>
+            <Button
+              v-if="canSave"
+              type="primary"
+              class="ps-primary-btn"
+              :loading="submitting"
+              @click="handleSave"
+            >
+              保存
+            </Button>
+          </Space>
+        </div>
+      </div>
+
       <!-- 顶部布局：结算信息卡片 + 附件卡片（与设计稿一致） -->
       <div class="ps-grid-top">
         <!-- 结算信息卡片：费用汇总已按设计稿并入 -->
@@ -170,7 +199,7 @@ onMounted(() => {
                 />
               </div>
               <div class="hs-item">
-                <span class="hs-label">结算总金额</span>
+                <span class="hs-label">结算总金额（不含手续费）</span>
                 <span class="hs-amount">
                   {{ formatAmount(totalSettledAmount) }}
                 </span>
@@ -205,12 +234,14 @@ onMounted(() => {
                   placeholder="0.00"
                   :min="0"
                   :precision="2"
+                  :disabled="isReadonly"
                   style="flex: 1; min-width: 0"
                 />
                 <CurrencySelect
                   v-model="transactionFeeCurrencyId"
                   placeholder="币别"
                   allow-clear
+                  :disabled="isReadonly"
                   class="fee-currency"
                 />
               </div>
@@ -224,6 +255,7 @@ onMounted(() => {
                 v-model:value="settlementTime"
                 show-time
                 format="YYYY-MM-DD HH:mm"
+                :disabled="isReadonly"
                 style="width: 100%"
               />
             </div>
@@ -236,6 +268,7 @@ onMounted(() => {
                 :options="payTypeOptions"
                 placeholder="请选择"
                 allow-clear
+                :disabled="isReadonly"
                 style="width: 100%"
               />
             </div>
@@ -253,7 +286,7 @@ onMounted(() => {
                 "
                 placeholder="请先添加申请明细，然后选择我司银行"
                 allow-clear
-                :disabled="applicationItems.length === 0"
+                :disabled="isReadonly || applicationItems.length === 0"
                 style="width: 100%"
               />
             </div>
@@ -285,7 +318,7 @@ onMounted(() => {
                 "
                 placeholder="请先选择结算对象，然后选择对方银行"
                 allow-clear
-                :disabled="!settlementId"
+                :disabled="isReadonly || !settlementId"
                 style="width: 100%"
               />
             </div>
@@ -297,6 +330,7 @@ onMounted(() => {
                 v-model:value="remark"
                 placeholder="请输入备注信息（选填）"
                 :rows="2"
+                :disabled="isReadonly"
               />
             </div>
           </div>
@@ -318,6 +352,7 @@ onMounted(() => {
               v-model="attachments"
               module-type-id="160011"
               :max-count="10"
+              :disabled="isReadonly"
               drag
             />
           </div>
@@ -376,7 +411,7 @@ onMounted(() => {
           </div>
         </template>
         <template #extra>
-          <Space>
+          <Space v-if="canManageItems">
             <Button
               class="detail-btn-add"
               type="primary"
@@ -400,7 +435,7 @@ onMounted(() => {
         <!-- ✅ 使用新的申请明细表格组件 -->
         <ApplicationItemsTable
           :items="applicationItems"
-          :editable="isEdit"
+          :editable="canManageItems"
           v-model:selected-row-keys="selectedRowKeys"
         />
       </Card>
@@ -436,14 +471,73 @@ onMounted(() => {
 }
 
 /* 页面纵向弹性布局：由 Page(auto-content-height) 给出确定高度，
-   .ps-page 用 flex-1 填满内容区，替代原先脆弱的 calc(100vh - 104px) + min-height:720px
-   （魔数未计入标题头/内边距，且 min-height 在小屏强制溢出，导致纵向滚动条）。 */
+   .ps-page 用 flex-1 填满内容区；头部使用内容区内 action-bar（对齐对账单）。 */
 .ps-page {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 12px;
   min-height: 0;
-  padding: 16px;
+  padding: 12px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 4%) 0%,
+    hsl(var(--background)) 120px,
+    hsl(var(--background)) 100%
+  );
+}
+
+/* 顶部操作栏：对齐对账单编辑页 */
+.action-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 3%) 45%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
+}
+
+.action-bar__left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.action-bar__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #252a31;
+}
+
+.action-bar__settlement-no {
+  font-size: 13px;
+  font-weight: normal;
+  color: #8c95a3;
+}
+
+.action-bar__right {
+  flex-shrink: 0;
+}
+
+.ps-primary-btn {
+  border-radius: 6px;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 28%);
+  transition: box-shadow 0.2s ease;
+}
+
+.ps-primary-btn:hover {
+  box-shadow: 0 4px 12px hsl(var(--primary) / 40%);
 }
 
 .ps-grid-top {
@@ -451,27 +545,6 @@ onMounted(() => {
   flex-shrink: 0;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 16px;
-  margin-bottom: 16px;
-}
-
-/* 顶部操作按钮：圆角 + 主按钮轻投影，强化点击感 */
-.ps-action-btn {
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.ps-action-btn-primary {
-  box-shadow: 0 2px 8px hsl(var(--primary) / 30%);
-}
-
-.ps-action-btn-primary:hover {
-  box-shadow: 0 4px 12px hsl(var(--primary) / 40%);
-}
-
-/* 页面头部右侧：结算单号（设计稿展示于标题栏） */
-.ps-settlement-no {
-  font-size: 13px;
-  color: #8c95a3;
 }
 
 /* ==================== 分区卡片统一风格 ==================== */

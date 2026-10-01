@@ -13,9 +13,8 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deletePaymentSettlement,
   getPaymentSettlementPagedList,
-  lockPaymentSettlement,
-  unlockPaymentSettlement,
 } from '#/api/sea-export/payment-settlement-admin';
+import { createAbpPermission } from '#/utils/abp-permission';
 
 import { useColumns, useGridFormSchema } from './data';
 import { normalizeKeysParam } from '#/utils/keys-search';
@@ -24,6 +23,7 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const router = useRouter();
 const actionLoading = ref(false);
+const perm = createAbpPermission('Admin.PaymentSettlement');
 
 /** 当前页表格数据，用于底部按结算币别合计 */
 const currentPageData = ref<
@@ -66,12 +66,6 @@ const summaryItems = computed(() =>
     value: formatAmount(item.settledAmount),
   })),
 );
-
-/** 格式化日期时间到分钟 */
-const formatDateTime = (value: string | undefined) => {
-  if (!value) return '-';
-  return dayjs(value).format('YYYY-MM-DD HH:mm');
-};
 
 /** 获取结算状态标签颜色 */
 const getStatusColor = (status: number) => {
@@ -199,50 +193,14 @@ function getSelectedRows(): PaymentSettlementAdminApi.PaymentSettlementListDto[]
     []) as PaymentSettlementAdminApi.PaymentSettlementListDto[];
 }
 
-/** 双击行进入编辑页面 */
+/** 双击行进入详情（已锁定为只读查看） */
 function handleRowDblClick({
   row,
 }: {
   row: PaymentSettlementAdminApi.PaymentSettlementListDto;
 }) {
-  if (!row) {
-    console.warn('双击事件未获取到行数据');
-    return;
-  }
-
-  if (row.locked) {
-    message.warning('该结算单已锁定，无法编辑');
-    return;
-  }
+  if (!row) return;
   router.push(`/settlement-management/payment-settlement/edit/${row.id}`);
-}
-
-/** 删除 */
-async function handleDelete(
-  row: PaymentSettlementAdminApi.PaymentSettlementListDto,
-) {
-  if (row.locked) {
-    message.warning('该结算单已锁定，无法删除');
-    return;
-  }
-
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除结算单"${row.settlementNo}"吗？`,
-    okType: 'danger',
-    onOk: async () => {
-      actionLoading.value = true;
-      try {
-        await deletePaymentSettlement({ id: row.id });
-        message.success('删除成功');
-        gridApi.query();
-      } catch (error: any) {
-        message.error(error.message || '删除失败');
-      } finally {
-        actionLoading.value = false;
-      }
-    },
-  });
 }
 
 /** 批量删除 */
@@ -265,68 +223,28 @@ function handleBatchDelete() {
     okType: 'danger',
     onOk: async () => {
       actionLoading.value = true;
+      let success = 0;
+      const failMessages: string[] = [];
       try {
-        await Promise.all(
-          rows.map((r) => deletePaymentSettlement({ id: r.id })),
-        );
-        message.success('删除成功');
+        // 逐条删除并汇总成败，避免 Promise.all 一失败全糊
+        for (const r of rows) {
+          try {
+            await deletePaymentSettlement({ id: r.id });
+            success += 1;
+          } catch (error: any) {
+            failMessages.push(
+              `${r.settlementNo || r.id}: ${error?.message || '删除失败'}`,
+            );
+          }
+        }
+        if (failMessages.length === 0) {
+          message.success(`成功删除 ${success} 条`);
+        } else {
+          message.warning(
+            `成功 ${success} 条，失败 ${failMessages.length} 条。${failMessages.slice(0, 3).join('；')}`,
+          );
+        }
         gridApi.query();
-      } catch (error: any) {
-        message.error(error.message || '删除失败');
-      } finally {
-        actionLoading.value = false;
-      }
-    },
-  });
-}
-
-/** 锁定 */
-async function handleLock(
-  row: PaymentSettlementAdminApi.PaymentSettlementListDto,
-) {
-  if (row.locked) {
-    message.warning('该结算单已锁定');
-    return;
-  }
-
-  Modal.confirm({
-    title: '确认锁定',
-    content: `确定要锁定结算单"${row.settlementNo}"吗？锁定后将无法编辑和删除。`,
-    onOk: async () => {
-      actionLoading.value = true;
-      try {
-        await lockPaymentSettlement({ id: row.id });
-        message.success('锁定成功');
-        gridApi.query();
-      } catch (error: any) {
-        message.error(error.message || '锁定失败');
-      } finally {
-        actionLoading.value = false;
-      }
-    },
-  });
-}
-
-/** 解锁 */
-async function handleUnlock(
-  row: PaymentSettlementAdminApi.PaymentSettlementListDto,
-) {
-  if (!row.locked) {
-    message.warning('该结算单未锁定');
-    return;
-  }
-
-  Modal.confirm({
-    title: '确认解锁',
-    content: `确定要解锁结算单"${row.settlementNo}"吗？`,
-    onOk: async () => {
-      actionLoading.value = true;
-      try {
-        await unlockPaymentSettlement({ id: row.id });
-        message.success('解锁成功');
-        gridApi.query();
-      } catch (error: any) {
-        message.error(error.message || '解锁失败');
       } finally {
         actionLoading.value = false;
       }
@@ -357,8 +275,14 @@ function handleExport() {
     <Grid table-title="付费结算列表" class="min-h-0 flex-1">
       <template #toolbar-tools>
         <Space>
-          <Button type="primary" @click="handleCreate"> 新建 </Button>
-          <Button @click="handleBatchDelete" :loading="actionLoading">
+          <Button v-access:code="perm.add" type="primary" @click="handleCreate">
+            新建
+          </Button>
+          <Button
+            v-access:code="perm.delete"
+            :loading="actionLoading"
+            @click="handleBatchDelete"
+          >
             批量删除
           </Button>
           <Button @click="handleExport"> 导出 </Button>

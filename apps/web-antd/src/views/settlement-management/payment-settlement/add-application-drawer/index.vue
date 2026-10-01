@@ -65,6 +65,8 @@ const emit = defineEmits<{
 
 const visible = ref(false);
 const loading = ref(false);
+/** 确认中防抖，避免连点重复建单/加明细 */
+const confirming = ref(false);
 const selectedRowKeys = ref<string[]>([]);
 // ✅ 使用any类型数组，因为需要添加前端临时字段settledPrice
 const dataSource = ref<any[]>([]);
@@ -105,6 +107,7 @@ async function openDrawer() {
   dataSource.value = [];
   visible.value = true;
   selectedRowKeys.value = [];
+  confirming.value = false;
   currentPage.value = 1;
 
   // 重置独立的结算币别选择
@@ -139,65 +142,18 @@ async function openDrawer() {
 
   await searchFormApi.setValues(formValues);
 
-  // ✅ 动态更新 ClientSelect 的 selectedItems 属性
-  if (props.settlementId && settlementSelectedItems.value.length > 0) {
-    await searchFormApi.updateSchema([
-      {
-        fieldName: 'settlementId',
-        componentProps: {
-          selectedItems: settlementSelectedItems.value,
-        },
+  // 已有明细或已定结算对象：用 schema disabled 锁定，勿改 DOM
+  const lockSettlementFilter = !!props.hasExistingFees || !!props.settlementId;
+  await searchFormApi.updateSchema([
+    {
+      fieldName: 'settlementId',
+      componentProps: {
+        selectedItems: settlementSelectedItems.value,
+        disabled: lockSettlementFilter,
+        allowClear: !lockSettlementFilter,
       },
-    ]);
-  }
-
-  // 如果已有费用，则锁定筛选条件
-  if (props.hasExistingFees) {
-    // 禁用结算对象字段
-    setTimeout(() => {
-      // 禁用结算对象字段
-      const settlementField = document.querySelector(
-        '[data-field="settlementId"]',
-      );
-      if (settlementField) {
-        const input = settlementField.querySelector(
-          'input, .ant-select-selector',
-        );
-        if (input) {
-          (input as HTMLElement).setAttribute('disabled', 'true');
-          (input as HTMLElement).style.pointerEvents = 'none';
-          (input as HTMLElement).style.opacity = '0.6';
-        }
-      }
-
-      // 禁用结算币别字段
-      const currencyField = document.querySelector('[data-field="currencyId"]');
-      if (currencyField) {
-        const input = currencyField.querySelector(
-          'input, .ant-select-selector',
-        );
-        if (input) {
-          (input as HTMLElement).setAttribute('disabled', 'true');
-          (input as HTMLElement).style.pointerEvents = 'none';
-          (input as HTMLElement).style.opacity = '0.6';
-        }
-      }
-
-      // 禁用独立的结算币别选择器
-      const independentCurrencySelect = document.querySelector(
-        '.ant-drawer-body .ant-select:has(.ant-select-selection-item)',
-      );
-      if (independentCurrencySelect) {
-        const selector = independentCurrencySelect.querySelector(
-          '.ant-select-selector',
-        );
-        if (selector) {
-          (selector as HTMLElement).style.pointerEvents = 'none';
-          (selector as HTMLElement).style.opacity = '0.6';
-        }
-      }
-    }, 100);
-  }
+    },
+  ]);
 
   await fetchData();
 }
@@ -311,31 +267,41 @@ function handleRowSelectionChange(selectedRowKeysValue: (string | number)[]) {
 
 /** 获取选中的行数据 */
 function getSelectedRows() {
-  const selected = selectionQuery.rows.filter((item) =>
+  return selectionQuery.rows.filter((item) =>
     selectedRowKeys.value.includes(item.rowKey),
   );
-
-  // ✅ 调试：打印选中行的settledPrice值
-  console.log('=== getSelectedRows 返回的数据 ===');
-  selected.forEach((row, index) => {
-    console.log(`行${index + 1}:`, {
-      rowKey: row.rowKey,
-      settledPrice: row.settledPrice,
-      settledPriceType: typeof row.settledPrice,
-      applicationNo: row.applicationNo,
-    });
-  });
-
-  return selected;
 }
 
 /** 确认选择 */
 async function handleConfirm() {
-  if (loading.value) return;
+  if (loading.value || confirming.value) return;
   const selectedRows = getSelectedRows();
 
   if (selectedRows.length === 0) {
     message.warning('请至少选择一个付费申请+原币组合');
+    return;
+  }
+
+  // 结算对象必须唯一（建单取第一行 settlementId，跨客户会建错单）
+  const settlementIds = new Set(
+    selectedRows
+      .map((row) =>
+        row.settlementId != null && row.settlementId !== ''
+          ? String(row.settlementId)
+          : '',
+      )
+      .filter(Boolean),
+  );
+  if (settlementIds.size === 0) {
+    message.warning('选中行缺少结算对象，无法结算');
+    return;
+  }
+  if (settlementIds.size !== 1) {
+    message.warning('选中行的结算对象不一致，请只选择同一结算对象');
+    return;
+  }
+  if (props.settlementId && !settlementIds.has(String(props.settlementId))) {
+    message.warning('选中行的结算对象与当前结算单不一致');
     return;
   }
 
@@ -385,56 +351,35 @@ async function handleConfirm() {
     }
   }
 
-  selectedCurrencyId.value = settlementCurrency;
-  returnSelectedApplications(selectedRows);
+  confirming.value = true;
+  try {
+    selectedCurrencyId.value = settlementCurrency;
+    const accepted = returnSelectedApplications(selectedRows);
+    // 未提交成功（金额校验失败）时放开按钮；成功会关抽屉，下次 open 再重置
+    if (!accepted) {
+      confirming.value = false;
+    }
+  } catch {
+    confirming.value = false;
+  }
 }
 
-/** 返回选中的申请给父组件 */
-function returnSelectedApplications(selectedRows: any[]) {
-  // ✅ 调试：打印所有选中行的数据
-  console.log('=== 选中的行数据 ===');
-  selectedRows.forEach((row, index) => {
-    console.log(`行${index + 1}:`, {
-      rowKey: row.rowKey,
-      applicationNo: row.applicationNo,
-      originalCurrencyCode: row.originalCurrencyCode,
-      settledPrice: row.settledPrice,
-      settleableUpperLimit: row.settleableUpperLimit,
-      settleableLowerLimit: row.settleableLowerLimit,
-    });
-  });
-
+/** 返回选中的申请给父组件；成功发出并关抽屉时返回 true */
+function returnSelectedApplications(selectedRows: any[]): boolean {
   // 构造返回数据，并过滤掉结算金额为0的行
   const mappedData = selectedRows.map((row) => {
-    // ✅ 确保 settledPrice 是数字类型（用户输入的是结算币别金额）
     const settledPriceInSettlementCurrency = Number(row.settledPrice) || 0;
-
-    console.log(
-      `映射行: rowKey=${row.rowKey}, 结算币别金额=${settledPriceInSettlementCurrency}`,
-    );
-
     return {
       application: row,
-      settledPrice: settledPriceInSettlementCurrency, // ✅ 提交给后端的是结算币别金额
+      settledPrice: settledPriceInSettlementCurrency,
     };
   });
 
-  console.log('=== 映射后的数据（过滤前）===', mappedData);
+  const result = mappedData.filter(
+    (item) => item.settledPrice !== 0 && !isNaN(item.settledPrice),
+  );
 
-  const result = mappedData.filter((item) => {
-    // 过滤掉结算金额为0或未填写的行
-    const shouldKeep = item.settledPrice !== 0 && !isNaN(item.settledPrice);
-    console.log(
-      `过滤检查: settledPrice=${item.settledPrice}, shouldKeep=${shouldKeep}`,
-    );
-    return shouldKeep;
-  });
-
-  console.log('=== 过滤后的数据 ===', result);
-
-  // 如果过滤后没有数据，提示用户
   if (result.length === 0) {
-    // ✅ 提供更详细的错误提示
     const zeroAmountRows = selectedRows.filter(
       (row) => !row.settledPrice || Number(row.settledPrice) === 0,
     );
@@ -448,12 +393,12 @@ function returnSelectedApplications(selectedRows: any[]) {
     message.warning(
       `以下行的结算金额为0或未填写，请至少填写一个非零的结算金额：${rowDetails}`,
     );
-    return;
+    return false;
   }
 
-  console.log('=== 最终提交的数据 ===', result);
   emit('confirm', result, selectedCurrencyId.value);
   closeDrawer();
+  return true;
 }
 
 /** 暴露方法给父组件 */
@@ -755,7 +700,7 @@ const innerColumns = [
       "
     >
       <div style="display: flex; gap: 12px; align-items: center">
-        <span style="font-weight: 500; color: #1890ff; white-space: nowrap">
+        <span style="font-weight: 500; color: hsl(var(--primary)); white-space: nowrap">
           结算币别：
         </span>
         <CurrencySelect
@@ -971,7 +916,12 @@ const innerColumns = [
     <template #footer>
       <Space>
         <Button @click="closeDrawer">取消</Button>
-        <Button type="primary" :disabled="loading" @click="handleConfirm">
+        <Button
+          type="primary"
+          :disabled="loading"
+          :loading="confirming"
+          @click="handleConfirm"
+        >
           确定 (已选 {{ selectedRowKeys.length }} 个)
         </Button>
       </Space>
@@ -1006,10 +956,14 @@ const innerColumns = [
   border-radius: 3px;
 }
 
-/* 应付金额 - 蓝色 */
+/* 应付金额 - 主题色 */
 .pay-amount {
-  color: #1890ff;
-  background-color: #e6f7ff;
+  color: hsl(var(--primary));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 14%) 100%
+  );
 }
 
 /* 应收金额 - 绿色 */

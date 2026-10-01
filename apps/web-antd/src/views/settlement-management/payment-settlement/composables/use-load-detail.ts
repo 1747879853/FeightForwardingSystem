@@ -17,6 +17,9 @@ export function useLoadDetail(
     isHydrating,
     pageLoading,
     settlementNo,
+    locked,
+    lockeTime,
+    orgId,
     orgs,
     settlementTime,
     payType,
@@ -45,6 +48,9 @@ export function useLoadDetail(
       const detail = await getPaymentSettlementDetailByCurrency(editId.value);
 
       settlementNo.value = detail.settlementNo || '';
+      locked.value = !!detail.locked;
+      lockeTime.value = detail.lockeTime;
+      orgId.value = detail.orgId ?? undefined;
       orgs.value = detail.orgs || [];
       settlementTime.value = dayjs(detail.settlementTime);
       payType.value = detail.payType;
@@ -78,7 +84,8 @@ export function useLoadDetail(
       );
 
       attachments.value = (detail.attachments ?? []).map((a) => ({
-        attachmentId: a.attachmentId,
+        // 雪花 ID 保持字符串，避免 Number 精度丢失
+        attachmentId: a.attachmentId as number | string,
         url: a.url || a.attachmentPath || '',
         fileName: a.friendlyFileName || a.attachmentName || '',
         friendlyFileName: a.friendlyFileName || a.attachmentName || '',

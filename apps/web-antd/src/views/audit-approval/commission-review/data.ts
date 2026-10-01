@@ -172,7 +172,7 @@ export function useCommissionReviewColumns(): VxeTableGridOptions<CommissionRevi
       field: 'status',
       title: $t('commissionOrder.columns.status'),
       minWidth: 110,
-      cellRender: { name: 'CellTag', options: getStatusOptions() },
+      slots: { default: 'status' },
     },
     {
       field: 'myStatus',

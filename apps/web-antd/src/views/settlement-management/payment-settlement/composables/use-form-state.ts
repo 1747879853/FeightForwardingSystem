@@ -40,6 +40,10 @@ export function useFormState() {
   const submitting = ref(false);
 
   const settlementNo = ref('');
+  const locked = ref(false);
+  const lockeTime = ref<string | undefined>(undefined);
+  /** 详情归属组织；编辑保存原样回传，勿用当前用户默认组织覆盖 */
+  const orgId = ref<number | undefined>(undefined);
   const orgs = ref<SettlementOrgNode[]>([]);
   const settlementTime = ref(dayjs());
   const payType = ref<number | undefined>(undefined);
@@ -160,6 +164,9 @@ export function useFormState() {
     return currentUserName.value;
   });
 
+  /** 已锁定时只读 */
+  const isReadonly = computed(() => isEdit.value && locked.value);
+
   return {
     route,
     editId,
@@ -168,6 +175,10 @@ export function useFormState() {
     pageLoading,
     submitting,
     settlementNo,
+    locked,
+    lockeTime,
+    isReadonly,
+    orgId,
     orgs,
     settlementTime,
     payType,

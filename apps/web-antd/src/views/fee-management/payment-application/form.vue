@@ -2178,20 +2178,34 @@ void handleSubmitAndNew;
 }
 
 .payment-app-form :deep(.ant-card) {
-  border: 0;
+  overflow: hidden;
+  border: 1px solid #e8ecf3;
   border-radius: 16px;
-  box-shadow: 0 0 10px rgb(0 0 0 / 2%);
+  box-shadow: 0 2px 8px rgb(16 42 83 / 6%);
+  transition: box-shadow 0.3s ease;
+}
+
+.payment-app-form :deep(.ant-card:hover) {
+  box-shadow: 0 6px 20px rgb(16 42 83 / 10%);
 }
 
 .payment-app-form :deep(.ant-card-head) {
   min-height: 42px;
   padding: 0 14px;
-  border-bottom-color: #eef2f6;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 55%,
+    hsl(var(--background)) 100%
+  );
+  border-bottom: 1px solid #e4e8ef;
 }
 
 .payment-app-form :deep(.ant-card-head-title) {
   padding: 10px 0;
   font-size: 13px;
+  font-weight: 600;
+  color: #252a31;
 }
 
 .payment-app-form :deep(.ant-card-body) {
@@ -2205,10 +2219,15 @@ void handleSubmitAndNew;
   justify-content: space-between;
   min-height: 48px;
   padding: 8px 14px;
-  background: #fff;
-  border-bottom: 1px solid #edf0f3;
-  border-radius: 0;
-  box-shadow: none;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 10%) 0%,
+    hsl(var(--primary) / 3%) 45%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(16 42 83 / 5%);
 }
 
 .action-bar__left {
@@ -3009,9 +3028,13 @@ void handleSubmitAndNew;
   flex: 1;
   min-width: 140px;
   padding: 10px 14px;
-  background: #f6f9ff;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--background)) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 12%);
+  border-radius: 8px;
 }
 
 .conversion-card__head {
@@ -3042,7 +3065,7 @@ void handleSubmitAndNew;
 .conversion-card__converted {
   font-size: 13px;
   font-weight: 600;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .conversion-total-bar {
@@ -3051,7 +3074,7 @@ void handleSubmitAndNew;
   justify-content: space-between;
   padding-top: 10px;
   margin-top: 10px;
-  border-top: 1px solid #e8eef6;
+  border-top: 1px solid hsl(var(--primary) / 12%);
 }
 
 .conversion-total-bar__label {
@@ -3062,7 +3085,7 @@ void handleSubmitAndNew;
 .conversion-total-bar__amount {
   font-size: 22px;
   font-weight: 700;
-  color: #1890ff;
+  color: hsl(var(--primary));
 }
 
 .attachment-area {
