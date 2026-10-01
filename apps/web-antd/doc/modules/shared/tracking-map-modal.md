@@ -2,7 +2,7 @@
 title: 全局货物轨迹弹窗
 module: 共享能力
 author: 自动生成
-last_updated: 2026-07-16
+last_updated: 2026-10-01
 callers: 海运出口编辑页运踪 Tab、海运出口运踪详情弹窗（均经 YundangTrackingPanel）
 ---
 
@@ -53,4 +53,5 @@ callers: 海运出口编辑页运踪 Tab、海运出口运踪详情弹窗（均�
 | 2026-07-13 | `Feature` | 在运踪信息（编辑页运踪 Tab）与运踪详情弹窗新增「查看轨迹地图」入口，点击复用本全局弹窗。 | 入口加在共享 `YundangTrackingPanel` 头部；订阅号优先取 `subscription.referenceNo`，回退 `shipment.blNo/referenceNo/bkgNo`，无号时按钮置灰。 |
 | 2026-07-13 | `Fix` | 修复 `.env` 中地图 URL 的 `#/Map` 被 dotenv 截断；弹窗尺寸调整为 90vw（最大 1400px）× 80vh。 | dotenv 行内 `#` 为注释符，URL 须加引号；修改 env 后需重启 Vite dev server。 |
 | 2026-07-14 | `Feature` | 弹窗工具栏新增中文/English 切换，iframe 与分享链接同步语言；英文分享链接带 `lang=en`，便于分享给看英文的客户。 | `buildTrackingMapSrc(referenceNo, lang)` 追加 `lang` 参数（`en` 才拼 `lang=en`）；`shareUrl` 按 `lang` 注入 `query.lang`；打开弹窗重置为中文。 |
+| 2026-10-01 | `Fix` | 弹窗页头与分享链接一致，按订阅号显示所属公司 Logo，没有时用品牌图 | 与独立页同一套查询。详见 `changelogs/change-log-2026-10-01-分享页所属公司Logo.md` |
 | 2026-07-16 | `Feature` | 弹窗工具栏左侧展示白标品牌 Logo（与独立分享页对齐），随 `VITE_APP_BRAND` 自动切换。 | 复用 `brand-assets` 的 `brandLogoText`/`brandLogo`；非承运商 Logo。 |

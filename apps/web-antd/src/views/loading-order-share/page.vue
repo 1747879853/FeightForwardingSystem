@@ -46,8 +46,20 @@ const previewOpen = ref(false);
 const previewUrls = ref<string[]>([]);
 const previewIndex = ref(0);
 
-const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
+const companyLogoFailed = ref(false);
+
+const headerLogo = computed(() => {
+  const logo = detail.value?.companyLogo?.trim();
+  if (logo && !companyLogoFailed.value) return logo;
+  return brandLogoText || brandLogo;
+});
+
+function onLogoError() {
+  if (detail.value?.companyLogo?.trim()) {
+    companyLogoFailed.value = true;
+  }
+}
 
 function readQuery(key: string): string {
   if (props.embedded) return '';
@@ -266,6 +278,7 @@ async function loadDetail() {
   detail.value = null;
   if (!hasQuery.value) {
     detail.value = null;
+    companyLogoFailed.value = false;
     errorText.value = '';
     return;
   }
@@ -278,6 +291,7 @@ async function loadDetail() {
       loadingOrderNum: loadingOrderNum.value,
     });
     if (requestId !== detailRequest) return;
+    companyLogoFailed.value = false;
     detail.value = result;
   } catch (error) {
     if (requestId !== detailRequest) return;
@@ -314,6 +328,7 @@ watch(
           :alt="companyName || 'logo'"
           class="loading-share__logo"
           :src="headerLogo"
+          @error="onLogoError"
         />
         <span v-else class="loading-share__company">{{ companyName }}</span>
       </div>

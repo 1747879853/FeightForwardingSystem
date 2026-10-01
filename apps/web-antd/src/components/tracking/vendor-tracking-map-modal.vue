@@ -13,22 +13,43 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+import { ShareCompanyLogoScene } from '#/api/share/share-company-logo';
+import { useShareHeaderLogo } from '#/composables/use-share-header-logo';
 import { $t } from '#/locales';
-import { brandLogo, brandLogoText } from '#/utils/brand-assets';
 
 import { useVendorTrackingMap } from './use-vendor-tracking-map';
 import type { VendorMapLang } from './vendor-map-src';
 import { encodeVendorMapToken, resolveVendorMapSrc } from './vendor-map-src';
 
 /**
- * 新服务商轨迹地图弹窗：品牌 Logo + 中英切换 + 免登录分享链接，
+ * 新服务商轨迹地图弹窗：所属公司 Logo + 中英切换 + 免登录分享链接，
  * 交互与货物轨迹弹窗保持一致。对外只出现本系统域名与品牌，不展示服务商地址。
  */
 const { visible, payload, close } = useVendorTrackingMap();
 const router = useRouter();
 
-const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
+
+const shareLogoScene = computed(() =>
+  payload.value?.kind === 'air'
+    ? ShareCompanyLogoScene.Air
+    : ShareCompanyLogoScene.OceanBill,
+);
+
+/** 与分享链接一致：空运用航司单号，海运用链接里的单号，不传令牌 */
+const shareLogoNo = computed(() => {
+  const current = payload.value;
+  if (!current) return '';
+  if (current.kind === 'air') {
+    return current.businessNumber?.trim() || current.referenceNo?.trim() || '';
+  }
+  return current.referenceNo?.trim() || '';
+});
+
+const { headerLogo, onLogoError } = useShareHeaderLogo(
+  shareLogoScene,
+  shareLogoNo,
+);
 
 const lang = ref<VendorMapLang>('zh');
 const langOptions = [
@@ -141,6 +162,7 @@ function openInNewTab() {
             :alt="companyName || 'logo'"
             class="vendor-map__logo"
             :src="headerLogo"
+            @error="onLogoError"
           />
           <span v-else class="vendor-map__company">{{ companyName }}</span>
           <span v-if="payload?.referenceNo" class="vendor-map__ref">

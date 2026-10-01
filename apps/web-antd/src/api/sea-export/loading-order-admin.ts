@@ -159,6 +159,11 @@ export namespace LoadingOrderAdminApi {
     remark?: null | string;
     /** 整单照片是否带水印。缺省按含水印 */
     hasWatermark?: boolean;
+    /**
+     * 所属公司 Logo 直连地址。没上传时为 null。
+     * 管理端、师傅端、免登录公开详情都会返回。
+     */
+    companyLogo?: null | string;
     loadingOrderUsers?: LoadingOrderUserDto[] | null;
     /** 已勾选的监装要求明细 id，编辑时可原样回传 */
     loadingRequirementItemIds?: string[] | null;

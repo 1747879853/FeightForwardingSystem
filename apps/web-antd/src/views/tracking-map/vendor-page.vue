@@ -4,26 +4,26 @@ import { useRoute } from 'vue-router';
 
 import { Empty } from 'ant-design-vue';
 
+import { ShareCompanyLogoScene } from '#/api/share/share-company-logo';
 import {
   buildAirTrackingMapSrc,
   decodeVendorMapToken,
   withMapLang,
 } from '#/components/tracking';
-import { brandLogo, brandLogoText } from '#/utils/brand-assets';
+import { useShareHeaderLogo } from '#/composables/use-share-header-logo';
 
 /**
  * 新服务商轨迹地图独立静态页（免登录，可分享给外部客户）。
  *
- * - 空运：`/cargo-tracking/air?no=<航司单号>`，地址由前端按 env 拼装，无需接口；
- * - 海运：`/cargo-tracking/ocean?t=<令牌>`，令牌是编码后的轨迹链接，免登录页不调业务接口。
+ * - 空运：`/cargo-tracking/air?no=<航司单号>`，地址由前端按 env 拼装；
+ * - 海运：`/cargo-tracking/ocean?t=<令牌>&no=<单号>`，令牌是编码后的轨迹链接。
  *
- * 页头展示本系统品牌、单号（取 `?no=`）与中性标题，不展示服务商名称与原始地址。
+ * 页头按单号取所属公司 Logo，没有则用品牌图。单号取 `?no=`。不展示服务商名称与原始地址。
  */
 defineOptions({ name: 'CargoTrackingPage' });
 
 const route = useRoute();
 
-const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
 
 const readQuery = (key: string): string => {
@@ -61,6 +61,17 @@ const pageText = computed(() =>
       },
 );
 
+const shareLogoScene = computed(() =>
+  kind.value === 'air'
+    ? ShareCompanyLogoScene.Air
+    : ShareCompanyLogoScene.OceanBill,
+);
+
+const { headerLogo, onLogoError } = useShareHeaderLogo(
+  shareLogoScene,
+  referenceNo,
+);
+
 const iframeSrc = computed(() => {
   if (kind.value === 'air') {
     return buildAirTrackingMapSrc(referenceNo.value, { lang: lang.value });
@@ -79,6 +90,7 @@ const iframeSrc = computed(() => {
           :alt="companyName || 'logo'"
           class="cargo-tracking-page__logo"
           :src="headerLogo"
+          @error="onLogoError"
         />
         <span v-else class="cargo-tracking-page__company">
           {{ companyName }}

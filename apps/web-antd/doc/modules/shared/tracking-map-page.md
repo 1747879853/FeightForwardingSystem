@@ -2,7 +2,7 @@
 title: 货物轨迹独立静态页
 module: 共享能力
 author: 自动生成
-last_updated: 2026-09-10
+last_updated: 2026-10-01
 route: /tracking-map/:mblNo?
 ---
 
@@ -46,6 +46,7 @@ route: /tracking-map/:mblNo?
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-01 | `Fix` | 页头按主提单号显示所属公司 Logo，没有或图片打不开时仍用品牌图 | 免登录查询，不把空 Logo 当成页面失败。详见 `changelogs/change-log-2026-10-01-分享页所属公司Logo.md` |
 | 2026-09-10 | `Feature` | 品牌列表补充青港 / 青岛海鼎 / 山东金冠，页头 Logo 随新打包环境切换 | `brand-assets.ts` 按 `qinggang` / `qdhd` / `sdjg` 注册素材；详见 `changelogs/change-log-2026-09-10-qinggang-qdhd-sdjg-brand-pack.md` |
 | 2026-08-20 | `Fix` | 页头补展示单号（取路径 `mblNo`），与登录后地图弹窗、新服务商分享页口径一致 | URL 里本来就有订阅号，页头却只渲染品牌与标题。标签走本地 `pageText`，不依赖全局 i18n。详见 `changelogs/change-log-2026-08-20-air-tracking-share-page-reference-no.md` |
 | 2026-08-16 | `Parsing` | 无 | 需求确认：其他品牌海出分享须白标（本系统独立页内嵌后端加密链接，不直出服务商 URL，页面文案不出现服务商名）；sjtd 海出分享维持现状。见 [运踪能力品牌分流](./feituo-tracking-brand-split.md)。 |

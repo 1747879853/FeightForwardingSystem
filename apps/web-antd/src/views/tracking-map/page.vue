@@ -4,19 +4,18 @@ import { useRoute } from 'vue-router';
 
 import { Empty } from 'ant-design-vue';
 
+import { ShareCompanyLogoScene } from '#/api/share/share-company-logo';
 import { buildTrackingMapSrc } from '#/components/tracking-map';
-import { brandLogo, brandLogoText } from '#/utils/brand-assets';
+import { useShareHeaderLogo } from '#/composables/use-share-header-logo';
 
 /**
  * 现有运踪（sjtd 海出）货物轨迹独立静态页。
- * 订阅号来自路径 `/tracking-map/:mblNo`，页头展示品牌、单号与中性标题。
+ * 订阅号来自路径 `/tracking-map/:mblNo`。页头按主提单号取所属公司 Logo，没有则用品牌图。
  */
 defineOptions({ name: 'TrackingMapPage' });
 
 const route = useRoute();
 
-// 页头品牌 logo（横版优先，缺省回退方形），随打包品牌 VITE_APP_BRAND 自动切换
-const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
 
 // 订阅号（mblNo）来自路由参数，兼容 path param 与 query
@@ -56,6 +55,11 @@ const pageText = computed(() =>
 const iframeSrc = computed(() =>
   buildTrackingMapSrc(referenceNo.value, lang.value),
 );
+
+const { headerLogo, onLogoError } = useShareHeaderLogo(
+  ShareCompanyLogoScene.OceanMbl,
+  referenceNo,
+);
 </script>
 
 <template>
@@ -67,6 +71,7 @@ const iframeSrc = computed(() =>
           :src="headerLogo"
           :alt="companyName || 'logo'"
           class="tracking-page__logo"
+          @error="onLogoError"
         />
         <span v-else class="tracking-page__company">{{ companyName }}</span>
         <span v-if="referenceNo" class="tracking-page__ref">

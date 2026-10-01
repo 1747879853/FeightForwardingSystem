@@ -15,7 +15,8 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
-import { brandLogo, brandLogoText } from '#/utils/brand-assets';
+import { ShareCompanyLogoScene } from '#/api/share/share-company-logo';
+import { useShareHeaderLogo } from '#/composables/use-share-header-logo';
 
 import { buildTrackingMapSrc } from './build-tracking-map-src';
 import { useTrackingMap } from './use-tracking-map';
@@ -23,8 +24,6 @@ import { useTrackingMap } from './use-tracking-map';
 const { visible, referenceNo, close } = useTrackingMap();
 const router = useRouter();
 
-// 弹窗头部品牌 logo（横版优先，缺省回退方形），随打包品牌 VITE_APP_BRAND 自动切换
-const headerLogo = brandLogoText || brandLogo;
 const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
 
 /** 内嵌页语言，切换后 iframe 与分享链接同步；默认中文 */
@@ -41,6 +40,11 @@ watch(visible, (open) => {
 
 const iframeSrc = computed(() =>
   buildTrackingMapSrc(referenceNo.value, lang.value),
+);
+
+const { headerLogo, onLogoError } = useShareHeaderLogo(
+  ShareCompanyLogoScene.OceanMbl,
+  referenceNo,
 );
 
 /** 可分享的独立静态页绝对链接（免登录），自动兼容 hash / history 路由模式 */
@@ -103,6 +107,7 @@ function openInNewTab() {
             :src="headerLogo"
             :alt="companyName || 'logo'"
             class="tracking-map__logo"
+            @error="onLogoError"
           />
           <span v-else class="tracking-map__company">{{ companyName }}</span>
           <span class="tracking-map__ref">

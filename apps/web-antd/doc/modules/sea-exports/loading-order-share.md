@@ -2,7 +2,7 @@
 title: 监装工单客户公开详情
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-09-21
+last_updated: 2026-10-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,6 +54,7 @@ last_updated: 2026-09-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-01 | `Fix` | 页头显示该票所属公司 Logo，没有或图片打不开时仍用品牌图 | 读公开详情返回的公司 Logo，不另查运踪接口。详见 `changelogs/change-log-2026-10-01-分享页所属公司Logo.md` |
 | 2026-09-21 | `Fix` | 全屏监控云台暂时隐藏放大、缩小，方向盘仍可用。 | `showZoom = false` 不渲染变倍按钮，command 9/10 逻辑保留。详见 `changelogs/change-log-2026-09-21-分享监装隐藏变倍.md` |
 | 2026-09-06 | `Fix` | 箱照改为按类型横排网格，与 PC/小程序采集槽一致；固定 104px 方格，不随页面拉宽。 | 空类型不占格；历史同一类型多图仍并排。详见 `changelogs/change-log-2026-09-06-loading-photo-one-per-type.md` |
 | 2026-09-06 | `Feature` | 分享先弹出客户页预览，可切换中英文再复制对应链接 | 预览嵌入公开页组件；英文链接带 `lang=en`。详见 `changelogs/change-log-2026-09-06-loading-share-preview-lang.md` |
