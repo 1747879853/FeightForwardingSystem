@@ -540,6 +540,13 @@
   box-shadow: none !important;
 }
 
+/* 内部备注整段红字加粗，和外部备注区分开 */
+.cargo-main-layout__remark
+  :deep(.cargo-remark-field--internalRemark textarea.ant-input) {
+  font-weight: 700;
+  color: #cf1322;
+}
+
 .content-section__header--cargo {
   display: flex;
   gap: 12px;

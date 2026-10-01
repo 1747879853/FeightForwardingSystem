@@ -139,7 +139,7 @@ last_updated: 2026-10-01
 | **集装箱毛重 / 皮重 / 体积** | 箱明细重量体积；分单 kgs/cbm 与分单装箱同步同一精度。 | `orderCtns.grossWeight/tareWeight/volume`；分单 `kgs/cbm` | **触发/依赖：** 与主单同一套 `weight-volume-precision`。 | 可选，非负。 |
 | **派车箱毛重 / 皮重 / 体积** | 派车明细重量体积。 | `dispatch/index.vue` 箱行 `grossWeight/tareWeight/volume` | **触发/依赖：** 与主单同一套 4 位去尾 0。 | 可选，非负。 |
 | **费用.数量** | 计价数量；单位为毛重/尺码时等于 Kgs/Cbm。 | `OrderFee.Quantity`；库列 `decimal(20,4)` | **触发/依赖：** Handsontable 与编辑弹窗最多 4 位、去尾 0；金额仍 2 位。 | 可选，非负。 |
-| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
+| **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见，文字为红字加粗；外部备注保持原样式；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab；详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 | **监装工单备注（详细说明）** | 监装 Tab 文本框；管理端新建/编辑填写。 | `LoadingOrderAdmin` 的 `remark`；`AddAsync` / `EditAsync` / `DetailBySeaExportIdAsync` | **触发/依赖：** 详情回填 `form.remark`，保存随工单提交；与拒接原因 `rejectReason`、监装要求主/子表 `remark` 无关。 | 可选，最长 1024；空串按 `null` 提交；仅未提交可改。 |
 | **监装推荐堆场/师傅** | 点「推荐」弹出该到货日该船公司已排师傅的堆场，选中回填。 | `LoadingOrderAdmin/GetYardUsersAsync` | **触发/依赖：** 要有预计到货时间 + 已保存 `carrierId`；回填覆盖当前堆场和 `userIds`。 | 接口无 id；堆场名对不上当前船公司则不回填。 |
 | **监装箱型附件分组** | 某只箱子的监装照片，按附件明细类型分组。 | 类型 `AttachmentDtlType/GetListByModuleTypesAsync`（`160100`）；已有照片 `orderCtns[].attachmentGroups`；保存 `LoadingOrderAdmin/EditOrderCtnAttachmentGroupsAsync` | **触发/依赖：** 弹窗先铺维护类型空槽再填已有照片；分类纵向分区、区内缩略图换行；PC 上传前写入姓名与时间水印，不调用定位，上传走通用 `UploadFile` 拿 `attachmentId`。`id` 必须是 `OrderCtn.Id`。 | 需 `.Edit`；任意工单状态可调；**每类型支持多张**；全量替换，漏传某组等于删除，`[]` 清空。 |
@@ -186,6 +186,7 @@ last_updated: 2026-10-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-10-01 | `Fix` | 内部备注改为红字加粗。录入方式为业务联系单导入时，顶栏出现「关联业务联系单」，打开同一张联系单。从联系单嵌进来的海运出口不重复出现该页签。 | 联系单备注写入内部备注仍由后端在生成时处理。详见 [变更日志](../../changelogs/change-log-2026-10-01-海运出口关联业务联系单.md)。 |
 | 2026-10-01 | `Fix` | 分单集装箱的件数、毛重、体积变化，或增删集装箱行时，货物区件数、毛重、体积按明细自动加总。合计框仍可手改，下次明细再变才覆盖。「更新合计」仍可手动重算。 | 打开已保存分单不按明细覆盖库里的合计。详见 [变更日志](../../changelogs/change-log-2026-10-01-分单件重尺随集装箱自动合计.md)。 |
 | 2026-10-01 | `Fix` | 监装计划可勾选「照片包含水印」，默认勾选。未提交可改，提交后只读。取消后，管理端和小程序新上传的照片按原图保存，已有照片不变。 | 后端只存 `hasWatermark`。小程序关闭水印时跳过画板和定位拦截。详见 [变更日志](../../changelogs/change-log-2026-10-01-监装整单照片水印开关.md)。 |
 | 2026-10-01 | `Fix` | 服务节点变多时，顶栏流程左右出现箭头，点击后缓动滚动，不再盖住简报、AI识别、打印、运踪订阅、保存。打开时自动对准当前最靠后的待处理节点，点箭头仍可继续看前后节点。到头的箭头不可点。 | 限宽类名改挂到加载组件外层。待处理节点用流程上的「待」状态定位，不锁死滚动范围。详见 [变更日志](../../changelogs/change-log-2026-10-01-服务项目流程不盖住顶栏按钮.md)。 |

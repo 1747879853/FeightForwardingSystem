@@ -56,6 +56,14 @@ const canViewLoadingOrder = useAccess().hasAccessByCodes([
   'Admin.SeaExport.LoadingOrder.Get',
 ]);
 
+/** 业务联系单导入。生成时业务单 id 与联系单 id 相同 */
+const PRE_ORDER_INPUT_TYPE = 1;
+
+const canOpenPreOrder = useAccess().hasAccessByCodes([
+  'Admin.PreOrder',
+  'Admin.PreOrder.Get',
+]);
+
 /** 仅含当前可见且有对应面板的 Tab；隐藏 key 不参与记忆恢复，避免空白页 */
 const VALID_TAB_KEYS: readonly TabKey[] = [
   'basic',
@@ -168,12 +176,40 @@ const onFormSaved = (detail: SeaExportAdminApi.SeaExportDto) => {
   savedDetail.value = detail;
   applyTabTitleFromDetail(detail);
   applyAdjacentFromDetail(detail);
+  syncPreOrderLink(detail);
   // 清掉费用联动里永不过期的订单详情缓存，避免结算对象/箱型等沿用旧数据
   clearOrderDetailCache(editId.value);
   emit('saved', detail);
 };
 
 const editId = useKeepAliveRouteParamId();
+
+/** 详情录入方式为业务联系单导入时，顶栏可打开对应联系单 */
+const linkedFromPreOrder = ref(false);
+
+function syncPreOrderLink(
+  detail: SeaExportAdminApi.SeaExportDto | null | undefined,
+) {
+  linkedFromPreOrder.value =
+    detail?.transportOrder?.inputType === PRE_ORDER_INPUT_TYPE;
+}
+
+const showPreOrderTab = computed(
+  () =>
+    !props.disableTabTitle &&
+    canOpenPreOrder &&
+    linkedFromPreOrder.value &&
+    !!editId.value,
+);
+
+function openLinkedPreOrder() {
+  const id = editId.value;
+  if (!id) return;
+  void router.push({
+    name: 'PreOrderEdit',
+    params: { id: String(id) },
+  });
+}
 
 useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
   enabled: tabTitleEnabled,
@@ -193,6 +229,7 @@ async function syncTabTitleFromOrder(id: string | undefined) {
     if (String(editId.value ?? '') !== String(id)) return;
     applyTabTitleFromDetail(detail);
     applyAdjacentFromDetail(detail);
+    syncPreOrderLink(detail);
   } catch {
     // 详情失败时保留路由默认「海运出口」，不阻断进页
   }
@@ -204,6 +241,7 @@ const activeTab = ref<TabKey>('basic');
 watch(
   editId,
   (id) => {
+    linkedFromPreOrder.value = false;
     if (!applyForcedTab(id)) {
       activeTab.value = readStoredTab(id) ?? 'basic';
     }
@@ -242,6 +280,7 @@ async function refreshCachedDetailIfBatchEdited() {
     savedDetail.value = detail;
     applyTabTitleFromDetail(detail);
     applyAdjacentFromDetail(detail);
+    syncPreOrderLink(detail);
     clearOrderDetailCache(id);
   } catch {
     // 批量改后进缓存页以 Form 重拉为准，这里失败不挡切 Tab
@@ -379,6 +418,14 @@ const getContentTabStyle = (isActive: boolean) =>
             @click="onTabClick(tab)"
           >
             {{ tab.label }}
+          </span>
+          <span
+            v-if="showPreOrderTab"
+            class="content-tab"
+            :style="contentTabStyle"
+            @click="openLinkedPreOrder"
+          >
+            关联业务联系单
           </span>
         </div>
         <OrderAdjacentNavButtons

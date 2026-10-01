@@ -370,6 +370,11 @@ export namespace SeaExportAdminApi {
     creatorUserId?: number;
     /** 未完结状态。true 未完结，false 已完结（默认） */
     isUnfinished?: boolean;
+    /**
+     * 录入方式。0 手动录入，1 业务联系单导入，2 复制。
+     * 业务联系单导入时，本票 id 与联系单 id 相同。
+     */
+    inputType?: number;
   }
 
   /** 客户联系人简易对象（详情/列表展示，禁止再要平铺 Name） */
