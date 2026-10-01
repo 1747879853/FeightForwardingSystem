@@ -57,6 +57,7 @@ import { ensureExchangeRateCache } from '#/utils/exchange-rate-cache';
 import { useOrderFeeAdapter } from '../use-adapter';
 import { extractBillFees } from '#/api/sea-export/gemini-admin';
 import { consumePendingBillFees } from '../ai-bill-fee-pending';
+import { lookupDropdownLabel } from './utils/helpers';
 import {
   restoreOrderFeeSort,
   sortOrderFees,
@@ -121,14 +122,11 @@ const {
 } = useDropdownSources(orderCtnList);
 
 // ✅ 修复：添加标志位防止循环触发
-const isConvertingIds = ref(false);
-
 // ✅ 关键修改：如果父组件传入了客户缓存，则使用父组件的数据
 watch(
   () => props.allClientsByIndustry,
   (newVal) => {
     if (newVal && Object.keys(newVal).length > 0) {
-      // 将父组件的缓存赋值给本地的 allClientsByIndustry
       Object.assign(localAllClientsByIndustry.value, newVal);
     }
   },
@@ -460,24 +458,10 @@ const feeSummary = computed(() => {
   selectedRowKeys.value.forEach((key: string | number) => {
     const row: any = dataSource.value.find((r: any) => r._rowKey === key);
     if (row && row.amount) {
-      // ✅ 优先使用已转换的币别标签，其次使用币别ID转换，最后使用原始值
-      let currencyLabel = '';
-
-      if (row.currencyId_label_converted && row.currencyId) {
-        // 已经转换为label的情况
-        currencyLabel = row.currencyId;
-      } else if (row.currencyId_value) {
-        // 有保存的原始ID值
-        currencyLabel =
-          getCurrencyLabel(row.currencyId_value) ||
-          String(row.currencyId_value);
-      } else if (row.currencyId) {
-        // 直接使用currencyId尝试转换
-        currencyLabel =
-          getCurrencyLabel(row.currencyId) || String(row.currencyId);
-      } else {
-        currencyLabel = '未知';
-      }
+      const currencyId = row.currencyId_value ?? row.currencyId;
+      const currencyLabel =
+        lookupDropdownLabel(dropdownSources.value.currencyList, currencyId) ||
+        String(currencyId || '未知');
 
       if (!summaryMap[currencyLabel]) {
         summaryMap[currencyLabel] = 0;
@@ -818,127 +802,6 @@ defineExpose({
   remasureTable: () => coreTableRef.value?.remasure?.(),
 });
 
-// ==================== ID 到 Label 转换辅助函数 ====================
-
-/**
- * 根据费用代码ID获取显示标签
- */
-const getFeeCodeLabel = (feeCodeId: any): string => {
-  if (!feeCodeId) return '';
-  const item = dropdownSources.value.feeCodeList.find(
-    (f: any) => String(f.value) === String(feeCodeId),
-  );
-  if (!item) return '';
-  return item.label || '';
-};
-
-/**
- * 根据行业类别值获取显示标签
- */
-const getIndustryCategoryLabel = (industryCategory: any): string => {
-  if (!industryCategory) return '';
-  const option = dropdownSources.value.industryCategoryList.find(
-    (opt: any) => String(opt.value) === String(industryCategory),
-  );
-  return option?.label || '';
-};
-
-/**
- * 根据币种ID获取显示标签
- */
-const getCurrencyLabel = (currencyId: any): string => {
-  if (!currencyId) return '';
-  const currencyIdStr = String(currencyId);
-  const option = dropdownSources.value.currencyList.find(
-    (opt: any) => String(opt.value) === currencyIdStr,
-  );
-  return option?.label || '';
-};
-
-/**
- * 根据单位值获取显示标签
- */
-const getUnitLabel = (unit: any): string => {
-  if (!unit) return '';
-  const option = dropdownSources.value.unitList.find(
-    (opt: any) => opt.value === unit,
-  );
-  return option?.label || String(unit);
-};
-
-/**
- * 将数据源中的ID字段转换为Label显示
- */
-const convertIdsToLabels = () => {
-  if (!dataSource.value || dataSource.value.length === 0) return;
-
-  let convertedCount = 0;
-
-  dataSource.value.forEach((row: any, rowIndex: number) => {
-    // 费用代码ID -> label
-    if (row.feeCodeId && !row.feeCodeId_label_converted) {
-      const label = getFeeCodeLabel(row.feeCodeId);
-      if (label) {
-        row.feeCodeId_value = row.feeCodeId;
-        row.feeCodeId = label;
-        row.feeCodeId_label_converted = true;
-        convertedCount++;
-      }
-    }
-
-    // 行业类别ID -> label
-    if (
-      row.industryCategory !== undefined &&
-      row.industryCategory !== null &&
-      !row.industryCategory_label_converted
-    ) {
-      const label = getIndustryCategoryLabel(row.industryCategory);
-      if (label) {
-        row.industryCategory_value = row.industryCategory;
-        row.industryCategory = label;
-        row.industryCategory_label_converted = true;
-        convertedCount++;
-      }
-    }
-
-    // 币别ID -> label
-    if (row.currencyId && !row.currencyId_label_converted) {
-      const label = getCurrencyLabel(row.currencyId);
-      if (label) {
-        row.currencyId_value = row.currencyId;
-        row.currencyId = label;
-        row.currencyId_label_converted = true;
-        convertedCount++;
-      }
-    }
-
-    // 单位 -> label
-    if (row.unit && !row.unit_label_converted) {
-      const label = getUnitLabel(row.unit);
-      if (label) {
-        row.unit_value = row.unit;
-        row.unit = label;
-        row.unit_label_converted = true;
-        convertedCount++;
-      }
-    }
-
-    // 结算对象ID -> label（必须保留 settlementId_value，提交/保存靠它还原）
-    if (row.settlementId && !row.settlementId_label_converted) {
-      const label = row.settlement?.name ?? row.__settlementName;
-      if (label) {
-        row.settlementId_value = row.settlementId;
-        row.settlementId = label;
-        row.settlementId_label_converted = true;
-        convertedCount++;
-      }
-    }
-  });
-
-  if (convertedCount > 0) {
-  }
-};
-
 // ==================== 新增功能：滚动到最后一行并选中费用名称单元格 ====================
 
 /**
@@ -1046,14 +909,8 @@ onMounted(() => {
     void getTableDate();
     void loadFinishStatus();
     void dropdownReady.then(() => {
-      // 下拉补齐后把已加载行的 ID 转成标签
+      // 下拉补齐后重绘，renderer 才能把 ID 映射成 label
       if (dataSource.value?.length) {
-        isConvertingIds.value = true;
-        try {
-          convertIdsToLabels();
-        } finally {
-          isConvertingIds.value = false;
-        }
         getHotInstance()?.render();
       }
     });
@@ -1084,17 +941,6 @@ watch(
 watch(
   () => dataSource.value,
   (newData) => {
-    if (isConvertingIds.value) {
-      return;
-    }
-
-    isConvertingIds.value = true;
-    try {
-      convertIdsToLabels();
-    } finally {
-      isConvertingIds.value = false;
-    }
-
     hotSettings.value.data = newData;
 
     nextTick(() => {

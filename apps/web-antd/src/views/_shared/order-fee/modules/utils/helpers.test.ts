@@ -9,9 +9,11 @@ import {
   isPersistedOrderFeeRow,
   isPostSubmitProfitNegative,
   isSavableOrderFeeRow,
+  lookupDropdownLabel,
   normalizeOrderFeeChangeOrderKey,
   resolveLatestOrderFeeRejectRemark,
   resolveOrderFeeDisplayStatus,
+  resolveSettlementDisplayLabel,
 } from './helpers';
 
 describe('order-fee savable / display status', () => {
@@ -73,6 +75,29 @@ describe('order-fee savable / display status', () => {
         combinedFeeStatus: 3,
       }),
     ).toBe(false);
+  });
+});
+
+describe('order-fee select display helpers', () => {
+  it('lookupDropdownLabel by value', () => {
+    const opts = [
+      { label: 'USD', value: 1 },
+      { label: 'CNY', value: '2' },
+    ];
+    expect(lookupDropdownLabel(opts, 1)).toBe('USD');
+    expect(lookupDropdownLabel(opts, '2')).toBe('CNY');
+    expect(lookupDropdownLabel(opts, 9)).toBe('');
+  });
+
+  it('resolveSettlementDisplayLabel prefers cache name', () => {
+    expect(
+      resolveSettlementDisplayLabel('100', { __settlementName: '测试客户' }),
+    ).toBe('测试客户');
+    expect(
+      resolveSettlementDisplayLabel('100', {}, [
+        { value: '100', label: 'C01-测试客户', name: '测试客户' },
+      ]),
+    ).toBe('测试客户');
   });
 });
 

@@ -15,7 +15,9 @@ import {
   getDataEntryMethodLabel,
   formatDateTime,
   isOrderFeeRejectedStatus,
+  lookupDropdownLabel,
   resolveLatestOrderFeeRejectRemark,
+  resolveSettlementDisplayLabel,
 } from '../utils/helpers';
 import {
   NEW_ROW_CLASS,
@@ -215,12 +217,13 @@ export function useHotColumns(
             : dataSource.value;
           const rowData = actualDataSource[row] as any;
           const isNewRow = !rowData?.id || rowData.id === '';
-
-          let displayName = '';
-          if (value && typeof value === 'string') {
-            const parts = value.split('-');
-            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
-          }
+          const rawId = rowData?.feeCodeId_value ?? value;
+          const fullLabel =
+            lookupDropdownLabel(dropdownSources.value.feeCodeList, rawId) ||
+            (typeof value === 'string' ? value : '');
+          const parts = fullLabel.split('-');
+          const displayName =
+            parts.length > 1 ? parts.slice(1).join('-') : fullLabel;
 
           return paintEllipsisCell(td, displayName, {
             placeholder: '请选择',
@@ -276,7 +279,17 @@ export function useHotColumns(
           prop: string,
           value: any,
         ) {
-          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
+          const actualDataSource = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const rowData = actualDataSource[row] as any;
+          const rawId = rowData?.industryCategory_value ?? value;
+          const label =
+            lookupDropdownLabel(
+              dropdownSources.value.industryCategoryList,
+              rawId,
+            ) || (typeof value === 'string' ? value : '');
+          return paintEllipsisCell(td, label || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'settlementId') {
         hotCol.type = 'autocomplete';
@@ -325,10 +338,20 @@ export function useHotColumns(
           prop: string,
           value: any,
         ) {
-          let displayName = '';
-          if (value && typeof value === 'string') {
-            const parts = value.split('-');
-            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+          const actualDataSource = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const rowData = actualDataSource[row] as any;
+          const rawId = rowData?.settlementId_value ?? value;
+          const cachedOptions = currentOptionsCache.value || [];
+          const fromCache = resolveSettlementDisplayLabel(
+            rawId,
+            rowData,
+            cachedOptions,
+          );
+          let displayName = fromCache;
+          if (!displayName && allClientValueSet.value.size) {
+            displayName = resolveSettlementDisplayLabel(rawId, rowData);
           }
           return paintEllipsisCell(td, displayName, { placeholder: '请选择' });
         };
@@ -367,7 +390,15 @@ export function useHotColumns(
           prop: string,
           value: any,
         ) {
-          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
+          const actualDataSource = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const rowData = actualDataSource[row] as any;
+          const rawId = rowData?.currencyId_value ?? value;
+          const label =
+            lookupDropdownLabel(dropdownSources.value.currencyList, rawId) ||
+            (typeof value === 'string' ? value : '');
+          return paintEllipsisCell(td, label || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'unit') {
         hotCol.type = 'autocomplete';
@@ -406,7 +437,15 @@ export function useHotColumns(
           prop: string,
           value: any,
         ) {
-          return paintEllipsisCell(td, value || '', { placeholder: '请选择' });
+          const actualDataSource = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const rowData = actualDataSource[row] as any;
+          const raw = rowData?.unit_value ?? value;
+          const label =
+            lookupDropdownLabel(dropdownSources.value.unitList, raw) ||
+            String(raw ?? '');
+          return paintEllipsisCell(td, label || '', { placeholder: '请选择' });
         };
       } else if (meta.field === 'unitPrice') {
         hotCol.type = 'numeric';

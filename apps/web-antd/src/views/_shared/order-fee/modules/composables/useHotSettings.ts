@@ -6,7 +6,10 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { markUserEditedCell } from '../../data';
 import {
   ensureEmptyTableHorizontalScroll,
+  isOrderFeeSelectField,
   isSavableOrderFeeRow,
+  lookupDropdownLabel,
+  resolveSettlementDisplayLabel,
 } from '../utils/helpers';
 import { applyHotCellChrome } from '../utils/hot-cell-render';
 
@@ -302,7 +305,8 @@ export function useHotSettings(
             const currentRow = actualDataSource[rowIndex];
             const currentRowAny = currentRow as any;
             let industryCategoryValue = getSettlementIndustryCategory(
-              currentRowAny?.industryCategory_value,
+              currentRowAny?.industryCategory_value ??
+                currentRowAny?.industryCategory,
             );
 
             // ✅ 关键修改：允许不选择行业类别，此时加载全部客户
@@ -381,7 +385,7 @@ export function useHotSettings(
           const actualDataSource = getDataSource();
           const currentRow = actualDataSource[row] as any;
           let industryCategoryValue = getSettlementIndustryCategory(
-            currentRow?.industryCategory_value,
+            currentRow?.industryCategory_value ?? currentRow?.industryCategory,
           );
 
           // ✅ 允许不选择行业类别，此时加载全部客户
@@ -424,13 +428,46 @@ export function useHotSettings(
       // 确保内容完全隐藏
       td.style.visibility = 'hidden';
 
-      // 延迟执行，确保编辑器已创建
+      // 延迟执行，确保编辑器已创建：下拉格 data 存 ID，编辑器里显示 label
       setTimeout(() => {
         const editor = this.getActiveEditor();
         if (editor && editor.TEXTAREA) {
-          // 确保编辑器可见
           editor.TEXTAREA.style.visibility = 'visible';
           editor.TEXTAREA.style.opacity = '1';
+        }
+        const field = hotColumns.value[col]?.data;
+        if (!isOrderFeeSelectField(field) || !editor) return;
+        const rowData = getDataSource()[row] as any;
+        if (!rowData) return;
+        const rawId = rowData[`${field}_value`] ?? rowData[field];
+        let label = '';
+        if (field === 'feeCodeId') {
+          label = lookupDropdownLabel(dropdownSources.value.feeCodeList, rawId);
+        } else if (field === 'industryCategory') {
+          label = lookupDropdownLabel(
+            dropdownSources.value.industryCategoryList,
+            rawId,
+          );
+        } else if (field === 'currencyId') {
+          label = lookupDropdownLabel(
+            dropdownSources.value.currencyList,
+            rawId,
+          );
+        } else if (field === 'unit') {
+          label =
+            lookupDropdownLabel(dropdownSources.value.unitList, rawId) ||
+            String(rawId ?? '');
+        } else if (field === 'settlementId') {
+          label = resolveSettlementDisplayLabel(
+            rawId,
+            rowData,
+            currentOptionsCache.value as any[],
+          );
+        }
+        if (label && typeof editor.setValue === 'function') {
+          editor.setValue(label);
+        } else if (label && editor.TEXTAREA) {
+          editor.TEXTAREA.value = label;
         }
       }, 0);
     },
@@ -707,18 +744,31 @@ export function useHotSettings(
             }
 
             const matchedItem = sourceList.find(
-              (item) => item.label === newValue,
+              (item) =>
+                item.label === newValue ||
+                String(item.value) === String(newValue),
             );
 
             if (matchedItem) {
               const actualDataSource = getDataSource();
               if (actualDataSource[row]) {
-                (actualDataSource[row] as any)[prop] = newValue;
+                // data 存 ID；展示由 renderer / 编辑器映射 label
+                (actualDataSource[row] as any)[prop] = matchedItem.value;
                 (actualDataSource[row] as any)[`${prop}_value`] =
                   matchedItem.value;
+                if (prop === 'settlementId') {
+                  const name =
+                    (matchedItem as any).name ||
+                    String(matchedItem.label || '')
+                      .split('-')
+                      .slice(1)
+                      .join('-') ||
+                    matchedItem.label;
+                  (actualDataSource[row] as any).__settlementName = name;
+                }
               }
 
-              return [row, prop, oldValue, newValue];
+              return [row, prop, oldValue, matchedItem.value];
             }
 
             // 行业类别允许清空：清空时同步去掉 _value，避免仍用旧枚举值联动/提交

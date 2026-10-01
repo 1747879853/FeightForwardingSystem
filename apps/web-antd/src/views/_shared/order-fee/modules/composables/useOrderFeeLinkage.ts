@@ -355,13 +355,10 @@ export function useOrderFeeLinkage(
       );
 
       if (settlement && settlement.name) {
-        // 主字段存储 label（客户名称，用于显示）
-        row['settlementId'] = settlement.name;
-        // _value 字段存储 ID（用于联动和保存）
+        // data 存结算对象 ID；展示名缓存在 __settlementName
+        row['settlementId'] = settlement.id;
         row['settlementId_value'] = settlement.id;
-        // __settlementName 缓存一份，供表格 label 回显
         row['__settlementName'] = settlement.name;
-        // 订单往来单位上的客户税率（缓存未命中时兜底）
         row['__settlementTaxRate'] = settlement.taxRate ?? null;
       } else {
         console.warn(
@@ -564,7 +561,8 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || !feeCodeId) return;
 
-      // ✅ 同步设置 _value 字段
+      // ✅ 同步主字段与 _value 均为费用代码 ID
+      row['feeCodeId'] = feeCodeId;
       row['feeCodeId_value'] = feeCodeId;
 
       // ✅ 关键优化：从缓存中获取费用代码详情，而非调用API
@@ -602,15 +600,8 @@ export function useOrderFeeLinkage(
           const categoryKey = option?.key;
 
           if (categoryKey) {
-            // ✅ 从 dropdownSources 中查找对应的 label
-            const industryOption = sources.industryCategoryList.find(
-              (opt: any) => opt.value === categoryKey,
-            );
-            const industryLabel = industryOption?.label || String(categoryKey);
-
-            // 主字段存储 label（用于显示）
-            row['industryCategory'] = industryLabel;
-            // _value 字段存储数值ID（用于联动和保存）
+            // data 存行业类别数值 ID；展示由 renderer 查 label
+            row['industryCategory'] = categoryKey;
             row['industryCategory_value'] = categoryKey;
 
             await fillSettlementIdByIndustryCategory(row, debitCategory);
@@ -632,15 +623,7 @@ export function useOrderFeeLinkage(
           const categoryKey = option?.key;
 
           if (categoryKey) {
-            // ✅ 使用 getIndustryCategoryOptions() getter 直接获取 label
-            const industryOption = getIndustryCategoryOptions().find(
-              (opt) => opt.key === categoryKey,
-            );
-            const industryLabel = industryOption?.label || String(categoryKey);
-
-            // 主字段存储 label（用于显示）
-            row['industryCategory'] = industryLabel;
-            // _value 字段存储数值ID（用于联动和保存）
+            row['industryCategory'] = categoryKey;
             row['industryCategory_value'] = categoryKey;
 
             await fillSettlementIdByIndustryCategory(row, creditCategory);
@@ -655,17 +638,7 @@ export function useOrderFeeLinkage(
 
       // ✅ 关键优化：自动填充币别和汇率（从缓存中获取）
       if (feeCodeDetail.currencyId) {
-        // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
-        const currencyOptions = sources.currencyList;
-        const currencyOption = currencyOptions.find(
-          (opt: any) => opt.value === feeCodeDetail.currencyId,
-        );
-        const currencyLabel =
-          currencyOption?.label || String(feeCodeDetail.currencyId);
-
-        // 主字段存储 label（用于显示）
-        row['currencyId'] = currencyLabel;
-        // _value 字段存储币别ID（用于联动和保存）
+        row['currencyId'] = feeCodeDetail.currencyId;
         row['currencyId_value'] = feeCodeDetail.currencyId;
 
         // 优先按业务 ETD 与本位币从汇率表查符合条件的汇率（本位币严格匹配）
@@ -766,16 +739,15 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row || !industryCategory) return;
 
-      // ✅ 使用 getter 获取行业类别选项并查找对应的 label
       const industryOptions = getIndustryCategoryOptions();
       const industryOption = industryOptions.find(
         (opt: any) => opt.key === industryCategory,
       );
-      const industryLabel = industryOption?.label || String(industryCategory);
+      if (!industryOption && typeof industryCategory !== 'number') {
+        // newValue 可能已是数值 ID 字符串
+      }
 
-      // 主字段存储 label（用于显示）
-      row['industryCategory'] = industryLabel;
-      // _value 字段存储数值ID（用于联动和保存）
+      row['industryCategory'] = industryCategory;
       row['industryCategory_value'] = industryCategory;
 
       // ✅ 修正：industryCategory 是数值ID，需要转换为字母代码用于联动
@@ -825,17 +797,8 @@ export function useOrderFeeLinkage(
       const row = dataContext.dataSource.value[rowIndex];
       if (!row) return;
 
-      // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
-      const sources = getDropdownSources();
-      const currencyOptions = sources.currencyList;
-      const currencyOption = currencyOptions.find(
-        (opt: any) => opt.value === currencyId,
-      );
-      const currencyLabel = currencyOption?.label || String(currencyId);
-
-      // 主字段存储 label（用于显示）
-      row['currencyId'] = currencyLabel;
-      // _value 字段存储币别ID（用于联动和保存）
+      // data 存币别 ID
+      row['currencyId'] = currencyId;
       row['currencyId_value'] = currencyId;
 
       if (currencyId) {
@@ -1110,10 +1073,12 @@ export function useOrderFeeLinkage(
       const clients = allClientsByIndustry[industry];
       if (!clients || !Array.isArray(clients)) continue;
 
-      // 查找匹配的客户（支持精确匹配 name 字段）
+      // 查找匹配的客户（支持 id / name / label）
       const matchedClient = clients.find(
         (client) =>
-          client.name === settlementName || client.label === settlementName,
+          String(client.value) === String(settlementName) ||
+          client.name === settlementName ||
+          client.label === settlementName,
       );
 
       if (matchedClient) {

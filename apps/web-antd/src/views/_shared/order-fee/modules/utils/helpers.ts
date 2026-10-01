@@ -165,6 +165,66 @@ export function isOrderFeeEligibleForApplyChange(row: any): boolean {
   return hasOrderFeeZeroSettlementAmounts(row);
 }
 
+/** Handsontable 下拉字段：data 存 ID，展示走 label 查找 */
+export const ORDER_FEE_SELECT_FIELDS = [
+  'feeCodeId',
+  'industryCategory',
+  'currencyId',
+  'unit',
+  'settlementId',
+] as const;
+
+export type OrderFeeSelectField = (typeof ORDER_FEE_SELECT_FIELDS)[number];
+
+export function isOrderFeeSelectField(
+  field: unknown,
+): field is OrderFeeSelectField {
+  return (
+    typeof field === 'string' &&
+    (ORDER_FEE_SELECT_FIELDS as readonly string[]).includes(field)
+  );
+}
+
+/** 从选项列表按 value 取 label（兼容 string/number） */
+export function lookupDropdownLabel(
+  options: Array<{ label?: string; value?: any }> | null | undefined,
+  value: unknown,
+): string {
+  if (value === undefined || value === null || value === '') return '';
+  const key = String(value);
+  const hit = (options ?? []).find((opt) => String(opt?.value) === key);
+  if (hit?.label) return String(hit.label);
+  return '';
+}
+
+/**
+ * 结算对象展示名：优先缓存名，再客户列表，再原值（兼容历史 label 格）
+ */
+export function resolveSettlementDisplayLabel(
+  value: unknown,
+  row?: any,
+  clientOptions?: Array<{ label?: string; value?: any; name?: string }>,
+): string {
+  if (value === undefined || value === null || value === '') return '';
+  const cached = String(
+    row?.__settlementName ?? row?.settlement?.name ?? '',
+  ).trim();
+  if (cached) return cached;
+  const key = String(value);
+  const hit = (clientOptions ?? []).find((c) => String(c?.value) === key);
+  if (hit?.name) return String(hit.name);
+  if (hit?.label) {
+    const parts = String(hit.label).split('-');
+    return parts.length > 1 ? parts.slice(1).join('-') : String(hit.label);
+  }
+  // 已是「编码-名称」展示串
+  if (typeof value === 'string' && value.includes('-')) {
+    const parts = value.split('-');
+    return parts.length > 1 ? parts.slice(1).join('-') : value;
+  }
+  return key;
+}
+
 /** 主单 / 更改单归属键：空串表示主单 */
 export function normalizeOrderFeeChangeOrderKey(
   changeOrderId?: null | string,
