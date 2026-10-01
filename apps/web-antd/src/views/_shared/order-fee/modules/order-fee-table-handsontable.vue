@@ -488,22 +488,22 @@ const ImportOther = async (e: any) => {
   }
 };
 
+const onPrintClick = () => {
+  handlePrint({
+    feeType: props.type,
+    transportOrderId: editId.value,
+    orderDetail: orderBaseData.value,
+    selectedFeeIds: selectedFeeIds.value,
+    isChangeOrderPrint: isChangeOrderMode.value,
+    changeOrderId: isChangeOrderMode.value
+      ? changeOrderId.value || props.parentChangeOrderId
+      : undefined,
+  });
+};
+
 const handleMoreMenuClick = (info: { key: string | number }) => {
   const key = String(info.key);
   switch (key) {
-    case 'print': {
-      handlePrint({
-        feeType: props.type,
-        transportOrderId: editId.value,
-        orderDetail: orderBaseData.value,
-        selectedFeeIds: selectedFeeIds.value,
-        isChangeOrderPrint: isChangeOrderMode.value,
-        changeOrderId: isChangeOrderMode.value
-          ? changeOrderId.value || props.parentChangeOrderId
-          : undefined,
-      });
-      break;
-    }
     case 'batchImport': {
       openBatchImportModal();
       break;
@@ -1180,6 +1180,19 @@ watch(
                 <span class="align-middle">AI识别</span>
               </Button>
 
+              <Button
+                size="small"
+                :loading="printing"
+                :disabled="printing"
+                @click="onPrintClick"
+              >
+                <IconifyIcon
+                  icon="mdi:printer-outline"
+                  class="mr-1 inline-block size-3.5 align-middle"
+                />
+                <span class="align-middle">打印</span>
+              </Button>
+
               <Dropdown :trigger="['click']">
                 <Button size="small">
                   更多
@@ -1189,13 +1202,6 @@ watch(
                 </Button>
                 <template #overlay>
                   <Menu @click="handleMoreMenuClick">
-                    <MenuItem key="print" :disabled="printing">
-                      <IconifyIcon
-                        icon="mdi:printer-outline"
-                        class="mr-1 inline-block size-3.5 align-middle"
-                      />
-                      打印
-                    </MenuItem>
                     <SubMenu
                       key="historyImportGroup"
                       :disabled="isTableReadonly || isChangeOrderMode"
