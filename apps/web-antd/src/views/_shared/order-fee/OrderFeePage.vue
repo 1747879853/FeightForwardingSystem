@@ -298,6 +298,18 @@ const formatNormalDate = (
 const formValues = ref<Record<string, any>>();
 const to = ref<Record<string, any>>();
 
+/** 编辑页已有详情时先画左侧信息卡，再挂载双 Handsontable，避免首屏被表格初始化堵死 */
+const tablesReady = ref(false);
+
+function applyOrderDetailToInfo(
+  detail: Record<string, any> | null | undefined,
+) {
+  if (!detail) return;
+  transportOrderId.value = detail.transportOrder?.id;
+  formValues.value = detail;
+  to.value = detail.transportOrder;
+}
+
 // 下拉主数据模块级单例：页面先发起，应收/应付表复用同一 Promise，避免双倍请求
 const orderCtnList = ref<any[]>([]);
 const { allClientsByIndustry, initDropdownSources } =
@@ -527,25 +539,27 @@ const handleRefreshOppositeTable = (type: number) => {
 const loadOrderDetail = async () => {
   if (!editId.value) return;
 
+  // 编辑页已下发 latestDetail 时左侧可先展示；无缓存再转圈等待 getDetail
+  const hasCached = !!formValues.value;
+  if (!hasCached) {
+    pageLoading.value = true;
+  }
+
   try {
     const detail = await props.adapter.api.getDetail(editId.value);
-    transportOrderId.value = detail.transportOrder?.id;
-    formValues.value = detail;
-    to.value = detail.transportOrder;
+    applyOrderDetailToInfo(detail);
   } finally {
     pageLoading.value = false;
   }
 };
 
-// 基础信息保存成功后，用最新详情整体替换（信息卡片 + 费用表 order-detail 联动）
+// 首屏用编辑页已加载详情立刻填左侧；保存成功后同样整体替换（信息卡 + 费用表 order-detail）
 watch(
   () => props.latestDetail,
   (detail) => {
-    if (!detail) return;
-    transportOrderId.value = detail.transportOrder?.id;
-    formValues.value = detail;
-    to.value = detail.transportOrder;
+    applyOrderDetailToInfo(detail);
   },
+  { immediate: true },
 );
 
 /**
@@ -1041,10 +1055,13 @@ const handleMenuClick = (info: any) => {
   }
 };
 
-onMounted(() => {
-  loadOrderDetail();
+onMounted(async () => {
+  // 先让左侧订单信息完成一帧绘制，再挂载双 HOT（初始化很重，会抢主线程）
+  await nextTick();
+  tablesReady.value = true;
+  void loadOrderDetail();
   // 费用数量统计（角标）；金额汇总由子表加载后经 update-amount 上报
-  getOrderFeeCountStats();
+  void getOrderFeeCountStats();
   // 预热费用代码/币别/汇率（与子表 init 去重）
   void initDropdownSources();
 });
@@ -1244,8 +1261,9 @@ onMounted(() => {
             class="fee-entry-panel__body split-area"
             :class="{ 'is-resizing': isDragging }"
           >
-            <!-- 应收费用表格 -->
+            <!-- 应收费用表格（延迟挂载，避免挡住左侧订单信息首屏） -->
             <OrderFeeTable
+              v-if="tablesReady"
               class="min-h-0"
               :style="{ flex: `${recRatio} 1 0%` }"
               ref="recOrderFeeTableRef"
@@ -1280,8 +1298,9 @@ onMounted(() => {
               <div class="drag-line"></div>
             </div>
 
-            <!-- 应付费用表格 -->
+            <!-- 应付费用表格（延迟挂载，避免挡住左侧订单信息首屏） -->
             <OrderFeeTable
+              v-if="tablesReady"
               class="min-h-0"
               :style="{ flex: `${100 - recRatio} 1 0%` }"
               ref="payOrderFeeTableRef"
