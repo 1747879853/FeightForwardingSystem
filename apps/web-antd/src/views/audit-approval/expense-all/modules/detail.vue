@@ -744,19 +744,24 @@ onMounted(() => {
         {{ $t('common.back') }}
       </Button>
       <span class="split mx-4 flex">|</span>
-      <Button
-        class="mr-2"
-        :class="[layout === 'vertical' ? 'green-btn' : '']"
-        @click="changeStandaloneTableType('vertical')"
-      >
-        {{ $t('auditApproval.tableType.vertical') }}
-      </Button>
-      <Button
-        :class="[layout === 'horizontal' ? 'green-btn' : '']"
-        @click="changeStandaloneTableType('horizontal')"
-      >
-        {{ $t('auditApproval.tableType.horizontal') }}
-      </Button>
+      <div class="layout-capsule" role="group" aria-label="费用明细布局">
+        <button
+          type="button"
+          class="layout-capsule__item"
+          :class="{ 'is-active': layout === 'vertical' }"
+          @click="changeStandaloneTableType('vertical')"
+        >
+          {{ $t('auditApproval.tableType.vertical') }}
+        </button>
+        <button
+          type="button"
+          class="layout-capsule__item"
+          :class="{ 'is-active': layout === 'horizontal' }"
+          @click="changeStandaloneTableType('horizontal')"
+        >
+          {{ $t('auditApproval.tableType.horizontal') }}
+        </button>
+      </div>
     </div>
     <div class="flex min-h-0 flex-1 items-stretch">
       <!--  -->
@@ -1010,47 +1015,61 @@ onMounted(() => {
   color: hsl(var(--primary));
 }
 
-:deep(.green-btn) {
-  color: #fff;
-  background-color: #00b96b !important;
-  border-color: #00b96b !important;
+.layout-capsule {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 14%);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgb(16 42 83 / 4%);
 }
 
-/* 如果需要处理悬停状态 */
-:deep(.green-btn:hover),
-:deep(.green-btn:focus) {
-  color: #fff;
-  background-color: #009a55 !important;
-  border-color: #009a55 !important;
-}
+.layout-capsule__item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  outline: none;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 
-:deep(.yellow-btn) {
-  color: #fff;
-  background-color: #ffc107 !important;
-  border-color: #ffc107 !important;
-}
+  &:hover:not(.is-active) {
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 10%);
+  }
 
-/* 如果需要处理悬停状态 */
-:deep(.yellow-btn:hover),
-:deep(.yellow-btn:focus) {
-  color: #fff;
-  background-color: #ffc107 !important;
-  border-color: #ffc107 !important;
-}
+  &:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 25%);
+  }
 
-/* 悬停状态 */
-.green-dropdown-btn.ant-btn:hover,
-.green-dropdown-btn.ant-btn:focus {
-  color: #fff;
-  background-color: #73d13d;
-  border-color: #73d13d;
-}
-
-/* 激活/按下状态 */
-.green-dropdown-btn.ant-btn:active {
-  color: #fff;
-  background-color: #389e0d;
-  border-color: #389e0d;
+  &.is-active {
+    color: #fff;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 82%) 100%
+    );
+    box-shadow: 0 2px 8px hsl(var(--primary) / 32%);
+  }
 }
 
 // 分隔容器：仅定义基础布局；具体高度由「内嵌 / 独立」两种模式分别驱动（见下方）

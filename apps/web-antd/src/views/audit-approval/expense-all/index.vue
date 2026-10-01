@@ -6,13 +6,7 @@ import { onActivated, onMounted, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
 
-import {
-  Button,
-  DropdownButton,
-  Menu,
-  MenuItem,
-  message,
-} from 'ant-design-vue';
+import { DropdownButton, Menu, MenuItem, message } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -438,25 +432,26 @@ const changeTableType = (type: string) => {
           </template>
         </DropdownButton>
         <span class="split mx-2 flex">|</span>
-        <Button
-          class="layout-toggle-btn mr-2"
-          size="small"
-          @click="changeTableType('vertical')"
-          :class="[feeTableType === 'vertical' ? 'green-btn' : '']"
-        >
-          <IconifyIcon icon="boxicons:arrow-down-up" class="size-4" />
-
-          {{ $t('auditApproval.tableType.vertical') }}
-        </Button>
-        <Button
-          class="layout-toggle-btn"
-          size="small"
-          @click="changeTableType('horizontal')"
-          :class="[feeTableType === 'horizontal' ? 'green-btn' : '']"
-        >
-          <IconifyIcon icon="boxicons:arrow-left-right" class="size-4" />
-          {{ $t('auditApproval.tableType.horizontal') }}
-        </Button>
+        <div class="layout-capsule" role="group" aria-label="费用明细布局">
+          <button
+            type="button"
+            class="layout-capsule__item"
+            :class="{ 'is-active': feeTableType === 'vertical' }"
+            @click="changeTableType('vertical')"
+          >
+            <IconifyIcon icon="boxicons:arrow-down-up" class="size-3.5" />
+            {{ $t('auditApproval.tableType.vertical') }}
+          </button>
+          <button
+            type="button"
+            class="layout-capsule__item"
+            :class="{ 'is-active': feeTableType === 'horizontal' }"
+            @click="changeTableType('horizontal')"
+          >
+            <IconifyIcon icon="boxicons:arrow-left-right" class="size-3.5" />
+            {{ $t('auditApproval.tableType.horizontal') }}
+          </button>
+        </div>
         <GroupingSettings
           :fields="grouping.fields"
           :value="grouping.enabledField.value?.value"
@@ -575,24 +570,68 @@ const changeTableType = (type: string) => {
   }
 }
 
-// 布局切换按钮：未选中态更精致，选中态保持绿色高亮反馈
-.layout-toggle-btn {
-  border-radius: 6px;
-  transition: all 0.2s ease;
+// 布局切换：胶囊分段控件，选中态跟品牌主色
+.layout-capsule {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 2px;
+  margin-right: 8px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 8%) 0%,
+    hsl(var(--primary) / 3%) 100%
+  );
+  border: 1px solid hsl(var(--primary) / 14%);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgb(16 42 83 / 4%);
 }
 
-:deep(.green-btn) {
-  color: #fff;
-  background-color: #00b96b !important;
-  border-color: #00b96b !important;
-  box-shadow: 0 2px 6px rgb(0 185 107 / 25%);
-}
+.layout-capsule__item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  outline: none;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
 
-/* 如果需要处理悬停状态 */
-:deep(.green-btn:hover),
-:deep(.green-btn:focus) {
-  color: #fff;
-  background-color: #009a55 !important;
-  border-color: #009a55 !important;
+  &:hover:not(.is-active) {
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 10%);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 25%);
+  }
+
+  &.is-active {
+    color: #fff;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--primary) / 82%) 100%
+    );
+    box-shadow: 0 2px 8px hsl(var(--primary) / 32%);
+  }
+
+  &.is-active:hover {
+    box-shadow: 0 3px 10px hsl(var(--primary) / 38%);
+    transform: translateY(-0.5px);
+  }
 }
 </style>
