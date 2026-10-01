@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { SpotCard, SpotSortMode } from './data';
 
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -17,8 +17,9 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
-import { CtnSelect, PortSelect } from '#/adapter/component/biz-select';
+import { PortSelect } from '#/adapter/component/biz-select';
 import { spotQueryAsync } from '#/api/rong-e-tong/rong-e-tong-admin';
+import { getCtnCodePagedList } from '#/api/system/base-data/ctn-code-admin';
 
 import {
   buildSpotViewModel,
@@ -32,16 +33,28 @@ import {
   type SpotServiceType,
 } from './data';
 import FeeDetailDrawer from './modules/fee-detail-drawer.vue';
+import {
+  getSpotCtnSortIndex,
+  isSupportedSpotCtnName,
+} from './supported-ctn-names';
 import { isSupportedSpotEdiCode } from './supported-edi-codes';
 
 defineOptions({ name: 'SpotFreightQuery' });
 
+interface SpotCtnOption {
+  disabled?: boolean;
+  label: string;
+  value: string;
+}
+
 const loading = ref(false);
 const searched = ref(false);
+const ctnOptionsLoading = ref(false);
 /** 港口/箱型雪花 ID 一律字符串，禁止 Number() 以免精度丢失与下拉 label 对不上 */
 const polId = ref<null | string>(null);
 const podId = ref<null | string>(null);
 const ctnCodeIds = ref<string[]>([]);
+const ctnOptions = ref<SpotCtnOption[]>([]);
 const polLabel = ref('');
 const podLabel = ref('');
 const polEdiCode = ref('');
@@ -53,6 +66,38 @@ const sortMode = ref<SpotSortMode>('lowestPrice');
 const rawResults = ref<ReturnType<typeof buildSpotViewModel> | null>(null);
 const feeDrawerRef = ref<InstanceType<typeof FeeDetailDrawer>>();
 const activeFeeCard = ref<null | SpotCard>(null);
+
+async function loadSupportedCtnOptions() {
+  if (ctnOptionsLoading.value) return;
+  ctnOptionsLoading.value = true;
+  try {
+    const res = await getCtnCodePagedList({
+      PageIndex: 1,
+      PageSize: 200,
+      Sorting: 'OrderNo ASC, Id DESC',
+      Status: 0,
+    });
+    const items = (res.items ?? [])
+      .filter((item) => isSupportedSpotCtnName(item.ctnName))
+      .sort(
+        (a, b) =>
+          getSpotCtnSortIndex(a.ctnName) - getSpotCtnSortIndex(b.ctnName),
+      );
+    ctnOptions.value = items.map((item) => ({
+      disabled: item.status === 1,
+      label: String(item.ctnName ?? '').trim(),
+      value: String(item.id ?? '').trim(),
+    }));
+  } catch {
+    ctnOptions.value = [];
+  } finally {
+    ctnOptionsLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadSupportedCtnOptions();
+});
 
 const cards = computed(() =>
   sortSpotCards(rawResults.value?.cards ?? [], sortMode.value),
@@ -324,12 +369,17 @@ function voyageDaysText(card: SpotCard): string {
           <div class="spot-search__aside">
             <div class="spot-field spot-field--ctn">
               <span class="spot-field__label">箱型</span>
-              <CtnSelect
-                v-model="ctnCodeIds"
+              <Select
+                v-model:value="ctnCodeIds"
                 allow-clear
                 class="spot-control w-full"
+                :loading="ctnOptionsLoading"
+                max-tag-count="responsive"
                 mode="multiple"
+                option-filter-prop="label"
+                :options="ctnOptions"
                 placeholder="可多选箱型"
+                show-search
                 @change="handleCtnChange"
               />
             </div>
@@ -578,24 +628,13 @@ function voyageDaysText(card: SpotCard): string {
 }
 
 .spot-panel--query {
-  position: relative;
-  overflow: hidden;
-  background: #fff;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 6%) 0%,
+    hsl(var(--primary) / 2.5%) 42%,
+    #fff 100%
+  );
   border-color: #e6ebf2;
-
-  &::before {
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    height: 3px;
-    content: '';
-    background: linear-gradient(
-      90deg,
-      hsl(var(--primary)) 0%,
-      hsl(var(--primary) / 35%) 100%
-    );
-  }
 }
 
 .spot-panel__head {
