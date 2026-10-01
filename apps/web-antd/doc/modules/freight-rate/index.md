@@ -18,6 +18,7 @@ last_updated: 2026-09-30
 | 页面组件 | `src/views/freight-rate/list.vue` |
 | 权限口径 | `Admin.SeFreiPrice` / `Admin.SeFreiPrice.Get`（父级另聚合 `Admin.Schedule`） |
 | 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/freight-rate/list.vue`<br/>`src/views/freight-rate/batch-add-page.vue`<br/>`src/views/freight-rate/pending-batch-rows.ts`<br/>`src/views/freight-rate/modules/composables/useBatchAddColumnPersist.ts`<br/>`src/views/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
+| 列表接口瘦身 | [列表接口可裁剪字段](./list-api-payload-trim.md)（给后端减返回字段用） |
 | 列持久化 tableId | 列表 `FreightRateList`；批量编辑 `FreightRateBatchEdit`；批量新增 `FreightRateBatchAdd`（常量见 `data.ts`；Handsontable 经 `useBatchAddColumnPersist` 写入 `table_config_*`） |
 
 # 2. 功能与操作说明 (Features & Operations)
