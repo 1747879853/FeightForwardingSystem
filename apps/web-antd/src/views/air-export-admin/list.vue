@@ -439,8 +439,9 @@ const handleDelete = () => {
     return;
   }
 
-  // 有费用的票后端会直接拒绝删除，这里提前拦一层，省一次必然失败的请求
-  if (row.transportOrder?.orderFees?.length) {
+  // 有费用的票后端会直接拒绝删除，这里提前拦一层，省一次必然失败的请求。
+  // 列表不再返回 orderFees，改读 hasOrderFee。
+  if (row.transportOrder?.hasOrderFee) {
     message.warning($t('airExport.export.deleteWithFeeTip'));
     return;
   }

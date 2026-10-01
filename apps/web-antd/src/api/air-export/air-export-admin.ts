@@ -385,6 +385,11 @@ export namespace AirExportAdminApi {
     orderCodeGoodss?: OrderCodeGoodsDto[];
     orderUsers?: OrderUserDto[];
     orderFees?: OrderFeeDto[];
+    /**
+     * 列表是否已有费用。
+     * 列表接口不再返回 `orderFees`，删除前提示读这个字段。详情仍用 `orderFees`。
+     */
+    hasOrderFee?: boolean;
     /** 空运没有集装箱，恒为 null */
     orderCtns?: null;
     /** 空运没有箱型箱量汇总，恒为 null */
