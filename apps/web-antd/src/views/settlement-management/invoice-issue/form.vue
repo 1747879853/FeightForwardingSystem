@@ -61,6 +61,7 @@ import RemarkTemplateModal from '#/views/_shared/invoice-remark-template/RemarkT
 import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/SelectRemarkTemplateModal.vue';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
+import { findClientInvoiceInfoByBankId } from '#/views/_shared/invoice-goods';
 
 const route = useRoute();
 const router = useRouter();
@@ -138,17 +139,14 @@ const isInvoiceIssued = computed(() => {
 // ✅ 新增：附件列表
 const attachments = ref<InvoiceIssueApi.AttachmentItemDto[]>([]);
 
-// ✅ 新增：计算发票抬头名称（从 clientInvoiceInfoList 中查找）
+// fixedHeaderId 实际是 clientInvoiceBankId；按银行反查所属抬头名称
 const headerNameForDrawer = computed(() => {
   if (!fixedHeaderId.value || !clientInvoiceInfoList.value) return '';
-
-  const info = clientInvoiceInfoList.value.find(
-    (item: any) => item.id === fixedHeaderId.value,
+  const info = findClientInvoiceInfoByBankId(
+    clientInvoiceInfoList.value,
+    fixedHeaderId.value,
   );
-
-  const name = info?.header || '';
-
-  return name;
+  return info?.header || '';
 });
 
 const {
@@ -168,6 +166,7 @@ const {
   formData,
   invoiceExchangeRate,
   flattenTreeData,
+  applicationGroupsData,
 );
 
 const { addSelectedApplicationsToForm } = useFeeManagement(
@@ -280,6 +279,10 @@ const { submitLoading, handleSubmit, handleCancel } = useSubmit(
   invoiceIssueTime,
   editId,
   isEdit,
+  {
+    hasAmountDifference,
+    hasMissingApplicationRate,
+  },
 );
 
 // ✅ 新增：冲红弹窗相关状态
@@ -1495,7 +1498,7 @@ onMounted(() => {
     <!-- 选择备注模板弹窗 -->
     <SelectRemarkTemplateModal
       v-model:visible="selectRemarkTemplateModalVisible"
-      :settlement-id="formData.orgId"
+      :settlement-id="formData.settlementId"
       :currency-id="formData.currencyId"
       :fee-details="applicationGroupsData"
       :template-data="remarkTemplateData"

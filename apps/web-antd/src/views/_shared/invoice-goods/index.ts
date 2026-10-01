@@ -7,3 +7,8 @@ export {
   type InvoiceGoodsMergeLine,
   type MergeInvoiceGoodsLinesOptions,
 } from './merge-invoice-goods-lines';
+
+export {
+  findClientInvoiceInfoByBankId,
+  findDefaultCodeInvoice,
+} from './find-default-code-invoice';

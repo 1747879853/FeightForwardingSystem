@@ -118,8 +118,9 @@ export function useFormData() {
       applicantCompanyName.value = companyNode.displayName || '';
       applicantCompanyId.value = companyNode.id;
       applicantTaxNumber.value = companyNode.unifiedSocialCreditCode || '';
+      // 开票地址/电话；详情缺省时回退办公地址/联系电话，避免销售方「地址、电话」空白
       applicantAddress.value =
-        `${companyNode.invoiceAddress || ''} ${companyNode.invoiceTel || ''}`.trim();
+        `${companyNode.invoiceAddress || companyNode.address || ''} ${companyNode.invoiceTel || companyNode.contactPhone || ''}`.trim();
       orgBankAccounts.value = Array.isArray(companyNode.orgBankAccounts)
         ? companyNode.orgBankAccounts
         : [];

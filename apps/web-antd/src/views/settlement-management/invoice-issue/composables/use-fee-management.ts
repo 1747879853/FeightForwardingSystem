@@ -21,7 +21,7 @@ export function useFeeManagement(
 
     // 过滤掉已存在的申请，只添加新的申请
     const newApps = selectedApps.filter((app: any) => {
-      return !existingAppIds.has(app.id);
+      return !existingAppIds.has(String(app.id));
     });
 
     if (newApps.length === 0) {

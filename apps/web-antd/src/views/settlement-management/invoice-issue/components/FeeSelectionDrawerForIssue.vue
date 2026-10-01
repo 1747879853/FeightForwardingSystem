@@ -223,7 +223,7 @@ const isIndeterminate = computed(() => {
 async function updateCurrencyFromSelectedApplications() {
   const allSelected = flattenTreeData(applicationGroupsData.value);
   const selectedApps = allSelected.filter((item: any) =>
-    selectedAppRowKeys.value.includes(item.id),
+    selectedAppRowKeys.value.includes(String(item.id)),
   );
 
   if (selectedApps.length > 0) {
@@ -315,7 +315,7 @@ function flattenTreeData(data: any[]): any[] {
 function getSelectedApplicationsFromTable(): any[] {
   const allSelected = flattenTreeData(applicationGroupsData.value);
   const selectedApps = allSelected.filter((item: any) =>
-    selectedAppRowKeys.value.includes(item.id),
+    selectedAppRowKeys.value.includes(String(item.id)),
   );
 
   return selectedApps;

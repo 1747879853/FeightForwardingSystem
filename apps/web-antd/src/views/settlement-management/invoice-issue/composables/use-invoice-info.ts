@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
 import { message } from 'ant-design-vue';
+import { findClientInvoiceInfoByBankId } from '#/views/_shared/invoice-goods';
 
 /**
  * 开票相关信息管理
@@ -12,7 +13,8 @@ export function useInvoiceInfo(
   orgBankAccounts: any,
 ) {
   /**
-   * 加载客户开票信息
+   * 加载客户开票信息。
+   * 若表单已有 clientInvoiceBankId，按银行反查抬头并保留，不覆盖为默认银行。
    */
   async function loadClientInvoiceInfo(settlementId: string) {
     if (!settlementId) return;
@@ -21,34 +23,56 @@ export function useInvoiceInfo(
       const list = await getClientInvoiceInfoList({ ClientId: settlementId });
       clientInvoiceInfoList.value = list;
 
-      // 选择默认的开票信息
+      const existingBankId = formData.value.clientInvoiceBankId;
+      const owningInfo = findClientInvoiceInfoByBankId(list, existingBankId);
+
+      if (owningInfo) {
+        selectedClientInvoiceInfo.value = owningInfo;
+        // 保留已有银行 id，仅在币别不匹配时再改
+        updateClientBankByCurrency({ preserveExisting: true });
+        return;
+      }
+
       const defaultInfo = list.find((item: any) => item.isDefault);
       selectedClientInvoiceInfo.value =
         defaultInfo || (list.length > 0 ? list[0] : undefined);
 
-      // 根据币别选择银行
-      updateClientBankByCurrency();
+      updateClientBankByCurrency({ preserveExisting: false });
     } catch (error) {
       console.error('加载客户开票信息失败:', error);
     }
   }
 
   /**
-   * 根据币别更新客户银行
+   * 根据币别更新客户银行。
+   * preserveExisting：当前银行仍属该币别时不覆盖（对齐销售方银行逻辑）。
    */
-  function updateClientBankByCurrency() {
+  function updateClientBankByCurrency(options?: {
+    preserveExisting?: boolean;
+  }) {
     if (!selectedClientInvoiceInfo.value || !formData.value.currencyId) return;
 
     const currencyId = formData.value.currencyId;
-    const bank = selectedClientInvoiceInfo.value.clientInvoiceBanks?.find(
-      (b: any) => b.currencyId === currencyId && b.isDefault,
-    );
+    const banks = selectedClientInvoiceInfo.value.clientInvoiceBanks || [];
+    const currentId = formData.value.clientInvoiceBankId;
+    const preserve = options?.preserveExisting !== false;
 
-    if (bank) {
-      formData.value.clientInvoiceBankId = bank.id;
-    } else {
-      formData.value.clientInvoiceBankId = undefined;
+    if (
+      preserve &&
+      currentId &&
+      banks.some(
+        (b: any) =>
+          String(b.id) === String(currentId) && b.currencyId === currencyId,
+      )
+    ) {
+      return;
     }
+
+    const bank =
+      banks.find((b: any) => b.currencyId === currencyId && b.isDefault) ||
+      banks.find((b: any) => b.currencyId === currencyId);
+
+    formData.value.clientInvoiceBankId = bank?.id;
   }
 
   /**
@@ -95,7 +119,8 @@ export function useInvoiceInfo(
 
     if (selectedInfo) {
       selectedClientInvoiceInfo.value = selectedInfo;
-      updateClientBankByCurrency();
+      // 换抬头时按币别选默认银行
+      updateClientBankByCurrency({ preserveExisting: false });
     }
   }
 
@@ -111,20 +136,15 @@ export function useInvoiceInfo(
       );
 
     if (selectedBank) {
-      // 校验银行币种是否与开票币种一致
       if (selectedBank.currencyId !== formData.value.currencyId) {
         message.warning(
           `所选银行的币种（${selectedBank.currencyCode}）与开票币种不一致，请重新选择`,
         );
-        updateClientBankByCurrency();
-        return;
+        updateClientBankByCurrency({ preserveExisting: false });
       }
     }
   }
 
-  /**
-   * 发票抬头选项列表
-   */
   const clientInvoiceHeaderOptions = computed(() => {
     if (
       !clientInvoiceInfoList.value ||
@@ -139,9 +159,6 @@ export function useInvoiceInfo(
     }));
   });
 
-  /**
-   * 获取与开票币种一致的银行列表（客户）
-   */
   const filteredClientBanks = computed(() => {
     if (!selectedClientInvoiceInfo.value || !formData.value.currencyId) {
       return [];
@@ -153,9 +170,6 @@ export function useInvoiceInfo(
     return banks.filter((bank: any) => bank.currencyId === currencyId);
   });
 
-  /**
-   * 获取销售方与开票币种一致的银行列表
-   */
   const filteredOrgBanks = computed(() => {
     if (!orgBankAccounts.value.length || !formData.value.currencyId) {
       return [];

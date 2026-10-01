@@ -12,6 +12,7 @@ export function useGoodsDetails(
   formData: any,
   invoiceExchangeRate: any,
   flattenTreeData: (data: any[]) => any[],
+  applicationGroupsData?: any,
 ) {
   /**
    * 加载发票商品编码列表
@@ -177,7 +178,10 @@ export function useGoodsDetails(
 
     // 根据发票币别查找默认的发票商品编码
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item: any) => item.isDefault && item.defaultCurrency === currencyCode,
+      (item: any) =>
+        !!item.isDefault &&
+        (item.currency?.code === currencyCode ||
+          item.defaultCurrency === currencyCode),
     );
 
     if (!defaultCodeInvoice) {
@@ -282,6 +286,7 @@ export function useGoodsDetails(
     } else {
       console.warn('没有可合并的商品明细');
       message.warning('所选申请中没有商品明细数据');
+      throw new Error('NO_GOODS_TO_MERGE');
     }
   }
 
@@ -325,7 +330,10 @@ export function useGoodsDetails(
 
     // 查找默认商品编码
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item: any) => item.isDefault && item.currency?.code === currencyCode,
+      (item: any) =>
+        !!item.isDefault &&
+        (item.currency?.code === currencyCode ||
+          item.defaultCurrency === currencyCode),
     );
 
     if (!defaultCodeInvoice) {
@@ -335,13 +343,17 @@ export function useGoodsDetails(
 
     // 计算所有费用的总金额（转换为人民币）
     let totalRmbAmount = 0;
-    const allApplications = flattenTreeData(
-      formData.value.applicationGroupsData || [],
-    );
+    const groupsSource =
+      applicationGroupsData?.value ||
+      formData.value.applicationGroupsData ||
+      [];
+    const allApplications = Array.isArray(groupsSource)
+      ? groupsSource
+      : flattenTreeData(groupsSource);
 
     items.forEach((item: any) => {
       const app = allApplications.find(
-        (a: any) => a.id === item.invoiceApplicationId,
+        (a: any) => String(a.id) === String(item.invoiceApplicationId),
       );
       if (app) {
         if (app.appliedAmountRmb != null) {
@@ -386,7 +398,7 @@ export function useGoodsDetails(
         items
           .map((item: any) => {
             const app = allApplications.find(
-              (a: any) => a.id === item.invoiceApplicationId,
+              (a: any) => String(a.id) === String(item.invoiceApplicationId),
             );
             return app;
           })

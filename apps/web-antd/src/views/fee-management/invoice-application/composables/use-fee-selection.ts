@@ -94,7 +94,7 @@ export function useFeeSelectionSave(
     const existingItems = (formData.value.invoiceApplicationItems || []).map(
       (item: any) => {
         const fee = flattenTreeData(feeGroupsData.value).find(
-          (f: any) => f.orderFee?.id === item.orderFeeId,
+          (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
         );
         return {
           currencyId: Number(
@@ -151,7 +151,10 @@ export function useFeeSelectionSave(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.currency?.code === currencyCode,
+      (item) =>
+        !!item.isDefault &&
+        (item.currency?.code === currencyCode ||
+          item.defaultCurrency === currencyCode),
     );
 
     if (!defaultCodeInvoice) {
@@ -162,7 +165,7 @@ export function useFeeSelectionSave(
     const feeItems = items
       .map((item: any) => {
         const fee = allFees.find(
-          (f: any) => f.orderFee?.id === item.orderFeeId,
+          (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
         );
         const currencyId = fee?.orderFee?.currencyId;
         if (!currencyId) return null;
@@ -297,7 +300,7 @@ export function useFeeSelectionSave(
     const feeItemsForValidation = [
       ...((formData.value.invoiceApplicationItems || []).map((item: any) => {
         const fee = flattenTreeData(feeGroupsData.value).find(
-          (f: any) => f.orderFee?.id === item.orderFeeId,
+          (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
         );
         return {
           currencyId: Number(
@@ -387,8 +390,6 @@ export function useFeeSelectionSave(
 
     if (!isEdit) {
       try {
-        addSelectedFeesToForm(selectedFees);
-
         const hasUserRemark = !!(
           formData.value.remark && formData.value.remark.trim()
         );
@@ -546,8 +547,11 @@ export function useFeeSelectionSave(
           console.warn('获取或处理默认备注模板失败:', error);
         }
 
-        const defaultCodeInvoice = codeInvoiceList.value.find(
-          (item) => item.isDefault && item.currency?.code === currencyCode,
+        const { findDefaultCodeInvoice } =
+          await import('#/views/_shared/invoice-goods');
+        const defaultCodeInvoice = findDefaultCodeInvoice(
+          codeInvoiceList.value,
+          currencyCode,
         );
 
         if (!defaultCodeInvoice) {
@@ -619,10 +623,14 @@ export function useFeeSelectionSave(
         if (ids && ids.length > 0) {
           const firstId = ids[0];
           formData.value.id = firstId;
+          // 成功后再写入本地费用，避免创建失败后抽屉灰掉无法重选
+          addSelectedFeesToForm(selectedFees);
           if (onCreated) {
             onCreated(ids);
           }
           message.success(`成功创建 ${ids.length} 个开票申请单`);
+          // 跳转编辑页后由详情重载，避免与本地商品重算竞态
+          return;
         }
       } catch (error) {
         console.error('❌ 创建开票申请失败:', error);
@@ -672,7 +680,7 @@ export function useFeeSelectionSave(
           ? (formData.value.invoiceApplicationItems || []).map((item: any) => {
               const allFees = flattenTreeData(feeGroupsData.value);
               const fee = allFees.find(
-                (f: any) => f.orderFee?.id === item.orderFeeId,
+                (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
               );
               return (
                 fee || {

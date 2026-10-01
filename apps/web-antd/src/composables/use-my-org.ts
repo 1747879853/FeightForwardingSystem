@@ -287,27 +287,33 @@ export function formatCompanySimpleLabel(
 }
 
 /**
- * 解析任意组织 id 对应的开票公司节点（含税号、开票地址、公司银行账户）。
+ * 解析任意组织 id 对应的开票公司节点（含税号、开票地址/电话、公司银行账户）。
  *
  * 单据 `orgId` 存的是部门 id。当前登录人不在该部门时，`getMyOrgCompanyNode(deptId)`
- * 会落空；先把部门换算成公司，再从本人组织缓存或单个组织接口取公司开票资料。
+ * 会落空；先把部门换算成公司，再 **始终** 调 `GetOrganizationUnitAsync` 取公司开票资料。
+ *
+ * 说明：`GetMy.organizations` / 组织列表里的节点常缺 `invoiceAddress`、`invoiceTel`
+ *（甚至缺 `orgBankAccounts`），不能拿缓存节点直接回显销售方「地址、电话」。
  */
 export async function resolveMyOrgCompanyNode(
   orgId?: null | number | string,
 ): Promise<SystemOrganizationUnitApi.OrganizationUnitDto | undefined> {
-  const direct = getMyOrgCompanyNode(orgId);
-  if (direct) return direct;
+  const cached = getMyOrgCompanyNode(orgId);
+  let companyId = cached?.id;
 
-  const company = await resolveOrganizationCompany(orgId);
-  if (company?.id == null) return undefined;
+  if (companyId == null) {
+    const company = await resolveOrganizationCompany(orgId);
+    companyId = company?.id ?? undefined;
+  }
 
-  const byCompany = getMyOrgCompanyNode(company.id);
-  if (byCompany) return byCompany;
+  if (companyId == null) {
+    return cached;
+  }
 
   try {
-    return await getOrganizationUnit(company.id);
+    return await getOrganizationUnit(companyId);
   } catch (error) {
     console.error('加载开票公司信息失败:', error);
-    return company;
+    return getMyOrgCompanyNode(companyId) ?? cached;
   }
 }

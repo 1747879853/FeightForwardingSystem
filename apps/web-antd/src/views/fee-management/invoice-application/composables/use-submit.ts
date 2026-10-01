@@ -7,7 +7,9 @@ import { ref } from 'vue';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
   getMissingExchangeRateCurrencyIds,
+  toApplicationCurrency,
   toExchangeRateInputs,
+  toInvoiceRmbAmount,
   type InvoiceApplicationExchangeRateRow,
 } from '#/utils/invoice-application-amount';
 
@@ -24,6 +26,7 @@ export function useSubmit(
   invoiceApplicationExchangeRates: Ref<InvoiceApplicationExchangeRateRow[]>,
   feeGroupsData: Ref<any[]>,
   flattenTreeData: (data: any[]) => any[],
+  invoiceExchangeRate: Ref<number>,
 ) {
   const router = useRouter();
   const route = useRoute();
@@ -31,6 +34,20 @@ export function useSubmit(
   const { addAsync, editAsync, submitAsync } = InvoiceApplicationApi;
 
   const submitLoading = ref(false);
+
+  /** 已落库 id：优先 formData.id（选费创建后可能尚未跳转编辑路由） */
+  function getPersistedId(): string | undefined {
+    const fromForm = formData.value.id;
+    if (fromForm != null && String(fromForm) !== '') {
+      return String(fromForm);
+    }
+    if (editId.value) return String(editId.value);
+    return undefined;
+  }
+
+  function isPersisted(): boolean {
+    return !!getPersistedId() || isEdit.value;
+  }
 
   function buildMissingRateMessage(missingIds: number[]): string {
     return missingIds
@@ -44,9 +61,6 @@ export function useSubmit(
       .join('；');
   }
 
-  /**
-   * 校验非主币别汇率
-   */
   function validateExchangeRates(): boolean {
     const appCurrencyId = formData.value.currencyId;
     if (!appCurrencyId) {
@@ -72,10 +86,68 @@ export function useSubmit(
     return true;
   }
 
+  function validateGoodsAndAmount(requireFees: boolean): boolean {
+    const items = formData.value.invoiceApplicationItems || [];
+    if (requireFees && items.length === 0) {
+      message.warning('请先添加费用明细');
+      return false;
+    }
+
+    if (items.length > 0) {
+      if (goodsDetails.value.length === 0) {
+        message.warning('请添加商品明细');
+        return false;
+      }
+      if (goodsDetails.value.some((g) => !g.codeInvoiceId)) {
+        message.warning('商品明细存在未选择商品编码的行');
+        return false;
+      }
+      if (!formData.value.orgBankAccountId) {
+        message.warning('请选择销售方银行');
+        return false;
+      }
+      if (!formData.value.clientInvoiceBankId) {
+        message.warning('请选择购买方银行');
+        return false;
+      }
+
+      const feeItems = collectFeeAppliedItems(
+        formData.value,
+        feeGroupsData.value,
+        flattenTreeData,
+      );
+      const totalApp = toApplicationCurrency(
+        feeItems,
+        Number(formData.value.currencyId),
+        invoiceApplicationExchangeRates.value,
+      );
+      const expectedRmb = toInvoiceRmbAmount(
+        totalApp,
+        invoiceExchangeRate.value || 1,
+      );
+      if (expectedRmb == null) {
+        message.warning('请先补齐费用币别汇率');
+        return false;
+      }
+      const goodsTotal = goodsDetails.value.reduce(
+        (sum, item) => sum + (Number(item.amount) || 0),
+        0,
+      );
+      if (Math.abs(goodsTotal - expectedRmb) > 0.01) {
+        message.warning(
+          `商品明细金额合计(${goodsTotal.toFixed(2)})与费用折算人民币(${expectedRmb.toFixed(2)})不一致，请调整后再保存`,
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   /**
-   * 验证表单
+   * @param options.requireFees 提交审核时强制要求费用；普通保存允许空费用草稿
    */
-  function validateForm(): boolean {
+  function validateForm(options?: { requireFees?: boolean }): boolean {
     if (!formData.value.settlementId) {
       message.warning('请选择结算对象');
       return false;
@@ -91,12 +163,12 @@ export function useSubmit(
     if (!validateExchangeRates()) {
       return false;
     }
+    if (!validateGoodsAndAmount(!!options?.requireFees)) {
+      return false;
+    }
     return true;
   }
 
-  /**
-   * 同步商品明细数据到 formData
-   */
   function syncGoodsDetailsToFormData() {
     formData.value.invoiceApplicationGoodsDtls = goodsDetails.value.map(
       (item) => ({
@@ -122,9 +194,6 @@ export function useSubmit(
     );
   }
 
-  /**
-   * 构建批次数据
-   */
   function buildBatchData() {
     syncGoodsDetailsToFormData();
     const rates = getExchangeRatePayload();
@@ -135,7 +204,7 @@ export function useSubmit(
       require: formData.value.require,
       currencyGroups: [
         {
-          currencyId: formData.value.currencyId || 1,
+          currencyId: formData.value.currencyId,
           invoiceType: formData.value.invoiceType,
           invoiceApplicationItems: formData.value.invoiceApplicationItems || [],
           invoiceApplicationGoodsDtls:
@@ -149,9 +218,16 @@ export function useSubmit(
     };
   }
 
-  /**
-   * 保存表单
-   */
+  async function persistEdit(applicationId: string) {
+    syncGoodsDetailsToFormData();
+    const rates = getExchangeRatePayload();
+    await editAsync({
+      ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
+      id: applicationId,
+      invoiceApplicationExchangeRates: rates,
+    });
+  }
+
   async function handleSubmit() {
     if (!validateForm()) {
       return;
@@ -159,14 +235,9 @@ export function useSubmit(
 
     submitLoading.value = true;
     try {
-      if (isEdit.value) {
-        syncGoodsDetailsToFormData();
-        const rates = getExchangeRatePayload();
-
-        await editAsync({
-          ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
-          invoiceApplicationExchangeRates: rates,
-        });
+      const persistedId = getPersistedId();
+      if (isPersisted() && persistedId) {
+        await persistEdit(persistedId);
         message.success('修改成功');
       } else {
         const batchData = buildBatchData();
@@ -174,6 +245,7 @@ export function useSubmit(
         message.success('创建成功');
 
         if (ids && ids.length > 0) {
+          formData.value.id = ids[0];
           const createTabKey = route.fullPath;
           await router.replace(
             `/fee-management/invoice-application/${ids[0]}/edit`,
@@ -188,10 +260,6 @@ export function useSubmit(
     }
   }
 
-  /**
-   * 提交成功后关闭当前编辑/新建页签，打开该开票申请的只读查看页。
-   * 失败时不调用本函数，留在当前页。
-   */
   async function navigateToViewAfterSubmit(applicationId: string) {
     markListShouldRefresh('InvoiceApplicationList');
     const currentTabKey = route.fullPath;
@@ -203,40 +271,25 @@ export function useSubmit(
     }
   }
 
-  /**
-   * 直接提交（先保存再提交）
-   */
+  /** 先保存再提交（编辑与选费已落库但路由仍为 /add 均走 edit） */
   async function handleDirectSubmit() {
-    if (!validateForm()) {
-      return;
-    }
-
-    const items = formData.value.invoiceApplicationItems || [];
-    if (items.length === 0) {
-      message.warning('请先添加费用明细后再提交');
+    if (!validateForm({ requireFees: true })) {
       return;
     }
 
     submitLoading.value = true;
     try {
-      let applicationId: string | undefined;
+      let applicationId = getPersistedId();
 
-      if (!isEdit.value) {
+      if (!applicationId) {
         const batchData = buildBatchData();
         const ids = await addAsync(batchData);
-
         if (ids && ids.length > 0) {
           applicationId = ids[0];
+          formData.value.id = applicationId;
         }
       } else {
-        syncGoodsDetailsToFormData();
-        const rates = getExchangeRatePayload();
-
-        await editAsync({
-          ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
-          invoiceApplicationExchangeRates: rates,
-        });
-        applicationId = editId.value;
+        await persistEdit(applicationId);
       }
 
       if (applicationId) {
@@ -251,51 +304,11 @@ export function useSubmit(
     }
   }
 
-  /**
-   * 提交审核
-   */
+  /** 与 handleDirectSubmit 同路径，避免只提交不落库 */
   async function handleSubmitForAudit() {
-    if (!validateForm()) {
-      return;
-    }
-
-    const items = formData.value.invoiceApplicationItems || [];
-    if (items.length === 0) {
-      message.warning('请先添加费用明细后再提交');
-      return;
-    }
-
-    submitLoading.value = true;
-    try {
-      if (!isEdit.value) {
-        const batchData = buildBatchData();
-        const ids = await addAsync(batchData);
-
-        if (ids && ids.length > 0) {
-          const applicationId = ids[0]!;
-          await submitAsync({ id: applicationId });
-          message.success('创建并提交成功');
-          await navigateToViewAfterSubmit(applicationId);
-        }
-      } else {
-        syncGoodsDetailsToFormData();
-
-        const applicationId = editId.value!;
-        await submitAsync({ id: applicationId });
-        message.success('提交成功');
-        await navigateToViewAfterSubmit(applicationId);
-      }
-    } catch (error) {
-      console.error('提交失败:', error);
-      message.error('提交失败');
-    } finally {
-      submitLoading.value = false;
-    }
+    return handleDirectSubmit();
   }
 
-  /**
-   * 取消
-   */
   function handleCancel() {
     router.back();
   }
