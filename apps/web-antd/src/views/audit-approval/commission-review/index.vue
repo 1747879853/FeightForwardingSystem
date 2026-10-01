@@ -9,7 +9,7 @@ import { Button, message, Space } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { TaskType } from '#/api/audit-approval/payment-review-admin';
+import { TaskStatus } from '#/api/audit-approval/payment-review-admin';
 import {
   batchAuditCommissionOrder,
   batchRejectCommissionOrder,
@@ -22,7 +22,6 @@ import {
   GroupingTabs,
   useListGrouping,
 } from '#/components/list-grouping';
-import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { createPagedListQuery } from '#/utils/paged-list-query';
@@ -31,6 +30,7 @@ import DetailModal from '#/views/commission/detail-modal.vue';
 
 import { formatAmount } from '#/views/commission/data';
 
+import CommissionStatusCell from './commission-status-cell.vue';
 import {
   type CommissionReviewRow,
   useCommissionReviewColumns,
@@ -47,8 +47,6 @@ const t = (key: string, params?: Record<string, number | string>) => {
 const auditCode = 'Admin.CommissionOrder.Audit';
 
 const { CommissionOrderStatus: Status } = CommissionOrderAdminApi;
-
-const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
 // ==================== 底部当页合计 ====================
 
@@ -204,13 +202,25 @@ const onGroupFieldChange = (
 
 // ==================== 选中行与状态判定 ====================
 
-/** 待审核：审核中才可审（通过/驳回） */
+/** 待审核：审核中才可审（通过） */
 const isPendingAudit = (row: CommissionReviewRow) =>
   row.status === Status.Submitted;
 
-/** 可审核后驳回：审核中与审核通过都能驳（已发放的不可驳） */
-const canPostReject = (row: CommissionReviewRow) =>
+/**
+ * 驳回前置：审核中、审核通过可驳（已发放等不可驳）。
+ * 与原先「驳回 + 审核后驳回」可选范围并集一致。
+ */
+const canReject = (row: CommissionReviewRow) =>
   row.status === Status.Approved || row.status === Status.Submitted;
+
+/**
+ * 须走 BatchRejectAsync：
+ * - 整单已审核通过
+ * - 或整单仍在审、但本人节点已过（AuditAsync 会报非当前审核人）
+ */
+const needsRejectAsync = (row: CommissionReviewRow) =>
+  row.status === Status.Approved ||
+  (row.status === Status.Submitted && row.myStatus === TaskStatus.Passed);
 
 const selectedRows = ref<CommissionReviewRow[]>([]);
 
@@ -223,9 +233,7 @@ const hasPendingAuditSelection = computed(() =>
   selectedRows.value.some(isPendingAudit),
 );
 
-const hasPostRejectSelection = computed(() =>
-  selectedRows.value.some(canPostReject),
-);
+const hasRejectSelection = computed(() => selectedRows.value.some(canReject));
 
 // ==================== 行双击打开详情 ====================
 
@@ -405,12 +413,35 @@ const batchAudit = async (success: boolean, remark: string, ids: string[]) => {
   await reloadGrid();
 };
 
-/** 批量审核后驳回：一批共用同一条驳回原因，全部校验通过才执行 */
-const batchReject = async (remark: string, ids: string[]) => {
-  const result = await batchRejectCommissionOrder({ ids, remark });
-  message.success(
-    t('batchRejectSuccess', { count: result?.count ?? ids.length }),
-  );
+/**
+ * 一个【驳回】：当前审核人驳回走 BatchAuditAsync(false)；
+ * 审核通过或本人节点已过走 BatchRejectAsync。
+ */
+const doUnifiedReject = async (remark: string, ids: string[]) => {
+  const rows = selectedRows.value.filter((row) => ids.includes(row.id));
+  const auditIds = rows
+    .filter((row) => !needsRejectAsync(row))
+    .map((r) => r.id);
+  const rejectIds = rows.filter(needsRejectAsync).map((r) => r.id);
+
+  let handled = 0;
+  if (auditIds.length > 0) {
+    const result = await batchAuditCommissionOrder({
+      ids: auditIds,
+      remark,
+      success: false,
+    });
+    handled += result?.count ?? auditIds.length;
+  }
+  if (rejectIds.length > 0) {
+    const result = await batchRejectCommissionOrder({
+      ids: rejectIds,
+      remark,
+    });
+    handled += result?.count ?? rejectIds.length;
+  }
+
+  message.success(t('batchRejectSuccess', { count: handled }));
   await reloadGrid();
 };
 
@@ -457,50 +488,19 @@ const showAuditConfirm = () => {
   });
 };
 
-/** 驳回 → AuditAsync(success: false)，审核中的提成单，驳回原因必填 */
+/** 驳回：审核中 / 审核通过合成一个按钮，按行分流接口 */
 const showRejectConfirm = () => {
-  if (!hasPendingAuditSelection.value) {
-    message.warning(t('noPendingAudit'));
+  if (!hasRejectSelection.value) {
+    message.warning(t('noRejectable'));
     return;
   }
   openRemarkConfirm({
     title: t('rejectConfirmTitle'),
     danger: true,
-    pickRows: () => selectedRows.value.filter(isPendingAudit),
-    emptyMessage: t('noPendingAudit'),
-    onConfirm: (remark, ids) => batchAudit(false, remark, ids),
+    pickRows: () => selectedRows.value.filter(canReject),
+    emptyMessage: t('noRejectable'),
+    onConfirm: (remark, ids) => doUnifiedReject(remark, ids),
     remarkRequired: true,
-  });
-};
-
-/** 审核后驳回 → RejectAsync，审核中与审核通过都能驳，驳回原因必填 */
-const showPostRejectConfirm = () => {
-  if (!hasPostRejectSelection.value) {
-    message.warning(t('noPostRejectable'));
-    return;
-  }
-  openRemarkConfirm({
-    title: t('postRejectConfirmTitle'),
-    danger: true,
-    pickRows: () => selectedRows.value.filter(canPostReject),
-    emptyMessage: t('noPostRejectable'),
-    onConfirm: (remark, ids) => batchReject(remark, ids),
-    remarkRequired: true,
-  });
-};
-
-/** 审批流程：单选行查看工作流时间线 */
-const handleViewWorkflow = () => {
-  const rows = selectedRows.value;
-  if (rows.length !== 1) {
-    message.warning(t('workflowSelectionRequired'));
-    return;
-  }
-  const row = rows[0];
-  if (!row) return;
-  openWorkflowTimeline({
-    entityId: row.id,
-    taskType: TaskType.CommissionOrder,
   });
 };
 </script>
@@ -534,27 +534,20 @@ const handleViewWorkflow = () => {
           <Button
             v-access:code="auditCode"
             danger
-            :disabled="!hasPendingAuditSelection"
+            :disabled="!hasRejectSelection"
             @click="showRejectConfirm"
           >
             {{ t('selectReject') }}
           </Button>
-          <Button
-            v-access:code="auditCode"
-            danger
-            ghost
-            :disabled="!hasPostRejectSelection"
-            @click="showPostRejectConfirm"
-          >
-            {{ t('postReject') }}
-          </Button>
-          <Button @click="handleViewWorkflow">{{ t('workflow') }}</Button>
           <GroupingSettings
             :fields="grouping.fields"
             :value="grouping.enabledField.value?.value"
             @change="onGroupFieldChange"
           />
         </Space>
+      </template>
+      <template #status="{ row }">
+        <CommissionStatusCell :row="row" />
       </template>
     </Grid>
 
