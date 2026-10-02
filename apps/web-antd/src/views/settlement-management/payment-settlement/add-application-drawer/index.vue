@@ -29,7 +29,9 @@ import {
   toIsoString,
 } from '#/utils/date-range-iso';
 
+import { formatOrgChainCompanyName } from '../org-company-name';
 import { useSearchSchema, getStatusTagProps } from './data';
+
 interface Props {
   /** 付费结算ID（编辑时传入，用于排除该结算单已关联的组合） */
   paymentSettlementId?: string;
@@ -826,7 +828,7 @@ const innerColumns = [
           />
         </template>
         <template v-else-if="column.key === 'companyName'">
-          {{ record.orgs?.at(-1)?.name || '-' }}
+          {{ formatOrgChainCompanyName(record.orgs) }}
         </template>
         <template v-else>
           {{ column.dataIndex ? record[column.dataIndex] : '' }}

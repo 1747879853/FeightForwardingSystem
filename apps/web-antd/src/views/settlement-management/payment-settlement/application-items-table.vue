@@ -10,6 +10,7 @@ import { Checkbox } from 'ant-design-vue';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { formatAmount } from './form-data';
+import { formatOrgChainCompanyName } from './org-company-name';
 
 interface Props {
   /** 申请明细列表（从详情接口的 paymentApplicationCurrencies 获取 - 新的二级结构） */
@@ -166,17 +167,12 @@ function getCreatorUserName(
 }
 
 /**
- * 获取归属组织名称
+ * 归属组织只展示所属公司名称，不展示部门。
  */
 function getOrgName(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
-  if (record.orgs && record.orgs.length > 0) {
-    // 返回最后一个组织的名称（最下级组织）
-    const lastOrg = record.orgs[record.orgs.length - 1];
-    return lastOrg?.name || '-';
-  }
-  return '-';
+  return formatOrgChainCompanyName(record.orgs);
 }
 
 /**
