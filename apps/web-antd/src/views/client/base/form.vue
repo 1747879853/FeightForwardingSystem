@@ -260,7 +260,7 @@ const formLocked = computed(() => {
   if (clientStatus.value === undefined) return false;
   return !canDirectEdit.value;
 });
-/** 同步到编辑页，供联系人/开票等兄弟 Tab 锁定 */
+/** 同步到编辑页，供附件/排除服务等兄弟 Tab 锁定；联系人/开票不跟此锁 */
 const sharedFormLockedRef = inject(CLIENT_FORM_LOCKED_REF_KEY, null);
 watch(
   formLocked,
