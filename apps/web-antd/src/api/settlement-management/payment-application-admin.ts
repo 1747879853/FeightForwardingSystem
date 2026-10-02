@@ -84,9 +84,9 @@ export namespace PaymentApplicationAdminApi {
     applicationNo?: string;
     /** 结算对象ID（客户） */
     settlementId?: string;
-    /** 币别ID。不传=搜全部；传 `0`=只搜原币申请（申请币别为空）；传具体值=直接按行过滤，只返回原币币别=该值的行 */
+    /** 币别ID。不传=搜全部；传 `0`=只搜原币申请；传具体值=只返回行申请币别 applyCurrencyId 等于该值的行 */
     currencyId?: number;
-    /** 结算单的结算币别。传了之后固定币别申请只返回申请币别等于它的，原币申请只返回 originalCurrencyId 等于它的行。建单/加明细场景必传 */
+    /** 结算单的结算币别。只返回 applyCurrencyId 等于它的行。建单/加明细场景必传 */
     settlementCurrencyId?: number;
     /** 提交时间起 */
     submitTimeStart?: string;

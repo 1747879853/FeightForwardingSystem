@@ -45,8 +45,8 @@ interface Props {
   /** 是否已有费用（用于控制筛选条件是否可修改） */
   hasExistingFees?: boolean;
   /**
-   * 已在结算单中的「申请+原币」行 key（`paymentApplicationId_originalCurrencyId`），
-   * 用于禁用已选组合；同一申请的其他原币仍可选。
+   * 已在结算单中的行 key（`付费申请id_申请币别id`）。
+   * 追加时同一付费申请不能再加，选择列表也会按 paymentSettlementId 滤掉。
    */
   existingRowKeys?: string[];
 }
@@ -177,7 +177,7 @@ async function requestSettlementApplicationList(
   }
 }
 
-/** 获取数据（按「付费申请+原币」扁平行） */
+/** 获取数据（按「付费申请+申请币别」扁平行） */
 async function fetchData() {
   let request: number | undefined;
   loading.value = true;
@@ -186,7 +186,7 @@ async function fetchData() {
     const [submitTimeStart, submitTimeEnd] = formValues.submitTimeRange || [];
     const [endTimeStart, endTimeEnd] = formValues.endTimeRange || [];
 
-    // 结算币别 ≠ 搜索表单「原币币别」过滤；建单/加明细有结算币别时必传
+    // 结算币别 ≠ 搜索表单币别过滤；建单/加明细有结算币别时必传
     const settlementCurrencyId = selectedCurrencyId.value ?? props.currencyId;
 
     const params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams =
@@ -196,7 +196,7 @@ async function fetchData() {
         keys: normalizeKeysParam(formValues.keys),
         applicationNo: formValues.applicationNo,
         settlementId: formValues.settlementId,
-        // 原币币别过滤（不传=全部；0=仅原币申请；>0=只返回该原币行）
+        // 不传=全部；0=仅原币申请；>0=只返回行申请币别等于该值的行
         currencyId: formValues.currencyId,
         settlementCurrencyId,
         creatorUserId: formValues.creatorUserId,
@@ -215,16 +215,11 @@ async function fetchData() {
     dataSource.value = (result.items || []).map((row: any) => {
       // 结满一行时直接用 totalUnSettledPrice 作为 settledPrice（结算币别）
       row.settledPrice = row.totalUnSettledPrice ?? 0;
-      if (row.currency == null) {
-        row.currency = {
-          code: row.originalCurrency?.code || row.originalCurrencyCode,
-        };
-      }
 
-      // 行 key：优先后端 rowKey，否则本地拼「申请id_原币id」
+      // 行 key：优先后端 rowKey，否则本地拼「申请id_申请币别id」
       row.rowKey =
         row.rowKey ||
-        [row.paymentApplicationId, row.originalCurrencyId ?? 'null'].join('_');
+        [row.paymentApplicationId, row.applyCurrencyId ?? 'null'].join('_');
 
       const cached = selectionQuery.rows.find(
         (item) => item.rowKey === row.rowKey,
@@ -280,7 +275,7 @@ async function handleConfirm() {
   const selectedRows = getSelectedRows();
 
   if (selectedRows.length === 0) {
-    message.warning('请至少选择一个付费申请+原币组合');
+    message.warning('请至少选择一个付费申请');
     return;
   }
 
@@ -314,11 +309,8 @@ async function handleConfirm() {
   if (settlementCurrency == null) {
     const derivedIds = new Set<number>();
     for (const row of selectedRows) {
-      // 固定币别申请 → 申请币别；原币申请 → 本行原币
-      const id =
-        row.currencyId != null && row.currencyId !== undefined
-          ? Number(row.currencyId)
-          : Number(row.originalCurrencyId);
+      // 新建时行申请币别必然等于结算币别
+      const id = Number(row.applyCurrencyId);
       if (!Number.isFinite(id)) {
         message.warning('选中行缺少有效币别，无法确定结算币别');
         return;
@@ -338,16 +330,12 @@ async function handleConfirm() {
   for (const row of selectedRows) {
     const isOriginalApp =
       row.currencyId == null || row.currencyId === undefined;
-    if (isOriginalApp) {
-      if (Number(row.originalCurrencyId) !== Number(settlementCurrency)) {
-        message.warning(
-          `付费申请【${row.applicationNo}】是原币申请，只能结算原币为结算币别的费用`,
-        );
-        return;
-      }
-    } else if (Number(row.currencyId) !== Number(settlementCurrency)) {
+    const applyCurrencyId = Number(row.applyCurrencyId);
+    if (applyCurrencyId !== Number(settlementCurrency)) {
       message.warning(
-        `付费申请【${row.applicationNo}】的申请币别与结算币别不一致，不能结算`,
+        isOriginalApp
+          ? `付费申请【${row.applicationNo}】是原币申请，只能结算与结算币别相同的费用`
+          : `付费申请【${row.applicationNo}】是固定币别申请，结算行的申请币别应与结算币别一致`,
       );
       return;
     }
@@ -388,7 +376,7 @@ function returnSelectedApplications(selectedRows: any[]): boolean {
     const rowDetails = zeroAmountRows
       .map(
         (row) =>
-          `${row.applicationNo} (${row.originalCurrencyCode}): ${row.settledPrice || '未填写'}`,
+          `${row.applicationNo} (${row.applyCurrency?.code || '-'}): ${row.settledPrice || '未填写'}`,
       )
       .join('、');
 
@@ -437,27 +425,23 @@ function formatAmountWithConversion(
   record: any,
   fieldName: 'pay' | 'receive' | 'totalUnSettled' | 'settled',
 ): string {
-  const amount = record[`${fieldName}Price`] ?? record[`${fieldName}Amount`];
+  const amount = record[`${fieldName}Price`];
   if (amount === undefined || amount === null) return '-';
   return formatAmount(amount);
 }
 
 // ✅ 获取本次结算金额的最小值（结算币别口径）
 function getsettledPriceMin(record: any): number {
-  return record.settleablePriceLowerLimit ?? record.settleableLowerLimit ?? 0;
+  return record.settleablePriceLowerLimit ?? 0;
 }
 
 // ✅ 获取本次结算金额的最大值（结算币别口径）
 function getsettledPriceMax(record: any): number {
-  return record.settleablePriceUpperLimit ?? record.settleableUpperLimit ?? 0;
+  return record.settleablePriceUpperLimit ?? 0;
 }
 
 function getCurrencyCodeDisplay(record: any): string {
-  // 原币申请：展示本行原币；固定币别申请：展示申请币别
-  if (record.currencyId == null || record.currencyId === undefined) {
-    return record.originalCurrency?.code || record.originalCurrencyCode || '-';
-  }
-  return record.currency?.code || '-';
+  return record.applyCurrency?.code || '-';
 }
 
 // ✅ 全选状态计算（仅针对可选行）
@@ -786,9 +770,6 @@ const innerColumns = [
         <template v-else-if="column.key === 'currencyCode'">
           {{ getCurrencyCodeDisplay(record) }}
         </template>
-        <template v-else-if="column.key === 'originalCurrencyCode'">
-          {{ record.originalCurrency.code || '-' }}
-        </template>
         <template v-else-if="column.key === 'creatorUserName'">
           {{ record.creatorUserName || '-' }}
         </template>
@@ -821,8 +802,8 @@ const innerColumns = [
             class="reconciliation-input"
             :disabled="
               !selectedRowKeys.includes(record.rowKey) ||
-              (record.settleableUpperLimit === 0 &&
-                record.settleableLowerLimit === 0) ||
+              (record.settleablePriceUpperLimit === 0 &&
+                record.settleablePriceLowerLimit === 0) ||
               (props.existingRowKeys?.includes(record.rowKey) ?? false)
             "
           />
@@ -867,7 +848,7 @@ const innerColumns = [
           {{ feeRecord.feeCode?.cnName || '-' }}
         </template>
         <template v-else-if="column.key === 'currencyCode'">
-          {{ feeRecord.currency?.code || '-' }}
+          {{ feeRecord.currency?.code || feeRecord.currencyCode || '-' }}
         </template>
         <template v-else-if="column.key === 'unit'">
           {{ feeRecord.unit || '-' }}

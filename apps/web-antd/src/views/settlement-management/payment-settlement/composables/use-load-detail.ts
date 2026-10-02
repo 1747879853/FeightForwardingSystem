@@ -5,7 +5,7 @@ import { getPaymentSettlementDetailByCurrency } from '#/api/sea-export/payment-s
 import type { PaymentSettlementFormState } from './use-form-state';
 
 /**
- * 详情加载（按原币扁平行）
+ * 详情加载（按付费申请+申请币别扁平行）
  */
 export function useLoadDetail(
   state: PaymentSettlementFormState,
@@ -79,7 +79,7 @@ export function useLoadDetail(
           ...item,
           rowKey:
             item.rowKey ||
-            `${item.paymentApplicationId}_${item.originalCurrencyId}`,
+            `${item.paymentApplicationId}_${item.applyCurrencyId}`,
         }),
       );
 
