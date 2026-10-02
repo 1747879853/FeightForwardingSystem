@@ -225,6 +225,103 @@ export function resolveSettlementDisplayLabel(
   return key;
 }
 
+export type SettlementClientOption = {
+  label?: string;
+  name?: string;
+  value?: any;
+};
+
+/**
+ * 结算对象 autocomplete strict 校验用的合法取值集合。
+ * 单元格落库后 data 存的是客户 id，拖拽填充会复制 id；必须把 id / label / name 都纳入，
+ * 否则 strict + allowInvalid:false 会把合法填充判无效并取消写入。
+ */
+export function buildSettlementAutofillValueSet(
+  allClientsByIndustry?: null | Record<string, SettlementClientOption[]>,
+  tableRows?: Array<Record<string, any> | null | undefined> | null,
+): Set<string> {
+  const set = new Set<string>();
+  const grouped = allClientsByIndustry || {};
+  for (const clients of Object.values(grouped)) {
+    for (const client of clients || []) {
+      if (client?.label) set.add(String(client.label));
+      if (client?.name) set.add(String(client.name));
+      if (
+        client?.value !== undefined &&
+        client?.value !== null &&
+        client?.value !== ''
+      ) {
+        set.add(String(client.value));
+      }
+    }
+  }
+  for (const row of tableRows || []) {
+    if (!row) continue;
+    const id = row.settlementId_value ?? row.settlementId;
+    if (id !== undefined && id !== null && id !== '') set.add(String(id));
+    const name = row.__settlementName ?? row.settlement?.name;
+    if (name) set.add(String(name));
+  }
+  return set;
+}
+
+/** 在按行业分组的客户缓存中按 id / label / name 查找客户选项 */
+export function findSettlementClientOption(
+  allClientsByIndustry:
+    | null
+    | Record<string, SettlementClientOption[]>
+    | undefined,
+  raw: unknown,
+): SettlementClientOption | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const key = String(raw);
+  const grouped = allClientsByIndustry || {};
+  for (const clients of Object.values(grouped)) {
+    const hit = (clients || []).find(
+      (client) =>
+        String(client?.value) === key ||
+        client?.name === raw ||
+        client?.label === raw,
+    );
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+/** 从表格已有行里找同结算对象，用于拖拽填充时回填展示名 */
+export function findSettlementDonorRow(
+  tableRows: Array<Record<string, any> | null | undefined> | null | undefined,
+  raw: unknown,
+): Record<string, any> | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const key = String(raw);
+  for (const row of tableRows || []) {
+    if (!row) continue;
+    if (
+      String(row.settlementId_value ?? '') === key ||
+      String(row.settlementId ?? '') === key ||
+      String(row.__settlementName ?? '') === key ||
+      String(row.settlement?.name ?? '') === key
+    ) {
+      return row;
+    }
+  }
+  return undefined;
+}
+
+/** 从客户选项解析展示用简称 */
+export function resolveSettlementClientName(
+  client?: SettlementClientOption | null,
+): string {
+  if (!client) return '';
+  if (client.name) return String(client.name);
+  if (client.label) {
+    const parts = String(client.label).split('-');
+    return parts.length > 1 ? parts.slice(1).join('-') : String(client.label);
+  }
+  return '';
+}
+
 /** 主单 / 更改单归属键：空串表示主单 */
 export function normalizeOrderFeeChangeOrderKey(
   changeOrderId?: null | string,

@@ -300,6 +300,7 @@ const { hotSettings: rawHotSettings } = useHotSettings(
   () => feeSortMode.value,
   onAfterFeeRowMove,
   () => props.highlightFeeIds ?? [],
+  localAllClientsByIndustry,
 );
 
 // 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
