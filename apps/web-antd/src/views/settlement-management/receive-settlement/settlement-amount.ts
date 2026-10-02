@@ -1,6 +1,6 @@
 /** 收费结算：本次结算与跨币别汇率 */
 
-import { toNetAmount } from './form-data';
+import { formatAmount, toNetAmount } from './form-data';
 
 export interface SettlementCurrencyRow {
   currencyId?: null | number | string;
@@ -240,48 +240,57 @@ export function suggestInvoiceActualSettled(
   return roundMoney(sum);
 }
 
-export function remainingSharedSettleable(
-  selected: Array<{
-    orderFeeId: string;
-    rowKey: string;
-    settledAmount: number;
-  }>,
-  orderFeeId: string,
-  settleable: number,
-  excludeRowKey?: string,
-) {
-  const used = selected
-    .filter(
-      (row) => row.orderFeeId === orderFeeId && row.rowKey !== excludeRowKey,
-    )
-    .reduce((sum, row) => sum + row.settledAmount, 0);
-  return roundMoney(Math.max(0, settleable - used));
+/**
+ * 本次结算金额输入范围。正数费用 [0, 额度]，负数费用 [额度, 0]。
+ * 额度为 0 或不明确时不夹范围。
+ */
+export function settledAmountBounds(quota?: null | number) {
+  if (quota == null || !Number.isFinite(Number(quota)) || Number(quota) === 0) {
+    return {
+      min: undefined as number | undefined,
+      max: undefined as number | undefined,
+    };
+  }
+  const cap = Number(quota);
+  if (cap < 0) return { min: cap, max: 0 };
+  return { min: 0, max: cap };
 }
 
-export function findFeeSettleableOverflow(
-  rows: Array<{
-    feeName?: string;
-    invoiceSettleableAmount?: null | number;
-    orderFeeId: string;
-    settledAmount: number;
-  }>,
+/** 与额度同号，且绝对值不超过额度。0 和反号都不通过。 */
+export function isSettledAmountWithinQuota(
+  amount: number | null | undefined,
+  quota: number | null | undefined,
 ) {
-  const consumed = new Map<string, number>();
-  const settleable = new Map<string, number>();
-  const names = new Map<string, string>();
-  for (const row of rows) {
-    consumed.set(
-      row.orderFeeId,
-      (consumed.get(row.orderFeeId) ?? 0) + row.settledAmount,
-    );
-    settleable.set(row.orderFeeId, row.invoiceSettleableAmount ?? 0);
-    if (row.feeName) names.set(row.orderFeeId, row.feeName);
-  }
-  for (const [orderFeeId, used] of consumed) {
-    const cap = settleable.get(orderFeeId) ?? 0;
-    if (used > cap + 1e-6) {
-      return { feeName: names.get(orderFeeId) || '-', settleable: cap };
-    }
-  }
-  return null;
+  const value = Number(amount);
+  const cap = Number(quota);
+  if (!Number.isFinite(value) || value === 0) return false;
+  if (!Number.isFinite(cap) || cap === 0) return false;
+  if (cap > 0) return value > 0 && value <= cap + 1e-6;
+  return value < 0 && value >= cap - 1e-6;
 }
+
+export function settledAmountQuotaMessage(
+  feeName: string | undefined,
+  quota: number | null | undefined,
+) {
+  const capText =
+    quota == null || !Number.isFinite(Number(quota))
+      ? '-'
+      : formatAmount(Number(quota));
+  return `费用「${feeName || '-'}」结算金额须与费用同号，且绝对值不能超过剩余额度 ${capText}`;
+}
+
+/** 同一费用出现在多张发票开出下。各行额度不是共享池，合计以后端为准。 */
+export function hasSharedOrderFee(rows: Array<{ orderFeeId?: null | string }>) {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const id = row.orderFeeId;
+    if (!id) continue;
+    if (seen.has(id)) return true;
+    seen.add(id);
+  }
+  return false;
+}
+
+export const SHARED_FEE_QUOTA_HINT =
+  '同一费用出现在多张发票开出下时，各行合计不能超过该费用的可结算额度，保存时以后端校验为准。';

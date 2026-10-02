@@ -60,9 +60,12 @@ import {
   currencyNetSettledAmount,
   findMissingExchangeRate,
   isNotableDiff,
+  isSettledAmountWithinQuota,
   lineExchangeRate,
   lineOriginalSettledAmount,
   missingExchangeRateMessage,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
 } from './settlement-amount';
 import BankStatementPicker from './bank-statement-picker/index.vue';
 import {
@@ -909,25 +912,18 @@ function validateForm(): boolean {
     return false;
   }
 
-  const invalidItem = items.value.find(
-    (item) => !item.settledAmount || item.settledAmount <= 0,
-  );
+  const invalidItem = items.value.find((item) => {
+    const amount = Number(item.settledAmount);
+    if (!Number.isFinite(amount) || amount === 0) return true;
+    if (item.id) return false;
+    return !isSettledAmountWithinQuota(amount, item.remainingAmount);
+  });
   if (invalidItem) {
     message.warning(
-      `费用「${invalidItem.feeCodeName || '-'}」结算金额必须大于0`,
-    );
-    return false;
-  }
-
-  const overLimitItem = items.value.find(
-    (item) =>
-      !item.id &&
-      item.remainingAmount !== undefined &&
-      item.settledAmount > item.remainingAmount,
-  );
-  if (overLimitItem) {
-    message.warning(
-      `费用「${overLimitItem.feeCodeName || '-'}」结算金额不能超过剩余额度 ${formatAmount(overLimitItem.remainingAmount)}`,
+      settledAmountQuotaMessage(
+        invalidItem.feeCodeName,
+        invalidItem.remainingAmount,
+      ),
     );
     return false;
   }
@@ -1463,8 +1459,8 @@ onMounted(() => {
               <InputNumber
                 v-if="record._isCurrent && !record.id && !isReadonly"
                 v-model:value="record.settledAmount"
-                :min="0"
-                :max="record.remainingAmount"
+                :min="settledAmountBounds(record.remainingAmount).min"
+                :max="settledAmountBounds(record.remainingAmount).max"
                 :precision="2"
                 style="width: 130px"
               />

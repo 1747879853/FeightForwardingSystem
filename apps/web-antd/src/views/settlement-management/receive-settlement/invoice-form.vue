@@ -61,8 +61,12 @@ import {
   getReceiveSettlementStatusLabel,
 } from './form-data';
 import {
-  findFeeSettleableOverflow,
+  hasSharedOrderFee,
   isNotableDiff,
+  isSettledAmountWithinQuota,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
+  SHARED_FEE_QUOTA_HINT,
   suggestInvoiceActualSettled,
 } from './settlement-amount';
 
@@ -191,6 +195,9 @@ const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementTime = ref<Dayjs>(dayjs());
 const remark = ref('');
 const items = ref<InvoiceSettlementItem[]>([]);
+const sharedFeeQuotaHint = computed(() =>
+  hasSharedOrderFee(items.value) ? SHARED_FEE_QUOTA_HINT : '',
+);
 const issueGroups = ref<InvoiceIssueGroupRow[]>([]);
 const actualSettled = ref<number | null>(null);
 const actualSettledTouched = ref(false);
@@ -1055,29 +1062,18 @@ function validateForm(): boolean {
     return false;
   }
 
-  const invalidItem = items.value.find(
-    (item) => !item.settledAmount || item.settledAmount <= 0,
-  );
+  const invalidItem = items.value.find((item) => {
+    const amount = Number(item.settledAmount);
+    if (!Number.isFinite(amount) || amount === 0) return true;
+    if (item.id) return false;
+    return !isSettledAmountWithinQuota(amount, item.invoiceSettleableAmount);
+  });
   if (invalidItem) {
     message.warning(
-      `费用「${invalidItem.feeCodeName || '-'}」结算金额必须大于0`,
-    );
-    return false;
-  }
-
-  const overflow = findFeeSettleableOverflow(
-    items.value
-      .filter((item) => !item.id)
-      .map((item) => ({
-        feeName: item.feeCodeName,
-        invoiceSettleableAmount: item.invoiceSettleableAmount,
-        orderFeeId: item.orderFeeId,
-        settledAmount: item.settledAmount,
-      })),
-  );
-  if (overflow) {
-    message.warning(
-      `费用「${overflow.feeName}」发票口径可结算余额不足，可用额度 ${formatAmount(overflow.settleable)}`,
+      settledAmountQuotaMessage(
+        invalidItem.feeCodeName,
+        invalidItem.invoiceSettleableAmount,
+      ),
     );
     return false;
   }
@@ -1537,6 +1533,9 @@ onMounted(() => {
             <span v-if="foreignFeeCount > 0" class="settlement-items-hint">
               含本流水下其他核销单明细 {{ foreignFeeCount }} 条（只读）
             </span>
+            <span v-if="sharedFeeQuotaHint" class="settlement-items-hint">
+              {{ sharedFeeQuotaHint }}
+            </span>
           </Space>
         </template>
         <template v-if="canManageItems" #extra>
@@ -1719,8 +1718,8 @@ onMounted(() => {
               <InputNumber
                 v-if="record._isCurrent && !record.id && !isReadonly"
                 v-model:value="record.settledAmount"
-                :min="0"
-                :max="record.invoiceSettleableAmount"
+                :min="settledAmountBounds(record.invoiceSettleableAmount).min"
+                :max="settledAmountBounds(record.invoiceSettleableAmount).max"
                 :precision="2"
                 style="width: 130px"
               />

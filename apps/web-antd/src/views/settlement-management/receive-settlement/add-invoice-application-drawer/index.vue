@@ -28,8 +28,11 @@ import {
   toNetAmount,
 } from '../form-data';
 import {
-  findFeeSettleableOverflow,
-  remainingSharedSettleable,
+  hasSharedOrderFee,
+  isSettledAmountWithinQuota,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
+  SHARED_FEE_QUOTA_HINT,
 } from '../settlement-amount';
 import {
   type AddInvoiceDrawerProps,
@@ -92,30 +95,16 @@ const disabledItemIdSet = computed(
 );
 
 const selectedFeeCount = computed(() => selectedItemIds.value.length);
+const showSharedFeeHint = computed(() =>
+  hasSharedOrderFee(buildSelectedFees()),
+);
 
 function itemKey(invoiceIssueId: string, item: InvoiceItem) {
   return invoiceIssueFeeKey(invoiceIssueId, item.orderFeeId);
 }
 
-function listSelectedAmounts() {
-  return selectedItemIds.value.map((rowKey) => {
-    const [, orderFeeId = ''] = rowKey.split('::');
-    return {
-      orderFeeId,
-      rowKey,
-      settledAmount: settledAmountMap.get(rowKey) ?? 0,
-    };
-  });
-}
-
-function defaultSettledAmount(invoiceIssueId: string, item: InvoiceItem) {
-  const rowKey = itemKey(invoiceIssueId, item);
-  return remainingSharedSettleable(
-    listSelectedAmounts(),
-    item.orderFeeId,
-    item.invoiceSettleableAmount ?? 0,
-    rowKey,
-  );
+function defaultSettledAmount(_invoiceIssueId: string, item: InvoiceItem) {
+  return item.invoiceSettleableAmount ?? 0;
 }
 
 /** 已选费用按币别汇总本次结算净额（应收为正、应付为负） */
@@ -302,6 +291,46 @@ function handleSelectGroupItems(
   }
 }
 
+const pageGroups = computed(() =>
+  tableRows.value.map((row) => ({
+    invoiceIssueId: String(row.invoiceIssueId ?? ''),
+    items: (row.items ?? []) as InvoiceItem[],
+  })),
+);
+
+const selectablePageGroups = computed(() =>
+  pageGroups.value.filter(
+    (group) => getSelectableItems(group.invoiceIssueId, group.items).length > 0,
+  ),
+);
+
+const isPageAllChecked = computed(
+  () =>
+    selectablePageGroups.value.length > 0 &&
+    selectablePageGroups.value.every((group) =>
+      isGroupAllChecked(group.invoiceIssueId, group.items),
+    ),
+);
+
+const isPageIndeterminate = computed(() => {
+  if (isPageAllChecked.value) return false;
+  return selectablePageGroups.value.some((group) =>
+    getSelectableItems(group.invoiceIssueId, group.items).some((item) =>
+      isItemChecked(group.invoiceIssueId, item),
+    ),
+  );
+});
+
+function isGroupCheckboxDisabled(invoiceIssueId: string, items: InvoiceItem[]) {
+  return getSelectableItems(invoiceIssueId, items).length === 0;
+}
+
+function handleSelectPage(selected: boolean) {
+  for (const group of pageGroups.value) {
+    handleSelectGroupItems(selected, group.invoiceIssueId, group.items);
+  }
+}
+
 function updateSettledAmount(
   invoiceIssueId: string,
   item: InvoiceItem,
@@ -369,26 +398,18 @@ function handleConfirm() {
   }
 
   const invalidFee = fees.find(
-    (fee) => !fee.settledAmount || fee.settledAmount <= 0,
+    (fee) =>
+      !isSettledAmountWithinQuota(
+        fee.settledAmount,
+        fee.invoiceSettleableAmount,
+      ),
   );
   if (invalidFee) {
     message.warning(
-      `费用「${invalidFee.feeCodeName || '-'}」结算金额必须大于0`,
-    );
-    return;
-  }
-
-  const overflow = findFeeSettleableOverflow(
-    fees.map((fee) => ({
-      feeName: fee.feeCodeName,
-      invoiceSettleableAmount: fee.invoiceSettleableAmount,
-      orderFeeId: fee.orderFeeId,
-      settledAmount: fee.settledAmount,
-    })),
-  );
-  if (overflow) {
-    message.warning(
-      `费用「${overflow.feeName}」发票口径可结算余额不足，可用额度 ${formatAmount(overflow.settleable)}`,
+      settledAmountQuotaMessage(
+        invalidFee.feeCodeName,
+        invalidFee.invoiceSettleableAmount,
+      ),
     );
     return;
   }
@@ -450,6 +471,9 @@ defineExpose({ open: openDrawer });
               formatAmount(item.amount)
             }}</span>
           </span>
+          <span v-if="showSharedFeeHint" class="shared-fee-hint">
+            {{ SHARED_FEE_QUOTA_HINT }}
+          </span>
         </div>
       </div>
 
@@ -465,8 +489,50 @@ defineExpose({ open: openDrawer });
           row-key="id"
           v-model:expanded-row-keys="expandedRowKeys"
         >
+          <template #outerHeaderCell="{ column }">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                :checked="isPageAllChecked"
+                :indeterminate="isPageIndeterminate"
+                :disabled="selectablePageGroups.length === 0"
+                @change="(e) => handleSelectPage(e.target.checked)"
+              />
+            </template>
+            <template v-else>{{ column.title }}</template>
+          </template>
+
           <template #outerBodyCell="{ column, record, text }">
-            <template v-if="column.key === 'invoiceIssueTime'">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                :checked="
+                  isGroupAllChecked(
+                    record.invoiceIssueId ?? '',
+                    record.items ?? [],
+                  )
+                "
+                :indeterminate="
+                  isGroupIndeterminate(
+                    record.invoiceIssueId ?? '',
+                    record.items ?? [],
+                  )
+                "
+                :disabled="
+                  isGroupCheckboxDisabled(
+                    record.invoiceIssueId ?? '',
+                    record.items ?? [],
+                  )
+                "
+                @change="
+                  (e) =>
+                    handleSelectGroupItems(
+                      e.target.checked,
+                      record.invoiceIssueId ?? '',
+                      record.items ?? [],
+                    )
+                "
+              />
+            </template>
+            <template v-else-if="column.key === 'invoiceIssueTime'">
               {{ formatIssueTime(record.invoiceIssueTime) }}
             </template>
             <template v-else-if="column.key === 'currencyCode'">
@@ -570,8 +636,8 @@ defineExpose({ open: openDrawer });
                   ) ??
                   defaultSettledAmount(parentRecord?.invoiceIssueId ?? '', item)
                 "
-                :min="0"
-                :max="item.invoiceSettleableAmount"
+                :min="settledAmountBounds(item.invoiceSettleableAmount).min"
+                :max="settledAmountBounds(item.invoiceSettleableAmount).max"
                 :precision="2"
                 :disabled="
                   isItemDisabled(parentRecord?.invoiceIssueId ?? '', item)
@@ -687,9 +753,20 @@ defineExpose({ open: openDrawer });
   color: #283442;
 }
 
+.shared-fee-hint {
+  flex-basis: 100%;
+  color: #ad6800;
+}
+
 .add-invoice-drawer-body__table {
   flex: 1;
   min-height: 0;
+
+  :deep(.invoice-select-col) {
+    padding-right: 4px;
+    padding-left: 4px;
+    overflow: visible;
+  }
 }
 
 .add-invoice-drawer-body__pagination {

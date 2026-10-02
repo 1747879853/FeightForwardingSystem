@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calcOrderFeeProfitRmb,
   collectFeesForPostSubmitProfit,
+  deriveApprovedSettlementDisplayStatus,
   isOrderFeeEligibleForApplyChange,
   isOrderFeeEnteringOrRejectedStatus,
   isOrderFeeRejectedStatus,
@@ -15,6 +16,20 @@ import {
   resolveOrderFeeDisplayStatus,
   resolveSettlementDisplayLabel,
 } from './helpers';
+
+describe('负数费用结算状态', () => {
+  it('−100 结了 −50 是部分结算，结满才是结算完毕', () => {
+    expect(deriveApprovedSettlementDisplayStatus(-100, -50)).toBe(3);
+    expect(deriveApprovedSettlementDisplayStatus(-100, -100)).toBe(4);
+    expect(deriveApprovedSettlementDisplayStatus(-100, 0)).toBe(2);
+  });
+
+  it('正数费用仍按原来的部分结算和结算完毕', () => {
+    expect(deriveApprovedSettlementDisplayStatus(100, 50)).toBe(3);
+    expect(deriveApprovedSettlementDisplayStatus(100, 100)).toBe(4);
+    expect(deriveApprovedSettlementDisplayStatus(100, 0)).toBe(2);
+  });
+});
 
 describe('order-fee savable / display status', () => {
   it('展示状态优先 combinedFeeStatus', () => {

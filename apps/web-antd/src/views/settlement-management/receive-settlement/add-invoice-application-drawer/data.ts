@@ -141,6 +141,13 @@ export function buildInvoiceGroupRow(group: InvoiceGroup) {
 /** NestedDataTable 外层列（发票开出） */
 export const invoiceGroupColumns = [
   {
+    key: 'checkbox',
+    title: '',
+    width: 48,
+    align: 'center' as const,
+    className: 'invoice-select-col',
+  },
+  {
     dataIndex: 'applicationNo',
     key: 'applicationNo',
     title: '开出单号',

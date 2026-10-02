@@ -125,6 +125,31 @@ export function resolveOrderFeeDisplayStatus(fee: {
 }
 
 /**
+ * 审核通过的费用，按已结算量派生部分结算 / 结算完毕。
+ * 负数费用按绝对值比较：−100 结了 −50 是部分结算，结到 −100 才是结算完毕。
+ */
+export function deriveApprovedSettlementDisplayStatus(
+  amount: number,
+  settledAmount: number,
+) {
+  const feeAmount = Number(amount);
+  const settled = Number(settledAmount);
+  if (!Number.isFinite(feeAmount) || feeAmount === 0) {
+    return getFeeStatusValue.Approved;
+  }
+  const sign = feeAmount < 0 ? -1 : 1;
+  const signedAmount = feeAmount * sign;
+  const signedSettled = (Number.isFinite(settled) ? settled : 0) * sign;
+  if (signedSettled + 1e-6 >= signedAmount) {
+    return getFeeStatusValue.Settled;
+  }
+  if (signedSettled > 1e-6) {
+    return getFeeStatusValue.PartialSettlement;
+  }
+  return getFeeStatusValue.Approved;
+}
+
+/**
  * 是否可内联编辑并批量保存：录入/驳回，且未对账。
  * 申请修改/删除须走弹窗，不允许在表格内直接改。
  */

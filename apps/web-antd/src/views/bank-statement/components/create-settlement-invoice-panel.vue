@@ -38,8 +38,11 @@ import {
   getPaySideLabel,
 } from '../../settlement-management/receive-settlement/form-data';
 import {
-  findFeeSettleableOverflow,
-  remainingSharedSettleable,
+  hasSharedOrderFee,
+  isSettledAmountWithinQuota,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
+  SHARED_FEE_QUOTA_HINT,
   suggestInvoiceActualSettled,
 } from '../../settlement-management/receive-settlement/settlement-amount';
 
@@ -113,25 +116,8 @@ function itemKey(invoiceIssueId: string, item: InvoiceItem) {
   return invoiceIssueFeeKey(invoiceIssueId, item.orderFeeId);
 }
 
-function listSelectedAmounts() {
-  return selectedItemIds.value.map((rowKey) => {
-    const [, orderFeeId = ''] = rowKey.split('::');
-    return {
-      orderFeeId,
-      rowKey,
-      settledAmount: settledAmountMap.get(rowKey) ?? 0,
-    };
-  });
-}
-
-function defaultSettledAmount(invoiceIssueId: string, item: InvoiceItem) {
-  const rowKey = itemKey(invoiceIssueId, item);
-  return remainingSharedSettleable(
-    listSelectedAmounts(),
-    item.orderFeeId,
-    item.invoiceSettleableAmount ?? 0,
-    rowKey,
-  );
+function defaultSettledAmount(_invoiceIssueId: string, item: InvoiceItem) {
+  return item.invoiceSettleableAmount ?? 0;
 }
 
 /** 已选明细（供校验与参考值），含跨页勾选 */
@@ -149,6 +135,10 @@ const selectedItems = computed(() => {
         item != null,
     );
 });
+
+const showSharedFeeHint = computed(() =>
+  hasSharedOrderFee(selectedItems.value),
+);
 
 const suggestedActualSettled = computed(() =>
   suggestInvoiceActualSettled(
@@ -342,6 +332,34 @@ function handleSelectGroupItems(
   }
 }
 
+const pageGroups = computed(() =>
+  tableRows.value.map((row) => ({
+    invoiceIssueId: String(row.invoiceIssueId ?? ''),
+    items: (row.items ?? []) as InvoiceItem[],
+  })),
+);
+
+const isPageAllChecked = computed(
+  () =>
+    pageGroups.value.some((group) => group.items.length > 0) &&
+    pageGroups.value
+      .filter((group) => group.items.length > 0)
+      .every((group) => isGroupAllChecked(group.invoiceIssueId, group.items)),
+);
+
+const isPageIndeterminate = computed(() => {
+  if (isPageAllChecked.value) return false;
+  return pageGroups.value.some((group) =>
+    group.items.some((item) => isItemChecked(group.invoiceIssueId, item)),
+  );
+});
+
+function handleSelectPage(selected: boolean) {
+  for (const group of pageGroups.value) {
+    handleSelectGroupItems(selected, group.invoiceIssueId, group.items);
+  }
+}
+
 function updateSettledAmount(
   invoiceIssueId: string,
   item: InvoiceItem,
@@ -373,26 +391,14 @@ function validateSelection(): boolean {
 
   const invalidItem = items.find((item) => {
     const amount = settledAmountMap.get(item.rowKey) ?? 0;
-    return !amount || amount <= 0;
+    return !isSettledAmountWithinQuota(amount, item.invoiceSettleableAmount);
   });
   if (invalidItem) {
     message.warning(
-      `费用「${invalidItem.feeCode?.cnName || '-'}」结算金额必须大于0`,
-    );
-    return false;
-  }
-
-  const overflow = findFeeSettleableOverflow(
-    items.map((item) => ({
-      feeName: item.feeCode?.cnName,
-      invoiceSettleableAmount: item.invoiceSettleableAmount,
-      orderFeeId: item.orderFeeId,
-      settledAmount: settledAmountMap.get(item.rowKey) ?? 0,
-    })),
-  );
-  if (overflow) {
-    message.warning(
-      `费用「${overflow.feeName}」发票口径可结算余额不足，可用额度 ${formatAmount(overflow.settleable)}`,
+      settledAmountQuotaMessage(
+        invalidItem.feeCode?.cnName,
+        invalidItem.invoiceSettleableAmount,
+      ),
     );
     return false;
   }
@@ -500,8 +506,42 @@ defineExpose({ reload });
       row-key="id"
       v-model:expanded-row-keys="expandedRowKeys"
     >
+      <template #outerHeaderCell="{ column }">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="isPageAllChecked"
+            :indeterminate="isPageIndeterminate"
+            :disabled="pageGroups.every((group) => group.items.length === 0)"
+            @change="(e) => handleSelectPage(e.target.checked)"
+          />
+        </template>
+        <template v-else>{{ column.title }}</template>
+      </template>
+
       <template #outerBodyCell="{ column, record, text }">
-        <template v-if="column.key === 'invoiceIssueTime'">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="
+              isGroupAllChecked(record.invoiceIssueId ?? '', record.items ?? [])
+            "
+            :indeterminate="
+              isGroupIndeterminate(
+                record.invoiceIssueId ?? '',
+                record.items ?? [],
+              )
+            "
+            :disabled="(record.items ?? []).length === 0"
+            @change="
+              (e) =>
+                handleSelectGroupItems(
+                  e.target.checked,
+                  record.invoiceIssueId ?? '',
+                  record.items ?? [],
+                )
+            "
+          />
+        </template>
+        <template v-else-if="column.key === 'invoiceIssueTime'">
           {{ formatIssueTime(record.invoiceIssueTime) }}
         </template>
         <template v-else-if="column.key === 'currencyCode'">
@@ -600,8 +640,8 @@ defineExpose({ reload });
               ) ??
               defaultSettledAmount(parentRecord?.invoiceIssueId ?? '', item)
             "
-            :min="0"
-            :max="item.invoiceSettleableAmount"
+            :min="settledAmountBounds(item.invoiceSettleableAmount).min"
+            :max="settledAmountBounds(item.invoiceSettleableAmount).max"
             :precision="2"
             style="width: 130px"
             @change="
@@ -634,6 +674,9 @@ defineExpose({ reload });
     <div class="settlement-submit-bar">
       <div class="settlement-submit-bar__summary">
         <span>已选择 {{ selectedItemIds.length }} 条</span>
+        <span v-if="showSharedFeeHint" class="shared-fee-hint">
+          {{ SHARED_FEE_QUOTA_HINT }}
+        </span>
         <span class="settlement-submit-bar__actual">
           本次结算
           <InputNumber
@@ -677,6 +720,12 @@ defineExpose({ reload });
 .create-settlement-invoice-panel {
   :deep(.ant-card-body) {
     padding-top: 12px;
+  }
+
+  :deep(.invoice-select-col) {
+    padding-right: 4px;
+    padding-left: 4px;
+    overflow: visible;
   }
 }
 
@@ -749,5 +798,10 @@ defineExpose({ reload });
 
 .settlement-submit-bar__hint {
   color: #8a97a8;
+}
+
+.shared-fee-hint {
+  flex-basis: 100%;
+  color: #ad6800;
 }
 </style>

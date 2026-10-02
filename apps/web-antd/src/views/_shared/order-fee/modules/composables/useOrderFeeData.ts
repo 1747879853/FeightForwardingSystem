@@ -16,6 +16,7 @@ import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 
 import { createFeeTableDirtyTracker } from '#/utils/fee-table-dirty';
 import { useOrderFeeAdapter } from '../../use-adapter';
+import { deriveApprovedSettlementDisplayStatus } from '../utils/helpers';
 import { sortOrderFeeList } from '../utils/order-fee-sort';
 
 /**
@@ -343,14 +344,10 @@ export function useOrderFeeData(
 
       // 根据结算状态派生展示态：同步 feeStatus 与 combinedFeeStatus，避免 UI 口径分叉
       if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
-        const amount = item.amount || 0;
-        const settledAmount = item.settledAmount || 0;
-        let derived = feeConstants.getFeeStatusValue.Approved;
-        if (settledAmount >= amount && amount > 0) {
-          derived = feeConstants.getFeeStatusValue.Settled;
-        } else if (settledAmount > 0 && settledAmount < amount) {
-          derived = feeConstants.getFeeStatusValue.PartialSettlement;
-        }
+        const derived = deriveApprovedSettlementDisplayStatus(
+          item.amount ?? 0,
+          item.settledAmount ?? 0,
+        );
         item.feeStatus = derived;
         item.combinedFeeStatus = derived;
       }

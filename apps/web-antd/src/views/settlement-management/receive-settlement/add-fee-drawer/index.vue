@@ -26,7 +26,10 @@ import {
   collectDisplayCurrencies,
   collectForeignCurrencies,
   findMissingExchangeRate,
+  isSettledAmountWithinQuota,
   missingExchangeRateMessage,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
 } from '../settlement-amount';
 import {
   type AddFeeDrawerProps,
@@ -366,21 +369,15 @@ function handleConfirm() {
   }
 
   const invalidFee = fees.find(
-    (fee) => !fee.settledAmount || fee.settledAmount <= 0,
+    (fee) =>
+      !isSettledAmountWithinQuota(fee.settledAmount, fee.remainingAmount),
   );
   if (invalidFee) {
     message.warning(
-      `费用「${invalidFee.feeCodeName || '-'}」结算金额必须大于0`,
-    );
-    return;
-  }
-
-  const overLimitFee = fees.find(
-    (fee) => fee.settledAmount > fee.remainingAmount,
-  );
-  if (overLimitFee) {
-    message.warning(
-      `费用「${overLimitFee.feeCodeName || '-'}」结算金额不能超过剩余额度 ${formatAmount(overLimitFee.remainingAmount)}`,
+      settledAmountQuotaMessage(
+        invalidFee.feeCodeName,
+        invalidFee.remainingAmount,
+      ),
     );
     return;
   }
@@ -527,8 +524,8 @@ defineExpose({ open: openDrawer });
                   :value="
                     settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0
                   "
-                  :min="0"
-                  :max="fee.remainingAmount"
+                  :min="settledAmountBounds(fee.remainingAmount).min"
+                  :max="settledAmountBounds(fee.remainingAmount).max"
                   :precision="2"
                   :disabled="disabledFeeIdSet.has(fee.id)"
                   style="width: 130px"
