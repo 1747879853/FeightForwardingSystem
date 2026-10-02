@@ -1790,7 +1790,7 @@ GET /api/services/app/SeaExportAdmin/GetServiceTypesByPOL?polId=1&clientId=3fa85
 | --- | --- | --- |
 | serviceType | int | 服务项（ServiceType枚举值） |
 | sortId | int | 排序id |
-| checked | bool | 是否勾选（true=该客户未排除此服务项，false=已排除） |
+| checked | bool | 是否勾选（true=该客户未排除此服务项，false=已排除）。排除项按**命中的那份配置**取：起运港有单独配置时取该起运港的排除项，落到默认配置时取合作客户里针对默认配置（起运港为空）设置的排除项。2026-10-02 修正，之前一律按入参起运港取，针对默认配置设置的排除项永远不生效 |
 | userAttribute | long | 该服务项所需的用户属性（UserAttribute flags枚举值，可组合：1=操作,2=客服,4=单证,8=商务,16=销售,32=财务,64=海外客服,128=人事） |
 | seServiceShows | object[] | 展示字段列表 |
 | seServiceLocks | object[] | 完成后不允许修改字段列表 |
@@ -2059,6 +2059,7 @@ GET /api/services/app/SeaExportAdmin/GetGroupedListAsync?groupField=19&ETDStart=
 
 | 日期 | 修改内容 |
 | --- | --- | --- |
+| 2026-10-02 | Bug 修复：`GetServiceTypesByPOLAsync` 的委托单位排除项改为按命中的那份配置取（落到默认配置时取针对默认配置设置的排除项），之前针对默认配置设置的排除项永远不生效。出入参不变 |
 | 2026-10-01 | 列表票根不再返回 `userId`、`orgId`、`creatorUserId`、`lastModifierUserId`、`isDeleted`、`deleterUserId`、`deletionTime`、`localCurrencyId`。`orgs` 每级只留 `name`。仍返回 `creationTime`、`lastModificationTime`、`localCurrencyCode` |
 | 2026-10-01 | 列表 `GetPagedListAsync` 出参改为 `SeaExportListDto`，只留列表列。详情仍是 `SeaExportDto`。不再返回费用明细、箱子明细、品名、提单摘要。新增 `transportOrder.hasOrderFee`。箱量文本和 TEU 仍返回。路径：`/api/services/app/SeaExportAdmin/GetPagedListAsync` |
 | 2026-09-28 | 海运出口新增 **`isPickedUp` 是否提箱** | （bool，默认 false）。列表和详情返回。新增、编辑、批量编辑不接收，复制出的新票为 false。只有荣E通场站查询 `RongETongAdmin/RealQueryAsync` 在对方返回了箱子并完成回写时把它改为 true。 |
