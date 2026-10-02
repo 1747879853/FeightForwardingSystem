@@ -41,7 +41,8 @@ async function connect(
   connection = next;
   try {
     await next.start();
-  } catch {
+  } catch (error) {
+    console.warn('[personal-mail] SignalR 连接失败', error);
     if (connection === next) connection = null;
     if (stopped) return;
     retryTimer = window.setTimeout(() => {
