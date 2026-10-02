@@ -311,6 +311,7 @@ onActivated(() => {
             :can-reply="canReply"
             :can-set-read="canSetRead"
             :detail="mail.detail.value"
+            :downloading-indexes="mail.downloadingIndexes.value"
             :loading="mail.detailLoading.value"
             :show-back="narrow"
             @back="mail.narrowReading.value = false"

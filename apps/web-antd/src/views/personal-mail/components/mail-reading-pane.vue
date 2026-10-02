@@ -27,6 +27,7 @@ const props = withDefaults(
     canReply?: boolean;
     canSetRead?: boolean;
     detail: null | PersonalMailAdminApi.MailDetail;
+    downloadingIndexes?: number[];
     loading?: boolean;
     showBack?: boolean;
   }>(),
@@ -37,6 +38,7 @@ const props = withDefaults(
     canMove: false,
     canReply: false,
     canSetRead: false,
+    downloadingIndexes: () => [],
     loading: false,
     showBack: false,
   },
@@ -104,6 +106,10 @@ function fileIcon(fileName?: null | string) {
   if (['mp3', 'wav', 'aac', 'flac'].includes(ext)) return 'lucide:music';
   if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) return 'lucide:video';
   return 'lucide:paperclip';
+}
+
+function isFileDownloading(file: PersonalMailAdminApi.MailAttachmentSummary) {
+  return props.downloadingIndexes.includes(file.index);
 }
 
 function fileTone(fileName?: null | string) {
@@ -356,14 +362,24 @@ function hiddenAddressCount(
                     :key="file.index"
                     type="button"
                     class="mail-read__file"
-                    :class="fileTone(file.fileName)"
-                    :disabled="!canDownload"
+                    :class="[
+                      fileTone(file.fileName),
+                      { 'is-downloading': isFileDownloading(file) },
+                    ]"
+                    :disabled="!canDownload || isFileDownloading(file)"
+                    :aria-busy="isFileDownloading(file)"
                     :title="
-                      canDownload
-                        ? `下载 ${file.fileName || '附件'}`
-                        : file.fileName || '附件'
+                      isFileDownloading(file)
+                        ? `正在下载 ${file.fileName || '附件'}`
+                        : canDownload
+                          ? `下载 ${file.fileName || '附件'}`
+                          : file.fileName || '附件'
                     "
-                    @click="canDownload && emit('download', file)"
+                    @click="
+                      canDownload &&
+                      !isFileDownloading(file) &&
+                      emit('download', file)
+                    "
                   >
                     <span class="mail-read__file-icon">
                       <IconifyIcon :icon="fileIcon(file.fileName)" />
@@ -374,13 +390,20 @@ function hiddenAddressCount(
                       </span>
                       <span class="mail-read__file-meta">
                         {{ formatByteSize(file.size) || '未知大小' }}
-                        <template v-if="canDownload"> · 点击下载</template>
+                        <template v-if="isFileDownloading(file)">
+                          · 正在下载
+                        </template>
+                        <template v-else-if="canDownload"> · 点击下载</template>
                       </span>
                     </span>
                     <IconifyIcon
                       v-if="canDownload"
                       class="mail-read__file-dl"
-                      icon="lucide:download"
+                      :icon="
+                        isFileDownloading(file)
+                          ? 'lucide:loader-circle'
+                          : 'lucide:download'
+                      "
                     />
                   </button>
                 </div>
@@ -733,6 +756,13 @@ function hiddenAddressCount(
   cursor: default;
 }
 
+.mail-read__file.is-downloading,
+.mail-read__file.is-downloading:disabled {
+  cursor: progress;
+  background: hsl(var(--primary) / 6%);
+  border-color: hsl(var(--primary) / 35%);
+}
+
 .mail-read__file-icon {
   display: inline-flex;
   flex: none;
@@ -813,9 +843,20 @@ function hiddenAddressCount(
   transition: opacity 0.15s ease;
 }
 
-.mail-read__file:hover:not(:disabled) .mail-read__file-dl {
+.mail-read__file:hover:not(:disabled) .mail-read__file-dl,
+.mail-read__file.is-downloading .mail-read__file-dl {
   color: hsl(var(--primary));
   opacity: 1;
+}
+
+.mail-read__file.is-downloading .mail-read__file-dl {
+  animation: mail-file-spin 0.8s linear infinite;
+}
+
+@keyframes mail-file-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .mail-read__body {

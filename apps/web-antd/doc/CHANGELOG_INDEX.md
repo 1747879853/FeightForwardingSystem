@@ -13,6 +13,8 @@
 
 ## 2026-10
 
+- [2026-10-02] [个人邮箱列表布局与附件下载反馈](./changelogs/change-log-2026-10-02-personal-mail-list-layout.md)
+
 - [2026-10-02] [发票开出保存并新建](./changelogs/change-log-2026-10-02-invoice-issue-save-and-new.md)
 
 - [2026-10-02] [TAPD #1000204 发票开出抽屉费用明细原币币别](./changelogs/change-log-2026-10-02-tapd-1000204-invoice-issue-fee-orig-currency.md)

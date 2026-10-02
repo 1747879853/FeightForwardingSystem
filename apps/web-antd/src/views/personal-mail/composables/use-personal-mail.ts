@@ -34,6 +34,9 @@ export function usePersonalMail() {
   const folderLoading = shallowRef(false);
   const listLoading = shallowRef(false);
   const detailLoading = shallowRef(false);
+  const downloadingAttachments = shallowRef<
+    Array<{ index: number; uid: number }>
+  >([]);
   const accountMissing = shallowRef(false);
   const booted = shallowRef(false);
   const narrowReading = shallowRef(false);
@@ -240,15 +243,37 @@ export function usePersonalMail() {
     return true;
   }
 
+  const downloadingIndexes = computed(() => {
+    const uid = detail.value?.uid;
+    if (uid == null) return [];
+    return downloadingAttachments.value
+      .filter((item) => item.uid === uid)
+      .map((item) => item.index);
+  });
+
   async function downloadAttachment(
     file: PersonalMailAdminApi.MailAttachmentSummary,
   ) {
     if (!detail.value) return;
+    const uid = detail.value.uid;
+    const folderName = detail.value.folderName || activeFolderName.value;
+    if (
+      downloadingAttachments.value.some(
+        (item) => item.uid === uid && item.index === file.index,
+      )
+    ) {
+      return;
+    }
+    const startedAt = Date.now();
+    downloadingAttachments.value = [
+      ...downloadingAttachments.value,
+      { index: file.index, uid },
+    ];
     try {
       const blob = await downloadPersonalMailAttachment({
         attachmentIndex: file.index,
-        folderName: detail.value.folderName || activeFolderName.value,
-        uid: detail.value.uid,
+        folderName,
+        uid,
       });
       downloadFileFromBlob({
         fileName: file.fileName || '附件',
@@ -257,6 +282,16 @@ export function usePersonalMail() {
     } catch (error) {
       const text = await readRequestErrorMessage(error);
       message.error(text || '附件下载失败');
+    } finally {
+      const remain = 500 - (Date.now() - startedAt);
+      if (remain > 0) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, remain);
+        });
+      }
+      downloadingAttachments.value = downloadingAttachments.value.filter(
+        (item) => !(item.uid === uid && item.index === file.index),
+      );
     }
   }
 
@@ -273,6 +308,7 @@ export function usePersonalMail() {
     detail,
     detailLoading,
     downloadAttachment,
+    downloadingIndexes,
     folderLoading,
     folders,
     items,
