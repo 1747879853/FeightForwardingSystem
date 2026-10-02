@@ -35,6 +35,7 @@ import {
   formatPolLabel,
   getPortGroupKey,
   isNotEntrustingUnitApiError,
+  readApiErrorMessage,
   normalizePortGroups,
   type SelectOption,
 } from './data';
@@ -129,7 +130,7 @@ async function loadData() {
       syncExceptServiceSnapshot();
       return;
     }
-    throw error;
+    message.error(readApiErrorMessage(error) || '加载服务项目失败');
   } finally {
     loading.value = false;
   }

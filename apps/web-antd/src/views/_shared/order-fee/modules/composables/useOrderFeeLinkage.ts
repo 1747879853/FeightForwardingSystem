@@ -416,13 +416,15 @@ export function useOrderFeeLinkage(
 
       if (ctns.length === 0) {
         row['unit'] = '票';
+        row['unit_value'] = '票';
         row['quantity'] = 1;
         return;
       }
 
-      // 填充第一个箱型的名称作为单位
+      // 填充第一个箱型的名称作为单位。展示读 unit_value，只改 unit 时单元格仍显示「箱型」
       const firstCtnName = ctns[0]?.ctnCode?.ctnName || '';
       row['unit'] = firstCtnName;
+      row['unit_value'] = firstCtnName;
 
       // 计算相同箱型的数量
       const sameCtnCount = ctns.filter(

@@ -77,6 +77,8 @@ const emits = defineEmits(['add', 'edit']);
 const editId = ref<number | string>('');
 const localKey = ref('');
 const isEdit = ref(false);
+/** 审核/锁定时双击只查看，不回写账期 */
+const viewOnly = ref(false);
 const attachments = ref<BillingPeriodAdminApi.AttachmentItemDto[]>([]);
 const loading = ref(false);
 const uploading = ref(false);
@@ -341,7 +343,10 @@ const handlePreview = (row: BillingPeriodAdminApi.AttachmentItemDto) => {
 
 const [Modal, modalApi] = useVbenModal({
   onConfirm: async () => {
-    console.info('onConfirm');
+    if (viewOnly.value) {
+      modalApi.close();
+      return;
+    }
     const paymentValues = await paymentFormApi.getValues();
     console.info('paymentValues', paymentValues);
 
@@ -366,9 +371,16 @@ const [Modal, modalApi] = useVbenModal({
     // 保存成功才关闭，保存失败保持打开以保留用户已填写的内容
   },
   onOpenChange(isOpen: boolean) {
+    if (!isOpen) {
+      viewOnly.value = false;
+      paymentFormApi.setState({ commonConfig: { disabled: false } });
+      modalApi.setState({ showConfirmButton: true });
+      return;
+    }
     if (isOpen) {
       let data = modalApi.getData<Record<string, any>>();
-      console.info('data', data);
+      viewOnly.value = !!data?.viewOnly;
+      modalApi.setState({ showConfirmButton: !viewOnly.value });
       if (data?.id || data?._localKey) {
         editId.value = data.id ?? 0;
         localKey.value = data._localKey || '';
@@ -441,6 +453,9 @@ const [Modal, modalApi] = useVbenModal({
         };
         paymentFormApi.setValues(formData);
         loadAttachments(data);
+        paymentFormApi.setState({
+          commonConfig: { disabled: viewOnly.value },
+        });
       } else {
         isEdit.value = false;
         editId.value = 0;
@@ -454,12 +469,16 @@ const [Modal, modalApi] = useVbenModal({
           { fieldName: 'addDays', hide: false },
         ]);
         attachments.value = [];
+        paymentFormApi.setState({
+          commonConfig: { disabled: viewOnly.value },
+        });
       }
       loadContractAttachmentTypeId();
     }
   },
 });
 const pageTitle = computed(() => {
+  if (viewOnly.value) return '账期详情';
   return isEdit.value
     ? $t('ui.actionTitle.edit', [$t('seaExport.client.paymentTerms.title')])
     : $t('ui.actionTitle.create', [$t('seaExport.client.paymentTerms.title')]);
@@ -508,11 +527,12 @@ const pageTitle = computed(() => {
 
         <div
           class="billing-panel__body billing-panel__body--attach"
-          @mouseenter="onZoneEnter(BILLING_PASTE_ZONE)"
-          @mouseleave="onZoneLeave(BILLING_PASTE_ZONE)"
+          @mouseenter="viewOnly ? undefined : onZoneEnter(BILLING_PASTE_ZONE)"
+          @mouseleave="viewOnly ? undefined : onZoneLeave(BILLING_PASTE_ZONE)"
         >
           <Spin class="billing-attach-spin" :spinning="loading || uploading">
             <Upload
+              v-if="!viewOnly"
               :before-upload="handleBeforeUpload"
               :show-upload-list="false"
               :disabled="uploading"
@@ -597,6 +617,7 @@ const pageTitle = computed(() => {
                     <IconifyIcon icon="mdi:download" />
                   </Button>
                   <Button
+                    v-if="!viewOnly"
                     type="text"
                     size="small"
                     danger

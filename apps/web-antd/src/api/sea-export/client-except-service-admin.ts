@@ -47,6 +47,8 @@ export const getClientExceptServices = (id: string) => {
     ClientExceptServiceAdminApi.ClientExceptServicePolGroupDto[]
   >(`${API_PREFIX}/GetClientExceptServicesAsync`, {
     params: { id },
+    // 非委托单位会返回业务错误；页内 Alert 已提示，避免打开客户详情时再弹一条
+    skipErrorMessage: true,
   });
 };
 
