@@ -1310,7 +1310,7 @@ defineExpose({
   <Drawer
     v-model:open="drawerVisible"
     title="选择已提交的开票申请"
-    width="1200"
+    width="1400"
     class="fee-selection-drawer"
     :body-style="{ padding: '16px', background: '#f8fafc' }"
     :footer-style="{

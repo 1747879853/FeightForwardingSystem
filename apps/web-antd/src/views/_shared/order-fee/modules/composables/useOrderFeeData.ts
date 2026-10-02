@@ -341,8 +341,22 @@ export function useOrderFeeData(
         item.taskStatus = '';
       }
 
-      // 根据结算状态派生展示态：同步 feeStatus 与 combinedFeeStatus，避免 UI 口径分叉
-      if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
+      // 申请修改/删除审核中时，组合状态必须保持 6/7。
+      // feeStatus 仍是审核通过，若按结算派生会把 combinedFeeStatus 盖回「审核通过」。
+      const pendingModify =
+        item.modifyOrderFeeTasks?.[0]?.taskStatus === 0 ||
+        Number(item.combinedFeeStatus) ===
+          feeConstants.getFeeStatusValue.ApplyModify;
+      const pendingDelete =
+        !pendingModify &&
+        (item.deleteOrderFeeTasks?.[0]?.taskStatus === 0 ||
+          Number(item.combinedFeeStatus) ===
+            feeConstants.getFeeStatusValue.ApplyDelete);
+      if (pendingModify) {
+        item.combinedFeeStatus = feeConstants.getFeeStatusValue.ApplyModify;
+      } else if (pendingDelete) {
+        item.combinedFeeStatus = feeConstants.getFeeStatusValue.ApplyDelete;
+      } else if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
         const amount = item.amount || 0;
         const settledAmount = item.settledAmount || 0;
         let derived = feeConstants.getFeeStatusValue.Approved;

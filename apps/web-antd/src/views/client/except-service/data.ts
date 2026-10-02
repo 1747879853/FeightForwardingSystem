@@ -26,16 +26,20 @@ export function getPortGroupKey(polId?: number | string | null) {
   return isDefaultPolConfig(polId) ? '__default_pol__' : String(polId);
 }
 
-/** 后端非委托单位校验错误（Get/Edit ClientExceptServices） */
-export function isNotEntrustingUnitApiError(error: unknown): boolean {
+export function readApiErrorMessage(error: unknown): string {
   const responseData = (
     error as { response?: { data?: { error?: { message?: string } } } }
   )?.response?.data;
-  const message =
+  return (
     responseData?.error?.message ||
     (error as { message?: string })?.message ||
-    '';
-  return /非委托单位/.test(message);
+    ''
+  );
+}
+
+/** 后端非委托单位校验错误（Get/Edit ClientExceptServices） */
+export function isNotEntrustingUnitApiError(error: unknown): boolean {
+  return /非委托单位/.test(readApiErrorMessage(error));
 }
 
 export function formatPolLabel(

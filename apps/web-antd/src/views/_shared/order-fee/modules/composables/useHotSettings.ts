@@ -15,6 +15,7 @@ import {
   resolveSettlementDisplayLabel,
 } from '../utils/helpers';
 import { applyHotCellChrome } from '../utils/hot-cell-render';
+import { visualRowToSourceIndex } from '../utils/hot-refresh';
 
 /** 真实用户操作的 afterChange source 白名单（联动程序写入不在此列，不会被误标记） */
 const USER_EDIT_SOURCES = new Set([
@@ -616,8 +617,10 @@ export function useHotSettings(
       value: any,
       cellProperties: any,
     ) {
-      const rowData = getDataSource()[row];
-      const paint = getRowPaintMeta(row, rowData);
+      // afterRenderer 的 row 是视觉行；与 cells() 一样按物理行取数据和底色缓存
+      const sourceRow = visualRowToSourceIndex(this, row);
+      const rowData = getDataSource()[sourceRow];
+      const paint = getRowPaintMeta(sourceRow, rowData);
 
       if (
         fieldPermission.masked(String(prop), rowData?.id ? rowData : undefined)

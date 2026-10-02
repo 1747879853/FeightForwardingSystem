@@ -26,6 +26,7 @@ import {
   paintCheckboxCell,
   paintEllipsisCell,
 } from '../utils/hot-cell-render';
+import { visualRowToSourceIndex } from '../utils/hot-refresh';
 import { getFeeInvoiceStatusTextColor } from '#/views/settlement-management/invoice-issue/invoice-status';
 
 const FEE_REJECT_TIP_CLASS = 'fee-reject-help-floating-tip';
@@ -111,7 +112,8 @@ export function useHotColumns(
           ? selectedRowKeys
           : selectedRowKeys.value;
 
-        const rowData = currentDataSource[row];
+        const rowData =
+          currentDataSource[visualRowToSourceIndex(instance, row)];
         const rowKey = (rowData as any)?._rowKey;
         const isSelected = !!(
           rowKey && currentSelectedRowKeys.includes(rowKey)
@@ -163,7 +165,8 @@ export function useHotColumns(
           const currentDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = currentDataSource[row];
+          const rowData =
+            currentDataSource[visualRowToSourceIndex(instance, row)];
           const invoiceStatus = (rowData as any)?.invoiceStatus;
           const statusLabel = getInvoiceStatusLabel(invoiceStatus);
           const statusColor = getFeeInvoiceStatusTextColor(invoiceStatus);
@@ -211,7 +214,9 @@ export function useHotColumns(
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = actualDataSource[row] as any;
+          const rowData = actualDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const isNewRow = !rowData?.id || rowData.id === '';
           const rawId = rowData?.feeCodeId_value ?? value;
           const fullLabel =
@@ -278,7 +283,9 @@ export function useHotColumns(
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = actualDataSource[row] as any;
+          const rowData = actualDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const rawId = rowData?.industryCategory_value ?? value;
           const label =
             lookupDropdownLabel(
@@ -341,7 +348,9 @@ export function useHotColumns(
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = actualDataSource[row] as any;
+          const rowData = actualDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const rawId = rowData?.settlementId_value ?? value;
           const cachedOptions = currentOptionsCache.value || [];
           const fromCache = resolveSettlementDisplayLabel(
@@ -393,7 +402,9 @@ export function useHotColumns(
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = actualDataSource[row] as any;
+          const rowData = actualDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const rawId = rowData?.currencyId_value ?? value;
           const label =
             lookupDropdownLabel(dropdownSources.value.currencyList, rawId) ||
@@ -440,7 +451,9 @@ export function useHotColumns(
           const actualDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = actualDataSource[row] as any;
+          const rowData = actualDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const raw = rowData?.unit_value ?? value;
           const label =
             lookupDropdownLabel(dropdownSources.value.unitList, raw) ||
@@ -581,7 +594,9 @@ export function useHotColumns(
           const currentDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = currentDataSource[row] as any;
+          const rowData = currentDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const statusValue =
             value ?? rowData?.combinedFeeStatus ?? rowData?.feeStatus;
           const label = getFeeStatusLabel(statusValue);
@@ -748,7 +763,9 @@ export function useHotColumns(
           const currentDataSource = Array.isArray(dataSource)
             ? dataSource
             : dataSource.value;
-          const rowData = currentDataSource[row] as any;
+          const rowData = currentDataSource[
+            visualRowToSourceIndex(instance, row)
+          ] as any;
           const statementNum = getStatementNumsText(rowData);
           return paintEllipsisCell(td, statementNum, {
             align: 'center',

@@ -5,6 +5,18 @@
 import { applyHotCellChrome } from './hot-cell-render';
 
 /**
+ * 自定义 renderer / afterRenderer 的 row 是视觉行。
+ * 拖动排序只改视觉映射，按下标读 dataSource 必须先换成物理行。
+ */
+export function visualRowToSourceIndex(hot: any, visualRow: number): number {
+  if (hot && typeof hot.toPhysicalRow === 'function') {
+    const physical = hot.toPhysicalRow(visualRow);
+    if (typeof physical === 'number' && physical >= 0) return physical;
+  }
+  return visualRow;
+}
+
+/**
  * 预警高亮：用 class 切换（与 afterRenderer 一致），不再写内联 !important。
  * @param touchFeeIds 若传入，只刷新这些费用 id 对应行（悬停切换时用 prev∪next，避免全表扫格）
  */

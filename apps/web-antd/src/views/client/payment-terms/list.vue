@@ -414,8 +414,7 @@ const [Grid, gridApi] = useVbenVxeGrid<BillingPeriodRow>({
   },
   gridEvents: {
     cellDblclick: ({ row }: { row: BillingPeriodRow }) => {
-      if (props.readonly) return;
-      editContact(row);
+      editContact(row, props.readonly);
     },
   },
 });
@@ -453,8 +452,8 @@ const addContact = () => {
   modalApi.open();
 };
 
-const editContact = (data: BillingPeriodRow) => {
-  modalApi.setData(data).open();
+const editContact = (data: BillingPeriodRow, viewOnly = false) => {
+  modalApi.setData({ ...data, viewOnly }).open();
 };
 </script>
 

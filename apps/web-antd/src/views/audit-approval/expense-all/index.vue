@@ -401,16 +401,12 @@ const changeTableType = (type: string) => {
 </script>
 
 <template>
-  <!-- 内容区 flex 纵向布局：顶部任务列表与下方费用明细按高度自适应。
-       小屏优先压缩查询区高度，保证票列表能看到多行。 -->
+  <!-- 票列表占剩余高度；下方费用明细收缩，避免大片空白把票表挤成两三行。 -->
   <Page
     auto-content-height
     content-class="expense-review-page flex flex-col overflow-hidden"
   >
-    <!-- 顶部任务列表：保持足够占比给票表；查询区靠 compact + 样式压缩，避免表体只剩一行 -->
-    <Grid
-      class="expense-task-grid mb-2 h-[44%] max-h-[480px] min-h-[280px] flex-shrink-0"
-    >
+    <Grid class="expense-task-grid mb-2 min-h-[280px] min-w-0 flex-1">
       <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
       <template #toolbar-actions>
         <GroupingTabs
@@ -463,9 +459,9 @@ const changeTableType = (type: string) => {
         />
       </template>
     </Grid>
-    <!-- 费用明细：占据剩余全部高度(flex-1)，min-h-0 允许内部表格按需收缩 -->
+    <!-- 费用明细收缩到约三分之一高，合计利润条仍留在这块底部 -->
     <Detail
-      class="min-h-0 flex-1"
+      class="expense-fee-pane h-[34%] max-h-[360px] min-h-[200px] shrink-0"
       :orderName="orderName"
       :transportOrderId="transportOrderId"
       :entityId="entityId"
@@ -479,9 +475,13 @@ const changeTableType = (type: string) => {
 <style scoped lang="scss">
 @media (max-height: 820px) {
   .expense-task-grid {
-    // 矮屏：略提高顶部下限，配合已压缩的查询区，保证票表至少能看到多行
-    min-height: 260px !important;
-    max-height: 52vh !important;
+    min-height: 200px !important;
+  }
+
+  .expense-fee-pane {
+    height: 30% !important;
+    min-height: 168px !important;
+    max-height: 240px !important;
   }
 }
 
