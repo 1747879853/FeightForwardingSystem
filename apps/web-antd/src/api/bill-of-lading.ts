@@ -185,7 +185,8 @@ export interface BillCount {
   totalCount: number;
   pendingSignOutCount: number;
   overdueUnReceivedCount: number;
-  pendingAuditCount: number;
+  /** 已扣单数量，状态为已扣单（6），口径同列表 IsDeducted=true */
+  deductedCount: number;
 }
 export interface BillSubmitItem {
   id: string;

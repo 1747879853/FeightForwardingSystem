@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { BillAction, BillCount, BillOfLading } from '#/api/bill-of-lading';
 import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
 import { Button, Tag, Tooltip } from 'ant-design-vue';
@@ -37,12 +36,11 @@ import DetailModal from './detail-modal.vue';
 import MoneyCell from './money-cell.vue';
 import StatusCell from './status-cell.vue';
 defineOptions({ name: 'BillOfLadingList' });
-const router = useRouter();
 const actionModal = ref<InstanceType<typeof ActionModal>>();
 const detailModal = ref<InstanceType<typeof DetailModal>>();
 const selected = ref<BillOfLading[]>([]);
 const counts = ref<BillCount>();
-const cardFilter = ref<'all' | 'overdue' | 'pending'>('all');
+const cardFilter = ref<'all' | 'deducted' | 'overdue' | 'pending'>('all');
 const tableConfigStore = useTableConfigStore();
 const GROUP_CONFIG_NAME = 'group_config_BillOfLadingList';
 const grouping = useListGrouping({
@@ -118,7 +116,9 @@ const queryList = createPagedListQuery(
           ? { Status: 4 }
           : cardFilter.value === 'overdue'
             ? { IsOverdueUnpaid: true }
-            : {}),
+            : cardFilter.value === 'deducted'
+              ? { IsDeducted: true }
+              : {}),
       }),
   },
 );
@@ -253,26 +253,22 @@ onActivated(() => {
         </span>
       </button>
       <button
-        v-access:code="'Admin.BillOfLading.Audit'"
         type="button"
-        class="bill-stat bill-stat--audit"
-        aria-label="进入签出审核"
-        @click="router.push('/audit-approval/bill-of-lading-review')"
+        class="bill-stat bill-stat--deducted"
+        :class="{ 'is-active': cardFilter === 'deducted' }"
+        :aria-pressed="cardFilter === 'deducted'"
+        @click="selectCard('deducted')"
       >
         <span class="bill-stat__icon">
-          <IconifyIcon icon="lucide:clipboard-check" />
+          <IconifyIcon icon="lucide:lock" />
         </span>
         <span class="bill-stat__main">
-          <span class="bill-stat__label">待我审核</span>
+          <span class="bill-stat__label">已扣单</span>
           <strong
             class="bill-stat__value"
-            :class="{ 'is-warn': (counts?.pendingAuditCount ?? 0) > 0 }"
-            >{{ counts?.pendingAuditCount ?? '—' }}</strong
+            :class="{ 'is-deducted': (counts?.deductedCount ?? 0) > 0 }"
+            >{{ counts?.deductedCount ?? '—' }}</strong
           >
-        </span>
-        <span class="bill-stat__enter">
-          进入
-          <IconifyIcon icon="lucide:arrow-up-right" />
         </span>
       </button>
     </div>
@@ -432,9 +428,9 @@ onActivated(() => {
   background: #fef2f2;
 }
 
-.bill-stat--audit .bill-stat__icon {
-  color: #d97706;
-  background: #fffbeb;
+.bill-stat--deducted .bill-stat__icon {
+  color: #c026d3;
+  background: #fdf4ff;
 }
 
 .bill-stat__main {
@@ -468,8 +464,8 @@ onActivated(() => {
   color: #ef4444;
 }
 
-.bill-stat__value.is-warn {
-  color: #d97706;
+.bill-stat__value.is-deducted {
+  color: #c026d3;
 }
 
 .bill-days--over {
@@ -480,27 +476,6 @@ onActivated(() => {
 .bill-days--early {
   font-weight: 600;
   color: #389e0d;
-}
-
-.bill-stat__enter {
-  display: inline-flex;
-  flex: none;
-  gap: 2px;
-  align-items: center;
-  height: 22px;
-  padding: 0 6px;
-  font-size: 12px;
-  line-height: 1;
-  color: #6b7280;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-}
-
-.bill-stat--audit:hover .bill-stat__enter {
-  color: #2563eb;
-  background: #eff6ff;
-  border-color: #bfdbfe;
 }
 
 .dark .bill-stat {
@@ -515,8 +490,7 @@ onActivated(() => {
   box-shadow: 0 0 0 1px #3b82f6;
 }
 
-.dark .bill-stat__label,
-.dark .bill-stat__enter {
+.dark .bill-stat__label {
   color: hsl(var(--muted-foreground));
 }
 
@@ -524,16 +498,11 @@ onActivated(() => {
   color: hsl(var(--foreground));
 }
 
-.dark .bill-stat__enter {
-  background: transparent;
-  border-color: hsl(var(--border));
-}
-
 .dark .bill-stat__value.is-danger {
   color: #f87171;
 }
 
-.dark .bill-stat__value.is-warn {
-  color: #fbbf24;
+.dark .bill-stat__value.is-deducted {
+  color: #e879f9;
 }
 </style>
