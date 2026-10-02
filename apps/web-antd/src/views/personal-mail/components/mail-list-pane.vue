@@ -235,8 +235,13 @@ function senderText(mail: PersonalMailAdminApi.MailSummary) {
   border-bottom: 1px solid hsl(var(--border));
 }
 
-.mail-list__row.is-active {
-  background: hsl(var(--primary) / 8%);
+.mail-list__row:hover {
+  background: hsl(var(--primary) / 10%);
+}
+
+.mail-list__row.is-active,
+.mail-list__row.is-active:hover {
+  background: hsl(var(--primary) / 18%);
 }
 
 .mail-list__row.is-unread .mail-list__from,

@@ -320,14 +320,14 @@ async function handleSend() {
   }
 }
 
-async function handleDraft() {
+async function saveDraft() {
   if (!commitAddresses()) {
     message.warning('请检查邮箱地址格式');
-    return;
+    return false;
   }
   if (attachmentBytes() > MAIL_ATTACHMENT_LIMIT_BYTES) {
     message.warning('附件合计不要超过约 20MB');
-    return;
+    return false;
   }
   submitting.value = true;
   try {
@@ -363,10 +363,9 @@ async function handleDraft() {
     });
     const uid = await resolveDraftUid(result);
     if (uid == null) {
-      message.warning('草稿已保存，请到草稿箱继续编辑');
       dirty.value = false;
-      emit('done');
-      return;
+      message.success('草稿已保存');
+      return true;
     }
     draftUid.value = uid;
     draftFolderName.value = result.folderName || draftFolderName.value;
@@ -386,17 +385,25 @@ async function handleDraft() {
     snapshot.value = currentSnapshot();
     dirty.value = false;
     message.success('草稿已保存');
-    emit('done');
+    return true;
   } catch (error) {
     const skipped = (error as { config?: { skipErrorMessage?: boolean } })
       ?.config?.skipErrorMessage;
-    if (!skipped) return;
+    if (!skipped) return false;
     const text = await readRequestErrorMessage(error);
     message.error(text || '附件读取失败');
+    return false;
   } finally {
     submitting.value = false;
   }
 }
+
+async function handleDraft() {
+  const saved = await saveDraft();
+  if (saved) emit('done');
+}
+
+defineExpose({ saveDraft });
 
 function appendFiles(files: File[]) {
   if (files.length === 0 || submitting.value) return;

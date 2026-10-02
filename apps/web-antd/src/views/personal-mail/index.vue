@@ -15,7 +15,7 @@ import { useRouter } from 'vue-router';
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
 
-import { Button, Empty, Modal, Select } from 'ant-design-vue';
+import { Button, Empty, message, Modal, Select } from 'ant-design-vue';
 
 import {
   getPersonalMailDetail,
@@ -74,6 +74,9 @@ const canDownload = computed(() =>
   hasAccessByCodes([PERSONAL_MAIL_PERMISSION.download]),
 );
 
+const composeRef = useTemplateRef<{ saveDraft: () => Promise<boolean> }>(
+  'composeRef',
+);
 const composeSession = shallowRef<ComposeSession | null>(null);
 const composeDirty = shallowRef(false);
 const narrow = shallowRef(false);
@@ -170,6 +173,40 @@ function openNew() {
   composeDirty.value = false;
 }
 
+async function onSelectFolder(fullName: string) {
+  if (!composeSession.value) {
+    await mail.selectFolder(fullName);
+    return;
+  }
+  const folder = mail.folders.value.find((item) => item.fullName === fullName);
+  const name = folder ? folderDisplayName(folder) : '该文件夹';
+  if (!composeDirty.value) {
+    composeSession.value = null;
+    await mail.selectFolder(fullName);
+    return;
+  }
+  Modal.confirm({
+    title: '保存草稿',
+    content: `正在写信，将自动保存到草稿箱，然后打开「${name}」。`,
+    okText: '保存并切换',
+    cancelText: '继续编辑',
+    async onOk() {
+      if (!canDraft.value) {
+        message.warning('没有保存草稿的权限，请继续编辑或丢弃这封邮件');
+        throw new Error('no-draft-permission');
+      }
+      const saved = await composeRef.value?.saveDraft();
+      if (!saved) {
+        throw new Error('draft-not-saved');
+      }
+      composeDirty.value = false;
+      composeSession.value = null;
+      await mail.selectFolder(fullName);
+      await mail.refreshOnActivate();
+    },
+  });
+}
+
 async function confirmMove() {
   if (!moveTarget.value) return;
   await mail.moveTo(moveTarget.value);
@@ -225,10 +262,11 @@ onActivated(() => {
           :folders="mail.folders.value"
           :loading="mail.folderLoading.value"
           @compose="openNew"
-          @select="mail.selectFolder"
+          @select="onSelectFolder"
         />
         <MailCompose
           v-if="composeSession"
+          ref="composeRef"
           v-model:dirty="composeDirty"
           class="mail-shell__compose"
           :can-draft="canDraft"
