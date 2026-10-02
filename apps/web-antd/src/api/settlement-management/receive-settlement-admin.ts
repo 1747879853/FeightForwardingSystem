@@ -138,6 +138,26 @@ export namespace ReceiveSettlementAdminApi {
     receiveSettlementExchangeRates?: ReceiveSettlementExchangeRateInputDto[];
   }
 
+  /**
+   * 按查询条件自动分配新建收费结算。
+   * 币别、结算对象取银行流水；委托编号/主提单号/对账单号只作筛选。
+   */
+  export interface ReceiveSettlementAddByAutoAllocationDto {
+    bankStatementId: string;
+    /** 所属组织id，须为当前登录人直属组织 */
+    orgId: number;
+    settlementTime: string;
+    /** 本次结算：实际到账金额（银行流水币别），必须大于 0 */
+    actualSettled: number;
+    remark?: string;
+    /** 委托编号（模糊） */
+    commissionNum?: string;
+    /** 主提单号（模糊） */
+    mblNum?: string;
+    /** 客户对账单号（模糊） */
+    statementNum?: string;
+  }
+
   export interface ReceiveSettlementAddItemsDto {
     id: string;
     /** 追加之后整张收费结算的本次结算（银行流水币别），覆盖原值 */
@@ -457,6 +477,16 @@ export const addReceiveSettlement = (
   data: ReceiveSettlementAdminApi.ReceiveSettlementAddDto,
 ) => {
   return requestClient.post<string>(`${API_ADMIN_PREFIX}/AddAsync`, data);
+};
+
+/** 按查询条件自动分配新建收费结算（type=0，同币别） */
+export const addReceiveSettlementByAutoAllocation = (
+  data: ReceiveSettlementAdminApi.ReceiveSettlementAddByAutoAllocationDto,
+) => {
+  return requestClient.post<string>(
+    `${API_ADMIN_PREFIX}/AddByAutoAllocationAsync`,
+    data,
+  );
 };
 
 export const addReceiveSettlementItems = (

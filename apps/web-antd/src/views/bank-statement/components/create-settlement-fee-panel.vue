@@ -18,6 +18,7 @@ import {
   Card,
   Checkbox,
   InputNumber,
+  Modal,
   message,
   Pagination,
   Tag,
@@ -26,6 +27,7 @@ import {
 import { useVbenForm } from '#/adapter/form';
 import {
   addReceiveSettlement,
+  addReceiveSettlementByAutoAllocation,
   getOrderFeeGroupForReceiveSettlement,
 } from '#/api/settlement-management/receive-settlement-admin';
 import { NestedDataTable } from '#/components/nested-data-table';
@@ -53,11 +55,18 @@ import {
   collectForeignCurrencies,
   findMissingExchangeRate,
   isSameCurrencyId,
+  isSettledAmountWithinQuota,
   missingExchangeRateMessage,
+  settledAmountBounds,
+  settledAmountQuotaMessage,
 } from '../../settlement-management/receive-settlement/settlement-amount';
 import {
   canSettleFeeInFull,
+  checkAutoAllocationAmount,
+  clampStatementAmount,
+  hasIgnoredAutoAllocationFilters,
   netStatementUsage,
+  pickAutoAllocationStatementNum,
   roundMoney,
   statementBalance,
   suggestWriteOffAmount,
@@ -92,6 +101,8 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const creating = ref(false);
+const autoAllocating = ref(false);
+const autoAllocationAmount = ref<number | undefined>();
 const orderList = ref<ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto[]>(
   [],
 );
@@ -315,9 +326,20 @@ const selectedLines = computed(() => {
   });
 });
 
+function isActiveBankAmount(
+  amount: null | number | undefined,
+  remaining: null | number | undefined,
+) {
+  if (amount == null || !Number.isFinite(amount)) return false;
+  if ((remaining ?? 0) < 0) return amount < -0.001;
+  return amount > 0.001;
+}
+
 const activeLines = computed(() =>
   selectedLines.value.filter(
-    (line) => line.bankAmount != null && line.bankAmount > 0 && line.rate,
+    (line) =>
+      line.rate &&
+      isActiveBankAmount(line.bankAmount, line.fee.remainingAmount),
   ),
 );
 
@@ -358,13 +380,16 @@ const originalSummaryText = computed(() => {
 const confirmBlocked = computed(() => {
   if (activeLines.value.length === 0) return true;
   if (balanceInfo.value.status === 'over') return true;
-  if (!(usedStatementAmount.value > 0)) return true;
+  const hasNegativeFee = activeLines.value.some(
+    (line) => (line.fee.remainingAmount ?? 0) < 0,
+  );
+  if (!(usedStatementAmount.value > 0) && !hasNegativeFee) return true;
   return selectedLines.value.some((line) => {
-    const amount = line.bankAmount ?? 0;
-    if (!(amount > 0)) return false;
-    if (!line.rate || line.original == null || !(line.original > 0))
-      return true;
-    return line.original > (line.fee.remainingAmount ?? 0) + 0.001;
+    if (!isActiveBankAmount(line.bankAmount, line.fee.remainingAmount)) {
+      return false;
+    }
+    if (!line.rate || line.original == null) return true;
+    return !isSettledAmountWithinQuota(line.original, line.fee.remainingAmount);
   });
 });
 
@@ -382,6 +407,7 @@ function resetState() {
   totalCount.value = 0;
   currentPage.value = 1;
   expandedRowKeys.value = [];
+  autoAllocationAmount.value = undefined;
   resetSelection();
   for (const key of Object.keys(exchangeRates)) {
     delete exchangeRates[key];
@@ -559,9 +585,9 @@ function updateBankAmount(fee: FeeRow, value: unknown) {
   ensureSelected(fee);
   const cap = bankCap(fee);
   const next =
-    cap != null && numericValue > cap
-      ? cap
-      : roundMoney(Math.max(0, numericValue));
+    cap == null
+      ? roundMoney(numericValue)
+      : clampStatementAmount(numericValue, cap);
   bankAmountMap.set(fee.id, next);
 }
 
@@ -583,10 +609,16 @@ function onRateChange(fee: FeeRow, value: unknown) {
       continue;
     }
     const current = bankAmountMap.get(row.id) ?? 0;
-    if (cap != null && current > cap) {
-      bankAmountMap.set(row.id, cap);
+    if (cap != null) {
+      bankAmountMap.set(row.id, clampStatementAmount(current, cap));
     }
   }
+}
+
+function remainderPaySide(fee: FeeRow) {
+  const cap = bankCap(fee);
+  if (cap != null && cap < 0) return fee.paySide;
+  return 0;
 }
 
 function fillRemainder(fee: FeeRow) {
@@ -597,7 +629,7 @@ function fillRemainder(fee: FeeRow) {
   }
   const fill = suggestWriteOffAmount({
     cap,
-    paySide: 0,
+    paySide: remainderPaySide(fee),
     room: statementRoomFor(fee.id),
   });
   if (fill == null) {
@@ -610,7 +642,7 @@ function fillRemainder(fee: FeeRow) {
 
 function settleFeeInFull(fee: FeeRow) {
   const cap = bankCap(fee);
-  if (cap == null || !(cap > 0)) {
+  if (cap == null || !(Math.abs(cap) > 0)) {
     message.warning('请先填写结算汇率');
     return;
   }
@@ -623,7 +655,7 @@ function canFillRemainder(fee: FeeRow) {
   return (
     suggestWriteOffAmount({
       cap,
-      paySide: 0,
+      paySide: remainderPaySide(fee),
       room: statementRoomFor(fee.id),
     }) != null
   );
@@ -644,7 +676,7 @@ function originalHint(fee: FeeRow) {
   const amount = bankAmountMap.get(fee.id);
   const rate = lineRate(fee);
   if (!rate) return '请先填写结算汇率';
-  if (amount == null || !(amount > 0)) return '';
+  if (amount == null || amount === 0) return '';
   const original = toOriginalAmount(amount, rate);
   if (original == null) return '';
   return `折合 ${feeCurrencyCode(fee) || '原币'}: ${formatGrouped(original)}`;
@@ -685,9 +717,13 @@ function buildSelectedFees(): SelectedReceiveFee[] {
       if (!selectedFeeIds.value.includes(fee.id)) continue;
       const bankAmount = bankAmountMap.get(fee.id) ?? 0;
       const rate = lineRate(fee);
-      const original =
-        rate && bankAmount > 0 ? toOriginalAmount(bankAmount, rate) : null;
-      if (original == null || !(original > 0)) continue;
+      const original = rate ? toOriginalAmount(bankAmount, rate) : null;
+      if (
+        original == null ||
+        !isActiveBankAmount(bankAmount, fee.remainingAmount)
+      ) {
+        continue;
+      }
       result.push({
         orderFeeId: fee.id,
         transportOrderId: group.transportOrder.id,
@@ -702,7 +738,7 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
         settlementName: fee.settlement?.name,
-        settledAmount: original ?? 0,
+        settledAmount: original,
       });
     }
   }
@@ -716,21 +752,15 @@ function validateSelection(fees: SelectedReceiveFee[]): boolean {
   }
 
   const invalidFee = fees.find(
-    (fee) => !fee.settledAmount || fee.settledAmount <= 0,
+    (fee) =>
+      !isSettledAmountWithinQuota(fee.settledAmount, fee.remainingAmount),
   );
   if (invalidFee) {
     message.warning(
-      `费用「${invalidFee.feeCodeName || '-'}」请填写本次结算金额`,
-    );
-    return false;
-  }
-
-  const overLimitFee = fees.find(
-    (fee) => fee.settledAmount > fee.remainingAmount + 0.001,
-  );
-  if (overLimitFee) {
-    message.warning(
-      `费用「${overLimitFee.feeCodeName || '-'}」折合原币不能超过剩余额度 ${formatAmount(overLimitFee.remainingAmount)}`,
+      settledAmountQuotaMessage(
+        invalidFee.feeCodeName,
+        invalidFee.remainingAmount,
+      ),
     );
     return false;
   }
@@ -760,7 +790,8 @@ function validateSelection(fees: SelectedReceiveFee[]): boolean {
     return false;
   }
 
-  if (!(usedStatementAmount.value > 0)) {
+  const hasNegativeFee = fees.some((fee) => fee.remainingAmount < 0);
+  if (!(usedStatementAmount.value > 0) && !hasNegativeFee) {
     message.warning('本次核销金额必须大于 0');
     return false;
   }
@@ -823,6 +854,95 @@ async function handleCreateSettlement() {
   }
 }
 
+function confirmAutoAllocationWarnings(options: {
+  hasIgnoredFilters: boolean;
+  hasSelectedFees: boolean;
+}) {
+  const warnings: string[] = [];
+  if (options.hasSelectedFees) {
+    warnings.push('当前已勾选费用，自动核销不会使用这些勾选结果。');
+  }
+  if (options.hasIgnoredFilters) {
+    warnings.push(
+      '自动核销只会按客户对账单号筛选；编号、委托单位、开船日期、销售、操作、币别等条件不会传给后端。',
+    );
+  }
+  if (warnings.length === 0) return Promise.resolve(true);
+
+  return new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: '确认自动核销',
+      content: warnings.join(''),
+      okText: '继续自动核销',
+      cancelText: '取消',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
+}
+
+async function handleAutoAllocation() {
+  if (!props.orgId) {
+    message.warning('缺少归属组织，无法创建结算单');
+    return;
+  }
+  if (!props.bankStatementId) {
+    message.warning('缺少银行流水，无法创建结算单');
+    return;
+  }
+  if (!props.settlementId) {
+    message.warning('银行流水未关联结算对象');
+    return;
+  }
+
+  const amountCheck = checkAutoAllocationAmount(
+    autoAllocationAmount.value,
+    availableAmount.value,
+  );
+  if (amountCheck.reason !== 'ok') {
+    if (amountCheck.reason === 'over-available') {
+      message.warning(
+        `本次结算不能超过剩余可用流水 ${formatWithCode(availableAmount.value, statementCurrencyLabel.value)}`,
+      );
+      return;
+    }
+    message.warning('请填写大于 0 的本次结算金额');
+    return;
+  }
+
+  const values =
+    ((await searchFormApi.getValues()) as Record<string, any>) || {};
+  const hasSelectedFees = selectedFeeIds.value.length > 0;
+  const hasIgnoredFilters = hasIgnoredAutoAllocationFilters(values);
+  const confirmed = await confirmAutoAllocationWarnings({
+    hasIgnoredFilters,
+    hasSelectedFees,
+  });
+  if (!confirmed) return;
+
+  autoAllocating.value = true;
+  try {
+    await addReceiveSettlementByAutoAllocation({
+      bankStatementId: props.bankStatementId,
+      orgId: props.orgId,
+      settlementTime: dayjs().toISOString(),
+      actualSettled: amountCheck.amount,
+      statementNum: pickAutoAllocationStatementNum(values),
+    });
+    message.success('自动核销成功');
+    markListShouldRefresh('ReceiveSettlementList');
+    markListShouldRefresh('BankStatementList');
+    autoAllocationAmount.value = undefined;
+    resetSelection();
+    await fetchData();
+    emit('created');
+  } catch (error: any) {
+    message.error(error.message || '自动核销失败');
+  } finally {
+    autoAllocating.value = false;
+  }
+}
+
 async function reload() {
   resetState();
   await resetSearchFilters();
@@ -858,6 +978,36 @@ defineExpose({ reload });
   <Card size="small" class="create-settlement-fee-panel">
     <div class="fee-toolbar">
       <SearchForm />
+    </div>
+
+    <div class="auto-allocation-bar">
+      <div class="auto-allocation-bar__main">
+        <span class="auto-allocation-bar__label">按金额自动核销</span>
+        <InputNumber
+          v-model:value="autoAllocationAmount"
+          :min="0"
+          :precision="2"
+          :max="availableAmount > 0 ? availableAmount : undefined"
+          size="middle"
+          placeholder="本次结算金额"
+          class="auto-allocation-input"
+        />
+        <span class="auto-allocation-bar__suffix">{{
+          statementCurrencyLabel
+        }}</span>
+        <Button
+          type="primary"
+          ghost
+          :loading="autoAllocating"
+          :disabled="creating"
+          @click="handleAutoAllocation"
+        >
+          自动核销
+        </Button>
+      </div>
+      <p class="auto-allocation-bar__hint">
+        只核销与本流水同币别、同一付款方的费用；优先整票结清，结不清的最后一票先结应付和负数应收，再用应收和负数应付凑。负数费用结出负数金额。不折币。客户对账单号沿用上方「客户对账」。
+      </p>
     </div>
 
     <NestedDataTable
@@ -975,8 +1125,8 @@ defineExpose({ reload });
                     ? bankAmountMap.get(fee.id)
                     : undefined
                 "
-                :min="0"
-                :max="bankCap(fee) ?? undefined"
+                :min="settledAmountBounds(bankCap(fee)).min"
+                :max="settledAmountBounds(bankCap(fee)).max"
                 :precision="2"
                 size="small"
                 :placeholder="statementCurrencyLabel"
@@ -1119,6 +1269,49 @@ defineExpose({ reload });
   :deep(.relative.flex.pb-2) {
     padding-bottom: 0;
   }
+}
+
+.auto-allocation-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+}
+
+.auto-allocation-bar__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.auto-allocation-bar__label {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.auto-allocation-input {
+  width: 168px;
+}
+
+.auto-allocation-bar__suffix {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #667487;
+}
+
+.auto-allocation-bar__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #98a2b3;
 }
 
 .create-settlement-fee-panel :deep(.fee-select-col) {
