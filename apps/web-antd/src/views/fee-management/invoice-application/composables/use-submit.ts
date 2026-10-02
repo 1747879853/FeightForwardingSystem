@@ -129,6 +129,25 @@ export function useSubmit(
         message.warning('请先补齐费用币别汇率');
         return false;
       }
+      if (requireFees && totalApp != null && totalApp <= 0) {
+        const currencyId = Number(formData.value.currencyId);
+        const rateRow = invoiceApplicationExchangeRates.value.find(
+          (row) => row.currencyId === currencyId,
+        );
+        const currencyLabel =
+          rateRow?.currencyCode || rateRow?.currencyName || '主币别';
+        message.warning(
+          `费用明细申请金额合计(折成开票申请币别${currencyLabel})必须大于0`,
+        );
+        return false;
+      }
+      if (
+        requireFees &&
+        goodsDetails.value.some((item) => !(Number(item.amount) > 0))
+      ) {
+        message.warning('商品明细金额必须大于0');
+        return false;
+      }
       const goodsTotal = goodsDetails.value.reduce(
         (sum, item) => sum + (Number(item.amount) || 0),
         0,

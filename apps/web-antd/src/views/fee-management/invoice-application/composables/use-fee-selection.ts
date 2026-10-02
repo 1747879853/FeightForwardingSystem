@@ -73,7 +73,7 @@ export function useFeeSelectionSave(
     const items = fees.map((fee: any) => ({
       currencyId: Number(fee.orderFee?.currencyId),
       appliedAmount:
-        Number(fee.appliedAmount || fee.orderFee?.remainingInvoiceAmount) || 0,
+        Number(fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount) || 0,
     }));
     const currencyMeta = new Map<
       number,
@@ -312,7 +312,7 @@ export function useFeeSelectionSave(
       ...newFees.map((fee: any) => ({
         currencyId: Number(fee.orderFee?.currencyId),
         appliedAmount:
-          Number(fee.appliedAmount || fee.orderFee?.remainingInvoiceAmount) ||
+          Number(fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount) ||
           0,
       })),
     ];
@@ -486,7 +486,7 @@ export function useFeeSelectionSave(
                 currencyId: Number(fee.orderFee?.currencyId),
                 appliedAmount:
                   Number(
-                    fee.appliedAmount || fee.orderFee?.remainingInvoiceAmount,
+                    fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount,
                   ) || 0,
               }));
               const totalOriginalAmount =
@@ -564,7 +564,7 @@ export function useFeeSelectionSave(
         const feeItems = newFees.map((fee: any) => ({
           currencyId: Number(fee.orderFee?.currencyId),
           appliedAmount:
-            Number(fee.appliedAmount || fee.orderFee?.remainingInvoiceAmount) ||
+            Number(fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount) ||
             0,
         }));
         const totalApp = toApplicationCurrency(
@@ -602,7 +602,7 @@ export function useFeeSelectionSave(
             invoiceApplicationItems: newFees.map((fee: any) => ({
               orderFeeId: fee.orderFee.id,
               appliedAmount:
-                fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
+                fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
               remark: '',
             })),
             invoiceApplicationGoodsDtls,
@@ -645,7 +645,7 @@ export function useFeeSelectionSave(
             invoiceApplicationItems: newFees.map((fee: any) => ({
               orderFeeId: fee.orderFee.id,
               appliedAmount:
-                fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
+                fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
               remark: '',
             })),
             invoiceApplicationExchangeRates: rateInputs,

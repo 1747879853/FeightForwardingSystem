@@ -1291,7 +1291,7 @@ onMounted(async () => {
                     <template v-else-if="column.key === 'amount'">
                       <InputNumber
                         v-model:value="record.amount"
-                        :min="0"
+                        :min="0.01"
                         :precision="2"
                         style="width: 100%"
                         size="small"
@@ -1359,11 +1359,19 @@ onMounted(async () => {
                     ><strong
                       >申请总额({{ selectedCurrencyCode || '主币别' }}):</strong
                     >
-                    {{
-                      totalAppliedAmountOriginal == null
-                        ? '-'
-                        : totalAppliedAmountOriginal.toFixed(2)
-                    }}</span
+                    <span
+                      :style="
+                        totalAppliedAmountOriginal != null &&
+                        totalAppliedAmountOriginal <= 0
+                          ? { color: '#ef4444' }
+                          : undefined
+                      "
+                      >{{
+                        totalAppliedAmountOriginal == null
+                          ? '-'
+                          : totalAppliedAmountOriginal.toFixed(2)
+                      }}</span
+                    ></span
                   >
                   <span style="font-size: 13px"
                     ><strong>折人民币参考:</strong>
