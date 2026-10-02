@@ -28,16 +28,19 @@ const clientId = Array.isArray(routeClientId)
 /** 客户审核列表双击进入：整页只读（含子 Tab） */
 const isAuditMode = computed(() => route.query.mode === 'audit');
 
-/** 由基础表单同步写入；申请修改解锁后子 Tab 一并放开 */
+/** 由基础表单同步写入；申请修改解锁后附件/排除服务等一并放开 */
 const formLockedRef = ref(false);
-const subTabsReadonly = computed(
+/** 随主表审核锁定的子 Tab（附件、排除服务）；联系人/开票不跟主表锁 */
+const lockedSubTabsReadonly = computed(
   () => isAuditMode.value || formLockedRef.value,
 );
+/** 联系人、开票：审核查看模式只读，审核通过后仍可直接改，无需申请修改 */
+const contactInvoiceReadonly = computed(() => isAuditMode.value);
 
 provide(CLIENT_FORM_LOCKED_REF_KEY, formLockedRef);
 provide(
   CLIENT_FORM_LOCKED_KEY,
-  computed(() => subTabsReadonly.value),
+  computed(() => lockedSubTabsReadonly.value),
 );
 
 type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice';
@@ -156,24 +159,27 @@ const contentTabsStyle = {
             <ContactList
               ref="contactRef"
               :client-id="clientId"
-              :readonly="subTabsReadonly"
+              :readonly="contactInvoiceReadonly"
             />
           </div>
           <div v-show="activeTab === 'invoice'">
             <InvoiceList
               ref="invoiceRef"
               :client-id="clientId"
-              :readonly="subTabsReadonly"
+              :readonly="contactInvoiceReadonly"
             />
           </div>
           <div v-show="activeTab === 'attachments'">
-            <Attachments :client-id="clientId" :readonly="subTabsReadonly" />
+            <Attachments
+              :client-id="clientId"
+              :readonly="lockedSubTabsReadonly"
+            />
           </div>
           <div v-show="activeTab === 'exceptService'">
             <ExceptService
               ref="exceptServiceRef"
               :client-id="clientId"
-              :readonly="subTabsReadonly"
+              :readonly="lockedSubTabsReadonly"
             />
           </div>
         </div>

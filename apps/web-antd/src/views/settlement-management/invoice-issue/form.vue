@@ -624,10 +624,21 @@ onMounted(() => {
         <Button
           type="primary"
           :loading="submitLoading"
-          @click="handleSubmit"
+          @click="handleSubmit()"
           :disabled="invoiceStatus.editLocked"
         >
           {{ isEdit ? '保存' : '创建' }}
+        </Button>
+
+        <Button
+          :loading="submitLoading"
+          :disabled="invoiceStatus.editLocked"
+          @click="handleSubmit(true)"
+        >
+          <template #icon>
+            <IconifyIcon icon="mdi:content-save-plus-outline" />
+          </template>
+          保存并新建
         </Button>
       </Space>
     </div>

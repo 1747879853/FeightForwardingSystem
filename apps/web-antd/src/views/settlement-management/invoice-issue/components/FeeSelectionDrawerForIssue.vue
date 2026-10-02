@@ -1137,6 +1137,13 @@ const appChildColumns = [
     align: 'right' as const,
   },
   {
+    title: '原币币别',
+    dataIndex: 'currencyCode',
+    key: 'currencyCode',
+    width: 80,
+    align: 'center' as const,
+  },
+  {
     title: '汇率',
     dataIndex: 'exchangeRate',
     key: 'exchangeRate',

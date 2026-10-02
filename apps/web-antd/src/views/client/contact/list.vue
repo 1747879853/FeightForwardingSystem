@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientContactAdminApi } from '#/api/sea-export/client-contact-admin';
 
-import { computed, inject, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -13,7 +13,6 @@ import {
 } from '#/api/sea-export/client-contact-admin';
 import { $t } from '#/locales';
 
-import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
 import ContactHandsontable from './contact-handsontable.vue';
 
 defineOptions({ name: 'ClientContactList' });
@@ -27,11 +26,8 @@ const props = withDefaults(
   { readonly: false },
 );
 const editId = computed(() => props.clientId);
-const formLocked = inject(
-  CLIENT_FORM_LOCKED_KEY,
-  computed(() => false),
-);
-const isReadonly = computed(() => props.readonly || formLocked.value);
+/** 不跟主表 formLocked：审核通过后仍可直接改联系人（TAPD #1000202） */
+const isReadonly = computed(() => props.readonly);
 
 /** 为联系人行注入 _rowKey，供 Handsontable 使用 */
 const normalizeWithRowKey = (

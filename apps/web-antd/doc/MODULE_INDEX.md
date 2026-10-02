@@ -11,7 +11,7 @@
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 海运 3D 地球看板；**仅 hhyy 打包可见**，其他品牌不注册路由、默认首页为工作台。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-09-29 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表；含可空税率 `taxRate`；是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-09-30 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料；「是否共享」在所属公司标题右侧；未保存切走可缓存。保存成功后 replace 进编辑并关闭原新建页签。 | [客户新建](./modules/clients/create.md) | 2026-09-11 |
-| clients | `/clients/:id/edit` | 客户管理 | 维护客户完整资料；基础信息「是否共享」在所属公司标题旁；内部 Tab KeepAlive；未保存含基础信息/联系人/开票。 | [客户编辑](./modules/clients/id-edit.md) | 2026-09-14 |
+| clients | `/clients/:id/edit` | 客户管理 | 维护客户完整资料；基础信息「是否共享」在所属公司标题旁；内部 Tab KeepAlive；未保存含基础信息/联系人/开票；审核通过后联系人/开票仍可直接改。 | [客户编辑](./modules/clients/id-edit.md) | 2026-10-02 |
 | sea-exports | `/sea-exports/create`、编辑 Tab「基础信息」 | 操作管理 / 海运出口 | 基础信息表单目录职责、依赖关系与私有拆分文件说明。 | [基础信息表单](./modules/sea-exports/basic-info-form.md) | 2026-09-30 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；开船日期筛选按自然日闭区间提交；支持多选后运踪批量订阅（按打包品牌分流：sjtd 用现有运踪、其他品牌用新服务商）与「批量修改」（`Admin.SeaExport.Edit`，分基础/港口/时间/干系人四区，港口各带可编辑备注，仅提交已填字段、不可编辑票自动过滤；成功后已打开的编辑页再进入会重拉详情），主提单号前带异常预警叹号（DELAY/DUMPING/DETENTION/OVERDUE 红色，CHANGE 黄色），并可按权限删除单条勾选委托。无用户列配置时按 `list-column-defaults.ts` 的 UserSetting 同款 JSON 显示默认列。码头航次列与筛选默认隐藏。列表查询会记住筛选和排序，供编辑页上一票/下一票使用。业务状态悬浮展示完整任务，支持有权限的处理人快速完成及完成人取消完成。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-09-30 |
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；货物类型默认普通货；委托单位/订舱代理标签旁展示默认联系人；收发通可折叠且默认展开；货物区右侧为内外部备注 Tab，内部备注为红字加粗；基础信息 6 列顺序对齐业务稿；码头航次隐藏但仍随保存提交；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存切走可 KeepAlive，点 X 才丢；箱型箱量支持批量新增；必填失败 toast 点名缺项。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-10-01 |
@@ -111,4 +111,4 @@
 | report | `/report/profit-report` | 报表 | 利润报表：按业务票统计应收/应付/利润，支持多级分组、合计行与 Excel 导出；合计列以本行主单所属公司的本位币计价，配「本位币」列展示，跨本位币不加总；右键隐藏列按用户持久化。 | [利润报表](./modules/report/profit-report.md) | 2026-09-30 |
 | report | `/report/arrears-report` | 报表 | 欠费报表：按收付类型统计已收/未收与超期天数，筛选含结算/开票/对账/费用锁定状态；合计列口径与利润报表一致，跨本位币不加总；列隐藏持久化与利润报表隔离。 | [欠费报表](./modules/report/arrears-report.md) | 2026-09-30 |
 
-| settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-09-30 |
+| settlement-management | `/settlement-management/invoice-issue/add`、`/settlement-management/invoice-issue/:id/edit` | 结算管理 / 发票开具 | 选择开票申请；筛选变化清理选择，旧查询结果不回写；费用明细含原币币别；列表拖列宽不挤压邻列。 | [发票开具](./modules/settlement-management/invoice-issue.md) | 2026-10-02 |

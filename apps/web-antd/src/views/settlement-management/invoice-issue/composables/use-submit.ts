@@ -9,6 +9,8 @@ import {
 } from '#/api/Invoice/InvoiceIssue';
 import { handleExchangeRateCheck } from './use-exchange-rate-check';
 
+const ADD_PATH = '/settlement-management/invoice-issue/add';
+
 /**
  * 提交逻辑
  */
@@ -26,7 +28,7 @@ export function useSubmit(
 ) {
   const router = useRouter();
   const route = useRoute();
-  const { closeTabByKey } = useTabs();
+  const { closeTabByKey, refreshTab } = useTabs();
   const submitLoading = ref(false);
 
   function mapGoodsDtls() {
@@ -79,7 +81,32 @@ export function useSubmit(
     return true;
   }
 
-  async function handleSubmit() {
+  /**
+   * 保存成功后进入空白新建页，便于财务连续开票。
+   * - 已在新建页：同路由 push 无效，用 refreshTab 重挂载清空表单
+   * - 编辑页：先 push 新建，再关当前编辑 tab（与客户「保存并关闭」同类写法）
+   */
+  async function navigateToCreateFresh() {
+    const currentTabKey = route.fullPath;
+    const onAddPage = route.path === ADD_PATH;
+
+    if (onAddPage) {
+      await refreshTab();
+      return;
+    }
+
+    await router.push(ADD_PATH);
+    await closeTabByKey(currentTabKey);
+    if (route.path === ADD_PATH) {
+      // 若复用了已打开的新建 tab，强制重挂载以免残留未保存草稿
+      await refreshTab();
+    }
+  }
+
+  /**
+   * @param andNew 为 true 时保存成功后进入空白新建页（保存并新建）
+   */
+  async function handleSubmit(andNew = false) {
     if (!validateBeforeSubmit()) {
       return;
     }
@@ -106,17 +133,24 @@ export function useSubmit(
 
         await editInvoiceIssue(editData);
         message.success('保存成功');
+        if (andNew) {
+          await navigateToCreateFresh();
+        }
       } else {
         const result = await addInvoiceIssue(submitData);
         const ok = await handleExchangeRateCheck(result);
 
         if (ok && result.id) {
           message.success('创建成功');
-          const createTabKey = route.fullPath;
-          await router.replace(
-            `/settlement-management/invoice-issue/${result.id}/edit`,
-          );
-          await closeTabByKey(createTabKey);
+          if (andNew) {
+            await navigateToCreateFresh();
+          } else {
+            const createTabKey = route.fullPath;
+            await router.replace(
+              `/settlement-management/invoice-issue/${result.id}/edit`,
+            );
+            await closeTabByKey(createTabKey);
+          }
         }
       }
     } catch (error) {

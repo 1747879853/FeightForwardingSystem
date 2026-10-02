@@ -108,6 +108,19 @@ export const columns: VxeTableGridOptions['columns'] = [
     align: 'left',
   },
   {
+    title: '提单号',
+    field: 'mblNums',
+    minWidth: 160,
+    align: 'left',
+    showOverflow: true,
+    formatter: ({ cellValue }: { cellValue: null | string[] | undefined }) => {
+      const list = (cellValue || [])
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean);
+      return list.length > 0 ? list.join('、') : '-';
+    },
+  },
+  {
     title: '开票时间',
     field: 'invoiceIssueTime',
     width: 160,

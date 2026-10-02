@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-10-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-09-20
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息维护：** 编辑客户主数据。右上角保留「保存」，并提供「保存并关闭」：保存成功后关闭当前客户详情页签并跳转客户列表，失败时停留原页。未保存切走可 KeepAlive；点 X 关闭才丢。脏检查含基础信息、联系人 Handsontable、开票表单。「是否共享」在所属公司标题右侧，提示共享后全集团可见。
+- **基础信息维护：** 编辑客户主数据。右上角保留「保存」，并提供「保存并关闭」：保存成功后关闭当前客户详情页签并跳转客户列表，失败时停留原页。未保存切走可 KeepAlive；点 X 关闭才丢。脏检查含基础信息、联系人 Handsontable、开票表单。「是否共享」在所属公司标题右侧，提示共享后全集团可见。主表审核通过后需「申请修改」才能改基础信息；**联系人、开票信息审核通过后仍可直接改**，不走申请修改（审核查看模式仍只读）。
 - **开票信息：** 卡片标题展示抬头与税号；首次保存走 `AddAsync`，成功后把临时 `new_*` id 换成返回的真实 id 并回写标题，再次保存走 `EditAsync`。
 - **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件；内部 Tab 使用 KeepAlive，页内切换不销毁未保存块。附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序。
 - **海运出口服务项目：** 仅委托单位（`industryCategories` 含 `p`）可配置按起运港排除的服务项；开关关闭表示排除，保存后写入 `ClientExceptService`；全局模板含默认港口配置（`polId` 为空）时，Tab 以「默认港口配置」Card 展示。
@@ -52,6 +52,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-02 | `Feature` | 审核通过后联系人、开票信息可直接改，无需申请修改。 | TAPD #1000202。仅审核查看模式只读；附件/排除服务仍跟主表锁。详见 [变更日志](../../changelogs/change-log-2026-10-02-tapd-1000202-client-contact-invoice-direct-edit.md)。 |
 | 2026-09-23 | `Feature` | 档案详情按 `clientStatus` 展示/隐藏最后一轮审批流程与意见（审核中、驳回展示；已通过不展示）。 | TAPD `#1161580498001000169`；数据用 `DetailAsync.lastAuditTask`。详见 [变更日志](../../changelogs/change-log-2026-09-23-client-detail-last-audit-task.md)。 |
 | 2026-09-23 | `Feature` | 客户审核 / 待审编辑页：「审批路径」放到右侧干系人栏底部。 | TAPD 需求 `#1161580498001000167`。数据源随后由 `#1000169` 改为 `lastAuditTask`。详见 [变更日志](../../changelogs/change-log-2026-09-23-client-audit-path-bottom-right.md)。 |
 | 2026-09-14 | `Fix` | 客户附件类型卡片与「添加其他类型」下拉按类型原始 `sortId` 降序，手动添加类型不再垫底。 | 共用 `compareAttachmentTypeSortIdDesc`。详见 [变更日志](../../changelogs/change-log-2026-09-14-attachment-type-sortid-desc.md)。 |

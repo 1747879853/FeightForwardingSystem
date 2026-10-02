@@ -13,6 +13,16 @@
 
 ## 2026-10
 
+- [2026-10-02] [发票开出保存并新建](./changelogs/change-log-2026-10-02-invoice-issue-save-and-new.md)
+
+- [2026-10-02] [TAPD #1000204 发票开出抽屉费用明细原币币别](./changelogs/change-log-2026-10-02-tapd-1000204-invoice-issue-fee-orig-currency.md)
+
+- [2026-10-02] [TAPD #1000200 发票开出列表提单号](./changelogs/change-log-2026-10-02-tapd-1000200-invoice-issue-mbl-nums.md)
+
+- [2026-10-02] [TAPD #1000202 客户审核通过后联系人开票可直接改](./changelogs/change-log-2026-10-02-tapd-1000202-client-contact-invoice-direct-edit.md)
+
+- [2026-10-02] [TAPD #1001037 发票开出列宽拖动不挤压他列](./changelogs/change-log-2026-10-02-tapd-1001037-invoice-issue-col-resize-fixed.md)
+
 - [2026-10-02] [对接个人邮箱](./changelogs/change-log-2026-10-02-personal-mail.md)
 
 - [2026-10-01] [海运出口内部备注醒目并回链业务联系单](./changelogs/change-log-2026-10-01-海运出口关联业务联系单.md)

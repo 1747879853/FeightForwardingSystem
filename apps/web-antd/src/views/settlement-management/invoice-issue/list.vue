@@ -55,6 +55,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
     // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
     virtualXConfig: { enabled: true, gt: 0 },
     virtualYConfig: { enabled: true, gt: 0 },
+    // 拖宽一列时固定其余列宽，避免自适应模式挤压邻列（TAPD #1001037）
+    resizableConfig: {
+      dragMode: 'fixed',
+      minWidth: 0,
+    },
     proxyConfig: {
       ajax: {
         query: async ({ page }: any, formValues: any) => {

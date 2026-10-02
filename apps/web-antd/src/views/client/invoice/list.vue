@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, inject, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import {
   Button,
   Collapse,
@@ -26,7 +26,6 @@ import {
   extractClientInvoiceInfo,
   isClientInvoiceInfoUploadFile,
 } from '#/api/sea-export/gemini-admin';
-import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
 
 defineOptions({ name: 'ClientInvoiceList' });
 
@@ -35,11 +34,8 @@ const props = withDefaults(
   { readonly: false },
 );
 const clientId = computed(() => props.clientId);
-const formLocked = inject(
-  CLIENT_FORM_LOCKED_KEY,
-  computed(() => false),
-);
-const isReadonly = computed(() => props.readonly || formLocked.value);
+/** 不跟主表 formLocked：审核通过后仍可直接改开票信息（TAPD #1000202） */
+const isReadonly = computed(() => props.readonly);
 
 // 开票信息列表
 const invoiceList = ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto[]>([]);
