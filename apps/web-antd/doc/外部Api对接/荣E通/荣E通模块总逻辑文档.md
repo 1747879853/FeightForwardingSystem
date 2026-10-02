@@ -2,7 +2,7 @@
 title: 荣E通对接
 module: 外部Api对接
 author: 系统
-last_updated: 2026-09-30
+last_updated: 2026-10-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,6 +11,7 @@ last_updated: 2026-09-30
 
 - **场站箱数据：** 按海运出口向荣E通要场站里的箱数据，用来回填船名、船公司航次和业务箱。一次可以选多票。某一票缺主提单号、缺场站或对方报错，不影响其他票，失败原因跟委托编号一起返回。联系人、包装、VGM、冻柜、目的港、集港时间都不回写。
 - **即时运价：** 按起运港、目的港、两端运输类型和箱型，向荣E通查各船司的即时运价。运输类型由前端传入，`CY` 是堆场，`SD` 是门点。内容包括船名航次、开船和预抵日期、航程、海运费、附加费和目的港滞箱滞港费。对外是同步接口：箱型不限个数，后端等查完再返回，最长 5 分钟，超时的箱型判为失败。1 小时内起运港、目的港、运输类型、箱型都相同才复用之前的结果，不再扣次数。订阅运价没接。
+- **国内舱单和 VGM：** 只接了后端私有调用，暂无对外接口，以后做舱单业务时直接调用。上海舱单 6 个接口（发送、重发、改单、删单、查询、船代查询），青岛舱单 8 个（发送、补发分票、重发、改单、改配、删单、查询、船代查询），VGM 3 个（发送、重发、查询）。三方推送结果的回调没接。
 - **对外文案：** 返回给前端的报错、失败原因里一律把对方叫「三方接口」，不出现荣E通。日志照常写荣E通和原文。
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -26,7 +27,11 @@ last_updated: 2026-09-30
 - **创建任务：** 没有可复用记录的箱型去创建任务。三方接口一次最多 3 个箱型，超过的每 3 个一批拆成多次请求。每批任务号拿到马上用独立工作单元落库，后面超时或报错都不会丢。三方接口没返回某个箱型的任务号时，该箱型记为失败。
 - **轮询取结果：** 每 3 秒查一次任务状态，三方接口一次最多查 10 个任务号，超过的拆成多次请求。任务已完成就取结果，把结果 JSON 存进记录并标为已完成；任务级报错（例如任务不存在）标为失败。
 - **等满 5 分钟还没完成：** 直接判为失败，本次返回的失败原因是「三方接口查询超时」。失败的记录不复用，再查会重新创建任务、重新扣次数。
-- **即时运价报错：** 校验不通过、三方接口账号或权益有问题、请求失败时，整次请求报错，不逐个箱型返回。报错之前已经落库的任务号和结果都保留，重试时复用。文案见第 4 节「即时运价报错」。
+- **即时运价报错：** 校验不通过、三方接口账号或权益有问题、请求失败时，整次请求报错，不逐个箱型返回。报错之前已经落库的任务号和结果都保留，重试时复用。文案见第 4 节「即时运价、舱单报错」。
+- **舱单私有调用（`PostManifestAsync<T>`）：** 第一个参数是接口名常量 `Manifest*Action`，第二个是业务参数。查询接口的业务参数在请求体顶层（上海、青岛用 `RongETongManifestQueryParam`，VGM 用 `RongETongVgmQueryParam`），其余接口都是 `RongETongManifestRequest<明细类型>`，明细放在 `detail` 下。每个接口用哪个类型见第 4 节「舱单私有调用」。
+- **外部交易号 outTradeCode：** 一份舱单（一份 VGM）固定一个，首次发送时由调用方生成并保存，之后重发、改单、删单、查询都传同一个，不能改。
+- **结果通知地址 notifyUrl：** 上海发送、青岛发送、VGM 发送和重发必填，其余接口不传。
+- **舱单返回：** 发送、重发、改单、删单、改配、补发分票的 data 是 bool。状态码成功但 data 为 false 也按失败抛错，所以调用方拿到返回值就是成功。查询返回明细对象。报错和即时运价走同一套，文案见第 4 节「即时运价、舱单报错」。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -79,7 +84,7 @@ last_updated: 2026-09-30
 | **FeeGroupInfoList** | 附加费，按费用分类分组 | 三方接口 | 计费单位 `CNTR` 转成 `PriceFeeType.Ctn`（按箱），`BL` 转成 `PriceFeeType.Order`（按票），其他单位为空 | 费用名称是英文全称，和系统费用名称不一定一致。 |
 | **DndGroupInfoList** | 目的港滞箱、滞港、堆存费用区间 | 三方接口 | 类型 1 滞箱，2 滞港，3 堆存，4 合并计算 | 费用和单价是字符串，原样返回。 |
 
-**即时运价报错**
+**即时运价、舱单报错**
 
 | 情形 | 报错文案 |
 | :-- | :-- |
@@ -104,6 +109,9 @@ last_updated: 2026-09-30
 | 100004 账号已停用 | 三方接口账号已停用，请联系管理员 |
 | 100005 验证签名失败 | 三方接口签名验证失败，请联系管理员 |
 | 100006 请求重复 | 三方接口请求重复，请重新发起 |
+| 200002 客户 ID 不存在（舱单删单、查询） | 三方接口客户不存在，请联系管理员 |
+| 200013 无有效支付权益（青岛改配、删单） | 没有有效的舱单权益，请联系管理员 |
+| 200014 商户订单重复支付（青岛改配、删单） | 该舱单操作已提交过，请勿重复提交 |
 | 230000 箱型数据格式错误 | 箱型格式不正确 |
 | 230001 港口数据格式错误 | 起运港或目的港代码不正确 |
 | 230002 企业没有申请开通 | 未开通即时运价查询，请联系管理员 |
@@ -111,6 +119,47 @@ last_updated: 2026-09-30
 | 230005 免费次数不足且无权益 | 即时运价免费查询次数已用完，请联系管理员 |
 | 999999 系统错误 | 三方接口暂时不可用，请稍后重试 |
 | 其他状态码 | 三方接口返回失败，请稍后重试 |
+| 状态码成功但 data 为 false（舱单发送、改单、删单这类） | 三方接口返回失败，请稍后重试 |
+
+**舱单私有调用**（`PostManifestAsync<T>`。路径接在 `RongETong:ManifestPathPrefix` 后面，默认 `/api/manifest/openapi`）
+
+| 接口名常量 | 三方路径 | 业务参数 | data |
+| :-- | :-- | :-- | :-- |
+| `ManifestShanghaiSendAction` | `shanghai/sendManifest` | `RongETongManifestRequest<RongETongShanghaiManifestDetail>`，`NotifyUrl` 必填 | bool |
+| `ManifestShanghaiReSendAction` | `shanghai/reSendManifest` | 同发送，不带 `NotifyUrl` | bool |
+| `ManifestShanghaiUpdateAction` | `shanghai/updateManifest` | 同重发，`AddManifestFlag` 不传 | bool |
+| `ManifestShanghaiDeleteAction` | `shanghai/delManifest` | `RongETongManifestRequest<RongETongManifestDeleteDetail>`，`DelType` 不传 | bool |
+| `ManifestShanghaiQueryAction` | `shanghai/queryManifest` | `RongETongManifestQueryParam`，在顶层 | `RongETongShanghaiManifestData` |
+| `ManifestShanghaiShipAgentAction` | `shanghai/queryShipAgent` | `RongETongManifestRequest<RongETongShipAgentQueryDetail>` | `RongETongShipAgentData` |
+| `ManifestQingdaoSendAction` | `qingdao/sendManifest` | `RongETongManifestRequest<RongETongQingdaoManifestDetail>`，`NotifyUrl` 必填 | bool |
+| `ManifestQingdaoAddSubAction` | `qingdao/addSubManifest` | `RongETongManifestRequest<RongETongQingdaoAddSubManifestDetail>` | bool |
+| `ManifestQingdaoReSendAction` | `qingdao/reSendManifest` | 同发送，不带 `NotifyUrl`，`DraftPlanType`、`WebCode` 不传 | bool |
+| `ManifestQingdaoUpdateAction` | `qingdao/updateManifest` | 同重发 | bool |
+| `ManifestQingdaoUpdateConfigAction` | `qingdao/updateManifestConfig` | `RongETongManifestRequest<RongETongQingdaoManifestConfigDetail>` | bool |
+| `ManifestQingdaoDeleteAction` | `qingdao/delManifest` | `RongETongManifestRequest<RongETongManifestDeleteDetail>`，`DelType` 必填 | bool |
+| `ManifestQingdaoQueryAction` | `qingdao/queryManifest` | `RongETongManifestQueryParam`，在顶层 | `RongETongQingdaoManifestData` |
+| `ManifestQingdaoShipAgentAction` | `qingdao/queryShipAgent` | 同上海港船代查询 | `RongETongShipAgentData` |
+| `ManifestVgmSendAction` | `vgm/sendManifest` | `RongETongManifestRequest<RongETongVgmDetail>`，`NotifyUrl` 必填 | bool |
+| `ManifestVgmReSendAction` | `vgm/reSendManifest` | 同发送，`NotifyUrl` 也必填 | bool |
+| `ManifestVgmQueryAction` | `vgm/queryManifest` | `RongETongVgmQueryParam`，在顶层 | `RongETongVgmData` |
+
+**舱单字段名**：DTO 里能对上系统字段的用系统字段名，见下表；其余属性沿用三方字段名（如 `CarrierName`、`PackageNum`）。写了「取三方基础数据」的字段（船公司、货物类型、提单类型、付款方式、港口、船代、箱型、货主箱、包装、国家等）要填三方基础数据里的写法，如 `APL-美国总统`、`SHANGHAI | CNSHA`、`CN-中国`，不是系统里的名称。
+
+| DTO 属性 | 三方字段 | 说明 |
+| :-- | :-- | :-- |
+| `MblNum` | `masterBillNo` | 主提单号 |
+| `BlNum` / `BlNums` | `houseBillNo` / `houseBillNos` | 分提单号，对应系统分单的 `BlNum`。查询示例里它和主提单号相同 |
+| `Vessel` | `oceanVessel`（VGM 是 `vessel`） | 船名 |
+| `InnerVoyno` | `voyage` | 航次，按船公司航次 |
+| `CtnNo` | `containerNo` | 箱号 |
+| `Volume` | `cbm` | 体积 |
+| `Marks` | `marking` | 唛头。青岛主单上的是主单唛头，只有要自定义时才传 |
+| `GoodsDes` | `description` | 英文品名。青岛主单上的是主单品名，只有要自定义时才传 |
+| `ReeferTemperature` | `temperature` | 冷藏温度 |
+| `ReeferVentilation` | `reefer` | 通风量，只有青岛有 |
+| `DgNo` | `undgNo` | 危险品 UN 编号 |
+| `DgLevel` | `undgClass` | 危险品分类 |
+| `DgContact` / `DgTel` | `undgLinkMan` / `undgLinkTele` | 危险品联系人、电话。上海在货物明细上，青岛在主单上 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -134,14 +183,38 @@ last_updated: 2026-09-30
 
 > [!IMPORTANT] **[卡点 8：对方的 voyage 是航次，不是航程]** 对方的 `voyage` 是航次，DTO 里映射到 `InnerVoyno`。对方的航程是 `sailingTime`（天），映射到 `Voyage`，和系统运价 `SeFreiPrice.Voyage`（航程）同义。按对方字段名去对系统字段，会把航次写进航程。
 
-> [!IMPORTANT] **[卡点 9：业务参数里的键也要排序后签名]** 场站的 `detail`、运价的 `param` 是 JSON 结构，里面每一层的键都按 ASCII 排序后，用紧凑 JSON 参与签名；数组元素顺序不变。请求体按同一份排好序的 JSON 发送。为空的字段不发送，也不参与签名。场站和运价两份文档都没写这条，出处是对方官网开票接口的签名说明「包括 value，如果 value 为json 结构，也需要排序」。创建运价任务排序后是 `podCode`、`podServiceType`、`polCode`、`polServiceType`、`sizeTypes`，按文档示例顺序签名会报 100005「验证签名失败」。场站的 `billNo`、`stationName` 本来就是字典序，不受影响。
+> [!IMPORTANT] **[卡点 9：业务参数里的键也要排序后签名]** 场站的 `detail`、运价的 `param`、舱单的 `detail` 是 JSON 结构，里面每一层的键都按 ASCII 排序后，用紧凑 JSON 参与签名；数组元素顺序不变。请求体按同一份排好序的 JSON 发送。为空的字段不发送，也不参与签名。场站和运价两份文档都没写这条，出处是对方官网开票接口的签名说明「包括 value，如果 value 为json 结构，也需要排序」。创建运价任务排序后是 `podCode`、`podServiceType`、`polCode`、`polServiceType`、`sizeTypes`，按文档示例顺序签名会报 100005「验证签名失败」。场站的 `billNo`、`stationName` 本来就是字典序，不受影响。顶层参数值是字符串的（舱单发送的 `notifyUrl`，舱单查询的 `outTradeCode`、`masterBillNo`、`billNo`）原样拼进签名，不加引号。
 
 > [!IMPORTANT] **[卡点 10：运价只给了正式地址]** 运价路径前缀默认 `/api/rpasearch/openapi/spot`，可用 `RongETong:SpotPathPrefix` 覆盖。`BaseUrl` 和场站共用，切到测试地址时，运价前缀要按对方给的测试地址一起改。
+
+> [!IMPORTANT] **[卡点 13：舱单只有私有调用]** 只接了 `PostManifestAsync<T>` 和报文 DTO，没有对外接口，也不落库。系统里还没有存外部交易号和发送结果的字段，做发送舱单时要先加，结果回调也要另外接（卡点 15）。
+
+> [!IMPORTANT] **[卡点 14：外部交易号一份舱单固定一个]** `outTradeCode` 首次发送时定下，之后重发、改单、删单、查询都传同一个，不能改。VGM 同理。
+
+> [!IMPORTANT] **[卡点 15：结果回调没接]** 海关回执、VGM 各渠道状态由三方推到发送时传的 `notifyUrl`。接收方必须原样返回 `success` 七个字符，否则三方 25 小时内重发 8 次（间隔 4 分钟、10 分钟、30 分钟、1 小时、2 小时、6 小时、15 小时）。所以要对外开一个匿名接口，不能包 ABP 的返回结构。回调的签名算法文档没写；VGM 回调示例把 `accessKey`、`notifyDate`、`notifyID`、`signType`、`sign` 写进了 `content`，参数表在顶层。目前只能用查询接口看状态。
+
+> [!IMPORTANT] **[卡点 16：舱单字段的 JSON 类型按文档示例发]** 对方怎么验签文档没写，多发一个对方没有的字段、或者把数字发成字符串，都可能报 100005「验证签名失败」。DTO 按文档示例报文定类型：件数 `packageNum`、提单份数 `originalNumber`、危险品分类 `undgClass`、温度 `temperature` 是字符串；毛重、体积、VGM 重量是数字；联系人类型、是否加单、计划发送类型、删单类型、发送渠道、云港通结算方式是整数。没赋值的字段不发送。验签失败时先核这几项。
+
+> [!IMPORTANT] **[卡点 17：发送超时不等于没发出去]** 舱单发送、重发按分单个数扣权益，VGM 按箱数扣。请求超时时三方可能已经收下，直接重发可能重复扣，先查询确认。
+
+> [!IMPORTANT] **[卡点 18：青岛改单改不了的字段]** 船名、航次、提单号、船代、箱型、箱号不能通过改单修改，只能删单后重发。只改船名航次用改配 `ManifestQingdaoUpdateConfigAction`。
+
+> [!IMPORTANT] **[卡点 19：舱单文档前后不一致的地方]**
+>
+> - 上海、青岛查询返回：参数表写收发通是 `partyInfoList`，示例报文是 `linkInfos`，按示例接。查询只给了 data 里的内容，按 `code`、`message`、`data` 的外壳解析。
+> - 船代查询入参 `carrierName`：参数表写的是「船名」、长度 35，返回里同名字段却是船司名称。DTO 按参数表填船名，联调时核对。
+> - 上海收发通的 `countryCode`：参数表没列，示例报文有。DTO 留了，为空不发送。
+> - VGM 的云港通结算方式 `ygtJsfs`：没给示例，按参数表顺序和查询返回放在箱子上。
+> - VGM 查询示例里船司状态出现过 5，文档没写含义。
+> - VGM 查询的状态码 200011（收款账号不属于同一商户）像是从支付文档抄来的，没单独出文案，按「其他状态码」处理。
+
+> [!IMPORTANT] **[卡点 20：舱单测试环境路径不带 /api]** 测试环境 `BaseUrl` 是 `http://221.238.46.76:9097`，路径不带 `/api`，`RongETong:ManifestPathPrefix` 要一起改成 `/manifest/openapi`。`BaseUrl` 是场站、运价、舱单共用的，切测试时三者的路径都要按测试地址改。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-10-01 | `Feature` | 接入国内舱单（上海 6 个、青岛 8 个接口）和 VGM（3 个接口）的后端私有调用，暂无对外接口，结果回调没接 | 新私有方法 `PostManifestAsync<T>`，按 `Manifest*Action` 常量拼路径，路径前缀默认 `/api/manifest/openapi`，可用 `RongETong:ManifestPathPrefix` 覆盖。原 `PostSpotAsync` 里的请求、解析、状态码处理挪到 `PostOpenApiAsync<T>`，即时运价和舱单共用：状态码文案合并，新增舱单的 200002、200013、200014；状态码成功但 data 为 false 也按失败抛错；日志前缀由「荣E通即时运价」改为「荣E通」，看 url 区分接口。`BuildSignedBody` 改为传一个对象，每个顶层属性就是请求体的一个顶层参数，值是字符串的原样拼进签名，是 JSON 结构的照旧排序后拼紧凑 JSON；场站、即时运价的报文和签名不变。舱单报文 DTO 能对上系统字段的用系统字段名，其余沿用三方字段名。私有方法区去掉了按方法拆的子 region。 |
 | 2026-09-30 | `Change` | 即时运价箱型不再把结尾 HQ 换成 HC。表现形式只接受 20GP、40GP、40HC、45HC、20NOR、40NOR、20RF、40RF、40RH、20OT、40OT，否则提示「箱型不支持」，不请求三方接口 | 校验在复用和创建任务之前。系统箱型写成 40HQ 时不会再改写成 40HC。 |
 | 2026-09-30 | `Feature` | 即时运价两端运输类型改为前端必填（CY 堆场、SD 门点），写入查询记录。1 小时内复用时运输类型也必须相同 | 列 `PolServiceType`、`PodServiceType`。已有记录迁移时默认 `CY`，因为改之前固定按堆场查。复用索引带上这两列。 |
 | 2026-09-30 | `Feature` | 即时运价查询前核对港口五字码是否在荣E通港口基础数据的 911 个里，不在则提示「港口不支持」，不请求三方接口。前端把同一份名单写死，不提供五字码查询接口 | 911 个五字码写在 `RongETongPortCodes`，不建表。判断在复用和创建任务之前。 |
@@ -160,8 +233,8 @@ last_updated: 2026-09-30
 **新增文件**
 
 - `src/CsprojBuilder.Application/App/ExternalApi/RongETong/IRongETongAdminAppService.cs`
-- `src/CsprojBuilder.Application/App/ExternalApi/RongETong/RongETongAdminAppService.cs`：对外接口 `RealQueryAsync`（场站）、`SpotQueryAsync`（即时运价）。私有方法 `GetStationDataAsync`（场站）、`PostSpotAsync<T>`（即时运价）、`BuildSignedBody`（两者共用的签名）、`NewIndependentUow`（即时运价落库用的独立工作单元）
-- `src/CsprojBuilder.Application/App/ExternalApi/RongETong/Dto/RongETongStationDto.cs`：场站 DTO；即时运价的三方接口报文 DTO（`internal`），以及对外的入参、出参 DTO（`RongETongSpot*Dto`）
+- `src/CsprojBuilder.Application/App/ExternalApi/RongETong/RongETongAdminAppService.cs`：对外接口 `RealQueryAsync`（场站）、`SpotQueryAsync`（即时运价）。私有方法 `GetStationDataAsync`（场站）、`PostSpotAsync<T>`（即时运价）、`PostManifestAsync<T>`（舱单，暂无调用方）、`PostOpenApiAsync<T>`（即时运价和舱单共用的请求、解析、状态码处理）、`BuildSignedBody`（三者共用的签名）、`NewIndependentUow`（即时运价落库用的独立工作单元）
+- `src/CsprojBuilder.Application/App/ExternalApi/RongETong/Dto/RongETongStationDto.cs`：场站 DTO；即时运价的三方接口报文 DTO（`internal`），以及对外的入参、出参 DTO（`RongETongSpot*Dto`）；舱单报文 DTO（`internal`）：`RongETongManifest*`、上海 `RongETongShanghaiManifest*`、青岛 `RongETongQingdao*`、VGM `RongETongVgm*`、船代 `RongETongShipAgent*`
 - `src/CsprojBuilder.Core/Entites/RongETongSpotQuery.cs`：即时运价查询记录
 - `src/CsprojBuilder.Core/Entites/RongETongPortCodes.cs`：911 个五字码，直接写在代码里，不落库
 
@@ -170,8 +243,8 @@ last_updated: 2026-09-30
 - `src/CsprojBuilder.Core/Entites/SeaExport.cs`：新增 `IsPickedUp`
 - `src/CsprojBuilder.Application/App/SeaExport/Dto/SeaExportDto.cs`：列表和详情返回 `IsPickedUp`，新增和编辑入参不加
 - `src/CsprojBuilder.Application/App/SeaExport/SeaExportAdminAppService.cs`：复制新票时 `IsPickedUp` 置为 false
-- `src/CsprojBuilder.Web.Host/Startup/Startup.cs`：注册名为 `RongETong` 的 HttpClient，超时 60 秒，不设 BaseAddress。场站和即时运价共用
-- `src/CsprojBuilder.Web.Host/appsettings.json`：新增 `RongETong` 节点（地址、账号、场站路径 `StationDataPath`、即时运价路径前缀 `SpotPathPrefix`）
+- `src/CsprojBuilder.Web.Host/Startup/Startup.cs`：注册名为 `RongETong` 的 HttpClient，超时 60 秒，不设 BaseAddress。场站、即时运价、舱单共用
+- `src/CsprojBuilder.Web.Host/appsettings.json`：新增 `RongETong` 节点（地址、账号、场站路径 `StationDataPath`、即时运价路径前缀 `SpotPathPrefix`、舱单路径前缀 `ManifestPathPrefix`）
 - `src/CsprojBuilder.Core/CsprojBuilderEnum.cs`：新增即时运价查询状态 `RongETongSpotQueryStatus`
 - `src/CsprojBuilder.EntityFrameworkCore/EntityFrameworkCore/CsprojBuilderDbContext.cs`：注册 `RongETongSpotQueries`。复用索引含起运港、目的港、两端运输类型、箱型、创建时间。运输类型默认 `CY`
 
