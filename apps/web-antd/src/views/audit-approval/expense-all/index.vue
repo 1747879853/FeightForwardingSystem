@@ -143,6 +143,8 @@ const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
 const entityId = ref<string>('');
 const changeOrderId = ref<string | null>(null);
+/** 提交审核时的负利润备注；展示在费用明细「提醒」右侧 */
+const negativeProfitRemark = ref('');
 
 /**
  * 清空选中的订单信息
@@ -152,6 +154,7 @@ const clearSelectedOrder = () => {
   entityId.value = '';
   orderName.value = '';
   changeOrderId.value = null;
+  negativeProfitRemark.value = '';
 };
 
 const handleRowDblclick = ({
@@ -166,6 +169,7 @@ const handleRowDblclick = ({
   transportOrderId.value = row.transportOrder.id || '';
   entityId.value = row.entityId || '';
   changeOrderId.value = row.changeOrderId || null;
+  negativeProfitRemark.value = String(row.remark ?? '').trim();
   const mblNum = row.transportOrder.mblNum || '--';
   orderName.value = `当前选中: ${mblNum}(${row.transportOrder.client?.name ?? ''})`;
 
@@ -466,6 +470,7 @@ const changeTableType = (type: string) => {
       :transportOrderId="transportOrderId"
       :entityId="entityId"
       :changeOrderId="changeOrderId"
+      :negative-profit-remark="negativeProfitRemark"
       ref="detailRef"
       :feeTableType="feeTableType"
     />

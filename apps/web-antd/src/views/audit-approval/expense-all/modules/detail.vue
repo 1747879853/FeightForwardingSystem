@@ -2,7 +2,7 @@
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { ArrowLeft, Package } from '@vben/icons';
@@ -15,11 +15,13 @@ import {
   MenuItem,
   message,
   Space,
+  Tooltip,
 } from 'ant-design-vue';
 
 import {
   OrderFeeAuditAsync,
   OrderFeeRejectedAsync,
+  OrderFeeTaskDetailAsync,
 } from '#/api/audit-approval/expense-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { $t } from '#/locales';
@@ -190,6 +192,8 @@ const props = defineProps<{
   entityId?: string;
   feeTableType?: string;
   changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
+  /** 列表选中行带入的负利润备注（独立详情页会自行拉取） */
+  negativeProfitRemark?: string;
 }>();
 
 const route = useRoute();
@@ -213,10 +217,56 @@ const resolvedTransportOrderId = computed(() => {
 });
 const resolvedEntityId = computed(() => {
   if (isStandalone.value) {
-    return String(route.params.entityId ?? '');
+    return String(route.params.entityId ?? route.query.entityId ?? '');
   }
   return props.entityId ? String(props.entityId) : '';
 });
+
+/** 独立详情拉取的负利润备注 */
+const standaloneNegativeProfitRemark = ref('');
+
+const displayNegativeProfitRemark = computed(() => {
+  if (isStandalone.value) {
+    return standaloneNegativeProfitRemark.value;
+  }
+  return String(props.negativeProfitRemark ?? '').trim();
+});
+
+async function loadStandaloneNegativeProfitRemark() {
+  if (!isStandalone.value || !resolvedTransportOrderId.value) {
+    standaloneNegativeProfitRemark.value = '';
+    return;
+  }
+  try {
+    const changeId =
+      props.changeOrderId ??
+      (route.query.changeOrderId
+        ? String(route.query.changeOrderId)
+        : undefined);
+    const detail = await OrderFeeTaskDetailAsync({
+      id: resolvedTransportOrderId.value,
+      changeOrderId: changeId || undefined,
+    });
+    standaloneNegativeProfitRemark.value = String(detail.remark ?? '').trim();
+  } catch (error) {
+    console.error('加载负利润备注失败:', error);
+    standaloneNegativeProfitRemark.value = '';
+  }
+}
+
+watch(
+  [
+    () => isStandalone.value,
+    resolvedTransportOrderId,
+    () => props.changeOrderId,
+    () => route.query.changeOrderId,
+  ],
+  () => {
+    void loadStandaloneNegativeProfitRemark();
+  },
+  { immediate: true },
+);
+
 const standaloneTableType = ref<string>('horizontal');
 
 // 费用预警：与费用录入相同效果；按票（+更改单）拉取，分到明细头 / 应收 / 应付标题旁
@@ -777,20 +827,33 @@ onMounted(() => {
                 :warnings="sharedWarnings"
                 @highlight="handleWarningHighlight"
               />
+              <Tooltip
+                v-if="displayNegativeProfitRemark"
+                :title="displayNegativeProfitRemark"
+              >
+                <div class="negative-profit-remark">
+                  <span class="negative-profit-remark__label">
+                    {{ $t('auditApproval.task.negativeProfitRemark') }}
+                  </span>
+                  <span class="negative-profit-remark__text">
+                    {{ displayNegativeProfitRemark }}
+                  </span>
+                </div>
+              </Tooltip>
               <div
                 class="fee-detail-actions ml-auto flex shrink-0 items-center"
               >
                 <Space size="small">
                   <DropdownButton
-                    @click="showConfirmWithRemark(true, 'all')"
+                    @click="showConfirmWithRemark(true, 'selectPass')"
                     size="small"
                     type="primary"
                   >
-                    {{ $t('auditApproval.task.allPass') }}
+                    {{ $t('auditApproval.task.selectPass') }}
                     <template #overlay>
                       <Menu @click="SubmittedOther">
-                        <MenuItem key="selectPass">
-                          {{ $t('auditApproval.task.selectPass') }}
+                        <MenuItem key="all">
+                          {{ $t('auditApproval.task.allPass') }}
                         </MenuItem>
                         <MenuItem key="recPass">
                           {{ $t('auditApproval.task.recPass') }}
@@ -981,6 +1044,35 @@ onMounted(() => {
       color: hsl(var(--primary));
     }
   }
+}
+
+.negative-profit-remark {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  max-width: min(360px, 40vw);
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: default;
+  background: hsl(var(--destructive) / 8%);
+  border: 1px solid hsl(var(--destructive) / 22%);
+  border-radius: 6px;
+}
+
+.negative-profit-remark__label {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: hsl(var(--destructive));
+  white-space: nowrap;
+}
+
+.negative-profit-remark__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #7f1d1d;
+  white-space: nowrap;
 }
 
 .total-amount {

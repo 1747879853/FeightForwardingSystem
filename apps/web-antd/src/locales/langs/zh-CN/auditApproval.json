@@ -25,6 +25,7 @@
     "auditTime": "审核时间",
     "createTime": "录入时间",
     "remark": "备注",
+    "negativeProfitRemark": "负利润备注",
     "AuditRemark": "审核意见",
     "creatorUserName": "录入人",
     "okPass": "确认审核通过",
