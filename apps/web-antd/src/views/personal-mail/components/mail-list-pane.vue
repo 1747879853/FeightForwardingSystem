@@ -164,69 +164,71 @@ function onKeywordChange(event: Event) {
         />
       </div>
     </header>
-    <Spin :spinning="loading" class="mail-list__spin">
-      <div class="mail-list__body">
-        <button
-          v-for="mail in items"
-          :key="mail.uid"
-          type="button"
-          class="mail-list__row"
-          :class="{
-            'is-active': mail.uid === activeUid,
-            'is-unread': !mail.isRead,
-          }"
-          @click="emit('open', mail)"
-        >
-          <Checkbox
-            :checked="checkedUids.includes(mail.uid)"
-            @click.stop
-            @change="
-              emit('toggleCheck', mail.uid, Boolean($event.target?.checked))
-            "
-          />
-          <span
-            class="mail-list__dot"
-            :class="{ 'is-on': !mail.isRead }"
-            aria-hidden="true"
-          ></span>
-          <span class="mail-list__avatar" :class="avatarTone(mail)">
-            {{ senderInitial(mail.from) }}
-          </span>
-          <span class="mail-list__main">
-            <span class="mail-list__line">
-              <span class="mail-list__from">{{ senderText(mail) }}</span>
-              <span class="mail-list__aside">
-                <span class="mail-list__time">{{
-                  formatMailTime(mail.date)
-                }}</span>
-                <span v-if="mail.size" class="mail-list__size">{{
-                  formatByteSize(mail.size)
-                }}</span>
+    <div class="mail-list__spin">
+      <Spin :spinning="loading">
+        <div class="mail-list__body">
+          <button
+            v-for="mail in items"
+            :key="mail.uid"
+            type="button"
+            class="mail-list__row"
+            :class="{
+              'is-active': mail.uid === activeUid,
+              'is-unread': !mail.isRead,
+            }"
+            @click="emit('open', mail)"
+          >
+            <Checkbox
+              :checked="checkedUids.includes(mail.uid)"
+              @click.stop
+              @change="
+                emit('toggleCheck', mail.uid, Boolean($event.target?.checked))
+              "
+            />
+            <span
+              class="mail-list__dot"
+              :class="{ 'is-on': !mail.isRead }"
+              aria-hidden="true"
+            ></span>
+            <span class="mail-list__avatar" :class="avatarTone(mail)">
+              {{ senderInitial(mail.from) }}
+            </span>
+            <span class="mail-list__main">
+              <span class="mail-list__line">
+                <span class="mail-list__from">{{ senderText(mail) }}</span>
+                <span class="mail-list__aside">
+                  <span class="mail-list__time">{{
+                    formatMailTime(mail.date)
+                  }}</span>
+                  <span v-if="mail.size" class="mail-list__size">{{
+                    formatByteSize(mail.size)
+                  }}</span>
+                </span>
+              </span>
+              <span class="mail-list__subject-row">
+                <span class="mail-list__subject">
+                  {{ mail.subject || '(无主题)' }}
+                </span>
+                <IconifyIcon
+                  v-if="mail.isAnswered"
+                  class="mail-list__flag"
+                  icon="lucide:reply"
+                />
+                <IconifyIcon
+                  v-if="mail.hasAttachment"
+                  class="mail-list__flag"
+                  icon="lucide:paperclip"
+                />
               </span>
             </span>
-            <span class="mail-list__subject-row">
-              <span class="mail-list__subject">
-                {{ mail.subject || '(无主题)' }}
-              </span>
-              <IconifyIcon
-                v-if="mail.isAnswered"
-                class="mail-list__flag"
-                icon="lucide:reply"
-              />
-              <IconifyIcon
-                v-if="mail.hasAttachment"
-                class="mail-list__flag"
-                icon="lucide:paperclip"
-              />
-            </span>
-          </span>
-        </button>
-        <div v-if="!loading && items.length === 0" class="mail-list__empty">
-          <Empty description="这个文件夹里没有邮件" />
+          </button>
+          <div v-if="!loading && items.length === 0" class="mail-list__empty">
+            <Empty description="这个文件夹里没有邮件" />
+          </div>
         </div>
-      </div>
-    </Spin>
-    <footer v-if="total > pageSize" class="mail-list__pager">
+      </Spin>
+    </div>
+    <footer v-if="total > 0" class="mail-list__pager">
       <Pagination
         :current="pageIndex"
         :page-size="pageSize"
@@ -244,7 +246,9 @@ function onKeywordChange(event: Event) {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
   background: hsl(var(--card));
   border-right: 1px solid hsl(var(--border));
 }
@@ -441,17 +445,25 @@ function onKeywordChange(event: Event) {
 }
 
 .mail-list__spin {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .mail-list__spin :deep(.ant-spin-nested-loading),
 .mail-list__spin :deep(.ant-spin-container) {
-  height: 100%;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mail-list__body {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   background: hsl(var(--card));
 }
