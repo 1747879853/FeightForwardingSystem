@@ -24,12 +24,29 @@ export namespace PersonalMailAdminApi {
     address?: null | string;
   }
 
+  export interface PersonalMailWatchState {
+    lastCheckTime?: null | string;
+    consecutiveFailures?: null | number;
+    lastFailureReason?: null | string;
+    nextCheckTime?: null | string;
+    isPaused?: boolean | null;
+  }
+
+  /** SignalR 事件 personalMail.received */
+  export interface PersonalMailReceived {
+    mailAccountId?: null | string;
+    folderName?: null | string;
+    newCount?: null | number;
+    mails?: MailSummary[] | null;
+  }
+
   export interface PersonalMailAccountDto {
     id: string;
     emailAddress?: null | string;
     displayName?: null | string;
     userName?: null | string;
     hasPassword?: boolean;
+    watchState?: null | PersonalMailWatchState;
     imapHost?: null | string;
     imapPort?: number;
     imapEnableSsl?: boolean;

@@ -13,6 +13,8 @@
 
 ## 2026-10
 
+- [2026-10-02] [个人邮箱新邮件 SignalR 提醒](./changelogs/change-log-2026-10-02-personal-mail-signalr.md)
+
 - [2026-10-02] [个人邮箱列表滚动和翻页](./changelogs/change-log-2026-10-02-personal-mail-list-scroll.md)
 
 - [2026-10-02] [个人邮箱收件箱一键已读](./changelogs/change-log-2026-10-02-personal-mail-mark-all-read.md)

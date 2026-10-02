@@ -69,6 +69,7 @@
   },
   "dependencies": {
     "@handsontable/vue3": "^18.0.0",
+    "@microsoft/signalr": "8.0.7",
     "@tanstack/vue-query": "catalog:",
     "@vben-core/menu-ui": "workspace:*",
     "@vben-core/shadcn-ui": "workspace:*",

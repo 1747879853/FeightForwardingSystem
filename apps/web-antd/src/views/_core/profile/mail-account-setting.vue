@@ -6,6 +6,7 @@ import { computed, onMounted, reactive, shallowRef } from 'vue';
 import { IconifyIcon } from '@vben/icons';
 
 import {
+  Alert,
   Button,
   Form,
   FormItem,
@@ -32,6 +33,8 @@ import {
 } from '#/views/personal-mail/provider-presets';
 
 const loading = shallowRef(false);
+const watchState =
+  shallowRef<null | PersonalMailAdminApi.PersonalMailWatchState>(null);
 const saving = shallowRef(false);
 const testing = shallowRef(false);
 const accountId = shallowRef<null | string>(null);
@@ -55,6 +58,12 @@ const form = reactive({
 });
 
 const isEdit = computed(() => Boolean(accountId.value));
+const watchPaused = computed(() => watchState.value?.isPaused === true);
+const watchFailureReason = computed(() => {
+  const failures = watchState.value?.consecutiveFailures ?? 0;
+  if (failures <= 0) return '';
+  return watchState.value?.lastFailureReason?.trim() || '';
+});
 const providerOptions = MAIL_PROVIDER_PRESETS.map((item) => ({
   label: item.label,
   value: item.value,
@@ -62,6 +71,7 @@ const providerOptions = MAIL_PROVIDER_PRESETS.map((item) => ({
 
 function applyAccount(account?: PersonalMailAdminApi.PersonalMailAccountDto) {
   accountId.value = account?.id || null;
+  watchState.value = account?.watchState ?? null;
   form.emailAddress = account?.emailAddress?.trim() || '';
   form.displayName = account?.displayName?.trim() || '';
   form.userName = account?.userName?.trim() || '';
@@ -258,6 +268,22 @@ onMounted(() => {
         </p>
       </div>
 
+      <Alert
+        v-if="watchPaused"
+        class="mail-account__watch"
+        type="error"
+        show-icon
+        message="邮箱授权码不正确，新邮件提醒已暂停，请重新填写授权码"
+        :description="watchFailureReason || undefined"
+      />
+      <Alert
+        v-else-if="watchFailureReason"
+        class="mail-account__watch"
+        type="warning"
+        show-icon
+        :message="watchFailureReason"
+      />
+
       <Form layout="vertical" class="mail-account__form">
         <FormItem label="邮箱服务商">
           <Select
@@ -394,6 +420,10 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.6;
   color: hsl(var(--muted-foreground));
+}
+
+.mail-account__watch {
+  margin-bottom: 16px;
 }
 
 .mail-account__grid {

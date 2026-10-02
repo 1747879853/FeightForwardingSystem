@@ -282,6 +282,14 @@ watch(
 );
 
 watch(
+  () => mail.folders.value.find((item) => item.isInbox)?.unreadCount,
+  (count) => {
+    if (count == null || count < 0) return;
+    mailbox.inboxUnread.value = count;
+  },
+);
+
+watch(
   () => [mailbox.pollSerial.value, mail.booted.value] as const,
   () => {
     if (!mail.booted.value || mailbox.pollSerial.value === 0) return;

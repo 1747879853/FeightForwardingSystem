@@ -243,6 +243,11 @@ export default defineConfig(async (config) => {
             target: `${apiTarget}/api`,
             ws: true,
           },
+          '/signalr': {
+            changeOrigin: true,
+            target: apiTarget,
+            ws: true,
+          },
           '/PrintTempFile': {
             changeOrigin: true,
             target: apiTarget,

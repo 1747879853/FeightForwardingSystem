@@ -24,6 +24,10 @@ interface AccessState {
    */
   accessToken: AccessToken;
   /**
+   * SignalR 查询串用的加密访问令牌，登录接口返回
+   */
+  encryptedAccessToken: AccessToken;
+  /**
    * 是否已经检查过权限
    */
   isAccessChecked: boolean;
@@ -85,6 +89,9 @@ export const useAccessStore = defineStore('core-access', {
     setAccessToken(token: AccessToken) {
       this.accessToken = token;
     },
+    setEncryptedAccessToken(token: AccessToken) {
+      this.encryptedAccessToken = token;
+    },
     setIsAccessChecked(isAccessChecked: boolean) {
       this.isAccessChecked = isAccessChecked;
     },
@@ -101,13 +108,20 @@ export const useAccessStore = defineStore('core-access', {
   },
   persist: {
     // 持久化
-    pick: ['accessToken', 'refreshToken', 'isLockScreen', 'lockScreenPassword'],
+    pick: [
+      'accessToken',
+      'encryptedAccessToken',
+      'refreshToken',
+      'isLockScreen',
+      'lockScreenPassword',
+    ],
   },
   state: (): AccessState => ({
     accessCodes: [],
     accessMenus: [],
     accessRoutes: [],
     accessToken: null,
+    encryptedAccessToken: null,
     isAccessChecked: false,
     isLockScreen: false,
     lockScreenPassword: undefined,

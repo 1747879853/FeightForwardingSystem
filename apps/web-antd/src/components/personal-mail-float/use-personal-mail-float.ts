@@ -1,9 +1,13 @@
 import type { PersonalMailAdminApi } from '#/api/personal-mail/personal-mail-admin';
 
-import { computed, ref, shallowRef } from 'vue';
+import { computed, h, ref, shallowRef } from 'vue';
+
+import { useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { useAccessStore } from '@vben/stores';
+
+import { notification } from 'ant-design-vue';
 
 import {
   getMyPersonalMailAccountList,
@@ -11,8 +15,16 @@ import {
   PERSONAL_MAIL_PERMISSION,
 } from '#/api/personal-mail/personal-mail-admin';
 
-const POLL_MS = 60_000;
-const POLL_PAGE_SIZE = 20;
+import {
+  formatNewMailNoticeLines,
+  normalizeReceivedMails,
+} from './new-mail-notice';
+import {
+  startPersonalMailSignalr,
+  stopPersonalMailSignalr,
+} from './personal-mail-signalr';
+
+const PREVIEW_SIZE = 5;
 
 const ready = shallowRef(false);
 const expanded = shallowRef(false);
@@ -27,24 +39,10 @@ const pollSerial = shallowRef(0);
 const hasNewMail = shallowRef(false);
 
 let started = false;
-let polling = false;
-let baselineReady = false;
-let seenUids = new Set<number>();
-let timer = 0;
 let onVisible: (() => void) | null = null;
-
-function clearTimer() {
-  if (!timer) return;
-  window.clearTimeout(timer);
-  timer = 0;
-}
-
-function schedule() {
-  clearTimer();
-  timer = window.setTimeout(() => {
-    void tick();
-  }, POLL_MS);
-}
+let onReceived:
+  | ((payload: PersonalMailAdminApi.PersonalMailReceived) => void)
+  | null = null;
 
 async function loadPreviews(unreadOnly: boolean) {
   loadingPreview.value = true;
@@ -53,7 +51,7 @@ async function loadPreviews(unreadOnly: boolean) {
       {
         folderName: inboxFolder.value || undefined,
         pageIndex: 1,
-        pageSize: 5,
+        pageSize: PREVIEW_SIZE,
         unreadOnly: unreadOnly || undefined,
       },
       { skipErrorMessage: true },
@@ -69,20 +67,25 @@ async function loadPreviews(unreadOnly: boolean) {
   }
 }
 
-function rememberUids(items: PersonalMailAdminApi.MailSummary[]) {
-  for (const item of items) seenUids.add(item.uid);
-}
-
 function rememberFolder(items: PersonalMailAdminApi.MailSummary[]) {
   const folderName = items.find((item) => item.folderName)?.folderName;
   if (folderName) inboxFolder.value = folderName;
 }
 
-async function pollInbox() {
+function applyCount(value: null | number | undefined) {
+  if (value == null || value < 0) return null;
+  return value;
+}
+
+async function refreshSnapshot() {
+  if (!accountEmail.value) {
+    const hasAccount = await loadAccount();
+    if (!hasAccount) return;
+  }
   const unreadPage = await getPersonalMailPagedList(
     {
       pageIndex: 1,
-      pageSize: POLL_PAGE_SIZE,
+      pageSize: PREVIEW_SIZE,
       unreadOnly: true,
     },
     { skipErrorMessage: true },
@@ -90,57 +93,20 @@ async function pollInbox() {
   const latestPage = await getPersonalMailPagedList(
     {
       pageIndex: 1,
-      pageSize: POLL_PAGE_SIZE,
+      pageSize: PREVIEW_SIZE,
     },
     { skipErrorMessage: true },
   );
   const unreadItems = unreadPage.items || [];
   const latestItems = latestPage.items || [];
   rememberFolder(latestItems.length > 0 ? latestItems : unreadItems);
-  const unreadTotal = unreadPage.totalCount;
-  const latestTotal = latestPage.totalCount;
-  inboxUnread.value =
-    unreadTotal == null || unreadTotal < 0 ? null : unreadTotal;
-  inboxTotal.value =
-    latestTotal == null || latestTotal < 0 ? null : latestTotal;
-  const fresh = baselineReady
-    ? latestItems.filter((item) => !seenUids.has(item.uid))
-    : [];
-  rememberUids(latestItems);
-  if (!baselineReady) {
-    baselineReady = true;
+  inboxUnread.value = applyCount(unreadPage.totalCount);
+  inboxTotal.value = applyCount(latestPage.totalCount);
+  if (!hasNewMail.value) {
     previews.value = (unreadItems.length > 0 ? unreadItems : latestItems).slice(
       0,
-      5,
+      PREVIEW_SIZE,
     );
-    hasNewMail.value = false;
-  } else if (fresh.length > 0) {
-    previews.value = fresh.slice(0, 5);
-    hasNewMail.value = true;
-    expanded.value = true;
-  } else {
-    hasNewMail.value = false;
-  }
-  pollSerial.value += 1;
-}
-
-async function tick() {
-  if (!started || polling || document.hidden) {
-    if (started) schedule();
-    return;
-  }
-  polling = true;
-  try {
-    if (!accountEmail.value) {
-      const hasAccount = await loadAccount();
-      if (!hasAccount) return;
-    }
-    await pollInbox();
-  } catch {
-    // 下一轮再试，避免邮箱服务短暂失败时把悬浮框收掉
-  } finally {
-    polling = false;
-    if (started) schedule();
   }
 }
 
@@ -174,9 +140,8 @@ function stopMailWatch() {
   previews.value = [];
   pollSerial.value = 0;
   hasNewMail.value = false;
-  baselineReady = false;
-  seenUids = new Set();
-  clearTimer();
+  onReceived = null;
+  void stopPersonalMailSignalr();
   if (onVisible) {
     document.removeEventListener('visibilitychange', onVisible);
     onVisible = null;
@@ -185,6 +150,7 @@ function stopMailWatch() {
 
 export function usePersonalMailFloat() {
   const accessStore = useAccessStore();
+  const router = useRouter();
   const { hasAccessByCodes } = useAccess();
   const canWatch = computed(
     () =>
@@ -197,16 +163,76 @@ export function usePersonalMailFloat() {
     return count > 99 ? '99+' : String(count);
   });
 
+  function openReceivedMail(mail?: PersonalMailAdminApi.MailSummary) {
+    const folder = mail?.folderName || inboxFolder.value;
+    const uid = mail?.uid;
+    if (!folder || uid == null) {
+      void router.push({ name: 'PersonalMail' });
+      return;
+    }
+    void router.push({
+      name: 'PersonalMail',
+      query: { folder, uid: String(uid) },
+    });
+  }
+
+  function handleReceived(payload: PersonalMailAdminApi.PersonalMailReceived) {
+    if (!canWatch.value) return;
+    const mails = normalizeReceivedMails(payload);
+    if (mails.length > 0) {
+      previews.value = mails;
+      rememberFolder(mails);
+    }
+    hasNewMail.value = true;
+    expanded.value = true;
+    const lines = formatNewMailNoticeLines(payload);
+    if (lines.length > 0) {
+      const key = `personal-mail-${Date.now()}`;
+      notification.info({
+        description: h(
+          'div',
+          lines.map((line) => h('p', { style: 'margin:0 0 4px' }, line)),
+        ),
+        duration: 8,
+        key,
+        message: '新邮件',
+        onClick: () => {
+          notification.close(key);
+          openReceivedMail(mails[0]);
+        },
+      });
+    }
+    void (async () => {
+      try {
+        await refreshSnapshot();
+      } catch {
+        const added = payload.newCount ?? mails.length;
+        if (inboxUnread.value != null && added > 0) {
+          inboxUnread.value += added;
+        }
+      }
+      pollSerial.value += 1;
+    })();
+  }
+
   async function startMailWatch() {
     if (started || !canWatch.value) return;
     started = true;
+    onReceived = handleReceived;
     if (!onVisible) {
       onVisible = () => {
-        if (!document.hidden) void tick();
+        if (document.hidden || accountEmail.value) return;
+        void refreshSnapshot().catch(() => undefined);
       };
       document.addEventListener('visibilitychange', onVisible);
     }
-    void tick();
+    startPersonalMailSignalr(
+      accessStore.encryptedAccessToken || '',
+      (payload) => onReceived?.(payload),
+    );
+    if (!document.hidden) {
+      void refreshSnapshot().catch(() => undefined);
+    }
   }
 
   async function openPanel() {
