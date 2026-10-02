@@ -5,6 +5,13 @@ export const CLIENT_FORM_LOCKED_REF_KEY: InjectionKey<Ref<boolean>> = Symbol(
   'clientFormLockedRef',
 );
 
+/**
+ * 行业类别是否包含委托单位（`p`）。
+ * `null` 表示客户详情还没返回，海运出口服务项目先不要请求。
+ */
+export const CLIENT_IS_ENTRUSTING_UNIT_KEY: InjectionKey<Ref<boolean | null>> =
+  Symbol('clientIsEntrustingUnit');
+
 /** 基础信息表单的审核锁定态（只读 computed，兼容 inject） */
 export const CLIENT_FORM_LOCKED_KEY: InjectionKey<ComputedRef<boolean>> =
   Symbol('clientFormLocked');

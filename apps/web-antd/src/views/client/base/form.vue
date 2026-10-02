@@ -79,6 +79,7 @@ import { useClientAuditConfig } from '#/composables/use-client-audit-config';
 import {
   CLIENT_EDITOR_IS_DIRTY_KEY,
   CLIENT_FORM_LOCKED_REF_KEY,
+  CLIENT_IS_ENTRUSTING_UNIT_KEY,
   createAddressLocalKey,
 } from './client-editor-context';
 import {
@@ -269,6 +270,9 @@ watch(
   },
   { immediate: true },
 );
+/** 详情返回前保持 null，避免海运出口服务项目把空行业类别当成非委托单位 */
+const clientDetailReady = ref(false);
+const sharedIsEntrustingUnitRef = inject(CLIENT_IS_ENTRUSTING_UNIT_KEY, null);
 const checkEditorDirty = inject(CLIENT_EDITOR_IS_DIRTY_KEY, null);
 const canSaveClient = computed(() => {
   if (!isEdit.value) return true;
@@ -387,6 +391,22 @@ const isClient = ref<boolean>(false);
 const isSupplier = ref<boolean>(false);
 const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
+watch(
+  [customerType, supplierType, clientDetailReady],
+  () => {
+    if (!sharedIsEntrustingUnitRef) return;
+    if (isEdit.value && !clientDetailReady.value) {
+      sharedIsEntrustingUnitRef.value = null;
+      return;
+    }
+    const categories = [
+      ...(customerType.value || []),
+      ...(supplierType.value || []),
+    ];
+    sharedIsEntrustingUnitRef.value = categories.includes('p');
+  },
+  { immediate: true },
+);
 const isDishonest = ref<boolean>(false); // 客户失信状态
 
 /** 默认「中国」及当前选中国家，供 CountrySelect 回显与税号联动 */
@@ -1443,6 +1463,7 @@ const loadEditData = async () => {
   try {
     const detail = await getClientDetail(editId.value);
     const formValues = await mapDetailToFormValues(detail);
+    clientDetailReady.value = true;
 
     // 设置各个表单的值
     await baseFormApi.setValues(formValues);
@@ -1470,7 +1491,8 @@ const loadEditData = async () => {
     await syncFormSnapshot();
   } catch (error) {
     console.error('加载编辑数据失败:', error);
-    //message.error($t('common.loadFailed'));
+    // 详情失败时按非委托单位处理，避免海运出口页再去打排除服务项目接口
+    clientDetailReady.value = true;
   } finally {
     pageLoading.value = false;
   }
