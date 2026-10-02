@@ -57,6 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       const {
         accessToken,
+        encryptedAccessToken,
         refreshToken: _refreshToken,
         userId: _userId,
         requiresTwoFactorVerification,
@@ -83,7 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
         return { userInfo };
       }
 
-      // 存储访问令牌
+      // 存储访问令牌。加密令牌先写入，供 SignalR 在登录完成前就能取到。
+      accessStore.setEncryptedAccessToken(encryptedAccessToken || null);
       accessStore.setAccessToken(accessToken);
 
       // 新会话开始：复位权限初始化标记，确保登录后的首页导航一定会在路由守卫中

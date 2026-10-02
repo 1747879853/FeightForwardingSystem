@@ -21,8 +21,13 @@ const dataSource = defineModel<ClientContactAdminApi.ClientContactDto[]>({
   default: () => [],
 });
 
-const props = defineProps<{ clientId: string }>();
+const props = withDefaults(
+  defineProps<{ clientId: string; readonly?: boolean }>(),
+  { readonly: false },
+);
 const editId = computed(() => props.clientId);
+/** 不跟主表 formLocked：审核通过后仍可直接改联系人（TAPD #1000202） */
+const isReadonly = computed(() => props.readonly);
 
 /** 为联系人行注入 _rowKey，供 Handsontable 使用 */
 const normalizeWithRowKey = (
@@ -68,6 +73,10 @@ defineExpose({ isContactDirty });
 const handleSaveContacts = async (
   contacts: ClientContactAdminApi.ClientContactDto[],
 ) => {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可编辑联系人，请先申请修改');
+    return;
+  }
   try {
     if (!contacts || !Array.isArray(contacts)) {
       message.error('联系人数据格式错误');
@@ -155,6 +164,7 @@ watch(
     <ContactHandsontable
       v-model:model-value="dataSource"
       :client-id="editId"
+      :readonly="isReadonly"
       @save="handleSaveContacts"
     >
       <template #toolbar-tools>

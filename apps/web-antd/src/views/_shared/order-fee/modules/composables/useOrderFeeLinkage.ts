@@ -1089,6 +1089,40 @@ export function useOrderFeeLinkage(
     console.warn(`⚠️ [getSettlementId] 未找到客户: ${settlementName}`);
     return undefined;
   }
+
+  function applySettlementIdentity(row: any, rawSettlement: unknown) {
+    const resolvedSettlementId = getSettlementId(rawSettlement);
+    if (resolvedSettlementId === undefined) return;
+    row['settlementId'] = resolvedSettlementId;
+    row['settlementId_value'] = resolvedSettlementId;
+    row['__settlementTaxRate'] = undefined;
+
+    const sources = getDropdownSources();
+    const allClientsByIndustry = sources.allClientsByIndustry;
+    if (allClientsByIndustry) {
+      for (const industry of Object.keys(allClientsByIndustry)) {
+        const clients = allClientsByIndustry[industry];
+        const matched = (clients || []).find(
+          (client: any) =>
+            String(client.value) === String(resolvedSettlementId),
+        );
+        if (matched) {
+          row['__settlementName'] =
+            matched.name ||
+            String(matched.label || '')
+              .split('-')
+              .slice(1)
+              .join('-') ||
+            matched.label ||
+            row['__settlementName'];
+          if (matched.taxRate !== undefined) {
+            row['__settlementTaxRate'] = matched.taxRate ?? null;
+          }
+          break;
+        }
+      }
+    }
+  }
   /**
    * 统一的 afterChange 处理器
    */
@@ -1134,15 +1168,10 @@ export function useOrderFeeLinkage(
       }
       // 结算对象变化 - 使用 _value 字段
       else if (prop === 'settlementId') {
-        // ✅ 始终以当前显示值（label「编码-名称」或 name「仅名称」）重新解析客户 id：
+        // ✅ 始终以当前显示值（label「编码-名称」或 name「仅名称」或 id）重新解析：
         // 拖拽填充/粘贴覆盖已有结算对象时，若沿用旧的 settlementId_value 会导致
-        // 保存（sanitizeOrderFee 优先取 _value）写入被覆盖前的旧 id，故这里同步刷新。
-        const resolvedSettlementId = getSettlementId(row['settlementId']);
-        if (resolvedSettlementId !== undefined) {
-          row['settlementId_value'] = resolvedSettlementId;
-          // 切换结算对象时清空订单往来单位兜底税率，改走客户缓存
-          row['__settlementTaxRate'] = undefined;
-        }
+        // 保存（sanitizeOrderFee 优先取 _value）写入被覆盖前的旧 id；同时补齐展示名。
+        applySettlementIdentity(row, row['settlementId'] ?? newValue);
         // 结算对象变化：优先用其税率，否则回退费用名称税率
         applyTaxRateToRow(row, undefined, hotInstance);
       }

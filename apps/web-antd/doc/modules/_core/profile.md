@@ -2,12 +2,12 @@
 title: 个人中心
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-06-27
+last_updated: 2026-10-02
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 当前登录用户查看与维护本人资料（联系方式、英文名称、个人邮箱密码等）、修改登录密码、更换头像的入口。与「系统管理-用户管理」不同，此处仅操作**自己**的数据，接口走 `UserAdmin` 的 `GetMyAsync` / `UpdateMyInfoAsync` 等，权限为登录即可（`[AbpAuthorize]`）。
+**白话解释：** 当前登录用户查看与维护本人资料（联系方式、英文名称、个人邮箱密码等）、修改登录密码、配置自己的收发邮箱、更换头像的入口。与「系统管理-用户管理」不同，此处仅操作**自己**的数据。基本信息走 `UserAdmin`，邮箱配置走 `PersonalMailAdmin`，两边互不读写。
 
 **路由与源码定位：**
 
@@ -16,7 +16,7 @@ last_updated: 2026-06-27
 | 页面路由 | `/profile`（hash 模式为 `#/profile`） |
 | 路由名称 | `Profile` |
 | 页面组件 | `src/views/_core/profile/index.vue` |
-| 子页签 | `base-setting.vue`（个人信息）、`password-setting.vue`（修改密码） |
+| 子页签 | `base-setting.vue`（个人信息）、`password-setting.vue`（修改密码）、`mail-account-setting.vue`（邮箱配置，有 `Admin.PersonalMail` 才出现，排在修改密码下面） |
 | 菜单可见 | `hideInMenu: true`，通常从右上角用户下拉进入 |
 | 关键源码 | `src/router/routes/core.ts`<br/>`src/api/core/user.ts`<br/>`src/layouts/basic.vue` |
 
@@ -25,6 +25,7 @@ last_updated: 2026-06-27
 - **进入个人中心：** 右上角用户头像下拉 →「个人中心」→ 路由 `/profile`。
 - **个人信息：** 左侧竖向 Tab「个人信息」；两栏表单、标签在上输入框在下（vertical）；底部「更新基本信息」提交 `UpdateMyInfoAsync`。
 - **修改密码：** Tab「修改密码」；新密码、确认密码（无旧密码）；标签在上、vertical 布局；提交 `User/ChangeMyPasswordAsync`（`password` + `confirmPassword`）。
+- **邮箱配置：** 有 `Admin.PersonalMail` 时，页签在「修改密码」下面。每人只能配一个邮箱：没有配置时进入新增，已有一条时进入编辑（密码框留空表示不改）。可测试收信、发信连接，测试不保存。删除只去掉系统里的配置。`/profile?tab=mail` 会直接打开这一页。个人信息里的「邮箱 / 个人邮箱密码」仍走 `UserAdmin`，不要拿来当这套配置。
 - **更换头像：** 左侧大头像悬浮显示「上传头像」；选择图片后先走通用上传接口，再 `UpdateMyAvatarAsync`，成功后刷新全局 `userStore` 头像（右上角同步更新）。
 - **登录后展示：** `getUserInfoApi` 合并 `GetMyAsync` 全量字段至 `userStore.userInfo`（含公司/部门、联系方式等），右上角邮箱不再使用写死占位邮箱。
 
@@ -69,6 +70,7 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-02 | `Feature` | 个人中心在修改密码下增加「邮箱配置」。有个人邮箱权限即可新增、修改、删除、测试自己的一个邮箱。 | 对接 `PersonalMailAdmin` 的账号四个接口和 `TestMyAccountAsync`。收发整理在 `/personal-mail`。详见 [个人邮箱](../personal-mail/index.md)。 |
 | 2026-06-27 | `Feature` | `GetMyAsync` 返回字段全量写入 `userStore.userInfo`；个人中心保存基本信息后刷新全局用户信息。 | `adaptUserInfo` spread `UserAdminMyDto` 并保留 `username`/`realName` 映射；`UserInfo` 类型扩展。详见 [变更日志](../../changelogs/change-log-2026-06-27-userinfo-getmyasync-full-sync.md)。 |
 | 2026-06-20 | `Feature` | 个人信息页邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | 使用 Zod 规则，与用户管理弹窗写法一致。 |
 | 2026-06-19 | `Fix` | 个人信息页只读字段（用户名、昵称、部门、工号）改为纯文本展示，不再使用禁用 Input。 | 新增表单组件 `ReadonlyText`，与 vertical 布局表单项对齐。 |

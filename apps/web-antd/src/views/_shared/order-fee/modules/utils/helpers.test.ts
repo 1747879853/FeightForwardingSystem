@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildSettlementAutofillValueSet,
   calcOrderFeeProfitRmb,
   collectFeesForPostSubmitProfit,
   deriveApprovedSettlementDisplayStatus,
+  findSettlementClientOption,
+  findSettlementDonorRow,
   isOrderFeeEligibleForApplyChange,
   isOrderFeeEnteringOrRejectedStatus,
   isOrderFeeRejectedStatus,
@@ -113,6 +116,43 @@ describe('order-fee select display helpers', () => {
         { value: '100', label: 'C01-测试客户', name: '测试客户' },
       ]),
     ).toBe('测试客户');
+  });
+
+  it('buildSettlementAutofillValueSet includes client id for drag-fill', () => {
+    const set = buildSettlementAutofillValueSet(
+      {
+        P: [{ value: 'guid-1', label: 'C01-甲公司', name: '甲公司' }],
+      },
+      [{ settlementId: 'guid-2', __settlementName: '乙公司' }],
+    );
+    expect(set.has('guid-1')).toBe(true);
+    expect(set.has('C01-甲公司')).toBe(true);
+    expect(set.has('甲公司')).toBe(true);
+    expect(set.has('guid-2')).toBe(true);
+    expect(set.has('乙公司')).toBe(true);
+  });
+
+  it('findSettlementClientOption matches id / label / name', () => {
+    const map = {
+      P: [{ value: 'guid-1', label: 'C01-甲公司', name: '甲公司' }],
+    };
+    expect(findSettlementClientOption(map, 'guid-1')?.name).toBe('甲公司');
+    expect(findSettlementClientOption(map, '甲公司')?.value).toBe('guid-1');
+    expect(findSettlementClientOption(map, 'C01-甲公司')?.value).toBe('guid-1');
+    expect(findSettlementClientOption(map, 'missing')).toBeUndefined();
+  });
+
+  it('findSettlementDonorRow finds filled settlement on table', () => {
+    const rows = [
+      { settlementId: 'guid-1', __settlementName: '甲公司' },
+      { settlementId_value: 'guid-2', __settlementName: '乙公司' },
+    ];
+    expect(findSettlementDonorRow(rows, 'guid-1')?.__settlementName).toBe(
+      '甲公司',
+    );
+    expect(findSettlementDonorRow(rows, 'guid-2')?.__settlementName).toBe(
+      '乙公司',
+    );
   });
 });
 

@@ -2,7 +2,7 @@
 import type { UploadFile } from 'ant-design-vue';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
@@ -38,6 +38,8 @@ import { openAttachmentViewer } from '#/components/attachment-viewer';
 import { buildAttachmentUrl, compareAttachmentTypeSortIdDesc } from '#/utils';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 import { createAbpPermission } from '#/utils/abp-permission';
+
+import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
 
 defineOptions({
   name: 'ClientAttachments',
@@ -104,7 +106,10 @@ const IMAGE_EXTENSIONS = new Set([
 
 const perm = createAbpPermission('Admin.Client');
 const { hasAccessByCodes } = useAccess();
-const props = defineProps<{ clientId: string }>();
+const props = withDefaults(
+  defineProps<{ clientId: string; readonly?: boolean }>(),
+  { readonly: false },
+);
 
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
@@ -142,8 +147,14 @@ const billingPeriodGroup = computed<AttachmentTypeGroup>(() => ({
 }));
 
 const clientId = computed(() => props.clientId);
+const formLocked = inject(
+  CLIENT_FORM_LOCKED_KEY,
+  computed(() => false),
+);
 
-const canEdit = computed(() => hasAccessByCodes([perm.edit]));
+const canEdit = computed(
+  () => hasAccessByCodes([perm.edit]) && !props.readonly && !formLocked.value,
+);
 
 const formatFileSize = (bytes?: number | null): string => {
   if (!bytes || bytes === 0) return '0 B';

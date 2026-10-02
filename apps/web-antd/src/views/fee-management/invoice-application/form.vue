@@ -202,6 +202,7 @@ const { submitLoading, handleSubmit, handleDirectSubmit, handleCancel } =
     invoiceApplicationExchangeRates,
     feeGroupsData,
     flattenTreeData,
+    invoiceExchangeRate,
   );
 
 const { handleFeeSelectionSave } = useFeeSelectionSave(
@@ -1498,7 +1499,7 @@ onMounted(async () => {
 
       <SelectRemarkTemplateModal
         v-model:visible="selectRemarkTemplateModalVisible"
-        :settlement-id="formData.orgId"
+        :settlement-id="formData.settlementId"
         :currency-id="formData.currencyId"
         :currency-code="selectedCurrencyCode"
         :fee-details="formData.invoiceApplicationItems"

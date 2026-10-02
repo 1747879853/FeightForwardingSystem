@@ -38,12 +38,6 @@ import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getMyOrgPath } from '#/composables/use-my-org';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
-// 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
-import {
-  getCombinedStatusColor,
-  getCombinedStatusLabel,
-} from './invoice-status';
-
 // 导入组合函数
 import { useFormData } from './composables/use-form-data';
 import { useGoodsDetails } from './composables/use-goods-details';
@@ -61,6 +55,7 @@ import RemarkTemplateModal from '#/views/_shared/invoice-remark-template/RemarkT
 import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/SelectRemarkTemplateModal.vue';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
+import { findClientInvoiceInfoByBankId } from '#/views/_shared/invoice-goods';
 
 const route = useRoute();
 const router = useRouter();
@@ -138,17 +133,14 @@ const isInvoiceIssued = computed(() => {
 // ✅ 新增：附件列表
 const attachments = ref<InvoiceIssueApi.AttachmentItemDto[]>([]);
 
-// ✅ 新增：计算发票抬头名称（从 clientInvoiceInfoList 中查找）
+// fixedHeaderId 实际是 clientInvoiceBankId；按银行反查所属抬头名称
 const headerNameForDrawer = computed(() => {
   if (!fixedHeaderId.value || !clientInvoiceInfoList.value) return '';
-
-  const info = clientInvoiceInfoList.value.find(
-    (item: any) => item.id === fixedHeaderId.value,
+  const info = findClientInvoiceInfoByBankId(
+    clientInvoiceInfoList.value,
+    fixedHeaderId.value,
   );
-
-  const name = info?.header || '';
-
-  return name;
+  return info?.header || '';
 });
 
 const {
@@ -168,6 +160,7 @@ const {
   formData,
   invoiceExchangeRate,
   flattenTreeData,
+  applicationGroupsData,
 );
 
 const { addSelectedApplicationsToForm } = useFeeManagement(
@@ -280,6 +273,10 @@ const { submitLoading, handleSubmit, handleCancel } = useSubmit(
   invoiceIssueTime,
   editId,
   isEdit,
+  {
+    hasAmountDifference,
+    hasMissingApplicationRate,
+  },
 );
 
 // ✅ 新增：冲红弹窗相关状态
@@ -621,10 +618,21 @@ onMounted(() => {
         <Button
           type="primary"
           :loading="submitLoading"
-          @click="handleSubmit"
+          @click="handleSubmit()"
           :disabled="invoiceStatus.editLocked"
         >
           {{ isEdit ? '保存' : '创建' }}
+        </Button>
+
+        <Button
+          :loading="submitLoading"
+          :disabled="invoiceStatus.editLocked"
+          @click="handleSubmit(true)"
+        >
+          <template #icon>
+            <IconifyIcon icon="mdi:content-save-plus-outline" />
+          </template>
+          保存并新建
         </Button>
       </Space>
     </div>
@@ -675,20 +683,6 @@ onMounted(() => {
                       <span class="basic-config__meta-label">开票日期</span>
                       <span class="basic-config__meta-value">
                         {{ invoiceIssueTime || '-' }}
-                      </span>
-                    </div>
-                    <div v-if="editId" class="basic-config__meta-row">
-                      <span class="basic-config__meta-label">发票状态</span>
-                      <span class="basic-config__meta-value">
-                        <Tag
-                          :color="
-                            getCombinedStatusColor(invoiceStatus.combinedStatus)
-                          "
-                        >
-                          {{
-                            getCombinedStatusLabel(invoiceStatus.combinedStatus)
-                          }}
-                        </Tag>
                       </span>
                     </div>
                   </div>
@@ -1495,7 +1489,7 @@ onMounted(() => {
     <!-- 选择备注模板弹窗 -->
     <SelectRemarkTemplateModal
       v-model:visible="selectRemarkTemplateModalVisible"
-      :settlement-id="formData.orgId"
+      :settlement-id="formData.settlementId"
       :currency-id="formData.currencyId"
       :fee-details="applicationGroupsData"
       :template-data="remarkTemplateData"

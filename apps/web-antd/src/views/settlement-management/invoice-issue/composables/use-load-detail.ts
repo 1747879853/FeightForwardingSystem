@@ -42,7 +42,7 @@ export function useLoadDetail(
           // ✅ 新增：冲红原因与关联冲红发票号码（基础信息区展示用）
           redReason: detail.redReason,
           redInvoiceNo: detail.redInvoiceNo,
-          // ✅ 新增：开票与冲红的组合状态（基础信息区「发票状态」展示用）
+          // 组合状态（冲红等逻辑可复用；列表/编辑页已不展示）
           combinedStatus: detail.combinedStatus,
         };
       }
@@ -170,7 +170,7 @@ export function useLoadDetail(
           // ✅ 新增：冲红原因与关联冲红发票号码（基础信息区展示用）
           redReason: detail.redReason,
           redInvoiceNo: detail.redInvoiceNo,
-          // ✅ 新增：开票与冲红的组合状态（基础信息区「发票状态」展示用）
+          // 组合状态（冲红等逻辑可复用；列表/编辑页已不展示）
           combinedStatus: detail.combinedStatus,
         };
       }

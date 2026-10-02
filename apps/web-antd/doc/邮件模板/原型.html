@@ -1,0 +1,3409 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>货代系统 - 邮件推送（三界面版 Demo）</title>
+    <style>
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translate(-50%, 0);
+        }
+      }
+
+      /* 打印时只输出单据 */
+      @media print {
+        .topbar,
+        .print-toolbar,
+        .print-footer,
+        .preset-wrap,
+        #mail-mask,
+        #mail-drawer,
+        .toast {
+          display: none !important;
+        }
+
+        .print-stage {
+          min-height: auto;
+          padding: 0;
+          background: #fff;
+        }
+
+        .a4-doc {
+          width: 100%;
+          min-height: auto;
+          padding: 20mm;
+          box-shadow: none;
+        }
+
+        .a4-doc.show {
+          display: block !important;
+        }
+
+        body {
+          background: #fff;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .form-grid {
+          grid-template-columns: 80px 1fr;
+        }
+
+        .span-full {
+          grid-column: 2;
+        }
+
+        .tpl-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+
+      body {
+        font-family:
+          -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+        font-size: 14px;
+        color: #333;
+        background: #f0f2f5;
+      }
+
+      a {
+        color: #1890ff;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      code {
+        padding: 0 4px;
+        font-size: 12px;
+        background: #f5f5f5;
+        border-radius: 3px;
+      }
+
+      /* ============ 顶栏导航 ============ */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 90;
+        display: flex;
+        gap: 28px;
+        align-items: center;
+        height: 50px;
+        padding: 0 24px;
+        color: #fff;
+        background: #001529;
+      }
+
+      .topbar .brand {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 15px;
+      }
+
+      .topbar .brand .home {
+        font-size: 18px;
+      }
+
+      .topbar nav {
+        display: flex;
+        gap: 4px;
+        height: 100%;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding: 0 20px;
+        font-size: 14px;
+        color: rgb(255 255 255 / 65%);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .nav-item:hover {
+        color: #fff;
+      }
+
+      .nav-item.active {
+        color: #fff;
+        background: #1890ff;
+      }
+
+      .topbar .right {
+        margin-left: auto;
+        font-size: 12px;
+        color: rgb(255 255 255 / 65%);
+      }
+
+      /* ============ 按钮 ============ */
+      .btn {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 6px 16px;
+        font-size: 13px;
+        line-height: 20px;
+        color: #555;
+        cursor: pointer;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .btn:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+      }
+
+      .btn-primary {
+        color: #fff;
+        background: #1890ff;
+        border-color: #1890ff;
+      }
+
+      .btn-primary:hover {
+        color: #fff;
+        background: #40a9ff;
+        border-color: #40a9ff;
+      }
+
+      .btn-danger {
+        color: #ff4d4f;
+        border-color: #ffa39e;
+      }
+
+      .btn-danger:hover {
+        color: #fff;
+        background: #ff4d4f;
+        border-color: #ff4d4f;
+      }
+
+      .btn-lg {
+        padding: 8px 22px;
+        font-size: 14px;
+      }
+
+      /* ============ 视图容器 ============ */
+      .view {
+        display: none;
+      }
+
+      .view.active {
+        display: block;
+      }
+
+      /* ============================================================
+ * 界面 1：模板预设
+ * ============================================================ */
+      .preset-wrap {
+        max-width: 1280px;
+        padding: 0 20px 40px;
+        margin: 16px auto;
+      }
+
+      .preset-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 24px;
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+        border-radius: 8px 8px 0 0;
+      }
+
+      .preset-header h2 {
+        font-size: 17px;
+        color: #1890ff;
+      }
+
+      .preset-header .tip {
+        margin-top: 3px;
+        font-size: 12px;
+        color: #999;
+      }
+
+      .preset-card {
+        padding: 20px 24px;
+        background: #fff;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+      }
+
+      .tpl-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        align-items: start;
+      }
+
+      .tpl-side {
+        overflow: hidden;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .tpl-side-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #555;
+        background: #fafafa;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .tpl-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f5f5f5;
+        transition: all 0.15s;
+      }
+
+      .tpl-item:hover {
+        background: #f7f9fc;
+      }
+
+      .tpl-item.active {
+        padding-left: 11px;
+        background: #e6f7ff;
+        border-left: 3px solid #1890ff;
+      }
+
+      .tpl-item .ti-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .tpl-item .ti-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-top: 3px;
+        font-size: 11px;
+        color: #999;
+      }
+
+      .ti-badge {
+        padding: 0 5px;
+        font-size: 10px;
+        color: #722ed1;
+        background: #f9f0ff;
+        border: 1px solid #d3adf7;
+        border-radius: 3px;
+      }
+
+      .ti-badge.off {
+        color: #999;
+        background: #f5f5f5;
+        border-color: #d9d9d9;
+      }
+
+      .ti-badge.custom {
+        color: #d48806;
+        background: #fff7e6;
+        border-color: #ffd591;
+      }
+
+      .tpl-main {
+        min-height: 520px;
+        padding: 20px 24px;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .tpl-empty {
+        padding: 180px 20px;
+        font-size: 14px;
+        color: #bbb;
+        text-align: center;
+      }
+
+      /* 表单 */
+      .form-grid {
+        display: grid;
+        grid-template-columns: 90px 1fr 90px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .form-label {
+        font-size: 13px;
+        line-height: 32px;
+        color: #555;
+        text-align: right;
+      }
+
+      .form-label.required::before {
+        margin-right: 3px;
+        color: #ff4d4f;
+        content: '*';
+      }
+
+      .form-control {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .span-full {
+        grid-column: 2 / span 3;
+      }
+
+      input[type='text'],
+      select,
+      textarea {
+        width: 100%;
+        height: 32px;
+        padding: 6px 11px;
+        font-family: inherit;
+        font-size: 13px;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      input[type='text']:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #40a9ff;
+        box-shadow: 0 0 0 2px rgb(24 144 255 / 20%);
+      }
+
+      select {
+        cursor: pointer;
+      }
+
+      .helper-text {
+        margin-top: 4px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #999;
+      }
+
+      /* tag */
+      .tag-input {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        min-height: 32px;
+        padding: 4px 8px 4px 11px;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+      }
+
+      .tag {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 2px 8px;
+        font-size: 12px;
+        color: #1890ff;
+        background: #e6f7ff;
+        border: 1px solid #91d5ff;
+        border-radius: 3px;
+      }
+
+      .tag .tag-type {
+        padding-left: 4px;
+        margin-left: 2px;
+        font-size: 10px;
+        color: #6ea8ff;
+        border-left: 1px solid #c8d8ff;
+      }
+
+      .tag .close {
+        font-weight: bold;
+        cursor: pointer;
+        opacity: 0.6;
+      }
+
+      .tag .close:hover {
+        color: #ff4d4f;
+        opacity: 1;
+      }
+
+      .tag-input input {
+        flex: 1;
+        min-width: 120px;
+        height: 24px !important;
+        padding: 4px 0 !important;
+        outline: none;
+        background: transparent;
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      /* 变量胶囊 */
+      .var-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .var-pill {
+        padding: 2px 8px;
+        font-size: 12px;
+        color: #d48806;
+        cursor: pointer;
+        background: #fffbe6;
+        border: 1px solid #ffe58f;
+        border-radius: 10px;
+      }
+
+      .var-pill:hover {
+        background: #fff1b8;
+      }
+
+      /* 富文本 */
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        padding: 6px 10px;
+        background: #fafafa;
+        border: 1px solid #d9d9d9;
+        border-bottom: none;
+        border-radius: 4px 4px 0 0;
+      }
+
+      .toolbar button {
+        padding: 4px 8px;
+        font-size: 13px;
+        color: #555;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+      }
+
+      .toolbar button:hover {
+        background: #e8e8e8;
+      }
+
+      .toolbar select {
+        width: auto;
+        height: 26px;
+        padding: 2px 6px;
+        font-size: 12px;
+        border-radius: 3px;
+      }
+
+      .toolbar .divider {
+        align-self: stretch;
+        width: 1px;
+        margin: 4px;
+        background: #e0e0e0;
+      }
+
+      .editor-body {
+        min-height: 180px;
+        padding: 12px 16px;
+        line-height: 1.8;
+        outline: none;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 0 0 4px 4px;
+      }
+
+      [contenteditable='true']:empty::before {
+        color: #bfbfbf;
+        content: attr(data-placeholder);
+      }
+
+      /* 附件 */
+      .attach-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .attach-business {
+        flex: 1;
+        min-width: 260px;
+        padding: 8px 12px;
+        background: #fafafa;
+        border: 1px solid #f0f0f0;
+        border-radius: 4px;
+      }
+
+      .ab-title {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #999;
+      }
+
+      .ab-title .badge {
+        padding: 0 6px;
+        font-size: 11px;
+        color: #52c41a;
+        background: #f6ffed;
+        border: 1px solid #b7eb8f;
+        border-radius: 8px;
+      }
+
+      .ab-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .ab-item {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #f0f5ff;
+        border: 1px solid #adc6ff;
+        border-radius: 3px;
+      }
+
+      .ab-item .x {
+        font-weight: bold;
+        color: #1890ff;
+        cursor: pointer;
+      }
+
+      .ab-item .x:hover {
+        color: #ff4d4f;
+      }
+
+      .upload-area {
+        flex: 1;
+        min-width: 220px;
+        padding: 10px;
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+        cursor: pointer;
+        background: #fafafa;
+        border: 1px dashed #d9d9d9;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .upload-area:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+      }
+
+      .attachment-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .attachment-item {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 5px 10px;
+        font-size: 12px;
+        background: #f0f5ff;
+        border: 1px solid #adc6ff;
+        border-radius: 4px;
+      }
+
+      .attachment-item .size {
+        color: #999;
+      }
+
+      .attachment-item .remove {
+        font-weight: bold;
+        color: #ff4d4f;
+        cursor: pointer;
+      }
+
+      .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+        padding-top: 16px;
+        margin-top: 20px;
+        border-top: 1px solid #f0f0f0;
+      }
+
+      .action-bar .left {
+        margin-right: auto;
+        font-size: 12px;
+        color: #999;
+      }
+
+      /* ============================================================
+ * 界面 2：打印模板
+ * ============================================================ */
+      .print-wrap {
+        padding: 0 0 30px;
+      }
+
+      .print-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 24px;
+        background: #fff;
+        border-bottom: 1px solid #e8e8e8;
+      }
+
+      .print-toolbar .sep {
+        width: 1px;
+        height: 22px;
+        background: #e8e8e8;
+      }
+
+      .print-toolbar select {
+        width: 220px;
+      }
+
+      .print-toolbar .hint {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .print-stage {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        min-height: calc(100vh - 190px);
+        padding: 32px 16px;
+        overflow: auto;
+        background: #3a3a3a;
+      }
+
+      /* A4 单据 */
+      .a4-doc {
+        display: none;
+        width: 794px;
+        min-height: 1050px;
+        padding: 56px 60px;
+        font-family: 'Times New Roman', SimSun, serif;
+        color: #001a5e;
+        background: #fff;
+        box-shadow: 0 4px 24px rgb(0 0 0 / 50%);
+      }
+
+      .a4-doc.show {
+        display: block;
+      }
+
+      .a4-doc .doc-title {
+        margin-bottom: 28px;
+        font-size: 22px;
+        font-weight: bold;
+        color: #001a5e;
+        text-align: center;
+        letter-spacing: 4px;
+        text-decoration: underline;
+      }
+
+      .doc-table {
+        width: 100%;
+        font-size: 12px;
+        border-collapse: collapse;
+      }
+
+      .doc-table td {
+        padding: 6px 8px;
+        vertical-align: top;
+        border: 1px solid #001a5e;
+      }
+
+      .doc-table .lbl {
+        font-size: 11px;
+        font-weight: 600;
+        color: #001a5e;
+      }
+
+      .doc-table .val {
+        min-height: 18px;
+        color: #555;
+      }
+
+      .doc-table .sec-title {
+        font-weight: 600;
+        background: #eef2ff;
+      }
+
+      .doc-note {
+        min-height: 120px;
+        padding: 8px;
+        margin-top: 24px;
+        font-size: 12px;
+        color: #001a5e;
+        border: 1px solid #001a5e;
+      }
+
+      .doc-footer {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #001a5e;
+        text-align: right;
+      }
+
+      .print-footer {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 12px 24px;
+        background: #fff;
+        border-top: 1px solid #e8e8e8;
+      }
+
+      .print-footer .left {
+        margin-right: auto;
+        font-size: 12px;
+        color: #999;
+      }
+
+      /* ============================================================
+ * 界面 3：邮件面板（右侧抽屉）
+ * ============================================================ */
+      #mail-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        background: rgb(0 0 0 / 45%);
+      }
+
+      #mail-mask.open {
+        display: block;
+      }
+
+      #mail-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 101;
+        display: flex;
+        flex-direction: column;
+        width: 760px;
+        max-width: 92vw;
+        background: #f7f8fa;
+        box-shadow: -6px 0 20px rgb(0 0 0 / 15%);
+        transform: translateX(100%);
+        transition: transform 0.28s ease;
+      }
+
+      #mail-drawer.open {
+        transform: translateX(0);
+      }
+
+      .mail-head {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .mail-head h3 {
+        font-size: 16px;
+        color: #1890ff;
+      }
+
+      .mail-head .mh-sub {
+        margin-top: 3px;
+        font-size: 12px;
+        color: #999;
+      }
+
+      .mail-body {
+        flex: 1;
+        padding: 18px 20px;
+        overflow-y: auto;
+      }
+
+      /* 线程提示条 */
+      .thread-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        margin-bottom: 14px;
+        background: #f6ffed;
+        border: 1px solid #b7eb8f;
+        border-radius: 6px;
+      }
+
+      .thread-bar.none {
+        background: #fafafa;
+        border-color: #e8e8e8;
+      }
+
+      .tb-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .tb-sub {
+        margin-top: 2px;
+        font-size: 11px;
+        color: #888;
+      }
+
+      .tb-right {
+        display: flex;
+        gap: 6px;
+      }
+
+      .tb-right .btn {
+        padding: 2px 8px;
+        font-size: 11px;
+      }
+
+      /* 信息卡（发件人/时间/收件人/抄送） */
+      .mail-card {
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .mail-card .mc-title {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .mail-card .mc-title .dot {
+        width: 3px;
+        height: 13px;
+        background: #2f6bff;
+        border-radius: 2px;
+      }
+
+      .info-line {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 10px;
+      }
+
+      .info-line:last-child {
+        margin-bottom: 0;
+      }
+
+      .info-line .il-label {
+        flex-shrink: 0;
+        width: 64px;
+        padding-right: 10px;
+        font-size: 13px;
+        line-height: 32px;
+        color: #888;
+        text-align: right;
+      }
+
+      .info-line .il-field {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .info-line .il-static {
+        font-size: 13px;
+        line-height: 32px;
+        color: #555;
+      }
+
+      .info-line .il-static.muted {
+        color: #bbb;
+      }
+
+      /* 附件区（抽屉内） */
+      .attach-card {
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .mail-foot {
+        display: flex;
+        flex-shrink: 0;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: #fff;
+        border-top: 1px solid #f0f0f0;
+      }
+
+      .mail-foot .mf-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      /* 发送记录子视图 */
+      .record-view {
+        display: none;
+      }
+
+      .record-view.active {
+        display: block;
+      }
+
+      .history-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 14px;
+        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .history-toolbar select,
+      .history-toolbar input {
+        width: auto;
+        height: 30px;
+      }
+
+      .seg {
+        display: flex;
+        margin-left: auto;
+        overflow: hidden;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+      }
+
+      .seg .btn {
+        border: none;
+        border-radius: 0;
+      }
+
+      .seg .btn + .btn {
+        border-left: 1px solid #d9d9d9;
+      }
+
+      .seg .btn.on {
+        color: #1890ff;
+        background: #e6f7ff;
+      }
+
+      .history-table {
+        width: 100%;
+        overflow: hidden;
+        font-size: 12px;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 6px;
+      }
+
+      .history-table th,
+      .history-table td {
+        padding: 9px 10px;
+        text-align: left;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .history-table th {
+        font-weight: 500;
+        color: #666;
+        white-space: nowrap;
+        background: #fafafa;
+      }
+
+      .history-table tr:hover td {
+        background: #fafafa;
+      }
+
+      .status-tag {
+        display: inline-block;
+        padding: 1px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+        border-radius: 10px;
+      }
+
+      .status-success {
+        color: #52c41a;
+        background: #f6ffed;
+        border: 1px solid #b7eb8f;
+      }
+
+      .status-failed {
+        color: #ff4d4f;
+        background: #fff1f0;
+        border: 1px solid #ffa39e;
+      }
+
+      .status-pending {
+        color: #faad14;
+        background: #fffbe6;
+        border: 1px solid #ffe58f;
+      }
+
+      .thread-group {
+        margin-bottom: 12px;
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 6px;
+      }
+
+      .thread-group-head {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 14px;
+        font-size: 12px;
+        color: #555;
+        background: #fafafa;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .tl-item {
+        display: flex;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 1px dashed #f5f5f5;
+      }
+
+      .tl-item:last-child {
+        border-bottom: none;
+      }
+
+      .tl-dot {
+        flex-shrink: 0;
+        width: 8px;
+        height: 8px;
+        margin-top: 6px;
+        background: #52c41a;
+        border-radius: 50%;
+      }
+
+      .tl-dot.pending {
+        background: #faad14;
+      }
+
+      .tl-dot.failed {
+        background: #ff4d4f;
+      }
+
+      .tl-content {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .tl-line1 {
+        font-size: 13px;
+        color: #333;
+      }
+
+      .tl-line2 {
+        margin-top: 2px;
+        font-size: 11px;
+        color: #999;
+      }
+
+      /* toast */
+      .toast {
+        position: fixed;
+        top: 64px;
+        left: 50%;
+        z-index: 300;
+        display: none;
+        padding: 8px 18px;
+        font-size: 13px;
+        color: #fff;
+        background: rgb(0 0 0 / 78%);
+        border-radius: 4px;
+        transform: translateX(-50%);
+      }
+
+      .toast.show {
+        display: block;
+        animation: fade-in 0.2s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ================= 顶栏 ================= -->
+    <div class="topbar">
+      <span class="brand"
+        ><span class="home">🏠</span> 主画布 · BK202609-018</span
+      >
+      <nav>
+        <div
+          class="nav-item active"
+          data-view="preset"
+          onclick="switchView('preset')"
+        >
+          📑 模板预设
+        </div>
+        <div class="nav-item" data-view="print" onclick="switchView('print')">
+          🖨 打印模板
+        </div>
+      </nav>
+      <span class="right">运单号：BK202609-018 ｜ 操作员：陈静</span>
+    </div>
+
+    <!-- ============================================================
+ * 界面 1：模板预设
+ * ============================================================ -->
+    <div class="view active" id="view-preset">
+      <div class="preset-wrap">
+        <div class="preset-header">
+          <div>
+            <h2>📑 模板预设</h2>
+            <div class="tip">
+              按「业务节点」预设邮件模板：标题 / 正文 / 变量 /
+              收件人规则，发送时自动匹配
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="newTemplate()">
+            ＋ 新建模板
+          </button>
+        </div>
+        <div class="preset-card">
+          <div class="tpl-layout">
+            <!-- 左：模板列表 -->
+            <div class="tpl-side">
+              <div class="tpl-side-head">
+                <span>模板列表（<span id="tplCount">0</span>）</span>
+              </div>
+              <div id="tplList"></div>
+            </div>
+            <!-- 右：编辑器 -->
+            <div class="tpl-main">
+              <div class="tpl-empty" id="tplEmpty">
+                👈 请从左侧选择模板，或点击右上「＋ 新建模板」
+              </div>
+              <div id="tplForm" style="display: none">
+                <div class="form-grid">
+                  <div class="form-label required">模板名称</div>
+                  <div class="form-control">
+                    <input
+                      type="text"
+                      id="tplName"
+                      placeholder="如：订舱委托书 - {订舱号}"
+                    />
+                  </div>
+                  <div class="form-label required">任务节点</div>
+                  <div class="form-control">
+                    <select id="tplNode">
+                      <option value="booking">📋 订舱（给订舱代理）</option>
+                      <option value="release">📤 放舱（给委托单位）</option>
+                      <option value="prealter">
+                        🌏 Pre-alter（给国外代理）
+                      </option>
+                      <option value="statement">💰 账单（给结算单位）</option>
+                    </select>
+                  </div>
+
+                  <div class="form-label">默认发件人</div>
+                  <div class="form-control">
+                    <select id="tplSender">
+                      <option value="ops@myfreight.com">操作</option>
+                      <option value="doc@myfreight.com">单证</option>
+                      <option value="cs@myfreight.com">客服</option>
+                      <option value="bd@myfreight.com">商务</option>
+                      <option value="sales@myfreight.com">销售</option>
+                      <option value="current">当前账户</option>
+                    </select>
+                  </div>
+                  <div class="form-label">状态</div>
+                  <div class="form-control">
+                    <select id="tplEnabled">
+                      <option value="1">✅ 启用</option>
+                      <option value="0">⏸ 停用</option>
+                    </select>
+                  </div>
+
+                  <div class="form-label">收件人</div>
+                  <div class="form-control span-full">
+                    <div
+                      class="tag-input"
+                      id="tplToContainer"
+                      onclick="focusInput('tplToInput')"
+                    >
+                      <input
+                        type="text"
+                        id="tplToInput"
+                        placeholder="点击下方规则快速添加，或输入邮箱回车"
+                        onkeydown="handleTagInput(event, 'tplTo')"
+                      />
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 6px;
+                        margin-top: 8px;
+                      "
+                    >
+                      <span
+                        class="var-pill"
+                        onclick="tplAddTo('RULE:CUSTOMER_ALL')"
+                        >+ 委托单位所有联系人</span
+                      >
+                      <span
+                        class="var-pill"
+                        onclick="tplAddTo('RULE:BOOKING_AGENT_ALL')"
+                        >+ 订舱代理所有联系人</span
+                      >
+                      <span
+                        class="var-pill"
+                        onclick="tplAddTo('RULE:OVERSEAS_AGENT')"
+                        >+ 国外代理</span
+                      >
+                      <span
+                        class="var-pill"
+                        onclick="tplAddTo('RULE:SETTLEMENT_ALL')"
+                        >+ 结算单位</span
+                      >
+                    </div>
+                    <div class="helper-text">
+                      预设收件人将在邮件面板中按规则自动展开为联系人
+                    </div>
+                  </div>
+
+                  <div class="form-label">抄送人</div>
+                  <div class="form-control span-full">
+                    <div
+                      class="tag-input"
+                      id="tplCcContainer"
+                      onclick="focusInput('tplCcInput')"
+                    >
+                      <input
+                        type="text"
+                        id="tplCcInput"
+                        placeholder="点击下方部门快速添加，或输入邮箱回车"
+                        onkeydown="handleTagInput(event, 'tplCc')"
+                      />
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 6px;
+                        margin-top: 8px;
+                      "
+                    >
+                      <span class="var-pill" onclick="tplAddCc('DEPT:op')"
+                        >+ 操作</span
+                      >
+                      <span class="var-pill" onclick="tplAddCc('DEPT:doc')"
+                        >+ 单证</span
+                      >
+                      <span class="var-pill" onclick="tplAddCc('DEPT:cs')"
+                        >+ 客服</span
+                      >
+                      <span class="var-pill" onclick="tplAddCc('DEPT:bd')"
+                        >+ 商务</span
+                      >
+                      <span class="var-pill" onclick="tplAddCc('DEPT:sales')"
+                        >+ 销售</span
+                      >
+                    </div>
+                    <div class="helper-text">
+                      预设抄送人支持部门规则与具体邮箱，可混合配置
+                    </div>
+                  </div>
+
+                  <div class="form-label required">邮件标题</div>
+                  <div class="form-control span-full">
+                    <input
+                      type="text"
+                      id="tplSubject"
+                      placeholder="支持变量，如：【订舱委托】{订舱号} - {船名}/{航次}"
+                    />
+                  </div>
+
+                  <div class="form-label">业务变量</div>
+                  <div class="form-control span-full">
+                    <div class="var-pills" id="tplVarPills"></div>
+                    <div class="helper-text">
+                      点击变量 → 插入到标题光标处；正文中可直接输入 {"变量"}
+                      占位符
+                    </div>
+                  </div>
+
+                  <div class="form-label required">邮件正文</div>
+                  <div class="form-control span-full">
+                    <div class="toolbar">
+                      <select
+                        onchange="
+                          tplExec('formatBlock', this.value);
+                          this.value = '';
+                        "
+                      >
+                        <option value="">正文样式</option>
+                        <option value="h2">标题</option>
+                        <option value="p">正文</option>
+                      </select>
+                      <span class="divider"></span>
+                      <button onclick="tplExec('bold')"><b>B</b></button>
+                      <button onclick="tplExec('italic')"><i>I</i></button>
+                      <button onclick="tplExec('underline')"><u>U</u></button>
+                      <span class="divider"></span>
+                      <button onclick="tplExec('insertUnorderedList')">
+                        • 列表
+                      </button>
+                      <button onclick="tplExec('insertOrderedList')">
+                        1. 列表
+                      </button>
+                      <span class="divider"></span>
+                      <button onclick="tplInsertTable()">📊 表格</button>
+                      <button onclick="tplExec('justifyLeft')">⬅</button>
+                      <button onclick="tplExec('justifyCenter')">↔</button>
+                      <button onclick="tplExec('justifyRight')">➡</button>
+                      <span class="divider"></span>
+                      <button onclick="tplInsertLink()">🔗 链接</button>
+                    </div>
+                    <div
+                      class="editor-body"
+                      contenteditable="true"
+                      id="tplBody"
+                      style="min-height: 220px"
+                      data-placeholder="请输入邮件正文模板..."
+                    ></div>
+                  </div>
+                </div>
+                <div class="action-bar">
+                  <span class="left" id="tplMeta">—</span>
+                  <button class="btn" onclick="previewTemplate()">
+                    👁 预览
+                  </button>
+                  <button class="btn btn-danger" onclick="deleteTemplate()">
+                    🗑 删除
+                  </button>
+                  <button class="btn" onclick="saveTemplate(false)">
+                    💾 保存
+                  </button>
+                  <button class="btn btn-primary" onclick="saveTemplate(true)">
+                    💾 保存并启用
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+ * 界面 2：打印模板
+ * ============================================================ -->
+    <div class="view" id="view-print">
+      <div class="print-wrap">
+        <!-- 工具条 -->
+        <div class="print-toolbar">
+          <span style="font-size: 13px; color: #555">单据：</span>
+          <select id="docSelect" onchange="onDocChange(this.value)"></select>
+          <span class="hint" id="docHint"></span>
+        </div>
+
+        <!-- 预览台 -->
+        <div class="print-stage">
+          <!-- 订舱委托书 -->
+          <div class="a4-doc" id="doc-booking">
+            <div class="doc-title">订舱委托书 BOOKING NOTE</div>
+            <table class="doc-table">
+              <tr>
+                <td style="width: 34%">
+                  <span class="lbl">Shipper(发货人)</span>
+                  <div class="val">
+                    上海ABC贸易有限公司<br />SHANGHAI ABC TRADING CO., LTD.<br />上海市浦东新区世纪大道
+                    88 号
+                  </div>
+                </td>
+                <td>
+                  <span class="lbl">TO(订舱代理)</span>
+                  <div class="val">
+                    Maersk Line 船公司<br />PRC/Attn: Emily Wang　Tel: 021-2888
+                    6666<br />E-mail: booking@maersk.com
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="lbl">Consignee(收货人)</span>
+                  <div class="val">
+                    ABC Trading B.V.<br />Rotterdam, Netherlands
+                  </div>
+                </td>
+                <td rowspan="2" style="width: 66%">
+                  <table class="doc-table" style="border: none">
+                    <tr>
+                      <td
+                        colspan="4"
+                        class="sec-title"
+                        style="border: 1px solid #001a5e"
+                      >
+                        □ 美线信息 SUMMARY
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">报警电话</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val"></td>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">增值税号</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val"></td>
+                    </tr>
+                    <tr>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">船名 Vessel</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        MAERSK SELETAR
+                      </td>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">航次 Voy</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        618E
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">船公司 Carrier</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        MAERSK
+                      </td>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">ETD</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        2026-09-14
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">Opening Time</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        2026-09-10
+                      </td>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">截关时间</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        09-12 17:00
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">免用箱天数</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        14 Days
+                      </td>
+                      <td style="border: 1px solid #001a5e">
+                        <span class="lbl">目的港免堆 DEMURRAGE</span>
+                      </td>
+                      <td style="border: 1px solid #001a5e" class="val">
+                        21 Days
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="lbl">Notify Party(通知人)</span>
+                  <div class="val">Same as Consignee</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="lbl">Place of Receipt(收货地)</span>
+                  <div class="val">CNSHA 上海</div>
+                </td>
+                <td rowspan="2">
+                  <span class="lbl">COMMODITY 品名</span>
+                  <div class="val">TEXTILE / GARMENT</div>
+                  <div style="margin-top: 6px">
+                    <span class="lbl">HS CODE</span>
+                  </div>
+                  <div class="val">6109.10</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="lbl"
+                    >Port of Delivery(卸货港) / Final Destination(目的港)</span
+                  >
+                  <div class="val">NLRTM 鹿特丹 / NLRTM</div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="lbl">Marks & Nos 唛头</span></td>
+                <td>
+                  <span class="lbl">Packages 件数</span>
+                  <div class="val">520 CTNS</div>
+                </td>
+                <td>
+                  <span class="lbl">Description of Goods 货物描述</span>
+                  <div class="val">GARMENTS</div>
+                </td>
+                <td style="width: 14%">
+                  <span class="lbl">Gross Weight 毛重</span>
+                  <div class="val">7,850 KGS</div>
+                </td>
+                <td style="width: 14%">
+                  <span class="lbl">Measurement 体积</span>
+                  <div class="val">68.2 CBM</div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="5" style="height: 110px" class="val">
+                  2×40HQ　MSKU1234567 / MSKU7654321　SEAL: 202609
+                </td>
+              </tr>
+            </table>
+            <div class="doc-note">
+              <b>订舱要求(Booking Requirement):</b><br />1.
+              请尽快订舱并回传订舱确认（S/O）；2. 目的港需 21 天免堆；3.
+              提单要求：电放。
+            </div>
+            <div class="doc-footer">
+              订舱日期：2026年9月9日 15:47:26 ｜ 操作员：陈静
+            </div>
+          </div>
+
+          <!-- 放舱通知 -->
+          <div class="a4-doc" id="doc-release">
+            <div class="doc-title">放舱通知 RELEASE NOTICE</div>
+            <table class="doc-table">
+              <tr>
+                <td style="width: 24%" class="lbl">订舱号 Booking No.</td>
+                <td class="val">BK202609-018</td>
+                <td style="width: 24%" class="lbl">委托单位 Customer</td>
+                <td class="val">上海ABC贸易有限公司</td>
+              </tr>
+              <tr>
+                <td class="lbl">船名 / 航次</td>
+                <td class="val">MAERSK SELETAR / 618E</td>
+                <td class="lbl">船公司</td>
+                <td class="val">MAERSK</td>
+              </tr>
+              <tr>
+                <td class="lbl">起运港 POL</td>
+                <td class="val">CNSHA 上海</td>
+                <td class="lbl">目的港 POD</td>
+                <td class="val">NLRTM 鹿特丹</td>
+              </tr>
+              <tr>
+                <td class="lbl">截关时间 CY Cut-off</td>
+                <td class="val">2026-09-12 17:00</td>
+                <td class="lbl">开船时间 ETD</td>
+                <td class="val">2026-09-14 08:00</td>
+              </tr>
+              <tr>
+                <td class="lbl">箱型箱量</td>
+                <td class="val">2×40HQ</td>
+                <td class="lbl">S/O 号</td>
+                <td class="val">S/O MAE-2026-778812</td>
+              </tr>
+              <tr>
+                <td class="lbl">货物描述</td>
+                <td colspan="3" class="val">
+                  TEXTILE / GARMENT　520 CTNS　7,850 KGS　68.2 CBM
+                </td>
+              </tr>
+            </table>
+            <div class="doc-note">
+              <b>注意事项:</b><br />1. 请于截关时间前完成进港；2. 进港凭 S/O
+              至指定堆场；3. 如有改配请提前 24 小时通知。
+            </div>
+            <div class="doc-footer">出具日期：2026年9月9日 ｜ 操作部：陈静</div>
+          </div>
+
+          <!-- Pre-alter -->
+          <div class="a4-doc" id="doc-prealter">
+            <div class="doc-title">装船确认 PRE-ALERT</div>
+            <table class="doc-table">
+              <tr>
+                <td style="width: 26%" class="lbl">B/L No. 提单号</td>
+                <td class="val">MAE21098765</td>
+                <td style="width: 26%" class="lbl">Vessel/Voy 船名航次</td>
+                <td class="val">MAERSK SELETAR / 618E</td>
+              </tr>
+              <tr>
+                <td class="lbl">POL / POD</td>
+                <td class="val">CNSHA → NLRTM</td>
+                <td class="lbl">ETA 到港</td>
+                <td class="val">2026-10-08</td>
+              </tr>
+              <tr>
+                <td class="lbl">Consignee 收货人</td>
+                <td class="val">ABC Trading B.V.</td>
+                <td class="lbl">Agent 目的港代理</td>
+                <td class="val">ABC Logistics NY</td>
+              </tr>
+              <tr>
+                <td class="lbl">Containers 箱况</td>
+                <td colspan="3" class="val">
+                  2×40HQ　MSKU1234567 / MSKU7654321
+                </td>
+              </tr>
+              <tr>
+                <td class="lbl">Cargo 货物</td>
+                <td colspan="3" class="val">
+                  GARMENTS　520 CTNS　7,850 KGS　68.2 CBM
+                </td>
+              </tr>
+            </table>
+            <div class="doc-note">
+              <b>Kindly note:</b><br />Documents (B/L copy, packing list,
+              invoice) attached. Please arrange onward delivery and customs
+              clearance.
+            </div>
+            <div class="doc-footer">Issued: 2026-09-09 ｜ By: CHEN JING</div>
+          </div>
+
+          <!-- 账单 -->
+          <div class="a4-doc" id="doc-statement">
+            <div class="doc-title">费用账单 DEBIT NOTE</div>
+            <table class="doc-table">
+              <tr>
+                <td style="width: 26%" class="lbl">账单号 Bill No.</td>
+                <td class="val">INV-202609-0310</td>
+                <td style="width: 26%" class="lbl">结算单位</td>
+                <td class="val">上海ABC贸易有限公司</td>
+              </tr>
+              <tr>
+                <td class="lbl">运单号</td>
+                <td class="val">BK202609-018</td>
+                <td class="lbl">账期</td>
+                <td class="val">2026-09（月结 30 天）</td>
+              </tr>
+            </table>
+            <table class="doc-table" style="margin-top: 14px">
+              <tr class="sec-title">
+                <td class="lbl">费用项</td>
+                <td class="lbl">币种</td>
+                <td class="lbl">数量</td>
+                <td class="lbl">单价</td>
+                <td class="lbl">金额</td>
+              </tr>
+              <tr>
+                <td class="val">海运费 OCEAN FREIGHT</td>
+                <td class="val">USD</td>
+                <td class="val">2</td>
+                <td class="val">1,850.00</td>
+                <td class="val">3,700.00</td>
+              </tr>
+              <tr>
+                <td class="val">THC 码头操作费</td>
+                <td class="val">CNY</td>
+                <td class="val">2</td>
+                <td class="val">1,120.00</td>
+                <td class="val">2,240.00</td>
+              </tr>
+              <tr>
+                <td class="val">文件费 DOCUMENTATION</td>
+                <td class="val">CNY</td>
+                <td class="val">1</td>
+                <td class="val">300.00</td>
+                <td class="val">300.00</td>
+              </tr>
+              <tr>
+                <td class="val" colspan="4" style="text-align: right">
+                  <b>合计 TOTAL</b>
+                </td>
+                <td class="val"><b>USD 3,700.00 + CNY 2,540.00</b></td>
+              </tr>
+            </table>
+            <div class="doc-footer">2026年9月9日 ｜ 财务部</div>
+          </div>
+        </div>
+
+        <!-- 底部操作条 -->
+        <div class="print-footer">
+          <span class="left" id="printHint"
+            >环节：订舱 ｜ 单据：订舱委托书 ｜
+            点击「邮件」将按当前环节自动匹配邮件模板</span
+          >
+          <button class="btn btn-primary btn-lg" onclick="openMailDrawer()">
+            ✉ 邮件
+          </button>
+          <button class="btn btn-lg" onclick="closePrint()">关闭</button>
+          <button class="btn btn-lg" onclick="window.print()">🖨 打印</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+ * 界面 3：邮件面板（右侧抽屉）
+ * ============================================================ -->
+    <div id="mail-mask" onclick="closeMailDrawer()"></div>
+    <div id="mail-drawer">
+      <!-- 头部 -->
+      <div class="mail-head">
+        <div>
+          <h3 id="mdTitle">✉ 邮件</h3>
+          <div class="mh-sub" id="mdSub">—</div>
+        </div>
+        <button class="btn" onclick="closeMailDrawer()">✕</button>
+      </div>
+
+      <div class="mail-body">
+        <!-- ===== 子视图：撰写 ===== -->
+        <div class="record-view" id="mv-compose">
+          <!-- 线程提示条 -->
+          <div class="thread-bar" id="threadBar">
+            <div>
+              <div class="tb-title" id="tbTitle">—</div>
+              <div class="tb-sub" id="tbSub">—</div>
+            </div>
+            <div class="tb-right">
+              <button class="btn" onclick="quoteLastMail()">
+                ↩ 引用上一封
+              </button>
+            </div>
+          </div>
+
+          <!-- 环节 / 邮件模板选择 -->
+          <div class="mail-card" style="padding: 10px 16px">
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+              "
+            >
+              <span style="font-size: 13px; color: #555">环节：</span>
+              <select
+                id="mailNodeSelect"
+                onchange="switchMailNode(this.value)"
+                style="width: 170px"
+              >
+                <option value="booking">📋 订舱</option>
+                <option value="release">📤 放舱</option>
+                <option value="prealter">🌏 Pre-alter</option>
+                <option value="statement">💰 账单</option>
+              </select>
+              <span style="font-size: 13px; color: #555">邮件模板：</span>
+              <select
+                id="mailTplSelect"
+                onchange="applyDrawerTpl(this.value)"
+                style="flex: 1; min-width: 220px"
+              ></select>
+            </div>
+          </div>
+
+          <!-- 标题 -->
+          <div class="mail-card">
+            <div class="mc-title"><span class="dot"></span>标题</div>
+            <input
+              type="text"
+              id="subject"
+              placeholder="点击下方变量可插入业务字段"
+              style="font-size: 15px; font-weight: 500"
+            />
+            <div class="var-pills" id="varPills" style="margin-top: 10px"></div>
+          </div>
+
+          <!-- 发件信息 -->
+          <div class="mail-card">
+            <div class="mc-title">
+              <span class="dot"></span>发件信息
+              <span style="font-size: 12px; font-weight: 400; color: #999"
+                >（按当前环节自动预设，可修改）</span
+              >
+            </div>
+            <div class="info-line">
+              <div class="il-label">发件人：</div>
+              <div class="il-field">
+                <select id="sender">
+                  <option value="ops@myfreight.com">操作</option>
+                  <option value="doc@myfreight.com">单证</option>
+                  <option value="cs@myfreight.com">客服</option>
+                  <option value="bd@myfreight.com">商务</option>
+                  <option value="sales@myfreight.com">销售</option>
+                  <option value="current">当前账户</option>
+                </select>
+              </div>
+            </div>
+            <div class="info-line">
+              <div class="il-label">时间：</div>
+              <div class="il-field">
+                <span class="il-static" id="sendTime">—</span>
+              </div>
+            </div>
+            <div class="info-line">
+              <div class="il-label">收件人：</div>
+              <div class="il-field">
+                <div
+                  class="tag-input"
+                  id="toContainer"
+                  onclick="focusInput('toInput')"
+                >
+                  <input
+                    type="text"
+                    id="toInput"
+                    placeholder="输入邮箱回车添加"
+                    onkeydown="handleTagInput(event, 'to')"
+                  />
+                </div>
+                <div class="helper-text" id="toRule">—</div>
+              </div>
+            </div>
+            <div class="info-line">
+              <div class="il-label">抄送人：</div>
+              <div class="il-field">
+                <div
+                  class="tag-input"
+                  id="ccContainer"
+                  onclick="focusInput('ccInput')"
+                >
+                  <input
+                    type="text"
+                    id="ccInput"
+                    placeholder="输入邮箱回车添加"
+                    onkeydown="handleTagInput(event, 'cc')"
+                  />
+                </div>
+                <div class="helper-text" id="ccRule">—</div>
+              </div>
+            </div>
+            <div class="info-line">
+              <div class="il-label">邮件名称：</div>
+              <div class="il-field">
+                <input
+                  type="text"
+                  id="emailName"
+                  placeholder="内部标识，便于归档检索"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 附件 -->
+          <div class="attach-card">
+            <div class="mc-title"><span class="dot"></span>附件</div>
+            <div class="attach-row">
+              <div class="attach-business">
+                <div class="ab-title">
+                  📦 关联当前单据
+                  <span class="badge" id="autoAttachBadge">0 个</span>
+                </div>
+                <div class="ab-list" id="autoAttachList"></div>
+              </div>
+              <label class="upload-area" for="fileInput">
+                📎 上传附件 / 拖拽至此<br /><span style="font-size: 11px"
+                  >PDF / Word / Excel / 图片 ≤ 20MB</span
+                >
+                <input
+                  type="file"
+                  id="fileInput"
+                  multiple
+                  style="display: none"
+                  onchange="handleFiles(this.files)"
+                />
+              </label>
+            </div>
+            <div class="attachment-list" id="attachmentList"></div>
+          </div>
+
+          <!-- 正文 -->
+          <div class="mail-card">
+            <div class="mc-title"><span class="dot"></span>正文</div>
+            <div class="toolbar">
+              <select
+                onchange="
+                  execCmd('formatBlock', this.value);
+                  this.value = '';
+                "
+              >
+                <option value="">正文样式</option>
+                <option value="h2">标题</option>
+                <option value="p">正文</option>
+              </select>
+              <span class="divider"></span>
+              <button onclick="execCmd('bold')"><b>B</b></button>
+              <button onclick="execCmd('italic')"><i>I</i></button>
+              <button onclick="execCmd('underline')"><u>U</u></button>
+              <span class="divider"></span>
+              <button onclick="execCmd('insertUnorderedList')">• 列表</button>
+              <button onclick="execCmd('insertOrderedList')">1. 列表</button>
+              <span class="divider"></span>
+              <button onclick="insertTable()">📊 表格</button>
+              <button onclick="execCmd('justifyLeft')">⬅</button>
+              <button onclick="execCmd('justifyCenter')">↔</button>
+              <button onclick="execCmd('justifyRight')">➡</button>
+              <span class="divider"></span>
+              <button onclick="insertLink()">🔗 链接</button>
+            </div>
+            <div
+              class="editor-body"
+              contenteditable="true"
+              id="editor"
+              style="min-height: 200px"
+              data-placeholder="请输入邮件正文..."
+            ></div>
+          </div>
+        </div>
+
+        <!-- ===== 子视图：发送记录 ===== -->
+        <div class="record-view" id="mv-record">
+          <div class="history-toolbar">
+            <span style="font-size: 13px">节点：</span>
+            <select id="filterNode">
+              <option value="">全部</option>
+              <option value="booking">订舱</option>
+              <option value="release">放舱</option>
+              <option value="prealter">Pre-alter</option>
+              <option value="statement">账单</option>
+            </select>
+            <span style="font-size: 13px">状态：</span>
+            <select id="filterStatus">
+              <option value="">全部</option>
+              <option value="success">已送达</option>
+              <option value="pending">待发送</option>
+              <option value="failed">失败</option>
+            </select>
+            <input
+              type="text"
+              id="filterKw"
+              placeholder="搜索名称/收件人"
+              style="width: 160px"
+            />
+            <button class="btn" onclick="renderHistory()">🔍</button>
+            <div class="seg">
+              <button class="btn on" id="hvList" onclick="setHistView('list')">
+                📋 列表
+              </button>
+              <button class="btn" id="hvThread" onclick="setHistView('thread')">
+                🧵 线程
+              </button>
+            </div>
+          </div>
+
+          <div id="histTableWrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>名称</th>
+                  <th>节点</th>
+                  <th>收件人</th>
+                  <th>附件</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+          <div id="histThreadWrap" style="display: none"></div>
+        </div>
+      </div>
+
+      <!-- 底部操作 -->
+      <div class="mail-foot">
+        <button
+          class="btn"
+          id="btnBack"
+          style="display: none"
+          onclick="backToCompose()"
+        >
+          ← 返回撰写
+        </button>
+        <div class="mf-right">
+          <button class="btn" id="btnRecord" onclick="showRecord()">
+            📜 发送记录
+          </button>
+          <button class="btn" onclick="saveDraft()">💾 暂存</button>
+          <button class="btn btn-danger" onclick="resetMailForm()">重置</button>
+          <button class="btn btn-primary btn-lg" onclick="sendEmail()">
+            📤 发送
+          </button>
+          <button class="btn" onclick="closeMailDrawer()">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 预览抽屉（模板预览用） -->
+    <div
+      id="mail-mask-2"
+      style="
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        display: none;
+        background: rgb(0 0 0 / 45%);
+      "
+      onclick="this.style.display = 'none'"
+    ></div>
+    <div
+      id="previewPane"
+      style="
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 201;
+        display: none;
+        flex-direction: column;
+        width: 600px;
+        max-width: 90vw;
+        background: #fff;
+        box-shadow: -6px 0 20px rgb(0 0 0 / 15%);
+        transform: translateX(100%);
+        transition: transform 0.28s;
+      "
+    >
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 20px;
+          border-bottom: 1px solid #f0f0f0;
+        "
+      >
+        <h3 style="font-size: 16px; color: #1890ff">👁 邮件预览</h3>
+        <button class="btn" onclick="closePreview()">✕</button>
+      </div>
+      <div style="flex: 1; padding: 20px; overflow-y: auto">
+        <div
+          style="
+            padding: 16px 20px;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+          "
+        >
+          <div
+            style="
+              padding-bottom: 10px;
+              margin-bottom: 12px;
+              font-size: 13px;
+              line-height: 2;
+              color: #555;
+              border-bottom: 1px dashed #f0f0f0;
+            "
+          >
+            <div><b>收件人：</b><span id="ep_to">—</span></div>
+            <div><b>抄　送：</b><span id="ep_cc">—</span></div>
+            <div><b>时　间：</b><span id="ep_time">—</span></div>
+            <div><b>发件人：</b><span id="ep_from">—</span></div>
+          </div>
+          <div
+            id="ep_subject"
+            style="margin: 10px 0 6px; font-size: 16px; font-weight: 600"
+          ></div>
+          <div id="ep_body" style="font-size: 14px; line-height: 1.8"></div>
+          <div
+            style="
+              padding-top: 12px;
+              margin-top: 16px;
+              font-size: 13px;
+              border-top: 1px dashed #f0f0f0;
+            "
+          >
+            <div style="margin-bottom: 6px; color: #999">📎 附件</div>
+            <div id="ep_attach"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      /* ============================================================
+       * 业务变量
+       * ============================================================ */
+      const businessVars = [
+        '{订舱号}',
+        '{委托编号}',
+        '{提单号}',
+        '{船名}',
+        '{航次}',
+        '{起运港}',
+        '{目的港}',
+        '{截单时间}',
+        '{开船时间}',
+        '{到港日期}',
+        '{箱型箱量}',
+        '{件数}',
+        '{包装}',
+        '{重量}',
+        '{尺码}',
+        '{货物描述}',
+        '{收货人}',
+        '{通知人}',
+        '{委托单位}',
+        '{船公司}',
+        '{订舱代理}',
+        '{场站}',
+        '{车队}',
+        '{结算单位}',
+        '{操作}',
+        '{当前日期}',
+        '{外部备注}',
+      ];
+      const varLabels = {
+        '{订舱号}': '订舱号',
+        '{委托编号}': '委托编号',
+        '{提单号}': '提单号',
+        '{船名}': '船名',
+        '{航次}': '航次',
+        '{起运港}': '起运港',
+        '{目的港}': '目的港',
+        '{截单时间}': '截单时间',
+        '{开船时间}': '开船时间',
+        '{到港日期}': '到港日期',
+        '{箱型箱量}': '箱型箱量',
+        '{件数}': '件数',
+        '{包装}': '包装',
+        '{重量}': '重量',
+        '{尺码}': '尺码',
+        '{货物描述}': '货物描述',
+        '{收货人}': '收货人',
+        '{通知人}': '通知人',
+        '{委托单位}': '委托单位',
+        '{船公司}': '船公司',
+        '{订舱代理}': '订舱代理',
+        '{场站}': '场站',
+        '{车队}': '车队',
+        '{结算单位}': '结算单位',
+        '{操作}': '操作',
+        '{当前日期}': '当前日期',
+        '{外部备注}': '外部备注',
+      };
+      const varMock = {
+        '{订舱号}': 'BK202609-018',
+        '{委托编号}': 'WT202609-0186',
+        '{提单号}': 'MAE21098765',
+        '{船名}': 'MAERSK SELETAR',
+        '{航次}': '618E',
+        '{起运港}': 'CNSHA 上海',
+        '{目的港}': 'NLRTM 鹿特丹',
+        '{截单时间}': '2026-09-12 17:00',
+        '{开船时间}': '2026-09-14 08:00',
+        '{到港日期}': '2026-10-08',
+        '{箱型箱量}': '2×40HQ',
+        '{件数}': '520',
+        '{包装}': 'CTNS',
+        '{重量}': '7,850 KGS',
+        '{尺码}': '68.2 CBM',
+        '{货物描述}': '纺织品 / 服装',
+        '{收货人}': 'ABC Trading B.V.',
+        '{通知人}': 'Same as consignee',
+        '{委托单位}': '上海ABC贸易有限公司',
+        '{船公司}': 'MAERSK',
+        '{订舱代理}': 'Maersk Line',
+        '{场站}': '上海振东集装箱码头',
+        '{车队}': '上海顺达运输车队',
+        '{结算单位}': '上海ABC贸易有限公司',
+        '{操作}': '陈静',
+        '{当前日期}': '2026-09-09',
+        '{外部备注}': '目的港需 21 天免堆，提单电放',
+      };
+
+      /* 变量渲染：{变量} → 实际值；未知变量保留原样 */
+      function renderVars(s) {
+        return (s || '').replace(/\{[^}]+\}/g, (m) => varMock[m] || m);
+      }
+
+      /* ============================================================
+       * 节点配置
+       * ============================================================ */
+      const nodeConfig = {
+        booking: {
+          label: '订舱',
+          docs: [{ v: 'doc-booking', label: '📋 订舱委托书 BOOKING NOTE' }],
+          emailTypes: [],
+          toRule: '自动带入：<b>订舱代理</b> 所有联系人',
+          ccRule: '建议抄送：操作 / 单证',
+          ccSuggest: ['op', 'doc'],
+          autoAttach: [
+            { name: '订舱委托书_BK202609-018.pdf', size: '186 KB' },
+            { name: '装箱单_20260905.xlsx', size: '42 KB' },
+          ],
+        },
+        release: {
+          label: '放舱',
+          docs: [{ v: 'doc-release', label: '📤 放舱通知 RELEASE NOTICE' }],
+          toRule: '自动带入：<b>委托单位</b> 所有联系人',
+          ccRule: '建议抄送：操作 / 销售',
+          ccSuggest: ['op', 'sales'],
+          autoAttach: [
+            { name: '放舱通知_BC202609-018.pdf', size: '94 KB' },
+            { name: 'S_O_MAE-2026-778812.pdf', size: '52 KB' },
+          ],
+        },
+        prealter: {
+          label: 'Pre-alter',
+          docs: [{ v: 'doc-prealter', label: '🌏 装船确认 PRE-ALERT' }],
+          toRule: '自动带入：<b>国外代理</b>（国外客户路径）',
+          ccRule: '建议抄送：客服 / 操作',
+          ccSuggest: ['cs', 'op'],
+          autoAttach: [
+            { name: '提单_MAE21098765.pdf', size: '212 KB' },
+            { name: '装船清单_Manifest.xlsx', size: '88 KB' },
+          ],
+        },
+        statement: {
+          label: '账单',
+          docs: [{ v: 'doc-statement', label: '💰 费用账单 DEBIT NOTE' }],
+          toRule: '自动带入：<b>结算单位</b> 所有联系人',
+          ccRule: '建议抄送：销售 / 单证',
+          ccSuggest: ['sales', 'doc'],
+          autoAttach: [
+            { name: '发票_INV-202609-0310.pdf', size: '156 KB' },
+            { name: '对账单_202609.xlsx', size: '68 KB' },
+          ],
+        },
+      };
+
+      /* 线程：订舱/放舱/Pre-alter 同票业务；账单独立 */
+      const THREADS = {
+        booking: 'TH-BK202609-018',
+        release: 'TH-BK202609-018',
+        prealter: 'TH-BK202609-018',
+        statement: 'TH-FIN-202609',
+      };
+
+      /* ============================================================
+       * 模板库
+       * ============================================================ */
+      const templates = {
+        booking: {
+          name: '订舱委托书 - {订舱号}',
+          subject:
+            '【订舱委托】{订舱号} - {委托编号} - {船名}/{航次} - {起运港} → {目的港}',
+          body: '<p>尊敬的 {订舱代理}：</p><p>您好！现委托贵司办理以下订舱事宜：</p><p>订舱号：{订舱号}<br>委托编号：{委托编号}<br>船名 / 航次：{船名} / {航次}<br>船公司：{船公司}<br>起运港 / 目的港：{起运港} → {目的港}<br>截单时间：{截单时间}<br>开船时间：{开船时间}<br>到港日期：{到港日期}<br>箱型箱量：{箱型箱量}<br>件数 / 包装：{件数} {包装}<br>毛重 / 尺码：{重量} / {尺码}<br>货物描述：{货物描述}<br>外部备注：{外部备注}</p><p>请贵司尽快确认舱位并回复订舱确认书（S/O），谢谢！</p><p style="margin-top:16px;">操作：{操作}<br>{当前日期}</p>',
+        },
+        'release-notice': {
+          name: '放舱通知 - {订舱号}',
+          subject: '【放舱通知】{订舱号} - {船名}/{航次}',
+          body: '<p>尊敬的 {委托单位}：</p><p>您委托的 {订舱号} 已成功放舱：</p><p>船名 / 航次：{船名} / {航次}<br>船公司：{船公司}<br>起运港 / 目的港：{起运港} → {目的港}<br>截单时间：{截单时间}<br>开船时间：{开船时间}<br>到港日期：{到港日期}<br>件数 / 包装：{件数} {包装}<br>毛重 / 尺码：{重量} / {尺码}</p><p><b style="color:#ff4d4f;">⚠ 请务必于截单时间前安排进港！</b></p><p>详见附件 S/O 与放舱通知。</p><p style="margin-top:16px;">操作：{操作}<br>{当前日期}</p>',
+        },
+        'pre-alter': {
+          name: 'Pre-alter - {提单号}',
+          subject: '【Pre-alter】{提单号} - {船名}/{航次} ETA {到港日期}',
+          body: '<p>Dear Partner,</p><p>Please find below the Pre-alert for the shipment:</p><p>B/L No.: {提单号}<br>Vessel: {船名} / Voyage: {航次}<br>POL/POD: {起运港} → {目的港}<br>ETA: {到港日期}<br>Containers: {箱型箱量}<br>Packages: {件数} {包装}<br>GW / Meas: {重量} / {尺码}</p><p>Documents attached. Kindly arrange onward delivery and revert upon receipt.</p><p>Best regards,<br>{操作}</p>',
+        },
+        invoice: {
+          name: '发票推送 - {提单号}',
+          subject: '【货代发票】{提单号} 付款通知',
+          body: '<p>尊敬的 {结算单位}：</p><p>兹发送 {提单号} 项下发票，金额详见附件。</p><p>请核对无误后安排付款，如有疑问请联系我。</p><p style="margin-top:16px;">操作：{操作}<br>{当前日期}</p>',
+        },
+      };
+      /* 模板元信息 + 内置预设收/抄送 */
+      const tplNodeMap = {
+        booking: 'booking',
+        'release-notice': 'release',
+        'pre-alter': 'prealter',
+        invoice: 'statement',
+      };
+      const tplDefaultTo = {
+        booking: ['RULE:BOOKING_AGENT_ALL'],
+        'release-notice': ['RULE:CUSTOMER_ALL'],
+        'pre-alter': ['RULE:OVERSEAS_AGENT'],
+        invoice: ['RULE:SETTLEMENT_ALL'],
+      };
+      const tplDefaultCc = {
+        booking: ['DEPT:op', 'DEPT:doc'],
+        'release-notice': ['DEPT:op', 'DEPT:sales'],
+        'pre-alter': ['DEPT:cs', 'DEPT:op'],
+        invoice: ['DEPT:sales', 'DEPT:doc'],
+      };
+      Object.keys(templates).forEach((k) => {
+        templates[k].key = k;
+        templates[k].node = tplNodeMap[k] || 'booking';
+        templates[k].sender = 'ops@myfreight.com';
+        templates[k].enabled = true;
+        templates[k].custom = false;
+        templates[k].to = tplDefaultTo[k] || [];
+        templates[k].cc = tplDefaultCc[k] || [];
+        templates[k].updatedAt = '2026-08-20';
+      });
+
+      /* ============================================================
+       * Mock 联系人 / 数据
+       * ============================================================ */
+      const contacts = {
+        bookingAgent: [
+          {
+            name: 'Maersk Booking',
+            email: 'booking@maersk.com',
+            type: '订舱代理',
+          },
+          {
+            name: 'Emily Wang',
+            email: 'emily.wang@maersk.com',
+            type: '订舱代理',
+          },
+        ],
+        customer: [
+          {
+            name: '张明（业务）',
+            email: 'zhangming@abclogistics.com',
+            type: '客户联系人',
+          },
+          {
+            name: '李娜（客服）',
+            email: 'lina@abclogistics.com',
+            type: '客户联系人',
+          },
+        ],
+        overseasAgent: [
+          {
+            name: 'ABC Logistics NY',
+            email: 'ops@abclogisticsny.com',
+            type: '国外代理',
+          },
+        ],
+        settlement: [
+          {
+            name: '财务-王会计',
+            email: 'caiwu@abclogistics.com',
+            type: '结算单位',
+          },
+        ],
+        dept: {
+          doc: { name: '单证', email: 'doc@myfreight.com' },
+          sales: { name: '销售', email: 'sales@myfreight.com' },
+          op: { name: '操作', email: 'ops@myfreight.com' },
+          cs: { name: '客服', email: 'cs@myfreight.com' },
+          bd: { name: '商务', email: 'bd@myfreight.com' },
+        },
+      };
+
+      let drafts = [];
+      let history = [
+        {
+          id: 'h1',
+          threadId: 'TH-BK202609-018',
+          time: '2026-09-09 14:32',
+          name: '订舱委托书-BK202609-018',
+          node: 'booking',
+          to: 'booking@maersk.com',
+          attachCount: 2,
+          status: 'success',
+          body: '<p>现委托贵司办理订舱…</p>',
+        },
+        {
+          id: 'h2',
+          threadId: 'TH-BK202609-018',
+          time: '2026-09-09 15:08',
+          name: '放舱通知-BC202609-018',
+          node: 'release',
+          to: 'zhangming@abclogistics.com',
+          attachCount: 2,
+          status: 'success',
+          body: '<p>已成功放舱…</p>',
+        },
+        {
+          id: 'h3',
+          threadId: 'TH-BK202609-018',
+          time: '2026-09-09 16:01',
+          name: 'Pre-alter-MAE21098765',
+          node: 'prealter',
+          to: 'ops@abclogisticsny.com',
+          attachCount: 2,
+          status: 'pending',
+          body: '<p>Pre-alert below…</p>',
+        },
+        {
+          id: 'h4',
+          threadId: 'TH-FIN-202609',
+          time: '2026-09-08 11:18',
+          name: '发票推送-INV-202609-0310',
+          node: 'statement',
+          to: 'caiwu@abclogistics.com',
+          attachCount: 2,
+          status: 'success',
+          body: '<p>兹发送发票…</p>',
+        },
+      ];
+
+      let currentNode = 'booking'; // 打印界面当前环节
+      let mailNode = null; // 邮件面板当前节点
+      let currentDraftId = null;
+      let histView = 'list';
+      let mailView = 'compose'; // compose | record
+
+      /* ============================================================
+       * Mock API 层（localStorage；对接后端时替换为 fetch）
+       * ============================================================ */
+      const LS_KEY = 'freight_mail_demo_v2';
+      const API = {
+        load() {
+          try {
+            return JSON.parse(localStorage.getItem(LS_KEY)) || {};
+          } catch (e) {
+            return {};
+          }
+        },
+        save(p) {
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(p));
+          } catch (e) {}
+        },
+        send(mail) {
+          return new Promise((r) =>
+            setTimeout(() => r({ ok: true, id: mail.id }), 800),
+          );
+        },
+      };
+      function persist() {
+        API.save({ templates, drafts, history });
+      }
+      function loadStore() {
+        const s = API.load();
+        if (s.templates)
+          Object.keys(s.templates).forEach((k) => {
+            templates[k] = Object.assign(
+              {
+                key: k,
+                node: 'booking',
+                enabled: true,
+                custom: true,
+                sender: 'ops@myfreight.com',
+              },
+              s.templates[k],
+            );
+          });
+        if (Array.isArray(s.drafts)) drafts = s.drafts;
+        if (Array.isArray(s.history)) history = s.history;
+      }
+      function resetStore() {
+        if (!confirm('确定清空本地演示数据（模板/草稿/历史）？')) return;
+        localStorage.removeItem(LS_KEY);
+        location.reload();
+      }
+
+      /* ============================================================
+       * 视图切换
+       * ============================================================ */
+      function switchView(v) {
+        document
+          .querySelectorAll('.nav-item')
+          .forEach((n) => n.classList.toggle('active', n.dataset.view === v));
+        document
+          .getElementById('view-preset')
+          .classList.toggle('active', v === 'preset');
+        document
+          .getElementById('view-print')
+          .classList.toggle('active', v === 'print');
+        if (v === 'preset') renderTemplates();
+      }
+
+      /* ============================================================
+       * 界面2：打印模板
+       * ============================================================ */
+      /* 单据下拉：全环节分组展示，选中自动确定所属环节 */
+      function renderDocSelect() {
+        const sel = document.getElementById('docSelect');
+        sel.innerHTML = Object.keys(nodeConfig)
+          .map(
+            (n) =>
+              `<optgroup label="${nodeConfig[n].label}">` +
+              nodeConfig[n].docs
+                .map((d) => `<option value="${d.v}">${d.label}</option>`)
+                .join('') +
+              `</optgroup>`,
+          )
+          .join('');
+        renderDoc();
+      }
+      function onDocChange(v) {
+        const node = Object.keys(nodeConfig).find((n) =>
+          nodeConfig[n].docs.some((d) => d.v === v),
+        );
+        if (node) currentNode = node;
+        renderDoc();
+      }
+      /* 邮件模板下拉：默认带出该环节的启用模板 */
+      function renderMailTplSelect(node) {
+        const sel = document.getElementById('mailTplSelect');
+        if (!sel) return;
+        const tpls = Object.values(templates).filter(
+          (t) => t.node === node && t.enabled,
+        );
+        sel.innerHTML = tpls.length
+          ? tpls
+              .map((t) => `<option value="${t.key}">${t.name}</option>`)
+              .join('')
+          : '<option value="">（该环节暂无启用模板）</option>';
+      }
+      function renderDoc() {
+        const v = document.getElementById('docSelect').value;
+        document
+          .querySelectorAll('.a4-doc')
+          .forEach((d) => d.classList.toggle('show', d.id === v));
+        const node = nodeConfig[currentNode];
+        document.getElementById('printHint').textContent =
+          `环节：${node.label} ｜ 单据：${node.docs.find((d) => d.v === v).label} ｜ 点击「邮件」将按当前环节自动匹配邮件模板`;
+        document.getElementById('docHint').textContent = '';
+      }
+      function closePrint() {
+        switchView('preset');
+      }
+
+      /* ============================================================
+       * 界面3：邮件面板
+       * ============================================================ */
+      function openMailDrawer() {
+        mailNode = currentNode;
+        currentDraftId = null;
+        const cfg = nodeConfig[mailNode];
+        document.getElementById('mdTitle').innerHTML =
+          '✉ 邮件 · <span style="color:#ff4d4f;">' + cfg.label + '环节</span>';
+        document.getElementById('mdSub').textContent =
+          '已按当前环节自动匹配模板 / 收件人 / 抄送 / 附件，可直接修改';
+        // 发件时间
+        document.getElementById('sendTime').textContent = nowStr();
+        // 环节 / 模板下拉
+        document.getElementById('mailNodeSelect').value = mailNode;
+        renderMailTplSelect(mailNode);
+        // 按节点预设：发件人 / 收件人 / 抄送 / 附件 / 模板
+        applyNodeToMail(mailNode);
+        backToCompose();
+        document.getElementById('mail-mask').classList.add('open');
+        document.getElementById('mail-drawer').classList.add('open');
+      }
+      function closeMailDrawer() {
+        document.getElementById('mail-mask').classList.remove('open');
+        document.getElementById('mail-drawer').classList.remove('open');
+      }
+
+      /* 节点 → 邮件预设 */
+      /* 邮件面板内切换环节 */
+      function switchMailNode(node) {
+        mailNode = node;
+        currentDraftId = null;
+        const cfg = nodeConfig[node];
+        document.getElementById('mdTitle').innerHTML =
+          '✉ 邮件 · <span style="color:#ff4d4f;">' + cfg.label + '环节</span>';
+        renderMailTplSelect(node);
+        applyNodeToMail(node);
+      }
+      /* 邮件面板内切换模板 */
+      function applyDrawerTpl(key) {
+        if (key && templates[key]) applyTemplateByKey(key);
+      }
+
+      function applyNodeToMail(node) {
+        const cfg = nodeConfig[node];
+        // 收件人规则提示
+        document.getElementById('toRule').innerHTML = cfg.toRule;
+        document.getElementById('ccRule').innerHTML = cfg.ccRule;
+        // 收件人
+        fillRecipients(node);
+        // 抄送
+        clearTags('ccContainer');
+        (cfg.ccSuggest || []).forEach((k) =>
+          addTag('ccContainer', contacts.dept[k]),
+        );
+        // 附件
+        renderAutoAttach(node);
+        // 模板：默认取该节点第一个可用模板；内部会用模板预设的收/抄送覆盖
+        const tpls = Object.values(templates).filter(
+          (t) => t.node === node && t.enabled,
+        );
+        if (tpls.length) {
+          applyTemplateByKey(tpls[0].key);
+        }
+        // 线程条
+        updateThreadBar(node);
+      }
+
+      function fillRecipients(node) {
+        let list = [];
+        if (node === 'booking') list = contacts.bookingAgent;
+        else if (node === 'release') list = contacts.customer;
+        else if (node === 'prealter') list = contacts.overseasAgent;
+        else if (node === 'statement') list = contacts.settlement;
+        clearTags('toContainer');
+        list.forEach((c) => addTag('toContainer', c));
+      }
+
+      function renderAutoAttach(node) {
+        const cfg = nodeConfig[node];
+        const list = document.getElementById('autoAttachList');
+        list.innerHTML = cfg.autoAttach
+          .map(
+            (a, i) =>
+              `<span class="ab-item">📄 ${a.name} <span style="color:#999;">(${a.size})</span> <span class="x" title="加入附件" onclick="moveAutoAttach(${i})">＋</span></span>`,
+          )
+          .join('');
+        document.getElementById('autoAttachBadge').textContent =
+          cfg.autoAttach.length + ' 个';
+      }
+      function moveAutoAttach(idx) {
+        const a = nodeConfig[mailNode].autoAttach[idx];
+        addAttachment(a.name, a.size);
+        toast('已加入附件：' + a.name);
+      }
+
+      /* 模板应用到邮件面板 */
+      function applyTemplateByKey(key) {
+        const t = templates[key];
+        if (!t) return;
+        document.getElementById('emailName').value = renderVars(t.name);
+        const subj = document.getElementById('subject');
+        const inThread = history.some((h) => h.threadId === THREADS[mailNode]);
+        subj.value = renderVars(inThread ? 'Re: ' + t.subject : t.subject);
+        document.getElementById('editor').innerHTML = renderVars(t.body);
+        if (t.sender) document.getElementById('sender').value = t.sender;
+        // 模板预设的收件人 / 抄送人：规则展开为具体联系人，覆盖节点默认
+        if (Array.isArray(t.to) && t.to.length) {
+          clearTags('toContainer');
+          expandRecipients(t.to).forEach((c) => addTag('toContainer', c));
+        }
+        if (Array.isArray(t.cc) && t.cc.length) {
+          clearTags('ccContainer');
+          expandRecipients(t.cc).forEach((c) => addTag('ccContainer', c));
+        }
+      }
+
+      /* 线程条 */
+      function updateThreadBar(node) {
+        const tid = THREADS[node];
+        const bar = document.getElementById('threadBar');
+        const list = history.filter((h) => h.threadId === tid);
+        if (!list.length) {
+          bar.classList.add('none');
+          document.getElementById('tbTitle').textContent =
+            '🧵 新线程（' + tid + '）';
+          document.getElementById('tbSub').textContent =
+            '该环节尚无往来邮件，本次将作为线程首封发送';
+          return;
+        }
+        bar.classList.remove('none');
+        const last = list[0];
+        document.getElementById('tbTitle').textContent =
+          `🧵 已关联线程 ${tid} · 共 ${list.length} 封往来`;
+        document.getElementById('tbSub').textContent =
+          `上一封：${last.time} · ${last.name} · ${statusLabel(last.status)}`;
+      }
+      function quoteLastMail() {
+        const tid = THREADS[mailNode];
+        const list = history.filter((h) => h.threadId === tid);
+        if (!list.length) {
+          toast('该线程暂无历史邮件');
+          return;
+        }
+        const last = list[0];
+        const quote = `<p><br></p><blockquote style="margin:8px 0;padding:8px 12px;border-left:3px solid #d9d9d9;background:#fafafa;color:#888;font-size:13px;"><div>----- 原始邮件 -----</div><div>时间：${last.time}</div><div>主题：${last.name}</div><div style="margin-top:6px;">${last.body || ''}</div></blockquote><p><br></p>`;
+        document.getElementById('editor').innerHTML += quote;
+        toast('已引用上一封邮件');
+      }
+
+      /* ============================================================
+       * 邮件面板：撰写 / 记录 子视图
+       * ============================================================ */
+      function showRecord() {
+        mailView = 'record';
+        document.getElementById('mv-compose').classList.remove('active');
+        document.getElementById('mv-record').classList.add('active');
+        document.getElementById('btnRecord').style.display = 'none';
+        document.getElementById('btnBack').style.display = '';
+        renderHistory();
+      }
+      function backToCompose() {
+        mailView = 'compose';
+        document.getElementById('mv-record').classList.remove('active');
+        document.getElementById('mv-compose').classList.add('active');
+        document.getElementById('btnRecord').style.display = '';
+        document.getElementById('btnBack').style.display = 'none';
+      }
+
+      /* ============================================================
+       * 通用：tag / 变量 / 富文本 / 附件
+       * ============================================================ */
+      function clearTags(id) {
+        document
+          .getElementById(id)
+          .querySelectorAll('.tag')
+          .forEach((t) => t.remove());
+      }
+      function addTag(containerId, c) {
+        const container = document.getElementById(containerId);
+        const input = container.querySelector('input');
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.dataset.email = c.email;
+        const main = c.hideEmail ? c.name : `${c.name} &lt;${c.email}&gt;`;
+        tag.innerHTML =
+          main +
+          (c.type ? `<span class="tag-type">${c.type}</span>` : '') +
+          ` <span class="close" onclick="this.parentNode.remove()">×</span>`;
+        container.insertBefore(tag, input);
+      }
+      function focusInput(inputId) {
+        document.getElementById(inputId).focus();
+      }
+      function handleTagInput(e, type) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const input = document.getElementById(type + 'Input');
+          const v = input.value.trim().replace(/,$/, '');
+          if (!v) return;
+          addTag(type + 'Container', { name: v, email: v, type: '手输' });
+          input.value = '';
+        }
+      }
+      function getTags(id) {
+        return Array.from(
+          document.getElementById(id).querySelectorAll('.tag'),
+        ).map((t) => t.dataset.email);
+      }
+
+      /* ============================================================
+       * 收/抄送规则解析（模板预设 ↔ 邮件面板）
+       *   RULE:CUSTOMER_ALL      委托单位所有联系人
+       *   RULE:BOOKING_AGENT_ALL 订舱代理所有联系人
+       *   RULE:OVERSEAS_AGENT    国外代理
+       *   RULE:SETTLEMENT_ALL    结算单位
+       *   DEPT:doc|sales|op|cs   我司部门
+       *   其他                    具体邮箱
+       * ============================================================ */
+      const RULE_DEFS = {
+        'RULE:CUSTOMER_ALL': {
+          label: '委托单位所有联系人',
+          resolve: () => contacts.customer,
+        },
+        'RULE:BOOKING_AGENT_ALL': {
+          label: '订舱代理所有联系人',
+          resolve: () => contacts.bookingAgent,
+        },
+        'RULE:OVERSEAS_AGENT': {
+          label: '国外代理',
+          resolve: () => contacts.overseasAgent,
+        },
+        'RULE:SETTLEMENT_ALL': {
+          label: '结算单位',
+          resolve: () => contacts.settlement,
+        },
+      };
+      const DEPT_KEYS = {
+        'DEPT:doc': '单证',
+        'DEPT:sales': '销售',
+        'DEPT:op': '操作',
+        'DEPT:cs': '客服',
+        'DEPT:bd': '商务',
+      };
+
+      /* 值 → tag 显示项 */
+      function tagItemOf(v) {
+        if (RULE_DEFS[v])
+          return {
+            name: RULE_DEFS[v].label,
+            email: v,
+            type: '规则',
+            hideEmail: true,
+          };
+        if (DEPT_KEYS[v])
+          return {
+            name: DEPT_KEYS[v],
+            email: v,
+            type: '部门',
+            hideEmail: true,
+          };
+        return { name: v, email: v, type: '邮箱' };
+      }
+      /* 值 → 实际联系人（邮件面板展开用） */
+      function expandRecipients(values) {
+        const out = [];
+        (values || []).forEach((v) => {
+          if (RULE_DEFS[v]) RULE_DEFS[v].resolve().forEach((c) => out.push(c));
+          else if (DEPT_KEYS[v])
+            out.push({
+              name: DEPT_KEYS[v],
+              email: contacts.dept[v.slice(5)].email,
+              type: '部门',
+            });
+          else out.push({ name: v, email: v, type: '邮箱' });
+        });
+        // 按邮箱去重
+        const seen = new Set();
+        return out
+          .filter(Boolean)
+          .filter((c) => !seen.has(c.email) && seen.add(c.email));
+      }
+
+      /* ---- 模板编辑器：收/抄送 tag ---- */
+      function tplAddTo(rule) {
+        if (getTags('tplToContainer').includes(rule)) {
+          toast('该规则已添加');
+          return;
+        }
+        addTag('tplToContainer', tagItemOf(rule));
+      }
+      function tplAddCc(rule) {
+        if (getTags('tplCcContainer').includes(rule)) {
+          toast('该部门已添加');
+          return;
+        }
+        addTag('tplCcContainer', tagItemOf(rule));
+      }
+      function renderTplToTags(to) {
+        clearTags('tplToContainer');
+        (to || []).forEach((v) => addTag('tplToContainer', tagItemOf(v)));
+      }
+      function renderTplCcTags(cc) {
+        clearTags('tplCcContainer');
+        (cc || []).forEach((v) => addTag('tplCcContainer', tagItemOf(v)));
+      }
+
+      /* 变量胶囊（邮件标题用） */
+      function initVarPills() {
+        const wrap = document.getElementById('varPills');
+        businessVars.forEach((k) => {
+          const pill = document.createElement('span');
+          pill.className = 'var-pill';
+          pill.textContent = varLabels[k];
+          pill.onclick = () => {
+            const subj = document.getElementById('subject');
+            const pos = subj.selectionStart || subj.value.length;
+            const before = subj.value.slice(0, pos) + k;
+            const after = subj.value.slice(pos);
+            subj.value = renderVars(before) + renderVars(after);
+            const caret = renderVars(before).length;
+            subj.focus();
+            subj.setSelectionRange(caret, caret);
+          };
+          wrap.appendChild(pill);
+        });
+      }
+
+      /* 富文本（邮件正文） */
+      function execCmd(cmd, val) {
+        document.getElementById('editor').focus();
+        document.execCommand(cmd, false, val || null);
+      }
+      function insertTable() {
+        document.getElementById('editor').focus();
+        document.execCommand(
+          'insertHTML',
+          false,
+          '<table style="border-collapse:collapse;width:100%;margin:8px 0" border="1" cellpadding="6"><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>',
+        );
+      }
+      function insertLink() {
+        const url = prompt('请输入链接地址：', 'https://');
+        if (url) {
+          document.getElementById('editor').focus();
+          document.execCommand('createLink', false, url);
+        }
+      }
+
+      /* 附件 */
+      function handleFiles(files) {
+        Array.from(files).forEach((f) =>
+          addAttachment(f.name, formatSize(f.size)),
+        );
+      }
+      function addAttachment(name, size) {
+        const item = document.createElement('div');
+        item.className = 'attachment-item';
+        item.innerHTML = `📎 ${name} <span class="size">(${size})</span> <span class="remove" onclick="this.parentNode.remove()">×</span>`;
+        document.getElementById('attachmentList').appendChild(item);
+      }
+      function formatSize(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1024 / 1024).toFixed(1) + ' MB';
+      }
+
+      /* ============================================================
+       * 提交：暂存 / 发送 / 重置
+       * ============================================================ */
+      function nowStr() {
+        return new Date().toISOString().replace('T', ' ').slice(0, 16);
+      }
+      function collectForm() {
+        return {
+          id: currentDraftId || 'd' + Date.now(),
+          node: mailNode,
+          name: document.getElementById('emailName').value,
+          subject: document.getElementById('subject').value,
+          body: document.getElementById('editor').innerHTML,
+          sender: document.getElementById('sender').value,
+          to: getTags('toContainer'),
+          cc: getTags('ccContainer'),
+          autoAttach: nodeConfig[mailNode].autoAttach,
+          customAttach: Array.from(
+            document
+              .getElementById('attachmentList')
+              .querySelectorAll('.attachment-item'),
+          ).map((el) => el.textContent.replace(/×$/, '').trim()),
+          time: nowStr(),
+        };
+      }
+      function saveDraft() {
+        const d = collectForm();
+        if (!d.subject) {
+          toast('请先填写标题');
+          return;
+        }
+        drafts = drafts.filter((x) => x.id !== d.id);
+        drafts.unshift(d);
+        currentDraftId = d.id;
+        persist();
+        toast('💾 已暂存');
+      }
+      function sendEmail() {
+        const d = collectForm();
+        if (!d.subject) {
+          toast('请先填写标题');
+          return;
+        }
+        if (!d.to.length) {
+          toast('请选择收件人');
+          return;
+        }
+        const mail = {
+          id: 'h' + Date.now(),
+          threadId: THREADS[d.node],
+          time: d.time,
+          body: d.body,
+          name: d.name || d.subject,
+          node: d.node,
+          to: d.to.join(', '),
+          attachCount: d.autoAttach.length + d.customAttach.length,
+          status: 'pending',
+        };
+        history.unshift(mail);
+        drafts = drafts.filter((x) => x.id !== d.id);
+        currentDraftId = null;
+        persist();
+        toast('✅ 已加入发送队列');
+        API.send(mail).then(() => {
+          mail.status = 'success';
+          persist();
+          if (mailView === 'record') renderHistory();
+          else updateThreadBar(mailNode);
+        });
+      }
+      function resetMailForm() {
+        if (!confirm('确定重置当前邮件？')) return;
+        clearTags('toContainer');
+        clearTags('ccContainer');
+        document.getElementById('attachmentList').innerHTML = '';
+        document.getElementById('subject').value = '';
+        document.getElementById('emailName').value = '';
+        document.getElementById('editor').innerHTML = '';
+        currentDraftId = null;
+        applyNodeToMail(mailNode);
+      }
+
+      /* ============================================================
+       * 发送记录：列表 / 线程
+       * ============================================================ */
+      function statusLabel(s) {
+        return (
+          { success: '已送达', pending: '待发送', failed: '发送失败' }[s] || s
+        );
+      }
+      function setHistView(v) {
+        histView = v;
+        document.getElementById('hvList').classList.toggle('on', v === 'list');
+        document
+          .getElementById('hvThread')
+          .classList.toggle('on', v === 'thread');
+        renderHistory();
+      }
+      function renderHistory() {
+        const node = (document.getElementById('filterNode') || {}).value || '';
+        const status =
+          (document.getElementById('filterStatus') || {}).value || '';
+        const kw = (
+          (document.getElementById('filterKw') || {}).value || ''
+        ).toLowerCase();
+        const list = history.filter(
+          (h) =>
+            (!node || h.node === node) &&
+            (!status || h.status === status) &&
+            (!kw ||
+              h.name.toLowerCase().includes(kw) ||
+              h.to.toLowerCase().includes(kw)),
+        );
+
+        const isThread = histView === 'thread';
+        document.getElementById('histTableWrap').style.display = isThread
+          ? 'none'
+          : 'block';
+        document.getElementById('histThreadWrap').style.display = isThread
+          ? 'block'
+          : 'none';
+        if (isThread) return renderThreadView(list);
+
+        const tbody = document.getElementById('historyBody');
+        if (!list.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="7" style="text-align:center;padding:26px;color:#999;">暂无记录</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list
+          .map(
+            (h) => `
+    <tr>
+      <td style="white-space:nowrap;">${h.time}</td>
+      <td>${h.name}</td>
+      <td>${nodeConfig[h.node] ? nodeConfig[h.node].label : h.node}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${h.to}">${h.to}</td>
+      <td>${h.attachCount} 个</td>
+      <td><span class="status-tag status-${h.status}">${statusLabel(h.status)}</span></td>
+      <td style="white-space:nowrap;">
+        <a onclick="viewHistory('${h.id}')">查看</a> · <a onclick="resendHistory('${h.id}')">重发</a>
+      </td>
+    </tr>`,
+          )
+          .join('');
+      }
+      function renderThreadView(list) {
+        const wrap = document.getElementById('histThreadWrap');
+        const groups = {};
+        list.forEach((h) => {
+          const tid = h.threadId || 'TH-UNKNOWN';
+          (groups[tid] = groups[tid] || []).push(h);
+        });
+        const ids = Object.keys(groups);
+        if (!ids.length) {
+          wrap.innerHTML =
+            '<div style="padding:26px;text-align:center;color:#999;">暂无记录</div>';
+          return;
+        }
+        wrap.innerHTML = ids
+          .map((tid) => {
+            const items = groups[tid]
+              .slice()
+              .sort((a, b) => b.time.localeCompare(a.time));
+            return `
+      <div class="thread-group">
+        <div class="thread-group-head">
+          <span>🧵 <b>${tid}</b></span>
+          <span style="color:#999;">共 ${items.length} 封</span>
+        </div>
+        ${items
+          .map(
+            (h) => `
+          <div class="tl-item">
+            <span class="tl-dot ${h.status}"></span>
+            <div class="tl-content">
+              <div class="tl-line1">${h.name} <span class="status-tag status-${h.status}" style="margin-left:6px;">${statusLabel(h.status)}</span></div>
+              <div class="tl-line2">${h.time} · ${nodeConfig[h.node] ? nodeConfig[h.node].label : h.node} · 收件人 ${h.to}</div>
+              <div class="tl-line2" style="margin-top:4px;">
+                <a onclick="viewHistory('${h.id}')">查看</a> · <a onclick="resendHistory('${h.id}')">重发</a> · <a onclick="replyFromRecord('${h.id}')">回复此邮件</a>
+              </div>
+            </div>
+          </div>`,
+          )
+          .join('')}
+      </div>`;
+          })
+          .join('');
+      }
+      function viewHistory(id) {
+        const h = history.find((x) => x.id === id);
+        if (!h) return;
+        openPreview({
+          to: h.to,
+          cc: '',
+          time: h.time,
+          from: '—',
+          subject: h.name,
+          body: h.body || '',
+          attach: `共 ${h.attachCount} 个附件`,
+        });
+      }
+      function resendHistory(id) {
+        const h = history.find((x) => x.id === id);
+        if (!h || !confirm(`确定重发「${h.name}」？`)) return;
+        h.status = 'pending';
+        persist();
+        renderHistory();
+        API.send(h).then(() => {
+          h.status = 'success';
+          persist();
+          renderHistory();
+        });
+      }
+      function replyFromRecord(id) {
+        const h = history.find((x) => x.id === id);
+        if (!h) return;
+        mailNode = h.node;
+        document.getElementById('mdTitle').innerHTML =
+          '✉ 邮件 · <span style="color:#ff4d4f;">' +
+          nodeConfig[h.node].label +
+          '环节</span>';
+        document.getElementById('mailNodeSelect').value = mailNode;
+        renderMailTplSelect(mailNode);
+        applyNodeToMail(h.node);
+        quoteLastMail();
+        const subj = document.getElementById('subject');
+        if (!/^Re:/i.test(subj.value)) subj.value = 'Re: ' + subj.value;
+        backToCompose();
+      }
+
+      /* ============================================================
+       * 预览（模板预览 / 历史查看共用）
+       * ============================================================ */
+      function openPreview(o) {
+        document.getElementById('ep_to').textContent = o.to || '—';
+        document.getElementById('ep_cc').textContent = o.cc || '—';
+        document.getElementById('ep_time').textContent = o.time || '—';
+        document.getElementById('ep_from').textContent = o.from || '—';
+        document.getElementById('ep_subject').textContent =
+          o.subject || '（无标题）';
+        document.getElementById('ep_body').innerHTML = o.body || '';
+        document.getElementById('ep_attach').innerHTML = o.attach || '无';
+        const m2 = document.getElementById('mail-mask-2');
+        const p = document.getElementById('previewPane');
+        m2.style.display = 'block';
+        p.style.display = 'flex';
+        requestAnimationFrame(() => (p.style.transform = 'translateX(0)'));
+      }
+      function closePreview() {
+        const m2 = document.getElementById('mail-mask-2');
+        const p = document.getElementById('previewPane');
+        p.style.transform = 'translateX(100%)';
+        m2.style.display = 'none';
+        p.style.display = 'none';
+      }
+
+      /* ============================================================
+       * 界面1：模板预设
+       * ============================================================ */
+      let currentTplKey = null;
+      function renderTemplates() {
+        const list = document.getElementById('tplList');
+        const arr = Object.values(templates);
+        document.getElementById('tplCount').textContent = arr.length;
+        list.innerHTML = arr
+          .map((t) => {
+            const active = t.key === currentTplKey ? 'active' : '';
+            const badge = !t.enabled
+              ? '<span class="ti-badge off">停用</span>'
+              : t.custom
+                ? '<span class="ti-badge custom">自定义</span>'
+                : '<span class="ti-badge">内置</span>';
+            return `
+      <div class="tpl-item ${active}" onclick="editTemplate('${t.key}')">
+        <div class="ti-name">${t.name}</div>
+        <div class="ti-meta">
+          ${badge}<span>${nodeConfig[t.node] ? nodeConfig[t.node].label : t.node}</span>
+          <span>· ${t.updatedAt}</span>
+        </div>
+      </div>`;
+          })
+          .join('');
+      }
+      function editTemplate(key) {
+        const t = templates[key];
+        if (!t) return;
+        currentTplKey = key;
+        document.getElementById('tplEmpty').style.display = 'none';
+        document.getElementById('tplForm').style.display = 'block';
+        document.getElementById('tplName').value = t.name;
+        document.getElementById('tplNode').value = t.node;
+        document.getElementById('tplSender').value =
+          t.sender || 'ops@myfreight.com';
+        document.getElementById('tplEnabled').value = t.enabled ? '1' : '0';
+        document.getElementById('tplSubject').value = t.subject;
+        document.getElementById('tplBody').innerHTML = t.body;
+        renderTplToTags(t.to);
+        renderTplCcTags(t.cc);
+        document.getElementById('tplMeta').innerHTML =
+          `模板 KEY：<code>${t.key}</code> · 最后修改 ${t.updatedAt}`;
+        renderTemplates();
+      }
+      function newTemplate() {
+        const key = 'custom_' + Date.now();
+        templates[key] = {
+          key,
+          node: currentNode,
+          custom: true,
+          enabled: true,
+          name: '新建模板',
+          subject: '',
+          body: '',
+          sender: 'ops@myfreight.com',
+          to: [],
+          cc: [],
+          updatedAt: new Date().toISOString().slice(0, 10),
+        };
+        editTemplate(key);
+        toast('已创建空白模板');
+      }
+      function saveTemplate(enable) {
+        if (!currentTplKey) return;
+        const t = templates[currentTplKey];
+        const name = document.getElementById('tplName').value.trim();
+        if (!name) {
+          toast('请填写模板名称');
+          return;
+        }
+        t.name = name;
+        t.node = document.getElementById('tplNode').value;
+        t.sender = document.getElementById('tplSender').value;
+        t.enabled = enable
+          ? true
+          : document.getElementById('tplEnabled').value === '1';
+        t.subject = document.getElementById('tplSubject').value;
+        t.body = document.getElementById('tplBody').innerHTML;
+        t.to = getTags('tplToContainer');
+        t.cc = getTags('tplCcContainer');
+        t.updatedAt = new Date().toISOString().slice(0, 10);
+        persist();
+        renderTemplates();
+        toast(enable ? '✅ 已保存并启用' : '💾 已保存');
+      }
+      function deleteTemplate() {
+        if (!currentTplKey) return;
+        const t = templates[currentTplKey];
+        if (!confirm(`确定删除模板「${t.name}」？`)) return;
+        delete templates[currentTplKey];
+        currentTplKey = null;
+        document.getElementById('tplEmpty').style.display = 'block';
+        document.getElementById('tplForm').style.display = 'none';
+        persist();
+        renderTemplates();
+      }
+      /* 模板编辑器：富文本 / 变量 */
+      function tplExec(cmd, val) {
+        document.getElementById('tplBody').focus();
+        document.execCommand(cmd, false, val || null);
+      }
+      function tplInsertTable() {
+        document.getElementById('tplBody').focus();
+        document.execCommand(
+          'insertHTML',
+          false,
+          '<table style="border-collapse:collapse;width:100%;margin:8px 0" border="1" cellpadding="6"><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table><p></p>',
+        );
+      }
+      function tplInsertLink() {
+        const url = prompt('请输入链接地址：', 'https://');
+        if (url) {
+          document.getElementById('tplBody').focus();
+          document.execCommand('createLink', false, url);
+        }
+      }
+      function initTplVarPills() {
+        const wrap = document.getElementById('tplVarPills');
+        businessVars.forEach((k) => {
+          const pill = document.createElement('span');
+          pill.className = 'var-pill';
+          pill.textContent = varLabels[k];
+          pill.onclick = () => {
+            const subj = document.getElementById('tplSubject');
+            const pos = subj.selectionStart || subj.value.length;
+            subj.value = subj.value.slice(0, pos) + k + subj.value.slice(pos);
+            subj.focus();
+            subj.setSelectionRange(pos + k.length, pos + k.length);
+          };
+          wrap.appendChild(pill);
+        });
+      }
+      function previewTemplate() {
+        if (!currentTplKey) return;
+        const t = templates[currentTplKey];
+        const node = nodeConfig[t.node] || {};
+        // 收/抄送：优先模板预设（规则展开为联系人），无预设时回退节点规则
+        const toDisp =
+          t.to && t.to.length
+            ? expandRecipients(t.to)
+                .map((c) => c.name + ' <' + c.email + '>')
+                .join('; ')
+            : '（按节点规则自动带入：' +
+              (node.toRule || '').replace(/<[^>]+>/g, '') +
+              '）';
+        const ccList =
+          t.cc && t.cc.length
+            ? expandRecipients(t.cc)
+            : (node.ccSuggest || []).map((k) => contacts.dept[k]);
+        const ccDisp = ccList
+          .map((c) => c.name + ' <' + c.email + '>')
+          .join('; ');
+        openPreview({
+          to: toDisp,
+          cc: ccDisp || '—',
+          time: nowStr(),
+          from: t.sender || 'ops@myfreight.com',
+          subject: renderVars(t.subject),
+          body: renderVars(t.body),
+          attach:
+            (node.autoAttach || [])
+              .map((a) => `📄 ${a.name} (${a.size})`)
+              .join('<br>') || '无',
+        });
+      }
+
+      /* ============================================================
+       * Toast / 拖拽上传 / 初始化
+       * ============================================================ */
+      let toastTimer;
+      function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+      }
+      const uploadArea = document.querySelector('.upload-area');
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.currentTarget.style.borderColor = '#1890ff';
+      });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.currentTarget.style.borderColor = '';
+        handleFiles(e.dataTransfer.files);
+      });
+
+      loadStore();
+      initVarPills();
+      initTplVarPills();
+      renderDocSelect();
+      renderTemplates();
+    </script>
+  </body>
+</html>

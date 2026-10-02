@@ -6,9 +6,12 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { markUserEditedCell } from '../../data';
 import {
   ensureEmptyTableHorizontalScroll,
+  findSettlementClientOption,
+  findSettlementDonorRow,
   isOrderFeeSelectField,
   isSavableOrderFeeRow,
   lookupDropdownLabel,
+  resolveSettlementClientName,
   resolveSettlementDisplayLabel,
 } from '../utils/helpers';
 import { applyHotCellChrome } from '../utils/hot-cell-render';
@@ -53,12 +56,20 @@ export function useHotSettings(
   onAfterRowMove?: () => void,
   /** 预警悬停高亮的费用 id 列表 */
   getHighlightFeeIds?: () => string[],
+  /** 按行业分组的全量客户（结算对象拖拽填充 afterChange 解析用） */
+  allClientsByIndustry?: Ref<Record<string, any[]>> | Record<string, any[]>,
 ) {
   const fieldPermission = createFieldPermission(orderFeeFieldPermission);
   const getDataSource = () =>
     Array.isArray(dataSource) ? dataSource : dataSource.value;
   const getSelectedRowKeys = () =>
     Array.isArray(selectedRowKeys) ? selectedRowKeys : selectedRowKeys.value;
+  const getAllClientsByIndustry = () => {
+    if (!allClientsByIndustry) return {};
+    return ((allClientsByIndustry as any).value ??
+      allClientsByIndustry ??
+      {}) as Record<string, any[]>;
+  };
 
   /** 同一帧渲染内复用：高亮 Set / 行级状态色与可编辑判定 */
   let highlightCacheKey = '';
@@ -743,11 +754,34 @@ export function useHotSettings(
               sourceList = currentOptionsCache.value || [];
             }
 
-            const matchedItem = sourceList.find(
+            let matchedItem = sourceList.find(
               (item) =>
                 item.label === newValue ||
                 String(item.value) === String(newValue),
             );
+
+            // 拖拽填充时编辑器未开，currentOptionsCache 常为空；用全量客户或表内已有行兜底
+            if (!matchedItem && prop === 'settlementId') {
+              matchedItem = findSettlementClientOption(
+                getAllClientsByIndustry(),
+                newValue,
+              ) as { label: string; value: any } | undefined;
+              if (!matchedItem) {
+                const donor = findSettlementDonorRow(getDataSource(), newValue);
+                if (donor) {
+                  const donorId =
+                    donor.settlementId_value ?? donor.settlementId;
+                  matchedItem = {
+                    label:
+                      donor.__settlementName ||
+                      donor.settlement?.name ||
+                      String(newValue ?? ''),
+                    value: donorId,
+                    name: donor.__settlementName || donor.settlement?.name,
+                  } as any;
+                }
+              }
+            }
 
             if (matchedItem) {
               const actualDataSource = getDataSource();
@@ -758,6 +792,7 @@ export function useHotSettings(
                   matchedItem.value;
                 if (prop === 'settlementId') {
                   const name =
+                    resolveSettlementClientName(matchedItem as any) ||
                     (matchedItem as any).name ||
                     String(matchedItem.label || '')
                       .split('-')

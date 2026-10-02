@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientExceptServiceAdminApi } from '#/api/sea-export/client-except-service-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -28,6 +28,7 @@ import {
   parseSeaExportUserAttribute,
 } from '#/views/system/user/data';
 
+import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
 import {
   buildEditPayload,
   buildServiceTypeLabelMap,
@@ -40,8 +41,16 @@ import {
 
 defineOptions({ name: 'ClientExceptService' });
 
-const props = defineProps<{ clientId: string }>();
+const props = withDefaults(
+  defineProps<{ clientId: string; readonly?: boolean }>(),
+  { readonly: false },
+);
 const clientId = computed(() => props.clientId);
+const formLocked = inject(
+  CLIENT_FORM_LOCKED_KEY,
+  computed(() => false),
+);
+const isReadonly = computed(() => props.readonly || formLocked.value);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -50,6 +59,7 @@ const portGroups = ref<
   ClientExceptServiceAdminApi.ClientExceptServicePolGroupDto[]
 >([]);
 const serviceTypeOptions = ref<SelectOption[]>([]);
+const exceptServiceSnapshot = ref<null | string>(null);
 
 const serviceTypeLabelMap = computed(() =>
   buildServiceTypeLabelMap(serviceTypeOptions.value),
@@ -73,6 +83,29 @@ function getServiceTypeLabel(serviceType?: number) {
   );
 }
 
+function exceptServiceDirtyPayload() {
+  return JSON.stringify(
+    portGroups.value.map((group) => ({
+      polId: group.polId,
+      items: (group.items || []).map((item) => ({
+        id: item.id,
+        isChecked: item.isChecked,
+      })),
+    })),
+  );
+}
+
+function syncExceptServiceSnapshot() {
+  exceptServiceSnapshot.value = exceptServiceDirtyPayload();
+}
+
+function isExceptServiceDirty() {
+  if (exceptServiceSnapshot.value === null) return false;
+  return exceptServiceDirtyPayload() !== exceptServiceSnapshot.value;
+}
+
+defineExpose({ isExceptServiceDirty });
+
 async function loadServiceTypeOptions() {
   serviceTypeOptions.value = await loadSeServiceTypeOptions();
 }
@@ -88,10 +121,12 @@ async function loadData() {
     const result = await getClientExceptServices(clientId.value);
     isEntrustingUnit.value = true;
     portGroups.value = normalizePortGroups(result || []);
+    syncExceptServiceSnapshot();
   } catch (error) {
     if (isNotEntrustingUnitApiError(error)) {
       isEntrustingUnit.value = false;
       portGroups.value = [];
+      syncExceptServiceSnapshot();
       return;
     }
     throw error;
@@ -101,6 +136,10 @@ async function loadData() {
 }
 
 async function handleSave() {
+  if (isReadonly.value) {
+    message.warning('当前客户状态不可编辑服务项目，请先申请修改');
+    return;
+  }
   if (!clientId.value || !isEntrustingUnit.value) return;
 
   saving.value = true;
@@ -145,7 +184,12 @@ onMounted(async () => {
             <Button @click="loadData">
               {{ $t('common.refresh') }}
             </Button>
-            <Button type="primary" :loading="saving" @click="handleSave">
+            <Button
+              v-if="!isReadonly"
+              type="primary"
+              :loading="saving"
+              @click="handleSave"
+            >
               {{ $t('common.save') }}
             </Button>
           </Space>
@@ -240,7 +284,10 @@ onMounted(async () => {
                   {{ record.remark || '-' }}
                 </template>
                 <template v-else-if="column.key === 'isChecked'">
-                  <Switch v-model:checked="record.isChecked" />
+                  <Switch
+                    v-model:checked="record.isChecked"
+                    :disabled="isReadonly"
+                  />
                 </template>
               </template>
             </Table>

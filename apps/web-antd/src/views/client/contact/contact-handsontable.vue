@@ -9,11 +9,16 @@
       </div>
       <div class="contact-toolbar__actions">
         <slot name="toolbar-tools" />
-        <Button type="primary" @click="addRow">
+        <Button v-if="!readonly" type="primary" @click="addRow">
           <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
           {{ $t('common.create') }}
         </Button>
-        <Button type="primary" :loading="saving" @click="saveData">
+        <Button
+          v-if="!readonly"
+          type="primary"
+          :loading="saving"
+          @click="saveData"
+        >
           <IconifyIcon icon="ant-design:save-outlined" class="size-4" />
           {{ $t('common.save') }}
         </Button>
@@ -40,6 +45,7 @@ import {
   onActivated,
   onBeforeUnmount,
   nextTick,
+  watch,
   watchEffect,
 } from 'vue';
 import { HotTable } from '@handsontable/vue3';
@@ -56,6 +62,7 @@ import { userSimpleListCache } from '#/adapter/component/biz-select';
 interface Props {
   clientId?: string;
   modelValue?: ClientContactAdminApi.ClientContactDto[];
+  readonly?: boolean;
 }
 
 interface Emits {
@@ -69,6 +76,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   clientId: '',
   modelValue: () => [],
+  readonly: false,
 });
 
 const emit = defineEmits<Emits>();
@@ -423,6 +431,11 @@ const hotSettings = shallowRef({
         td.style.textAlign = 'center';
         td.style.whiteSpace = 'nowrap';
 
+        if (props.readonly) {
+          td.textContent = '-';
+          return td;
+        }
+
         // 创建操作按钮容器（视觉样式统一由 .contact-action-group 类控制）
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'contact-action-group';
@@ -442,6 +455,7 @@ const hotSettings = shallowRef({
         statusBtn.onclick = async function (e) {
           e.preventDefault();
           e.stopPropagation();
+          if (props.readonly) return;
 
           const rowData = instance.getSourceDataAtRow(row);
           const contactId = rowData.id;
@@ -495,6 +509,7 @@ const hotSettings = shallowRef({
         deleteBtn.onclick = function (e) {
           e.preventDefault();
           e.stopPropagation();
+          if (props.readonly) return;
           deleteRow(row);
         };
 
@@ -510,7 +525,8 @@ const hotSettings = shallowRef({
   width: '100%',
   rowHeaders: true,
   colHeaders: true,
-  contextMenu: true,
+  contextMenu: !props.readonly,
+  readOnly: props.readonly,
   manualRowResize: true,
   manualColumnResize: true,
   stretchH: 'all',
@@ -618,8 +634,24 @@ watchEffect(() => {
   updateTableData(props.modelValue || []);
 });
 
+watch(
+  () => props.readonly,
+  (readonly) => {
+    nextTick(() => {
+      const hotInstance = hotTableRef.value?.hotInstance;
+      if (!hotInstance) return;
+      hotInstance.updateSettings({
+        readOnly: readonly,
+        contextMenu: !readonly,
+      });
+      hotInstance.render();
+    });
+  },
+);
+
 // 监听表格数据变化并同步到父组件
 const onAfterChange = (changes: any, source: string) => {
+  if (props.readonly) return;
   if (!changes || changes.length === 0) {
     return;
   }
@@ -656,6 +688,7 @@ const onAfterChange = (changes: any, source: string) => {
 
 // 新增行
 const addRow = () => {
+  if (props.readonly) return;
   const newRow = {
     id: 0, // 新增时id为0，提交时由后端分配
     clientId: props.clientId,
@@ -693,6 +726,10 @@ const addRow = () => {
 
 // 删除指定行
 const deleteRow = async (rowIndex: number) => {
+  if (props.readonly) {
+    message.warning('当前客户状态不可删除联系人，请先申请修改');
+    return;
+  }
   const rowData = tableData.value[rowIndex];
   if (!rowData) return;
 
@@ -734,6 +771,10 @@ const deleteRow = async (rowIndex: number) => {
 
 // 保存数据 - 只负责验证和通知父组件
 const saveData = async () => {
+  if (props.readonly) {
+    message.warning('当前客户状态不可编辑联系人，请先申请修改');
+    return;
+  }
   if (saving.value) return; // 防止重复提交
 
   // ✅ 保存前合法性校验：定位首个非法字段，提示 + 选中并滚动到该单元格，拦截保存

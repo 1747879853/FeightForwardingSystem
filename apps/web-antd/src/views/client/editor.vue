@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -7,6 +7,11 @@ import { Page } from '@vben/common-ui';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 
 import Attachments from './attachments/list.vue';
+import {
+  CLIENT_EDITOR_IS_DIRTY_KEY,
+  CLIENT_FORM_LOCKED_KEY,
+  CLIENT_FORM_LOCKED_REF_KEY,
+} from './base/client-editor-context';
 import Form from './base/form.vue';
 import ContactList from './contact/list.vue';
 import ExceptService from './except-service/index.vue';
@@ -20,8 +25,23 @@ const routeClientId = route.params.id;
 const clientId = Array.isArray(routeClientId)
   ? (routeClientId[0] ?? '')
   : String(routeClientId ?? '');
-/** 客户审核列表双击进入：基础信息只读；联系人/开票/附件等 Tab 仍可切换查看 */
+/** 客户审核列表双击进入：整页只读（含子 Tab） */
 const isAuditMode = computed(() => route.query.mode === 'audit');
+
+/** 由基础表单同步写入；申请修改解锁后附件/排除服务等一并放开 */
+const formLockedRef = ref(false);
+/** 随主表审核锁定的子 Tab（附件、排除服务）；联系人/开票不跟主表锁 */
+const lockedSubTabsReadonly = computed(
+  () => isAuditMode.value || formLockedRef.value,
+);
+/** 联系人、开票：审核查看模式只读，审核通过后仍可直接改，无需申请修改 */
+const contactInvoiceReadonly = computed(() => isAuditMode.value);
+
+provide(CLIENT_FORM_LOCKED_REF_KEY, formLockedRef);
+provide(
+  CLIENT_FORM_LOCKED_KEY,
+  computed(() => lockedSubTabsReadonly.value),
+);
 
 type SectionKey = 'attachments' | 'basic' | 'contact' | 'invoice';
 type FormSectionTabKey =
@@ -37,10 +57,14 @@ type FormExpose = {
 };
 type ContactExpose = { isContactDirty?: () => boolean };
 type InvoiceExpose = { isInvoiceDirty?: () => boolean | Promise<boolean> };
+type ExceptServiceExpose = {
+  isExceptServiceDirty?: () => boolean | Promise<boolean>;
+};
 
 const formRef = ref<FormExpose | null>(null);
 const contactRef = ref<ContactExpose | null>(null);
 const invoiceRef = ref<InvoiceExpose | null>(null);
+const exceptServiceRef = ref<ExceptServiceExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
 
 const tabs: { key: TabKey; label: string; sectionKey?: SectionKey }[] = [
@@ -64,17 +88,24 @@ const onSectionChange = (sectionKey: SectionKey) => {
   activeTab.value = sectionKey;
 };
 
+/** 用 v-show 保活各 Tab，脏检查始终能读到子组件 expose */
+async function isAnyTabDirty() {
+  if (isAuditMode.value) return false;
+  const formDirty = formRef.value?.isFormDirty;
+  if (formDirty && (await formDirty())) return true;
+  if (contactRef.value?.isContactDirty?.()) return true;
+  const invoiceDirty = invoiceRef.value?.isInvoiceDirty;
+  if (invoiceDirty && (await invoiceDirty())) return true;
+  const exceptDirty = exceptServiceRef.value?.isExceptServiceDirty;
+  if (exceptDirty && (await exceptDirty())) return true;
+  return false;
+}
+
+provide(CLIENT_EDITOR_IS_DIRTY_KEY, isAnyTabDirty);
+
 useUnsavedGuard({
   enabled: () => !isAuditMode.value,
-  isDirty: async () => {
-    if (isAuditMode.value) return false;
-    const formDirty = formRef.value?.isFormDirty;
-    if (formDirty && (await formDirty())) return true;
-    if (contactRef.value?.isContactDirty?.()) return true;
-    const invoiceDirty = invoiceRef.value?.isInvoiceDirty;
-    if (invoiceDirty && (await invoiceDirty())) return true;
-    return false;
-  },
+  isDirty: isAnyTabDirty,
 });
 
 const contentTabsStyle = {
@@ -86,9 +117,9 @@ const contentTabsStyle = {
   position: 'sticky',
   top: '0',
   zIndex: 20,
-  background: '#fff',
-  border: '1px solid #e8e8e8',
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+  background: 'hsl(var(--background))',
+  border: '1px solid hsl(var(--border))',
+  boxShadow: '0 1px 2px hsl(var(--foreground) / 4%)',
 } as const;
 </script>
 
@@ -115,41 +146,42 @@ const contentTabsStyle = {
       </div>
       <div class="flex items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
-          <KeepAlive include="ClientAdminForm">
+          <!-- v-show：各 Tab 常驻，未保存守卫与「提交审核」可汇总脏状态；审核模式整页只读 -->
+          <div v-show="activeTab === 'basic'">
             <Form
-              v-if="activeTab === 'basic'"
               ref="formRef"
               :client-id="clientId"
               embedded
               @section-change="onSectionChange"
             />
-          </KeepAlive>
-          <KeepAlive include="ClientContactList">
+          </div>
+          <div v-show="activeTab === 'contact'">
             <ContactList
-              v-if="activeTab === 'contact'"
               ref="contactRef"
               :client-id="clientId"
+              :readonly="contactInvoiceReadonly"
             />
-          </KeepAlive>
-          <KeepAlive include="ClientInvoiceList">
+          </div>
+          <div v-show="activeTab === 'invoice'">
             <InvoiceList
-              v-if="activeTab === 'invoice'"
               ref="invoiceRef"
               :client-id="clientId"
+              :readonly="contactInvoiceReadonly"
             />
-          </KeepAlive>
-          <KeepAlive include="ClientAttachments">
+          </div>
+          <div v-show="activeTab === 'attachments'">
             <Attachments
-              v-if="activeTab === 'attachments'"
               :client-id="clientId"
+              :readonly="lockedSubTabsReadonly"
             />
-          </KeepAlive>
-          <KeepAlive include="ClientExceptService">
+          </div>
+          <div v-show="activeTab === 'exceptService'">
             <ExceptService
-              v-if="activeTab === 'exceptService'"
+              ref="exceptServiceRef"
               :client-id="clientId"
+              :readonly="lockedSubTabsReadonly"
             />
-          </KeepAlive>
+          </div>
         </div>
       </div>
     </div>

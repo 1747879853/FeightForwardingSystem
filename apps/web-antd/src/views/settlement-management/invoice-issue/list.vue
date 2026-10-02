@@ -1,26 +1,18 @@
 <script lang="ts" setup>
-import { h, ref } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Button, message, Modal, Space, Input, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Tag } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteInvoiceIssue,
   getInvoiceIssuePagedList,
-  InvoiceIssueApi,
 } from '#/api/Invoice/InvoiceIssue';
-import { $t } from '#/locales';
 
 import { columns, searchFormSchema } from './data';
-import {
-  expandCombinedStatusGroup,
-  getCombinedStatusColor,
-  getCombinedStatusLabel,
-} from './invoice-status';
-import InvoiceDetailModal from './invoice-detail-modal.vue';
 
 const router = useRouter();
 
@@ -31,10 +23,6 @@ const selectedRows = ref<any[]>([]);
 const syncSelectedRows = () => {
   selectedRows.value = (gridApi.grid as any)?.getCheckboxRecords?.() ?? [];
 };
-
-// 发票详情弹窗
-const detailModalOpen = ref(false);
-const detailModalData = ref<InvoiceIssueApi.InvoiceIssueListDto | null>(null);
 
 /** 处理行双击事件 */
 function handleRowDblClick({ row }: any) {
@@ -55,23 +43,19 @@ const [Grid, gridApi] = useVbenVxeGrid({
     // 分页改大时只绘制视口内行列，避免整表插槽一次挂载
     virtualXConfig: { enabled: true, gt: 0 },
     virtualYConfig: { enabled: true, gt: 0 },
+    // 拖宽一列时固定其余列宽，避免自适应模式挤压邻列（TAPD #1001037）
+    resizableConfig: {
+      dragMode: 'fixed',
+      minWidth: 0,
+    },
     proxyConfig: {
       ajax: {
         query: async ({ page }: any, formValues: any) => {
-          // 发票状态筛选是逻辑分组（如「开票中」跨 1/20/21），展开成 combinedStatuses 数组
-          const { combinedStatusGroup, ...restFormValues } = formValues;
-          const params: Record<string, any> = {
-            ...restFormValues,
+          const result = await getInvoiceIssuePagedList({
+            ...formValues,
             pageIndex: page.currentPage,
             pageSize: page.pageSize,
-          };
-          const combinedStatuses =
-            expandCombinedStatusGroup(combinedStatusGroup);
-          if (combinedStatuses) {
-            params.combinedStatuses = combinedStatuses;
-          }
-
-          const result = await getInvoiceIssuePagedList(params);
+          });
           return {
             items: result.items,
             total: result.totalCount,
@@ -177,12 +161,6 @@ function getLockedTag(locked: boolean | undefined | null) {
   }
   return { text: '否', color: 'success' };
 }
-
-/** 处理诺诺开票状态点击 */
-function handleIssueStatusClick(row: any) {
-  detailModalData.value = row;
-  detailModalOpen.value = true;
-}
 </script>
 
 <template>
@@ -204,16 +182,6 @@ function handleIssueStatusClick(row: any) {
       </template>
       <template #clientInvoiceInfoTaxNum="{ row }">
         {{ row.clientInvoiceInfo?.taxNum || '-' }}
-      </template>
-
-      <template #combinedStatus="{ row }">
-        <Tag
-          :color="getCombinedStatusColor(row.combinedStatus)"
-          class="status-clickable"
-          @click.stop="handleIssueStatusClick(row)"
-        >
-          {{ getCombinedStatusLabel(row.combinedStatus) }}
-        </Tag>
       </template>
 
       <template #editLocked="{ row }">
@@ -259,21 +227,5 @@ function handleIssueStatusClick(row: any) {
         </a-space>
       </template>
     </Grid>
-
-    <!-- 发票详情弹窗 -->
-    <InvoiceDetailModal
-      v-model:open="detailModalOpen"
-      :invoice-data="detailModalData"
-    />
   </Page>
 </template>
-
-<style scoped>
-.status-clickable {
-  cursor: pointer;
-}
-
-.status-clickable:hover {
-  opacity: 0.85;
-}
-</style>

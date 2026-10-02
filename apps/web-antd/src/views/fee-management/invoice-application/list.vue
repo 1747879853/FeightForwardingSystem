@@ -483,13 +483,13 @@ function handleBatchDelete() {
     return;
   }
 
-  // 检查是否有已开票状态的记录
-  const invoicedRows = rows.filter(
+  const blockedRows = rows.filter(
     (row) =>
-      row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Invoiced,
+      row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Invoiced ||
+      row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Auditing,
   );
-  if (invoicedRows.length > 0) {
-    message.warning('已开票状态的申请不能删除');
+  if (blockedRows.length > 0) {
+    message.warning('待审核或已开票状态的申请不能删除');
     return;
   }
 

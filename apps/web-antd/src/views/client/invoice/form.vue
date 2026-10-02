@@ -9,6 +9,7 @@ import {
 } from '#/api/sea-export/clinet-invoice-admin';
 import type { GeminiClientInvoiceInfoDto } from '#/api/sea-export/gemini-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import { setFormApisDisabled } from '#/utils/ticket-editable';
 import BankTable from './bank-table.vue';
 import { $t } from '#/locales';
 
@@ -17,10 +18,13 @@ interface Props {
   invoiceId?: string;
   /** 客户ID */
   clientId: string;
+  /** 审核锁定 / 审核模式只读 */
+  readonly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   invoiceId: '',
+  readonly: false,
 });
 
 const emit = defineEmits<{
@@ -373,6 +377,14 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => props.readonly,
+  (locked) => {
+    setFormApisDisabled([invoiceFormApi], locked);
+  },
+  { immediate: true },
+);
+
 // 暴露方法给父组件
 const invoiceSnapshot = ref<null | string>(null);
 
@@ -492,6 +504,7 @@ defineExpose({
         v-model="bankList"
         :client-invoice-info-id="invoiceId"
         :invoice-header="formData?.header || ''"
+        :readonly="readonly"
       />
     </div>
   </div>

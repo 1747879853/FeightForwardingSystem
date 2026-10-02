@@ -124,6 +124,55 @@ function outerColStyle(column: Column, index: number) {
   return { width: columnWidth(column.width) };
 }
 
+/**
+ * 列宽之和作 min-width：拖宽一列时表格可横向撑开，避免 width:100%+fixed 挤压邻列。
+ */
+const outerTableMinWidth = computed(() => {
+  let sum = 32; // 展开列
+  let hasExplicit = false;
+  props.columns.forEach((column, index) => {
+    const key = columnKey(column, index);
+    const dragged = outerWidths[key];
+    if (dragged != null) {
+      sum += dragged;
+      hasExplicit = true;
+      return;
+    }
+    const parsed = parseWidth(column.width);
+    if (parsed != null) {
+      sum += parsed;
+      hasExplicit = true;
+      return;
+    }
+    // 未设宽的末列按当前习惯不计入强制 min，仍吸收剩余
+    if (index !== props.columns.length - 1) {
+      sum += MIN_COL_WIDTH;
+      hasExplicit = true;
+    }
+  });
+  return hasExplicit ? `${sum}px` : undefined;
+});
+
+const innerTableMinWidth = computed(() => {
+  let sum = 0;
+  let hasExplicit = false;
+  props.innerColumns.forEach((column, index) => {
+    const key = columnKey(column, index);
+    const dragged = innerWidths[key];
+    if (dragged != null) {
+      sum += dragged;
+      hasExplicit = true;
+      return;
+    }
+    const parsed = parseWidth(column.width);
+    if (parsed != null) {
+      sum += parsed;
+      hasExplicit = true;
+    }
+  });
+  return hasExplicit && sum > 0 ? `${sum}px` : undefined;
+});
+
 function innerColStyle(column: Column, index: number) {
   const key = columnKey(column, index);
   const dragged = innerWidths[key];
@@ -209,7 +258,10 @@ watch(
     }"
   >
     <div class="nested-data-table__scroll" :style="scrollStyle">
-      <table class="nested-data-table__outer">
+      <table
+        class="nested-data-table__outer"
+        :style="{ minWidth: outerTableMinWidth }"
+      >
         <colgroup>
           <col class="nested-data-table__expand-col" />
           <col
@@ -308,7 +360,10 @@ watch(
             >
               <td :colspan="columns.length + 1">
                 <div class="nested-data-table__expanded">
-                  <table class="nested-data-table__inner">
+                  <table
+                    class="nested-data-table__inner"
+                    :style="{ minWidth: innerTableMinWidth }"
+                  >
                     <colgroup>
                       <col
                         v-for="(column, colIndex) in innerColumns"
@@ -439,7 +494,6 @@ watch(
 .nested-data-table__inner {
   width: max-content;
   min-width: 0;
-  max-width: 100%;
   table-layout: fixed;
   border-spacing: 0;
   border-collapse: separate;

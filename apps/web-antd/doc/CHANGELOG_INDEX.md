@@ -17,11 +17,43 @@
 
 - [2026-10-02] [海运出口列表展示提单状态](./changelogs/change-log-2026-10-02-海运出口列表提单状态.md)
 
+- [2026-10-02] [个人邮箱新邮件 SignalR 提醒](./changelogs/change-log-2026-10-02-personal-mail-signalr.md)
+
 - [2026-10-02] [银行流水按金额自动核销](./changelogs/change-log-2026-10-02-银行流水按金额自动核销.md)
 
 - [2026-10-02] [提单顶部数量改为已扣单并下钻筛选](./changelogs/change-log-2026-10-02-提单已扣单数量筛选.md)
 
 - [2026-10-02] [按发票核销发票列表可勾选整张发票](./changelogs/change-log-2026-10-02-按发票核销发票列表复选框.md)
+
+- [2026-10-02] [个人邮箱列表滚动和翻页](./changelogs/change-log-2026-10-02-personal-mail-list-scroll.md)
+
+- [2026-10-02] [个人邮箱收件箱一键已读](./changelogs/change-log-2026-10-02-personal-mail-mark-all-read.md)
+
+- [2026-10-02] [发票开出去除发票状态展示](./changelogs/change-log-2026-10-02-invoice-issue-hide-combined-status.md)
+
+- [2026-10-02] [个人邮箱定时拉取未读和新邮件](./changelogs/change-log-2026-10-02-personal-mail-poll-list.md)
+
+- [2026-10-02] [个人邮箱收件箱显示未读数](./changelogs/change-log-2026-10-02-personal-mail-inbox-unread.md)
+
+- [2026-10-02] [个人邮箱写信显示签名](./changelogs/change-log-2026-10-02-personal-mail-compose-signature.md)
+
+- [2026-10-02] [个人邮箱附件预览](./changelogs/change-log-2026-10-02-personal-mail-attachment-preview.md)
+
+- [2026-10-02] [个人邮箱名称、收件数量和全局悬浮框](./changelogs/change-log-2026-10-02-personal-mail-float.md)
+
+- [2026-10-02] [个人邮箱列表布局与附件下载反馈](./changelogs/change-log-2026-10-02-personal-mail-list-layout.md)
+
+- [2026-10-02] [发票开出保存并新建](./changelogs/change-log-2026-10-02-invoice-issue-save-and-new.md)
+
+- [2026-10-02] [TAPD #1000204 发票开出抽屉费用明细原币币别](./changelogs/change-log-2026-10-02-tapd-1000204-invoice-issue-fee-orig-currency.md)
+
+- [2026-10-02] [TAPD #1000200 发票开出列表提单号](./changelogs/change-log-2026-10-02-tapd-1000200-invoice-issue-mbl-nums.md)
+
+- [2026-10-02] [TAPD #1000202 客户审核通过后联系人开票可直接改](./changelogs/change-log-2026-10-02-tapd-1000202-client-contact-invoice-direct-edit.md)
+
+- [2026-10-02] [TAPD #1001037 发票开出列宽拖动不挤压他列](./changelogs/change-log-2026-10-02-tapd-1001037-invoice-issue-col-resize-fixed.md)
+
+- [2026-10-02] [对接个人邮箱](./changelogs/change-log-2026-10-02-personal-mail.md)
 
 - [2026-10-01] [海运出口内部备注醒目并回链业务联系单](./changelogs/change-log-2026-10-01-海运出口关联业务联系单.md)
 

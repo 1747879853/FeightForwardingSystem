@@ -126,7 +126,10 @@ export function useLoadDetail(
 
       // 3. 查找默认商品编码（isDefault=true 且 defaultCurrency 匹配）
       const defaultCodeInvoice = codeInvoiceList.find(
-        (item) => item.isDefault && item.defaultCurrency === currencyCode,
+        (item) =>
+          !!item.isDefault &&
+          (item.currency?.code === currencyCode ||
+            item.defaultCurrency === currencyCode),
       );
 
       if (!defaultCodeInvoice) {

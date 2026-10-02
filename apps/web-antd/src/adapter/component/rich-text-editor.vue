@@ -19,14 +19,31 @@ const EMPTY_HTML = '<p><br></p>';
 interface Props {
   autoHeight?: boolean;
   disabled?: boolean;
+  /** 铺满父级剩余高度，供写信窗使用 */
+  fill?: boolean;
+  /** upload：走系统附件；base64：插成 data URI，供个人邮箱正文使用 */
+  imageInsert?: 'base64' | 'upload';
   placeholder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   autoHeight: false,
   disabled: false,
+  fill: false,
+  imageInsert: 'upload',
   placeholder: undefined,
 });
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(String(reader.result || '')));
+    reader.addEventListener('error', () => {
+      reject(reader.error ?? new Error('读取图片失败'));
+    });
+    reader.readAsDataURL(file);
+  });
+}
 
 const modelValue = defineModel<string>({ default: '' });
 
@@ -71,6 +88,11 @@ const editorConfig: Partial<IEditorConfig> = {
         file: File,
         insertFn: (url: string, alt?: string, href?: string) => void,
       ) {
+        if (props.imageInsert === 'base64') {
+          const dataUrl = await readFileAsDataUrl(file);
+          insertFn(dataUrl, file.name, dataUrl);
+          return;
+        }
         const formData = new FormData();
         formData.append('file', file);
         const resultList = await uploadFile(formData);
@@ -143,7 +165,10 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="rich-text-editor rounded-md border border-[#d9d9d9] bg-white"
-    :class="{ 'rich-text-editor--auto-height': autoHeight }"
+    :class="{
+      'rich-text-editor--auto-height': autoHeight,
+      'rich-text-editor--fill': fill,
+    }"
     @mousedown.stop
     @pointerdown.stop
   >
@@ -182,6 +207,26 @@ onBeforeUnmount(() => {
 .rich-text-editor--auto-height :deep(.w-e-text-container) {
   height: auto !important;
   min-height: 280px !important;
+}
+
+.rich-text-editor--fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.rich-text-editor--fill .rich-text-editor__body,
+.rich-text-editor--fill :deep(.w-e-text-container) {
+  flex: 1;
+  height: auto !important;
+  min-height: 220px;
+}
+
+.rich-text-editor--fill :deep(.w-e-text-container [data-slate-editor]) {
+  min-height: 180px;
 }
 
 .rich-text-editor :deep(.w-e-toolbar) {

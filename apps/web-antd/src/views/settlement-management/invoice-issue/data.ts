@@ -5,7 +5,6 @@ import { $t } from '#/locales';
 
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 import { createKeysSearchSchema } from '#/utils/keys-search';
-import { combinedStatusFilterOptions } from './invoice-status';
 
 /**
  * 格式化日期时间显示
@@ -36,55 +35,6 @@ const getInvoiceTypeLabel = (type: string | undefined | null): string => {
 };
 
 /**
- * 获取开票状态中文标签
- */
-const getIssueStatusLabel = (status: number | undefined | null): string => {
-  if (status === undefined || status === null) return '-';
-
-  const statusMap: Record<number, string> = {
-    0: '待开票',
-    1: '开票中',
-    2: '开票完成',
-    3: '开票失败',
-  };
-
-  return statusMap[status] || String(status);
-};
-
-/**
- * 获取红冲状态中文标签
- */
-const getRedStatusLabel = (status: number | undefined | null): string => {
-  if (status === undefined || status === null) return '-';
-
-  const statusMap: Record<number, string> = {
-    0: '未冲红',
-    1: '无需确认',
-    2: '待购方确认',
-    3: '待销方确认',
-    4: '双方已确认',
-    5: '已作废(购方否认)',
-    6: '已作废(销方否认)',
-    7: '已作废(超时未确认)',
-    8: '已作废(发起方撤销)',
-    9: '已作废(确认后撤销)',
-    15: '申请中',
-    16: '申请失败', // C# 枚举原文为“申请失败”，如需与你示例保持一致可改为 '冲红失败'
-    99: '冲红完成',
-  };
-
-  return statusMap[status] || String(status);
-};
-
-/**
- * 格式化锁定状态显示
- */
-const getLockedLabel = (locked: boolean | undefined | null): string => {
-  if (locked) return '是';
-  return '否';
-};
-
-/**
  * 发票开出列表表格列配置
  */
 export const columns: VxeTableGridOptions['columns'] = [
@@ -106,6 +56,19 @@ export const columns: VxeTableGridOptions['columns'] = [
     field: 'invoiceNo',
     width: 150,
     align: 'left',
+  },
+  {
+    title: '提单号',
+    field: 'mblNums',
+    minWidth: 160,
+    align: 'left',
+    showOverflow: true,
+    formatter: ({ cellValue }: { cellValue: null | string[] | undefined }) => {
+      const list = (cellValue || [])
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean);
+      return list.length > 0 ? list.join('、') : '-';
+    },
   },
   {
     title: '开票时间',
@@ -184,13 +147,6 @@ export const columns: VxeTableGridOptions['columns'] = [
     width: 160,
     align: 'left',
     formatter: ({ cellValue }) => formatDateTime(cellValue),
-  },
-  {
-    title: '发票状态',
-    field: 'combinedStatus',
-    width: 160,
-    align: 'center',
-    slots: { default: 'combinedStatus' },
   },
   {
     title: '提交订单号',
@@ -404,18 +360,6 @@ export const searchFormSchema = [
         { label: '普通发票(纸票)', value: 'c' },
         { label: '专用发票', value: 's' },
       ],
-    },
-  },
-  {
-    fieldName: 'combinedStatusGroup',
-    label: '发票状态',
-    component: 'Select',
-    componentProps: {
-      placeholder: '请选择发票状态',
-      clearable: true,
-      // 逻辑分组选项（未开票/开票中/开票完成/冲红中/已冲红…），
-      // 查询时由 list.vue 展开成 combinedStatuses 数组传给后端
-      options: combinedStatusFilterOptions,
     },
   },
   {

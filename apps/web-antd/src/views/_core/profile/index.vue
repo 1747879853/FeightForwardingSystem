@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
+import { useAccess } from '@vben/access';
 import { Profile } from '@vben/common-ui';
 import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
@@ -10,14 +12,22 @@ import { message } from 'ant-design-vue';
 
 import { updateMyAvatarApi } from '#/api';
 import { uploadFile } from '#/api/common/upload';
+import { PERSONAL_MAIL_PERMISSION } from '#/api/personal-mail/personal-mail-admin';
 import { useAuthStore } from '#/store';
 import { buildAttachmentUrl } from '#/utils';
 
 import ProfileBase from './base-setting.vue';
+import ProfileMailAccount from './mail-account-setting.vue';
 import ProfilePasswordSetting from './password-setting.vue';
 
 const authStore = useAuthStore();
 const userStore = useUserStore();
+const route = useRoute();
+const { hasAccessByCodes } = useAccess();
+
+const canConfigureMail = computed(() =>
+  hasAccessByCodes([PERSONAL_MAIL_PERMISSION.account]),
+);
 
 const tabsValue = ref<string>('basic');
 const avatarUploading = ref(false);
@@ -27,16 +37,26 @@ const avatarSrc = computed(
   () => userStore.userInfo?.avatar ?? preferences.app.defaultAvatar,
 );
 
-const tabs = ref([
-  {
-    label: '个人信息',
-    value: 'basic',
+const tabs = computed(() => {
+  const items = [
+    { label: '个人信息', value: 'basic' },
+    { label: '修改密码', value: 'password' },
+  ];
+  if (canConfigureMail.value) {
+    items.push({ label: '邮箱配置', value: 'mail' });
+  }
+  return items;
+});
+
+watch(
+  [() => route.query.tab, canConfigureMail],
+  ([tab, allowed]) => {
+    if (tab === 'mail' && allowed) {
+      tabsValue.value = 'mail';
+    }
   },
-  {
-    label: '修改密码',
-    value: 'password',
-  },
-]);
+  { immediate: true },
+);
 
 function triggerAvatarUpload() {
   if (avatarUploading.value) return;
@@ -109,6 +129,7 @@ async function handleAvatarFileChange(event: Event) {
     <template #content>
       <ProfileBase v-if="tabsValue === 'basic'" />
       <ProfilePasswordSetting v-if="tabsValue === 'password'" />
+      <ProfileMailAccount v-if="tabsValue === 'mail'" />
     </template>
   </Profile>
 </template>

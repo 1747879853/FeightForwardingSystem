@@ -121,7 +121,7 @@ export function useFeeSelection(
     // 过滤出真正的新申请
     const existingAppIds = getAddedAppIds();
     const newApplications = selectedApplications.filter((app: any) => {
-      return !existingAppIds.has(app.id);
+      return !existingAppIds.has(String(app.id));
     });
 
     // 如果没有新申请，直接返回
@@ -144,8 +144,12 @@ export function useFeeSelection(
    */
   async function createInvoiceWithApplications(selectedApplications: any[]) {
     try {
-      // 处理商品明细
+      // 处理商品明细；无明细时中止创建，避免空商品落库
       await mergeGoodsDetailsFromApplications(selectedApplications);
+      if (!goodsDetails.value.length) {
+        message.warning('商品明细为空，无法创建发票开出');
+        return;
+      }
 
       // 构建备注信息（从选择的发票信息中获取，多条用----------------------------------------分隔）
       const remarks = selectedApplications
@@ -194,6 +198,9 @@ export function useFeeSelection(
         await closeTabByKey(createTabKey);
       }
     } catch (error) {
+      if (error instanceof Error && error.message === 'NO_GOODS_TO_MERGE') {
+        return;
+      }
       // 业务错误由 requestClient 拦截器提示
       console.error('❌ 创建发票失败:', error);
       throw error;
@@ -207,6 +214,10 @@ export function useFeeSelection(
     try {
       // 先合并商品明细（接口需要完整商品明细入参）
       await mergeGoodsDetailsFromApplications(selectedApplications);
+      if (!goodsDetails.value.length) {
+        message.warning('商品明细为空，无法添加开票申请');
+        return;
+      }
 
       const addData: InvoiceIssueApi.InvoiceIssueAddApplicationsDto = {
         id: editId.value!,
@@ -263,6 +274,9 @@ export function useFeeSelection(
 
       message.success('申请添加成功');
     } catch (error) {
+      if (error instanceof Error && error.message === 'NO_GOODS_TO_MERGE') {
+        return;
+      }
       // 业务错误（如币别不一致）由 requestClient 拦截器原样提示
       console.error('❌ 添加申请失败:', error);
       if (reloadDetail) {

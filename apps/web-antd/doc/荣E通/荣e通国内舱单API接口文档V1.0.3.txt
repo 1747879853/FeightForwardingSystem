@@ -1,0 +1,2380 @@
+
+
+
+
+
+荣e通国内舱单API接口规范
+
+
+
+
+
+
+
+
+
+
+荣e通项目组
+2024年5月
+
+ 
+修订历史记录
+版本号	更改日期	更改方法/内容/原因	操作人
+V1.0	2024-05-21	舱单API初版	bai
+V1.1	2026-05-26	青岛舱单主单新增品名唛头字段	bai
+V1.2	2026-08-10	增加集港计划保存草稿	bai
+V1.3	2026-08-27	VGM发送增加结算方式字段
+	bai
+V1.4	2026-08-29	VGM发送船司HLC/HPL—赫伯罗特 SO字段放入箱信息	bai
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+
+
+
+
+
+1.概述
+1.1.1.接口概述
+荣e通平台基于与国内外港口系统对接，将舱单申报功能，通过接口等形式开放给第三方合作伙伴，使其ERP系统具备舱单信息在线申报的能力。
+通过接入荣e通舱单API，第三方合作伙伴可以获得更好的舱单申报体验，操作人员只需在内部ERP系统中操作即可，极大的提高了支付业务处理效率。
+如未做特殊说明，接口默认使用https协议。
+1.1.2.适用范围
+本接口规范仅适用于第三方合作伙伴（简称：调用方）通过接口完成舱单申报功能。
+2.接口调用方式
+调用方采用https协议通信，无特殊说明情况下，接口输入输出数据都是结构化的JSON数据格式。
+调用地址	
+数据传输方式	post同步传输
+提交数据	请求报文
+返回数据	响应报文
+
+
+
+
+
+3.请求报文通用字段解释
+1.	nonce 随机数
+唯一的标识符，服务器能够防止请求被多次使用（记录所有用过的nonce以阻止它们被二次使用）
+2.	timestamp 时间戳
+采用unix时间戳，保留到毫秒。
+用于判断调用方提交请求时间是否在有效时间内，如果超出15分钟则拒绝请求
+3.	accessKey 请求唯一标识
+请求唯一标识由荣e通平台生成，并发放给调用方使用，每个调用方只分配一个请求唯一标识，且不会重复。
+4.	secretKey调用方秘钥
+调用方秘钥由荣e通平台生成，并发放给调用方使用，每个秘钥都与请求唯一标识对应，且不会重复。
+5.outTradeCode 请求唯一标识，流水号，在一份舱单中唯一,比如原始发送为A，此单的流水号都固定，后续舱单的增删改查操作都传A，不能更改。
+
+4.接口签名方式
+第一步：将请求参数（除sign之外）模型转换为json字符串（假设存在三个业务参数aparam、bparam、cparam）
+strStep1={"aparam":"test1","bparam":"test2","cparam":"{\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"}","accessKey":"xxxxxx","nonce":1000,"timestamp":10000100}
+
+第二步：将参数以key=value的格式拼接，并按照参数名ASCII字典序排序如下： 
+strStep2="accessKey=xxxxxx&aparam=test1&bparam=test2&cparam={\"subMember1\":\"对象模型内的字段1\",\"subMember2\":\"对象模型内的字段2\"} &nonce=1000&timestamp=10000100”;
+
+第三步：拼接API密钥：（secretKey为平台生成的访问密钥）
+strStep3 = strStep2 + "&secretKey=192006250b4c09247ec02edce69f6"
+
+第四步：使用MD5算法加密第二步拼接好的明文，将加密结果转为英文大写：
+sign = MD5(strStep3).toUpperCase()
+
+以下为java签名的示例代码：
+        public String getSign(Map<String, String> reqParam) {
+                // 1. 将请求参数Map按照参数名ASCII字典序排序
+                Map<String, String> sortReqParam = new TreeMap<>(reqParam);
+                // 2. 如果有sign，则删除sign
+                sortReqParam.remove("sign");
+                // 3. 将排好序的Map转为key=value格式的字符串
+                StringBuilder sb = new StringBuilder();
+                for (Map.Entry<String, String> entry : sortReqParam.entrySet()) {
+                        sb.append(entry.getKey()).append("=").append(String.valueOf(entry.getValue())).append("&");
+                }
+                // 4. 在最后拼接上secretKey的key和value
+                sb.append("secretKey").append("=").append(secretKey);
+                // 5. 将拼接完成的参数字符串md5加密并转大写
+                return DigestUtils.md5DigestAsHex(sb.toString().getBytes()).toUpperCase();
+        }
+
+
+
+
+测试环境地址
+测试环境ip+端口  221.238.46.76:9097
+调用接口的时候 不带/api 
+例如 查询上海舱单
+http://221.238.46.76:9097/manifest/openapi/shanghai/queryManifest
+5.上海舱单信息发送
+5.1.上海舱单发送接口
+5.1.1.接口说明
+调用此接口可以发送上海港舱单，按分单个数扣除相应的上海舱单发送权益。
+5.1.2.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/sendManifest
+5.1.3.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "notifyUrl":  "http://www.xxx.com/xxx",
+          "detail": {
+          "outTradeCode":  "123456",
+          "masterBillNo":  "1312312312",
+          "addManifestFlag":  1,
+          "carrierName":  "APL-美国总统",
+          "referenceNo":  "12321312",
+          "cargoName":  "普通货物",
+          "billLadingTypeName":  "OBL-正本提单",
+          "originalNumber":  "1",
+          "paymentTermNameCn":  "预付",
+          "placeIssueName":  "SHANGHAI | CNSHA",
+          "shippingItem":  "CY-CY",
+          "oceanVessel":  "SAAD",
+          "voyage":  "DASDAS",
+          "shipAgentName":  "上海华港船代",
+          "placeReceiptName":  "SHANGHAI | CNSHA",
+          "portLoadingName":  "SHANGHAI | CNSHA",
+          "portDischargeName":  "ANDORRA | ADADC",
+          "placeDeliveryName":  "AL AIN | AEAAN",
+"remark":  "我是备注信息",
+          "houseInfos":  [
+                    {
+                                                           "houseBillNo":  "12312312",
+                              "containerNo":  "TXGU5001395",
+                              "containerTypeName":  "20TG",
+                              "sealNo":  "12",
+                              "containerOwnerName":  "SOC-自有箱",
+                              "packageNum":  "1",
+                              "grossWeight":  1,
+                              "cbm":  1,
+                              "unitName":  "ANGLE CRATE",
+                              "marking":  "ASD",
+                              "description":  "ADSASDAS",
+                              "hsCode":  "ASDAS",
+                              "temperatureUnitName":  "摄氏度℃",
+                              "temperature":  "25",
+                              "undgNo":  "2222",
+                              "undgClass":  "1",
+                              "undgLinkMan":  "ASD",
+                              "undgLinkTele":  "12312312"
+                    }
+          ],
+          "linkInfos":  [
+                    {
+                              "actualPerson":  "3434",
+                              "actualTele":  "343434",
+                              "address":  "ADSASDAS",
+                              "aeoCode":  "4444",
+                              "companyId":  "233233+",
+                              "countryCode":  "AF",
+                              "countryName":  "AF-阿富汗",
+                              "partyName":  "ASDASDAS",
+                              "partyTele":  "232332",
+                              "partyType":  1
+                    },
+                    {
+                              "address":  "ASDFSDAFASD",
+                              "aeoCode":  "SADSAD",
+                              "companyId":  "ADSASD+",
+                              "countryCode":  "CN",
+                              "countryName":  "CN-中国",
+                              "partyName":  "SADS",
+                              "partyTele":  "21321312312",
+                              "partyType":  2
+                    },
+                    {
+                              "address":  "FDSFSDFDS",
+                              "aeoCode":  "34343",
+                              "companyId":  "4343443+",
+                              "countryCode":  "AE",
+                              "countryName":  "AE-阿拉伯联合酋长国",
+                              "partyName":  "ASDSADF",
+                              "partyTele":  "23232334",
+                              "partyType":  3
+                    }
+          ]
+}
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1		accessKey	请求唯一标识	varchar(36)	是	
+2		nonce	随机号	varchar(36)	是	
+3		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4		sign	签名	varchar(32)	是	
+5		notifyUrl	舱单结果通知地址	varchar(200)	是	
+6		detail	舱单信息	object	是	
+7		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+8		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+9		┣addManifestFlag	是否加单	int	否	仅限上海才能传此字段，传1能分开发送上海舱单，主提单号可以重复  
+10		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+11		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+12		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+13		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+14		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+15		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+16		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+17		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+18		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+19		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+20		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+21		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+22		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+23		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+24		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+25		┣remark	备注	varchar(2000)	否	备注信息
+26		┣houseInfos	货物明细	List<Object>	是	
+27		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+28		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+29		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+30		┣sealNo	封箱号	varchar(30)	是	不能输入中文、小写字母、全角符号
+31		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+32		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+33		┣grossWeight	毛重(KSG)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+34		┣cbm	体积(CBM)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+35		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+36		┣marking	唛头	varchar(1000)	否	不能输入中文、小写字母、全角符号
+37		┣description	英文品名	varchar(2000)	否	不能输入中文、小写字母、全角符号
+38		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号
+39		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品、冷藏危品时必填(摄氏度℃ 或 华氏度℉)
+40		┣temperature	冷藏品温度	varchar(10)	否	货物类型为冷冻品、冷藏危品时必填
+41		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+42		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+43		┣undgLinkMan	危险品联系人	varchar(70)	否	货物类型为危险品时必填
+不能输入中文、小写字母、全角符号
+44		┣undgLinkTele	危险品联系电话	varchar(25)	否	货物类型为危险品时必填
+仅支持录入数字，半角字符(含空格)
+45		┣linkInfos  	收发通信息	List<Object>	是	
+46		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+47		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+48		┣address	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+49		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+50		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+51		┣actualPerson	实际联系人	varchar(140)	否	不能输入中文、小写字母、全角符号
+52		┣actualTele	实际联系人电话	varchar(140)	否	仅支持录入数字，半角字符(含空格)
+53		┣companyId	企业代码	varchar(64)	否	不能输入中文、小写字母、全角符号
+54		┣aeoCode	AEO代码	varchar(255)	否	不能输入中文、小写字母、全角符号
+
+5.1.4.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	varchar(10)	是	
+2	message	返回消息	varchar(200)	是	
+3	data	返回数据	Boolean	是	
+
+5.1.5.返回状态码
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	999999	系统错误，请联系技术人员
+
+
+
+5.2.上海舱单重发接口
+5.2.1.接口说明
+调用此接口可以重新发送上海港舱单，按分单个数扣除相应的上海舱单发送权益。
+5.2.2.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/reSendManifest
+5.2.3.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61"
+          "detail": {
+          "outTradeCode":  "123456",
+          "masterBillNo":  "1312312312",
+"addManifestFlag":  1,
+          "carrierName":  "APL-美国总统",
+          "referenceNo":  "12321312",
+          "cargoName":  "普通货物",
+          "billLadingTypeName":  "OBL-正本提单",
+          "originalNumber":  "1",
+          "paymentTermNameCn":  "预付",
+          "placeIssueName":  "SHANGHAI | CNSHA",
+          "shippingItem":  "CY-CY",
+          "oceanVessel":  "SAAD",
+          "voyage":  "DASDAS",
+          "shipAgentName":  "上海华港船代",
+          "placeReceiptName":  "SHANGHAI | CNSHA",
+          "portLoadingName":  "SHANGHAI | CNSHA",
+          "portDischargeName":  "ANDORRA | ADADC",
+          "placeDeliveryName":  "AL AIN | AEAAN",
+"remark":  "我是备注信息",
+          "houseInfos":  [
+                    {
+                                                           "houseBillNo":  "12312312",
+                              "containerNo":  "TXGU5001395",
+                              "containerTypeName":  "20TG",
+                              "sealNo":  "12",
+                              "containerOwnerName":  "SOC-自有箱",
+                              "packageNum":  "1",
+                              "grossWeight":  1,
+                              "cbm":  1,
+                              "unitName":  "ANGLE CRATE",
+                              "marking":  "ASD",
+                              "description":  "ADSASDAS",
+                              "hsCode":  "ASDAS",
+                              "temperatureUnitName":  "摄氏度℃",
+                              "temperature":  "25",
+                              "undgNo":  "2222",
+                              "undgClass":  "1",
+                              "undgLinkMan":  "ASD",
+                              "undgLinkTele":  "12312312"
+                    }
+          ],
+          "linkInfos":  [
+                    {
+                              "actualPerson":  "3434",
+                              "actualTele":  "343434",
+                              "address":  "ADSASDAS",
+                              "aeoCode":  "4444",
+                              "companyId":  "233233+",
+                              "countryCode":  "AF",
+                              "countryName":  "AF-阿富汗",
+                              "partyName":  "ASDASDAS",
+                              "partyTele":  "232332",
+                              "partyType":  1
+                    },
+                    {
+                              "address":  "ASDFSDAFASD",
+                              "aeoCode":  "SADSAD",
+                              "companyId":  "ADSASD+",
+                              "countryCode":  "CN",
+                              "countryName":  "CN-中国",
+                              "partyName":  "SADS",
+                              "partyTele":  "21321312312",
+                              "partyType":  2
+                    },
+                    {
+                              "address":  "FDSFSDFDS",
+                              "aeoCode":  "34343",
+                              "companyId":  "4343443+",
+                              "countryCode":  "AE",
+                              "countryName":  "AE-阿拉伯联合酋长国",
+                              "partyName":  "ASDSADF",
+                              "partyTele":  "23232334",
+                              "partyType":  3
+                    }
+          ]
+}
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+55		accessKey	请求唯一标识	varchar(36)	是	
+56		nonce	随机号	varchar(36)	是	
+57		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+58		sign	签名	varchar(32)	是	
+59		detail	舱单信息	object	是	
+60		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+61		┣addManifestFlag	是否加单	int	否	仅限上海才能传此字段，传1能分开发送上海舱单，主提单号可以重复
+62		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+63		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+64		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+65		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+66		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+67		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+68		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+69		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+70		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+71		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+72		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+73		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+74		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+75		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+76		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+77		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+78		┣remark	备注	varchar(2000)	否	备注信息
+79		┣houseInfos	货物明细	List<Object>	是	
+80		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+81		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+82		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+83		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+84		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+85		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+86		┣grossWeight	毛重(KSG)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+87		┣cbm	体积(CBM)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+88		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+89		┣marking	唛头	varchar(1000)	否	不能输入中文、小写字母、全角符号
+90		┣description	英文品名	varchar(2000)	否	不能输入中文、小写字母、全角符号
+91		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号
+92		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品、冷藏危品时必填(摄氏度℃ 或 华氏度℉)
+93		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品、冷藏危品时必填
+94		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+95		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+96		┣undgLinkMan	危险品联系人	varchar(70)	否	货物类型为危险品时必填
+能输入中文、小写字母、全角符号
+97		┣undgLinkTele	危险品联系电话	varchar(25)	否	货物类型为危险品时必填
+仅支持录入数字，半角字符(含空格)
+98		┣linkInfos  	收发通信息	List<Object>	是	
+99		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+100		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+101		┣address	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+102		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+103		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+104		┣actualPerson	实际联系人	varchar(140)	否	不能输入中文、小写字母、全角符号
+105		┣actualTele	实际联系人电话	varchar(140)	否	仅支持录入数字，半角字符(含空格)
+106		┣companyId	企业代码	varchar(64)	否	不能输入中文、小写字母、全角符号
+107		┣aeoCode	AEO代码	varchar(255)	否	不能输入中文、小写字母、全角符号
+
+5.2.4.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+4	code	返回状态码	varchar(10)	是	
+5	message	返回消息	varchar(200)	是	
+6	data	返回数据	Boolean	是	
+
+5.2.5.返回状态码
+索引	ID	名称
+8	000000	提交成功
+9	100001	参数无效，【参数名】不正确
+10	100002	请求时间超出有效时间
+11	100003	调用方accessKey不存在，请联系荣e通客服
+12	100004	调用方accessKey已停用
+13	100005	验证签名失败
+14	999999	系统错误，请联系技术人员
+
+
+
+5.3.上海舱单改单接口
+5.3.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/updateManifest
+5.3.2.请求数据
+
+  {         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail": {
+          "outTradeCode":  "123456",
+          "masterBillNo":  "1312312312",
+          "carrierName":  "APL-美国总统",
+          "referenceNo":  "12321312",
+          "cargoName":  "普通货物",
+          "billLadingTypeName":  "OBL-正本提单",
+          "originalNumber":  "1",
+          "paymentTermNameCn":  "预付",
+          "placeIssueName":  "SHANGHAI | CNSHA",
+          "shippingItem":  "CY-CY",
+          "oceanVessel":  "SAAD",
+          "voyage":  "DASDAS",
+          "shipAgentName":  "上海华港船代",
+          "placeReceiptName":  "SHANGHAI | CNSHA",
+          "portLoadingName":  "SHANGHAI | CNSHA",
+          "portDischargeName":  "ANDORRA | ADADC",
+          "placeDeliveryName":  "AL AIN | AEAAN",
+"remark":  "我是备注信息",
+          "houseInfos":  [
+                    {
+                             
+                              "houseBillNo":  "12312312",
+                              "containerNo":  "TXGU5001395",
+                              "containerTypeName":  "20TG",
+                              "sealNo":  "12",
+                              "containerOwnerName":  "SOC-自有箱",
+                              "packageNum":  "1",
+                              "grossWeight":  1,
+                              "cbm":  1,
+                              "unitName":  "ANGLE CRATE",
+                              "marking":  "ASD",
+                              "description":  "ADSASDAS",
+                              "hsCode":  "ASDAS",
+                              "temperatureUnitName":  "摄氏度℃",
+                              "temperature":  "25",
+                              "undgNo":  "2222",
+                              "undgClass":  "1",
+                              "undgLinkMan":  "ASD",
+                              "undgLinkTele":  "12312312"
+                    }
+          ],
+          "linkInfos":  [
+                    {
+                              "actualPerson":  "3434",
+                              "actualTele":  "343434",
+                              "address":  "ADSASDAS",
+                              "aeoCode":  "4444",
+                              "companyId":  "233233+",
+                              "countryCode":  "AF",
+                              "countryName":  "AF-阿富汗",
+                              "partyName":  "ASDASDAS",
+                              "partyTele":  "232332",
+                              "partyType":  1
+                    },
+                    {
+                              "address":  "ASDFSDAFASD",
+                              "aeoCode":  "SADSAD",
+                              "companyId":  "ADSASD+",
+                              "countryCode":  "CN",
+                              "countryName":  "CN-中国",
+                              "partyName":  "SADS",
+                              "partyTele":  "21321312312",
+                              "partyType":  2
+                    },
+                    {
+                              "address":  "FDSFSDFDS",
+                              "aeoCode":  "34343",
+                              "companyId":  "4343443+",
+                              "countryCode":  "AE",
+                              "countryName":  "AE-阿拉伯联合酋长国",
+                              "partyName":  "ASDSADF",
+                              "partyTele":  "23232334",
+                              "partyType":  3
+                    }
+          ]
+}
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+108		accessKey	请求唯一标识	varchar(36)	是	
+109		nonce	随机号	varchar(36)	是	
+110		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+111		sign	签名	varchar(32)	是	
+112		detail	舱单信息	object	是	
+113		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+114		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+115		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+116		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+117		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+118		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+119		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+120		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+121		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+122		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+123		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+124		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+125		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+126		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+127		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+128		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+129		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+130		┣remark	备注	varchar(2000)	否	备注信息
+131		┣houseInfos	货物明细	List<Object>	是	
+132		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+133		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+134		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+135		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+136		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+137		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+138		┣grossWeight	毛重(KSG)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+139		┣cbm	体积(CBM)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+140		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+141		┣marking	唛头	varchar(1000)	否	不能输入中文、小写字母、全角符号
+142		┣description	英文品名	varchar(2000)	否	不能输入中文、小写字母、全角符号
+143		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号
+144		┣temperatureUnitName	冷藏温度计量单位名称		varchar(30)	否	货物类型为冷冻品、冷藏危品时必填(摄氏度℃ 或 华氏度℉)
+145		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品、冷藏危品时必填
+146		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+147		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+148		┣undgLinkMan	危险品联系人	varchar(70)	否	货物类型为危险品时必填
+能输入中文、小写字母、全角符号
+149		┣undgLinkTele	危险品联系电话	varchar(25)	否	货物类型为危险品时必填
+仅支持录入数字，半角字符(含空格)
+150		┣linkInfos  	收发通信息	List<Object>	是	
+151		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+152		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+153		┣address	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+154		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+155		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+156		┣actualPerson	实际联系人	varchar(140)	否	不能输入中文、小写字母、全角符号
+157		┣actualTele	实际联系人电话	varchar(140)	否	仅支持录入数字，半角字符(含空格)
+158		┣companyId	企业代码	varchar(64)	否	不能输入中文、小写字母、全角符号
+159		┣aeoCode	AEO代码	varchar(255)	否	不能输入中文、小写字母、全角符号
+
+5.3.3.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	code	返回状态码	varchar(10)	是	
+2	message	返回消息	varchar(200)	是	
+3	data	返回数据	Boolean	是	
+
+5.3.4.返回状态码
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	调用方accessKey不存在，请联系荣e通客服
+5	100004	调用方accessKey已停用
+6	100005	验证签名失败
+7	999999	系统错误，请联系技术人员
+
+5.4.上海舱单删单接口
+5.4.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/delManifest
+
+5.4.2.请求数据
+{
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "123456",
+                    "houseBillNos":  [
+                              "123456"
+                    ],
+                    "reason":  "删单原因"
+          }   
+}
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+1.		accessKey	请求唯一标识	varchar(36)	是	
+2.		nonce	随机号	varchar(36)	是	
+3.		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4.		sign	签名	varchar(32)	是	
+5.		detail	舱单信息	object	是	
+6.		┣outTradeCode	外部交易号	varchar(30)	是	
+7.		┣masterBillNo	主提单号	varchar(36)	是	只允许输入大写字母或数字
+8.		┣houseBillNos	分单号集合	List<String>	是	不能输入中文、小写字母、全角符号
+9.		┣reason	删单原因	varchar(255)	是	
+5.4.3.返回数据
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	code	返回消息编码	varchar(10)	是	
+2	message	返回消息	varchar(200)	是	
+3	data	交易信息	boolean	是	
+
+
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": true
+}
+
+
+
+5.4.4.返回状态码
+索引	状态码	描述
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	200002	客户ID不存在
+9	999999	系统错误，请联系技术人员
+
+
+5.5.上海舱单查询接口
+5.5.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/queryManifest
+
+5.5.2.请求数据
+{
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "outTradeCode":  "81782381828",
+          "masterBillNo":  "1312312312"
+}
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	accessKey	请求唯一标识	varchar(36)	是	
+2	nonce	随机号	varchar(36)	是	
+3	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	varchar(32)	是	
+5	outTradeCode	外部订单号	varchar(36)	是	请求唯一标识，流水号
+6	masterBillNo	主提单号	varchar(36)	是	只允许输入大写字母或数字(长度6-30)
+5.5.3.返回数据        
+ {
+    "masterBillNo": "3223D111ASAS",
+    "carrierCode": "APL",
+    "carrierName": "美国总统",
+    "referenceNo": "12321312",
+    "cargoId": "GC",
+    "cargoName": "普通货物",
+    "billLadingTypeCode": "OBL",
+    "billLadingTypeName": "OBL-正本提单",
+    "originalNumber": 1,
+    "paymentTermCode": "P",
+    "paymentTermNameEn": "FREIGHT PREPAID",
+    "paymentTermNameCn": "预付",
+    "placeIssueCode": "CNSHA",
+    "placeIssueName": "SHANGHAI",
+    "shippingItem": "CY-CY",
+    "oceanVessel": "SAAD",
+    "voyage": "DASDAS",
+    "shipAgentCode": "13453884-2",
+    "shipAgentName": "上海华港船代",
+    "placeReceiptCode": "CNSHA",
+    "placeReceiptName": "SHANGHAI",
+    "placeDeliveryCode": "AEAAN",
+    "placeDeliveryName": "AL AIN",
+    "portLoadingCode": "CNSHA",
+    "portLoadingName": "SHANGHAI",
+    "portDischargeCode": "ADADC",
+"portDischargeName": "ANDORRA",
+"remark":  "我是备注信息",
+    "houseInfos": [
+        {
+            "houseBillNo": "3223D111ASAS",
+            "containerNo": "TXGU5001395",
+            "containerType": "20T9",
+            "containerTypeName": "20TG",
+            "sealNo": "12",
+            "containerOwnerCode": "SOC",
+            "containerOwnerName": "SOC-自有箱",
+            "packageNum": 1,
+            "unitCode": "IC",
+            "unitName": "ANGLE CRATE",
+            "grossWeight": 1,
+            "cbm": 1,
+            "marking": "ASD",
+            "description": "ADSASDAS",
+            "hsCode": "ASDAS",
+            "temperatureUnitName":  "摄氏度℃",
+            "temperature":  "25",
+            "applyState": 3,
+            "loadingMessage": "装载舱单传输成功",
+            "loadingMessageTime": "2025-08-04 12:19:57",
+            "undgNo": "2222",
+            "undgClass": "1",
+            "undgLinkMan": "ASD",
+            "undgLinkTele": "12312312"
+        }
+    ],
+    "linkInfos": [
+        {
+            "partyType": 1,
+            "partyName": "ASDASDAS",
+            "address": "ADSASDAS",
+            "countryCode": "AF",
+            "countryName": "AF-阿富汗",
+            "partyTele": "232332",
+            "actualPerson": "3434",
+            "actualTele": "343434",
+            "companyId": "233233+",
+            "aeoCode": "4444"
+        },
+        {
+            "partyType": 2,
+            "partyName": "SADS",
+            "address": "ASDFSDAFASD",
+            "countryCode": "CN",
+            "countryName": "CN-中国",
+            "partyTele": "21321312312",
+            "actualPerson": null,
+            "actualTele": null,
+            "companyId": "ADSASD+",
+            "aeoCode": "SADSAD"
+        },
+        {
+            "partyType": 3,
+            "partyName": "ASDSADF",
+            "address": "FDSFSDFDS",
+            "countryCode": "AE",
+            "countryName": "AE-阿拉伯联合酋长国",
+            "partyTele": "23232334",
+            "actualPerson": null,
+            "actualTele": null,
+            "companyId": "4343443+",
+            "aeoCode": "34343"
+        }
+    ]
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+1		outTradeCode	外部交易号	varchar(36)	是	
+2		masterBillNo	主提单号	varchar(30)	是	
+3		carrierCode	船公司编码	varchar(16)	是	
+4		carrierName 	船公司名称	varchar(50)	是	
+5		referenceNo	托运编号	varchar(50)	否	
+6		cargoId	货物类型编码(GC/RF/DR/RD)	varchar(4)	是	
+7		cargoName	货物类型	varchar(50)	是	
+8		billLadingTypeCode	提单类型编码（OBL/SWB/TER）	varchar(4)	是	
+9		billLadingTypeName	提单类型	varchar(50)	是	
+10		originalNumber	提单份数	varchar(10)	是	
+11		paymentTermCode	付款方式代码(P/C/E)	varchar(1)	是	
+12		paymentTermNameEn	付款方式名称英文	varchar(30)	是	
+13		paymentTermNameCn	付款方式	varchar(30)	是	
+14		placeIssueCode	签发地代码	varchar(5)	是	
+15		placeIssueName	签发地	varchar(50)	是	
+16		shippingItem	运输条款	varchar(50)	是	
+17		oceanVessel	船名	varchar(35)	是	
+18		voyage	航次	varchar(20)	是	
+19		shipAgentCode	船代代码	varchar(16)	是	
+20		shipAgentName	船代	varchar(50)	是	
+21		placeReceiptCode	收货地代码	varchar(5)	是	
+22		placeReceiptName	收货地名称	varchar(50)	是	
+23		portLoadingCode	装货港代码	varchar(5)	是	
+24		portLoadingName	装货港名称	varchar(50)	是	
+25		portDischargeCode	卸货港代码	varchar(5)	是	
+26		portDischargeName	卸货港名称	varchar(50)	是	
+27		placeDeliveryCode	交货地代码	varchar(5)	是	
+28		placeDeliveryName	交货地名称	varchar(50)	是	
+29		remark	备注	varchar(2000)	否	备注信息
+30		houseInfos	货物明细	List<Object>	是	
+31		┣houseBillNo	提单号	varchar(30)	是	
+32		┣applyState	申报状态	Integer	是	0:发送失败1:已发送 2:回执错误 3:回执成功 4:退单 5:船舶未备案)
+33		┣containerNo	箱号	varchar(11)	是	
+34		┣containerType	箱型	varchar(20)	是	
+35		┣containerTypeName	箱型名称	varchar(50)	是	
+36		┣sealNo	封箱号	varchar(14)	是	
+37		┣containerOwnerCode	持箱人标志（箱属 COC/SOC）	varchar(10)	是	
+38		┣containerOwnerName	货主箱名称	varchar(50)	是	
+39		┣packageNum	件数	varchar(7)	否	
+40		┣grossWeight	毛重(KSG)	BigDecimal(18,3)	否	
+41		┣cbm	体积(CBM)	BigDecimal(18,3)	否	
+42		┣unitName	包装单位名称	varchar(50)	否	
+43		┣marking	唛头	varchar(1000)	否	
+44		┣description	英文品名	varchar(2000)	否	
+45		┣hsCode	HS Code	varchar(10)	否	
+46		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品、冷藏危品时必填(摄氏度℃ 或 华氏度℉)
+47		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品、冷藏危品时必填
+48		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时返回
+49		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时返回
+50		┣undgLinkMan	危险品联系人	varchar(11)	否	货物类型为危险品时返回
+51		┣undgLinkTele	危险品联系电话	varchar(30)	否	货物类型为危险品时返回
+52		┣loadingMessage	装载舱单回执信息	varchar(30)	否	有装载舱单的时候会返回
+53		┣loadingMessageTime	装载舱单回执时间	varchar(30)	否	有装载舱单的时候会返回
+54		partyInfoList  	收发通信息	List<Object>	是	
+55		┣partyType	联系人类型	Integer	是	1:收货人 2:发货人 3:通知人
+56		┣ppartyName	联系人名称	varchar(150)	是	
+57		┣address	联系人地址	varchar(1000)	是	
+58		┣countryCode	联系人国家编码	varchar(2)	是	
+59		┣countryName	联系人国家名称	varchar(50)	是	
+60		┣partyTele	联系电话	varchar(25)	是	
+61		┣actualPerson	实际联系人	varchar(140)	否	
+62		┣actualTele	实际联系人电话	varchar(140)	否	
+63		┣companyId	企业代码	varchar(64)	否	
+64		┣aeoCode	AEO代码	varchar(255)	否	
+
+
+
+5.5.4.返回状态码
+索引	状态码	描述
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	100006	请求重复，请重新发起(nonce重复)
+8	200002	客户ID不存在
+9	999999	系统错误，请联系技术人员
+
+
+5.6.上海舱单回调通知接口
+5.6.1.接口说明
+荣e通平台向海关发送数据，当请求完成后，荣e通平台会自动向调用方发送该请求的结果。
+荣e通平台发送结果通知后需要调用方接口返回"success"字符（不包含引号）。如果调用方未返回success这7个字符，荣e通平台会不断重发通知，直到超过 24 小时 22 分钟。一般情况下，25 小时以内完成 8 次通知（通知的间隔频率一般是：4m,10m,30m,1h,2h,6h,15h）
+
+5.6.2.请求数据
+{
+   "content":  
+                    {
+                              "apiOrderCode":  "R22070915230625501",
+                              "outTradeCode":  "7123847812",
+                              "manifestType":  2,
+                              "manifestInfo":  {
+                              "callbackType":  2 ,
+                              "masterBillNo":  "037712005679",
+                              "houseNo":  "HCM20010209",
+                              "msgType":  "1",
+                              "resState":  "3",
+                              "resMessage":  "预配舱单数据传输成功。",
+                              "noticeTime":  "2023-12-12 12:00:00"
+                              }
+                    },
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "notifyDate":  "2020-12-12",
+          "notifyID":  "18498190348",
+          "signType":  "MD5",
+          "sign":  "3849UF4893FJ843UT8342R"
+}
+
+参数说明：
+
+索引	ID	名称	类型	必须	说明
+1	content	详细信息	object	是	
+2	┣manifestType	舱单类型	int	是	舱单类型(1:上海 2:青岛)
+3	┣apiOrderCode	交易号	varchar(36)	是	
+4	┣outTradeCode	外部订单号	varchar(36)	是	请求唯一标识，流水号
+5	┣manifestInfo				
+6	  ┣callbackType	回调类型	integer	是	1:平台提交失败回调  2:海关返回消息
+7	┣masterBillNo	主提单号	varchar(36)	是	
+8	┣houseNo	分单号	varchar(35)	是	
+9	┣msgType	操作类型	varchar(1)	是	1:原始2:修改3:删除4:重发
+10	┣resState	回执状态	varchar(1)	是	0:发送失败 2:回执错误3:回执成功4:退单5:船舶未备案 7:舱单装载回执
+11	┣resMessage	返回信息	varchar(2000)	是	
+12	┣noticeTime	通知时间	varchar(100)	是	
+13	accessKey	请求唯一标识	varchar(36)	是	
+14	notifyDate	通知时间	varchar(20)	是	
+15	notifyID	通知ID	varchar(36)	是	
+16	signType	签名类型，MD5	varchar(10)	是	
+17	sign	签名	varchar(32)	是	
+
+
+5.7.上海港船代查询接口
+5.7.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/shanghai/queryShipAgent
+5.7.2.请求数据
+{
+   
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "carrierName":  "",
+                    "voyage":  "",
+                    "masterBillNo":  "",
+                    "carrierCode":  ""
+          }
+}
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	accessKey	请求唯一标识	varchar(36)	是	
+2	nonce	随机号	varchar(36)	是	
+3	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	varchar(32)	是	
+5	detail	查询信息	object	是	
+6	┣carrierName	船名	varchar(35)	是	
+7	┣voyage	航次	varchar(20)	是	
+8	┣masterBillNo	主提单号	varchar(30)	是	
+9	┣carrierCode	船公司代码	varchar(16)	是	
+5.7.3.返回数据
+{
+    "code": "000000",
+    "message": "请求成功",
+    "data": {
+        "shipAgentName": "R22070915230625501",
+        "shipAgentCode": "718237113",
+        "carrierName": 718237113",
+        "carrierCode": 718237113"
+      
+    }
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	shipAgentName	船代名称	varchar(50)	是	
+2	shipAgentCode	船代代码	varchar(16)	是	
+3	carrierName	船司名称	varchar(50)	是	
+4	carrierCode	船司代码	varchar(16)	是	
+5.7.4.返回状态码
+
+索引	ID	名称
+1	000000	提交成功
+2	100001	参数无效，【参数名】不正确
+3	100002	请求时间超出有效时间
+4	100003	商户accessKey不存在，请联系荣e通客服
+5	100004	商户accessKey已停用
+6	100005	验证签名失败
+7	999999	系统错误，请联系技术人员
+
+6.青岛舱单信息发送
+6.1.青岛舱单发送接口
+6.1.1.接口说明
+调用此接口可以发送青岛港舱单，按分单个数扣除相应的青岛舱单发送权益。
+6.1.2.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/sendManifest
+6.1.3.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "notifyUrl":  "http://www.xxx.com/xxx",
+          "detail":  {
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "1312312312",
+                    "carrierName":  "APL-美国总统",
+                    "referenceNo":  "12321312",
+                    "cargoName":  "普通货物",
+                    "billLadingTypeName":  "OBL-正本提单",
+                    "originalNumber":  "1",
+                    "paymentTermNameCn":  "预付",
+                    "placeIssueName":  "SHANGHAI | CNSHA",
+                    "shippingItem":  "CY-CY",
+                    "oceanVessel":  "SAAD",
+                    "voyage":  "DASDAS",
+"description":  "desc",
+                    "marking":  "mark",
+                    "draftPlanType":  1,
+                   "webCode":"捷丰场站",                    "shipAgentName":  "上海华港船代",
+                    "placeReceiptName":  "SHANGHAI | CNSHA",
+                    "portLoadingName":  "SHANGHAI | CNSHA",
+                    "portDischargeName":  "ANDORRA | ADADC",
+                    "placeDeliveryName":  "AL AIN | AEAAN",
+                    "undgLinkMan":  "ASD",
+                    "undgLinkTele":  "12312312",
+                    "temperatureUnitName":  "摄氏度℃",
+                    "temperature":  "23",
+                    "reefer":  "22",
+"remark":  "我是备注信息",
+                    "houseInfos":  [
+                              {
+                                                                                "houseBillNo":  "12312312",
+                                        "containerNo":"TXGU5001395",
+                                        "containerTypeName": "20TG",
+                                        "sealNo":  "12",
+                                        "containerOwnerName":"SOC-自有箱",
+                                        "packageNum":  "1",
+                                        "grossWeight":  1,
+                                        "cbm":  1,
+                                        "vgmGrossWeight":  1,
+"weightingMethod": "SM1",
+"cdescription":  "AAAA",
+                                        "unitName":  "ANGLE CRATE",
+                                        "marking":  "ASD",
+                                        "description":  "ADSASDAS",
+                                        "hsCode":  "ASDAS",
+                                        "undgNo":  "2222",
+                                        "undgClass":  "1"
+                                     
+                              }
+                    ],
+                    "linkInfos":  [
+                              {
+                                        "address":  "ADSASDAS",
+                                        "countryName":  "AF-阿富汗",
+                                        "partyName":  "ASDASDAS",
+                                        "partyTele":  "232332",
+                                        "partyType":  1
+                              },
+                              {
+                                        "address":  "ASDFSDAFASD",
+                                        "countryName":  "CN-中国",
+                                        "partyName":  "SADS",
+                                        "partyTele":  "21321312312",
+                                        "partyType":  2
+                              },
+                              {
+                                        "address":  "FDSFSDFDS",
+                                        "countryName":  "AE-阿拉伯联合酋长国",
+                                        "partyName":  "ASDSADF",
+                                        "partyTele":  "23232334",
+                                        "partyType":  3
+                              }
+                    ]
+          }
+}
+
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+160		accessKey	请求唯一标识	varchar(36)	是	
+161		nonce	随机号	varchar(36)	是	
+162		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+163		sign	签名	varchar(32)	是	
+164		notifyUrl	舱单结果通知地址	varchar(200)	是	
+165		detail	舱单信息	object	是	
+166		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+167		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+168		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+169		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+170		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+171		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+172		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+173		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+174		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+175		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+176		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+177		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+178		┣description	主单品名	varchar(4000)	否	主单品名（只有在主单品名需要自定义的情况下才传）
+179		┣marking	主单唛头	varchar(1000)	否	主单唛头（只有在主单品名需要自定义的情况下才传）
+180		┣draftPlanType	计划发送类型	Int	否	计划发送类型(1:有集港计划后自动发送)
+181		┣webCode	场站名称	varchar(100)	否	场站名称（draftPlanType传1的时候必填）来源于基础数据
+182		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+183		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+184		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+185		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+186		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+187		┣undgLinkMan	危险品联系人	varchar(70)	否	不能输入中文、小写字母、全角符号
+货物类型为危险品时必填
+188		┣undgLinkTele	危险品联系电话	varchar(25)	否	仅支持录入数字，半角字符(含空格)
+货物类型为危险品时必填
+189		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品时必填
+190		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品时必填
+191		┣reefer	通风量	varchar(5)	否	货物类型为冷冻品时必填
+192		┣remark	备注	varchar(2000)	否	备注信息
+193		┣houseInfos	货物明细	List<Object>	是	
+194		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+195		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+196		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+197		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+198		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+199		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+200		┣grossWeight	毛重(KSG)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+201		┣cbm	体积(CBM)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+202		┣vgmGrossWeight	vgm重量	BigDecimal(18,2)	否	船代为远大均胜、海丰船代、日照中创必填，并且相同箱号的VGM重量必须相同
+203		┣weightingMethod	vgm称重方式	varchar(50）	否	船代为远大均胜、海丰船代、日照中创必填 只能为SM1或SM2
+204		┣cdescription	中文品名	varchar(2000）	否	船代为远大均胜必填
+205		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+206		┣marking	唛头	varchar(1000)	是	不能输入中文、小写字母、全角符号
+207		┣description	英文品名	varchar(2000)	是	不能输入中文、小写字母、全角符号
+208		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号 日照中创货物类型是危险品HSCODE为必填
+209		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+210		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+211		┣linkInfos  	收发通信息	List<Object>	是	
+212		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+213		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+214		┣address	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+215		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+216		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+
+6.1.4.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+7	code	返回状态码	varchar(10)	是	
+8	message	返回消息	varchar(200)	是	
+9	data	返回数据	Boolean	是	
+
+6.1.5.返回状态码
+索引	ID	名称
+15	000000	提交成功
+16	100001	参数无效，【参数名】不正确
+17	100002	请求时间超出有效时间
+18	100003	调用方accessKey不存在，请联系荣e通客服
+19	100004	调用方accessKey已停用
+20	100005	验证签名失败
+21	999999	系统错误，请联系技术人员
+
+
+
+6.2.青岛舱单补发分票接口
+6.2.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/addSubManifest
+6.2.2.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+           "detail":  {
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "1312312312",
+                    "houseInfos":  [
+                              {
+                                        
+                                        "houseBillNo":  "12312312",
+                                        "containerNo":"TXGU5001395",
+                                        "containerTypeName": "20TG",
+                                        "sealNo":  "12",
+                                        "containerOwnerName":"SOC-自有箱",
+                                        "packageNum":  "1",
+                                        "grossWeight":  1,
+                                        "cbm":  1,
+"vgmGrossWeight":  1,
+"weightingMethod": "SM1",
+"cdescription":  "AAAA",
+                                        "unitName":  "ANGLE CRATE",
+                                        "marking":  "ASD",
+                                        "description":  "ADSASDAS",
+                                        "hsCode":  "ASDAS",
+                                        "undgNo":  "2222",
+                                        "undgClass":  "1"
+                              }
+                    ]
+          }
+}
+
+
+
+
+
+
+
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+217		accessKey	请求唯一标识	varchar(36)	是	
+218		nonce	随机号	varchar(36)	是	
+219		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+220		sign	签名	varchar(32)	是	
+221		detail	舱单信息	object	是	
+222		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+223		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+224		┣houseInfos	货物明细	List<Object>	是	
+225		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+226		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+227		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+228		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+229		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+230		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+231		┣grossWeight	毛重(KSG)	BigDecimal(18,2)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+232		┣cbm	体积(CBM)	BigDecimal(18,3)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+233		┣vgmGrossWeight	vgm重量	BigDecimal(18,2)	否	船代为远大均胜、海丰船代、日照中创必填，并且相同箱号的VGM重量必须相同
+234		┣weightingMethod	vgm称重方式	varchar(50）	否	船代为远大均胜、海丰船代、日照中创必填 只能为SM1或SM2
+235		┣cdescription	中文品名	varchar(2000）	否	船代为远大均胜必填
+236		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+237		┣marking	唛头	varchar(1000)	是	不能输入中文、小写字母、全角符号
+238		┣description	英文品名	varchar(2000)	是	不能输入中文、小写字母、全角符号
+239		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号 日照中创货物类型是危险品HSCODE为必填
+240		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+241		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+6.2.3.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+10	code	返回状态码	varchar(10)	是	
+11	message	返回消息	varchar(200)	是	
+12	data	返回数据	Boolean	是	
+
+6.2.4.返回状态码
+索引	ID	名称
+22	000000	提交成功
+23	100001	参数无效，【参数名】不正确
+24	100002	请求时间超出有效时间
+25	100003	调用方accessKey不存在，请联系荣e通客服
+26	100004	调用方accessKey已停用
+27	100005	验证签名失败
+28	999999	系统错误，请联系技术人员
+
+6.3.青岛舱单重发接口
+6.3.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/reSendManifest
+
+6.3.2.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+           "detail":  {
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "1312312312",
+                    "carrierName":  "APL-美国总统",
+                    "referenceNo":  "12321312",
+                    "cargoName":  "普通货物",
+                    "billLadingTypeName":  "OBL-正本提单",
+                    "originalNumber":  "1",
+                    "paymentTermNameCn":  "预付",
+                    "placeIssueName":  "SHANGHAI | CNSHA",
+                    "shippingItem":  "CY-CY",
+                    "oceanVessel":  "SAAD",
+                    "voyage":  "DASDAS",
+                    "description":  "desc",
+                    "marking":  "mark",
+                    "shipAgentName":  "上海华港船代",
+                    "placeReceiptName":  "SHANGHAI | CNSHA",
+                    "portLoadingName":  "SHANGHAI | CNSHA",
+                    "portDischargeName":  "ANDORRA | ADADC",
+                    "placeDeliveryName":  "AL AIN | AEAAN",
+                    "undgLinkMan":  "ASD",
+                    "undgLinkTele":  "12312312",
+                    "temperatureUnitName":  "摄氏度℃",
+                    "temperature":  "23",
+                    "reefer":  "22",
+                    "remark":  "我是备注信息",
+                    "houseInfos":  [
+                              {
+                                        
+                                        "houseBillNo":  "12312312",
+                                        "containerNo":"TXGU5001395",
+                                        "containerTypeName": "20TG",
+                                        "sealNo":  "12",
+                                        "containerOwnerName":"SOC-自有箱",
+                                        "packageNum":  "1",
+                                        "grossWeight":  1,
+                                        "cbm":  1,
+                                        "vgmGrossWeight":  1,
+"weightingMethod": "SM1",
+"cdescription":  "AAAA",
+                                        "unitName":  "ANGLE CRATE",
+                                        "marking":  "ASD",
+                                        "description":  "ADSASDAS",
+                                        "hsCode":  "ASDAS",
+                                        "undgNo":  "2222",
+                                        "undgClass":  "1"
+                              }
+                    ],
+                    "linkInfos":  [
+                              {
+                                        "address":  "ADSASDAS",
+                                        "countryName":  "AF-阿富汗",
+                                        "partyName":  "ASDASDAS",
+                                        "partyTele":  "232332",
+                                        "partyType":  1
+                              },
+                              {
+                                        "address":  "ASDFSDAFASD",
+                                        "countryName":  "CN-中国",
+                                        "partyName":  "SADS",
+                                        "partyTele":  "21321312312",
+                                        "partyType":  2
+                              },
+                              {
+                                        "address":  "FDSFSDFDS",
+                                        "countryName":  "AE-阿拉伯联合酋长国",
+                                        "partyName":  "ASDSADF",
+                                        "partyTele":  "23232334",
+                                        "partyType":  3
+                              }
+                    ]
+          }
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+242		accessKey	请求唯一标识	varchar(36)	是	
+243		nonce	随机号	varchar(36)	是	
+244		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+245		sign	签名	varchar(32)	是	
+246		detail	舱单信息	object	是	
+247		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+248		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+249		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+250		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+251		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+252		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+253		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+254		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+255		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+256		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+257		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+258		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+259		┣description	主单品名	varchar(4000)	否	主单品名（只有在主单品名需要自定义的情况下才传）
+260		┣marking	主单唛头	varchar(1000)	否	主单唛头（只有在主单品名需要自定义的情况下才传）
+261		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+262		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+263		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+264		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+265		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+266		┣undgLinkMan	危险品联系人	varchar(70)	否	不能输入中文、小写字母、全角符号
+货物类型为危险品时必填
+267		┣undgLinkTele	危险品联系电话	varchar(25)	否	仅支持录入数字，半角字符(含空格)
+货物类型为危险品时必填
+268		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品时必填
+269		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品时必填
+270		┣reefer	通风量	varchar(5)	否	货物类型为冷冻品时必填
+271		┣remark	备注	varchar(2000)	否	备注信息
+272		┣houseInfos	货物明细	List<Object>	是	
+273		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+274		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+275		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+276		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+277		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+278		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+279		┣grossWeight	毛重(KSG)	BigDecimal(18,2)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+280		┣cbm	体积(CBM)	BigDecimal(18,2)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+281		┣vgmGrossWeight	vgm重量	BigDecimal(18,2)	否	船代为远大均胜、海丰船代、日照中创必填，并且相同箱号的VGM重量必须相同
+282		┣weightingMethod	vgm称重方式	varchar(50）	否	船代为远大均胜、海丰船代、日照中创必填 只能为SM1或SM2
+283		┣cdescription	中文品名	varchar(2000）	否	船代为远大均胜必填
+284		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+285		┣marking	唛头	varchar(1000)	是	不能输入中文、小写字母、全角符号
+286		┣description	英文品名	varchar(2000)	是	不能输入中文、小写字母、全角符号
+287		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号 日照中创货物类型是危险品HSCODE为必填
+288		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+289		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+290		┣linkInfos  	收发通信息	List<Object>	是	
+291		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+292		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+293		┣address	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+294		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+295		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+
+6.3.3.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+13	code	返回状态码	varchar(10)	是	
+14	message	返回消息	varchar(200)	是	
+15	data	返回数据	Boolean	是	
+
+6.3.4.返回状态码
+索引	ID	名称
+29	000000	提交成功
+30	100001	参数无效，【参数名】不正确
+31	100002	请求时间超出有效时间
+32	100003	调用方accessKey不存在，请联系荣e通客服
+33	100004	调用方accessKey已停用
+34	100005	验证签名失败
+35	999999	系统错误，请联系技术人员
+6.4.青岛舱单改单接口
+船名、航次、提单号、船代、箱型、箱号这些是不能直接通过改单更改、如果需要改，只能是删单后重发
+6.4.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/updateManifest
+6.4.2.请求数据
+{         
+         "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "1312312312",
+                    "carrierName":  "APL-美国总统",
+                    "referenceNo":  "12321312",
+                    "cargoName":  "普通货物",
+                    "billLadingTypeName":  "OBL-正本提单",
+                    "originalNumber":  "1",
+                    "paymentTermNameCn":  "预付",
+                    "placeIssueName":  "SHANGHAI | CNSHA",
+                    "shippingItem":  "CY-CY",
+                    "oceanVessel":  "SAAD",
+                    "voyage":  "DASDAS",
+                    "description":  "desc",
+                    "marking":  "mark",
+                    "shipAgentName":  "上海华港船代",
+                    "placeReceiptName":  "SHANGHAI | CNSHA",
+                    "portLoadingName":  "SHANGHAI | CNSHA",
+                    "portDischargeName":  "ANDORRA | ADADC",
+                    "placeDeliveryName":  "AL AIN | AEAAN",
+                    "undgLinkMan":  "ASD",
+                    "undgLinkTele":  "12312312",
+                    "temperatureUnitName":  "摄氏度℃",
+                    "temperature":  "23",
+                    "reefer":  "22",
+                    "remark":  "我是备注信息",
+                    "houseInfos":  [
+                              {
+                                                                                "houseBillNo":  "12312312",
+                                        "containerNo":"TXGU5001395",
+                                        "containerTypeName": "20TG",
+                                        "sealNo":  "12",
+                                        "containerOwnerName":"SOC-自有箱",
+                                        "packageNum":  "1",
+                                        "grossWeight":  1,
+                                        "cbm":  1,
+"vgmGrossWeight":  1,
+"weightingMethod": "SM1",
+"cdescription":  "AAAA",
+                                        "unitName":  "ANGLE CRATE",
+                                        "marking":  "ASD",
+                                        "description":  "ADSASDAS",
+                                        "hsCode":  "ASDAS",
+                                        "undgNo":  "2222",
+                                        "undgClass":  "1"
+                              }
+                    ],
+                    "linkInfos":  [
+                              {
+                                        "address":  "ADSASDAS",
+                                        "countryName":  "AF-阿富汗",
+                                        "partyName":  "ASDASDAS",
+                                        "partyTele":  "232332",
+                                        "partyType":  1
+                              },
+                              {
+                                        "address":  "ASDFSDAFASD",
+                                        "countryName":  "CN-中国",
+                                        "partyName":  "SADS",
+                                        "partyTele":  "21321312312",
+                                        "partyType":  2
+                              },
+                              {
+                                        "address":  "FDSFSDFDS",
+                                        "countryName":  "AE-阿拉伯联合酋长国",
+                                        "partyName":  "ASDSADF",
+                                        "partyTele":  "23232334",
+                                        "partyType":  3
+                              }
+                    ]
+          }
+}
+
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+296		accessKey	请求唯一标识	varchar(36)	是	
+297		nonce	随机号	varchar(36)	是	
+298		timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+299		sign	签名	varchar(32)	是	
+300		detail	舱单信息	object	是	
+301		┣outTradeCode	外部交易号	varchar(36)	是	请求唯一标识，流水号
+302		┣masterBillNo	主提单号	varchar(30)	是	只允许输入大写字母或数字（长度6-30）
+303		┣carrierName 	船公司	varchar(50)	是	来源于基础数据
+304		┣referenceNo	托运编号	varchar(50)	否	不能输入中文、小写字母、全角符号
+305		┣cargoName	货物类型	varchar(50)	是	来源于基础数据
+306		┣billLadingTypeName	提单类型	varchar(50)	是	来源于基础数据
+307		┣originalNumber	提单份数	varchar(10)	是	只能输入数字且最大长度为10
+308		┣paymentTermNameCn	付款方式	varchar(50)	是	来源于基础数据
+309		┣placeIssueName	签发地	varchar(50)	是	来源于基础数据
+310		┣shippingItem	运输条款	varchar(50)	是	来源于基础数据
+311		┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+312		┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+313		┣description	主单品名	varchar(4000)	否	主单品名（只有在主单品名需要自定义的情况下才传）
+314		┣marking	主单唛头	varchar(1000)	否	主单唛头（只有在主单品名需要自定义的情况下才传）
+315		┣shipAgentName	船代	varchar(50)	是	来源于基础数据
+316		┣placeReceiptName	收货地名称	varchar(50)	是	来源于基础数据
+317		┣portLoadingName	装货港名称	varchar(50)	是	来源于基础数据
+318		┣portDischargeName	卸货港名称	varchar(50)	是	来源于基础数据
+319		┣placeDeliveryName	交货地名称	varchar(50)	是	来源于基础数据
+320		┣undgLinkMan	危险品联系人	varchar(70)	否	不能输入中文、小写字母、全角符号
+货物类型为危险品时必填
+321		┣undgLinkTele	危险品联系电话	varchar(25)	否	仅支持录入数字，半角字符(含空格)
+货物类型为危险品时必填
+322		┣temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品时必填
+323		┣temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品时必填
+324		┣reefer	通风量	varchar(5)	否	货物类型为冷冻品时必填
+325		┣remark	备注	varchar(2000)	否	备注信息
+326		┣houseInfos	货物明细	List<Object>	是	
+327		┣houseBillNo	提单号	varchar(30)	是	不能输入中文、小写字母、全角符号（长度6-30）
+328		┣containerNo	箱号	varchar(11)	是	不能超过11个字符
+329		┣containerTypeName	箱型名称	varchar(50)	是	来源于基础数据
+330		┣sealNo	封箱号	varchar(14)	是	不能输入中文、小写字母、全角符号
+331		┣containerOwnerName	货主箱名称	varchar(50)	是	来源于基础数据
+332		┣packageNum	件数	varchar(7)	是	只能输入数字且最大长度为7
+333		┣grossWeight	毛重(KSG)	BigDecimal(18,2)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+334		┣cbm	体积(CBM)	BigDecimal(18,2)	是	最大99999.999
+只能输入6位以内的数，整数长度最大6位，小数长度最大3位
+335		┣vgmGrossWeight	vgm重量	BigDecimal(18,2)	否	船代为远大均胜、海丰船代、日照中创必填，并且相同箱号的VGM重量必须相同
+336		┣weightingMethod	vgm称重方式	varchar(50）	否	船代为远大均胜、海丰船代、日照中创必填 只能为SM1或SM2
+337		┣cdescription	中文品名	varchar(2000）	否	船代为远大均胜必填
+338		┣unitName	包装单位名称	varchar(50)	是	来源于基础数据
+339		┣marking	唛头	varchar(1000)	是	不能输入中文、小写字母、全角符号
+340		┣description	英文品名	varchar(2000)	是	不能输入中文、小写字母、全角符号
+341		┣hsCode	HS Code	varchar(10)	否	不能输入中文、小写字母、全角符号 日照中创货物类型是危险品HSCODE为必填
+342		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+固定4位长度，范围：0001-9999
+343		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+只能输入数字，范围：1-9.9
+344		┣linkInfos  	收发通信息	List<Object>	是	
+345		┣partyType	联系人类型	int	是	1:收货人 2:发货人 3:通知人
+346		┣partyName	联系人名称	varchar(150)	是	不能输入中文、小写字母、全角符号
+347		┣paddress	联系人地址	varchar(1000)	是	不能输入中文、小写字母、全角符号
+348		┣countryName	联系人国家名称	varchar(50)	是	来源于基础数据
+349		┣partyTele	联系电话	varchar(25)	是	仅支持录入数字，半角字符(含空格)
+
+6.4.3.返回数据
+
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+16	code	返回状态码	varchar(10)	是	
+17	message	返回消息	varchar(200)	是	
+18	data	返回数据	Boolean	是	
+
+6.4.4.返回状态码
+索引	ID	名称
+36	000000	提交成功
+37	100001	参数无效，【参数名】不正确
+38	100002	请求时间超出有效时间
+39	100003	调用方accessKey不存在，请联系荣e通客服
+40	100004	调用方accessKey已停用
+41	100005	验证签名失败
+42	999999	系统错误，请联系技术人员
+6.5.青岛舱单改配接口
+6.5.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/updateManifestConfig
+
+6.5.2.请求数据
+{
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "outTradeCode": "7777777",
+		            "masterBillNo": "7777777",
+		            "oceanVessel": "SAAD",
+		            "voyage": "DASDAS"
+          }   
+}
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+	accessKey	请求唯一标识	varchar(36)	是	
+	nonce	随机号	varchar(36)	是	
+	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+	sign	签名	varchar(32)	是	
+	detail	舱单信息	object	是	
+	┣outTradeCode	外部交易号	varchar(30)	是	请求唯一标识，流水号
+	┣masterBillNo	主提单号	varchar(36)	是	只允许输入大写字母或数字
+	┣oceanVessel	船名	varchar(35)	是	不能输入中文、小写字母、全角符号
+	┣voyage	航次	varchar(20)	是	不能输入中文、小写字母、全角符号
+
+
+
+6.5.3.返回数据
+索引	ID	名称	类型	必须	说明
+4	code	返回消息编码	varchar(10)	是	
+5	message	返回消息	varchar(200)	是	
+6	data	交易信息	boolean	是	
+
+
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": true
+}
+
+
+
+6.5.4.返回状态码
+索引	状态码	描述
+10	000000	提交成功
+11	100001	参数无效，【参数名】不正确
+12	100002	请求时间超出有效时间
+13	100003	商户accessKey不存在，请联系荣e通客服
+14	100004	商户accessKey已停用
+15	100005	验证签名失败
+16	100006	请求重复，请重新发起(nonce重复)
+17	200013	无有效支付权益
+18	200014	商户订单重复支付
+19	999999	系统错误，请联系技术人员
+6.6.青岛舱单删单接口
+6.6.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/delManifest
+
+6.6.2.请求数据
+{
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "delType": 1,
+                    "outTradeCode":  "123456",
+                    "masterBillNo":  "123456",
+                    "houseBillNos":  [
+                              "123456"
+                    ],
+                    "reason":  "删单原因"
+          }   
+}
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+	accessKey	请求唯一标识	varchar(36)	是	
+	nonce	随机号	varchar(36)	是	
+	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+	sign	签名	varchar(32)	是	
+	detail	舱单信息	object	是	
+	┣delType	删单类型	int	是	1:主单和分单全部删除 2：删除传入指定分单
+	┣outTradeCode	外部交易号	varchar(30)	是	请求唯一标识，流水号
+	┣masterBillNo	主提单号	varchar(36)	是	只允许输入大写字母或数字
+	┣houseBillNos	分单号集合	List<String>	是	按分单删除时必填
+不能输入中文、小写字母、全角符号
+	┣reason	删单原因	varchar(255)	是	长度小于255字符
+
+
+
+6.6.3.返回数据
+索引	ID	名称	类型	必须	说明
+7	code	返回消息编码	varchar(10)	是	
+8	message	返回消息	varchar(200)	是	
+9	data	交易信息	boolean	是	
+
+
+{
+	"code": "000000",
+	"message": "提交成功",
+	"data": true
+}
+
+
+
+6.6.4.返回状态码
+索引	状态码	描述
+20	000000	提交成功
+21	100001	参数无效，【参数名】不正确
+22	100002	请求时间超出有效时间
+23	100003	商户accessKey不存在，请联系荣e通客服
+24	100004	商户accessKey已停用
+25	100005	验证签名失败
+26	100006	请求重复，请重新发起(nonce重复)
+27	200013	无有效支付权益
+28	200014	商户订单重复支付
+29	999999	系统错误，请联系技术人员
+
+
+6.7.青岛舱单查询接口
+6.7.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/queryManifest
+
+6.7.2.请求数据
+{
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "outTradeCode":  "81782381828",
+"masterBillNo":  "123423423"
+}
+
+
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+7	accessKey	请求唯一标识	varchar(36)	是	
+8	nonce	随机号	varchar(36)	是	
+9	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+10	sign	签名	varchar(32)	是	
+11	outTradeCode	外部订单号	varchar(36)	是	请求唯一标识，流水号
+12	masterBillNo	主提单号	varchar(36)	是	只允许输入大写字母或数字
+
+
+
+6.7.3.返回数据        
+ {
+    "masterBillNo": "3223D111ASAS",
+    "carrierCode": "APL",
+    "carrierName": "美国总统",
+    "referenceNo": "12321312",
+    "cargoId": "GC",
+    "cargoName": "普通货物",
+    "billLadingTypeCode": "OBL",
+    "billLadingTypeName": "OBL-正本提单",
+    "originalNumber": 1,
+    "paymentTermCode": "P",
+    "paymentTermNameEn": "FREIGHT PREPAID",
+    "paymentTermNameCn": "预付",
+    "placeIssueCode": "CNSHA",
+    "placeIssueName": "SHANGHAI",
+    "shippingItem": "CY-CY",
+    "oceanVessel": "SAAD",
+    "voyage": "DASDAS",
+    "description": "desc",
+    "marking": "mark",
+    "draftPlanType": 1,
+    "webCode": "捷丰场站",
+    "shipAgentCode": "13453884-2",
+    "shipAgentName": "上海华港船代",
+    "placeReceiptCode": "CNSHA",
+    "placeReceiptName": "SHANGHAI",
+    "placeDeliveryCode": "AEAAN",
+    "placeDeliveryName": "AL AIN",
+    "portLoadingCode": "CNSHA",
+    "portLoadingName": "SHANGHAI",
+    "portDischargeCode": "ADADC",
+"portDischargeName": "ANDORRA",
+"undgLinkMan":  "ASD",
+"undgLinkTele":  "12312312",
+"temperatureUnitName":  "摄氏度℃",
+"temperature":  "23",
+"reefer":  "22",
+ "remark":  "我是备注信息",
+"loadingMessage": "装载舱单传输成功",
+"loadingMessageTime": "2025-08-04 12:19:57"
+    "houseInfos": [
+        {
+            "houseBillNo": "3223D111ASAS",
+            "containerNo": "TXGU5001395",
+            "containerType": "20T9",
+            "containerTypeName": "20TG",
+            "sealNo": "12",
+"applyState": 3,
+            "containerOwnerCode": "SOC",
+            "containerOwnerName": "SOC-自有箱",
+            "packageNum": 1,
+            "unitCode": "IC",
+            "unitName": "ANGLE CRATE",
+            "grossWeight": 1,
+            "cbm": 1,
+            "marking": "ASD",
+            "description": "ADSASDAS",
+            "hsCode": "ASDAS",
+            "undgNo": "2222",
+            "undgClass": "1",
+            "undgLinkMan": "ASD",
+            "undgLinkTele": "12312312"
+        }
+    ],
+    "linkInfos": [
+        {
+            "partyType": 1,
+            "partyName": "ASDASDAS",
+            "address": "ADSASDAS",
+            "countryCode": "AF",
+            "countryName": "AF-阿富汗",
+            "partyTele": "232332",
+            "actualPerson": "3434",
+            "actualTele": "343434",
+            "companyId": "233233+",
+            "aeoCode": "4444"
+        },
+        {
+            "partyType": 2,
+            "partyName": "SADS",
+            "address": "ASDFSDAFASD",
+            "countryCode": "CN",
+            "countryName": "CN-中国",
+            "partyTele": "21321312312",
+            "actualPerson": null,
+            "actualTele": null,
+            "companyId": "ADSASD+",
+            "aeoCode": "SADSAD"
+        },
+        {
+            "partyType": 3,
+            "partyName": "ASDSADF",
+            "address": "FDSFSDFDS",
+            "countryCode": "AE",
+            "countryName": "AE-阿拉伯联合酋长国",
+            "partyTele": "23232334",
+            "actualPerson": null,
+            "actualTele": null,
+            "companyId": "4343443+",
+            "aeoCode": "34343"
+        }
+    ]
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+65		outTradeCode	外部交易号	varchar(36)	是	
+66		masterBillNo	主提单号	varchar(30)	是	
+67		carrierCode	船公司编码	varchar(16)	是	
+68		carrierName 	船公司名称	varchar(50)	是	
+69		referenceNo	托运编号	varchar(50)	否	
+70		cargoId	货物类型编码(GC/RF/DR)	varchar(4)	是	
+71		cargoName	货物类型	varchar(50)	是	
+72		billLadingTypeCode	提单类型编码（OBL/SWB/TER）	varchar(4)	是	
+73		billLadingTypeName	提单类型	varchar(50)	是	
+74		originalNumber	提单份数	varchar(10)	是	
+75		paymentTermCode	付款方式代码(P/C/E)	varchar(1)	是	
+76		paymentTermNameEn	付款方式名称英文	varchar(30)	是	
+77		paymentTermNameCn	付款方式	varchar(30)	是	
+78		placeIssueCode	签发地代码	varchar(5)	是	
+79		placeIssueName	签发地	varchar(50)	是	
+80		shippingItem	运输条款	varchar(50)	是	
+81		oceanVessel	船名	varchar(35)	是	
+82		voyage	航次	varchar(20)	是	
+83		description	主单品名	varchar(4000)	否	
+84		marking	主单唛头	varchar(1000)	否	
+85		draftPlanType	计划发送类型	Int	否	
+86		webCode	场站名称	varchar(100)	否	
+87		shipAgentCode	船代代码	varchar(16)	是	
+88		shipAgentName	船代	varchar(50)	是	
+89		placeReceiptCode	收货地代码	varchar(5)	是	
+90		placeReceiptName	收货地名称	varchar(50)	是	
+91		portLoadingCode	装货港代码	varchar(5)	是	
+92		portLoadingName	装货港名称	varchar(50)	是	
+93		portDischargeCode	卸货港代码	varchar(5)	是	
+94		portDischargeName	卸货港名称	varchar(50)	是	
+95		placeDeliveryCode	交货地代码	varchar(5)	是	
+96		placeDeliveryName	交货地名称	varchar(50)	是	
+97		undgLinkMan	危险品联系人	varchar(70)	否	货物类型为危险品时必填
+98		undgLinkTele	危险品联系电话	varchar(25)	否	货物类型为危险品时必填
+99		temperatureUnitCode	冷藏温度计量单位编码	varchar(1)	否	（C=摄氏 F=华氏）
+100		temperatureUnitName	冷藏温度计量单位名称	varchar(30)	否	货物类型为冷冻品时必填
+101		temperature	冷藏品温度	varchar(5)	否	货物类型为冷冻品时必填
+102		reefer	通风量	varchar(5)	否	货物类型为冷冻品时必填
+103		remark	备注	varchar(2000)	否	
+104		loadingMessage	装载舱单回执信息	varchar(30)	否	装载回执返回
+105		loadingMessageTime	装载舱单回执时间	varchar(30)	否	装载回执返回
+106		houseInfos	货物明细	List<Object>	是	
+107		┣houseBillNo	提单号	varchar(30)	是	
+108		┣applyState	申报状态	Integer	是	0:发送失败 1:已发送 2:回执错误 3:回执成功 4:退单 5:船舶未备案) 
+109		┣containerNo	箱号	varchar(11)	是	
+110		┣containerType	箱型	varchar(20)	是	
+111		┣containerTypeName	箱型名称	varchar(50)	是	
+112		┣sealNo	封箱号	varchar(14)	是	
+113		┣containerOwnerCode	持箱人标志（箱属 COC/SOC）	varchar(10)	是	
+114		┣containerOwnerName	货主箱名称	varchar(50)	是	
+115		┣packageNum	件数	varchar(7)	否	
+116		┣grossWeight	毛重(KSG)	BigDecimal(18,2)	否	
+117		┣cbm	体积(CBM)	BigDecimal(18,2)	否	
+118		┣unitName	包装单位名称	varchar(50)	否	
+119		┣marking	唛头	varchar(1000)	否	
+120		┣description	英文品名	varchar(2000)	否	
+121		┣hsCode	HS Code	varchar(10)	否	
+122		┣undgNo	 UN Code(危险品)	varchar(4)	否	货物类型为危险品时必填
+123		┣undgClass	危险品分类(1-9.9)	varchar(10)	否	货物类型为危险品时必填
+124		┣undgLinkMan	危险品联系人	varchar(11)	否	货物类型为危险品时必填
+125		┣undgLinkTele	危险品联系电话	varchar(30)	否	货物类型为危险品时必填
+126		partyInfoList  	收发通信息	List<Object>	是	
+127		┣partyType	联系人类型	Integer	是	1:收货人 2:发货人 3:通知人
+128		┣partyName	联系人名称	varchar(150)	是	
+129		┣address	联系人地址	varchar(1000)	是	
+130		┣countryCode	联系人国家编码	varchar(2)	是	
+131		┣countryName	联系人国家名称	varchar(50)	是	
+132		┣partyTele	联系电话	varchar(25)	是	
+
+
+
+6.7.4.返回状态码
+索引	状态码	描述
+10	000000	提交成功
+11	100001	参数无效，【参数名】不正确
+12	100002	请求时间超出有效时间
+13	100003	商户accessKey不存在，请联系荣e通客服
+14	100004	商户accessKey已停用
+15	100005	验证签名失败
+16	100006	请求重复，请重新发起(nonce重复)
+17	200002	客户ID不存在
+18	999999	系统错误，请联系技术人员
+
+
+6.8.青岛舱单回调通知接口
+6.8.1.接口说明
+荣e通平台向海关发送数据，当请求完成后，荣e通平台会自动向调用方发送该请求的结果。
+荣e通平台发送结果通知后需要调用方接口返回"success"字符（不包含引号）。如果调用方未返回success这7个字符，荣e通平台会不断重发通知，直到超过 24 小时 22 分钟。一般情况下，25 小时以内完成 8 次通知（通知的间隔频率一般是：4m,10m,30m,1h,2h,6h,15h）
+
+6.8.2.请求数据
+{
+   "content":  
+                    {
+                              "apiOrderCode":  "R22070915230625501",
+                              "outTradeCode":  "7123847812",
+                              "manifestType":  2,
+                              "manifestInfo":  {
+                              "callbackType":  2 ,
+                              "masterBillNo":  "037712005679",
+                              "oceanVessel":  "HLCUTS1",
+"voyage":  "2530E",
+                              "houseNo":  "HCM20010209",
+                              "msgType":  "1",
+                              "resState":  "3",
+                              "resMessage":  "预配舱单数据传输成功。",
+                              "noticeTime":  "2023-12-12 12:00:00"
+                              }
+                    },
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "notifyDate":  "2020-12-12",
+          "notifyID":  "18498190348",
+          "signType":  "MD5",
+          "sign":  "3849UF4893FJ843UT8342R"
+}
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+18	content	详细信息	object	是	
+19	┣apiOrderCode	交易号	varchar(36)	是	
+20	┣outTradeCode	外部订单号	varchar(36)	是	
+21	┣manifestType	舱单类型	int	是	舱单类型(1:上海 2:青岛)
+22	┣manifestInfo	回调信息			
+23	┣callbackType	回调类型	int	是	1:平台提交失败回调  2:海关返回消息
+24	┣masterBillNo	主提单号	varchar(36)	是	
+25	┣oceanVessel	船名	varchar(35)	否	统一换船回执才有
+26	┣voyage	航次	varchar(20)	否	统一换船回执才有
+27	┣houseNo	分单号	varchar(35)	是	
+28	┣msgType	操作类型	varchar(1)	是	1:原始2:修改3:删除4:重发5:改配
+29	┣resState	回执状态	varchar(1)	是	0:发送失败2:回执错误3:回执成功4:退单5:船舶未备案 6:船代统一换船 7：舱单装载回执
+30	┣resMessage	返回信息	varchar(2000)	是	
+31	┣noticeTime	通知时间	varchar(100)	是	
+32	accessKey	请求唯一标识	varchar(36)	是	
+33	notifyDate	通知时间	varchar(20)	是	
+34	notifyID	通知ID	varchar(36)	是	
+35	signType	签名类型，MD5	varchar(10)	是	
+36	sign	签名	varchar(32)	是	
+6.9青岛船代查询接口
+6.9.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/qingdao/queryShipAgent
+6.9.2.请求数据
+{
+   
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "detail":  {
+                    "carrierName":  "",
+                    "voyage":  "",
+                    "masterBillNo":  "",
+                    "carrierCode":  ""
+          }
+}
+参数说明：
+索引	ID	名称	长度	必须	说明
+10	accessKey	请求唯一标识	varchar(36)	是	
+11	nonce	随机号	varchar(36)	是	
+12	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+13	sign	签名	varchar(32)	是	
+14	detail	舱单信息	object	是	
+15	┣carrierName	船名	varchar(35)	是	
+16	┣voyage	航次	varchar(20)	是	
+17	┣masterBillNo	主提单号	varchar(30)	是	
+18	┣carrierCode	船公司代码	varchar(16)	是	
+6.9.3.返回数据
+{
+    "code": "000000",
+    "message": "请求成功",
+    "data": {
+        "shipAgentName": "R22070915230625501",
+        "shipAgentCode": "718237113",
+        "carrierName": 718237113",
+        "carrierCode": 718237113"
+      
+    }
+}
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+5	shipAgentName	船代名称	varchar(50)	是	
+6	shipAgentCode	船代代码	varchar(16)	是	
+7	carrierName	船司名称	varchar(50)	是	
+8	carrierCode	船司代码	varchar(16)	是	
+6.9.4.返回状态码
+索引	ID	名称
+8	000000	提交成功
+9	100001	参数无效，【参数名】不正确
+10	100002	请求时间超出有效时间
+11	100003	商户accessKey不存在，请联系荣e通客服
+12	100004	商户accessKey已停用
+13	100005	验证签名失败
+14	999999	系统错误，请联系技术人员
+
+7.VGM相关
+7.1.VGM发送/重发接口
+7.1.1.接口说明
+调用此接口可以发送VGM舱单，按箱子个数扣除相应的VGM舱单发送权益。
+7.1.2.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/vgm/sendManifest
+https://api.cargonpay.com/api/manifest/openapi/vgm/reSendManifest
+7.1.3.请求数据
+
+ {
+	"timestamp": "1725797231000",
+	"nonce": "1725797231052",
+	"accessKey": "F0D16DD2EFF945C4B73A4B37F99C2696",
+	"sign": "AB15D04C25F6B63317F2C166B58EED61",
+	"notifyUrl": "http://www.xxx.com/xxx",
+	"detail": {
+		"outTradeCode": "123456",
+		"billNo": "TDH1200008",
+		"carrierName": "MSK—马士基",
+		"vessel": "",
+		"voyage": "",
+		"soNo": "",
+		"containerOwnerName": "COC船公司自有箱",
+		"cutOffDay": "2023-11-22",
+		"dockName": "",
+		"portName": "盐田",
+		"webName": "大亚场站",
+"portArea": "QWG003-前湾港区",
+		"sendChannel": 1,
+        "remark": "123",
+		"vgmContainerInfos": [{
+			"containerNo": "XHJY1000213",
+			"vgmWeight": 250,
+			"grossWeight": 20,
+			"tareWeight": 20,
+			"containerType": "20GP",
+"soNo": "",
+			"weightingMethod": "SM1",
+			"weightingPartAddress": "CHENGZHONGDIZHI"
+		}]
+	}
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+1	accessKey	请求唯一标识	varchar(36)	是	
+2	nonce	随机号	varchar(36)	是	
+3	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+4	sign	签名	varchar(32)	是	
+5	notifyUrl	支付结果通知地址	varchar(200)	是	
+6	detail	舱单信息	object	是	
+7	┣outTradeCode	外部订单号	varchar(36)	是	请求唯一标识，流水号
+8	┣billNo	提单号	varchar(30)	是	只允许输入大写字母或数字长度应该在6-30位 
+9	┣carrierName	船公司名称	varchar(50)	是	来自基础数据
+10	┣vessel	船名	varchar(70)		不能输入中文、小写字母、全角符号
+上海口岸必填
+青岛口岸 船司ZIM 必填
+11	┣voyage	航次	varchar(70)	否	不能输入中文、小写字母、全角符号
+上海口岸必填
+青岛口岸 船司ZIM 必填
+12	┣soNo	SO号码	varchar(32)	否	WHL—万海航运必填
+13	┣containerOwnerName	持箱人	varchar(50)	是	来自基础数据
+14	┣cutOffDay	截VGM日期	varchar(50)	否	HMM、MSK、HAL、CMA必填，请填写正确的截VGM日期我们会根据此日期多次发送。
+格式例如：2021-6-30
+15	┣dockName	码头	varchar(50)	否	来自基础数据 上海口岸必填  青岛口岸选填 其他不传
+16	┣portName	口岸	varchar(50)	是	来自基础数据
+17	┣webName	场站名称	varchar(50)	否	来自基础数据（青岛口岸必填）
+18	┣portArea	港区	varchar(50)	否	青岛口岸（0:全部 2:云港通VGM） 其他口岸：不传
+19	┣sendChannel	发送渠道	Int	否	青岛口岸（0:全部 1:船公司VGM 2:云港通VGM） 其他口岸：不传
+20	┣remark	备注	varchar(2000)	否	备注信息
+21	┣vgmContainerInfos	箱子集合	List<object>	是	
+22	┣containerNo	箱号	varchar(11)	是	长度不能超过11个字符
+23	┣containerType	箱型	varchar(20)	否	来自基础数据（青岛口岸必填 其他不传）
+24	┣weightingMethod	VGM称重方式	varchar(30)	是	只能为SM1或SM2
+25	┣vgmWeight	VGM重量（KGS）	BigDecimal(18,3)	是	最多输入7位整数，2位小数
+26	┣grossWeight	毛重(KSG)	BigDecimal(18,3)	否	最多输入6位整数，3位小数（青岛口岸传但是不必填 其他不传）
+；所有口岸船司为阳明并且称重方式为SM2毛重、皮重不能为空；上海口岸船司为美森轮船并且称重方式为SM2毛重、皮重不能为空;
+27	┣tareWeight	皮重	BigDecimal(18,3)	否	最多输入6位整数，3位小数（青岛口岸传但是不必填 其他不传）
+；所有口岸船司为阳明并且称重方式为SM2毛重、皮重不能为空；上海口岸船司为美森轮船并且称重方式为SM2毛重、皮重不能为空;
+28	┣weightingPartAddress	称重方地址	varchar(140)	否	上海口岸
+船公司为APL-美国总统必填 其他不传
+29	┣soNo	SO号码	varchar(32)	否	船司为HLC/HPL—赫伯罗特 可以填（非必填） 
+
+30	┣ygtJsfs	云港通结算方式	Int	否	0 现收  1 月结
+青岛口岸（0:全部 2:云港通VGM 渠道下特定场站必传 见基础数据表）  
+7.1.4.返回数据
+{
+	"code": "000000",
+	"message": "请求成功",
+	"data": true
+}
+
+
+参数说明：
+索引	ID	名称	长度	必须	说明
+19	code	返回状态码	varchar(10)	是	
+20	message	返回消息	varchar(200)	是	
+21	data	返回值	Boolean	是	
+
+7.1.5.返回状态码
+索引	ID	名称
+43	000000	提交成功
+44	100001	参数无效，【参数名】不正确
+45	100002	请求时间超出有效时间
+46	100003	调用方accessKey不存在，请联系荣e通客服
+47	100004	调用方accessKey已停用
+48	100005	验证签名失败
+49	100006	请求重复，请重新发起(nonce重复)
+
+7.2.VGM查询接口
+7.2.1.正式环境地址
+https://api.cargonpay.com/api/manifest/openapi/vgm/queryManifest
+
+7.2.2.请求数据
+{
+          "timestamp":  "1725797231000",
+          "nonce":  "1725797231052",
+          "accessKey":  "F0D16DD2EFF945C4B73A4B37F99C2696",
+          "sign":  "AB15D04C25F6B63317F2C166B58EED61",
+          "outTradeCode":  "81782381828",
+          "billNo":  "12312312"
+}
+
+参数说明：
+索引	ID	名称	类型	必须	说明
+13	accessKey	请求唯一标识	varchar(36)	是	
+14	nonce	随机号	varchar(36)	是	
+15	timestamp	时间戳	varchar(20)	是	Unix时间戳，保留到毫秒
+16	sign	签名	varchar(32)	是	
+17	billNo	提单号	varchar(35)		
+18	outTradeCode	外部订单号	varchar(36)	是	
+
+7.2.3.返回数据
+参数说明：
+索引	ID	名称	类型	必须	说明
+1	billNo	提单号	varchar(35)	是	
+2	carrierCode	船公司简码	varchar(16)	是	
+3	carrierName	船公司名称	varchar(50)	是	
+4	vessel	船名	varchar(35)	否	
+5	voyage	航次	varchar(20)	否	
+6	soNo	SO号	varchar(32)	否	
+7	containerOwnerCode	持箱人标志（箱属 COC/SOC）	varchar(3)	是	
+8	containerOwnerName	持箱人名称	varchar(30)	是	
+9	cutOffDay	截VGM日期	varchar(50)	是	
+10	dockName	码头	varchar(50)	否	
+11	portName	港口	varchar(50)	是	
+12	operateType	操作类型	int	是	( 1:原始 2:重发)
+13	webCode	场站编码	varchar(30)	否	
+14	webName	场站名称	varchar(30)	否	
+15	sendChannel	发送渠道	Int	否	(0:全部 1:船公司VGM 2:云港通VGM)
+16	remark	备注	varchar(2000)	否	备注信息
+17	vgmContainerInfos	集装箱集合	List	是	
+18	┣containerNo	箱号	varchar(11)	是	
+19	┣vgmWeight	VGM(KSG)	decimal(7,3)	是	
+20	┣weightingMethod	称重方式	varchar(30)	是	
+21	┣containerType	箱型	varchar(20)	否	
+22	┣grossWeight	毛重(KSG)	decimal(18,3)	否	
+23	┣tareWeight	皮重	decimal(18,3)	否	
+24	┣ygtState	场站状态	int	否	(0:已发送 1:发送成功 2:确认成功 3:发送失败 4:场站拒绝) 发送云港通或全渠道返回
+25	┣dockApplyState	码头状态	int	否	(0:已发送 1:回执成功)发送云港通或全渠道返回
+26	┣ygtJsfs	云港通结算方式	int	否	0 现收  1 月结
+27	┣weightingPartAddress	称重方地址	varchar(255)	否	
+28	┣applyState	船司状态	int	否	0:发送失败 1.接收 2.拒绝 3退单(退单不计费) 发送船司或全渠道返回 4:已发送
+29	┣resApplyTime	回执时间	varchar(50)	否	
+30	┣resMessage	回执内容	varchar(255)	否	
+31	┣applyResult	失败原因	varchar(255)	否	
+
+
+{
+		"billNo": "1757512341112A",
+		"carrierCode": "APL",
+		"carrierName": "美国总统",
+		"vessel": "ADM WM M CALLAGHAN",
+		"voyage": "HANGCI",
+		"soNo": "",
+		"containerOwnerCode": "COC",
+		"containerOwnerName": "COC船公司自有箱",
+		"cutOffDay": null,
+		"dockName": "(外五)上海明东集装箱码头有限公司",
+		"portName": "上海",
+		"operateType": 1,
+		"webCode": null,
+		"webName": null,
+		"sendChannel": 1,
+		"vgmContainerInfos": [
+			{
+				"containerNo": "DTY11234321",
+				"vgmWeight": 24,
+				"weightingPartAddress": "1122",
+				"applyState": 5,
+				"resApplyTime": null,
+				"resMessage": null,
+				"applyResult": "",
+				"weightingMethod": "SM1",
+				"containerType": null,
+				"grossWeight": null,
+				"tareWeight": null,
+				"ygtState": null,
+                "ygtJsfs": null,
+				"dockApplyState": null
+			}
+		]
+	}
+
+
+
+7.2.4.返回状态码
+索引	状态码	描述
+19	000000	提交成功
+20	100001	参数无效，【参数名】不正确
+21	100002	请求时间超出有效时间
+22	100003	商户accessKey不存在，请联系荣e通客服
+23	100004	商户accessKey已停用
+24	100005	验证签名失败
+25	100006	请求重复，请重新发起(nonce重复)
+26	200011	当前订单中的收款账号不是全部属于同一个商户
+27	999999	系统错误，请联系技术人员
+
+
+7.3.VGM回调通知接口
+7.3.1.接口说明
+荣e通平台向海关发送数据，当请求完成后，荣e通平台会自动向调用方发送该请求的结果。荣e通平台发送结果通知后需要调用方接口返回"success"字符（不包含引号）。如果调用方未返回success这7个字符，荣e通平台会不断重发通知，直到超过 24 小时 22 分钟。一般情况下，25 小时以内完成 8 次通知（通知的间隔频率一般是：4m,10m,30m,1h,2h,6h,15h）
+7.3.2.请求数据
+{
+	"content": {
+		"apiOrderCode": "25091216061457254",
+		"outTradeCode": "1757664309000",
+		"manifestType": 9,
+		"manifestInfo": {
+			"callbackType": 2,
+			"msgType": "1",
+			"applyState": 2,
+			"ygtState": 2,
+			"dockApplyState": 2,
+			"resMessage": "",
+			"noticeTime": "2025-09-12 16:07:34",
+			"billNo": "1757664309000",
+			"containerNo": "XHJY1000214"
+		},
+		"accessKey": "F0D16DD2EFF945C4B73A4B37F99C2696",
+		"notifyDate": "2020-12-12",
+		"notifyID": "18498190348",
+		"signType": "MD5",
+		"sign": "3849UF4893FJ843UT8342R"
+	}
+}
+参数说明：
+索引	ID	名称	类型	必须	说明
+37	details	详细信息	object	是	
+38	┣apiOrderCode	交易号	varchar(36)	是	
+39	┣outTradeCode	外部订单号	varchar(36)	是	
+40	┣manifestType	舱单类型	Int	是	值为 9 
+41	┣manifestInfo				
+42	┣callbackType	回调类型	Int	是	1:船司状态回执
+2:场站状态回执
+3.码头状态回执
+43	┣billNo	提单号	varchar(35)	是	
+44	┣containerNo	箱号	varchar(11)	是	
+45	┣applyState	船司状态 	Int	是	0:发送失败 1.接收 2.拒绝 3退单(退单不计费) 发送船司或全渠道返回 4:已发送
+46	┣ygtState	场站状态	int	否	(0:已发送 1:发送成功 2:确认成功 3:发送失败 4:场站拒绝) 发送云港通或全渠道返回
+47	┣dockApplyState	码头状态	int	否	(0:已发送 1:回执成功)发送云港通或全渠道返回
+48	┣msgType	操作类型	varchar(1)	是	操作类型( 1:原始 2:重发)
+49	┣resMessage	回执内容	varchar(200)	否	成功时返回回执内容  失败时返回错误原因
+50	┣noticeTime	通知时间	varchar(100)	是	
+51	accessKey	请求唯一标识	varchar(36)	是	
+52	notifyDate	通知时间	varchar(20)	是	
+53	notifyID	通知ID	varchar(36)	是	
+54	signType	签名类型，MD5	varchar(10)	是	
+55	sign	签名	varchar(32)	是	
+
+
+
+
+

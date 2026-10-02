@@ -404,6 +404,11 @@ export namespace InvoiceIssueApi {
     invoiceExchangeRate?: number;
     /** 关联开票申请条数 */
     itemCount: number;
+    /**
+     * 提单号（主提单号去重列表）。
+     * 取关联开票申请费用所属业务的 TransportOrder.mblNum；没填的不占位；无关联申请时为 []。
+     */
+    mblNums?: null | string[];
     /** 商品明细金额合计 */
     totalAmount: number;
 
