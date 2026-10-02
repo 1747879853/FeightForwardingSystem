@@ -229,10 +229,12 @@ export namespace PersonalMailAdminApi {
 
 const mailRequest = { timeout: MAIL_TIMEOUT };
 
-export function getMyPersonalMailAccountList() {
+export function getMyPersonalMailAccountList(options?: {
+  skipErrorMessage?: boolean;
+}) {
   return requestClient.get<PersonalMailAdminApi.PersonalMailAccountDto[]>(
     `${API_PREFIX}/GetMyAccountListAsync`,
-    mailRequest,
+    { ...mailRequest, ...options },
   );
 }
 
@@ -282,10 +284,14 @@ export function getPersonalMailFolderList() {
 
 export function getPersonalMailPagedList(
   data: PersonalMailAdminApi.PersonalMailQueryDto,
+  options?: { skipErrorMessage?: boolean },
 ) {
   return requestClient.post<
     PersonalMailAdminApi.PagedList<PersonalMailAdminApi.MailSummary>
-  >(`${API_PREFIX}/GetMailPagedListAsync`, data, mailRequest);
+  >(`${API_PREFIX}/GetMailPagedListAsync`, data, {
+    ...mailRequest,
+    ...options,
+  });
 }
 
 export function getPersonalMailDetail(

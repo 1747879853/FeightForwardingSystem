@@ -9,8 +9,9 @@ import {
   onUnmounted,
   shallowRef,
   useTemplateRef,
+  watch,
 } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
@@ -21,6 +22,7 @@ import {
   getPersonalMailDetail,
   PERSONAL_MAIL_PERMISSION,
 } from '#/api/personal-mail/personal-mail-admin';
+import { usePersonalMailFloat } from '#/components/personal-mail-float/use-personal-mail-float';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import {
   createDraftSession,
@@ -38,9 +40,11 @@ import { usePersonalMail } from './composables/use-personal-mail';
 
 defineOptions({ name: 'PersonalMail' });
 
+const route = useRoute();
 const router = useRouter();
 const { hasAccessByCodes } = useAccess();
 const mail = usePersonalMail();
+const mailbox = usePersonalMailFloat();
 const keyword = mail.keyword;
 const unreadOnly = mail.unreadOnly;
 const dateRange = mail.dateRange;
@@ -168,6 +172,23 @@ function openForward() {
   composeDirty.value = false;
 }
 
+function markAllInboxRead() {
+  const count = mail.activeFolder.value?.unreadCount;
+  Modal.confirm({
+    title: '一键已读',
+    content:
+      count != null && count > 0
+        ? `将把收件箱里的 ${count} 封未读邮件标为已读。`
+        : '将把收件箱里的未读邮件全部标为已读。',
+    okText: '全部已读',
+    cancelText: '取消',
+    async onOk() {
+      const done = await mail.markAllInboxRead();
+      if (done) mailbox.inboxUnread.value = 0;
+    },
+  });
+}
+
 function openNew() {
   composeSession.value = createNewMailSession();
   composeDirty.value = false;
@@ -223,6 +244,23 @@ async function runDelete(permanent: boolean) {
 
 let shellObserver: ResizeObserver | undefined;
 
+async function openFromQuery() {
+  const folder =
+    typeof route.query.folder === 'string' ? route.query.folder : '';
+  const uidRaw = route.query.uid;
+  const uid = typeof uidRaw === 'string' ? Number(uidRaw) : Number.NaN;
+  if (!folder || !Number.isInteger(uid) || uid < 0) return;
+  await router.replace({ name: 'PersonalMail' });
+  if (composeSession.value) {
+    if (composeDirty.value) return;
+    composeSession.value = null;
+  }
+  if (mail.activeFolderName.value !== folder) {
+    await mail.selectFolder(folder);
+  }
+  await mail.openMail({ folderName: folder, uid });
+}
+
 onMounted(() => {
   const shell = shellRef.value;
   if (shell) {
@@ -232,8 +270,37 @@ onMounted(() => {
     });
     shellObserver.observe(shell);
   }
-  mail.boot();
+  void mail.boot().then(() => openFromQuery());
 });
+
+watch(
+  () => [route.query.folder, route.query.uid],
+  () => {
+    if (!mail.booted.value) return;
+    void openFromQuery();
+  },
+);
+
+watch(
+  () => [mailbox.pollSerial.value, mail.booted.value] as const,
+  () => {
+    if (!mail.booted.value || mailbox.pollSerial.value === 0) return;
+    const count = mailbox.inboxUnread.value;
+    const inbox = mail.folders.value.find((item) => item.isInbox);
+    if (inbox && count != null) inbox.unreadCount = count;
+    if (!mailbox.hasNewMail.value || !inbox) return;
+    const [start, end] = mail.dateRange.value ?? [];
+    const viewingInbox = mail.activeFolderName.value === inbox.fullName;
+    const quiet =
+      mail.pageIndex.value === 1 &&
+      !mail.keyword.value.trim() &&
+      !start &&
+      !end;
+    if (viewingInbox && quiet && !mail.listLoading.value) {
+      void mail.loadList();
+    }
+  },
+);
 
 onUnmounted(() => {
   shellObserver?.disconnect();
@@ -257,6 +324,8 @@ onActivated(() => {
       </div>
       <div v-else class="mail-shell" :class="{ 'is-narrow': narrow }">
         <MailFolderNav
+          :account-email="mailbox.accountEmail.value"
+          :account-name="mailbox.accountName.value"
           :active-full-name="mail.activeFolderName.value"
           :can-compose="canSend"
           :folders="mail.folders.value"
@@ -292,9 +361,15 @@ onActivated(() => {
             "
             :items="mail.items.value"
             :loading="mail.listLoading.value || openingDraft"
+            :marking-all-read="mail.markingAllRead.value"
             :page-index="mail.pageIndex.value"
+            :show-mark-all-read="
+              canSetRead && Boolean(mail.activeFolder.value?.isInbox)
+            "
+            :unread-count="mail.activeFolder.value?.unreadCount"
             :page-size="mail.pageSize"
             :total="mail.total.value"
+            @mark-all-read="markAllInboxRead"
             @open="onOpenMail"
             @page-change="mail.changePage"
             @refresh="mail.loadList"
@@ -312,10 +387,12 @@ onActivated(() => {
             :can-set-read="canSetRead"
             :detail="mail.detail.value"
             :downloading-indexes="mail.downloadingIndexes.value"
+            :previewing-indexes="mail.previewingIndexes.value"
             :loading="mail.detailLoading.value"
             :show-back="narrow"
             @back="mail.narrowReading.value = false"
             @download="mail.downloadAttachment"
+            @preview="mail.previewAttachment"
             @forward="openForward"
             @move="moveOpen = true"
             @remove="deleteOpen = true"

@@ -136,8 +136,12 @@ export function folderDisplayName(
 }
 
 export function folderCount(folder: PersonalMailAdminApi.MailFolderSummary) {
-  const count =
-    folder.isDrafts || folder.isSent ? folder.totalCount : folder.unreadCount;
-  if (count == null || count < 0 || count === 0) return null;
+  const count = folder.isInbox
+    ? folder.unreadCount
+    : folder.isDrafts || folder.isSent
+      ? folder.totalCount
+      : folder.unreadCount;
+  if (count == null || count < 0) return null;
+  if (!folder.isInbox && count === 0) return null;
   return count;
 }

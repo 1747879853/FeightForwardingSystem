@@ -27,14 +27,20 @@ const props = withDefaults(
     folderTitle?: string;
     items: PersonalMailAdminApi.MailSummary[];
     loading?: boolean;
+    markingAllRead?: boolean;
     pageIndex: number;
     pageSize: number;
+    showMarkAllRead?: boolean;
     total: number;
+    unreadCount?: null | number;
   }>(),
   {
     activeUid: null,
     folderTitle: '',
     loading: false,
+    markingAllRead: false,
+    showMarkAllRead: false,
+    unreadCount: null,
   },
 );
 
@@ -43,6 +49,7 @@ const unreadOnly = defineModel<boolean>('unreadOnly', { default: false });
 const dateRange = defineModel<[string, string] | undefined>('dateRange');
 
 const emit = defineEmits<{
+  markAllRead: [];
   open: [mail: PersonalMailAdminApi.MailSummary];
   pageChange: [page: number];
   refresh: [];
@@ -113,7 +120,7 @@ function onKeywordChange(event: Event) {
           <IconifyIcon class="mail-list__search-icon" icon="lucide:search" />
         </template>
       </Input>
-      <div class="mail-list__filters">
+      <div class="mail-list__tools">
         <Checkbox
           :checked="allChecked"
           :indeterminate="someChecked"
@@ -122,12 +129,31 @@ function onKeywordChange(event: Event) {
         />
         <button
           type="button"
-          class="mail-list__chip"
+          class="mail-list__unread"
           :class="{ 'is-on': unreadOnly }"
           @click="toggleUnread"
         >
+          <span class="mail-list__unread-dot" aria-hidden="true"></span>
           未读
+          <span
+            v-if="unreadCount != null && unreadCount > 0"
+            class="mail-list__unread-count"
+          >
+            {{ unreadCount > 99 ? '99+' : unreadCount }}
+          </span>
         </button>
+        <button
+          v-if="showMarkAllRead"
+          type="button"
+          class="mail-list__mark"
+          :disabled="markingAllRead || unreadCount === 0"
+          @click="emit('markAllRead')"
+        >
+          <IconifyIcon icon="lucide:check-check" />
+          {{ markingAllRead ? '正在标记…' : '一键已读' }}
+        </button>
+      </div>
+      <div class="mail-list__filters">
         <DatePicker.RangePicker
           v-model:value="dateRange"
           class="mail-list__dates"
@@ -306,31 +332,102 @@ function onKeywordChange(event: Event) {
   color: hsl(var(--muted-foreground));
 }
 
-.mail-list__filters {
+.mail-list__tools {
   display: flex;
   gap: 8px;
   align-items: center;
   min-width: 0;
 }
 
-.mail-list__chip {
+.mail-list__unread,
+.mail-list__mark {
+  display: inline-flex;
   flex: none;
-  height: 26px;
+  gap: 6px;
+  align-items: center;
+  height: 28px;
   padding: 0 10px;
   font-size: 12px;
-  line-height: 24px;
-  color: hsl(var(--muted-foreground));
   cursor: pointer;
+  border-radius: 8px;
+}
+
+.mail-list__unread {
+  color: hsl(var(--foreground) / 78%);
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
+}
+
+.mail-list__unread-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: hsl(var(--muted-foreground) / 55%);
+  border-radius: 50%;
+}
+
+.mail-list__unread-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 16px;
+  color: hsl(var(--primary));
+  text-align: center;
+  background: hsl(var(--primary) / 12%);
   border-radius: 999px;
 }
 
-.mail-list__chip:hover,
-.mail-list__chip.is-on {
+.mail-list__unread:hover,
+.mail-list__unread.is-on {
   color: hsl(var(--primary));
   background: hsl(var(--primary) / 10%);
-  border-color: hsl(var(--primary) / 28%);
+  border-color: hsl(var(--primary) / 32%);
+}
+
+.mail-list__unread.is-on {
+  font-weight: 650;
+}
+
+.mail-list__unread.is-on .mail-list__unread-dot {
+  background: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 18%);
+}
+
+.mail-list__unread.is-on .mail-list__unread-count {
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+}
+
+.mail-list__mark {
+  margin-left: auto;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border: 1px solid hsl(var(--primary) / 24%);
+}
+
+.mail-list__mark:hover:not(:disabled) {
+  background: hsl(var(--primary) / 16%);
+}
+
+.mail-list__mark:disabled {
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+  background: hsl(var(--muted) / 45%);
+  border-color: hsl(var(--border));
+}
+
+.mail-list__mark :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.mail-list__filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
 }
 
 .mail-list__dates {

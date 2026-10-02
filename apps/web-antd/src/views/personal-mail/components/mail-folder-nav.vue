@@ -13,11 +13,15 @@ import {
 withDefaults(
   defineProps<{
     activeFullName?: string;
+    accountEmail?: string;
+    accountName?: string;
     canCompose?: boolean;
     folders: PersonalMailAdminApi.MailFolderSummary[];
     loading?: boolean;
   }>(),
   {
+    accountEmail: '',
+    accountName: '',
     activeFullName: '',
     canCompose: false,
     loading: false,
@@ -41,6 +45,17 @@ function folderIcon(folder: PersonalMailAdminApi.MailFolderSummary) {
 
 <template>
   <aside class="mail-folders">
+    <div v-if="accountName || accountEmail" class="mail-folders__account">
+      <span class="mail-folders__account-name">
+        {{ accountName || accountEmail }}
+      </span>
+      <span
+        v-if="accountEmail && accountEmail !== accountName"
+        class="mail-folders__account-mail"
+      >
+        {{ accountEmail }}
+      </span>
+    </div>
     <div class="mail-folders__compose">
       <Button v-if="canCompose" block type="primary" @click="emit('compose')">
         写邮件
@@ -57,7 +72,11 @@ function folderIcon(folder: PersonalMailAdminApi.MailFolderSummary) {
       >
         <IconifyIcon :icon="folderIcon(folder)" class="mail-folders__icon" />
         <span class="mail-folders__name">{{ folderDisplayName(folder) }}</span>
-        <span v-if="folderCount(folder) != null" class="mail-folders__count">
+        <span
+          v-if="folderCount(folder) != null"
+          class="mail-folders__count"
+          :title="folder.isInbox ? `未读 ${folderCount(folder)} 封` : undefined"
+        >
           {{ folderCount(folder) }}
         </span>
       </button>
@@ -75,6 +94,32 @@ function folderIcon(folder: PersonalMailAdminApi.MailFolderSummary) {
   min-height: 0;
   background: hsl(var(--background));
   border-right: 1px solid hsl(var(--border));
+}
+
+.mail-folders__account {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 14px 4px;
+}
+
+.mail-folders__account-name,
+.mail-folders__account-mail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mail-folders__account-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: hsl(var(--foreground));
+}
+
+.mail-folders__account-mail {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
 }
 
 .mail-folders__compose {

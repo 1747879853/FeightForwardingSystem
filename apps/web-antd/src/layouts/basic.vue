@@ -26,6 +26,7 @@ import { VbenIconButton } from '@vben-core/shadcn-ui';
 
 import { Tooltip } from 'ant-design-vue';
 
+import PersonalMailFloat from '#/components/personal-mail-float/personal-mail-float.vue';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import { isJhtBrand } from '#/utils/brand-assets';
@@ -213,6 +214,7 @@ watch(
       >
         <LoginForm />
       </AuthenticationLoginExpiredModal>
+      <PersonalMailFloat />
       <AnnouncementLoginModal
         v-if="announcementUserId"
         v-model:open="modalOpen"

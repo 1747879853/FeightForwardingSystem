@@ -29,6 +29,7 @@ const props = withDefaults(
     detail: null | PersonalMailAdminApi.MailDetail;
     downloadingIndexes?: number[];
     loading?: boolean;
+    previewingIndexes?: number[];
     showBack?: boolean;
   }>(),
   {
@@ -40,6 +41,7 @@ const props = withDefaults(
     canSetRead: false,
     downloadingIndexes: () => [],
     loading: false,
+    previewingIndexes: () => [],
     showBack: false,
   },
 );
@@ -47,6 +49,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   back: [];
   download: [attachment: PersonalMailAdminApi.MailAttachmentSummary];
+  preview: [attachment: PersonalMailAdminApi.MailAttachmentSummary];
   forward: [];
   move: [];
   remove: [];
@@ -110,6 +113,14 @@ function fileIcon(fileName?: null | string) {
 
 function isFileDownloading(file: PersonalMailAdminApi.MailAttachmentSummary) {
   return props.downloadingIndexes.includes(file.index);
+}
+
+function isFilePreviewing(file: PersonalMailAdminApi.MailAttachmentSummary) {
+  return props.previewingIndexes.includes(file.index);
+}
+
+function isFileBusy(file: PersonalMailAdminApi.MailAttachmentSummary) {
+  return isFileDownloading(file) || isFilePreviewing(file);
 }
 
 function fileTone(fileName?: null | string) {
@@ -357,55 +368,75 @@ function hiddenAddressCount(
                   </span>
                 </div>
                 <div class="mail-read__files-list">
-                  <button
+                  <div
                     v-for="file in attachmentList"
                     :key="file.index"
-                    type="button"
                     class="mail-read__file"
                     :class="[
                       fileTone(file.fileName),
-                      { 'is-downloading': isFileDownloading(file) },
+                      { 'is-downloading': isFileBusy(file) },
                     ]"
-                    :disabled="!canDownload || isFileDownloading(file)"
-                    :aria-busy="isFileDownloading(file)"
-                    :title="
-                      isFileDownloading(file)
-                        ? `正在下载 ${file.fileName || '附件'}`
-                        : canDownload
-                          ? `下载 ${file.fileName || '附件'}`
-                          : file.fileName || '附件'
-                    "
-                    @click="
-                      canDownload &&
-                      !isFileDownloading(file) &&
-                      emit('download', file)
-                    "
                   >
-                    <span class="mail-read__file-icon">
-                      <IconifyIcon :icon="fileIcon(file.fileName)" />
-                    </span>
-                    <span class="mail-read__file-main">
-                      <span class="mail-read__file-name">
-                        {{ file.fileName || '附件' }}
-                      </span>
-                      <span class="mail-read__file-meta">
-                        {{ formatByteSize(file.size) || '未知大小' }}
-                        <template v-if="isFileDownloading(file)">
-                          · 正在下载
-                        </template>
-                        <template v-else-if="canDownload"> · 点击下载</template>
-                      </span>
-                    </span>
-                    <IconifyIcon
-                      v-if="canDownload"
-                      class="mail-read__file-dl"
-                      :icon="
-                        isFileDownloading(file)
-                          ? 'lucide:loader-circle'
-                          : 'lucide:download'
+                    <button
+                      type="button"
+                      class="mail-read__file-open"
+                      :disabled="!canDownload || isFileBusy(file)"
+                      :aria-busy="isFileBusy(file)"
+                      :title="
+                        isFilePreviewing(file)
+                          ? `正在打开 ${file.fileName || '附件'}`
+                          : canDownload
+                            ? `预览 ${file.fileName || '附件'}`
+                            : file.fileName || '附件'
                       "
-                    />
-                  </button>
+                      @click="
+                        canDownload &&
+                        !isFileBusy(file) &&
+                        emit('preview', file)
+                      "
+                    >
+                      <span class="mail-read__file-icon">
+                        <IconifyIcon :icon="fileIcon(file.fileName)" />
+                      </span>
+                      <span class="mail-read__file-main">
+                        <span class="mail-read__file-name">
+                          {{ file.fileName || '附件' }}
+                        </span>
+                        <span class="mail-read__file-meta">
+                          {{ formatByteSize(file.size) || '未知大小' }}
+                          <template v-if="isFilePreviewing(file)">
+                            · 正在打开预览
+                          </template>
+                          <template v-else-if="isFileDownloading(file)">
+                            · 正在下载
+                          </template>
+                          <template v-else-if="canDownload">
+                            · 点击预览</template
+                          >
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      v-if="canDownload"
+                      type="button"
+                      class="mail-read__file-dl"
+                      :disabled="isFileBusy(file)"
+                      :title="
+                        isFileDownloading(file)
+                          ? '正在下载'
+                          : `下载 ${file.fileName || '附件'}`
+                      "
+                      @click="!isFileBusy(file) && emit('download', file)"
+                    >
+                      <IconifyIcon
+                        :icon="
+                          isFileBusy(file)
+                            ? 'lucide:loader-circle'
+                            : 'lucide:download'
+                        "
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -731,12 +762,10 @@ function hiddenAddressCount(
 
 .mail-read__file {
   display: flex;
-  gap: 10px;
+  gap: 4px;
   align-items: center;
   min-width: 0;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
+  padding: 6px 6px 6px 10px;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
@@ -746,21 +775,33 @@ function hiddenAddressCount(
     transform 0.15s ease;
 }
 
-.mail-read__file:hover:not(:disabled) {
+.mail-read__file:hover {
   border-color: hsl(var(--primary) / 35%);
   box-shadow: 0 4px 14px rgb(15 23 42 / 6%);
   transform: translateY(-1px);
 }
 
-.mail-read__file:disabled {
-  cursor: default;
-}
-
-.mail-read__file.is-downloading,
-.mail-read__file.is-downloading:disabled {
+.mail-read__file.is-downloading {
   cursor: progress;
   background: hsl(var(--primary) / 6%);
   border-color: hsl(var(--primary) / 35%);
+}
+
+.mail-read__file-open {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 0;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.mail-read__file-open:disabled {
+  cursor: progress;
 }
 
 .mail-read__file-icon {
@@ -835,21 +876,35 @@ function hiddenAddressCount(
 }
 
 .mail-read__file-dl {
+  display: inline-flex;
   flex: none;
-  width: 15px;
-  height: 15px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   color: hsl(var(--muted-foreground));
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
 }
 
-.mail-read__file:hover:not(:disabled) .mail-read__file-dl,
-.mail-read__file.is-downloading .mail-read__file-dl {
+.mail-read__file-dl:hover:not(:disabled) {
   color: hsl(var(--primary));
-  opacity: 1;
+  background: hsl(var(--primary) / 10%);
 }
 
-.mail-read__file.is-downloading .mail-read__file-dl {
+.mail-read__file-dl:disabled {
+  cursor: progress;
+}
+
+.mail-read__file-dl :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+
+.mail-read__file.is-downloading .mail-read__file-dl :deep(svg) {
+  color: hsl(var(--primary));
   animation: mail-file-spin 0.8s linear infinite;
 }
 

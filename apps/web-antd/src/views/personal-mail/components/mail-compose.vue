@@ -17,6 +17,7 @@ import {
   savePersonalMailDraft,
   sendPersonalMail,
 } from '#/api/personal-mail/personal-mail-admin';
+import { buildAttachmentUrl } from '#/utils/attachment-url';
 import {
   fileToBase64Content,
   formatByteSize,
@@ -66,6 +67,10 @@ const keptAttachments = shallowRef(props.session.keptAttachments);
 const newFiles = shallowRef<File[]>([]);
 const includeOriginal = shallowRef(props.session.includeOriginalAttachments);
 const quoteHtml = shallowRef(props.session.quoteHtml);
+const signatureHidden = shallowRef(false);
+const signatureUrl = buildAttachmentUrl(
+  '/Uploads/document/20260612/jiayuelogo.png',
+);
 const showCc = shallowRef(false);
 const showBcc = shallowRef(false);
 const quoteOpen = shallowRef(true);
@@ -688,6 +693,11 @@ function removeNew(name: string, size: number) {
       />
     </div>
 
+    <div v-if="signatureUrl && !signatureHidden" class="mail-compose__sign">
+      <span class="mail-compose__sign-label">签名</span>
+      <img :src="signatureUrl" alt="邮件签名" @error="signatureHidden = true" />
+    </div>
+
     <div v-if="showQuote" class="mail-compose__quote">
       <button
         type="button"
@@ -1038,6 +1048,27 @@ function removeNew(name: string, size: number) {
   background: transparent;
   border: 0;
   border-radius: 0;
+}
+
+.mail-compose__sign {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 12px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.mail-compose__sign-label {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.mail-compose__sign img {
+  display: block;
+  width: 300px;
+  max-width: 100%;
+  height: auto;
 }
 
 .mail-compose__quote {

@@ -1,6 +1,6 @@
 import type { PersonalMailAdminApi } from '#/api/personal-mail/personal-mail-admin';
 
-import { computed, ref, shallowRef } from 'vue';
+import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue';
 
 import { downloadFileFromBlob } from '@vben/utils';
 import { message } from 'ant-design-vue';
@@ -15,6 +15,10 @@ import {
   readRequestErrorMessage,
   setPersonalMailRead,
 } from '#/api/personal-mail/personal-mail-admin';
+import {
+  openAttachmentViewer,
+  useAttachmentViewer,
+} from '#/components/attachment-viewer';
 
 const PAGE_SIZE = 20;
 const MISSING_ACCOUNT = '还没有配置个人邮箱';
@@ -33,10 +37,23 @@ export function usePersonalMail() {
   const activeUid = shallowRef<null | number>(null);
   const folderLoading = shallowRef(false);
   const listLoading = shallowRef(false);
+  const markingAllRead = shallowRef(false);
   const detailLoading = shallowRef(false);
   const downloadingAttachments = shallowRef<
-    Array<{ index: number; uid: number }>
+    Array<{ index: number; mode: 'download' | 'preview'; uid: number }>
   >([]);
+  const previewUrls = new Set<string>();
+  const attachmentViewer = useAttachmentViewer();
+
+  function revokePreviewUrls() {
+    for (const url of previewUrls) URL.revokeObjectURL(url);
+    previewUrls.clear();
+  }
+
+  watch(attachmentViewer.visible, (open) => {
+    if (!open) revokePreviewUrls();
+  });
+  onScopeDispose(revokePreviewUrls);
   const accountMissing = shallowRef(false);
   const booted = shallowRef(false);
   const narrowReading = shallowRef(false);
@@ -183,6 +200,58 @@ export function usePersonalMail() {
       : checkedUids.value.filter((uid) => !pageUids.includes(uid));
   }
 
+  async function collectUnreadUids(folderName: string) {
+    const uids: number[] = [];
+    let pageIndex = 1;
+    const pageSize = 100;
+    while (uids.length < 5000) {
+      const page = await getPersonalMailPagedList({
+        folderName,
+        pageIndex,
+        pageSize,
+        unreadOnly: true,
+      });
+      const rows = page.items || [];
+      for (const row of rows) uids.push(row.uid);
+      if (rows.length < pageSize) break;
+      pageIndex += 1;
+    }
+    return uids;
+  }
+
+  async function markAllInboxRead() {
+    const folderName = activeFolderName.value;
+    if (!activeFolder.value?.isInbox || !folderName) return false;
+    markingAllRead.value = true;
+    try {
+      const uids = await collectUnreadUids(folderName);
+      if (uids.length === 0) {
+        message.info('没有未读邮件');
+        return false;
+      }
+      for (let offset = 0; offset < uids.length; offset += 500) {
+        await setPersonalMailRead({
+          folderName,
+          isRead: true,
+          uids: uids.slice(offset, offset + 500),
+        });
+      }
+      if (detail.value && uids.includes(detail.value.uid)) {
+        detail.value.isRead = true;
+      }
+      message.success('已全部标为已读');
+      await loadFolders();
+      const inbox = folders.value.find((item) => item.isInbox);
+      if (inbox && (inbox.unreadCount == null || inbox.unreadCount < 0)) {
+        inbox.unreadCount = 0;
+      }
+      await loadList();
+      return true;
+    } finally {
+      markingAllRead.value = false;
+    }
+  }
+
   async function markRead(isRead: boolean) {
     const uids = actionUids.value;
     if (uids.length === 0) {
@@ -243,16 +312,21 @@ export function usePersonalMail() {
     return true;
   }
 
-  const downloadingIndexes = computed(() => {
+  const downloadingIndexes = computed(() => attachmentIndexes('download'));
+  const previewingIndexes = computed(() => attachmentIndexes('preview'));
+
+  function attachmentIndexes(mode: 'download' | 'preview') {
     const uid = detail.value?.uid;
     if (uid == null) return [];
     return downloadingAttachments.value
-      .filter((item) => item.uid === uid)
+      .filter((item) => item.uid === uid && item.mode === mode)
       .map((item) => item.index);
-  });
+  }
 
-  async function downloadAttachment(
+  async function runAttachmentJob(
     file: PersonalMailAdminApi.MailAttachmentSummary,
+    mode: 'download' | 'preview',
+    task: (blob: Blob) => void,
   ) {
     if (!detail.value) return;
     const uid = detail.value.uid;
@@ -267,7 +341,7 @@ export function usePersonalMail() {
     const startedAt = Date.now();
     downloadingAttachments.value = [
       ...downloadingAttachments.value,
-      { index: file.index, uid },
+      { index: file.index, mode, uid },
     ];
     try {
       const blob = await downloadPersonalMailAttachment({
@@ -275,13 +349,12 @@ export function usePersonalMail() {
         folderName,
         uid,
       });
-      downloadFileFromBlob({
-        fileName: file.fileName || '附件',
-        source: blob,
-      });
+      task(blob);
     } catch (error) {
       const text = await readRequestErrorMessage(error);
-      message.error(text || '附件下载失败');
+      message.error(
+        text || (mode === 'preview' ? '附件预览失败' : '附件下载失败'),
+      );
     } finally {
       const remain = 500 - (Date.now() - startedAt);
       if (remain > 0) {
@@ -295,6 +368,33 @@ export function usePersonalMail() {
     }
   }
 
+  function downloadAttachment(
+    file: PersonalMailAdminApi.MailAttachmentSummary,
+  ) {
+    return runAttachmentJob(file, 'download', (blob) => {
+      downloadFileFromBlob({
+        fileName: file.fileName || '附件',
+        source: blob,
+      });
+    });
+  }
+
+  function previewAttachment(file: PersonalMailAdminApi.MailAttachmentSummary) {
+    return runAttachmentJob(file, 'preview', (blob) => {
+      const url = URL.createObjectURL(blob);
+      previewUrls.add(url);
+      const opened = openAttachmentViewer({
+        fileName: file.fileName || '附件',
+        fileUrl: url,
+        title: file.fileName || '附件',
+      });
+      if (!opened) {
+        URL.revokeObjectURL(url);
+        previewUrls.delete(url);
+      }
+    });
+  }
+
   return {
     accountMissing,
     actionUids,
@@ -302,6 +402,7 @@ export function usePersonalMail() {
     activeFolderName,
     activeUid,
     boot,
+    booted,
     changePage,
     checkedUids,
     dateRange,
@@ -309,12 +410,16 @@ export function usePersonalMail() {
     detailLoading,
     downloadAttachment,
     downloadingIndexes,
+    previewAttachment,
+    previewingIndexes,
     folderLoading,
     folders,
     items,
     keyword,
     listLoading,
     loadList,
+    markAllInboxRead,
+    markingAllRead,
     markRead,
     moveTo,
     narrowReading,
