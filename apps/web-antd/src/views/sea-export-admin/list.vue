@@ -93,6 +93,7 @@ import AiBillFeeUploadModal from '#/views/_shared/order-fee/modules/ai-bill-fee-
 import { useAiBillFeeLocate } from '#/views/_shared/order-fee/use-ai-bill-fee-locate';
 
 import BatchEditBusinessModal from './modules/batch-edit-business-modal.vue';
+import BillOfLadingStatusCell from './modules/bill-of-lading-status-cell.vue';
 import BusinessStatusCell from './modules/business-status-cell.vue';
 
 const perm = createAbpPermission('Admin.SeaExport');
@@ -724,6 +725,9 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           :processes="serviceTypeProcessMap"
           @refreshed="row.seaExportServices = $event"
         />
+      </template>
+      <template #billOfLadings="{ row }">
+        <BillOfLadingStatusCell :bills="row?.billOfLadings" />
       </template>
       <template #mblNum="{ row }">
         <span class="inline-flex min-w-0 items-center">

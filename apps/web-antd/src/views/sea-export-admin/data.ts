@@ -1171,6 +1171,14 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       slots: { default: 'businessStatus' },
     },
     {
+      field: 'billOfLadings',
+      title: '提单状态',
+      minWidth: 200,
+      sortable: false,
+      showOverflow: true,
+      slots: { default: 'billOfLadings' },
+    },
+    {
       field: 'receiveFeeStatus',
       title: $t('seaExport.export.orderFee.receiveFeeStatus'),
       minWidth: 110,

@@ -537,6 +537,19 @@ export namespace SeaExportAdminApi {
     transportOrder?: TransportOrderEditDto;
   }
 
+  /**
+   * 海运出口列表上的提单摘要。
+   * 仅 `GetPagedListAsync` 返回；详情、监装工单、服务项任务复用的海运出口对象为 null。
+   */
+  export interface SeaExportBillOfLadingSimpleDto {
+    /** 提单 id */
+    id: string;
+    /**
+     * 提单状态：0 待签入、1 已签入、2 已驳回、3 签出审核中、4 可签出、5 已签出、6 已扣单。
+     */
+    status: number;
+  }
+
   export interface SeaExportDto {
     id: number | string;
     /**
@@ -660,6 +673,11 @@ export namespace SeaExportAdminApi {
     payFeeStatus?: number | null;
     /** 应收费用组合状态（含更改单、结算等；该方向无费用时为 null） */
     receiveFeeStatus?: number | null;
+    /**
+     * 该票提单。仅列表返回：主单在前，分单按创建时间从早到晚。
+     * 没有提单时为空数组；详情及其它复用处为 null，不要从那里读。
+     */
+    billOfLadings?: null | SeaExportBillOfLadingSimpleDto[];
     /** 是否已发起过海运运单运踪订阅（存在订阅记录即为 true） */
     isYundangSubscribed?: boolean;
     /** 当前订阅记录是否订阅成功（对应订阅表 isSuccess） */
