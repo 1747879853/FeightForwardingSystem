@@ -1,7 +1,6 @@
 import { createFieldPermission } from '#/composables/field-permission';
 import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
 import { shallowRef, nextTick, type Ref } from 'vue';
-import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { markUserEditedCell } from '../../data';
 import {
@@ -40,11 +39,12 @@ export function useHotSettings(
   linkage: any,
   dropdownSources: any,
   currentOptionsCache: any,
-  loadClientList: (industryCategory: string) => Promise<any[]>,
+  beginSettlementClientBrowse: () => void,
+  loadMoreSettlementClients: () => Promise<Array<{
+    label: string;
+    value: any;
+  }> | null>,
   getColumnIndex: (field: string) => number,
-  getSettlementIndustryCategory: (
-    industryCategory?: number,
-  ) => string | undefined,
   onOpenDropdown?: (
     rowIndex: number,
     colIndex: number,
@@ -70,6 +70,40 @@ export function useHotSettings(
     return ((allClientsByIndustry as any).value ??
       allClientsByIndustry ??
       {}) as Record<string, any[]>;
+  };
+
+  const settlementDropdownScrollBound = new WeakSet<HTMLElement>();
+
+  const bindSettlementDropdownScroll = (editor: any, attempt = 0) => {
+    const holder = editor?.htEditor?.rootElement?.querySelector(
+      '.ht_master .wtHolder',
+    ) as HTMLElement | null;
+    if (!holder || holder.clientHeight <= 0) {
+      if (attempt < 8) {
+        requestAnimationFrame(() =>
+          bindSettlementDropdownScroll(editor, attempt + 1),
+        );
+      }
+      return;
+    }
+    if (settlementDropdownScrollBound.has(holder)) return;
+    settlementDropdownScrollBound.add(holder);
+    holder.addEventListener('scroll', () => {
+      if (holder.clientHeight <= 0) return;
+      const distanceToBottom =
+        holder.scrollHeight - holder.scrollTop - holder.clientHeight;
+      if (distanceToBottom > 16) return;
+      const scrollTop = holder.scrollTop;
+      void loadMoreSettlementClients().then((items) => {
+        if (!items?.length || editor.isOpened?.() === false) return;
+        currentOptionsCache.value = items;
+        editor.updateChoicesList?.(items.map((item) => item.label));
+        holder.scrollTop = scrollTop;
+        requestAnimationFrame(() => {
+          holder.scrollTop = scrollTop;
+        });
+      });
+    });
   };
 
   /** 同一帧渲染内复用：高亮 Set / 行级状态色与可编辑判定 */
@@ -312,32 +346,6 @@ export function useHotSettings(
               (item: any) => item.label,
             );
             onOpenDropdown?.(rowIndex, colIndex, field, source);
-          } else if (field === 'settlementId') {
-            const actualDataSource = getDataSource();
-            const currentRow = actualDataSource[rowIndex];
-            const currentRowAny = currentRow as any;
-            let industryCategoryValue = getSettlementIndustryCategory(
-              currentRowAny?.industryCategory_value ??
-                currentRowAny?.industryCategory,
-            );
-
-            // ✅ 关键修改：允许不选择行业类别，此时加载全部客户
-            const categoryToLoad =
-              industryCategoryValue && typeof industryCategoryValue === 'string'
-                ? industryCategoryValue
-                : '';
-
-            loadClientList(categoryToLoad)
-              .then((options: any[]) => {
-                currentOptionsCache.value = options;
-                const source = options.map((opt: any) => opt.label);
-                onOpenDropdown?.(rowIndex, colIndex, field, source);
-              })
-              .catch(() => {
-                message.error('加载客户列表失败');
-              });
-
-            return;
           } else if (field === 'unit') {
             const source =
               dropdownSources.value.unitList?.map((item: any) => item.label) ||
@@ -391,37 +399,9 @@ export function useHotSettings(
           node.textContent = '';
         });
 
-        // ✅ 关键修复：对于 settlementId 和 unit 列，在编辑器激活前预加载数据
-        // 这样 autocomplete 编辑器的 source 函数就能获取到最新数据
         if (field === 'settlementId') {
-          const actualDataSource = getDataSource();
-          const currentRow = actualDataSource[row] as any;
-          let industryCategoryValue = getSettlementIndustryCategory(
-            currentRow?.industryCategory_value ?? currentRow?.industryCategory,
-          );
-
-          // ✅ 允许不选择行业类别，此时加载全部客户
-          const categoryToLoad =
-            industryCategoryValue && typeof industryCategoryValue === 'string'
-              ? industryCategoryValue
-              : '';
-
-          // 异步加载客户列表
-          loadClientList(categoryToLoad)
-            .then((options: any[]) => {
-              currentOptionsCache.value = options;
-              // ✅ 更新当前单元格的 source meta，确保 autocomplete 编辑器能看到新数据
-              this.setCellMeta(
-                row,
-                col,
-                'source',
-                options.map((opt: any) => opt.label),
-              );
-            })
-            .catch((error) => {
-              console.error('❌ [beforeBeginEditing] 加载客户列表失败:', error);
-              message.error('加载客户列表失败');
-            });
+          // 打开时先按空关键字拉第 1 页，不要拿单元格里的简称去搜
+          beginSettlementClientBrowse();
         } else if (field === 'unit') {
           // ✅ 对于 unit 列，确保 dropdownSources.unitList 是最新的
           const source =
@@ -475,6 +455,7 @@ export function useHotSettings(
             rowData,
             currentOptionsCache.value as any[],
           );
+          bindSettlementDropdownScroll(editor);
         }
         if (label && typeof editor.setValue === 'function') {
           editor.setValue(label);

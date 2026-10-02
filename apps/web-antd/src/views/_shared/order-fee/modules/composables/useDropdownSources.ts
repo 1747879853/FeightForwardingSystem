@@ -2,10 +2,7 @@ import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 // ✅ 修改：使用新的 getFeeCodeListAsync 接口（非 Admin，无需权限）
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
-import {
-  getClientGroupedByIndustryCategory,
-  getClientPagedList,
-} from '#/api/common/client';
+import { getClientPagedList } from '#/api/common/client';
 // ✅ 新增：导入币别列表接口
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 // ✅ 新增：导入汇率列表接口
@@ -16,10 +13,11 @@ import * as clientConstants from '#/views/client/base/data';
 type ClientOption = { label: string; value: any; [key: string]: any };
 type DropdownOption = { label: string; value: any; [key: string]: any };
 
-/** 应收/应付表共享客户缓存，按行业懒加载，避免挂载全量阻塞 */
+/** 应收/应付表共享客户缓存。只累积已经翻页看过的客户，供拖拽填充解析名称 */
 const sharedAllClientsByIndustry = ref<Record<string, ClientOption[]>>({});
-let loadAllClientsPromise: null | Promise<void> = null;
-const industryLoadPromises = new Map<string, Promise<void>>();
+
+/** 与基础信息 ClientSelect 一致 */
+const CLIENT_PAGE_SIZE = 20;
 
 /** 费用代码 / 币别 / 行业 / 单位：模块级单例，双表只拉一次 */
 const sharedDropdownSources = ref({
@@ -318,124 +316,149 @@ export function useDropdownSources(orderCtnList: any) {
   };
 
   /**
-   * 一次性加载全部客户（按行业分组）。仅在「未选行业」打开结算对象时调用。
+   * 结算对象下拉分页。打开时忽略单元格里已有的简称，先拉第 1 页；
+   * 之后的输入按关键字向服务端重新查询。
    */
-  const loadAllClients = async () => {
-    if (Object.keys(allClientsByIndustry.value).length > 0) return;
-    if (loadAllClientsPromise) {
-      await loadAllClientsPromise;
-      return;
+  const settlementClientPage = {
+    industryCategory: '',
+    keyword: '',
+    pageIndex: 0,
+    total: 0,
+    items: [] as ClientOption[],
+    loading: false,
+    requestSeq: 0,
+  };
+  let settlementBrowseOnce = false;
+  let settlementQueryTimer: null | ReturnType<typeof setTimeout> = null;
+
+  const rememberClients = (industryCategory: string, items: ClientOption[]) => {
+    const key = industryCategory || '*';
+    const prev = allClientsByIndustry.value[key] || [];
+    const merged = new Map(prev.map((item) => [String(item.value), item]));
+    for (const item of items) {
+      merged.set(String(item.value), item);
     }
-
-    loadAllClientsPromise = (async () => {
-      try {
-        const groupedData = await getClientGroupedByIndustryCategory();
-        if (!groupedData || !Array.isArray(groupedData)) return;
-
-        groupedData.forEach((group) => {
-          if (group.key && group.value?.length) {
-            allClientsByIndustry.value[group.key] = mapClientOptions(
-              group.value,
-            );
-          }
-        });
-      } catch (error) {
-        console.error('[loadAllClients] failed:', error);
-        message.error('加载客户数据失败');
-      } finally {
-        loadAllClientsPromise = null;
-      }
-    })();
-
-    await loadAllClientsPromise;
+    allClientsByIndustry.value[key] = [...merged.values()];
   };
 
-  /** 按行业懒加载客户；同行业并发请求去重 */
-  const ensureIndustryClients = async (industryCategory: string) => {
-    const key = String(industryCategory).trim();
-    if (!key) {
-      await loadAllClients();
-      return;
-    }
-    if (allClientsByIndustry.value[key]?.length) return;
-
-    const inflight = industryLoadPromises.get(key);
-    if (inflight) {
-      await inflight;
-      return;
-    }
-
-    const task = (async () => {
-      try {
-        const res = await getClientPagedList({
-          industryCategory: key,
-          pageIndex: 1,
-          pageSize: 1000,
-        });
-        allClientsByIndustry.value[key] = mapClientOptions(res.items || []);
-      } catch (error) {
-        console.error('[ensureIndustryClients] failed:', key, error);
-        message.error('加载客户列表失败');
-        allClientsByIndustry.value[key] = [];
-      }
-    })().finally(() => {
-      industryLoadPromises.delete(key);
-    });
-
-    industryLoadPromises.set(key, task);
-    await task;
+  const beginSettlementClientBrowse = () => {
+    settlementBrowseOnce = true;
   };
 
-  /**
-   * 根据行业类别获取客户列表（缓存未命中则按行业拉取）
-   */
-  const loadClientList = async (
-    industryCategory?: string,
-    keyword?: string,
+  const fetchClientPage = async (
+    industryCategory: string,
+    keyword: string,
+    pageIndex: number,
   ) => {
+    const res = await getClientPagedList({
+      industryCategory,
+      keyword: keyword || undefined,
+      pageIndex,
+      pageSize: CLIENT_PAGE_SIZE,
+    });
+    return {
+      items: mapClientOptions(res.items || []),
+      total: res.totalCount || 0,
+    };
+  };
+
+  const querySettlementClients = (
+    industryCategory: string,
+    rawKeyword: string,
+    done: (items: ClientOption[]) => void,
+  ) => {
+    let keyword = rawKeyword.trim();
+    if (settlementBrowseOnce) {
+      settlementBrowseOnce = false;
+      keyword = '';
+    }
+
+    if (
+      settlementClientPage.industryCategory === industryCategory &&
+      settlementClientPage.keyword === keyword &&
+      settlementClientPage.pageIndex >= 1 &&
+      !settlementClientPage.loading
+    ) {
+      done(settlementClientPage.items);
+      return;
+    }
+
+    if (settlementQueryTimer) {
+      clearTimeout(settlementQueryTimer);
+      settlementQueryTimer = null;
+    }
+
+    const seq = ++settlementClientPage.requestSeq;
+    const run = async () => {
+      settlementClientPage.loading = true;
+      try {
+        const page = await fetchClientPage(industryCategory, keyword, 1);
+        if (seq !== settlementClientPage.requestSeq) return;
+        settlementClientPage.industryCategory = industryCategory;
+        settlementClientPage.keyword = keyword;
+        settlementClientPage.pageIndex = 1;
+        settlementClientPage.total = page.total;
+        settlementClientPage.items = page.items;
+        rememberClients(industryCategory, page.items);
+        done(page.items);
+      } catch (error) {
+        console.error('[querySettlementClients] failed:', error);
+        if (seq !== settlementClientPage.requestSeq) return;
+        message.error('加载客户列表失败');
+        done([]);
+      } finally {
+        if (seq === settlementClientPage.requestSeq) {
+          settlementClientPage.loading = false;
+        }
+      }
+    };
+
+    if (keyword) {
+      settlementClientPage.loading = true;
+      settlementQueryTimer = setTimeout(() => {
+        settlementQueryTimer = null;
+        void run();
+      }, 300);
+      return;
+    }
+    void run();
+  };
+
+  /** 下拉滚到底时追加下一页。没有更多或条件已变时返回 null */
+  const loadMoreSettlementClients = async () => {
+    if (settlementClientPage.loading || settlementClientPage.pageIndex < 1) {
+      return null;
+    }
+    if (settlementClientPage.items.length >= settlementClientPage.total) {
+      return null;
+    }
+
+    const seq = settlementClientPage.requestSeq;
+    const industryCategory = settlementClientPage.industryCategory;
+    const keyword = settlementClientPage.keyword;
+    const nextPage = settlementClientPage.pageIndex + 1;
+    settlementClientPage.loading = true;
     try {
-      let cachedClients: ClientOption[] = [];
-
-      if (!industryCategory || industryCategory.trim() === '') {
-        await loadAllClients();
-        const allIndustryKeys = Object.keys(allClientsByIndustry.value);
-        allIndustryKeys.forEach((key) => {
-          const clients = allClientsByIndustry.value[key] || [];
-          cachedClients = [...cachedClients, ...clients];
-        });
-
-        const uniqueMap = new Map();
-        cachedClients.forEach((client) => {
-          if (!uniqueMap.has(client.value)) {
-            uniqueMap.set(client.value, client);
-          }
-        });
-        cachedClients = Array.from(uniqueMap.values());
-      } else {
-        await ensureIndustryClients(industryCategory);
-        cachedClients = allClientsByIndustry.value[industryCategory] || [];
-      }
-
-      let filteredClients = cachedClients;
-      if (keyword && keyword.trim()) {
-        const keywordLower = keyword.toLowerCase().trim();
-        filteredClients = cachedClients.filter((client: any) => {
-          const label = client.label?.toLowerCase() || '';
-          const name = (client.fullName || client.name || '').toLowerCase();
-          const code = (client.code || '').toLowerCase();
-          return (
-            label.includes(keywordLower) ||
-            name.includes(keywordLower) ||
-            code.includes(keywordLower)
-          );
-        });
-      }
-
-      return filteredClients;
+      const page = await fetchClientPage(industryCategory, keyword, nextPage);
+      if (seq !== settlementClientPage.requestSeq) return null;
+      settlementClientPage.pageIndex = nextPage;
+      settlementClientPage.total = page.total;
+      settlementClientPage.items = [
+        ...settlementClientPage.items,
+        ...page.items,
+      ];
+      rememberClients(industryCategory, page.items);
+      return settlementClientPage.items;
     } catch (error) {
-      console.error('[loadClientList] failed:', error);
-      message.error('加载客户列表失败');
-      return [];
+      console.error('[loadMoreSettlementClients] failed:', error);
+      if (seq === settlementClientPage.requestSeq) {
+        message.error('加载客户列表失败');
+      }
+      return null;
+    } finally {
+      if (seq === settlementClientPage.requestSeq) {
+        settlementClientPage.loading = false;
+      }
     }
   };
 
@@ -463,8 +486,9 @@ export function useDropdownSources(orderCtnList: any) {
     clearExchangeRateCache, // ✅ 新增：导出清空汇率缓存的方法
     loadCurrencyList, // ✅ 新增：导出币别加载函数，用于手动刷新
     loadExchangeRateCache, // ✅ 新增：导出汇率缓存加载函数
-    loadAllClients, // ✅ 导出一次性加载方法
-    loadClientList,
+    beginSettlementClientBrowse,
+    querySettlementClients,
+    loadMoreSettlementClients,
     getSettlementIndustryCategory,
   };
 }
