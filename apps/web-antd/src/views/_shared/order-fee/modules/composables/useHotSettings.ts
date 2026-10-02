@@ -30,6 +30,117 @@ const USER_EDIT_SOURCES = new Set([
 /** 已修改单元格角标提示文案 */
 const EDITED_CELL_TITLE = '该单元格已修改';
 
+/** 盖过应付卡片和拖拽条，仍低于弹窗 */
+const FEE_DROPDOWN_Z_INDEX = '2000';
+
+/**
+ * 费用下拉挂在表格内部，会被应收卡片的 overflow 裁掉。
+ * 只把选项列表挪到 body。输入框留在单元格里，避免 Handsontable 把列表高度算成 0。
+ */
+function portalFeeDropdownEditor(editor: any) {
+  const list = editor?.htContainer as HTMLElement | undefined;
+  const holder = editor?.TEXTAREA_PARENT as HTMLElement | undefined;
+  if (!list || !holder) return () => {};
+
+  if (list.dataset.feeDropdownPortal !== '1') {
+    list.dataset.feeDropdownPortal = '1';
+    // 点在下拉里不算表格外部点击，否则选项还没写入编辑器就被关掉
+    list.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+    });
+  }
+  if (list.parentElement !== document.body) {
+    document.body.appendChild(list);
+  }
+
+  let released = false;
+  let observer: MutationObserver;
+  const place = () => {
+    if (released || editor.isOpened?.() === false) return;
+    const cell = (editor.getEditedCell?.() || editor.TD) as
+      | HTMLElement
+      | null
+      | undefined;
+    if (!cell?.isConnected) return;
+    const rect = cell.getBoundingClientRect();
+    const table = list.querySelector(
+      '.ht_master table.htCore',
+    ) as HTMLElement | null;
+    const contentHeight = table?.offsetHeight ?? 0;
+    const cap = Math.min(280, window.innerHeight - 24);
+    if (contentHeight > 8) {
+      const nextHeight = Math.min(contentHeight + 2, cap);
+      const hider = list.querySelector(
+        '.ht_master .wtHider',
+      ) as HTMLElement | null;
+      if (hider && hider.offsetHeight + 2 < contentHeight) {
+        hider.style.height = `${contentHeight}px`;
+      }
+      if ((list.clientHeight || 0) + 8 < nextHeight) {
+        list.style.height = `${nextHeight}px`;
+      }
+    }
+    const listHeight = list.offsetHeight;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const topPx =
+      listHeight > 0 &&
+      spaceBelow < Math.min(listHeight, 160) &&
+      rect.top > spaceBelow
+        ? Math.round(rect.top - listHeight)
+        : Math.round(rect.bottom);
+    const top = `${topPx}px`;
+    const left = `${Math.round(rect.left)}px`;
+    if (
+      list.style.position === 'fixed' &&
+      list.style.top === top &&
+      list.style.left === left &&
+      list.style.zIndex === FEE_DROPDOWN_Z_INDEX
+    ) {
+      return;
+    }
+    list.style.position = 'fixed';
+    list.style.top = top;
+    list.style.left = left;
+    list.style.right = 'auto';
+    list.style.margin = '0';
+    list.style.zIndex = FEE_DROPDOWN_Z_INDEX;
+  };
+
+  const release = () => {
+    if (released) return;
+    released = true;
+    observer.disconnect();
+    window.removeEventListener('resize', place);
+    document.removeEventListener('scroll', place, true);
+    list.style.position = '';
+    list.style.top = '';
+    list.style.left = '';
+    list.style.right = '';
+    list.style.zIndex = '';
+    if (list.parentElement !== holder) {
+      holder.appendChild(list);
+    }
+  };
+
+  observer = new MutationObserver(() => {
+    if (editor.isOpened?.() === false || list.style.display === 'none') {
+      release();
+      return;
+    }
+    place();
+  });
+  observer.observe(list, {
+    attributes: true,
+    attributeFilter: ['style'],
+  });
+  window.addEventListener('resize', place);
+  document.addEventListener('scroll', place, true);
+  place();
+  requestAnimationFrame(place);
+
+  return release;
+}
+
 export function useHotSettings(
   dataSource: Ref<any[]> | any[],
   selectedRowKeys: (string | number)[] | Ref<(string | number)[]>,
@@ -73,6 +184,7 @@ export function useHotSettings(
   };
 
   const settlementDropdownScrollBound = new WeakSet<HTMLElement>();
+  let releaseDropdownPortal: (() => void) | null = null;
 
   const bindSettlementDropdownScroll = (editor: any, attempt = 0) => {
     const holder = editor?.htEditor?.rootElement?.querySelector(
@@ -429,6 +541,8 @@ export function useHotSettings(
         }
         const field = hotColumns.value[col]?.data;
         if (!isOrderFeeSelectField(field) || !editor) return;
+        releaseDropdownPortal?.();
+        releaseDropdownPortal = portalFeeDropdownEditor(editor);
         const rowData = getDataSource()[row] as any;
         if (!rowData) return;
         const rawId = rowData[`${field}_value`] ?? rowData[field];
@@ -812,6 +926,11 @@ export function useHotSettings(
 
       // Handsontable 将 this 绑为实例；传入后联动可走 refreshHotSourceRows 脏行刷新
       linkage.handleAfterChange(processedChanges, source, this);
+    },
+
+    afterDestroy() {
+      releaseDropdownPortal?.();
+      releaseDropdownPortal = null;
     },
 
     afterGetRowHeader(_row: number, TH: HTMLTableCellElement) {
