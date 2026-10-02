@@ -38,12 +38,6 @@ import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getMyOrgPath } from '#/composables/use-my-org';
 import { downloadAttachmentWithFriendlyName } from '#/utils/download-file';
 
-// 导入组合状态映射（发票状态 = 开票状态与冲红状态合并）
-import {
-  getCombinedStatusColor,
-  getCombinedStatusLabel,
-} from './invoice-status';
-
 // 导入组合函数
 import { useFormData } from './composables/use-form-data';
 import { useGoodsDetails } from './composables/use-goods-details';
@@ -689,20 +683,6 @@ onMounted(() => {
                       <span class="basic-config__meta-label">开票日期</span>
                       <span class="basic-config__meta-value">
                         {{ invoiceIssueTime || '-' }}
-                      </span>
-                    </div>
-                    <div v-if="editId" class="basic-config__meta-row">
-                      <span class="basic-config__meta-label">发票状态</span>
-                      <span class="basic-config__meta-value">
-                        <Tag
-                          :color="
-                            getCombinedStatusColor(invoiceStatus.combinedStatus)
-                          "
-                        >
-                          {{
-                            getCombinedStatusLabel(invoiceStatus.combinedStatus)
-                          }}
-                        </Tag>
                       </span>
                     </div>
                   </div>

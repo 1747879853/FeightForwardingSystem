@@ -11,7 +11,7 @@ last_updated: 2026-10-02
 
 # 2. 功能与操作说明 (Features & Operations)
 
-按结算对象、申请单号、申请时间、发票抬头、币别和申请人查询。筛选变化时清理旧选择；重置或重新打开时使旧请求失效。加载期间禁止确认。列表「发票号」后展示「提单号」列，取接口 `mblNums` 顿号拼接。抽屉费用明细展示原币币别。列表拖宽列时固定其余列宽，不挤压邻列。
+按结算对象、申请单号、申请时间、发票抬头、币别和申请人查询。筛选变化时清理旧选择；重置或重新打开时使旧请求失效。加载期间禁止确认。列表「发票号」后展示「提单号」列，取接口 `mblNums` 顿号拼接。抽屉费用明细展示原币币别。列表拖宽列时固定其余列宽，不挤压邻列。列表与编辑页不展示「发票状态」（`combinedStatus`）；税局开票等按钮仍按接口 `issueStatus` 判断。
 
 新建/编辑页右上角提供「保存」「保存并新建」：普通保存行为不变（新建成功进编辑页）；「保存并新建」在校验通过并落库后进入空白新建页，便于财务连续开票。已锁定（`editLocked`）时两按钮均禁用。
 
@@ -38,6 +38,7 @@ last_updated: 2026-10-02
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | --- | --- | --- | --- |
+| 2026-10-02 | `Fix` | 列表与编辑页去掉「发票状态」列/筛选/展示。 | 后端 `issueStatus`/`combinedStatus` 仍用于税局开票等逻辑。详见[变更记录](../../changelogs/change-log-2026-10-02-invoice-issue-hide-combined-status.md)。 |
 | 2026-10-02 | `Feature` | 新建/编辑页右上角增加「保存并新建」，保存成功后进入空白新建页。 | 新建页同路由用 `refreshTab` 重挂载；编辑页 `push` 新建后 `closeTabByKey` 关编辑 tab。详见[变更记录](../../changelogs/change-log-2026-10-02-invoice-issue-save-and-new.md)。 |
 | 2026-10-02 | `Feature` | 选申请抽屉费用明细增加「原币币别」。 | TAPD #1000204。绑费用 `currencyCode`。详见[变更记录](../../changelogs/change-log-2026-10-02-tapd-1000204-invoice-issue-fee-orig-currency.md)。 |
 | 2026-10-02 | `Fix` | 列表拖列宽改用固定模式，不再挤压邻列；NestedDataTable 同步按列宽撑开可横滚。 | TAPD #1001037。详见[变更记录](../../changelogs/change-log-2026-10-02-tapd-1001037-invoice-issue-col-resize-fixed.md)。 |

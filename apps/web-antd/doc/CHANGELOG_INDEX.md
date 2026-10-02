@@ -13,6 +13,20 @@
 
 ## 2026-10
 
+- [2026-10-02] [个人邮箱收件箱一键已读](./changelogs/change-log-2026-10-02-personal-mail-mark-all-read.md)
+
+- [2026-10-02] [发票开出去除发票状态展示](./changelogs/change-log-2026-10-02-invoice-issue-hide-combined-status.md)
+
+- [2026-10-02] [个人邮箱定时拉取未读和新邮件](./changelogs/change-log-2026-10-02-personal-mail-poll-list.md)
+
+- [2026-10-02] [个人邮箱收件箱显示未读数](./changelogs/change-log-2026-10-02-personal-mail-inbox-unread.md)
+
+- [2026-10-02] [个人邮箱写信显示签名](./changelogs/change-log-2026-10-02-personal-mail-compose-signature.md)
+
+- [2026-10-02] [个人邮箱附件预览](./changelogs/change-log-2026-10-02-personal-mail-attachment-preview.md)
+
+- [2026-10-02] [个人邮箱名称、收件数量和全局悬浮框](./changelogs/change-log-2026-10-02-personal-mail-float.md)
+
 - [2026-10-02] [个人邮箱列表布局与附件下载反馈](./changelogs/change-log-2026-10-02-personal-mail-list-layout.md)
 
 - [2026-10-02] [发票开出保存并新建](./changelogs/change-log-2026-10-02-invoice-issue-save-and-new.md)
