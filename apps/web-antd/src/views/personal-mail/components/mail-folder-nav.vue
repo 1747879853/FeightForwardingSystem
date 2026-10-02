@@ -103,10 +103,15 @@ function folderIcon(folder: PersonalMailAdminApi.MailFolderSummary) {
   border-radius: 6px;
 }
 
-.mail-folders__item.is-active {
+.mail-folders__item:hover {
+  background: hsl(var(--primary) / 10%);
+}
+
+.mail-folders__item.is-active,
+.mail-folders__item.is-active:hover {
   font-weight: 600;
   color: hsl(var(--primary));
-  background: hsl(var(--primary) / 12%);
+  background: hsl(var(--primary) / 18%);
 }
 
 .mail-folders__icon {
