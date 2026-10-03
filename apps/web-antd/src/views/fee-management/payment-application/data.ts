@@ -233,6 +233,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     createKeysSearchSchema({
+      formItemClass: 'col-span-1',
       help: '精确匹配（非模糊）：主提单号、订舱编号、委托编号',
     }),
     {
