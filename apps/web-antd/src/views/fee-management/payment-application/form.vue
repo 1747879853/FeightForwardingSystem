@@ -743,10 +743,6 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     }
   }
 
-  nextTick(() => {
-    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
-  });
-
   if (createdApplicationId) {
     message.success(t('addSuccess'));
     markListShouldRefresh('PaymentApplicationList');
@@ -1052,10 +1048,6 @@ async function loadEditData() {
     settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
       (ps) => ps.attachments ?? [],
     );
-
-    nextTick(() => {
-      expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
-    });
   } finally {
     pageLoading.value = false;
   }
@@ -1084,9 +1076,6 @@ async function prefillFromOrderFeeIds(feeIds: string[]): Promise<boolean> {
     ];
   }
 
-  nextTick(() => {
-    expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
-  });
   return true;
 }
 
