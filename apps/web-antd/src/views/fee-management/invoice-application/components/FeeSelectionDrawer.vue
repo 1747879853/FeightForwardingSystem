@@ -37,6 +37,10 @@ import {
   getAppliedAmountBounds,
   isNegativeMoney,
 } from '../applied-amount-range';
+import {
+  isOriginalApplicationCurrency,
+  ORIGINAL_APPLICATION_CURRENCY,
+} from '../original-currency';
 
 const baseStore = useBaseStore();
 interface Props {
@@ -64,7 +68,8 @@ const emit = defineEmits<{
     data: {
       selectedFees: any[];
       settlementId: string;
-      currencyId: number;
+      /** 为空表示按费用原币分别生成申请 */
+      currencyId: null | number;
       invoiceExchangeRate?: number;
       feeGroupsData?: any[]; // ✅ 新增：传递完整的费用分组数据
     },
@@ -82,8 +87,25 @@ const feeDrawerLoading = ref(false);
 const filterExpanded = ref(false);
 const selectedSettlementId = ref<string>('');
 const selectedSettlementName = ref<string>('');
-const selectedCurrencyId = ref<number | undefined>();
+const selectedCurrencyId = ref<number | string | undefined>(
+  ORIGINAL_APPLICATION_CURRENCY,
+);
 const selectedCurrencyCode = ref<string>('');
+
+async function onMainCurrencyChange(value: unknown) {
+  if (props.currencyId && props.settlementId) return;
+  if (isOriginalApplicationCurrency(value)) {
+    selectedCurrencyId.value = ORIGINAL_APPLICATION_CURRENCY;
+    selectedCurrencyCode.value = '';
+    invoiceExchangeRate.value = 1;
+    return;
+  }
+  const currencyId = Number(value);
+  selectedCurrencyId.value = currencyId;
+  if (currencyId) {
+    await loadDefaultExchangeRate(currencyId);
+  }
+}
 
 // 抽屉筛选条件
 const keyWord = ref<string>('');
@@ -340,7 +362,7 @@ function handleResetFilter() {
   selectionQuery.reset();
   selectedSettlementId.value = '';
   selectedSettlementName.value = '';
-  selectedCurrencyId.value = undefined;
+  selectedCurrencyId.value = props.currencyId ?? ORIGINAL_APPLICATION_CURRENCY;
   keyWord.value = '';
   filterMblNum.value = '';
   filterClientId.value = '';
@@ -416,13 +438,12 @@ function handleOpenFeeDrawer() {
   if (!props.settlementId) {
     selectedSettlementId.value = '';
     selectedSettlementName.value = '';
-    selectedCurrencyId.value = undefined;
     selectedFeeRowKeys.value = [];
   } else {
     selectedSettlementId.value = props.settlementId;
     updateSettlementNameById(props.settlementId);
-    selectedCurrencyId.value = props.currencyId;
   }
+  selectedCurrencyId.value = props.currencyId ?? ORIGINAL_APPLICATION_CURRENCY;
 
   drawerVisible.value = true;
   filterExpanded.value = false;
@@ -463,11 +484,6 @@ async function handleSaveFeeSelection() {
     return;
   }
 
-  if (!selectedCurrencyId.value) {
-    message.warning('请选择开票申请币别（主币别）');
-    return;
-  }
-
   for (const fee of selectedFees) {
     const rangeError = appliedAmountRangeMessage(
       fee.appliedAmount,
@@ -484,7 +500,9 @@ async function handleSaveFeeSelection() {
   emit('save', {
     selectedFees,
     settlementId,
-    currencyId: selectedCurrencyId.value,
+    currencyId: isOriginalApplicationCurrency(selectedCurrencyId.value)
+      ? null
+      : Number(selectedCurrencyId.value),
     invoiceExchangeRate: invoiceExchangeRate.value,
     feeGroupsData: feeGroupsData.value, // ✅ 传递完整的费用分组数据
   });
@@ -576,16 +594,6 @@ async function loadFeeGroupData() {
         .map((node: any) => node.id);
       selectedFeeRowKeys.value = matchedKeys;
       expandedRowKeys.value = treeData.map((node: any) => node.id);
-      // 预填时若尚未选定申请主币别，用首条费用币别作为默认主币别（不筛选费用）
-      if (!selectedCurrencyId.value && matchedKeys.length > 0) {
-        const first = flat.find(
-          (n: any) => n.id === matchedKeys[0] && n.orderFee?.currencyId,
-        );
-        if (first?.orderFee?.currencyId) {
-          selectedCurrencyId.value = first.orderFee.currencyId;
-          await loadDefaultExchangeRate(first.orderFee.currencyId);
-        }
-      }
     }
   } catch (error) {
     console.error('❌ 加载费用数据失败:', error);
@@ -893,15 +901,12 @@ defineExpose({
             <span class="fsd-indicator" />
             <span class="fsd-filters__title">开票要素</span>
             <span class="fsd-filters__hint">
-              主币别创建后不可改；费用可多币别，非主币别需在表单补汇率
+              默认按费用原币分别生成申请；选定统一币别后合并为一张
             </span>
           </div>
           <div class="fsd-main-currency__body">
             <div class="fsd-field">
-              <span class="fsd-field__label">
-                <span class="fsd-required form-required-mark">*</span>
-                结算单位
-              </span>
+              <span class="fsd-field__label">结算单位</span>
               <ClientSelect
                 :model-value="selectedSettlementId"
                 placeholder="请选择结算单位"
@@ -920,24 +925,31 @@ defineExpose({
               />
             </div>
             <div class="fsd-field fsd-main-currency__field">
-              <span class="fsd-field__label">
-                <span class="fsd-required form-required-mark">*</span>
-                申请主币别
-              </span>
+              <span class="fsd-field__label">申请主币别</span>
               <CurrencySelect
                 :model-value="selectedCurrencyId"
-                placeholder="请选择开票申请主币别"
+                placeholder="原币申请"
                 class="fsd-field__control fsd-main-currency__select"
                 :disabled="!!currencyId && !!settlementId"
-                @update:model-value="
-                  async (v) => {
-                    selectedCurrencyId = v as number;
-                    if (v) await loadDefaultExchangeRate(v as number);
-                  }
-                "
+                :extra-options="[
+                  {
+                    label: '原币申请',
+                    value: ORIGINAL_APPLICATION_CURRENCY,
+                  },
+                ]"
+                @update:model-value="onMainCurrencyChange"
               />
             </div>
-            <div v-if="selectedCurrencyCode" class="fsd-main-currency__badge">
+            <div
+              v-if="isOriginalApplicationCurrency(selectedCurrencyId)"
+              class="fsd-main-currency__badge"
+            >
+              按费用原币分别生成
+            </div>
+            <div
+              v-else-if="selectedCurrencyCode"
+              class="fsd-main-currency__badge"
+            >
               当前主币别
               <strong>{{ selectedCurrencyCode }}</strong>
             </div>
@@ -1220,7 +1232,9 @@ defineExpose({
     <template #footer>
       <div class="fsd-footer">
         <div
-          v-if="selectedCurrencyId && selectedCurrencyId !== 1"
+          v-if="
+            typeof selectedCurrencyId === 'number' && selectedCurrencyId !== 1
+          "
           class="fsd-footer__rate"
         >
           <span class="fsd-footer__rate-label">

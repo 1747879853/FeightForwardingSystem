@@ -44,6 +44,9 @@ export function useFormData() {
     clientInvoiceBankId: '',
     invoiceIssueItems: [],
     invoiceIssueGoodsDtls: [],
+    mailTo: [],
+    mailCc: [],
+    mailRecipientsTouched: false,
   });
 
   // 基础信息

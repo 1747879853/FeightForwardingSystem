@@ -160,6 +160,17 @@ watch(
 onBeforeUnmount(() => {
   editorRef.value?.destroy();
 });
+
+function insertText(text: string) {
+  const editor = editorRef.value;
+  if (!editor || props.disabled || !text) {
+    return;
+  }
+  editor.focus();
+  editor.insertText(text);
+}
+
+defineExpose({ insertText });
 </script>
 
 <template>

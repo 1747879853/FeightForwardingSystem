@@ -1,0 +1,29 @@
+算法：
+hmac_sha1 base64encode
+具体可参考php或者python源码
+
+
+例子1：
+明文：
+a=services&l=v1&p=open&k=SD58292829&i=20200918125249803&n=2124&t=1600404769&f={"invoiceCode": "11111","invoiceNo": "2222","inTaxAmount": "","exTaxAmount": ""}
+
+
+密钥：
+SD886A11B0EE428F
+
+
+
+密文：
+Cb6YthKcFJ5oXtV6HRllGmAs2g0=
+
+
+
+例子2：
+明文:
+a=services&l=v1&p=open&k=nPjzeluO&i=44dc89d9e6f0425e8ecabeaf57708459&n=496648396&t=1600746050&f={"taxNo":"91140100586192037X","customerOrderNo":"NN20200922114058tIRje367477953","amount":"2000.0","subject":"扫码支付","returnUrl":"","billingType":"0","sn":"1809CA884901","sellerNote":"zhyw廉生","deptId":"8F0095616A17484DAD2C17925C04B78E","timeExpire":"15","appKey":"nPjzeluO"}
+
+密钥：
+430367F22509482D
+
+密文：
+A7MIBwspggk6mx+PqbUPiPq0u8U=

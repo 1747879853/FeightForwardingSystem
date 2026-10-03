@@ -24,6 +24,7 @@ import {
 } from '#/utils/invoice-application-amount';
 
 import { promptMissingExchangeRates } from './prompt-missing-exchange-rates';
+import { groupFeesByCurrency } from '../original-currency';
 
 /**
  * 费用选择抽屉保存处理逻辑
@@ -239,7 +240,8 @@ export function useFeeSelectionSave(
   async function handleFeeSelectionSave(data: {
     selectedFees: any[];
     settlementId: string;
-    currencyId: number;
+    /** 为空表示按费用原币分别生成开票申请 */
+    currencyId: null | number;
     invoiceExchangeRate?: number;
     feeGroupsData?: any[];
   }) {
@@ -251,15 +253,18 @@ export function useFeeSelectionSave(
       feeGroupsData: groupsData,
     } = data;
 
-    if (!applicationCurrencyId) {
+    const isEdit = !!formData.value.id;
+    if (!applicationCurrencyId && isEdit) {
       message.warning('请选择开票申请币别（主币别）');
       return;
     }
 
     formData.value.settlementId = settlementId;
-    formData.value.currencyId = applicationCurrencyId;
+    if (applicationCurrencyId) {
+      formData.value.currencyId = applicationCurrencyId;
+    }
 
-    if (rate !== undefined) {
+    if (applicationCurrencyId && rate !== undefined) {
       invoiceExchangeRate.value = rate;
     }
 
@@ -295,38 +300,45 @@ export function useFeeSelectionSave(
       return;
     }
 
-    rebuildRateRowsFromFees(newFees, Number(applicationCurrencyId));
+    if (applicationCurrencyId) {
+      rebuildRateRowsFromFees(newFees, Number(applicationCurrencyId));
+    }
 
-    const feeItemsForValidation = [
-      ...((formData.value.invoiceApplicationItems || []).map((item: any) => {
-        const fee = flattenTreeData(feeGroupsData.value).find(
-          (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
-        );
-        return {
-          currencyId: Number(
-            fee?.orderFee?.currencyId || applicationCurrencyId,
-          ),
-          appliedAmount: Number(item.appliedAmount) || 0,
-        };
-      }) as Array<{ currencyId: number; appliedAmount: number }>),
-      ...newFees.map((fee: any) => ({
-        currencyId: Number(fee.orderFee?.currencyId),
-        appliedAmount:
-          Number(fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount) ||
-          0,
-      })),
-    ];
+    const feeItemsForValidation = applicationCurrencyId
+      ? [
+          ...((formData.value.invoiceApplicationItems || []).map(
+            (item: any) => {
+              const fee = flattenTreeData(feeGroupsData.value).find(
+                (f: any) => String(f.orderFee?.id) === String(item.orderFeeId),
+              );
+              return {
+                currencyId: Number(
+                  fee?.orderFee?.currencyId || applicationCurrencyId,
+                ),
+                appliedAmount: Number(item.appliedAmount) || 0,
+              };
+            },
+          ) as Array<{ currencyId: number; appliedAmount: number }>),
+          ...newFees.map((fee: any) => ({
+            currencyId: Number(fee.orderFee?.currencyId),
+            appliedAmount:
+              Number(
+                fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount,
+              ) || 0,
+          })),
+        ]
+      : [];
 
-    let missing = getMissingExchangeRateCurrencyIds(
-      Number(applicationCurrencyId),
-      feeItemsForValidation,
-      invoiceApplicationExchangeRates.value,
-    );
+    let missing = applicationCurrencyId
+      ? getMissingExchangeRateCurrencyIds(
+          Number(applicationCurrencyId),
+          feeItemsForValidation,
+          invoiceApplicationExchangeRates.value,
+        )
+      : [];
 
-    const isEdit = !!formData.value.id;
-
-    // 缺汇率：弹窗补录，确认后继续新增；取消则中止
-    if (missing.length > 0) {
+    // 缺汇率：弹窗补录，确认后继续新增；取消则中止。原币拆单时各组币别与费用一致，不需要补汇率。
+    if (applicationCurrencyId && missing.length > 0) {
       let appCurrencyLabel = selectedCurrencyCode.value;
       if (!appCurrencyLabel) {
         try {
@@ -382,11 +394,30 @@ export function useFeeSelectionSave(
       }
     }
 
-    const rateInputs = toExchangeRateInputs(
-      Number(applicationCurrencyId),
-      invoiceApplicationExchangeRates.value,
-      { includeMain: true },
-    );
+    const fixedRateInputs = applicationCurrencyId
+      ? toExchangeRateInputs(
+          Number(applicationCurrencyId),
+          invoiceApplicationExchangeRates.value,
+          { includeMain: true },
+        )
+      : [];
+
+    const feeBuckets: Array<{ currencyId: number; fees: any[] }> = [];
+    if (applicationCurrencyId) {
+      feeBuckets.push({
+        currencyId: Number(applicationCurrencyId),
+        fees: newFees,
+      });
+    } else {
+      const split = groupFeesByCurrency(newFees);
+      if (split.missing.length > 0) {
+        message.warning('有费用缺少币别，无法按原币生成开票申请');
+        return;
+      }
+      for (const [currencyId, fees] of split.groups) {
+        feeBuckets.push({ currencyId, fees });
+      }
+    }
 
     if (!isEdit) {
       try {
@@ -402,220 +433,247 @@ export function useFeeSelectionSave(
           await loadCodeInvoiceList();
         }
 
-        let currencyCode = selectedCurrencyCode.value;
-        try {
-          const currencyDetail = await getCurrencyDetail(applicationCurrencyId);
-          currencyCode = currencyDetail.code || currencyCode;
-          selectedCurrencyCode.value = currencyCode;
-        } catch (error) {
-          console.error('获取币别详情失败:', error);
-        }
-
-        if (!currencyCode) {
-          message.error('无法获取开票申请币别代码');
-          return;
-        }
-
-        const currentCurrencyExchangeRate =
-          rate !== undefined
-            ? rate
-            : await fetchInvoiceExchangeRateForCurrency(applicationCurrencyId);
-        invoiceExchangeRate.value = currentCurrencyExchangeRate;
-
-        let clientInvoiceBankIdForCurrency: string | undefined =
-          formData.value.clientInvoiceBankId || undefined;
-        let clientBankNameForCurrency = '';
-        let clientBankAccountForCurrency = '';
-
-        if (settlementId && applicationCurrencyId) {
+        const currencyGroups: InvoiceApplicationAdminApi.InvoiceApplicationCurrencyGroupDto[] =
+          [];
+        for (const bucket of feeBuckets) {
+          const planCurrencyId = bucket.currencyId;
+          const planFees = bucket.fees;
+          const planPresetRate = applicationCurrencyId ? rate : undefined;
+          const planRateInputs = applicationCurrencyId
+            ? fixedRateInputs
+            : toExchangeRateInputs(
+                planCurrencyId,
+                [
+                  {
+                    currencyId: planCurrencyId,
+                    exchangeRate: 1,
+                  },
+                ],
+                { includeMain: true },
+              );
+          let currencyCode = applicationCurrencyId
+            ? selectedCurrencyCode.value
+            : '';
           try {
-            const clientInvoiceInfoList = await getClientInvoiceInfoList({
-              ClientId: settlementId,
-            });
-            const defaultInvoiceInfo = clientInvoiceInfoList?.find(
-              (info) => info.isDefault,
-            );
-            if (defaultInvoiceInfo?.clientInvoiceBanks) {
-              const defaultBank =
-                defaultInvoiceInfo.clientInvoiceBanks
-                  .filter((bank) => bank.currencyId === applicationCurrencyId)
-                  .find((bank) => bank.isDefault) ||
-                defaultInvoiceInfo.clientInvoiceBanks.filter(
-                  (bank) => bank.currencyId === applicationCurrencyId,
-                )[0];
-              if (defaultBank) {
-                clientInvoiceBankIdForCurrency = defaultBank.id;
-                clientBankNameForCurrency = defaultBank.bankName || '';
-                clientBankAccountForCurrency = defaultBank.bankAccount || '';
+            const currencyDetail = await getCurrencyDetail(planCurrencyId);
+            currencyCode = currencyDetail.code || currencyCode;
+            selectedCurrencyCode.value = currencyCode;
+          } catch (error) {
+            console.error('获取币别详情失败:', error);
+          }
+
+          if (!currencyCode) {
+            message.error('无法获取开票申请币别代码');
+            return;
+          }
+
+          const currentCurrencyExchangeRate =
+            planPresetRate !== undefined
+              ? planPresetRate
+              : await fetchInvoiceExchangeRateForCurrency(planCurrencyId);
+          invoiceExchangeRate.value = currentCurrencyExchangeRate;
+
+          let clientInvoiceBankIdForCurrency: string | undefined =
+            formData.value.clientInvoiceBankId || undefined;
+          let clientBankNameForCurrency = '';
+          let clientBankAccountForCurrency = '';
+
+          if (settlementId && planCurrencyId) {
+            try {
+              const clientInvoiceInfoList = await getClientInvoiceInfoList({
+                ClientId: settlementId,
+              });
+              const defaultInvoiceInfo = clientInvoiceInfoList?.find(
+                (info) => info.isDefault,
+              );
+              if (defaultInvoiceInfo?.clientInvoiceBanks) {
+                const defaultBank =
+                  defaultInvoiceInfo.clientInvoiceBanks
+                    .filter((bank) => bank.currencyId === planCurrencyId)
+                    .find((bank) => bank.isDefault) ||
+                  defaultInvoiceInfo.clientInvoiceBanks.filter(
+                    (bank) => bank.currencyId === planCurrencyId,
+                  )[0];
+                if (defaultBank) {
+                  clientInvoiceBankIdForCurrency = defaultBank.id;
+                  clientBankNameForCurrency = defaultBank.bankName || '';
+                  clientBankAccountForCurrency = defaultBank.bankAccount || '';
+                }
+              }
+            } catch (error) {
+              console.warn('获取客户开票信息失败:', error);
+            }
+          }
+
+          let currencyRemark = formData.value.remark || '';
+          try {
+            const rawOrgId = formData.value.orgId || getMyDefaultOrgId() || 0;
+            const orgId =
+              getCompanyIdByOrgId(rawOrgId) ??
+              (await resolveOrganizationCompany(rawOrgId))?.id ??
+              rawOrgId;
+            if (!hasUserRemark && orgId && planCurrencyId) {
+              const templates =
+                await InvoiceRemarkTemplateApi.getPagedListAsync({
+                  pageIndex: 1,
+                  pageSize: 100,
+                  orgId: orgId,
+                  currencyId: planCurrencyId,
+                });
+              const defaultTemplate = templates.items?.find((t) => t.default);
+              if (defaultTemplate) {
+                let templateContent = defaultTemplate.template || '';
+                const commissionNums = new Set<string>();
+                const mblNums = new Set<string>();
+                planFees.forEach((fee: any) => {
+                  if (fee.transportOrder?.commissionNum) {
+                    commissionNums.add(fee.transportOrder.commissionNum);
+                  }
+                  if (fee.transportOrder?.mblNum) {
+                    mblNums.add(fee.transportOrder.mblNum);
+                  }
+                });
+
+                const feeItems = planFees.map((fee: any) => ({
+                  currencyId: Number(fee.orderFee?.currencyId),
+                  appliedAmount:
+                    Number(
+                      fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount,
+                    ) || 0,
+                }));
+                const totalOriginalAmount =
+                  toApplicationCurrency(
+                    feeItems,
+                    Number(planCurrencyId),
+                    invoiceApplicationExchangeRates.value,
+                  ) ?? 0;
+                const totalRmbAmount =
+                  toInvoiceRmbAmount(
+                    totalOriginalAmount,
+                    currentCurrencyExchangeRate,
+                  ) ?? 0;
+
+                let orgBankName = '';
+                let orgBankAccount = '';
+                if (orgBankAccounts?.value) {
+                  const matchedOrgBank = orgBankAccounts.value.find(
+                    (b) => b.currencyId === planCurrencyId,
+                  );
+                  if (matchedOrgBank) {
+                    orgBankName = matchedOrgBank.bankName;
+                    orgBankAccount = matchedOrgBank.bankAccount;
+                  } else if (formData.value.orgBankAccountId) {
+                    const selectedOrgBank = orgBankAccounts.value.find(
+                      (b) => b.id === formData.value.orgBankAccountId,
+                    );
+                    if (selectedOrgBank) {
+                      orgBankName = selectedOrgBank.bankName;
+                      orgBankAccount = selectedOrgBank.bankAccount;
+                    }
+                  }
+                }
+
+                const replacements: Record<string, string> = {
+                  '<委托编号>': Array.from(commissionNums).join('、'),
+                  '<主提单号>': Array.from(mblNums).join('、'),
+                  '[折算汇率]': String(currentCurrencyExchangeRate),
+                  '[外币金额(总计)]': totalOriginalAmount.toFixed(2),
+                  '[人民币金额(总计)]': totalRmbAmount.toFixed(2),
+                  '[购方银行]': clientBankNameForCurrency,
+                  '[购方账号]': clientBankAccountForCurrency,
+                  '[销方银行]': orgBankName,
+                  '[销方账号]': orgBankAccount,
+                };
+
+                for (const [placeholder, value] of Object.entries(
+                  replacements,
+                )) {
+                  const regex = new RegExp(
+                    placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                    'g',
+                  );
+                  templateContent = templateContent.replace(regex, value);
+                }
+                currencyRemark = templateContent;
               }
             }
           } catch (error) {
-            console.warn('获取客户开票信息失败:', error);
+            console.warn('获取或处理默认备注模板失败:', error);
           }
-        }
 
-        let currencyRemark = formData.value.remark || '';
-        try {
-          const rawOrgId = formData.value.orgId || getMyDefaultOrgId() || 0;
-          const orgId =
-            getCompanyIdByOrgId(rawOrgId) ??
-            (await resolveOrganizationCompany(rawOrgId))?.id ??
-            rawOrgId;
-          if (!hasUserRemark && orgId && applicationCurrencyId) {
-            const templates = await InvoiceRemarkTemplateApi.getPagedListAsync({
-              pageIndex: 1,
-              pageSize: 100,
-              orgId: orgId,
-              currencyId: applicationCurrencyId,
-            });
-            const defaultTemplate = templates.items?.find((t) => t.default);
-            if (defaultTemplate) {
-              let templateContent = defaultTemplate.template || '';
-              const commissionNums = new Set<string>();
-              const mblNums = new Set<string>();
-              newFees.forEach((fee: any) => {
-                if (fee.transportOrder?.commissionNum) {
-                  commissionNums.add(fee.transportOrder.commissionNum);
-                }
-                if (fee.transportOrder?.mblNum) {
-                  mblNums.add(fee.transportOrder.mblNum);
-                }
-              });
-
-              const feeItems = newFees.map((fee: any) => ({
-                currencyId: Number(fee.orderFee?.currencyId),
-                appliedAmount:
-                  Number(
-                    fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount,
-                  ) || 0,
-              }));
-              const totalOriginalAmount =
-                toApplicationCurrency(
-                  feeItems,
-                  Number(applicationCurrencyId),
-                  invoiceApplicationExchangeRates.value,
-                ) ?? 0;
-              const totalRmbAmount =
-                toInvoiceRmbAmount(
-                  totalOriginalAmount,
-                  currentCurrencyExchangeRate,
-                ) ?? 0;
-
-              let orgBankName = '';
-              let orgBankAccount = '';
-              if (orgBankAccounts?.value) {
-                const matchedOrgBank = orgBankAccounts.value.find(
-                  (b) => b.currencyId === applicationCurrencyId,
-                );
-                if (matchedOrgBank) {
-                  orgBankName = matchedOrgBank.bankName;
-                  orgBankAccount = matchedOrgBank.bankAccount;
-                } else if (formData.value.orgBankAccountId) {
-                  const selectedOrgBank = orgBankAccounts.value.find(
-                    (b) => b.id === formData.value.orgBankAccountId,
-                  );
-                  if (selectedOrgBank) {
-                    orgBankName = selectedOrgBank.bankName;
-                    orgBankAccount = selectedOrgBank.bankAccount;
-                  }
-                }
-              }
-
-              const replacements: Record<string, string> = {
-                '<委托编号>': Array.from(commissionNums).join('、'),
-                '<主提单号>': Array.from(mblNums).join('、'),
-                '[折算汇率]': String(currentCurrencyExchangeRate),
-                '[外币金额(总计)]': totalOriginalAmount.toFixed(2),
-                '[人民币金额(总计)]': totalRmbAmount.toFixed(2),
-                '[购方银行]': clientBankNameForCurrency,
-                '[购方账号]': clientBankAccountForCurrency,
-                '[销方银行]': orgBankName,
-                '[销方账号]': orgBankAccount,
-              };
-
-              for (const [placeholder, value] of Object.entries(replacements)) {
-                const regex = new RegExp(
-                  placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-                  'g',
-                );
-                templateContent = templateContent.replace(regex, value);
-              }
-              currencyRemark = templateContent;
-            }
-          }
-        } catch (error) {
-          console.warn('获取或处理默认备注模板失败:', error);
-        }
-
-        const { findDefaultCodeInvoice } =
-          await import('#/views/_shared/invoice-goods');
-        const defaultCodeInvoice = findDefaultCodeInvoice(
-          codeInvoiceList.value,
-          currencyCode,
-        );
-
-        if (!defaultCodeInvoice) {
-          message.warning(
-            `未找到${currencyCode}币别的默认商品编码，请手动添加商品明细后保存`,
+          const { findDefaultCodeInvoice } =
+            await import('#/views/_shared/invoice-goods');
+          const defaultCodeInvoice = findDefaultCodeInvoice(
+            codeInvoiceList.value,
+            currencyCode,
           );
-          return;
-        }
 
-        const feeItems = newFees.map((fee: any) => ({
-          currencyId: Number(fee.orderFee?.currencyId),
-          appliedAmount:
-            Number(fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount) ||
-            0,
-        }));
-        const totalApp = toApplicationCurrency(
-          feeItems,
-          Number(applicationCurrencyId),
-          invoiceApplicationExchangeRates.value,
-        );
-        const totalRmbAmount =
-          toInvoiceRmbAmount(totalApp, currentCurrencyExchangeRate) ?? 0;
+          if (!defaultCodeInvoice) {
+            message.warning(
+              `未找到${currencyCode}币别的默认商品编码，请手动添加商品明细后保存`,
+            );
+            return;
+          }
 
-        const taxRate = defaultCodeInvoice.taxRate || 0;
-        const invoiceApplicationGoodsDtls: InvoiceApplicationAdminApi.InvoiceApplicationGoodsDtlAddDto[] =
-          [
+          const feeItems = planFees.map((fee: any) => ({
+            currencyId: Number(fee.orderFee?.currencyId),
+            appliedAmount:
+              Number(
+                fee.appliedAmount ?? fee.orderFee?.remainingInvoiceAmount,
+              ) || 0,
+          }));
+          const totalApp = toApplicationCurrency(
+            feeItems,
+            Number(planCurrencyId),
+            invoiceApplicationExchangeRates.value,
+          );
+          const totalRmbAmount =
+            toInvoiceRmbAmount(totalApp, currentCurrencyExchangeRate) ?? 0;
+
+          const taxRate = defaultCodeInvoice.taxRate || 0;
+          const invoiceApplicationGoodsDtls: InvoiceApplicationAdminApi.InvoiceApplicationGoodsDtlAddDto[] =
+            [
+              {
+                codeInvoiceId: defaultCodeInvoice.id,
+                specification: defaultCodeInvoice.specification || '',
+                unit: defaultCodeInvoice.unit || '票',
+                quantity: 1,
+                unitPrice: totalRmbAmount,
+                amount: totalRmbAmount,
+                noTaxAmount: totalRmbAmount / (1 + taxRate / 100),
+                taxRate: taxRate,
+                taxAmount:
+                  (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100),
+                remark: '',
+              },
+            ];
+
+          const currencyGroup: InvoiceApplicationAdminApi.InvoiceApplicationCurrencyGroupDto =
             {
-              codeInvoiceId: defaultCodeInvoice.id,
-              specification: defaultCodeInvoice.specification || '',
-              unit: defaultCodeInvoice.unit || '票',
-              quantity: 1,
-              unitPrice: totalRmbAmount,
-              amount: totalRmbAmount,
-              noTaxAmount: totalRmbAmount / (1 + taxRate / 100),
-              taxRate: taxRate,
-              taxAmount:
-                (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100),
-              remark: '',
-            },
-          ];
+              currencyId: planCurrencyId,
+              invoiceType: formData.value.invoiceType,
+              orgBankAccountId: formData.value.orgBankAccountId || undefined,
+              clientInvoiceBankId: clientInvoiceBankIdForCurrency,
+              invoiceApplicationItems: planFees.map((fee: any) => ({
+                orderFeeId: fee.orderFee.id,
+                appliedAmount:
+                  fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
+                remark: '',
+              })),
+              invoiceApplicationGoodsDtls,
+              invoiceApplicationExchangeRates: planRateInputs,
+              remark: currencyRemark,
+            };
 
-        const currencyGroup: InvoiceApplicationAdminApi.InvoiceApplicationCurrencyGroupDto =
-          {
-            currencyId: applicationCurrencyId,
-            invoiceType: formData.value.invoiceType,
-            orgBankAccountId: formData.value.orgBankAccountId || undefined,
-            clientInvoiceBankId: clientInvoiceBankIdForCurrency,
-            invoiceApplicationItems: newFees.map((fee: any) => ({
-              orderFeeId: fee.orderFee.id,
-              appliedAmount:
-                fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
-              remark: '',
-            })),
-            invoiceApplicationGoodsDtls,
-            invoiceApplicationExchangeRates: rateInputs,
-            remark: currencyRemark,
-          };
+          currencyGroups.push(currencyGroup);
+        }
 
         const addData: InvoiceApplicationAdminApi.InvoiceApplicationBatchAddDto =
           {
             settlementId: settlementId,
             orgId: formData.value.orgId || getMyDefaultOrgId() || 0,
             require: formData.value.require,
-            currencyGroups: [currencyGroup],
+            currencyGroups,
           };
 
         const ids = await InvoiceApplicationAdminApi.add(addData);
@@ -648,7 +706,7 @@ export function useFeeSelectionSave(
                 fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
               remark: '',
             })),
-            invoiceApplicationExchangeRates: rateInputs,
+            invoiceApplicationExchangeRates: fixedRateInputs,
             invoiceApplicationGoodsDtls: undefined,
           };
 

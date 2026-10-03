@@ -65,7 +65,7 @@
 | podAgentId | Guid? | 否 | 目的港代理id |
 | podAgentContent | string | 否 | 目的港代理内容（最大1024字符） |
 | bookingAgentId | Guid? | 否 | 订舱代理id（国内代理） |
-| bookingAgentContactId | long? | 否 | 订舱代理联系人id（须属于 bookingAgentId 下的 ClientContact，无外键） |
+| bookingAgentContactIds | long[] | 否 | 订舱代理联系人id数组（可多选，每个都须属于 bookingAgentId 下的 ClientContact，无外键）。不传/`null`/`[]` 即不挂联系人，编辑时传空会清掉原有联系人；`0` 与重复 id 忽略。**2026-10-03 由 `bookingAgentContactId` 单个改为数组** |
 | shipAgentId | Guid? | 否 | 船代id |
 | yardId | Guid? | 否 | 场站id |
 | yardEmail | string | 否 | 场站邮箱（最大64字符） |
@@ -146,7 +146,7 @@
 | cbm | decimal? | 否 | 体积CBM，`decimal(20,4)` |
 | goodsDes | string | 否 | 货物描述 |
 | clientId | Guid | 是 | 委托单位id |
-| clientContactId | long? | 否 | 委托单位联系人id（须属于 clientId 下的 ClientContact，无外键） |
+| clientContactIds | long[] | 否 | 委托单位联系人id数组（可多选，每个都须属于 clientId 下的 ClientContact，无外键）。不传/`null`/`[]` 即不挂联系人，编辑时传空会清掉原有联系人；`0` 与重复 id 忽略。**2026-10-03 由 `clientContactId` 单个改为数组** |
 | teamId | Guid? | 否 | 车队id |
 | custBrokerId | Guid? | 否 | 报关行id |
 | warehouseId | Guid? | 否 | 仓库id |
@@ -458,9 +458,9 @@
 
 | 字段名 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| clientId | Guid | 否 | 委托单位id。改动后 `transportOrder.clientContactId` 被清空，应结日期与结算方式按新委托单位的账期重算 |
+| clientId | Guid | 否 | 委托单位id。改动后该票全部委托单位联系人被清空，应结日期与结算方式按新委托单位的账期重算 |
 | shipAgentId | Guid | 否 | 船代id |
-| bookingAgentId | Guid | 否 | 订舱代理id（国内代理）。改动后 `bookingAgentContactId` 被清空 |
+| bookingAgentId | Guid | 否 | 订舱代理id（国内代理）。改动后该票全部订舱代理联系人被清空 |
 | teamId | Guid | 否 | 车队id |
 | insuranceId | Guid | 否 | 保险公司id |
 | warehouseId | Guid | 否 | 仓库id |
@@ -590,7 +590,7 @@
 | 所属组织 | 传 `orgId` 或换销售时校验 `orgId` 属于该票销售的直属组织；该票没有销售时报「委托编号[xx]没有销售，无法校验所属组织」 |
 | 应结日期 | 开船日期 / 委托单位 / 业务来源 / 所属组织任一变化时按账期规则重算 `settlementDate` 与 `settlementType`，时间基准为开船日期（没有则取创建日期） |
 | 提成单守卫 | 会计期间变化、换销售、或改动 `clientId`/`tradeTermsType`/`polId`/`podId` 时走与 `EditAsync` 相同的提成守卫；已提交销售提成的票改开船日期跨月会报「已提交销售提成不可修改会计期间」 |
-| 联系人一致性 | 换委托单位清 `clientContactId`，换订舱代理清 `bookingAgentContactId`（联系人挂在旧单位下，换了就不成立） |
+| 联系人一致性 | 换委托单位清该票全部委托单位联系人，换订舱代理清该票全部订舱代理联系人（联系人挂在旧单位下，换了就不成立） |
 | 事务 | 整批在一个事务里，任何一票校验不过则整批回滚，不会出现改了一半的情况 |
 
 #### 开船日期变更时的会计期间
@@ -1118,8 +1118,7 @@ GET /api/services/app/SeaExportAdmin/GetPagedList?keyword=MBLTEST&etdStart=2026-
 | secondNotifier | object \| null | 第二通知人（`ClientSimpleDtoForOrder`：`id`/`name`/`fullName`） |
 | podAgent | object \| null | 目的港代理（`ClientSimpleDtoForOrder`） |
 | bookingAgent | object \| null | 订舱代理（`ClientSimpleDtoForOrder`） |
-| bookingAgentContactId | long? | 订舱代理联系人id |
-| bookingAgentContact | object \| null | 订舱代理联系人（`ClientContactSimpleDto`：`id`/`name`/`mobile`/`email`/`tel`/`position`/`weChat`） |
+| bookingAgentContacts | array | 订舱代理联系人（可多个，元素 `ClientContactSimpleDto`：`id`/`name`/`mobile`/`email`/`tel`/`position`/`weChat`），按联系人 id 升序，未选为 `[]`；客户联系人已删除的不返回。**只有详情返回**；列表 `SeaExportListDto` 不含，服务项任务、监装工单等列表复用 `SeaExportDto` 时为 `null`。**2026-10-03 由 `bookingAgentContactId` + `bookingAgentContact` 单个改为数组** |
 | shipAgent | object \| null | 船代（`ClientSimpleDtoForOrder`） |
 | yard | object \| null | 场站（`ClientSimpleDtoForOrder`） |
 | carrier | object \| null | 船公司（`CarrierSimpleDto`：`id`/`cnName`/`cnShortName`/`enName`/`code`英文简称/`ediCode`） |
@@ -1207,8 +1206,7 @@ GET /api/services/app/SeaExportAdmin/GetPagedList?keyword=MBLTEST&etdStart=2026-
 | goodsDes | string | 货物描述 |
 | clientId | Guid | 委托单位id |
 | client | object \| null | 委托单位（`ClientSimpleDtoForOrder`：`id`/`name`/`fullName`/`address`/`enAddress`） |
-| clientContactId | long? | 委托单位联系人id |
-| clientContact | object \| null | 委托单位联系人（`ClientContactSimpleDto`：`id`/`name`/`mobile`/`email`/`tel`/`position`/`weChat`） |
+| clientContacts | array | 委托单位联系人（可多个，元素 `ClientContactSimpleDto`：`id`/`name`/`mobile`/`email`/`tel`/`position`/`weChat`），按联系人 id 升序，未选为 `[]`；客户联系人已删除的不返回。**只有详情返回，列表为 `null`**。**2026-10-03 由 `clientContactId` + `clientContact` 单个改为数组** |
 | teamId | Guid? | 车队id |
 | team | object \| null | 车队（`ClientSimpleDtoForOrder`） |
 | custBrokerId | Guid? | 报关行id |
@@ -2059,6 +2057,7 @@ GET /api/services/app/SeaExportAdmin/GetGroupedListAsync?groupField=19&ETDStart=
 
 | 日期 | 修改内容 |
 | --- | --- | --- |
+| 2026-10-03 | **破坏性**：订舱代理联系人、委托单位联系人改为**可多选**。新增/编辑入参 `bookingAgentContactId` → `bookingAgentContactIds`、`transportOrder.clientContactId` → `transportOrder.clientContactIds`（`long[]`）；详情出参 `bookingAgentContact` → `bookingAgentContacts`、`transportOrder.clientContact` → `transportOrder.clientContacts`（对象数组），不再返回两个联系人 id 标量。校验提示语不变（「订舱代理未填写时不能选择联系人」「{订舱代理/委托单位}联系人id错误」「{订舱代理/委托单位}与联系人id不一致」），数组里任一个不通过即报错。复制带走两类联系人；批量编辑换委托单位/订舱代理清空对应联系人；服务项任务锁定委托单位/订舱代理时，联系人一并保持库里原样。**列表不返回联系人**（服务项任务、监装工单等列表复用 `SeaExportDto` 时两个联系人数组为 `null`）。订舱代理联系人存海运出口子表 `App_SeaExportBookingAgentContacts`（挂 `SeaExportId`），委托单位联系人存业务表子表 `App_OrderClientContacts`（挂 `TransportOrderId`），扩展表 `BookingAgentContactId`、业务表 `ClientContactId` 两列删除；空运出口、件杂货、海运进口同步改 |
 | 2026-10-02 | Bug 修复：`GetServiceTypesByPOLAsync` 的委托单位排除项改为按命中的那份配置取（落到默认配置时取针对默认配置设置的排除项），之前针对默认配置设置的排除项永远不生效。出入参不变 |
 | 2026-10-01 | 列表票根不再返回 `userId`、`orgId`、`creatorUserId`、`lastModifierUserId`、`isDeleted`、`deleterUserId`、`deletionTime`、`localCurrencyId`。`orgs` 每级只留 `name`。仍返回 `creationTime`、`lastModificationTime`、`localCurrencyCode` |
 | 2026-10-01 | 列表 `GetPagedListAsync` 出参改为 `SeaExportListDto`，只留列表列。详情仍是 `SeaExportDto`。不再返回费用明细、箱子明细、品名、提单摘要。新增 `transportOrder.hasOrderFee`。箱量文本和 TEU 仍返回。路径：`/api/services/app/SeaExportAdmin/GetPagedListAsync` |

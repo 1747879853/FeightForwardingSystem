@@ -62,6 +62,7 @@ import {
   PrintJsonType,
   usePrintFormat,
 } from '#/components/print-format';
+import SendMailButton from '#/views/mail-template/send-mail-button.vue';
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
@@ -1418,6 +1419,15 @@ watch(pageLoading, (loading) => {
                       />
                       <span class="align-middle">AI识别</span>
                     </Button>
+                    <SendMailButton
+                      v-if="isEdit && editId"
+                      view-code="Admin.AirExport.Get"
+                      :fright-module="5"
+                      :entity-id="String(editId)"
+                      :print-json-type="PrintJsonType.AirExportDetail"
+                      :biz-type="PrintFormatBizType.AirExport"
+                      :resolve-print-filter="resolvePrintContext"
+                    />
                     <Button
                       size="small"
                       class="flex items-center justify-center"
