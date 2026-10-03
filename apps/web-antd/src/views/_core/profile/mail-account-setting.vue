@@ -38,6 +38,8 @@ const watchState =
 const saving = shallowRef(false);
 const testing = shallowRef(false);
 const accountId = shallowRef<null | string>(null);
+const hasStoredPassword = shallowRef(false);
+const changingPassword = shallowRef(false);
 const provider = shallowRef('custom');
 const testedFingerprint = shallowRef('');
 const testPassed = shallowRef(false);
@@ -58,6 +60,9 @@ const form = reactive({
 });
 
 const isEdit = computed(() => Boolean(accountId.value));
+const showPasswordInput = computed(
+  () => !hasStoredPassword.value || changingPassword.value,
+);
 const watchPaused = computed(() => watchState.value?.isPaused === true);
 const watchFailureReason = computed(() => {
   const failures = watchState.value?.consecutiveFailures ?? 0;
@@ -71,6 +76,9 @@ const providerOptions = MAIL_PROVIDER_PRESETS.map((item) => ({
 
 function applyAccount(account?: PersonalMailAdminApi.PersonalMailAccountDto) {
   accountId.value = account?.id || null;
+  hasStoredPassword.value =
+    Boolean(account?.id) && account?.hasPassword !== false;
+  changingPassword.value = false;
   watchState.value = account?.watchState ?? null;
   form.emailAddress = account?.emailAddress?.trim() || '';
   form.displayName = account?.displayName?.trim() || '';
@@ -234,6 +242,16 @@ async function handleSave() {
   }
 }
 
+function startChangePassword() {
+  changingPassword.value = true;
+  form.password = '';
+}
+
+function cancelChangePassword() {
+  changingPassword.value = false;
+  form.password = '';
+}
+
 function handleDelete() {
   const id = accountId.value;
   if (!id) return;
@@ -314,12 +332,37 @@ onMounted(() => {
               placeholder="大多数邮箱不用填，留空则用邮箱地址登录"
             />
           </FormItem>
-          <FormItem :label="isEdit ? '新授权码' : '授权码'" :required="!isEdit">
-            <Input.Password
-              v-model:value="form.password"
-              :maxlength="128"
-              :placeholder="isEdit ? '不填表示不修改' : '请输入客户端授权码'"
-            />
+          <FormItem
+            :label="changingPassword ? '新授权码' : '授权码'"
+            :required="!isEdit"
+          >
+            <div class="mail-account__secret">
+              <span
+                v-if="!showPasswordInput"
+                class="mail-account__secret-state"
+              >
+                授权码已填写
+              </span>
+              <Input.Password
+                v-else
+                v-model:value="form.password"
+                :maxlength="128"
+                class="mail-account__secret-input"
+                :placeholder="
+                  changingPassword ? '请输入新的授权码' : '请输入客户端授权码'
+                "
+              />
+              <Button v-if="!showPasswordInput" @click="startChangePassword">
+                修改授权码
+              </Button>
+              <Button
+                v-else-if="changingPassword"
+                @click="cancelChangePassword"
+              >
+                取消
+              </Button>
+              <Button :loading="testing" @click="handleTest">测试连接</Button>
+            </div>
           </FormItem>
           <FormItem label="收信服务器" required>
             <Input
@@ -390,7 +433,6 @@ onMounted(() => {
       </div>
 
       <div class="mail-account__actions">
-        <Button :loading="testing" @click="handleTest">测试连接</Button>
         <Button type="primary" :loading="saving" @click="handleSave"
           >保存</Button
         >
@@ -434,6 +476,24 @@ onMounted(() => {
 
 .mail-account__port {
   width: 100%;
+}
+
+.mail-account__secret {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mail-account__secret-state {
+  flex: none;
+  font-size: 13px;
+  line-height: 32px;
+  color: hsl(var(--foreground));
+}
+
+.mail-account__secret-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .mail-account__test {
