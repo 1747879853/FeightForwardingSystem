@@ -33,8 +33,6 @@ import { formatOrgChainCompanyName } from '../org-company-name';
 import { useSearchSchema, getStatusTagProps } from './data';
 
 interface Props {
-  /** 付费结算ID（编辑时传入，用于排除该结算单已关联的组合） */
-  paymentSettlementId?: string;
   /** 结算对象ID */
   settlementId?: string;
   /**
@@ -46,7 +44,7 @@ interface Props {
   hasExistingFees?: boolean;
   /**
    * 已在结算单中的行 key（`付费申请id_申请币别id`）。
-   * 追加时同一付费申请不能再加，选择列表也会按 paymentSettlementId 滤掉。
+   * 这些行仍出现在选择列表里，勾选框置灰，不能再次添加。
    */
   existingRowKeys?: string[];
 }
@@ -191,7 +189,6 @@ async function fetchData() {
 
     const params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams =
       {
-        paymentSettlementId: props.paymentSettlementId,
         keyword: formValues.keyword,
         keys: normalizeKeysParam(formValues.keys),
         applicationNo: formValues.applicationNo,

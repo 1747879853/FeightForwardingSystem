@@ -2,7 +2,7 @@
 title: 付费结算编辑
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-09-20
+last_updated: 2026-10-03
 ---
 
 > [!TIP] 模块实现总览：[付费结算](./payment-settlement.md)。
@@ -18,7 +18,7 @@ last_updated: 2026-09-20
 - **抽屉选择规则：** 筛选条件变化时清空旧选择及输入金额；分页抽屉在同一筛选范围内缓存已访问页，跨页选择、合计与确认共用缓存。当前页取消全选不影响其他页。重新打开或重置会使旧请求失效，加载期间禁止确认。
 
 - **新建结算：** `/settlement-management/payment-settlement/add`，抽屉调 `GetPagedListByCurrencyForSettlementAsync`（有结算币别时传 `settlementCurrencyId`）；确认后走 `AddByCurrencyAsync`。
-- **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailByCurrencyAsync` 回填主信息与 `paymentApplicationCurrencies[]`；追加 `AddItemsByCurrencyAsync`，删除 `DeleteItemsByCurrencyAsync`。
+- **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailByCurrencyAsync` 回填主信息与 `paymentApplicationCurrencies[]`；追加 `AddItemsByCurrencyAsync`，删除 `DeleteItemsByCurrencyAsync`。选择列表不传当前结算单 id。本单已经加过、但仍有未结算余额的申请会显示出来，勾选框置灰并标「已选」，不能再次添加。
 - **汇率：** 前端不录入；后端从付费申请明细快照到行上 `rate`（原币申请恒为 1）。
 - **金额：** 每行填 `settledPrice`（结算币别）；结满一行直接用列表返回的 `totalUnSettledPrice`。
 - **锁定/解锁与删除：** 在列表页按结算单执行；锁定后不允许进入编辑。
@@ -55,6 +55,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-03 | `Fix` | 选择付费申请时，本单已部分核销的申请仍能搜到，勾选框置灰并标「已选」。 | 不再传当前结算单 id，避免接口排除整张已关联申请。禁用仍看本单已有行。详见 [变更记录](../../changelogs/change-log-2026-10-03-付费结算选择列表显示已部分核销申请.md)。 |
 | 2026-09-20 | `Fix` | 修复选择付款申请抽屉的币别与原币回退文案刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |
 | 2026-09-09 | `Refactor` | 编辑页结构整理：回填守护、去重复错误提示与死代码；保存校验至少一行明细。 | 拆 `use-form-state` / `use-bank-options` / `use-load-detail` / `use-form-effects` / `use-submit`。详见 `changelogs/change-log-2026-09-09-payment-settlement-form-refactor.md`。 |
 | 2026-09-09 | `Fix` | 付费申请附件下载改为 blob + `friendlyFileName`。 | 详见 `changelogs/change-log-2026-09-09-attachment-preview-download-unify.md`。 |

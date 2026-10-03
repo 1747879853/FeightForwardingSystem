@@ -443,7 +443,6 @@ onMounted(() => {
       <!-- 选择付费申请抽屉 -->
       <AddApplicationDrawer
         ref="addApplicationDrawerRef"
-        :payment-settlement-id="editId"
         :settlement-id="settlementId"
         :currency-id="currencyId"
         :has-existing-fees="hasExistingFees"
