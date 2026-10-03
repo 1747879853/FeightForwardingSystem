@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-09-30
+last_updated: 2026-10-03
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,7 +15,7 @@ last_updated: 2026-09-30
 
 - **大分页绘制：** 横向、纵向虚拟滚动始终开启，行高固定 40，分页到 100/200 时只绘制视口内的行和列。列表无单元格编辑，不再保留 `keepSource` 原始副本。
 - **检索：** 支持关键字（业务编号 / 主提单号 / 船名 / 航次）、状态、委托单位、车队、起运港、目的港、开船日期区间、销售、操作、创建人、备注。搜索表单默认收起，改动即查询。
-- **列表列：** 除业务主字段外，船公司后展示「船名」「航次」（`vessel` / `innerVoyno` 直接取值）；**不加「车队」列**（车队只做 `TeamId` 筛选，与海出/海进口径一致）。另展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度，进行中时在当前任务名前显示橙色“待”标记，色块对齐海出列表；海进/空出/未通过为 `-`。运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
+- **列表列：** 除业务主字段外，船公司后展示「船名」「航次」（`vessel` / `innerVoyno` 直接取值）；**不加「车队」列**（车队只做 `TeamId` 筛选，与海出/海进口径一致）。另展示销售 / 操作昵称（`saleNames`/`operatorNames` 以 `、` 拼接）与备注。状态列后是「业务状态」「运踪状态」：业务状态只展示海出服务项进度，色块底仍用黄/绿/灰三态色；有配置色时「待」和服务名用配置色。海进/空出/未通过为 `-`。运踪按关联业务类型展示当前节点或订阅态，未生成业务为 `-`。有 `Admin.ExternalApi.Get` 时可点运踪 Tag 打开详情弹窗（列表不加订阅按钮、不加主提单号预警叹号）。
 - **分组统计：** 工具栏「分组设置」可选委托单位 / 船公司 / 起运港 / 目的港 / 业务类型；启用后左侧展示分组 Tab（含条数，船公司可带 Logo）。点击 Tab 仅向列表追加对应筛选；搜索条件变更时刷新分组。删除/工具栏刷新/表单返回走 `handleRefresh`，会同步 `refreshGroupData()`。分组字段与同名搜索项互斥。字段选择持久化到 `group_config_PreOrderList`。
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
@@ -38,7 +38,7 @@ last_updated: 2026-09-30
 | :-- | :-- | :-- | :-- | :-- |
 | **业务编号** | 单据唯一编号 | `PreOrderAdmin/GetPagedListAsync` 的 `preOrderNum` | 保存时后端生成 | 只读 |
 | **状态** | 单据生命周期 | `PreOrderStatus` 枚举 | 决定删除是否可用 | 只读，以 Tag 呈现 |
-| **业务状态** | 关联海出做到哪项服务 | 列表 `transportOrder.seaExport.seaExportServices`；前端复用 `getSeaExportBusinessStatusMeta`；服务名来自 `ServiceType` 枚举 | 仅列表返回；海进/空出没有服务项；未通过或业务表已删时 `transportOrder` 为 null，显示 `-` | 只读计算列，不可筛 |
+| **业务状态** | 关联海出做到哪项服务 | 列表 `transportOrder.seaExport.seaExportServices`；前端复用 `getSeaExportBusinessStatusMeta`；服务名来自 `ServiceType`，配置色读 `remark` | 仅列表返回；海进/空出没有服务项；未通过或业务表已删时 `transportOrder` 为 null，显示 `-`；色块底仍用三态色，有配置色时「待」和服务名用配置色 | 只读计算列，不可筛 |
 | **运踪状态** | 关联业务当前运踪节点或订阅态 | 列表 `transportOrder` 下 `seaExport` / `seaImport` / `airExport` 的订阅标志与摘要；海出按品牌分流新旧运踪 | 点 Tag 打开详情（权限 `Admin.ExternalApi.Get`）；列表不提供订阅。详情接口不返回这份嵌套 | 只读计算列，列 field 名沿用 `yundangTrackStatus` |
 | **关键字（Keyword）** | 模糊检索 | `GetPagedListAsync` 的 `Keyword` | 匹配业务编号 / 主提单号 / 船名 / 航次（后端口径；不含车队名） | 可清空 |
 | **船名 / 航次** | 主表船名、船公司航次 | 列 `vessel` / `innerVoyno` | 仅海出/海进有值，空出为 null；关键字可搜这两项 | 只读列 |
@@ -65,6 +65,7 @@ last_updated: 2026-09-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-03 | `Fix` | 业务状态与海出列表同一套解析：三态底看进度，「待」和服务名用配置色。 | TAPD [#1000136](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000136)。详见[变更记录](../../changelogs/change-log-2026-10-03-list-business-status-config-color.md)。 |
 | 2026-09-30 | `Perf` | 业务状态每格只计算一次。船公司 Logo 懒加载并固定 32×32。 | 与海出共用 `BusinessStatusLabel`。详见[变更记录](../../changelogs/change-log-2026-09-30-列表业务状态与船公司图.md)。 |
 | 2026-09-30 | `Perf` | 分页改大后只绘制可见行列，列表不再深拷贝整页数据。勾选、排序、筛选不变。 | 开启 `virtualXConfig` / `virtualYConfig`（`gt: 0`），行高固定 40，去掉无编辑用途的 `keepSource`。详见[变更记录](../../changelogs/change-log-2026-09-30-业务列表虚拟滚动.md)。 |
 | 2026-09-20 | `Fix` | 修复起运港、目的港备注刷新后可能显示旧值。 | 使用共享 `rowTextColumn` 函数插槽及导出取值，保留列配置；详见[变更记录](../../changelogs/change-log-2026-09-20-列表派生文本刷新.md)。 |

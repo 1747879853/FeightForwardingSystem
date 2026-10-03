@@ -161,7 +161,7 @@ const userAttributeLabelOf = (value: number) =>
               </div>
               <div class="col-span-2">
                 <span class="text-gray-500"
-                  >{{ $t('system.enumeration.remark') }}:</span
+                  >{{ $t('system.enumeration.itemColor') }}:</span
                 >
                 <span v-if="item.remark" class="ml-1 flex items-center gap-2">
                   <!-- 如果是颜色值（十六进制格式），显示颜色预览 -->

@@ -5,6 +5,7 @@ defineProps<{
   text: string;
   state: SeaExportBusinessStatusState;
   colors: { color: string; background: string };
+  pendingColor?: string;
 }>();
 </script>
 
@@ -13,9 +14,18 @@ defineProps<{
   <span
     v-else
     class="business-status inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs leading-5"
-    :style="{ color: colors.color, backgroundColor: colors.background }"
+    :style="{
+      color: colors.color,
+      backgroundColor: colors.background,
+    }"
   >
-    <span v-if="state === 'active'" class="business-status__pending">待</span>
+    <span
+      v-if="state === 'active'"
+      class="business-status__pending"
+      :style="pendingColor ? { color: pendingColor } : undefined"
+    >
+      待
+    </span>
     {{ text }}
   </span>
 </template>

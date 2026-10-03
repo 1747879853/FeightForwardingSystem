@@ -1030,6 +1030,8 @@
     "enumName": "Enumeration Name",
     "description": "Description",
     "remark": "Remark",
+    "itemColor": "Color",
+    "itemColorTitle": "Pick a color",
     "keyword": "Keyword",
     "creationTime": "Creation Time",
     "operation": "Operation",

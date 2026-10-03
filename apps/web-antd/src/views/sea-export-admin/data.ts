@@ -6,6 +6,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { DataPermissionModule } from '#/api/system/permission';
 import { $t } from '#/locales';
+import { parseHexColor } from '#/utils/enum-color';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { createKeysSearchSchema } from '#/utils/keys-search';
 import { weightVolumeInputNumberProps } from '#/utils/weight-volume-precision';
@@ -360,7 +361,8 @@ const getServiceTypeLabel = (
 export type SeaExportBusinessStatusState = 'active' | 'done' | 'upcoming';
 
 /**
- * 「业务状态」状态色（与详情页顶部服务项目 chevron 颜色保持一致，见 basic-info-form/form.css）。
+ * 「业务状态」三态色：灰=未开始、黄=进行中、绿=已完成。
+ * 服务项配置色不替换这套，只做左侧色条和「待」徽标。
  */
 export const SEA_EXPORT_BUSINESS_STATUS_COLORS: Record<
   SeaExportBusinessStatusState,
@@ -369,6 +371,12 @@ export const SEA_EXPORT_BUSINESS_STATUS_COLORS: Record<
   done: { color: '#005313', background: 'rgba(168, 230, 207, 0.45)' },
   active: { color: '#854d0e', background: 'rgba(254, 243, 199, 0.55)' },
   upcoming: { color: '#414752', background: 'rgba(242, 242, 242, 0.6)' },
+};
+
+export type SeaExportBusinessStatusMeta = {
+  serviceTypes: number[];
+  state: SeaExportBusinessStatusState;
+  text: string;
 };
 
 /**
@@ -383,10 +391,10 @@ export const SEA_EXPORT_BUSINESS_STATUS_COLORS: Record<
 export function getSeaExportBusinessStatusMeta(
   row: SeaExportAdminApi.SeaExportDto,
   labelMap?: Map<number, string>,
-): { state: SeaExportBusinessStatusState; text: string } {
+): SeaExportBusinessStatusMeta {
   const services = row.seaExportServices ?? [];
   if (services.length === 0) {
-    return { text: '-', state: 'upcoming' };
+    return { text: '-', state: 'upcoming', serviceTypes: [] };
   }
   const isProcessed = (service: SeaExportAdminApi.SeaExportServiceDto) =>
     Number(service.seServiceTask?.serviceTaskStatus) ===
@@ -400,14 +408,39 @@ export function getSeaExportBusinessStatusMeta(
     );
     const groupDone = groupServices.every((item) => isProcessed(item));
     if (!groupDone) {
-      const text = groupServices
-        .filter((item) => !isProcessed(item))
-        .map((item) => getServiceTypeLabel(item.serviceType, labelMap))
-        .join('、');
-      return { text, state: 'active' };
+      const pending = groupServices.filter((item) => !isProcessed(item));
+      return {
+        text: pending
+          .map((item) => getServiceTypeLabel(item.serviceType, labelMap))
+          .join('、'),
+        state: 'active',
+        serviceTypes: pending.map((item) => Number(item.serviceType)),
+      };
     }
   }
-  return { text: '已完成', state: 'done' };
+  return { text: '已完成', state: 'done', serviceTypes: [] };
+}
+
+/**
+ * 色块底始终用三态色；有服务项配置色时，「待」和服务名用配置色。
+ */
+export function resolveSeaExportBusinessStatusView(
+  meta: SeaExportBusinessStatusMeta,
+  colorMap?: Map<number, string>,
+) {
+  const threeState = SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state];
+  const configured = meta.serviceTypes
+    .map((type) => parseHexColor(colorMap?.get(Number(type))))
+    .find((value): value is string => Boolean(value));
+
+  return {
+    ...meta,
+    colors: {
+      background: threeState.background,
+      color: configured ?? threeState.color,
+    },
+    pendingColor: meta.state === 'active' ? configured : undefined,
+  };
 }
 
 /**

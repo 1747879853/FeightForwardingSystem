@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 
 import {
   getSeaExportBusinessStatusMeta,
-  SEA_EXPORT_BUSINESS_STATUS_COLORS,
+  resolveSeaExportBusinessStatusView,
 } from '../data';
 import BusinessStatusLabel from './business-status-label.vue';
 import ServiceTasksPopover from './service-tasks-popover.vue';
@@ -13,6 +13,7 @@ import ServiceTasksPopover from './service-tasks-popover.vue';
 const props = defineProps<{
   row: SeaExportAdminApi.SeaExportDto;
   labels: Map<number, string>;
+  colors: Map<number, string>;
   processes: Map<number, boolean>;
 }>();
 const emit = defineEmits<{
@@ -21,10 +22,12 @@ const emit = defineEmits<{
 
 /** 默认只画彩色文字；移入或聚焦后才挂载悬浮层 */
 const armed = ref(false);
-const status = computed(() => {
-  const meta = getSeaExportBusinessStatusMeta(props.row, props.labels);
-  return { ...meta, colors: SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state] };
-});
+const status = computed(() =>
+  resolveSeaExportBusinessStatusView(
+    getSeaExportBusinessStatusMeta(props.row, props.labels),
+    props.colors,
+  ),
+);
 </script>
 
 <template>
@@ -41,6 +44,7 @@ const status = computed(() => {
       :text="status.text"
       :state="status.state"
       :colors="status.colors"
+      :pending-color="status.pendingColor"
     />
   </ServiceTasksPopover>
   <span
@@ -53,6 +57,7 @@ const status = computed(() => {
       :text="status.text"
       :state="status.state"
       :colors="status.colors"
+      :pending-color="status.pendingColor"
       tabindex="0"
     />
   </span>

@@ -15,7 +15,7 @@ export namespace EnumerationAdminApi {
     displayName?: string;
     /** 描述 */
     description?: string;
-    /** 备注 */
+    /** 颜色（十六进制，如 #1677ff；接口字段仍为 remark） */
     remark?: string;
   }
 
@@ -33,7 +33,7 @@ export namespace EnumerationAdminApi {
     displayName?: string;
     /** 描述 */
     description?: string;
-    /** 备注 */
+    /** 颜色（十六进制，如 #1677ff；接口字段仍为 remark） */
     remark?: string;
   }
 
@@ -95,7 +95,7 @@ export namespace EnumerationAdminApi {
     displayName?: string;
     /** 描述 */
     description?: string;
-    /** 备注 */
+    /** 颜色（十六进制，如 #1677ff；接口字段仍为 remark） */
     remark?: string;
     isDeleted: boolean;
     deleterUserId?: number;

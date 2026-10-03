@@ -1042,6 +1042,8 @@
     "enumName": "枚举名称",
     "description": "描述",
     "remark": "备注",
+    "itemColor": "颜色",
+    "itemColorTitle": "选择颜色",
     "keyword": "关键字",
     "creationTime": "创建时间",
     "operation": "操作",

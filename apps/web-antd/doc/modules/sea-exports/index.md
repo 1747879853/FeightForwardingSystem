@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-10-02
+last_updated: 2026-10-03
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,7 +28,7 @@ last_updated: 2026-10-02
 - **大分页绘制：** 横向、纵向虚拟滚动始终开启，行高固定 40，分页到 100/200 时只绘制视口内的行和列。列表无单元格编辑，不再保留 `keepSource` 原始副本。
 - **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'TransportOrder.Etd DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按开船日期（`transportOrder.etd`）倒序。关闭 `autoLoad`，挂载后先恢复分组字段再 `submitForm` 首查，**不再预填会计期间**。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需再点「查询」才加载。每次列表查询会记住筛选和排序（去掉分页），编辑页「上一票 / 下一票」按这份条件定位。
 - **默认列：** 无用户列配置时，可见列/顺序/固定/列宽由 `list-column-defaults.ts` 里与 `table_config_SeaExportList` 同款的 JSON 维护；列设置里保存过则以用户设置为准，恢复默认会回到该文件。
-- **业务状态列：** 文案仍按服务项进度计算，每格只算一次；展示按 `upcoming/active/done` 三态着色。进行中（`active`）在文案前加橙色「待」徽标。默认只渲染这段文字，鼠标移入或聚焦后才挂载业务流程悬浮层。
+- **业务状态列：** 文案仍按服务项进度计算，每格只算一次。色块底始终用灰/黄/绿三态色；有服务项配置色时「待」和服务名用配置色。再进列表会重拉颜色。默认只渲染这段文字，鼠标移入或聚焦后才挂载业务流程悬浮层。
 - **提单状态列：** 默认排在业务状态后面。每一票按列表返回的 `billOfLadings` 展示主单和全部分单的提单状态，颜色与提单管理一致（待签入橙、已签入蓝、已驳回红、签出审核中金、可签出青、已签出绿、已扣单品红）。第一条是主单，后面按创建时间从早到晚是分单。格子里直接显示前两张，多出来的用 `+N`，悬停看全部。没有提单时显示 `--`。接口只有提单 id 和状态，格子上不出现提单号。详情页不读这个字段。
 - **业务状态悬浮任务：** 悬停或键盘聚焦业务状态时查询 `GetServicesAsync`，按时间轴展示本票已选服务项、处理人、状态、完成时间及主流程标识。标题下展示当前行委托编号，便于对照是哪一票。尚未生成任务的节点只保留名称和主流程标识，不显示「未生成任务」「处理人」「未分配」。当前节点高亮，状态色与详情页服务项目一致，同优先级标为并行。当前处理人且具备操作权限时可点完成；复用详情完成接口校验字段、附件和费用。完成人可经确认取消完成。操作后重查任务、刷新本行状态并标记已打开的详情下次进入时重拉；加载失败可重试，未生成任务或无权限时不展示操作按钮。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
@@ -85,7 +85,7 @@ last_updated: 2026-10-02
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表列仅图标展示（锁定红色 `LockKeyhole` / 未锁定灰色 `LockKeyholeOpen`）；查询区仍可按是/否筛选；编辑页以锁定标签展示。 | 布尔值，是/否。 |
 | **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表**不预填**；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** 未选则不传起止；用户选月后 `normalizeQuery` 扩成整月。schema 不设 `defaultValue`；`handleReset` 清空期间不查询。 | Month RangePicker；可清空后重查。 |
-| **业务状态** | 当前进行到的服务项名称，或「已完成」/「-」。 | 前端 `getSeaExportBusinessStatusMeta` 根据 `seaExportServices` 计算 | **触发/依赖：** 三态色 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 文字色对齐详情页；背景为半透明 rgba。 | 无服务项显示 `-`；非空以色块展示。 |
+| **业务状态** | 当前进行到的服务项名称，或「已完成」/「-」。 | 前端 `getSeaExportBusinessStatusMeta` 根据 `seaExportServices` 计算；色块底走 `SEA_EXPORT_BUSINESS_STATUS_COLORS`；配置色读 `ServiceType.remark` | **触发/依赖：** 有配置色时「待」和服务名用配置色，底仍用三态色。 | 无服务项显示 `-`；非空以色块展示。 |
 | **提单状态** | 该票主单和每张分单的提单状态。 | 仅列表 `GetPagedListAsync` 的 `billOfLadings`（`id`、`status`） | **触发/依赖：** 顺序即主单在前、分单按创建时间升序。状态文案和颜色与提单管理相同。超过两张时悬停 `+N` 看全部。 | 没有提单为空数组，显示 `--`。详情及其它复用对象为 null，不要读。不展示提单号。 |
 | **应收费用状态 / 应付费用状态** | 该委托下对应方向（含更改单）费用的组合流转状态；无费用时为 null。 | 接口 `receiveFeeStatus`、`payFeeStatus`；枚举 `getSeaExportFeeStatusOptions`（八态含结算/驳回/申请修改删除） | **触发/依赖：** 后端按优先级聚合判断，与单笔 `FeeStatus` 枚举值不同。 | 可空；0–7 为 `SeaExportFeeStatus` 有效值。 |
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
@@ -123,6 +123,7 @@ last_updated: 2026-10-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-03 | `Fix` | 业务状态底色保留灰/黄/绿三态；有服务项配置色时「待」和服务名用配置色。 | TAPD [#1000136](https://www.tapd.cn/61580498/prong/stories/view/1161580498001000136)。详见[变更记录](../../changelogs/change-log-2026-10-03-list-business-status-config-color.md)。 |
 | 2026-10-02 | `Feature` | 列表新增「提单状态」列，展示该票主单和分单各自的状态；没有提单时显示 `--`。 | 只读列表 `billOfLadings` 的 id 与 status。第一条视为主单。详情不使用该字段。详见 [变更日志](../../changelogs/change-log-2026-10-02-海运出口列表提单状态.md)。 |
 | 2026-10-01 | `Perf` | 没有脱敏规则的列不再套权限插槽，回到表格自己的文本格。可能按行打成 `***` 的列仍逐格判断。 | `usePermissionGrid` 只在 `cellMask` 时包 `permission_${field}`。海运进口、空运出口、运价和费用表共用。详见[变更记录](../../changelogs/change-log-2026-10-01-字段权限只包装会脱敏的列.md)。 |
 | 2026-10-01 | `Perf` | 分页 200 条时不再把每行的嵌套对象整棵做成响应式。列表展示不变。 | 全站 `createPagedListQuery` 对 `items` 做浅响应式。详见[变更记录](../../changelogs/change-log-2026-10-01-分页列表浅响应式.md)。 |

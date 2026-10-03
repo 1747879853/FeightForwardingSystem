@@ -73,6 +73,7 @@ import {
   stringifySeaExportListDefaultColumnSetting,
 } from './list-column-defaults';
 import {
+  buildServiceTypeColorMap,
   buildServiceTypeLabelMap,
   buildServiceTypeProcessMap,
   loadSeServiceTypeOptions,
@@ -141,12 +142,18 @@ const handleAiBillFeeFile = async (file: File) => {
 
 /** 服务项类型枚举 label 映射（用于「业务状态」列展示服务名称） */
 const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
+const serviceTypeColorMap = ref<Map<number, string>>(new Map());
 const serviceTypeProcessMap = ref<Map<number, boolean>>(new Map());
 
-onMounted(async () => {
+async function loadServiceTypeMaps() {
   const options = await loadSeServiceTypeOptions();
   serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+  serviceTypeColorMap.value = buildServiceTypeColorMap(options);
   serviceTypeProcessMap.value = buildServiceTypeProcessMap(options);
+}
+
+onMounted(() => {
+  void loadServiceTypeMaps();
 });
 
 /** 分组设置持久化 key（与列表 listKey 对齐，路由名 SeaExportList） */
@@ -445,6 +452,7 @@ onActivated(() => {
     firstActivate = false;
     return;
   }
+  void loadServiceTypeMaps();
   grouping.refreshGroupData();
 });
 
@@ -722,6 +730,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <BusinessStatusCell
           :row="row"
           :labels="serviceTypeLabelMap"
+          :colors="serviceTypeColorMap"
           :processes="serviceTypeProcessMap"
           @refreshed="row.seaExportServices = $event"
         />

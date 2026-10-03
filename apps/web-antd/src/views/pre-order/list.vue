@@ -42,9 +42,10 @@ import {
   createPagedListQuery,
 } from '#/utils/paged-list-query';
 import { isLegacyOceanExportTracking } from '#/utils/tracking-brand';
+import { resolveSeaExportBusinessStatusView } from '#/views/sea-export-admin/data';
 import BusinessStatusLabel from '#/views/sea-export-admin/modules/business-status-label.vue';
-import { SEA_EXPORT_BUSINESS_STATUS_COLORS } from '#/views/sea-export-admin/data';
 import {
+  buildServiceTypeColorMap,
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
 } from '#/views/sea-export-admin/service-type';
@@ -76,6 +77,7 @@ const canViewTracking = computed(() =>
   hasAccessByCodes(['Admin.ExternalApi.Get']),
 );
 const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
+const serviceTypeColorMap = ref<Map<number, string>>(new Map());
 const {
   TrackingModal: YundangTrackingModal,
   openTracking: openYundangTracking,
@@ -221,10 +223,14 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({
   },
 });
 
+async function loadServiceTypeMaps() {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+  serviceTypeColorMap.value = buildServiceTypeColorMap(options);
+}
+
 onMounted(async () => {
-  void loadSeServiceTypeOptions().then((options) => {
-    serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
-  });
+  void loadServiceTypeMaps();
   await grouping.restorePersistedField();
   await gridApi.formApi.submitForm();
 });
@@ -236,6 +242,7 @@ onActivated(() => {
     firstActivate = false;
     return;
   }
+  void loadServiceTypeMaps();
   grouping.refreshGroupData();
 });
 
@@ -308,8 +315,16 @@ const onGroupFieldChange = (value: number | undefined) => {
 useRefreshListOnFormReturn('PreOrderList', handleRefresh);
 
 const resolveBusinessStatus = (row: PreOrderAdminApi.PreOrderDto) => {
-  const meta = getPreOrderBusinessStatusMeta(row, serviceTypeLabelMap.value);
-  return { ...meta, colors: SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state] };
+  const view = resolveSeaExportBusinessStatusView(
+    getPreOrderBusinessStatusMeta(row, serviceTypeLabelMap.value),
+    serviceTypeColorMap.value,
+  );
+  return {
+    text: view.text,
+    state: view.state,
+    colors: view.colors,
+    pendingColor: view.pendingColor,
+  };
 };
 
 const oceanTrackingRow = (row: PreOrderAdminApi.PreOrderDto) =>

@@ -13,7 +13,11 @@
 
 ## 2026-10
 
+- [2026-10-03] [列表业务状态融合服务项目配置色](./changelogs/change-log-2026-10-03-list-business-status-config-color.md)
+
 - [2026-10-03] [业务联系单增加订单类型](./changelogs/change-log-2026-10-03-业务联系单订单类型.md)
+
+- [2026-10-03] [枚举子项颜色字段不再叫备注](./changelogs/change-log-2026-10-03-enumeration-item-color-label.md)
 
 - [2026-10-03] [付费结算选择列表显示已部分核销申请](./changelogs/change-log-2026-10-03-付费结算选择列表显示已部分核销申请.md)
 

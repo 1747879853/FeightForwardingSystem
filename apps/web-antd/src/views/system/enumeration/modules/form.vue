@@ -362,14 +362,14 @@ function getContrastColor(hexColor: string): string {
               </div>
               <div>
                 <label class="text-xs text-gray-500">{{
-                  $t('system.enumeration.remark')
+                  $t('system.enumeration.itemColor')
                 }}</label>
                 <div class="flex items-center gap-2">
                   <input
                     v-model="item.remark"
                     type="color"
                     class="h-8 w-16 cursor-pointer rounded border p-1"
-                    title="选择颜色"
+                    :title="$t('system.enumeration.itemColorTitle')"
                   />
                   <span
                     v-if="item.remark"

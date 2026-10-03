@@ -1,7 +1,10 @@
 import { getItemsByName } from '#/api/system/enum-admin';
+import { parseHexColor } from '#/utils/enum-color';
 import { getEnumItems } from '#/utils/init-enum';
 
 export type ServiceTypeOption = {
+  /** 服务项配置色（枚举子项 remark，十六进制） */
+  color?: string;
   /** 是否业务主流程（来源于 ServiceType 枚举项 extra1） */
   isBusinessProcess: boolean;
   label: string;
@@ -16,6 +19,7 @@ export function buildServiceTypeOptionsFromEnum(
         displayName?: string;
         enable?: boolean;
         extra1?: boolean;
+        remark?: string;
         value: number;
       }[]
     | undefined,
@@ -23,6 +27,7 @@ export function buildServiceTypeOptionsFromEnum(
   const options = (items || [])
     .filter((item) => item.enable !== false)
     .map((item) => ({
+      color: parseHexColor(item.remark),
       isBusinessProcess: item.extra1 === true,
       label: item.displayName || `${item.value}`,
       value: Number(item.value),
@@ -65,6 +70,18 @@ export function buildServiceTypeProcessMap(
   const map = new Map<number, boolean>();
   for (const item of serviceTypeOptions) {
     map.set(Number(item.value), item.isBusinessProcess);
+  }
+  return map;
+}
+
+export function buildServiceTypeColorMap(
+  serviceTypeOptions: ServiceTypeOption[],
+) {
+  const map = new Map<number, string>();
+  for (const item of serviceTypeOptions) {
+    if (item.color) {
+      map.set(Number(item.value), item.color);
+    }
   }
   return map;
 }
