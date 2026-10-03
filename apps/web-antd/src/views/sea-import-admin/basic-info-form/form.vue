@@ -87,6 +87,12 @@ import {
 import { useKeepAliveRouteParamId } from '#/composables/use-keep-alive-route-param-id';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { isSameValuePortReselect } from '#/adapter/component/biz-select/port-select-option';
+import type { PartyContactDisplay } from '#/views/_shared/party-contact/party-contact';
+import {
+  fetchDefaultPartyContacts,
+  toPartyContactDisplays,
+} from '#/views/_shared/party-contact/party-contact';
+import { createPartyContactsFieldLabel } from '#/views/_shared/party-contact/party-contacts-field-label';
 
 import {
   CARGO_TYPE,
@@ -177,8 +183,38 @@ const orderCtns = ref<any[]>([]);
 const orderCodeGoodsRows = ref<
   Array<{ codeGoodsId?: number | string; id?: number | string }>
 >([]);
-/** 委托单位联系人：暂无独立控件，编辑时原样回传避免被清空 */
-const clientContactId = ref<null | number | string | undefined>();
+/** 委托单位联系人（可多选）：挂在委托单位标签右侧，保存时提交 id 数组 */
+const clientContacts = ref<PartyContactDisplay[]>([]);
+/** 联系人弹层按它列出该委托单位的联系人；改选委托单位、详情回填、AI 识别时同步 */
+const clientContactParentId = ref<unknown>();
+const ClientContactFieldLabel = createPartyContactsFieldLabel({
+  componentName: 'SeaImportClientContactFieldLabel',
+  fieldLabel: () => $t('seaImport.import.clientId'),
+  contacts: clientContacts,
+  parentId: () => clientContactParentId.value,
+  parentEmptyTip: '请先选择委托单位',
+  disabled: () => isOrderReadonly.value,
+});
+let clientContactFetchSeq = 0;
+/** 改选委托单位后：联系人换成新单位的默认联系人(旧单位的联系人不再成立)，用户可再在标签弹层里增减 */
+async function applyDefaultClientContacts(clientId: unknown) {
+  const seq = ++clientContactFetchSeq;
+  const parentId =
+    clientId === undefined || clientId === null || clientId === ''
+      ? undefined
+      : clientId;
+  clientContactParentId.value = parentId;
+  clientContacts.value = [];
+  if (parentId === undefined) return;
+  try {
+    const contacts = await fetchDefaultPartyContacts(parentId);
+    if (seq !== clientContactFetchSeq) return;
+    clientContacts.value = contacts;
+  } catch {
+    if (seq !== clientContactFetchSeq) return;
+    clientContacts.value = [];
+  }
+}
 /** 收发通区块可折叠，默认展开（对齐业务联系单交互，进口默认展开） */
 const partyExpanded = ref(true);
 
@@ -325,10 +361,26 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
       if (bIndex === undefined) return -1;
       return aIndex - bIndex;
     })
-    .map((item) => ({
-      ...item,
-      componentProps: withSmallComponentProps(item.componentProps),
-    })),
+    .map((item) =>
+      item.fieldName === 'clientId'
+        ? {
+            ...item,
+            // 委托单位标签右侧挂联系人多选；用户改选委托单位才换默认联系人，详情回填不走 onChange
+            label: ClientContactFieldLabel as unknown as NonNullable<
+              typeof item.label
+            >,
+            componentProps: withSmallComponentProps({
+              ...((item.componentProps as Record<string, any>) ?? {}),
+              onChange: (value: unknown) => {
+                void applyDefaultClientContacts(value);
+              },
+            }),
+          }
+        : {
+            ...item,
+            componentProps: withSmallComponentProps(item.componentProps),
+          },
+    ),
   showDefaultActions: false,
   wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
 });
@@ -875,7 +927,7 @@ const collectCurrentFormValues = async (): Promise<Record<string, any>> => {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     orderUsers: orderUserRows.value,
     orderCodeGoodsRows: orderCodeGoodsRows.value,
-    clientContactId: clientContactId.value,
+    clientContactIds: clientContacts.value.map((item) => item.id),
   };
 };
 
@@ -920,7 +972,10 @@ const loadEditData = async (): Promise<
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.orderCtns);
     orderCodeGoodsRows.value = formValues.orderCodeGoodsRows ?? [];
-    clientContactId.value = to?.clientContactId;
+    // 作废回填前改选委托单位触发、还在路上的默认联系人请求，避免覆盖已保存的人选
+    ++clientContactFetchSeq;
+    clientContactParentId.value = to?.clientId || undefined;
+    clientContacts.value = toPartyContactDisplays(to?.clientContacts);
 
     // 各下拉的回显项直接由详情对象构造，避免每个 select 再各自打一次详情接口
     basicInfoFormApi.updateSchema([
@@ -1216,6 +1271,11 @@ const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
   recalcDerivedDates,
   setCodePackageSelectedItems: (items) => {
     codePackageSelectedItems.value = items;
+  },
+  applyPartyContacts: async (values) => {
+    const clientId = values.clientId;
+    if (clientId === undefined || clientId === null || clientId === '') return;
+    await applyDefaultClientContacts(clientId);
   },
 });
 

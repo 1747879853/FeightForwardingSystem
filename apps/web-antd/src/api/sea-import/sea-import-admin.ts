@@ -318,8 +318,8 @@ export namespace SeaImportAdminApi {
     /** 界面显示为「到港日期」，保存时截断到日期部分 */
     etd?: string;
     clientId: string;
-    /** 须属于 ClientId 下的客户联系人 */
-    clientContactId?: LongId | null;
+    /** 委托单位联系人 id（可多个，须都属于 ClientId 下的客户联系人）；编辑时按数组覆盖保存，不传等于清空 */
+    clientContactIds?: LongId[];
     teamId?: string;
     custBrokerId?: string;
     warehouseId?: string;
@@ -401,8 +401,8 @@ export namespace SeaImportAdminApi {
     etd?: null | string;
     clientId: string;
     client?: ClientSimpleDto | null;
-    clientContactId?: LongId | null;
-    clientContact?: ClientContactSimpleDto | null;
+    /** 委托单位联系人（可多个，按 id 升序；只有详情返回，列表为 null） */
+    clientContacts?: ClientContactSimpleDto[] | null;
     teamId?: null | string;
     team?: ClientSimpleDto | null;
     custBrokerId?: null | string;

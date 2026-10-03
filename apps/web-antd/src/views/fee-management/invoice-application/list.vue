@@ -629,7 +629,11 @@ function handleBatchWithdraw() {
         >
           -
         </span>
-        <span v-else>{{ Number(row.totalAppliedAmount).toFixed(2) }}</span>
+        <span
+          v-else
+          :class="{ 'money-negative': Number(row.totalAppliedAmount) < 0 }"
+          >{{ Number(row.totalAppliedAmount).toFixed(2) }}</span
+        >
       </template>
       <!-- 状态列插槽，支持点击查看发票 -->
       <template #status="{ row }">
@@ -943,5 +947,9 @@ function handleBatchWithdraw() {
 
 .invoice-footer-summary__empty-text {
   color: #94a3b8;
+}
+
+.money-negative {
+  color: #ef4444;
 }
 </style>

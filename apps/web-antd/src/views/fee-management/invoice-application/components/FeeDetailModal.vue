@@ -386,6 +386,12 @@ function getBizTypeLabel(value: string | number): string {
 }
 
 /** 将原币金额转换为人民币 */
+function formatDetailAmount(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '-';
+  return amount.toFixed(2);
+}
+
 function convertToRMB(amount: number, currencyCode: string): number {
   // 如果已经是人民币，直接返回
   if (currencyCode === 'CNY' || currencyCode === 'RMB') {
@@ -763,11 +769,30 @@ const isIndeterminate = computed(() => {
                     "
                   />
                 </template>
+                <template
+                  v-else-if="
+                    column.dataIndex === 'amount' ||
+                    column.dataIndex === 'remainingInvoiceAmount'
+                  "
+                >
+                  <span
+                    :class="{
+                      'money-negative': Number(record[column.dataIndex]) < 0,
+                    }"
+                  >
+                    {{ formatDetailAmount(record[column.dataIndex]) }}
+                  </span>
+                </template>
                 <template v-else-if="column.dataIndex === 'appliedAmount'">
-                  <span class="fdm-amount">
+                  <span
+                    class="fdm-amount"
+                    :class="{
+                      'money-negative': Number(record.appliedAmount) < 0,
+                    }"
+                  >
                     {{
                       convertToRMB(
-                        record.appliedAmount || 0,
+                        Number(record.appliedAmount) || 0,
                         record.currencyCode || '',
                       ).toFixed(2)
                     }}
@@ -912,6 +937,10 @@ const isIndeterminate = computed(() => {
 .fdm-amount {
   font-size: 14px;
   font-weight: 700;
+  color: #ef4444;
+}
+
+.money-negative {
   color: #ef4444;
 }
 </style>

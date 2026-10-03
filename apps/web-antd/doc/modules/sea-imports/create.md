@@ -45,6 +45,7 @@ last_updated: 2026-09-15
 | **到港日期 (`etd`)** | 界面「到港日期」，落库 `transportOrder.etd`。 | `data.ts` / 详情扁平化 | **触发：** 重算转站日期、箱使日期。 | 可手选。 |
 | **转站/箱使日期** | 推算结果，只读文本。 | 到港 +6 天；到港 + 免箱期 −1 | **触发/依赖：** 到港、免箱期变化时写入 `YYYY-MM-DD`。 | 不可手改。 |
 | **原产国** | 整票属性。 | `CountrySelect` | 放在基础信息「运输条款」之后。 | 可选。 |
+| **委托单位联系人** | 委托单位下的客户联系人，可多选。 | 委托单位标签右侧；`ClientContactAdmin/GetPagedListAsync`（未禁用，最多 100 条）；提交 `transportOrder.clientContactIds` | **触发/依赖：** 选委托单位后清空并先带出默认联系人（`isDefault` 优先，否则第一条未禁用），点姓名弹出勾选列表增减；AI 识别带出委托单位时同样带默认联系人。 | 每个须属于委托单位；未选单位时弹层提示先选委托单位。 |
 | **净重合计** | 货物区净重。 | 箱型行 `netWeight` 求和 | 箱型变动自动回填，可二次手改。 | 详情回填时挂起自动求和。 |
 | **码头 (`terminalId`)** | 往来单位，行业类别含「码头」。 | `ClientSelect` `industryCategory=t` | 提交最外层 `terminalId`，读取 `terminal.name`。 | 后端只校验客户存在，不校验行业类别。 |
 | **联运单号 / 分单号** | 一票一号字段。 | 文本 | 复制时后端清空。 | 上限 32。 |
@@ -66,6 +67,7 @@ last_updated: 2026-09-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-03 | `Feature` | 新增委托单位联系人（可多选），在委托单位标签右侧；选委托单位先带出默认联系人。 | 与海运出口共用 `views/_shared/party-contact/`；提交 `transportOrder.clientContactIds`。详见 [变更日志](../../changelogs/change-log-2026-10-03-往来单位联系人多选.md)。 |
 | 2026-09-30 | `Fix` | 起运港/目的港已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | 与编辑页共用表单。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-15 | `Fix` | 报关发票号改为提交/回显 `transportOrder.invoiceNum`，文案由「发票号」改名。 | 不再走票根。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |
 | 2026-09-13 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 进口自有 `order-ctn-table.vue`；确认时预填箱型并带出货物区总包装。详见 [变更日志](../../changelogs/change-log-2026-09-13-sea-import-ctn-batch-add.md)。 |

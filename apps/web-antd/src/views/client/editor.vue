@@ -11,6 +11,7 @@ import {
   CLIENT_EDITOR_IS_DIRTY_KEY,
   CLIENT_FORM_LOCKED_KEY,
   CLIENT_FORM_LOCKED_REF_KEY,
+  CLIENT_IS_ENTRUSTING_UNIT_KEY,
 } from './base/client-editor-context';
 import Form from './base/form.vue';
 import ContactList from './contact/list.vue';
@@ -30,6 +31,8 @@ const isAuditMode = computed(() => route.query.mode === 'audit');
 
 /** 由基础表单同步写入；申请修改解锁后附件/排除服务等一并放开 */
 const formLockedRef = ref(false);
+/** 详情返回前为 null；不含委托单位时海运出口服务项目不请求接口 */
+const isEntrustingUnitRef = ref<boolean | null>(null);
 /** 随主表审核锁定的子 Tab（附件、排除服务）；联系人/开票不跟主表锁 */
 const lockedSubTabsReadonly = computed(
   () => isAuditMode.value || formLockedRef.value,
@@ -38,6 +41,7 @@ const lockedSubTabsReadonly = computed(
 const contactInvoiceReadonly = computed(() => isAuditMode.value);
 
 provide(CLIENT_FORM_LOCKED_REF_KEY, formLockedRef);
+provide(CLIENT_IS_ENTRUSTING_UNIT_KEY, isEntrustingUnitRef);
 provide(
   CLIENT_FORM_LOCKED_KEY,
   computed(() => lockedSubTabsReadonly.value),

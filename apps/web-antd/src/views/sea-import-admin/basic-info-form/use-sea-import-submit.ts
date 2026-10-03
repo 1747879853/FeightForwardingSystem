@@ -15,6 +15,7 @@ import { message } from 'ant-design-vue';
 import { addSeaImport, editSeaImport } from '#/api/sea-import/sea-import-admin';
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { toPartyContactIds } from '#/views/_shared/party-contact/party-contact';
 
 import { CARGO_TYPE } from '../data';
 import {
@@ -86,7 +87,10 @@ export const buildSeaImportDto = (
     /** 界面上的「到港日期」落在 etd */
     etd: toDateOnlyString(values.etd),
     clientId: values.clientId,
-    clientContactId: values.clientContactId ?? undefined,
+    clientContactIds: toPartyContactIds(
+      values.clientId,
+      values.clientContactIds,
+    ),
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
     warehouseId: values.warehouseId ?? undefined,

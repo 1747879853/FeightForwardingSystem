@@ -244,9 +244,21 @@
 .flight-info-header__fields {
   display: flex;
   flex: 1;
+  gap: 12px;
   align-items: center;
   min-width: 0;
-  max-width: 560px;
+  max-width: 760px;
+}
+
+.flight-info-header__fields > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 订舱代理联系人：标题栏横排表单标签放不下姓名，单独摆在订舱代理下拉右侧 */
+.flight-info-header__contacts {
+  flex-shrink: 0;
+  max-width: 200px;
 }
 
 .flight-info-header__fields :deep(.flight-info-header-wrap) {

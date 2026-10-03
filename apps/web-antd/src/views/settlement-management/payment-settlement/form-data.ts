@@ -14,19 +14,19 @@ export interface BankOption {
   currencyId: number;
 }
 
-/** 抽屉确认回传的「申请+原币」选中项 */
+/** 抽屉确认回传的「付费申请+申请币别」选中项 */
 export interface SelectedApplicationForSettlement {
   application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
   settledPrice: number;
 }
 
-/** 抽屉选中项 → 按原币接口明细入参 */
+/** 抽屉选中项 → 结算行入参（只带申请、申请币别、结算金额） */
 export function mapApplicationsToCurrencyItems(
   applications: SelectedApplicationForSettlement[],
 ): PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] {
   return applications.map((app) => ({
     paymentApplicationId: app.application.paymentApplicationId,
-    originalCurrencyId: app.application.originalCurrencyId,
+    applyCurrencyId: app.application.applyCurrencyId,
     settledPrice: app.settledPrice,
   }));
 }

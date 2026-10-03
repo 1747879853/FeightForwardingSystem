@@ -116,7 +116,7 @@ export function useSubmit(
       });
 
       message.success(
-        `已添加并保存 ${paymentApplicationCurrencyItems.length} 个「申请+原币」组合`,
+        `已添加并保存 ${paymentApplicationCurrencyItems.length} 个申请`,
       );
       markListShouldRefresh('PaymentSettlementList');
       await loadEditData();
@@ -180,7 +180,7 @@ export function useSubmit(
       });
 
       message.success(
-        `成功创建结算单，已添加 ${paymentApplicationCurrencyItems.length} 个「申请+原币」组合`,
+        `成功创建结算单，已添加 ${paymentApplicationCurrencyItems.length} 个申请`,
       );
       markListShouldRefresh('PaymentSettlementList');
 
@@ -258,7 +258,7 @@ export function useSubmit(
             id: editId.value,
             paymentApplicationCurrencyKeys: itemsToDelete.map((item) => ({
               paymentApplicationId: item.paymentApplicationId,
-              originalCurrencyId: item.originalCurrencyId,
+              applyCurrencyId: item.applyCurrencyId,
             })),
           });
 

@@ -10,6 +10,7 @@ import { Checkbox } from 'ant-design-vue';
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { formatAmount } from './form-data';
+import { formatOrgChainCompanyName } from './org-company-name';
 
 interface Props {
   /** 申请明细列表（从详情接口的 paymentApplicationCurrencies 获取 - 新的二级结构） */
@@ -51,7 +52,7 @@ watch(
 );
 
 /**
- * 外层列配置（申请+原币组合级别）
+ * 外层列配置（付费申请+申请币别）
  */
 const outerColumns = computed(() => [
   {
@@ -79,12 +80,6 @@ const outerColumns = computed(() => [
     title: '申请人',
     key: 'creatorUserName',
     width: 100,
-  },
-  {
-    title: '原币结算量',
-    key: 'settledAmount',
-    width: 130,
-    align: 'right' as const,
   },
   {
     title: '本次结算金额',
@@ -134,6 +129,11 @@ const innerColumns = [
     width: 150,
   },
   {
+    title: '币别',
+    key: 'currencyCode',
+    width: 80,
+  },
+  {
     title: '已结算金额',
     key: 'settledPrice',
     width: 120,
@@ -166,17 +166,12 @@ function getCreatorUserName(
 }
 
 /**
- * 获取归属组织名称
+ * 归属组织只展示所属公司名称，不展示部门。
  */
 function getOrgName(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
-  if (record.orgs && record.orgs.length > 0) {
-    // 返回最后一个组织的名称（最下级组织）
-    const lastOrg = record.orgs[record.orgs.length - 1];
-    return lastOrg?.name || '-';
-  }
-  return '-';
+  return formatOrgChainCompanyName(record.orgs);
 }
 
 /**
@@ -185,8 +180,7 @@ function getOrgName(
 function getCurrencyCode(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
-  // 如果有 currency，使用申请的币别；否则使用原币
-  return record.currency?.code || record.originalCurrency?.code || '-';
+  return record.applyCurrency?.code || '-';
 }
 
 /**
@@ -302,13 +296,6 @@ function getOrderFees(
         {{ getCreatorUserName(record) }}
       </template>
 
-      <!-- 原币结算量 -->
-      <template v-else-if="column.key === 'settledAmount'">
-        <span style="font-weight: bold; color: hsl(var(--primary))">
-          {{ formatAmount(record.settledAmount || 0) }}
-        </span>
-      </template>
-
       <!-- 本次结算金额 -->
       <template v-else-if="column.key === 'settledPrice'">
         <span style="font-weight: bold; color: #fa8c16">
@@ -360,6 +347,11 @@ function getOrderFees(
       <!-- 费用名称 -->
       <template v-else-if="column.key === 'feeCodeName'">
         {{ feeRecord.feeCode?.cnName || '-' }}
+      </template>
+
+      <!-- 费用自己的币别（固定币别申请一行可跨多个原币） -->
+      <template v-else-if="column.key === 'currencyCode'">
+        {{ feeRecord.currency?.code || '-' }}
       </template>
 
       <!-- 已结算金额 -->

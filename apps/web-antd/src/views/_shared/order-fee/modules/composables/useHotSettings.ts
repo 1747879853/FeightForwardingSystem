@@ -1,7 +1,6 @@
 import { createFieldPermission } from '#/composables/field-permission';
 import { orderFeeFieldPermission } from '#/composables/field-permission-profiles';
 import { shallowRef, nextTick, type Ref } from 'vue';
-import { message } from 'ant-design-vue';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { markUserEditedCell } from '../../data';
 import {
@@ -31,6 +30,117 @@ const USER_EDIT_SOURCES = new Set([
 /** 已修改单元格角标提示文案 */
 const EDITED_CELL_TITLE = '该单元格已修改';
 
+/** 盖过应付卡片和拖拽条，仍低于弹窗 */
+const FEE_DROPDOWN_Z_INDEX = '2000';
+
+/**
+ * 费用下拉挂在表格内部，会被应收卡片的 overflow 裁掉。
+ * 只把选项列表挪到 body。输入框留在单元格里，避免 Handsontable 把列表高度算成 0。
+ */
+function portalFeeDropdownEditor(editor: any) {
+  const list = editor?.htContainer as HTMLElement | undefined;
+  const holder = editor?.TEXTAREA_PARENT as HTMLElement | undefined;
+  if (!list || !holder) return () => {};
+
+  if (list.dataset.feeDropdownPortal !== '1') {
+    list.dataset.feeDropdownPortal = '1';
+    // 点在下拉里不算表格外部点击，否则选项还没写入编辑器就被关掉
+    list.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+    });
+  }
+  if (list.parentElement !== document.body) {
+    document.body.appendChild(list);
+  }
+
+  let released = false;
+  let observer: MutationObserver;
+  const place = () => {
+    if (released || editor.isOpened?.() === false) return;
+    const cell = (editor.getEditedCell?.() || editor.TD) as
+      | HTMLElement
+      | null
+      | undefined;
+    if (!cell?.isConnected) return;
+    const rect = cell.getBoundingClientRect();
+    const table = list.querySelector(
+      '.ht_master table.htCore',
+    ) as HTMLElement | null;
+    const contentHeight = table?.offsetHeight ?? 0;
+    const cap = Math.min(280, window.innerHeight - 24);
+    if (contentHeight > 8) {
+      const nextHeight = Math.min(contentHeight + 2, cap);
+      const hider = list.querySelector(
+        '.ht_master .wtHider',
+      ) as HTMLElement | null;
+      if (hider && hider.offsetHeight + 2 < contentHeight) {
+        hider.style.height = `${contentHeight}px`;
+      }
+      if ((list.clientHeight || 0) + 8 < nextHeight) {
+        list.style.height = `${nextHeight}px`;
+      }
+    }
+    const listHeight = list.offsetHeight;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const topPx =
+      listHeight > 0 &&
+      spaceBelow < Math.min(listHeight, 160) &&
+      rect.top > spaceBelow
+        ? Math.round(rect.top - listHeight)
+        : Math.round(rect.bottom);
+    const top = `${topPx}px`;
+    const left = `${Math.round(rect.left)}px`;
+    if (
+      list.style.position === 'fixed' &&
+      list.style.top === top &&
+      list.style.left === left &&
+      list.style.zIndex === FEE_DROPDOWN_Z_INDEX
+    ) {
+      return;
+    }
+    list.style.position = 'fixed';
+    list.style.top = top;
+    list.style.left = left;
+    list.style.right = 'auto';
+    list.style.margin = '0';
+    list.style.zIndex = FEE_DROPDOWN_Z_INDEX;
+  };
+
+  const release = () => {
+    if (released) return;
+    released = true;
+    observer.disconnect();
+    window.removeEventListener('resize', place);
+    document.removeEventListener('scroll', place, true);
+    list.style.position = '';
+    list.style.top = '';
+    list.style.left = '';
+    list.style.right = '';
+    list.style.zIndex = '';
+    if (list.parentElement !== holder) {
+      holder.appendChild(list);
+    }
+  };
+
+  observer = new MutationObserver(() => {
+    if (editor.isOpened?.() === false || list.style.display === 'none') {
+      release();
+      return;
+    }
+    place();
+  });
+  observer.observe(list, {
+    attributes: true,
+    attributeFilter: ['style'],
+  });
+  window.addEventListener('resize', place);
+  document.addEventListener('scroll', place, true);
+  place();
+  requestAnimationFrame(place);
+
+  return release;
+}
+
 export function useHotSettings(
   dataSource: Ref<any[]> | any[],
   selectedRowKeys: (string | number)[] | Ref<(string | number)[]>,
@@ -40,11 +150,12 @@ export function useHotSettings(
   linkage: any,
   dropdownSources: any,
   currentOptionsCache: any,
-  loadClientList: (industryCategory: string) => Promise<any[]>,
+  beginSettlementClientBrowse: () => void,
+  loadMoreSettlementClients: () => Promise<Array<{
+    label: string;
+    value: any;
+  }> | null>,
   getColumnIndex: (field: string) => number,
-  getSettlementIndustryCategory: (
-    industryCategory?: number,
-  ) => string | undefined,
   onOpenDropdown?: (
     rowIndex: number,
     colIndex: number,
@@ -70,6 +181,41 @@ export function useHotSettings(
     return ((allClientsByIndustry as any).value ??
       allClientsByIndustry ??
       {}) as Record<string, any[]>;
+  };
+
+  const settlementDropdownScrollBound = new WeakSet<HTMLElement>();
+  let releaseDropdownPortal: (() => void) | null = null;
+
+  const bindSettlementDropdownScroll = (editor: any, attempt = 0) => {
+    const holder = editor?.htEditor?.rootElement?.querySelector(
+      '.ht_master .wtHolder',
+    ) as HTMLElement | null;
+    if (!holder || holder.clientHeight <= 0) {
+      if (attempt < 8) {
+        requestAnimationFrame(() =>
+          bindSettlementDropdownScroll(editor, attempt + 1),
+        );
+      }
+      return;
+    }
+    if (settlementDropdownScrollBound.has(holder)) return;
+    settlementDropdownScrollBound.add(holder);
+    holder.addEventListener('scroll', () => {
+      if (holder.clientHeight <= 0) return;
+      const distanceToBottom =
+        holder.scrollHeight - holder.scrollTop - holder.clientHeight;
+      if (distanceToBottom > 16) return;
+      const scrollTop = holder.scrollTop;
+      void loadMoreSettlementClients().then((items) => {
+        if (!items?.length || editor.isOpened?.() === false) return;
+        currentOptionsCache.value = items;
+        editor.updateChoicesList?.(items.map((item) => item.label));
+        holder.scrollTop = scrollTop;
+        requestAnimationFrame(() => {
+          holder.scrollTop = scrollTop;
+        });
+      });
+    });
   };
 
   /** 同一帧渲染内复用：高亮 Set / 行级状态色与可编辑判定 */
@@ -312,32 +458,6 @@ export function useHotSettings(
               (item: any) => item.label,
             );
             onOpenDropdown?.(rowIndex, colIndex, field, source);
-          } else if (field === 'settlementId') {
-            const actualDataSource = getDataSource();
-            const currentRow = actualDataSource[rowIndex];
-            const currentRowAny = currentRow as any;
-            let industryCategoryValue = getSettlementIndustryCategory(
-              currentRowAny?.industryCategory_value ??
-                currentRowAny?.industryCategory,
-            );
-
-            // ✅ 关键修改：允许不选择行业类别，此时加载全部客户
-            const categoryToLoad =
-              industryCategoryValue && typeof industryCategoryValue === 'string'
-                ? industryCategoryValue
-                : '';
-
-            loadClientList(categoryToLoad)
-              .then((options: any[]) => {
-                currentOptionsCache.value = options;
-                const source = options.map((opt: any) => opt.label);
-                onOpenDropdown?.(rowIndex, colIndex, field, source);
-              })
-              .catch(() => {
-                message.error('加载客户列表失败');
-              });
-
-            return;
           } else if (field === 'unit') {
             const source =
               dropdownSources.value.unitList?.map((item: any) => item.label) ||
@@ -391,37 +511,9 @@ export function useHotSettings(
           node.textContent = '';
         });
 
-        // ✅ 关键修复：对于 settlementId 和 unit 列，在编辑器激活前预加载数据
-        // 这样 autocomplete 编辑器的 source 函数就能获取到最新数据
         if (field === 'settlementId') {
-          const actualDataSource = getDataSource();
-          const currentRow = actualDataSource[row] as any;
-          let industryCategoryValue = getSettlementIndustryCategory(
-            currentRow?.industryCategory_value ?? currentRow?.industryCategory,
-          );
-
-          // ✅ 允许不选择行业类别，此时加载全部客户
-          const categoryToLoad =
-            industryCategoryValue && typeof industryCategoryValue === 'string'
-              ? industryCategoryValue
-              : '';
-
-          // 异步加载客户列表
-          loadClientList(categoryToLoad)
-            .then((options: any[]) => {
-              currentOptionsCache.value = options;
-              // ✅ 更新当前单元格的 source meta，确保 autocomplete 编辑器能看到新数据
-              this.setCellMeta(
-                row,
-                col,
-                'source',
-                options.map((opt: any) => opt.label),
-              );
-            })
-            .catch((error) => {
-              console.error('❌ [beforeBeginEditing] 加载客户列表失败:', error);
-              message.error('加载客户列表失败');
-            });
+          // 打开时先按空关键字拉第 1 页，不要拿单元格里的简称去搜
+          beginSettlementClientBrowse();
         } else if (field === 'unit') {
           // ✅ 对于 unit 列，确保 dropdownSources.unitList 是最新的
           const source =
@@ -449,6 +541,8 @@ export function useHotSettings(
         }
         const field = hotColumns.value[col]?.data;
         if (!isOrderFeeSelectField(field) || !editor) return;
+        releaseDropdownPortal?.();
+        releaseDropdownPortal = portalFeeDropdownEditor(editor);
         const rowData = getDataSource()[row] as any;
         if (!rowData) return;
         const rawId = rowData[`${field}_value`] ?? rowData[field];
@@ -475,6 +569,7 @@ export function useHotSettings(
             rowData,
             currentOptionsCache.value as any[],
           );
+          bindSettlementDropdownScroll(editor);
         }
         if (label && typeof editor.setValue === 'function') {
           editor.setValue(label);
@@ -831,6 +926,11 @@ export function useHotSettings(
 
       // Handsontable 将 this 绑为实例；传入后联动可走 refreshHotSourceRows 脏行刷新
       linkage.handleAfterChange(processedChanges, source, this);
+    },
+
+    afterDestroy() {
+      releaseDropdownPortal?.();
+      releaseDropdownPortal = null;
     },
 
     afterGetRowHeader(_row: number, TH: HTMLTableCellElement) {

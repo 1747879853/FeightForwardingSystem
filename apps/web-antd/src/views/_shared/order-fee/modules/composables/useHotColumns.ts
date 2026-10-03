@@ -72,6 +72,14 @@ export function useHotColumns(
   getSortIcon: (field: string) => string,
   currentOptionsCache: any,
   allClientsByIndustry?: Ref<Record<string, any[]>>,
+  querySettlementClients?: (
+    industryCategory: string,
+    keyword: string,
+    done: (items: Array<{ label: string; value: any }>) => void,
+  ) => void,
+  getSettlementIndustryCategory?: (
+    industryCategory?: number,
+  ) => string | undefined,
 ) {
   // ✅ 合法取值集合：含客户 id / label / name，以及表内已填结算对象。
   // 结算对象列是 strict + allowInvalid:false 的 autocomplete；选中后 data 存客户 id，
@@ -296,39 +304,43 @@ export function useHotColumns(
         };
       } else if (meta.field === 'settlementId') {
         hotCol.type = 'autocomplete';
-        // ✅ 关键修复：配置动态 source 函数，支持回车键触发下拉框
+        // 与基础信息客户下拉一致：按行业分页，关键字交给服务端。
+        // sortByRelevance 关闭字母排序，filter 关闭本地二次过滤，避免全称命中被丢掉。
+        hotCol.sortByRelevance = true;
+        hotCol.filter = false;
         hotCol.source = function (
+          this: any,
           query: string,
           process: (items: string[]) => void,
         ) {
-          // ✅ 这个函数会在编辑器激活时被调用
-          // 实际的数据加载由 useHotSettings 中的 afterOnCellMouseDown 处理
-          // 这里返回当前缓存的数据，确保 autocomplete 编辑器有数据可显示
-          const cachedData = currentOptionsCache.value || [];
-          const allLabels = cachedData.map((item: any) => item.label);
+          const rows = Array.isArray(dataSource)
+            ? dataSource
+            : dataSource.value;
+          const sourceIndex = visualRowToSourceIndex(this.instance, this.row);
+          const rowData = rows?.[sourceIndex] as any;
+          const industry = getSettlementIndustryCategory?.(
+            rowData?.industryCategory_value ?? rowData?.industryCategory,
+          );
+          const category = typeof industry === 'string' ? industry : '';
 
-          if (!query) {
-            process(allLabels);
+          const publish = (options: Array<{ label: string; value: any }>) => {
+            currentOptionsCache.value = options;
+            const labels = options.map((item) => item.label);
+            if (
+              query &&
+              !labels.includes(query) &&
+              allClientValueSet.value.has(query)
+            ) {
+              labels.push(query);
+            }
+            process(labels);
+          };
+
+          if (!querySettlementClients) {
+            publish(currentOptionsCache.value || []);
             return;
           }
-
-          // 支持搜索过滤
-          const searchLower = query.toLowerCase();
-          const filtered = allLabels.filter((label: string) => {
-            return label.toLowerCase().includes(searchLower);
-          });
-
-          // ✅ 拖拽填充/粘贴兜底：编辑器未打开时 currentOptionsCache 往往为空。
-          // 选中后单元格存的是客户 id；若 query（id / label / name）命中合法集合则纳入候选，
-          // 否则 strict 会取消填充。
-          if (
-            query &&
-            !filtered.includes(query) &&
-            allClientValueSet.value.has(query)
-          ) {
-            filtered.push(query);
-          }
-          process(filtered);
+          querySettlementClients(category, query || '', publish);
         };
         hotCol.strict = true;
         hotCol.allowInvalid = false;

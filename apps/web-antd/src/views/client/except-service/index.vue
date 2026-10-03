@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientExceptServiceAdminApi } from '#/api/sea-export/client-except-service-admin';
 
-import { computed, inject, onMounted, ref } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -28,7 +28,10 @@ import {
   parseSeaExportUserAttribute,
 } from '#/views/system/user/data';
 
-import { CLIENT_FORM_LOCKED_KEY } from '../base/client-editor-context';
+import {
+  CLIENT_FORM_LOCKED_KEY,
+  CLIENT_IS_ENTRUSTING_UNIT_KEY,
+} from '../base/client-editor-context';
 import {
   buildEditPayload,
   buildServiceTypeLabelMap,
@@ -52,6 +55,11 @@ const formLocked = inject(
   computed(() => false),
 );
 const isReadonly = computed(() => props.readonly || formLocked.value);
+/** null：客户详情未返回。非委托单位时不要请求排除服务项目 */
+const entrustingUnitState = inject(CLIENT_IS_ENTRUSTING_UNIT_KEY, null);
+const entrustingUnitPending = computed(
+  () => !entrustingUnitState || entrustingUnitState.value === null,
+);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -112,6 +120,12 @@ async function loadServiceTypeOptions() {
 }
 
 async function loadData() {
+  if (entrustingUnitState?.value !== true) {
+    isEntrustingUnit.value = false;
+    portGroups.value = [];
+    syncExceptServiceSnapshot();
+    return;
+  }
   if (!clientId.value) {
     message.warning($t('seaExport.client.exceptService.missingClientId'));
     return;
@@ -155,10 +169,24 @@ async function handleSave() {
   }
 }
 
-onMounted(async () => {
-  await loadServiceTypeOptions();
-  await loadData();
-});
+watch(
+  () => entrustingUnitState?.value,
+  async (isUnit) => {
+    if (isUnit == null) return;
+    if (!isUnit) {
+      isEntrustingUnit.value = false;
+      portGroups.value = [];
+      loading.value = false;
+      syncExceptServiceSnapshot();
+      return;
+    }
+    if (serviceTypeOptions.value.length === 0) {
+      await loadServiceTypeOptions();
+    }
+    await loadData();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -167,9 +195,9 @@ onMounted(async () => {
        内容 tab 栏(50px) + gap-2(8px) 下方，底部内容会被挤出可视区、需外层滚动才能看到。
        用 height-offset 扣除这段被 tab 栏占用的高度(58px)，使内容区正好收在屏幕内、无外层滚动条。 -->
   <Page auto-content-height :height-offset="58">
-    <Spin :spinning="loading">
+    <Spin :spinning="loading || entrustingUnitPending">
       <Alert
-        v-if="!loading && !isEntrustingUnit"
+        v-if="!loading && !entrustingUnitPending && !isEntrustingUnit"
         type="warning"
         show-icon
         class="mb-4"

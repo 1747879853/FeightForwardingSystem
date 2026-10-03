@@ -1,13 +1,9 @@
 import type { PersonalMailAdminApi } from '#/api/personal-mail/personal-mail-admin';
 
-import { computed, h, ref, shallowRef } from 'vue';
-
-import { useRouter } from 'vue-router';
+import { computed, ref, shallowRef, watch } from 'vue';
 
 import { useAccess } from '@vben/access';
 import { useAccessStore } from '@vben/stores';
-
-import { notification } from 'ant-design-vue';
 
 import {
   getMyPersonalMailAccountList,
@@ -15,10 +11,7 @@ import {
   PERSONAL_MAIL_PERMISSION,
 } from '#/api/personal-mail/personal-mail-admin';
 
-import {
-  formatNewMailNoticeLines,
-  normalizeReceivedMails,
-} from './new-mail-notice';
+import { normalizeReceivedMails } from './new-mail-notice';
 import {
   startPersonalMailSignalr,
   stopPersonalMailSignalr,
@@ -39,6 +32,7 @@ const pollSerial = shallowRef(0);
 const hasNewMail = shallowRef(false);
 
 let started = false;
+let tokenWatchBound = false;
 let onVisible: (() => void) | null = null;
 let onReceived:
   | ((payload: PersonalMailAdminApi.PersonalMailReceived) => void)
@@ -150,7 +144,6 @@ function stopMailWatch() {
 
 export function usePersonalMailFloat() {
   const accessStore = useAccessStore();
-  const router = useRouter();
   const { hasAccessByCodes } = useAccess();
   const canWatch = computed(
     () =>
@@ -163,19 +156,6 @@ export function usePersonalMailFloat() {
     return count > 99 ? '99+' : String(count);
   });
 
-  function openReceivedMail(mail?: PersonalMailAdminApi.MailSummary) {
-    const folder = mail?.folderName || inboxFolder.value;
-    const uid = mail?.uid;
-    if (!folder || uid == null) {
-      void router.push({ name: 'PersonalMail' });
-      return;
-    }
-    void router.push({
-      name: 'PersonalMail',
-      query: { folder, uid: String(uid) },
-    });
-  }
-
   function handleReceived(payload: PersonalMailAdminApi.PersonalMailReceived) {
     if (!canWatch.value) return;
     const mails = normalizeReceivedMails(payload);
@@ -185,23 +165,6 @@ export function usePersonalMailFloat() {
     }
     hasNewMail.value = true;
     expanded.value = true;
-    const lines = formatNewMailNoticeLines(payload);
-    if (lines.length > 0) {
-      const key = `personal-mail-${Date.now()}`;
-      notification.info({
-        description: h(
-          'div',
-          lines.map((line) => h('p', { style: 'margin:0 0 4px' }, line)),
-        ),
-        duration: 8,
-        key,
-        message: '新邮件',
-        onClick: () => {
-          notification.close(key);
-          openReceivedMail(mails[0]);
-        },
-      });
-    }
     void (async () => {
       try {
         await refreshSnapshot();
@@ -217,6 +180,9 @@ export function usePersonalMailFloat() {
 
   async function startMailWatch() {
     if (started || !canWatch.value) return;
+    const token = accessStore.encryptedAccessToken?.trim() || '';
+    // 没加密令牌时不要把 started 置上，否则登录态补上令牌后也不会再连
+    if (!token) return;
     started = true;
     onReceived = handleReceived;
     if (!onVisible) {
@@ -226,13 +192,21 @@ export function usePersonalMailFloat() {
       };
       document.addEventListener('visibilitychange', onVisible);
     }
-    startPersonalMailSignalr(
-      accessStore.encryptedAccessToken || '',
-      (payload) => onReceived?.(payload),
-    );
+    startPersonalMailSignalr(token, (payload) => onReceived?.(payload));
     if (!document.hidden) {
       void refreshSnapshot().catch(() => undefined);
     }
+  }
+
+  if (!tokenWatchBound) {
+    tokenWatchBound = true;
+    watch(
+      () => accessStore.encryptedAccessToken,
+      () => {
+        if (!canWatch.value) return;
+        void startMailWatch();
+      },
+    );
   }
 
   async function openPanel() {

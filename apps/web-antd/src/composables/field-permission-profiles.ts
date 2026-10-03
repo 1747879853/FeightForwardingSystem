@@ -239,9 +239,9 @@ export const seaImportFieldPermission: FieldPermissionProfile = {
     cargoid: ['transportOrder.cargoId'],
     etd: ['transportOrder.etd'],
     clientid: ['transportOrder.clientId', 'transportOrder.client'],
-    clientcontactid: [
-      'transportOrder.clientContactId',
-      'transportOrder.clientContact',
+    clientcontactids: [
+      'transportOrder.clientContactIds',
+      'transportOrder.clientContacts',
     ],
     teamid: ['transportOrder.teamId', 'transportOrder.team'],
     custbrokerid: ['transportOrder.custBrokerId', 'transportOrder.custBroker'],
@@ -286,9 +286,9 @@ export const seaImportFieldPermission: FieldPermissionProfile = {
       'transportOrder.codePackageId',
       'transportOrder.codePackage',
     ],
-    clientcontactidrange: [
-      'transportOrder.clientContactId',
-      'transportOrder.clientContact',
+    clientcontactidsrange: [
+      'transportOrder.clientContactIds',
+      'transportOrder.clientContacts',
     ],
     custbrokeridrange: [
       'transportOrder.custBrokerId',

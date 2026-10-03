@@ -82,7 +82,7 @@ export function useFeeManagement(
 
     const items = newFees.map((fee: any) => ({
       orderFeeId: fee.orderFee.id,
-      appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
+      appliedAmount: fee.appliedAmount ?? fee.orderFee.remainingInvoiceAmount,
       remark: '',
     }));
 

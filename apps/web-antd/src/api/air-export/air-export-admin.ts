@@ -47,6 +47,17 @@ export namespace AirExportAdminApi {
     taxRate?: null | number;
   }
 
+  /** 客户联系人简易对象（委托单位联系人 / 订舱代理联系人） */
+  export interface ClientContactSimpleDto {
+    id: LongId;
+    name?: null | string;
+    mobile?: null | string;
+    email?: null | string;
+    tel?: null | string;
+    position?: null | string;
+    weChat?: null | string;
+  }
+
   /**
    * 空运港口（机场）简易对象。
    * 只有三字码与中英文名称，**不返回国家、城市、ICAO 码、时区**。
@@ -255,6 +266,8 @@ export namespace AirExportAdminApi {
     /** 预抵日期，保存时截断到日期 */
     eta?: string;
     clientId: string;
+    /** 委托单位联系人 id（可多个，须都属于 clientId 下的客户联系人）；编辑时按数组覆盖保存，不传等于清空 */
+    clientContactIds?: LongId[];
     teamId?: string;
     custBrokerId?: string;
     warehouseId?: string;
@@ -341,6 +354,8 @@ export namespace AirExportAdminApi {
     eta?: null | string;
     clientId: string;
     client?: ClientSimpleDto | null;
+    /** 委托单位联系人（可多个，按 id 升序；只有详情返回，列表为 null） */
+    clientContacts?: ClientContactSimpleDto[] | null;
     teamId?: null | string;
     team?: ClientSimpleDto | null;
     custBrokerId?: null | string;
@@ -443,6 +458,8 @@ export namespace AirExportAdminApi {
     orgId?: LongId;
     /** 订舱代理（国内代理），指向往来单位 */
     bookingAgentId?: string;
+    /** 订舱代理联系人 id（可多个，须都属于 bookingAgentId 下的客户联系人）；编辑时按数组覆盖保存，不传等于清空 */
+    bookingAgentContactIds?: LongId[];
     /** 航班，64；自由文本无下拉，全空白会被存成 null */
     flightNo?: string;
     /** 起运地（机场）id */
@@ -504,6 +521,8 @@ export namespace AirExportAdminApi {
     localCurrencyCode?: null | string;
     bookingAgentId?: null | string;
     bookingAgent?: ClientSimpleDto | null;
+    /** 订舱代理联系人（可多个，按 id 升序；只有详情返回，列表为 null） */
+    bookingAgentContacts?: ClientContactSimpleDto[] | null;
     flightNo?: null | string;
     polId?: LongId | null;
     pol?: AirPortSimpleDto | null;

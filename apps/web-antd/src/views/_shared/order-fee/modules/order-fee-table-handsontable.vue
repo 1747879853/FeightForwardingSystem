@@ -117,7 +117,9 @@ const {
   getExchangeRateFromCache, // ✅ 新增：获取汇率的方法
   initDropdownSources,
   updateUnitList,
-  loadClientList,
+  beginSettlementClientBrowse,
+  querySettlementClients,
+  loadMoreSettlementClients,
   getSettlementIndustryCategory,
 } = useDropdownSources(orderCtnList);
 
@@ -194,6 +196,8 @@ const { hotColumns } = useHotColumns(
   getSortIcon,
   currentOptionsCache,
   localAllClientsByIndustry, // ✅ 传入全量客户缓存：结算对象列拖拽填充时的 strict 校验兜底
+  querySettlementClients,
+  getSettlementIndustryCategory,
 );
 
 // Core Table 引用（需要在 handleOpenDropdown 之前定义）
@@ -291,9 +295,9 @@ const { hotSettings: rawHotSettings } = useHotSettings(
   linkage,
   dropdownSources,
   currentOptionsCache,
-  loadClientList,
+  beginSettlementClientBrowse,
+  loadMoreSettlementClients,
   getColumnIndex,
-  getSettlementIndustryCategory,
   handleOpenDropdown,
   getSortIcon, // ✅ 新增：传递排序图标函数
   openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调

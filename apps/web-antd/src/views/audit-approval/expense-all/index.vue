@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { onActivated, onMounted, ref } from 'vue';
+import { nextTick, onActivated, onMounted, onUnmounted, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -295,6 +295,9 @@ onMounted(async () => {
   // submitForm 把表单默认值（含 Processed=false）写入「最近提交值」，
   // 后续分页/排序/分组切换走 query 时才能带上同一套条件
   await gridApi.formApi.submitForm();
+  await nextTick();
+  applyCappedDefault();
+  window.addEventListener('resize', onSplitResize);
 });
 
 // 列表页 keepAlive，分组统计不做缓存：每次重新进入都拉一遍分组条数
@@ -305,6 +308,7 @@ onActivated(() => {
     return;
   }
   grouping.refreshGroupData();
+  nextTick(applyCappedDefault);
 });
 
 const onGroupFieldChange = (value: number | undefined) => {
@@ -398,78 +402,232 @@ const feeTableType = ref('horizontal');
 const changeTableType = (type: string) => {
   feeTableType.value = type;
 };
+
+// 票列表 / 费用明细上下分割。
+// 未拖动过时沿用原来的高度：费用明细约 34%（矮屏 30%），并且不超过原来的 360 / 240 上限。
+const SPLIT_STORAGE_KEY = 'expense-review-task-fee-split';
+const splitAreaRef = ref<HTMLElement | null>(null);
+const taskRatio = ref(66);
+const isSplitDragging = ref(false);
+const hasSavedSplit = ref(false);
+let splitMove: ((event: MouseEvent) => void) | null = null;
+let splitUp: (() => void) | null = null;
+
+try {
+  const saved = Number(localStorage.getItem(SPLIT_STORAGE_KEY));
+  if (!Number.isNaN(saved) && saved > 0) {
+    taskRatio.value = Math.min(85, Math.max(15, saved));
+    hasSavedSplit.value = true;
+  }
+} catch {
+  // 本地缓存不可用时用默认比例
+}
+
+const persistSplit = () => {
+  try {
+    localStorage.setItem(SPLIT_STORAGE_KEY, String(taskRatio.value));
+  } catch {
+    // 忽略写入失败（如隐私模式）
+  }
+};
+
+const readMinHeight = (element: Element | null, fallback: number) => {
+  if (!element) return fallback;
+  const value = Number.parseFloat(getComputedStyle(element).minHeight);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+};
+
+const applyCappedDefault = () => {
+  if (hasSavedSplit.value) return;
+  const container = splitAreaRef.value;
+  if (!container) return;
+  const handleHeight =
+    container.querySelector<HTMLElement>('.drag-handle-vertical')
+      ?.offsetHeight ?? 10;
+  const available = container.clientHeight - handleHeight;
+  if (available <= 0) return;
+  const short = window.matchMedia('(max-height: 820px)').matches;
+  const taskMin = readMinHeight(
+    container.querySelector('.expense-task-grid'),
+    short ? 200 : 280,
+  );
+  const feeMin = readMinHeight(
+    container.querySelector('.expense-fee-pane'),
+    short ? 168 : 200,
+  );
+  const feeCap = short ? 240 : 360;
+  const feeRatio = short ? 0.3 : 0.34;
+  const feePx = Math.min(
+    available - taskMin,
+    feeCap,
+    Math.max(feeMin, available * feeRatio),
+  );
+  if (feePx <= 0) return;
+  taskRatio.value = ((available - feePx) / available) * 100;
+};
+
+const onSplitResize = () => {
+  if (!hasSavedSplit.value && !isSplitDragging.value) applyCappedDefault();
+};
+
+const stopSplitDrag = () => {
+  const wasDragging = isSplitDragging.value;
+  isSplitDragging.value = false;
+  if (splitMove) document.removeEventListener('mousemove', splitMove);
+  if (splitUp) document.removeEventListener('mouseup', splitUp);
+  splitMove = null;
+  splitUp = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  if (wasDragging) {
+    hasSavedSplit.value = true;
+    persistSplit();
+  }
+};
+
+const startSplitDrag = (event: MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const container = splitAreaRef.value;
+  if (!container) return;
+
+  isSplitDragging.value = true;
+  const handleHeight = (event.currentTarget as HTMLElement).offsetHeight;
+
+  splitMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const rect = container.getBoundingClientRect();
+    const available = rect.height - handleHeight;
+    if (available <= 0) return;
+    const taskMin = readMinHeight(
+      container.querySelector('.expense-task-grid'),
+      200,
+    );
+    const feeMin = readMinHeight(
+      container.querySelector('.expense-fee-pane'),
+      168,
+    );
+    if (available <= taskMin + feeMin) return;
+    const taskPx = Math.min(
+      available - feeMin,
+      Math.max(taskMin, moveEvent.clientY - rect.top),
+    );
+    taskRatio.value = (taskPx / available) * 100;
+  };
+  splitUp = stopSplitDrag;
+  document.addEventListener('mousemove', splitMove);
+  document.addEventListener('mouseup', splitUp);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+};
+
+const resetSplit = () => {
+  hasSavedSplit.value = false;
+  try {
+    localStorage.removeItem(SPLIT_STORAGE_KEY);
+  } catch {
+    // 忽略清理失败
+  }
+  applyCappedDefault();
+};
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onSplitResize);
+  if (splitMove) document.removeEventListener('mousemove', splitMove);
+  if (splitUp) document.removeEventListener('mouseup', splitUp);
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+});
 </script>
 
 <template>
-  <!-- 票列表占剩余高度；下方费用明细收缩，避免大片空白把票表挤成两三行。 -->
+  <!-- 票列表与费用明细按比例分高，中间拖拽条可调；默认仍是费用明细约占三分之一。 -->
   <Page
     auto-content-height
     content-class="expense-review-page flex flex-col overflow-hidden"
   >
-    <Grid class="expense-task-grid mb-2 min-h-[280px] min-w-0 flex-1">
-      <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
-      <template #toolbar-actions>
-        <GroupingTabs
-          v-if="grouping.isGrouping.value"
-          :items="grouping.groupItems.value"
-          :selected-id="grouping.selectedItemId.value"
-          :loading="grouping.loading.value"
-          @select="grouping.selectItem"
-        />
-        <div v-else class="flex text-base font-medium">
-          <span>{{ $t('auditApproval.expenseReview.title') }}</span>
-        </div>
-      </template>
-      <template #toolbar-tools>
-        <DropdownButton @click="SubmittedOther('selectPass')" type="primary">
-          {{ $t('auditApproval.task.selectPass') }}
-          <template #overlay>
-            <Menu @click="showConfirmWithRemark(true, 'all')">
-              <MenuItem>
-                {{ $t('auditApproval.task.allPass') }}
-              </MenuItem>
-            </Menu>
-          </template>
-        </DropdownButton>
-        <span class="split mx-2 flex">|</span>
-        <div class="layout-capsule" role="group" aria-label="费用明细布局">
-          <button
-            type="button"
-            class="layout-capsule__item"
-            :class="{ 'is-active': feeTableType === 'vertical' }"
-            @click="changeTableType('vertical')"
-          >
-            <IconifyIcon icon="boxicons:arrow-down-up" class="size-3.5" />
-            {{ $t('auditApproval.tableType.vertical') }}
-          </button>
-          <button
-            type="button"
-            class="layout-capsule__item"
-            :class="{ 'is-active': feeTableType === 'horizontal' }"
-            @click="changeTableType('horizontal')"
-          >
-            <IconifyIcon icon="boxicons:arrow-left-right" class="size-3.5" />
-            {{ $t('auditApproval.tableType.horizontal') }}
-          </button>
-        </div>
-        <GroupingSettings
-          :fields="grouping.fields"
-          :value="grouping.enabledField.value?.value"
-          @change="onGroupFieldChange"
-        />
-      </template>
-    </Grid>
-    <!-- 费用明细收缩到约三分之一高，合计利润条仍留在这块底部 -->
-    <Detail
-      class="expense-fee-pane h-[34%] max-h-[360px] min-h-[200px] shrink-0"
-      :orderName="orderName"
-      :transportOrderId="transportOrderId"
-      :entityId="entityId"
-      :changeOrderId="changeOrderId"
-      :negative-profit-remark="negativeProfitRemark"
-      ref="detailRef"
-      :feeTableType="feeTableType"
-    />
+    <div
+      ref="splitAreaRef"
+      class="expense-review-split flex min-h-0 min-w-0 flex-1 flex-col"
+      :class="{ 'is-resizing': isSplitDragging }"
+    >
+      <Grid
+        class="expense-task-grid min-h-[280px] min-w-0"
+        :style="{ flex: `${taskRatio} 1 0%` }"
+      >
+        <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
+        <template #toolbar-actions>
+          <GroupingTabs
+            v-if="grouping.isGrouping.value"
+            :items="grouping.groupItems.value"
+            :selected-id="grouping.selectedItemId.value"
+            :loading="grouping.loading.value"
+            @select="grouping.selectItem"
+          />
+          <div v-else class="flex text-base font-medium">
+            <span>{{ $t('auditApproval.expenseReview.title') }}</span>
+          </div>
+        </template>
+        <template #toolbar-tools>
+          <DropdownButton @click="SubmittedOther('selectPass')" type="primary">
+            {{ $t('auditApproval.task.selectPass') }}
+            <template #overlay>
+              <Menu @click="showConfirmWithRemark(true, 'all')">
+                <MenuItem>
+                  {{ $t('auditApproval.task.allPass') }}
+                </MenuItem>
+              </Menu>
+            </template>
+          </DropdownButton>
+          <span class="split mx-2 flex">|</span>
+          <div class="layout-capsule" role="group" aria-label="费用明细布局">
+            <button
+              type="button"
+              class="layout-capsule__item"
+              :class="{ 'is-active': feeTableType === 'vertical' }"
+              @click="changeTableType('vertical')"
+            >
+              <IconifyIcon icon="boxicons:arrow-down-up" class="size-3.5" />
+              {{ $t('auditApproval.tableType.vertical') }}
+            </button>
+            <button
+              type="button"
+              class="layout-capsule__item"
+              :class="{ 'is-active': feeTableType === 'horizontal' }"
+              @click="changeTableType('horizontal')"
+            >
+              <IconifyIcon icon="boxicons:arrow-left-right" class="size-3.5" />
+              {{ $t('auditApproval.tableType.horizontal') }}
+            </button>
+          </div>
+          <GroupingSettings
+            :fields="grouping.fields"
+            :value="grouping.enabledField.value?.value"
+            @change="onGroupFieldChange"
+          />
+        </template>
+      </Grid>
+      <div
+        class="drag-handle drag-handle-vertical"
+        :class="{ dragging: isSplitDragging }"
+        title="拖动调整票列表与费用明细高度，双击恢复默认"
+        @mousedown="startSplitDrag"
+        @dblclick="resetSplit"
+      >
+        <div class="drag-line"></div>
+      </div>
+      <Detail
+        class="expense-fee-pane min-h-[200px] min-w-0 overflow-hidden"
+        :style="{ flex: `${100 - taskRatio} 1 0%` }"
+        :orderName="orderName"
+        :transportOrderId="transportOrderId"
+        :entityId="entityId"
+        :changeOrderId="changeOrderId"
+        :negative-profit-remark="negativeProfitRemark"
+        ref="detailRef"
+        :feeTableType="feeTableType"
+      />
+    </div>
   </Page>
 </template>
 <style scoped lang="scss">
@@ -479,10 +637,49 @@ const changeTableType = (type: string) => {
   }
 
   .expense-fee-pane {
-    height: 30% !important;
     min-height: 168px !important;
-    max-height: 240px !important;
   }
+}
+
+.expense-review-split.is-resizing {
+  cursor: row-resize;
+  user-select: none;
+}
+
+.expense-review-split.is-resizing .expense-task-grid,
+.expense-review-split.is-resizing .expense-fee-pane {
+  pointer-events: none;
+}
+
+.drag-handle {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.drag-handle-vertical {
+  height: 10px;
+  cursor: row-resize;
+}
+
+.drag-handle .drag-line {
+  width: 48px;
+  height: 4px;
+  background-color: #cdd5e0;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.drag-handle:hover .drag-line,
+.drag-handle.dragging .drag-line {
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 30%);
 }
 
 .split {

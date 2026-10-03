@@ -47,7 +47,7 @@ last_updated: 2026-10-03
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 可选角色由「系统管理 → 枚举管理」的 `SeaExportUserAttribute` 枚举维护（子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否进页面即展示；子项顺序即面板顺序），前端不再写死 6 项。**销售、操作为固定角色**：无论枚举是否配置都展示、标签带红色必填标识、不可删除且必须已选人（销售必须且只能有一人）；枚举漏配时二者兜底补在最前。勾了 `extra1` 的角色进页面即渲染，**编辑态订单未保存该角色时也会补一张空卡**（保存时无人员会被过滤，不写库）；未勾 `extra1` 的角色（如海外客服）只在详情已有人员或手动「添加角色」后出现。枚举拉取失败/未配置时，面板只剩销售与操作，这是预期兜底。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。干系人 `UserSelect` 走全量用户缓存：未选归属组织时候选为当前登录用户所属各公司人员，选定组织后收窄为该销售组织所属公司；客户默认带回与编辑回填的已选人不受过滤限制、始终显示昵称。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
-- **委托单位 / 订舱代理联系人：** 与场站同款挂在标签右侧。编辑回填详情对象 `clientContact` / `bookingAgentContact`；用户改选客户后改拉默认联系人。保存带回 `transportOrder.clientContactId` 与 `bookingAgentContactId`。无独立联系人下拉。
+- **委托单位 / 订舱代理联系人（可多选）：** 挂在标签右侧，显示已选姓名（顿号连接）；点姓名弹出该单位未禁用联系人勾选列表增减。编辑回填详情数组 `transportOrder.clientContacts` / `bookingAgentContacts`，回填会作废还在路上的默认联系人请求；用户改选客户后清空并带出新单位默认联系人。保存带回 `transportOrder.clientContactIds` 与 `bookingAgentContactIds` 数组。只读、或委托单位/订舱代理被已完成服务项锁定时只能悬停查看。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。港口字段已对象化（`pol`/`pod`/`pot1`/`pot2`/`receivePort`/`deliverPort`/`prepareAt`/`signingPort`），编辑回填用 `toPortObjectSelectedItems` 整对象注入；航线/国家取自目的港 `pod.lane` / `pod.country`。
 - **船期与付费联动：** 船期截关节点展示顺序为截单 → 截VGM → 截关 → 截舱单（字段为 `closeDocTime` / `closeVgmTime` / `closingTime` / `closeManifestTime`）；保存时校验上述日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
 - **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
@@ -106,7 +106,7 @@ last_updated: 2026-10-03
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** `flattenDetail`/`buildSeaExportDto`；复制确认展示源票值，入库由后端置空；栅格排在运输条款/贸易条款之后。 | 可空；最长 64。 |
 | **报关发票号** | 报关用的商业发票号，不是税务开票号。 | `transportOrder.invoiceNum` | **触发/依赖：** 合同号后；复制入库由后端置空。 | 可空；最长 64。 |
 | **场站联系人 / 邮箱 / 手机 / 电话** | 「场站」标签右侧展示联系人，悬浮后展示邮箱、手机、电话；保存时透传以防被空覆盖。 | `SeaExportDto` / `SeaExportEditDto` 的 `yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与 `yardId` 选择解耦，当前不随改场站即时刷新；`collectCurrentFormValues` + `buildSeaExportDto` 写入提交 DTO。 | UI 只读；保存必须带回当前值；空值显示 `-`。 |
-| **委托单位 / 订舱代理联系人** | 标签右侧展示姓名，悬停邮箱/手机/电话。 | 详情 `clientContact` / `bookingAgentContact`；改选客户后 `ClientContactAdmin/GetPagedListAsync` | **触发/依赖：** 回填用详情对象，不在加载时改写成默认；保存 `clientContactId`（运输单）与 `bookingAgentContactId`（海出根）。 | UI 只读；无下拉；空显示 `-`。 |
+| **委托单位 / 订舱代理联系人** | 标签右侧展示已选姓名，点击弹出勾选列表（可多选），每行带手机/邮箱/电话。 | 详情 `transportOrder.clientContacts` / `bookingAgentContacts` 数组；弹层与改选客户后 `ClientContactAdmin/GetPagedListAsync` | **触发/依赖：** 回填用详情数组，不在加载时改写成默认；保存 `clientContactIds`（运输单）与 `bookingAgentContactIds`（海出根）数组。 | 只读或单位被服务项锁定时只能悬停查看；未选显示「选择联系人」（只读显示 `-`）。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
@@ -125,7 +125,7 @@ last_updated: 2026-10-03
 | **客户可见（clientVisible）** | 单个附件对客户端是否可见。 | `AttachmentItemDto.clientVisible` / `Attachment.UpdateAttachmentItemsClientVisibleAsync`（PUT） | **触发/依赖：** 文件项 `Switch` 单条切换；卡片标题行 `Checkbox` 按类型批量切换（全选/半选由各文件计算）；入参 `[{ id: AttachmentItem.id, clientVisible }]`。 | 需 `Admin.SeaExport.Edit`；`id<=0` 忽略，空集合不报错。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
-| **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgent?.name`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`（名称取自 `bookingAgent?.name`）。改选后带出默认联系人，提交 `bookingAgentContactId`。 | 可选；须为含订舱代理属性的客户。 |
+| **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgent?.name`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`（名称取自 `bookingAgent?.name`）。改选后清空联系人并带出默认联系人，提交 `bookingAgentContactIds` 数组。 | 可选；须为含订舱代理属性的客户。 |
 | **码头航次** | 港区航次，与船公司航次 `innerVoyno` 是两套编号；界面不展示。 | `SeaExportDto.terminalVoyno` | **触发/依赖：** 表单 `hidden`；码头船舶引入写这里（`evoyage`），不写 `innerVoyno`。 | 可空；上限 64。 |
 | **起运预计离开（运踪）** | 非 sjtd 运踪摘要：接货地预计离开。 | 详情 `feituoTracking.polEtd` ← 库 `ReceiptEtd` ← 飞驼 `result.receipt.etd` | **触发/依赖：** `SeaExportAdmin` 详情；`FeituoTrackingQueryManager` 把 `ReceiptEtd` 映成 `PolEtd`。勿与基础信息 `transportOrder.etd` 混用。 | 只读字符串；空显示 `--`。 |
 | **目的预计到达（运踪）** | 非 sjtd 运踪摘要：交货地预计到达。 | 详情 `feituoTracking.podEta`（空则 `podSta`）← 库 `DeliveryEta` / `DeliverySta` ← 飞驼 `result.delivery.eta` / `sta` | **触发/依赖：** 前端 `podEta \|\| podSta`；`podSta` 是首次预计。sjtd 云当面板对应格子是 `shipment.etd` / `eta`，文案为 ETD/ETA。 | 只读字符串；都空显示 `--`。 |
@@ -162,7 +162,7 @@ last_updated: 2026-10-03
 
 > [!IMPORTANT] **[卡点 8：干系人角色靠 `SeaExportUserAttribute` 枚举，`extra1` 决定默认展示]** 枚举名大小写敏感，写错或未配置时面板只剩销售与操作；角色加进枚举但未勾 `extra1` 时只能从「+ 添加角色」手动加，不会默认出现。服务项配置的用户属性下拉仍是固定 6 项，未随本次改动走枚举。
 
-> [!IMPORTANT] **[卡点 9：往来单位联系人须带回 Id]** 委托单位联系人在 `transportOrder.clientContactId`，订舱代理联系人在海出根 `bookingAgentContactId`。详情回填期间不要拉默认联系人覆盖已保存人选；漏传 Id 会被空覆盖。
+> [!IMPORTANT] **[卡点 9：往来单位联系人须带回 Id 数组]** 委托单位联系人在 `transportOrder.clientContactIds`，订舱代理联系人在海出根 `bookingAgentContactIds`，都是数组。详情回填期间不要拉默认联系人覆盖已保存人选；后端按数组覆盖保存，漏传等于清空。
 
 > [!IMPORTANT] **[卡点 10：能看 ≠ 能落库]** 详情按查询口径。无 `Edit` 或 `isEditable !== true` 时只禁保存，表单仍可改；删除/重新生成委托编号仍按 `isEditable`。缺字段按 false。不要用功能权限代替行级字段，也不要读 `transportOrder.isEditable`。
 >
@@ -187,6 +187,7 @@ last_updated: 2026-10-03
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
 | 2026-10-03 | `Fix` | 装箱标题旁「读入主单」只覆盖集装箱，收发通、代理、条款和货物信息保持不动。 | 按钮改为 `applyMasterToForm('ctn')`。新建草稿仍走 `defaults`，只静默带条款和装箱。详见[变更记录](../../changelogs/change-log-2026-10-03-分单读入主单只同步集装箱.md)。 |
+| 2026-10-03 | `Feature` | 委托单位联系人、订舱代理联系人改为可多选：点标签旁姓名弹出勾选列表；改选单位先带出默认联系人。 | 共用 `views/_shared/party-contact/`；回填读 `clientContacts` / `bookingAgentContacts` 数组，保存提交 `*ContactIds` 数组。详见 [变更日志](../../changelogs/change-log-2026-10-03-往来单位联系人多选.md)。 |
 | 2026-10-01 | `Fix` | 内部备注改为红字加粗。录入方式为业务联系单导入时，顶栏出现「关联业务联系单」，打开同一张联系单。从联系单嵌进来的海运出口不重复出现该页签。 | 联系单备注写入内部备注仍由后端在生成时处理。详见 [变更日志](../../changelogs/change-log-2026-10-01-海运出口关联业务联系单.md)。 |
 | 2026-10-01 | `Fix` | 分单集装箱的件数、毛重、体积变化，或增删集装箱行时，货物区件数、毛重、体积按明细自动加总。合计框仍可手改，下次明细再变才覆盖。「更新合计」仍可手动重算。 | 打开已保存分单不按明细覆盖库里的合计。详见 [变更日志](../../changelogs/change-log-2026-10-01-分单件重尺随集装箱自动合计.md)。 |
 | 2026-10-01 | `Fix` | 监装计划可勾选「照片包含水印」，默认勾选。未提交可改，提交后只读。取消后，管理端和小程序新上传的照片按原图保存，已有照片不变。 | 后端只存 `hasWatermark`。小程序关闭水印时跳过画板和定位拦截。详见 [变更日志](../../changelogs/change-log-2026-10-01-监装整单照片水印开关.md)。 |

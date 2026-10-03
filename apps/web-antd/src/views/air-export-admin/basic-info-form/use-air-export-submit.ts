@@ -16,6 +16,7 @@ import { message } from 'ant-design-vue';
 import { addAirExport, editAirExport } from '#/api/air-export/air-export-admin';
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { toPartyContactIds } from '#/views/_shared/party-contact/party-contact';
 
 import { CARGO_TYPE } from '../data';
 import {
@@ -39,6 +40,10 @@ export const buildAirExportDto = (
   const airExportFields: Record<string, any> = {
     orgId: values.orgId ?? undefined,
     bookingAgentId: values.bookingAgentId ?? undefined,
+    bookingAgentContactIds: toPartyContactIds(
+      values.bookingAgentId,
+      values.bookingAgentContactIds,
+    ),
     flightNo: values.flightNo,
     polId: values.polId ?? undefined,
     polRemark: values.polRemark,
@@ -82,6 +87,10 @@ export const buildAirExportDto = (
     /** 界面上的「预抵日期」 */
     eta: toDateOnlyString(values.eta),
     clientId: values.clientId,
+    clientContactIds: toPartyContactIds(
+      values.clientId,
+      values.clientContactIds,
+    ),
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
     warehouseId: values.warehouseId ?? undefined,

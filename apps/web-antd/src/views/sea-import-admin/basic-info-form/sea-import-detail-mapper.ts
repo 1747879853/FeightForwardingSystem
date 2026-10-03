@@ -105,7 +105,6 @@ export const flattenDetail = (
     /** 界面上的「到港日期」 */
     etd: toDayjs(to?.etd),
     clientId: to?.clientId,
-    clientContactId: to?.clientContactId,
     teamId: to?.teamId,
     custBrokerId: to?.custBrokerId,
     warehouseId: to?.warehouseId,

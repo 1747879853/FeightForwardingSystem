@@ -32,6 +32,11 @@ import {
 } from '#/utils/exchange-rate-cache';
 import { normalizeKeysParam } from '#/utils/keys-search';
 import { useBaseStore } from '#/store/base';
+import {
+  appliedAmountRangeMessage,
+  getAppliedAmountBounds,
+  isNegativeMoney,
+} from '../applied-amount-range';
 
 const baseStore = useBaseStore();
 interface Props {
@@ -463,6 +468,19 @@ async function handleSaveFeeSelection() {
     return;
   }
 
+  for (const fee of selectedFees) {
+    const rangeError = appliedAmountRangeMessage(
+      fee.appliedAmount,
+      fee.amount ?? fee.orderFee?.amount,
+      fee.remainingInvoiceAmount,
+    );
+    if (rangeError) {
+      const feeName = fee.feeName || fee.orderFee?.feeCode?.cnName || '费用';
+      message.warning(`${feeName}：${rangeError}`);
+      return;
+    }
+  }
+
   emit('save', {
     selectedFees,
     settlementId,
@@ -696,12 +714,13 @@ const selectedFeesByCurrency = computed(() => {
 
   selectedFees.forEach((fee: any) => {
     const currencyCode = fee.currencyCode || '未知币别';
-    const appliedAmount = fee.appliedAmount || 0;
+    const appliedAmount = Number(fee.appliedAmount);
+    const signedAmount = Number.isFinite(appliedAmount) ? appliedAmount : 0;
 
     if (!currencyMap[currencyCode]) {
       currencyMap[currencyCode] = { total: 0, currencyCode };
     }
-    currencyMap[currencyCode].total += appliedAmount;
+    currencyMap[currencyCode].total += signedAmount;
   });
 
   return Object.values(currencyMap);
@@ -830,6 +849,23 @@ const feeInnerColumns = computed(() => [
 ]);
 
 // 暴露方法给父组件
+function feeAppliedBounds(record: {
+  amount?: unknown;
+  orderFee?: { amount?: unknown };
+  remainingInvoiceAmount?: unknown;
+}) {
+  return getAppliedAmountBounds(
+    record.amount ?? record.orderFee?.amount,
+    record.remainingInvoiceAmount,
+  );
+}
+
+function formatSignedAmount(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '-';
+  return amount.toFixed(2);
+}
+
 defineExpose({
   handleOpenFeeDrawer,
   loadFeeGroupData,
@@ -1103,14 +1139,37 @@ defineExpose({
                     ✓ 已添加
                   </span>
                 </template>
+                <template v-else-if="column.key === 'amount'">
+                  <span
+                    :class="{
+                      'money-negative': isNegativeMoney(record.amount),
+                    }"
+                  >
+                    {{ formatSignedAmount(record.amount) }}
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'remainingInvoiceAmount'">
+                  <span
+                    :class="{
+                      'money-negative': isNegativeMoney(
+                        record.remainingInvoiceAmount,
+                      ),
+                    }"
+                  >
+                    {{ formatSignedAmount(record.remainingInvoiceAmount) }}
+                  </span>
+                </template>
                 <template v-else-if="column.key === 'appliedAmount'">
                   <InputNumber
                     v-model:value="record.appliedAmount"
-                    :min="0"
-                    :max="record.remainingInvoiceAmount"
+                    :min="feeAppliedBounds(record).min"
+                    :max="feeAppliedBounds(record).max"
                     :precision="2"
                     size="small"
                     class="fee-applied-amount-input w-full"
+                    :class="{
+                      'money-negative': isNegativeMoney(record.appliedAmount),
+                    }"
                     :disabled="record.alreadyAdded"
                   />
                 </template>
@@ -1148,9 +1207,11 @@ defineExpose({
             <span class="fsd-summary__code"
               >{{ currencyGroup.currencyCode }}:</span
             >
-            <span class="fsd-summary__value">{{
-              currencyGroup.total.toFixed(2)
-            }}</span>
+            <span
+              class="fsd-summary__value"
+              :class="{ 'money-negative': currencyGroup.total < 0 }"
+              >{{ currencyGroup.total.toFixed(2) }}</span
+            >
           </div>
         </div>
       </div>
@@ -1252,6 +1313,14 @@ defineExpose({
 .fsd-main-currency__badge strong {
   font-size: 15px;
   font-weight: 700;
+}
+
+.money-negative {
+  color: #ef4444;
+}
+
+.fee-applied-amount-input.money-negative :deep(input) {
+  color: #ef4444;
 }
 
 @media (max-width: 900px) {

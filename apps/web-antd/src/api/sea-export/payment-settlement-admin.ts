@@ -326,7 +326,7 @@ export namespace PaymentSettlementAdminApi {
     items: T[];
   }
 
-  // ==================== 按原币和付费申请相关 DTO ====================
+  // ==================== 按申请币别和付费申请相关 DTO ====================
 
   /** 简单DTO - 港口代码 */
   export interface PortCodeSimpleDto {
@@ -429,7 +429,7 @@ export namespace PaymentSettlementAdminApi {
     settledAmount?: number;
   }
 
-  /** 按原币的付费申请选择列表DTO */
+  /** 付费结算选择列表行（付费申请 + 申请币别） */
   export interface PaymentApplicationCurrencyForSettlementDto {
     /** 行标识 */
     id: string;
@@ -476,64 +476,53 @@ export namespace PaymentSettlementAdminApi {
     /** 审核时间 */
     auditTime?: string;
 
-    // ===== 原币币别维度（本行的分组键与金额）=====
-    /** 原币币别ID，取自 OrderFee.CurrencyId */
-    originalCurrencyId: number;
-    /** 原币币别对象 */
-    originalCurrency?: CurrencySimpleDto | null;
-    /** 申请量（付），原币 */
-    payAmount: number;
-    /** 申请金额（付），转成申请币别，原币申请为 null */
-    payPrice?: number;
-    /** 申请量（收），原币 */
-    receiveAmount: number;
-    /** 申请金额（收），转成申请币别，原币申请为 null */
-    receivePrice?: number;
-    /** 该原币币别未结算量（不乘汇率）= 收的有效金额 + 付的有效金额 */
-    totalUnSettledAmount: number;
+    // ===== 申请币别维度（本行的分组键与金额，一律申请币别口径）=====
     /**
-     * 该原币币别未结算金额（结算币别）
-     * = 逐条「有效金额 × 该条汇率」累加
-     * 固定币别申请汇率取 PaymentApplicationItem.Rate，原币申请恒为 1（此时数值等于 totalUnSettledAmount）
-     * 结满一行时直接把这个值当 settledPrice 提交
+     * 行申请币别ID。固定币别申请 = 申请币别，原币申请 = 该行费用的原币。
+     * 提交结算行时原样放进 applyCurrencyId。
+     */
+    applyCurrencyId: number;
+    /** 行申请币别对象 */
+    applyCurrency?: CurrencySimpleDto | null;
+    /** 申请金额（付），申请币别口径，两类申请都有值 */
+    payPrice: number;
+    /** 申请金额（收），申请币别口径，两类申请都有值 */
+    receivePrice: number;
+    /**
+     * 本行未结算金额（申请币别）= settleablePriceUpperLimit + settleablePriceLowerLimit。
+     * 结满一行时直接把这个值当 settledPrice 提交。
      */
     totalUnSettledPrice: number;
-    /** 可结算上限（原币）= 正数有效金额之和 */
-    settleableUpperLimit: number;
-    /** 可结算上限（结算/申请币别）= 正数有效金额逐条乘各自汇率之和，原币申请为 null */
-    settleablePriceUpperLimit?: number;
-    /** 可结算下限（原币）= 负数有效金额之和 */
-    settleableLowerLimit: number;
-    /** 可结算下限（结算/申请币别）= 负数有效金额逐条乘各自汇率之和，原币申请为 null */
-    settleablePriceLowerLimit?: number;
-    /** 该原币币别下的费用列表 */
+    /** 可结算上限（申请币别）= 正数有效金额逐条乘各自汇率之和 */
+    settleablePriceUpperLimit: number;
+    /** 可结算下限（申请币别）= 负数有效金额逐条乘各自汇率之和 */
+    settleablePriceLowerLimit: number;
+    /** 本行费用。固定币别申请含全部费用（可跨原币），原币申请只有该原币的费用 */
     orderFees: OrderFeeForSelectionDto[];
   }
 
-  /** 按原币的结算行输入DTO */
+  /** 结算行输入（付费申请 + 申请币别） */
   export interface PaymentSettlementItemByCurrencyInputDto {
     /** 付费申请ID */
     paymentApplicationId: string;
-    /** 原币币别ID（费用的币别） */
-    originalCurrencyId: number;
+    /** 行申请币别ID，取选择列表行上的 applyCurrencyId */
+    applyCurrencyId: number;
     /**
-     * 本行结算的净额（结算币别），必填
-     * 固定币别申请需落在 [settleablePriceLowerLimit, settleablePriceUpperLimit]
-     * 原币申请落在 [settleableLowerLimit, settleableUpperLimit]
-     * 结满一行时直接传选择列表返回的 totalUnSettledPrice
+     * 本行结算的净额（结算币别），必填。
+     * 须落在 [settleablePriceLowerLimit, settleablePriceUpperLimit]。
+     * 结满一行时直接传选择列表返回的 totalUnSettledPrice。
      */
     settledPrice: number;
-    /** 已废弃，后端不再读取，保留仅为兼容旧调用方 */
-    settledAmount?: number;
   }
 
-  /** 按原币的结算行定位键DTO */
+  /** 结算行定位键（付费申请 + 申请币别） */
   export interface PaymentSettlementPayAppCurrencyKeyDto {
     paymentApplicationId: string;
-    originalCurrencyId: number;
+    /** 行申请币别ID，取详情行上的 applyCurrencyId */
+    applyCurrencyId: number;
   }
 
-  /** 新增付费结算参数DTO（按原币）→ AddByCurrencyAsync */
+  /** 新增付费结算参数 → AddByCurrencyAsync */
   export interface PaymentSettlementAddByCurrencyDto {
     settlementTime: string;
     payType?: number;
@@ -550,23 +539,23 @@ export namespace PaymentSettlementAdminApi {
     attachments?: AttachmentItemForItemInputDto[];
   }
 
-  /** 添加结算明细参数DTO（按原币） */
+  /** 追加结算明细参数 */
   export interface PaymentSettlementAddItemsByCurrencyDto {
     id: string;
     paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
   }
 
-  /** 删除结算明细参数DTO（按原币） */
+  /** 删除结算明细参数 */
   export interface PaymentSettlementDeleteItemsByCurrencyDto {
     id: string;
     paymentApplicationCurrencyKeys: PaymentSettlementPayAppCurrencyKeyDto[];
   }
 
-  /** 按原币的结算行DTO（用于详情） */
+  /** 结算行DTO（详情：付费申请 + 申请币别） */
   export interface PaymentSettlementPayAppCurrencyDto {
-    /** 付费申请ID。同一申请多币别时多行重复，行 key 请用 rowKey */
+    /** 付费申请ID。一张结算单里同一付费申请只有一行，行 key 请用 rowKey */
     id: string;
-    /** 行唯一键，格式 `付费申请id_原币币别id` */
+    /** 行唯一键，格式 `付费申请id_申请币别id` */
     rowKey: string;
     /** 付费申请ID，与 id 相同 */
     paymentApplicationId: string;
@@ -592,30 +581,23 @@ export namespace PaymentSettlementAdminApi {
     currencyId?: number;
     /** 申请币别对象，原币申请为 null */
     currency?: CurrencySimpleDto;
-    /** 原币币别ID */
-    originalCurrencyId: number;
-    /** 原币币别代码 */
-    originalCurrencyCode?: string;
-    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
-    originalCurrency?: CurrencySimpleDto | null;
-    /**
-     * 本行汇率，来自明细上的汇率快照
-     * 固定币别申请取自付费申请明细，原币申请恒为 1
-     */
-    rate: number;
-    /** 本行结算量（原币）= 该组合下所有结算明细 SettledAmount 之和 */
-    settledAmount: number;
-    /** 本行结算金额（结算币别）= 该组合下各条明细 settledAmount × rate 之和 */
+    /** 行申请币别ID。固定币别申请 = 申请币别，原币申请 = 该行费用的原币 */
+    applyCurrencyId: number;
+    /** 行申请币别对象 */
+    applyCurrency?: CurrencySimpleDto | null;
+    /** 本行结算金额（结算币别），等于录入这一行时填的金额 */
     settledPrice: number;
+    /** 付费申请本行费用的申请总金额（结算币别） */
+    payAppPrice?: number;
     /**
-     * 本行涉及的费用列表
-     * 每条带原币口径的 thisSettledAmount（本次结算量）、settledAmount（已结算量）
-     * 以及按本行 rate 折算到结算币别的 thisSettledPrice（本次结算金额）、settledPrice（已结算金额）
+     * 本行费用。固定币别申请可能跨多个原币。
+     * 费用原币看 currency；thisSettledAmount / settledAmount 是费用原币量，
+     * thisSettledPrice / settledPrice 按该费用自己的汇率折成结算币别。
      */
     orderFees: OrderFeeDto[];
   }
 
-  /** 付费结算详情DTO（按原币） */
+  /** 付费结算详情（按申请币别） */
   export interface PaymentSettlementDetailByCurrencyDto {
     id: string;
     creationTime: string;
@@ -732,20 +714,19 @@ export const unlockPaymentSettlement = (
   return requestClient.put<boolean>(`${API_PREFIX}/UnLockAsync`, data);
 };
 
-// ==================== 按原币和付费申请相关 API ====================
-// 注意：这是一整套与原有接口并存的接口，把付费结算全流程的粒度从「一条付费申请」下沉到「一条付费申请 + 一个原币币别」
-// 汇率规则（2026-08-10 变更）：所有写接口的 paymentSettlementRates 入参已删除，汇率一律由后端从付费申请取
+// ==================== 按申请币别和付费申请相关 API ====================
+// 2026-10-02：行粒度改为「付费申请 + 申请币别」。固定币别申请一张一行，原币申请仍按原币分行。
+// 汇率一律由后端从付费申请取，写接口不传 paymentSettlementRates。
 
 /**
- * 获取按原币的付费申请选择列表
+ * 获取付费结算用的付费申请选择列表
  *
  * 权限：Admin_PaymentApplication_Get
  *
- * 过滤口径与 GetPagedListForSettlementAsync 完全一致，只是把原来行内的 currencyGroup[] 拍平，
- * 每个币别单独成行，分页也按展开后的行数算。
+ * 固定币别申请合成一行，原币申请按原币分行。传 settlementCurrencyId 后只返回该申请币别的行。
  *
- * @param params 查询参数，必须包含 settlementCurrencyId（结算单的结算币别）
- * @returns 返回展开后的「付费申请+原币币别」组合行列表
+ * @param params 查询参数，建单/追加必须包含 settlementCurrencyId
+ * @returns 「付费申请+申请币别」行列表
  */
 export const getPaymentApplicationPagedListByCurrencyForSettlement = (
   params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams,
@@ -760,12 +741,11 @@ export const getPaymentApplicationPagedListByCurrencyForSettlement = (
 };
 
 /**
- * 新增付费结算（按原币）
+ * 新增付费结算
  *
  * 权限：Admin_PaymentSettlement_Add
  *
- * 与原有的 AddAsync 接口并存，使用一层结构的 paymentApplicationCurrencyItems 替代两层结构的 paymentApplicationGroups[].currencyItems[]
- * 不支持按总额自动分摊，每行都要给本行的 settledPrice
+ * 每行传 paymentApplicationId、applyCurrencyId、settledPrice。
  *
  * @param data 新增参数，paymentApplicationCurrencyItems 必填
  * @returns 返回新建的付费结算ID
@@ -777,12 +757,11 @@ export const addPaymentSettlementByCurrency = (
 };
 
 /**
- * 添加结算明细（按原币）
+ * 追加结算明细
  *
  * 权限：Admin_PaymentSettlement_Edit
  *
- * 与原有的 AddItemsAsync 接口并存，按「付费申请+原币币别」组合判重
- * 同一付费申请的另一个原币币别可以追加进来，只有完全相同的组合才报错
+ * 按「付费申请+申请币别」判重。已经在这张单里的付费申请不能再加。
  *
  * @param data 添加参数，包含付费结算ID和要添加的结算行列表
  * @returns 固定返回 true
@@ -797,14 +776,13 @@ export const addItemsToSettlementByCurrency = (
 };
 
 /**
- * 删除结算明细（按原币）
+ * 删除结算明细
  *
  * 权限：Admin_PaymentSettlement_Edit
  *
- * 与原有的 DeleteItemsAsync 接口并存，按「付费申请+原币币别」组合删除
- * 可以只删掉某个付费申请的某一个原币币别，该申请的其余币别保留在结算单里
+ * 按「付费申请+申请币别」整行删除。固定币别申请这一行的全部费用一起删。
  *
- * @param data 删除参数，包含付费结算ID和要删除的组合列表
+ * @param data 删除参数，包含付费结算ID和要删除的行键
  * @returns 固定返回 true
  */
 export const deleteItemsFromSettlementByCurrency = (
@@ -817,15 +795,14 @@ export const deleteItemsFromSettlementByCurrency = (
 };
 
 /**
- * 获取付费结算详情（按原币）
+ * 获取付费结算详情
  *
  * 权限：Admin_PaymentSettlement_Get
  *
- * 与原有的 DetailAsync 接口并存，返回一维的 paymentApplicationCurrencies 列表
- * 每行一个「付费申请+原币币别」组合，结构与选择列表一致
+ * 返回一维的 paymentApplicationCurrencies，每行一个「付费申请+申请币别」。
  *
  * @param id 付费结算ID
- * @returns 返回付费结算详情，包含按原币分组的结算行列表
+ * @returns 付费结算详情
  */
 export const getPaymentSettlementDetailByCurrency = (id: string) => {
   return requestClient.get<PaymentSettlementAdminApi.PaymentSettlementDetailByCurrencyDto>(
