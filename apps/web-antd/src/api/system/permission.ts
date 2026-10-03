@@ -96,6 +96,8 @@ export enum FrightModule {
   BreakBulk = 10,
   /** 运价箱型（箱型成本等，独立于运价主表） */
   SeFreiPriceCtn = 11,
+  /** 发票开出（与 DataPermissionModule.InvoiceIssue 同值） */
+  InvoiceIssue = 15,
 }
 
 /** 权限条件的比较操作符 */
@@ -178,6 +180,7 @@ export const FrightModuleOptions = [
   { label: '业务联系单', value: FrightModule.PreOrder },
   { label: '客户管理', value: FrightModule.Client },
   { label: '运价箱型', value: FrightModule.SeFreiPriceCtn },
+  { label: '发票开出', value: FrightModule.InvoiceIssue },
 ];
 
 /** 操作符选项 */

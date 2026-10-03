@@ -1,4 +1,4 @@
-import { message } from 'ant-design-vue';
+import { message, Modal } from 'ant-design-vue';
 import { useRoute } from 'vue-router';
 import { useTabs } from '@vben/hooks';
 import {
@@ -8,6 +8,13 @@ import {
 } from '#/api/Invoice/InvoiceIssue';
 import dayjs from 'dayjs';
 import { handleExchangeRateCheck } from './use-exchange-rate-check';
+import { issueFieldVisible } from '../invoice-issue-field-visibility';
+import {
+  mergeNamedRecipients,
+  splitNamedRecipients,
+  toNamedRecipientInputs,
+  validateNamedRecipientLists,
+} from '#/views/_shared/named-mail-recipients/named-mail-recipients';
 
 /**
  * 费用选择保存逻辑
@@ -33,6 +40,35 @@ export function useFeeSelection(
 ) {
   const route = useRoute();
   const { closeTabByKey } = useTabs();
+
+  function confirmOverwriteRecipients() {
+    return new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: '覆盖收件人？',
+        content:
+          '所选开票申请已变化。用申请上的收件人和抄送人覆盖当前列表，还是保留你改过的内容？',
+        okText: '覆盖',
+        cancelText: '保留当前',
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+  }
+
+  /** 新建时把所选申请的收件人按类型+邮箱合并。已经改过列表时先询问。 */
+  async function mergeApplicationRecipients(selectedApplications: any[]) {
+    const merged = mergeNamedRecipients(
+      selectedApplications.map((app) => app.invoiceApplicationMailRecipients),
+    );
+    if (formData.value.mailRecipientsTouched) {
+      const overwrite = await confirmOverwriteRecipients();
+      if (!overwrite) return;
+    }
+    const split = splitNamedRecipients(merged);
+    formData.value.mailTo = split.to;
+    formData.value.mailCc = split.cc;
+    formData.value.mailRecipientsTouched = false;
+  }
 
   /**
    * 处理费用选择保存
@@ -159,6 +195,22 @@ export function useFeeSelection(
         '\n----------------------------------------\n',
       );
 
+      const showMailRecipients = issueFieldVisible(
+        'invoiceIssueMailRecipients',
+        { isEdit: false, permissionRow: null },
+      );
+      if (showMailRecipients) {
+        await mergeApplicationRecipients(selectedApplications);
+        const recipientError = validateNamedRecipientLists(
+          formData.value.mailTo,
+          formData.value.mailCc,
+        );
+        if (recipientError) {
+          message.warning(recipientError);
+          return;
+        }
+      }
+
       // 构建提交数据
       const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
         orgId: formData.value.orgId,
@@ -178,13 +230,24 @@ export function useFeeSelection(
           unit: item.unit,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          amount: item.amount,
-          noTaxAmount: item.noTaxAmount,
+          amount: Number(item.amount) || 0,
+          noTaxAmount: Number(item.noTaxAmount) || 0,
           taxRate: item.taxRate,
-          taxAmount: item.taxAmount,
+          taxAmount: Number(item.taxAmount) || 0,
           remark: item.remark,
         })),
       };
+      if (
+        issueFieldVisible('invoiceIssueMailRecipients', {
+          isEdit: false,
+          permissionRow: null,
+        })
+      ) {
+        submitData.invoiceIssueMailRecipients = toNamedRecipientInputs(
+          formData.value.mailTo,
+          formData.value.mailCc,
+        );
+      }
 
       const res = await addInvoiceIssue(submitData);
       const ok = await handleExchangeRateCheck(res);

@@ -2065,7 +2065,7 @@
 
     <!-- 预览抽屉（模板预览用） -->
     <div
-      id="mail-mask-2"
+      id="mail-mask2"
       style="
         position: fixed;
         inset: 0;
@@ -3195,14 +3195,14 @@
           o.subject || '（无标题）';
         document.getElementById('ep_body').innerHTML = o.body || '';
         document.getElementById('ep_attach').innerHTML = o.attach || '无';
-        const m2 = document.getElementById('mail-mask-2');
+        const m2 = document.getElementById('mail-mask2');
         const p = document.getElementById('previewPane');
         m2.style.display = 'block';
         p.style.display = 'flex';
         requestAnimationFrame(() => (p.style.transform = 'translateX(0)'));
       }
       function closePreview() {
-        const m2 = document.getElementById('mail-mask-2');
+        const m2 = document.getElementById('mail-mask2');
         const p = document.getElementById('previewPane');
         p.style.transform = 'translateX(100%)';
         m2.style.display = 'none';

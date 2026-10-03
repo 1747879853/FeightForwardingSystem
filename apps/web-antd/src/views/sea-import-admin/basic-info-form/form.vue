@@ -36,6 +36,9 @@ import { useUserStore } from '@vben/stores';
 
 import { useAccess } from '@vben/access';
 
+import { PrintFormatBizType, PrintJsonType } from '#/components/print-format';
+import SendMailButton from '#/views/mail-template/send-mail-button.vue';
+
 import dayjs from 'dayjs';
 
 import {
@@ -1508,6 +1511,14 @@ watch(pageLoading, (loading) => {
                       />
                       <span class="align-middle">AI识别</span>
                     </Button>
+                    <SendMailButton
+                      v-if="isEdit && editId"
+                      view-code="Admin.SeaImport.Get"
+                      :fright-module="4"
+                      :entity-id="String(editId)"
+                      :print-json-type="PrintJsonType.SeaImportDetail"
+                      :biz-type="PrintFormatBizType.SeaImport"
+                    />
                     <template v-if="isEdit">
                       <span
                         v-access:code="externalApiUseCode"

@@ -385,6 +385,20 @@ export namespace InvoiceApplicationApi {
     remark?: string;
   }
 
+  /** 开票申请收件人/抄送人。recipientType：0 收件人，1 抄送人 */
+  export interface InvoiceApplicationMailRecipientInput {
+    recipientType: number;
+    /** 可空，最长 64 */
+    name?: null | string;
+    /** 纯邮箱，最长 256 */
+    email: string;
+  }
+
+  export interface InvoiceApplicationMailRecipientDto extends InvoiceApplicationMailRecipientInput {
+    id?: string;
+    sortId?: number;
+  }
+
   /** 开票申请批量添加DTO */
   export interface InvoiceApplicationBatchAddDto {
     /** 结算对象ID（Client表） */
@@ -393,6 +407,11 @@ export namespace InvoiceApplicationApi {
     orgId: number;
     /** 开票要求 */
     require?: string;
+    /**
+     * 收件人/抄送人，写在根上，后端复制到每个币别组生成的申请。
+     * 不传表示这次不带收件人。
+     */
+    invoiceApplicationMailRecipients?: InvoiceApplicationMailRecipientInput[];
     /** 按币别分组的子表数据，每组生成一个InvoiceApplication */
     currencyGroups: InvoiceApplicationCurrencyGroupDto[];
   }
@@ -424,6 +443,11 @@ export namespace InvoiceApplicationApi {
     invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
     /** 商品明细列表（全量替换） */
     invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlEditDto[];
+    /**
+     * 收件人/抄送人。不传不改；[] 清空；有值则整表替换。
+     * 编辑页每次都传当前列表，避免被当成「不修改」。
+     */
+    invoiceApplicationMailRecipients?: InvoiceApplicationMailRecipientInput[];
   }
 
   /** 开票申请删除DTO */
@@ -456,6 +480,10 @@ export namespace InvoiceApplicationApi {
      * 结果仍须覆盖明细里全部非主币别
      */
     invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateInputDto[];
+    /**
+     * 收件人/抄送人。不传不改；[] 清空；有值则整表替换。
+     */
+    invoiceApplicationMailRecipients?: InvoiceApplicationMailRecipientInput[];
   }
 
   /** 新增多条费用明细DTO */
@@ -632,6 +660,8 @@ export namespace InvoiceApplicationApi {
     invoiceApplicationExchangeRates?: InvoiceApplicationExchangeRateDto[];
     feeGroups: InvoiceApplicationFeeGroupDetailDto[];
     invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlDetailDto[];
+    /** 收件人/抄送人，按 sortId 排序；没有时为空数组 */
+    invoiceApplicationMailRecipients?: InvoiceApplicationMailRecipientDto[];
   }
 
   /** 开票申请查询DTO */

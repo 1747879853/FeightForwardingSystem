@@ -6,13 +6,18 @@ import { Page } from '@vben/common-ui';
 import { Button, message, Modal, Tag } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { useFieldPermission } from '#/composables/use-field-permission';
+import { invoiceIssueFieldPermission } from '#/composables/field-permission-profiles';
 import {
   deleteInvoiceIssue,
   getInvoiceIssuePagedList,
 } from '#/api/Invoice/InvoiceIssue';
 
 import { columns, searchFormSchema } from './data';
+
+const { usePermissionGrid: useVbenVxeGrid } = useFieldPermission(
+  invoiceIssueFieldPermission,
+);
 
 const router = useRouter();
 

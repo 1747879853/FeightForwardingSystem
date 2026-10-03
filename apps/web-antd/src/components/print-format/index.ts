@@ -1,4 +1,4 @@
 export { usePrintFormat } from './use-print-format';
 export type { PrintFormatOpenParams } from './use-print-format';
-export { PrintFormatBizType, PrintJsonType } from './types';
+export { PrintExportFormat, PrintFormatBizType, PrintJsonType } from './types';
 export { default as PrintFormatModal } from './print-format-modal.vue';

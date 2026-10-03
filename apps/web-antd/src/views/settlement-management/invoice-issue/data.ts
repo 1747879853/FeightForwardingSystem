@@ -127,6 +127,10 @@ export const columns: VxeTableGridOptions['columns'] = [
     field: 'totalAmount',
     width: 120,
     align: 'right',
+    formatter: ({ cellValue }) => {
+      const amount = Number(cellValue);
+      return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
+    },
   },
   {
     title: '申请人',

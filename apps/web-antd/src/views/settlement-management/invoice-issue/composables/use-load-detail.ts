@@ -3,6 +3,9 @@ import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
 import { getInvoiceIssueDetail } from '#/api/Invoice/InvoiceIssue';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
+import { capturePermissionRow } from '#/composables/field-permission';
+import { splitNamedRecipients } from '#/views/_shared/named-mail-recipients/named-mail-recipients';
+import { permissionRowHasKey } from '../invoice-issue-field-visibility';
 
 /**
  * 加载详情数据
@@ -52,8 +55,13 @@ export function useLoadDetail(
         attachments.value = detail.attachments || [];
       }
 
+      const mailRows = permissionRowHasKey(detail, 'invoiceIssueMailRecipients')
+        ? splitNamedRecipients(detail.invoiceIssueMailRecipients)
+        : { to: [], cc: [] };
+
       formData.value = {
         id: detail.id,
+        permissionRow: capturePermissionRow(detail),
         settlementId: detail.settlementId,
         settlementName: detail.settlement?.name || '', // ✅ 从详情中获取结算单位名称
         orgId: detail.orgId,
@@ -72,6 +80,9 @@ export function useLoadDetail(
             remark: item.remark || '',
           })) || [],
         invoiceIssueGoodsDtls: detail.invoiceIssueGoodsDtls || [],
+        mailTo: mailRows.to,
+        mailCc: mailRows.cc,
+        mailRecipientsTouched: false,
       };
 
       // 设置开票人和开票日期

@@ -3,7 +3,8 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { useRoute, useRouter } from 'vue-router';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
+import { useAccess } from '@vben/access';
 
 import {
   Button,
@@ -23,12 +24,15 @@ import {
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
+import SendMailButton from '#/views/mail-template/send-mail-button.vue';
+
 import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
 import { Select } from 'ant-design-vue';
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 import {
   issueByInterface,
   applyRedAsync,
+  editInvoiceIssueMailRecipients,
   getInvoiceIssueDetail,
   queryIssueResult,
   queryRedResult,
@@ -56,9 +60,20 @@ import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/S
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
 import { findClientInvoiceInfoByBankId } from '#/views/_shared/invoice-goods';
+import NamedMailRecipients from '#/views/_shared/named-mail-recipients/named-mail-recipients.vue';
+import {
+  type NamedMailRow,
+  toNamedRecipientInputs,
+  validateNamedRecipientLists,
+} from '#/views/_shared/named-mail-recipients/named-mail-recipients';
+import { useInvoiceIssueFieldVisibility } from './invoice-issue-field-visibility';
 
 const route = useRoute();
 const router = useRouter();
+const { hasAccessByCodes } = useAccess();
+const canEditIssueMail = computed(() =>
+  hasAccessByCodes(['Admin.InvoiceIssue.Edit']),
+);
 
 // ==================== 使用组合函数 ====================
 
@@ -86,6 +101,76 @@ const {
   getAddedAppIdsArray,
   flattenTreeData,
 } = useFormData();
+
+const { showIssueField, showMailRecipients } = useInvoiceIssueFieldVisibility(
+  formData,
+  isEdit,
+);
+const mailDraftTo = ref<NamedMailRow[]>([]);
+const mailDraftCc = ref<NamedMailRow[]>([]);
+const mailRecipientsReadonly = computed(
+  () => isEdit.value && !canEditIssueMail.value,
+);
+
+function cloneMailRows(rows: NamedMailRow[] | undefined) {
+  return (rows ?? []).map((row) => ({
+    name: row.name || '',
+    email: row.email || '',
+  }));
+}
+
+function openMailRecipientModal() {
+  mailDraftTo.value = cloneMailRows(formData.value.mailTo);
+  mailDraftCc.value = cloneMailRows(formData.value.mailCc);
+  mailRecipientModalApi.setState({
+    confirmText: isEdit.value ? '保存' : '确定',
+    showConfirmButton: !mailRecipientsReadonly.value,
+  });
+  mailRecipientModalApi.open();
+}
+
+const [MailRecipientModal, mailRecipientModalApi] = useVbenModal({
+  title: '邮件收件人',
+  class: 'w-[720px]',
+  confirmText: '保存',
+  async onConfirm() {
+    const recipientError = validateNamedRecipientLists(
+      mailDraftTo.value,
+      mailDraftCc.value,
+    );
+    if (recipientError) {
+      message.warning(recipientError);
+      return;
+    }
+    const recipients = toNamedRecipientInputs(
+      mailDraftTo.value,
+      mailDraftCc.value,
+    );
+    if (!isEdit.value || !editId.value) {
+      formData.value.mailTo = cloneMailRows(mailDraftTo.value);
+      formData.value.mailCc = cloneMailRows(mailDraftCc.value);
+      formData.value.mailRecipientsTouched = true;
+      await mailRecipientModalApi.close();
+      return;
+    }
+    mailRecipientModalApi.lock();
+    try {
+      await editInvoiceIssueMailRecipients({
+        id: String(editId.value),
+        invoiceIssueMailRecipients: recipients,
+      });
+      formData.value.mailTo = cloneMailRows(mailDraftTo.value);
+      formData.value.mailCc = cloneMailRows(mailDraftCc.value);
+      formData.value.mailRecipientsTouched = false;
+      message.success('收件人已保存');
+      await mailRecipientModalApi.close();
+    } catch (error) {
+      console.error('保存收件人失败:', error);
+    } finally {
+      mailRecipientModalApi.lock(false);
+    }
+  },
+});
 
 // ✅ 新增：发票开票状态管理（包含 editLocked）
 const invoiceStatus = ref<{
@@ -581,6 +666,19 @@ onMounted(() => {
     <!-- 顶部操作按钮 -->
     <div style="margin-bottom: 16px; text-align: right">
       <Space>
+        <SendMailButton
+          v-if="editId"
+          size="middle"
+          view-code="Admin.InvoiceIssue.Get"
+          :fright-module="15"
+          :entity-id="String(editId)"
+        />
+        <Button v-if="showMailRecipients()" @click="openMailRecipientModal">
+          <template #icon>
+            <IconifyIcon icon="lucide:mail" />
+          </template>
+          收件人
+        </Button>
         <!-- ✅ 互斥显示的按钮：未开出→税局开票；已开出(开票完成2/签章失败24)→发票冲红 -->
         <Button
           v-if="!isInvoiceIssued"
@@ -679,7 +777,10 @@ onMounted(() => {
                         {{ applicantName || '-' }}
                       </span>
                     </div>
-                    <div class="basic-config__meta-row">
+                    <div
+                      v-if="showIssueField('invoiceIssueTime')"
+                      class="basic-config__meta-row"
+                    >
                       <span class="basic-config__meta-label">开票日期</span>
                       <span class="basic-config__meta-value">
                         {{ invoiceIssueTime || '-' }}
@@ -693,7 +794,11 @@ onMounted(() => {
                   class="basic-config__section basic-config__section--accent"
                 >
                   <div class="basic-config__section-head">开票要素</div>
-                  <Form.Item label="归属组织" required>
+                  <Form.Item
+                    v-if="showIssueField('orgId')"
+                    label="归属组织"
+                    required
+                  >
                     <MyOrgSelect
                       v-model="formData.orgId"
                       placeholder="请选择归属组织"
@@ -768,8 +873,13 @@ onMounted(() => {
 
                 <!-- 补充说明 -->
                 <section class="basic-config__section">
-                  <div class="basic-config__section-head">其他备注</div>
-                  <Form.Item>
+                  <div
+                    v-if="showIssueField('require')"
+                    class="basic-config__section-head"
+                  >
+                    其他备注
+                  </div>
+                  <Form.Item v-if="showIssueField('require')">
                     <Input.TextArea
                       v-model:value="formData.require"
                       placeholder="请输入其他备注信息..."
@@ -870,7 +980,10 @@ onMounted(() => {
               </template>
 
               <template #extra>
-                <div style="text-align: right">
+                <div
+                  v-if="showIssueField('invoiceNo')"
+                  style="text-align: right"
+                >
                   <div style="font-size: 12px; color: #999">发票号码:</div>
                   <Input
                     v-model:value="formData.invoiceNo"
@@ -1394,7 +1507,7 @@ onMounted(() => {
               </div>
 
               <!-- 备注信息 -->
-              <div style="margin-top: 16px">
+              <div v-if="showIssueField('remark')" style="margin-top: 16px">
                 <div
                   style="
                     height: auto;
@@ -1460,6 +1573,15 @@ onMounted(() => {
         </div>
       </Spin>
     </Card>
+
+    <MailRecipientModal>
+      <NamedMailRecipients
+        v-model:to="mailDraftTo"
+        v-model:cc="mailDraftCc"
+        hint="发这张发票时优先用这里的地址。两边都空着，则按邮件模板。"
+        :disabled="mailRecipientsReadonly"
+      />
+    </MailRecipientModal>
 
     <!-- 费用选择抽屉 -->
     <FeeSelectionDrawerForIssue

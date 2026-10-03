@@ -8,6 +8,14 @@ import {
   InvoiceIssueApi,
 } from '#/api/Invoice/InvoiceIssue';
 import { handleExchangeRateCheck } from './use-exchange-rate-check';
+import {
+  issueFieldVisible,
+  omitMaskedIssueScalars,
+} from '../invoice-issue-field-visibility';
+import {
+  toNamedRecipientInputs,
+  validateNamedRecipientLists,
+} from '#/views/_shared/named-mail-recipients/named-mail-recipients';
 
 const ADD_PATH = '/settlement-management/invoice-issue/add';
 
@@ -38,10 +46,10 @@ export function useSubmit(
       unit: item.unit,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      amount: item.amount,
-      noTaxAmount: item.noTaxAmount,
+      amount: Number(item.amount) || 0,
+      noTaxAmount: Number(item.noTaxAmount) || 0,
       taxRate: item.taxRate,
-      taxAmount: item.taxAmount,
+      taxAmount: Number(item.taxAmount) || 0,
       remark: item.remark,
     }));
   }
@@ -51,9 +59,26 @@ export function useSubmit(
       message.warning('该发票开出已锁定，只能查询，不能保存');
       return false;
     }
-    if (!formData.value.orgId) {
+    const permissionOptions = {
+      isEdit: !!isEdit.value,
+      permissionRow: formData.value.permissionRow,
+    };
+    if (
+      !formData.value.orgId &&
+      issueFieldVisible('orgId', permissionOptions)
+    ) {
       message.warning('请选择归属组织');
       return false;
+    }
+    if (!isEdit.value) {
+      const recipientError = validateNamedRecipientLists(
+        formData.value.mailTo,
+        formData.value.mailCc,
+      );
+      if (recipientError) {
+        message.warning(recipientError);
+        return false;
+      }
     }
     const items = formData.value.invoiceIssueItems || [];
     if (items.length === 0) {
@@ -114,16 +139,33 @@ export function useSubmit(
     submitLoading.value = true;
     try {
       const goodsDtls = mapGoodsDtls();
-      const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
-        orgId: formData.value.orgId,
-        invoiceNo: formData.value.invoiceNo,
-        invoiceIssueTime: invoiceIssueTime.value,
-        invoiceExchangeRate: invoiceExchangeRate.value,
-        require: formData.value.require,
-        remark: formData.value.remark,
-        invoiceIssueItems: formData.value.invoiceIssueItems || [],
-        invoiceIssueGoodsDtls: goodsDtls,
+      const permissionOptions = {
+        isEdit: !!isEdit.value,
+        permissionRow: formData.value.permissionRow,
       };
+      const submitData: InvoiceIssueApi.InvoiceIssueAddDto =
+        omitMaskedIssueScalars(
+          {
+            orgId: formData.value.orgId,
+            invoiceNo: formData.value.invoiceNo,
+            invoiceIssueTime: invoiceIssueTime.value,
+            invoiceExchangeRate: invoiceExchangeRate.value,
+            require: formData.value.require,
+            remark: formData.value.remark,
+            invoiceIssueItems: formData.value.invoiceIssueItems || [],
+            invoiceIssueGoodsDtls: goodsDtls,
+          },
+          permissionOptions,
+        );
+      if (
+        !isEdit.value &&
+        issueFieldVisible('invoiceIssueMailRecipients', permissionOptions)
+      ) {
+        submitData.invoiceIssueMailRecipients = toNamedRecipientInputs(
+          formData.value.mailTo,
+          formData.value.mailCc,
+        );
+      }
 
       if (isEdit.value) {
         const editData: InvoiceIssueApi.InvoiceIssueEditDto = {

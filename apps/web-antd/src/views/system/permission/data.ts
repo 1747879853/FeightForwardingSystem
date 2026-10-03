@@ -228,7 +228,9 @@ export const FrightModuleLabels: Record<FrightModule, string> = {
   [FrightModule.SeFreiPrice]: '运价',
   [FrightModule.PreOrder]: '业务联系单',
   [FrightModule.Client]: '客户管理',
+  [FrightModule.BreakBulk]: '件杂货',
   [FrightModule.SeFreiPriceCtn]: '运价箱型',
+  [FrightModule.InvoiceIssue]: '发票开出',
 };
 
 export const OperatorLabels: Record<UserTablePermissionOperator, string> = {
