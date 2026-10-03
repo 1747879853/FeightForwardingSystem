@@ -230,6 +230,8 @@ export namespace PreOrderAdminApi {
      */
     transportOrder?: null | PreOrderTransportOrderDto;
     blType?: number;
+    /** 订单类型：直单=0、分单=1；非必填 */
+    billType?: null | number;
     clientId?: string;
     mblNum?: string | null;
     goodsCompleteTime?: string | null;
@@ -371,6 +373,8 @@ export namespace PreOrderAdminApi {
     bizType: PreOrderBizType;
     orgId?: number | null;
     blType?: number;
+    /** 订单类型：直单=0、分单=1；非必填，清空传 null */
+    billType?: null | number;
     clientId?: string;
     mblNum?: string | null;
     goodsCompleteTime?: string | null;

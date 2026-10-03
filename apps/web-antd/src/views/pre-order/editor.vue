@@ -62,6 +62,7 @@ import {
 } from '#/views/sea-export-admin/basic-info-form/sea-export-detail-mapper';
 import {
   formatSeaExportPortRemark,
+  getBillTypeOptions,
   getBlTypeOptions,
   pickPortSelectOption,
 } from '#/views/sea-export-admin/data';
@@ -144,7 +145,7 @@ const auditSuccess = ref(true);
 /** 提交 DTO 的 JSON 快照，用于未保存拦截 */
 const formSnapshot = ref('');
 
-/** 归属组织 / 业务类型 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
+/** 归属组织 / 业务类型 / 装运方式 / 订单类型对齐海运出口放在标题栏 meta 区，不进表单 */
 const headerOrgId = ref<null | number | undefined>();
 /** 编辑回显兜底选项：详情 orgs 路径拼完整公司名，组织加载完成前也能正确显示 */
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
@@ -155,6 +156,9 @@ const bizTypeOptions = getPreOrderBizTypeOptions();
 /** 新建默认整柜（0）；编辑回显仍以详情为准 */
 const headerBlType = ref<number | undefined>(0);
 const blTypeOptions = getBlTypeOptions();
+/** 订单类型非必填，新建不设默认；选项与海运出口一致：直单=0、分单=1 */
+const headerBillType = ref<number | undefined>();
+const billTypeOptions = getBillTypeOptions();
 
 /** 干系人可用角色由 system/enumeration 按业务类型配置，销售固定必填不可删 */
 const { roleOptions: userRoleOptions, whenRolesReady: whenUserRolesReady } =
@@ -1017,6 +1021,10 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
   headerBlType.value =
     dto.blType === null || dto.blType === undefined ? undefined : dto.blType;
+  headerBillType.value =
+    dto.billType === null || dto.billType === undefined
+      ? undefined
+      : dto.billType;
   // 详情已返回 client 对象：注入 selectedItems，避免委托单位回显成 Guid（对齐海出）
   bindClientUserLinkage(toSelectedItems(dto.clientId, dto.client?.name));
   bindBookingAgentLinkage(
@@ -1375,6 +1383,7 @@ async function buildSubmitPayload() {
     cargoId: cargoTypeValues.cargoId ?? 0,
     orgId: headerOrgId.value,
     blType: headerBlType.value,
+    billType: headerBillType.value ?? null,
     preOrderNum: undefined,
     preOrderCodeGoodss: orderCodeGoodss
       .filter((id): id is number => id != null)
@@ -1862,6 +1871,19 @@ const getContentTabStyle = (isActive: boolean) =>
                           size="small"
                           class="basic-info-header__select"
                           :options="blTypeOptions"
+                          placeholder="请选择"
+                        />
+                      </div>
+                      <div
+                        class="basic-info-header__item basic-info-header__item--select"
+                      >
+                        <span class="basic-info-header__label">订单类型</span>
+                        <Select
+                          v-model:value="headerBillType"
+                          allow-clear
+                          size="small"
+                          class="basic-info-header__select"
+                          :options="billTypeOptions"
                           placeholder="请选择"
                         />
                       </div>
