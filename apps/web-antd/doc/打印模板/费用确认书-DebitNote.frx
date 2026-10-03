@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Name="费用确认书 DEBIT NOTE" ReportInfo.Description="费用确认书版式模板，纯静态样张，未绑定数据源" ReportInfo.CreatorVersion="2020.3.7.0">
+  <Dictionary/>
+  <ReportPage Name="Page1" PaperWidth="210" PaperHeight="297" LeftMargin="17" RightMargin="17" TopMargin="12" BottomMargin="10">
+    <ReportTitleBand Name="ReportTitle1" Width="665.2" Height="1032">
+
+      <TextObject Name="TxtTitle" Left="0" Top="0" Width="320" Height="36" Text="费用确认书" VertAlign="Center" TextColor="26, 26, 92" Font="微软雅黑, 21pt, style=Bold"/>
+      <TextObject Name="TxtBadge" Left="561" Top="2" Width="104" Height="24" Text="DEBIT NOTE" HorzAlign="Center" VertAlign="Center" Fill.Color="232, 232, 246" TextColor="26, 26, 92" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="TxtSubtitle" Left="0" Top="44" Width="401" Height="44" Text="Data Visualization Version - Global Logistics Architecture. Please review the detailed module summary below." TextColor="115, 115, 130" Font="Arial, 9pt"/>
+      <TextObject Name="TxtNoLabel" Left="545" Top="34" Width="38" Height="17" Text="NO:" HorzAlign="Right" VertAlign="Center" TextColor="115, 115, 130" Font="Arial, 8.5pt"/>
+      <TextObject Name="TxtNoValue" Left="585" Top="34" Width="80" Height="17" Text="DN-2024-8832" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="TxtDate" Left="460" Top="54" Width="205" Height="17" Text="DATE: 2024-10-24" HorzAlign="Right" VertAlign="Center" TextColor="115, 115, 130" Font="Arial, 8.5pt"/>
+
+      <ShapeObject Name="ShpBillTo" Left="0" Top="118" Width="321" Height="139" Shape="RoundRectangle" Fill.Color="250, 250, 253" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <TextObject Name="BarBillTo" Left="0" Top="118" Width="4.5" Height="139" Fill.Color="26, 26, 92"/>
+      <TextObject Name="TxtBillToTitle" Left="15" Top="136" Width="290" Height="14" Text="BILL TO (付款方)" VertAlign="Center" TextColor="26, 26, 92" Font="微软雅黑, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtBillToName" Left="15" Top="156" Width="290" Height="18" Text="Pacific Rim Trading Co." VertAlign="Center" TextColor="30, 30, 55" Font="Arial, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtBillToAddr1" Left="15" Top="179" Width="290" Height="16" Text="88 Harbor View Drive, Suite 400" VertAlign="Center" TextColor="85, 85, 105" Font="Arial, 9pt"/>
+      <TextObject Name="TxtBillToAddr2" Left="15" Top="197" Width="290" Height="16" Text="Shanghai, 200001, China" VertAlign="Center" TextColor="85, 85, 105" Font="Arial, 9pt"/>
+      <TextObject Name="TxtBillToAttn" Left="15" Top="222" Width="290" Height="16" Text="ATTN: Accounts Payable" VertAlign="Center" TextColor="45, 45, 70" Font="Arial, 8.5pt, style=Bold"/>
+
+      <ShapeObject Name="ShpIssuer" Left="343" Top="118" Width="321" Height="139" Shape="RoundRectangle" Fill.Color="250, 250, 253" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <TextObject Name="BarIssuer" Left="343" Top="118" Width="4.5" Height="139" Fill.Color="13, 124, 102"/>
+      <TextObject Name="TxtIssuerTitle" Left="358" Top="136" Width="290" Height="14" Text="ISSUER (发行方)" VertAlign="Center" TextColor="13, 124, 102" Font="微软雅黑, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtIssuerName" Left="358" Top="156" Width="290" Height="18" Text="Global Logistics Architecture" VertAlign="Center" TextColor="30, 30, 55" Font="Arial, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtIssuerAddr1" Left="358" Top="179" Width="290" Height="16" Text="100 Logistics Park Ave" VertAlign="Center" TextColor="85, 85, 105" Font="Arial, 9pt"/>
+      <TextObject Name="TxtIssuerAddr2" Left="358" Top="197" Width="290" Height="16" Text="Shenzhen, 518000, China" VertAlign="Center" TextColor="85, 85, 105" Font="Arial, 9pt"/>
+      <TextObject Name="TxtIssuerTax" Left="358" Top="222" Width="290" Height="16" Text="TAX ID: 91440300XXXXXXXXXX" VertAlign="Center" TextColor="45, 45, 70" Font="Arial, 8.5pt, style=Bold"/>
+
+      <TextObject Name="TxtSec1" Left="0" Top="294" Width="400" Height="15" Text="SHIPMENT MODULES (运输详情)" VertAlign="Center" TextColor="60, 60, 90" Font="微软雅黑, 8pt, style=Bold"/>
+      <LineObject Name="LineSec1" Left="0" Top="318" Width="665.2" Border.Color="226, 226, 238" Border.Width="0.75"/>
+
+      <ShapeObject Name="ShpVessel" Left="0" Top="332" Width="206" Height="107" Shape="RoundRectangle" Fill.Color="White" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <TextObject Name="IconShip" Left="0" Top="346" Width="206" Height="30" Text="⚓" HorzAlign="Center" VertAlign="Center" TextColor="13, 124, 102" Font="Segoe UI Symbol, 16pt"/>
+      <TextObject Name="TxtVesselLbl" Left="0" Top="386" Width="206" Height="14" Text="VESSEL / VOYAGE" HorzAlign="Center" VertAlign="Center" TextColor="115, 115, 130" Font="Arial, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtVesselVal" Left="0" Top="404" Width="206" Height="20" Text="EVER GIVEN / 042W" HorzAlign="Center" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 11pt, style=Bold"/>
+
+      <ShapeObject Name="ShpRoute" Left="222" Top="332" Width="442" Height="107" Shape="RoundRectangle" Fill.Color="White" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <LineObject Name="LineRoute" Left="315" Top="386" Width="263" Border.Color="215, 215, 228" Border.Width="0.75"/>
+      <TextObject Name="TxtPolLbl" Left="229" Top="348" Width="80" Height="14" Text="POL" HorzAlign="Center" VertAlign="Center" TextColor="115, 115, 130" Font="Arial, 7.5pt, style=Bold"/>
+      <TextObject Name="IconPol" Left="229" Top="368" Width="80" Height="20" Text="◉" HorzAlign="Center" VertAlign="Center" Fill.Color="White" TextColor="26, 26, 92" Font="Segoe UI Symbol, 11pt"/>
+      <TextObject Name="TxtPolVal" Left="229" Top="394" Width="80" Height="18" Text="CNSHA" HorzAlign="Center" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtPodLbl" Left="585" Top="348" Width="80" Height="14" Text="POD" HorzAlign="Center" VertAlign="Center" TextColor="115, 115, 130" Font="Arial, 7.5pt, style=Bold"/>
+      <TextObject Name="IconPod" Left="585" Top="368" Width="80" Height="20" Text="◉" HorzAlign="Center" VertAlign="Center" Fill.Color="White" TextColor="26, 26, 92" Font="Segoe UI Symbol, 11pt"/>
+      <TextObject Name="TxtPodVal" Left="585" Top="394" Width="80" Height="18" Text="NLRTM" HorzAlign="Center" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 10.5pt, style=Bold"/>
+      <TextObject Name="IconPlane" Left="435" Top="376" Width="24" Height="20" Text="✈" HorzAlign="Center" VertAlign="Center" Fill.Color="White" TextColor="26, 26, 92" Font="Segoe UI Symbol, 11pt"/>
+
+      <ShapeObject Name="ShpCtn" Left="0" Top="469" Width="321" Height="81" Shape="RoundRectangle" Fill.Color="White" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <ShapeObject Name="ShpCtnIcon" Left="18" Top="484" Width="34" Height="36" Shape="RoundRectangle" Fill.Color="238, 238, 250" Border.Color="238, 238, 250"/>
+      <TextObject Name="IconCtn" Left="18" Top="484" Width="34" Height="36" Text="▤" HorzAlign="Center" VertAlign="Center" TextColor="26, 26, 92" Font="Segoe UI Symbol, 12pt"/>
+      <TextObject Name="TxtCtnLbl" Left="65" Top="481" Width="245" Height="14" Text="CONTAINER (箱号)" VertAlign="Center" TextColor="100, 100, 120" Font="微软雅黑, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtCtnVal" Left="65" Top="499" Width="245" Height="18" Text="TCLU8172635 / 40HC" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="TxtCtnSeal" Left="65" Top="520" Width="245" Height="14" Text="SEAL: XYZ9982" VertAlign="Center" TextColor="150, 150, 165" Font="Arial, 7.5pt"/>
+
+      <ShapeObject Name="ShpDoc" Left="343" Top="469" Width="321" Height="81" Shape="RoundRectangle" Fill.Color="White" Border.Color="226, 226, 238" Border.Width="0.75"/>
+      <ShapeObject Name="ShpDocIcon" Left="361" Top="484" Width="34" Height="36" Shape="RoundRectangle" Fill.Color="238, 238, 250" Border.Color="238, 238, 250"/>
+      <TextObject Name="IconDoc" Left="361" Top="484" Width="34" Height="36" Text="❏" HorzAlign="Center" VertAlign="Center" TextColor="26, 26, 92" Font="Segoe UI Symbol, 12pt"/>
+      <TextObject Name="TxtDocLbl" Left="408" Top="481" Width="245" Height="14" Text="DOCUMENT REF (提单号)" VertAlign="Center" TextColor="100, 100, 120" Font="微软雅黑, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtDocVal" Left="408" Top="499" Width="245" Height="18" Text="MBL: ONEYSHA298374" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="TxtDocSub" Left="408" Top="520" Width="245" Height="14" Text="HBL: GLA2410-009" VertAlign="Center" TextColor="150, 150, 165" Font="Arial, 7.5pt"/>
+
+      <TextObject Name="TxtSec2" Left="0" Top="590" Width="400" Height="15" Text="CHARGE SUMMARY (费用明细)" VertAlign="Center" TextColor="60, 60, 90" Font="微软雅黑, 8pt, style=Bold"/>
+      <LineObject Name="LineSec2" Left="0" Top="613" Width="665.2" Border.Color="226, 226, 238" Border.Width="0.75"/>
+
+      <TextObject Name="TblHdrBg" Left="0" Top="628" Width="665.2" Height="33" Fill.Color="240, 240, 250"/>
+      <TextObject Name="HdrDesc" Left="10" Top="628" Width="280" Height="33" Text="DESCRIPTION (项目)" VertAlign="Center" TextColor="26, 26, 92" Font="微软雅黑, 8pt, style=Bold"/>
+      <TextObject Name="HdrCur" Left="290" Top="628" Width="57" Height="33" Text="CUR." HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="HdrUnit" Left="380" Top="628" Width="114" Height="33" Text="UNIT P." HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="HdrAmt" Left="530" Top="628" Width="121" Height="33" Text="AMOUNT (总价)" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="微软雅黑, 8pt, style=Bold"/>
+
+      <TextObject Name="R1Desc" Left="10" Top="661" Width="280" Height="42" Text="Ocean Freight (海运费)" VertAlign="Center" TextColor="40, 40, 60" Font="微软雅黑, 9pt"/>
+      <TextObject Name="R1Cur" Left="290" Top="661" Width="57" Height="42" Text="USD" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R1Unit" Left="380" Top="661" Width="114" Height="42" Text="2,450.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R1Amt" Left="530" Top="661" Width="121" Height="42" Text="2,450.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <LineObject Name="LineR1" Left="0" Top="703" Width="665.2" Border.Color="235, 235, 243" Border.Width="0.75"/>
+
+      <TextObject Name="R2Desc" Left="10" Top="703" Width="280" Height="42" Text="Terminal Handling Charge (码头操作费)" VertAlign="Center" TextColor="40, 40, 60" Font="微软雅黑, 9pt"/>
+      <TextObject Name="R2Cur" Left="290" Top="703" Width="57" Height="42" Text="RMB" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R2Unit" Left="380" Top="703" Width="114" Height="42" Text="1,200.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R2Amt" Left="530" Top="703" Width="121" Height="42" Text="1,200.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <LineObject Name="LineR2" Left="0" Top="745" Width="665.2" Border.Color="235, 235, 243" Border.Width="0.75"/>
+
+      <TextObject Name="R3Desc" Left="10" Top="745" Width="280" Height="42" Text="Customs Clearance (报关费)" VertAlign="Center" TextColor="40, 40, 60" Font="微软雅黑, 9pt"/>
+      <TextObject Name="R3Cur" Left="290" Top="745" Width="57" Height="42" Text="RMB" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R3Unit" Left="380" Top="745" Width="114" Height="42" Text="500.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <TextObject Name="R3Amt" Left="530" Top="745" Width="121" Height="42" Text="500.00" HorzAlign="Right" VertAlign="Center" TextColor="40, 40, 60" Font="Arial, 9pt"/>
+      <LineObject Name="LineR3" Left="0" Top="787" Width="665.2" Border.Color="235, 235, 243" Border.Width="0.75"/>
+
+      <TextObject Name="TotUpBg" Left="386" Top="808" Width="278" Height="69" Fill.Color="248, 248, 252"/>
+      <TextObject Name="TotUsdLbl" Left="400" Top="821" Width="110" Height="16" Text="TOTAL USD" VertAlign="Center" TextColor="70, 70, 95" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="TotUsdVal" Left="520" Top="819" Width="131" Height="18" Text="$ 2,450.00" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 9.5pt, style=Bold"/>
+      <TextObject Name="TotRmbLbl" Left="400" Top="847" Width="110" Height="16" Text="TOTAL RMB" VertAlign="Center" TextColor="70, 70, 95" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="TotRmbVal" Left="520" Top="845" Width="131" Height="18" Text="¥ 1,700.00" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 9.5pt, style=Bold"/>
+      <LineObject Name="LineTot" Left="386" Top="877" Width="278" Border.Color="222, 222, 236" Border.Width="0.75"/>
+
+      <TextObject Name="TotDownBg" Left="386" Top="879" Width="278" Height="77" Fill.Color="234, 234, 246"/>
+      <TextObject Name="GrandLbl" Left="400" Top="890" Width="115" Height="30" Text="GRAND TOTAL (RMB EQV.)" TextColor="26, 26, 92" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="GrandRate" Left="400" Top="922" Width="115" Height="14" Text="Ex. Rate: 7.20" VertAlign="Center" TextColor="120, 120, 140" Font="Arial, 7.5pt"/>
+      <TextObject Name="GrandCur" Left="520" Top="886" Width="131" Height="16" Text="¥" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 9pt"/>
+      <TextObject Name="GrandVal" Left="480" Top="906" Width="171" Height="32" Text="19,340.00" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 17pt, style=Bold"/>
+
+      <LineObject Name="LineSign" Left="0" Top="1000" Width="222" Border.Color="60, 60, 90" Border.Width="0.75"/>
+      <TextObject Name="TxtSign" Left="0" Top="1006" Width="222" Height="16" Text="AUTHORIZED SIGNATURE" HorzAlign="Center" VertAlign="Center" TextColor="60, 60, 90" Font="Arial, 7.5pt, style=Bold"/>
+      <TextObject Name="TxtFooterCo" Left="300" Top="993" Width="365" Height="16" Text="GLOBAL LOGISTICS ARCHITECTURE" HorzAlign="Right" VertAlign="Center" TextColor="26, 26, 92" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="TxtFooterNote" Left="300" Top="1012" Width="365" Height="15" Text="Generated automatically by Logistics Portal." HorzAlign="Right" VertAlign="Center" TextColor="130, 130, 145" Font="Arial, 7.5pt, style=Italic"/>
+
+    </ReportTitleBand>
+  </ReportPage>
+</Report>

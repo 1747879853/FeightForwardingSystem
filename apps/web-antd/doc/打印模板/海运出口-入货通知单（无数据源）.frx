@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Name="入货通知（海运）-瑞尔" ReportInfo.Description="按瑞尔海运入货通知单 PDF 还原的纯版式模板，未绑定任何数据源" ReportInfo.Created="08/23/2026 12:06:23" ReportInfo.Modified="08/23/2026 12:06:59" ReportInfo.CreatorVersion="2026.2.0.0">
+  <Dictionary/>
+  <ReportPage Name="Page1" LeftMargin="0" TopMargin="0" RightMargin="0" BottomMargin="0" Watermark.Font="宋体, 60pt">
+    <ReportTitleBand Name="ReportTitle1" Width="793.8" Height="1120">
+      <TextObject Name="TxtSloganCn" Left="36.8" Top="49.5" Width="152" Height="19" Text="我们专注于提供专业的物流服务" VertAlign="Center" Font="微软雅黑, 9pt, style=Bold"/>
+      <TextObject Name="TxtSloganEn" Left="191.3" Top="50.5" Width="210" Height="18" Text="We specialize in logistics services." VertAlign="Center" Font="Arial, 8.5pt, style=Bold"/>
+      <LineObject Name="LineSlogan" Top="67.5" Width="793.7"/>
+      <TextObject Name="LogoMask" Left="545" Top="16" Width="210.9" Height="60" Fill.Color="White" Font="宋体, 9pt"/>
+      <ShapeObject Name="ShapeLogoBg" Left="551.9" Top="21" Width="48.4" Height="50.5" Border.Color="48, 43, 112" Fill.Color="48, 43, 112"/>
+      <ShapeObject Name="ShapeLogoBar1" Left="558" Top="30" Width="9" Height="33" Border.Color="White" Fill.Color="White"/>
+      <ShapeObject Name="ShapeLogoBar2" Left="571" Top="30" Width="9" Height="14" Border.Color="White" Fill.Color="White"/>
+      <ShapeObject Name="ShapeLogoBar3" Left="571" Top="49" Width="9" Height="14" Border.Color="White" Fill.Color="White"/>
+      <ShapeObject Name="ShapeLogoBar4" Left="584" Top="30" Width="9" Height="33" Border.Color="White" Fill.Color="White"/>
+      <TextObject Name="TxtLogoText" Left="607.6" Top="22" Width="150" Height="48" Text="RARE" VertAlign="Center" Font="Arial, 30pt, style=Bold" TextFill.Color="48, 43, 112"/>
+      <TextObject Name="TxtAddress1" Left="200" Top="79.9" Width="558.9" Height="23" Text="Room 202 Unit 33Ding11，No55 Baishahe Road，Liuting Subdistrict" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10pt, style=Bold"/>
+      <TextObject Name="TxtAddress2" Left="200" Top="108.3" Width="558.9" Height="23" Text="Chengyang District，Qingdao CHINA" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10pt, style=Bold"/>
+      <TextObject Name="TxtEmail" Left="200" Top="136.7" Width="558.9" Height="23" Text="rare@air-skita.com" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10pt, style=Bold"/>
+      <TextObject Name="TxtPhone" Left="200" Top="165" Width="558.9" Height="23" Text="0086-532-58005657" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10pt, style=Bold"/>
+      <TextObject Name="TxtTitleCn" Left="301.7" Top="212.4" Width="108" Height="34" Text="入货通知" VertAlign="Center" Font="微软雅黑, 20pt, style=Bold"/>
+      <TextObject Name="TxtTitleEn" Left="406" Top="219" Width="100" Height="26" Text="（By Sea）" VertAlign="Center" Font="微软雅黑, 13pt, style=Bold"/>
+      <TextObject Name="LblTo" Left="165" Top="259.2" Width="102.9" Height="20" Text="TO：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValTo" Left="270" Top="259.2" Width="118" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblAttn" Left="390" Top="259.2" Width="90.3" Height="20" Text="ATTN：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValAttn" Left="482" Top="259.2" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblFm" Left="165" Top="285.4" Width="102.9" Height="20" Text="FM：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValFm" Left="270" Top="285.4" Width="118" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblWhNo" Left="390" Top="285.4" Width="90.3" Height="20" Text="入仓编号：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValWhNo" Left="480.4" Top="281.7" Width="276.5" Height="25.2" Fill.Color="217, 217, 217" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="TxtBookingDesc" Left="36.8" Top="311.2" Width="300" Height="21" Text="贵司委托我司预配出口货物：" VertAlign="Center" Font="微软雅黑, 10.5pt, style=Bold"/>
+      <TextObject Name="LblVessel" Left="140" Top="338" Width="127.9" Height="20" Text="船名/航次：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValVessel" Left="270" Top="338" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblMblNum" Left="360" Top="338" Width="120.3" Height="20" Text="提单号：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValMblNum" Left="482" Top="338" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblPol" Left="140" Top="364.8" Width="127.9" Height="20" Text="装运港：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValPol" Left="270" Top="364.8" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblPod" Left="360" Top="364.8" Width="120.3" Height="20" Text="目的港：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValPod" Left="482" Top="364.8" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblEtd" Left="140" Top="391.6" Width="127.9" Height="20" Text="船期：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValEtd" Left="270" Top="391.6" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblCtn" Left="360" Top="391.6" Width="120.3" Height="20" Text="箱量：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValCtn" Left="482" Top="391.6" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblContact" Left="140" Top="418.4" Width="127.9" Height="20" Text="联系人：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValContact" Left="270" Top="418.4" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblPkgs" Left="360" Top="418.4" Width="120.3" Height="20" Text="件数：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValPkgs" Left="482" Top="418.4" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblYard" Left="140" Top="445.2" Width="127.9" Height="20" Text="入货场站：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValYard" Left="270" Top="445.2" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblKgs" Left="360" Top="445.2" Width="120.3" Height="20" Text="重量：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValKgs" Left="482" Top="445.2" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblYardAddr" Left="140" Top="472" Width="127.9" Height="20" Text="入货地点：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValYardAddr" Left="270" Top="472" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblCbm" Left="360" Top="472" Width="120.3" Height="20" Text="体积：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValCbm" Left="482" Top="472" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblCloseDoc" Left="140" Top="498.8" Width="127.9" Height="20" Text="截单时间：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValCloseDoc" Left="270" Top="498.8" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblTel" Left="360" Top="498.8" Width="120.3" Height="20" Text="电话：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValTel" Left="482" Top="498.8" Width="275" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="LblClosing" Left="140" Top="525.6" Width="127.9" Height="20" Text="截港时间：" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="ValClosing" Left="270" Top="525.6" Width="140" Height="20" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <TextObject Name="TxtLateWarning" Left="36.8" Top="553" Width="500" Height="22" Text="晚于此时间入货造成的一切亏舱损失，请由订舱人承担" VertAlign="Center" Font="微软雅黑, 11pt, style=Bold"/>
+      <TextObject Name="LblRemark" Left="36.8" Top="588.7" Width="70" Height="21" Text="备注：" VertAlign="Center" Font="微软雅黑, 10.5pt, style=Bold"/>
+      <TextObject Name="ValRemark" Left="105" Top="588.7" Width="652" Height="21" VertAlign="Center" Font="微软雅黑, 10.5pt"/>
+      <ShapeObject Name="ShapeWelcome" Left="33.6" Top="623.4" Width="308" Height="26.3" Fill.Color="235, 235, 235" Shape="RoundRectangle" Curve="0.8"/>
+      <TextObject Name="TxtWelcome" Left="33.6" Top="623.4" Width="308" Height="26.3" Text="欢迎您选择瑞尔，我们将竭诚为您服务！" HorzAlign="Center" VertAlign="Center" Font="微软雅黑, 11pt, style=Bold"/>
+      <TextObject Name="TxtNote1" Left="36.8" Top="651.8" Width="722" Height="19" Text="一、请在货物进港前提供准确重尺并要求回箱单务必填写准确。" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtNote2Line1" Left="36.8" Top="670.7" Width="722" Height="19" Text="二、为保证贵公司的货物安全，请在装箱之前安排业务人员对空箱进行检查，确认装箱是否有破损、水滴、异味、污渍等情况，如集" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtNote2Line2" Left="36.8" Top="689.6" Width="722" Height="19" Text="装箱有任何可能对贵司货物不利之影响，请及时与我司业务人员联系。" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTipsTitle" Left="36.8" Top="714.9" Width="400" Height="21" Text="温馨提示（操作中提醒注意如下问题）：" VertAlign="Center" Font="微软雅黑, 11pt, style=Bold"/>
+      <TextObject Name="TxtTip1Title" Left="36.8" Top="738" Width="200" Height="20" Text="1.回箱情况：" VertAlign="Center" Font="微软雅黑, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtTip1Line1" Left="36.8" Top="761.1" Width="722" Height="19" Text="入货站装箱回货之前，务必提供准确的数量，如需分票，则提供每票资料，以避免出现未装完封箱集港的情况；外点回箱之前，必须" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTip1Line2" Left="36.8" Top="780" Width="722" Height="19" Text="提供准确的数量及分票情况，回箱单上要填写完整且如分票应该详细显示每票数量；整箱散卡送货到场站做站装货物考虑到现场的装" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTip1Line3" Left="36.8" Top="798.9" Width="722" Height="19" Text="箱时间，因此请务必提前 2-3 小时入货（特种箱根据情况而定），到站后如果办好手续没有立即装箱，请及时联系我司。" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTip2Title" Left="36.8" Top="823.1" Width="200" Height="20" Text="2.报关情况：" VertAlign="Center" Font="微软雅黑, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtTip2Line1" Left="36.8" Top="846.3" Width="722" Height="19" Text="需要我司通关请及时提供全套全部单据，自行安排报关请及时通关并告知我司，如分票通关请在入货前提供准确分票信息，如因未提" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTip2Line2" Left="36.8" Top="865.2" Width="722" Height="19" Text="供分票信息或者中间数量更改等原因而影响集港和通关导致甩货，责任自负。" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="TxtTip3Title" Left="36.8" Top="889.4" Width="200" Height="20" Text="3.拖车：" VertAlign="Center" Font="微软雅黑, 10.5pt, style=Bold"/>
+      <TextObject Name="TxtTip3Line1" Left="36.8" Top="912.5" Width="722" Height="19" Text="如需我司安排陆路运输，请务必在航期前 3-5 个工作日通知并告知准确拖车时间和拖货地点。" VertAlign="Center" WordWrap="false" Font="宋体, 9.2pt"/>
+      <TextObject Name="FooterBg" Top="939.8" Width="793.7" Height="180.2" Fill.Color="48, 43, 112" Font="宋体, 9pt"/>
+      <TextObject Name="FooterCn" Left="380" Top="950.3" Width="378.9" Height="30" Text="山东瑞尔国际航运有限公司" HorzAlign="Right" VertAlign="Center" Font="微软雅黑, 16pt, style=Bold" TextFill.Color="White"/>
+      <TextObject Name="FooterEn" Left="330" Top="996.6" Width="428.9" Height="24" Text="Shandong Rare International Logistics Co., Ltd" HorzAlign="Right" VertAlign="Center" Font="Courier New, 9.5pt, style=Bold" TextFill.Color="White"/>
+    </ReportTitleBand>
+  </ReportPage>
+</Report>
