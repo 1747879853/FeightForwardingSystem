@@ -245,7 +245,7 @@ const mapMasterCtns = (
   }));
 
 const applyMasterToForm = (
-  mode: 'defaults' | 'full' = 'full',
+  mode: 'ctn' | 'defaults' = 'defaults',
   silent = false,
 ) => {
   const se = masterDetail.value;
@@ -257,54 +257,19 @@ const applyMasterToForm = (
     return false;
   }
 
-  const terms = {
-    ...(mode === 'full'
-      ? {
-          codeIssueTypeId: se.codeIssueTypeId,
-          codeIssueTypeName: se.codeIssueType?.billType,
-        }
-      : {}),
-    codeFrtId: to.codeFrtId,
-    codeFrtName: to.codeFrt?.cnName,
-    codeServiceId: to.codeServiceId,
-    codeServiceName: to.codeService?.cnName,
-    prepareAtId: se.prepareAtId,
-    prepareAtName: portName(se.prepareAt),
-    signingPortId: se.signingPortId,
-    signingPortName: portName(se.signingPort),
-    signingTime: se.signingTime,
-  };
-
   if (mode === 'defaults') {
     formData.value = {
       ...formData.value,
-      ...terms,
+      codeFrtId: to.codeFrtId,
+      codeFrtName: to.codeFrt?.cnName,
+      codeServiceId: to.codeServiceId,
+      codeServiceName: to.codeService?.cnName,
+      prepareAtId: se.prepareAtId,
+      prepareAtName: portName(se.prepareAt),
+      signingPortId: se.signingPortId,
+      signingPortName: portName(se.signingPort),
+      signingTime: se.signingTime,
       ...masterSecondNotifierFields(),
-    };
-  } else {
-    formData.value = {
-      ...formData.value,
-      ...terms,
-      shipperId: to.shipperId,
-      shipperName: to.shipper?.name,
-      shipperContent: to.shipperContent,
-      consigneeId: to.consigneeId,
-      consigneeName: to.consignee?.name,
-      consigneeContent: to.consigneeContent,
-      notifierId: to.notifierId,
-      notifierName: to.notifier?.name,
-      notifierContent: to.notifierContent,
-      ...masterSecondNotifierFields(),
-      podAgentId: se.podAgentId,
-      podAgentName: se.podAgent?.name,
-      podAgentContent: se.podAgentContent,
-      marks: to.marks,
-      goodsDes: to.goodsDes,
-      pkgs: to.pkgs,
-      codePackageId: to.codePackageId,
-      codePackageName: to.codePackage?.name,
-      kgs: to.kgs,
-      cbm: to.cbm,
     };
   }
 
@@ -468,7 +433,7 @@ const confirmLoadFromMaster = () => {
   Modal.confirm({
     title: $t('seaExport.export.separate.loadFromMaster'),
     content: $t('seaExport.export.separate.loadFromMasterConfirm'),
-    onOk: () => applyMasterToForm('full'),
+    onOk: () => applyMasterToForm('ctn'),
   });
 };
 
