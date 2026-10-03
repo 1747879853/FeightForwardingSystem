@@ -433,7 +433,10 @@ const confirmLoadFromMaster = () => {
   Modal.confirm({
     title: $t('seaExport.export.separate.loadFromMaster'),
     content: $t('seaExport.export.separate.loadFromMasterConfirm'),
-    onOk: () => applyMasterToForm('ctn'),
+    // 返回 true 时确认框不会关闭，只执行读入
+    onOk: () => {
+      applyMasterToForm('ctn');
+    },
   });
 };
 
