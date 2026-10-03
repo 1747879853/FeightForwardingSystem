@@ -293,4 +293,4 @@ export function hasSharedOrderFee(rows: Array<{ orderFeeId?: null | string }>) {
 }
 
 export const SHARED_FEE_QUOTA_HINT =
-  '同一费用出现在多张发票开出下时，各行合计不能超过该费用的可结算额度，保存时以后端校验为准。';
+  '同一费用出现在多张发票开出下时，各行合计不能超过该费用的可结算额度。';

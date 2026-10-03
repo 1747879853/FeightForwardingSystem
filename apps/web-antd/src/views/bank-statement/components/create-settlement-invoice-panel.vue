@@ -673,9 +673,11 @@ defineExpose({ reload });
 
     <div class="settlement-submit-bar">
       <div class="settlement-submit-bar__summary">
-        <span>已选择 {{ selectedItemIds.length }} 条</span>
-        <span v-if="showSharedFeeHint" class="shared-fee-hint">
-          {{ SHARED_FEE_QUOTA_HINT }}
+        <span>
+          已选择 {{ selectedItemIds.length }} 条
+          <span v-if="showSharedFeeHint" class="shared-fee-hint">
+            {{ SHARED_FEE_QUOTA_HINT }}
+          </span>
         </span>
         <span class="settlement-submit-bar__actual">
           本次结算
@@ -801,7 +803,7 @@ defineExpose({ reload });
 }
 
 .shared-fee-hint {
-  flex-basis: 100%;
+  margin-left: 8px;
   color: #ad6800;
 }
 </style>

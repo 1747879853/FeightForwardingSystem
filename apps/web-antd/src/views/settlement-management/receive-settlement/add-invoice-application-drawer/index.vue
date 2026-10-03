@@ -458,6 +458,9 @@ defineExpose({ open: openDrawer });
         >
           <span class="selected-fee-summary__label">
             已选 {{ selectedFeeCount }} 笔
+            <span v-if="showSharedFeeHint" class="shared-fee-hint">
+              {{ SHARED_FEE_QUOTA_HINT }}
+            </span>
           </span>
           <span
             v-for="item in selectedCurrencyTotals"
@@ -470,9 +473,6 @@ defineExpose({ open: openDrawer });
             <span class="selected-fee-summary__amount">{{
               formatAmount(item.amount)
             }}</span>
-          </span>
-          <span v-if="showSharedFeeHint" class="shared-fee-hint">
-            {{ SHARED_FEE_QUOTA_HINT }}
           </span>
         </div>
       </div>
@@ -754,7 +754,8 @@ defineExpose({ open: openDrawer });
 }
 
 .shared-fee-hint {
-  flex-basis: 100%;
+  margin-left: 8px;
+  font-weight: 400;
   color: #ad6800;
 }
 
