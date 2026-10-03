@@ -7,6 +7,7 @@ import { downloadFileFromBlob } from '@vben/utils';
 import { message } from 'ant-design-vue';
 
 import {
+  createOnlinePreviewAsync,
   getPrintAsync,
   getPrintFormatList,
 } from '#/api/system/print-format-admin';
@@ -28,6 +29,11 @@ const previewUrl = ref('');
 const previewFilename = ref('');
 /** 预览生成的原始文件名（含时间戳），用于 PDF 导出时复用、避免重复请求 */
 const previewOriginalFilename = ref('');
+/** 预览方式：pdf = 后端生成 PDF 预览；online = 后端 WebReport 在线预览（模板里的对话框可以点） */
+const previewMode = ref<'online' | 'pdf'>('pdf');
+const onlineLoading = ref(false);
+/** 在线预览 iframe 地址（带一次性票据，只能打开一次） */
+const onlinePreviewUrl = ref('');
 const pendingPrintJsonType = ref<PrintJsonType>();
 /** 后端自动取数打印入参（不含 printFormatId / format，导出时再补齐） */
 const pendingInput = ref<{
@@ -137,6 +143,8 @@ function close() {
   previewUrl.value = '';
   previewFilename.value = '';
   previewOriginalFilename.value = '';
+  previewMode.value = 'pdf';
+  onlinePreviewUrl.value = '';
   pendingPrintJsonType.value = undefined;
   pendingInput.value = {};
 }
@@ -182,6 +190,50 @@ async function loadPreview() {
   }
 }
 
+/** 按当前模板生成在线预览地址：后端校验权限、取数后发一次性票据，iframe 凭票据打开 WebReport 页面 */
+async function loadOnlinePreview() {
+  if (!selectedTemplateId.value) return;
+
+  onlineLoading.value = true;
+  onlinePreviewUrl.value = '';
+  try {
+    const ticket = await createOnlinePreviewAsync(
+      buildPrintDto(selectedTemplateId.value, PrintExportFormat.Pdf),
+    );
+    if (!ticket) {
+      message.error('在线预览失败，未返回票据');
+      return;
+    }
+    // 必须是后端绝对地址：/PrintOnline 页面和它后续的 /_fr 请求都由后端站点提供，落到前端端口会 404
+    onlinePreviewUrl.value = buildStaticFileUrl(
+      `/PrintOnline/Preview?ticket=${encodeURIComponent(ticket)}`,
+    );
+  } catch {
+    message.error('在线预览生成失败，请稍后重试');
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
+/**
+ * 弹窗内切换 PDF 预览 / 在线预览。
+ * 在线预览票据只能用一次，每次切过去都重新生成；切回 PDF 时已有预览就直接复用。
+ */
+function togglePreviewMode() {
+  if (!selectedTemplateId.value) return;
+
+  if (previewMode.value === 'pdf') {
+    previewMode.value = 'online';
+    void loadOnlinePreview();
+    return;
+  }
+  previewMode.value = 'pdf';
+  onlinePreviewUrl.value = '';
+  if (!previewUrl.value && !previewLoading.value) {
+    void loadPreview();
+  }
+}
+
 async function loadTemplates(params: PrintFormatOpenParams) {
   loading.value = true;
   try {
@@ -224,13 +276,22 @@ function openPrint(params: PrintFormatOpenParams) {
   previewUrl.value = '';
   previewFilename.value = '';
   previewOriginalFilename.value = '';
+  previewMode.value = 'pdf';
+  onlinePreviewUrl.value = '';
   visible.value = true;
   void loadTemplates(params);
 }
 
-/** 切换模板时重新拉取 PDF 预览 */
+/** 切换模板时按当前预览方式重新生成预览；另一种方式的旧预览一并作废，切回去时按新模板重新生成 */
 function handleTemplateChange(templateId: string) {
   selectedTemplateId.value = templateId;
+  if (previewMode.value === 'online') {
+    previewUrl.value = '';
+    previewFilename.value = '';
+    previewOriginalFilename.value = '';
+    void loadOnlinePreview();
+    return;
+  }
   void loadPreview();
 }
 
@@ -282,10 +343,14 @@ export function usePrintFormat() {
     selectedTemplateId,
     exportFormat,
     previewUrl,
+    previewMode,
+    onlineLoading,
+    onlinePreviewUrl,
     pendingPrintJsonType,
     openPrint,
     close,
     handleTemplateChange,
+    togglePreviewMode,
     handleExport,
   };
 }

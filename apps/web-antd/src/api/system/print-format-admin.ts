@@ -199,3 +199,16 @@ export function printFormatAsync(data: PrintFormatAdminApi.GetPrintFileDto) {
 export function getPrintAsync(data: PrintFormatAdminApi.GetPrintDto) {
   return requestClient.post<string>(`${API_PREFIX}/GetPrintAsync`, data);
 }
+
+/**
+ * 生成在线预览票据：入参与 getPrintAsync 相同（format 不起作用），后端校验权限、取数后返回一次性票据。
+ * 票据 5 分钟内有效、打开一次即作废，用于 iframe 打开后端 `/PrintOnline/Preview?ticket=xxx`。
+ */
+export function createOnlinePreviewAsync(
+  data: PrintFormatAdminApi.GetPrintDto,
+) {
+  return requestClient.post<string>(
+    `${API_PREFIX}/CreateOnlinePreviewAsync`,
+    data,
+  );
+}

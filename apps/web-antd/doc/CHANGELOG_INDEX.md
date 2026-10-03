@@ -19,6 +19,8 @@
 
 - [2026-10-03] [枚举子项颜色字段不再叫备注](./changelogs/change-log-2026-10-03-enumeration-item-color-label.md)
 
+- [2026-10-04] [打印弹窗新增在线预览](./changelogs/change-log-2026-10-04-打印在线预览.md)
+
 - [2026-10-03] [付费结算选择列表显示已部分核销申请](./changelogs/change-log-2026-10-03-付费结算选择列表显示已部分核销申请.md)
 
 - [2026-10-03] [跨发票额度提示跟在已选条数后](./changelogs/change-log-2026-10-03-跨发票额度提示跟在条数后.md)
