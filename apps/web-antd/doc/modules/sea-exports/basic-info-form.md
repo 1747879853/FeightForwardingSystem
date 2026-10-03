@@ -18,8 +18,8 @@
 | --- | --- | --- |
 | `form.vue` | 主组件 | 基础信息表单（新增/编辑）模板与编排入口：装配各子表单 schema、服务项流水线、干系人面板、AI 识别、保存提交。 |
 | `form.css` | 样式 | `form.vue` 的外链 `<style scoped>`，含 `:deep()` 深度选择器（stylelint 已放宽 `.css` 规则）。 |
-| `party-contact.ts` | 纯函数 | 委托单位/订舱代理联系人：默认联系人挑选、拉列表、提交 Id 规范化。 |
-| `party-contact-field-label.ts` | UI 工厂 | 场站同款标签：姓名在右、悬停邮箱/手机/电话。 |
+| `../../_shared/party-contact/party-contact.ts`（共用） | 纯函数 | 委托单位/订舱代理联系人：拉单位联系人、默认联系人挑选、详情数组转快照、提交 id 数组整理。海运出口、空运出口、海运进口共用。 |
+| `../../_shared/party-contact/party-contacts-field-label.ts`（共用） | UI 工厂 | 标签旁联系人多选：已选姓名在右，点击弹出勾选列表；只读时悬停查看。 |
 | `service-type-nodes.ts` | 纯逻辑 | 服务项目纯逻辑层：类型/常量、节点构建、分组排序、必填与锁定字段映射、任务状态判定。**无状态、无副作用**。 |
 | `ai-extract-utils.ts` | 纯逻辑 | AI 识别规范化层：字段白名单/日期字段、`normalizeAiFieldValue`、`buildAiExtractFormPayload`、文件类型判断、citation 解析、`AI_EXTRACT_ACCEPT` 常量。 |
 | `ai-extract-upload-modal.vue` | UI | AI 识别上传弹窗：`UploadDragger` 拖拽/点击选文件，选中后立刻交给父组件识别；识别中锁定关闭。 |
@@ -32,8 +32,8 @@
 ```
 form.vue
 ├─ sea-export-detail-mapper.ts        （详情 ⇆ 表单映射）
-├─ party-contact.ts                   （往来单位默认联系人）
-├─ party-contact-field-label.ts       （标签旁联系人浮层）
+├─ _shared/party-contact/party-contact.ts              （往来单位联系人，共用）
+├─ _shared/party-contact/party-contacts-field-label.ts （标签旁联系人多选，共用）
 ├─ service-type-nodes.ts              （服务项纯逻辑）
 ├─ ai-extract-utils.ts                （AI 规范化常量/工具）
 ├─ ai-extract-upload-modal.vue        （AI 拖拽上传弹窗）

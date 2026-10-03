@@ -72,6 +72,12 @@ import {
   formatDetailOrgPathLabel,
   resolveOrderUserCompanyIds,
 } from '#/composables/use-my-org';
+import type { PartyContactDisplay } from '#/views/_shared/party-contact/party-contact';
+import {
+  fetchDefaultPartyContacts,
+  toPartyContactDisplays,
+} from '#/views/_shared/party-contact/party-contact';
+import { createPartyContactsFieldLabel } from '#/views/_shared/party-contact/party-contacts-field-label';
 
 import {
   AIR_LEG_HEADER_FIELD_NAMES,
@@ -164,6 +170,64 @@ const orderCtns = ref<any[]>([]);
 /** 收发通区块可折叠，默认展开（对齐海运进口） */
 const partyExpanded = ref(true);
 
+/** 委托单位/订舱代理联系人（可多选），保存时提交 id 数组 */
+const clientContacts = ref<PartyContactDisplay[]>([]);
+const bookingAgentContacts = ref<PartyContactDisplay[]>([]);
+/** 联系人弹层按它列出该单位的联系人；改选单位、详情回填、AI 识别时同步 */
+const clientContactParentId = ref<unknown>();
+const bookingAgentContactParentId = ref<unknown>();
+const ClientContactFieldLabel = createPartyContactsFieldLabel({
+  componentName: 'AirExportClientContactFieldLabel',
+  fieldLabel: () => $t('airExport.export.clientId'),
+  contacts: clientContacts,
+  parentId: () => clientContactParentId.value,
+  parentEmptyTip: '请先选择委托单位',
+  disabled: () => isOrderReadonly.value,
+});
+/** 订舱代理在航段标题栏横排表单里，标签放不下姓名，紧凑形态单独摆在下拉右侧 */
+const BookingAgentContactPicker = createPartyContactsFieldLabel({
+  componentName: 'AirExportBookingAgentContactPicker',
+  contacts: bookingAgentContacts,
+  parentId: () => bookingAgentContactParentId.value,
+  parentEmptyTip: '请先选择订舱代理',
+  disabled: () => isOrderReadonly.value,
+});
+let clientContactFetchSeq = 0;
+let bookingAgentContactFetchSeq = 0;
+
+/** 改选委托单位/订舱代理后：联系人换成新单位的默认联系人(旧单位的联系人不再成立)，用户可再在弹层里增减 */
+async function applyDefaultPartyContact(
+  target: 'bookingAgent' | 'client',
+  clientId: unknown,
+) {
+  const seq =
+    target === 'client'
+      ? ++clientContactFetchSeq
+      : ++bookingAgentContactFetchSeq;
+  const contactsRef =
+    target === 'client' ? clientContacts : bookingAgentContacts;
+  const parentIdRef =
+    target === 'client' ? clientContactParentId : bookingAgentContactParentId;
+  const isCurrent = () =>
+    seq ===
+    (target === 'client' ? clientContactFetchSeq : bookingAgentContactFetchSeq);
+  const parentId =
+    clientId === undefined || clientId === null || clientId === ''
+      ? undefined
+      : clientId;
+  parentIdRef.value = parentId;
+  contactsRef.value = [];
+  if (parentId === undefined) return;
+  try {
+    const contacts = await fetchDefaultPartyContacts(parentId);
+    if (!isCurrent()) return;
+    contactsRef.value = contacts;
+  } catch {
+    if (!isCurrent()) return;
+    contactsRef.value = [];
+  }
+}
+
 /** 与委托信息一致：表单控件使用 small 尺寸 */
 function withSmallComponentProps(componentProps: unknown) {
   if (typeof componentProps === 'function') {
@@ -246,10 +310,26 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
       if (bIndex === undefined) return -1;
       return aIndex - bIndex;
     })
-    .map((item) => ({
-      ...item,
-      componentProps: withSmallComponentProps(item.componentProps),
-    })),
+    .map((item) =>
+      item.fieldName === 'clientId'
+        ? {
+            ...item,
+            // 委托单位标签右侧挂联系人多选；用户改选委托单位才换默认联系人，详情回填不走 onChange
+            label: ClientContactFieldLabel as unknown as NonNullable<
+              typeof item.label
+            >,
+            componentProps: withSmallComponentProps({
+              ...((item.componentProps as Record<string, any>) ?? {}),
+              onChange: (value: unknown) => {
+                void applyDefaultPartyContact('client', value);
+              },
+            }),
+          }
+        : {
+            ...item,
+            componentProps: withSmallComponentProps(item.componentProps),
+          },
+    ),
   showDefaultActions: false,
   wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
 });
@@ -326,7 +406,22 @@ const [AirLegHeaderForm, airLegHeaderFormApi] = useVbenForm({
     labelClass: 'mb-0 shrink-0',
   },
   schema: mapSchemaWithSmallSize(
-    airLegSchema.filter((item) => isAirLegHeaderField(item.fieldName)),
+    airLegSchema
+      .filter((item) => isAirLegHeaderField(item.fieldName))
+      .map((item) =>
+        item.fieldName === 'bookingAgentId'
+          ? {
+              ...item,
+              // 用户改选订舱代理才换默认联系人，详情回填不走 onChange
+              componentProps: {
+                ...((item.componentProps as Record<string, any>) ?? {}),
+                onChange: (value: unknown) => {
+                  void applyDefaultPartyContact('bookingAgent', value);
+                },
+              },
+            }
+          : item,
+      ),
   ),
   showDefaultActions: false,
   wrapperClass:
@@ -736,6 +831,8 @@ const collectCurrentFormValues = async (): Promise<Record<string, any>> => {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     isBusinessLocking: businessLocking.value,
     orderUsers: orderUserRows.value,
+    clientContactIds: clientContacts.value.map((item) => item.id),
+    bookingAgentContactIds: bookingAgentContacts.value.map((item) => item.id),
   };
 };
 
@@ -761,6 +858,15 @@ const loadEditData = async (): Promise<
     const formValues = flattenDetail(detail);
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.airExportOrderCtns);
+    // 作废回填前改选单位触发、还在路上的默认联系人请求，避免覆盖已保存的人选
+    ++clientContactFetchSeq;
+    ++bookingAgentContactFetchSeq;
+    clientContactParentId.value = to?.clientId || undefined;
+    bookingAgentContactParentId.value = detail.bookingAgentId || undefined;
+    clientContacts.value = toPartyContactDisplays(to?.clientContacts);
+    bookingAgentContacts.value = toPartyContactDisplays(
+      detail.bookingAgentContacts,
+    );
 
     // 各下拉的回显项直接由详情对象构造，避免每个 select 再各自打一次详情接口
     basicInfoFormApi.updateSchema([
@@ -974,6 +1080,16 @@ const { aiRecognizing, recognizeAiFile } = useAirExportAiRecognize({
   syncBasicInfoHeaderFields,
   setCodePackageSelectedItems: (items) => {
     codePackageSelectedItems.value = items;
+  },
+  applyPartyContacts: async (values) => {
+    const isEmpty = (id: unknown) =>
+      id === undefined || id === null || id === '';
+    if (!isEmpty(values.clientId)) {
+      await applyDefaultPartyContact('client', values.clientId);
+    }
+    if (!isEmpty(values.bookingAgentId)) {
+      await applyDefaultPartyContact('bookingAgent', values.bookingAgentId);
+    }
   },
   onAirPortChange: (fieldName, _value, option) => {
     void syncAirPortRemark(fieldName, option);
@@ -1565,6 +1681,9 @@ watch(pageLoading, (loading) => {
                   </span>
                   <div class="flight-info-header__fields">
                     <AirLegHeaderForm />
+                    <BookingAgentContactPicker
+                      class="flight-info-header__contacts"
+                    />
                   </div>
                 </div>
                 <div class="content-section__body">

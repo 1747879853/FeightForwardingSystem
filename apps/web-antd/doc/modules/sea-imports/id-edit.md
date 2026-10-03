@@ -51,6 +51,7 @@ last_updated: 2026-09-20
 | **委托 ID** | 编辑页上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载详情、费用、更改单等子资源。 | 必须是有效 GUID。 |
 | **业务来源** | 订单业务来源分类；头部可下拉，与新建页同一套 `form.vue`。 | `transportOrder.codeSourceId` / `codeSource`；`CodeSourceSelect` | **触发/依赖：** 详情回填 `selectedItems`；头部选择写回隐藏字段；**不**随委托单位自动带出。 | 可选，允许清空后再保存。 |
 | **干系人（订单人员）** | 运输单协同角色分工。 | `transportOrder.orderUsers` / `basic-info-form/form.vue` | **触发/依赖：** 固定角色行不可删除、角色不可重复，新增仅补齐缺失角色。`UserSelect` 按当前用户各公司或所选销售组织所属公司过滤候选；已选/客户默认干系人 pin 昵称。 | 销售必须且仅一人；销售与操作必须选择人员。 |
+| **委托单位联系人** | 委托单位下的客户联系人，可多选，挂在委托单位标签右侧。 | 详情 `transportOrder.clientContacts` 数组；保存 `transportOrder.clientContactIds` | **触发/依赖：** 回填用详情数组，不在加载时改写成默认；用户改选委托单位才清空并带出新单位默认联系人；点姓名弹出勾选列表增减。 | 后端按数组覆盖保存，漏传等于清空；只读态只能悬停查看。 |
 | **订单费用** | 应收应付费用行。 | `src/views/sea-import-admin/orderFee/data.ts` / `order-fee-admin.ts` | **触发/依赖：** 提交后进入费用审核，锁费后编辑受限。 | 金额、币种、费目等校验以后端为准。 |
 | **更改单** | 业务变更记录。 | `src/views/sea-import-admin/changeOrder/` / `change-order-admin.ts` | **触发/依赖：** 可能触发费用变化或审核链路。 | 需保持与原委托上下文一致。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选。 |
@@ -76,6 +77,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-10-03 | `Feature` | 新增委托单位联系人（可多选）；编辑回填已保存的联系人，改选委托单位带出默认联系人。原来只把单个联系人 id 原样回传。 | 与海运出口共用 `views/_shared/party-contact/`。详见 [变更日志](../../changelogs/change-log-2026-10-03-往来单位联系人多选.md)。 |
 | 2026-09-30 | `Fix` | 起运港/目的港已选中且备注为空时，再点同一个港口会回填备注。已有备注保留。 | 与海出共用 `PortSelect`。详见 [变更日志](../../changelogs/change-log-2026-09-30-港口备注空值再次选港回填.md)。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 与海出/空出共用 `useOrderAdjacentNav`。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-18 | `Style` | 运踪箱卡展开加过渡，横向时间轴收成细线小圆点（与海出共用组件）。 | 见 [变更日志](../../changelogs/change-log-2026-09-18-sea-export-tracking-accordion-timeline.md)。 |

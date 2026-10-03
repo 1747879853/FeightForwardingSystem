@@ -119,12 +119,12 @@ import {
   stashPackingPrefill,
 } from '#/views/packing-calc/packing-session';
 import { matchPresetByName } from '#/views/packing-calc/packing-payload';
+import type { PartyContactDisplay } from '#/views/_shared/party-contact/party-contact';
 import {
-  emptyPartyContact,
-  fetchDefaultClientContact,
-  toPartyContactDisplay,
-} from './party-contact';
-import { createPartyContactFieldLabel } from './party-contact-field-label';
+  fetchDefaultPartyContacts,
+  toPartyContactDisplays,
+} from '#/views/_shared/party-contact/party-contact';
+import { createPartyContactsFieldLabel } from '#/views/_shared/party-contact/party-contacts-field-label';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
@@ -523,23 +523,29 @@ const yardFieldLabelSchemaContent = YardFieldLabel as unknown as NonNullable<
   VbenFormSchema['label']
 >;
 
-const clientContactInfo = ref(emptyPartyContact());
-const bookingAgentContactInfo = ref(emptyPartyContact());
-const ClientContactFieldLabel = createPartyContactFieldLabel({
+/** 委托单位/订舱代理联系人（可多选），保存时提交 id 数组 */
+const clientContacts = ref<PartyContactDisplay[]>([]);
+const bookingAgentContacts = ref<PartyContactDisplay[]>([]);
+/** 联系人弹层按它列出该单位的联系人；改选单位、详情回填、AI 识别时同步 */
+const clientContactParentId = ref<unknown>();
+const bookingAgentContactParentId = ref<unknown>();
+const ClientContactFieldLabel = createPartyContactsFieldLabel({
   componentName: 'SeaExportClientContactFieldLabel',
   fieldLabel: () => $t('seaExport.export.clientId'),
-  contact: clientContactInfo,
-  emailLabel: '邮箱',
-  mobileLabel: '手机',
-  telLabel: '电话',
+  contacts: clientContacts,
+  parentId: () => clientContactParentId.value,
+  parentEmptyTip: '请先选择委托单位',
+  disabled: () =>
+    isOrderReadonly.value || getServiceLockedFieldNames().has('clientId'),
 });
-const BookingAgentContactFieldLabel = createPartyContactFieldLabel({
+const BookingAgentContactFieldLabel = createPartyContactsFieldLabel({
   componentName: 'SeaExportBookingAgentContactFieldLabel',
   fieldLabel: () => $t('seaExport.export.bookingAgentId'),
-  contact: bookingAgentContactInfo,
-  emailLabel: '邮箱',
-  mobileLabel: '手机',
-  telLabel: '电话',
+  contacts: bookingAgentContacts,
+  parentId: () => bookingAgentContactParentId.value,
+  parentEmptyTip: '请先选择订舱代理',
+  disabled: () =>
+    isOrderReadonly.value || getServiceLockedFieldNames().has('bookingAgentId'),
 });
 const clientContactFieldLabelSchemaContent =
   ClientContactFieldLabel as unknown as NonNullable<VbenFormSchema['label']>;
@@ -1192,8 +1198,8 @@ const collectCurrentFormValues = async () => {
     ...cargoRemarkValues,
     ...cargoDgValues,
     ...cargoReeferValues,
-    clientContactId: clientContactInfo.value.id ?? null,
-    bookingAgentContactId: bookingAgentContactInfo.value.id ?? null,
+    clientContactIds: clientContacts.value.map((item) => item.id),
+    bookingAgentContactIds: bookingAgentContacts.value.map((item) => item.id),
   } as Record<string, any>;
 };
 const getBriefingFormData = async () => {
@@ -1596,6 +1602,7 @@ const applyClientDefaultOrderUsersByClientId = async (value: unknown) => {
 let clientContactFetchSeq = 0;
 let bookingAgentContactFetchSeq = 0;
 
+/** 改选委托单位/订舱代理后：联系人换成新单位的默认联系人(旧单位的联系人不再成立)，用户可再在标签弹层里增减 */
 async function applyDefaultPartyContact(
   target: 'bookingAgent' | 'client',
   clientId: unknown,
@@ -1604,31 +1611,41 @@ async function applyDefaultPartyContact(
     target === 'client'
       ? ++clientContactFetchSeq
       : ++bookingAgentContactFetchSeq;
-  const infoRef =
-    target === 'client' ? clientContactInfo : bookingAgentContactInfo;
+  const contactsRef =
+    target === 'client' ? clientContacts : bookingAgentContacts;
+  const parentIdRef =
+    target === 'client' ? clientContactParentId : bookingAgentContactParentId;
   const isCurrent = () =>
     seq ===
     (target === 'client' ? clientContactFetchSeq : bookingAgentContactFetchSeq);
-  if (toOptionalQueryValue(clientId) === undefined) {
-    infoRef.value = emptyPartyContact();
-    return;
-  }
+  parentIdRef.value = toOptionalQueryValue(clientId);
+  contactsRef.value = [];
+  if (toOptionalQueryValue(clientId) === undefined) return;
   try {
-    const contact = await fetchDefaultClientContact(clientId);
+    const contacts = await fetchDefaultPartyContacts(clientId);
     if (!isCurrent()) return;
-    infoRef.value = toPartyContactDisplay(contact);
+    contactsRef.value = contacts;
   } catch {
     if (!isCurrent()) return;
-    infoRef.value = emptyPartyContact();
+    contactsRef.value = [];
   }
 }
 
 function applyPartyContactsFromDetail(detail: SeaExportAdminApi.SeaExportDto) {
-  clientContactInfo.value = toPartyContactDisplay(
-    detail.transportOrder?.clientContact,
+  // 回填期间可能还有改选单位触发的默认联系人请求在路上，作废它，避免覆盖已保存的人选
+  ++clientContactFetchSeq;
+  ++bookingAgentContactFetchSeq;
+  clientContactParentId.value = toOptionalQueryValue(
+    detail.transportOrder?.clientId,
   );
-  bookingAgentContactInfo.value = toPartyContactDisplay(
-    detail.bookingAgentContact,
+  bookingAgentContactParentId.value = toOptionalQueryValue(
+    detail.bookingAgentId,
+  );
+  clientContacts.value = toPartyContactDisplays(
+    detail.transportOrder?.clientContacts,
+  );
+  bookingAgentContacts.value = toPartyContactDisplays(
+    detail.bookingAgentContacts,
   );
 }
 

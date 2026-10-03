@@ -54,6 +54,8 @@ export type UseSeaImportAiRecognizeDeps = {
   recalcDerivedDates: () => Promise<void> | void;
   /** 件数/包装合并控件的包装回显项 */
   setCodePackageSelectedItems?: (items: any[]) => void;
+  /** 识别带出委托单位时，按新单位带出默认联系人（setValues 不触发下拉 onChange） */
+  applyPartyContacts?: (values: Record<string, any>) => Promise<void> | void;
 };
 
 export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
@@ -66,6 +68,7 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     syncBasicInfoHeaderFields,
     recalcDerivedDates,
     setCodePackageSelectedItems,
+    applyPartyContacts,
   } = deps;
 
   const aiRecognizing = ref(false);
@@ -118,6 +121,7 @@ export function useSeaImportAiRecognize(deps: UseSeaImportAiRecognizeDeps) {
     if (values.etd != null) {
       await recalcDerivedDates();
     }
+    await applyPartyContacts?.(values);
   };
 
   const applyAiExtractSelectedItems = (values: Record<string, any>) => {

@@ -16,9 +16,9 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { addSeaExport, editSeaExport } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { toPartyContactIds } from '#/views/_shared/party-contact/party-contact';
 
 import { CARGO_TYPE } from '../data';
-import { toNullableContactId } from './party-contact';
 import {
   sanitizeOrderCtns,
   sanitizeOrderUsers,
@@ -53,9 +53,10 @@ export const buildSeaExportDto = (
     podAgentId: values.podAgentId ?? undefined,
     podAgentContent: values.podAgentContent,
     bookingAgentId: values.bookingAgentId ?? undefined,
-    bookingAgentContactId: values.bookingAgentId
-      ? toNullableContactId(values.bookingAgentContactId)
-      : null,
+    bookingAgentContactIds: toPartyContactIds(
+      values.bookingAgentId,
+      values.bookingAgentContactIds,
+    ),
     shipAgentId: values.shipAgentId ?? undefined,
     yardId: values.yardId ?? undefined,
     yardContact: values.yardContact,
@@ -109,9 +110,10 @@ export const buildSeaExportDto = (
     atd: toDateOnlyString(values.atd),
     eta: toDateString(values.eta),
     clientId: values.clientId,
-    clientContactId: values.clientId
-      ? toNullableContactId(values.clientContactId)
-      : null,
+    clientContactIds: toPartyContactIds(
+      values.clientId,
+      values.clientContactIds,
+    ),
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
     warehouseId: values.warehouseId ?? undefined,

@@ -56,6 +56,7 @@ last_updated: 2026-09-20
 | **会计期间 / 应结日期** | 由后端按起飞日期与账期规则算出。 | `transportOrder.accountDate` / `settlementDate` | **触发/依赖：** 随起飞日期变化，保存后回显。 | 只读。 |
 | **内部备注 / 外部备注** | 货物区右侧同一卡片，顶部 Tab 切换；内部仅内部可见；多行 textarea 撑满卡片高度；文本框字号 14px，与件数等输入框一致。 | `transportOrder.internalRemark` / `transportOrder.remark` | **触发/依赖：** 两字段同时挂在 `CargoRemarkForm`，用 CSS 隐藏非当前 Tab。 | 可选，最长 1024。 |
 | **业务锁定** | 是否锁定业务信息。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 无 schema 字段，用独立状态承载并随保存回传。 | 可编辑。 |
+| **委托单位联系人 / 订舱代理联系人** | 两个单位下的客户联系人，都可多选。委托单位联系人在委托单位标签右侧，订舱代理联系人在航段标题栏订舱代理下拉右侧。 | 详情 `transportOrder.clientContacts` / `bookingAgentContacts` 数组；保存 `transportOrder.clientContactIds` / `bookingAgentContactIds` | **触发/依赖：** 回填用详情数组，不在加载时改写成默认；用户改选单位才清空并带出新单位默认联系人；点姓名弹出勾选列表增减。 | 后端按数组覆盖保存，漏传等于清空；只读态只能悬停查看。 |
 | **费用列表** | 该票全部费用。 | `transportOrder.orderFees`（详情接口） | **触发/依赖：** 标签上的「收 - 付」条数由它算出。 | 只读。 |
 | **运踪订阅状态** | 是否已订阅、是否成功。 | `isYundangSubscribed` / `isYundangSubscribeSuccess` | **触发/依赖：** 成功则禁用订阅按钮；失败显示「重新订阅」。 | 只读；订阅读库内数据。 |
 | **运踪面板** | 订阅记录 + 运单动态。 | `GetAirPushInfoAsync` | **触发/依赖：** `waiting_push` 时自动轮询。 | 查看权限 `Admin.ExternalApi.Get`。 |
@@ -83,6 +84,7 @@ last_updated: 2026-09-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
+| 2026-10-03 | `Feature` | 新增委托单位联系人、订舱代理联系人，都可多选；编辑回填已保存的联系人，改选单位带出默认联系人。 | 与海运出口共用 `views/_shared/party-contact/`。详见 [变更日志](../../changelogs/change-log-2026-10-03-往来单位联系人多选.md)。 |
 | 2026-09-20 | `Feature` | 工作台顶栏增加「上一票 / 下一票」，按当前列表筛选和排序翻票。 | 与海出/海进共用 `useOrderAdjacentNav`。详见 [变更日志](../../changelogs/change-log-2026-09-20-订单详情上一票下一票.md)。 |
 | 2026-09-15 | `Style` | 「运踪订阅」规则问号并入按钮文案后。 | 共用 `TrackingSubscribeHelp`。详见 [变更日志](../../changelogs/change-log-2026-09-15-tracking-subscribe-help-in-button.md)。 |
 | 2026-09-15 | `Feature` | 基础信息合同号后新增报关发票号。 | 挂 `transportOrder.invoiceNum`。详见 [变更日志](../../changelogs/change-log-2026-09-15-transport-order-invoice-num.md)。 |

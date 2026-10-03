@@ -52,6 +52,8 @@ export type UseAirExportAiRecognizeDeps = {
   syncTabTitleFromValues: (values: Record<string, any>) => void;
   syncBasicInfoHeaderFields: () => Promise<void> | void;
   setCodePackageSelectedItems?: (items: any[]) => void;
+  /** 识别带出委托单位/订舱代理时，按新单位带出默认联系人（setValues 不触发下拉 onChange） */
+  applyPartyContacts?: (values: Record<string, any>) => Promise<void> | void;
   onAirPortChange?: (
     fieldName: string,
     value: unknown,
@@ -66,6 +68,7 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
     syncTabTitleFromValues,
     syncBasicInfoHeaderFields,
     setCodePackageSelectedItems,
+    applyPartyContacts,
     onAirPortChange,
   } = deps;
 
@@ -114,6 +117,7 @@ export function useAirExportAiRecognize(deps: UseAirExportAiRecognizeDeps) {
 
     await syncBasicInfoHeaderFields();
     syncTabTitleFromValues(values);
+    await applyPartyContacts?.(values);
   };
 
   const applyAiExtractSelectedItems = (values: Record<string, any>) => {
