@@ -220,6 +220,26 @@ export enum TaskStatus {
 const API_PREFIX = '/services/app/PaymentApplicationAdmin';
 const WORKFLOW_INSTANCE_PREFIX = '/services/app/WorkFlowInstanceAdmin';
 
+/**
+ * 同一费用上的提交 / 修改 / 删除工作流实例。
+ * taskType 传 0 时后端会把这三类都查出来；entityId 是费用 id。
+ */
+export async function batchGetWorkFlowInstances(
+  params: {
+    TaskType: number;
+    EntityId: string;
+  },
+  options?: { silent?: boolean },
+) {
+  return requestClient.get<PaymentReviewAdminApi.WorkFlowInstanceDetailDto[]>(
+    `${WORKFLOW_INSTANCE_PREFIX}/BatchGetAsync`,
+    {
+      params,
+      ...(options?.silent ? { skipErrorMessage: true } : {}),
+    },
+  );
+}
+
 /** 获取一个任务的审核流程详情 */
 export async function getWorkFlowInstanceDetail(
   params: {

@@ -4,10 +4,11 @@ import { useVbenModal } from '@vben/common-ui';
 import { $t } from '#/locales';
 import { orderFeeDataT } from '../data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-import { Tag, Timeline, TimelineItem, Table } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
+import { Table } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getTaskStatusOptions } from '../data';
+import { batchGetWorkFlowInstances } from '#/api/audit-approval/payment-review-admin';
 
 // 模态框
 const [Modal, modalApi] = useVbenModal({
@@ -21,6 +22,40 @@ const auditTasks = ref<ExpenseSubmissionAdminApi.TaskItemDto[]>([]);
 
 // 当前费用数据（用于待审核的修改任务对比）
 const currentFeeData = ref<any>(null);
+
+/** 当前待审节点上的审核人，多人用顿号拼接 */
+const pendingAuditorText = ref('—');
+
+function formatTaskTime(value?: null | string) {
+  return value ? dayjs(value).format('YYYY-MM-DD HH:mm:ss') : '—';
+}
+
+async function loadPendingAuditors(feeId?: string) {
+  pendingAuditorText.value = '—';
+  if (!feeId) return;
+
+  try {
+    const instances = await batchGetWorkFlowInstances(
+      { TaskType: 0, EntityId: String(feeId) },
+      { silent: true },
+    );
+    const active = (instances ?? []).filter((item) => item.status === 0);
+    const source = active.length > 0 ? active : (instances ?? []);
+    const names = new Set<string>();
+    for (const instance of source) {
+      for (const group of instance.levelGroup ?? []) {
+        for (const item of group.itemList ?? []) {
+          if (Number(item.taskStatus) === 0 && item.userNickName) {
+            names.add(item.userNickName);
+          }
+        }
+      }
+    }
+    pendingAuditorText.value = [...names].join('、') || '—';
+  } catch {
+    pendingAuditorText.value = '—';
+  }
+}
 
 // 获取指定任务之前的上一条修改任务的 info
 const getPreviousModifyTaskInfo = (
@@ -61,6 +96,7 @@ watch(isOpen, (isOpenValue) => {
     if (!feeData) {
       auditTasks.value = [];
       currentFeeData.value = null;
+      pendingAuditorText.value = '—';
       return;
     }
 
@@ -87,6 +123,13 @@ watch(isOpen, (isOpenValue) => {
     // 排序逻辑：
     // 1. 有审核时间的按审核时间倒序（最新的在前）
     // 2. 没有审核时间的（待审核）排在最前面，并按创建时间倒序
+    const hasPending = allTasks.some((task) => !task.auditTime);
+    if (hasPending) {
+      void loadPendingAuditors(feeData.id);
+    } else {
+      pendingAuditorText.value = '—';
+    }
+
     auditTasks.value = displayTasks.sort((a, b) => {
       const hasAuditTimeA = !!a.auditTime;
       const hasAuditTimeB = !!b.auditTime;
@@ -113,35 +156,31 @@ watch(isOpen, (isOpenValue) => {
     // 关闭时清空数据
     auditTasks.value = [];
     currentFeeData.value = null;
+    pendingAuditorText.value = '—';
   }
 });
 
-// 获取任务类型标签
-const getTaskTypeTag = (taskType?: number) => {
-  const typeMap: Record<number, { text: string; color: string }> = {
-    0: {
-      text: $t('auditApproval.task.typeOptions.SubmitOrderFee'),
-      color: 'blue',
-    },
-    1: {
-      text: $t('auditApproval.task.typeOptions.ModifyOrderFee'),
-      color: 'orange',
-    },
-    2: {
-      text: $t('auditApproval.task.typeOptions.DeleteOrderFee'),
-      color: 'red',
-    },
+const getTaskTypeLabel = (taskType?: number) => {
+  const typeMap: Record<number, string> = {
+    0: $t('auditApproval.task.typeOptions.SubmitOrderFee'),
+    1: $t('auditApproval.task.typeOptions.ModifyOrderFee'),
+    2: $t('auditApproval.task.typeOptions.DeleteOrderFee'),
   };
-  return taskType !== undefined ? typeMap[taskType] : null;
+  return taskType === undefined ? '' : (typeMap[taskType] ?? '');
 };
 
-// 获取任务状态文本
-const getTaskStatusText = (taskStatus?: number) => {
-  const statusOption = getTaskStatusOptions().find(
-    (item) => item.value === taskStatus,
-  );
-  return statusOption ? statusOption.label || '' : '';
-};
+/** 卡片和圆点按任务类型分色，不跟审核结果走 */
+function taskTypeClass(taskType?: number) {
+  if (taskType === 1) return 'is-modify';
+  if (taskType === 2) return 'is-delete';
+  return 'is-submit';
+}
+
+function taskTypeIcon(taskType?: number) {
+  if (taskType === 1) return 'lucide:git-compare';
+  if (taskType === 2) return 'lucide:trash-2';
+  return 'lucide:send';
+}
 
 // 解析JSON并对比字段差异
 const parseAndCompareFields = (
@@ -688,84 +727,65 @@ defineExpose({
       <div v-if="auditTasks.length === 0" class="audit-history__empty">
         {{ $t('common.noData') }}
       </div>
-      <Timeline v-else class="audit-history__timeline">
-        <TimelineItem
+      <ol v-else class="audit-history__list">
+        <li
           v-for="(task, index) in auditTasks"
           :key="index"
-          :color="getTaskTypeTag(task.taskType)?.color || 'gray'"
+          class="audit-history__item"
         >
-          <template #dot>
-            <div
-              class="audit-history__dot"
-              :class="{
-                'is-rejected': task.taskStatus === 1,
-                'is-approved': task.taskStatus === 2,
-                'is-pending': !task.auditTime,
-              }"
-            />
-          </template>
-
-          <article class="audit-card">
-            <header class="audit-card__header">
-              <div class="audit-card__primary">
-                <span
-                  class="audit-card__auditor"
-                  :title="`审核人: ${task.auditUserName || '-'}`"
-                >
-                  <i class="i-carbon-user" />
-                  {{ task.auditUserName || '-' }}
-                </span>
-                <span
-                  class="audit-card__time"
-                  :title="`审核时间: ${task.auditTime ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
-                >
-                  <i class="i-carbon-calendar" />
-                  {{
-                    task.auditTime
-                      ? dayjs(task.auditTime).format('YYYY-MM-DD HH:mm:ss')
-                      : '待审核'
-                  }}
-                </span>
-              </div>
-              <div class="audit-card__tags">
-                <Tag
-                  v-if="getTaskTypeTag(task.taskType)"
-                  :color="getTaskTypeTag(task.taskType)?.color"
-                  class="audit-card__tag"
-                >
-                  {{ getTaskTypeTag(task.taskType)?.text }}
-                </Tag>
-                <Tag
-                  :color="
-                    task.taskStatus === 1
-                      ? 'error'
-                      : task.taskStatus === 2
-                        ? 'success'
-                        : 'default'
-                  "
-                  class="audit-card__tag"
-                >
-                  {{ getTaskStatusText(task.taskStatus) }}
-                </Tag>
-              </div>
+          <span
+            class="audit-history__mark"
+            :class="taskTypeClass(task.taskType)"
+          />
+          <article class="audit-card" :class="taskTypeClass(task.taskType)">
+            <header class="audit-card__head">
+              <span
+                v-if="getTaskTypeLabel(task.taskType)"
+                class="audit-card__kind"
+              >
+                <IconifyIcon :icon="taskTypeIcon(task.taskType)" />
+                {{ getTaskTypeLabel(task.taskType) }}
+              </span>
             </header>
 
-            <div class="audit-card__meta">
-              <span
-                class="audit-card__meta-item"
-                :title="`创建时间: ${task.creationTime ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss') : '-'}`"
-              >
-                <i class="i-carbon-time" />
-                创建
-                {{
-                  task.creationTime
-                    ? dayjs(task.creationTime).format('YYYY-MM-DD HH:mm:ss')
-                    : '-'
-                }}
+            <div class="audit-card__row">
+              <span class="audit-card__pair">
+                <span class="audit-card__label">提交人</span>
+                <span class="audit-card__value">{{
+                  task.creatorUserName || '—'
+                }}</span>
               </span>
-              <span v-if="task.creatorUserName" class="audit-card__meta-item">
-                <i class="i-carbon-user-avatar" />
-                提交人 {{ task.creatorUserName }}
+              <span class="audit-card__pair">
+                <span class="audit-card__label">提交时间</span>
+                <span class="audit-card__value">{{
+                  formatTaskTime(task.creationTime)
+                }}</span>
+              </span>
+            </div>
+            <div v-if="!task.auditTime" class="audit-card__row">
+              <span class="audit-card__pair">
+                <span class="audit-card__label">待审核人</span>
+                <span class="audit-card__value">{{ pendingAuditorText }}</span>
+              </span>
+            </div>
+            <div v-else class="audit-card__row audit-card__row--result">
+              <span
+                class="audit-card__result"
+                :class="{ 'is-rejected': task.taskStatus === 1 }"
+              >
+                {{ task.taskStatus === 1 ? '驳回' : '审核通过' }}
+              </span>
+              <span class="audit-card__pair">
+                <span class="audit-card__label">审核人</span>
+                <span class="audit-card__value">{{
+                  task.auditUserName || '—'
+                }}</span>
+              </span>
+              <span class="audit-card__pair">
+                <span class="audit-card__label">审核时间</span>
+                <span class="audit-card__value">{{
+                  formatTaskTime(task.auditTime)
+                }}</span>
               </span>
             </div>
 
@@ -777,15 +797,11 @@ defineExpose({
             <section v-if="task.taskType === 1 && task.info" class="audit-diff">
               <div class="audit-diff__header">
                 <div class="audit-diff__title">
-                  <i class="i-carbon-compare" />
+                  <IconifyIcon icon="lucide:git-compare" />
                   <span>费用修改详情</span>
-                  <Tag
-                    v-if="!task.auditTime"
-                    color="warning"
-                    class="audit-card__tag"
+                  <span v-if="!task.auditTime" class="audit-diff__pending"
+                    >待审核</span
                   >
-                    待审核
-                  </Tag>
                 </div>
                 <div class="audit-diff__legend" aria-hidden="true">
                   <span class="audit-diff__chip audit-diff__chip--before"
@@ -812,8 +828,7 @@ defineExpose({
                     )
                   "
                   :pagination="false"
-                  size="middle"
-                  bordered
+                  size="small"
                   class="audit-diff__table"
                 >
                   <template #bodyCell="{ column, record }">
@@ -835,15 +850,15 @@ defineExpose({
               </div>
             </section>
           </article>
-        </TimelineItem>
-      </Timeline>
+        </li>
+      </ol>
     </div>
   </Modal>
 </template>
 
 <style scoped lang="scss">
 .audit-history {
-  padding: 2px 2px 16px;
+  padding: 2px 4px 20px;
 }
 
 .audit-history__empty {
@@ -851,181 +866,242 @@ defineExpose({
   font-size: 13px;
   color: hsl(var(--muted-foreground));
   text-align: center;
-  background: #fafbfd;
-  border: 1px dashed #e4e8ef;
+  background: hsl(var(--muted) / 45%);
+  border: 1px dashed hsl(var(--border));
   border-radius: 10px;
 }
 
-.audit-history__timeline {
-  padding-top: 4px;
-
-  :deep(.ant-timeline-item) {
-    padding-bottom: 16px;
-  }
-
-  :deep(.ant-timeline-item-tail) {
-    border-inline-start: 2px solid #e8ecf3;
-  }
-
-  :deep(.ant-timeline-item-content) {
-    top: -4px;
-    margin-inline-start: 22px;
-  }
+.audit-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 0 0;
+  margin: 0;
+  list-style: none;
 }
 
-.audit-history__dot {
-  width: 10px;
-  height: 10px;
-  background: #a8b0bf;
-  border: 2px solid #fff;
+.audit-history__item {
+  position: relative;
+  padding-left: 22px;
+}
+
+.audit-history__item::before {
+  position: absolute;
+  top: 18px;
+  bottom: -14px;
+  left: 4px;
+  width: 1px;
+  content: '';
+  background: hsl(var(--border));
+}
+
+.audit-history__item:last-child::before {
+  display: none;
+}
+
+.audit-history__mark {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  background: hsl(var(--muted-foreground) / 45%);
+  border: 2px solid hsl(var(--card));
   border-radius: 50%;
-  box-shadow: 0 0 0 1px #d5dae3;
+  box-shadow: 0 0 0 1px hsl(var(--border));
   transition:
     background-color 0.2s ease,
     box-shadow 0.2s ease;
 
-  &.is-rejected {
-    background: #e57373;
-    box-shadow: 0 0 0 1px rgb(229 115 115 / 35%);
-  }
-
-  &.is-approved {
-    background: #6bbf8a;
-    box-shadow: 0 0 0 1px rgb(107 191 138 / 35%);
-  }
-
-  &.is-pending {
+  &.is-submit {
     background: hsl(var(--primary));
     box-shadow: 0 0 0 1px hsl(var(--primary) / 28%);
+  }
+
+  &.is-modify {
+    background: hsl(var(--warning));
+    box-shadow: 0 0 0 1px hsl(var(--warning) / 40%);
+  }
+
+  &.is-delete {
+    background: hsl(var(--destructive) / 78%);
+    box-shadow: 0 0 0 1px hsl(var(--destructive) / 28%);
   }
 }
 
 .audit-card {
-  padding: 14px 16px 16px;
-  background: #fff;
-  border: 1px solid #e8ecf3;
+  padding: 12px 16px 4px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 10px;
-  box-shadow: 0 1px 2px rgb(16 42 83 / 4%);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 4%);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background-color 0.2s ease;
 
   &:hover {
-    background: #fcfdff;
-    border-color: #dce3ee;
-    box-shadow: 0 4px 12px rgb(16 42 83 / 6%);
+    background: hsl(var(--accent) / 35%);
+    box-shadow: 0 8px 20px hsl(var(--foreground) / 6%);
+  }
+
+  &.is-submit {
+    border-color: hsl(var(--primary) / 22%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--primary) / 70%),
+      0 1px 2px hsl(var(--foreground) / 4%);
+  }
+
+  &.is-modify {
+    border-color: hsl(var(--warning) / 45%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--warning) / 85%),
+      0 1px 2px hsl(var(--foreground) / 4%);
+  }
+
+  &.is-delete {
+    border-color: hsl(var(--destructive) / 28%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--destructive) / 65%),
+      0 1px 2px hsl(var(--foreground) / 4%);
+  }
+
+  &.is-submit:hover {
+    border-color: hsl(var(--primary) / 40%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--primary) / 80%),
+      0 8px 20px hsl(var(--foreground) / 6%);
+  }
+
+  &.is-modify:hover {
+    border-color: hsl(var(--warning) / 60%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--warning)),
+      0 8px 20px hsl(var(--foreground) / 6%);
+  }
+
+  &.is-delete:hover {
+    border-color: hsl(var(--destructive) / 42%);
+    box-shadow:
+      inset 3px 0 0 hsl(var(--destructive) / 75%),
+      0 8px 20px hsl(var(--foreground) / 6%);
   }
 }
 
-.audit-card__header {
+.audit-card__head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 14px;
   align-items: center;
-  justify-content: space-between;
+  min-height: 22px;
 }
 
-.audit-card__primary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+.audit-card__kind {
+  display: inline-flex;
+  gap: 6px;
   align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  border-radius: 999px;
+
+  :deep(svg) {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.audit-card.is-submit .audit-card__kind {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 12%);
+}
+
+.audit-card.is-modify .audit-card__kind {
+  color: hsl(28deg 46% 32%);
+  background: hsl(var(--warning) / 24%);
+}
+
+.audit-card.is-delete .audit-card__kind {
+  color: hsl(var(--destructive) / 88%);
+  background: hsl(var(--destructive) / 12%);
+}
+
+.audit-card__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 28px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-top: 1px solid hsl(var(--border) / 80%);
+}
+
+.audit-card__row--result {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr);
+}
+
+.audit-card__pair {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
   min-width: 0;
 }
 
-.audit-card__auditor {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 14px;
+.audit-card__label {
+  flex: none;
+  font-size: 12px;
+  line-height: 20px;
+  color: hsl(var(--muted-foreground));
+}
+
+.audit-card__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
   font-weight: 600;
-  color: #252a31;
-
-  i {
-    font-size: 15px;
-    color: hsl(var(--primary) / 75%);
-  }
+  line-height: 20px;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
 }
 
-.audit-card__time {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  font-size: 12px;
-  color: #8c95a3;
+.audit-card__result {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: hsl(var(--primary));
 
-  i {
-    font-size: 13px;
-    color: #a8b0bf;
-  }
-}
-
-.audit-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.audit-card__tag {
-  margin: 0;
-  border-radius: 6px;
-}
-
-.audit-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  align-items: center;
-  padding-top: 10px;
-  margin-top: 10px;
-  border-top: 1px solid #eef1f6;
-}
-
-.audit-card__meta-item {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  font-size: 12px;
-  color: #8c95a3;
-
-  i {
-    font-size: 13px;
-    color: #b0b8c5;
+  &.is-rejected {
+    color: hsl(var(--destructive) / 82%);
   }
 }
 
 .audit-card__remark {
   padding: 10px 12px;
-  margin-top: 12px;
-  background: hsl(var(--primary) / 4.5%);
-  border: 1px solid hsl(var(--primary) / 10%);
+  margin: 2px 0 12px;
+  background: hsl(var(--muted) / 55%);
   border-radius: 8px;
 }
 
 .audit-card__remark-label {
   display: block;
   margin-bottom: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #8c95a3;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  line-height: 18px;
+  color: hsl(var(--muted-foreground));
 }
 
 .audit-card__remark-text {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: #3d4654;
+  color: hsl(var(--foreground));
   overflow-wrap: anywhere;
 }
 
 .audit-diff {
-  margin-top: 12px;
+  margin: 2px 0 12px;
   overflow: hidden;
-  background: #fafbfd;
-  border: 1px solid #e8ecf3;
+  background: hsl(var(--muted) / 35%);
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
 }
 
@@ -1036,26 +1112,32 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: linear-gradient(
-    180deg,
-    hsl(var(--primary) / 7%) 0%,
-    hsl(var(--primary) / 3%) 100%
-  );
-  border-bottom: 1px solid hsl(var(--primary) / 12%);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .audit-diff__title {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   font-size: 13px;
   font-weight: 600;
-  color: #252a31;
+  color: hsl(var(--foreground));
 
-  i {
-    font-size: 15px;
-    color: hsl(var(--primary) / 80%);
+  :deep(svg) {
+    width: 16px;
+    height: 16px;
+    color: hsl(var(--muted-foreground));
   }
+}
+
+.audit-diff__pending {
+  padding: 1px 7px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border-radius: 999px;
 }
 
 .audit-diff__legend {
@@ -1065,60 +1147,54 @@ defineExpose({
 }
 
 .audit-diff__chip {
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--background));
   border-radius: 999px;
 
-  &--before {
-    color: #9a5b5b;
-    background: #f8eeee;
-  }
-
   &--after {
-    color: #4f7a5f;
-    background: #eef6f1;
+    color: hsl(var(--foreground));
   }
 }
 
 .audit-diff__arrow {
   font-size: 12px;
-  color: #a8b0bf;
+  color: hsl(var(--muted-foreground));
 }
 
 .audit-diff__body {
-  padding: 10px;
-  background: #fff;
+  padding: 8px;
+  background: hsl(var(--card));
 }
 
 .audit-diff__table {
   :deep(.ant-table) {
     font-size: 13px;
-    border-radius: 6px;
-  }
-
-  :deep(.ant-table-container) {
-    border-color: #e8ecf3 !important;
+    background: transparent;
   }
 
   :deep(.ant-table-thead > tr > th) {
-    padding: 9px 10px;
+    padding: 8px 10px;
     font-size: 12px;
     font-weight: 600;
-    color: #5c6570;
-    background: #fafbfd !important;
-    border-bottom-color: #eef1f6 !important;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted) / 50%) !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
   }
 
   :deep(.ant-table-tbody > tr > td) {
     padding: 8px 10px;
     vertical-align: middle;
-    border-bottom-color: #eef1f6 !important;
-    transition: background-color 0.15s ease;
+    background: transparent;
+    border-bottom: 1px solid hsl(var(--border) / 70%) !important;
+    transition: background-color 0.18s ease;
   }
 
   :deep(.ant-table-tbody > tr:hover > td) {
-    background: hsl(var(--primary) / 4%) !important;
+    background: hsl(var(--accent) / 55%) !important;
   }
 
   :deep(.ant-table-tbody > tr:last-child > td) {
@@ -1129,28 +1205,22 @@ defineExpose({
 .diff-field {
   font-size: 13px;
   font-weight: 500;
-  color: #3d4654;
+  color: hsl(var(--foreground));
 }
 
 .diff-cell {
   display: inline-block;
   max-width: 100%;
-  padding: 3px 8px;
+  padding: 2px 8px;
   font-size: 12px;
   line-height: 1.5;
+  color: hsl(var(--foreground));
   word-break: break-all;
+  background: hsl(var(--muted) / 65%);
   border-radius: 6px;
 
-  &--before {
-    color: #8a5555;
-    background: #f7f0f0;
-    box-shadow: inset 2px 0 0 #d4a5a5;
-  }
-
   &--after {
-    color: #457058;
-    background: #f0f6f2;
-    box-shadow: inset 2px 0 0 #8fbf9f;
+    background: hsl(var(--primary) / 8%);
   }
 }
 </style>
