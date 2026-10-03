@@ -10,6 +10,7 @@ import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import loadingOrder from '#/views/sea-export-admin/loading-order/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
+import manifest from '#/views/sea-export-admin/manifest/index.vue';
 import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
@@ -40,6 +41,7 @@ type TabKey =
   | 'dispatch'
   | 'loadingOrder'
   | 'billInfo'
+  | 'manifest'
   | 'tracking'
   | 'issueRecord'
   | 'changeHistory';
@@ -55,6 +57,9 @@ type FeeExpose = {
 const canViewLoadingOrder = useAccess().hasAccessByCodes([
   'Admin.SeaExport.LoadingOrder.Get',
 ]);
+
+/** 舱单跟着海运出口编辑权限走，没有编辑权限整个 Tab 不出现 */
+const canViewManifest = useAccess().hasAccessByCodes(['Admin.SeaExport.Edit']);
 
 /** 业务联系单导入。生成时业务单 id 与联系单 id 相同 */
 const PRE_ORDER_INPUT_TYPE = 1;
@@ -73,6 +78,7 @@ const VALID_TAB_KEYS: readonly TabKey[] = [
   'dispatch',
   'loadingOrder',
   'billInfo',
+  'manifest',
   'tracking',
 ] as const;
 
@@ -80,6 +86,7 @@ const TAB_STORAGE_KEY_PREFIX = 'sea-export-edit-active-tab';
 
 function isValidTabKey(key: string): key is TabKey {
   if (key === 'loadingOrder' && !canViewLoadingOrder) return false;
+  if (key === 'manifest' && !canViewManifest) return false;
   return (VALID_TAB_KEYS as readonly string[]).includes(key);
 }
 
@@ -344,6 +351,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
       ]
     : []),
   { key: 'billInfo', label: '分单' },
+  ...(canViewManifest ? [{ key: 'manifest' as TabKey, label: '舱单' }] : []),
   { key: 'tracking', label: $t('seaExport.yundang.trackingInfo') },
   // { key: 'issueRecord', label: '问题记录' },
   // { key: 'changeHistory', label: '修改历史' },
@@ -464,6 +472,9 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <KeepAlive include="SeaExportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportManifest">
+            <manifest v-if="activeTab === 'manifest'" />
           </KeepAlive>
           <div
             v-if="activeTab === 'tracking'"

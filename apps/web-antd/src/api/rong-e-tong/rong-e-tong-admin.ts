@@ -144,6 +144,274 @@ export namespace RongETongApi {
     commissionNum?: null | string;
     reason?: number;
   }
+
+  /** 舱单口岸：1 上海，2 青岛 */
+  export type ManifestPort = 1 | 2;
+
+  /** 舱单状态：0 未发送，1 已发送，2 已删单 */
+  export type ManifestStatus = 0 | 1 | 2;
+
+  /** 国家（简易） */
+  export interface ManifestCountryDto {
+    id: number | string;
+    code?: string;
+    countryName?: string;
+    countryEnName?: string;
+  }
+
+  /** 一个收发通的舱单补充信息；为空的项发送时取收发通客户上的 */
+  export interface ManifestPartyDto {
+    country?: ManifestCountryDto | null;
+    tel?: null | string;
+    /** 以下四项只有上海舱单发送 */
+    actualPerson?: null | string;
+    actualTele?: null | string;
+    companyId?: null | string;
+    aeoCode?: null | string;
+  }
+
+  /**
+   * 分提单回执。
+   * msgType：1 原始，2 修改，3 删除，4 重发，5 改配。
+   * resState：0 发送失败，1 已发送，2 回执错误，3 回执成功，4 退单，5 船舶未备案，6 船代统一换船。
+   */
+  export interface ManifestHouseDto {
+    blNum?: string;
+    msgType?: null | number;
+    resState?: null | number;
+    resMessage?: null | string;
+    noticeTime?: null | string;
+    loadingMessage?: null | string;
+    loadingTime?: null | string;
+  }
+
+  /** 已存的舱单 */
+  export interface ManifestRecordDto {
+    id: string;
+    /** 发送时的口岸，第一次发送成功前为空 */
+    port?: ManifestPort | null;
+    outTradeCode?: null | string;
+    status: ManifestStatus;
+    sendTime?: null | string;
+    /** 是否货主自有箱（SOC），false 为船东箱（COC） */
+    isSoc: boolean;
+    /** 是否有集港计划后自动发送，只有青岛用 */
+    isDraftPlan: boolean;
+    remark?: null | string;
+    shipper?: ManifestPartyDto | null;
+    consignee?: ManifestPartyDto | null;
+    notifier?: ManifestPartyDto | null;
+    houses?: ManifestHouseDto[];
+    creationTime?: string;
+    creatorUserName?: null | string;
+    lastModificationTime?: null | string;
+    lastModifierUserName?: null | string;
+  }
+
+  /** 待发送舱单的一条货物明细 */
+  export interface ManifestHousePreviewDto {
+    blNum?: null | string;
+    ctnNo?: null | string;
+    containerTypeName?: null | string;
+    sealNo?: null | string;
+    containerOwnerName?: null | string;
+    packageNum?: null | string;
+    unitName?: null | string;
+    grossWeight?: null | number;
+    volume?: null | number;
+    marks?: null | string;
+    goodsDes?: null | string;
+    hsCode?: null | string;
+    dgNo?: null | string;
+    dgLevel?: null | string;
+    vgmGrossWeight?: null | number;
+  }
+
+  /** 待发送舱单的一个收发通 */
+  export interface ManifestPartyPreviewDto {
+    partyName?: null | string;
+    address?: null | string;
+    countryName?: null | string;
+    partyTele?: null | string;
+  }
+
+  /** 按海运出口拼出来的待发送舱单，名称类字段已是三方要的写法 */
+  export interface ManifestPreviewDto {
+    mblNum?: null | string;
+    bookingNum?: null | string;
+    carrierName?: null | string;
+    cargoName?: null | string;
+    billLadingTypeName?: null | string;
+    originalNumber?: null | string;
+    paymentTermNameCn?: null | string;
+    placeIssueName?: null | string;
+    shippingItem?: null | string;
+    vessel?: null | string;
+    innerVoyno?: null | string;
+    shipAgentName?: null | string;
+    placeReceiptName?: null | string;
+    portLoadingName?: null | string;
+    portDischargeName?: null | string;
+    placeDeliveryName?: null | string;
+    dgContact?: null | string;
+    dgTel?: null | string;
+    temperatureUnitName?: null | string;
+    reeferTemperature?: null | string;
+    reeferVentilation?: null | string;
+    webCode?: null | string;
+    houses?: ManifestHousePreviewDto[];
+    shipper?: ManifestPartyPreviewDto | null;
+    consignee?: ManifestPartyPreviewDto | null;
+    notifier?: ManifestPartyPreviewDto | null;
+  }
+
+  /** 舱单页数据 */
+  export interface ManifestDto {
+    seaExportId: string;
+    /** 按当前起运港判断的口岸；不支持时为空，此时 unsupportedMessage 有值 */
+    port?: ManifestPort | null;
+    unsupportedMessage?: null | string;
+    manifest?: ManifestRecordDto | null;
+    preview?: ManifestPreviewDto | null;
+    /** 资料不完整的地方；有值时发送、重发、改单、补发分票会报错 */
+    errors?: string[];
+  }
+
+  /** 一个收发通的舱单补充信息（保存用） */
+  export interface ManifestPartyInputDto {
+    countryId?: null | number | string;
+    tel?: null | string;
+    actualPerson?: null | string;
+    actualTele?: null | string;
+    companyId?: null | string;
+    aeoCode?: null | string;
+  }
+
+  /** 保存舱单补充信息 */
+  export interface ManifestSaveDto {
+    seaExportId: string;
+    isSoc: boolean;
+    isDraftPlan: boolean;
+    remark?: null | string;
+    shipper?: ManifestPartyInputDto;
+    consignee?: ManifestPartyInputDto;
+    notifier?: ManifestPartyInputDto;
+  }
+
+  /** 舱单删单；blNums 不传或为空时整票删除 */
+  export interface ManifestDeleteInputDto {
+    seaExportId: string;
+    reason: string;
+    blNums?: string[];
+  }
+
+  /** 青岛舱单补发分票 */
+  export interface ManifestAddSubInputDto {
+    seaExportId: string;
+    blNums: string[];
+  }
+
+  /** 船代查询结果（三方写法） */
+  export interface ManifestShipAgentDto {
+    shipAgentName?: null | string;
+    shipAgentCode?: null | string;
+    carrierName?: null | string;
+    carrierCode?: null | string;
+  }
+}
+
+const MANIFEST_API_PREFIX = '/services/app/RongETongAdmin';
+
+/** 舱单发送类接口要等三方返回，单次最长 60 秒，前端放宽到 90 秒 */
+const MANIFEST_TIMEOUT = 90_000;
+
+/** 舱单页数据：口岸、已存舱单、按海运出口现拼的待发送内容 */
+export function getManifestAsync(seaExportId: string) {
+  return requestClient.post<RongETongApi.ManifestDto>(
+    `${MANIFEST_API_PREFIX}/GetManifestAsync`,
+    { id: seaExportId },
+  );
+}
+
+/** 保存舱单补充信息 */
+export function saveManifestAsync(data: RongETongApi.ManifestSaveDto) {
+  return requestClient.post(`${MANIFEST_API_PREFIX}/SaveManifestAsync`, data);
+}
+
+/** 第一次发送舱单 */
+export function sendManifestAsync(seaExportId: string) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/SendManifestAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
+}
+
+/** 重发舱单 */
+export function resendManifestAsync(seaExportId: string) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/ResendManifestAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
+}
+
+/** 舱单改单 */
+export function updateManifestAsync(seaExportId: string) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/UpdateManifestAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
+}
+
+/** 舱单删单 */
+export function deleteManifestAsync(data: RongETongApi.ManifestDeleteInputDto) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/DeleteManifestAsync`,
+    data,
+    {
+      timeout: MANIFEST_TIMEOUT,
+    },
+  );
+}
+
+/** 刷新舱单回执 */
+export function refreshManifestAsync(seaExportId: string) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/RefreshManifestAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
+}
+
+/** 按海运出口的船名、航次、主提单号、船公司查船代 */
+export function queryManifestShipAgentAsync(seaExportId: string) {
+  return requestClient.post<RongETongApi.ManifestShipAgentDto>(
+    `${MANIFEST_API_PREFIX}/QueryManifestShipAgentAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
+}
+
+/** 青岛舱单补发分票 */
+export function addSubManifestAsync(data: RongETongApi.ManifestAddSubInputDto) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/AddSubManifestAsync`,
+    data,
+    {
+      timeout: MANIFEST_TIMEOUT,
+    },
+  );
+}
+
+/** 青岛舱单改配，只改船名航次 */
+export function updateManifestConfigAsync(seaExportId: string) {
+  return requestClient.post(
+    `${MANIFEST_API_PREFIX}/UpdateManifestConfigAsync`,
+    { id: seaExportId },
+    { timeout: MANIFEST_TIMEOUT },
+  );
 }
 
 /**
