@@ -498,3 +498,14 @@ export const freightRateFieldPermission: FieldPermissionProfile = {
     'pod.portName': ['podId', 'pod'],
   },
 };
+
+/** 发票开出：字段和判据来自当前用户屏蔽规则，不在这里写死字段清单。 */
+export const invoiceIssueFieldPermission: FieldPermissionProfile = {
+  module: FrightModule.InvoiceIssue,
+  search: {
+    invoiceNo: ['invoiceNo'],
+    settlementId: ['settlement'],
+    currencyId: ['currency'],
+    remark: ['remark'],
+  },
+};

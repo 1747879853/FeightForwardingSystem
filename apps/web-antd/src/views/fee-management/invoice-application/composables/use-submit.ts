@@ -14,6 +14,10 @@ import {
 } from '#/utils/invoice-application-amount';
 
 import { collectFeeAppliedItems } from './use-computed';
+import {
+  toNamedRecipientInputs,
+  validateNamedRecipientLists,
+} from '#/views/_shared/named-mail-recipients/named-mail-recipients';
 
 /**
  * 提交和保存相关逻辑
@@ -185,7 +189,22 @@ export function useSubmit(
     if (!validateGoodsAndAmount(!!options?.requireFees)) {
       return false;
     }
+    const recipientError = validateNamedRecipientLists(
+      formData.value.mailTo,
+      formData.value.mailCc,
+    );
+    if (recipientError) {
+      message.warning(recipientError);
+      return false;
+    }
     return true;
+  }
+
+  function mailRecipientPayload() {
+    return toNamedRecipientInputs(
+      formData.value.mailTo || [],
+      formData.value.mailCc || [],
+    );
   }
 
   function syncGoodsDetailsToFormData() {
@@ -221,6 +240,7 @@ export function useSubmit(
       settlementId: formData.value.settlementId!,
       orgId: formData.value.orgId!,
       require: formData.value.require,
+      invoiceApplicationMailRecipients: mailRecipientPayload(),
       currencyGroups: [
         {
           currencyId: formData.value.currencyId,
@@ -240,10 +260,15 @@ export function useSubmit(
   async function persistEdit(applicationId: string) {
     syncGoodsDetailsToFormData();
     const rates = getExchangeRatePayload();
+    const editable: Record<string, any> = { ...formData.value };
+    delete editable.mailTo;
+    delete editable.mailCc;
+    delete editable.mailRecipientsTouched;
     await editAsync({
-      ...(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto),
+      ...editable,
       id: applicationId,
       invoiceApplicationExchangeRates: rates,
+      invoiceApplicationMailRecipients: mailRecipientPayload(),
     });
   }
 

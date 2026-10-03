@@ -11,7 +11,10 @@ import {
   PERSONAL_MAIL_PERMISSION,
 } from '#/api/personal-mail/personal-mail-admin';
 
-import { normalizeReceivedMails } from './new-mail-notice';
+import {
+  formatNewMailNoticeLines,
+  normalizeReceivedMails,
+} from './new-mail-notice';
 import {
   startPersonalMailSignalr,
   stopPersonalMailSignalr,
@@ -30,6 +33,9 @@ const inboxUnread = shallowRef<null | number>(null);
 const previews = ref<PersonalMailAdminApi.MailSummary[]>([]);
 const pollSerial = shallowRef(0);
 const hasNewMail = shallowRef(false);
+const noticeOpen = shallowRef(false);
+const noticeLines = ref<string[]>([]);
+const noticeMails = ref<PersonalMailAdminApi.MailSummary[]>([]);
 
 let started = false;
 let tokenWatchBound = false;
@@ -134,6 +140,9 @@ function stopMailWatch() {
   previews.value = [];
   pollSerial.value = 0;
   hasNewMail.value = false;
+  noticeOpen.value = false;
+  noticeLines.value = [];
+  noticeMails.value = [];
   onReceived = null;
   void stopPersonalMailSignalr();
   if (onVisible) {
@@ -163,8 +172,10 @@ export function usePersonalMailFloat() {
       previews.value = mails;
       rememberFolder(mails);
     }
+    noticeMails.value = mails;
+    noticeLines.value = formatNewMailNoticeLines(payload);
+    noticeOpen.value = noticeLines.value.length > 0;
     hasNewMail.value = true;
-    expanded.value = true;
     void (async () => {
       try {
         await refreshSnapshot();
@@ -216,6 +227,12 @@ export function usePersonalMailFloat() {
     if (previews.value.length === 0) await loadPreviews(false);
   }
 
+  function dismissNotice() {
+    noticeOpen.value = false;
+    noticeLines.value = [];
+    noticeMails.value = [];
+  }
+
   function togglePanel() {
     if (expanded.value) {
       expanded.value = false;
@@ -230,8 +247,12 @@ export function usePersonalMailFloat() {
     canWatch,
     expanded,
     inboxTotal,
+    dismissNotice,
     hasNewMail,
     inboxUnread,
+    noticeLines,
+    noticeMails,
+    noticeOpen,
     loadingPreview,
     openPanel,
     pollSerial,

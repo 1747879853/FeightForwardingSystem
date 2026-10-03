@@ -20,6 +20,7 @@ import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { nextTick } from 'vue';
 
 import { collectFeeAppliedItems } from './use-computed';
+import { splitNamedRecipients } from '#/views/_shared/named-mail-recipients/named-mail-recipients';
 
 /**
  * 加载详情数据相关逻辑
@@ -200,6 +201,9 @@ export function useLoadDetail(
     loading.value = true;
     try {
       const detail = await detailAsync(editId.value);
+      const mailRows = splitNamedRecipients(
+        detail.invoiceApplicationMailRecipients,
+      );
 
       // ✅ 修改：先设置基本信息，包括currencyId和status，然后再加载客户开票信息
       formData.value = {
@@ -218,6 +222,8 @@ export function useLoadDetail(
         clientInvoiceBankId: detail.clientInvoiceBankId,
         invoiceApplicationItems: [],
         invoiceApplicationGoodsDtls: detail.invoiceApplicationGoodsDtls || [],
+        mailTo: mailRows.to,
+        mailCc: mailRows.cc,
       };
 
       // 设置申请人和申请日期

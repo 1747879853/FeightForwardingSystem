@@ -16,6 +16,8 @@ export enum PrintFormatBizType {
   SeaImport = 1,
   /** 空运出口 */
   AirExport = 2,
+  /** 件杂货 */
+  BreakBulk = 3,
 }
 
 /** 打印数据源类型，与业务模块对应 */
@@ -34,6 +36,10 @@ export enum PrintJsonType {
   AirExportDetail = 5000,
   /** 空运进口详情 */
   AirImportDetail = 6000,
+  /** 件杂货详情 */
+  BreakBulkDetail = 7000,
+  /** 件杂货分单详情 */
+  BreakBulkSeparateDetail = 7500,
   /** 客户对账详情 */
   StatementDetail = 11000,
 }

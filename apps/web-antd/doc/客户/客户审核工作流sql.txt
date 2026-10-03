@@ -1,0 +1,12 @@
+-- 存量客户一律置为「已通过(2)」
+UPDATE App_Clients SET ClientStatus = 2;
+
+
+-- 租户配置「可搜索未审核通过客户」只给 TenantId = 1
+INSERT INTO Sys_Settings (CreationTime, CreatorUserId, LastModificationTime, LastModifierUserId, TenantId, UserId, Name, Value)
+SELECT GETDATE(), NULL, NULL, NULL, 1, NULL, N'可搜索未审核通过客户', N'TRUE'
+WHERE NOT EXISTS (
+    SELECT 1 FROM Sys_Settings s
+    WHERE s.TenantId = 1 AND s.UserId IS NULL AND s.Name = N'可搜索未审核通过客户'
+);
+

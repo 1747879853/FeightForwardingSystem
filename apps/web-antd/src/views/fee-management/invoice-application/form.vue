@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { Page } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import { useTabs } from '@vben/hooks';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -46,6 +46,11 @@ import {
 import RemarkTemplateModal from '#/views/_shared/invoice-remark-template/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from '#/views/_shared/invoice-remark-template/SelectRemarkTemplateModal.vue';
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
+import NamedMailRecipients from '#/views/_shared/named-mail-recipients/named-mail-recipients.vue';
+import {
+  type NamedMailRow,
+  validateNamedRecipientLists,
+} from '#/views/_shared/named-mail-recipients/named-mail-recipients';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import ClientInvoiceInfoSelector from './components/ClientInvoiceInfoSelector.vue';
 import { Select } from 'ant-design-vue';
@@ -97,6 +102,55 @@ const settlementObjectName = computed(() => {
     }
   }
   return '-';
+});
+
+/** 录入中、驳回可改收件人；提交之后只读。新建页可编辑。 */
+const mailRecipientsLocked = computed(() => {
+  if (isReadOnly.value) return true;
+  if (!isEdit.value) return false;
+  const status = formData.value.status;
+  return (
+    status !== InvoiceApplicationApi.InvoiceApplicationStatus.Entering &&
+    status !== InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
+  );
+});
+
+const mailDraftTo = ref<NamedMailRow[]>([]);
+const mailDraftCc = ref<NamedMailRow[]>([]);
+
+function cloneMailRows(rows: NamedMailRow[] | undefined) {
+  return (rows ?? []).map((row) => ({
+    name: row.name || '',
+    email: row.email || '',
+  }));
+}
+
+function openMailRecipientModal() {
+  mailDraftTo.value = cloneMailRows(formData.value.mailTo);
+  mailDraftCc.value = cloneMailRows(formData.value.mailCc);
+  mailRecipientModalApi.setState({
+    showConfirmButton: !mailRecipientsLocked.value,
+  });
+  mailRecipientModalApi.open();
+}
+
+const [MailRecipientModal, mailRecipientModalApi] = useVbenModal({
+  title: '邮件收件人',
+  class: 'w-[720px]',
+  confirmText: '确定',
+  async onConfirm() {
+    const recipientError = validateNamedRecipientLists(
+      mailDraftTo.value,
+      mailDraftCc.value,
+    );
+    if (recipientError) {
+      message.warning(recipientError);
+      return;
+    }
+    formData.value.mailTo = cloneMailRows(mailDraftTo.value);
+    formData.value.mailCc = cloneMailRows(mailDraftCc.value);
+    await mailRecipientModalApi.close();
+  },
 });
 
 /** 归属组织回显：简称优先；销售方名称仍用 applicantCompanyName 全称 */
@@ -674,6 +728,12 @@ onMounted(async () => {
                 : '新建开票申请'
           }}</span>
           <Space>
+            <Button @click="openMailRecipientModal">
+              <template #icon>
+                <IconifyIcon icon="lucide:mail" />
+              </template>
+              收件人
+            </Button>
             <Button
               type="primary"
               :loading="submitLoading"
@@ -1477,6 +1537,15 @@ onMounted(async () => {
           </div>
         </div>
       </Spin>
+
+      <MailRecipientModal>
+        <NamedMailRecipients
+          v-model:to="mailDraftTo"
+          v-model:cc="mailDraftCc"
+          hint="点确定后先记在这张申请上，随保存或提交一起写入。新建发票开出时会把这里的地址带过去。"
+          :disabled="mailRecipientsLocked"
+        />
+      </MailRecipientModal>
 
       <!-- 子组件 -->
       <FeeSelectionDrawer

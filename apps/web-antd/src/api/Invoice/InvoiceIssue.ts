@@ -132,6 +132,30 @@ export namespace InvoiceIssueApi {
     invoiceIssueItems: InvoiceIssueItemInputDto[];
     /** 发票开出商品明细（至少一条） */
     invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlInputDto[];
+    /**
+     * 收件人/抄送人。新建时提交；编辑主表不要带这个字段，改收件人走 EditMailRecipientsAsync。
+     */
+    invoiceIssueMailRecipients?: InvoiceIssueMailRecipientInput[];
+  }
+
+  /** 发票开出收件人/抄送人。recipientType：0 收件人，1 抄送人 */
+  export interface InvoiceIssueMailRecipientInput {
+    recipientType: number;
+    /** 可空，最长 64 */
+    name?: null | string;
+    /** 纯邮箱，最长 256 */
+    email: string;
+  }
+
+  export interface InvoiceIssueMailRecipientDto extends InvoiceIssueMailRecipientInput {
+    id?: string;
+    sortId?: number;
+  }
+
+  /** 单独保存发票开出收件人。空数组表示清空。发票锁定不拦截。 */
+  export interface InvoiceIssueEditMailRecipientsDto {
+    id: string;
+    invoiceIssueMailRecipients: InvoiceIssueMailRecipientInput[];
   }
 
   /** 修改发票开出DTO */
@@ -224,6 +248,10 @@ export namespace InvoiceIssueApi {
     require?: string;
     /** 备注 */
     remark?: string;
+    /**
+     * 收件人/抄送人。字段被屏蔽时整个 key 不返回，不要用空数组判断。
+     */
+    invoiceIssueMailRecipients?: InvoiceIssueMailRecipientDto[];
     /** 创建人名称 */
     creatorUserName: string;
     /** 申请人名称 */
@@ -804,6 +832,8 @@ export namespace InvoiceIssueApi {
     require?: string;
     /** 备注 */
     remark?: string;
+    /** 该申请上的收件人/抄送人，供新建发票开出时合并 */
+    invoiceApplicationMailRecipients?: InvoiceIssueMailRecipientDto[];
     /** 创建人名称 */
     creatorUserName?: string;
     /** 申请人名称 */
@@ -1037,6 +1067,18 @@ async function editInvoiceIssueMain(
 }
 
 /**
+ * 只改收件人/抄送人。空数组清空。发票锁定后仍可调用。
+ */
+async function editInvoiceIssueMailRecipients(
+  data: InvoiceIssueApi.InvoiceIssueEditMailRecipientsDto,
+) {
+  return requestClient.put<boolean>(
+    '/services/app/InvoiceIssueAdmin/EditMailRecipientsAsync',
+    data,
+  );
+}
+
+/**
  * 新增多条开票申请
  * @param data 新增申请数据
  * @returns 返回汇率校验结果，code=0表示加挂成功
@@ -1082,6 +1124,7 @@ export {
   deleteInvoiceIssue,
   editInvoiceIssue,
   editInvoiceIssueMain,
+  editInvoiceIssueMailRecipients,
   addApplicationsToInvoiceIssue,
   removeApplicationsFromInvoiceIssue,
   syncApplicationGoodsDtlByExchangeRate, // ✅ 新增导出

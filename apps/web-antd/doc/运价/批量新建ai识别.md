@@ -1,13 +1,13 @@
 ---
-title: 运价批量新建 AI 识别（文件解析 + 名称转id）
+title: 运价批量新建 AI 识别（文件/文字解析 + 名称转id）
 module: 运价
 author: 后端
-last_updated: 2026-07-16
+last_updated: 2026-08-13
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 业务员手里常拿到船公司/代理发来的**运价报价文件**（PDF、图片、Excel 截图等），里面是一行行的目的港、箱型价格、有效期等信息。以前需要人工一条条录入到"运价新建"表单，效率低且易错。
+**白话解释：** 业务员手里常拿到船公司/代理发来的**运价报价文件**（PDF、图片、Excel 截图等），里面是一行行的目的港、箱型价格、有效期等信息；也常常是**微信/邮件里直接复制的一段报价文字**。以前需要人工一条条录入到"运价新建"表单，效率低且易错。
 
 本次新增 **AI 识别批量新建** 能力：上传一份运价报价文件，后端调用大模型（Gemini / 通义千问）识别出**多行运价数据**，并在识别结果基础上，把港口名、币别、箱型名等**文本自动模糊匹配成系统内的 id**，直接返回给前端做批量预填。匹配不到的 id 返回 `-1`，由前端提示用户手动补录，**匹配失败不报错**。
 
@@ -20,12 +20,12 @@ last_updated: 2026-07-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **Gemini 识别运价：** `GeminiAdmin/ExtractSeFreiPriceByPromptAsync` → 文件 base64+gzip 传给 `gemini-3.5-flash` → 解析出运价多行 → 名称模糊匹配 id → 返回 `List<GeminiSeFreiPriceDto>`。
-- **千问识别运价：** `QwenAdmin/ExtractSeFreiPriceByPromptAsync` → 上传文件到百炼（`file-extract`）→ 等待解析完成 → `qwen-doc-turbo` + `fileid://` 抽取 → 名称模糊匹配 id → 返回 `List<GeminiSeFreiPriceDto>`。
+- **Gemini 识别运价：** `GeminiAdmin/ExtractSeFreiPriceByPromptAsync` → **传了文字用文字、没传文字用上传文件** → 交给 Gemini → 解析出运价多行 → 名称模糊匹配 id → 返回 `List<GeminiSeFreiPriceDto>`。
+- **千问识别运价：** `QwenAdmin/ExtractSeFreiPriceByPromptAsync` → 上传文件到百炼（`file-extract`）→ 等待解析完成 → `qwen-doc-turbo` + `fileid://` 抽取 → 名称模糊匹配 id → 返回 `List<GeminiSeFreiPriceDto>`。**该接口只支持文件，不支持文字入参。**
 
-流程：前端 `multipart/form-data` 上传文件（取第一个文件）→ 后端调用对应大模型识别 → 反序列化为运价列表 → 港口/币别/箱型多字段模糊匹配 id → 回填 id 后返回（保留原始名称字段）。
+流程：前端提交 `multipart/form-data`（文字字段 `text` 或第一个文件）→ 后端按"有文字用文字、无文字用文件"选择数据来源 → 调用对应大模型识别 → 反序列化为运价列表 → 港口/币别/箱型多字段模糊匹配 id → 回填 id 后返回（保留原始名称字段）。
 
-> 提示词已内置在后端，**前端无需传入提示词**，两个接口均**无请求体参数**，只需上传文件。
+> 提示词已内置在后端，**前端无需传入提示词**。Gemini 接口有唯一可选入参 `text`（报价文字）；千问接口无请求体参数，只需上传文件。
 
 ---
 
@@ -34,10 +34,18 @@ last_updated: 2026-07-16
 ## 3.1 ExtractSeFreiPriceByPromptAsync（Gemini）
 
 - **接口地址：** `POST /api/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync`
-- **请求方式：** `multipart/form-data`，表单内放一个文件（取第一个文件）
-- **支持文件类型：** PDF（`application/pdf`）、图片（`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`、`image/gif`、`image/bmp`）、纯文本（`text/plain`）；mime 类型优先取上传的 `ContentType`，缺失时按扩展名兜底
-- **入参：** 无 DTO，文件从请求表单读取
+- **请求方式：** `multipart/form-data`，表单内放**文字字段 `text`** 或**一个文件**（取第一个文件）
+- **支持文件类型：** PDF（`application/pdf`）、图片（`image/png`、`image/jpeg`、`image/webp`、`image/heic`、`image/heif`、`image/gif`、`image/bmp`）、纯文本（`text/plain`）、Excel（`xlsx`/`xls`，后端转 HTML 表格）；mime 类型优先取上传的 `ContentType`，缺失时按扩展名兜底
 - **出参：** `List<GeminiSeFreiPriceDto>`（见 3.3）
+
+**入参：**
+
+| 字段名 | 类型 | 含义 | 必填 | 说明 |
+| :-- | :-- | :-- | :-- | :-- |
+| **text** | string | 待解析的报价文字内容 | 否 | **非空白时优先使用，此时忽略上传的文件**；只能放 form 字段或 query，**不支持 JSON body** |
+| **（文件）** | File | 待解析的报价文件 | 否 | 未传 `text` 时必传，从 `Request.Form.Files` 取第一个 |
+
+> 两者都不传报「请上传文件或输入需要解析的文字」；只传空白字符等同于没传。
 
 ## 3.2 ExtractSeFreiPriceByPromptAsync（通义千问）
 
@@ -101,14 +109,16 @@ last_updated: 2026-07-16
 
 > [!IMPORTANT] **[卡点 3：千问返回结构]** 千问 `response_format=json_object` 只能返回对象，故提示词要求 `{ "list": [...] }`；若模型偶发返回裸数组或换用别的包裹字段名，后端已做兼容（取第一个数组字段）。
 
+> [!IMPORTANT] **[卡点 4：文字优先于文件，且 `text` 不能放 JSON body]** Gemini 接口同时收到文字和文件时**以文字为准，文件被静默忽略**（不报错），页面上换了文件却发现结果没变时，先检查文字输入框是否有残留内容。另外 `text` 是简单类型参数，只能走 form 字段或 query 绑定，发 JSON body 会绑不到值并报「请上传文件或输入需要解析的文字」。纯文字缺少表格版面信息，识别准确率低于文件，表格型报价仍建议上传原文件。
+
 ---
 
 # 6. 受影响的文件
 
 | 文件 | 变更 |
 | :-- | :-- |
-| `App/AI/GeminiAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()`（无参，内置提示词，gemini-3.5-flash）：文件 base64+gzip 上传识别 → 反序列化 → 调用 `SeFreiPriceMatchHelper` 回填 id；注入 PortCode/Currency/CtnCode 仓储；新增 `GetMimeType` 兜底 mime 判断 |
-| `App/AI/IGeminiAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()` 签名 |
+| `App/AI/GeminiAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()`（内置提示词）：文件 base64+gzip 上传识别 → 反序列化 → 调用 `SeFreiPriceMatchHelper` 回填 id；注入 PortCode/Currency/CtnCode 仓储；新增 `GetMimeType` 兜底 mime 判断。**2026-08-13：** 增加可选入参 `string text`，按"有文字用文字、无文字用文件"分流，文件处理抽为私有方法 `BuildPartsFromUploadedFileAsync` |
+| `App/AI/IGeminiAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()` 签名；**2026-08-13：** 签名改为 `ExtractSeFreiPriceByPromptAsync(string text = null)` |
 | `App/AI/QwenAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()`（无参，内置提示词，qwen-doc-turbo）：复用文件上传/等待解析流程 → `ParseSeFreiPriceList` 兼容解析 → 回填 id；注入 PortCode/Currency/CtnCode 仓储 |
 | `App/AI/IQwenAdminAppService.cs` | 新增 `ExtractSeFreiPriceByPromptAsync()` 签名 |
 | `App/AI/SeFreiPriceMatchHelper.cs` | 新增：共享静态匹配帮助类，港口/币别/箱型多字段模糊匹配 + `FillMatchedIds` 回填（Gemini/Qwen 共用，保证行为一致） |
@@ -120,4 +130,5 @@ last_updated: 2026-07-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-13 | `Enhancement` | Gemini 运价识别支持**直接粘贴文字**：新增可选入参 `text`，传了文字用文字解析、没传文字仍用上传文件；两者都没有时提示「请上传文件或输入需要解析的文字」；前端原有文件上传调用无需改动 | 文件组装逻辑抽为 `BuildPartsFromUploadedFileAsync(prompt)`，主方法只留文字/文件分流；文字分支不读 `Request.Form`，文件分支补 `HasFormContentType` 判断避免非表单请求抛框架异常；`text` 为简单类型，ABP 动态 WebApi 不注入 `[FromBody]`，只能 form/query 绑定；千问接口未同步改造，仍只支持文件 |
 | 2026-07-16 | `Feature` | 新增运价"AI 识别批量新建"：Gemini/千问各一个接口，上传文件识别运价多行数据，并把港口/币别/箱型名称模糊匹配为系统 id（匹配不到返回 -1，不报错），返回 `List<GeminiSeFreiPriceDto>` 供前端批量预填 | 匹配逻辑抽为 `SeFreiPriceMatchHelper` 共享静态类，两服务复用；归一化仅保留字母数字并大写以兼容 `HO CHI MINH`/`40'/HQ` 等格式差异；三张基础表一次性全量载入内存匹配；千问 json_object 只能返回对象，提示词约定 `{list:[...]}` 并做兼容解析；实体类型名与 `CsprojBuilder.App.*` 命名空间冲突，使用 `Entites.` 前缀限定 |
