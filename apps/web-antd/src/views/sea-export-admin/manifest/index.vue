@@ -275,7 +275,7 @@ const onUpdate = () =>
   confirmAction(
     '舱单改单',
     isQingdao.value
-      ? '按海运出口当前的数据改单。船名、航次、提单号、船代、箱型、箱号不能改单，要删单后重发；只改船名航次请用改配。确定改单？'
+      ? '按海运出口当前的数据改单。船名、航次、主提单号、分提单号、船代、箱型、箱号不能改单，要删单后重发；只改船名航次请用改配。确定改单？'
       : '按海运出口当前的数据改单。确定改单？',
     () => updateManifestAsync(seaExportId.value),
     '已提交改单',
@@ -403,7 +403,7 @@ const houseColumns = [
     ellipsis: true,
   },
   {
-    title: '英文品名',
+    title: '货物描述',
     dataIndex: 'goodsDes',
     key: 'goodsDes',
     width: 180,
@@ -415,7 +415,7 @@ const houseColumns = [
 
 const partyColumns = computed(() => [
   { title: '', dataIndex: 'label', key: 'label', width: 70 },
-  { title: '名称（取自海运出口）', key: 'partyName', width: 200 },
+  { title: '名称（取自收发通内容第一行）', key: 'partyName', width: 220 },
   { title: '国家', key: 'country', width: 160 },
   { title: '电话', key: 'tel', width: 140 },
   ...(isShanghai.value
@@ -579,28 +579,28 @@ const partyPreview = (key: PartyKey) => preview.value?.[key] ?? null;
             <DescriptionsItem label="货物类型">{{
               displayText(preview.cargoName)
             }}</DescriptionsItem>
-            <DescriptionsItem label="提单类型">
+            <DescriptionsItem label="签单方式">
               {{ displayText(preview.billLadingTypeName) }}
             </DescriptionsItem>
             <DescriptionsItem label="提单份数">
               {{ displayText(preview.originalNumber) }}
             </DescriptionsItem>
-            <DescriptionsItem label="付款方式">
+            <DescriptionsItem label="付费方式">
               {{ displayText(preview.paymentTermNameCn) }}
             </DescriptionsItem>
             <DescriptionsItem label="运输条款">
               {{ displayText(preview.shippingItem) }}
             </DescriptionsItem>
-            <DescriptionsItem label="签发地">
+            <DescriptionsItem label="签单地点">
               {{ displayText(preview.placeIssueName) }}
             </DescriptionsItem>
             <DescriptionsItem label="收货地">
               {{ displayText(preview.placeReceiptName) }}
             </DescriptionsItem>
-            <DescriptionsItem label="装货港">
+            <DescriptionsItem label="起运港">
               {{ displayText(preview.portLoadingName) }}
             </DescriptionsItem>
-            <DescriptionsItem label="卸货港">
+            <DescriptionsItem label="目的港">
               {{ displayText(preview.portDischargeName) }}
             </DescriptionsItem>
             <DescriptionsItem label="交货地">
@@ -608,19 +608,19 @@ const partyPreview = (key: PartyKey) => preview.value?.[key] ?? null;
             </DescriptionsItem>
             <DescriptionsItem
               v-if="preview.dgContact || preview.dgTel"
-              label="危品联系人"
+              label="危品联系人 / 危品电话"
             >
               {{ displayText(preview.dgContact) }} /
               {{ displayText(preview.dgTel) }}
             </DescriptionsItem>
-            <DescriptionsItem v-if="preview.reeferTemperature" label="冷藏温度">
+            <DescriptionsItem v-if="preview.reeferTemperature" label="温度">
               {{ displayText(preview.reeferTemperature) }}
               {{ preview.temperatureUnitName ?? '' }}
               <template v-if="preview.reeferVentilation">
                 ，通风 {{ preview.reeferVentilation }}
               </template>
             </DescriptionsItem>
-            <DescriptionsItem v-if="preview.webCode" label="集港场站">
+            <DescriptionsItem v-if="preview.webCode" label="场站">
               {{ preview.webCode }}
             </DescriptionsItem>
           </Descriptions>
