@@ -34,6 +34,8 @@ const previewMode = ref<'online' | 'pdf'>('pdf');
 const onlineLoading = ref(false);
 /** 在线预览 iframe 地址（带一次性票据，只能打开一次） */
 const onlinePreviewUrl = ref('');
+/** 当前在线预览的票据：切走/关闭时凭它通知后端释放内存 */
+const onlineTicket = ref('');
 const pendingPrintJsonType = ref<PrintJsonType>();
 /** 后端自动取数打印入参（不含 printFormatId / format，导出时再补齐） */
 const pendingInput = ref<{
@@ -135,7 +137,26 @@ async function downloadPrintFile(filename: string) {
   downloadFileFromBlob({ source: blob, fileName: downloadName });
 }
 
+/**
+ * 通知后端立刻释放当前在线预览（服务端缓存的报表实例 + 还没用掉的票据）。
+ * 带图片的模板在服务端很占内存，切回 PDF、换模板、关弹窗时都要调；
+ * 发出去就不管结果，失败也不影响前端，后端还有「打开满 5 分钟自动清掉」兜底。
+ */
+function releaseOnlinePreview() {
+  const ticket = onlineTicket.value;
+  if (!ticket) return;
+  onlineTicket.value = '';
+  // 后端 MVC 页面接口（不在 /api 下、不用登录）；no-cors 只负责把请求发出去，不读响应
+  const url = buildStaticFileUrl(
+    `/PrintOnline/Close?ticket=${encodeURIComponent(ticket)}`,
+  );
+  void fetch(url, { method: 'POST', mode: 'no-cors', keepalive: true }).catch(
+    () => undefined,
+  );
+}
+
 function close() {
+  releaseOnlinePreview();
   visible.value = false;
   templates.value = [];
   selectedTemplateId.value = undefined;
@@ -194,6 +215,8 @@ async function loadPreview() {
 async function loadOnlinePreview() {
   if (!selectedTemplateId.value) return;
 
+  // 换模板、重新进入在线预览时，先释放上一份
+  releaseOnlinePreview();
   onlineLoading.value = true;
   onlinePreviewUrl.value = '';
   try {
@@ -202,6 +225,12 @@ async function loadOnlinePreview() {
     );
     if (!ticket) {
       message.error('在线预览失败，未返回票据');
+      return;
+    }
+    onlineTicket.value = ticket;
+    // 等票据期间已经关掉弹窗或切回了 PDF：立刻释放，不再打开
+    if (!visible.value || previewMode.value !== 'online') {
+      releaseOnlinePreview();
       return;
     }
     // 必须是后端绝对地址：/PrintOnline 页面和它后续的 /_fr 请求都由后端站点提供，落到前端端口会 404
@@ -229,6 +258,7 @@ function togglePreviewMode() {
   }
   previewMode.value = 'pdf';
   onlinePreviewUrl.value = '';
+  releaseOnlinePreview();
   if (!previewUrl.value && !previewLoading.value) {
     void loadPreview();
   }
@@ -265,6 +295,7 @@ async function loadTemplates(params: PrintFormatOpenParams) {
 }
 
 function openPrint(params: PrintFormatOpenParams) {
+  releaseOnlinePreview();
   pendingPrintJsonType.value = params.printJsonType;
   pendingInput.value = {
     detailInput: params.detailInput,
